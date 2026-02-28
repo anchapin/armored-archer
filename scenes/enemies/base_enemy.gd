@@ -22,6 +22,8 @@ func _ready() -> void:
 	add_to_group("Enemies")
 	if hurt_area:
 		hurt_area.body_entered.connect(_on_hurt_area_body_entered)
+	
+	AutoAimManager.register_enemy(self)
 
 func take_damage(amount: int) -> void:
 	current_health -= amount
@@ -29,6 +31,7 @@ func take_damage(amount: int) -> void:
 		die()
 
 func die() -> void:
+	AutoAimManager.unregister_enemy(self)
 	died.emit(xp_reward)
 	queue_free()
 

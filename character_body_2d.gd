@@ -5,6 +5,7 @@ extends CharacterBody2D
 # making it easy to tweak without touching code.
 @export var base_speed: float = 300.0
 @export var base_attack: int = 15
+@export var auto_aim_enabled: bool = true
 
 # --- Health ---
 @export var max_health: int = 100
@@ -24,8 +25,17 @@ var virtual_aim_direction: Vector2 = Vector2.ZERO
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 @onready var hurt_box: Area2D = $HurtBox
 
+# --- Auto Aim ---
+const AUTO_AIM_INDICATOR_SCENE = preload("res://scenes/player/auto_aim_indicator.tscn")
+var auto_aim_indicator: Node2D = null
+
 func _ready() -> void:
 	add_to_group("Player")
+	
+	if auto_aim_enabled:
+		auto_aim_indicator = AUTO_AIM_INDICATOR_SCENE.instantiate()
+		auto_aim_indicator.visible = false
+		get_tree().root.add_child(auto_aim_indicator)
 
 func _physics_process(_delta: float) -> void:
 	handle_movement()
@@ -61,6 +71,17 @@ func handle_aiming_and_shooting() -> void:
 		is_aiming = true
 		current_aim_direction = aim_dir.normalized()
 		
+		# 3. Apply Auto-Aim if enabled
+		if auto_aim_enabled and auto_aim_indicator:
+			var target_pos: Vector2 = AutoAimManager.get_target_position(global_position, current_aim_direction)
+			
+			if target_pos != Vector2.ZERO:
+				current_aim_direction = (target_pos - global_position).normalized()
+				auto_aim_indicator.global_position = target_pos
+				auto_aim_indicator.visible = true
+			else:
+				auto_aim_indicator.visible = false
+		
 		# Rotate the bow to point in the joystick's direction.
 		# .angle() returns radians, which Godot uses natively for rotation.
 		bow_pivot.rotation = current_aim_direction.angle()
@@ -69,11 +90,15 @@ func handle_aiming_and_shooting() -> void:
 		if not animation_player.is_playing():
 			animation_player.play("draw")
 		
-	# 3. Detect "Release" to Fire
+	# 4. Detect "Release" to Fire
 	elif is_aiming:
 		# If aim_dir length is 0 but we WERE aiming, the player released their thumb.
 		animation_player.play("release")
 		fire_arrow(current_aim_direction)
+		
+		if auto_aim_indicator:
+			auto_aim_indicator.visible = false
+		
 		is_aiming = false # Reset state
 
 const ARROW_SCENE = preload("res://scenes/arrow.tscn")
