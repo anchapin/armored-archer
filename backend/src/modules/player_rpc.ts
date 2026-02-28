@@ -1,5 +1,5 @@
 import { Runtime } from "../types/nakama";
-import { registerRpcWithMetrics } from "./metrics";
+import { getCacheManager } from "../utils/cache";
 
 export function registerRpcHealthCheck(initializer: Runtime.Initializer): void {
   registerRpcWithMetrics(initializer, "armored_archer/health_check", "health_check", rpcHealthCheck);
@@ -21,6 +21,13 @@ export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): voi
 function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Getting player stats for user: %s", ctx.userId);
 
+  const cacheManager = getCacheManager(logger);
+  const cachedStats = cacheManager.get<string>("player_stats", ctx.userId);
+
+  if (cachedStats !== undefined) {
+    return cachedStats;
+  }
+
   const objects = nk.storageRead([
     {
       collection: "player_stats",
@@ -35,5 +42,8 @@ function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
     });
   }
 
-  return objects[0].value ?? "{}";
+  const stats = objects[0].value ?? "{}";
+  cacheManager.set("player_stats", ctx.userId, stats);
+
+  return stats;
 }

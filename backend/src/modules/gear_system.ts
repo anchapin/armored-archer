@@ -1,5 +1,6 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
+import { getCacheManager } from "../utils/cache";
 
 export interface GearRarity {
   name: string;
@@ -181,8 +182,37 @@ function getRandomItem<T>(array: T[]): T {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function getGearName(type: string, rarity: string): string {
-  const names = GEAR_NAMES[type as keyof typeof GEAR_NAMES];
+interface GearDefinitions {
+  rarities: { [key: string]: GearRarity };
+  gearTypes: string[];
+  baseStats: typeof BASE_STATS;
+  modifierPools: GearModifier[];
+  gearNames: typeof GEAR_NAMES;
+}
+
+function getGearDefinitions(logger: Runtime.Logger): GearDefinitions {
+  const cacheManager = getCacheManager(logger);
+  const cachedDefinitions = cacheManager.get<GearDefinitions>("gear_definitions", "all");
+
+  if (cachedDefinitions !== undefined) {
+    return cachedDefinitions;
+  }
+
+  const definitions: GearDefinitions = {
+    rarities: RARITIES,
+    gearTypes: GEAR_TYPES,
+    baseStats: BASE_STATS,
+    modifierPools: MODIFIER_POOLS,
+    gearNames: GEAR_NAMES
+  };
+
+  cacheManager.set("gear_definitions", "all", definitions);
+  return definitions;
+}
+
+function getGearName(type: string, rarity: string, logger: Runtime.Logger): string {
+  const definitions = getGearDefinitions(logger);
+  const names = definitions.gearNames[type as keyof typeof GEAR_NAMES];
   const baseName = getRandomItem(names);
   
   if (rarity === "legendary") {
@@ -194,9 +224,10 @@ function getGearName(type: string, rarity: string): string {
   return baseName;
 }
 
-function generateGearStats(type: string, rarity: string): GearStat[] {
-  const rarityMultiplier = RARITIES[rarity].stat_multiplier;
-  const baseStats = BASE_STATS[type as keyof typeof BASE_STATS];
+function generateGearStats(type: string, rarity: string, logger: Runtime.Logger): GearStat[] {
+  const definitions = getGearDefinitions(logger);
+  const rarityMultiplier = definitions.rarities[rarity].stat_multiplier;
+  const baseStats = definitions.baseStats[type as keyof typeof definitions.baseStats];
   
   return baseStats.map(stat => ({
     name: stat.name,
@@ -205,8 +236,9 @@ function generateGearStats(type: string, rarity: string): GearStat[] {
   }));
 }
 
-function generateModifiers(rarity: string, unlockedPools: string[]): GearModifier[] {
-  const availableModifiers = MODIFIER_POOLS.filter(mod => {
+function generateModifiers(rarity: string, unlockedPools: string[], logger: Runtime.Logger): GearModifier[] {
+  const definitions = getGearDefinitions(logger);
+  const availableModifiers = definitions.modifierPools.filter(mod => {
     if (mod.boss_unlock && !unlockedPools.includes(mod.boss_unlock)) {
       return false;
     }
@@ -239,18 +271,19 @@ function generateModifiers(rarity: string, unlockedPools: string[]): GearModifie
   return modifiers;
 }
 
-function generateGearItem(stageId: string, unlockedPools: string[]): GearItem {
+function generateGearItem(stageId: string, unlockedPools: string[], logger: Runtime.Logger): GearItem {
+  const definitions = getGearDefinitions(logger);
   const rarity = rollRarity();
-  const type = getRandomItem(GEAR_TYPES);
-  const name = getGearName(type, rarity);
+  const type = getRandomItem(definitions.gearTypes);
+  const name = getGearName(type, rarity, logger);
   
   const gear: GearItem = {
     id: generateGearId(),
     name: name,
     rarity: rarity,
     type: type,
-    stats: generateGearStats(type, rarity),
-    modifiers: generateModifiers(rarity, unlockedPools),
+    stats: generateGearStats(type, rarity, logger),
+    modifiers: generateModifiers(rarity, unlockedPools, logger),
     level: 1,
     timestamp: Date.now()
   };
@@ -265,7 +298,7 @@ export function registerRpcGenerateGear(initializer: Runtime.Initializer): void 
 function rpcGenerateGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Generate gear called for user: %s", ctx.userId);
   
-  const request = safeParsePayload<GenerateGearRequest>(payload, logger, "generate_gear");
+  const request = safeParsePayload<GenerateGearRequest>(payload, logger, "<rpc_name>");
   
   if (!request) {
     return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
@@ -291,12 +324,12 @@ function rpcGenerateGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runti
   } else {
     const value = inventoryObjects[0].value;
     if (value) {
-      const parseResult = safeParse<PlayerInventory>(value, null, logger, "player_inventory");
-      if (!parseResult.success || !parseResult.data) {
-        logger.error("Failed to parse player inventory for user: %s", ctx.userId);
-        return createErrorResponse("INVALID_DATA", "Failed to parse player inventory");
-      }
-      inventory = parseResult.data;
+      const parseResult = safeParse<PlayerInventory>(value, null, logger, "storage_data");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse data");
+    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+  }
+  inventory = parseResult.data;
     } else {
       inventory = {
         user_id: ctx.userId,
@@ -307,7 +340,7 @@ function rpcGenerateGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runti
     }
   }
   
-  const gear = generateGearItem(request.stage_id, inventory.unlocked_modifier_pools);
+  const gear = generateGearItem(request.stage_id, inventory.unlocked_modifier_pools, logger);
   inventory.gear.push(gear);
   
   nk.storageWrite([
@@ -338,7 +371,7 @@ export function registerRpcEquipGear(initializer: Runtime.Initializer): void {
 function rpcEquipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Equip gear called for user: %s", ctx.userId);
   
-  const request = safeParsePayload<EquipGearRequest>(payload, logger, "equip_gear");
+  const request = safeParsePayload<EquipGearRequest>(payload, logger, "<rpc_name>");
   
   if (!request) {
     return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
@@ -365,10 +398,10 @@ function rpcEquipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.
     });
   }
   
-  const parseResult = safeParse<PlayerInventory>(value, null, logger, "player_inventory");
+  const parseResult = safeParse<PlayerInventory>(value, null, logger, "storage_data");
   if (!parseResult.success || !parseResult.data) {
-    logger.error("Failed to parse player inventory for user: %s", ctx.userId);
-    return createErrorResponse("INVALID_DATA", "Failed to parse player inventory");
+    logger.error("Failed to parse data");
+    return createErrorResponse("INVALID_DATA", "Failed to parse data");
   }
   const inventory: PlayerInventory = parseResult.data;
   
@@ -412,7 +445,7 @@ export function registerRpcUnequipGear(initializer: Runtime.Initializer): void {
 function rpcUnequipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Unequip gear called for user: %s", ctx.userId);
   
-  const request = safeParsePayload<UnequipGearRequest>(payload, logger, "unequip_gear");
+  const request = safeParsePayload<UnequipGearRequest>(payload, logger, "<rpc_name>");
   
   if (!request) {
     return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
@@ -439,10 +472,10 @@ function rpcUnequipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
   
-  const parseResult = safeParse<PlayerInventory>(value, null, logger, "player_inventory");
+  const parseResult = safeParse<PlayerInventory>(value, null, logger, "storage_data");
   if (!parseResult.success || !parseResult.data) {
-    logger.error("Failed to parse player inventory for user: %s", ctx.userId);
-    return createErrorResponse("INVALID_DATA", "Failed to parse player inventory");
+    logger.error("Failed to parse data");
+    return createErrorResponse("INVALID_DATA", "Failed to parse data");
   }
   const inventory: PlayerInventory = parseResult.data;
   
@@ -511,12 +544,12 @@ export function registerRpcUnlockModifierPool(initializer: Runtime.Initializer):
 function rpcUnlockModifierPool(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Unlock modifier pool called for user: %s", ctx.userId);
   
-  const request = safeParsePayload<{ modifier_id: string }>(payload, logger, "unlock_modifier_pool");
-  
-  if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  const parseResult = safeParse<{ modifier_id: string }>(payload, null, logger, "unlock_modifier_pool");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse data");
+    return createErrorResponse("INVALID_DATA", "Failed to parse data");
   }
-  
+  const request = parseResult.data;
   const modifierId = request.modifier_id;
   
   const inventoryObjects = nk.storageRead([
@@ -539,12 +572,12 @@ function rpcUnlockModifierPool(ctx: Runtime.Context, logger: Runtime.Logger, nk:
   } else {
     const value = inventoryObjects[0].value;
     if (value) {
-      const parseResult = safeParse<PlayerInventory>(value, null, logger, "player_inventory");
-      if (!parseResult.success || !parseResult.data) {
-        logger.error("Failed to parse player inventory for user: %s", ctx.userId);
-        return createErrorResponse("INVALID_DATA", "Failed to parse player inventory");
-      }
-      inventory = parseResult.data;
+      const parseResult = safeParse<PlayerInventory>(value, null, logger, "storage_data");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse data");
+    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+  }
+  inventory = parseResult.data;
     } else {
       inventory = {
         user_id: ctx.userId,
