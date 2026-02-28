@@ -138,6 +138,12 @@ func _on_match_accepted(match: Dictionary) -> void:
 	print("Match accepted: %s" % match.get("match_id", ""))
 	_show_match_accepted_dialog(match)
 
+func _on_match_accepted_dialog_confirmed(match: Dictionary) -> void:
+	var combat_scene = load("res://scenes/ui/combat_menu.tscn")
+	var combat_ui = combat_scene.instantiate()
+	combat_ui.set_match_id(match.get("match_id", ""))
+	get_tree().current_scene.add_child(combat_ui)
+
 func _show_match_created_dialog(match: Dictionary) -> void:
 	var dialog: AcceptDialog = AcceptDialog.new()
 	dialog.title = "Match Created"
@@ -158,6 +164,7 @@ func _show_match_accepted_dialog(match: Dictionary) -> void:
 	get_tree().current_scene.add_child(dialog)
 	dialog.show()
 	
+	dialog.confirmed.connect(_on_match_accepted_dialog_confirmed.bind(match))
 	back_button.pressed.connect(dialog.queue_free.unbind(1), CONNECT_DEFERRED)
 
 # --- Navigation ---
