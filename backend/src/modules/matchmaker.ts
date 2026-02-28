@@ -75,7 +75,7 @@ function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     ""
   );
 
-  let filteredMatches: PvPMatch[] = [];
+  const filteredMatches: PvPMatch[] = [];
 
   for (const object of matches) {
     const parseResult = safeParse<PvPMatch>(object.value, null, logger, "pvp_match");
