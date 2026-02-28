@@ -39,6 +39,7 @@ services:
       - ./nakama.yml:/nakama/data/nakama.yml
       - ./build:/nakama/data/build
       - ./modules:/nakama/data/modules
+      - ./data:/nakama/data/migrations
     expose:
       - "7349"
       - "7350"
