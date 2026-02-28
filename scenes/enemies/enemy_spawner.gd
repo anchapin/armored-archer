@@ -8,6 +8,10 @@ extends Node2D
 # --- Wave Configuration ---
 @export var base_enemy_count: int = 3
 @export var enemy_count_increment: int = 1
+@export var max_waves: int = 3
+
+# --- Boss Configuration ---
+@export var boss_id: String = ""
 
 # --- Enemy Scenes ---
 const MELEE_ENEMY_SCENE = preload("res://scenes/enemies/melee_enemy.tscn")
@@ -32,6 +36,11 @@ func _ready() -> void:
 		wave_timer_node.timeout.connect(_on_wave_timer_timeout)
 
 func start_next_wave() -> void:
+	if current_wave >= max_waves:
+		if boss_id != "":
+			spawn_boss()
+		return
+	
 	current_wave += 1
 	enemies_to_spawn = base_enemy_count + (current_wave - 1) * enemy_count_increment
 	is_spawning = true
@@ -81,3 +90,21 @@ func _on_enemy_died(xp_reward: int) -> void:
 	
 	if enemy_to_remove:
 		active_enemies.erase(enemy_to_remove)
+	
+	if active_enemies.size() == 0 and not is_spawning:
+		if current_wave >= max_waves:
+			if boss_id == "" or not is_boss_alive():
+				GameManager.end_game(true)
+		else:
+			start_next_wave()
+
+func spawn_boss() -> void:
+	if boss_id == "":
+		return
+	
+	print("Spawning boss: %s" % boss_id)
+	GameManager.spawn_boss(boss_id)
+
+func is_boss_alive() -> bool:
+	var bosses = get_tree().get_nodes_in_group("Boss")
+	return bosses.size() > 0

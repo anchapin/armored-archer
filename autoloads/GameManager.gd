@@ -6,10 +6,17 @@ var player_max_health: int = 100
 var current_stage: int = 1
 var is_game_active: bool = true
 
+# --- Campaign Stage ---
+var current_stage_id: String = ""
+var current_waves: int = 3
+var boss_id: String = ""
+
 # --- Signals ---
 signal health_changed(new_health: int, max_health: int)
 signal player_died()
 signal game_won()
+signal boss_spawned(boss_node: CharacterBody2D)
+signal stage_completed(stage_id: String)
 
 # --- Health Management ---
 func take_player_damage(damage: int) -> void:
@@ -40,6 +47,10 @@ func end_game(won: bool) -> void:
 	
 	if won:
 		game_won.emit()
+		
+		if current_stage_id != "":
+			CampaignManager.complete_stage(current_stage_id)
+			stage_completed.emit(current_stage_id)
 	else:
 		player_died.emit()
 
@@ -56,3 +67,19 @@ func reset_stage() -> void:
 	player_current_health = player_max_health
 	is_game_active = true
 	health_changed.emit(player_current_health, player_max_health)
+
+# --- Boss Management ---
+func spawn_boss(boss_name: String) -> void:
+	var boss_scene: PackedScene = null
+	
+	match boss_name:
+		"boss_basic":
+			boss_scene = preload("res://scenes/enemies/bosses/boss_basic.tscn")
+		"boss_wind":
+			boss_scene = preload("res://scenes/enemies/bosses/boss_wind.tscn")
+	
+	if boss_scene:
+		var boss_instance = boss_scene.instantiate() as CharacterBody2D
+		get_tree().root.add_child(boss_instance)
+		boss_instance.global_position = Vector2(0, -200)
+		boss_spawned.emit(boss_instance)
