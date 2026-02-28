@@ -1,4 +1,5 @@
 import { Runtime } from "../types/nakama";
+import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 
 export interface PvPMatch {
   match_id: string;
@@ -40,7 +41,8 @@ export function registerRpcListMatches(initializer: Runtime.Initializer): void {
 function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("List matches called for user: %s", ctx.userId);
 
-  const request: ListMatchesRequest = JSON.parse(payload) || {};
+  const requestParse = safeParsePayload<ListMatchesRequest>(payload, logger, "list_matches");
+  const request = requestParse || {};
   const limit = request.limit || 20;
 
   const objects = nk.storageRead([
@@ -57,7 +59,12 @@ function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
 
-  const playerStats = JSON.parse(objects[0].value);
+  const parseResult = safeParse(objects[0].value, null, logger, "player_stats");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse player stats for user: %s", ctx.userId);
+    return createErrorResponse("INVALID_DATA", "Failed to parse player stats");
+  }
+  const playerStats = parseResult.data;
   const playerRank = calculateRank(playerStats);
 
   const matches = nk.storageList(
@@ -71,7 +78,12 @@ function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   let filteredMatches: PvPMatch[] = [];
 
   for (const object of matches) {
-    const match: PvPMatch = JSON.parse(object.value);
+    const parseResult = safeParse<PvPMatch>(object.value, null, logger, "pvp_match");
+    if (!parseResult.success || !parseResult.data) {
+      logger.error("Failed to parse match data");
+      continue;
+    }
+    const match: PvPMatch = parseResult.data;
     
     if (match.status !== "pending") {
       continue;
@@ -115,7 +127,11 @@ export function registerRpcCreateMatch(initializer: Runtime.Initializer): void {
 function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Create match called for user: %s", ctx.userId);
 
-  const request: CreateMatchRequest = JSON.parse(payload);
+  const request = safeParsePayload<CreateMatchRequest>(payload, logger, "create_match");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
 
   if (!request.match_type || (request.match_type !== "ranked" && request.match_type !== "casual")) {
     return JSON.stringify({
@@ -137,7 +153,12 @@ function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
 
-  const playerStats = JSON.parse(objects[0].value);
+  const parseResult = safeParse(objects[0].value, null, logger, "player_stats");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse player stats for user: %s", ctx.userId);
+    return createErrorResponse("INVALID_DATA", "Failed to parse player stats");
+  }
+  const playerStats = parseResult.data;
   const playerRank = calculateRank(playerStats);
 
   if (request.target_opponent_id) {
@@ -147,6 +168,7 @@ function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
         key: request.target_opponent_id,
         userId: request.target_opponent_id
       }
+
     ]);
 
     if (targetStats.length === 0) {
@@ -155,7 +177,12 @@ function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
       });
     }
 
-    const targetPlayerStats = JSON.parse(targetStats[0].value);
+    const targetParseResult = safeParse(targetStats[0].value, null, logger, "player_stats");
+    if (!targetParseResult.success || !targetParseResult.data) {
+      logger.error("Failed to parse target player stats: %s", request.target_opponent_id);
+      return createErrorResponse("INVALID_DATA", "Failed to parse target player stats");
+    }
+    const targetPlayerStats = targetParseResult.data;
     const targetRank = calculateRank(targetPlayerStats);
 
     if (!request.is_punch_up && Math.abs(playerRank - targetRank) > 3) {
@@ -227,7 +254,11 @@ export function registerRpcAcceptMatch(initializer: Runtime.Initializer): void {
 function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Accept match called for user: %s", ctx.userId);
 
-  const request: AcceptMatchRequest = JSON.parse(payload);
+  const request = safeParsePayload<AcceptMatchRequest>(payload, logger, "accept_match");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
 
   if (!request.match_id) {
     return JSON.stringify({
@@ -249,7 +280,12 @@ function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
 
-  const match: PvPMatch = JSON.parse(objects[0].value);
+  const matchParseResult = safeParse<PvPMatch>(objects[0].value, null, logger, "pvp_match");
+  if (!matchParseResult.success || !matchParseResult.data) {
+    logger.error("Failed to parse match data: %s", request.match_id);
+    return createErrorResponse("INVALID_DATA", "Failed to parse match data");
+  }
+  const match: PvPMatch = matchParseResult.data;
 
   if (match.creator_id === ctx.userId) {
     return JSON.stringify({
@@ -277,7 +313,12 @@ function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
 
-  const playerStats = JSON.parse(playerObjects[0].value);
+  const statsParseResult = safeParse(playerObjects[0].value, null, logger, "player_stats");
+  if (!statsParseResult.success || !statsParseResult.data) {
+    logger.error("Failed to parse player stats for user: %s", ctx.userId);
+    return createErrorResponse("INVALID_DATA", "Failed to parse player stats");
+  }
+  const playerStats = statsParseResult.data;
   match.opponent_id = ctx.userId;
   match.opponent_rank = calculateRank(playerStats);
   match.status = "active";
@@ -319,7 +360,12 @@ function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
     });
   }
 
-  const playerStats = JSON.parse(objects[0].value);
+  const parseResult = safeParse<any>(objects[0].value, null, logger, "player_stats");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse player stats for user: %s", ctx.userId);
+    return createErrorResponse("INVALID_DATA", "Failed to parse player stats");
+  }
+  const playerStats = parseResult.data;
   const rank = calculateRank(playerStats);
 
   return JSON.stringify({

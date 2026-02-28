@@ -1,4 +1,5 @@
 import { Runtime } from "../types/nakama";
+import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 
 export interface CombatAction {
   match_id: string;
@@ -50,7 +51,11 @@ export function registerRpcSubmitCombatAction(initializer: Runtime.Initializer):
 function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Submit combat action called for user: %s", ctx.userId);
 
-  const action: CombatAction = JSON.parse(payload);
+  const action = safeParsePayload<CombatAction>(payload, logger, "<rpc_name>");
+  
+  if (!action) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
 
   if (!action.match_id || !action.action_type || action.angle === undefined) {
     return JSON.stringify({
@@ -72,7 +77,12 @@ function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk:
     });
   }
 
-  const match = JSON.parse(matchObjects[0].value);
+  const parseResult = safeParse<any>(matchObjects[0].value, null, logger, "pvp_match");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse match data: %s", action.match_id);
+    return createErrorResponse("INVALID_DATA", "Failed to parse match data");
+  }
+  const match = parseResult.data;
 
   if (match.status !== "active") {
     return JSON.stringify({
@@ -115,7 +125,12 @@ export function registerRpcGetMatchState(initializer: Runtime.Initializer): void
 function rpcGetMatchState(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get match state called for user: %s", ctx.userId);
 
-  const request = JSON.parse(payload);
+  const parseResult = safeParse<{ match_id: string }>(payload, null, logger, "get_match_state");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse match state request");
+    return createErrorResponse("INVALID_DATA", "Failed to parse match state request");
+  }
+  const request = parseResult.data;
 
   if (!request.match_id) {
     return JSON.stringify({
@@ -150,7 +165,10 @@ function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: any):
   ]);
 
   if (stateObjects.length > 0) {
-    return JSON.parse(stateObjects[0].value);
+    const parseResult = safeParse<MatchState>(stateObjects[0].value, null, undefined, "match_state");
+    if (parseResult.success && parseResult.data) {
+      return parseResult.data;
+    }
   }
 
   const creatorStats = getPlayerStats(nk, match.creator_id);
@@ -304,7 +322,19 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
     };
   }
 
-  return JSON.parse(objects[0].value);
+  const parseResult = safeParse(objects[0].value, null, undefined, "player_stats");
+  if (!parseResult.success || !parseResult.data) {
+    return {
+      level: 1,
+      stats: {
+        attack: 10,
+        defense: 10,
+        dodge: 10,
+        crit_rate: 5
+      }
+    };
+  }
+  return parseResult.data;
 }
 
 function saveMatchState(nk: Runtime.Nakama, matchState: MatchState): void {
