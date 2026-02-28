@@ -194,7 +194,7 @@ export function validateRequiredConfig(): void {
   ];
   
   for (const { key, path: configPath } of requiredKeys) {
-    const value = key.split('.').reduce((obj, k) => obj?.[k], config as any);
+    const value = key.split('.').reduce((obj: Record<string, unknown> | undefined, k) => obj?.[k as keyof typeof obj], config);
     if (!value || value === 'default-token-key' || value === 'default-refresh-key') {
       if (config.environment === 'production') {
         errors.push(`${configPath} must be set in production`);
@@ -225,7 +225,7 @@ export function maskSecret(value: string): string {
   return value.substring(0, 4) + '...' + value.substring(value.length - 4);
 }
 
-export function logConfiguration(logger: any): void {
+export function logConfiguration(logger: { info: (message: string, ...args: unknown[]) => void }): void {
   logger.info('=== Configuration ===');
   logger.info('Environment: %s', config.environment);
   logger.info('Server: host=%s, port=%d, console_port=%d', 
