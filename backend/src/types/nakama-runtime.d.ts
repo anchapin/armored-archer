@@ -23,6 +23,7 @@ declare namespace Runtime {
     permission_write?: number;
     create_time?: number;
     update_time?: number;
+    read?: boolean;
   }
 
   interface StorageWrite {
@@ -33,9 +34,21 @@ declare namespace Runtime {
     version?: string;
   }
 
+  interface WalletUpdate {
+    userId: string;
+    updates: { [key: string]: number };
+    metadata?: { [key: string]: any };
+  }
+
   interface Nakama {
     storageRead(requests: StorageRead[]): StorageRead[];
     storageWrite(requests: StorageWrite[]): StorageWrite[];
+    walletUpdate(userId: string, updates: { [key: string]: number }, metadata?: { [key: string]: any }): void;
+  }
+
+  interface RpcRegistration {
+    id: string;
+    func: (ctx: Context, logger: Logger, nk: Nakama, payload: string) => string;
   }
 
   interface Initializer {

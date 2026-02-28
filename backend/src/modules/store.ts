@@ -8,8 +8,8 @@ export interface GemBundle {
 
 export interface PurchaseRequest {
   product_id: string;
-  platform: string;
-  transaction_receipt: string;
+  platform: string; // "ios" or "android"
+  transaction_receipt: string; // Base64 encoded receipt from RevenueCat
 }
 
 export interface PlayerCurrency {
