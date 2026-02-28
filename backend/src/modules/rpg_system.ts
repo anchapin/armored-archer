@@ -1,4 +1,7 @@
 import { Runtime } from "../types/nakama";
+import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
+import { getCacheManager } from "../utils/cache";
+import { invalidatePlayerStatsCache } from "../utils/db_optimizer";
 
 export interface PlayerStats {
   user_id: string;
@@ -30,7 +33,11 @@ export function registerRpcGainXP(initializer: Runtime.Initializer): void {
 function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Gain XP called for user: %s", ctx.userId);
 
-  const request: XPGainRequest = JSON.parse(payload);
+  const request = safeParsePayload<XPGainRequest>(payload, logger, "<rpc_name>");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
 
   if (request.xp_amount <= 0) {
     return JSON.stringify({
@@ -64,7 +71,12 @@ function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nak
   } else {
     const value = objects[0].value;
     if (value) {
-      playerStats = JSON.parse(value) as PlayerStats;
+      const parseResult = safeParse<PlayerStats>(value, null, logger, "storage_data");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse data");
+    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+  }
+  playerStats = parseResult.data;
     } else {
       playerStats = {
         user_id: ctx.userId,
@@ -102,6 +114,8 @@ function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nak
     }
   ]);
 
+  invalidatePlayerStatsCache(ctx.userId, logger);
+
   return JSON.stringify({
     success: true,
     player_stats: playerStats,
@@ -117,7 +131,11 @@ export function registerRpcAllocateStats(initializer: Runtime.Initializer): void
 function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Allocate stats called for user: %s", ctx.userId);
 
-  const request: StatAllocationRequest = JSON.parse(payload);
+  const request = safeParsePayload<StatAllocationRequest>(payload, logger, "<rpc_name>");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
 
   const validStats = ["attack", "defense", "dodge", "crit_rate"];
   if (!validStats.includes(request.stat_name)) {
@@ -166,6 +184,8 @@ function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
     }
   ]);
 
+  invalidatePlayerStatsCache(ctx.userId, logger);
+
   return JSON.stringify({
     success: true,
     player_stats: playerStats
@@ -178,6 +198,13 @@ export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): voi
 
 function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get player stats called for user: %s", ctx.userId);
+
+  const cacheManager = getCacheManager(logger);
+  const cachedStats = cacheManager.get<string>("player_stats", ctx.userId);
+
+  if (cachedStats !== undefined) {
+    return cachedStats;
+  }
 
   const objects = nk.storageRead([
     {
@@ -193,7 +220,10 @@ function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
     });
   }
 
-  return objects[0].value ?? "{}";
+  const stats = objects[0].value ?? "{}";
+  cacheManager.set("player_stats", ctx.userId, stats);
+
+  return stats;
 }
 
 function calculateLevel(xp: number): number {
