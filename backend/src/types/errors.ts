@@ -42,7 +42,7 @@ export interface ErrorResponse {
   error: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
     timestamp: number;
   };
 }
@@ -52,7 +52,7 @@ export interface SuccessResponse<T> {
   data: T;
 }
 
-export function createErrorResponse(code: ErrorCode, message: string, details?: any): string {
+export function createErrorResponse(code: ErrorCode, message: string, details?: unknown): string {
   return JSON.stringify({
     success: false,
     error: {
