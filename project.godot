@@ -13,9 +13,11 @@ config_version=5
 config/name="Armored Archer"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
+run/main_scene="res://scenes/ui/login_screen.tscn"
 
 [autoload]
 
+NetworkManager="*res://autoloads/NetworkManager.gd"
 GameManager="*res://autoloads/GameManager.gd"
 AutoAimManager="*res://autoloads/AutoAimManager.gd"
 CampaignManager="*res://autoloads/CampaignManager.gd"
