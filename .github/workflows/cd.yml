@@ -1,0 +1,68 @@
+name: CD
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Build TypeScript
+        working-directory: ./backend
+        run: npm run build
+
+      - name: Run tests
+        working-directory: ./backend
+        run: npm test
+
+      - name: Build and start Docker containers
+        working-directory: ./backend
+        run: |
+          docker-compose up -d --build
+
+      - name: Wait for services to be healthy
+        working-directory: ./backend
+        run: |
+          echo "Waiting for PostgreSQL to be healthy..."
+          until docker-compose exec -T postgres pg_isready -U postgres -d nakama; do
+            echo "PostgreSQL is not ready yet..."
+            sleep 2
+          done
+          echo "PostgreSQL is healthy!"
+
+          echo "Waiting for Nakama to be healthy..."
+          until docker-compose exec -T nakama /nakama/nakama healthcheck; do
+            echo "Nakama is not ready yet..."
+            sleep 2
+          done
+          echo "Nakama is healthy!"
+
+      - name: Verify services are running
+        working-directory: ./backend
+        run: |
+          docker-compose ps
+
+      - name: Health check verification
+        working-directory: ./backend
+        run: |
+          echo "Checking PostgreSQL health..."
+          docker-compose exec -T postgres pg_isready -U postgres -d nakama
+
+          echo "Checking Nakama health..."
+          docker-compose exec -T nakama /nakama/nakama healthcheck
