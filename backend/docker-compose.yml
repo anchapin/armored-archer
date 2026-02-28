@@ -28,7 +28,7 @@ services:
       - "-ecx"
       - >
         /nakama/nakama migrate up --database.address postgres:localdbpassword@postgres:5432/nakama &&
-        exec /nakama/nakama --name nakama1 --database.address postgres:localdbpassword@postgres:5432/nakama --logger.level DEBUG --session.token_expiry_sec 7200 --console.port 7351
+        exec /nakama/nakama --config /nakama/data/nakama.yml
     restart: always
     links:
       - "postgres:db"
@@ -36,7 +36,9 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./:/nakama/data
+      - ./nakama.yml:/nakama/data/nakama.yml
+      - ./build:/nakama/data/build
+      - ./modules:/nakama/data/modules
     expose:
       - "7349"
       - "7350"
