@@ -22,7 +22,6 @@ GameManager="*res://autoloads/GameManager.gd"
 AutoAimManager="*res://autoloads/AutoAimManager.gd"
 CampaignManager="*res://autoloads/CampaignManager.gd"
 PlayerStatsManager="*res://autoloads/PlayerStatsManager.gd"
-<<<<<<< HEAD
 GemManager="*res://autoloads/GemManager.gd"
 MatchmakerManager="*res://autoloads/MatchmakerManager.gd"
 CombatManager="*res://autoloads/CombatManager.gd"
