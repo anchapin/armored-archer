@@ -2,6 +2,53 @@ import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
 
+export interface PlayerCurrency {
+  user_id: string;
+  gems: number;
+  gold: number;
+}
+
+function getPlayerCurrencyWithCache(nk: Runtime.Nakama, userId: string, logger: Runtime.Logger): PlayerCurrency {
+  const cacheManager = getCacheManager(logger);
+  const cachedCurrency = cacheManager.get<PlayerCurrency>("player_currency", userId);
+
+  if (cachedCurrency !== undefined) {
+    return cachedCurrency;
+  }
+
+  const objects = nk.storageRead([
+    {
+      collection: "player_currency",
+      key: userId,
+      userId: userId
+    }
+  ]);
+
+  let currency: PlayerCurrency;
+  if (objects.length === 0 || !objects[0].value) {
+    currency = {
+      user_id: userId,
+      gems: 0,
+      gold: 0
+    };
+  } else {
+    const parseResult = safeParse<PlayerCurrency>(objects[0].value, null, logger, "player_currency");
+    currency = parseResult.success && parseResult.data ? parseResult.data : {
+      user_id: userId,
+      gems: 0,
+      gold: 0
+    };
+  }
+
+  cacheManager.set("player_currency", userId, currency);
+  return currency;
+}
+
+function invalidateCurrencyCache(userId: string, logger: Runtime.Logger): void {
+  const cacheManager = getCacheManager(logger);
+  cacheManager.delete("player_currency", userId);
+}
+
 export interface GemBundle {
   product_id: string;
   gem_amount: number;
@@ -12,12 +59,6 @@ export interface PurchaseRequest {
   product_id: string;
   platform: string; // "ios" or "android"
   transaction_receipt: string; // Base64 encoded receipt from RevenueCat
-}
-
-export interface PlayerCurrency {
-  user_id: string;
-  gems: number;
-  gold: number;
 }
 
 export const GEM_BUNDLES: Record<string, GemBundle> = {
@@ -86,27 +127,7 @@ function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
   }
 
   const gemBundle = catalog[request.product_id];
-
-  const objects = nk.storageRead([
-    {
-      collection: "player_currency",
-      key: ctx.userId,
-      userId: ctx.userId
-    }
-  ]);
-
-  let playerCurrency: PlayerCurrency;
-
-  if (objects.length === 0) {
-    playerCurrency = {
-      user_id: ctx.userId,
-      gems: 0,
-      gold: 0
-    };
-  } else {
-    playerCurrency = JSON.parse(objects[0].value ?? "{}");
-  }
-
+  const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
   playerCurrency.gems += gemBundle.gem_amount;
 
   nk.storageWrite([
@@ -122,6 +143,8 @@ function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
     gems: gemBundle.gem_amount
   });
 
+  invalidateCurrencyCache(ctx.userId, logger);
+
   logger.info("Purchase validated. User %s received %d gems", ctx.userId, gemBundle.gem_amount);
 
   return JSON.stringify({
@@ -135,34 +158,9 @@ function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
 function rpcGetCurrency(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Getting currency for user: %s", ctx.userId);
 
-  const objects = nk.storageRead([
-    {
-      collection: "player_currency",
-      key: ctx.userId,
-      userId: ctx.userId
-    }
-  ]);
+  const currency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
 
-  if (objects.length === 0) {
-    const newCurrency: PlayerCurrency = {
-      user_id: ctx.userId,
-      gems: 0,
-      gold: 0
-    };
-
-    nk.storageWrite([
-      {
-        collection: "player_currency",
-        key: ctx.userId,
-        userId: ctx.userId,
-        value: JSON.stringify(newCurrency)
-      }
-    ]);
-
-    return JSON.stringify(newCurrency);
-  }
-
-  return objects[0].value ?? "{}";
+  return JSON.stringify(currency);
 }
 
 function rpcSpendGems(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
@@ -181,26 +179,7 @@ function rpcSpendGems(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.
     });
   }
 
-  const objects = nk.storageRead([
-    {
-      collection: "player_currency",
-      key: ctx.userId,
-      userId: ctx.userId
-    }
-  ]);
-
-  if (objects.length === 0) {
-    return JSON.stringify({
-      error: "Player currency not found"
-    });
-  }
-
-  const currencyParseResult = safeParse<PlayerCurrency>(objects[0].value ?? "{}", null, logger, "player_currency");
-  if (!currencyParseResult.success || !currencyParseResult.data) {
-    logger.error("Failed to parse player currency for user: %s", ctx.userId);
-    return createErrorResponse("INVALID_DATA", "Failed to parse player currency");
-  }
-  const playerCurrency: PlayerCurrency = currencyParseResult.data;
+  const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
 
   if (playerCurrency.gems < request.amount) {
     return JSON.stringify({
@@ -218,6 +197,8 @@ function rpcSpendGems(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.
       value: JSON.stringify(playerCurrency)
     }
   ]);
+
+  invalidateCurrencyCache(ctx.userId, logger);
 
   logger.info("User %s spent %d gems. New balance: %d", ctx.userId, request.amount, playerCurrency.gems);
 

@@ -1,6 +1,7 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
+import { invalidatePlayerStatsCache } from "../utils/db_optimizer";
 
 export interface PlayerStats {
   user_id: string;
@@ -113,8 +114,7 @@ function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nak
     }
   ]);
 
-  const cacheManager = getCacheManager(logger);
-  cacheManager.delete("player_stats", ctx.userId);
+  invalidatePlayerStatsCache(ctx.userId, logger);
 
   return JSON.stringify({
     success: true,
@@ -184,8 +184,7 @@ function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
     }
   ]);
 
-  const cacheManager = getCacheManager(logger);
-  cacheManager.delete("player_stats", ctx.userId);
+  invalidatePlayerStatsCache(ctx.userId, logger);
 
   return JSON.stringify({
     success: true,

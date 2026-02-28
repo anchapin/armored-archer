@@ -1,6 +1,7 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
+import { batchGetPlayerStats, getPlayerStatsWithCache } from "../utils/db_optimizer";
 
 export interface SeasonInfo {
   season_id: string;
@@ -56,7 +57,7 @@ function rpcGetSeasonInfo(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
     cacheManager.set("season_info", seasonKey, JSON.stringify(currentSeason));
   }
 
-  const userStats = getPlayerStats(nk, ctx.userId);
+  const userStats = getPlayerStats(nk, ctx.userId, logger);
 
   const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
 
@@ -146,6 +147,10 @@ function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime
   }
 
   const currentSeason = getCurrentSeason();
+
+  const statsMap = batchGetPlayerStats(nk, [request.winner_id, request.loser_id], logger);
+  const winnerStats = statsMap.get(request.winner_id);
+  const loserStats = statsMap.get(request.loser_id);
 
   const winnerEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
   const loserEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
@@ -427,40 +432,8 @@ function getLeaderboardEntry(nk: Runtime.Nakama, userId: string, leaderboardId: 
   };
 }
 
-function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
-  const objects = nk.storageRead([
-    {
-      collection: "player_stats",
-      key: userId,
-      userId: userId
-    }
-  ]);
-
-  if (objects.length === 0) {
-    return {
-      level: 1,
-      stats: {
-        attack: 10,
-        defense: 10,
-        dodge: 10,
-        crit_rate: 5
-      }
-    };
-  }
-
-  const parseResult = safeParse(objects[0].value, null, undefined, "player_stats");
-  if (!parseResult.success || !parseResult.data) {
-    return {
-      level: 1,
-      stats: {
-        attack: 10,
-        defense: 10,
-        dodge: 10,
-        crit_rate: 5
-      }
-    };
-  }
-  return parseResult.data;
+function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logger): any {
+  return getPlayerStatsWithCache(nk, userId, logger);
 }
 
 function calculateRewards(rank: number, seasonNumber: number): any {

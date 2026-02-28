@@ -1,5 +1,6 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
+import { batchGetPlayerStats, getPlayerStatsWithCache } from "../utils/db_optimizer";
 
 export interface CombatAction {
   match_id: string;
@@ -96,7 +97,7 @@ function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk:
     });
   }
 
-  const matchState = getOrCreateMatchState(nk, action.match_id, match);
+  const matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
 
   if (matchState.current_turn_user_id !== ctx.userId) {
     return JSON.stringify({
@@ -155,7 +156,7 @@ function rpcGetMatchState(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
   return stateObjects[0].value;
 }
 
-function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: any): MatchState {
+function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: any, logger: Runtime.Logger): MatchState {
   const stateObjects = nk.storageRead([
     {
       collection: "pvp_match_states",
@@ -171,8 +172,15 @@ function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: any):
     }
   }
 
-  const creatorStats = getPlayerStats(nk, match.creator_id);
-  const opponentStats = getPlayerStats(nk, match.opponent_id);
+  const statsMap = batchGetPlayerStats(nk, [match.creator_id, match.opponent_id], logger);
+  const creatorStats = statsMap.get(match.creator_id) || {
+    level: 1,
+    stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 }
+  };
+  const opponentStats = statsMap.get(match.opponent_id) || {
+    level: 1,
+    stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 }
+  };
 
   const baseHealth = 100;
   const maxHealth = baseHealth + (creatorStats.level * 10);
@@ -299,42 +307,6 @@ function calculateCrit(critRate: number): boolean {
   const roll = Math.random();
 
   return roll <= critChance;
-}
-
-function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
-  const objects = nk.storageRead([
-    {
-      collection: "player_stats",
-      key: userId,
-      userId: userId
-    }
-  ]);
-
-  if (objects.length === 0) {
-    return {
-      level: 1,
-      stats: {
-        attack: 10,
-        defense: 10,
-        dodge: 10,
-        crit_rate: 5
-      }
-    };
-  }
-
-  const parseResult = safeParse(objects[0].value, null, undefined, "player_stats");
-  if (!parseResult.success || !parseResult.data) {
-    return {
-      level: 1,
-      stats: {
-        attack: 10,
-        defense: 10,
-        dodge: 10,
-        crit_rate: 5
-      }
-    };
-  }
-  return parseResult.data;
 }
 
 function saveMatchState(nk: Runtime.Nakama, matchState: MatchState): void {

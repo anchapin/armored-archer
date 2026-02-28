@@ -1,5 +1,6 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
+import { getPlayerStatsWithCache } from "../utils/db_optimizer";
 
 export interface PvPMatch {
   match_id: string;
@@ -45,26 +46,7 @@ function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   const request = requestParse || {};
   const limit = request.limit || 20;
 
-  const objects = nk.storageRead([
-    {
-      collection: "player_stats",
-      key: ctx.userId,
-      userId: ctx.userId
-    }
-  ]);
-
-  if (objects.length === 0) {
-    return JSON.stringify({
-      error: "Player stats not found"
-    });
-  }
-
-  const parseResult = safeParse(objects[0].value, null, logger, "player_stats");
-  if (!parseResult.success || !parseResult.data) {
-    logger.error("Failed to parse player stats for user: %s", ctx.userId);
-    return createErrorResponse("INVALID_DATA", "Failed to parse player stats");
-  }
-  const playerStats = parseResult.data;
+  const playerStats = getPlayerStatsWithCache(nk, ctx.userId, logger);
   const playerRank = calculateRank(playerStats);
 
   const matches = nk.storageList(
@@ -139,50 +121,11 @@ function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
 
-  const objects = nk.storageRead([
-    {
-      collection: "player_stats",
-      key: ctx.userId,
-      userId: ctx.userId
-    }
-  ]);
-
-  if (objects.length === 0) {
-    return JSON.stringify({
-      error: "Player stats not found"
-    });
-  }
-
-  const parseResult = safeParse(objects[0].value, null, logger, "player_stats");
-  if (!parseResult.success || !parseResult.data) {
-    logger.error("Failed to parse player stats for user: %s", ctx.userId);
-    return createErrorResponse("INVALID_DATA", "Failed to parse player stats");
-  }
-  const playerStats = parseResult.data;
+  const playerStats = getPlayerStatsWithCache(nk, ctx.userId, logger);
   const playerRank = calculateRank(playerStats);
 
   if (request.target_opponent_id) {
-    const targetStats = nk.storageRead([
-      {
-        collection: "player_stats",
-        key: request.target_opponent_id,
-        userId: request.target_opponent_id
-      }
-
-    ]);
-
-    if (targetStats.length === 0) {
-      return JSON.stringify({
-        error: "Target player not found"
-      });
-    }
-
-    const targetParseResult = safeParse(targetStats[0].value, null, logger, "player_stats");
-    if (!targetParseResult.success || !targetParseResult.data) {
-      logger.error("Failed to parse target player stats: %s", request.target_opponent_id);
-      return createErrorResponse("INVALID_DATA", "Failed to parse target player stats");
-    }
-    const targetPlayerStats = targetParseResult.data;
+    const targetPlayerStats = getPlayerStatsWithCache(nk, request.target_opponent_id, logger);
     const targetRank = calculateRank(targetPlayerStats);
 
     if (!request.is_punch_up && Math.abs(playerRank - targetRank) > 3) {
@@ -299,26 +242,7 @@ function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
 
-  const playerObjects = nk.storageRead([
-    {
-      collection: "player_stats",
-      key: ctx.userId,
-      userId: ctx.userId
-    }
-  ]);
-
-  if (playerObjects.length === 0) {
-    return JSON.stringify({
-      error: "Player stats not found"
-    });
-  }
-
-  const statsParseResult = safeParse(playerObjects[0].value, null, logger, "player_stats");
-  if (!statsParseResult.success || !statsParseResult.data) {
-    logger.error("Failed to parse player stats for user: %s", ctx.userId);
-    return createErrorResponse("INVALID_DATA", "Failed to parse player stats");
-  }
-  const playerStats = statsParseResult.data;
+  const playerStats = getPlayerStatsWithCache(nk, ctx.userId, logger);
   match.opponent_id = ctx.userId;
   match.opponent_rank = calculateRank(playerStats);
   match.status = "active";
@@ -346,26 +270,7 @@ export function registerRpcGetPlayerRank(initializer: Runtime.Initializer): void
 function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get player rank called for user: %s", ctx.userId);
 
-  const objects = nk.storageRead([
-    {
-      collection: "player_stats",
-      key: ctx.userId,
-      userId: ctx.userId
-    }
-  ]);
-
-  if (objects.length === 0) {
-    return JSON.stringify({
-      error: "Player stats not found"
-    });
-  }
-
-  const parseResult = safeParse<any>(objects[0].value, null, logger, "player_stats");
-  if (!parseResult.success || !parseResult.data) {
-    logger.error("Failed to parse player stats for user: %s", ctx.userId);
-    return createErrorResponse("INVALID_DATA", "Failed to parse player stats");
-  }
-  const playerStats = parseResult.data;
+  const playerStats = getPlayerStatsWithCache(nk, ctx.userId, logger);
   const rank = calculateRank(playerStats);
 
   return JSON.stringify({
