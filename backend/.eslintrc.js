@@ -18,12 +18,4 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'warn',
   },
   ignorePatterns: ['build/', 'node_modules/', '*.js', 'src/types/nakama*.d.ts'],
-  overrides: [
-    {
-      files: ['src/utils/cache.ts'],
-      rules: {
-        '@typescript-eslint/no-explicit-any': 'off',
-      },
-    },
-  ],
 };
