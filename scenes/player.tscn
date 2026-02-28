@@ -70,6 +70,11 @@ shape = SubResource("RectangleShape2D_1")
 texture = ExtResource("2_body_sprite")
 offset = Vector2(0, 0)
 
+[node name="HurtBox" type="Area2D" parent="."]
+
+[node name="HurtBoxCollision" type="CollisionShape2D" parent="HurtBox"]
+shape = SubResource("RectangleShape2D_1")
+
 [node name="BowPivot" type="Node2D" parent="."]
 
 [node name="BowSprite" type="Sprite2D" parent="BowPivot"]
