@@ -1,0 +1,15 @@
+[remap]
+
+importer="text"
+type="TextFile"
+uid="uid://firebase_google_services_config"
+path="res://.godot/imported/google-services.json-xxxxxx.import"
+
+[deps]
+
+source_file="res://firebase_config/google-services.json"
+dest_files=["res://.godot/imported/google-services.json-xxxxxx.json"]
+
+[params]
+
+compress=true

@@ -22,7 +22,6 @@ GameManager="*res://autoloads/GameManager.gd"
 AutoAimManager="*res://autoloads/AutoAimManager.gd"
 CampaignManager="*res://autoloads/CampaignManager.gd"
 PlayerStatsManager="*res://autoloads/PlayerStatsManager.gd"
-<<<<<<< HEAD
 GemManager="*res://autoloads/GemManager.gd"
 MatchmakerManager="*res://autoloads/MatchmakerManager.gd"
 CombatManager="*res://autoloads/CombatManager.gd"
@@ -31,6 +30,8 @@ StoreManager="*res://autoloads/StoreManager.gd"
 GearRegistry="*res://autoloads/GearRegistry.gd"
 TransmogManager="*res://autoloads/TransmogManager.gd"
 GearManager="*res://autoloads/GearManager.gd"
+SafeAreaManager="*res://autoloads/SafeAreaManager.gd"
+AnalyticsManager="*res://addons/analytics_manager/analytics_manager.gd"
 
 [input]
 

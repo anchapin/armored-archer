@@ -1,0 +1,15 @@
+[remap]
+
+importer="text"
+type="TextFile"
+uid="uid://firebase_google_service_info_config"
+path="res://.godot/imported/GoogleService-Info.plist-xxxxxx.import"
+
+[deps]
+
+source_file="res://firebase_config/GoogleService-Info.plist"
+dest_files=["res://.godot/imported/GoogleService-Info.plist-xxxxxx.plist"]
+
+[params]
+
+compress=true
