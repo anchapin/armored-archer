@@ -155,7 +155,7 @@ function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
   });
 }
 
-function rpcGetCurrency(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcGetCurrency(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Getting currency for user: %s", ctx.userId);
 
   const currency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);

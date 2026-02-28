@@ -183,8 +183,8 @@ function processCombatAction(
   action: CombatAction,
   match: PvPMatch,
   matchState: MatchState,
-  nk: Runtime.Nakama,
-  logger: Runtime.Logger
+  _nk: Runtime.Nakama,
+  _logger: Runtime.Logger
 ): CombatResult {
   const isCreator = userId === matchState.creator_id;
   const attackerStats = isCreator ? matchState.creator_stats : matchState.opponent_stats;
@@ -285,7 +285,7 @@ function calculateCrit(critRate: number): boolean {
   return roll <= critChance;
 }
 
-function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logger): PlayerStats {
+function getPlayerStats(nk: Runtime.Nakama, userId: string, _logger: Runtime.Logger): PlayerStats {
   const objects = nk.storageRead([
     {
       collection: "player_stats",
