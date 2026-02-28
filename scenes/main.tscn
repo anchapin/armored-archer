@@ -1,18 +1,23 @@
-[gd_scene load_steps=4 format=3 uid="uid://main_scene"]
+[gd_scene load_steps=6 format=3 uid="uid://main_scene"]
 
 [ext_resource type="Script" path="res://scenes/main.gd" id="1_main_script"]
 [ext_resource type="PackedScene" uid="uid://player_scene" path="res://scenes/player.tscn" id="2_player_scene"]
 [ext_resource type="PackedScene" uid="uid://touch_ui_scene" path="res://scenes/touch_ui.tscn" id="3_touch_ui_scene"]
+[ext_resource type="PackedScene" uid="uid://health_bar_scene" path="res://scenes/ui/health_bar.tscn" id="4_health_bar_scene"]
+[ext_resource type="PackedScene" uid="uid://game_over_scene" path="res://scenes/ui/game_over.tscn" id="5_game_over_scene"]
 
-[node name="Main" type="Node2D"]
-script = ExtResource("1_main_script")
-
-[node name="Player" parent="." instance=ExtResource("2_player_scene")]
-
-[node name="TouchUI" parent="." instance=ExtResource("3_touch_ui_scene")]
+[node name="Main" parent="." instance=ExtResource("1_main_script")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="Player" parent="." instance=ExtResource("2_player_scene")]
+
+[node name="TouchUI" parent="." instance=ExtResource("3_touch_ui_scene")]
+
+[node name="HealthBar" parent="." instance=ExtResource("4_health_bar_scene")]
+
+[node name="GameOver" parent="." instance=ExtResource("5_game_over_scene")]

@@ -14,6 +14,10 @@ config/name="Armored Archer"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
 
+[autoload]
+
+GameManager="*res://autoloads/GameManager.gd"
+
 [input]
 
 move_left={

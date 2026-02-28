@@ -6,6 +6,10 @@ extends CharacterBody2D
 @export var base_speed: float = 300.0
 @export var base_attack: int = 15
 
+# --- Health ---
+@export var max_health: int = 100
+var current_health: int = max_health
+
 # --- State Variables ---
 var is_aiming: bool = false
 var current_aim_direction: Vector2 = Vector2.ZERO
@@ -18,6 +22,9 @@ var virtual_aim_direction: Vector2 = Vector2.ZERO
 @onready var bow_pivot: Node2D = $BowPivot
 @onready var body_sprite: Sprite2D = $BodySprite
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
+
+func _ready() -> void:
+	add_to_group("Player")
 
 func _physics_process(_delta: float) -> void:
 	handle_movement()
@@ -99,3 +106,7 @@ func set_virtual_move_direction(direction: Vector2) -> void:
 
 func set_virtual_aim_direction(direction: Vector2) -> void:
 	virtual_aim_direction = direction
+
+# --- Health Management ---
+func take_damage(damage: int) -> void:
+	GameManager.take_player_damage(damage)
