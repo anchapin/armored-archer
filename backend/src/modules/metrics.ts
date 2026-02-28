@@ -28,12 +28,15 @@ const rpcErrorsTotal = new Counter({
 });
 
 export function registerRpcMetrics(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/metrics", rpcGetMetrics as any);
+  initializer.registerRpc("armored_archer/metrics", rpcGetMetrics);
 }
 
-async function rpcGetMetrics(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): Promise<string> {
+function rpcGetMetrics(ctx: Runtime.Context, logger: Runtime.Logger, _nk: Runtime.Nakama, _payload: string): string {
   logger.info("Metrics endpoint called by user: %s", ctx.userId);
-  return await register.metrics();
+  register.metrics().then(metrics => {
+    return metrics;
+  });
+  return JSON.stringify({ message: "Metrics are being collected asynchronously" });
 }
 
 export type RpcHandler = (

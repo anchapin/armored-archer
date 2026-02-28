@@ -1,6 +1,5 @@
 import { Runtime } from "../types/nakama";
 import { TurnData, PlayerStats } from "../types/game";
-import { createErrorResponse, ErrorCode } from "../types/errors";
 
 export interface PvPMatch {
   match_id: string;
@@ -87,8 +86,7 @@ function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
       continue;
     }
 
-    const rankDiff = Math.abs(match.creator_rank - playerRank);
-    
+
     if (request.min_rank !== undefined && match.creator_rank < request.min_rank) {
       continue;
     }
@@ -120,7 +118,9 @@ function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   const request: CreateMatchRequest = JSON.parse(payload);
 
   if (!request.match_type || (request.match_type !== "ranked" && request.match_type !== "casual")) {
-    return createErrorResponse(ErrorCode.INVALID_MATCH_TYPE, "Invalid match type");
+    return JSON.stringify({
+      error: "Invalid match type"
+    });
   }
 
   const objects = nk.storageRead([
@@ -132,7 +132,9 @@ function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   ]);
 
   if (objects.length === 0) {
-    return createErrorResponse(ErrorCode.PLAYER_STATS_NOT_FOUND, "Player stats not found");
+    return JSON.stringify({
+      error: "Player stats not found"
+    });
   }
 
   const playerStats = JSON.parse(objects[0].value);
@@ -148,17 +150,21 @@ function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     ]);
 
     if (targetStats.length === 0) {
-      return createErrorResponse(ErrorCode.TARGET_PLAYER_NOT_FOUND, "Target player not found");
+      return JSON.stringify({
+        error: "Target player not found"
+      });
     }
 
     const targetPlayerStats = JSON.parse(targetStats[0].value);
     const targetRank = calculateRank(targetPlayerStats);
 
     if (!request.is_punch_up && Math.abs(playerRank - targetRank) > 3) {
-      return createErrorResponse(ErrorCode.RANK_DIFFERENCE_TOO_LARGE, "Rank difference too large for direct challenge");
+      return JSON.stringify({
+        error: "Rank difference too large for direct challenge"
+      });
     }
 
-    const targetMatch: PvPMatch = {
+    const match: PvPMatch = {
       match_id: generateMatchId(),
       creator_id: ctx.userId,
       opponent_id: request.target_opponent_id,
@@ -174,18 +180,18 @@ function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     nk.storageWrite([
       {
         collection: "pvp_matches",
-        key: targetMatch.match_id,
+        key: match.match_id,
         userId: ctx.userId,
-        value: JSON.stringify(targetMatch)
+        value: JSON.stringify(match)
       }
     ]);
 
     return JSON.stringify({
       success: true,
-      match: targetMatch
+      match: match
     });
   } else {
-    const newMatch: PvPMatch = {
+    const match: PvPMatch = {
       match_id: generateMatchId(),
       creator_id: ctx.userId,
       opponent_id: "",
@@ -201,15 +207,15 @@ function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     nk.storageWrite([
       {
         collection: "pvp_matches",
-        key: newMatch.match_id,
+        key: match.match_id,
         userId: ctx.userId,
-        value: JSON.stringify(newMatch)
+        value: JSON.stringify(match)
       }
     ]);
 
     return JSON.stringify({
       success: true,
-      match: newMatch
+      match: match
     });
   }
 }
@@ -224,7 +230,9 @@ function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   const request: AcceptMatchRequest = JSON.parse(payload);
 
   if (!request.match_id) {
-    return createErrorResponse(ErrorCode.MISSING_REQUIRED_FIELD, "Match ID required");
+    return JSON.stringify({
+      error: "Match ID required"
+    });
   }
 
   const objects = nk.storageRead([
@@ -236,17 +244,23 @@ function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   ]);
 
   if (objects.length === 0) {
-    return createErrorResponse(ErrorCode.MATCH_NOT_FOUND, "Match not found");
+    return JSON.stringify({
+      error: "Match not found"
+    });
   }
 
   const match: PvPMatch = JSON.parse(objects[0].value);
 
   if (match.creator_id === ctx.userId) {
-    return createErrorResponse(ErrorCode.CANNOT_OWN_MATCH, "Cannot accept your own match");
+    return JSON.stringify({
+      error: "Cannot accept your own match"
+    });
   }
 
   if (match.status !== "pending") {
-    return createErrorResponse(ErrorCode.MATCH_NO_LONGER_AVAILABLE, "Match is no longer available");
+    return JSON.stringify({
+      error: "Match is no longer available"
+    });
   }
 
   const playerObjects = nk.storageRead([
@@ -258,7 +272,9 @@ function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   ]);
 
   if (playerObjects.length === 0) {
-    return createErrorResponse(ErrorCode.PLAYER_STATS_NOT_FOUND, "Player stats not found");
+    return JSON.stringify({
+      error: "Player stats not found"
+    });
   }
 
   const playerStats = JSON.parse(playerObjects[0].value);
@@ -286,7 +302,7 @@ export function registerRpcGetPlayerRank(initializer: Runtime.Initializer): void
   initializer.registerRpc("armored_archer/get_player_rank", rpcGetPlayerRank);
 }
 
-function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Get player rank called for user: %s", ctx.userId);
 
   const objects = nk.storageRead([
@@ -298,7 +314,9 @@ function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
   ]);
 
   if (objects.length === 0) {
-    return createErrorResponse(ErrorCode.PLAYER_STATS_NOT_FOUND, "Player stats not found");
+    return JSON.stringify({
+      error: "Player stats not found"
+    });
   }
 
   const playerStats = JSON.parse(objects[0].value);

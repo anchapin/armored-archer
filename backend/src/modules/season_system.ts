@@ -1,6 +1,4 @@
 import { Runtime } from "../types/nakama";
-import { PlayerStats } from "../types/game";
-import { createErrorResponse, ErrorCode } from "../types/errors";
 
 export interface SeasonRewards {
   rank_tier: "legendary" | "epic" | "rare" | "uncommon" | "common";
@@ -62,11 +60,10 @@ export function registerRpcGetSeasonInfo(initializer: Runtime.Initializer): void
   initializer.registerRpc("armored_archer/get_season_info", rpcGetSeasonInfo);
 }
 
-function rpcGetSeasonInfo(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcGetSeasonInfo(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Get season info called for user: %s", ctx.userId);
 
   const currentSeason = getCurrentSeason();
-  const userStats = getPlayerStats(nk, ctx.userId);
 
   const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
 
@@ -124,7 +121,9 @@ function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime
   const request: RankChange = JSON.parse(payload);
 
   if (!request.winner_id || !request.loser_id) {
-    return createErrorResponse(ErrorCode.MISSING_REQUIRED_FIELD, "Winner and loser IDs required");
+    return JSON.stringify({
+      error: "Winner and loser IDs required"
+    });
   }
 
   const currentSeason = getCurrentSeason();
@@ -203,7 +202,7 @@ export function registerRpcGetSeasonRewards(initializer: Runtime.Initializer): v
   initializer.registerRpc("armored_archer/get_season_rewards", rpcGetSeasonRewards);
 }
 
-function rpcGetSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcGetSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Get season rewards called for user: %s", ctx.userId);
 
   const currentSeason = getCurrentSeason();
@@ -229,7 +228,7 @@ export function registerRpcClaimSeasonRewards(initializer: Runtime.Initializer):
   initializer.registerRpc("armored_archer/claim_season_rewards", rpcClaimSeasonRewards);
 }
 
-function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Claim season rewards called for user: %s", ctx.userId);
 
   const currentSeason = getCurrentSeason();
@@ -243,13 +242,17 @@ function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk:
   ]);
 
   if (objects.length > 0) {
-    return createErrorResponse(ErrorCode.REWARDS_ALREADY_CLAIMED, "Rewards already claimed for this season");
+    return JSON.stringify({
+      error: "Rewards already claimed for this season"
+    });
   }
 
   const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
 
   if (!playerEntry) {
-    return createErrorResponse(ErrorCode.NO_LEADERBOARD_ENTRY, "No leaderboard entry found");
+    return JSON.stringify({
+      error: "No leaderboard entry found"
+    });
   }
 
   const rewards = calculateRewards(playerEntry.rank, currentSeason.season_number);
@@ -296,7 +299,7 @@ export function registerRpcEndSeason(initializer: Runtime.Initializer): void {
   initializer.registerRpc("armored_archer/end_season", rpcEndSeason);
 }
 
-function rpcEndSeason(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcEndSeason(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("End season called for user: %s", ctx.userId);
 
   const currentSeason = getCurrentSeason();
@@ -392,31 +395,6 @@ function getLeaderboardEntry(nk: Runtime.Nakama, userId: string, leaderboardId: 
     score: record.score,
     meta: JSON.parse(record.metadata || "{}")
   };
-}
-
-function getPlayerStats(nk: Runtime.Nakama, userId: string): PlayerStats {
-  const objects = nk.storageRead([
-    {
-      collection: "player_stats",
-      key: userId,
-      userId: userId
-    }
-  ]);
-
-  if (objects.length === 0) {
-    return {
-      level: 1,
-      xp: 0,
-      stats: {
-        attack: 10,
-        defense: 10,
-        dodge: 10,
-        crit_rate: 5
-      }
-    };
-  }
-
-  return JSON.parse(objects[0].value);
 }
 
 function calculateRewards(rank: number, seasonNumber: number): SeasonRewards {

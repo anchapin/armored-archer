@@ -1,7 +1,6 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
-import { ErrorCode } from "../types/errors";
 
 export interface PlayerCurrency {
   user_id: string;
@@ -110,17 +109,21 @@ function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
   const request = safeParsePayload<PurchaseRequest>(payload, logger, "<rpc_name>");
   
   if (!request) {
-    return createErrorResponse(ErrorCode.INVALID_JSON, "Invalid JSON payload");
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
   }
 
   if (!request.product_id || !request.platform || !request.transaction_receipt) {
-    return createErrorResponse(ErrorCode.MISSING_REQUIRED_FIELD, "Missing required fields");
+    return JSON.stringify({
+      error: "Missing required fields"
+    });
   }
 
   const catalog = getStoreCatalog(logger);
 
   if (!catalog[request.product_id]) {
-    return createErrorResponse(ErrorCode.INVALID_PRODUCT_ID, "Invalid product ID");
+    return JSON.stringify({
+      error: "Invalid product ID"
+    });
   }
 
   const gemBundle = catalog[request.product_id];
@@ -152,7 +155,7 @@ function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
   });
 }
 
-function rpcGetCurrency(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcGetCurrency(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Getting currency for user: %s", ctx.userId);
 
   const currency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
@@ -166,18 +169,22 @@ function rpcSpendGems(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.
   const parseResult = safeParse<{ amount: number }>(payload, null, logger, "spend_gems");
   if (!parseResult.success || !parseResult.data) {
     logger.error("Failed to parse data");
-    return createErrorResponse(ErrorCode.INVALID_DATA, "Failed to parse data");
+    return createErrorResponse("INVALID_DATA", "Failed to parse data");
   }
   const request = parseResult.data;
 
   if (typeof request.amount !== "number" || request.amount <= 0) {
-    return createErrorResponse(ErrorCode.INVALID_AMOUNT, "Invalid amount");
+    return JSON.stringify({
+      error: "Invalid amount"
+    });
   }
 
   const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
 
   if (playerCurrency.gems < request.amount) {
-    return createErrorResponse(ErrorCode.INSUFFICIENT_GEMS, "Insufficient gems");
+    return JSON.stringify({
+      error: "Insufficient gems"
+    });
   }
 
   playerCurrency.gems -= request.amount;
