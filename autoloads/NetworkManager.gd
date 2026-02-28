@@ -231,3 +231,43 @@ func get_auth_headers() -> PackedStringArray:
 
 func is_session_valid() -> bool:
 	return not session_token.is_empty() and is_connected
+
+# --- RPC Communication ---
+func send_rpc(rpc_id: String, payload: String) -> Dictionary:
+	if not is_session_valid():
+		return {"error": "Not authenticated"}
+	
+	var url: String = "%s/v2/rpc/%s" % [base_url, rpc_id]
+	var headers: PackedStringArray = get_auth_headers()
+	
+	headers.append("Content-Type: application/json")
+	
+	var error_code: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, payload)
+	
+	if error_code != OK:
+		return {"error": "Failed to send RPC request"}
+	
+	var result: Array = await http_request.request_completed
+	
+	var response_data: Dictionary = {}
+	
+	if result[1] >= 200 and result[1] < 300:
+		var json: JSON = JSON.new()
+		if json.parse(result[3].get_string_from_utf8()) == OK:
+			response_data = json.data
+		else:
+			response_data = {"error": "Failed to parse response"}
+	else:
+		var json: JSON = JSON.new()
+		if json.parse(result[3].get_string_from_utf8()) == OK:
+			var parsed: Dictionary = json.data
+			if parsed.has("error"):
+				response_data = {"error": parsed.error}
+			elif parsed.has("message"):
+				response_data = {"error": parsed.message}
+			else:
+				response_data = {"error": "Unknown error"}
+		else:
+			response_data = {"error": "HTTP error: %d" % result[1]}
+	
+	return response_data

@@ -1,4 +1,4 @@
-import { Runtime } from "@heroiclabs/nakama-js/runtime";
+import { Runtime } from "../types/nakama";
 
 export function registerRpcHealthCheck(initializer: Runtime.Initializer): void {
   initializer.registerRpc("armored_archer/health_check", rpcHealthCheck);
