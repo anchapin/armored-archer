@@ -1,0 +1,123 @@
+[gd_scene load_steps=2 format=3 uid="uid://b0f3e2a1d2c4f5"]
+
+[ext_resource type="Script" path="res://scenes/ui/stat_allocation.gd" id="1_0xvwk"]
+
+[node name="StatAllocation" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_0xvwk")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -250.0
+offset_right = 200.0
+offset_bottom = 250.0
+
+[node name="AbilityPointsLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Ability Points: 0"
+horizontal_alignment = 1
+
+[node name="StatsContainer" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LevelContainer" type="HBoxContainer" parent="VBoxContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="LevelLabel" type="Label" parent="VBoxContainer/StatsContainer/LevelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Level: 1"
+
+[node name="XPContainer" type="HBoxContainer" parent="VBoxContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="XPLabel" type="Label" parent="VBoxContainer/StatsContainer/XPContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "XP: 0"
+
+[node name="XPProgressBar" type="ProgressBar" parent="VBoxContainer"]
+layout_mode = 2
+min_value = 0.0
+max_value = 100.0
+value = 0.0
+
+[node name="AttackContainer" type="HBoxContainer" parent="VBoxContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="AttackLabel" type="Label" parent="VBoxContainer/StatsContainer/AttackContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Attack"
+
+[node name="AttackValue" type="Label" parent="VBoxContainer/StatsContainer/AttackContainer"]
+layout_mode = 2
+text = "10"
+
+[node name="AttackPlus" type="Button" parent="VBoxContainer/StatsContainer/AttackContainer"]
+layout_mode = 2
+text = "+"
+
+[node name="DefenseContainer" type="HBoxContainer" parent="VBoxContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="DefenseLabel" type="Label" parent="VBoxContainer/StatsContainer/DefenseContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Defense"
+
+[node name="DefenseValue" type="Label" parent="VBoxContainer/StatsContainer/DefenseContainer"]
+layout_mode = 2
+text = "10"
+
+[node name="DefensePlus" type="Button" parent="VBoxContainer/StatsContainer/DefenseContainer"]
+layout_mode = 2
+text = "+"
+
+[node name="DodgeContainer" type="HBoxContainer" parent="VBoxContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="DodgeLabel" type="Label" parent="VBoxContainer/StatsContainer/DodgeContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Dodge"
+
+[node name="DodgeValue" type="Label" parent="VBoxContainer/StatsContainer/DodgeContainer"]
+layout_mode = 2
+text = "10"
+
+[node name="DodgePlus" type="Button" parent="VBoxContainer/StatsContainer/DodgeContainer"]
+layout_mode = 2
+text = "+"
+
+[node name="CritRateContainer" type="HBoxContainer" parent="VBoxContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="CritRateLabel" type="Label" parent="VBoxContainer/StatsContainer/CritRateContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Crit Rate"
+
+[node name="CritRateValue" type="Label" parent="VBoxContainer/StatsContainer/CritRateContainer"]
+layout_mode = 2
+text = "5"
+
+[node name="CritRatePlus" type="Button" parent="VBoxContainer/StatsContainer/CritRateContainer"]
+layout_mode = 2
+text = "+"
+
+[node name="BackButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Back"

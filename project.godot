@@ -19,6 +19,8 @@ config/icon="res://icon.svg"
 GameManager="*res://autoloads/GameManager.gd"
 AutoAimManager="*res://autoloads/AutoAimManager.gd"
 CampaignManager="*res://autoloads/CampaignManager.gd"
+NetworkManager="*res://autoloads/NetworkManager.gd"
+PlayerStatsManager="*res://autoloads/PlayerStatsManager.gd"
 
 [input]
 
