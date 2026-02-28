@@ -22,6 +22,7 @@ var virtual_aim_direction: Vector2 = Vector2.ZERO
 @onready var bow_pivot: Node2D = $BowPivot
 @onready var body_sprite: Sprite2D = $BodySprite
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
+@onready var hurt_box: Area2D = $HurtBox
 
 func _ready() -> void:
 	add_to_group("Player")

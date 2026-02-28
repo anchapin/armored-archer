@@ -5,11 +5,14 @@
 [ext_resource type="PackedScene" uid="uid://touch_ui_scene" path="res://scenes/touch_ui.tscn" id="3_touch_ui_scene"]
 [ext_resource type="PackedScene" uid="uid://health_bar_scene" path="res://scenes/ui/health_bar.tscn" id="4_health_bar_scene"]
 [ext_resource type="PackedScene" uid="uid://game_over_scene" path="res://scenes/ui/game_over.tscn" id="5_game_over_scene"]
+[ext_resource type="PackedScene" uid="uid://enemy_spawner_scene" path="res://scenes/enemies/enemy_spawner.tscn" id="6_spawner_scene"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main_script")
 
 [node name="Player" parent="." instance=ExtResource("2_player_scene")]
+
+[node name="EnemySpawner" parent="." instance=ExtResource("6_spawner_scene")]
 
 [node name="TouchUI" parent="." instance=ExtResource("3_touch_ui_scene")]
 layout_mode = 3
