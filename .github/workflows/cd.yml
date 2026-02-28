@@ -44,6 +44,43 @@ jobs:
         working-directory: ./backend
         run: npm test
 
+<<<<<<< HEAD
+      - name: Build and start Docker containers
+        working-directory: ./backend
+        run: |
+          docker-compose up -d --build
+
+      - name: Wait for services to be healthy
+        working-directory: ./backend
+        run: |
+          echo "Waiting for PostgreSQL to be healthy..."
+          until docker-compose exec -T postgres pg_isready -U postgres -d nakama; do
+            echo "PostgreSQL is not ready yet..."
+            sleep 2
+          done
+          echo "PostgreSQL is healthy!"
+
+          echo "Waiting for Nakama to be healthy..."
+          until docker-compose exec -T nakama /nakama/nakama healthcheck; do
+            echo "Nakama is not ready yet..."
+            sleep 2
+          done
+          echo "Nakama is healthy!"
+
+      - name: Verify services are running
+        working-directory: ./backend
+        run: |
+          docker-compose ps
+
+      - name: Health check verification
+        working-directory: ./backend
+        run: |
+          echo "Checking PostgreSQL health..."
+          docker-compose exec -T postgres pg_isready -U postgres -d nakama
+
+          echo "Checking Nakama health..."
+          docker-compose exec -T nakama /nakama/nakama healthcheck
+=======
       - name: Run database migrations
         working-directory: ./backend
         run: |
@@ -172,3 +209,4 @@ jobs:
           else
             echo "Cleaning up blue deployment..."
           fi
+>>>>>>> main
