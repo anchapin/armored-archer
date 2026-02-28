@@ -1,0 +1,34 @@
+{
+  "campaigns": [
+    {
+      "id": "chapter_1",
+      "name": "The Awakening",
+      "stages": [
+        {
+          "id": "1_1",
+          "name": "Forest Edge",
+          "waves": 3,
+          "boss": null
+        },
+        {
+          "id": "1_2",
+          "name": "Ambush",
+          "waves": 4,
+          "boss": null
+        },
+        {
+          "id": "1_3",
+          "name": "First Blood",
+          "waves": 5,
+          "boss": "boss_basic"
+        },
+        {
+          "id": "1_4",
+          "name": "Wind Passage",
+          "waves": 4,
+          "boss": "boss_wind"
+        }
+      ]
+    }
+  ]
+}
