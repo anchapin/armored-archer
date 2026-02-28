@@ -27,7 +27,7 @@ export interface StatAllocationRequest {
 }
 
 export function registerRpcGainXP(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/gain_xp", rpcGainXP);
+  registerRpcWithMetrics(initializer, "armored_archer/gain_xp", "gain_xp", rpcGainXP);
 }
 
 function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
@@ -125,7 +125,7 @@ function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nak
 }
 
 export function registerRpcAllocateStats(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/allocate_stats", rpcAllocateStats);
+  registerRpcWithMetrics(initializer, "armored_archer/allocate_stats", "allocate_stats", rpcAllocateStats);
 }
 
 function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
@@ -164,7 +164,12 @@ function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
     });
   }
 
-  const playerStats: PlayerStats = JSON.parse(objects[0].value ?? "{}");
+  const parseResult = safeParse<PlayerStats>(objects[0].value ?? "{}", null, logger, "player_stats");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse player stats for user: %s", ctx.userId);
+    return createErrorResponse("INVALID_DATA", "Failed to parse player stats");
+  }
+  const playerStats: PlayerStats = parseResult.data;
 
   if (playerStats.ability_points < request.points) {
     return JSON.stringify({
@@ -193,7 +198,7 @@ function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
 }
 
 export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/get_player_stats", rpcGetPlayerStats);
+  registerRpcWithMetrics(initializer, "armored_archer/get_player_stats", "get_player_stats", rpcGetPlayerStats);
 }
 
 function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
