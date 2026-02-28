@@ -1,5 +1,6 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
+import { getCacheManager } from "../utils/cache";
 
 export interface PlayerStats {
   user_id: string;
@@ -112,6 +113,9 @@ function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nak
     }
   ]);
 
+  const cacheManager = getCacheManager(logger);
+  cacheManager.delete("player_stats", ctx.userId);
+
   return JSON.stringify({
     success: true,
     player_stats: playerStats,
@@ -180,6 +184,9 @@ function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
     }
   ]);
 
+  const cacheManager = getCacheManager(logger);
+  cacheManager.delete("player_stats", ctx.userId);
+
   return JSON.stringify({
     success: true,
     player_stats: playerStats
@@ -192,6 +199,13 @@ export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): voi
 
 function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get player stats called for user: %s", ctx.userId);
+
+  const cacheManager = getCacheManager(logger);
+  const cachedStats = cacheManager.get<string>("player_stats", ctx.userId);
+
+  if (cachedStats !== undefined) {
+    return cachedStats;
+  }
 
   const objects = nk.storageRead([
     {
@@ -207,7 +221,10 @@ function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
     });
   }
 
-  return objects[0].value ?? "{}";
+  const stats = objects[0].value ?? "{}";
+  cacheManager.set("player_stats", ctx.userId, stats);
+
+  return stats;
 }
 
 function calculateLevel(xp: number): number {

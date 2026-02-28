@@ -1,5 +1,6 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
+import { getCacheManager } from "../utils/cache";
 
 export interface GearRarity {
   name: string;
@@ -181,8 +182,37 @@ function getRandomItem<T>(array: T[]): T {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function getGearName(type: string, rarity: string): string {
-  const names = GEAR_NAMES[type as keyof typeof GEAR_NAMES];
+interface GearDefinitions {
+  rarities: { [key: string]: GearRarity };
+  gearTypes: string[];
+  baseStats: typeof BASE_STATS;
+  modifierPools: GearModifier[];
+  gearNames: typeof GEAR_NAMES;
+}
+
+function getGearDefinitions(logger: Runtime.Logger): GearDefinitions {
+  const cacheManager = getCacheManager(logger);
+  const cachedDefinitions = cacheManager.get<GearDefinitions>("gear_definitions", "all");
+
+  if (cachedDefinitions !== undefined) {
+    return cachedDefinitions;
+  }
+
+  const definitions: GearDefinitions = {
+    rarities: RARITIES,
+    gearTypes: GEAR_TYPES,
+    baseStats: BASE_STATS,
+    modifierPools: MODIFIER_POOLS,
+    gearNames: GEAR_NAMES
+  };
+
+  cacheManager.set("gear_definitions", "all", definitions);
+  return definitions;
+}
+
+function getGearName(type: string, rarity: string, logger: Runtime.Logger): string {
+  const definitions = getGearDefinitions(logger);
+  const names = definitions.gearNames[type as keyof typeof GEAR_NAMES];
   const baseName = getRandomItem(names);
   
   if (rarity === "legendary") {
@@ -194,9 +224,10 @@ function getGearName(type: string, rarity: string): string {
   return baseName;
 }
 
-function generateGearStats(type: string, rarity: string): GearStat[] {
-  const rarityMultiplier = RARITIES[rarity].stat_multiplier;
-  const baseStats = BASE_STATS[type as keyof typeof BASE_STATS];
+function generateGearStats(type: string, rarity: string, logger: Runtime.Logger): GearStat[] {
+  const definitions = getGearDefinitions(logger);
+  const rarityMultiplier = definitions.rarities[rarity].stat_multiplier;
+  const baseStats = definitions.baseStats[type as keyof typeof definitions.baseStats];
   
   return baseStats.map(stat => ({
     name: stat.name,
@@ -205,8 +236,9 @@ function generateGearStats(type: string, rarity: string): GearStat[] {
   }));
 }
 
-function generateModifiers(rarity: string, unlockedPools: string[]): GearModifier[] {
-  const availableModifiers = MODIFIER_POOLS.filter(mod => {
+function generateModifiers(rarity: string, unlockedPools: string[], logger: Runtime.Logger): GearModifier[] {
+  const definitions = getGearDefinitions(logger);
+  const availableModifiers = definitions.modifierPools.filter(mod => {
     if (mod.boss_unlock && !unlockedPools.includes(mod.boss_unlock)) {
       return false;
     }
@@ -239,18 +271,19 @@ function generateModifiers(rarity: string, unlockedPools: string[]): GearModifie
   return modifiers;
 }
 
-function generateGearItem(stageId: string, unlockedPools: string[]): GearItem {
+function generateGearItem(stageId: string, unlockedPools: string[], logger: Runtime.Logger): GearItem {
+  const definitions = getGearDefinitions(logger);
   const rarity = rollRarity();
-  const type = getRandomItem(GEAR_TYPES);
-  const name = getGearName(type, rarity);
+  const type = getRandomItem(definitions.gearTypes);
+  const name = getGearName(type, rarity, logger);
   
   const gear: GearItem = {
     id: generateGearId(),
     name: name,
     rarity: rarity,
     type: type,
-    stats: generateGearStats(type, rarity),
-    modifiers: generateModifiers(rarity, unlockedPools),
+    stats: generateGearStats(type, rarity, logger),
+    modifiers: generateModifiers(rarity, unlockedPools, logger),
     level: 1,
     timestamp: Date.now()
   };
@@ -307,7 +340,7 @@ function rpcGenerateGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runti
     }
   }
   
-  const gear = generateGearItem(request.stage_id, inventory.unlocked_modifier_pools);
+  const gear = generateGearItem(request.stage_id, inventory.unlocked_modifier_pools, logger);
   inventory.gear.push(gear);
   
   nk.storageWrite([

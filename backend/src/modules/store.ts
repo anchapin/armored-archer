@@ -1,5 +1,6 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
+import { getCacheManager } from "../utils/cache";
 
 export interface GemBundle {
   product_id: string;
@@ -49,6 +50,18 @@ export function registerRpcSpendGems(initializer: Runtime.Initializer): void {
   initializer.registerRpc("armored_archer/spend_gems", rpcSpendGems);
 }
 
+function getStoreCatalog(logger: Runtime.Logger): Record<string, GemBundle> {
+  const cacheManager = getCacheManager(logger);
+  const cachedCatalog = cacheManager.get<Record<string, GemBundle>>("store_catalog", "gem_bundles");
+
+  if (cachedCatalog !== undefined) {
+    return cachedCatalog;
+  }
+
+  cacheManager.set("store_catalog", "gem_bundles", GEM_BUNDLES);
+  return GEM_BUNDLES;
+}
+
 function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Validating purchase for user: %s", ctx.userId);
 
@@ -64,13 +77,15 @@ function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
     });
   }
 
-  if (!GEM_BUNDLES[request.product_id]) {
+  const catalog = getStoreCatalog(logger);
+
+  if (!catalog[request.product_id]) {
     return JSON.stringify({
       error: "Invalid product ID"
     });
   }
 
-  const gemBundle = GEM_BUNDLES[request.product_id];
+  const gemBundle = catalog[request.product_id];
 
   const objects = nk.storageRead([
     {
