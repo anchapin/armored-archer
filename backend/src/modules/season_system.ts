@@ -1,5 +1,6 @@
 import { Runtime } from "../types/nakama";
 import { PlayerStats } from "../types/game";
+import { createErrorResponse, ErrorCode } from "../types/errors";
 
 export interface SeasonRewards {
   rank_tier: "legendary" | "epic" | "rare" | "uncommon" | "common";
@@ -123,9 +124,7 @@ function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime
   const request: RankChange = JSON.parse(payload);
 
   if (!request.winner_id || !request.loser_id) {
-    return JSON.stringify({
-      error: "Winner and loser IDs required"
-    });
+    return createErrorResponse(ErrorCode.MISSING_REQUIRED_FIELD, "Winner and loser IDs required");
   }
 
   const currentSeason = getCurrentSeason();
@@ -244,17 +243,13 @@ function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk:
   ]);
 
   if (objects.length > 0) {
-    return JSON.stringify({
-      error: "Rewards already claimed for this season"
-    });
+    return createErrorResponse(ErrorCode.REWARDS_ALREADY_CLAIMED, "Rewards already claimed for this season");
   }
 
   const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
 
   if (!playerEntry) {
-    return JSON.stringify({
-      error: "No leaderboard entry found"
-    });
+    return createErrorResponse(ErrorCode.NO_LEADERBOARD_ENTRY, "No leaderboard entry found");
   }
 
   const rewards = calculateRewards(playerEntry.rank, currentSeason.season_number);

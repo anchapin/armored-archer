@@ -2,6 +2,8 @@ import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
 import { invalidatePlayerStatsCache } from "../utils/db_optimizer";
+import { ErrorCode } from "../types/errors";
+import { registerRpcWithMetrics } from "./metrics";
 
 export interface PlayerStats {
   user_id: string;
@@ -36,13 +38,11 @@ function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nak
   const request = safeParsePayload<XPGainRequest>(payload, logger, "<rpc_name>");
   
   if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+    return createErrorResponse(ErrorCode.INVALID_JSON, "Invalid JSON payload");
   }
 
   if (request.xp_amount <= 0) {
-    return JSON.stringify({
-      error: "Invalid XP amount"
-    });
+    return createErrorResponse(ErrorCode.INVALID_XP_AMOUNT, "Invalid XP amount");
   }
 
   const objects = nk.storageRead([
@@ -74,7 +74,7 @@ function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nak
       const parseResult = safeParse<PlayerStats>(value, null, logger, "storage_data");
   if (!parseResult.success || !parseResult.data) {
     logger.error("Failed to parse data");
-    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+    return createErrorResponse(ErrorCode.INVALID_DATA, "Failed to parse data");
   }
   playerStats = parseResult.data;
     } else {
@@ -134,20 +134,16 @@ function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
   const request = safeParsePayload<StatAllocationRequest>(payload, logger, "<rpc_name>");
   
   if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+    return createErrorResponse(ErrorCode.INVALID_JSON, "Invalid JSON payload");
   }
 
   const validStats = ["attack", "defense", "dodge", "crit_rate"];
   if (!validStats.includes(request.stat_name)) {
-    return JSON.stringify({
-      error: "Invalid stat name"
-    });
+    return createErrorResponse(ErrorCode.INVALID_STAT_NAME, "Invalid stat name");
   }
 
   if (request.points <= 0) {
-    return JSON.stringify({
-      error: "Invalid points amount"
-    });
+    return createErrorResponse(ErrorCode.INVALID_AMOUNT, "Invalid points amount");
   }
 
   const objects = nk.storageRead([
@@ -159,22 +155,18 @@ function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
   ]);
 
   if (objects.length === 0) {
-    return JSON.stringify({
-      error: "Player stats not found"
-    });
+    return createErrorResponse(ErrorCode.PLAYER_STATS_NOT_FOUND, "Player stats not found");
   }
 
   const parseResult = safeParse<PlayerStats>(objects[0].value ?? "{}", null, logger, "player_stats");
   if (!parseResult.success || !parseResult.data) {
     logger.error("Failed to parse player stats for user: %s", ctx.userId);
-    return createErrorResponse("INVALID_DATA", "Failed to parse player stats");
+    return createErrorResponse(ErrorCode.INVALID_DATA, "Failed to parse player stats");
   }
   const playerStats: PlayerStats = parseResult.data;
 
   if (playerStats.ability_points < request.points) {
-    return JSON.stringify({
-      error: "Not enough ability points"
-    });
+    return createErrorResponse(ErrorCode.INSUFFICIENT_ABILITY_POINTS, "Not enough ability points");
   }
 
   playerStats.ability_points -= request.points;
@@ -220,9 +212,7 @@ function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
   ]);
 
   if (objects.length === 0) {
-    return JSON.stringify({
-      error: "Player stats not found"
-    });
+    return createErrorResponse(ErrorCode.PLAYER_STATS_NOT_FOUND, "Player stats not found");
   }
 
   const stats = objects[0].value ?? "{}";

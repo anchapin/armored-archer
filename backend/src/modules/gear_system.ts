@@ -1,6 +1,7 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
+import { ErrorCode } from "../types/errors";
 
 export interface GearRarity {
   name: string;
@@ -374,9 +375,9 @@ function rpcEquipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.
   const request = safeParsePayload<EquipGearRequest>(payload, logger, "<rpc_name>");
   
   if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+    return createErrorResponse(ErrorCode.INVALID_JSON, "Invalid JSON payload");
   }
-  
+
   const inventoryObjects = nk.storageRead([
     {
       collection: "player_inventory",
@@ -384,40 +385,32 @@ function rpcEquipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.
       userId: ctx.userId
     }
   ]);
-  
+
   if (inventoryObjects.length === 0) {
-    return JSON.stringify({
-      error: "Player inventory not found"
-    });
+    return createErrorResponse(ErrorCode.PLAYER_INVENTORY_NOT_FOUND, "Player inventory not found");
   }
-  
+
   const value = inventoryObjects[0].value;
   if (!value) {
-    return JSON.stringify({
-      error: "Invalid inventory data"
-    });
+    return createErrorResponse(ErrorCode.INVALID_INVENTORY_DATA, "Invalid inventory data");
   }
-  
+
   const parseResult = safeParse<PlayerInventory>(value, null, logger, "storage_data");
   if (!parseResult.success || !parseResult.data) {
     logger.error("Failed to parse data");
-    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+    return createErrorResponse(ErrorCode.INVALID_DATA, "Failed to parse data");
   }
   const inventory: PlayerInventory = parseResult.data;
-  
+
   const gearIndex = inventory.gear.findIndex(g => g.id === request.gear_id);
   if (gearIndex === -1) {
-    return JSON.stringify({
-      error: "Gear not found in inventory"
-    });
+    return createErrorResponse(ErrorCode.GEAR_NOT_FOUND, "Gear not found in inventory");
   }
-  
+
   const gear = inventory.gear[gearIndex];
-  
+
   if (gear.type !== request.slot) {
-    return JSON.stringify({
-      error: "Gear type does not match slot"
-    });
+    return createErrorResponse(ErrorCode.GEAR_TYPE_MISMATCH, "Gear type does not match slot");
   }
   
   inventory.equipped_gear[request.slot] = gear.id;
@@ -448,9 +441,9 @@ function rpcUnequipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   const request = safeParsePayload<UnequipGearRequest>(payload, logger, "<rpc_name>");
   
   if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+    return createErrorResponse(ErrorCode.INVALID_JSON, "Invalid JSON payload");
   }
-  
+
   const inventoryObjects = nk.storageRead([
     {
       collection: "player_inventory",
@@ -458,31 +451,25 @@ function rpcUnequipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
       userId: ctx.userId
     }
   ]);
-  
+
   if (inventoryObjects.length === 0) {
-    return JSON.stringify({
-      error: "Player inventory not found"
-    });
+    return createErrorResponse(ErrorCode.PLAYER_INVENTORY_NOT_FOUND, "Player inventory not found");
   }
-  
+
   const value = inventoryObjects[0].value;
   if (!value) {
-    return JSON.stringify({
-      error: "Invalid inventory data"
-    });
+    return createErrorResponse(ErrorCode.INVALID_INVENTORY_DATA, "Invalid inventory data");
   }
-  
+
   const parseResult = safeParse<PlayerInventory>(value, null, logger, "storage_data");
   if (!parseResult.success || !parseResult.data) {
     logger.error("Failed to parse data");
-    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+    return createErrorResponse(ErrorCode.INVALID_DATA, "Failed to parse data");
   }
   const inventory: PlayerInventory = parseResult.data;
-  
+
   if (!inventory.equipped_gear[request.slot]) {
-    return JSON.stringify({
-      error: "No gear equipped in this slot"
-    });
+    return createErrorResponse(ErrorCode.NO_GEAR_EQUIPPED, "No gear equipped in this slot");
   }
   
   delete inventory.equipped_gear[request.slot];
@@ -547,7 +534,7 @@ function rpcUnlockModifierPool(ctx: Runtime.Context, logger: Runtime.Logger, nk:
   const parseResult = safeParse<{ modifier_id: string }>(payload, null, logger, "unlock_modifier_pool");
   if (!parseResult.success || !parseResult.data) {
     logger.error("Failed to parse data");
-    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+    return createErrorResponse(ErrorCode.INVALID_DATA, "Failed to parse data");
   }
   const request = parseResult.data;
   const modifierId = request.modifier_id;

@@ -1,6 +1,7 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
+import { ErrorCode } from "../types/errors";
 
 export interface PlayerCurrency {
   user_id: string;
@@ -109,21 +110,17 @@ function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
   const request = safeParsePayload<PurchaseRequest>(payload, logger, "<rpc_name>");
   
   if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+    return createErrorResponse(ErrorCode.INVALID_JSON, "Invalid JSON payload");
   }
 
   if (!request.product_id || !request.platform || !request.transaction_receipt) {
-    return JSON.stringify({
-      error: "Missing required fields"
-    });
+    return createErrorResponse(ErrorCode.MISSING_REQUIRED_FIELD, "Missing required fields");
   }
 
   const catalog = getStoreCatalog(logger);
 
   if (!catalog[request.product_id]) {
-    return JSON.stringify({
-      error: "Invalid product ID"
-    });
+    return createErrorResponse(ErrorCode.INVALID_PRODUCT_ID, "Invalid product ID");
   }
 
   const gemBundle = catalog[request.product_id];
@@ -169,22 +166,18 @@ function rpcSpendGems(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.
   const parseResult = safeParse<{ amount: number }>(payload, null, logger, "spend_gems");
   if (!parseResult.success || !parseResult.data) {
     logger.error("Failed to parse data");
-    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+    return createErrorResponse(ErrorCode.INVALID_DATA, "Failed to parse data");
   }
   const request = parseResult.data;
 
   if (typeof request.amount !== "number" || request.amount <= 0) {
-    return JSON.stringify({
-      error: "Invalid amount"
-    });
+    return createErrorResponse(ErrorCode.INVALID_AMOUNT, "Invalid amount");
   }
 
   const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
 
   if (playerCurrency.gems < request.amount) {
-    return JSON.stringify({
-      error: "Insufficient gems"
-    });
+    return createErrorResponse(ErrorCode.INSUFFICIENT_GEMS, "Insufficient gems");
   }
 
   playerCurrency.gems -= request.amount;

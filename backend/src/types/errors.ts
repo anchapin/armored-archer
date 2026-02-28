@@ -1,0 +1,72 @@
+export enum ErrorCode {
+  NOT_AUTHENTICATED = 'NOT_AUTHENTICATED',
+  INVALID_SESSION = 'INVALID_SESSION',
+
+  INVALID_JSON = 'INVALID_JSON',
+  INVALID_XP_AMOUNT = 'INVALID_XP_AMOUNT',
+  INVALID_STAT_NAME = 'INVALID_STAT_NAME',
+  MISSING_REQUIRED_FIELD = 'MISSING_REQUIRED_FIELD',
+  INVALID_DATA = 'INVALID_DATA',
+  INVALID_AMOUNT = 'INVALID_AMOUNT',
+  INVALID_MATCH_TYPE = 'INVALID_MATCH_TYPE',
+  INVALID_PRODUCT_ID = 'INVALID_PRODUCT_ID',
+
+  INSUFFICIENT_ABILITY_POINTS = 'INSUFFICIENT_ABILITY_POINTS',
+  INSUFFICIENT_CURRENCY = 'INSUFFICIENT_CURRENCY',
+  INSUFFICIENT_GEMS = 'INSUFFICIENT_GEMS',
+  PLAYER_STATS_NOT_FOUND = 'PLAYER_STATS_NOT_FOUND',
+  MATCH_NOT_FOUND = 'MATCH_NOT_FOUND',
+  PLAYER_INVENTORY_NOT_FOUND = 'PLAYER_INVENTORY_NOT_FOUND',
+  GEAR_NOT_FOUND = 'GEAR_NOT_FOUND',
+  GEAR_TYPE_MISMATCH = 'GEAR_TYPE_MISMATCH',
+  NO_GEAR_EQUIPPED = 'NO_GEAR_EQUIPPED',
+  INVALID_INVENTORY_DATA = 'INVALID_INVENTORY_DATA',
+  MATCH_STATE_NOT_FOUND = 'MATCH_STATE_NOT_FOUND',
+  TARGET_PLAYER_NOT_FOUND = 'TARGET_PLAYER_NOT_FOUND',
+  NO_LEADERBOARD_ENTRY = 'NO_LEADERBOARD_ENTRY',
+  REWARDS_ALREADY_CLAIMED = 'REWARDS_ALREADY_CLAIMED',
+  NOT_PARTICIPANT = 'NOT_PARTICIPANT',
+  NOT_YOUR_TURN = 'NOT_YOUR_TURN',
+  CANNOT_OWN_MATCH = 'CANNOT_OWN_MATCH',
+  MATCH_NO_LONGER_AVAILABLE = 'MATCH_NO_LONGER_AVAILABLE',
+  RANK_DIFFERENCE_TOO_LARGE = 'RANK_DIFFERENCE_TOO_LARGE',
+  INVALID_COMBAT_ACTION = 'INVALID_COMBAT_ACTION',
+
+  INTERNAL_ERROR = 'INTERNAL_ERROR',
+  DATABASE_ERROR = 'DATABASE_ERROR',
+  TIMEOUT = 'TIMEOUT'
+}
+
+export interface ErrorResponse {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+    timestamp: number;
+  };
+}
+
+export interface SuccessResponse<T> {
+  success: true;
+  data: T;
+}
+
+export function createErrorResponse(code: ErrorCode, message: string, details?: unknown): string {
+  return JSON.stringify({
+    success: false,
+    error: {
+      code,
+      message,
+      details,
+      timestamp: Date.now()
+    }
+  } as ErrorResponse);
+}
+
+export function createSuccessResponse<T>(data: T): string {
+  return JSON.stringify({
+    success: true,
+    data
+  } as SuccessResponse<T>);
+}

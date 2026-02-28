@@ -1,5 +1,7 @@
 import { Runtime } from "../types/nakama";
 import { getCacheManager } from "../utils/cache";
+import { createErrorResponse, ErrorCode } from "../types/errors";
+import { registerRpcWithMetrics } from "./metrics";
 
 export function registerRpcHealthCheck(initializer: Runtime.Initializer): void {
   registerRpcWithMetrics(initializer, "armored_archer/health_check", "health_check", rpcHealthCheck);
@@ -37,9 +39,7 @@ function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
   ]);
 
   if (objects.length === 0) {
-    return JSON.stringify({
-      error: "Player stats not found"
-    });
+    return createErrorResponse(ErrorCode.PLAYER_STATS_NOT_FOUND, "Player stats not found");
   }
 
   const stats = objects[0].value ?? "{}";

@@ -1,6 +1,7 @@
 import { Runtime } from "../types/nakama";
 import { PvPMatch } from "./matchmaker";
 import { PlayerStats } from "../types/game";
+import { createErrorResponse, ErrorCode } from "../types/errors";
 
 export interface CombatAction {
   match_id: string;
@@ -55,9 +56,7 @@ function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk:
   const action: CombatAction = JSON.parse(payload);
 
   if (!action.match_id || !action.action_type || action.angle === undefined) {
-    return JSON.stringify({
-      error: "Invalid combat action"
-    });
+    return createErrorResponse(ErrorCode.INVALID_COMBAT_ACTION, "Invalid combat action");
   }
 
   const matchObjects = nk.storageRead([
@@ -69,31 +68,23 @@ function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk:
   ]);
 
   if (matchObjects.length === 0) {
-    return JSON.stringify({
-      error: "Match not found"
-    });
+    return createErrorResponse(ErrorCode.MATCH_NOT_FOUND, "Match not found");
   }
 
   const match = JSON.parse(matchObjects[0].value);
 
   if (match.status !== "active") {
-    return JSON.stringify({
-      error: "Match is not active"
-    });
+    return createErrorResponse(ErrorCode.MATCH_NO_LONGER_AVAILABLE, "Match is not active");
   }
 
   if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
-    return JSON.stringify({
-      error: "Not a participant in this match"
-    });
+    return createErrorResponse(ErrorCode.NOT_PARTICIPANT, "Not a participant in this match");
   }
 
   const matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
 
   if (matchState.current_turn_user_id !== ctx.userId) {
-    return JSON.stringify({
-      error: "Not your turn"
-    });
+    return createErrorResponse(ErrorCode.NOT_YOUR_TURN, "Not your turn");
   }
 
   const result = processCombatAction(ctx.userId, action, match, matchState, nk, logger);
@@ -120,9 +111,7 @@ function rpcGetMatchState(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
   const request = JSON.parse(payload);
 
   if (!request.match_id) {
-    return JSON.stringify({
-      error: "Match ID required"
-    });
+    return createErrorResponse(ErrorCode.MISSING_REQUIRED_FIELD, "Match ID required");
   }
 
   const stateObjects = nk.storageRead([
@@ -134,9 +123,7 @@ function rpcGetMatchState(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
   ]);
 
   if (stateObjects.length === 0) {
-    return JSON.stringify({
-      error: "Match state not found"
-    });
+    return createErrorResponse(ErrorCode.MATCH_STATE_NOT_FOUND, "Match state not found");
   }
 
   return stateObjects[0].value;
