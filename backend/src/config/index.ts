@@ -194,7 +194,10 @@ export function validateRequiredConfig(): void {
   ];
   
   for (const { key, path: configPath } of requiredKeys) {
-    const value = key.split('.').reduce((obj: Record<string, unknown> | undefined, k) => obj?.[k as keyof typeof obj], config);
+    const value = key.split('.').reduce((obj: unknown, k) => {
+      if (typeof obj !== 'object' || obj === null) return undefined;
+      return (obj as Record<string, unknown>)[k];
+    }, config);
     if (!value || value === 'default-token-key' || value === 'default-refresh-key') {
       if (config.environment === 'production') {
         errors.push(`${configPath} must be set in production`);
