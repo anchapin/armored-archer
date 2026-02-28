@@ -1,11 +1,12 @@
 import { Runtime } from "../types/nakama";
 import { getCacheManager } from "../utils/cache";
+import { registerRpcWithMetrics } from "./metrics";
 
 export function registerRpcHealthCheck(initializer: Runtime.Initializer): void {
   registerRpcWithMetrics(initializer, "armored_archer/health_check", "health_check", rpcHealthCheck);
 }
 
-function rpcHealthCheck(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcHealthCheck(ctx: Runtime.Context, logger: Runtime.Logger, _nk: Runtime.Nakama, _payload: string): string {
   logger.info("Armored Archer health check called");
   return JSON.stringify({
     status: "ok",
@@ -18,7 +19,7 @@ export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): voi
   registerRpcWithMetrics(initializer, "armored_archer/get_player_stats", "get_player_stats", rpcGetPlayerStats);
 }
 
-function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Getting player stats for user: %s", ctx.userId);
 
   const cacheManager = getCacheManager(logger);
