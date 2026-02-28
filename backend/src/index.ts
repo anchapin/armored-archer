@@ -11,6 +11,14 @@ import {
   registerRpcSubmitCombatAction, 
   registerRpcGetMatchState 
 } from "./modules/combat_system";
+import { 
+  registerRpcGetSeasonInfo,
+  registerRpcGetLeaderboard,
+  registerRpcUpdateRank,
+  registerRpcGetSeasonRewards,
+  registerRpcClaimSeasonRewards,
+  registerRpcEndSeason
+} from "./modules/season_system";
 
 const InitModule: InitModule = function(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, initializer: Runtime.Initializer) {
   logger.info("Armored Archer server module initialized");
@@ -25,6 +33,12 @@ const InitModule: InitModule = function(ctx: Runtime.Context, logger: Runtime.Lo
   registerRpcGetPlayerRank(initializer);
   registerRpcSubmitCombatAction(initializer);
   registerRpcGetMatchState(initializer);
+  registerRpcGetSeasonInfo(initializer);
+  registerRpcGetLeaderboard(initializer);
+  registerRpcUpdateRank(initializer);
+  registerRpcGetSeasonRewards(initializer);
+  registerRpcClaimSeasonRewards(initializer);
+  registerRpcEndSeason(initializer);
 };
 
 export default InitModule;

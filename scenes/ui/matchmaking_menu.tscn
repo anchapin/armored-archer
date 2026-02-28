@@ -79,6 +79,10 @@ text = "Punch Up (High Risk/Reward)"
 layout_mode = 2
 alignment = 1
 
+[node name="LeaderboardButton" type="Button" parent="VBoxContainer/BottomPanel"]
+layout_mode = 2
+text = "Leaderboard"
+
 [node name="BackButton" type="Button" parent="VBoxContainer/BottomPanel"]
 layout_mode = 2
 text = "Back"

@@ -8,6 +8,7 @@ extends Control
 @onready var create_ranked_button: Button = $VBoxContainer/CreatePanel/CreateRankedButton
 @onready var create_casual_button: Button = $VBoxContainer/CreatePanel/CreateCasualButton
 @onready var punch_up_check: CheckBox = $VBoxContainer/CreatePanel/PunchUpCheck
+@onready var leaderboard_button: Button = $VBoxContainer/BottomPanel/LeaderboardButton
 @onready var back_button: Button = $VBoxContainer/BottomPanel/BackButton
 @onready var loading_label: Label = $VBoxContainer/LoadingLabel
 
@@ -26,6 +27,7 @@ func _ready() -> void:
 	list_button.pressed.connect(_on_list_pressed)
 	create_ranked_button.pressed.connect(_on_create_ranked_pressed)
 	create_casual_button.pressed.connect(_on_create_casual_pressed)
+	leaderboard_button.pressed.connect(_on_leaderboard_pressed)
 	back_button.pressed.connect(_on_back_pressed)
 	
 	if matchmaker_manager:
@@ -129,6 +131,9 @@ func _on_accept_match(match_id: String) -> void:
 		return
 	
 	matchmaker_manager.accept_match(match_id)
+
+func _on_leaderboard_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/ui/leaderboard_menu.tscn")
 
 func _on_match_created(match: Dictionary) -> void:
 	print("Match created: %s" % match.get("match_id", ""))
