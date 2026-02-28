@@ -1,7 +1,26 @@
 import { Runtime } from "../types/nakama";
-import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
-import { getCacheManager } from "../utils/cache";
-import { batchGetPlayerStats, getPlayerStatsWithCache } from "../utils/db_optimizer";
+import { PlayerStats } from "../types/game";
+
+export interface SeasonRewards {
+  rank_tier: "legendary" | "epic" | "rare" | "uncommon" | "common";
+  coins: number;
+  gems: number;
+  cosmetics?: {
+    title: string;
+    aura?: string;
+  };
+}
+
+export interface LeaderboardRecord {
+  ownerId: string;
+  username: string;
+  rank: number;
+  score: number;
+  metadata?: string;
+  expiry?: number;
+  maxNumScore?: number;
+  numScore?: number;
+}
 
 export interface SeasonInfo {
   season_id: string;
@@ -45,19 +64,8 @@ export function registerRpcGetSeasonInfo(initializer: Runtime.Initializer): void
 function rpcGetSeasonInfo(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get season info called for user: %s", ctx.userId);
 
-  const cacheManager = getCacheManager(logger);
-  const seasonKey = `season_${getCurrentSeason().season_id}`;
-  const cachedSeasonInfo = cacheManager.get<string>("season_info", seasonKey);
-
-  let currentSeason: SeasonInfo;
-  if (cachedSeasonInfo !== undefined) {
-    currentSeason = JSON.parse(cachedSeasonInfo);
-  } else {
-    currentSeason = getCurrentSeason();
-    cacheManager.set("season_info", seasonKey, JSON.stringify(currentSeason));
-  }
-
-  const userStats = getPlayerStats(nk, ctx.userId, logger);
+  const currentSeason = getCurrentSeason();
+  const userStats = getPlayerStats(nk, ctx.userId);
 
   const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
 
@@ -78,53 +86,31 @@ function rpcGetLeaderboard(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
   logger.info("Get leaderboard called for user: %s", ctx.userId);
 
   const currentSeason = getCurrentSeason();
-  const requestParse = safeParsePayload<{ limit?: number }>(payload, logger, "get_leaderboard");
-  const request = requestParse || {};
+  const request = JSON.parse(payload);
   const limit = request.limit || 50;
 
-  const cacheManager = getCacheManager(logger);
-  const leaderboardKey = `${currentSeason.season_id}_${limit}`;
-  const cachedLeaderboard = cacheManager.get<string>("leaderboards", leaderboardKey);
+  const records = nk.leaderboardRecordList(
+    currentSeason.season_id,
+    [],
+    limit,
+    "",
+    0
+  );
 
-  let result: string;
-  if (cachedLeaderboard !== undefined) {
-    result = cachedLeaderboard;
-  } else {
-    const records = nk.leaderboardRecordList(
-      currentSeason.season_id,
-      [],
-      limit,
-      "",
-      0
-    );
+  const entries: LeaderboardEntry[] = records.map((record: LeaderboardRecord) => ({
+    owner_id: record.ownerId,
+    username: record.username,
+    rank: record.rank,
+    score: record.score,
+    meta: JSON.parse(record.metadata || "{}")
+  }));
 
-    const entries: LeaderboardEntry[] = records.map((record: any) => {
-      const parseResult = safeParse(record.metadata || "{}", null, logger, "leaderboard_metadata");
-      const meta = parseResult.success && parseResult.data ? parseResult.data : {
-        wins: 0,
-        losses: 0,
-        win_rate: 0,
-        punch_up_wins: 0
-      };
-      return {
-        owner_id: record.ownerId,
-        username: record.username,
-        rank: record.rank,
-        score: record.score,
-        meta: meta
-      };
-    });
-
-    result = JSON.stringify({
-      success: true,
-      season: currentSeason,
-      leaderboard: entries,
-      total: records.length
-    });
-    cacheManager.set("leaderboards", leaderboardKey, result);
-  }
-
-  return result;
+  return JSON.stringify({
+    success: true,
+    season: currentSeason,
+    leaderboard: entries,
+    total: records.length
+  });
 }
 
 export function registerRpcUpdateRank(initializer: Runtime.Initializer): void {
@@ -134,11 +120,7 @@ export function registerRpcUpdateRank(initializer: Runtime.Initializer): void {
 function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Update rank called for user: %s", ctx.userId);
 
-  const request = safeParsePayload<RankChange>(payload, logger, "update_rank");
-  
-  if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
-  }
+  const request: RankChange = JSON.parse(payload);
 
   if (!request.winner_id || !request.loser_id) {
     return JSON.stringify({
@@ -147,10 +129,6 @@ function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime
   }
 
   const currentSeason = getCurrentSeason();
-
-  const statsMap = batchGetPlayerStats(nk, [request.winner_id, request.loser_id], logger);
-  const winnerStats = statsMap.get(request.winner_id);
-  const loserStats = statsMap.get(request.loser_id);
 
   const winnerEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
   const loserEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
@@ -203,10 +181,6 @@ function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime
       punch_up_wins: String(loserMeta.punch_up_wins)
     }
   );
-
-  // Invalidate leaderboard cache
-  const cacheManager = getCacheManager(logger);
-  cacheManager.clear("leaderboards");
 
   return JSON.stringify({
     success: true,
@@ -416,27 +390,41 @@ function getLeaderboardEntry(nk: Runtime.Nakama, userId: string, leaderboardId: 
   }
 
   const record = records[0];
-  const parseResult = safeParse<{ wins: number; losses: number; win_rate: number; punch_up_wins: number }>(record.metadata || "{}", null, undefined, "leaderboard_metadata");
-  const meta = parseResult.success && parseResult.data ? parseResult.data : {
-    wins: 0,
-    losses: 0,
-    win_rate: 0,
-    punch_up_wins: 0
-  };
   return {
     owner_id: record.ownerId,
     username: record.username,
     rank: record.rank,
     score: record.score,
-    meta: meta
+    meta: JSON.parse(record.metadata || "{}")
   };
 }
 
-function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logger): any {
-  return getPlayerStatsWithCache(nk, userId, logger);
+function getPlayerStats(nk: Runtime.Nakama, userId: string): PlayerStats {
+  const objects = nk.storageRead([
+    {
+      collection: "player_stats",
+      key: userId,
+      userId: userId
+    }
+  ]);
+
+  if (objects.length === 0) {
+    return {
+      level: 1,
+      xp: 0,
+      stats: {
+        attack: 10,
+        defense: 10,
+        dodge: 10,
+        crit_rate: 5
+      }
+    };
+  }
+
+  return JSON.parse(objects[0].value);
 }
 
-function calculateRewards(rank: number, seasonNumber: number): any {
+function calculateRewards(rank: number, seasonNumber: number): SeasonRewards {
   if (rank <= 10) {
     return {
       rank_tier: "legendary",

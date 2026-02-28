@@ -1,6 +1,5 @@
 import { Runtime } from "../types/nakama";
-import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
-import { getPlayerStatsWithCache } from "../utils/db_optimizer";
+import { TurnData, PlayerStats } from "../types/game";
 
 export interface PvPMatch {
   match_id: string;
@@ -13,8 +12,8 @@ export interface PvPMatch {
   status: "pending" | "active" | "completed";
   created_at: number;
   updated_at: number;
-  creator_turn_data?: any;
-  opponent_turn_data?: any;
+  creator_turn_data?: TurnData;
+  opponent_turn_data?: TurnData;
   winner?: string;
 }
 
@@ -42,11 +41,24 @@ export function registerRpcListMatches(initializer: Runtime.Initializer): void {
 function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("List matches called for user: %s", ctx.userId);
 
-  const requestParse = safeParsePayload<ListMatchesRequest>(payload, logger, "list_matches");
-  const request = requestParse || {};
+  const request: ListMatchesRequest = JSON.parse(payload) || {};
   const limit = request.limit || 20;
 
-  const playerStats = getPlayerStatsWithCache(nk, ctx.userId, logger);
+  const objects = nk.storageRead([
+    {
+      collection: "player_stats",
+      key: ctx.userId,
+      userId: ctx.userId
+    }
+  ]);
+
+  if (objects.length === 0) {
+    return JSON.stringify({
+      error: "Player stats not found"
+    });
+  }
+
+  const playerStats = JSON.parse(objects[0].value);
   const playerRank = calculateRank(playerStats);
 
   const matches = nk.storageList(
@@ -60,12 +72,7 @@ function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   const filteredMatches: PvPMatch[] = [];
 
   for (const object of matches) {
-    const parseResult = safeParse<PvPMatch>(object.value, null, logger, "pvp_match");
-    if (!parseResult.success || !parseResult.data) {
-      logger.error("Failed to parse match data");
-      continue;
-    }
-    const match: PvPMatch = parseResult.data;
+    const match: PvPMatch = JSON.parse(object.value);
     
     if (match.status !== "pending") {
       continue;
@@ -109,11 +116,7 @@ export function registerRpcCreateMatch(initializer: Runtime.Initializer): void {
 function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Create match called for user: %s", ctx.userId);
 
-  const request = safeParsePayload<CreateMatchRequest>(payload, logger, "create_match");
-  
-  if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
-  }
+  const request: CreateMatchRequest = JSON.parse(payload);
 
   if (!request.match_type || (request.match_type !== "ranked" && request.match_type !== "casual")) {
     return JSON.stringify({
@@ -121,11 +124,39 @@ function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
 
-  const playerStats = getPlayerStatsWithCache(nk, ctx.userId, logger);
+  const objects = nk.storageRead([
+    {
+      collection: "player_stats",
+      key: ctx.userId,
+      userId: ctx.userId
+    }
+  ]);
+
+  if (objects.length === 0) {
+    return JSON.stringify({
+      error: "Player stats not found"
+    });
+  }
+
+  const playerStats = JSON.parse(objects[0].value);
   const playerRank = calculateRank(playerStats);
 
   if (request.target_opponent_id) {
-    const targetPlayerStats = getPlayerStatsWithCache(nk, request.target_opponent_id, logger);
+    const targetStats = nk.storageRead([
+      {
+        collection: "player_stats",
+        key: request.target_opponent_id,
+        userId: request.target_opponent_id
+      }
+    ]);
+
+    if (targetStats.length === 0) {
+      return JSON.stringify({
+        error: "Target player not found"
+      });
+    }
+
+    const targetPlayerStats = JSON.parse(targetStats[0].value);
     const targetRank = calculateRank(targetPlayerStats);
 
     if (!request.is_punch_up && Math.abs(playerRank - targetRank) > 3) {
@@ -197,11 +228,7 @@ export function registerRpcAcceptMatch(initializer: Runtime.Initializer): void {
 function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Accept match called for user: %s", ctx.userId);
 
-  const request = safeParsePayload<AcceptMatchRequest>(payload, logger, "accept_match");
-  
-  if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
-  }
+  const request: AcceptMatchRequest = JSON.parse(payload);
 
   if (!request.match_id) {
     return JSON.stringify({
@@ -223,12 +250,7 @@ function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
 
-  const matchParseResult = safeParse<PvPMatch>(objects[0].value, null, logger, "pvp_match");
-  if (!matchParseResult.success || !matchParseResult.data) {
-    logger.error("Failed to parse match data: %s", request.match_id);
-    return createErrorResponse("INVALID_DATA", "Failed to parse match data");
-  }
-  const match: PvPMatch = matchParseResult.data;
+  const match: PvPMatch = JSON.parse(objects[0].value);
 
   if (match.creator_id === ctx.userId) {
     return JSON.stringify({
@@ -242,7 +264,21 @@ function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
 
-  const playerStats = getPlayerStatsWithCache(nk, ctx.userId, logger);
+  const playerObjects = nk.storageRead([
+    {
+      collection: "player_stats",
+      key: ctx.userId,
+      userId: ctx.userId
+    }
+  ]);
+
+  if (playerObjects.length === 0) {
+    return JSON.stringify({
+      error: "Player stats not found"
+    });
+  }
+
+  const playerStats = JSON.parse(playerObjects[0].value);
   match.opponent_id = ctx.userId;
   match.opponent_rank = calculateRank(playerStats);
   match.status = "active";
@@ -270,7 +306,21 @@ export function registerRpcGetPlayerRank(initializer: Runtime.Initializer): void
 function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get player rank called for user: %s", ctx.userId);
 
-  const playerStats = getPlayerStatsWithCache(nk, ctx.userId, logger);
+  const objects = nk.storageRead([
+    {
+      collection: "player_stats",
+      key: ctx.userId,
+      userId: ctx.userId
+    }
+  ]);
+
+  if (objects.length === 0) {
+    return JSON.stringify({
+      error: "Player stats not found"
+    });
+  }
+
+  const playerStats = JSON.parse(objects[0].value);
   const rank = calculateRank(playerStats);
 
   return JSON.stringify({
@@ -281,7 +331,7 @@ function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
   });
 }
 
-function calculateRank(playerStats: any): number {
+function calculateRank(playerStats: PlayerStats): number {
   const baseRank = playerStats.level * 10;
   const statsTotal = playerStats.stats.attack + 
                      playerStats.stats.defense + 

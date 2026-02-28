@@ -6,6 +6,7 @@ export interface CacheMetrics {
   misses: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 class CacheManager {
   private caches: Map<string, LRUCache<string, any>>;
   private metrics: Map<string, CacheMetrics>;
