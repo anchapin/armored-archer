@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://touch_ui_scene"]
+[gd_scene load_steps=4 format=3 uid="uid://touch_ui_scene"]
 
 [ext_resource type="Script" path="res://scenes/touch_ui.gd" id="1_touch_ui_script"]
 [ext_resource type="PackedScene" uid="uid://virtual_joystick_scene" path="res://scenes/virtual_joystick.tscn" id="2_joystick_scene"]
+[ext_resource type="PackedScene" uid="uid://safe_area_container" path="res://scenes/ui/safe_area_container.tscn" id="3_safe_area_container"]
 
 [node name="TouchUI" type="Control"]
 layout_mode = 3
@@ -11,6 +12,14 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_touch_ui_script")
+
+[node name="SafeAreaContainer" parent="." instance=ExtResource("3_safe_area_container")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="MovementJoystick" parent="." instance=ExtResource("2_joystick_scene")]
 layout_mode = 1
