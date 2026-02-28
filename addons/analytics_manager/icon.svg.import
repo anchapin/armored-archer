@@ -1,0 +1,15 @@
+[remap]
+
+importer="svg"
+type="Texture2D"
+uid="uid://analytics_manager_icon"
+path="res://.godot/imported/icon.svg-xxxxxx.png"
+
+[deps]
+
+source_file="res://addons/analytics_manager/icon.svg"
+dest_files=["res://.godot/imported/icon.svg-xxxxxx.png"]
+
+[params]
+
+compress_mode=0
