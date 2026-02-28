@@ -86,8 +86,7 @@ function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
       continue;
     }
 
-    const rankDiff = Math.abs(match.creator_rank - playerRank);
-    
+
     if (request.min_rank !== undefined && match.creator_rank < request.min_rank) {
       continue;
     }
@@ -303,7 +302,7 @@ export function registerRpcGetPlayerRank(initializer: Runtime.Initializer): void
   initializer.registerRpc("armored_archer/get_player_rank", rpcGetPlayerRank);
 }
 
-function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Get player rank called for user: %s", ctx.userId);
 
   const objects = nk.storageRead([
