@@ -1,0 +1,116 @@
+[gd_scene load_steps=2 format=3 uid="uid://c1f3e2a1d2c4f6"]
+
+[ext_resource type="Script" path="res://scenes/ui/gear_inventory.gd" id="1_gear"]
+
+[node name="GearInventory" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_gear")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+
+[node name="FilterContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="FilterLabel" type="Label" parent="VBoxContainer/FilterContainer"]
+layout_mode = 2
+text = "Filter:"
+size_flags_horizontal = 0
+
+[node name="FilterCommon" type="CheckBox" parent="VBoxContainer/FilterContainer"]
+layout_mode = 2
+text = "Common"
+button_pressed = true
+
+[node name="FilterRare" type="CheckBox" parent="VBoxContainer/FilterContainer"]
+layout_mode = 2
+text = "Rare"
+button_pressed = true
+
+[node name="FilterLegendary" type="CheckBox" parent="VBoxContainer/FilterContainer"]
+layout_mode = 2
+text = "Legendary"
+button_pressed = true
+
+[node name="GearList" type="ItemList" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+select_mode = 1
+same_column_width = true
+
+[node name="GearDetails" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="GearNameLabel" type="Label" parent="VBoxContainer/GearDetails"]
+layout_mode = 2
+text = "Select Gear"
+horizontal_alignment = 1
+
+[node name="GearRarityLabel" type="Label" parent="VBoxContainer/GearDetails"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+
+[node name="GearTypeLabel" type="Label" parent="VBoxContainer/GearDetails"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+
+[node name="Separator1" type="HSeparator" parent="VBoxContainer/GearDetails"]
+layout_mode = 2
+
+[node name="StatsLabel" type="Label" parent="VBoxContainer/GearDetails"]
+layout_mode = 2
+text = "Stats:"
+horizontal_alignment = 0
+
+[node name="GearStatsContainer" type="VBoxContainer" parent="VBoxContainer/GearDetails"]
+layout_mode = 2
+
+[node name="Separator2" type="HSeparator" parent="VBoxContainer/GearDetails"]
+layout_mode = 2
+
+[node name="ModifiersLabel" type="Label" parent="VBoxContainer/GearDetails"]
+layout_mode = 2
+text = "Modifiers:"
+horizontal_alignment = 0
+
+[node name="GearModifiersContainer" type="VBoxContainer" parent="VBoxContainer/GearDetails"]
+layout_mode = 2
+
+[node name="ButtonsContainer" type="HBoxContainer" parent="VBoxContainer/GearDetails"]
+layout_mode = 2
+
+[node name="EquipButton" type="Button" parent="VBoxContainer/GearDetails/ButtonsContainer"]
+layout_mode = 2
+text = "Equip"
+size_flags_horizontal = 3
+
+[node name="UnequipButton" type="Button" parent="VBoxContainer/GearDetails/ButtonsContainer"]
+layout_mode = 2
+text = "Unequip"
+size_flags_horizontal = 3
+
+[node name="CompareButton" type="Button" parent="VBoxContainer/GearDetails/ButtonsContainer"]
+layout_mode = 2
+text = "Compare"
+size_flags_horizontal = 3
+
+[node name="BackButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Back"

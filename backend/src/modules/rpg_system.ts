@@ -62,7 +62,23 @@ function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nak
       }
     };
   } else {
-    playerStats = JSON.parse(objects[0].value);
+    const value = objects[0].value;
+    if (value) {
+      playerStats = JSON.parse(value) as PlayerStats;
+    } else {
+      playerStats = {
+        user_id: ctx.userId,
+        level: 1,
+        xp: 0,
+        ability_points: 0,
+        stats: {
+          attack: 10,
+          defense: 10,
+          dodge: 10,
+          crit_rate: 5
+        }
+      };
+    }
   }
 
   const oldLevel = playerStats.level;
@@ -130,7 +146,7 @@ function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
     });
   }
 
-  const playerStats: PlayerStats = JSON.parse(objects[0].value);
+  const playerStats: PlayerStats = JSON.parse(objects[0].value ?? "{}");
 
   if (playerStats.ability_points < request.points) {
     return JSON.stringify({
@@ -177,7 +193,7 @@ function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
     });
   }
 
-  return objects[0].value;
+  return objects[0].value ?? "{}";
 }
 
 function calculateLevel(xp: number): number {

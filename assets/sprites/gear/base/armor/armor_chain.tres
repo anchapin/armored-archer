@@ -1,0 +1,5 @@
+[gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://gear_armor_chain"]
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
+size = Vector2(24, 32)
+[resource]
+size = Vector2(24, 32)
