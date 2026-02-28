@@ -149,7 +149,7 @@ const GEAR_NAMES = {
 
 function prdRandom(n: number): number {
   let chance: number = n;
-  let roll: number = Math.random();
+  const roll: number = Math.random();
   
   if (roll < chance) {
     chance = 0.25;
@@ -165,7 +165,7 @@ function generateGearId(): string {
 }
 
 function rollRarity(): string {
-  let roll = Math.random();
+  const roll = Math.random();
   
   if (roll < RARITIES.legendary.drop_chance) {
     return "legendary";

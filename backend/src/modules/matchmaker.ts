@@ -68,7 +68,7 @@ function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     ""
   );
 
-  let filteredMatches: PvPMatch[] = [];
+  const filteredMatches: PvPMatch[] = [];
 
   for (const object of matches) {
     const match: PvPMatch = JSON.parse(object.value);
