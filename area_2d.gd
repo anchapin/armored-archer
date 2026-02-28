@@ -65,6 +65,9 @@ func _on_body_entered(body: Node2D) -> void:
 		spawn_hit_effect()
 		queue_free()
 
+const HIT_EFFECT_SCENE = preload("res://assets/particles/hit_effect.tscn")
+
 func spawn_hit_effect() -> void:
-	# TODO: Instantiate a particle effect (like sparks or dust) at global_position
-	pass
+	var hit_effect = HIT_EFFECT_SCENE.instantiate()
+	get_tree().root.add_child(hit_effect)
+	hit_effect.global_position = global_position

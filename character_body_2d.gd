@@ -9,22 +9,27 @@ extends CharacterBody2D
 # --- State Variables ---
 var is_aiming: bool = false
 var current_aim_direction: Vector2 = Vector2.ZERO
+var virtual_move_direction: Vector2 = Vector2.ZERO
+var virtual_aim_direction: Vector2 = Vector2.ZERO
 
 # --- Node References ---
 # The '$' syntax is Godot's way of querying child nodes (similar to document.getElementById)
 # We assume you have a Node2D called 'BowPivot' holding your Bow sprite.
 @onready var bow_pivot: Node2D = $BowPivot
 @onready var body_sprite: Sprite2D = $BodySprite
+@onready var animation_player: AnimationPlayer = $AnimationPlayer
 
 func _physics_process(_delta: float) -> void:
 	handle_movement()
 	handle_aiming_and_shooting()
 
 func handle_movement() -> void:
-	# 1. Read Left Joystick
-	# Input.get_vector normalizes diagonal movement automatically (so you don't move 
-	# faster when pushing up and right simultaneously).
-	var move_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	# 1. Read Left Joystick (Virtual or Physical)
+	var move_dir := virtual_move_direction
+	if move_dir.length() == 0:
+		# Input.get_vector normalizes diagonal movement automatically (so you don't move 
+		# faster when pushing up and right simultaneously).
+		move_dir = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	
 	# 2. Apply Velocity
 	velocity = move_dir * base_speed
@@ -38,8 +43,10 @@ func handle_movement() -> void:
 		body_sprite.flip_h = move_dir.x < 0
 
 func handle_aiming_and_shooting() -> void:
-	# 1. Read Right Joystick
-	var aim_dir := Input.get_vector("aim_left", "aim_right", "aim_up", "aim_down")
+	# 1. Read Right Joystick (Virtual or Physical)
+	var aim_dir := virtual_aim_direction
+	if aim_dir.length() == 0:
+		aim_dir = Input.get_vector("aim_left", "aim_right", "aim_up", "aim_down")
 	
 	# 2. Check for Active Aiming (> 0.1 accounts for thumbstick deadzones)
 	if aim_dir.length() > 0.1:
@@ -50,15 +57,18 @@ func handle_aiming_and_shooting() -> void:
 		# .angle() returns radians, which Godot uses natively for rotation.
 		bow_pivot.rotation = current_aim_direction.angle()
 		
-		# TODO: Trigger "draw_bow" Animation here
+		# Trigger "draw" animation
+		if not animation_player.is_playing():
+			animation_player.play("draw")
 		
 	# 3. Detect "Release" to Fire
 	elif is_aiming:
 		# If aim_dir length is 0 but we WERE aiming, the player released their thumb.
+		animation_player.play("release")
 		fire_arrow(current_aim_direction)
 		is_aiming = false # Reset state
 
-const ARROW_SCENE = preload("res://node_2d.tscn") # Load the arrow blueprint
+const ARROW_SCENE = preload("res://scenes/arrow.tscn")
 
 func fire_arrow(direction: Vector2) -> void:
 	var arrow_instance = ARROW_SCENE.instantiate()
@@ -83,3 +93,9 @@ func fire_arrow(direction: Vector2) -> void:
 	
 	# Server-Side Logic (For PvP):
 	# TODO: Send RPC to Nakama: {"action": "shoot", "angle": direction.angle(), "stats": current_loadout}
+
+func set_virtual_move_direction(direction: Vector2) -> void:
+	virtual_move_direction = direction
+
+func set_virtual_aim_direction(direction: Vector2) -> void:
+	virtual_aim_direction = direction
