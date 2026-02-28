@@ -1,20 +1,21 @@
-[gd_scene load_steps=7 format=3 uid="uid://player_scene"]
+[gd_scene load_steps=8 format=3 uid="uid://player_scene"]
 
 [ext_resource type="Script" path="res://character_body_2d.gd" id="1_character_body"]
 [ext_resource type="PlaceholderTexture2D" uid="uid://character_body_sprite" path="res://assets/sprites/character_body.tres" id="2_body_sprite"]
 [ext_resource type="PlaceholderTexture2D" uid="uid://bow_sprite" path="res://assets/sprites/bow.tres" id="3_bow_sprite"]
+[ext_resource type="PackedScene" uid="uid://modular_character_sprite" path="res://scenes/player/gear/modular_character_sprite.tscn" id="4_modular_character"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
 size = Vector2(32, 32)
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_bow_animations"]
 _data = {
-"RESET": ExtResource("4_reset"),
-"draw": ExtResource("5_draw"),
-"release": ExtResource("6_release")
+"RESET": ExtResource("5_reset"),
+"draw": ExtResource("6_draw"),
+"release": ExtResource("7_release")
 }
 
-[sub_resource type="Animation" id="4_reset"]
+[sub_resource type="Animation" id="5_reset"]
 length = 0.001
 tracks/0/type = "value"
 tracks/0/imported = false
@@ -28,7 +29,7 @@ tracks/0/keys = {
 "values": [Vector2(1, 1)]
 }
 
-[sub_resource type="Animation" id="5_draw"]
+[sub_resource type="Animation" id="6_draw"]
 resource_name = "draw"
 length = 0.3
 loop_mode = 0
@@ -44,7 +45,7 @@ tracks/0/keys = {
 "values": [Vector2(1, 1), Vector2(1.3, 1.3)]
 }
 
-[sub_resource type="Animation" id="6_release"]
+[sub_resource type="Animation" id="7_release"]
 resource_name = "release"
 length = 0.15
 loop_mode = 0
@@ -85,3 +86,6 @@ offset = Vector2(32, 0)
 libraries = {
 "": SubResource("AnimationLibrary_bow_animations")
 }
+
+[node name="ModularCharacter" parent="." instance=ExtResource("4_modular_character")]
+visible = false

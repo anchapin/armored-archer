@@ -1,0 +1,239 @@
+extends Node
+
+signal gear_generated(gear_data: Dictionary)
+signal gear_equipped(slot: String, gear_id: String)
+signal gear_unequipped(slot: String)
+signal inventory_updated(inventory: Dictionary)
+
+var http_request: HTTPRequest
+var network_manager: NetworkManager
+
+var player_inventory: Dictionary = {}
+var equipped_gear: Dictionary = {}
+var unlocked_modifier_pools: Array = []
+
+func _ready() -> void:
+	network_manager = get_node_or_null("/root/NetworkManager")
+	
+	http_request = HTTPRequest.new()
+	add_child(http_request)
+	http_request.request_completed.connect(_on_http_request_completed)
+	
+	if network_manager and network_manager.is_session_valid():
+		_load_inventory()
+
+func generate_gear(stage_id: String, boss_defeated: bool) -> void:
+	if not network_manager or not network_manager.is_session_valid():
+		push_error("Cannot generate gear: not connected to server")
+		return
+	
+	var url: String = "%s/v2/rpc/armored_archer/generate_gear" % network_manager.base_url
+	var headers: PackedStringArray = network_manager.get_auth_headers()
+	
+	var body: Dictionary = {
+		"stage_id": stage_id,
+		"boss_defeated": boss_defeated
+	}
+	
+	var json: JSON = JSON.new()
+	var json_string: String = json.stringify(body)
+	
+	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
+	if error != OK:
+		push_error("Failed to generate gear request")
+
+func equip_gear(gear_id: String, slot: String) -> void:
+	if not network_manager or not network_manager.is_session_valid():
+		push_error("Cannot equip gear: not connected to server")
+		return
+	
+	var url: String = "%s/v2/rpc/armored_archer/equip_gear" % network_manager.base_url
+	var headers: PackedStringArray = network_manager.get_auth_headers()
+	
+	var body: Dictionary = {
+		"gear_id": gear_id,
+		"slot": slot
+	}
+	
+	var json: JSON = JSON.new()
+	var json_string: String = json.stringify(body)
+	
+	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
+	if error != OK:
+		push_error("Failed to equip gear request")
+
+func unequip_gear(slot: String) -> void:
+	if not network_manager or not network_manager.is_session_valid():
+		push_error("Cannot unequip gear: not connected to server")
+		return
+	
+	var url: String = "%s/v2/rpc/armored_archer/unequip_gear" % network_manager.base_url
+	var headers: PackedStringArray = network_manager.get_auth_headers()
+	
+	var body: Dictionary = {
+		"slot": slot
+	}
+	
+	var json: JSON = JSON.new()
+	var json_string: String = json.stringify(body)
+	
+	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
+	if error != OK:
+		push_error("Failed to unequip gear request")
+
+func _load_inventory() -> void:
+	if not network_manager or not network_manager.is_session_valid():
+		return
+	
+	var url: String = "%s/v2/rpc/armored_archer/get_inventory" % network_manager.base_url
+	var headers: PackedStringArray = network_manager.get_auth_headers()
+	
+	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, "{}")
+	if error != OK:
+		push_error("Failed to load inventory")
+
+func unlock_modifier_pool(modifier_id: String) -> void:
+	if not network_manager or not network_manager.is_session_valid():
+		push_error("Cannot unlock modifier pool: not connected to server")
+		return
+	
+	var url: String = "%s/v2/rpc/armored_archer/unlock_modifier_pool" % network_manager.base_url
+	var headers: PackedStringArray = network_manager.get_auth_headers()
+	
+	var body: Dictionary = {
+		"modifier_id": modifier_id
+	}
+	
+	var json: JSON = JSON.new()
+	var json_string: String = json.stringify(body)
+	
+	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
+	if error != OK:
+		push_error("Failed to unlock modifier pool request")
+
+func _on_http_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+	var response_text: String = body.get_string_from_utf8()
+	
+	if response_code >= 200 and response_code < 300:
+		var json: JSON = JSON.new()
+		var parse_result: Error = json.parse(response_text)
+		
+		if parse_result == OK:
+			var response_data: Dictionary = json.data
+			
+			if response_data.has("payload"):
+				var payload_string: String = response_data.payload
+				var payload_json: JSON = JSON.new()
+				if payload_json.parse(payload_string) == OK:
+					var payload: Dictionary = payload_json.data
+					_process_payload(payload, response_data)
+			else:
+				_process_payload(response_data, response_data)
+	else:
+		push_error("Gear system request failed with code: %d" % response_code)
+
+func _process_payload(payload: Dictionary, response_data: Dictionary) -> void:
+	if payload.has("gear"):
+		var gear_data: Dictionary = payload.gear
+		player_inventory.gear = payload.inventory.gear
+		equipped_gear = payload.inventory.equipped_gear
+		unlocked_modifier_pools = payload.inventory.get("unlocked_modifier_pools", [])
+		gear_generated.emit(gear_data)
+		inventory_updated.emit(_get_full_inventory())
+	
+	if payload.has("success") and payload.success:
+		if payload.has("equipped_gear"):
+			equipped_gear = payload.equipped_gear
+			if payload.has("gear"):
+				var slot: String = payload.gear.type
+				var gear_id: String = payload.gear.id
+				gear_equipped.emit(slot, gear_id)
+			inventory_updated.emit(_get_full_inventory())
+		
+		if payload.has("unlocked_modifier_pools"):
+			unlocked_modifier_pools = payload.unlocked_modifier_pools
+			inventory_updated.emit(_get_full_inventory())
+	
+	if payload.has("gear"):
+		player_inventory.gear = payload.gear
+		equipped_gear = payload.get("equipped_gear", {})
+		unlocked_modifier_pools = payload.get("unlocked_modifier_pools", [])
+		inventory_updated.emit(_get_full_inventory())
+
+func _get_full_inventory() -> Dictionary:
+	return {
+		"gear": player_inventory.get("gear", []),
+		"equipped_gear": equipped_gear,
+		"unlocked_modifier_pools": unlocked_modifier_pools
+	}
+
+func get_gear_by_id(gear_id: String) -> Dictionary:
+	for gear in player_inventory.get("gear", []):
+		if gear.id == gear_id:
+			return gear
+	return {}
+
+func get_equipped_gear(slot: String) -> Dictionary:
+	if equipped_gear.has(slot):
+		return get_gear_by_id(equipped_gear[slot])
+	return {}
+
+func get_gear_stats_summary(gear_data: Dictionary) -> String:
+	var summary: String = ""
+	var rarity_colors: Dictionary = {
+		"common": "#FFFFFF",
+		"rare": "#0070DD",
+		"legendary": "#FF8000"
+	}
+	
+	var rarity: String = gear_data.get("rarity", "common")
+	var color: String = rarity_colors.get(rarity, "#FFFFFF")
+	
+	summary += "[color=%s][b]%s[/b][/color] (%s)\n" % [color, gear_data.get("name", ""), rarity.capitalize()]
+	
+	for stat in gear_data.get("stats", []):
+		summary += "%s: %d\n" % [stat.name, stat.value]
+	
+	for modifier in gear_data.get("modifiers", []):
+		summary += "[i]%s[/i]: %s\n" % [modifier.name, modifier.description]
+	
+	return summary
+
+func compare_gear(gear1: Dictionary, gear2: Dictionary) -> Dictionary:
+	var comparison: Dictionary = {
+		"better": null,
+		"differences": []
+	}
+	
+	var score1: int = _calculate_gear_score(gear1)
+	var score2: int = _calculate_gear_score(gear2)
+	
+	if score1 > score2:
+		comparison.better = "gear1"
+	elif score2 > score1:
+		comparison.better = "gear2"
+	else:
+		comparison.better = "equal"
+	
+	return comparison
+
+func _calculate_gear_score(gear_data: Dictionary) -> int:
+	var score: int = 0
+	
+	var rarity_multipliers: Dictionary = {
+		"common": 1,
+		"rare": 2,
+		"legendary": 4
+	}
+	
+	var rarity: String = gear_data.get("rarity", "common")
+	var rarity_mult: int = rarity_multipliers.get(rarity, 1)
+	
+	for stat in gear_data.get("stats", []):
+		score += stat.value * rarity_mult
+	
+	for modifier in gear_data.get("modifiers", []):
+		var modifier_value: int = (modifier.value_range[0] + modifier.value_range[1]) / 2
+		score += modifier_value * 2
+	
+	return score

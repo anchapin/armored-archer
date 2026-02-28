@@ -1,0 +1,5 @@
+[gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://skin_arrow_lightning"]
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
+size = Vector2(8, 24)
+[resource]
+size = Vector2(8, 24)

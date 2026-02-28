@@ -18,12 +18,13 @@ var virtual_move_direction: Vector2 = Vector2.ZERO
 var virtual_aim_direction: Vector2 = Vector2.ZERO
 
 # --- Node References ---
-# The '$' syntax is Godot's way of querying child nodes (similar to document.getElementById)
-# We assume you have a Node2D called 'BowPivot' holding your Bow sprite.
 @onready var bow_pivot: Node2D = $BowPivot
 @onready var body_sprite: Sprite2D = $BodySprite
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 @onready var hurt_box: Area2D = $HurtBox
+
+# --- Modular Sprite System ---
+@onready var modular_character: ModularCharacterSprite = $ModularCharacter
 
 # --- Auto Aim ---
 const AUTO_AIM_INDICATOR_SCENE = preload("res://scenes/player/auto_aim_indicator.tscn")
@@ -31,6 +32,9 @@ var auto_aim_indicator: Node2D = null
 
 func _ready() -> void:
 	add_to_group("Player")
+	
+	if modular_character:
+		TransmogManager.set_character_sprite(modular_character)
 	
 	if auto_aim_enabled:
 		auto_aim_indicator = AUTO_AIM_INDICATOR_SCENE.instantiate()
@@ -106,26 +110,15 @@ const ARROW_SCENE = preload("res://scenes/arrow.tscn")
 func fire_arrow(direction: Vector2) -> void:
 	var arrow_instance = ARROW_SCENE.instantiate()
 	
-	# Calculate total damage (Base Attack + Gear Stats)
-	var total_damage = base_attack + 10 # 10 represents extra damage from equipped bow
+	var total_stats = TransmogManager.get_total_stats()
+	var total_damage = base_attack + total_stats.attack
 	
-	# Fetch active modifiers from the player's current loadout
 	var active_modifiers = {
-		"piercing": 2 # This arrow will hit 3 enemies total before destroying itself
+		"piercing": 2
 	}
 	
-	# Add the arrow to the game world
 	get_tree().root.add_child(arrow_instance)
-	
-	# Initialize the arrow using the setup() function we just wrote
 	arrow_instance.setup(bow_pivot.global_position, direction, total_damage, active_modifiers)
-	
-	# Client-Side Visuals:
-	# TODO: Instantiate an Arrow.tscn (scene), set its global_position to 
-	# bow_pivot.global_position, apply the rotation, and give it velocity.
-	
-	# Server-Side Logic (For PvP):
-	# TODO: Send RPC to Nakama: {"action": "shoot", "angle": direction.angle(), "stats": current_loadout}
 
 func set_virtual_move_direction(direction: Vector2) -> void:
 	virtual_move_direction = direction

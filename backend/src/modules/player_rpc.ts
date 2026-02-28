@@ -34,5 +34,5 @@ function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
     });
   }
 
-  return objects[0].value;
+  return objects[0].value ?? "{}";
 }

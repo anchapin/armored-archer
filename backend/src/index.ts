@@ -19,6 +19,7 @@ import {
   registerRpcClaimSeasonRewards,
   registerRpcEndSeason
 } from "./modules/season_system";
+import { registerRpcValidatePurchase, registerRpcGetCurrency, registerRpcSpendGems } from "./modules/store";
 
 const InitModule: InitModule = function(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, initializer: Runtime.Initializer) {
   logger.info("Armored Archer server module initialized");
@@ -39,6 +40,9 @@ const InitModule: InitModule = function(ctx: Runtime.Context, logger: Runtime.Lo
   registerRpcGetSeasonRewards(initializer);
   registerRpcClaimSeasonRewards(initializer);
   registerRpcEndSeason(initializer);
+  registerRpcValidatePurchase(initializer);
+  registerRpcGetCurrency(initializer);
+  registerRpcSpendGems(initializer);
 };
 
 export default InitModule;
