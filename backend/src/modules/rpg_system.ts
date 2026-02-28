@@ -2,6 +2,7 @@ import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
 import { invalidatePlayerStatsCache } from "../utils/db_optimizer";
+import { registerRpcWithMetrics } from "./metrics";
 
 export interface PlayerStats {
   user_id: string;
@@ -201,7 +202,7 @@ export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): voi
   registerRpcWithMetrics(initializer, "armored_archer/get_player_stats", "get_player_stats", rpcGetPlayerStats);
 }
 
-function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Get player stats called for user: %s", ctx.userId);
 
   const cacheManager = getCacheManager(logger);
@@ -244,18 +245,4 @@ function calculateLevel(xp: number): number {
   }
 
   return level;
-}
-
-function getXPForLevel(level: number): number {
-  const baseXP = 100;
-  const growthFactor = 1.5;
-  let totalXP = 0;
-  let xpForLevel = baseXP;
-
-  for (let i = 1; i < level; i++) {
-    totalXP += xpForLevel;
-    xpForLevel = Math.floor(xpForLevel * growthFactor);
-  }
-
-  return totalXP;
 }

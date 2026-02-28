@@ -1,5 +1,4 @@
 import { Runtime } from "../types/nakama";
-import { PlayerStats } from "../types/game";
 
 export interface SeasonRewards {
   rank_tier: "legendary" | "epic" | "rare" | "uncommon" | "common";
@@ -61,11 +60,10 @@ export function registerRpcGetSeasonInfo(initializer: Runtime.Initializer): void
   initializer.registerRpc("armored_archer/get_season_info", rpcGetSeasonInfo);
 }
 
-function rpcGetSeasonInfo(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcGetSeasonInfo(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Get season info called for user: %s", ctx.userId);
 
   const currentSeason = getCurrentSeason();
-  const userStats = getPlayerStats(nk, ctx.userId);
 
   const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
 
@@ -204,7 +202,7 @@ export function registerRpcGetSeasonRewards(initializer: Runtime.Initializer): v
   initializer.registerRpc("armored_archer/get_season_rewards", rpcGetSeasonRewards);
 }
 
-function rpcGetSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcGetSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Get season rewards called for user: %s", ctx.userId);
 
   const currentSeason = getCurrentSeason();
@@ -230,7 +228,7 @@ export function registerRpcClaimSeasonRewards(initializer: Runtime.Initializer):
   initializer.registerRpc("armored_archer/claim_season_rewards", rpcClaimSeasonRewards);
 }
 
-function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Claim season rewards called for user: %s", ctx.userId);
 
   const currentSeason = getCurrentSeason();
@@ -301,7 +299,7 @@ export function registerRpcEndSeason(initializer: Runtime.Initializer): void {
   initializer.registerRpc("armored_archer/end_season", rpcEndSeason);
 }
 
-function rpcEndSeason(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcEndSeason(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("End season called for user: %s", ctx.userId);
 
   const currentSeason = getCurrentSeason();
@@ -397,31 +395,6 @@ function getLeaderboardEntry(nk: Runtime.Nakama, userId: string, leaderboardId: 
     score: record.score,
     meta: JSON.parse(record.metadata || "{}")
   };
-}
-
-function getPlayerStats(nk: Runtime.Nakama, userId: string): PlayerStats {
-  const objects = nk.storageRead([
-    {
-      collection: "player_stats",
-      key: userId,
-      userId: userId
-    }
-  ]);
-
-  if (objects.length === 0) {
-    return {
-      level: 1,
-      xp: 0,
-      stats: {
-        attack: 10,
-        defense: 10,
-        dodge: 10,
-        crit_rate: 5
-      }
-    };
-  }
-
-  return JSON.parse(objects[0].value);
 }
 
 function calculateRewards(rank: number, seasonNumber: number): SeasonRewards {
