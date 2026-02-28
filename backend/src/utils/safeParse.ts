@@ -1,9 +1,11 @@
+import { Runtime } from "../types/nakama";
+
 export interface ParseResult<T> {
   success: boolean;
   data?: T;
 }
 
-export function safeParse<T>(jsonString: string, context: string | null, logger: any, operation: string): ParseResult<T> {
+export function safeParse<T>(jsonString: string, context: string | null, logger: Runtime.Logger | undefined, operation: string): ParseResult<T> {
   try {
     if (!jsonString) {
       return { success: false };
@@ -18,7 +20,7 @@ export function safeParse<T>(jsonString: string, context: string | null, logger:
   }
 }
 
-export function safeParsePayload<T>(payload: string, logger: any, operation: string): T | null {
+export function safeParsePayload<T>(payload: string, logger: Runtime.Logger | undefined, operation: string): T | null {
   try {
     if (!payload) {
       return null;

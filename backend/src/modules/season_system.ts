@@ -1,5 +1,26 @@
 import { Runtime } from "../types/nakama";
-import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
+import { PlayerStats } from "../types/game";
+
+export interface SeasonRewards {
+  rank_tier: "legendary" | "epic" | "rare" | "uncommon" | "common";
+  coins: number;
+  gems: number;
+  cosmetics?: {
+    title: string;
+    aura?: string;
+  };
+}
+
+export interface LeaderboardRecord {
+  ownerId: string;
+  username: string;
+  rank: number;
+  score: number;
+  metadata?: string;
+  expiry?: number;
+  maxNumScore?: number;
+  numScore?: number;
+}
 
 export interface SeasonInfo {
   season_id: string;
@@ -21,13 +42,6 @@ export interface LeaderboardEntry {
     win_rate: number;
     punch_up_wins: number;
   };
-}
-
-export interface LeaderboardMetadata {
-  wins: number;
-  losses: number;
-  win_rate: number;
-  punch_up_wins: number;
 }
 
 export interface RankChange {
@@ -72,8 +86,7 @@ function rpcGetLeaderboard(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
   logger.info("Get leaderboard called for user: %s", ctx.userId);
 
   const currentSeason = getCurrentSeason();
-  const requestParse = safeParsePayload<{ limit?: number }>(payload, logger, "get_leaderboard");
-  const request = requestParse || {};
+  const request = JSON.parse(payload);
   const limit = request.limit || 50;
 
   const records = nk.leaderboardRecordList(
@@ -84,22 +97,13 @@ function rpcGetLeaderboard(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
     0
   );
 
-  const entries: LeaderboardEntry[] = records.map((record: any) => {
-    const parseResult = safeParse(record.metadata || "{}", null, logger, "leaderboard_metadata");
-    const meta = parseResult.success && parseResult.data ? parseResult.data : {
-      wins: 0,
-      losses: 0,
-      win_rate: 0,
-      punch_up_wins: 0
-    };
-    return {
-      owner_id: record.ownerId,
-      username: record.username,
-      rank: record.rank,
-      score: record.score,
-      meta: meta
-    };
-  });
+  const entries: LeaderboardEntry[] = records.map((record: LeaderboardRecord) => ({
+    owner_id: record.ownerId,
+    username: record.username,
+    rank: record.rank,
+    score: record.score,
+    meta: JSON.parse(record.metadata || "{}")
+  }));
 
   return JSON.stringify({
     success: true,
@@ -116,11 +120,7 @@ export function registerRpcUpdateRank(initializer: Runtime.Initializer): void {
 function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Update rank called for user: %s", ctx.userId);
 
-  const request = safeParsePayload<RankChange>(payload, logger, "update_rank");
-  
-  if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
-  }
+  const request: RankChange = JSON.parse(payload);
 
   if (!request.winner_id || !request.loser_id) {
     return JSON.stringify({
@@ -390,23 +390,16 @@ function getLeaderboardEntry(nk: Runtime.Nakama, userId: string, leaderboardId: 
   }
 
   const record = records[0];
-  const parseResult = safeParse<LeaderboardMetadata>(record.metadata || "{}", null, undefined, "leaderboard_metadata");
-  const meta = parseResult.success && parseResult.data ? parseResult.data : {
-    wins: 0,
-    losses: 0,
-    win_rate: 0,
-    punch_up_wins: 0
-  };
   return {
     owner_id: record.ownerId,
     username: record.username,
     rank: record.rank,
     score: record.score,
-    meta: meta
+    meta: JSON.parse(record.metadata || "{}")
   };
 }
 
-function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
+function getPlayerStats(nk: Runtime.Nakama, userId: string): PlayerStats {
   const objects = nk.storageRead([
     {
       collection: "player_stats",
@@ -418,6 +411,7 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
   if (objects.length === 0) {
     return {
       level: 1,
+      xp: 0,
       stats: {
         attack: 10,
         defense: 10,
@@ -427,22 +421,10 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
     };
   }
 
-  const parseResult = safeParse(objects[0].value, null, undefined, "player_stats");
-  if (!parseResult.success || !parseResult.data) {
-    return {
-      level: 1,
-      stats: {
-        attack: 10,
-        defense: 10,
-        dodge: 10,
-        crit_rate: 5
-      }
-    };
-  }
-  return parseResult.data;
+  return JSON.parse(objects[0].value);
 }
 
-function calculateRewards(rank: number, seasonNumber: number): any {
+function calculateRewards(rank: number, seasonNumber: number): SeasonRewards {
   if (rank <= 10) {
     return {
       rank_tier: "legendary",
