@@ -1,14 +1,16 @@
 extends Control
 
-# --- Boss Reference ---
 var boss_ref: CharacterBody2D = null
 
-# --- Node References ---
 @onready var health_bar: ProgressBar = $HealthBar
 @onready var name_label: Label = $NameLabel
 @onready var health_label: Label = $HealthLabel
 
+var _base_offset_top: float = 10.0
+
 func _ready() -> void:
+	SafeAreaManager.safe_area_changed.connect(_on_safe_area_changed)
+	_adjust_for_safe_area()
 	hide()
 	
 	var bosses = get_tree().get_nodes_in_group("Boss")
@@ -18,6 +20,13 @@ func _ready() -> void:
 			boss.boss_defeated.connect(_on_boss_defeated)
 			set_boss(boss)
 			break
+
+func _on_safe_area_changed() -> void:
+	_adjust_for_safe_area()
+
+func _adjust_for_safe_area() -> void:
+	var safe_margins: Dictionary = SafeAreaManager.get_safe_margins()
+	offset_top = _base_offset_top + safe_margins.top
 
 func set_boss(boss: CharacterBody2D) -> void:
 	boss_ref = boss
