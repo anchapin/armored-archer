@@ -149,18 +149,7 @@ const GEAR_NAMES = {
   accessory: ["Wooden Ring", "Silver Amulet", "Golden Charm", "Mystic Stone", "Spirit Orb"]
 };
 
-function prdRandom(n: number): number {
-  let chance: number = n;
-  const roll: number = Math.random();
-  
-  if (roll < chance) {
-    chance = 0.25;
-  } else {
-    chance = Math.min(1.0, chance + 0.25);
-  }
-  
-  return chance;
-}
+
 
 function generateGearId(): string {
   return `gear_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -506,7 +495,7 @@ export function registerRpcGetInventory(initializer: Runtime.Initializer): void 
   initializer.registerRpc("armored_archer/get_inventory", rpcGetInventory);
 }
 
-function rpcGetInventory(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+function rpcGetInventory(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
   logger.info("Get inventory called for user: %s", ctx.userId);
   
   const inventoryObjects = nk.storageRead([

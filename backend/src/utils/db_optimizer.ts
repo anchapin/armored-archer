@@ -1,5 +1,5 @@
 import { Runtime } from "../types/nakama";
-import { safeParse, createErrorResponse } from "./safeParse";
+import { safeParse } from "./safeParse";
 import { getCacheManager } from "./cache";
 
 export interface PlayerStats {
