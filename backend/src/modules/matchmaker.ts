@@ -1,4 +1,5 @@
 import { Runtime } from "../types/nakama";
+import { TurnData, PlayerStats } from "../types/game";
 
 export interface PvPMatch {
   match_id: string;
@@ -11,8 +12,8 @@ export interface PvPMatch {
   status: "pending" | "active" | "completed";
   created_at: number;
   updated_at: number;
-  creator_turn_data?: any;
-  opponent_turn_data?: any;
+  creator_turn_data?: TurnData;
+  opponent_turn_data?: TurnData;
   winner?: string;
 }
 
@@ -330,7 +331,7 @@ function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
   });
 }
 
-function calculateRank(playerStats: any): number {
+function calculateRank(playerStats: PlayerStats): number {
   const baseRank = playerStats.level * 10;
   const statsTotal = playerStats.stats.attack + 
                      playerStats.stats.defense + 

@@ -1,4 +1,6 @@
 import { Runtime } from "../types/nakama";
+import { PvPMatch } from "./matchmaker";
+import { PlayerStats } from "../types/game";
 
 export interface CombatAction {
   match_id: string;
@@ -12,8 +14,8 @@ export interface CombatResult {
   hit: boolean;
   damage: number;
   is_crit: boolean;
-  attacker_stats: any;
-  defender_stats: any;
+  attacker_stats: PlayerStats;
+  defender_stats: PlayerStats;
   match_status: string;
   winner?: string;
 }
@@ -26,8 +28,8 @@ export interface MatchState {
   opponent_id: string;
   creator_health: number;
   opponent_health: number;
-  creator_stats: any;
-  opponent_stats: any;
+  creator_stats: PlayerStats;
+  opponent_stats: PlayerStats;
   status: string;
   winner?: string;
   log: CombatLogEntry[];
@@ -86,7 +88,7 @@ function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk:
     });
   }
 
-  const matchState = getOrCreateMatchState(nk, action.match_id, match);
+  const matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
 
   if (matchState.current_turn_user_id !== ctx.userId) {
     return JSON.stringify({
@@ -140,7 +142,7 @@ function rpcGetMatchState(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
   return stateObjects[0].value;
 }
 
-function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: any): MatchState {
+function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: PvPMatch, logger: Runtime.Logger): MatchState {
   const stateObjects = nk.storageRead([
     {
       collection: "pvp_match_states",
@@ -153,8 +155,8 @@ function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: any):
     return JSON.parse(stateObjects[0].value);
   }
 
-  const creatorStats = getPlayerStats(nk, match.creator_id);
-  const opponentStats = getPlayerStats(nk, match.opponent_id);
+  const creatorStats = getPlayerStats(nk, match.creator_id, logger);
+  const opponentStats = getPlayerStats(nk, match.opponent_id, logger);
 
   const baseHealth = 100;
   const maxHealth = baseHealth + (creatorStats.level * 10);
@@ -179,7 +181,7 @@ function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: any):
 function processCombatAction(
   userId: string,
   action: CombatAction,
-  match: any,
+  match: PvPMatch,
   matchState: MatchState,
   nk: Runtime.Nakama,
   logger: Runtime.Logger
@@ -260,7 +262,7 @@ function processCombatAction(
   return result;
 }
 
-function calculateHit(attackerStats: any, defenderStats: any): boolean {
+function calculateHit(attackerStats: PlayerStats, defenderStats: PlayerStats): boolean {
   const dodgeChance = defenderStats.stats.dodge / 100.0;
   const hitChance = 1.0 - dodgeChance;
   const roll = Math.random();
@@ -268,7 +270,7 @@ function calculateHit(attackerStats: any, defenderStats: any): boolean {
   return roll <= hitChance;
 }
 
-function calculateDamage(attackerStats: any, defenderStats: any): number {
+function calculateDamage(attackerStats: PlayerStats, defenderStats: PlayerStats): number {
   const baseDamage = 10 + (attackerStats.stats.attack * 0.5);
   const defenseReduction = defenderStats.stats.defense * 0.3;
   const finalDamage = Math.max(1, baseDamage - defenseReduction);
@@ -283,7 +285,7 @@ function calculateCrit(critRate: number): boolean {
   return roll <= critChance;
 }
 
-function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
+function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logger): PlayerStats {
   const objects = nk.storageRead([
     {
       collection: "player_stats",
@@ -295,6 +297,7 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
   if (objects.length === 0) {
     return {
       level: 1,
+      xp: 0,
       stats: {
         attack: 10,
         defense: 10,
@@ -318,7 +321,7 @@ function saveMatchState(nk: Runtime.Nakama, matchState: MatchState): void {
   ]);
 }
 
-function updateMatchStatus(nk: Runtime.Nakama, match: any, winner: string): void {
+function updateMatchStatus(nk: Runtime.Nakama, match: PvPMatch, winner: string): void {
   match.status = "completed";
   match.winner = winner;
   match.updated_at = Date.now();
