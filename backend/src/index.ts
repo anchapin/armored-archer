@@ -7,6 +7,10 @@ import {
   registerRpcAcceptMatch, 
   registerRpcGetPlayerRank 
 } from "./modules/matchmaker";
+import { 
+  registerRpcSubmitCombatAction, 
+  registerRpcGetMatchState 
+} from "./modules/combat_system";
 
 const InitModule: InitModule = function(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, initializer: Runtime.Initializer) {
   logger.info("Armored Archer server module initialized");
@@ -19,6 +23,8 @@ const InitModule: InitModule = function(ctx: Runtime.Context, logger: Runtime.Lo
   registerRpcCreateMatch(initializer);
   registerRpcAcceptMatch(initializer);
   registerRpcGetPlayerRank(initializer);
+  registerRpcSubmitCombatAction(initializer);
+  registerRpcGetMatchState(initializer);
 };
 
 export default InitModule;

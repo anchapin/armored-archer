@@ -23,6 +23,7 @@ AutoAimManager="*res://autoloads/AutoAimManager.gd"
 CampaignManager="*res://autoloads/CampaignManager.gd"
 PlayerStatsManager="*res://autoloads/PlayerStatsManager.gd"
 MatchmakerManager="*res://autoloads/MatchmakerManager.gd"
+CombatManager="*res://autoloads/CombatManager.gd"
 
 [input]
 
