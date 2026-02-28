@@ -1,4 +1,6 @@
 import { Runtime } from "../types/nakama";
+import { registerRpcWithMetrics } from "./metrics";
+import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 
 export interface CombatAction {
   match_id: string;
@@ -44,13 +46,17 @@ export interface CombatLogEntry {
 }
 
 export function registerRpcSubmitCombatAction(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/submit_combat_action", rpcSubmitCombatAction);
+  registerRpcWithMetrics(initializer, "armored_archer/submit_combat_action", "submit_combat_action", rpcSubmitCombatAction);
 }
 
 function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Submit combat action called for user: %s", ctx.userId);
 
-  const action: CombatAction = JSON.parse(payload);
+  const action = safeParsePayload<CombatAction>(payload, logger, "<rpc_name>");
+  
+  if (!action) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
 
   if (!action.match_id || !action.action_type || action.angle === undefined) {
     return JSON.stringify({
@@ -72,7 +78,12 @@ function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk:
     });
   }
 
-  const match = JSON.parse(matchObjects[0].value);
+  const parseResult = safeParse(matchObjects[0].value, null, logger, "storage_data");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse data");
+    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+  }
+  const match = parseResult.data;
 
   if (match.status !== "active") {
     return JSON.stringify({
@@ -109,13 +120,18 @@ function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk:
 }
 
 export function registerRpcGetMatchState(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/get_match_state", rpcGetMatchState);
+  registerRpcWithMetrics(initializer, "armored_archer/get_match_state", "get_match_state", rpcGetMatchState);
 }
 
 function rpcGetMatchState(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get match state called for user: %s", ctx.userId);
 
-  const request = JSON.parse(payload);
+  const parseResult = safeParse(payload, null, logger, "storage_data");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse data");
+    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+  }
+  const request = parseResult.data;
 
   if (!request.match_id) {
     return JSON.stringify({
@@ -150,7 +166,12 @@ function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: any):
   ]);
 
   if (stateObjects.length > 0) {
-    return JSON.parse(stateObjects[0].value);
+    const parseResult = safeParse(stateObjects[0].value, null, logger, "storage_data");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse data");
+    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+  }
+  return parseResult.data;
   }
 
   const creatorStats = getPlayerStats(nk, match.creator_id);
@@ -304,7 +325,12 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
     };
   }
 
-  return JSON.parse(objects[0].value);
+  const parseResult = safeParse(objects[0].value, null, logger, "storage_data");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse data");
+    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+  }
+  return parseResult.data;
 }
 
 function saveMatchState(nk: Runtime.Nakama, matchState: MatchState): void {

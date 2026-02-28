@@ -1,4 +1,6 @@
 import { Runtime } from "../types/nakama";
+import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
+import { registerRpcWithMetrics } from "./metrics";
 
 export interface PlayerStats {
   user_id: string;
@@ -24,13 +26,17 @@ export interface StatAllocationRequest {
 }
 
 export function registerRpcGainXP(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/gain_xp", rpcGainXP);
+  registerRpcWithMetrics(initializer, "armored_archer/gain_xp", "gain_xp", rpcGainXP);
 }
 
 function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Gain XP called for user: %s", ctx.userId);
 
-  const request: XPGainRequest = JSON.parse(payload);
+  const request = safeParsePayload<XPGainRequest>(payload, logger, "<rpc_name>");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
 
   if (request.xp_amount <= 0) {
     return JSON.stringify({
@@ -64,7 +70,12 @@ function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nak
   } else {
     const value = objects[0].value;
     if (value) {
-      playerStats = JSON.parse(value) as PlayerStats;
+      const parseResult = safeParse<PlayerStats>(value, null, logger, "storage_data");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse data");
+    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+  }
+  playerStats = parseResult.data;
     } else {
       playerStats = {
         user_id: ctx.userId,
@@ -111,13 +122,17 @@ function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nak
 }
 
 export function registerRpcAllocateStats(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/allocate_stats", rpcAllocateStats);
+  registerRpcWithMetrics(initializer, "armored_archer/allocate_stats", "allocate_stats", rpcAllocateStats);
 }
 
 function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Allocate stats called for user: %s", ctx.userId);
 
-  const request: StatAllocationRequest = JSON.parse(payload);
+  const request = safeParsePayload<StatAllocationRequest>(payload, logger, "<rpc_name>");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
 
   const validStats = ["attack", "defense", "dodge", "crit_rate"];
   if (!validStats.includes(request.stat_name)) {
@@ -146,7 +161,12 @@ function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
     });
   }
 
-  const playerStats: PlayerStats = JSON.parse(objects[0].value ?? "{}");
+  const parseResult = safeParse<PlayerStats>(objects[0].value ?? "{}", null, logger, "player_stats");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse player stats for user: %s", ctx.userId);
+    return createErrorResponse("INVALID_DATA", "Failed to parse player stats");
+  }
+  const playerStats: PlayerStats = parseResult.data;
 
   if (playerStats.ability_points < request.points) {
     return JSON.stringify({
@@ -173,7 +193,7 @@ function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
 }
 
 export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/get_player_stats", rpcGetPlayerStats);
+  registerRpcWithMetrics(initializer, "armored_archer/get_player_stats", "get_player_stats", rpcGetPlayerStats);
 }
 
 function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {

@@ -1,7 +1,8 @@
 import { Runtime } from "../types/nakama";
+import { registerRpcWithMetrics } from "./metrics";
 
 export function registerRpcHealthCheck(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/health_check", rpcHealthCheck);
+  registerRpcWithMetrics(initializer, "armored_archer/health_check", "health_check", rpcHealthCheck);
 }
 
 function rpcHealthCheck(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
@@ -14,7 +15,7 @@ function rpcHealthCheck(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
 }
 
 export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/get_player_stats", rpcGetPlayerStats);
+  registerRpcWithMetrics(initializer, "armored_archer/get_player_stats", "get_player_stats", rpcGetPlayerStats);
 }
 
 function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {

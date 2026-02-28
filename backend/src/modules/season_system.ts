@@ -1,4 +1,5 @@
 import { Runtime } from "../types/nakama";
+import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 
 export interface SeasonInfo {
   season_id: string;
@@ -64,7 +65,8 @@ function rpcGetLeaderboard(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
   logger.info("Get leaderboard called for user: %s", ctx.userId);
 
   const currentSeason = getCurrentSeason();
-  const request = JSON.parse(payload);
+  const requestParse = safeParsePayload<{ limit?: number }>(payload, logger, "get_leaderboard");
+  const request = requestParse || {};
   const limit = request.limit || 50;
 
   const records = nk.leaderboardRecordList(
@@ -75,13 +77,22 @@ function rpcGetLeaderboard(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
     0
   );
 
-  const entries: LeaderboardEntry[] = records.map((record: any) => ({
-    owner_id: record.ownerId,
-    username: record.username,
-    rank: record.rank,
-    score: record.score,
-    meta: JSON.parse(record.metadata || "{}")
-  }));
+  const entries: LeaderboardEntry[] = records.map((record: any) => {
+    const parseResult = safeParse(record.metadata || "{}", null, logger, "leaderboard_metadata");
+    const meta = parseResult.success && parseResult.data ? parseResult.data : {
+      wins: 0,
+      losses: 0,
+      win_rate: 0,
+      punch_up_wins: 0
+    };
+    return {
+      owner_id: record.ownerId,
+      username: record.username,
+      rank: record.rank,
+      score: record.score,
+      meta: meta
+    };
+  });
 
   return JSON.stringify({
     success: true,
@@ -98,7 +109,11 @@ export function registerRpcUpdateRank(initializer: Runtime.Initializer): void {
 function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Update rank called for user: %s", ctx.userId);
 
-  const request: RankChange = JSON.parse(payload);
+  const request = safeParsePayload<RankChange>(payload, logger, "update_rank");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
 
   if (!request.winner_id || !request.loser_id) {
     return JSON.stringify({
@@ -368,12 +383,19 @@ function getLeaderboardEntry(nk: Runtime.Nakama, userId: string, leaderboardId: 
   }
 
   const record = records[0];
+  const parseResult = safeParse(record.metadata || "{}", null, undefined, "leaderboard_metadata");
+  const meta = parseResult.success && parseResult.data ? parseResult.data : {
+    wins: 0,
+    losses: 0,
+    win_rate: 0,
+    punch_up_wins: 0
+  };
   return {
     owner_id: record.ownerId,
     username: record.username,
     rank: record.rank,
     score: record.score,
-    meta: JSON.parse(record.metadata || "{}")
+    meta: meta
   };
 }
 
@@ -398,7 +420,19 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
     };
   }
 
-  return JSON.parse(objects[0].value);
+  const parseResult = safeParse(objects[0].value, null, undefined, "player_stats");
+  if (!parseResult.success || !parseResult.data) {
+    return {
+      level: 1,
+      stats: {
+        attack: 10,
+        defense: 10,
+        dodge: 10,
+        crit_rate: 5
+      }
+    };
+  }
+  return parseResult.data;
 }
 
 function calculateRewards(rank: number, seasonNumber: number): any {

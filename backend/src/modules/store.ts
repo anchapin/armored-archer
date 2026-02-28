@@ -1,4 +1,5 @@
 import { Runtime } from "../types/nakama";
+import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 
 export interface GemBundle {
   product_id: string;
@@ -51,7 +52,11 @@ export function registerRpcSpendGems(initializer: Runtime.Initializer): void {
 function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Validating purchase for user: %s", ctx.userId);
 
-  const request: PurchaseRequest = JSON.parse(payload);
+  const request = safeParsePayload<PurchaseRequest>(payload, logger, "validate_purchase");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
 
   if (!request.product_id || !request.platform || !request.transaction_receipt) {
     return JSON.stringify({
@@ -84,7 +89,17 @@ function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
       gold: 0
     };
   } else {
-    playerCurrency = JSON.parse(objects[0].value ?? "{}");
+    const parseResult = safeParse<PlayerCurrency>(objects[0].value ?? "{}", null, logger, "player_currency");
+    if (!parseResult.success || !parseResult.data) {
+      logger.error("Failed to parse player currency for user: %s", ctx.userId);
+      playerCurrency = {
+        user_id: ctx.userId,
+        gems: 0,
+        gold: 0
+      };
+    } else {
+      playerCurrency = parseResult.data;
+    }
   }
 
   playerCurrency.gems += gemBundle.gem_amount;
@@ -148,7 +163,11 @@ function rpcGetCurrency(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
 function rpcSpendGems(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Spending gems for user: %s", ctx.userId);
 
-  const request = JSON.parse(payload);
+  const request = safeParsePayload<{ amount: number }>(payload, logger, "spend_gems");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
 
   if (typeof request.amount !== "number" || request.amount <= 0) {
     return JSON.stringify({
@@ -170,7 +189,12 @@ function rpcSpendGems(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.
     });
   }
 
-  const playerCurrency: PlayerCurrency = JSON.parse(objects[0].value ?? "{}");
+  const parseResult = safeParse<PlayerCurrency>(objects[0].value ?? "{}", null, logger, "player_currency");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse player currency for user: %s", ctx.userId);
+    return createErrorResponse("INVALID_DATA", "Failed to parse player currency");
+  }
+  const playerCurrency: PlayerCurrency = parseResult.data;
 
   if (playerCurrency.gems < request.amount) {
     return JSON.stringify({

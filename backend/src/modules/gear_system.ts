@@ -1,4 +1,5 @@
 import { Runtime } from "../types/nakama";
+import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 
 export interface GearRarity {
   name: string;
@@ -264,7 +265,11 @@ export function registerRpcGenerateGear(initializer: Runtime.Initializer): void 
 function rpcGenerateGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Generate gear called for user: %s", ctx.userId);
   
-  const request: GenerateGearRequest = JSON.parse(payload);
+  const request = safeParsePayload<GenerateGearRequest>(payload, logger, "generate_gear");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
   
   const inventoryObjects = nk.storageRead([
     {
@@ -286,7 +291,12 @@ function rpcGenerateGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runti
   } else {
     const value = inventoryObjects[0].value;
     if (value) {
-      inventory = JSON.parse(value) as PlayerInventory;
+      const parseResult = safeParse<PlayerInventory>(value, null, logger, "player_inventory");
+      if (!parseResult.success || !parseResult.data) {
+        logger.error("Failed to parse player inventory for user: %s", ctx.userId);
+        return createErrorResponse("INVALID_DATA", "Failed to parse player inventory");
+      }
+      inventory = parseResult.data;
     } else {
       inventory = {
         user_id: ctx.userId,
@@ -328,7 +338,11 @@ export function registerRpcEquipGear(initializer: Runtime.Initializer): void {
 function rpcEquipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Equip gear called for user: %s", ctx.userId);
   
-  const request: EquipGearRequest = JSON.parse(payload);
+  const request = safeParsePayload<EquipGearRequest>(payload, logger, "equip_gear");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
   
   const inventoryObjects = nk.storageRead([
     {
@@ -351,7 +365,12 @@ function rpcEquipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.
     });
   }
   
-  const inventory: PlayerInventory = JSON.parse(value) as PlayerInventory;
+  const parseResult = safeParse<PlayerInventory>(value, null, logger, "player_inventory");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse player inventory for user: %s", ctx.userId);
+    return createErrorResponse("INVALID_DATA", "Failed to parse player inventory");
+  }
+  const inventory: PlayerInventory = parseResult.data;
   
   const gearIndex = inventory.gear.findIndex(g => g.id === request.gear_id);
   if (gearIndex === -1) {
@@ -393,7 +412,11 @@ export function registerRpcUnequipGear(initializer: Runtime.Initializer): void {
 function rpcUnequipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Unequip gear called for user: %s", ctx.userId);
   
-  const request: UnequipGearRequest = JSON.parse(payload);
+  const request = safeParsePayload<UnequipGearRequest>(payload, logger, "unequip_gear");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
   
   const inventoryObjects = nk.storageRead([
     {
@@ -416,7 +439,12 @@ function rpcUnequipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
   
-  const inventory: PlayerInventory = JSON.parse(value) as PlayerInventory;
+  const parseResult = safeParse<PlayerInventory>(value, null, logger, "player_inventory");
+  if (!parseResult.success || !parseResult.data) {
+    logger.error("Failed to parse player inventory for user: %s", ctx.userId);
+    return createErrorResponse("INVALID_DATA", "Failed to parse player inventory");
+  }
+  const inventory: PlayerInventory = parseResult.data;
   
   if (!inventory.equipped_gear[request.slot]) {
     return JSON.stringify({
@@ -483,7 +511,12 @@ export function registerRpcUnlockModifierPool(initializer: Runtime.Initializer):
 function rpcUnlockModifierPool(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Unlock modifier pool called for user: %s", ctx.userId);
   
-  const request = JSON.parse(payload);
+  const request = safeParsePayload<{ modifier_id: string }>(payload, logger, "unlock_modifier_pool");
+  
+  if (!request) {
+    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  }
+  
   const modifierId = request.modifier_id;
   
   const inventoryObjects = nk.storageRead([
@@ -506,7 +539,12 @@ function rpcUnlockModifierPool(ctx: Runtime.Context, logger: Runtime.Logger, nk:
   } else {
     const value = inventoryObjects[0].value;
     if (value) {
-      inventory = JSON.parse(value) as PlayerInventory;
+      const parseResult = safeParse<PlayerInventory>(value, null, logger, "player_inventory");
+      if (!parseResult.success || !parseResult.data) {
+        logger.error("Failed to parse player inventory for user: %s", ctx.userId);
+        return createErrorResponse("INVALID_DATA", "Failed to parse player inventory");
+      }
+      inventory = parseResult.data;
     } else {
       inventory = {
         user_id: ctx.userId,
