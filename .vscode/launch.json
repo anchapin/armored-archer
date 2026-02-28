@@ -7,7 +7,57 @@
       "name": "Debug Nakama Server",
       "program": "${workspaceFolder}/backend/src/index.ts",
       "preLaunchTask": "npm: dev",
-      "outFiles": ["${workspaceFolder}/backend/build/**/*.js"]
+      "outFiles": ["${workspaceFolder}/backend/build/**/*.js"],
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Run Nakama Server (No Debug)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}/backend",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Nakama Module",
+      "program": "${workspaceFolder}/backend/modules/${fileBasenameNoExtension}.ts",
+      "cwd": "${workspaceFolder}/backend",
+      "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Run Backend Tests",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["test", "--", "--inspect-brk"],
+      "cwd": "${workspaceFolder}/backend",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "godot",
+      "request": "launch",
+      "name": "Launch Godot Game",
+      "project": "${workspaceFolder}",
+      "scene": "res://scenes/Main.tscn"
+    },
+    {
+      "type": "godot",
+      "request": "launch",
+      "name": "Launch Current Godot Scene",
+      "project": "${workspaceFolder}"
+    },
+    {
+      "type": "godot",
+      "request": "attach",
+      "name": "Attach to Godot",
+      "address": "localhost",
+      "port": 6007
     }
   ]
 }
