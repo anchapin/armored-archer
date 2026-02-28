@@ -1,0 +1,42 @@
+{
+  "GDScript Signal": {
+    "prefix": "signal",
+    "description": "Create a GDScript signal",
+    "body": [
+      "signal ${1:signal_name}(${2:parameters})"
+    ]
+  },
+  "Signal with Connection": {
+    "prefix": "signal-connect",
+    "description": "Create a signal and connect it in _ready",
+    "body": [
+      "signal ${1:signal_name}(${2:parameters})",
+      "",
+      "func _ready() -> void:",
+      "\t${1:signal_name}.connect(_on_${1/(.)/\\L\\1/g})",
+      "",
+      "func _on_${1/(.)/\\L\\1/g}(${2:parameters}) -> void:",
+      "\t${3:// handle signal}"
+    ]
+  },
+  "Simple Signal Handler": {
+    "prefix": "on-signal",
+    "description": "Create a signal handler method",
+    "body": [
+      "func _on_${1:signal_name}(${2:parameters}) -> void:",
+      "\t${3:// handle signal}"
+    ]
+  },
+  "Signal with Dictionary": {
+    "prefix": "signal-dict",
+    "description": "Create a signal that passes a dictionary",
+    "body": [
+      "signal ${1:signal_name}(data: Dictionary)",
+      "",
+      "func emit_${1:signal_name}() -> void:",
+      "\t${1:signal_name}.emit({",
+      "\t\t${2:// key: value}",
+      "\t})"
+    ]
+  }
+}
