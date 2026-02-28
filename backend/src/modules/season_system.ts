@@ -1,4 +1,26 @@
 import { Runtime } from "../types/nakama";
+import { PlayerStats } from "../types/game";
+
+export interface SeasonRewards {
+  rank_tier: "legendary" | "epic" | "rare" | "uncommon" | "common";
+  coins: number;
+  gems: number;
+  cosmetics?: {
+    title: string;
+    aura?: string;
+  };
+}
+
+export interface LeaderboardRecord {
+  ownerId: string;
+  username: string;
+  rank: number;
+  score: number;
+  metadata?: string;
+  expiry?: number;
+  maxNumScore?: number;
+  numScore?: number;
+}
 
 export interface SeasonInfo {
   season_id: string;
@@ -75,7 +97,7 @@ function rpcGetLeaderboard(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
     0
   );
 
-  const entries: LeaderboardEntry[] = records.map((record: any) => ({
+  const entries: LeaderboardEntry[] = records.map((record: LeaderboardRecord) => ({
     owner_id: record.ownerId,
     username: record.username,
     rank: record.rank,
@@ -377,7 +399,7 @@ function getLeaderboardEntry(nk: Runtime.Nakama, userId: string, leaderboardId: 
   };
 }
 
-function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
+function getPlayerStats(nk: Runtime.Nakama, userId: string): PlayerStats {
   const objects = nk.storageRead([
     {
       collection: "player_stats",
@@ -389,6 +411,7 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
   if (objects.length === 0) {
     return {
       level: 1,
+      xp: 0,
       stats: {
         attack: 10,
         defense: 10,
@@ -401,7 +424,7 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
   return JSON.parse(objects[0].value);
 }
 
-function calculateRewards(rank: number, seasonNumber: number): any {
+function calculateRewards(rank: number, seasonNumber: number): SeasonRewards {
   if (rank <= 10) {
     return {
       rank_tier: "legendary",
