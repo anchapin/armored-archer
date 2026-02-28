@@ -1,4 +1,4 @@
-import { Runtime } from "../types/nakama-runtime";
+import { Runtime } from "../types/nakama";
 
 export interface GearRarity {
   name: string;

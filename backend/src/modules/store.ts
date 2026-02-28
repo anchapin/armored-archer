@@ -1,4 +1,4 @@
-import { Runtime } from "../types/nakama-runtime";
+import { Runtime } from "../types/nakama";
 
 export interface GemBundle {
   product_id: string;
@@ -98,7 +98,7 @@ function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
     }
   ]);
 
-  nk.walletUpdate(ctx.userId, {}, {
+  nk.walletUpdate(ctx.userId, {
     gems: gemBundle.gem_amount
   });
 
