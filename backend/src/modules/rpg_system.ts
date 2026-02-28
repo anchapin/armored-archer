@@ -1,4 +1,4 @@
-import { Runtime } from "@heroiclabs/nakama-js/runtime";
+import { Runtime } from "../types/nakama";
 
 export interface PlayerStats {
   user_id: string;
