@@ -1,5 +1,7 @@
 import { Runtime } from "../types/nakama";
-import { LRUCache } from "lru-cache";
+import { LRUCache as LRUCacheClass } from "lru-cache";
+
+type LRUCache<K, V> = InstanceType<typeof LRUCacheClass<K, V>>;
 
 export interface CacheMetrics {
   hits: number;
@@ -23,7 +25,8 @@ class CacheManager {
     max: number,
     ttl: number
   ): LRUCache<string, any> {
-    const cache = new LRUCache<string, any>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cache = new LRUCacheClass<string, any>({
       max: max,
       ttl: ttl
     });
