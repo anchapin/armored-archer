@@ -4,9 +4,13 @@ import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeP
 
 export interface CombatAction {
   match_id: string;
-  action_type: string; // "shoot"
+  action_type: string;
   angle: number;
   power?: number;
+}
+
+export interface GetMatchStateRequest {
+  match_id: string;
 }
 
 export interface CombatResult {
@@ -78,7 +82,7 @@ function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk:
     });
   }
 
-  const parseResult = safeParse(matchObjects[0].value, null, logger, "storage_data");
+  const parseResult = safeParse<any>(matchObjects[0].value, null, logger, "storage_data");
   if (!parseResult.success || !parseResult.data) {
     logger.error("Failed to parse data");
     return createErrorResponse("INVALID_DATA", "Failed to parse data");
@@ -97,7 +101,7 @@ function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk:
     });
   }
 
-  const matchState = getOrCreateMatchState(nk, action.match_id, match);
+  const matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
 
   if (matchState.current_turn_user_id !== ctx.userId) {
     return JSON.stringify({
@@ -126,7 +130,7 @@ export function registerRpcGetMatchState(initializer: Runtime.Initializer): void
 function rpcGetMatchState(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get match state called for user: %s", ctx.userId);
 
-  const parseResult = safeParse(payload, null, logger, "storage_data");
+  const parseResult = safeParse<GetMatchStateRequest>(payload, null, logger, "storage_data");
   if (!parseResult.success || !parseResult.data) {
     logger.error("Failed to parse data");
     return createErrorResponse("INVALID_DATA", "Failed to parse data");
@@ -156,7 +160,7 @@ function rpcGetMatchState(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
   return stateObjects[0].value;
 }
 
-function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: any): MatchState {
+function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: any, logger: Runtime.Logger): MatchState {
   const stateObjects = nk.storageRead([
     {
       collection: "pvp_match_states",
@@ -166,16 +170,16 @@ function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: any):
   ]);
 
   if (stateObjects.length > 0) {
-    const parseResult = safeParse(stateObjects[0].value, null, logger, "storage_data");
-  if (!parseResult.success || !parseResult.data) {
-    logger.error("Failed to parse data");
-    return createErrorResponse("INVALID_DATA", "Failed to parse data");
-  }
-  return parseResult.data;
+    const parseResult = safeParse<MatchState>(stateObjects[0].value, null, logger, "storage_data");
+    if (!parseResult.success || !parseResult.data) {
+      logger.error("Failed to parse match state data");
+    } else {
+      return parseResult.data;
+    }
   }
 
-  const creatorStats = getPlayerStats(nk, match.creator_id);
-  const opponentStats = getPlayerStats(nk, match.opponent_id);
+  const creatorStats = getPlayerStats(nk, match.creator_id, logger);
+  const opponentStats = getPlayerStats(nk, match.opponent_id, logger);
 
   const baseHealth = 100;
   const maxHealth = baseHealth + (creatorStats.level * 10);
@@ -304,7 +308,7 @@ function calculateCrit(critRate: number): boolean {
   return roll <= critChance;
 }
 
-function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
+function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logger): any {
   const objects = nk.storageRead([
     {
       collection: "player_stats",
@@ -325,12 +329,20 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string): any {
     };
   }
 
-  const parseResult = safeParse(objects[0].value, null, logger, "storage_data");
+  const parseResult = safeParse<any>(objects[0].value, null, logger, "storage_data");
   if (!parseResult.success || !parseResult.data) {
-    logger.error("Failed to parse data");
-    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+    logger.error("Failed to parse player stats");
   }
-  return parseResult.data;
+  return parseResult.data || {
+    level: 1,
+    xp: 0,
+    stats: {
+      attack: 10,
+      defense: 10,
+      dodge: 10,
+      crit_rate: 5
+    }
+  };
 }
 
 function saveMatchState(nk: Runtime.Nakama, matchState: MatchState): void {

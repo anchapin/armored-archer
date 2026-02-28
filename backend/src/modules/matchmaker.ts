@@ -78,7 +78,7 @@ function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   const filteredMatches: PvPMatch[] = [];
 
   for (const object of matches) {
-    const parseResult = safeParse(object.value, null, logger, "pvp_match");
+    const parseResult = safeParse<PvPMatch>(object.value, null, logger, "pvp_match");
     if (!parseResult.success || !parseResult.data) {
       logger.error("Failed to parse match data");
       continue;
@@ -280,7 +280,7 @@ function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
 
-  const parseResult = safeParse(objects[0].value, null, logger, "pvp_match");
+  const parseResult = safeParse<PvPMatch>(objects[0].value, null, logger, "pvp_match");
   if (!parseResult.success || !parseResult.data) {
     logger.error("Failed to parse match data: %s", request.match_id);
     return createErrorResponse("INVALID_DATA", "Failed to parse match data");
@@ -313,12 +313,12 @@ function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
     });
   }
 
-  const parseResult = safeParse(playerObjects[0].value, null, logger, "player_stats");
-  if (!parseResult.success || !parseResult.data) {
+  const playerStatsParseResult = safeParse<any>(playerObjects[0].value, null, logger, "player_stats");
+  if (!playerStatsParseResult.success || !playerStatsParseResult.data) {
     logger.error("Failed to parse player stats for user: %s", ctx.userId);
     return createErrorResponse("INVALID_DATA", "Failed to parse player stats");
   }
-  const playerStats = parseResult.data;
+  const playerStats = playerStatsParseResult.data;
   match.opponent_id = ctx.userId;
   match.opponent_rank = calculateRank(playerStats);
   match.status = "active";
@@ -360,7 +360,7 @@ function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
     });
   }
 
-  const parseResult = safeParse(objects[0].value, null, logger, "player_stats");
+  const parseResult = safeParse<any>(objects[0].value, null, logger, "player_stats");
   if (!parseResult.success || !parseResult.data) {
     logger.error("Failed to parse player stats for user: %s", ctx.userId);
     return createErrorResponse("INVALID_DATA", "Failed to parse player stats");

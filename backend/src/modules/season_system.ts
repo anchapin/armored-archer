@@ -23,6 +23,13 @@ export interface LeaderboardEntry {
   };
 }
 
+export interface LeaderboardMetadata {
+  wins: number;
+  losses: number;
+  win_rate: number;
+  punch_up_wins: number;
+}
+
 export interface RankChange {
   winner_id: string;
   loser_id: string;
@@ -383,7 +390,7 @@ function getLeaderboardEntry(nk: Runtime.Nakama, userId: string, leaderboardId: 
   }
 
   const record = records[0];
-  const parseResult = safeParse(record.metadata || "{}", null, undefined, "leaderboard_metadata");
+  const parseResult = safeParse<LeaderboardMetadata>(record.metadata || "{}", null, undefined, "leaderboard_metadata");
   const meta = parseResult.success && parseResult.data ? parseResult.data : {
     wins: 0,
     losses: 0,
