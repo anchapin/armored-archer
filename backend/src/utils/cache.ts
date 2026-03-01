@@ -1,5 +1,6 @@
 import { Runtime } from "../types/nakama";
 import { LRUCache as LRUCacheClass } from "lru-cache";
+import { CacheValueType } from "../types/shared";
 
 type LRUCache<K, V> = InstanceType<typeof LRUCacheClass<K, V>>;
 
@@ -8,9 +9,8 @@ export interface CacheMetrics {
   misses: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 class CacheManager {
-  private caches: Map<string, LRUCache<string, any>>;
+  private caches: Map<string, LRUCache<string, CacheValueType>>;
   private metrics: Map<string, CacheMetrics>;
   private logger: Runtime.Logger | null;
 
@@ -24,9 +24,8 @@ class CacheManager {
     name: string,
     max: number,
     ttl: number
-  ): LRUCache<string, any> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cache = new LRUCacheClass<string, any>({
+  ): LRUCache<string, CacheValueType> {
+    const cache = new LRUCacheClass<string, CacheValueType>({
       max: max,
       ttl: ttl
     });
@@ -41,7 +40,7 @@ class CacheManager {
     return cache;
   }
 
-  get<T>(cacheName: string, key: string): T | undefined {
+  get<T extends CacheValueType>(cacheName: string, key: string): T | undefined {
     const cache = this.caches.get(cacheName);
     const metrics = this.metrics.get(cacheName);
 
@@ -66,10 +65,10 @@ class CacheManager {
       }
     }
 
-    return value;
+    return value as T;
   }
 
-  set(cacheName: string, key: string, value: any): void {
+  set(cacheName: string, key: string, value: CacheValueType): void {
     const cache = this.caches.get(cacheName);
 
     if (!cache) {
