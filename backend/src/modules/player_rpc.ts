@@ -1,13 +1,20 @@
 import { Runtime } from "../types/nakama";
 import { getCacheManager } from "../utils/cache";
 import { registerRpcWithMetrics } from "./metrics";
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 
 export function registerRpcHealthCheck(initializer: Runtime.Initializer): void {
   registerRpcWithMetrics(initializer, "armored_archer/health_check", "health_check", rpcHealthCheck);
 }
 
-function rpcHealthCheck(ctx: Runtime.Context, logger: Runtime.Logger, _nk: Runtime.Nakama, _payload: string): string {
+function rpcHealthCheck(ctx: Runtime.Context, logger: Runtime.Logger, _nk: Runtime.Nakama, payload: string): string {
   logger.info("Armored Archer health check called");
+
+  const validation = validatePayload(ZodSchemas.health_check, payload, "health_check");
+  if (!validation.success) {
+    return createValidationErrorResponse("health_check", validation.error);
+  }
+
   return JSON.stringify({
     status: "ok",
     timestamp: Date.now(),
@@ -19,8 +26,13 @@ export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): voi
   registerRpcWithMetrics(initializer, "armored_archer/get_player_stats", "get_player_stats", rpcGetPlayerStats);
 }
 
-function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
+function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Getting player stats for user: %s", ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_player_stats, payload, "get_player_stats");
+  if (!validation.success) {
+    return createValidationErrorResponse("get_player_stats", validation.error);
+  }
 
   const cacheManager = getCacheManager(logger);
   const cachedStats = cacheManager.get<string>("player_stats", ctx.userId);
