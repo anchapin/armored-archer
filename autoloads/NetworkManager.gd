@@ -1,9 +1,9 @@
 extends Node
 
 # --- Configuration ---
-@export var server_url: String = "127.0.0.1"
-@export var server_port: int = 7350
-@export var server_key: String = "defaultkey"
+@export var server_url: String = ""
+@export var server_port: int = 0
+@export var server_key: String = ""
 
 # --- Session State ---
 var session_token: String = ""
@@ -26,8 +26,51 @@ signal connection_status_changed(is_online: bool)
 # --- Constants ---
 const SESSION_FILE: String = "user://session_data.json"
 
+# --- Environment Variables ---
+func _load_environment_variables() -> void:
+	var env_url: String = OS.getenv("NAKAMA_SERVER_URL")
+	var env_port: String = OS.getenv("NAKAMA_SERVER_PORT")
+	var env_key: String = OS.getenv("NAKAMA_SERVER_KEY")
+	
+	if not env_url.is_empty():
+		server_url = env_url
+	else:
+		push_warning("NAKAMA_SERVER_URL not set, using default: 127.0.0.1")
+		server_url = "127.0.0.1"
+	
+	if not env_port.is_empty():
+		server_port = int(env_port)
+	else:
+		push_warning("NAKAMA_SERVER_PORT not set, using default: 7350")
+		server_port = 7350
+	
+	if not env_key.is_empty():
+		server_key = env_key
+	else:
+		push_warning("NAKAMA_SERVER_KEY not set, using default: defaultkey")
+		server_key = "defaultkey"
+	
+	_validate_required_config()
+
+func _validate_required_config() -> void:
+	var missing_vars: Array[String] = []
+	
+	if server_url.is_empty():
+		missing_vars.append("NAKAMA_SERVER_URL")
+	
+	if server_port == 0:
+		missing_vars.append("NAKAMA_SERVER_PORT")
+	
+	if server_key.is_empty():
+		missing_vars.append("NAKAMA_SERVER_KEY")
+	
+	if not missing_vars.is_empty():
+		var warning_msg: String = "Using defaults for environment variables: %s" % ", ".join(missing_vars)
+		push_warning(warning_msg)
+
 # --- Initialization ---
 func _ready() -> void:
+	_load_environment_variables()
 	base_url = "http://%s:%d" % [server_url, server_port]
 	
 	http_request = HTTPRequest.new()

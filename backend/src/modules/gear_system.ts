@@ -1,6 +1,7 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 export interface GearRarity {
