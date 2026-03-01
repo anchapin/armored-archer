@@ -2,6 +2,7 @@ import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
 
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 export interface PlayerCurrency {
   user_id: string;
   gems: number;
@@ -106,17 +107,12 @@ function getStoreCatalog(logger: Runtime.Logger): Record<string, GemBundle> {
 function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Validating purchase for user: %s", ctx.userId);
 
-  const request = safeParsePayload<PurchaseRequest>(payload, logger, "<rpc_name>");
-  
-  if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  const validation = validatePayload(ZodSchemas.validate_purchase, payload, "validate_purchase");
+  if (!validation.success) {
+    return createValidationErrorResponse("validate_purchase", validation.error);
   }
 
-  if (!request.product_id || !request.platform || !request.transaction_receipt) {
-    return JSON.stringify({
-      error: "Missing required fields"
-    });
-  }
+  const request = validation.data;
 
   const catalog = getStoreCatalog(logger);
 
@@ -155,8 +151,13 @@ function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
   });
 }
 
-function rpcGetCurrency(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
+function rpcGetCurrency(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Getting currency for user: %s", ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_currency, payload, "get_currency");
+  if (!validation.success) {
+    return createValidationErrorResponse("get_currency", validation.error);
+  }
 
   const currency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
 
@@ -166,18 +167,12 @@ function rpcGetCurrency(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
 function rpcSpendGems(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Spending gems for user: %s", ctx.userId);
 
-  const parseResult = safeParse<{ amount: number }>(payload, null, logger, "spend_gems");
-  if (!parseResult.success || !parseResult.data) {
-    logger.error("Failed to parse data");
-    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+  const validation = validatePayload(ZodSchemas.spend_gems, payload, "spend_gems");
+  if (!validation.success) {
+    return createValidationErrorResponse("spend_gems", validation.error);
   }
-  const request = parseResult.data;
 
-  if (typeof request.amount !== "number" || request.amount <= 0) {
-    return JSON.stringify({
-      error: "Invalid amount"
-    });
-  }
+  const request = validation.data;
 
   const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
 

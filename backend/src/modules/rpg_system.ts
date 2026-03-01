@@ -2,6 +2,7 @@ import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
 import { invalidatePlayerStatsCache } from "../utils/db_optimizer";
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 import { registerRpcWithMetrics } from "./metrics";
 
 export interface PlayerStats {
@@ -34,17 +35,12 @@ export function registerRpcGainXP(initializer: Runtime.Initializer): void {
 function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Gain XP called for user: %s", ctx.userId);
 
-  const request = safeParsePayload<XPGainRequest>(payload, logger, "<rpc_name>");
-  
-  if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  const validation = validatePayload(ZodSchemas.gain_xp, payload, "gain_xp");
+  if (!validation.success) {
+    return createValidationErrorResponse("gain_xp", validation.error);
   }
 
-  if (request.xp_amount <= 0) {
-    return JSON.stringify({
-      error: "Invalid XP amount"
-    });
-  }
+  const request = validation.data;
 
   const objects = nk.storageRead([
     {
@@ -132,24 +128,12 @@ export function registerRpcAllocateStats(initializer: Runtime.Initializer): void
 function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Allocate stats called for user: %s", ctx.userId);
 
-  const request = safeParsePayload<StatAllocationRequest>(payload, logger, "<rpc_name>");
-  
-  if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+  const validation = validatePayload(ZodSchemas.allocate_stats, payload, "allocate_stats");
+  if (!validation.success) {
+    return createValidationErrorResponse("allocate_stats", validation.error);
   }
 
-  const validStats = ["attack", "defense", "dodge", "crit_rate"];
-  if (!validStats.includes(request.stat_name)) {
-    return JSON.stringify({
-      error: "Invalid stat name"
-    });
-  }
-
-  if (request.points <= 0) {
-    return JSON.stringify({
-      error: "Invalid points amount"
-    });
-  }
+  const request = validation.data;
 
   const objects = nk.storageRead([
     {
@@ -202,8 +186,13 @@ export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): voi
   registerRpcWithMetrics(initializer, "armored_archer/get_player_stats", "get_player_stats", rpcGetPlayerStats);
 }
 
-function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
+function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get player stats called for user: %s", ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_player_stats, payload, "get_player_stats");
+  if (!validation.success) {
+    return createValidationErrorResponse("get_player_stats", validation.error);
+  }
 
   const cacheManager = getCacheManager(logger);
   const cachedStats = cacheManager.get<string>("player_stats", ctx.userId);

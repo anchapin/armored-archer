@@ -2,6 +2,7 @@ import { Runtime } from "../types/nakama";
 import { Counter, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
 
 const register = new Registry();
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 
 collectDefaultMetrics({ register });
 
@@ -31,8 +32,14 @@ export function registerRpcMetrics(initializer: Runtime.Initializer): void {
   initializer.registerRpc("armored_archer/metrics", rpcGetMetrics);
 }
 
-function rpcGetMetrics(ctx: Runtime.Context, logger: Runtime.Logger, _nk: Runtime.Nakama, _payload: string): string {
+function rpcGetMetrics(ctx: Runtime.Context, logger: Runtime.Logger, _nk: Runtime.Nakama, payload: string): string {
   logger.info("Metrics endpoint called by user: %s", ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.health_check, payload, "metrics");
+  if (!validation.success) {
+    return createValidationErrorResponse("metrics", validation.error);
+  }
+
   register.metrics().then(metrics => {
     return metrics;
   });
