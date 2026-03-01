@@ -88,6 +88,13 @@ export interface MetricsConfig {
   prometheusPort: number;
 }
 
+export interface RateLimitConfig {
+  enabled: boolean;
+  defaultMaxRequests: number;
+  defaultWindowMs: number;
+  endpoints: Record<string, { maxRequests: number; windowMs: number }>;
+}
+
 export interface AppConfig {
   environment: 'development' | 'staging' | 'production';
   server: ServerConfig;
@@ -97,6 +104,7 @@ export interface AppConfig {
   logger: LoggerConfig;
   match: MatchConfig;
   metrics: MetricsConfig;
+  rateLimit: RateLimitConfig;
 }
 
 function parseDatabaseAddress(address: string): DatabaseConfig {

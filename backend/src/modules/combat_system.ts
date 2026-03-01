@@ -1,6 +1,7 @@
 import { Runtime } from "../types/nakama";
 import { PvPMatch } from "./matchmaker";
 import { PlayerStats } from "../types/game";
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 
 export interface CombatAction {
   match_id: string;
@@ -52,13 +53,12 @@ export function registerRpcSubmitCombatAction(initializer: Runtime.Initializer):
 function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Submit combat action called for user: %s", ctx.userId);
 
-  const action: CombatAction = JSON.parse(payload);
-
-  if (!action.match_id || !action.action_type || action.angle === undefined) {
-    return JSON.stringify({
-      error: "Invalid combat action"
-    });
+  const validation = validatePayload(ZodSchemas.submit_combat_action, payload, "submit_combat_action");
+  if (!validation.success) {
+    return createValidationErrorResponse("submit_combat_action", validation.error);
   }
+
+  const action = validation.data;
 
   const matchObjects = nk.storageRead([
     {
@@ -117,13 +117,12 @@ export function registerRpcGetMatchState(initializer: Runtime.Initializer): void
 function rpcGetMatchState(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get match state called for user: %s", ctx.userId);
 
-  const request = JSON.parse(payload);
-
-  if (!request.match_id) {
-    return JSON.stringify({
-      error: "Match ID required"
-    });
+  const validation = validatePayload(ZodSchemas.get_match_state, payload, "get_match_state");
+  if (!validation.success) {
+    return createValidationErrorResponse("get_match_state", validation.error);
   }
+
+  const request = validation.data;
 
   const stateObjects = nk.storageRead([
     {

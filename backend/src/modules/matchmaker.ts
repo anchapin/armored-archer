@@ -1,5 +1,6 @@
 import { Runtime } from "../types/nakama";
 import { TurnData, PlayerStats } from "../types/game";
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 
 export interface PvPMatch {
   match_id: string;
@@ -41,7 +42,12 @@ export function registerRpcListMatches(initializer: Runtime.Initializer): void {
 function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("List matches called for user: %s", ctx.userId);
 
-  const request: ListMatchesRequest = JSON.parse(payload) || {};
+  const validation = validatePayload(ZodSchemas.list_matches, payload, "list_matches");
+  if (!validation.success) {
+    return createValidationErrorResponse("list_matches", validation.error);
+  }
+
+  const request = validation.data || {};
   const limit = request.limit || 20;
 
   const objects = nk.storageRead([
@@ -115,13 +121,12 @@ export function registerRpcCreateMatch(initializer: Runtime.Initializer): void {
 function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Create match called for user: %s", ctx.userId);
 
-  const request: CreateMatchRequest = JSON.parse(payload);
-
-  if (!request.match_type || (request.match_type !== "ranked" && request.match_type !== "casual")) {
-    return JSON.stringify({
-      error: "Invalid match type"
-    });
+  const validation = validatePayload(ZodSchemas.create_match, payload, "create_match");
+  if (!validation.success) {
+    return createValidationErrorResponse("create_match", validation.error);
   }
+
+  const request = validation.data;
 
   const objects = nk.storageRead([
     {
@@ -227,13 +232,12 @@ export function registerRpcAcceptMatch(initializer: Runtime.Initializer): void {
 function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Accept match called for user: %s", ctx.userId);
 
-  const request: AcceptMatchRequest = JSON.parse(payload);
-
-  if (!request.match_id) {
-    return JSON.stringify({
-      error: "Match ID required"
-    });
+  const validation = validatePayload(ZodSchemas.accept_match, payload, "accept_match");
+  if (!validation.success) {
+    return createValidationErrorResponse("accept_match", validation.error);
   }
+
+  const request = validation.data;
 
   const objects = nk.storageRead([
     {
@@ -302,8 +306,13 @@ export function registerRpcGetPlayerRank(initializer: Runtime.Initializer): void
   initializer.registerRpc("armored_archer/get_player_rank", rpcGetPlayerRank);
 }
 
-function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
+function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get player rank called for user: %s", ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_player_rank, payload, "get_player_rank");
+  if (!validation.success) {
+    return createValidationErrorResponse("get_player_rank", validation.error);
+  }
 
   const objects = nk.storageRead([
     {

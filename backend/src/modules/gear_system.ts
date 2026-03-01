@@ -1,6 +1,7 @@
 import { Runtime } from "../types/nakama";
 import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 
 export interface GearRarity {
   name: string;
@@ -359,13 +360,14 @@ export function registerRpcEquipGear(initializer: Runtime.Initializer): void {
 
 function rpcEquipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Equip gear called for user: %s", ctx.userId);
-  
-  const request = safeParsePayload<EquipGearRequest>(payload, logger, "<rpc_name>");
-  
-  if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+
+  const validation = validatePayload(ZodSchemas.equip_gear, payload, "equip_gear");
+  if (!validation.success) {
+    return createValidationErrorResponse("equip_gear", validation.error);
   }
-  
+
+  const request = validation.data;
+
   const inventoryObjects = nk.storageRead([
     {
       collection: "player_inventory",
@@ -433,13 +435,14 @@ export function registerRpcUnequipGear(initializer: Runtime.Initializer): void {
 
 function rpcUnequipGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Unequip gear called for user: %s", ctx.userId);
-  
-  const request = safeParsePayload<UnequipGearRequest>(payload, logger, "<rpc_name>");
-  
-  if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+
+  const validation = validatePayload(ZodSchemas.unequip_gear, payload, "unequip_gear");
+  if (!validation.success) {
+    return createValidationErrorResponse("unequip_gear", validation.error);
   }
-  
+
+  const request = validation.data;
+
   const inventoryObjects = nk.storageRead([
     {
       collection: "player_inventory",
@@ -495,9 +498,14 @@ export function registerRpcGetInventory(initializer: Runtime.Initializer): void 
   initializer.registerRpc("armored_archer/get_inventory", rpcGetInventory);
 }
 
-function rpcGetInventory(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
+function rpcGetInventory(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get inventory called for user: %s", ctx.userId);
-  
+
+  const validation = validatePayload(ZodSchemas.get_inventory, payload, "get_inventory");
+  if (!validation.success) {
+    return createValidationErrorResponse("get_inventory", validation.error);
+  }
+
   const inventoryObjects = nk.storageRead([
     {
       collection: "player_inventory",
@@ -532,15 +540,14 @@ export function registerRpcUnlockModifierPool(initializer: Runtime.Initializer):
 
 function rpcUnlockModifierPool(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Unlock modifier pool called for user: %s", ctx.userId);
-  
-  const parseResult = safeParse<{ modifier_id: string }>(payload, null, logger, "unlock_modifier_pool");
-  if (!parseResult.success || !parseResult.data) {
-    logger.error("Failed to parse data");
-    return createErrorResponse("INVALID_DATA", "Failed to parse data");
+
+  const validation = validatePayload(ZodSchemas.unlock_modifier_pool, payload, "unlock_modifier_pool");
+  if (!validation.success) {
+    return createValidationErrorResponse("unlock_modifier_pool", validation.error);
   }
-  const request = parseResult.data;
-  const modifierId = request.modifier_id;
-  
+
+  const modifierId = validation.data.modifier_id;
+
   const inventoryObjects = nk.storageRead([
     {
       collection: "player_inventory",
