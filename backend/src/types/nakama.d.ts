@@ -1,3 +1,5 @@
+import { MatchParams, MatchResult, BeforeAfterData, LeaderboardRecord, StreamUserListResult } from "./shared";
+
 declare namespace Runtime {
   export interface Context {
     userId: string;
@@ -8,10 +10,10 @@ declare namespace Runtime {
   }
 
   export interface Logger {
-    info(format: string, ...args: any[]): void;
-    warn(format: string, ...args: any[]): void;
-    error(format: string, ...args: any[]): void;
-    debug(format: string, ...args: any[]): void;
+    info(format: string, ...args: unknown[]): void;
+    warn(format: string, ...args: unknown[]): void;
+    error(format: string, ...args: unknown[]): void;
+    debug(format: string, ...args: unknown[]): void;
   }
 
   export interface StorageRead {
@@ -50,24 +52,24 @@ declare namespace Runtime {
     walletLedgerUpdate(userId: string, id: string, metadata: { [key: string]: string }): void;
     leaderboardCreate(id: string, authoritative: boolean, sortOrder: string, operator: string, reset: string, metadata: { [key: string]: string }): void;
     leaderboardDelete(id: string): void;
-    leaderboardRecordList(leaderboardId: string, ownerIds: string[], limit: number, cursor: string, expiry: number): any;
+    leaderboardRecordList(leaderboardId: string, ownerIds: string[], limit: number, cursor: string, expiry: number): LeaderboardRecord[];
     leaderboardRecordWrite(leaderboardId: string, owner: string, username: string, score: number, subScore: number, metadata: { [key: string]: string }): void;
-    notificationSend(userId: string, subject: string, content: { [key: string]: any }, code: number, persist: boolean, senderId: string): void;
+    notificationSend(userId: string, subject: string, content: Record<string, unknown>, code: number, persist: boolean, senderId: string): void;
     httpRequest(method: string, url: string, headers: { [key: string]: string }, body: string): { code: number, body: string, headers: { [key: string]: string } };
     uuidGenerateV4(): string;
     userIdGetFromUsername(username: string): string;
     streamUserJoin(stream: Stream, presences: Presence[]): void;
     streamUserLeave(stream: Stream, presences: Presence[]): void;
     streamUserKick(stream: Stream, presences: Presence[]): void;
-    streamUserList(userId: string, stream: Stream, limit: number, state: string, cursor: string): any;
+    streamUserList(userId: string, stream: Stream, limit: number, state: string, cursor: string): StreamUserListResult[];
     streamCount(stream: Stream): number;
   }
 
   export interface Initializer {
     registerRpc(id: string, fn: (ctx: Context, logger: Logger, nk: Nakama, payload: string) => string): void;
-    registerMatch(name: string, fn: (ctx: Context, logger: Logger, nk: Nakama, params: any) => any): void;
-    registerBefore(fn: (ctx: Context, logger: Logger, nk: Nakama, data: any) => any): void;
-    registerAfter(fn: (ctx: Context, logger: Logger, nk: Nakama, data: any) => any): void;
+    registerMatch(name: string, fn: (ctx: Context, logger: Logger, nk: Nakama, params: MatchParams) => MatchResult): void;
+    registerBefore(fn: (ctx: Context, logger: Logger, nk: Nakama, data: BeforeAfterData) => BeforeAfterData): void;
+    registerAfter(fn: (ctx: Context, logger: Logger, nk: Nakama, data: BeforeAfterData) => BeforeAfterData): void;
   }
 
   export type InitModule = (ctx: Context, logger: Logger, nk: Nakama, initializer: Initializer) => void;

@@ -25,7 +25,7 @@ export function initializeSentry(): void {
     dsn: errorTrackingConfig.dsn,
     environment: errorTrackingConfig.environment,
     tracesSampleRate: errorTrackingConfig.tracesSampleRate,
-    beforeSend(event) {
+    beforeSend(event: { request?: { headers?: unknown } }) {
       if (event.request) {
         event.request.headers = undefined;
       }

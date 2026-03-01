@@ -2,9 +2,9 @@ import { Runtime } from "../types/nakama";
 import { Counter, Histogram, Registry, collectDefaultMetrics, Gauge } from 'prom-client';
 import { config } from '../config';
 import * as rateLimiter from '../utils/rateLimiter';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 
 const register = new Registry();
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 
 collectDefaultMetrics({ register });
 
