@@ -54,7 +54,8 @@ export type CacheValueType =
   | null 
   | undefined
   | Record<string, unknown>
-  | unknown[];
+  | unknown[]
+  | unknown;
 
 export interface RpcResponse {
   success?: boolean;

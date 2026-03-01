@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/node';
+import type { ErrorEvent, EventHint } from '@sentry/node';
 import { config } from '../config';
 
 export interface ErrorTrackingConfig {
@@ -25,7 +26,7 @@ export function initializeSentry(): void {
     dsn: errorTrackingConfig.dsn,
     environment: errorTrackingConfig.environment,
     tracesSampleRate: errorTrackingConfig.tracesSampleRate,
-    beforeSend(event: { request?: { headers?: unknown } }) {
+    beforeSend(event: ErrorEvent, _hint: EventHint): ErrorEvent | null {
       if (event.request) {
         event.request.headers = undefined;
       }
