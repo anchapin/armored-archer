@@ -1,5 +1,5 @@
 import { Runtime } from "../types/nakama";
-import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
+import { safeParse, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
 
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
