@@ -1,5 +1,8 @@
 import { Runtime } from "../types/nakama";
-import { Counter, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
+import { Counter, Histogram, Registry, collectDefaultMetrics, Gauge } from 'prom-client';
+import { config } from '../config';
+import * as rateLimiter from '../utils/rateLimiter';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 
 const register = new Registry();
 
@@ -27,12 +30,33 @@ const rpcErrorsTotal = new Counter({
   registers: [register]
 });
 
+const rateLimitViolationsTotal = new Counter({
+  name: 'armored_archer_rate_limit_violations_total',
+  help: 'Total number of rate limit violations',
+  labelNames: ['rpc'] as const,
+  registers: [register]
+});
+
+const rateLimitActiveUsers = new Gauge({
+  name: 'armored_archer_rate_limit_active_users',
+  help: 'Number of users currently being rate limited',
+  registers: [register]
+});
+
+rateLimiter.setMetricsCallbacks(recordRateLimitViolation, updateActiveUsersCount);
+
 export function registerRpcMetrics(initializer: Runtime.Initializer): void {
   initializer.registerRpc("armored_archer/metrics", rpcGetMetrics);
 }
 
-function rpcGetMetrics(ctx: Runtime.Context, logger: Runtime.Logger, _nk: Runtime.Nakama, _payload: string): string {
+function rpcGetMetrics(ctx: Runtime.Context, logger: Runtime.Logger, _nk: Runtime.Nakama, payload: string): string {
   logger.info("Metrics endpoint called by user: %s", ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.health_check, payload, "metrics");
+  if (!validation.success) {
+    return createValidationErrorResponse("metrics", validation.error);
+  }
+
   register.metrics().then(metrics => {
     return metrics;
   });
@@ -80,6 +104,36 @@ export function registerRpcWithMetrics(
   initializer.registerRpc(rpcId, wrappedHandler);
 }
 
+export function registerRpcWithRateLimit(
+  initializer: Runtime.Initializer,
+  rpcId: string,
+  rpcName: string,
+  handler: RpcHandler
+): void {
+  if (!config.rateLimit.enabled) {
+    registerRpcWithMetrics(initializer, rpcId, rpcName, handler);
+    return;
+  }
+  
+  const endpointConfig = config.rateLimit.endpoints[rpcName];
+  if (endpointConfig) {
+    rateLimiter.setEndpointRateLimit(rpcName, endpointConfig);
+  }
+  
+  const wrappedWithRateLimit = rateLimiter.createRateLimitedRpcHandler(rpcName, handler);
+  const wrappedWithMetrics = wrapRpcWithMetrics(rpcName, wrappedWithRateLimit);
+  
+  initializer.registerRpc(rpcId, wrappedWithMetrics);
+}
+
 export function getMetricsRegistry(): Registry {
   return register;
+}
+
+export function recordRateLimitViolation(rpcName: string): void {
+  rateLimitViolationsTotal.inc({ rpc: rpcName });
+}
+
+export function updateActiveUsersCount(count: number): void {
+  rateLimitActiveUsers.set(count);
 }

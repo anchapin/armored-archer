@@ -1,5 +1,6 @@
 import { Runtime } from "../types/nakama";
 
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 export interface SeasonRewards {
   rank_tier: "legendary" | "epic" | "rare" | "uncommon" | "common";
   coins: number;
@@ -60,8 +61,13 @@ export function registerRpcGetSeasonInfo(initializer: Runtime.Initializer): void
   initializer.registerRpc("armored_archer/get_season_info", rpcGetSeasonInfo);
 }
 
-function rpcGetSeasonInfo(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
+function rpcGetSeasonInfo(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get season info called for user: %s", ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_season_info, payload, "get_season_info");
+  if (!validation.success) {
+    return createValidationErrorResponse("get_season_info", validation.error);
+  }
 
   const currentSeason = getCurrentSeason();
 
@@ -84,7 +90,12 @@ function rpcGetLeaderboard(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
   logger.info("Get leaderboard called for user: %s", ctx.userId);
 
   const currentSeason = getCurrentSeason();
-  const request = JSON.parse(payload);
+  const validation = validatePayload(ZodSchemas.get_leaderboard, payload, "get_leaderboard");
+  if (!validation.success) {
+    return createValidationErrorResponse("get_leaderboard", validation.error);
+  }
+
+  const request = validation.data || {};
   const limit = request.limit || 50;
 
   const records = nk.leaderboardRecordList(
@@ -118,13 +129,12 @@ export function registerRpcUpdateRank(initializer: Runtime.Initializer): void {
 function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Update rank called for user: %s", ctx.userId);
 
-  const request: RankChange = JSON.parse(payload);
-
-  if (!request.winner_id || !request.loser_id) {
-    return JSON.stringify({
-      error: "Winner and loser IDs required"
-    });
+  const validation = validatePayload(ZodSchemas.update_rank, payload, "update_rank");
+  if (!validation.success) {
+    return createValidationErrorResponse("update_rank", validation.error);
   }
+
+  const request = validation.data;
 
   const currentSeason = getCurrentSeason();
 
@@ -202,8 +212,13 @@ export function registerRpcGetSeasonRewards(initializer: Runtime.Initializer): v
   initializer.registerRpc("armored_archer/get_season_rewards", rpcGetSeasonRewards);
 }
 
-function rpcGetSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
+function rpcGetSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get season rewards called for user: %s", ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_season_rewards, payload, "get_season_rewards");
+  if (!validation.success) {
+    return createValidationErrorResponse("get_season_rewards", validation.error);
+  }
 
   const currentSeason = getCurrentSeason();
   const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
@@ -228,8 +243,13 @@ export function registerRpcClaimSeasonRewards(initializer: Runtime.Initializer):
   initializer.registerRpc("armored_archer/claim_season_rewards", rpcClaimSeasonRewards);
 }
 
-function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
+function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Claim season rewards called for user: %s", ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.claim_season_rewards, payload, "claim_season_rewards");
+  if (!validation.success) {
+    return createValidationErrorResponse("claim_season_rewards", validation.error);
+  }
 
   const currentSeason = getCurrentSeason();
 
@@ -299,8 +319,13 @@ export function registerRpcEndSeason(initializer: Runtime.Initializer): void {
   initializer.registerRpc("armored_archer/end_season", rpcEndSeason);
 }
 
-function rpcEndSeason(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, _payload: string): string {
+function rpcEndSeason(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("End season called for user: %s", ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.end_season, payload, "end_season");
+  if (!validation.success) {
+    return createValidationErrorResponse("end_season", validation.error);
+  }
 
   const currentSeason = getCurrentSeason();
 
