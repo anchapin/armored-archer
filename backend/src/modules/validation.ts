@@ -102,17 +102,21 @@ export const ZodSchemas = {
 
 export type SchemaName = keyof typeof ZodSchemas;
 
-export function validatePayload<T>(schema: z.ZodSchema<T>, payload: string, rpcName: string): { success: true; data: T } | { success: false; error: string } {
+export type ValidationResult<T> = 
+  | { success: true; data: T } 
+  | { success: false; error: string };
+
+export function validatePayload<T>(schema: z.ZodSchema<T>, payload: string, rpcName: string): ValidationResult<T> {
   try {
     const parsed = JSON.parse(payload);
     const result = schema.safeParse(parsed);
     
     if (!result.success) {
-      const errorMessages = result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      const errorMessages = result.error.issues.map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`).join(', ');
       return { success: false, error: `Validation failed for ${rpcName}: ${errorMessages}` };
     }
     
-    return { success: true, data: result.data };
+    return { success: true, data: result.data as T };
   } catch (error) {
     return { success: false, error: `Invalid JSON in ${rpcName}: ${error}` };
   }

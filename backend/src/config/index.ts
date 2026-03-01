@@ -88,11 +88,16 @@ export interface MetricsConfig {
   prometheusPort: number;
 }
 
+export interface EndpointRateLimitConfig {
+  maxRequests: number;
+  windowMs: number;
+}
+
 export interface RateLimitConfig {
   enabled: boolean;
   defaultMaxRequests: number;
   defaultWindowMs: number;
-  endpoints: Record<string, { maxRequests: number; windowMs: number }>;
+  endpoints: Record<string, EndpointRateLimitConfig>;
 }
 
 export interface AppConfig {
@@ -175,6 +180,66 @@ const config: AppConfig = {
     namespace: process.env.METRICS_NAMESPACE || 'nakama',
     prefix: process.env.METRICS_PREFIX || 'nakama',
     prometheusPort: parseInt(process.env.PROMETHEUS_PORT || '9100', 10)
+  },
+  
+  rateLimit: {
+    enabled: process.env.RATE_LIMIT_ENABLED !== 'false',
+    defaultMaxRequests: parseInt(process.env.RATE_LIMIT_DEFAULT_MAX_REQUESTS || '100', 10),
+    defaultWindowMs: parseInt(process.env.RATE_LIMIT_DEFAULT_WINDOW_MS || '60000', 10),
+    endpoints: {
+      'health_check': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_HEALTH_CHECK_MAX || '300', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_HEALTH_CHECK_WINDOW_MS || '60000', 10)
+      },
+      'get_player_stats': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_GET_PLAYER_STATS_MAX || '60', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_GET_PLAYER_STATS_WINDOW_MS || '60000', 10)
+      },
+      'gain_xp': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_GAIN_XP_MAX || '30', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_GAIN_XP_WINDOW_MS || '60000', 10)
+      },
+      'allocate_stats': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_ALLOCATE_STATS_MAX || '30', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_ALLOCATE_STATS_WINDOW_MS || '60000', 10)
+      },
+      'submit_combat_action': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_SUBMIT_COMBAT_ACTION_MAX || '10', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_SUBMIT_COMBAT_ACTION_WINDOW_MS || '10000', 10)
+      },
+      'get_match_state': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_GET_MATCH_STATE_MAX || '60', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_GET_MATCH_STATE_WINDOW_MS || '60000', 10)
+      },
+      'create_match': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_CREATE_MATCH_MAX || '10', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_CREATE_MATCH_WINDOW_MS || '60000', 10)
+      },
+      'accept_match': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_ACCEPT_MATCH_MAX || '10', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_ACCEPT_MATCH_WINDOW_MS || '60000', 10)
+      },
+      'get_leaderboard': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_GET_LEADERBOARD_MAX || '30', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_GET_LEADERBOARD_WINDOW_MS || '60000', 10)
+      },
+      'validate_purchase': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_VALIDATE_PURCHASE_MAX || '20', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_VALIDATE_PURCHASE_WINDOW_MS || '60000', 10)
+      },
+      'spend_gems': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_SPEND_GEMS_MAX || '20', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_SPEND_GEMS_WINDOW_MS || '60000', 10)
+      },
+      'generate_gear': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_GENERATE_GEAR_MAX || '30', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_GENERATE_GEAR_WINDOW_MS || '60000', 10)
+      },
+      'equip_gear': {
+        maxRequests: parseInt(process.env.RATE_LIMIT_EQUIP_GEAR_MAX || '30', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_EQUIP_GEAR_WINDOW_MS || '60000', 10)
+      }
+    }
   }
 };
 

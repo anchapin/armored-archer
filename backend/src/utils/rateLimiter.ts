@@ -163,8 +163,8 @@ export function getRateLimitStats(): {
 
 export function createRateLimitedRpcHandler(
   endpoint: string,
-  handler: Runtime.RpcFunction
-): Runtime.RpcFunction {
+  handler: (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => string
+): (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => string {
   return function(
     ctx: Runtime.Context,
     loggerParam: Runtime.Logger,

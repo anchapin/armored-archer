@@ -1,8 +1,9 @@
 import { Runtime } from "../types/nakama";
-import { safeParse, safeParsePayload, createErrorResponse } from "../utils/safeParse";
+import { safeParse, createErrorResponse } from "../utils/safeParse";
 import { getCacheManager } from "../utils/cache";
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 export interface GearRarity {
   name: string;
   stat_multiplier: number;
@@ -287,13 +288,14 @@ export function registerRpcGenerateGear(initializer: Runtime.Initializer): void 
 
 function rpcGenerateGear(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Generate gear called for user: %s", ctx.userId);
-  
-  const request = safeParsePayload<GenerateGearRequest>(payload, logger, "<rpc_name>");
-  
-  if (!request) {
-    return createErrorResponse("INVALID_JSON", "Invalid JSON payload");
+
+  const validation = validatePayload(ZodSchemas.generate_gear, payload, "generate_gear");
+  if (!validation.success) {
+    return createValidationErrorResponse("generate_gear", validation.error);
   }
-  
+
+  const request = validation.data;
+
   const inventoryObjects = nk.storageRead([
     {
       collection: "player_inventory",

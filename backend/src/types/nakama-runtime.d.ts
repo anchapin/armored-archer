@@ -7,10 +7,10 @@ declare namespace Runtime {
   }
 
   interface Logger {
-    info(format: string, ...args: any[]): void;
-    error(format: string, ...args: any[]): void;
-    warn(format: string, ...args: any[]): void;
-    debug(format: string, ...args: any[]): void;
+    info(format: string, ...args: unknown[]): void;
+    error(format: string, ...args: unknown[]): void;
+    warn(format: string, ...args: unknown[]): void;
+    debug(format: string, ...args: unknown[]): void;
   }
 
   interface StorageRead {
@@ -37,13 +37,13 @@ declare namespace Runtime {
   interface WalletUpdate {
     userId: string;
     updates: { [key: string]: number };
-    metadata?: { [key: string]: any };
+    metadata?: Record<string, unknown>;
   }
 
   interface Nakama {
     storageRead(requests: StorageRead[]): StorageRead[];
     storageWrite(requests: StorageWrite[]): StorageWrite[];
-    walletUpdate(userId: string, updates: { [key: string]: number }, metadata?: { [key: string]: any }): void;
+    walletUpdate(userId: string, updates: { [key: string]: number }, metadata?: Record<string, unknown>): void;
   }
 
   interface RpcRegistration {

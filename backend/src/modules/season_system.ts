@@ -1,6 +1,7 @@
 import { Runtime } from "../types/nakama";
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 export interface SeasonRewards {
   rank_tier: "legendary" | "epic" | "rare" | "uncommon" | "common";
   coins: number;
