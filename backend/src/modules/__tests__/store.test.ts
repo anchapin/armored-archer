@@ -58,7 +58,7 @@ describe('store', () => {
       const result = rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
-      expect(parsed.error).toContain("Invalid enum value");
+      expect(parsed.error).toContain("Invalid option");
     });
 
     it('should validate input payload', () => {
