@@ -5,6 +5,15 @@ import { invalidatePlayerStatsCache } from "../utils/db_optimizer";
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 import { registerRpcWithMetrics } from "./metrics";
 
+/**
+ * Player statistics data structure.
+ * 
+ * @property user_id - Unique identifier for the player
+ * @property level - Current player level
+ * @property xp - Current experience points
+ * @property ability_points - Points available for stat allocation
+ * @property stats - Player combat statistics
+ */
 export interface PlayerStats {
   user_id: string;
   level: number;
@@ -18,21 +27,59 @@ export interface PlayerStats {
   };
 }
 
+/**
+ * Request payload for gaining XP.
+ * 
+ * @property xp_amount - Amount of XP to gain
+ * @property source - Source of XP gain ("pve" or "pvp")
+ */
 export interface XPGainRequest {
   xp_amount: number;
   source: string; // "pve" or "pvp"
 }
 
+/**
+ * Request payload for stat allocation.
+ * 
+ * @property stat_name - Name of stat to increase
+ * @property points - Number of points to allocate
+ */
 export interface StatAllocationRequest {
   stat_name: string; // "attack", "defense", "dodge", "crit_rate"
   points: number;
 }
 
+/**
+ * Registers the gain XP RPC endpoint.
+ * 
+ * @param initializer - Nakama runtime initializer
+ */
 export function registerRpcGainXP(initializer: Runtime.Initializer): void {
   registerRpcWithMetrics(initializer, "armored_archer/gain_xp", "gain_xp", rpcGainXP);
 }
 
-function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+/**
+ * Handles XP gain requests and level progression.
+ * 
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string containing xp_amount and source
+ * @returns JSON string with success status and updated player stats
+ * 
+ * @example
+ * // Request payload
+ * { "xp_amount": 100, "source": "pve" }
+ * 
+ * // Response
+ * { 
+ *   "success": true, 
+ *   "player_stats": { ... },
+ *   "xp_gained": 100,
+ *   "levels_gained": 1
+ * }
+ */
+export function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Gain XP called for user: %s", ctx.userId);
 
   const validation = validatePayload(ZodSchemas.gain_xp, payload, "gain_xp");
@@ -121,11 +168,35 @@ function rpcGainXP(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nak
   });
 }
 
+/**
+ * Registers the stat allocation RPC endpoint.
+ * 
+ * @param initializer - Nakama runtime initializer
+ */
 export function registerRpcAllocateStats(initializer: Runtime.Initializer): void {
   registerRpcWithMetrics(initializer, "armored_archer/allocate_stats", "allocate_stats", rpcAllocateStats);
 }
 
-function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+/**
+ * Handles stat allocation requests for ability points.
+ * 
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string containing stat_name and points
+ * @returns JSON string with success status and updated player stats
+ * 
+ * @example
+ * // Request payload
+ * { "stat_name": "attack", "points": 5 }
+ * 
+ * // Response
+ * { 
+ *   "success": true, 
+ *   "player_stats": { ... }
+ * }
+ */
+export function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Allocate stats called for user: %s", ctx.userId);
 
   const validation = validatePayload(ZodSchemas.allocate_stats, payload, "allocate_stats");
@@ -182,11 +253,36 @@ function rpcAllocateStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
   });
 }
 
+/**
+ * Registers the get player stats RPC endpoint.
+ * 
+ * @param initializer - Nakama runtime initializer
+ */
 export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): void {
   registerRpcWithMetrics(initializer, "armored_archer/get_player_stats", "get_player_stats", rpcGetPlayerStats);
 }
 
-function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+/**
+ * Retrieves player statistics with caching.
+ * 
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (unused, required for RPC format)
+ * @returns JSON string with player stats or error
+ * 
+ * @example
+ * // Request payload
+ * { }
+ * 
+ * // Response
+ * { 
+ *   "level": 5, 
+ *   "xp": 450,
+ *   "stats": { ... }
+ * }
+ */
+export function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get player stats called for user: %s", ctx.userId);
 
   const validation = validatePayload(ZodSchemas.get_player_stats, payload, "get_player_stats");
@@ -221,7 +317,16 @@ function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
   return stats;
 }
 
-function calculateLevel(xp: number): number {
+/**
+ * Calculates player level based on experience points.
+ * 
+ * @param xp - Experience points to calculate level for
+ * @returns Calculated player level
+ * 
+ * @example
+ * calculateLevel(450); // returns 5
+ */
+export function calculateLevel(xp: number): number {
   const baseXP = 100;
   const growthFactor = 1.5;
   let level = 1;

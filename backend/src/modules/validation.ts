@@ -108,7 +108,12 @@ export type ValidationResult<T> =
 
 export function validatePayload<T>(schema: z.ZodSchema<T>, payload: string, rpcName: string): ValidationResult<T> {
   try {
-    const parsed = JSON.parse(payload);
+    let parsed: unknown;
+    if (payload === "") {
+      parsed = {};
+    } else {
+      parsed = JSON.parse(payload);
+    }
     const result = schema.safeParse(parsed);
     
     if (!result.success) {

@@ -2,7 +2,23 @@ import { Runtime } from "../types/nakama";
 import { TurnData, PlayerStats } from "../types/game";
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
 
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
+/**
+ * PvP match data structure.
+ * 
+ * @property match_id - Unique identifier for the match
+ * @property creator_id - ID of the match creator
+ * @property opponent_id - ID of the opponent
+ * @property creator_rank - Rank of the creator
+ * @property opponent_rank - Rank of the opponent
+ * @property match_type - Type of match ("ranked" or "casual")
+ * @property is_punch_up - Whether this is a punch-up match
+ * @property status - Current match status
+ * @property created_at - Timestamp when match was created
+ * @property updated_at - Timestamp when match was last updated
+ * @property creator_turn_data - Optional turn data for creator
+ * @property opponent_turn_data - Optional turn data for opponent
+ * @property winner - Optional winner if match completed
+ */
 export interface PvPMatch {
   match_id: string;
   creator_id: string;
@@ -19,16 +35,36 @@ export interface PvPMatch {
   winner?: string;
 }
 
+/**
+ * Request payload for creating a match.
+ * 
+ * @property match_type - Type of match to create
+ * @property is_punch_up - Whether to allow punch-up matches
+ * @property target_opponent_id - Optional specific opponent to challenge
+ */
 export interface CreateMatchRequest {
   match_type: "ranked" | "casual";
   is_punch_up?: boolean;
   target_opponent_id?: string;
 }
 
+/**
+ * Request payload for accepting a match.
+ * 
+ * @property match_id - ID of the match to accept
+ */
 export interface AcceptMatchRequest {
   match_id: string;
 }
 
+/**
+ * Request payload for listing matches.
+ * 
+ * @property match_type - Optional filter by match type
+ * @property min_rank - Optional minimum rank filter
+ * @property max_rank - Optional maximum rank filter
+ * @property limit - Maximum number of matches to return
+ */
 export interface ListMatchesRequest {
   match_type?: "ranked" | "casual";
   min_rank?: number;
@@ -36,11 +72,37 @@ export interface ListMatchesRequest {
   limit?: number;
 }
 
+/**
+ * Registers the list matches RPC endpoint.
+ * 
+ * @param initializer - Nakama runtime initializer
+ */
 export function registerRpcListMatches(initializer: Runtime.Initializer): void {
   initializer.registerRpc("armored_archer/list_matches", rpcListMatches);
 }
 
-function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+/**
+ * Lists available PvP matches with filtering options.
+ * 
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string containing filter parameters
+ * @returns JSON string with list of matches and player rank
+ * 
+ * @example
+ * // Request payload
+ * { "match_type": "ranked", "limit": 10 }
+ * 
+ * // Response
+ * { 
+ *   "success": true, 
+ *   "matches": [ ... ],
+ *   "player_rank": 15,
+ *   "total": 8
+ * }
+ */
+export function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("List matches called for user: %s", ctx.userId);
 
   const validation = validatePayload(ZodSchemas.list_matches, payload, "list_matches");
@@ -93,7 +155,7 @@ function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
       continue;
     }
 
-
+    
     if (request.min_rank !== undefined && match.creator_rank < request.min_rank) {
       continue;
     }
@@ -115,11 +177,35 @@ function rpcListMatches(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   });
 }
 
+/**
+ * Registers the create match RPC endpoint.
+ * 
+ * @param initializer - Nakama runtime initializer
+ */
 export function registerRpcCreateMatch(initializer: Runtime.Initializer): void {
   initializer.registerRpc("armored_archer/create_match", rpcCreateMatch);
 }
 
-function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+/**
+ * Creates a new PvP match with optional direct challenge.
+ * 
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string containing match creation parameters
+ * @returns JSON string with created match data
+ * 
+ * @example
+ * // Request payload
+ * { "match_type": "ranked", "target_opponent_id": "user_456" }
+ * 
+ * // Response
+ * { 
+ *   "success": true, 
+ *   "match": { ... }
+ * }
+ */
+export function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Create match called for user: %s", ctx.userId);
 
   const validation = validatePayload(ZodSchemas.create_match, payload, "create_match");
@@ -226,11 +312,35 @@ function rpcCreateMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   }
 }
 
+/**
+ * Registers the accept match RPC endpoint.
+ * 
+ * @param initializer - Nakama runtime initializer
+ */
 export function registerRpcAcceptMatch(initializer: Runtime.Initializer): void {
   initializer.registerRpc("armored_archer/accept_match", rpcAcceptMatch);
 }
 
-function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+/**
+ * Accepts a pending PvP match and starts the game.
+ * 
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string containing match_id
+ * @returns JSON string with accepted match data
+ * 
+ * @example
+ * // Request payload
+ * { "match_id": "match_123" }
+ * 
+ * // Response
+ * { 
+ *   "success": true, 
+ *   "match": { ... }
+ * }
+ */
+export function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Accept match called for user: %s", ctx.userId);
 
   const validation = validatePayload(ZodSchemas.accept_match, payload, "accept_match");
@@ -303,11 +413,37 @@ function rpcAcceptMatch(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtim
   });
 }
 
+/**
+ * Registers the get player rank RPC endpoint.
+ * 
+ * @param initializer - Nakama runtime initializer
+ */
 export function registerRpcGetPlayerRank(initializer: Runtime.Initializer): void {
   initializer.registerRpc("armored_archer/get_player_rank", rpcGetPlayerRank);
 }
 
-function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+/**
+ * Retrieves a player's current rank and stats.
+ * 
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (unused, required for RPC format)
+ * @returns JSON string with player rank and stats
+ * 
+ * @example
+ * // Request payload
+ * { }
+ * 
+ * // Response
+ * { 
+ *   "success": true, 
+ *   "rank": 15,
+ *   "level": 5,
+ *   "xp": 450
+ * }
+ */
+export function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   logger.info("Get player rank called for user: %s", ctx.userId);
 
   const validation = validatePayload(ZodSchemas.get_player_rank, payload, "get_player_rank");
@@ -340,7 +476,13 @@ function rpcGetPlayerRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runt
   });
 }
 
-function calculateRank(playerStats: PlayerStats): number {
+/**
+ * Calculates a player's rank based on level and stats.
+ * 
+ * @param playerStats - Player statistics data
+ * @returns Calculated player rank
+ */
+export function calculateRank(playerStats: PlayerStats): number {
   const baseRank = playerStats.level * 10;
   const statsTotal = playerStats.stats.attack + 
                      playerStats.stats.defense + 
@@ -350,6 +492,11 @@ function calculateRank(playerStats: PlayerStats): number {
   return Math.floor(baseRank + (statsTotal / 4));
 }
 
-function generateMatchId(): string {
+/**
+ * Generates a unique match ID.
+ * 
+ * @returns Unique match identifier string
+ */
+export function generateMatchId(): string {
   return "match_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
 }
