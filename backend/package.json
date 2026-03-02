@@ -38,7 +38,7 @@
     "typescript": "^5.2.0"
   },
   "dependencies": {
-    "@sentry/node": "^8.0.0",
+    "@sentry/node": "^10.40.0",
     "lru-cache": "^11.2.6",
     "prom-client": "^15.0.0",
     "winston": "^3.11.0",
