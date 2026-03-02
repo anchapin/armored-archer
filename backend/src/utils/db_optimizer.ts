@@ -1,6 +1,6 @@
-import { Runtime } from "../types/nakama";
-import { safeParse } from "./safeParse";
-import { getCacheManager } from "./cache";
+import { Runtime } from '../types/nakama';
+import { safeParse } from './safeParse';
+import { getCacheManager } from './cache';
 
 export interface PlayerStats {
   user_id: string;
@@ -31,7 +31,7 @@ export function batchGetPlayerStats(
   const uncachedUserIds: string[] = [];
 
   for (const userId of userIds) {
-    const cachedStats = cacheManager.get<PlayerStats>("player_stats", userId);
+    const cachedStats = cacheManager.get<PlayerStats>('player_stats', userId);
     if (cachedStats !== undefined) {
       result.set(userId, cachedStats);
     } else {
@@ -40,21 +40,21 @@ export function batchGetPlayerStats(
   }
 
   if (uncachedUserIds.length > 0) {
-    const readRequests: StorageReadRequest[] = uncachedUserIds.map(userId => ({
-      collection: "player_stats",
+    const readRequests: StorageReadRequest[] = uncachedUserIds.map((userId) => ({
+      collection: 'player_stats',
       key: userId,
-      userId: userId
+      userId: userId,
     }));
 
     const objects = nk.storageRead(readRequests);
 
     for (const obj of objects) {
       if (obj.value) {
-        const parseResult = safeParse<PlayerStats>(obj.value, null, logger, "player_stats");
+        const parseResult = safeParse<PlayerStats>(obj.value, null, logger, 'player_stats');
         if (parseResult.success && parseResult.data) {
           const stats = parseResult.data;
           result.set(obj.userId, stats);
-          cacheManager.set("player_stats", obj.userId, stats);
+          cacheManager.set('player_stats', obj.userId, stats);
         }
       }
     }
@@ -70,8 +70,8 @@ export function batchGetPlayerStats(
             attack: 10,
             defense: 10,
             dodge: 10,
-            crit_rate: 5
-          }
+            crit_rate: 5,
+          },
         };
         result.set(userId, defaultStats);
       }
@@ -87,7 +87,7 @@ export function getPlayerStatsWithCache(
   logger: Runtime.Logger
 ): PlayerStats {
   const cacheManager = getCacheManager(logger);
-  const cachedStats = cacheManager.get<PlayerStats>("player_stats", userId);
+  const cachedStats = cacheManager.get<PlayerStats>('player_stats', userId);
 
   if (cachedStats !== undefined) {
     return cachedStats;
@@ -95,17 +95,17 @@ export function getPlayerStatsWithCache(
 
   const objects = nk.storageRead([
     {
-      collection: "player_stats",
+      collection: 'player_stats',
       key: userId,
-      userId: userId
-    }
+      userId: userId,
+    },
   ]);
 
   if (objects.length > 0 && objects[0].value) {
-    const parseResult = safeParse<PlayerStats>(objects[0].value, null, logger, "player_stats");
+    const parseResult = safeParse<PlayerStats>(objects[0].value, null, logger, 'player_stats');
     if (parseResult.success && parseResult.data) {
       const stats = parseResult.data;
-      cacheManager.set("player_stats", userId, stats);
+      cacheManager.set('player_stats', userId, stats);
       return stats;
     }
   }
@@ -119,14 +119,14 @@ export function getPlayerStatsWithCache(
       attack: 10,
       defense: 10,
       dodge: 10,
-      crit_rate: 5
-    }
+      crit_rate: 5,
+    },
   };
-  cacheManager.set("player_stats", userId, defaultStats);
+  cacheManager.set('player_stats', userId, defaultStats);
   return defaultStats;
 }
 
 export function invalidatePlayerStatsCache(userId: string, logger: Runtime.Logger): void {
   const cacheManager = getCacheManager(logger);
-  cacheManager.delete("player_stats", userId);
+  cacheManager.delete('player_stats', userId);
 }

@@ -1,4 +1,5 @@
 import { createMockLogger, createMockContext, createMockNakama } from "../../__mocks__/nakama";
+import { PlayerStats } from "../../types/game";
 import { rpcCreateMatch } from "../matchmaker";
 
 const mockCtx = createMockContext();
@@ -27,10 +28,10 @@ describe('rpcCreateMatch', () => {
       console.log("storageRead called with:", objects);
       if (objects[0].key === "test-user-123") {
         console.log("Returning player stats for test-user-123");
-        return [{ collection: "player_stats", key: "test-user-123", value: JSON.stringify(playerStats) }];
+        return [{ collection: "player_stats", key: "test-user-123", userId: "test-user-123", value: JSON.stringify(playerStats), version: "1", permissionRead: 1, permissionWrite: 1, createTime: 1, updateTime: 1 }];
       } else if (objects[0].key === "target-user") {
         console.log("Returning player stats for target-user");
-        return [{ collection: "player_stats", key: "target-user", value: JSON.stringify(targetPlayerStats) }];
+        return [{ collection: "player_stats", key: "target-user", userId: "target-user", value: JSON.stringify(targetPlayerStats), version: "1", permissionRead: 1, permissionWrite: 1, createTime: 1, updateTime: 1 }];
       }
       console.log("No matching key found");
       return [];

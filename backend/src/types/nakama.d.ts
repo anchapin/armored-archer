@@ -144,10 +144,10 @@ declare namespace Runtime {
    * @method registerAfter - Registers an after hook
    */
   export interface Initializer {
-    registerRpc(id: string, fn: (ctx: Context, logger: Logger, nk: Nakama, payload: string) > string): void;
-    registerMatch(name: string, fn: (ctx: Context, logger: Logger, nk: Nakama, params: MatchParams) > MatchResult): void;
-    registerBefore(fn: (ctx: Context, logger: Logger, nk: Nakama, data: BeforeAfterData) > BeforeAfterData): void;
-    registerAfter(fn: (ctx: Context, logger: Logger, nk: Nakama, data: BeforeAfterData) > BeforeAfterData): void;
+    registerRpc(id: string, fn: (ctx: Context, logger: Logger, nk: Nakama, payload: string) => string): void;
+    registerMatch(name: string, fn: (ctx: Context, logger: Logger, nk: Nakama, params: MatchParams) => MatchResult): void;
+    registerBefore(fn: (ctx: Context, logger: Logger, nk: Nakama, data: BeforeAfterData) => BeforeAfterData): void;
+    registerAfter(fn: (ctx: Context, logger: Logger, nk: Nakama, data: BeforeAfterData) => BeforeAfterData): void;
   }
 
   /**
@@ -158,7 +158,7 @@ declare namespace Runtime {
    * @param nk - Nakama server interface
    * @param initializer - Runtime initializer
    */
-  export type InitModule = (ctx: Context, logger: Logger, nk: Nakama, initializer: Initializer) > void;
+  export type InitModule = (ctx: Context, logger: Logger, nk: Nakama, initializer: Initializer) => void;
 
   /**
    * Stream interface.

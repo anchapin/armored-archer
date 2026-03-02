@@ -1,6 +1,6 @@
-import { Runtime } from "../types/nakama";
-import { LRUCache as LRUCacheClass } from "lru-cache";
-import { CacheValueType } from "../types/shared";
+import { Runtime } from '../types/nakama';
+import { LRUCache as LRUCacheClass } from 'lru-cache';
+import { CacheValueType } from '../types/shared';
 
 type LRUCache<K, V> = InstanceType<typeof LRUCacheClass<K, V>>;
 
@@ -20,21 +20,17 @@ class CacheManager {
     this.logger = logger;
   }
 
-  createCache(
-    name: string,
-    max: number,
-    ttl: number
-  ): LRUCache<string, CacheValueType> {
+  createCache(name: string, max: number, ttl: number): LRUCache<string, CacheValueType> {
     const cache = new LRUCacheClass<string, CacheValueType>({
       max: max,
-      ttl: ttl
+      ttl: ttl,
     });
 
     this.caches.set(name, cache);
     this.metrics.set(name, { hits: 0, misses: 0 });
 
     if (this.logger) {
-      this.logger.info("Cache %s created with max=%d, ttl=%dms", name, max, ttl);
+      this.logger.info('Cache %s created with max=%d, ttl=%dms', name, max, ttl);
     }
 
     return cache;
@@ -46,7 +42,7 @@ class CacheManager {
 
     if (!cache || !metrics) {
       if (this.logger) {
-        this.logger.error("Cache %s not found", cacheName);
+        this.logger.error('Cache %s not found', cacheName);
       }
       return undefined;
     }
@@ -56,12 +52,12 @@ class CacheManager {
     if (value !== undefined) {
       metrics.hits++;
       if (this.logger) {
-        this.logger.debug("Cache HIT: %s:%s", cacheName, key);
+        this.logger.debug('Cache HIT: %s:%s', cacheName, key);
       }
     } else {
       metrics.misses++;
       if (this.logger) {
-        this.logger.debug("Cache MISS: %s:%s", cacheName, key);
+        this.logger.debug('Cache MISS: %s:%s', cacheName, key);
       }
     }
 
@@ -73,7 +69,7 @@ class CacheManager {
 
     if (!cache) {
       if (this.logger) {
-        this.logger.error("Cache %s not found", cacheName);
+        this.logger.error('Cache %s not found', cacheName);
       }
       return;
     }
@@ -81,7 +77,7 @@ class CacheManager {
     cache.set(key, value);
 
     if (this.logger) {
-      this.logger.debug("Cache SET: %s:%s", cacheName, key);
+      this.logger.debug('Cache SET: %s:%s', cacheName, key);
     }
   }
 
@@ -90,7 +86,7 @@ class CacheManager {
 
     if (!cache) {
       if (this.logger) {
-        this.logger.error("Cache %s not found", cacheName);
+        this.logger.error('Cache %s not found', cacheName);
       }
       return;
     }
@@ -98,7 +94,7 @@ class CacheManager {
     cache.delete(key);
 
     if (this.logger) {
-      this.logger.debug("Cache DELETE: %s:%s", cacheName, key);
+      this.logger.debug('Cache DELETE: %s:%s', cacheName, key);
     }
   }
 
@@ -108,7 +104,7 @@ class CacheManager {
 
     if (!cache || !metrics) {
       if (this.logger) {
-        this.logger.error("Cache %s not found", cacheName);
+        this.logger.error('Cache %s not found', cacheName);
       }
       return;
     }
@@ -118,7 +114,7 @@ class CacheManager {
     metrics.misses = 0;
 
     if (this.logger) {
-      this.logger.info("Cache %s cleared", cacheName);
+      this.logger.info('Cache %s cleared', cacheName);
     }
   }
 
@@ -146,7 +142,7 @@ class CacheManager {
     return {
       size: cache.size,
       max: cache.max,
-      ttl: cache.ttl ?? 0
+      ttl: cache.ttl ?? 0,
     };
   }
 }
@@ -154,13 +150,13 @@ class CacheManager {
 const TTL = {
   SHORT: 60 * 1000,
   MEDIUM: 5 * 60 * 1000,
-  LONG: 30 * 60 * 1000
+  LONG: 30 * 60 * 1000,
 } as const;
 
 const CACHE_SIZES = {
   SMALL: 100,
   MEDIUM: 500,
-  LARGE: 1000
+  LARGE: 1000,
 } as const;
 
 let cacheManagerInstance: CacheManager | null = null;
@@ -175,14 +171,14 @@ export function getCacheManager(logger?: Runtime.Logger): CacheManager {
 export function initializeCaches(logger?: Runtime.Logger): CacheManager {
   const manager = getCacheManager(logger);
 
-  manager.createCache("player_stats", CACHE_SIZES.MEDIUM, TTL.SHORT);
-  manager.createCache("leaderboards", CACHE_SIZES.SMALL, TTL.SHORT);
-  manager.createCache("season_info", CACHE_SIZES.SMALL, TTL.MEDIUM);
-  manager.createCache("store_catalog", CACHE_SIZES.SMALL, TTL.LONG);
-  manager.createCache("gear_definitions", CACHE_SIZES.SMALL, TTL.LONG);
+  manager.createCache('player_stats', CACHE_SIZES.MEDIUM, TTL.SHORT);
+  manager.createCache('leaderboards', CACHE_SIZES.SMALL, TTL.SHORT);
+  manager.createCache('season_info', CACHE_SIZES.SMALL, TTL.MEDIUM);
+  manager.createCache('store_catalog', CACHE_SIZES.SMALL, TTL.LONG);
+  manager.createCache('gear_definitions', CACHE_SIZES.SMALL, TTL.LONG);
 
   if (logger) {
-    logger.info("All caches initialized");
+    logger.info('All caches initialized');
   }
 
   return manager;

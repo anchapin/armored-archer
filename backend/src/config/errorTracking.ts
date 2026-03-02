@@ -13,7 +13,7 @@ export const errorTrackingConfig: ErrorTrackingConfig = {
   dsn: process.env.SENTRY_DSN || '',
   environment: process.env.NODE_ENV || config.environment,
   tracesSampleRate: parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE || '1.0'),
-  enabled: process.env.SENTRY_ENABLED === 'true' || config.environment === 'production'
+  enabled: process.env.SENTRY_ENABLED === 'true' || config.environment === 'production',
 };
 
 export function initializeSentry(): void {
@@ -31,10 +31,12 @@ export function initializeSentry(): void {
         event.request.headers = undefined;
       }
       return event;
-    }
+    },
   });
 
-  console.log(`[ErrorTracking] Sentry initialized in ${errorTrackingConfig.environment} environment`);
+  console.log(
+    `[ErrorTracking] Sentry initialized in ${errorTrackingConfig.environment} environment`
+  );
 }
 
 export function captureException(
@@ -61,8 +63,8 @@ export function captureException(
     tags,
     extra: {
       ...context.extra,
-      timestamp: new Date().toISOString()
-    }
+      timestamp: new Date().toISOString(),
+    },
   });
 }
 
@@ -92,8 +94,8 @@ export function captureMessage(
     tags,
     extra: {
       ...context.extra,
-      timestamp: new Date().toISOString()
-    }
+      timestamp: new Date().toISOString(),
+    },
   });
 }
 
@@ -106,6 +108,6 @@ export function captureRpcError(
   captureException(error, {
     userId,
     rpc: rpcName,
-    extra: payload ? { payload } : undefined
+    extra: payload ? { payload } : undefined,
   });
 }

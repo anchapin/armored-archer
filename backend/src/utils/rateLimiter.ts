@@ -38,7 +38,7 @@ const rateLimitStore = new Map<string, RateLimitState>();
 
 const defaultConfig: RateLimitConfig = {
   maxRequests: 100,
-  windowMs: 60000
+  windowMs: 60000,
 };
 
 const endpointConfigs: Map<string, RateLimitConfig> = new Map();
@@ -59,58 +59,51 @@ function getCurrentWindowResetTime(windowMs: number): number {
   return Date.now() + windowMs;
 }
 
-export function checkRateLimit(
-  userId: string,
-  endpoint: string
-): RateLimitResult {
+export function checkRateLimit(userId: string, endpoint: string): RateLimitResult {
   const config = getEndpointRateLimit(endpoint);
   const key = getKey(userId, endpoint);
   const now = Date.now();
-  
+
   let state = rateLimitStore.get(key);
-  
+
   if (!state || now >= state.resetTime) {
     state = {
       count: 0,
-      resetTime: getCurrentWindowResetTime(config.windowMs)
+      resetTime: getCurrentWindowResetTime(config.windowMs),
     };
     rateLimitStore.set(key, state);
   }
-  
+
   const remaining = Math.max(0, config.maxRequests - state.count);
-  
+
   if (state.count >= config.maxRequests) {
     const retryAfter = Math.ceil((state.resetTime - now) / 1000);
-    
+
     return {
       allowed: false,
       remaining: 0,
       resetTime: state.resetTime,
-      retryAfter
+      retryAfter,
     };
   }
-  
+
   state.count++;
-  
+
   return {
     allowed: true,
     remaining: remaining - 1,
-    resetTime: state.resetTime
+    resetTime: state.resetTime,
   };
 }
 
-export function logRateLimitViolation(
-  endpoint: string,
-  userId: string,
-  retryAfter: number
-): void {
+export function logRateLimitViolation(endpoint: string, userId: string, retryAfter: number): void {
   logger.warn('Rate limit violation', {
     endpoint,
     userId,
     retryAfter,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   });
-  
+
   recordRateLimitViolation(endpoint);
 }
 
@@ -122,15 +115,15 @@ export function resetUserRateLimit(userId: string, endpoint: string): void {
 export function cleanupExpiredEntries(): void {
   const now = Date.now();
   const entriesToDelete: string[] = [];
-  
+
   rateLimitStore.forEach((state, key) => {
     if (now >= state.resetTime) {
       entriesToDelete.push(key);
     }
   });
-  
-  entriesToDelete.forEach(key => rateLimitStore.delete(key));
-  
+
+  entriesToDelete.forEach((key) => rateLimitStore.delete(key));
+
   updateActiveUsersCount(rateLimitStore.size);
 }
 
@@ -141,58 +134,59 @@ export function getRateLimitStats(): {
   endpoints: Array<{ endpoint: string; activeUsers: number }>;
 } {
   const endpointStats = new Map<string, Set<string>>();
-  
+
   rateLimitStore.forEach((_, key) => {
     const [, endpoint] = key.split(':');
     const userId = key.split(':')[0];
-    
+
     if (!endpointStats.has(endpoint)) {
       endpointStats.set(endpoint, new Set());
     }
     endpointStats.get(endpoint)!.add(userId);
   });
-  
+
   return {
     totalEntries: rateLimitStore.size,
     endpoints: Array.from(endpointStats.entries()).map(([endpoint, users]) => ({
       endpoint,
-      activeUsers: users.size
-    }))
+      activeUsers: users.size,
+    })),
   };
 }
 
 export function createRateLimitedRpcHandler(
   endpoint: string,
-  handler: (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => string
+  handler: (
+    ctx: Runtime.Context,
+    logger: Runtime.Logger,
+    nk: Runtime.Nakama,
+    payload: string
+  ) => string
 ): (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => string {
-  return function(
+  return function (
     ctx: Runtime.Context,
     loggerParam: Runtime.Logger,
     nk: Runtime.Nakama,
     payload: string
   ): string {
     const userId = ctx.userId || 'anonymous';
-    
+
     const rateLimitResult = checkRateLimit(userId, endpoint);
-    
+
     if (!rateLimitResult.allowed) {
-      logRateLimitViolation(
-        endpoint,
-        userId,
-        rateLimitResult.retryAfter || 0
-      );
-      
+      logRateLimitViolation(endpoint, userId, rateLimitResult.retryAfter || 0);
+
       return JSON.stringify({
         success: false,
         error: {
           code: 'RATE_LIMIT_EXCEEDED',
           message: 'Rate limit exceeded. Please try again later.',
           retryAfter: rateLimitResult.retryAfter,
-          resetTime: rateLimitResult.resetTime
-        }
+          resetTime: rateLimitResult.resetTime,
+        },
       });
     }
-    
+
     return handler(ctx, loggerParam, nk, payload);
   };
 }

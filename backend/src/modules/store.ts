@@ -1,11 +1,11 @@
-import { Runtime } from "../types/nakama";
-import { safeParse } from "../utils/safeParse";
-import { getCacheManager } from "../utils/cache";
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
+import { Runtime } from '../types/nakama';
+import { safeParse } from '../utils/safeParse';
+import { getCacheManager } from '../utils/cache';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Player currency data structure.
- * 
+ *
  * @property user_id - Unique identifier for the player
  * @property gems - Number of gems the player owns
  * @property gold - Number of gold the player owns
@@ -18,15 +18,19 @@ export interface PlayerCurrency {
 
 /**
  * Retrieves player currency with caching.
- * 
+ *
  * @param nk - Nakama server interface
  * @param userId - ID of the player to retrieve currency for
  * @param logger - Nakama logger instance
  * @returns Player currency data
  */
-function getPlayerCurrencyWithCache(nk: Runtime.Nakama, userId: string, logger: Runtime.Logger): PlayerCurrency {
+function getPlayerCurrencyWithCache(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): PlayerCurrency {
   const cacheManager = getCacheManager(logger);
-  const cachedCurrency = cacheManager.get<PlayerCurrency>("player_currency", userId);
+  const cachedCurrency = cacheManager.get<PlayerCurrency>('player_currency', userId);
 
   if (cachedCurrency !== undefined) {
     return cachedCurrency;
@@ -34,10 +38,10 @@ function getPlayerCurrencyWithCache(nk: Runtime.Nakama, userId: string, logger: 
 
   const objects = nk.storageRead([
     {
-      collection: "player_currency",
+      collection: 'player_currency',
       key: userId,
-      userId: userId
-    }
+      userId: userId,
+    },
   ]);
 
   let currency: PlayerCurrency;
@@ -45,35 +49,43 @@ function getPlayerCurrencyWithCache(nk: Runtime.Nakama, userId: string, logger: 
     currency = {
       user_id: userId,
       gems: 0,
-      gold: 0
+      gold: 0,
     };
   } else {
-    const parseResult = safeParse<PlayerCurrency>(objects[0].value, null, logger, "player_currency");
-    currency = parseResult.success && parseResult.data ? parseResult.data : {
-      user_id: userId,
-      gems: 0,
-      gold: 0
-    };
+    const parseResult = safeParse<PlayerCurrency>(
+      objects[0].value,
+      null,
+      logger,
+      'player_currency'
+    );
+    currency =
+      parseResult.success && parseResult.data
+        ? parseResult.data
+        : {
+            user_id: userId,
+            gems: 0,
+            gold: 0,
+          };
   }
 
-  cacheManager.set("player_currency", userId, currency);
+  cacheManager.set('player_currency', userId, currency);
   return currency;
 }
 
 /**
  * Invalidates player currency cache.
- * 
+ *
  * @param userId - ID of the player to invalidate cache for
  * @param logger - Nakama logger instance
  */
 function invalidateCurrencyCache(userId: string, logger: Runtime.Logger): void {
   const cacheManager = getCacheManager(logger);
-  cacheManager.delete("player_currency", userId);
+  cacheManager.delete('player_currency', userId);
 }
 
 /**
  * Gem bundle data structure.
- * 
+ *
  * @property product_id - Product identifier for IAP
  * @property gem_amount - Number of gems in the bundle
  * @property price_usd - Price in USD
@@ -86,7 +98,7 @@ export interface GemBundle {
 
 /**
  * Request payload for validating purchases.
- * 
+ *
  * @property product_id - ID of the product to validate
  * @property platform - Platform where purchase was made
  * @property transaction_receipt - Base64 encoded receipt from RevenueCat
@@ -101,95 +113,100 @@ export interface PurchaseRequest {
  * Gem bundle catalog with available purchases.
  */
 export const GEM_BUNDLES: Record<string, GemBundle> = {
-  "com.armoredarcher.gems.small": {
-    product_id: "com.armoredarcher.gems.small",
+  'com.armoredarcher.gems.small': {
+    product_id: 'com.armoredarcher.gems.small',
     gem_amount: 100,
-    price_usd: 0.99
+    price_usd: 0.99,
   },
-  "com.armoredarcher.gems.medium": {
-    product_id: "com.armoredarcher.gems.medium",
+  'com.armoredarcher.gems.medium': {
+    product_id: 'com.armoredarcher.gems.medium',
     gem_amount: 550,
-    price_usd: 4.99
+    price_usd: 4.99,
   },
-  "com.armoredarcher.gems.large": {
-    product_id: "com.armoredarcher.gems.large",
+  'com.armoredarcher.gems.large': {
+    product_id: 'com.armoredarcher.gems.large',
     gem_amount: 1200,
-    price_usd: 9.99
-  }
+    price_usd: 9.99,
+  },
 };
 
 /**
  * Registers the validate purchase RPC endpoint.
- * 
+ *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcValidatePurchase(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/validate_purchase", rpcValidatePurchase);
+  initializer.registerRpc('armored_archer/validate_purchase', rpcValidatePurchase);
 }
 
 /**
  * Registers the get currency RPC endpoint.
- * 
+ *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcGetCurrency(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/get_currency", rpcGetCurrency);
+  initializer.registerRpc('armored_archer/get_currency', rpcGetCurrency);
 }
 
 /**
  * Registers the spend gems RPC endpoint.
- * 
+ *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcSpendGems(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/spend_gems", rpcSpendGems);
+  initializer.registerRpc('armored_archer/spend_gems', rpcSpendGems);
 }
 
 /**
  * Retrieves store catalog with caching.
- * 
+ *
  * @param logger - Nakama logger instance
  * @returns Store catalog with gem bundles
  */
 function getStoreCatalog(logger: Runtime.Logger): Record<string, GemBundle> {
   const cacheManager = getCacheManager(logger);
-  const cachedCatalog = cacheManager.get<Record<string, GemBundle>>("store_catalog", "gem_bundles");
+  const cachedCatalog = cacheManager.get<Record<string, GemBundle>>('store_catalog', 'gem_bundles');
 
   if (cachedCatalog !== undefined) {
     return cachedCatalog;
   }
 
-  cacheManager.set("store_catalog", "gem_bundles", GEM_BUNDLES);
+  cacheManager.set('store_catalog', 'gem_bundles', GEM_BUNDLES);
   return GEM_BUNDLES;
 }
 
 /**
  * Validates in-app purchases and awards gems.
- * 
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param payload - JSON string containing purchase data
  * @returns JSON string with purchase validation result
- * 
+ *
  * @example
  * // Request payload
  * { "product_id": "com.armoredarcher.gems.small", "platform": "ios", "transaction_receipt": "base64encoded" }
- * 
+ *
  * // Response
- * { 
- *   "success": true, 
+ * {
+ *   "success": true,
  *   "gems_awarded": 100,
  *   "new_balance": 100,
  *   "product_id": "com.armoredarcher.gems.small"
  * }
  */
-export function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Validating purchase for user: %s", ctx.userId);
+export function rpcValidatePurchase(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Validating purchase for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.validate_purchase, payload, "validate_purchase");
+  const validation = validatePayload(ZodSchemas.validate_purchase, payload, 'validate_purchase');
   if (!validation.success) {
-    return createValidationErrorResponse("validate_purchase", validation.error);
+    return createValidationErrorResponse('validate_purchase', validation.error);
   }
 
   const request = validation.data;
@@ -198,7 +215,7 @@ export function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger
 
   if (!catalog[request.product_id]) {
     return JSON.stringify({
-      error: "Invalid product ID"
+      error: 'Invalid product ID',
     });
   }
 
@@ -208,55 +225,60 @@ export function rpcValidatePurchase(ctx: Runtime.Context, logger: Runtime.Logger
 
   nk.storageWrite([
     {
-      collection: "player_currency",
+      collection: 'player_currency',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(playerCurrency)
-    }
+      value: JSON.stringify(playerCurrency),
+    },
   ]);
 
   nk.walletUpdate(ctx.userId, {
-    gems: gemBundle.gem_amount
+    gems: gemBundle.gem_amount,
   });
 
   invalidateCurrencyCache(ctx.userId, logger);
 
-  logger.info("Purchase validated. User %s received %d gems", ctx.userId, gemBundle.gem_amount);
+  logger.info('Purchase validated. User %s received %d gems', ctx.userId, gemBundle.gem_amount);
 
   return JSON.stringify({
     success: true,
     gems_awarded: gemBundle.gem_amount,
     new_balance: playerCurrency.gems,
-    product_id: request.product_id
+    product_id: request.product_id,
   });
 }
 
 /**
  * Retrieves player currency balance.
- * 
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param payload - JSON string (unused, required for RPC format)
  * @returns JSON string with player currency
- * 
+ *
  * @example
  * // Request payload
  * { }
- * 
+ *
  * // Response
- * { 
+ * {
  *   "user_id": "user_123",
  *   "gems": 500,
  *   "gold": 1000
  * }
  */
-export function rpcGetCurrency(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Getting currency for user: %s", ctx.userId);
+export function rpcGetCurrency(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Getting currency for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.get_currency, payload, "get_currency");
+  const validation = validatePayload(ZodSchemas.get_currency, payload, 'get_currency');
   if (!validation.success) {
-    return createValidationErrorResponse("get_currency", validation.error);
+    return createValidationErrorResponse('get_currency', validation.error);
   }
 
   const currency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
@@ -266,30 +288,35 @@ export function rpcGetCurrency(ctx: Runtime.Context, logger: Runtime.Logger, nk:
 
 /**
  * Handles gem spending requests.
- * 
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param payload - JSON string containing gem amount
  * @returns JSON string with spending result
- * 
+ *
  * @example
  * // Request payload
  * { "amount": 50 }
- * 
+ *
  * // Response
- * { 
- *   "success": true, 
+ * {
+ *   "success": true,
  *   "new_balance": 450,
  *   "amount_spent": 50
  * }
  */
-export function rpcSpendGems(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Spending gems for user: %s", ctx.userId);
+export function rpcSpendGems(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Spending gems for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.spend_gems, payload, "spend_gems");
+  const validation = validatePayload(ZodSchemas.spend_gems, payload, 'spend_gems');
   if (!validation.success) {
-    return createValidationErrorResponse("spend_gems", validation.error);
+    return createValidationErrorResponse('spend_gems', validation.error);
   }
 
   const request = validation.data;
@@ -298,7 +325,7 @@ export function rpcSpendGems(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
 
   if (playerCurrency.gems < request.amount) {
     return JSON.stringify({
-      error: "Insufficient gems"
+      error: 'Insufficient gems',
     });
   }
 
@@ -306,20 +333,25 @@ export function rpcSpendGems(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
 
   nk.storageWrite([
     {
-      collection: "player_currency",
+      collection: 'player_currency',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(playerCurrency)
-    }
+      value: JSON.stringify(playerCurrency),
+    },
   ]);
 
   invalidateCurrencyCache(ctx.userId, logger);
 
-  logger.info("User %s spent %d gems. New balance: %d", ctx.userId, request.amount, playerCurrency.gems);
+  logger.info(
+    'User %s spent %d gems. New balance: %d',
+    ctx.userId,
+    request.amount,
+    playerCurrency.gems
+  );
 
   return JSON.stringify({
     success: true,
     new_balance: playerCurrency.gems,
-    amount_spent: request.amount
+    amount_spent: request.amount,
   });
 }

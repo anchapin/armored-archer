@@ -1,11 +1,11 @@
-import { Runtime } from "../types/nakama";
-import { PvPMatch } from "./matchmaker";
-import { PlayerStats } from "../types/game";
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
+import { Runtime } from '../types/nakama';
+import { PvPMatch } from './matchmaker';
+import { PlayerStats } from '../types/game';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Combat action request data.
- * 
+ *
  * @property match_id - Unique identifier for the match
  * @property action_type - Type of combat action ("shoot")
  * @property angle - Angle of attack in radians
@@ -20,7 +20,7 @@ export interface CombatAction {
 
 /**
  * Result of a combat action.
- * 
+ *
  * @property success - Whether the action was processed successfully
  * @property hit - Whether the attack hit the target
  * @property damage - Amount of damage dealt
@@ -43,7 +43,7 @@ export interface CombatResult {
 
 /**
  * Current state of a PvP match.
- * 
+ *
  * @property match_id - Unique identifier for the match
  * @property turn - Current turn number
  * @property current_turn_user_id - Player whose turn it is
@@ -74,7 +74,7 @@ export interface MatchState {
 
 /**
  * Combat log entry for tracking match history.
- * 
+ *
  * @property turn - Turn number when this action occurred
  * @property attacker_id - ID of the attacking player
  * @property action - Type of action performed
@@ -95,72 +95,81 @@ export interface CombatLogEntry {
 
 /**
  * Registers the submit combat action RPC endpoint.
- * 
+ *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcSubmitCombatAction(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/submit_combat_action", rpcSubmitCombatAction);
+  initializer.registerRpc('armored_archer/submit_combat_action', rpcSubmitCombatAction);
 }
 
 /**
  * Handles combat action submissions from players.
- * 
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param payload - JSON string containing combat action data
  * @returns JSON string with combat result
- * 
+ *
  * @example
  * // Request payload
  * { "match_id": "match_123", "action_type": "shoot", "angle": 1.57 }
- * 
+ *
  * // Response
- * { 
- *   "success": true, 
- *   "result": { 
- *     "hit": true, 
+ * {
+ *   "success": true,
+ *   "result": {
+ *     "hit": true,
  *     "damage": 25,
  *     "is_crit": false,
  *     "match_status": "active"
  *   }
  * }
  */
-export function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Submit combat action called for user: %s", ctx.userId);
+export function rpcSubmitCombatAction(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Submit combat action called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.submit_combat_action, payload, "submit_combat_action");
+  const validation = validatePayload(
+    ZodSchemas.submit_combat_action,
+    payload,
+    'submit_combat_action'
+  );
   if (!validation.success) {
-    return createValidationErrorResponse("submit_combat_action", validation.error);
+    return createValidationErrorResponse('submit_combat_action', validation.error);
   }
 
   const action = validation.data;
 
   const matchObjects = nk.storageRead([
     {
-      collection: "pvp_matches",
+      collection: 'pvp_matches',
       key: action.match_id,
-      userId: ctx.userId
-    }
+      userId: ctx.userId,
+    },
   ]);
 
   if (matchObjects.length === 0) {
     return JSON.stringify({
-      error: "Match not found"
+      error: 'Match not found',
     });
   }
 
   const match = JSON.parse(matchObjects[0].value);
 
-  if (match.status !== "active") {
+  if (match.status !== 'active') {
     return JSON.stringify({
-      error: "Match is not active"
+      error: 'Match is not active',
     });
   }
 
   if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
     return JSON.stringify({
-      error: "Not a participant in this match"
+      error: 'Not a participant in this match',
     });
   }
 
@@ -168,7 +177,7 @@ export function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logg
 
   if (matchState.current_turn_user_id !== ctx.userId) {
     return JSON.stringify({
-      error: "Not your turn"
+      error: 'Not your turn',
     });
   }
 
@@ -182,34 +191,34 @@ export function rpcSubmitCombatAction(ctx: Runtime.Context, logger: Runtime.Logg
 
   return JSON.stringify({
     success: true,
-    result: result
+    result: result,
   });
 }
 
 /**
  * Registers the get match state RPC endpoint.
- * 
+ *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcGetMatchState(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/get_match_state", rpcGetMatchState);
+  initializer.registerRpc('armored_archer/get_match_state', rpcGetMatchState);
 }
 
 /**
  * Retrieves the current state of a PvP match.
- * 
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param payload - JSON string containing match_id
  * @returns JSON string with match state
- * 
+ *
  * @example
  * // Request payload
  * { "match_id": "match_123" }
- * 
+ *
  * // Response
- * { 
+ * {
  *   "match_id": "match_123",
  *   "turn": 3,
  *   "current_turn_user_id": "user_456",
@@ -218,27 +227,32 @@ export function registerRpcGetMatchState(initializer: Runtime.Initializer): void
  *   ...
  * }
  */
-export function rpcGetMatchState(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Get match state called for user: %s", ctx.userId);
+export function rpcGetMatchState(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get match state called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.get_match_state, payload, "get_match_state");
+  const validation = validatePayload(ZodSchemas.get_match_state, payload, 'get_match_state');
   if (!validation.success) {
-    return createValidationErrorResponse("get_match_state", validation.error);
+    return createValidationErrorResponse('get_match_state', validation.error);
   }
 
   const request = validation.data;
 
   const stateObjects = nk.storageRead([
     {
-      collection: "pvp_match_states",
+      collection: 'pvp_match_states',
       key: request.match_id,
-      userId: ctx.userId
-    }
+      userId: ctx.userId,
+    },
   ]);
 
   if (stateObjects.length === 0) {
     return JSON.stringify({
-      error: "Match state not found"
+      error: 'Match state not found',
     });
   }
 
@@ -247,20 +261,25 @@ export function rpcGetMatchState(ctx: Runtime.Context, logger: Runtime.Logger, n
 
 /**
  * Retrieves or creates match state for a PvP match.
- * 
+ *
  * @param nk - Nakama server interface
  * @param matchId - Unique identifier for the match
  * @param match - PvP match data
  * @param logger - Nakama logger instance
  * @returns Current match state
  */
-function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: PvPMatch, logger: Runtime.Logger): MatchState {
+function getOrCreateMatchState(
+  nk: Runtime.Nakama,
+  matchId: string,
+  match: PvPMatch,
+  logger: Runtime.Logger
+): MatchState {
   const stateObjects = nk.storageRead([
     {
-      collection: "pvp_match_states",
+      collection: 'pvp_match_states',
       key: matchId,
-      userId: match.creator_id
-    }
+      userId: match.creator_id,
+    },
   ]);
 
   if (stateObjects.length > 0) {
@@ -271,7 +290,7 @@ function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: PvPMa
   const opponentStats = getPlayerStats(nk, match.opponent_id, logger);
 
   const baseHealth = 100;
-  const maxHealth = baseHealth + (creatorStats.level * 10);
+  const maxHealth = baseHealth + creatorStats.level * 10;
 
   const matchState: MatchState = {
     match_id: matchId,
@@ -283,8 +302,8 @@ function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: PvPMa
     opponent_health: maxHealth,
     creator_stats: creatorStats,
     opponent_stats: opponentStats,
-    status: "active",
-    log: []
+    status: 'active',
+    log: [],
   };
 
   return matchState;
@@ -292,7 +311,7 @@ function getOrCreateMatchState(nk: Runtime.Nakama, matchId: string, match: PvPMa
 
 /**
  * Processes a combat action and calculates results.
- * 
+ *
  * @param userId - ID of the player performing the action
  * @param action - Combat action data
  * @param match - PvP match data
@@ -320,12 +339,12 @@ function processCombatAction(
     is_crit: false,
     attacker_stats: attackerStats,
     defender_stats: defenderStats,
-    match_status: "active"
+    match_status: 'active',
   };
 
-  if (action.action_type === "shoot") {
+  if (action.action_type === 'shoot') {
     const hit = calculateHit(attackerStats, defenderStats);
-    
+
     if (hit) {
       const damage = calculateDamage(attackerStats, defenderStats);
       const isCrit = calculateCrit(attackerStats.stats.crit_rate);
@@ -348,20 +367,20 @@ function processCombatAction(
         hit: true,
         damage: finalDamage,
         is_crit: isCrit,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
 
       matchState.log.push(logEntry);
 
       if (matchState.creator_health <= 0) {
         result.winner = matchState.opponent_id;
-        result.match_status = "completed";
-        matchState.status = "completed";
+        result.match_status = 'completed';
+        matchState.status = 'completed';
         matchState.winner = matchState.opponent_id;
       } else if (matchState.opponent_health <= 0) {
         result.winner = matchState.creator_id;
-        result.match_status = "completed";
-        matchState.status = "completed";
+        result.match_status = 'completed';
+        matchState.status = 'completed';
         matchState.winner = matchState.creator_id;
       }
     } else {
@@ -372,7 +391,7 @@ function processCombatAction(
         hit: false,
         damage: 0,
         is_crit: false,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
 
       matchState.log.push(logEntry);
@@ -387,7 +406,7 @@ function processCombatAction(
 
 /**
  * Calculates whether an attack hits based on defender's dodge chance.
- * 
+ *
  * @param attackerStats - Stats of the attacking player
  * @param defenderStats - Stats of the defending player
  * @returns True if attack hits, false if it misses
@@ -402,13 +421,13 @@ function calculateHit(attackerStats: PlayerStats, defenderStats: PlayerStats): b
 
 /**
  * Calculates damage dealt based on attacker's attack and defender's defense.
- * 
+ *
  * @param attackerStats - Stats of the attacking player
  * @param defenderStats - Stats of the defending player
  * @returns Calculated damage amount
  */
 function calculateDamage(attackerStats: PlayerStats, defenderStats: PlayerStats): number {
-  const baseDamage = 10 + (attackerStats.stats.attack * 0.5);
+  const baseDamage = 10 + attackerStats.stats.attack * 0.5;
   const defenseReduction = defenderStats.stats.defense * 0.3;
   const finalDamage = Math.max(1, baseDamage - defenseReduction);
 
@@ -417,7 +436,7 @@ function calculateDamage(attackerStats: PlayerStats, defenderStats: PlayerStats)
 
 /**
  * Determines if an attack is a critical hit based on crit rate.
- * 
+ *
  * @param critRate - Critical hit rate percentage
  * @returns True if attack is critical, false otherwise
  */
@@ -430,7 +449,7 @@ function calculateCrit(critRate: number): boolean {
 
 /**
  * Retrieves player statistics for combat calculations.
- * 
+ *
  * @param nk - Nakama server interface
  * @param userId - ID of the player to retrieve stats for
  * @param _logger - Nakama logger instance
@@ -439,10 +458,10 @@ function calculateCrit(critRate: number): boolean {
 function getPlayerStats(nk: Runtime.Nakama, userId: string, _logger: Runtime.Logger): PlayerStats {
   const objects = nk.storageRead([
     {
-      collection: "player_stats",
+      collection: 'player_stats',
       key: userId,
-      userId: userId
-    }
+      userId: userId,
+    },
   ]);
 
   if (objects.length === 0) {
@@ -453,8 +472,8 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string, _logger: Runtime.Log
         attack: 10,
         defense: 10,
         dodge: 10,
-        crit_rate: 5
-      }
+        crit_rate: 5,
+      },
     };
   }
 
@@ -463,39 +482,39 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string, _logger: Runtime.Log
 
 /**
  * Saves the current match state to storage.
- * 
+ *
  * @param nk - Nakama server interface
  * @param matchState - Match state to save
  */
 function saveMatchState(nk: Runtime.Nakama, matchState: MatchState): void {
   nk.storageWrite([
     {
-      collection: "pvp_match_states",
+      collection: 'pvp_match_states',
       key: matchState.match_id,
-      UserId: matchState.creator_id,
-      value: JSON.stringify(matchState)
-    }
+      userId: matchState.creator_id,
+      value: JSON.stringify(matchState),
+    },
   ]);
 }
 
 /**
  * Updates match status when a winner is determined.
- * 
+ *
  * @param nk - Nakama server interface
  * @param match - PvP match data
  * @param winner - ID of the winning player
  */
 function updateMatchStatus(nk: Runtime.Nakama, match: PvPMatch, winner: string): void {
-  match.status = "completed";
+  match.status = 'completed';
   match.winner = winner;
   match.updated_at = Date.now();
 
   nk.storageWrite([
     {
-      collection: "pvp_matches",
+      collection: 'pvp_matches',
       key: match.match_id,
       userId: match.creator_id,
-      value: JSON.stringify(match)
-    }
+      value: JSON.stringify(match),
+    },
   ]);
 }

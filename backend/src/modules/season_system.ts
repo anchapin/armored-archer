@@ -1,16 +1,16 @@
-import { Runtime } from "../types/nakama";
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
+import { Runtime } from '../types/nakama';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Season rewards data structure.
- * 
+ *
  * @property rank_tier - Tier of rewards based on rank
  * @property coins - Number of coins awarded
  * @property gems - Number of gems awarded
  * @property cosmetics - Optional cosmetic rewards
  */
 export interface SeasonRewards {
-  rank_tier: "legendary" | "epic" | "rare" | "uncommon" | "common";
+  rank_tier: 'legendary' | 'epic' | 'rare' | 'uncommon' | 'common';
   coins: number;
   gems: number;
   cosmetics?: {
@@ -21,7 +21,7 @@ export interface SeasonRewards {
 
 /**
  * Leaderboard record data structure.
- * 
+ *
  * @property ownerId - ID of the player
  * @property username - Display name of the player
  * @property rank - Current rank
@@ -44,7 +44,7 @@ export interface LeaderboardRecord {
 
 /**
  * Season information data structure.
- * 
+ *
  * @property season_id - Unique identifier for the season
  * @property season_number - Sequential season number
  * @property start_time - Start timestamp
@@ -63,7 +63,7 @@ export interface SeasonInfo {
 
 /**
  * Leaderboard entry data structure.
- * 
+ *
  * @property owner_id - ID of the player
  * @property username - Display name of the player
  * @property rank - Current rank
@@ -85,7 +85,7 @@ export interface LeaderboardEntry {
 
 /**
  * Rank change data structure.
- * 
+ *
  * @property winner_id - ID of the winning player
  * @property loser_id - ID of the losing player
  * @property winner_old_rank - Previous rank of winner
@@ -109,41 +109,46 @@ const SEASON_DURATION_MS = SEASON_DURATION_WEEKS * 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Registers the get season info RPC endpoint.
- * 
+ *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcGetSeasonInfo(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/get_season_info", rpcGetSeasonInfo);
+  initializer.registerRpc('armored_archer/get_season_info', rpcGetSeasonInfo);
 }
 
 /**
  * Retrieves current season information and player stats.
- * 
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param payload - JSON string (unused, required for RPC format)
  * @returns JSON string with season info and player stats
- * 
+ *
  * @example
  * // Request payload
  * { }
- * 
+ *
  * // Response
- * { 
- *   "success": true, 
+ * {
+ *   "success": true,
  *   "season": { ... },
  *   "player_rank": 15,
  *   "player_score": 1200,
  *   "time_remaining": 123456
  * }
  */
-export function rpcGetSeasonInfo(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Get season info called for user: %s", ctx.userId);
+export function rpcGetSeasonInfo(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get season info called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.get_season_info, payload, "get_season_info");
+  const validation = validatePayload(ZodSchemas.get_season_info, payload, 'get_season_info');
   if (!validation.success) {
-    return createValidationErrorResponse("get_season_info", validation.error);
+    return createValidationErrorResponse('get_season_info', validation.error);
   }
 
   const currentSeason = getCurrentSeason();
@@ -161,106 +166,110 @@ export function rpcGetSeasonInfo(ctx: Runtime.Context, logger: Runtime.Logger, n
 
 /**
  * Registers the get leaderboard RPC endpoint.
- * 
+ *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcGetLeaderboard(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/get_leaderboard", rpcGetLeaderboard);
+  initializer.registerRpc('armored_archer/get_leaderboard', rpcGetLeaderboard);
 }
 
 /**
  * Retrieves the current season leaderboard.
- * 
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param payload - JSON string containing limit parameter
  * @returns JSON string with leaderboard data
- * 
+ *
  * @example
  * // Request payload
  * { "limit": 20 }
- * 
+ *
  * // Response
- * { 
- *   "success": true, 
+ * {
+ *   "success": true,
  *   "season": { ... },
  *   "leaderboard": [ ... ],
  *   "total": 100
  * }
  */
-export function rpcGetLeaderboard(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Get leaderboard called for user: %s", ctx.userId);
+export function rpcGetLeaderboard(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get leaderboard called for user: %s', ctx.userId);
 
   const currentSeason = getCurrentSeason();
-  const validation = validatePayload(ZodSchemas.get_leaderboard, payload, "get_leaderboard");
+  const validation = validatePayload(ZodSchemas.get_leaderboard, payload, 'get_leaderboard');
   if (!validation.success) {
-    return createValidationErrorResponse("get_leaderboard", validation.error);
+    return createValidationErrorResponse('get_leaderboard', validation.error);
   }
 
   const request = validation.data || {};
   const limit = request.limit || 50;
 
-  const records = nk.leaderboardRecordList(
-    currentSeason.season_id,
-    [],
-    limit,
-    "",
-    0
-  );
+  const records = nk.leaderboardRecordList(currentSeason.season_id, [], limit, '', 0);
 
   const entries: LeaderboardEntry[] = records.map((record: LeaderboardRecord) => ({
     owner_id: record.ownerId,
     username: record.username,
     rank: record.rank,
     score: record.score,
-    meta: JSON.parse(record.metadata || "{}")
+    meta: JSON.parse(record.metadata || '{}'),
   }));
 
   return JSON.stringify({
     success: true,
     season: currentSeason,
     leaderboard: entries,
-    total: records.length
+    total: records.length,
   });
 }
 
 /**
  * Registers the update rank RPC endpoint.
- * 
+ *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcUpdateRank(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/update_rank", rpcUpdateRank);
+  initializer.registerRpc('armored_archer/update_rank', rpcUpdateRank);
 }
 
 /**
  * Updates player ranks after a match using Elo rating system.
- * 
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param payload - JSON string containing match results
  * @returns JSON string with rank changes
- * 
+ *
  * @example
  * // Request payload
  * { "winner_id": "user_1", "loser_id": "user_2", "is_punch_up": false }
- * 
+ *
  * // Response
- * { 
- *   "success": true, 
+ * {
+ *   "success": true,
  *   "winner": { ... },
  *   "loser": { ... },
  *   "is_punch_up": false
  * }
  */
-export function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Update rank called for user: %s", ctx.userId);
+export function rpcUpdateRank(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Update rank called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.update_rank, payload, "update_rank");
+  const validation = validatePayload(ZodSchemas.update_rank, payload, 'update_rank');
   if (!validation.success) {
-    return createValidationErrorResponse("update_rank", validation.error);
+    return createValidationErrorResponse('update_rank', validation.error);
   }
 
   const request = validation.data;
@@ -281,7 +290,9 @@ export function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: 
   const loserNewElo = Math.round(loserOldElo + K * (0 - expectedLoser));
 
   // Update winner
-  const winnerMeta = winnerEntry ? winnerEntry.meta : { wins: 0, losses: 0, win_rate: 0, punch_up_wins: 0 };
+  const winnerMeta = winnerEntry
+    ? winnerEntry.meta
+    : { wins: 0, losses: 0, win_rate: 0, punch_up_wins: 0 };
   winnerMeta.wins++;
   winnerMeta.punch_up_wins += request.is_punch_up ? 1 : 0;
   winnerMeta.win_rate = winnerMeta.wins / (winnerMeta.wins + winnerMeta.losses);
@@ -289,33 +300,35 @@ export function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: 
   nk.leaderboardRecordWrite(
     currentSeason.season_id,
     request.winner_id,
-    ctx.username || "Player",
+    ctx.username || 'Player',
     winnerNewElo,
     0,
     {
       wins: String(winnerMeta.wins),
       losses: String(winnerMeta.losses),
       win_rate: String(winnerMeta.win_rate),
-      punch_up_wins: String(winnerMeta.punch_up_wins)
+      punch_up_wins: String(winnerMeta.punch_up_wins),
     }
   );
 
   // Update loser
-  const loserMeta = loserEntry ? loserEntry.meta : { wins: 0, losses: 0, win_rate: 0, punch_up_wins: 0 };
+  const loserMeta = loserEntry
+    ? loserEntry.meta
+    : { wins: 0, losses: 0, win_rate: 0, punch_up_wins: 0 };
   loserMeta.losses++;
   loserMeta.win_rate = loserMeta.wins / (loserMeta.wins + loserMeta.losses);
 
   nk.leaderboardRecordWrite(
     currentSeason.season_id,
     request.loser_id,
-    "Opponent", // Will be updated with actual username
+    'Opponent', // Will be updated with actual username
     loserNewElo,
     0,
     {
       wins: String(loserMeta.wins),
       losses: String(loserMeta.losses),
       win_rate: String(loserMeta.win_rate),
-      punch_up_wins: String(loserMeta.punch_up_wins)
+      punch_up_wins: String(loserMeta.punch_up_wins),
     }
   );
 
@@ -325,53 +338,58 @@ export function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: 
       user_id: request.winner_id,
       old_rank: winnerOldElo,
       new_rank: winnerNewElo,
-      rank_change: winnerNewElo - winnerOldElo
+      rank_change: winnerNewElo - winnerOldElo,
     },
     loser: {
       user_id: request.loser_id,
       old_rank: loserOldElo,
       new_rank: loserNewElo,
-      rank_change: loserNewElo - loserOldElo
+      rank_change: loserNewElo - loserOldElo,
     },
-    is_punch_up: request.is_punch_up
+    is_punch_up: request.is_punch_up,
   });
 }
 
 /**
  * Registers the get season rewards RPC endpoint.
- * 
+ *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcGetSeasonRewards(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/get_season_rewards", rpcGetSeasonRewards);
+  initializer.registerRpc('armored_archer/get_season_rewards', rpcGetSeasonRewards);
 }
 
 /**
  * Retrieves season rewards for a player.
- * 
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param payload - JSON string (unused, required for RPC format)
  * @returns JSON string with season rewards
- * 
+ *
  * @example
  * // Request payload
  * { }
- * 
+ *
  * // Response
- * { 
- *   "success": true, 
+ * {
+ *   "success": true,
  *   "rank": 15,
  *   "rewards": { ... }
  * }
  */
-export function rpcGetSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Get season rewards called for user: %s", ctx.userId);
+export function rpcGetSeasonRewards(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get season rewards called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.get_season_rewards, payload, "get_season_rewards");
+  const validation = validatePayload(ZodSchemas.get_season_rewards, payload, 'get_season_rewards');
   if (!validation.success) {
-    return createValidationErrorResponse("get_season_rewards", validation.error);
+    return createValidationErrorResponse('get_season_rewards', validation.error);
   }
 
   const currentSeason = getCurrentSeason();
@@ -380,7 +398,7 @@ export function rpcGetSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger
   if (!playerEntry) {
     return JSON.stringify({
       success: true,
-      rewards: null
+      rewards: null,
     });
   }
 
@@ -389,60 +407,69 @@ export function rpcGetSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger
   return JSON.stringify({
     success: true,
     rank: playerEntry.rank,
-    rewards: rewards
+    rewards: rewards,
   });
 }
 
 /**
  * Registers the claim season rewards RPC endpoint.
- * 
+ *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcClaimSeasonRewards(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/claim_season_rewards", rpcClaimSeasonRewards);
+  initializer.registerRpc('armored_archer/claim_season_rewards', rpcClaimSeasonRewards);
 }
 
 /**
  * Claims season rewards for a player.
- * 
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param payload - JSON string (unused, required for RPC format)
  * @returns JSON string with claim result
- * 
+ *
  * @example
  * // Request payload
  * { }
- * 
+ *
  * // Response
- * { 
- *   "success": true, 
+ * {
+ *   "success": true,
  *   "rewards": { ... },
  *   "claimed": true
  * }
  */
-export function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Claim season rewards called for user: %s", ctx.userId);
+export function rpcClaimSeasonRewards(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Claim season rewards called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.claim_season_rewards, payload, "claim_season_rewards");
+  const validation = validatePayload(
+    ZodSchemas.claim_season_rewards,
+    payload,
+    'claim_season_rewards'
+  );
   if (!validation.success) {
-    return createValidationErrorResponse("claim_season_rewards", validation.error);
+    return createValidationErrorResponse('claim_season_rewards', validation.error);
   }
 
   const currentSeason = getCurrentSeason();
 
   const objects = nk.storageRead([
     {
-      collection: "season_rewards_claimed",
+      collection: 'season_rewards_claimed',
       key: `${currentSeason.season_id}_${ctx.userId}`,
-      userId: ctx.userId
-    }
+      userId: ctx.userId,
+    },
   ]);
 
   if (objects.length > 0) {
     return JSON.stringify({
-      error: "Rewards already claimed for this season"
+      error: 'Rewards already claimed for this season',
     });
   }
 
@@ -450,7 +477,7 @@ export function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logg
 
   if (!playerEntry) {
     return JSON.stringify({
-      error: "No leaderboard entry found"
+      error: 'No leaderboard entry found',
     });
   }
 
@@ -459,7 +486,7 @@ export function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logg
   // Mark rewards as claimed
   nk.storageWrite([
     {
-      collection: "season_rewards_claimed",
+      collection: 'season_rewards_claimed',
       key: `${currentSeason.season_id}_${ctx.userId}`,
       userId: ctx.userId,
       value: JSON.stringify({
@@ -467,20 +494,20 @@ export function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logg
         user_id: ctx.userId,
         claimed_at: Date.now(),
         rank: playerEntry.rank,
-        rewards: rewards
-      })
-    }
+        rewards: rewards,
+      }),
+    },
   ]);
 
   // Give rewards (coins, cosmetics)
   const rewardChanges: { [key: string]: number } = {};
-  
+
   if (rewards.coins) {
-    rewardChanges["coins"] = rewards.coins;
+    rewardChanges['coins'] = rewards.coins;
   }
-  
+
   if (rewards.gems) {
-    rewardChanges["gems"] = rewards.gems;
+    rewardChanges['gems'] = rewards.gems;
   }
 
   if (Object.keys(rewardChanges).length > 0) {
@@ -490,45 +517,50 @@ export function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logg
   return JSON.stringify({
     success: true,
     rewards: rewards,
-    claimed: true
+    claimed: true,
   });
 }
 
 /**
  * Registers the end season RPC endpoint.
- * 
+ *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcEndSeason(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/end_season", rpcEndSeason);
+  initializer.registerRpc('armored_archer/end_season', rpcEndSeason);
 }
 
 /**
  * Ends the current season and starts a new one.
- * 
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param payload - JSON string (unused, required for RPC format)
  * @returns JSON string with season transition result
- * 
+ *
  * @example
  * // Request payload
  * { }
- * 
+ *
  * // Response
- * { 
- *   "success": true, 
+ * {
+ *   "success": true,
  *   "old_season": { ... },
  *   "new_season": { ... }
  * }
  */
-export function rpcEndSeason(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("End season called for user: %s", ctx.userId);
+export function rpcEndSeason(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('End season called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.end_season, payload, "end_season");
+  const validation = validatePayload(ZodSchemas.end_season, payload, 'end_season');
   if (!validation.success) {
-    return createValidationErrorResponse("end_season", validation.error);
+    return createValidationErrorResponse('end_season', validation.error);
   }
 
   const currentSeason = getCurrentSeason();
@@ -543,53 +575,48 @@ export function rpcEndSeason(ctx: Runtime.Context, logger: Runtime.Logger, nk: R
     season_number: nextSeasonNumber,
     start_time: nextSeasonStartTime,
     end_time: nextSeasonEndTime,
-    status: "active",
-    duration_weeks: SEASON_DURATION_WEEKS
+    status: 'active',
+    duration_weeks: SEASON_DURATION_WEEKS,
   };
 
   // Store new season info
   nk.storageWrite([
     {
-      collection: "seasons",
+      collection: 'seasons',
       key: nextSeason.season_id,
       userId: ctx.userId,
-      value: JSON.stringify(nextSeason)
-    }
+      value: JSON.stringify(nextSeason),
+    },
   ]);
 
   // Update current season status
   const oldSeason = currentSeason;
-  oldSeason.status = "ended";
+  oldSeason.status = 'ended';
 
   nk.storageWrite([
     {
-      collection: "seasons",
+      collection: 'seasons',
       key: oldSeason.season_id,
       userId: ctx.userId,
-      value: JSON.stringify(oldSeason)
-    }
+      value: JSON.stringify(oldSeason),
+    },
   ]);
 
   // Create new leaderboard for next season
-  nk.leaderboardCreate(
-    nextSeason.season_id,
-    true,
-    "desc",
-    "best",
-    "",
-    { season_number: String(nextSeasonNumber) }
-  );
+  nk.leaderboardCreate(nextSeason.season_id, true, 'desc', 'best', '', {
+    season_number: String(nextSeasonNumber),
+  });
 
   return JSON.stringify({
     success: true,
     old_season: oldSeason,
-    new_season: nextSeason
+    new_season: nextSeason,
   });
 }
 
 /**
  * Gets the current season information.
- * 
+ *
  * @returns Current season data
  */
 function getCurrentSeason(): SeasonInfo {
@@ -603,27 +630,25 @@ function getCurrentSeason(): SeasonInfo {
     season_number: seasonNumber,
     start_time: seasonStartTime,
     end_time: seasonEndTime,
-    status: "active",
-    duration_weeks: SEASON_DURATION_WEEKS
+    status: 'active',
+    duration_weeks: SEASON_DURATION_WEEKS,
   };
 }
 
 /**
  * Gets a player's leaderboard entry.
- * 
+ *
  * @param nk - Nakama server interface
  * @param userId - ID of the player to retrieve
  * @param leaderboardId - ID of the leaderboard
  * @returns Leaderboard entry or null if not found
  */
-function getLeaderboardEntry(nk: Runtime.Nakama, userId: string, leaderboardId: string): LeaderboardEntry | null {
-  const records = nk.leaderboardRecordList(
-    leaderboardId,
-    [userId],
-    1,
-    "",
-    0
-  );
+function getLeaderboardEntry(
+  nk: Runtime.Nakama,
+  userId: string,
+  leaderboardId: string
+): LeaderboardEntry | null {
+  const records = nk.leaderboardRecordList(leaderboardId, [userId], 1, '', 0);
 
   if (records.length === 0) {
     return null;
@@ -635,13 +660,13 @@ function getLeaderboardEntry(nk: Runtime.Nakama, userId: string, leaderboardId: 
     username: record.username,
     rank: record.rank,
     score: record.score,
-    meta: JSON.parse(record.metadata || "{}")
+    meta: JSON.parse(record.metadata || '{}'),
   };
 }
 
 /**
  * Calculates season rewards based on player rank.
- * 
+ *
  * @param rank - Player's final rank
  * @param seasonNumber - Current season number
  * @returns Calculated season rewards
@@ -649,45 +674,45 @@ function getLeaderboardEntry(nk: Runtime.Nakama, userId: string, leaderboardId: 
 export function calculateRewards(rank: number, seasonNumber: number): SeasonRewards {
   if (rank <= 10) {
     return {
-      rank_tier: "legendary",
+      rank_tier: 'legendary',
       coins: 10000,
       gems: 500,
       cosmetics: {
         title: `Season ${seasonNumber} Champion`,
-        aura: "legendary_aura"
-      }
+        aura: 'legendary_aura',
+      },
     };
   } else if (rank <= 50) {
     return {
-      rank_tier: "epic",
+      rank_tier: 'epic',
       coins: 5000,
       gems: 200,
       cosmetics: {
         title: `Season ${seasonNumber} Elite`,
-        aura: "epic_aura"
-      }
+        aura: 'epic_aura',
+      },
     };
   } else if (rank <= 100) {
     return {
-      rank_tier: "rare",
+      rank_tier: 'rare',
       coins: 2000,
       gems: 100,
       cosmetics: {
         title: `Season ${seasonNumber} Veteran`,
-        aura: "rare_aura"
-      }
+        aura: 'rare_aura',
+      },
     };
   } else if (rank <= 500) {
     return {
-      rank_tier: "uncommon",
+      rank_tier: 'uncommon',
       coins: 500,
-      gems: 0
+      gems: 0,
     };
   } else {
     return {
-      rank_tier: "common",
+      rank_tier: 'common',
       coins: 100,
-      gems: 0
+      gems: 0,
     };
   }
 }
@@ -733,415 +758,4 @@ export interface RankChange {
   winner_new_rank: number;
   loser_new_rank: number;
   is_punch_up: boolean;
-}
-
-export function registerRpcGetSeasonInfo(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/get_season_info", rpcGetSeasonInfo);
-}
-
-export function rpcGetSeasonInfo(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Get season info called for user: %s", ctx.userId);
-
-  const validation = validatePayload(ZodSchemas.get_season_info, payload, "get_season_info");
-  if (!validation.success) {
-    return createValidationErrorResponse("get_season_info", validation.error);
-  }
-
-  const currentSeason = getCurrentSeason();
-
-  const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
-
-  return JSON.stringify({
-    success: true,
-    season: currentSeason,
-    player_rank: playerEntry ? playerEntry.rank : null,
-    player_score: playerEntry ? playerEntry.score : 0,
-    time_remaining: Math.max(0, currentSeason.end_time - Date.now()),
-  });
-}
-
-export function registerRpcGetLeaderboard(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/get_leaderboard", rpcGetLeaderboard);
-}
-
-export function rpcGetLeaderboard(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Get leaderboard called for user: %s", ctx.userId);
-
-  const currentSeason = getCurrentSeason();
-  const validation = validatePayload(ZodSchemas.get_leaderboard, payload, "get_leaderboard");
-  if (!validation.success) {
-    return createValidationErrorResponse("get_leaderboard", validation.error);
-  }
-
-  const request = validation.data || {};
-  const limit = request.limit || 50;
-
-  const records = nk.leaderboardRecordList(
-    currentSeason.season_id,
-    [],
-    limit,
-    "",
-    0
-  );
-
-  const entries: LeaderboardEntry[] = records.map((record: LeaderboardRecord) => ({
-    owner_id: record.ownerId,
-    username: record.username,
-    rank: record.rank,
-    score: record.score,
-    meta: JSON.parse(record.metadata || "{}")
-  }));
-
-  return JSON.stringify({
-    success: true,
-    season: currentSeason,
-    leaderboard: entries,
-    total: records.length
-  });
-}
-
-export function registerRpcUpdateRank(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/update_rank", rpcUpdateRank);
-}
-
-export function rpcUpdateRank(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Update rank called for user: %s", ctx.userId);
-
-  const validation = validatePayload(ZodSchemas.update_rank, payload, "update_rank");
-  if (!validation.success) {
-    return createValidationErrorResponse("update_rank", validation.error);
-  }
-
-  const request = validation.data;
-
-  const currentSeason = getCurrentSeason();
-
-  const winnerEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
-  const loserEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
-
-  const winnerOldElo = winnerEntry ? winnerEntry.score : 1000;
-  const loserOldElo = loserEntry ? loserEntry.score : 1000;
-
-  const K = request.is_punch_up ? 60 : 32; // Punch Up has higher K-factor
-  const expectedWinner = 1 / (1 + Math.pow(10, (loserOldElo - winnerOldElo) / 400));
-  const expectedLoser = 1 - expectedWinner;
-
-  const winnerNewElo = Math.round(winnerOldElo + K * (1 - expectedWinner));
-  const loserNewElo = Math.round(loserOldElo + K * (0 - expectedLoser));
-
-  // Update winner
-  const winnerMeta = winnerEntry ? winnerEntry.meta : { wins: 0, losses: 0, win_rate: 0, punch_up_wins: 0 };
-  winnerMeta.wins++;
-  winnerMeta.punch_up_wins += request.is_punch_up ? 1 : 0;
-  winnerMeta.win_rate = winnerMeta.wins / (winnerMeta.wins + winnerMeta.losses);
-
-  nk.leaderboardRecordWrite(
-    currentSeason.season_id,
-    request.winner_id,
-    ctx.username || "Player",
-    winnerNewElo,
-    0,
-    {
-      wins: String(winnerMeta.wins),
-      losses: String(winnerMeta.losses),
-      win_rate: String(winnerMeta.win_rate),
-      punch_up_wins: String(winnerMeta.punch_up_wins)
-    }
-  );
-
-  // Update loser
-  const loserMeta = loserEntry ? loserEntry.meta : { wins: 0, losses: 0, win_rate: 0, punch_up_wins: 0 };
-  loserMeta.losses++;
-  loserMeta.win_rate = loserMeta.wins / (loserMeta.wins + loserMeta.losses);
-
-  nk.leaderboardRecordWrite(
-    currentSeason.season_id,
-    request.loser_id,
-    "Opponent", // Will be updated with actual username
-    loserNewElo,
-    0,
-    {
-      wins: String(loserMeta.wins),
-      losses: String(loserMeta.losses),
-      win_rate: String(loserMeta.win_rate),
-      punch_up_wins: String(loserMeta.punch_up_wins)
-    }
-  );
-
-  return JSON.stringify({
-    success: true,
-    winner: {
-      user_id: request.winner_id,
-      old_rank: winnerOldElo,
-      new_rank: winnerNewElo,
-      rank_change: winnerNewElo - winnerOldElo
-    },
-    loser: {
-      user_id: request.loser_id,
-      old_rank: loserOldElo,
-      new_rank: loserNewElo,
-      rank_change: loserNewElo - loserOldElo
-    },
-    is_punch_up: request.is_punch_up
-  });
-}
-
-export function registerRpcGetSeasonRewards(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/get_season_rewards", rpcGetSeasonRewards);
-}
-
-export function rpcGetSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Get season rewards called for user: %s", ctx.userId);
-
-  const validation = validatePayload(ZodSchemas.get_season_rewards, payload, "get_season_rewards");
-  if (!validation.success) {
-    return createValidationErrorResponse("get_season_rewards", validation.error);
-  }
-
-  const currentSeason = getCurrentSeason();
-  const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
-
-  if (!playerEntry) {
-    return JSON.stringify({
-      success: true,
-      rewards: null
-    });
-  }
-
-  const rewards = calculateRewards(playerEntry.rank, currentSeason.season_number);
-
-  return JSON.stringify({
-    success: true,
-    rank: playerEntry.rank,
-    rewards: rewards
-  });
-}
-
-export function registerRpcClaimSeasonRewards(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/claim_season_rewards", rpcClaimSeasonRewards);
-}
-
-export function rpcClaimSeasonRewards(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Claim season rewards called for user: %s", ctx.userId);
-
-  const validation = validatePayload(ZodSchemas.claim_season_rewards, payload, "claim_season_rewards");
-  if (!validation.success) {
-    return createValidationErrorResponse("claim_season_rewards", validation.error);
-  }
-
-  const currentSeason = getCurrentSeason();
-
-  const objects = nk.storageRead([
-    {
-      collection: "season_rewards_claimed",
-      key: `${currentSeason.season_id}_${ctx.userId}`,
-      userId: ctx.userId
-    }
-  ]);
-
-  if (objects.length > 0) {
-    return JSON.stringify({
-      error: "Rewards already claimed for this season"
-    });
-  }
-
-  const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
-
-  if (!playerEntry) {
-    return JSON.stringify({
-      error: "No leaderboard entry found"
-    });
-  }
-
-  const rewards = calculateRewards(playerEntry.rank, currentSeason.season_number);
-
-  // Mark rewards as claimed
-  nk.storageWrite([
-    {
-      collection: "season_rewards_claimed",
-      key: `${currentSeason.season_id}_${ctx.userId}`,
-      userId: ctx.userId,
-      value: JSON.stringify({
-        season_id: currentSeason.season_id,
-        user_id: ctx.userId,
-        claimed_at: Date.now(),
-        rank: playerEntry.rank,
-        rewards: rewards
-      })
-    }
-  ]);
-
-  // Give rewards (coins, cosmetics)
-  const rewardChanges: { [key: string]: number } = {};
-  
-  if (rewards.coins) {
-    rewardChanges["coins"] = rewards.coins;
-  }
-  
-  if (rewards.gems) {
-    rewardChanges["gems"] = rewards.gems;
-  }
-
-  if (Object.keys(rewardChanges).length > 0) {
-    nk.walletUpdate(ctx.userId, rewardChanges);
-  }
-
-  return JSON.stringify({
-    success: true,
-    rewards: rewards,
-    claimed: true
-  });
-}
-
-export function registerRpcEndSeason(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/end_season", rpcEndSeason);
-}
-
-export function rpcEndSeason(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("End season called for user: %s", ctx.userId);
-
-  const validation = validatePayload(ZodSchemas.end_season, payload, "end_season");
-  if (!validation.success) {
-    return createValidationErrorResponse("end_season", validation.error);
-  }
-
-  const currentSeason = getCurrentSeason();
-
-  // Create new season
-  const nextSeasonNumber = currentSeason.season_number + 1;
-  const nextSeasonStartTime = Date.now();
-  const nextSeasonEndTime = nextSeasonStartTime + SEASON_DURATION_MS;
-
-  const nextSeason: SeasonInfo = {
-    season_id: `season_${nextSeasonNumber}`,
-    season_number: nextSeasonNumber,
-    start_time: nextSeasonStartTime,
-    end_time: nextSeasonEndTime,
-    status: "active",
-    duration_weeks: SEASON_DURATION_WEEKS
-  };
-
-  // Store new season info
-  nk.storageWrite([
-    {
-      collection: "seasons",
-      key: nextSeason.season_id,
-      userId: ctx.userId,
-      value: JSON.stringify(nextSeason)
-    }
-  ]);
-
-  // Update current season status
-  const oldSeason = currentSeason;
-  oldSeason.status = "ended";
-
-  nk.storageWrite([
-    {
-      collection: "seasons",
-      key: oldSeason.season_id,
-      userId: ctx.userId,
-      value: JSON.stringify(oldSeason)
-    }
-  ]);
-
-  // Create new leaderboard for next season
-  nk.leaderboardCreate(
-    nextSeason.season_id,
-    true,
-    "desc",
-    "best",
-    "",
-    { season_number: String(nextSeasonNumber) }
-  );
-
-  return JSON.stringify({
-    success: true,
-    old_season: oldSeason,
-    new_season: nextSeason
-  });
-}
-
-function getCurrentSeason(): SeasonInfo {
-  const now = Date.now();
-  const seasonNumber = Math.floor(now / SEASON_DURATION_MS) + 1;
-  const seasonStartTime = (seasonNumber - 1) * SEASON_DURATION_MS;
-  const seasonEndTime = seasonStartTime + SEASON_DURATION_MS;
-
-  return {
-    season_id: `season_${seasonNumber}`,
-    season_number: seasonNumber,
-    start_time: seasonStartTime,
-    end_time: seasonEndTime,
-    status: "active",
-    duration_weeks: SEASON_DURATION_WEEKS
-  };
-}
-
-function getLeaderboardEntry(nk: Runtime.Nakama, userId: string, leaderboardId: string): LeaderboardEntry | null {
-  const records = nk.leaderboardRecordList(
-    leaderboardId,
-    [userId],
-    1,
-    "",
-    0
-  );
-
-  if (records.length === 0) {
-    return null;
-  }
-
-  const record = records[0];
-  return {
-    owner_id: record.ownerId,
-    username: record.username,
-    rank: record.rank,
-    score: record.score,
-    meta: JSON.parse(record.metadata || "{}")
-  };
-}
-
-export function calculateRewards(rank: number, seasonNumber: number): SeasonRewards {
-  if (rank <= 10) {
-    return {
-      rank_tier: "legendary",
-      coins: 10000,
-      gems: 500,
-      cosmetics: {
-        title: `Season ${seasonNumber} Champion`,
-        aura: "legendary_aura"
-      }
-    };
-  } else if (rank <= 50) {
-    return {
-      rank_tier: "epic",
-      coins: 5000,
-      gems: 200,
-      cosmetics: {
-        title: `Season ${seasonNumber} Elite`,
-        aura: "epic_aura"
-      }
-    };
-  } else if (rank <= 100) {
-    return {
-      rank_tier: "rare",
-      coins: 2000,
-      gems: 100,
-      cosmetics: {
-        title: `Season ${seasonNumber} Veteran`,
-        aura: "rare_aura"
-      }
-    };
-  } else if (rank <= 500) {
-    return {
-      rank_tier: "uncommon",
-      coins: 500,
-      gems: 0
-    };
-  } else {
-    return {
-      rank_tier: "common",
-      coins: 100,
-      gems: 0
-    };
-  }
 }

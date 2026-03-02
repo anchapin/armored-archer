@@ -1,6 +1,6 @@
 /**
  * Generic logger arguments interface.
- * 
+ *
  * @property [key: string] - Dynamic properties for logging
  */
 export interface LoggerArgs {
@@ -9,7 +9,7 @@ export interface LoggerArgs {
 
 /**
  * Storage metadata interface.
- * 
+ *
  * @property [key: string] - Dynamic properties for storage
  */
 export interface StorageMetadata {
@@ -18,7 +18,7 @@ export interface StorageMetadata {
 
 /**
  * Notification content interface.
- * 
+ *
  * @property [key: string] - Dynamic properties for notifications
  */
 export interface NotificationContent {
@@ -27,7 +27,7 @@ export interface NotificationContent {
 
 /**
  * Leaderboard metadata interface.
- * 
+ *
  * @property [key: string] - Dynamic properties for leaderboards
  */
 export interface LeaderboardMetadata {
@@ -36,7 +36,7 @@ export interface LeaderboardMetadata {
 
 /**
  * Wallet update metadata interface.
- * 
+ *
  * @property [key: string] - Dynamic properties for wallet updates
  */
 export interface WalletUpdateMetadata {
@@ -45,7 +45,7 @@ export interface WalletUpdateMetadata {
 
 /**
  * Match parameters interface.
- * 
+ *
  * @property [key: string] - Dynamic properties for matches
  */
 export interface MatchParams {
@@ -54,7 +54,7 @@ export interface MatchParams {
 
 /**
  * Before/after data interface.
- * 
+ *
  * @property [key: string] - Dynamic properties for before/after operations
  */
 export interface BeforeAfterData {
@@ -63,7 +63,7 @@ export interface BeforeAfterData {
 
 /**
  * Leaderboard record data structure.
- * 
+ *
  * @property ownerId - ID of the player
  * @property username - Display name of the player
  * @property rank - Current rank
@@ -86,7 +86,7 @@ export interface LeaderboardRecord {
 
 /**
  * Stream user list result interface.
- * 
+ *
  * @property userId - ID of the user
  * @property presence - Presence information
  */
@@ -97,7 +97,7 @@ export interface StreamUserListResult {
 
 /**
  * Match result interface.
- * 
+ *
  * @property success - Whether the match was successful
  * @property [key: string] - Additional result properties
  */
@@ -110,11 +110,11 @@ export interface MatchResult {
  * Cache value type union.
  * Can be any JSON-serializable value.
  */
-export type CacheValueType = 
-  | string 
-  | number 
-  | boolean 
-  | null 
+export type CacheValueType =
+  | string
+  | number
+  | boolean
+  | null
   | undefined
   | Record<string, unknown>
   | unknown[]
@@ -122,7 +122,7 @@ export type CacheValueType =
 
 /**
  * RPC response interface.
- * 
+ *
  * @property success - Optional success flag
  * @property error - Optional error message
  * @property [key: string] - Additional response properties

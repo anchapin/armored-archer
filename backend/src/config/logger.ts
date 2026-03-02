@@ -5,21 +5,21 @@ const logLevels = {
   error: 0,
   warn: 1,
   info: 2,
-  debug: 3
+  debug: 3,
 };
 
 const logColors = {
   error: 'red',
   warn: 'yellow',
   info: 'green',
-  debug: 'blue'
+  debug: 'blue',
 };
 
 winston.addColors(logColors);
 
 const format = winston.format.combine(
   winston.format.timestamp({
-    format: 'YYYY-MM-DD HH:mm:ss'
+    format: 'YYYY-MM-DD HH:mm:ss',
   }),
   winston.format.errors({ stack: true }),
   winston.format.splat(),
@@ -29,21 +29,23 @@ const format = winston.format.combine(
 const consoleFormat = winston.format.combine(
   winston.format.colorize({ all: true }),
   winston.format.timestamp({
-    format: 'YYYY-MM-DD HH:mm:ss'
+    format: 'YYYY-MM-DD HH:mm:ss',
   }),
-  winston.format.printf(({ timestamp, level, message, ...meta }: winston.Logform.TransformableInfo) => {
-    let msg = `${timestamp} [${level}]: ${message}`;
-    if (Object.keys(meta).length > 0) {
-      msg += ` ${JSON.stringify(meta)}`;
+  winston.format.printf(
+    ({ timestamp, level, message, ...meta }: winston.Logform.TransformableInfo) => {
+      let msg = `${timestamp} [${level}]: ${message}`;
+      if (Object.keys(meta).length > 0) {
+        msg += ` ${JSON.stringify(meta)}`;
+      }
+      return msg;
     }
-    return msg;
-  })
+  )
 );
 
 const transports: winston.transport[] = [
   new winston.transports.Console({
-    format: config.logger.format === 'json' ? format : consoleFormat
-  })
+    format: config.logger.format === 'json' ? format : consoleFormat,
+  }),
 ];
 
 if (config.logger.output === 'file' || process.env.LOG_FILE_PATH) {
@@ -52,12 +54,12 @@ if (config.logger.output === 'file' || process.env.LOG_FILE_PATH) {
     new winston.transports.File({
       filename: logFilePath,
       format,
-      level: 'debug'
+      level: 'debug',
     }),
     new winston.transports.File({
       filename: logFilePath.replace('.log', '.error.log'),
       level: 'error',
-      format
+      format,
     })
   );
 }
@@ -67,7 +69,7 @@ export const logger = winston.createLogger({
   level: config.logger.level,
   format,
   transports,
-  exitOnError: false
+  exitOnError: false,
 });
 
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
@@ -82,7 +84,7 @@ export function logRpcEntry(
     rpc: rpcName,
     userId,
     requestId,
-    payload: payload ? JSON.stringify(payload) : undefined
+    payload: payload ? JSON.stringify(payload) : undefined,
   });
 }
 
@@ -96,7 +98,7 @@ export function logRpcExit(
     rpc: rpcName,
     userId,
     requestId,
-    durationMs
+    durationMs,
   });
 }
 
@@ -113,7 +115,7 @@ export function logRpcError(
     requestId,
     durationMs,
     error: error.message,
-    stack: error.stack
+    stack: error.stack,
   });
 }
 
@@ -124,7 +126,7 @@ export function logSystemEvent(
 ): void {
   logger[level]('System event', {
     event,
-    ...data
+    ...data,
   });
 }
 

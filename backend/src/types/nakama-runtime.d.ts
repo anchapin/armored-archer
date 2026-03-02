@@ -107,7 +107,7 @@ declare namespace Runtime {
    */
   interface RpcRegistration {
     id: string;
-    func: (ctx: Context, logger: Logger, nk: Nakama, payload: string) > string;
+    func: (ctx: Context, logger: Logger, nk: Nakama, payload: string) => string;
   }
 
   /**
@@ -116,7 +116,7 @@ declare namespace Runtime {
    * @method registerRpc - Registers an RPC function
    */
   interface Initializer {
-    registerRpc(id: string, func: (ctx: Context, logger: Logger, nk: Nakama, payload: string) > string): void;
+    registerRpc(id: string, func: (ctx: Context, logger: Logger, nk: Nakama, payload: string) => string): void;
   }
 
   /**
@@ -127,7 +127,7 @@ declare namespace Runtime {
    * @param nk - Nakama server interface
    * @param initializer - Runtime initializer
    */
-  type InitModule = (ctx: Runtime, logger: Runtime.Logger, nk: Runtime.Nakama, initializer: Runtime.Initializer) > void;
+  type InitModule = (ctx: Runtime, logger: Runtime.Logger, nk: Runtime.Nakama, initializer: Runtime.Initializer) => void;
 }
 
 export { Runtime };
