@@ -1,11 +1,16 @@
-import { Runtime } from "../types/nakama";
+import { Runtime } from '../types/nakama';
 
 export interface ParseResult<T> {
   success: boolean;
   data?: T;
 }
 
-export function safeParse<T>(jsonString: string, context: string | null, logger: Runtime.Logger | undefined, operation: string): ParseResult<T> {
+export function safeParse<T>(
+  jsonString: string,
+  context: string | null,
+  logger: Runtime.Logger | undefined,
+  operation: string
+): ParseResult<T> {
   try {
     if (!jsonString) {
       return { success: false };
@@ -14,13 +19,17 @@ export function safeParse<T>(jsonString: string, context: string | null, logger:
     return { success: true, data };
   } catch (error) {
     if (logger) {
-      logger.error("Failed to parse JSON for %s: %s", operation, error);
+      logger.error('Failed to parse JSON for %s: %s', operation, error);
     }
     return { success: false };
   }
 }
 
-export function safeParsePayload<T>(payload: string, logger: Runtime.Logger | undefined, operation: string): T | null {
+export function safeParsePayload<T>(
+  payload: string,
+  logger: Runtime.Logger | undefined,
+  operation: string
+): T | null {
   try {
     if (!payload) {
       return null;
@@ -28,7 +37,7 @@ export function safeParsePayload<T>(payload: string, logger: Runtime.Logger | un
     return JSON.parse(payload) as T;
   } catch (error) {
     if (logger) {
-      logger.error("Failed to parse JSON payload for %s: %s", operation, error);
+      logger.error('Failed to parse JSON payload for %s: %s', operation, error);
     }
     return null;
   }
@@ -37,6 +46,6 @@ export function safeParsePayload<T>(payload: string, logger: Runtime.Logger | un
 export function createErrorResponse(code: string, message: string): string {
   return JSON.stringify({
     error: message,
-    error_code: code
+    error_code: code,
   });
 }

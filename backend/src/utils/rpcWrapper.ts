@@ -13,10 +13,7 @@ export interface RpcWrapperOptions {
   validatePayload?: (payload: unknown) => boolean;
 }
 
-export function wrapRpc(
-  handler: RpcHandler,
-  options: RpcWrapperOptions
-): RpcHandler {
+export function wrapRpc(handler: RpcHandler, options: RpcWrapperOptions): RpcHandler {
   return (
     ctx: Runtime.Context,
     loggerParam: Runtime.Logger,
@@ -25,10 +22,10 @@ export function wrapRpc(
   ): string => {
     const startTime = Date.now();
     const requestId = generateRequestId();
-    
+
     try {
       let parsedPayload: unknown = undefined;
-      
+
       if (payload) {
         try {
           parsedPayload = JSON.parse(payload);
@@ -43,33 +40,33 @@ export function wrapRpc(
             success: false,
             error: {
               code: 'INVALID_PAYLOAD',
-              message: 'Invalid request payload'
-            }
+              message: 'Invalid request payload',
+            },
           });
         }
       }
 
       logRpcEntry(options.name, ctx.userId, requestId, parsedPayload);
-      
+
       const result = handler(ctx, loggerParam, nk, payload);
-      
+
       const durationMs = Date.now() - startTime;
       logRpcExit(options.name, ctx.userId, requestId, durationMs);
-      
+
       return result;
     } catch (error) {
       const durationMs = Date.now() - startTime;
       const err = error as Error;
-      
+
       logRpcError(options.name, ctx.userId, requestId, err, durationMs);
       captureRpcError(options.name, ctx.userId, err, payload);
-      
+
       return JSON.stringify({
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: err.message || 'An unexpected error occurred'
-        }
+          message: err.message || 'An unexpected error occurred',
+        },
       });
     }
   };
@@ -79,22 +76,19 @@ function generateRequestId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
-export function createErrorResponse(
-  code: string,
-  message: string
-): string {
+export function createErrorResponse(code: string, message: string): string {
   return JSON.stringify({
     success: false,
     error: {
       code,
-      message
-    }
+      message,
+    },
   });
 }
 
 export function createSuccessResponse(data: unknown): string {
   return JSON.stringify({
     success: true,
-    data
+    data,
   });
 }

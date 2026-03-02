@@ -1,41 +1,111 @@
-import { Runtime } from "../types/nakama";
-import { getCacheManager } from "../utils/cache";
-import { registerRpcWithMetrics } from "./metrics";
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
+import { Runtime } from '../types/nakama';
+import { getCacheManager } from '../utils/cache';
+import { registerRpcWithMetrics } from './metrics';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
+/**
+ * Registers the health check RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
 export function registerRpcHealthCheck(initializer: Runtime.Initializer): void {
-  registerRpcWithMetrics(initializer, "armored_archer/health_check", "health_check", rpcHealthCheck);
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/health_check',
+    'health_check',
+    rpcHealthCheck
+  );
 }
 
-function rpcHealthCheck(ctx: Runtime.Context, logger: Runtime.Logger, _nk: Runtime.Nakama, payload: string): string {
-  logger.info("Armored Archer health check called");
+/**
+ * Handles health check requests for monitoring.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param _nk - Nakama server interface
+ * @param payload - JSON string (unused, required for RPC format)
+ * @returns JSON string with health status
+ *
+ * @example
+ * // Request payload
+ * { }
+ *
+ * // Response
+ * {
+ *   "status": "ok",
+ *   "timestamp": 1234567890,
+ *   "version": "0.1.0"
+ * }
+ */
+export function rpcHealthCheck(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Armored Archer health check called');
 
-  const validation = validatePayload(ZodSchemas.health_check, payload, "health_check");
+  const validation = validatePayload(ZodSchemas.health_check, payload, 'health_check');
   if (!validation.success) {
-    return createValidationErrorResponse("health_check", validation.error);
+    return createValidationErrorResponse('health_check', validation.error);
   }
 
   return JSON.stringify({
-    status: "ok",
+    status: 'ok',
     timestamp: Date.now(),
-    version: "0.1.0"
+    version: '0.1.0',
   });
 }
 
+/**
+ * Registers the get player stats RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
 export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): void {
-  registerRpcWithMetrics(initializer, "armored_archer/get_player_stats", "get_player_stats", rpcGetPlayerStats);
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/get_player_stats',
+    'get_player_stats',
+    rpcGetPlayerStats
+  );
 }
 
-function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
-  logger.info("Getting player stats for user: %s", ctx.userId);
+/**
+ * Retrieves player statistics with caching.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (unused, required for RPC format)
+ * @returns JSON string with player stats or error
+ *
+ * @example
+ * // Request payload
+ * { }
+ *
+ * // Response
+ * {
+ *   "level": 5,
+ *   "xp": 450,
+ *   "stats": { ... }
+ * }
+ */
+export function rpcGetPlayerStats(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Getting player stats for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.get_player_stats, payload, "get_player_stats");
+  const validation = validatePayload(ZodSchemas.get_player_stats, payload, 'get_player_stats');
   if (!validation.success) {
-    return createValidationErrorResponse("get_player_stats", validation.error);
+    return createValidationErrorResponse('get_player_stats', validation.error);
   }
 
   const cacheManager = getCacheManager(logger);
-  const cachedStats = cacheManager.get<string>("player_stats", ctx.userId);
+  const cachedStats = cacheManager.get<string>('player_stats', ctx.userId);
 
   if (cachedStats !== undefined) {
     return cachedStats;
@@ -43,20 +113,20 @@ function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Run
 
   const objects = nk.storageRead([
     {
-      collection: "player_stats",
+      collection: 'player_stats',
       key: ctx.userId,
-      userId: ctx.userId
-    }
+      userId: ctx.userId,
+    },
   ]);
 
   if (objects.length === 0) {
     return JSON.stringify({
-      error: "Player stats not found"
+      error: 'Player stats not found',
     });
   }
 
-  const stats = objects[0].value ?? "{}";
-  cacheManager.set("player_stats", ctx.userId, stats);
+  const stats = objects[0].value ?? '{}';
+  cacheManager.set('player_stats', ctx.userId, stats);
 
   return stats;
 }

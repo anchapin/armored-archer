@@ -34,9 +34,15 @@ export enum ErrorCode {
 
   INTERNAL_ERROR = 'INTERNAL_ERROR',
   DATABASE_ERROR = 'DATABASE_ERROR',
-  TIMEOUT = 'TIMEOUT'
+  TIMEOUT = 'TIMEOUT',
 }
 
+/**
+ * Error response interface.
+ *
+ * @property success - Always false for error responses
+ * @property error - Error details
+ */
 export interface ErrorResponse {
   success: false;
   error: {
@@ -47,11 +53,25 @@ export interface ErrorResponse {
   };
 }
 
+/**
+ * Success response interface.
+ *
+ * @property success - Always true for success responses
+ * @property data - Response data
+ */
 export interface SuccessResponse<T> {
   success: true;
   data: T;
 }
 
+/**
+ * Creates an error response.
+ *
+ * @param code - Error code
+ * @param message - Error message
+ * @param details - Optional error details
+ * @returns JSON string with error response
+ */
 export function createErrorResponse(code: ErrorCode, message: string, details?: unknown): string {
   return JSON.stringify({
     success: false,
@@ -59,14 +79,20 @@ export function createErrorResponse(code: ErrorCode, message: string, details?: 
       code,
       message,
       details,
-      timestamp: Date.now()
-    }
+      timestamp: Date.now(),
+    },
   } as ErrorResponse);
 }
 
+/**
+ * Creates a success response.
+ *
+ * @param data - Response data
+ * @returns JSON string with success response
+ */
 export function createSuccessResponse<T>(data: T): string {
   return JSON.stringify({
     success: true,
-    data
+    data,
   } as SuccessResponse<T>);
 }

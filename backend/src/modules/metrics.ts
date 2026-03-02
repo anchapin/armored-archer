@@ -1,8 +1,8 @@
-import { Runtime } from "../types/nakama";
+import { Runtime } from '../types/nakama';
 import { Counter, Histogram, Registry, collectDefaultMetrics, Gauge } from 'prom-client';
 import { config } from '../config';
 import * as rateLimiter from '../utils/rateLimiter';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from "./validation";
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 const register = new Registry();
 
@@ -12,7 +12,7 @@ const rpcCallsTotal = new Counter({
   name: 'armored_archer_rpc_calls_total',
   help: 'Total number of RPC calls',
   labelNames: ['rpc', 'status'] as const,
-  registers: [register]
+  registers: [register],
 });
 
 const rpcDurationSeconds = new Histogram({
@@ -20,47 +20,52 @@ const rpcDurationSeconds = new Histogram({
   help: 'RPC call duration in seconds',
   labelNames: ['rpc'] as const,
   buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
-  registers: [register]
+  registers: [register],
 });
 
 const rpcErrorsTotal = new Counter({
   name: 'armored_archer_rpc_errors_total',
   help: 'Total number of RPC errors',
   labelNames: ['rpc', 'error_type'] as const,
-  registers: [register]
+  registers: [register],
 });
 
 const rateLimitViolationsTotal = new Counter({
   name: 'armored_archer_rate_limit_violations_total',
   help: 'Total number of rate limit violations',
   labelNames: ['rpc'] as const,
-  registers: [register]
+  registers: [register],
 });
 
 const rateLimitActiveUsers = new Gauge({
   name: 'armored_archer_rate_limit_active_users',
   help: 'Number of users currently being rate limited',
-  registers: [register]
+  registers: [register],
 });
 
 rateLimiter.setMetricsCallbacks(recordRateLimitViolation, updateActiveUsersCount);
 
 export function registerRpcMetrics(initializer: Runtime.Initializer): void {
-  initializer.registerRpc("armored_archer/metrics", rpcGetMetrics);
+  initializer.registerRpc('armored_archer/metrics', rpcGetMetrics);
 }
 
-function rpcGetMetrics(ctx: Runtime.Context, logger: Runtime.Logger, _nk: Runtime.Nakama, payload: string): string {
-  logger.info("Metrics endpoint called by user: %s", ctx.userId);
+function rpcGetMetrics(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Metrics endpoint called by user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.health_check, payload, "metrics");
+  const validation = validatePayload(ZodSchemas.health_check, payload, 'metrics');
   if (!validation.success) {
-    return createValidationErrorResponse("metrics", validation.error);
+    return createValidationErrorResponse('metrics', validation.error);
   }
 
-  register.metrics().then(metrics => {
+  register.metrics().then((metrics) => {
     return metrics;
   });
-  return JSON.stringify({ message: "Metrics are being collected asynchronously" });
+  return JSON.stringify({ message: 'Metrics are being collected asynchronously' });
 }
 
 export type RpcHandler = (
@@ -71,14 +76,14 @@ export type RpcHandler = (
 ) => string;
 
 export function wrapRpcWithMetrics(rpcName: string, handler: RpcHandler): RpcHandler {
-  return function(
+  return function (
     ctx: Runtime.Context,
     logger: Runtime.Logger,
     nk: Runtime.Nakama,
     payload: string
   ): string {
     const endTimer = rpcDurationSeconds.startTimer({ rpc: rpcName });
-    
+
     try {
       const result = handler(ctx, logger, nk, payload);
       rpcCallsTotal.inc({ rpc: rpcName, status: 'success' });
@@ -114,15 +119,15 @@ export function registerRpcWithRateLimit(
     registerRpcWithMetrics(initializer, rpcId, rpcName, handler);
     return;
   }
-  
+
   const endpointConfig = config.rateLimit.endpoints[rpcName];
   if (endpointConfig) {
     rateLimiter.setEndpointRateLimit(rpcName, endpointConfig);
   }
-  
+
   const wrappedWithRateLimit = rateLimiter.createRateLimitedRpcHandler(rpcName, handler);
   const wrappedWithMetrics = wrapRpcWithMetrics(rpcName, wrappedWithRateLimit);
-  
+
   initializer.registerRpc(rpcId, wrappedWithMetrics);
 }
 
