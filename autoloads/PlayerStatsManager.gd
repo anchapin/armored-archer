@@ -1,3 +1,12 @@
+## Manages player statistics including XP, levels, and stat allocation.
+## Handles communication with server for stats-related operations.
+##
+## Signals:
+## - stats_updated(stats: Dictionary): Emitted when player stats change
+## - level_up(new_level: int, ability_points_gained: int): Emitted when player levels up
+## - xp_gained(amount: int, total_xp: int): Emitted when XP is gained
+## - stat_allocated(stat_name: String, amount: int): Emitted when stats are allocated
+##
 extends Node
 
 # --- RPC IDs ---
@@ -18,14 +27,23 @@ signal stat_allocated(stat_name: String, amount: int)
 # --- Network Reference ---
 @onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
 
+# --- Initialization ---
 func _ready() -> void:
+	"""Sets up signal connections on initialization."""
 	if network_manager:
 		network_manager.connected.connect(_on_connected)
 
 func _on_connected() -> void:
+	"""Fetches player stats when network connection is established."""
 	await get_player_stats()
 
+# --- Public API ---
 func get_player_stats() -> Dictionary:
+	"""Retrieves player statistics from the server.
+	
+	Returns:
+		Dictionary: Player stats data or empty dict on failure
+	"""
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return {}
@@ -45,6 +63,12 @@ func get_player_stats() -> Dictionary:
 	return player_stats
 
 func gain_xp(amount: int, source: String) -> void:
+	"""Requests XP gain from the server.
+	
+	Parameters:
+		amount: Amount of XP to gain (must be positive)
+		source: Source of XP gain ("pve" or "pvp")
+	"""
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
@@ -81,6 +105,12 @@ func gain_xp(amount: int, source: String) -> void:
 		emit_signal("stats_updated", player_stats)
 
 func allocate_stat(stat_name: String, points: int) -> void:
+	"""Allocates ability points to a specific stat.
+	
+	Parameters:
+		stat_name: Name of the stat to allocate points to
+		points: Number of points to allocate (must be positive)
+	"""
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
@@ -107,28 +137,72 @@ func allocate_stat(stat_name: String, points: int) -> void:
 		player_stats = result.player_stats
 		emit_signal("stats_updated", player_stats)
 
+# --- Getters ---
 func get_level() -> int:
+	"""Returns the current player level.
+	
+	Returns:
+		int: Current level (minimum 1)
+	"""
 	return player_stats.get("level", 1)
 
 func get_xp() -> int:
+	"""Returns current XP.
+	
+	Returns:
+		int: Current XP amount
+	"""
 	return player_stats.get("xp", 0)
 
 func get_ability_points() -> int:
+	"""Returns available unallocated ability points.
+	
+	Returns:
+		int: Number of available points
+	"""
 	return player_stats.get("ability_points", 0)
 
 func get_stat(stat_name: String) -> int:
+	"""Gets the value of a specific stat.
+	
+	Parameters:
+		stat_name: Name of the stat to retrieve
+	
+	Returns:
+		int: Current value of the stat (0 if not found)
+	"""
 	if player_stats.has("stats") and player_stats.stats.has(stat_name):
 		return player_stats.stats[stat_name]
 	return 0
 
 func get_attack() -> int:
+	"""Returns the attack stat value.
+	
+	Returns:
+		int: Attack value
+	"""
 	return get_stat("attack")
 
 func get_defense() -> int:
+	"""Returns the defense stat value.
+	
+	Returns:
+		int: Defense value
+	"""
 	return get_stat("defense")
 
 func get_dodge() -> int:
+	"""Returns the dodge stat value.
+	
+	Returns:
+		int: Dodge value
+	"""
 	return get_stat("dodge")
 
 func get_crit_rate() -> int:
+	"""Returns the critical hit rate stat value.
+	
+	Returns:
+		int: Critical hit rate percentage
+	"""
 	return get_stat("crit_rate")

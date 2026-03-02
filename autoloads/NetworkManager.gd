@@ -1,9 +1,20 @@
+## Manages network connectivity and HTTP communication with the Nakama server.
+## Handles device authentication, session management, and RPC calls.
+##
+## Signals:
+## - session_created(success: bool, error_message: String = ""): Emitted when authentication completes
+## - session_refreshed(success: bool, error_message: String = ""): Emitted when session refresh completes
+## - connection_status_changed(is_online: bool): Emitted when connection status changes
+##
 extends Node
 
 # --- Configuration ---
 @export var server_url: String = ""
 @export var server_port: int = 0
 @export var server_key: String = ""
+
+# --- Constants ---
+const SESSION_FILE: String = "user://session_data.json"
 
 # --- Session State ---
 var session_token: String = ""
@@ -18,16 +29,9 @@ var is_offline: bool = false
 var http_request: HTTPRequest
 var base_url: String
 
-# --- Signals ---
-signal session_created(success: bool, error_message: String = "")
-signal session_refreshed(success: bool, error_message: String = "")
-signal connection_status_changed(is_online: bool)
-
-# --- Constants ---
-const SESSION_FILE: String = "user://session_data.json"
-
 # --- Environment Variables ---
 func _load_environment_variables() -> void:
+	"""Loads server configuration from environment variables."""
 	var env_url: String = OS.getenv("NAKAMA_SERVER_URL")
 	var env_port: String = OS.getenv("NAKAMA_SERVER_PORT")
 	var env_key: String = OS.getenv("NAKAMA_SERVER_KEY")
@@ -53,6 +57,7 @@ func _load_environment_variables() -> void:
 	_validate_required_config()
 
 func _validate_required_config() -> void:
+	"""Validates that required configuration is present."""
 	var missing_vars: Array[String] = []
 	
 	if server_url.is_empty():
@@ -70,6 +75,7 @@ func _validate_required_config() -> void:
 
 # --- Initialization ---
 func _ready() -> void:
+	"""Initializes the network manager and attempts connection."""
 	_load_environment_variables()
 	base_url = "http://%s:%d" % [server_url, server_port]
 	
@@ -86,6 +92,7 @@ func _ready() -> void:
 
 # --- Device ID Management ---
 func _generate_device_id() -> void:
+	"""Generates a random device ID for authentication."""
 	var uuid: Array = []
 	for i in range(16):
 		uuid.append(randi() % 256)
@@ -98,6 +105,7 @@ func _generate_device_id() -> void:
 
 # --- Authentication ---
 func authenticate_device() -> void:
+	"""Authenticates the device with the Nakama server."""
 	if is_offline:
 		session_created.emit(false, "Cannot authenticate while offline")
 		return
@@ -122,6 +130,7 @@ func authenticate_device() -> void:
 		connection_status_changed.emit(false)
 
 func _try_auto_connect() -> void:
+	"""Attempts to reconnect using existing session or authenticate device."""
 	if not session_token.is_empty():
 		_refresh_session()
 	else:
@@ -129,6 +138,7 @@ func _try_auto_connect() -> void:
 
 # --- Session Management ---
 func _refresh_session() -> void:
+	"""Refreshes the authentication session using refresh token."""
 	if refresh_token.is_empty():
 		authenticate_device()
 		return
@@ -149,6 +159,7 @@ func _refresh_session() -> void:
 
 # --- HTTP Response Handling ---
 func _on_http_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+	"""Handles HTTP request responses."""
 	var response_text: String = body.get_string_from_utf8()
 	
 	if response_code >= 200 and response_code < 300:
@@ -174,6 +185,7 @@ func _on_http_request_completed(result: int, response_code: int, headers: Packed
 		_handle_authentication_error(response_code, response_text)
 
 func _update_session_from_response(response_data: Dictionary) -> void:
+	"""Updates session tokens from server response."""
 	if "token" in response_data:
 		session_token = response_data["token"]
 	
@@ -190,6 +202,7 @@ func _update_session_from_response(response_data: Dictionary) -> void:
 	_save_session_to_file()
 
 func _handle_authentication_error(response_code: int, response_text: String) -> void:
+	"""Handles authentication failures and network errors."""
 	if response_code == 0 or response_code == -1:
 		is_offline = true
 		connection_status_changed.emit(false)
@@ -209,6 +222,7 @@ func _handle_authentication_error(response_code: int, response_text: String) -> 
 
 # --- Session Storage ---
 func _save_session_to_file() -> void:
+	"""Saves session data to local file."""
 	var session_data: Dictionary = {
 		"session_token": session_token,
 		"refresh_token": refresh_token,
@@ -224,6 +238,7 @@ func _save_session_to_file() -> void:
 		file.close()
 
 func _load_session_from_file() -> void:
+	"""Loads session data from local file if it exists."""
 	if not FileAccess.file_exists(SESSION_FILE):
 		return
 	
@@ -253,6 +268,7 @@ func _load_session_from_file() -> void:
 
 # --- Public API ---
 func logout() -> void:
+	"""Logs out the current user and clears session data."""
 	session_token = ""
 	refresh_token = ""
 	user_id = ""
@@ -267,16 +283,35 @@ func logout() -> void:
 	session_created.emit(false, "Logged out")
 
 func get_auth_headers() -> PackedStringArray:
+	"""Returns authentication headers for API requests.
+	
+	Returns:
+		PackedStringArray: Authorization header with bearer token, or empty array if not authenticated
+	"""
 	if session_token.is_empty():
 		return []
 	
 	return ["Authorization: Bearer %s" % session_token]
 
 func is_session_valid() -> bool:
+	"""Checks if the current session is valid.
+	
+	Returns:
+		bool: True if session token exists and connection is established
+	"""
 	return not session_token.is_empty() and is_connected
 
 # --- RPC Communication ---
 func send_rpc(rpc_id: String, payload: String) -> Dictionary:
+	"""Sends an RPC request to the server.
+	
+	Parameters:
+		rpc_id: The RPC method identifier (e.g., "armored_archer/gain_xp")
+		payload: JSON string containing the request data
+	
+	Returns:
+		Dictionary: Response data or error information
+	"""
 	if not is_session_valid():
 		return {"error": "Not authenticated"}
 	

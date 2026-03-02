@@ -1,3 +1,12 @@
+## Manages gear inventory, equipment slots, and gear generation.
+## Handles server communication for gear-related operations and provides gear statistics.
+##
+## Signals:
+## - gear_generated(gear_data: Dictionary): Emitted when new gear is created
+## - gear_equipped(slot: String, gear_id: String): Emitted when gear is equipped
+## - gear_unequipped(slot: String): Emitted when gear is removed from a slot
+## - inventory_updated(inventory: Dictionary): Emitted when inventory data changes
+##
 extends Node
 
 signal gear_generated(gear_data: Dictionary)
@@ -13,6 +22,7 @@ var equipped_gear: Dictionary = {}
 var unlocked_modifier_pools: Array = []
 
 func _ready() -> void:
+	"""Initializes HTTP request and loads inventory if session is valid."""
 	network_manager = get_node_or_null("/root/NetworkManager")
 	
 	http_request = HTTPRequest.new()
@@ -23,6 +33,12 @@ func _ready() -> void:
 		_load_inventory()
 
 func generate_gear(stage_id: String, boss_defeated: bool) -> void:
+	"""Requests gear generation from the server after stage completion.
+	
+	Parameters:
+		stage_id: ID of the completed stage
+		boss_defeated: True if boss was defeated (better loot)
+	"""
 	if not network_manager or not network_manager.is_session_valid():
 		push_error("Cannot generate gear: not connected to server")
 		return
@@ -43,6 +59,12 @@ func generate_gear(stage_id: String, boss_defeated: bool) -> void:
 		push_error("Failed to generate gear request")
 
 func equip_gear(gear_id: String, slot: String) -> void:
+	"""Requests to equip gear to a specific slot.
+	
+	Parameters:
+		gear_id: Unique identifier of the gear item
+		slot: Equipment slot name (e.g., "helm", "armor", "bow", "arrow")
+	"""
 	if not network_manager or not network_manager.is_session_valid():
 		push_error("Cannot equip gear: not connected to server")
 		return
@@ -63,6 +85,11 @@ func equip_gear(gear_id: String, slot: String) -> void:
 		push_error("Failed to equip gear request")
 
 func unequip_gear(slot: String) -> void:
+	"""Requests to unequip gear from a specific slot.
+	
+	Parameters:
+		slot: Equipment slot to unequip
+	"""
 	if not network_manager or not network_manager.is_session_valid():
 		push_error("Cannot unequip gear: not connected to server")
 		return
@@ -82,6 +109,7 @@ func unequip_gear(slot: String) -> void:
 		push_error("Failed to unequip gear request")
 
 func _load_inventory() -> void:
+	"""Loads player inventory from the server."""
 	if not network_manager or not network_manager.is_session_valid():
 		return
 	
@@ -93,6 +121,11 @@ func _load_inventory() -> void:
 		push_error("Failed to load inventory")
 
 func unlock_modifier_pool(modifier_id: String) -> void:
+	"""Unlocks a modifier pool for gear generation.
+	
+	Parameters:
+		modifier_id: Identifier of the modifier pool to unlock
+	"""
 	if not network_manager or not network_manager.is_session_valid():
 		push_error("Cannot unlock modifier pool: not connected to server")
 		return
@@ -112,6 +145,7 @@ func unlock_modifier_pool(modifier_id: String) -> void:
 		push_error("Failed to unlock modifier pool request")
 
 func _on_http_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+	"""Handles HTTP responses for gear-related requests."""
 	var response_text: String = body.get_string_from_utf8()
 	
 	if response_code >= 200 and response_code < 300:
@@ -133,6 +167,7 @@ func _on_http_request_completed(result: int, response_code: int, headers: Packed
 		push_error("Gear system request failed with code: %d" % response_code)
 
 func _process_payload(payload: Dictionary, response_data: Dictionary) -> void:
+	"""Processes server response payload and emits appropriate signals."""
 	if payload.has("gear"):
 		var gear_data: Dictionary = payload.gear
 		player_inventory.gear = payload.inventory.gear
@@ -161,6 +196,11 @@ func _process_payload(payload: Dictionary, response_data: Dictionary) -> void:
 		inventory_updated.emit(_get_full_inventory())
 
 func _get_full_inventory() -> Dictionary:
+	"""Returns complete inventory state including equipped gear.
+	
+	Returns:
+		Dictionary: Full inventory data structure
+	"""
 	return {
 		"gear": player_inventory.get("gear", []),
 		"equipped_gear": equipped_gear,
@@ -168,17 +208,41 @@ func _get_full_inventory() -> Dictionary:
 	}
 
 func get_gear_by_id(gear_id: String) -> Dictionary:
+	"""Retrieves gear data by ID.
+	
+	Parameters:
+		gear_id: Unique identifier of the gear
+	
+	Returns:
+		Dictionary: Gear data or empty dict if not found
+	"""
 	for gear in player_inventory.get("gear", []):
 		if gear.id == gear_id:
 			return gear
 	return {}
 
 func get_equipped_gear(slot: String) -> Dictionary:
+	"""Gets the gear equipped in the specified slot.
+	
+	Parameters:
+		slot: Equipment slot name
+	
+	Returns:
+		Dictionary: Equipped gear data or empty dict if slot is empty
+	"""
 	if equipped_gear.has(slot):
 		return get_gear_by_id(equipped_gear[slot])
 	return {}
 
 func get_gear_stats_summary(gear_data: Dictionary) -> String:
+	"""Generates a formatted string showing gear statistics.
+	
+	Parameters:
+		gear_data: Gear item dictionary
+	
+	Returns:
+		String: Formatted stats summary with color coding
+	"""
 	var summary: String = ""
 	var rarity_colors: Dictionary = {
 		"common": "#FFFFFF",
@@ -200,6 +264,15 @@ func get_gear_stats_summary(gear_data: Dictionary) -> String:
 	return summary
 
 func compare_gear(gear1: Dictionary, gear2: Dictionary) -> Dictionary:
+	"""Compares two gear items and determines which is better.
+	
+	Parameters:
+		gear1: First gear item to compare
+		gear2: Second gear item to compare
+	
+	Returns:
+		Dictionary: Comparison result with "better" ("gear1", "gear2", or "equal") and "differences" array
+	"""
 	var comparison: Dictionary = {
 		"better": null,
 		"differences": []
@@ -218,6 +291,14 @@ func compare_gear(gear1: Dictionary, gear2: Dictionary) -> Dictionary:
 	return comparison
 
 func _calculate_gear_score(gear_data: Dictionary) -> int:
+	"""Calculates a numeric score for gear comparison (internal).
+	
+	Parameters:
+		gear_data: Gear item to score
+	
+	Returns:
+		int: Calculated score based on rarity and stats
+	"""
 	var score: int = 0
 	
 	var rarity_multipliers: Dictionary = {

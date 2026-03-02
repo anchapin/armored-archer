@@ -1,3 +1,12 @@
+## Manages in-game store and in-app purchases for currency (gems).
+## Handles purchase flows, currency management, and server-side validation.
+##
+## Signals:
+## - currency_updated(gems: int, gold: int): Emitted when currency balances change
+## - purchase_succeeded(product_id: String, gems_awarded: int): Emitted when purchase completes
+## - purchase_failed(product_id: String, error: String): Emitted when purchase fails
+## - products_loaded(products: Dictionary): Emitted when product catalog is available
+##
 extends Node
 
 # --- RPC IDs ---
@@ -54,11 +63,13 @@ signal products_loaded(products: Dictionary)
 var platform: String = ""
 
 func _ready() -> void:
+	"""Detects platform and sets up signal connections."""
 	_detect_platform()
 	if network_manager:
 		network_manager.connected.connect(_on_connected)
 
 func _detect_platform() -> void:
+	"""Determines the current runtime platform."""
 	if OS.has_feature("ios"):
 		platform = "ios"
 	elif OS.has_feature("android"):
@@ -73,10 +84,12 @@ func _detect_platform() -> void:
 		platform = "unknown"
 
 func _on_connected() -> void:
+	"""Loads currency when network connection is established."""
 	await load_currency()
 
 # --- Currency Management ---
 func load_currency() -> void:
+	"""Retrieves currency balances from the server."""
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
@@ -96,13 +109,28 @@ func load_currency() -> void:
 	emit_signal("currency_updated", current_gems, current_gold)
 
 func get_gems() -> int:
+	"""Returns current gem balance.
+	
+	Returns:
+		int: Number of gems owned
+	"""
 	return current_gems
 
 func get_gold() -> int:
+	"""Returns current gold balance.
+	
+	Returns:
+		int: Number of gold owned
+	"""
 	return current_gold
 
 # --- Purchase Flow ---
 func purchase_product(product_id: String) -> void:
+	"""Initiates a purchase for the specified product.
+	
+	Parameters:
+		product_id: Product identifier to purchase
+	"""
 	if not products.has(product_id):
 		push_error("Invalid product ID: %s" % product_id)
 		emit_signal("purchase_failed", product_id, "Invalid product ID")
@@ -122,6 +150,7 @@ func purchase_product(product_id: String) -> void:
 		_simulate_purchase_for_testing(product_id)
 
 func _initiate_revenuecat_purchase(product_id: String) -> void:
+	"""Starts RevenueCat purchase flow on mobile platforms."""
 	if Engine.has_singleton("RevenueCat"):
 		var revenuecat = Engine.get_singleton("RevenueCat")
 		revenuecat.purchaseProduct(product_id, _on_revenuecat_purchase_complete)
@@ -130,6 +159,7 @@ func _initiate_revenuecat_purchase(product_id: String) -> void:
 		emit_signal("purchase_failed", product_id, "RevenueCat plugin not installed")
 
 func _on_revenuecat_purchase_complete(result: Dictionary) -> void:
+	"""Handles RevenueCat purchase completion callback."""
 	var product_id: String = result.get("productIdentifier", "")
 	var success: bool = result.get("success", false)
 	var error: String = result.get("error", "")
@@ -150,6 +180,7 @@ func _on_revenuecat_purchase_complete(result: Dictionary) -> void:
 	await _validate_purchase_with_server(product_id, transaction_receipt)
 
 func _simulate_purchase_for_testing(product_id: String) -> void:
+	"""Simulates a purchase for testing on non-mobile platforms."""
 	print("Simulating purchase for testing purposes: %s" % product_id)
 	
 	await get_tree().create_timer(1.0).timeout
@@ -158,6 +189,12 @@ func _simulate_purchase_for_testing(product_id: String) -> void:
 	await _validate_purchase_with_server(product_id, mock_receipt)
 
 func _validate_purchase_with_server(product_id: String, transaction_receipt: String) -> void:
+	"""Validates purchase with server and updates currency.
+	
+	Parameters:
+		product_id: Purchased product ID
+		transaction_receipt: Platform-specific purchase receipt
+	"""
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		is_purchase_pending = false
@@ -191,6 +228,12 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 
 # --- Spend Gems ---
 func spend_gems(amount: int, reason: String = "") -> void:
+	"""Deducts gems from balance with server validation.
+	
+	Parameters:
+		amount: Amount of gems to spend (must be positive)
+		reason: Optional reason for the spend (for logging)
+	"""
 	if amount <= 0:
 		push_error("Invalid gem amount")
 		return
@@ -222,26 +265,79 @@ func spend_gems(amount: int, reason: String = "") -> void:
 
 # --- Product Info ---
 func get_products() -> Dictionary:
+	"""Returns the product catalog.
+	
+	Returns:
+		Dictionary: Product definitions keyed by product ID
+	"""
 	return products
 
 func get_product_info(product_id: String) -> Dictionary:
+	"""Retrieves information for a specific product.
+	
+	Parameters:
+		product_id: Product identifier
+	
+	Returns:
+		Dictionary: Product data or empty dict if not found
+	"""
 	return products.get(product_id, {})
 
 func get_product_display_name(product_id: String) -> String:
+	"""Gets the display name for a product.
+	
+	Parameters:
+		product_id: Product identifier
+	
+	Returns:
+		String: Localized title or empty string if not found
+	"""
 	var product = products.get(product_id, {})
 	return product.get("localized_title", "")
 
 func get_product_description(product_id: String) -> String:
+	"""Gets the description for a product.
+	
+	Parameters:
+		product_id: Product identifier
+	
+	Returns:
+		String: Localized description or empty string if not found
+	"""
 	var product = products.get(product_id, {})
 	return product.get("localized_description", "")
 
 func get_product_gem_amount(product_id: String) -> int:
+	"""Gets the gem amount for a product.
+	
+	Parameters:
+		product_id: Product identifier
+	
+	Returns:
+		int: Number of gems included or 0 if not found
+	"""
 	var product = products.get(product_id, {})
 	return product.get("gem_amount", 0)
 
 # --- Utility ---
 func format_gems(amount: int) -> String:
+	"""Formats gem amount for display.
+	
+	Parameters:
+		amount: Numeric gem amount
+	
+	Returns:
+		String: Formatted string (currently just converts to string)
+	"""
 	return str(amount)
 
 func format_gold(amount: int) -> String:
+	"""Formats gold amount for display.
+	
+	Parameters:
+		amount: Numeric gold amount
+	
+	Returns:
+		String: Formatted string (currently just converts to string)
+	"""
 	return str(amount)

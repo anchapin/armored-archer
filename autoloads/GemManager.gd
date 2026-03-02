@@ -1,3 +1,11 @@
+## Manages cosmetic skin ownership and equipment.
+## Handles skin purchases, equipment, and integration with Store and Gear systems.
+##
+## Signals:
+## - skin_purchased(skin_id: String): Emitted when a skin is bought
+## - skin_equipped(skin_id: String, slot: String): Emitted when a skin is equipped
+## - skin_unequipped(slot: String): Emitted when a skin is removed
+##
 extends Node
 
 # --- Manager References ---
@@ -26,6 +34,7 @@ const SAVE_FILE_PATH = "user://cosmetic_data.save"
 
 # --- Initialization ---
 func _ready() -> void:
+	"""Sets up signal connections and loads saved cosmetic data."""
 	if store_manager:
 		store_manager.currency_updated.connect(_on_currency_updated)
 	
@@ -33,15 +42,29 @@ func _ready() -> void:
 
 # --- Gem Management (Delegates to StoreManager) ---
 func get_gem_balance() -> int:
+	"""Gets current gem balance from StoreManager.
+	
+	Returns:
+		int: Number of gems available
+	"""
 	if store_manager:
 		return store_manager.get_gems()
 	return 0
 
 func _on_currency_updated(gems: int, gold: int) -> void:
+	"""Handles currency updates (placeholder for future functionality)."""
 	pass
 
 # --- Skin Catalog (Delegates to GearRegistry) ---
 func get_skins_by_slot(slot_name: String) -> Array:
+	"""Gets all available skins for a specific slot.
+	
+	Parameters:
+		slot_name: Equipment slot name ("helm", "armor", "bow", "arrow")
+	
+	Returns:
+		Array: List of skin data dictionaries
+	"""
 	if not gear_registry or not slot_type_mapping.has(slot_name):
 		return []
 	
@@ -49,16 +72,40 @@ func get_skins_by_slot(slot_name: String) -> Array:
 	return gear_registry.get_skins_by_slot(slot_type)
 
 func get_skin_info(skin_id: String):
+	"""Retrieves information about a specific skin.
+	
+	Parameters:
+		skin_id: Unique skin identifier
+	
+	Returns:
+		Skin data dictionary or null if not found
+	"""
 	if not gear_registry:
 		return null
 	
 	return gear_registry.get_skin(skin_id)
 
 func is_skin_owned(skin_id: String) -> bool:
+	"""Checks if the player owns a specific skin.
+	
+	Parameters:
+		skin_id: Skin identifier to check
+	
+	Returns:
+		bool: True if skin is owned
+	"""
 	return skin_id in owned_skins
 
 # --- Skin Purchase ---
 func purchase_skin(skin_id: String) -> bool:
+	"""Purchases a skin using gems.
+	
+	Parameters:
+		skin_id: ID of the skin to purchase
+	
+	Returns:
+		bool: True if purchase succeeded, false otherwise
+	"""
 	if is_skin_owned(skin_id):
 		push_error("Skin already owned: %s" % skin_id)
 		return false
@@ -87,6 +134,15 @@ func purchase_skin(skin_id: String) -> bool:
 
 # --- Skin Equipment ---
 func equip_skin(slot_name: String, skin_id: String) -> bool:
+	"""Equips a skin to the specified slot.
+	
+	Parameters:
+		slot_name: Equipment slot name
+		skin_id: ID of the skin to equip
+	
+	Returns:
+		bool: True if equip succeeded, false otherwise
+	"""
 	if not is_skin_owned(skin_id):
 		push_error("Skin not owned: %s" % skin_id)
 		return false
@@ -108,16 +164,30 @@ func equip_skin(slot_name: String, skin_id: String) -> bool:
 	return true
 
 func unequip_skin(slot_name: String) -> void:
+	"""Removes skin from slot, showing only base gear.
+	
+	Parameters:
+		slot_name: Equipment slot to unequip skin from
+	"""
 	if equipped_skins.has(slot_name):
 		equipped_skins.erase(slot_name)
 		skin_unequipped.emit(slot_name)
 		save_data()
 
 func get_equipped_skin(slot_name: String) -> String:
+	"""Gets the skin ID equipped in a slot.
+	
+	Parameters:
+		slot_name: Equipment slot to query
+	
+	Returns:
+		String: Skin identifier or empty string if none equipped
+	"""
 	return equipped_skins.get(slot_name, "")
 
 # --- Save/Load Data ---
 func save_data() -> void:
+	"""Saves skin ownership and equipment data to disk."""
 	var config = ConfigFile.new()
 	
 	config.set_value("skins", "owned", owned_skins)
@@ -128,6 +198,7 @@ func save_data() -> void:
 		push_error("Failed to save cosmetic data: %s" % error)
 
 func load_data() -> void:
+	"""Loads skin ownership and equipment data from disk."""
 	var config = ConfigFile.new()
 	var error = config.load(SAVE_FILE_PATH)
 	
@@ -138,6 +209,7 @@ func load_data() -> void:
 		initialize_default_data()
 
 func initialize_default_data() -> void:
+	"""Initializes with default empty data."""
 	owned_skins = []
 	equipped_skins = {}
 	save_data()
