@@ -36,13 +36,13 @@ export const createMockNakama = (): Runtime.Nakama => {
   return {
     storageRead: jest.fn((objects: { collection: string; key: string; userId?: string }[]) => {
       return objects.map((obj) => {
-        const userId = obj.userId || 'test-user-123';
+        const userId = obj.userId ?? 'test-user-123';
         const key = `${obj.collection}:${obj.key}`;
         storageReadCalls.push({
           collection: obj.collection,
           key: obj.key,
           userId: userId,
-          value: storage.get(key) || '',
+          value: storage.get(key) ?? '',
           version: '1',
           permissionRead: 1,
           permissionWrite: 1,
@@ -53,7 +53,7 @@ export const createMockNakama = (): Runtime.Nakama => {
           collection: obj.collection,
           key: obj.key,
           userId: userId,
-          value: storage.get(key) || '',
+          value: storage.get(key) ?? '',
           version: '1',
           permissionRead: 1,
           permissionWrite: 1,
@@ -65,7 +65,7 @@ export const createMockNakama = (): Runtime.Nakama => {
     storageWrite: jest.fn(
       (objects: { collection: string; key: string; userId?: string; value: string }[]) => {
         objects.forEach((obj) => {
-          const userId = obj.userId || 'test-user-123';
+          const userId = obj.userId ?? 'test-user-123';
           const key = `${obj.collection}:${obj.key}`;
           storage.set(key, obj.value);
           storageWriteCalls.push({
@@ -83,23 +83,29 @@ export const createMockNakama = (): Runtime.Nakama => {
       }
     ),
     storageList: jest.fn(
-      (userId: string, collection: string, limit: number, cursor: string, _prefix: string) => {
+      (_userId: string, _collection: string, _limit: number, _cursor: string, _prefix: string) => {
         return [];
       }
     ),
     leaderboardRecordList: jest.fn(
-      (id: string, ownerIds: string[], limit: number, cursor: string, overrideLimit: number) => {
+      (
+        _id: string,
+        _ownerIds: string[],
+        _limit: number,
+        _cursor: string,
+        _overrideLimit: number
+      ) => {
         return [];
       }
     ),
     leaderboardRecordWrite: jest.fn(
       (
-        id: string,
+        _id: string,
         ownerId: string,
-        username: string,
+        _username: string,
         score: number,
-        subScore: number,
-        metadata: Record<string, string>
+        _subScore: number,
+        _metadata: Record<string, string>
       ) => {
         return { ownerId, score };
       }
@@ -107,16 +113,16 @@ export const createMockNakama = (): Runtime.Nakama => {
     leaderboardCreate: jest.fn(
       (
         id: string,
-        authoritative: boolean,
-        sortOrder: string,
-        operator: string,
-        reset: string,
-        metadata: { [key: string]: string }
+        _authoritative: boolean,
+        _sortOrder: string,
+        _operator: string,
+        _reset: string,
+        _metadata: { [key: string]: string }
       ) => {
         return { id };
       }
     ),
-    walletUpdate: jest.fn((userId: string, changes: { [key: string]: number }) => {
+    walletUpdate: jest.fn((_userId: string, _changes: { [key: string]: number }) => {
       return { updated: true };
     }),
   } as unknown as Runtime.Nakama;
