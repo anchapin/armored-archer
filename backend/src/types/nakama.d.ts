@@ -3,12 +3,13 @@ import { MatchParams, MatchResult, BeforeAfterData, LeaderboardRecord, StreamUse
 declare namespace Runtime {
   /**
    * Runtime context interface (extended version).
-   * 
+   *
    * @property userId - ID of the user
    * @property username - Display name of the user
    * @property variables - User variables
    * @property env - Environment variables
    * @property sessionExpiry - Session expiry time
+   * @property ipAddress - IP address of the client (optional)
    */
   export interface Context {
     userId: string;
@@ -16,6 +17,7 @@ declare namespace Runtime {
     variables: { [key: string]: string };
     env: { [key: string]: string };
     sessionExpiry: number;
+    ipAddress?: string;
   }
 
   /**

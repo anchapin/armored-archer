@@ -6,6 +6,7 @@
 import { Runtime } from '../types/nakama';
 import { TurnData, PlayerStats } from '../types/game';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { logAudit } from './audit';
 
 /**
  * PvP match data structure.
@@ -216,10 +217,20 @@ export function rpcCreateMatch(
 ): string {
   logger.info('Create match called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.create_match, payload, 'create_match');
-  if (!validation.success) {
-    return createValidationErrorResponse('create_match', validation.error);
-  }
+   const validation = validatePayload(ZodSchemas.create_match, payload, 'create_match');
+   if (!validation.success) {
+     logAudit(
+       nk,
+       ctx.userId,
+       ctx.ipAddress,
+       'create_match',
+       'pvp_matches',
+       { match_type: 'unknown', is_punch_up: false, target_opponent_id: 'none' },
+       'failure',
+       validation.error
+     );
+     return createValidationErrorResponse('create_match', validation.error);
+   }
 
   const request = validation.data;
 
@@ -356,10 +367,20 @@ export function rpcAcceptMatch(
 ): string {
   logger.info('Accept match called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.accept_match, payload, 'accept_match');
-  if (!validation.success) {
-    return createValidationErrorResponse('accept_match', validation.error);
-  }
+   const validation = validatePayload(ZodSchemas.accept_match, payload, 'accept_match');
+   if (!validation.success) {
+     logAudit(
+       nk,
+       ctx.userId,
+       ctx.ipAddress,
+       'accept_match',
+       'pvp_matches',
+       { match_id: 'unknown' },
+       'failure',
+       validation.error
+     );
+     return createValidationErrorResponse('accept_match', validation.error);
+   }
 
   const request = validation.data;
 
@@ -406,24 +427,34 @@ export function rpcAcceptMatch(
   }
 
   const playerStats = JSON.parse(playerObjects[0].value);
-  match.opponent_id = ctx.userId;
-  match.opponent_rank = calculateRank(playerStats);
-  match.status = 'active';
-  match.updated_at = Date.now();
+   match.opponent_id = ctx.userId;
+   match.opponent_rank = calculateRank(playerStats);
+   match.status = 'active';
+   match.updated_at = Date.now();
 
-  nk.storageWrite([
-    {
-      collection: 'pvp_matches',
-      key: match.match_id,
-      userId: match.creator_id,
-      value: JSON.stringify(match),
-    },
-  ]);
+   nk.storageWrite([
+     {
+       collection: 'pvp_matches',
+       key: match.match_id,
+       userId: match.creator_id,
+       value: JSON.stringify(match),
+     },
+   ]);
 
-  return JSON.stringify({
-    success: true,
-    match: match,
-  });
+   logAudit(
+     nk,
+     ctx.userId,
+     ctx.ipAddress,
+     'accept_match',
+     'pvp_matches',
+     { match_id: match.match_id, creator_id: match.creator_id, match_type: match.match_type, is_punch_up: match.is_punch_up },
+     'success'
+   );
+
+   return JSON.stringify({
+     success: true,
+     match: match,
+   });
 }
 
 /**
