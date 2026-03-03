@@ -120,10 +120,17 @@ npm run build
 - `npm run build` - Build TypeScript to JavaScript
 - `npm run build:watch` - Build in watch mode
 - `npm test` - Run tests
+- `npm run test:coverage` - Run tests with coverage
 - `npm run lint` - Lint code
 - `npm run typecheck` - Type check without building
 - `./validate-env.sh` - Validate environment variables
 - `./start.sh` - Start services with validation
+
+## Code Coverage
+
+[![codecov](https://img.shields.io/codecov/c/gh/anchapin/armored-archer/main)](https://codecov.io/gh/anchapin/armored-archer)
+
+Coverage reports are generated using Jest and automatically uploaded to Codecov on CI. View the full coverage report on [Codecov](https://codecov.io/gh/anchapin/armored-archer).
 
 ## Nakama Configuration
 

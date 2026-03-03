@@ -12,6 +12,10 @@ Strictly Free-to-Play. Zero Pay-to-Win. Cosmetics only.
 * **Database:** PostgreSQL
 * **IAP Infrastructure:** RevenueCat
 
+## 📊 Code Coverage
+
+[![codecov](https://img.shields.io/codecov/c/gh/anchapin/armored-archer/main)](https://codecov.io/gh/anchapin/armored-archer)
+
 ## 🚀 Local Development Setup
 
 ### Prerequisites
