@@ -99,7 +99,6 @@ func enter_phase_2() -> void:
 	move_speed = phase2_speed
 	damage = phase2_damage
 	attack_cooldown = phase2_attack_cooldown
-	print("%s enters Phase 2!" % boss_name)
 
 func die() -> void:
 	boss_defeated.emit(boss_name)

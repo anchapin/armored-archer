@@ -222,8 +222,6 @@ func _log_event(event_name: String, parameters: Dictionary) -> void:
 		_log_android_event(event_name, parameters)
 	elif OS.has_feature("ios"):
 		_log_ios_event(event_name, parameters)
-	
-	print("Analytics: Logged event '", event_name, "' with parameters: ", parameters)
 
 func _log_android_event(event_name: String, parameters: Dictionary) -> void:
 	if Engine.has_singleton("GodotFirebase"):
@@ -242,7 +240,6 @@ func record_custom_error(message: String, stack_trace: String = "") -> void:
 		return
 	
 	_log_crashlytics_error(message, stack_trace)
-	print("Analytics: Recorded custom error: ", message)
 
 func _log_crashlytics_error(message: String, stack_trace: String) -> void:
 	if OS.has_feature("android"):
@@ -258,7 +255,6 @@ func _log_ios_crashlytics_error(message: String, stack_trace: String) -> void:
 
 func set_crashlytics_collection_enabled(enabled: bool) -> void:
 	is_crashlytics_enabled = enabled
-	print("Analytics: Crashlytics collection ", "enabled" if enabled else "disabled")
 
 func test_crash() -> void:
 	push_error("AnalyticsManager: Test crash triggered!")

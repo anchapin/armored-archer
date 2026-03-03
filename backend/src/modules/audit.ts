@@ -59,6 +59,5 @@ export function logAudit(
     ]);
   } catch (err) {
     // Audit failures should not disrupt the main operation
-    console.error('Failed to write audit log:', err);
   }
 }

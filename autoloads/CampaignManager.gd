@@ -127,7 +127,6 @@ func unlock_modifier_pool(modifier_id: String) -> void:
 	Parameters:
 		modifier_id: Identifier of the modifier to unlock
 	"""
-	print("Unlocked modifier pool: %s" % modifier_id)
 	pass
 
 func update_campaign_progress() -> void:

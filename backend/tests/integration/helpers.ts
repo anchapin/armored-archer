@@ -151,9 +151,8 @@ export class IntegrationTestHelper {
           await admin.storageDelete(objects);
         }
       } catch (error) {
-        // Some collections may not exist or be empty, ignore errors
-        console.log(`Cleanup for collection ${collection}: ${error instanceof Error ? error.message : 'error'}`);
-      }
+         // Some collections may not exist or be empty, ignore errors
+       }
     }
   }
 
@@ -164,7 +163,6 @@ export class IntegrationTestHelper {
   private async ensureTestDatabase(): Promise<void> {
     // For now, we assume the database from docker-compose is used for tests.
     // In a more advanced setup, we could create a separate test database.
-    console.log('Test database initialization check - using existing database from docker-compose');
   }
 
   /**

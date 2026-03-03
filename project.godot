@@ -18,6 +18,7 @@ run/main_scene="res://scenes/ui/login_screen.tscn"
 [autoload]
 
 NetworkManager="*res://autoloads/NetworkManager.gd"
+OfflineActionQueue="*res://autoloads/OfflineActionQueue.gd"
 GameManager="*res://autoloads/GameManager.gd"
 AutoAimManager="*res://autoloads/AutoAimManager.gd"
 CampaignManager="*res://autoloads/CampaignManager.gd"

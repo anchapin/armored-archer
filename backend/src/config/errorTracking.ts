@@ -18,7 +18,6 @@ export const errorTrackingConfig: ErrorTrackingConfig = {
 
 export function initializeSentry(): void {
   if (!errorTrackingConfig.enabled || !errorTrackingConfig.dsn) {
-    console.log('[ErrorTracking] Sentry is disabled - missing DSN or disabled by config');
     return;
   }
 
@@ -33,10 +32,6 @@ export function initializeSentry(): void {
       return event;
     },
   });
-
-  console.log(
-    `[ErrorTracking] Sentry initialized in ${errorTrackingConfig.environment} environment`
-  );
 }
 
 export function captureException(

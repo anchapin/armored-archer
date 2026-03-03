@@ -169,8 +169,6 @@ func _on_equip_pressed() -> void:
 		return
 	
 	var loadout = character_sprite.get_equipped_loadout()
-	print("Equipped loadout: ", loadout)
-	print("Total stats: ", gear_registry.calculate_total_stats(loadout))
 
 func _on_unequip_skin_pressed() -> void:
 	character_sprite.unequip_skin(current_slot)
