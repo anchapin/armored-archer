@@ -58,14 +58,6 @@ export function getEndpointRateLimit(endpoint: string): RateLimitConfig {
   return endpointConfigs.get(endpoint) || defaultConfig;
 }
 
-function getKey(userId: string, endpoint: string): string {
-  return `${userId}:${endpoint}`;
-}
-
-function getCurrentWindowResetTime(windowMs: number): number {
-  return Date.now() + windowMs;
-}
-
 export function checkRateLimit(userId: string, endpoint: string): RateLimitResult {
   const config = getEndpointRateLimit(endpoint);
   const key = getKey(userId, endpoint);
