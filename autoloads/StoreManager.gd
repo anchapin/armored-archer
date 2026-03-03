@@ -181,8 +181,6 @@ func _on_revenuecat_purchase_complete(result: Dictionary) -> void:
 
 func _simulate_purchase_for_testing(product_id: String) -> void:
 	"""Simulates a purchase for testing on non-mobile platforms."""
-	print("Simulating purchase for testing purposes: %s" % product_id)
-	
 	await get_tree().create_timer(1.0).timeout
 	
 	var mock_receipt: String = "mock_receipt_" + str(Time.get_unix_time_from_system())

@@ -61,6 +61,8 @@ export interface CombatResult {
  * @property status - Current match status
  * @property winner - Optional winner if match completed
  * @property log - Combat log entries
+ * @property last_turn_timestamp - Timestamp of the last turn action
+ * @property turn_timeout_ms - Milliseconds before a turn is considered abandoned
  */
 export interface MatchState {
   match_id: string;
@@ -75,6 +77,8 @@ export interface MatchState {
   status: string;
   winner?: string;
   log: CombatLogEntry[];
+  last_turn_timestamp: number;
+  turn_timeout_ms: number;
 }
 
 /**
@@ -166,6 +170,13 @@ export function rpcSubmitCombatAction(
 
   const match = JSON.parse(matchObjects[0].value);
 
+  // Check if match has expired
+  if (isMatchExpired(match)) {
+    return JSON.stringify({
+      error: 'Match has expired',
+    });
+  }
+
   if (match.status !== 'active') {
     return JSON.stringify({
       error: 'Match is not active',
@@ -179,6 +190,20 @@ export function rpcSubmitCombatAction(
   }
 
   const matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
+
+  // Check if turn has exceeded timeout
+  if (isTurnTimedOut(matchState)) {
+    logger.info('Turn timed out for user: %s in match: %s', matchState.current_turn_user_id, action.match_id);
+    // Auto-forfeit the current player's turn, move to opponent
+    matchState.current_turn_user_id = matchState.current_turn_user_id === matchState.creator_id
+      ? matchState.opponent_id
+      : matchState.creator_id;
+    matchState.last_turn_timestamp = Date.now();
+    saveMatchState(nk, matchState);
+    return JSON.stringify({
+      error: 'Your previous turn timed out, opponent now has their turn',
+    });
+  }
 
   if (matchState.current_turn_user_id !== ctx.userId) {
     return JSON.stringify({
@@ -296,6 +321,9 @@ function getOrCreateMatchState(
 
   const baseHealth = 100;
   const maxHealth = baseHealth + creatorStats.level * 10;
+  const now = Date.now();
+  // Each turn has a 5-minute timeout
+  const TURN_TIMEOUT_MS = 5 * 60 * 1000;
 
   const matchState: MatchState = {
     match_id: matchId,
@@ -309,6 +337,8 @@ function getOrCreateMatchState(
     opponent_stats: opponentStats,
     status: 'active',
     log: [],
+    last_turn_timestamp: now,
+    turn_timeout_ms: TURN_TIMEOUT_MS,
   };
 
   return matchState;
@@ -522,4 +552,25 @@ function updateMatchStatus(nk: Runtime.Nakama, match: PvPMatch, winner: string):
       value: JSON.stringify(match),
     },
   ]);
+}
+
+/**
+ * Checks if a match has exceeded its expiration time.
+ *
+ * @param match - PvP match data
+ * @returns True if match has expired, false otherwise
+ */
+function isMatchExpired(match: PvPMatch): boolean {
+  return Date.now() > match.expires_at;
+}
+
+/**
+ * Checks if the current turn has exceeded its timeout.
+ *
+ * @param matchState - Current match state
+ * @returns True if turn has timed out, false otherwise
+ */
+function isTurnTimedOut(matchState: MatchState): boolean {
+  const timeSinceLastTurn = Date.now() - matchState.last_turn_timestamp;
+  return timeSinceLastTurn > matchState.turn_timeout_ms;
 }

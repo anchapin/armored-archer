@@ -24,6 +24,8 @@ import { logAudit } from './audit';
  * @property creator_turn_data - Optional turn data for creator
  * @property opponent_turn_data - Optional turn data for opponent
  * @property winner - Optional winner if match completed
+ * @property expires_at - Timestamp when match will be considered abandoned/expired
+ * @property last_turn_timestamp - Timestamp of the last turn action
  */
 export interface PvPMatch {
   match_id: string;
@@ -33,12 +35,14 @@ export interface PvPMatch {
   opponent_rank: number;
   match_type: 'ranked' | 'casual';
   is_punch_up: boolean;
-  status: 'pending' | 'active' | 'completed';
+  status: 'pending' | 'active' | 'completed' | 'expired';
   created_at: number;
   updated_at: number;
   creator_turn_data?: TurnData;
   opponent_turn_data?: TurnData;
   winner?: string;
+  expires_at: number;
+  last_turn_timestamp: number;
 }
 
 /**
@@ -302,6 +306,9 @@ export function rpcCreateMatch(
       match: match,
     });
   } else {
+    const now = Date.now();
+    // Pending matches expire after 24 hours
+    const PENDING_MATCH_EXPIRY_MS = 24 * 60 * 60 * 1000;
     const match: PvPMatch = {
       match_id: generateMatchId(),
       creator_id: ctx.userId,
@@ -311,8 +318,10 @@ export function rpcCreateMatch(
       match_type: request.match_type,
       is_punch_up: false,
       status: 'pending',
-      created_at: Date.now(),
-      updated_at: Date.now(),
+      created_at: now,
+      updated_at: now,
+      expires_at: now + PENDING_MATCH_EXPIRY_MS,
+      last_turn_timestamp: now,
     };
 
     nk.storageWrite([
@@ -427,10 +436,15 @@ export function rpcAcceptMatch(
   }
 
   const playerStats = JSON.parse(playerObjects[0].value);
+   const now = Date.now();
+   // Active matches expire after 7 days of inactivity
+   const ACTIVE_MATCH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
    match.opponent_id = ctx.userId;
    match.opponent_rank = calculateRank(playerStats);
    match.status = 'active';
-   match.updated_at = Date.now();
+   match.updated_at = now;
+   match.expires_at = now + ACTIVE_MATCH_EXPIRY_MS;
+   match.last_turn_timestamp = now;
 
    nk.storageWrite([
      {
