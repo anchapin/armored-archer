@@ -37,7 +37,7 @@ func get_auth_headers() -> PackedStringArray:
 func set_mock_response(rpc_id: String, response: Dictionary) -> void:
 	mock_responses[rpc_id] = response
 
-func send_rpc(rpc_id: String, payload: String) -> Dictionary:
+func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Dictionary:
 	request_queue.append({"rpc_id": rpc_id, "payload": payload})
 	
 	if mock_responses.has(rpc_id):
