@@ -1,3 +1,8 @@
+/**
+ * RPG System module.
+ * @fileoverview Handles XP gains and stat allocation.
+ */
+
 import { Runtime } from '../types/nakama';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { getCacheManager } from '../utils/cache';

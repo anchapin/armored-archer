@@ -1,3 +1,8 @@
+/**
+ * Season System module.
+ * @fileoverview Manages seasonal rewards and rankings.
+ */
+
 import { Runtime } from '../types/nakama';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 

@@ -1,3 +1,8 @@
+/**
+ * Store module.
+ * @fileoverview Handles in-game purchases and currency management.
+ */
+
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
 import { getCacheManager } from '../utils/cache';

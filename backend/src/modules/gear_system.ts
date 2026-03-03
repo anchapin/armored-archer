@@ -1,3 +1,8 @@
+/**
+ * Gear System module.
+ * @fileoverview Manages equipment generation, modification, and inventory.
+ */
+
 import { Runtime } from '../types/nakama';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { getCacheManager } from '../utils/cache';

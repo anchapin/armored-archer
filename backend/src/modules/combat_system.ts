@@ -1,3 +1,8 @@
+/**
+ * Combat System module.
+ * @fileoverview Manages PvP combat actions and turn processing.
+ */
+
 import { Runtime } from '../types/nakama';
 import { PvPMatch } from './matchmaker';
 import { PlayerStats } from '../types/game';

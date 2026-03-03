@@ -14,7 +14,8 @@
     "test:integration": "jest -c backend/jest.integration.config.js",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "docs": "typedoc --out docs src"
   },
   "keywords": [
     "nakama",
@@ -30,21 +31,23 @@
     "@typescript-eslint/parser": "^8.56.1",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsdoc": "^62.7.1",
     "eslint-plugin-prettier": "^5.5.5",
     "jest": "^30.2.0",
     "prettier": "^3.8.1",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.0",
     "ts-node-dev": "^2.0.0",
+    "typedoc": "^0.28.17",
     "typescript": "^5.2.0"
   },
   "dependencies": {
+    "@heroiclabs/nakama-js": "^2.5.1",
     "@sentry/node": "^10.40.0",
     "lru-cache": "^11.2.6",
     "prom-client": "^15.0.0",
-    "winston": "^3.11.0",
-    "@heroiclabs/nakama-js": "^2.5.1",
     "uuid": "^9.0.0",
+    "winston": "^3.11.0",
     "zod": "^4.3.6"
   }
 }
