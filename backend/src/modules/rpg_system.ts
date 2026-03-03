@@ -7,8 +7,9 @@ import { Runtime } from '../types/nakama';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { getCacheManager } from '../utils/cache';
 import { invalidatePlayerStatsCache } from '../utils/db_optimizer';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { registerRpcWithMetrics } from './metrics';
+ import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+ import { registerRpcWithMetrics } from './metrics';
+ import { logAudit } from './audit';
 
 /**
  * Player statistics data structure.
@@ -92,10 +93,20 @@ export function rpcGainXP(
 ): string {
   logger.info('Gain XP called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.gain_xp, payload, 'gain_xp');
-  if (!validation.success) {
-    return createValidationErrorResponse('gain_xp', validation.error);
-  }
+   const validation = validatePayload(ZodSchemas.gain_xp, payload, 'gain_xp');
+   if (!validation.success) {
+     logAudit(
+       nk,
+       ctx.userId,
+       ctx.ipAddress,
+       'gain_xp',
+       'player_stats',
+       { xp_amount: 'unknown' },
+       'failure',
+       validation.error
+     );
+     return createValidationErrorResponse('gain_xp', validation.error);
+   }
 
   const request = validation.data;
 
@@ -125,11 +136,21 @@ export function rpcGainXP(
   } else {
     const value = objects[0].value;
     if (value) {
-      const parseResult = safeParse<PlayerStats>(value, null, logger, 'storage_data');
-      if (!parseResult.success || !parseResult.data) {
-        logger.error('Failed to parse data');
-        return createErrorResponse('INVALID_DATA', 'Failed to parse data');
-      }
+       const parseResult = safeParse<PlayerStats>(value, null, logger, 'storage_data');
+       if (!parseResult.success || !parseResult.data) {
+         logger.error('Failed to parse data');
+         logAudit(
+           nk,
+           ctx.userId,
+           ctx.ipAddress,
+           'gain_xp',
+           'player_stats',
+           { xp_amount: request.xp_amount },
+           'failure',
+           'Failed to parse player stats'
+         );
+         return createErrorResponse('INVALID_DATA', 'Failed to parse data');
+       }
       playerStats = parseResult.data;
     } else {
       playerStats = {
@@ -165,24 +186,40 @@ export function rpcGainXP(
     );
   }
 
-  nk.storageWrite([
-    {
-      collection: 'player_stats',
-      key: ctx.userId,
-      userId: ctx.userId,
-      value: JSON.stringify(playerStats),
-    },
-  ]);
+   nk.storageWrite([
+     {
+       collection: 'player_stats',
+       key: ctx.userId,
+       userId: ctx.userId,
+       value: JSON.stringify(playerStats),
+     },
+   ]);
 
-  invalidatePlayerStatsCache(ctx.userId, logger);
+   invalidatePlayerStatsCache(ctx.userId, logger);
 
-  return JSON.stringify({
-    success: true,
-    player_stats: playerStats,
-    xp_gained: request.xp_amount,
-    levels_gained: Math.max(0, newLevel - oldLevel),
-  });
-}
+   logAudit(
+     nk,
+     ctx.userId,
+     ctx.ipAddress,
+     'gain_xp',
+     'player_stats',
+     {
+       xp_amount: request.xp_amount,
+       old_level: oldLevel,
+       new_level: newLevel,
+       ability_points_gained: Math.max(0, newLevel - oldLevel),
+       total_xp: playerStats.xp,
+     },
+     'success'
+   );
+
+   return JSON.stringify({
+     success: true,
+     player_stats: playerStats,
+     xp_gained: request.xp_amount,
+     levels_gained: Math.max(0, newLevel - oldLevel),
+   });
+ }
 
 /**
  * Registers the stat allocation RPC endpoint.
@@ -225,64 +262,119 @@ export function rpcAllocateStats(
 ): string {
   logger.info('Allocate stats called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.allocate_stats, payload, 'allocate_stats');
-  if (!validation.success) {
-    return createValidationErrorResponse('allocate_stats', validation.error);
-  }
+   const validation = validatePayload(ZodSchemas.allocate_stats, payload, 'allocate_stats');
+   if (!validation.success) {
+     logAudit(
+       nk,
+       ctx.userId,
+       ctx.ipAddress,
+       'allocate_stats',
+       'player_stats',
+       { stat_name: 'unknown', points: 0 },
+       'failure',
+       validation.error
+     );
+     return createValidationErrorResponse('allocate_stats', validation.error);
+   }
 
   const request = validation.data;
 
-  const objects = nk.storageRead([
-    {
-      collection: 'player_stats',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
+   const objects = nk.storageRead([
+     {
+       collection: 'player_stats',
+       key: ctx.userId,
+       userId: ctx.userId,
+     },
+   ]);
 
-  if (objects.length === 0) {
-    return JSON.stringify({
-      error: 'Player stats not found',
-    });
-  }
+   if (objects.length === 0) {
+     logAudit(
+       nk,
+       ctx.userId,
+       ctx.ipAddress,
+       'allocate_stats',
+       'player_stats',
+       { stat_name: request.stat_name, points: request.points },
+       'failure',
+       'Player stats not found'
+     );
+     return JSON.stringify({
+       error: 'Player stats not found',
+     });
+   }
 
-  const parseResult = safeParse<PlayerStats>(
-    objects[0].value ?? '{}',
-    null,
-    logger,
-    'player_stats'
-  );
-  if (!parseResult.success || !parseResult.data) {
-    logger.error('Failed to parse player stats for user: %s', ctx.userId);
-    return createErrorResponse('INVALID_DATA', 'Failed to parse player stats');
-  }
-  const playerStats: PlayerStats = parseResult.data;
+   const parseResult = safeParse<PlayerStats>(
+     objects[0].value ?? '{}',
+     null,
+     logger,
+     'player_stats'
+   );
+   if (!parseResult.success || !parseResult.data) {
+     logger.error('Failed to parse player stats for user: %s', ctx.userId);
+     logAudit(
+       nk,
+       ctx.userId,
+       ctx.ipAddress,
+       'allocate_stats',
+       'player_stats',
+       { stat_name: request.stat_name, points: request.points },
+       'failure',
+       'Failed to parse player stats'
+     );
+     return createErrorResponse('INVALID_DATA', 'Failed to parse player stats');
+   }
+   const playerStats: PlayerStats = parseResult.data;
 
-  if (playerStats.ability_points < request.points) {
-    return JSON.stringify({
-      error: 'Not enough ability points',
-    });
-  }
+   if (playerStats.ability_points < request.points) {
+     logAudit(
+       nk,
+       ctx.userId,
+       ctx.ipAddress,
+       'allocate_stats',
+       'player_stats',
+       { stat_name: request.stat_name, points: request.points, available_points: playerStats.ability_points },
+       'failure',
+       'Not enough ability points'
+     );
+     return JSON.stringify({
+       error: 'Not enough ability points',
+     });
+   }
 
   playerStats.ability_points -= request.points;
   playerStats.stats[request.stat_name as keyof typeof playerStats.stats] += request.points;
 
-  nk.storageWrite([
-    {
-      collection: 'player_stats',
-      key: ctx.userId,
-      userId: ctx.userId,
-      value: JSON.stringify(playerStats),
-    },
-  ]);
+   nk.storageWrite([
+     {
+       collection: 'player_stats',
+       key: ctx.userId,
+       userId: ctx.userId,
+       value: JSON.stringify(playerStats),
+     },
+   ]);
 
-  invalidatePlayerStatsCache(ctx.userId, logger);
+   invalidatePlayerStatsCache(ctx.userId, logger);
 
-  return JSON.stringify({
-    success: true,
-    player_stats: playerStats,
-  });
-}
+   logAudit(
+     nk,
+     ctx.userId,
+     ctx.ipAddress,
+     'allocate_stats',
+     'player_stats',
+     {
+       stat_name: request.stat_name,
+       points: request.points,
+       new_stats: playerStats.stats,
+       remaining_ability_points: playerStats.ability_points,
+     },
+     'success'
+   );
+
+   return JSON.stringify({
+     success: true,
+     player_stats: playerStats,
+   });
+ }
 
 /**
  * Registers the get player stats RPC endpoint.

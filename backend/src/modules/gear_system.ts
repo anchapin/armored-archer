@@ -7,6 +7,7 @@ import { Runtime } from '../types/nakama';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { getCacheManager } from '../utils/cache';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { logAudit } from './audit';
 
 /**
  * Gear rarity data structure.
@@ -448,6 +449,16 @@ export function rpcGenerateGear(
 
   const validation = validatePayload(ZodSchemas.generate_gear, payload, 'generate_gear');
   if (!validation.success) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress,
+      'generate_gear',
+      'player_inventory',
+      { stage_id: 'unknown' },
+      'failure',
+      validation.error
+    );
     return createValidationErrorResponse('generate_gear', validation.error);
   }
 
@@ -476,6 +487,16 @@ export function rpcGenerateGear(
       const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
       if (!parseResult.success || !parseResult.data) {
         logger.error('Failed to parse data');
+        logAudit(
+          nk,
+          ctx.userId,
+          ctx.ipAddress,
+          'generate_gear',
+          'player_inventory',
+          { stage_id: request.stage_id },
+          'failure',
+          'Failed to parse inventory data'
+        );
         return createErrorResponse('INVALID_DATA', 'Failed to parse data');
       }
       inventory = parseResult.data;
@@ -502,6 +523,16 @@ export function rpcGenerateGear(
   ]);
 
   logger.info('Generated gear %s (%s) for user %s', gear.name, gear.rarity, ctx.userId);
+
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress,
+    'generate_gear',
+    'player_inventory',
+    { stage_id: request.stage_id, gear_id: gear.id, gear_rarity: gear.rarity, gear_type: gear.type, inventory_size: inventory.gear.length },
+    'success'
+  );
 
   return JSON.stringify({
     success: true,
@@ -593,8 +624,18 @@ export function rpcEquipGear(
   }
 
   const gear = inventory.gear[gearIndex];
-
+  
   if (gear.type !== request.slot) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress,
+      'equip_gear',
+      'player_inventory',
+      { gear_id: request.gear_id, slot: request.slot, error: 'type_mismatch' },
+      'failure',
+      'Gear type does not match slot'
+    );
     return JSON.stringify({
       error: 'Gear type does not match slot',
     });
@@ -610,6 +651,16 @@ export function rpcEquipGear(
       value: JSON.stringify(inventory),
     },
   ]);
+
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress,
+    'equip_gear',
+    'player_inventory',
+    { gear_id: gear.id, gear_name: gear.name, gear_type: gear.type, gear_rarity: gear.rarity, slot: request.slot },
+    'success'
+  );
 
   return JSON.stringify({
     success: true,
@@ -690,11 +741,22 @@ export function rpcUnequipGear(
   const inventory: PlayerInventory = parseResult.data;
 
   if (!inventory.equipped_gear[request.slot]) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress,
+      'unequip_gear',
+      'player_inventory',
+      { slot: request.slot, error: 'no_gear_equipped' },
+      'failure',
+      'No gear equipped in this slot'
+    );
     return JSON.stringify({
       error: 'No gear equipped in this slot',
     });
   }
 
+  const slotToUnequip = request.slot;
   delete inventory.equipped_gear[request.slot];
 
   nk.storageWrite([
@@ -705,6 +767,16 @@ export function rpcUnequipGear(
       value: JSON.stringify(inventory),
     },
   ]);
+
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress,
+    'unequip_gear',
+    'player_inventory',
+    { slot: slotToUnequip },
+    'success'
+  );
 
   return JSON.stringify({
     success: true,
@@ -818,16 +890,26 @@ export function rpcUnlockModifierPool(
 ): string {
   logger.info('Unlock modifier pool called for user: %s', ctx.userId);
 
-  const validation = validatePayload(
-    ZodSchemas.unlock_modifier_pool,
-    payload,
-    'unlock_modifier_pool'
-  );
-  if (!validation.success) {
-    return createValidationErrorResponse('unlock_modifier_pool', validation.error);
-  }
+   const validation = validatePayload(
+     ZodSchemas.unlock_modifier_pool,
+     payload,
+     'unlock_modifier_pool'
+   );
+   if (!validation.success) {
+     logAudit(
+       nk,
+       ctx.userId,
+       ctx.ipAddress,
+       'unlock_modifier_pool',
+       'modifiers',
+       { modifier_id: 'unknown' },
+       'failure',
+       validation.error
+     );
+     return createValidationErrorResponse('unlock_modifier_pool', validation.error);
+   }
 
-  const modifierId = validation.data.modifier_id;
+   const modifierId = validation.data.modifier_id;
 
   const inventoryObjects = nk.storageRead([
     {
@@ -869,19 +951,29 @@ export function rpcUnlockModifierPool(
     inventory.unlocked_modifier_pools.push(modifierId);
   }
 
-  nk.storageWrite([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-      value: JSON.stringify(inventory),
-    },
-  ]);
+   nk.storageWrite([
+     {
+       collection: 'player_inventory',
+       key: ctx.userId,
+       userId: ctx.userId,
+       value: JSON.stringify(inventory),
+     },
+   ]);
 
-  logger.info('Unlocked modifier pool %s for user %s', modifierId, ctx.userId);
+   logger.info('Unlocked modifier pool %s for user %s', modifierId, ctx.userId);
 
-  return JSON.stringify({
-    success: true,
-    unlocked_modifier_pools: inventory.unlocked_modifier_pools,
-  });
+   logAudit(
+     nk,
+     ctx.userId,
+     ctx.ipAddress,
+     'unlock_modifier_pool',
+     'modifiers',
+     { modifier_id: modifierId, unlocked_pools: inventory.unlocked_modifier_pools },
+     'success'
+   );
+
+   return JSON.stringify({
+     success: true,
+     unlocked_modifier_pools: inventory.unlocked_modifier_pools,
+   });
 }

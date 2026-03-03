@@ -7,6 +7,7 @@ import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
 import { getCacheManager } from '../utils/cache';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { logAudit } from './audit';
 
 /**
  * Player currency data structure.
@@ -211,6 +212,16 @@ export function rpcValidatePurchase(
 
   const validation = validatePayload(ZodSchemas.validate_purchase, payload, 'validate_purchase');
   if (!validation.success) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress,
+      'validate_purchase',
+      'player_currency',
+      { product_id: 'unknown', platform: 'unknown' },
+      'failure',
+      validation.error
+    );
     return createValidationErrorResponse('validate_purchase', validation.error);
   }
 
@@ -219,6 +230,16 @@ export function rpcValidatePurchase(
   const catalog = getStoreCatalog(logger);
 
   if (!catalog[request.product_id]) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress,
+      'validate_purchase',
+      'player_currency',
+      { product_id: request.product_id, platform: request.platform },
+      'failure',
+      'Invalid product ID'
+    );
     return JSON.stringify({
       error: 'Invalid product ID',
     });
@@ -244,6 +265,16 @@ export function rpcValidatePurchase(
   invalidateCurrencyCache(ctx.userId, logger);
 
   logger.info('Purchase validated. User %s received %d gems', ctx.userId, gemBundle.gem_amount);
+
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress,
+    'validate_purchase',
+    'player_currency',
+    { product_id: request.product_id, platform: request.platform, gems_awarded: gemBundle.gem_amount, new_balance: playerCurrency.gems },
+    'success'
+  );
 
   return JSON.stringify({
     success: true,
@@ -321,6 +352,16 @@ export function rpcSpendGems(
 
   const validation = validatePayload(ZodSchemas.spend_gems, payload, 'spend_gems');
   if (!validation.success) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress,
+      'spend_gems',
+      'player_currency',
+      { amount: 'unknown' },
+      'failure',
+      validation.error
+    );
     return createValidationErrorResponse('spend_gems', validation.error);
   }
 
@@ -329,6 +370,16 @@ export function rpcSpendGems(
   const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
 
   if (playerCurrency.gems < request.amount) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress,
+      'spend_gems',
+      'player_currency',
+      { amount: request.amount, current_balance: playerCurrency.gems },
+      'failure',
+      'Insufficient gems'
+    );
     return JSON.stringify({
       error: 'Insufficient gems',
     });
@@ -352,6 +403,16 @@ export function rpcSpendGems(
     ctx.userId,
     request.amount,
     playerCurrency.gems
+  );
+
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress,
+    'spend_gems',
+    'player_currency',
+    { amount: request.amount, new_balance: playerCurrency.gems },
+    'success'
   );
 
   return JSON.stringify({
