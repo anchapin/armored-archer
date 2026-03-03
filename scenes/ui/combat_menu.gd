@@ -64,11 +64,6 @@ func _on_angle_changed(value: float) -> void:
 
 # --- Combat Handlers ---
 func _on_combat_action_submitted(result: Dictionary) -> void:
-	print("Combat action submitted")
-	print("Hit: %s" % result.get("hit", false))
-	print("Damage: %d" % result.get("damage", 0))
-	print("Crit: %s" % result.get("is_crit", false))
-	
 	_refresh_match_state()
 
 func _on_match_state_updated(match_state: Dictionary) -> void:
@@ -93,8 +88,6 @@ func _on_turn_changed(is_my_turn: bool) -> void:
 		_refresh_match_state()
 
 func _on_combat_ended(winner: String) -> void:
-	print("Combat ended! Winner: %s" % winner)
-	
 	var dialog: AcceptDialog = AcceptDialog.new()
 	
 	if winner == NetworkManager.user_id:

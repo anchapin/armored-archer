@@ -48,8 +48,6 @@ func start_next_wave() -> void:
 	if spawn_timer_node:
 		spawn_timer_node.wait_time = time_between_enemies
 		spawn_timer_node.start()
-	
-	print("Starting wave %d with %d enemies" % [current_wave, enemies_to_spawn])
 
 func spawn_enemy() -> void:
 	if enemies_to_spawn <= 0:
@@ -102,7 +100,6 @@ func spawn_boss() -> void:
 	if boss_id == "":
 		return
 	
-	print("Spawning boss: %s" % boss_id)
 	GameManager.spawn_boss(boss_id)
 
 func is_boss_alive() -> bool:

@@ -159,7 +159,6 @@ func enter_phase_2() -> void:
 	attack_cooldown = phase2_attack_cooldown
 	dash_cooldown = phase2_dash_cooldown
 	wind_projectile_cooldown = 3.0
-	print("%s enters Phase 2!" % boss_name)
 
 func die() -> void:
 	boss_defeated.emit(boss_name)
