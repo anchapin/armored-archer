@@ -24,19 +24,24 @@ describe('combat_system', () => {
     jest.spyOn(Math, 'random').mockRestore();
   });
 
-  const createMockMatch = (overrides?: Partial<PvPMatch>): PvPMatch => ({
-    match_id: "match-123",
-    creator_id: "creator-user",
-    opponent_id: "opponent-user",
-    creator_rank: 100,
-    opponent_rank: 100,
-    match_type: "ranked",
-    is_punch_up: false,
-    status: "active",
-    created_at: Date.now(),
-    updated_at: Date.now(),
-    ...overrides,
-  });
+  const createMockMatch = (overrides?: Partial<PvPMatch>): PvPMatch => {
+    const now = Date.now();
+    return {
+      match_id: "match-123",
+      creator_id: "creator-user",
+      opponent_id: "opponent-user",
+      creator_rank: 100,
+      opponent_rank: 100,
+      match_type: "ranked",
+      is_punch_up: false,
+      status: "active",
+      created_at: now,
+      updated_at: now,
+      expires_at: now + 7 * 24 * 60 * 60 * 1000,
+      last_turn_timestamp: now,
+      ...overrides,
+    };
+  };
 
   describe('rpcSubmitCombatAction', () => {
     it('should process combat action and return result', () => {
@@ -59,7 +64,9 @@ describe('combat_system', () => {
         creator_stats: { level: 5, xp: 0, stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 } },
         opponent_stats: { level: 5, xp: 0, stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 } },
         status: "active",
-        log: []
+        log: [],
+        last_turn_timestamp: Date.now(),
+        turn_timeout_ms: 5 * 60 * 1000,
       };
 
       const mockStorage = new Map();
@@ -146,18 +153,22 @@ describe('combat_system', () => {
     });
 
     it('should return error when not user turn', () => {
-      const match = createMockMatch();
-      const matchState: MatchState = {
-        ...createMockMatch(),
-        turn: 1,
-        current_turn_user_id: "opponent-user",
-        creator_health: 100,
-        opponent_health: 100,
-        creator_stats: { level: 5, xp: 0, stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 } },
-        opponent_stats: { level: 5, xp: 0, stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 } },
-        status: "active",
-        log: []
-      };
+       const match = createMockMatch();
+       const matchState: MatchState = {
+         match_id: "match-123",
+         creator_id: "creator-user",
+         opponent_id: "opponent-user",
+         turn: 1,
+         current_turn_user_id: "opponent-user",
+         creator_health: 100,
+         opponent_health: 100,
+         creator_stats: { level: 5, xp: 0, stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 } },
+         opponent_stats: { level: 5, xp: 0, stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 } },
+         status: "active",
+         log: [],
+         last_turn_timestamp: Date.now(),
+         turn_timeout_ms: 5 * 60 * 1000,
+       };
 
       const mockStorage = new Map();
       mockStorage.set(`pvp_matches:match-123`, JSON.stringify(match));

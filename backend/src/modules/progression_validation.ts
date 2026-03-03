@@ -239,7 +239,7 @@ export function validateGearInventory(inventory: PlayerInventory): ValidationRes
  *
  * @param nk - Nakama server interface
  * @param userId - User ID
- * @param ipAddress - IP address of request
+ * @param ipAddress - IP address of request (optional)
  * @param before - Stats before mutation
  * @param after - Stats after mutation
  * @param source - Source of mutation (action that caused it)
@@ -247,7 +247,7 @@ export function validateGearInventory(inventory: PlayerInventory): ValidationRes
 export function recordStatMutation(
   nk: Runtime.Nakama,
   userId: string,
-  ipAddress: string | null,
+  ipAddress: string | undefined | null,
   before: Record<string, number>,
   after: Record<string, number>,
   source: string
@@ -269,7 +269,7 @@ export function recordStatMutation(
   logAudit(
     nk,
     userId,
-    ipAddress,
+    ipAddress ?? null,
     'stat_mutation',
     'player_stats',
     {
@@ -301,6 +301,7 @@ export function recordStatMutation(
  * @param logger - Logger instance
  * @param playerStats - Player stats data
  * @param inventory - Player inventory data
+ * @param ipAddress - IP address of request (optional)
  * @returns Full validation result with audit logging
  */
 export function validateFullProgression(
@@ -309,7 +310,7 @@ export function validateFullProgression(
   logger: Runtime.Logger,
   playerStats: PlayerStats,
   inventory: PlayerInventory,
-  ipAddress?: string | null
+  ipAddress?: string
 ): ValidationResult {
   const statsValidation = validatePlayerStats(playerStats);
   const gearValidation = validateGearInventory(inventory);
@@ -322,7 +323,7 @@ export function validateFullProgression(
     logAudit(
       nk,
       userId,
-      ipAddress ?? null,
+      ipAddress ?? null as any,
       'progression_validation',
       'player_progression',
       {

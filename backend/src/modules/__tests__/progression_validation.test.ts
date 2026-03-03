@@ -9,9 +9,9 @@ import {
   validateGearInventory,
   recordStatMutation,
   validateFullProgression,
-} from '../../src/modules/progression_validation';
-import { PlayerStats } from '../../src/modules/rpg_system';
-import { PlayerInventory, GearItem } from '../../src/modules/gear_system';
+} from '../progression_validation';
+import { PlayerStats } from '../rpg_system';
+import { PlayerInventory, GearItem } from '../gear_system';
 
 describe('Progression Validation', () => {
   describe('validatePlayerStats', () => {
@@ -21,7 +21,7 @@ describe('Progression Validation', () => {
       validStats = {
         user_id: 'test_user',
         level: 5,
-        xp: 2500,
+        xp: 1600, // (5-1)^2 * 100 = 1600 for level 5
         ability_points: 4,
         stats: {
           attack: 15,
@@ -89,7 +89,7 @@ describe('Progression Validation', () => {
     });
 
     it('should detect level/XP mismatch', () => {
-      validStats.level = 10; // mismatch with xp=2500
+      validStats.level = 10; // mismatch with xp=1600
       validStats.ability_points = 9; // adjust for level
       const result = validatePlayerStats(validStats);
       expect(result.is_valid).toBe(false);
@@ -242,14 +242,14 @@ describe('Progression Validation', () => {
       const stats1: PlayerStats = {
         user_id: 'test',
         level: 2,
-        xp: 1000,
+        xp: 100, // (2-1)^2 * 100 = 100
         ability_points: 1,
         stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
       };
 
       const stats2: PlayerStats = {
         ...stats1,
-        xp: 500, // decreased
+        xp: 50, // decreased
       };
 
       const result = validatePlayerStats(stats2, stats1);
@@ -263,8 +263,8 @@ describe('Progression Validation', () => {
       const stats: PlayerStats = {
         user_id: 'test',
         level: 5,
-        xp: 2500,
-        ability_points: 3, // should be 4
+        xp: 1600, // (5-1)^2 * 100 = 1600
+        ability_points: 3, // < 4, player may have spent points
         stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
       };
 

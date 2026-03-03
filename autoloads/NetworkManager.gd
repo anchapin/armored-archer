@@ -280,6 +280,40 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	if not is_session_valid():
 		return {"error": "Not authenticated"}
 	
+	return await _send_rpc_internal(rpc_id, payload, timeout)
+
+func send_rpc_with_retry(rpc_id: String, payload: String, timeout: float = 30.0, max_retries: int = 3) -> Dictionary:
+	"""Sends RPC with exponential backoff retry: 1s, 2s, 4s max."""
+	if not is_session_valid():
+		return {"error": "Not authenticated"}
+	
+	max_retries = mini(max_retries, 3)
+	var retry_count: int = 0
+	
+	while retry_count <= max_retries:
+		var response: Dictionary = await _send_rpc_internal(rpc_id, payload, timeout)
+		
+		if not response.has("error"):
+			return response
+		
+		var error_msg: String = response.get("error", "")
+		if not _is_retryable_error(error_msg):
+			return response
+		
+		if retry_count >= max_retries:
+			push_error("RPC %s failed after %d retries: %s" % [rpc_id, max_retries, error_msg])
+			return response
+		
+		var wait_time: float = pow(2, retry_count)
+		print("RPC %s failed (attempt %d/%d), retrying in %.0fs: %s" % [rpc_id, retry_count + 1, max_retries + 1, wait_time, error_msg])
+		
+		await get_tree().create_timer(wait_time).timeout
+		retry_count += 1
+	
+	return {"error": "Max retries exceeded"}
+
+func _send_rpc_internal(rpc_id: String, payload: String, timeout: float) -> Dictionary:
+	"""Internal RPC implementation (single attempt)."""
 	var url: String = "%s/v2/rpc/%s" % [base_url, rpc_id]
 	var headers: PackedStringArray = get_auth_headers()
 	
@@ -311,7 +345,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	
 	if error_code != OK:
 		timer.queue_free()
-		return {"error": "Failed to send RPC request"}
+		return {"error": "Failed to send RPC request (error code: %d)" % error_code}
 	
 	await http_request.request_completed
 	
@@ -340,8 +374,35 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 			elif parsed.has("message"):
 				response_data = {"error": parsed.message}
 			else:
-				response_data = {"error": "Unknown error"}
+				response_data = {"error": "Unknown error (HTTP %d)" % result[1]}
 		else:
 			response_data = {"error": "HTTP error: %d" % result[1]}
 	
 	return response_data
+
+func _is_retryable_error(error_message: String) -> bool:
+	"""Determines if error is retryable (transient) or permanent."""
+	var error_lower: String = error_message.to_lower()
+	
+	# Retryable errors
+	if "timeout" in error_lower:
+		return true
+	if "connection" in error_lower or "refused" in error_lower:
+		return true
+	if "temporarily unavailable" in error_lower or "unavailable" in error_lower:
+		return true
+	if "server error" in error_lower or "500" in error_lower or "502" in error_lower or "503" in error_lower:
+		return true
+	if "no internet" in error_lower or "no connection" in error_lower:
+		return true
+	
+	# Non-retryable errors
+	if "not authenticated" in error_lower or "unauthorized" in error_lower or "401" in error_lower:
+		return false
+	if "invalid" in error_lower or "400" in error_lower:
+		return false
+	if "not found" in error_lower or "404" in error_lower:
+		return false
+	
+	# Default: assume retryable for safety
+	return true

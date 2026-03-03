@@ -7,6 +7,7 @@ import { Runtime } from '../types/nakama';
 import { PvPMatch } from './matchmaker';
 import { PlayerStats } from '../types/game';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { verifyRequestSignature, validateCombatActionParameters, detectTimingAttack } from './anti_cheat';
 
 /**
  * Combat action request data.
@@ -150,6 +151,22 @@ export function rpcSubmitCombatAction(
 
   const action = validation.data;
 
+  // Extract requestId and verify signature if provided
+  let requestId = '';
+  const payloadObj = JSON.parse(payload);
+  if (payloadObj.request_id) {
+    requestId = payloadObj.request_id;
+    if (payloadObj.signature) {
+      const signatureVerification = verifyRequestSignature(ctx, payload, payloadObj.signature, 'armored_archer/submit_combat_action');
+      if (!signatureVerification.valid) {
+        return JSON.stringify({
+          error: 'Signature verification failed',
+          request_id: requestId,
+        });
+      }
+    }
+  }
+
   const matchObjects = nk.storageRead([
     {
       collection: 'pvp_matches',
@@ -161,6 +178,7 @@ export function rpcSubmitCombatAction(
   if (matchObjects.length === 0) {
     return JSON.stringify({
       error: 'Match not found',
+      request_id: requestId,
     });
   }
 
@@ -169,20 +187,47 @@ export function rpcSubmitCombatAction(
   if (match.status !== 'active') {
     return JSON.stringify({
       error: 'Match is not active',
+      request_id: requestId,
     });
   }
 
   if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
     return JSON.stringify({
       error: 'Not a participant in this match',
+      request_id: requestId,
     });
   }
 
   const matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
 
+  // Validate combat action parameters
+  const parameterValidation = validateCombatActionParameters(
+    action.angle,
+    action.power,
+    matchState.current_turn_user_id,
+    ctx.userId,
+    'armored_archer/submit_combat_action',
+    requestId
+  );
+  if (!parameterValidation.valid) {
+    return JSON.stringify({
+      error: 'Invalid combat action parameters',
+      request_id: requestId,
+    });
+  }
+
   if (matchState.current_turn_user_id !== ctx.userId) {
     return JSON.stringify({
       error: 'Not your turn',
+      request_id: requestId,
+    });
+  }
+
+  // Detect timing attacks
+  if (detectTimingAttack(ctx.userId, 'armored_archer/submit_combat_action', requestId)) {
+    return JSON.stringify({
+      error: 'Timing attack detected',
+      request_id: requestId,
     });
   }
 
@@ -197,6 +242,7 @@ export function rpcSubmitCombatAction(
   return JSON.stringify({
     success: true,
     result: result,
+    request_id: requestId,
   });
 }
 
