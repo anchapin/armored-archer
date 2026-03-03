@@ -11,7 +11,7 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:prettier/recommended',
   ],
-  plugins: ['@typescript-eslint', 'prettier'],
+  plugins: ['@typescript-eslint', 'prettier', 'jsdoc'],
   env: {
     node: true,
   },
@@ -30,6 +30,17 @@ module.exports = {
     '@typescript-eslint/no-misused-promises': 'off',
     'no-console': 'off',
     eqeqeq: ['error', 'always'],
+    'jsdoc/require-jsdoc': 'off',
+    'jsdoc/require-param-type': 'off',
+    'jsdoc/require-return-type': 'off'
   },
-  ignorePatterns: ['build/', 'node_modules/', '*.js', 'src/types/nakama*.d.ts'],
+  overrides: [
+    {
+      files: ['src/modules/(rpg_system|combat_system|matchmaker|season_system|store|gear_system|player_rpc|audit).ts'],
+      rules: {
+        'jsdoc/require-jsdoc': ['error', { require: { FunctionDeclaration: true, MethodDefinition: true, ClassDeclaration: true } }]
+      }
+    }
+  ],
+  ignorePatterns: ['build/', 'node_modules/', '*.js', 'src/types/nakama*.d.ts', 'src/config/**', 'src/modules/__tests__/**', 'src/modules/config_validation.ts', 'src/modules/metrics.ts', 'src/modules/validation.ts'],
 };

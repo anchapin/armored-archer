@@ -1,3 +1,8 @@
+/**
+ * Player RPC module.
+ * @fileoverview Exposes RPC endpoints for player stats and health checks.
+ */
+
 import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { registerRpcWithMetrics } from './metrics';

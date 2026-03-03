@@ -1,3 +1,8 @@
+/**
+ * Matchmaker module.
+ * @fileoverview Implements matchmaking and ranking for PvP matches.
+ */
+
 import { Runtime } from '../types/nakama';
 import { TurnData, PlayerStats } from '../types/game';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
