@@ -49,7 +49,7 @@ jobs:
         working-directory: ./backend
         run: npm run typecheck
 
-   backend-test:
+  backend-test:
     name: Backend Tests with Coverage
     runs-on: ubuntu-latest
     steps:
