@@ -43,7 +43,7 @@
     "lru-cache": "^11.2.6",
     "prom-client": "^15.0.0",
     "winston": "^3.11.0",
-    "@honorlabs/nakama-js": "^1.0.0",
+    "@heroiclabs/nakama-js": "^2.5.1",
     "uuid": "^9.0.0",
     "zod": "^4.3.6"
   }

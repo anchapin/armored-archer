@@ -1,4 +1,4 @@
-import { NakamaClient, NakamaTypes } from '@honorlabs/nakama-js';
+import { NakamaClient, NakamaTypes } from '@heroiclabs/nakama-js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Test configuration
