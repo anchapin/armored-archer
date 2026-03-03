@@ -42,6 +42,13 @@ const defaultConfig: RateLimitConfig = {
 };
 
 const endpointConfigs: Map<string, RateLimitConfig> = new Map();
+function getKey(userId: string, endpoint: string): string {
+  return `${userId}:${endpoint}`;
+}
+
+function getCurrentWindowResetTime(windowMs: number): number {
+  return Date.now() + windowMs;
+}
 
 export function setEndpointRateLimit(endpoint: string, config: RateLimitConfig): void {
   endpointConfigs.set(endpoint, config);
