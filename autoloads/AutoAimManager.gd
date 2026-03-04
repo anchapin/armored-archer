@@ -8,7 +8,8 @@ const AIM_RANGE: float = 500.0
 const MAX_AIM_ANGLE: float = deg_to_rad(45.0)
 
 # --- State ---
-var registered_enemies: Array[Node2D] = []
+# Using Dictionary for O(1) lookups instead of Array (performance optimization)
+var registered_enemies: Dictionary = {}
 
 # --- Enemy Registration ---
 func register_enemy(enemy: Node2D) -> void:
@@ -17,10 +18,11 @@ func register_enemy(enemy: Node2D) -> void:
 	Parameters:
 		enemy: Enemy node to register
 	"""
-	if enemy in registered_enemies:
+	if enemy == null or not is_instance_valid(enemy):
 		return
 	
-	registered_enemies.append(enemy)
+	# Use weak reference to avoid memory leaks
+	registered_enemies[enemy.get_instance_id()] = weakref(enemy)
 
 func unregister_enemy(enemy: Node2D) -> void:
 	"""Unregisters an enemy from auto-aim targeting.
@@ -28,8 +30,10 @@ func unregister_enemy(enemy: Node2D) -> void:
 	Parameters:
 		enemy: Enemy node to unregister
 	"""
-	if enemy in registered_enemies:
-		registered_enemies.erase(enemy)
+	if enemy == null:
+		return
+	
+	registered_enemies.erase(enemy.get_instance_id())
 
 # --- Target Finding ---
 func get_best_target(player_pos: Vector2, aim_direction: Vector2) -> Node2D:
@@ -49,8 +53,14 @@ func get_best_target(player_pos: Vector2, aim_direction: Vector2) -> Node2D:
 	var best_distance: float = AIM_RANGE
 	var aim_angle: float = aim_direction.angle()
 	
-	for enemy in registered_enemies:
-		if not is_instance_valid(enemy):
+	# Iterate through dictionary values
+	for id in registered_enemies:
+		var weak_ref: WeakRef = registered_enemies[id]
+		var enemy: Node2D = weak_ref.get_ref()
+		
+		if enemy == null or not is_instance_valid(enemy):
+			# Clean up invalid weak reference
+			registered_enemies.erase(id)
 			continue
 		
 		var enemy_pos: Vector2 = enemy.global_position
