@@ -7,6 +7,7 @@ import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { submitPlayerReport, getReportsForUser } from './anti_cheat';
 
 /**
  * Registers the health check RPC endpoint.
@@ -134,4 +135,94 @@ export function rpcGetPlayerStats(
   cacheManager.set('player_stats', ctx.userId, stats);
 
   return stats;
+}
+
+/**
+ * Registers the player report RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcReportPlayer(initializer: Runtime.Initializer): void {
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/report_player',
+    'report_player',
+    rpcReportPlayer
+  );
+}
+
+/**
+ * Handles player report requests.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param _nk - Nakama server interface
+ * @param payload - JSON string with report details
+ * @returns JSON string with report result
+ */
+export function rpcReportPlayer(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Player report request from user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.report_player, payload, 'report_player');
+  if (!validation.success) {
+    return createValidationErrorResponse('report_player', validation.error);
+  }
+
+  const { reported_user_id, reason, match_id, additional_info } = validation.data;
+
+  const result = submitPlayerReport(
+    ctx.userId,
+    reported_user_id,
+    reason,
+    match_id,
+    additional_info
+  );
+
+  return JSON.stringify(result);
+}
+
+/**
+ * Registers the get player reports RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcGetPlayerReports(initializer: Runtime.Initializer): void {
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/get_player_reports',
+    'get_player_reports',
+    rpcGetPlayerReports
+  );
+}
+
+/**
+ * Handles get player reports requests.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param _nk - Nakama server interface
+ * @param payload - JSON string (unused, required for RPC format)
+ * @returns JSON string with reports
+ */
+export function rpcGetPlayerReports(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get player reports request from user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_player_reports, payload, 'get_player_reports');
+  if (!validation.success) {
+    return createValidationErrorResponse('get_player_reports', validation.error);
+  }
+
+  const reports = getReportsForUser(ctx.userId);
+
+  return JSON.stringify({ reports });
 }

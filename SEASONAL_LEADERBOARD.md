@@ -578,3 +578,65 @@ Monitor Nakama leaderboard:
 curl -X GET "http://localhost:7350/v2/leaderboard/{season_id}" \
   -H "Authorization: Bearer <admin_token>"
 ```
+
+## Anti-Cheat & Exploitation Prevention
+
+The seasonal leaderboard includes anti-cheat measures to ensure fair competition and prevent rank manipulation, win trading, and other exploitative behaviors.
+
+### Suspicious Win Rate Detection
+
+The system automatically flags players with suspiciously high win rates:
+
+- **Threshold**: >95% win rate
+- **Minimum matches**: 100+ matches required
+- **Action**: Player is flagged for review
+
+Players meeting these criteria are flagged in the system and marked for administrative review.
+
+### Repeated Opponent Detection
+
+The system monitors for patterns where a player faces the same opponent repeatedly:
+
+- **Threshold**: Same opponent 50+ times
+- **Detection**: Tracks opponent encounter frequency per player
+- **Action**: Flags potential win trading or match manipulation
+
+### Player Reporting System
+
+Players can report suspicious behavior through the in-game reporting system:
+
+**Report a Player:**
+```bash
+curl -X POST "http://localhost:7350/v2/rpc/armored_archer/report_player" \
+  -H "Authorization: Bearer <user_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reported_user_id": "<target_user_id>",
+    "reason": "win_trading|match_manipulation|suspicious_win_rate|harassment|cheating",
+    "match_id": "<optional_match_id>",
+    "additional_info": "Optional details about the incident"
+  }'
+```
+
+**Get Reports for a User (Admin):**
+```bash
+curl -X POST "http://localhost:7350/v2/rpc/armored_archer/get_player_reports" \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "<target_user_id>"}'
+```
+
+**Report Reasons:**
+- `win_trading`: Suspected win trading arrangement
+- `match_manipulation`: Intentional match throwing or manipulation
+- `suspicious_win_rate`: Abnormally high win rate
+- `harassment`: Harassment or abusive behavior
+- `cheating`: Use of cheats or exploits
+
+### Flagged Players
+
+When a player is flagged (via automatic detection or manual reports):
+- Player is marked with a flag in the system
+- Leaderboard position may be reviewed by administrators
+- Multiple reports trigger increased monitoring
+- Extreme cases may result in season disqualification

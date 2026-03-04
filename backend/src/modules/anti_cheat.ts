@@ -658,3 +658,83 @@ export function getLeaderboardAntiCheatStats(): {
 
 // Cleanup job to prevent memory leaks
 setInterval(cleanupExpiredRequests, 60000); // Every minute
+
+// ============================================================
+// PLAYER REPORTING SYSTEM
+// ============================================================
+
+export interface PlayerReport {
+  reportId: string;
+  reporterId: string;
+  reportedUserId: string;
+  reason: string;
+  matchId?: string;
+  additionalInfo?: string;
+  timestamp: number;
+  status: 'pending' | 'reviewed' | 'dismissed' | 'actioned';
+}
+
+type ReportReason = 'win_trading' | 'match_manipulation' | 'suspicious_win_rate' | 'harassment' | 'exploiting_bugs' | 'other';
+
+// In-memory storage for player reports (in production, use database)
+const playerReports = new Map<string, PlayerReport>();
+const reporterCooldowns = new Map<string, number>();
+const REPORT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Submit a player report.
+ */
+export function submitPlayerReport(
+  reporterId: string,
+  reportedUserId: string,
+  reason: ReportReason,
+  matchId?: string,
+  additionalInfo?: string
+): { success: boolean; reportId?: string; error?: string } {
+  // Prevent self-reporting
+  if (reporterId === reportedUserId) {
+    return { success: false, error: 'Cannot report yourself' };
+  }
+
+  // Check rate limiting
+  const lastReportTime = reporterCooldowns.get(reporterId);
+  if (lastReportTime && Date.now() - lastReportTime < REPORT_COOLDOWN_MS) {
+    return { success: false, error: 'Rate limit: please wait before submitting another report' };
+  }
+
+  const reportId = `report_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+  const report: PlayerReport = {
+    reportId,
+    reporterId,
+    reportedUserId,
+    reason,
+    matchId,
+    additionalInfo,
+    timestamp: Date.now(),
+    status: 'pending',
+  };
+
+  playerReports.set(reportId, report);
+  reporterCooldowns.set(reporterId, Date.now());
+
+  logger.info('Player report submitted: %s by %s against %s', reportId, reporterId, reportedUserId);
+
+  return { success: true, reportId };
+}
+
+/**
+ * Get reports for a user (either filed by them or against them).
+ */
+export function getReportsForUser(userId: string): PlayerReport[] {
+  const reports: PlayerReport[] = [];
+
+  playerReports.forEach((report) => {
+    if (report.reporterId === userId || report.reportedUserId === userId) {
+      reports.push(report);
+    }
+  });
+
+  // Sort by timestamp descending
+  return reports.sort((a, b) => b.timestamp - a.timestamp);
+}
