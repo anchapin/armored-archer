@@ -5,7 +5,7 @@
  */
 
 import { Runtime } from '../types/nakama';
-import { createHash, createHmac, randomBytes } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
 import { logger } from '../config/logger';
 
 /**
@@ -33,7 +33,12 @@ export interface RequestSignature {
  * Anti-cheat violation data for auditing.
  */
 export interface AntiCheatViolation {
-  violationType: 'replay_attack' | 'invalid_signature' | 'clock_skew' | 'out_of_turn' | 'timing_attack';
+  violationType:
+    | 'replay_attack'
+    | 'invalid_signature'
+    | 'clock_skew'
+    | 'out_of_turn'
+    | 'timing_attack';
   userId: string;
   rpcName: string;
   matchId?: string;
@@ -352,7 +357,11 @@ export function cleanupExpiredRequests(): void {
 
   timingKeysToDelete.forEach((key) => requestTimingLog.delete(key));
 
-  logger.debug('Anti-cheat cleanup: removed %d processed requests, %d timing logs', keysToDelete.length, timingKeysToDelete.length);
+  logger.debug(
+    'Anti-cheat cleanup: removed %d processed requests, %d timing logs',
+    keysToDelete.length,
+    timingKeysToDelete.length
+  );
 }
 
 /**

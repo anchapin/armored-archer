@@ -1,6 +1,6 @@
 import { Runtime } from '../types/nakama';
 import { PlayerStats } from './rpg_system';
-import { PlayerInventory, GearItem } from './gear_system';
+import { PlayerInventory } from './gear_system';
 import { logAudit } from './audit';
 
 export interface ValidationResult {
@@ -16,7 +16,6 @@ export interface ValidationIssue {
 }
 
 const STAT_NAMES = ['attack', 'defense', 'dodge', 'crit_rate'];
-const GEAR_SLOTS = ['weapon', 'armor', 'accessory'];
 const HELMET_TYPES = ['helmet', 'head', 'mask', 'crown'];
 
 export function validatePlayerStats(
@@ -41,7 +40,11 @@ export function validatePlayerStats(
       severity: 'critical',
       category: 'ability_points',
       message: 'Ability points exceed expected maximum for level',
-      details: { ability_points: playerStats.ability_points, expected_max: expectedAbilityPoints, level: playerStats.level },
+      details: {
+        ability_points: playerStats.ability_points,
+        expected_max: expectedAbilityPoints,
+        level: playerStats.level,
+      },
     });
   }
 
@@ -62,7 +65,11 @@ export function validatePlayerStats(
       severity: 'critical',
       category: 'level_xp_mismatch',
       message: 'Level does not match XP progression',
-      details: { stored_level: playerStats.level, calculated_level: calculatedLevel, xp: playerStats.xp },
+      details: {
+        stored_level: playerStats.level,
+        calculated_level: calculatedLevel,
+        xp: playerStats.xp,
+      },
     });
   }
 
@@ -79,14 +86,14 @@ export function validatePlayerStats(
     }
   }
 
-  return { is_valid: issues.filter(i => i.severity === 'critical').length === 0, issues };
+  return { is_valid: issues.filter((i) => i.severity === 'critical').length === 0, issues };
 }
 
 export function validateGearInventory(inventory: PlayerInventory): ValidationResult {
   const issues: ValidationIssue[] = [];
 
   // 1. Check for duplicate gear
-  const equippedIds = Object.values(inventory.equipped_gear).filter(id => id !== null);
+  const equippedIds = Object.values(inventory.equipped_gear).filter((id) => id !== null);
   if (new Set(equippedIds).size < equippedIds.length) {
     issues.push({
       severity: 'critical',
@@ -100,8 +107,8 @@ export function validateGearInventory(inventory: PlayerInventory): ValidationRes
   const helmetSlots: string[] = [];
   for (const [slot, gearId] of Object.entries(inventory.equipped_gear)) {
     if (gearId) {
-      const gear = inventory.gear.find(g => g.id === gearId);
-      if (gear && HELMET_TYPES.some(h => gear.type.toLowerCase().includes(h))) {
+      const gear = inventory.gear.find((g) => g.id === gearId);
+      if (gear && HELMET_TYPES.some((h) => gear.type.toLowerCase().includes(h))) {
         helmetSlots.push(slot);
       }
     }
@@ -117,7 +124,7 @@ export function validateGearInventory(inventory: PlayerInventory): ValidationRes
 
   // 3. Validate all equipped gear exists
   for (const [slot, gearId] of Object.entries(inventory.equipped_gear)) {
-    if (gearId && !inventory.gear.find(g => g.id === gearId)) {
+    if (gearId && !inventory.gear.find((g) => g.id === gearId)) {
       issues.push({
         severity: 'critical',
         category: 'missing_equipped_gear',
@@ -127,7 +134,7 @@ export function validateGearInventory(inventory: PlayerInventory): ValidationRes
     }
   }
 
-  return { is_valid: issues.filter(i => i.severity === 'critical').length === 0, issues };
+  return { is_valid: issues.filter((i) => i.severity === 'critical').length === 0, issues };
 }
 
 export function recordStatMutation(
@@ -143,7 +150,15 @@ export function recordStatMutation(
     delta[key] = after[key] - (before[key] || 0);
   }
 
-  logAudit(nk, userId, ipAddress ?? null, 'stat_mutation', 'player_stats', { before, after, delta, source }, 'success');
+  logAudit(
+    nk,
+    userId,
+    ipAddress ?? null,
+    'stat_mutation',
+    'player_stats',
+    { before, after, delta, source },
+    'success'
+  );
 }
 
 export function validateFullProgression(
@@ -161,10 +176,20 @@ export function validateFullProgression(
   const isValid = statsValidation.is_valid && gearValidation.is_valid;
 
   if (!isValid) {
-    logAudit(nk, userId, ipAddress ?? null as any, 'progression_validation', 'player_progression', 
-      { stats_issues: statsValidation.issues, gear_issues: gearValidation.issues }, 'success');
-    logger.warn('Progression validation failed for user %s: %d critical issues', userId, 
-      allIssues.filter(i => i.severity === 'critical').length);
+    logAudit(
+      nk,
+      userId,
+      ipAddress ?? (null as any),
+      'progression_validation',
+      'player_progression',
+      { stats_issues: statsValidation.issues, gear_issues: gearValidation.issues },
+      'success'
+    );
+    logger.warn(
+      'Progression validation failed for user %s: %d critical issues',
+      userId,
+      allIssues.filter((i) => i.severity === 'critical').length
+    );
   }
 
   return { is_valid: isValid, issues: allIssues };

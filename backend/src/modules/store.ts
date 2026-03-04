@@ -215,7 +215,7 @@ export function rpcValidatePurchase(
     logAudit(
       nk,
       ctx.userId,
-      ctx.ipAddress,
+      `ctx.ipAddress ?? null`,
       'validate_purchase',
       'player_currency',
       { product_id: 'unknown', platform: 'unknown' },
@@ -233,7 +233,7 @@ export function rpcValidatePurchase(
     logAudit(
       nk,
       ctx.userId,
-      ctx.ipAddress,
+      `ctx.ipAddress ?? null`,
       'validate_purchase',
       'player_currency',
       { product_id: request.product_id, platform: request.platform },
@@ -269,10 +269,15 @@ export function rpcValidatePurchase(
   logAudit(
     nk,
     ctx.userId,
-    ctx.ipAddress,
+    `ctx.ipAddress ?? null`,
     'validate_purchase',
     'player_currency',
-    { product_id: request.product_id, platform: request.platform, gems_awarded: gemBundle.gem_amount, new_balance: playerCurrency.gems },
+    {
+      product_id: request.product_id,
+      platform: request.platform,
+      gems_awarded: gemBundle.gem_amount,
+      new_balance: playerCurrency.gems,
+    },
     'success'
   );
 
@@ -355,7 +360,7 @@ export function rpcSpendGems(
     logAudit(
       nk,
       ctx.userId,
-      ctx.ipAddress,
+      `ctx.ipAddress ?? null`,
       'spend_gems',
       'player_currency',
       { amount: 'unknown' },
@@ -373,7 +378,7 @@ export function rpcSpendGems(
     logAudit(
       nk,
       ctx.userId,
-      ctx.ipAddress,
+      `ctx.ipAddress ?? null`,
       'spend_gems',
       'player_currency',
       { amount: request.amount, current_balance: playerCurrency.gems },
@@ -408,7 +413,7 @@ export function rpcSpendGems(
   logAudit(
     nk,
     ctx.userId,
-    ctx.ipAddress,
+    `ctx.ipAddress ?? null`,
     'spend_gems',
     'player_currency',
     { amount: request.amount, new_balance: playerCurrency.gems },

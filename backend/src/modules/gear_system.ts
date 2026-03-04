@@ -452,7 +452,7 @@ export function rpcGenerateGear(
     logAudit(
       nk,
       ctx.userId,
-      ctx.ipAddress,
+      `ctx.ipAddress ?? null`,
       'generate_gear',
       'player_inventory',
       { stage_id: 'unknown' },
@@ -490,7 +490,7 @@ export function rpcGenerateGear(
         logAudit(
           nk,
           ctx.userId,
-          ctx.ipAddress,
+          `ctx.ipAddress ?? null`,
           'generate_gear',
           'player_inventory',
           { stage_id: request.stage_id },
@@ -527,10 +527,16 @@ export function rpcGenerateGear(
   logAudit(
     nk,
     ctx.userId,
-    ctx.ipAddress,
+    `ctx.ipAddress ?? null`,
     'generate_gear',
     'player_inventory',
-    { stage_id: request.stage_id, gear_id: gear.id, gear_rarity: gear.rarity, gear_type: gear.type, inventory_size: inventory.gear.length },
+    {
+      stage_id: request.stage_id,
+      gear_id: gear.id,
+      gear_rarity: gear.rarity,
+      gear_type: gear.type,
+      inventory_size: inventory.gear.length,
+    },
     'success'
   );
 
@@ -624,12 +630,12 @@ export function rpcEquipGear(
   }
 
   const gear = inventory.gear[gearIndex];
-  
+
   if (gear.type !== request.slot) {
     logAudit(
       nk,
       ctx.userId,
-      ctx.ipAddress,
+      `ctx.ipAddress ?? null`,
       'equip_gear',
       'player_inventory',
       { gear_id: request.gear_id, slot: request.slot, error: 'type_mismatch' },
@@ -655,10 +661,16 @@ export function rpcEquipGear(
   logAudit(
     nk,
     ctx.userId,
-    ctx.ipAddress,
+    `ctx.ipAddress ?? null`,
     'equip_gear',
     'player_inventory',
-    { gear_id: gear.id, gear_name: gear.name, gear_type: gear.type, gear_rarity: gear.rarity, slot: request.slot },
+    {
+      gear_id: gear.id,
+      gear_name: gear.name,
+      gear_type: gear.type,
+      gear_rarity: gear.rarity,
+      slot: request.slot,
+    },
     'success'
   );
 
@@ -744,7 +756,7 @@ export function rpcUnequipGear(
     logAudit(
       nk,
       ctx.userId,
-      ctx.ipAddress,
+      `ctx.ipAddress ?? null`,
       'unequip_gear',
       'player_inventory',
       { slot: request.slot, error: 'no_gear_equipped' },
@@ -771,7 +783,7 @@ export function rpcUnequipGear(
   logAudit(
     nk,
     ctx.userId,
-    ctx.ipAddress,
+    `ctx.ipAddress ?? null`,
     'unequip_gear',
     'player_inventory',
     { slot: slotToUnequip },
@@ -890,26 +902,26 @@ export function rpcUnlockModifierPool(
 ): string {
   logger.info('Unlock modifier pool called for user: %s', ctx.userId);
 
-   const validation = validatePayload(
-     ZodSchemas.unlock_modifier_pool,
-     payload,
-     'unlock_modifier_pool'
-   );
-   if (!validation.success) {
-     logAudit(
-       nk,
-       ctx.userId,
-       ctx.ipAddress,
-       'unlock_modifier_pool',
-       'modifiers',
-       { modifier_id: 'unknown' },
-       'failure',
-       validation.error
-     );
-     return createValidationErrorResponse('unlock_modifier_pool', validation.error);
-   }
+  const validation = validatePayload(
+    ZodSchemas.unlock_modifier_pool,
+    payload,
+    'unlock_modifier_pool'
+  );
+  if (!validation.success) {
+    logAudit(
+      nk,
+      ctx.userId,
+      `ctx.ipAddress ?? null`,
+      'unlock_modifier_pool',
+      'modifiers',
+      { modifier_id: 'unknown' },
+      'failure',
+      validation.error
+    );
+    return createValidationErrorResponse('unlock_modifier_pool', validation.error);
+  }
 
-   const modifierId = validation.data.modifier_id;
+  const modifierId = validation.data.modifier_id;
 
   const inventoryObjects = nk.storageRead([
     {
@@ -951,29 +963,29 @@ export function rpcUnlockModifierPool(
     inventory.unlocked_modifier_pools.push(modifierId);
   }
 
-   nk.storageWrite([
-     {
-       collection: 'player_inventory',
-       key: ctx.userId,
-       userId: ctx.userId,
-       value: JSON.stringify(inventory),
-     },
-   ]);
+  nk.storageWrite([
+    {
+      collection: 'player_inventory',
+      key: ctx.userId,
+      userId: ctx.userId,
+      value: JSON.stringify(inventory),
+    },
+  ]);
 
-   logger.info('Unlocked modifier pool %s for user %s', modifierId, ctx.userId);
+  logger.info('Unlocked modifier pool %s for user %s', modifierId, ctx.userId);
 
-   logAudit(
-     nk,
-     ctx.userId,
-     ctx.ipAddress,
-     'unlock_modifier_pool',
-     'modifiers',
-     { modifier_id: modifierId, unlocked_pools: inventory.unlocked_modifier_pools },
-     'success'
-   );
+  logAudit(
+    nk,
+    ctx.userId,
+    `ctx.ipAddress ?? null`,
+    'unlock_modifier_pool',
+    'modifiers',
+    { modifier_id: modifierId, unlocked_pools: inventory.unlocked_modifier_pools },
+    'success'
+  );
 
-   return JSON.stringify({
-     success: true,
-     unlocked_modifier_pools: inventory.unlocked_modifier_pools,
-   });
+  return JSON.stringify({
+    success: true,
+    unlocked_modifier_pools: inventory.unlocked_modifier_pools,
+  });
 }

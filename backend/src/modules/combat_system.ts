@@ -193,11 +193,16 @@ export function rpcSubmitCombatAction(
 
   // Check if turn has exceeded timeout
   if (isTurnTimedOut(matchState)) {
-    logger.info('Turn timed out for user: %s in match: %s', matchState.current_turn_user_id, action.match_id);
+    logger.info(
+      'Turn timed out for user: %s in match: %s',
+      matchState.current_turn_user_id,
+      action.match_id
+    );
     // Auto-forfeit the current player's turn, move to opponent
-    matchState.current_turn_user_id = matchState.current_turn_user_id === matchState.creator_id
-      ? matchState.opponent_id
-      : matchState.creator_id;
+    matchState.current_turn_user_id =
+      matchState.current_turn_user_id === matchState.creator_id
+        ? matchState.opponent_id
+        : matchState.creator_id;
     matchState.last_turn_timestamp = Date.now();
     saveMatchState(nk, matchState);
     return JSON.stringify({
