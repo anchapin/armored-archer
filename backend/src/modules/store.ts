@@ -16,9 +16,16 @@ import { logAudit } from './audit';
 const validatedReceipts: Map<string, Set<string>> = new Map();
 
 /**
+ * Maximum age of receipts to keep in memory (24 hours in milliseconds).
+ * In production with Redis, use TTL-based keys instead.
+ */
+// const RECEIPT_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+/**
  * Cleanup old entries from the receipts store.
  */
 function cleanupOldReceipts(): void {
+  // const now = Date.now();
   for (const receipts of validatedReceipts.values()) {
     // In a real implementation, we'd track when each receipt was added
     // For now, we just limit the total count per user
