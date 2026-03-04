@@ -17,7 +17,7 @@ This checklist covers all requirements for submitting Armored Archer to the iOS 
 - [ ] Test all game features end-to-end
 
 ### ✓ App Assets
-- [ ] Create and add app icons in all required sizes
+- [x] Create and add app icons in all required sizes (iOS: icon_ios_1024.png, Android: icon_android_512.png, icon_android_1024.png)
 - [ ] Prepare screenshots (6-10 for iOS, 2-8 for Android)
   - [ ] Main menu/UI
   - [ ] Character selection screen
@@ -31,8 +31,8 @@ This checklist covers all requirements for submitting Armored Archer to the iOS 
 - [ ] Verify icons display correctly on all devices
 
 ### ✓ Documentation
-- [ ] Write app store descriptions (iOS and Android)
-- [ ] Create privacy policy
+- [x] Write app store descriptions (iOS and Android) - see app_store_assets/localized_descriptions.md
+- [x] Create privacy policy - see PRIVACY_POLICY.md
 - [ ] Write support email responses for common issues
 - [ ] Prepare FAQ documentation
 - [ ] Create release notes for version 1.0.0
@@ -46,6 +46,11 @@ This checklist covers all requirements for submitting Armored Archer to the iOS 
 - [ ] Complete identity verification
 - [ ] Set up two-factor authentication
 - [ ] Read and understand App Store Review Guidelines
+
+**Note:** iOS code signing is not yet configured in export_presets.cfg. After obtaining your Apple Developer certificate and provisioning profile, update the following settings:
+- `application/code_signing_enabled=true`
+- `application/code_signing_identity="Your Certificate Name"`
+- `application/provisioning_profile="Your Profile Name"`
 
 ### ✓ App Store Connect Setup
 - [ ] Create new app in App Store Connect
@@ -61,7 +66,7 @@ This checklist covers all requirements for submitting Armored Archer to the iOS 
 - [ ] Configure promotional URL (optional)
 - [ ] Add marketing URL
 - [ ] Add support URL
-- [ ] Add privacy policy URL
+- [x] Add privacy policy URL (see PRIVACY_POLICY.md)
 - [ ] Set age rating
   - [ ] Answer content rating questions
   - [ ] Verify final rating (likely "12+")
