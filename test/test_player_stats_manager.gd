@@ -21,6 +21,25 @@ func run_tests() -> void:
 	test_get_dodge()
 	test_get_crit_rate()
 	test_signal_emission()
+	test_get_level_minimum()
+	test_get_xp_default()
+	test_get_ability_points_default()
+	test_get_stat_missing()
+	test_get_stat_no_stats_key()
+	test_get_attack_default()
+	test_get_defense_default()
+	test_get_dodge_default()
+	test_get_crit_rate_default()
+	test_gain_xp_invalid_amount()
+	test_gain_xp_no_network()
+	test_allocate_stat_invalid_points()
+	test_allocate_stat_no_network()
+	test_get_player_stats_no_network()
+	test_stats_updated_signal()
+	test_xp_gained_signal()
+	test_level_up_signal()
+	test_stat_allocated_signal()
+	test_is_initialized_default()
 	
 	print("\n=== PlayerStatsManager Test Results ===")
 	print("Passed: %d" % _tests_passed)
@@ -203,5 +222,243 @@ func test_signal_emission() -> void:
 		_pass("test_signal_emission")
 	else:
 		_fail("test_signal_emission", "All signals should be emitted")
+	
+	psm.queue_free()
+
+# --- Additional PlayerStatsManager Tests for Higher Coverage ---
+
+func test_get_level_minimum() -> void:
+	var psm = _create_player_stats_manager()
+	# Even with no stats, level should be at least 1
+	psm.player_stats = {}
+	
+	if psm.get_level() >= 1:
+		_pass("test_get_level_minimum")
+	else:
+		_fail("test_get_level_minimum", "Level should be at least 1")
+	
+	psm.queue_free()
+
+func test_get_xp_default() -> void:
+	var psm = _create_player_stats_manager()
+	# No player_stats should return 0
+	if psm.get_xp() == 0:
+		_pass("test_get_xp_default")
+	else:
+		_fail("test_get_xp_default", "Default XP should be 0")
+	
+	psm.queue_free()
+
+func test_get_ability_points_default() -> void:
+	var psm = _create_player_stats_manager()
+	
+	if psm.get_ability_points() == 0:
+		_pass("test_get_ability_points_default")
+	else:
+		_fail("test_get_ability_points_default", "Default ability points should be 0")
+	
+	psm.queue_free()
+
+func test_get_stat_missing() -> void:
+	var psm = _create_player_stats_manager()
+	psm.player_stats = {"stats": {"attack": 10}}
+	
+	# Request a stat that doesn't exist
+	if psm.get_stat("health") == 0:
+		_pass("test_get_stat_missing")
+	else:
+		_fail("test_get_stat_missing", "Missing stat should return 0")
+	
+	psm.queue_free()
+
+func test_get_stat_no_stats_key() -> void:
+	var psm = _create_player_stats_manager()
+	# No stats key in player_stats
+	psm.player_stats = {}
+	
+	if psm.get_stat("attack") == 0:
+		_pass("test_get_stat_no_stats_key")
+	else:
+		_fail("test_get_stat_no_stats_key", "Should return 0 when no stats key")
+	
+	psm.queue_free()
+
+func test_get_attack_default() -> void:
+	var psm = _create_player_stats_manager()
+	psm.player_stats = {}
+	
+	if psm.get_attack() == 0:
+		_pass("test_get_attack_default")
+	else:
+		_fail("test_get_attack_default", "Default attack should be 0")
+	
+	psm.queue_free()
+
+func test_get_defense_default() -> void:
+	var psm = _create_player_stats_manager()
+	psm.player_stats = {}
+	
+	if psm.get_defense() == 0:
+		_pass("test_get_defense_default")
+	else:
+		_fail("test_get_defense_default", "Default defense should be 0")
+	
+	psm.queue_free()
+
+func test_get_dodge_default() -> void:
+	var psm = _create_player_stats_manager()
+	psm.player_stats = {}
+	
+	if psm.get_dodge() == 0:
+		_pass("test_get_dodge_default")
+	else:
+		_fail("test_get_dodge_default", "Default dodge should be 0")
+	
+	psm.queue_free()
+
+func test_get_crit_rate_default() -> void:
+	var psm = _create_player_stats_manager()
+	psm.player_stats = {}
+	
+	if psm.get_crit_rate() == 0:
+		_pass("test_get_crit_rate_default")
+	else:
+		_fail("test_get_crit_rate_default", "Default crit rate should be 0")
+	
+	psm.queue_free()
+
+func test_gain_xp_invalid_amount() -> void:
+	var psm = _create_player_stats_manager()
+	# No network manager, should push_error and return
+	psm.gain_xp(0, "pve")
+	psm.gain_xp(-10, "pve")
+	
+	_pass("test_gain_xp_invalid_amount")
+	psm.queue_free()
+
+func test_gain_xp_no_network() -> void:
+	var psm = _create_player_stats_manager()
+	# No network manager
+	psm.gain_xp(100, "pve")
+	
+	_pass("test_gain_xp_no_network")
+	psm.queue_free()
+
+func test_allocate_stat_invalid_points() -> void:
+	var psm = _create_player_stats_manager()
+	# No network manager, should push_error and return
+	psm.allocate_stat("attack", 0)
+	psm.allocate_stat("attack", -5)
+	
+	_pass("test_allocate_stat_invalid_points")
+	psm.queue_free()
+
+func test_allocate_stat_no_network() -> void:
+	var psm = _create_player_stats_manager()
+	# No network manager
+	psm.allocate_stat("attack", 1)
+	
+	_pass("test_allocate_stat_no_network")
+	psm.queue_free()
+
+func test_get_player_stats_no_network() -> void:
+	var psm = _create_player_stats_manager()
+	# No network manager
+	var result = psm.get_player_stats()
+	
+	if result.is_empty():
+		_pass("test_get_player_stats_no_network")
+	else:
+		_fail("test_get_player_stats_no_network", "Should return empty when no network")
+	
+	psm.queue_free()
+
+func test_stats_updated_signal() -> void:
+	var psm = _create_player_stats_manager()
+	var received_stats = {}
+	
+	psm.stats_updated.connect(func(s): received_stats = s)
+	
+	psm.stats_updated.emit({"level": 5, "xp": 200})
+	
+	await get_tree().create_timer(0.1).timeout
+	
+	if received_stats.has("level") and received_stats.level == 5:
+		_pass("test_stats_updated_signal")
+	else:
+		_fail("test_stats_updated_signal", "Stats not received")
+	
+	psm.queue_free()
+
+func test_xp_gained_signal() -> void:
+	var psm = _create_player_stats_manager()
+	var received_amount = 0
+	var received_total = 0
+	
+	psm.xp_gained.connect(func(a, t): 
+		received_amount = a
+		received_total = t
+	)
+	
+	psm.xp_gained.emit(50, 250)
+	
+	await get_tree().create_timer(0.1).timeout
+	
+	if received_amount == 50 and received_total == 250:
+		_pass("test_xp_gained_signal")
+	else:
+		_fail("test_xp_gained_signal", "XP signal not received correctly")
+	
+	psm.queue_free()
+
+func test_level_up_signal() -> void:
+	var psm = _create_player_stats_manager()
+	var received_level = 0
+	var received_points = 0
+	
+	psm.level_up.connect(func(l, p):
+		received_level = l
+		received_points = p
+	)
+	
+	psm.level_up.emit(10, 3)
+	
+	await get_tree().create_timer(0.1).timeout
+	
+	if received_level == 10 and received_points == 3:
+		_pass("test_level_up_signal")
+	else:
+		_fail("test_level_up_signal", "Level up signal not received correctly")
+	
+	psm.queue_free()
+
+func test_stat_allocated_signal() -> void:
+	var psm = _create_player_stats_manager()
+	var received_stat = ""
+	var received_amount = 0
+	
+	psm.stat_allocated.connect(func(s, a):
+		received_stat = s
+		received_amount = a
+	)
+	
+	psm.stat_allocated.emit("defense", 2)
+	
+	await get_tree().create_timer(0.1).timeout
+	
+	if received_stat == "defense" and received_amount == 2:
+		_pass("test_stat_allocated_signal")
+	else:
+		_fail("test_stat_allocated_signal", "Stat allocated signal not received")
+	
+	psm.queue_free()
+
+func test_is_initialized_default() -> void:
+	var psm = _create_player_stats_manager()
+	
+	if not psm.is_initialized:
+		_pass("test_is_initialized_default")
+	else:
+		_fail("test_is_initialized_default", "Should not be initialized by default")
 	
 	psm.queue_free()
