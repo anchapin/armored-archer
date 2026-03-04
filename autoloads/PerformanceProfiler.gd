@@ -29,9 +29,14 @@ var _shadow_quality: int = 2  # 0=off, 1=low, 2=high
 var _texture_compression: bool = true
 
 # --- Monitoring State ---
-var _fps_history: Array[float] = []
+# Ring buffer for FPS tracking - O(1) operations instead of O(n)
+var _fps_history: PackedFloat32Array = PackedFloat32Array()
 var _fps_sample_count: int = 60  # Average over 60 frames
+var _fps_buffer_index: int = 0
+var _fps_buffer_filled: bool = false
 var _current_fps: float = 60.0
+var _average_fps_cache: float = 60.0  # Cache for average FPS
+var _average_fps_valid: bool = false
 var _frame_time_history: Array[float] = []
 var _average_frame_time: float = 16.67  # ms
 
@@ -83,20 +88,23 @@ func _process(_delta: float) -> void:
 
 func _update_fps_tracking(current_fps: float) -> void:
 	_current_fps = current_fps
-	_fps_history.append(current_fps)
 	
-	if _fps_history.size() > _fps_sample_count:
-		_fps_history.pop_front()
+	# Ring buffer implementation - O(1) insert instead of O(n)
+	if _fps_history.size() < _fps_sample_count:
+		_fps_history.append(current_fps)
+	else:
+		_fps_history[_fps_buffer_index] = current_fps
+		_fps_buffer_index = (_fps_buffer_index + 1) % _fps_sample_count
+		_fps_buffer_filled = true
 	
-	# Calculate average FPS
-	var sum: float = 0.0
-	for fps in _fps_history:
-		sum += fps
-	var avg_fps = sum / _fps_history.size()
+	# Invalidate cache when FPS changes significantly
+	_average_fps_valid = false
 	
-	# Emit warning if FPS drops significantly
-	if avg_fps < _target_fps * 0.8 and _fps_history.size() >= _fps_sample_count:
-		fps_dropped.emit(avg_fps, _target_fps)
+	# Emit warning if FPS drops significantly (only when buffer is full)
+	if _fps_buffer_filled:
+		var avg_fps = get_average_fps()
+		if avg_fps < _target_fps * 0.8:
+			fps_dropped.emit(avg_fps, _target_fps)
 
 func _check_performance_warnings() -> void:
 	# Memory warning check
@@ -188,14 +196,23 @@ func get_fps() -> float:
 	return _current_fps
 
 ## Get average FPS over sample period
+## Uses cached value for efficiency, only recalculates when needed
 func get_average_fps() -> float:
+	if _average_fps_valid:
+		return _average_fps_cache
+	
 	if _fps_history.is_empty():
 		return _current_fps
 	
+	# Sum all values in the ring buffer
 	var sum: float = 0.0
-	for fps in _fps_history:
-		sum += fps
-	return sum / _fps_history.size()
+	for i in range(_fps_history.size()):
+		sum += _fps_history[i]
+	
+	var count = _fps_history.size()
+	_average_fps_cache = sum / count
+	_average_fps_valid = true
+	return _average_fps_cache
 
 ## Get current frame time in milliseconds
 func get_frame_time_ms() -> float:
