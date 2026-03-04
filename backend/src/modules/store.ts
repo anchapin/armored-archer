@@ -4,6 +4,7 @@
  */
 
 import { Runtime } from '../types/nakama';
+import { createHash } from 'crypto';
 import { safeParse } from '../utils/safeParse';
 import { getCacheManager } from '../utils/cache';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
@@ -72,18 +73,11 @@ function markReceiptAsUsed(userId: string, receiptHash: string): void {
 }
 
 /**
- * Simple hash function for receipts.
- * In production, use a proper cryptographic hash.
+ * Cryptographic hash function for receipts using SHA-256.
+ * This prevents collision attacks and replay attack manipulation.
  */
 function hashReceipt(receipt: string): string {
-  // Simple hash - in production use SHA-256
-  let hash = 0;
-  for (let i = 0; i < receipt.length; i++) {
-    const char = receipt.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return hash.toString(16);
+  return createHash('sha256').update(receipt).digest('hex');
 }
 
 /**
@@ -292,7 +286,7 @@ export function rpcValidatePurchase(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'validate_purchase',
       'player_currency',
       { product_id: 'unknown', platform: 'unknown' },
@@ -324,13 +318,19 @@ export function rpcValidatePurchase(
     });
   }
 
+  // SECURITY NOTE: For production deployment, implement RevenueCat server-side receipt validation
+  // using the RevenueCat Server-Side API. This provides additional fraud protection by verifying
+  // receipts against Apple's App Store and Google Play servers.
+  // See: https://docs.revenuecat.com/docs/server-side-api
+  // Required: REVENUECAT_SECRET_KEY environment variable
+
   const catalog = getStoreCatalog(logger);
 
   if (!catalog[request.product_id]) {
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'validate_purchase',
       'player_currency',
       { product_id: request.product_id, platform: request.platform },
@@ -370,7 +370,7 @@ export function rpcValidatePurchase(
   logAudit(
     nk,
     ctx.userId,
-    `ctx.ipAddress ?? null`,
+    ctx.ipAddress ?? null,
     'validate_purchase',
     'player_currency',
     {
@@ -461,7 +461,7 @@ export function rpcSpendGems(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'spend_gems',
       'player_currency',
       { amount: 'unknown' },
@@ -479,7 +479,7 @@ export function rpcSpendGems(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'spend_gems',
       'player_currency',
       { amount: request.amount, current_balance: playerCurrency.gems },
@@ -514,7 +514,7 @@ export function rpcSpendGems(
   logAudit(
     nk,
     ctx.userId,
-    `ctx.ipAddress ?? null`,
+    ctx.ipAddress ?? null,
     'spend_gems',
     'player_currency',
     { amount: request.amount, new_balance: playerCurrency.gems },
