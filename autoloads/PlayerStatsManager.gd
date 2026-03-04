@@ -9,6 +9,9 @@
 ##
 extends Node
 
+# --- References ---
+@onready var analytics: Node = $"/root/AnalyticsManager" if has_node("/root/AnalyticsManager") else null
+
 # --- RPC IDs ---
 const RPC_GAIN_XP = "armored_archer/gain_xp"
 const RPC_ALLOCATE_STATS = "armored_archer/allocate_stats"
@@ -93,6 +96,7 @@ func gain_xp(amount: int, source: String) -> void:
 	if result.get("success", false):
 		var xp_gained: int = result.get("xp_gained", 0)
 		var levels_gained: int = result.get("levels_gained", 0)
+		var previous_level: int = player_stats.get("level", 1)
 		
 		emit_signal("xp_gained", xp_gained, player_stats.get("xp", 0))
 		
@@ -100,9 +104,27 @@ func gain_xp(amount: int, source: String) -> void:
 			var new_level: int = result.player_stats.level
 			var ability_points_gained: int = levels_gained
 			emit_signal("level_up", new_level, ability_points_gained)
+			
+			# Track level up in analytics
+			if analytics and analytics.has_method("log_custom_event"):
+				analytics.log_custom_event("player_level_up", {
+					"previous_level": previous_level,
+					"new_level": new_level,
+					"levels_gained": levels_gained,
+					"source": source
+				})
 		
 		player_stats = result.player_stats
 		emit_signal("stats_updated", player_stats)
+		
+		# Track XP gain in analytics
+		if analytics and analytics.has_method("log_custom_event"):
+			analytics.log_custom_event("xp_gained", {
+				"amount": xp_gained,
+				"total_xp": player_stats.get("xp", 0),
+				"level": player_stats.get("level", 1),
+				"source": source
+			})
 
 func allocate_stat(stat_name: String, points: int) -> void:
 	"""Allocates ability points to a specific stat.
@@ -136,6 +158,14 @@ func allocate_stat(stat_name: String, points: int) -> void:
 		emit_signal("stat_allocated", stat_name, points)
 		player_stats = result.player_stats
 		emit_signal("stats_updated", player_stats)
+		
+		# Track stat allocation in analytics
+		if analytics and analytics.has_method("log_custom_event"):
+			analytics.log_custom_event("stat_allocated", {
+				"stat_name": stat_name,
+				"points": points,
+				"level": player_stats.get("level", 1)
+			})
 
 # --- Getters ---
 func get_level() -> int:
