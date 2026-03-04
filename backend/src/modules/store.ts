@@ -10,6 +10,76 @@ import { validatePayload, ZodSchemas, createValidationErrorResponse } from './va
 import { logAudit } from './audit';
 
 /**
+ * In-memory store for validated receipts (use Redis in production for distributed systems).
+ * Format: Set of receipt hashes keyed by user_id
+ */
+const validatedReceipts: Map<string, Set<string>> = new Map();
+
+/**
+ * Cleanup old entries from the receipts store.
+ */
+function cleanupOldReceipts(): void {
+  for (const receipts of validatedReceipts.values()) {
+    // In a real implementation, we'd track when each receipt was added
+    // For now, we just limit the total count per user
+    if (receipts.size > 1000) {
+      // Keep only the most recent 500
+      const arr = Array.from(receipts);
+      receipts.clear();
+      arr.slice(-500).forEach((r) => receipts.add(r));
+    }
+  }
+}
+
+// Run cleanup every hour
+setInterval(cleanupOldReceipts, 60 * 60 * 1000);
+
+/**
+ * Check if a receipt has already been used.
+ *
+ * @param userId - The user who submitted the receipt
+ * @param receiptHash - Hash of the transaction receipt
+ * @returns true if the receipt was already validated
+ */
+function isReceiptAlreadyUsed(userId: string, receiptHash: string): boolean {
+  const userReceipts = validatedReceipts.get(userId);
+  if (!userReceipts) {
+    return false;
+  }
+  return userReceipts.has(receiptHash);
+}
+
+/**
+ * Mark a receipt as used.
+ *
+ * @param userId - The user who submitted the receipt
+ * @param receiptHash - Hash of the transaction receipt
+ */
+function markReceiptAsUsed(userId: string, receiptHash: string): void {
+  let userReceipts = validatedReceipts.get(userId);
+  if (!userReceipts) {
+    userReceipts = new Set();
+    validatedReceipts.set(userId, userReceipts);
+  }
+  userReceipts.add(receiptHash);
+}
+
+/**
+ * Simple hash function for receipts.
+ * In production, use a proper cryptographic hash.
+ */
+function hashReceipt(receipt: string): string {
+  // Simple hash - in production use SHA-256
+  let hash = 0;
+  for (let i = 0; i < receipt.length; i++) {
+    const char = receipt.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash.toString(16);
+}
+
+/**
  * Player currency data structure.
  *
  * @property user_id - Unique identifier for the player
@@ -227,6 +297,26 @@ export function rpcValidatePurchase(
 
   const request = validation.data;
 
+  // Check for duplicate receipt to prevent replay attacks
+  const receiptHash = hashReceipt(request.transaction_receipt);
+  if (isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
+    logger.warn('Duplicate receipt detected for user: %s', ctx.userId);
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'validate_purchase',
+      'player_currency',
+      { product_id: request.product_id, platform: request.platform },
+      'failure',
+      'Duplicate receipt detected'
+    );
+    return JSON.stringify({
+      error: 'Duplicate receipt - this purchase has already been processed',
+      error_code: 'DUPLICATE_RECEIPT',
+    });
+  }
+
   const catalog = getStoreCatalog(logger);
 
   if (!catalog[request.product_id]) {
@@ -246,6 +336,10 @@ export function rpcValidatePurchase(
   }
 
   const gemBundle = catalog[request.product_id];
+
+  // Mark receipt as used BEFORE awarding gems to prevent replay attacks
+  markReceiptAsUsed(ctx.userId, receiptHash);
+
   const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
   playerCurrency.gems += gemBundle.gem_amount;
 

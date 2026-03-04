@@ -21,6 +21,14 @@ const BUDGET_MIN_FPS: int = 30
 const BUDGET_MEMORY_THRESHOLD: int = 256  # Devices with < 256MB available RAM
 const MID_RANGE_MEMORY_THRESHOLD: int = 512  # Devices with < 512MB available RAM
 
+# --- Memory Leak Detection ---
+## Memory leak detection threshold in MB
+const MEMORY_LEAK_THRESHOLD_MB: float = 50.0
+## Memory growth rate threshold in MB per minute
+const MEMORY_GROWTH_RATE_THRESHOLD: float = 10.0
+## Number of samples needed for leak detection
+const MEMORY_LEAK_SAMPLE_COUNT: int = 60
+
 # --- Performance Settings ---
 var _target_fps: int = FLAGSHIP_TARGET_FPS
 var _vsync_enabled: bool = true
@@ -39,6 +47,13 @@ var _average_frame_time: float = 16.67  # ms
 var _startup_memory_mb: float = 0.0
 var _peak_memory_mb: float = 0.0
 
+# --- Memory Leak Detection State ---
+var _memory_samples: Array[float] = []
+var _memory_sample_times: Array[int] = []  # Unix timestamps in seconds
+var _leak_detection_enabled: bool = true
+var _leak_suspect_count: int = 0  # Consecutive samples above threshold
+var _session_start_time: int = 0
+
 # --- Device Tier ---
 enum DeviceTier { FLAGSHP, MID_RANGE, BUDGET }
 var _device_tier: DeviceTier = DeviceTier.FLAGSHP
@@ -50,6 +65,8 @@ signal fps_dropped(current_fps: float, target_fps: int)
 signal memory_warning(current_mb: float, threshold_mb: int)
 ## Emitted when device tier is determined
 signal device_tier_detected(tier: DeviceTier)
+## Emitted when memory leak is detected
+signal memory_leak_detected(current_mb: float, growth_mb: float, rate_mb_per_min: float)
 
 func _ready() -> void:
 	_initialize_profiler()
@@ -58,6 +75,9 @@ func _initialize_profiler() -> void:
 	# Get initial memory
 	_startup_memory_mb = _get_memory_usage_mb()
 	_peak_memory_mb = _startup_memory_mb
+	
+	# Initialize session start time for leak detection
+	_session_start_time = Time.get_unix_time_from_system()
 	
 	# Detect device tier
 	_detect_device_tier()
@@ -77,6 +97,10 @@ func _process(_delta: float) -> void:
 	var current_memory = _get_memory_usage_mb()
 	if current_memory > _peak_memory_mb:
 		_peak_memory_mb = current_memory
+	
+	# Sample memory for leak detection (every 60 frames)
+	if _leak_detection_enabled and Engine.get_frames_drawn() % 60 == 0:
+		_sample_memory_for_leak_detection(current_memory)
 	
 	# Check for performance issues
 	_check_performance_warnings()
@@ -105,6 +129,48 @@ func _check_performance_warnings() -> void:
 	
 	if current_memory > memory_threshold:
 		memory_warning.emit(current_memory, memory_threshold)
+	
+	# Memory leak detection check
+	if _leak_detection_enabled and _memory_samples.size() >= MEMORY_LEAK_SAMPLE_COUNT:
+		_check_memory_leak()
+
+func _sample_memory_for_leak_detection(current_memory: float) -> void:
+	_memory_samples.append(current_memory)
+	_memory_sample_times.append(Time.get_unix_time_from_system())
+	
+	# Keep only recent samples
+	if _memory_samples.size() > MEMORY_LEAK_SAMPLE_COUNT + 10:
+		_memory_samples.pop_front()
+		_memory_sample_times.pop_front()
+
+func _check_memory_leak() -> void:
+	if _memory_samples.size() < MEMORY_LEAK_SAMPLE_COUNT:
+		return
+	
+	var current_memory = _memory_samples.back()
+	var memory_growth = current_memory - _startup_memory_mb
+	
+	# Calculate growth rate if we have enough time data
+	var session_duration_min: float = 0.0
+	if _memory_sample_times.size() >= 2:
+		var first_time = _memory_sample_times.front()
+		var last_time = _memory_sample_times.back()
+		var duration_seconds = last_time - first_time
+		session_duration_min = duration_seconds / 60.0
+	
+	var growth_rate: float = 0.0
+	if session_duration_min > 0:
+		growth_rate = memory_growth / session_duration_min
+	
+	# Check if memory growth exceeds threshold
+	if memory_growth > MEMORY_LEAK_THRESHOLD_MB:
+		_leak_suspect_count += 1
+		
+		# If sustained growth, emit leak signal
+		if _leak_suspect_count >= 5:
+			memory_leak_detected.emit(current_memory, memory_growth, growth_rate)
+	else:
+		_leak_suspect_count = 0
 
 func _get_memory_usage_mb() -> float:
 	if OS.has_feature("web"):
@@ -256,6 +322,7 @@ func get_performance_targets() -> Dictionary:
 ## Get profiling snapshot for testing
 ## Call this at specific points (startup, after 10-min PvE, after 5 matches)
 func get_profiling_snapshot() -> Dictionary:
+	var leak_status = get_memory_leak_status()
 	return {
 		"timestamp": Time.get_unix_time_from_system(),
 		"current_fps": _current_fps,
@@ -266,7 +333,10 @@ func get_profiling_snapshot() -> Dictionary:
 		"memory_startup_mb": _startup_memory_mb,
 		"memory_peak_mb": _peak_memory_mb,
 		"device_tier": _get_tier_name(),
-		"target_fps": _target_fps
+		"target_fps": _target_fps,
+		"memory_leak_detected": leak_status.get("leak_detected", false),
+		"memory_growth_mb": leak_status.get("memory_growth_mb", 0.0),
+		"memory_growth_rate_mb_per_min": leak_status.get("growth_rate_mb_per_min", 0.0)
 	}
 
 ## Log profiling snapshot to console (for debugging)
@@ -289,3 +359,61 @@ func set_vsync_enabled(enabled: bool) -> void:
 ## Reset performance settings to defaults based on device tier
 func reset_performance_settings() -> void:
 	_apply_performance_settings()
+
+## Get memory leak detection status
+## Returns: Dictionary with leak_detected, current_memory_mb, memory_growth_mb, growth_rate_mb_per_min
+func get_memory_leak_status() -> Dictionary:
+	var current_memory = _get_memory_usage_mb()
+	var memory_growth = current_memory - _startup_memory_mb
+	
+	# Calculate growth rate
+	var growth_rate: float = 0.0
+	var session_duration_min: float = 0.0
+	
+	if _memory_sample_times.size() >= 2 and _session_start_time > 0:
+		var last_time = _memory_sample_times.back()
+		var duration_seconds = last_time - _session_start_time
+		session_duration_min = duration_seconds / 60.0
+	
+	if session_duration_min > 0:
+		growth_rate = memory_growth / session_duration_min
+	
+	# Determine if leak detected
+	var leak_detected = false
+	var reason = ""
+	
+	if OS.has_feature("web"):
+		reason = "Web platform - memory detection not supported"
+	elif _memory_samples.size() < MEMORY_LEAK_SAMPLE_COUNT:
+		reason = "Insufficient samples (%d/%d)" % [_memory_samples.size(), MEMORY_LEAK_SAMPLE_COUNT]
+	elif _leak_suspect_count >= 5:
+		leak_detected = true
+		reason = "Sustained memory growth detected"
+	elif memory_growth > MEMORY_LEAK_THRESHOLD_MB:
+		reason = "Memory growth exceeds threshold (%.1f > %.1f MB)" % [memory_growth, MEMORY_LEAK_THRESHOLD_MB]
+	elif growth_rate > MEMORY_GROWTH_RATE_THRESHOLD:
+		reason = "Growth rate exceeds threshold (%.1f > %.1f MB/min)" % [growth_rate, MEMORY_GROWTH_RATE_THRESHOLD]
+	else:
+		reason = "No leak detected"
+	
+	return {
+		"leak_detected": leak_detected,
+		"current_memory_mb": current_memory,
+		"startup_memory_mb": _startup_memory_mb,
+		"memory_growth_mb": memory_growth,
+		"growth_rate_mb_per_min": growth_rate,
+		"sample_count": _memory_samples.size(),
+		"required_samples": MEMORY_LEAK_SAMPLE_COUNT,
+		"reason": reason
+	}
+
+## Reset memory leak detection state
+## Call this when transitioning between scenes to start fresh tracking
+func reset_memory_leak_detection() -> void:
+	_memory_samples.clear()
+	_memory_sample_times.clear()
+	_leak_suspect_count = 0
+	_session_start_time = Time.get_unix_time_from_system()
+	# Reset startup memory to current to avoid false positives after scene transition
+	_startup_memory_mb = _get_memory_usage_mb()
+	print("[PerformanceProfiler] Memory leak detection reset")

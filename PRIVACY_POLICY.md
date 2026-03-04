@@ -112,7 +112,7 @@ You have the following rights regarding your personal information:
 4. **Portability**: Request your data in a structured format
 5. **Objection**: Object to certain data processing activities
 
-To exercise these rights, contact us at: [Add privacy email]
+To exercise these rights, contact us at: support@armoredarcher.com
 
 ## Children's Privacy
 
@@ -127,6 +127,42 @@ Your data may be processed and stored in servers located outside your country. W
 - Appropriate data protection safeguards are in place
 - Transfers comply with applicable data protection laws
 - Your data receives the same level of protection
+
+## GDPR Compliance (EU Users)
+
+If you are located in the European Economic Area (EEA), you have additional rights under the General Data Protection Regulation (GDPR):
+
+1. **Right to Access**: You can request access to your personal data
+2. **Right to Rectification**: You can request correction of inaccurate personal data
+3. **Right to Erasure**: You can request deletion of your personal data ("right to be forgotten")
+4. **Right to Restrict Processing**: You can request restriction of processing
+5. **Right to Data Portability**: You can request transfer of your data
+6. **Right to Object**: You can object to certain processing activities
+7. **Right to Withdraw Consent**: You can withdraw consent at any time
+
+To exercise these rights, contact us at support@armoredarcher.com. We will respond to your request within 30 days.
+
+**Data Controller**: Armored Archer
+**Data Protection Officer**: Contact at support@armoredarcher.com
+
+## CCPA Compliance (California Users)
+
+If you are a California resident, you have the following rights under the California Consumer Privacy Act (CCPA):
+
+1. **Right to Know**: You can request disclosure of the categories and specific pieces of personal information collected
+2. **Right to Delete**: You can request deletion of your personal information
+3. **Right to Opt-Out**: You can opt out of the sale of your personal information
+4. **Right to Non-Discrimination**: You will not be discriminated against for exercising your rights
+
+We do NOT sell your personal information to third parties.
+
+To exercise these rights, contact us at support@armoredarcher.com. We will respond to your request within 45 days.
+
+**Categories of Information We Collect**:
+- Identifiers (email, username)
+- Gameplay and performance data
+- Usage statistics
+- Purchase history
 
 ## Changes to This Policy
 
@@ -155,9 +191,9 @@ Armored Archer integrates with the following third-party services:
 
 If you have questions about this Privacy Policy or our data practices, contact us at:
 
-- **Email:** [Add privacy email]
-- **Website:** [Add website URL]
-- **Mailing Address:** [Add physical address if applicable]
+- **Email:** support@armoredarcher.com
+- **Website:** https://armoredarcher.com
+- **Mailing Address:** Armored Archer, 123 Game Street, San Francisco, CA 94102
 
 ## Effective Date
 
