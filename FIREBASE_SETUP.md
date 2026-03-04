@@ -296,6 +296,24 @@ The following events are automatically tracked by AnalyticsManager:
 - `cosmetic_purchased` - Cosmetic item purchase
 - `gear_obtained` - When gear is obtained
 
+#### Revenue & Monetization Events
+
+- `revenue_tracked` - When revenue is recorded from a purchase
+- `arpu_calculated` - ARPU calculation event
+- `conversion_tracked` - Conversion tracking event
+- `ltv_updated` - Lifetime value update
+- `store_visit` - When player opens the store
+- `offer_viewed` - When player views a special offer
+- `offer_accepted` - When player accepts an offer
+- `subscription_started` - When subscription begins
+- `subscription_renewed` - When subscription renews
+- `subscription_cancelled` - When subscription is cancelled
+
+#### Crashlytics Events
+
+- `crash_recorded` - When a crash is recorded
+- `error_recorded` - When an error is recorded
+
 ## Step 9: Export Configuration
 
 ### Android Export Settings
@@ -365,3 +383,101 @@ In Godot's Export dialog:
 - Desktop platforms will log events to console but won't send to Firebase
 - Consider using native Firebase plugins for more advanced features
 - Review Firebase pricing for large-scale deployments
+
+## Monetization & Revenue Analytics
+
+The AnalyticsManager provides comprehensive revenue and monetization tracking:
+
+### Revenue Tracking
+
+```gdscript
+# Get revenue summary
+var revenue_summary = AnalyticsManager.get_revenue_summary()
+print("Total Revenue: $", revenue_summary["total_revenue_dollars"])
+print("Total Purchases: ", revenue_summary["total_purchases"])
+print("ARPU: $", revenue_summary["arpu"])
+print("LTV: $", revenue_summary["ltv"])
+```
+
+### Conversion Tracking
+
+```gdscript
+# Get conversion metrics
+var conversion = AnalyticsManager.get_conversion_summary()
+print("Conversion Rate: ", conversion["conversion_rate"], "%")
+print("Store Conversion Rate: ", conversion["store_conversion_rate"], "%")
+print("Paying Users: ", conversion["paying_users"])
+print("Free Users: ", conversion["free_users"])
+```
+
+### User Registration
+
+```gdscript
+# Register new user (call when user creates account)
+AnalyticsManager.register_user(false)  # false = free user
+
+# When user makes first purchase
+AnalyticsManager.register_user(true)  # true = paying user
+
+# Increment session count each session
+AnalyticsManager.increment_session_count()
+```
+
+### Offer Tracking
+
+```gdscript
+# Track when player views an offer
+AnalyticsManager.log_offer_viewed("first_purchase_bonus", "first_purchase", 50)
+
+# Track when player accepts an offer
+AnalyticsManager.log_offer_accepted("first_purchase_bonus", "first_purchase", 999, 499)
+
+# Track promo code usage
+AnalyticsManager.log_promo_code_used("WELCOME20", 20, 200)
+```
+
+### Subscription Tracking
+
+```gdscript
+# Track subscription started
+AnalyticsManager.log_subscription_started("premium_monthly", 999)
+
+# Track subscription renewal
+AnalyticsManager.log_subscription_renewed("premium_monthly", 999)
+
+# Track subscription cancellation
+AnalyticsManager.log_subscription_cancelled("premium_monthly", "too_expensive")
+```
+
+### Enhanced Crashlytics
+
+```gdscript
+# Log crash with context for better debugging
+AnalyticsManager.log_crash_with_context(
+    "null_pointer_exception",
+    "res://scenes/player.gd:45",
+    {"player_state": "combat", "current_weapon": "bow_001"}
+)
+
+# Log error with recent breadcrumbs
+AnalyticsManager.log_error_with_breadcrumbs("Failed to load level", "error")
+```
+
+### User Properties for Segmentation
+
+```gdscript
+# Set user properties for analytics segmentation
+AnalyticsManager.set_user_property("player_tier", "gold")
+AnalyticsManager.set_user_property("games_played", "50")
+AnalyticsManager.set_user_property("favorite_mode", "pvp")
+```
+
+### Key Metrics Explained
+
+| Metric | Description | Calculation |
+|--------|-------------|-------------|
+| ARPU | Average Revenue Per User | Total Revenue / Total Users |
+| ARPPU | Average Revenue Per Paying User | Total Revenue / Paying Users |
+| LTV | Lifetime Value | Total Revenue / Paying Users |
+| Conversion Rate | % of users who made a purchase | (Paying Users / Total Users) × 100 |
+| Store Conversion | % of store visits that result in purchase | (Purchases / Store Visits) × 100 |

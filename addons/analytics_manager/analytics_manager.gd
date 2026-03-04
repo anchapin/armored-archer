@@ -52,6 +52,28 @@ var performance_check_interval: int = 30000  # 30 seconds
 var network_quality: String = "unknown"  # "excellent", "good", "fair", "poor", "unknown"
 var last_network_check: int = 0
 
+# Revenue & Monetization Tracking
+var total_revenue_cents: int = 0
+var total_purchases: int = 0
+var total_gems_purchased: int = 0
+var purchase_history: Array = []  # Track purchase timestamps for revenue analytics
+var conversion_tracking: Dictionary = {
+	"total_sessions": 0,
+	"total_users": 0,
+	"paying_users": 0,
+	"free_users": 0,
+	"store_visits": 0,
+	"purchase_attempts": 0,
+	"successful_purchases": 0,
+	"failed_purchases": 0
+}
+var first_purchase_time: int = 0
+var last_purchase_time: int = 0
+
+# Lifetime Value (LTV) Tracking
+var user_lifetime_value: float = 0.0
+var session_values: Array = []  # Track revenue per session for LTV calculations
+
 # Event queue for offline/batched events
 var event_queue: Array = []
 var max_queue_size: int = 100
@@ -101,6 +123,22 @@ const EVENT_RETURNING_PLAYER := "returning_player"
 const EVENT_NETWORK_ERROR := "network_error"
 const EVENT_RPC_ERROR := "rpc_error"
 const EVENT_RPC_LATENCY := "rpc_latency"
+
+# Monetization & Revenue Events
+const EVENT_REVENUE_TRACKED := "revenue_tracked"
+const EVENT_ARPU_CALCULATED := "arpu_calculated"
+const EVENT_CONVERSION := "conversion_tracked"
+const EVENT_LTV_UPDATED := "ltv_updated"
+const EVENT_STORE_VISIT := "store_visit"
+const EVENT_SUBSCRIPTION_RENEWED := "subscription_renewed"
+const EVENT_SUBSCRIPTION_CANCELLED := "subscription_cancelled"
+const EVENT_PROMO_CODE_USED := "promo_code_used"
+const EVENT_OFFER_VIEWED := "offer_viewed"
+const EVENT_OFFER_ACCEPTED := "offer_accepted"
+
+# Crashlytics Events
+const EVENT_CRASH_RECORDED := "crash_recorded"
+const EVENT_ERROR_RECORDED := "error_recorded"
 
 func _ready() -> void:
 	_initialize_analytics()
@@ -557,6 +595,8 @@ func log_store_opened(store_location: String = "main_menu") -> void:
 		"platform": platform
 	})
 	add_breadcrumb("store_opened", {"location": store_location})
+	# Track store visit for conversion
+	conversion_tracking["store_visits"] += 1
 
 func log_purchase_initiated(item_id: String, item_name: String, item_type: String, price_cents: int, currency: String = "USD") -> void:
 	_log_event(EVENT_PURCHASE_INITIATED, {
@@ -567,6 +607,8 @@ func log_purchase_initiated(item_id: String, item_name: String, item_type: Strin
 		"currency": currency,
 		"platform": platform
 	})
+	# Track purchase attempt for conversion rate
+	conversion_tracking["purchase_attempts"] += 1
 
 func log_purchase_completed(item_id: String, item_name: String, item_type: String, price_cents: int, currency: String = "USD", transaction_id: String = "") -> void:
 	_log_event(EVENT_PURCHASE_COMPLETED, {
@@ -582,6 +624,16 @@ func log_purchase_completed(item_id: String, item_name: String, item_type: Strin
 		"item_id": item_id,
 		"price": price_cents
 	})
+	
+	# Update revenue tracking
+	_track_revenue(price_cents, item_type)
+	
+	# Update conversion tracking
+	conversion_tracking["successful_purchases"] += 1
+	conversion_tracking["purchase_attempts"] = max(0, conversion_tracking["purchase_attempts"] - 1)
+	
+	# Track purchase for ARPU/LTV calculations
+	_track_purchase_for_metrics(price_cents)
 
 func log_purchase_failed(item_id: String, item_name: String, failure_reason: String) -> void:
 	_log_event(EVENT_PURCHASE_FAILED, {
@@ -590,6 +642,8 @@ func log_purchase_failed(item_id: String, item_name: String, failure_reason: Str
 		"failure_reason": failure_reason,
 		"platform": platform
 	})
+	# Track failed purchase for conversion analysis
+	conversion_tracking["failed_purchases"] += 1
 
 func log_gem_purchased(gems_amount: int, price_cents: int, currency: String = "USD", purchase_type: String = "iap", offer_id: String = "") -> void:
 	_log_event(EVENT_GEM_PURCHASED, {
@@ -600,6 +654,10 @@ func log_gem_purchased(gems_amount: int, price_cents: int, currency: String = "U
 		"offer_id": offer_id,
 		"platform": platform
 	})
+	
+	# Update revenue tracking
+	_track_revenue(price_cents, "gems")
+	total_gems_purchased += gems_amount
 
 func log_cosmetic_purchased(cosmetic_id: String, cosmetic_name: String, cosmetic_type: String, rarity: String, price_cents: int, currency: String = "USD") -> void:
 	_log_event(EVENT_COSMETIC_PURCHASED, {
@@ -1030,5 +1088,337 @@ func export_analytics_data() -> Dictionary:
 		"performance": {
 			"memory_usage_mb": memory_usage_mb,
 			"network_quality": network_quality
-		}
+		},
+		"revenue": get_revenue_summary(),
+		"conversion": get_conversion_summary(),
+		"ltv": get_ltv_summary()
 	}
+
+# ============================================================================
+# Revenue & Monetization Analytics
+# ============================================================================
+
+func _track_revenue(price_cents: int, item_type: String) -> void:
+	"""Internal method to track revenue from purchases."""
+	total_revenue_cents += price_cents
+	total_purchases += 1
+	
+	# Track purchase timestamp
+	var timestamp := Time.get_unix_time_from_system()
+	purchase_history.append({
+		"timestamp": timestamp,
+		"amount_cents": price_cents,
+		"item_type": item_type
+	})
+	
+	# Update first/last purchase times
+	if first_purchase_time == 0:
+		first_purchase_time = timestamp
+	last_purchase_time = timestamp
+	
+	# Mark user as paying
+	if conversion_tracking["paying_users"] == 0:
+		conversion_tracking["paying_users"] = 1
+	
+	# Log revenue event
+	_log_event(EVENT_REVENUE_TRACKED, {
+		"amount_cents": price_cents,
+		"total_revenue_cents": total_revenue_cents,
+		"item_type": item_type,
+		"platform": platform
+	})
+
+func _track_purchase_for_metrics(price_cents: float) -> void:
+	"""Track purchase for ARPU and LTV calculations."""
+	# Update session value for this purchase
+	if current_session_id != "":
+		var session_value := session_values.back() if session_values.size() > 0 else 0.0
+		session_values[-1] = session_value + (price_cents / 100.0)
+	
+	# Recalculate LTV
+	_calculate_ltv()
+	
+	# Log ARPU event (typically calculated per session)
+	_log_event(EVENT_ARPU_CALCULATED, {
+		"arpu": get_arpu(),
+		"total_revenue": total_revenue_cents / 100.0,
+		"user_count": max(1, conversion_tracking["total_users"]),
+		"paying_user_count": max(1, conversion_tracking["paying_users"])
+	})
+
+func _calculate_ltv() -> void:
+	"""Calculate Lifetime Value based on purchase history."""
+	if conversion_tracking["total_users"] <= 0:
+		return
+	
+	# LTV = Total Revenue / Total Users (simplified)
+	# In production, you'd calculate based on actual paying users
+	var paying_users := max(1, conversion_tracking["paying_users"])
+	user_lifetime_value = float(total_revenue_cents) / 100.0 / float(paying_users)
+	
+	_log_event(EVENT_LTV_UPDATED, {
+		"ltv": user_lifetime_value,
+		"total_revenue": total_revenue_cents / 100.0,
+		"paying_users": paying_users
+	})
+
+func get_arpu() -> float:
+	"""Calculate Average Revenue Per User.
+	
+	Returns:
+		float: ARPU in dollars
+	"""
+	var user_count := max(1, conversion_tracking["total_users"])
+	return float(total_revenue_cents) / 100.0 / float(user_count)
+
+func get_arpu_paying() -> float:
+	"""Calculate Average Revenue Per Paying User.
+	
+	Returns:
+		float: ARPPU in dollars
+	"""
+	var paying_count := max(1, conversion_tracking["paying_users"])
+	return float(total_revenue_cents) / 100.0 / float(paying_count)
+
+func get_conversion_rate() -> float:
+	"""Calculate purchase conversion rate.
+	
+	Returns:
+		float: Conversion rate as percentage (0-100)
+	"""
+	var users := max(1, conversion_tracking["total_users"])
+	var paying := conversion_tracking["paying_users"]
+	return (float(paying) / float(users)) * 100.0
+
+func get_store_conversion_rate() -> float:
+	"""Calculate store visit to purchase conversion rate.
+	
+	Returns:
+		float: Store conversion rate as percentage (0-100)
+	"""
+	var store_visits := max(1, conversion_tracking["store_visits"])
+	var purchases := conversion_tracking["successful_purchases"]
+	return (float(purchases) / float(store_visits)) * 100.0
+
+func get_revenue_summary() -> Dictionary:
+	"""Get revenue summary for analytics export.
+	
+	Returns:
+		Dictionary containing revenue metrics
+	"""
+	return {
+		"total_revenue_cents": total_revenue_cents,
+		"total_revenue_dollars": total_revenue_cents / 100.0,
+		"total_purchases": total_purchases,
+		"total_gems_purchased": total_gems_purchased,
+		"arpu": get_arpu(),
+		"arpu_paying": get_arpu_paying(),
+		"ltv": user_lifetime_value,
+		"first_purchase_time": first_purchase_time,
+		"last_purchase_time": last_purchase_time
+	}
+
+func get_conversion_summary() -> Dictionary:
+	"""Get conversion tracking summary.
+	
+	Returns:
+		Dictionary containing conversion metrics
+	"""
+	return {
+		"total_users": conversion_tracking["total_users"],
+		"paying_users": conversion_tracking["paying_users"],
+		"free_users": conversion_tracking["free_users"],
+		"conversion_rate": get_conversion_rate(),
+		"store_visits": conversion_tracking["store_visits"],
+		"store_conversion_rate": get_store_conversion_rate(),
+		"purchase_attempts": conversion_tracking["purchase_attempts"],
+		"successful_purchases": conversion_tracking["successful_purchases"],
+		"failed_purchases": conversion_tracking["failed_purchases"]
+	}
+
+func get_ltv_summary() -> Dictionary:
+	"""Get LTV tracking summary.
+	
+	Returns:
+		Dictionary containing LTV metrics
+	"""
+	return {
+		"user_lifetime_value": user_lifetime_value,
+		"total_revenue": total_revenue_cents / 100.0,
+		"paying_users": conversion_tracking["paying_users"],
+		"session_values": session_values
+	}
+
+# ============================================================================
+# User & Session Analytics
+# ============================================================================
+
+func register_user(is_paying: bool = false) -> void:
+	"""Register a new user for analytics tracking.
+	
+	Parameters:
+		is_paying: Whether the user has made a purchase
+	"""
+	conversion_tracking["total_users"] += 1
+	if is_paying:
+		conversion_tracking["paying_users"] += 1
+	else:
+		conversion_tracking["free_users"] += 1
+	
+	# Set user property for Firebase
+	set_user_property("is_paying", str(is_paying).to_lower())
+	set_user_property("registration_time", str(Time.get_unix_time_from_system()))
+
+func increment_session_count() -> void:
+	"""Increment session count for the user."""
+	conversion_tracking["total_sessions"] += 1
+	
+	# Start tracking session value
+	session_values.append(0.0)
+
+func log_user_activity(activity_type: String, details: Dictionary = {}) -> void:
+	"""Log general user activity.
+	
+	Parameters:
+		activity_type: Type of activity (e.g., "gameplay", "social", "store")
+		details: Additional details about the activity
+	"""
+	var params := details.duplicate()
+	params["activity_type"] = activity_type
+	params["session_id"] = current_session_id
+	params["timestamp"] = Time.get_unix_time_from_system()
+	
+	_log_event("user_activity", params)
+
+# ============================================================================
+# Offer & Promo Analytics
+# ============================================================================
+
+func log_offer_viewed(offer_id: String, offer_type: String, bonus_percentage: int = 0) -> void:
+	"""Log when a player views a special offer.
+	
+	Parameters:
+		offer_id: Unique offer identifier
+		offer_type: Type of offer (e.g., "first_purchase", "daily_deal", "limited")
+		bonus_percentage: Bonus percentage if applicable
+	"""
+	_log_event(EVENT_OFFER_VIEWED, {
+		"offer_id": offer_id,
+		"offer_type": offer_type,
+		"bonus_percentage": bonus_percentage,
+		"platform": platform
+	})
+
+func log_offer_accepted(offer_id: String, offer_type: String, original_price_cents: int, discounted_price_cents: int) -> void:
+	"""Log when a player accepts a special offer.
+	
+	Parameters:
+		offer_id: Unique offer identifier
+		offer_type: Type of offer
+		original_price_cents: Original price before discount
+		discounted_price_cents: Discounted price
+	"""
+	_log_event(EVENT_OFFER_ACCEPTED, {
+		"offer_id": offer_id,
+		"offer_type": offer_type,
+		"original_price_cents": original_price_cents,
+		"discounted_price_cents": discounted_price_cents,
+		"savings_cents": original_price_cents - discounted_price_cents,
+		"platform": platform
+	})
+
+func log_promo_code_used(promo_code: String, discount_percentage: int, discount_cents: int) -> void:
+	"""Log when a player uses a promotional code.
+	
+	Parameters:
+		promo_code: The promo code entered
+		discount_percentage: Percentage discount applied
+		discount_cents: Amount of discount in cents
+	"""
+	_log_event(EVENT_PROMO_CODE_USED, {
+		"promo_code": promo_code,
+		"discount_percentage": discount_percentage,
+		"discount_cents": discount_cents,
+		"platform": platform
+	})
+
+func log_subscription_renewed(subscription_type: String, renewal_price_cents: int) -> void:
+	"""Log subscription renewal.
+	
+	Parameters:
+		subscription_type: Type of subscription
+		renewal_price_cents: Price of renewal
+	"""
+	_log_event(EVENT_SUBSCRIPTION_RENEWED, {
+		"subscription_type": subscription_type,
+		"renewal_price_cents": renewal_price_cents,
+		"platform": platform
+	})
+	
+	# Track revenue from subscription
+	_track_revenue(renewal_price_cents, "subscription")
+
+func log_subscription_cancelled(subscription_type: String, cancellation_reason: String = "") -> void:
+	"""Log subscription cancellation.
+	
+	Parameters:
+		subscription_type: Type of subscription
+		cancellation_reason: Optional reason for cancellation
+	"""
+	_log_event(EVENT_SUBSCRIPTION_CANCELLED, {
+		"subscription_type": subscription_type,
+		"cancellation_reason": cancellation_reason,
+		"platform": platform
+	})
+
+# ============================================================================
+# Enhanced Crashlytics Integration
+# ============================================================================
+
+func log_crash_with_context(crash_type: String, stack_trace: String, context: Dictionary) -> void:
+	"""Log a crash with additional context for better debugging.
+	
+	Parameters:
+		crash_type: Type of crash (e.g., "null_pointer", "runtime_error")
+		stack_trace: Stack trace of the crash
+		context: Additional context (session info, game state, etc.)
+	"""
+	var params := context.duplicate()
+	params["crash_type"] = crash_type
+	params["session_id"] = current_session_id
+	params["session_count"] = session_count
+	params["total_play_time_seconds"] = total_play_time_seconds
+	params["platform"] = platform
+	params["app_version"] = app_version
+	
+	# Add performance context
+	params["fps"] = Engine.get_frames_per_second()
+	params["memory_mb"] = OS.get_static_memory_usage() / (1024.0 * 1024.0)
+	
+	# Add last breadcrumbs for context
+	if breadcrumbs.size() > 0:
+		params["recent_breadcrumbs"] = breadcrumbs.slice(-5)
+	
+	_log_crashlytics_error(crash_type, stack_trace, params)
+	_log_event(EVENT_CRASH_RECORDED, params)
+	
+	crash_reported.emit(_generate_crash_id(), crash_type)
+	print("AnalyticsManager: Crash recorded - ", crash_type)
+
+func log_error_with_breadcrumbs(error_message: String, severity: String = "error") -> void:
+	"""Log an error with recent breadcrumbs for context.
+	
+	Parameters:
+		error_message: Description of the error
+		severity: Severity level ("error", "warning", "info")
+	"""
+	var metadata := {
+		"severity": severity,
+		"session_id": current_session_id,
+		"session_count": session_count,
+		"total_play_time_seconds": total_play_time_seconds,
+		"recent_breadcrumbs": breadcrumbs.slice(-10) if breadcrumbs.size() > 0 else []
+	}
+	
+	record_custom_error(error_message, "", metadata)
+	_log_event(EVENT_ERROR_RECORDED, metadata)
