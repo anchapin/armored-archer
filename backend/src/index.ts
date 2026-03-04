@@ -2,7 +2,7 @@ import { InitModule, Runtime } from "./types/nakama";
 import "./config";
 import { validateRequiredConfig, config } from "./config";
 import { initializeCaches } from "./utils/cache";
-import { registerRpcHealthCheck } from "./modules/player_rpc";
+import { registerRpcHealthCheck, registerRpcReportPlayer, registerRpcGetPlayerReports } from "./modules/player_rpc";
 import { registerRpcGainXP, registerRpcAllocateStats, registerRpcGetPlayerStats } from "./modules/rpg_system";
 import {
   registerRpcListMatches,
@@ -22,7 +22,7 @@ import {
   registerRpcClaimSeasonRewards,
   registerRpcEndSeason
 } from "./modules/season_system";
-import { registerRpcValidatePurchase, registerRpcGetCurrency, registerRpcSpendGems } from "./modules/store";
+import { registerRpcValidatePurchase, registerRpcGetCurrency, registerRpcSpendGems, registerRpcProcessPendingPurchases, registerRpcCheckRefunds, registerRpcCheckSubscriptions, registerRpcAppLaunchCheck, rpcProcessPendingPurchases, rpcCheckRefunds, rpcCheckSubscriptions, rpcAppLaunchCheck } from "./modules/store";
 import {
   registerRpcGenerateGear,
   registerRpcEquipGear,
@@ -67,8 +67,14 @@ const InitModule: InitModule = function(ctx: Runtime.Context, loggerParam: Runti
     registerRpcWithRateLimit(initializer, "armored_archer/get_leaderboard", "get_leaderboard", rpcGetLeaderboardWrapper);
     registerRpcWithRateLimit(initializer, "armored_archer/validate_purchase", "validate_purchase", rpcValidatePurchaseWrapper);
     registerRpcWithRateLimit(initializer, "armored_archer/spend_gems", "spend_gems", rpcSpendGemsWrapper);
+    registerRpcWithRateLimit(initializer, "armored_archer/process_pending_purchases", "process_pending_purchases", rpcProcessPendingPurchases);
+    registerRpcWithRateLimit(initializer, "armored_archer/check_refunds", "check_refunds", rpcCheckRefunds);
+    registerRpcWithRateLimit(initializer, "armored_archer/check_subscriptions", "check_subscriptions", rpcCheckSubscriptions);
+    registerRpcWithRateLimit(initializer, "armored_archer/app_launch_check", "app_launch_check", rpcAppLaunchCheck);
     registerRpcWithRateLimit(initializer, "armored_archer/generate_gear", "generate_gear", rpcGenerateGearWrapper);
     registerRpcWithRateLimit(initializer, "armored_archer/equip_gear", "equip_gear", rpcEquipGearWrapper);
+    registerRpcWithRateLimit(initializer, "armored_archer/report_player", "report_player", rpcReportPlayerWrapper);
+    registerRpcWithRateLimit(initializer, "armored_archer/get_player_reports", "get_player_reports", rpcGetPlayerReportsWrapper);
   } else {
     registerRpcHealthCheck(initializer);
     registerRpcGainXP(initializer);
@@ -89,11 +95,17 @@ const InitModule: InitModule = function(ctx: Runtime.Context, loggerParam: Runti
     registerRpcValidatePurchase(initializer);
     registerRpcGetCurrency(initializer);
     registerRpcSpendGems(initializer);
+    registerRpcProcessPendingPurchases(initializer);
+    registerRpcCheckRefunds(initializer);
+    registerRpcCheckSubscriptions(initializer);
+    registerRpcAppLaunchCheck(initializer);
     registerRpcGenerateGear(initializer);
     registerRpcEquipGear(initializer);
     registerRpcUnequipGear(initializer);
     registerRpcGetInventory(initializer);
     registerRpcUnlockModifierPool(initializer);
+    registerRpcReportPlayer(initializer);
+    registerRpcGetPlayerReports(initializer);
   }
 
   logSystemEvent('info', 'Armored Archer server module initialized');
@@ -162,6 +174,16 @@ function rpcGenerateGearWrapper(ctx: Runtime.Context, logger: Runtime.Logger, nk
 function rpcEquipGearWrapper(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   const { rpcEquipGear } = require("./modules/gear_system");
   return rpcEquipGear(ctx, logger, nk, payload);
+}
+
+function rpcReportPlayerWrapper(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+  const { rpcReportPlayer } = require("./modules/player_rpc");
+  return rpcReportPlayer(ctx, logger, nk, payload);
+}
+
+function rpcGetPlayerReportsWrapper(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+  const { rpcGetPlayerReports } = require("./modules/player_rpc");
+  return rpcGetPlayerReports(ctx, logger, nk, payload);
 }
 
 export default InitModule;

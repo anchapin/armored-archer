@@ -73,19 +73,19 @@ export type RpcHandler = (
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-) => string;
+) => string | Promise<string>;
 
 export function wrapRpcWithMetrics(rpcName: string, handler: RpcHandler): RpcHandler {
-  return function (
+  return async function (
     ctx: Runtime.Context,
     logger: Runtime.Logger,
     nk: Runtime.Nakama,
     payload: string
-  ): string {
+  ): Promise<string> {
     const endTimer = rpcDurationSeconds.startTimer({ rpc: rpcName });
 
     try {
-      const result = handler(ctx, logger, nk, payload);
+      const result = await handler(ctx, logger, nk, payload);
       rpcCallsTotal.inc({ rpc: rpcName, status: 'success' });
       return result;
     } catch (error) {

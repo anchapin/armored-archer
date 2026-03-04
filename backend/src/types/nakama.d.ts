@@ -185,6 +185,7 @@ declare namespace Runtime {
       cursor: string
     ): StreamUserListResult[];
     streamCount(stream: Stream): number;
+    storageDelete(objects: StorageRead[]): void;
   }
 
   /**
@@ -198,7 +199,7 @@ declare namespace Runtime {
   export interface Initializer {
     registerRpc(
       id: string,
-      fn: (ctx: Context, logger: Logger, nk: Nakama, payload: string) => string
+      fn: (ctx: Context, logger: Logger, nk: Nakama, payload: string) => string | Promise<string>
     ): void;
     registerMatch(
       name: string,
