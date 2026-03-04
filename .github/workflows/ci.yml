@@ -121,11 +121,7 @@ jobs:
       
       - name: Run deployment readiness tests
         working-directory: ./backend
-<<<<<<< HEAD
         run: npm test -- --testPathPatterns=deployment_ready
-=======
-        run: npm test -- --testPathPattern=deployment_ready
->>>>>>> 4203638 (fix: Document & Test Backend Deployment Readiness (#134))
       
       - name: Build backend
         working-directory: ./backend
