@@ -1,7 +1,7 @@
 declare namespace Runtime {
   /**
    * Runtime context interface.
-   * 
+   *
    * @property userId - ID of the user
    * @property username - Display name of the user
    * @property expiry - Session expiry time
@@ -16,7 +16,7 @@ declare namespace Runtime {
 
   /**
    * Runtime logger interface.
-   * 
+   *
    * @method info - Logs informational messages
    * @method error - Logs error messages
    * @method warn - Logs warning messages
@@ -31,7 +31,7 @@ declare namespace Runtime {
 
   /**
    * Storage read request interface.
-   * 
+   *
    * @property collection - Storage collection name
    * @property key - Storage key
    * @property userId - User ID for the storage
@@ -58,7 +58,7 @@ declare namespace Runtime {
 
   /**
    * Storage write request interface.
-   * 
+   *
    * @property collection - Storage collection name
    * @property key - Storage key
    * @property userId - User ID for the storage
@@ -75,7 +75,7 @@ declare namespace Runtime {
 
   /**
    * Wallet update interface.
-   * 
+   *
    * @property userId - ID of the user to update
    * @property updates - Currency updates
    * @property metadata - Optional metadata
@@ -88,7 +88,7 @@ declare namespace Runtime {
 
   /**
    * Nakama server interface.
-   * 
+   *
    * @method storageRead - Reads storage objects
    * @method storageWrite - Writes storage objects
    * @method walletUpdate - Updates user wallet
@@ -96,12 +96,16 @@ declare namespace Runtime {
   interface Nakama {
     storageRead(requests: StorageRead[]): StorageRead[];
     storageWrite(requests: StorageWrite[]): StorageWrite[];
-    walletUpdate(userId: string, updates: { [key: string]: number }, metadata?: Record<string, unknown>): void;
+    walletUpdate(
+      userId: string,
+      updates: { [key: string]: number },
+      metadata?: Record<string, unknown>
+    ): void;
   }
 
   /**
    * RPC registration interface.
-   * 
+   *
    * @property id - RPC identifier
    * @property func - RPC function
    */
@@ -112,22 +116,30 @@ declare namespace Runtime {
 
   /**
    * Runtime initializer interface.
-   * 
+   *
    * @method registerRpc - Registers an RPC function
    */
   interface Initializer {
-    registerRpc(id: string, func: (ctx: Context, logger: Logger, nk: Nakama, payload: string) => string): void;
+    registerRpc(
+      id: string,
+      func: (ctx: Context, logger: Logger, nk: Nakama, payload: string) => string
+    ): void;
   }
 
   /**
    * Module initialization function type.
-   * 
+   *
    * @param ctx - Runtime context
    * @param logger - Runtime logger
    * @param nk - Nakama server interface
    * @param initializer - Runtime initializer
    */
-  type InitModule = (ctx: Runtime, logger: Runtime.Logger, nk: Runtime.Nakama, initializer: Runtime.Initializer) => void;
+  type InitModule = (
+    ctx: Runtime,
+    logger: Runtime.Logger,
+    nk: Runtime.Nakama,
+    initializer: Runtime.Initializer
+  ) => void;
 }
 
 export { Runtime };
