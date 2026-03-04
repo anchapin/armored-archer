@@ -16,24 +16,17 @@ import { logAudit } from './audit';
 const validatedReceipts: Map<string, Set<string>> = new Map();
 
 /**
- * Maximum age of receipts to keep in memory (24 hours in milliseconds).
- * In production with Redis, use TTL-based keys instead.
- */
-const RECEIPT_EXPIRY_MS = 24 * 60 * 60 * 1000;
-
-/**
  * Cleanup old entries from the receipts store.
  */
 function cleanupOldReceipts(): void {
-  const now = Date.now();
-  for (const [userId, receipts] of validatedReceipts.entries()) {
+  for (const receipts of validatedReceipts.values()) {
     // In a real implementation, we'd track when each receipt was added
     // For now, we just limit the total count per user
     if (receipts.size > 1000) {
       // Keep only the most recent 500
       const arr = Array.from(receipts);
       receipts.clear();
-      arr.slice(-500).forEach(r => receipts.add(r));
+      arr.slice(-500).forEach((r) => receipts.add(r));
     }
   }
 }
@@ -43,7 +36,7 @@ setInterval(cleanupOldReceipts, 60 * 60 * 1000);
 
 /**
  * Check if a receipt has already been used.
- * 
+ *
  * @param userId - The user who submitted the receipt
  * @param receiptHash - Hash of the transaction receipt
  * @returns true if the receipt was already validated
@@ -58,7 +51,7 @@ function isReceiptAlreadyUsed(userId: string, receiptHash: string): boolean {
 
 /**
  * Mark a receipt as used.
- * 
+ *
  * @param userId - The user who submitted the receipt
  * @param receiptHash - Hash of the transaction receipt
  */
@@ -80,7 +73,7 @@ function hashReceipt(receipt: string): string {
   let hash = 0;
   for (let i = 0; i < receipt.length; i++) {
     const char = receipt.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
   return hash.toString(16);
@@ -343,10 +336,10 @@ export function rpcValidatePurchase(
   }
 
   const gemBundle = catalog[request.product_id];
-  
+
   // Mark receipt as used BEFORE awarding gems to prevent replay attacks
   markReceiptAsUsed(ctx.userId, receiptHash);
-  
+
   const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
   playerCurrency.gems += gemBundle.gem_amount;
 
