@@ -58,11 +58,16 @@ func spawn_enemy() -> void:
 		return
 	
 	var spawn_position = get_random_spawn_position()
-	var enemy_instance = MELEE_ENEMY_SCENE.instantiate()
+	
+	# Use object pool for enemy instantiation (performance optimization)
+	var enemy_instance = ObjectPool.get_enemy()
 	
 	enemy_instance.died.connect(_on_enemy_died)
-	get_tree().root.add_child(enemy_instance)
 	enemy_instance.global_position = spawn_position
+	
+	# Reset enemy stats for new spawn
+	if enemy_instance.has_method("reset_for_spawn"):
+		enemy_instance.reset_for_spawn()
 	
 	active_enemies.append(enemy_instance)
 	enemies_to_spawn -= 1
@@ -80,7 +85,8 @@ func _on_wave_timer_timeout() -> void:
 	start_next_wave()
 
 func _on_enemy_died(xp_reward: int) -> void:
-	var enemy_to_remove = null
+	# Find and remove the dead enemy from active list
+	var enemy_to_remove: Node = null
 	for enemy in active_enemies:
 		if not is_instance_valid(enemy):
 			enemy_to_remove = enemy
@@ -88,6 +94,10 @@ func _on_enemy_died(xp_reward: int) -> void:
 	
 	if enemy_to_remove:
 		active_enemies.erase(enemy_to_remove)
+	
+	# Return enemy to object pool instead of waiting for cleanup
+	# (The enemy is already queued for cleanup via its died signal)
+	# We handle pool return in the enemy's own cleanup
 	
 	if active_enemies.size() == 0 and not is_spawning:
 		if current_wave >= max_waves:

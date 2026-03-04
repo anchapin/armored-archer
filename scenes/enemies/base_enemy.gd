@@ -25,6 +25,11 @@ func _ready() -> void:
 	
 	AutoAimManager.register_enemy(self)
 
+# Reset enemy state for reuse from object pool
+func reset_for_spawn() -> void:
+	current_health = max_health
+	AutoAimManager.register_enemy(self)
+
 func take_damage(amount: int) -> void:
 	current_health -= amount
 	if current_health <= 0:
@@ -33,7 +38,8 @@ func take_damage(amount: int) -> void:
 func die() -> void:
 	AutoAimManager.unregister_enemy(self)
 	died.emit(xp_reward)
-	queue_free()
+	# Return enemy to object pool for reuse
+	ObjectPool.return_enemy(self)
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body.is_in_group("Player"):

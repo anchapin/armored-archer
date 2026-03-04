@@ -108,7 +108,8 @@ func handle_aiming_and_shooting() -> void:
 const ARROW_SCENE = preload("res://scenes/arrow.tscn")
 
 func fire_arrow(direction: Vector2) -> void:
-	var arrow_instance = ARROW_SCENE.instantiate()
+	# Use object pool for arrow instantiation (performance optimization)
+	var arrow_instance = ObjectPool.get_arrow()
 	
 	var total_stats = TransmogManager.get_total_stats()
 	var total_damage = base_attack + total_stats.attack
@@ -117,7 +118,7 @@ func fire_arrow(direction: Vector2) -> void:
 		"piercing": 2
 	}
 	
-	get_tree().root.add_child(arrow_instance)
+	# Note: arrow is already a child of the scene tree from the pool
 	arrow_instance.setup(bow_pivot.global_position, direction, total_damage, active_modifiers)
 
 func set_virtual_move_direction(direction: Vector2) -> void:

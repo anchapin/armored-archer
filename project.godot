@@ -33,6 +33,7 @@ GearManager="*res://autoloads/GearManager.gd"
 SafeAreaManager="*res://autoloads/SafeAreaManager.gd"
 PerformanceProfiler="*res://autoloads/PerformanceProfiler.gd"
 UITransitionOptimizer="*res://autoloads/UITransitionOptimizer.gd"
+ObjectPool="*res://autoloads/ObjectPool.gd"
 AnalyticsManager="*res://addons/analytics_manager/analytics_manager.gd"
 
 [input]
