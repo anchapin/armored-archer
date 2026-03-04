@@ -7,20 +7,35 @@ import { Runtime } from '../types/nakama';
 import { PvPMatch } from './matchmaker';
 import { PlayerStats } from '../types/game';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import {
+  verifyRequestSignature,
+  validateCombatActionParameters,
+  detectTimingAttack,
+  RequestSignature,
+} from './anti_cheat';
 
 /**
  * Combat action request data.
  *
  * @property match_id - Unique identifier for the match
  * @property action_type - Type of combat action ("shoot")
- * @property angle - Angle of attack in radians
- * @property power - Optional power level for the attack
+ * @property angle - Angle of attack in radians (0 to 2π)
+ * @property power - Optional power level for the attack (0.0-1.0)
+ * @property requestId - Anti-cheat: unique request identifier
+ * @property timestamp - Anti-cheat: client timestamp
+ * @property signature - Anti-cheat: HMAC signature
+ * @property nonce - Anti-cheat: cryptographic nonce
  */
 export interface CombatAction {
   match_id: string;
   action_type: string; // "shoot"
   angle: number;
   power?: number;
+  // Anti-cheat fields
+  requestId?: string;
+  timestamp?: number;
+  signature?: string;
+  nonce?: string;
 }
 
 /**
@@ -210,6 +225,85 @@ export function rpcSubmitCombatAction(
     });
   }
 
+  // === ANTI-CHEAT VALIDATION ===
+
+  // 1. Verify request signature if anti-cheat fields are provided
+  if (action.requestId && action.timestamp && action.signature && action.nonce) {
+    const signatureData: RequestSignature = {
+      requestId: action.requestId,
+      timestamp: action.timestamp,
+      signature: action.signature,
+      nonce: action.nonce,
+    };
+
+    // Create payload for signature verification (without anti-cheat fields)
+    const payloadForSig = JSON.stringify({
+      match_id: action.match_id,
+      action_type: action.action_type,
+      angle: action.angle,
+      power: action.power,
+    });
+
+    const sigResult = verifyRequestSignature(
+      ctx,
+      payloadForSig,
+      signatureData,
+      'submit_combat_action'
+    );
+    if (!sigResult.valid) {
+      logger.warn('Anti-cheat signature verification failed for user: %s', ctx.userId);
+      return JSON.stringify({
+        error: 'ANTI_CHEAT_VIOLATION: Invalid request signature',
+        error_code: 'ANTI_CHEAT_VIOLATION',
+      });
+    }
+  }
+
+  // 2. Validate combat action parameters (angle, power)
+  const requestId =
+    action.requestId || `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  const paramValidation = validateCombatActionParameters(
+    action.angle,
+    action.power,
+    matchState.current_turn_user_id,
+    ctx.userId,
+    'submit_combat_action',
+    requestId
+  );
+
+  if (!paramValidation.valid) {
+    // Check if this is an out_of_turn violation (anti-cheat detected it)
+    const outOfTurnViolation = paramValidation.violations.some(
+      (v) => v.violationType === 'out_of_turn'
+    );
+    if (outOfTurnViolation) {
+      logger.warn('Out of turn action from user: %s', ctx.userId);
+      return JSON.stringify({
+        error: 'Not your turn',
+      });
+    }
+
+    // Invalid parameters (angle/power out of range)
+    logger.warn('Invalid combat parameters from user: %s', ctx.userId);
+    return JSON.stringify({
+      error: 'INVALID_PARAMETERS: Combat parameters out of valid range',
+      error_code: 'INVALID_PARAMETERS',
+    });
+  }
+
+  // 3. Detect timing attacks (rapid requests)
+  const timingAttack = detectTimingAttack(ctx.userId, 'submit_combat_action', requestId);
+  if (timingAttack) {
+    logger.warn('Timing attack detected for user: %s', ctx.userId);
+    return JSON.stringify({
+      error: 'TIMING_ANOMALY: Suspicious request pattern detected',
+      error_code: 'TIMING_ANOMALY',
+    });
+  }
+
+  // === END ANTI-CHEAT VALIDATION ===
+
+  // Check if it's the user's turn (this is the primary out-of-turn check)
   if (matchState.current_turn_user_id !== ctx.userId) {
     return JSON.stringify({
       error: 'Not your turn',

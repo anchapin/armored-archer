@@ -8,6 +8,7 @@ Integration tests verify that all backend game systems work correctly together u
 
 ### Test Suites
 
+- **health_check.test.ts**: Health check endpoint verification, version checking
 - **matchmaker.test.ts**: Match creation, acceptance, listing, and player ranking
 - **combat_system.test.ts**: Combat action processing, turn management, damage calculation, match completion
 - **rpg_system.test.ts**: XP gain, level progression, and stat allocation

@@ -84,7 +84,7 @@ describe('combat_system', () => {
         match_id: "match-123",
         action_type: "shoot",
         angle: 1.5,
-        power: 50
+        power: 0.5  // Use 0.0-1.0 format
       });
       const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
