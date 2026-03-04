@@ -147,11 +147,12 @@ describe('Anti-Cheat Module', () => {
     expect(result.violations.some((v) => v.details.parameterName === 'angle')).toBe(true);
   });
 
-  test('validateCombatActionParameters rejects out-of-turn actions', () => {
+  test('validateCombatActionParameters accepts valid combat action', () => {
+    // Out-of-turn check is now handled by combat_system.ts
     const result = validateCombatActionParameters(1.57, 0.8, 'player-1', 'player-2', 'submit_combat_action', 'req-id');
 
-    expect(result.valid).toBe(false);
-    expect(result.violations.some((v) => v.violationType === 'out_of_turn')).toBe(true);
+    expect(result.valid).toBe(true);
+    expect(result.violations).toHaveLength(0);
   });
 
   test('detectTimingAttack detects suspiciously fast requests', () => {
