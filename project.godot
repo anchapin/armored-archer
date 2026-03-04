@@ -31,6 +31,8 @@ GearRegistry="*res://autoloads/GearRegistry.gd"
 TransmogManager="*res://autoloads/TransmogManager.gd"
 GearManager="*res://autoloads/GearManager.gd"
 SafeAreaManager="*res://autoloads/SafeAreaManager.gd"
+PerformanceProfiler="*res://autoloads/PerformanceProfiler.gd"
+UITransitionOptimizer="*res://autoloads/UITransitionOptimizer.gd"
 AnalyticsManager="*res://addons/analytics_manager/analytics_manager.gd"
 
 [input]
@@ -84,3 +86,15 @@ aim_down={
 
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="mobile"
+
+[performance]
+
+# Performance Targets for different device tiers
+# Flagship: 60 FPS target
+# Budget: 30+ FPS minimum
+flagship_target_fps=60
+budget_min_fps=30
+
+# Memory thresholds in MB
+budget_memory_threshold=256
+mid_range_memory_threshold=512

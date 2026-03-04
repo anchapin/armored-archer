@@ -71,3 +71,8 @@ func spawn_hit_effect() -> void:
 	var hit_effect = HIT_EFFECT_SCENE.instantiate()
 	get_tree().root.add_child(hit_effect)
 	hit_effect.global_position = global_position
+	
+	# Auto-cleanup hit effect after animation completes
+	# Use a timer to ensure effect is removed even if animation fails
+	var cleanup_timer = get_tree().create_timer(1.0)
+	cleanup_timer.timeout.connect(hit_effect.queue_free)
