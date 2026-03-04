@@ -578,3 +578,127 @@ Monitor Nakama leaderboard:
 curl -X GET "http://localhost:7350/v2/leaderboard/{season_id}" \
   -H "Authorization: Bearer <admin_token>"
 ```
+
+## Anti-Cheat System
+
+The seasonal leaderboard includes comprehensive anti-cheat mechanisms to prevent exploitation and ensure fair play.
+
+### Leaderboard Anti-Cheat Configuration
+
+The system is configured with the following detection thresholds:
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `suspiciousWinRateThreshold` | 0.95 (95%) | Win rate flag threshold |
+| `minMatchesForWinRateCheck` | 100 | Minimum matches before checking |
+| `maxSameOpponentMatches` | 50 | Maximum matches vs same opponent |
+| `abandonmentPenalty` | 50 | Rank loss on abandonment |
+| `escalationMultiplier` | 2.0 | Penalty escalation per offense |
+
+### Automatic Detection Features
+
+#### 1. Suspicious Win Rate Detection
+- Players with >95% win rate over 100+ ranked matches are automatically flagged
+- Flag reason includes exact win rate percentage and match count
+- Flagged players are marked for review
+
+#### 2. Same Opponent Pattern Detection
+- System tracks matches against each opponent
+- Playing the same opponent 50+ times triggers a flag
+- Prevents win trading through repeated matches
+
+#### 3. Abandonment Detection
+- Tracks match abandonments with grace period (30 seconds)
+- Escalating penalties for repeat abandonments
+- Automatic flagging after 5+ abandonments in 1 hour
+
+### Player Reporting System
+
+Players can report suspicious activity through the `report_player` RPC endpoint.
+
+#### Report Reasons
+- `win_trading` - Suspected win trading
+- `match_manipulation` - Match fixing
+- `suspicious_win_rate` - Abnormally high win rate
+- `harassment` - Harassment or abuse
+- `exploiting_bugs` - Using game exploits
+- `other` - Other issues
+
+#### Submit a Report
+
+```gdscript
+# Client-side report submission
+var payload = {
+    "reported_user_id": "target_user_id",
+    "reason": "win_trading",
+    "match_id": "optional_match_id",
+    "additional_info": "Any additional details"
+}
+nakama.rpc("armored_archer/report_player", payload)
+```
+
+#### Response
+```json
+{
+  "success": true,
+  "report_id": "report_1234567890_abc123"
+}
+```
+
+#### Rate Limiting
+- Players can submit 1 report per 5 minutes
+- Self-reporting is prevented
+- Reports are stored for admin review
+
+### Viewing Reports
+
+Players can view their submitted reports:
+
+```gdscript
+# Get your submitted reports
+nakama.rpc("armored_archer/get_player_reports", {})
+```
+
+Response:
+```json
+{
+  "success": true,
+  "reports": [
+    {
+      "reportId": "report_1234567890_abc123",
+      "reporterId": "your_user_id",
+      "reportedUserId": "target_user_id",
+      "reason": "win_trading",
+      "matchId": "match_123",
+      "timestamp": 1234567890000,
+      "status": "pending"
+    }
+  ]
+}
+```
+
+### Admin Functions
+
+Administrators can access anti-cheat stats:
+
+```bash
+# Get anti-cheat statistics (internal)
+curl -X GET "http://localhost:7350/v2/rpc/armored_archer/get_anti_cheat_stats" \
+  -H "Authorization: Bearer <admin_token>"
+```
+
+### Flagged Player Handling
+
+- Flagged players remain on leaderboard but are marked
+- Admins can review flags and take action
+- Flags can be cleared after investigation
+- Player can appeal through support
+
+### Integration with Match System
+
+The anti-cheat system integrates with the match system:
+
+1. **Match Recording**: Each match result is recorded with opponent info
+2. **Win Rate Tracking**: Calculated over rolling 100-match window
+3. **Pattern Analysis**: Opponent frequency tracked per player
+4. **Real-time Flagging**: Players flagged immediately upon detection

@@ -1,6 +1,7 @@
 /**
  * Store module.
  * @fileoverview Handles in-game purchases and currency management.
+ * @description Includes refund handling, edge cases, and robust validation.
  */
 
 import { Runtime } from '../types/nakama';
@@ -11,10 +12,42 @@ import { validatePayload, ZodSchemas, createValidationErrorResponse } from './va
 import { logAudit } from './audit';
 
 /**
+ * Maximum gem balance allowed to prevent overflow exploits.
+ */
+const MAX_GEM_BALANCE = 10000000; // 10 million gems
+
+/**
+ * Maximum single purchase amount to prevent large exploits.
+ */
+const MAX_PURCHASE_AMOUNT = 10000; // 10k gems per transaction
+
+/**
+ * Valid platforms for IAP purchases.
+ */
+const VALID_PLATFORMS = ['ios', 'android'];
+
+/**
+ * Refund reason codes for audit logging.
+ */
+export enum RefundReason {
+  CUSTOMER_SUPPORT = 'customer_support',
+  CHARGEBACK = 'chargeback',
+  DUPLICATE = 'duplicate',
+  FRAUD = 'fraud',
+  OTHER = 'other',
+}
+
+/**
  * In-memory store for validated receipts (use Redis in production for distributed systems).
  * Format: Set of receipt hashes keyed by user_id
  */
 const validatedReceipts: Map<string, Set<string>> = new Map();
+
+/**
+ * Processed refunds storage for tracking.
+ * Format: Map of user_id -> Set of refund transaction IDs
+ */
+const processedRefunds: Map<string, Set<string>> = new Map();
 
 /**
  * Maximum age of receipts to keep in memory (24 hours in milliseconds).
@@ -78,6 +111,171 @@ function markReceiptAsUsed(userId: string, receiptHash: string): void {
  */
 function hashReceipt(receipt: string): string {
   return createHash('sha256').update(receipt).digest('hex');
+}
+
+/**
+ * Check if a refund has already been processed.
+ *
+ * @param userId - The user who received the refund
+ * @param refundTransactionId - Unique refund transaction identifier
+ * @returns true if the refund was already processed
+ */
+function isRefundAlreadyProcessed(userId: string, refundTransactionId: string): boolean {
+  const userRefunds = processedRefunds.get(userId);
+  if (!userRefunds) {
+    return false;
+  }
+  return userRefunds.has(refundTransactionId);
+}
+
+/**
+ * Mark a refund as processed.
+ *
+ * @param userId - The user who received the refund
+ * @param refundTransactionId - Unique refund transaction identifier
+ */
+function markRefundAsProcessed(userId: string, refundTransactionId: string): void {
+  let userRefunds = processedRefunds.get(userId);
+  if (!userRefunds) {
+    userRefunds = new Set();
+    processedRefunds.set(userId, userRefunds);
+  }
+  userRefunds.add(refundTransactionId);
+}
+
+/**
+ * Validates the platform against the receipt data.
+ * In production, this would parse the receipt to extract the actual platform.
+ * For now, we validate the platform string is valid and log a warning for investigation.
+ *
+ * @param platform - Platform string from client
+ * @param receipt - Transaction receipt
+ * @param logger - Nakama logger instance
+ * @returns true if platform appears valid
+ */
+function validatePlatform(platform: string, _receipt: string, logger: Runtime.Logger): boolean {
+  // Check if platform is a recognized value
+  if (!VALID_PLATFORMS.includes(platform)) {
+    logger.warn('Invalid platform specified: %s', platform);
+    return false;
+  }
+
+  // In production, you would parse the receipt and verify the platform matches
+  // For RevenueCat, you would use their server-side API to validate
+  // This is a placeholder for that logic
+
+  // Log for fraud detection - unusual platforms may warrant investigation
+  logger.info('Platform validation passed for: %s', platform);
+
+  return true;
+}
+
+/**
+ * Validate gem balance to prevent overflow exploits.
+ *
+ * @param currentBalance - Current player balance
+ * @param amountToAdd - Amount being added
+ * @returns true if the transaction would exceed max balance
+ */
+function wouldExceedMaxBalance(currentBalance: number, amountToAdd: number): boolean {
+  return currentBalance + amountToAdd > MAX_GEM_BALANCE;
+}
+
+/**
+ * Process a refund and deduct gems from player balance.
+ * Called from RevenueCat webhook or admin API.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player to refund
+ * @param refundAmount - Number of gems to deduct
+ * @param refundTransactionId - Unique refund identifier
+ * @param reason - Reason for the refund
+ * @param logger - Nakama logger instance
+ * @returns Result object with success status and message
+ */
+export function processRefund(
+  nk: Runtime.Nakama,
+  userId: string,
+  refundAmount: number,
+  refundTransactionId: string,
+  reason: RefundReason,
+  logger: Runtime.Logger
+): { success: boolean; message: string; new_balance?: number } {
+  // Check for duplicate refund
+  if (isRefundAlreadyProcessed(userId, refundTransactionId)) {
+    logger.warn('Duplicate refund detected for user: %s, transaction: %s', userId, refundTransactionId);
+    return { success: false, message: 'Refund already processed' };
+  }
+
+  // Validate refund amount
+  if (refundAmount <= 0) {
+    logger.error('Invalid refund amount: %d', refundAmount);
+    return { success: false, message: 'Invalid refund amount' };
+  }
+
+  // Get current player currency
+  const playerCurrency = getPlayerCurrencyWithCache(nk, userId, logger);
+
+  // Calculate new balance (don't go below zero)
+  const deduction = Math.min(refundAmount, playerCurrency.gems);
+  playerCurrency.gems -= deduction;
+
+  // Update storage
+  nk.storageWrite([
+    {
+      collection: 'player_currency',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(playerCurrency),
+    },
+  ]);
+
+  // Update wallet
+  nk.walletUpdate(userId, {
+    gems: -deduction,
+  });
+
+  // Invalidate cache
+  invalidateCurrencyCache(userId, logger);
+
+  // Mark refund as processed
+  markRefundAsProcessed(userId, refundTransactionId);
+
+  // Log the refund for audit
+  const refundDetails = {
+    refund_amount: refundAmount,
+    actual_deducted: deduction,
+    new_balance: playerCurrency.gems,
+    reason: reason,
+    refund_transaction_id: refundTransactionId,
+  };
+  const refundError = deduction < refundAmount ? 'Partial refund - player had insufficient balance' : undefined;
+
+  logAudit(
+    nk,
+    userId,
+    null,
+    'process_refund',
+    'player_currency',
+    refundDetails,
+    'success',
+    refundError
+  );
+
+  logger.info(
+    'Refund processed for user %s: deducted %d gems (requested: %d), new balance: %d, reason: %s',
+    userId,
+    deduction,
+    refundAmount,
+    playerCurrency.gems,
+    reason
+  );
+
+  return {
+    success: true,
+    message: deduction < refundAmount ? 'Partial refund applied' : 'Refund processed successfully',
+    new_balance: playerCurrency.gems,
+  };
 }
 
 /**
@@ -318,6 +516,24 @@ export function rpcValidatePurchase(
     });
   }
 
+  // Validate platform to ensure it's from a recognized source
+  if (!validatePlatform(request.platform, request.transaction_receipt, logger)) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'validate_purchase',
+      'player_currency',
+      { product_id: request.product_id, platform: request.platform },
+      'failure',
+      'Invalid platform'
+    );
+    return JSON.stringify({
+      error: 'Invalid or unsupported platform',
+      error_code: 'INVALID_PLATFORM',
+    });
+  }
+
   // SECURITY NOTE: For production deployment, implement RevenueCat server-side receipt validation
   // using the RevenueCat Server-Side API. This provides additional fraud protection by verifying
   // receipts against Apple's App Store and Google Play servers.
@@ -344,10 +560,50 @@ export function rpcValidatePurchase(
 
   const gemBundle = catalog[request.product_id];
 
+  // Check for suspiciously large purchase amounts to prevent exploits
+  if (gemBundle.gem_amount > MAX_PURCHASE_AMOUNT) {
+    logger.error('Suspicious purchase amount detected: %d gems (max: %d)', gemBundle.gem_amount, MAX_PURCHASE_AMOUNT);
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'validate_purchase',
+      'player_currency',
+      { product_id: request.product_id, platform: request.platform, amount: gemBundle.gem_amount },
+      'failure',
+      'Excessive purchase amount'
+    );
+    return JSON.stringify({
+      error: 'Purchase amount exceeds maximum allowed',
+      error_code: 'EXCESSIVE_AMOUNT',
+    });
+  }
+
   // Mark receipt as used BEFORE awarding gems to prevent replay attacks
   markReceiptAsUsed(ctx.userId, receiptHash);
 
   const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
+
+  // Check if adding gems would exceed maximum balance (overflow protection)
+  if (wouldExceedMaxBalance(playerCurrency.gems, gemBundle.gem_amount)) {
+    logger.error('Purchase would exceed max balance for user %s: current %d + add %d > max %d',
+      ctx.userId, playerCurrency.gems, gemBundle.gem_amount, MAX_GEM_BALANCE);
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'validate_purchase',
+      'player_currency',
+      { product_id: request.product_id, platform: request.platform, amount: gemBundle.gem_amount },
+      'failure',
+      'Would exceed max balance'
+    );
+    return JSON.stringify({
+      error: 'Purchase would exceed maximum gem balance',
+      error_code: 'EXCEEDS_MAX_BALANCE',
+    });
+  }
+
   playerCurrency.gems += gemBundle.gem_amount;
 
   nk.storageWrite([
