@@ -62,6 +62,25 @@ signal products_loaded(products: Dictionary)
 # --- Platform Detection ---
 var platform: String = ""
 
+# --- PII Masking for Logs ---
+func _mask_sensitive_data(data: String, max_length: int = 20) -> String:
+	"""Masks sensitive data for logging purposes.
+	
+	Parameters:
+		data: The sensitive string to mask
+		max_length: Maximum visible length before masking
+	
+	Returns:
+		String: Masked string showing first few characters
+	"""
+	if data.is_empty():
+		return "(empty)"
+	
+	if data.length() <= max_length:
+		return data.substr(0, 4) + "***"
+	
+	return data.substr(0, max_length) + "***"
+
 func _ready() -> void:
 	"""Detects platform and sets up signal connections."""
 	_detect_platform()
@@ -154,7 +173,10 @@ func purchase_product(product_id: String) -> void:
 	if platform == "ios" or platform == "android":
 		_initiate_revenuecat_purchase(product_id)
 	else:
-		_simulate_purchase_for_testing(product_id)
+		# Purchases are only supported on mobile platforms (iOS/Android)
+		push_error("Purchases not supported on platform: %s" % platform)
+		emit_signal("purchase_failed", product_id, "Purchases not supported on this platform")
+		is_purchase_pending = false
 
 func _initiate_revenuecat_purchase(product_id: String) -> void:
 	"""Starts RevenueCat purchase flow on mobile platforms."""
@@ -186,13 +208,6 @@ func _on_revenuecat_purchase_complete(result: Dictionary) -> void:
 	
 	await _validate_purchase_with_server(product_id, transaction_receipt)
 
-func _simulate_purchase_for_testing(product_id: String) -> void:
-	"""Simulates a purchase for testing on non-mobile platforms."""
-	await get_tree().create_timer(1.0).timeout
-	
-	var mock_receipt: String = "mock_receipt_" + str(Time.get_unix_time_from_system())
-	await _validate_purchase_with_server(product_id, mock_receipt)
-
 func _validate_purchase_with_server(product_id: String, transaction_receipt: String) -> void:
 	"""Validates purchase with server and updates currency.
 	
@@ -212,9 +227,38 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 		"transaction_receipt": transaction_receipt
 	})
 	
-	var response = await network_manager.send_rpc(RPC_VALIDATE_PURCHASE, payload)
+	# Log with masked receipt for security
+	push_error("Validating purchase: product=%s, platform=%s, receipt=%s" % [
+		product_id, platform, _mask_sensitive_data(transaction_receipt)
+	])
+	
+	var response = null
+	var has_timed_out = false
+	
+	# Set up timeout for network request
+	var timeout_timer = get_tree().create_timer(30.0)
+	timeout_timer.timeout.connect(func(): has_timed_out = true)
+	
+	# Attempt to get response
+	response = await network_manager.send_rpc(RPC_VALIDATE_PURCHASE, payload)
+	
+	# Clean up timer
+	if is_instance_valid(timeout_timer):
+		timeout_timer.disconnect("timeout", func(): has_timed_out = true)
+		timeout_timer.free()
 	
 	is_purchase_pending = false
+	
+	# Handle network failure scenarios
+	if has_timed_out:
+		push_error("Purchase validation timed out for product: %s" % product_id)
+		emit_signal("purchase_failed", product_id, "Network timeout - please try again")
+		return
+	
+	if response == null:
+		push_error("Purchase validation failed - no response received for product: %s" % product_id)
+		emit_signal("purchase_failed", product_id, "Network error - please try again")
+		return
 	
 	if response.has("error"):
 		push_error("Purchase validation failed: %s" % response.error)
