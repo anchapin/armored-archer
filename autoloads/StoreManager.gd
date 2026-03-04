@@ -144,6 +144,13 @@ func purchase_product(product_id: String) -> void:
 	is_purchase_pending = true
 	pending_product_id = product_id
 	
+	# Log purchase initiated for analytics
+	var product_info: Dictionary = products.get(product_id, {})
+	if has_node("/root/AnalyticsManager"):
+		var analytics: Node = get_node("/root/AnalyticsManager")
+		if analytics.has_method("log_purchase_initiated"):
+			analytics.log_purchase_initiated(product_id, product_info.get("display_name", ""), product_info.get("type", ""), product_info.get("price_cents", 0))
+	
 	if platform == "ios" or platform == "android":
 		_initiate_revenuecat_purchase(product_id)
 	else:
