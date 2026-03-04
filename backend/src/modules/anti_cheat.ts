@@ -193,12 +193,13 @@ export function verifyRequestSignature(
 }
 
 /**
- * Validates combat action parameters (angle, power, turn order).
+ * Validates combat action parameters (angle, power).
+ * Note: Out-of-turn validation is handled by combat_system.ts directly.
  */
 export function validateCombatActionParameters(
   angle: number,
   power: number | undefined,
-  currentTurnUserId: string,
+  _currentTurnUserId: string,  // Kept for API compatibility but not checked here
   playerId: string,
   rpcName: string,
   requestId: string
@@ -240,20 +241,7 @@ export function validateCombatActionParameters(
     });
   }
 
-  // Check out-of-turn actions
-  if (currentTurnUserId !== playerId) {
-    violations.push({
-      violationType: 'out_of_turn',
-      userId: playerId,
-      rpcName,
-      timestamp: now,
-      requestId,
-      details: {
-        expectedUserId: currentTurnUserId,
-        actualUserId: playerId,
-      },
-    });
-  }
+  // Note: Out-of-turn check removed - handled by combat_system.ts
 
   violations.forEach((violation) => {
     recordAntiCheatViolation(violation);
