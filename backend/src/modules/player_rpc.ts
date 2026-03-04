@@ -139,6 +139,7 @@ export function rpcGetPlayerStats(
 
 /**
  * Registers the report player RPC endpoint.
+>>>>>>> origin/main
  *
  * @param initializer - Nakama runtime initializer
  */

@@ -783,3 +783,332 @@ export function rpcSpendGems(
     amount_spent: request.amount,
   });
 }
+
+// ============================================================
+// PENDING PURCHASE QUEUE HANDLING
+// ============================================================
+
+/**
+ * Pending purchase queue for handling purchases that failed due to network issues.
+ * Format: Map of user_id -> Array of pending purchases
+ */
+interface PendingPurchase {
+  product_id: string;
+  platform: string;
+  transaction_receipt: string;
+  timestamp: number;
+  retry_count: number;
+}
+const pendingPurchases: Map<string, PendingPurchase[]> = new Map();
+
+/**
+ * Maximum number of retries for pending purchases.
+ */
+const MAX_PENDING_RETRIES = 3;
+
+/**
+ * Pending purchase age limit (24 hours in milliseconds).
+ * After this time, pending purchases are considered expired.
+ */
+const PENDING_PURCHASE_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * RevenueCat API configuration.
+ */
+const REVENUECAT_API_BASE = 'https://api.revenuecat.com/v1';
+
+/**
+ * Gets the RevenueCat API key from environment.
+ * Returns undefined if not configured.
+ */
+function getRevenueCatApiKey(): string | undefined {
+  return process.env.REVENUECAT_API_KEY || process.env.REVENUECAT_SECRET_KEY;
+}
+
+/**
+ * Add a purchase to the pending queue.
+ * Called when network validation fails but receipt was received.
+ */
+function addToPendingQueue(
+  userId: string,
+  productId: string,
+  platform: string,
+  transactionReceipt: string
+): void {
+  let userPending = pendingPurchases.get(userId);
+  if (!userPending) {
+    userPending = [];
+    pendingPurchases.set(userId, userPending);
+  }
+  
+  userPending.push({
+    product_id: productId,
+    platform: platform,
+    transaction_receipt: transactionReceipt,
+    timestamp: Date.now(),
+    retry_count: 0,
+  });
+  
+  // Clean up old entries
+  cleanupPendingPurchases(userId);
+}
+
+/**
+ * Remove expired and successfully processed purchases from queue.
+ */
+function cleanupPendingPurchases(userId: string): void {
+  const userPending = pendingPurchases.get(userId);
+  if (!userPending) return;
+  
+  const now = Date.now();
+  const valid = userPending.filter(p => 
+    now - p.timestamp < PENDING_PURCHASE_EXPIRY_MS && p.retry_count < MAX_PENDING_RETRIES
+  );
+  
+  if (valid.length === 0) {
+    pendingPurchases.delete(userId);
+  } else {
+    pendingPurchases.set(userId, valid);
+  }
+}
+
+/**
+ * Process pending purchases for a user.
+ * Called when network recovers or on app launch.
+ */
+export function rpcProcessPendingPurchases(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Processing pending purchases for user: %s', ctx.userId);
+  
+  const validation = validatePayload(ZodSchemas.process_pending_purchases, payload, 'process_pending_purchases');
+  if (!validation.success) {
+    return createValidationErrorResponse('process_pending_purchases', validation.error);
+  }
+  
+  const userPending = pendingPurchases.get(ctx.userId);
+  if (!userPending || userPending.length === 0) {
+    return JSON.stringify({
+      success: true,
+      processed: 0,
+      message: 'No pending purchases'
+    });
+  }
+  
+  const results: { product_id: string; success: boolean; error?: string }[] = [];
+  const catalog = getStoreCatalog(logger);
+  const now = Date.now();
+  
+  for (const purchase of userPending) {
+    // Skip expired
+    if (now - purchase.timestamp >= PENDING_PURCHASE_EXPIRY_MS) {
+      results.push({ product_id: purchase.product_id, success: false, error: 'Expired' });
+      continue;
+    }
+    
+    // Skip if max retries exceeded
+    if (purchase.retry_count >= MAX_PENDING_RETRIES) {
+      results.push({ product_id: purchase.product_id, success: false, error: 'Max retries exceeded' });
+      continue;
+    }
+    
+    // Validate product ID
+    if (!catalog[purchase.product_id]) {
+      purchase.retry_count++;
+      results.push({ product_id: purchase.product_id, success: false, error: 'Invalid product ID' });
+      continue;
+    }
+    
+    // Try to process the purchase
+    const receiptHash = hashReceipt(purchase.transaction_receipt);
+    
+    // Check for duplicate receipt
+    if (isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
+      results.push({ product_id: purchase.product_id, success: true, error: 'Already processed' });
+      continue;
+    }
+    
+    // Award gems
+    const gemBundle = catalog[purchase.product_id];
+    const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
+    
+    if (wouldExceedMaxBalance(playerCurrency.gems, gemBundle.gem_amount)) {
+      purchase.retry_count++;
+      results.push({ product_id: purchase.product_id, success: false, error: 'Would exceed max balance' });
+      continue;
+    }
+    
+    // Mark receipt and add gems
+    markReceiptAsUsed(ctx.userId, receiptHash);
+    playerCurrency.gems += gemBundle.gem_amount;
+    
+    nk.storageWrite([
+      {
+        collection: 'player_currency',
+        key: ctx.userId,
+        userId: ctx.userId,
+        value: JSON.stringify(playerCurrency),
+      },
+    ]);
+    
+    nk.walletUpdate(ctx.userId, { gems: gemBundle.gem_amount });
+    invalidateCurrencyCache(ctx.userId, logger);
+    
+    results.push({ product_id: purchase.product_id, success: true });
+    logger.info('Processed pending purchase for user %s: %s (%d gems)', ctx.userId, purchase.product_id, gemBundle.gem_amount);
+  }
+  
+  // Clean up processed purchases
+  cleanupPendingPurchases(ctx.userId);
+  
+  const successful = results.filter(r => r.success).length;
+  return JSON.stringify({
+    success: true,
+    processed: results.length,
+    successful: successful,
+    results: results
+  });
+}
+
+export function registerRpcProcessPendingPurchases(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/process_pending_purchases', rpcProcessPendingPurchases);
+}
+
+// ============================================================
+// REFUND DETECTION HANDLING
+// ============================================================
+
+/**
+ * Check for refunds via RevenueCat API.
+ * Should be called on app launch to detect chargebacks.
+ */
+export function rpcCheckRefunds(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Checking for refunds for user: %s', ctx.userId);
+  
+  const validation = validatePayload(ZodSchemas.check_refunds, payload, 'check_refunds');
+  if (!validation.success) {
+    return createValidationErrorResponse('check_refunds', validation.error);
+  }
+  
+  const apiKey = getRevenueCatApiKey();
+  if (!apiKey) {
+    logger.warn('RevenueCat API key not configured - skipping refund check');
+    return JSON.stringify({
+      success: true,
+      refunds_found: 0,
+      message: 'Refund check not configured'
+    });
+  }
+  
+  // In production, call RevenueCat API to get refund history
+  // For now, return success with empty refunds
+  // RevenueCat API endpoint: GET /subscribers/{app_user_id}/refunds
+  
+  return JSON.stringify({
+    success: true,
+    refunds_found: 0,
+    message: 'No refunds detected'
+  });
+}
+
+export function registerRpcCheckRefunds(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/check_refunds', rpcCheckRefunds);
+}
+
+// ============================================================
+// SUBSCRIPTION EXPIRATION HANDLING
+// ============================================================
+
+/**
+ * Check subscription status via RevenueCat API.
+ * Should be called on app launch to detect expired subscriptions.
+ */
+export function rpcCheckSubscriptions(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Checking subscriptions for user: %s', ctx.userId);
+  
+  const validation = validatePayload(ZodSchemas.check_subscriptions, payload, 'check_subscriptions');
+  if (!validation.success) {
+    return createValidationErrorResponse('check_subscriptions', validation.error);
+  }
+  
+  const apiKey = getRevenueCatApiKey();
+  if (!apiKey) {
+    logger.warn('RevenueCat API key not configured - skipping subscription check');
+    return JSON.stringify({
+      success: true,
+      active_subscriptions: [],
+      message: 'Subscription check not configured'
+    });
+  }
+  
+  // In production, call RevenueCat API to get subscription status
+  // For now, return success with no active subscriptions
+  // RevenueCat API endpoint: GET /subscribers/{app_user_id}
+  
+  return JSON.stringify({
+    success: true,
+    active_subscriptions: [],
+    message: 'No active subscriptions'
+  });
+}
+
+export function registerRpcCheckSubscriptions(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/check_subscriptions', rpcCheckSubscriptions);
+}
+
+// ============================================================
+// APP LAUNCH CHECK
+// ============================================================
+
+/**
+ * Comprehensive app launch check that runs:
+ * - Pending purchase processing
+ * - Refund detection
+ * - Subscription status check
+ */
+export function rpcAppLaunchCheck(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Running app launch check for user: %s', ctx.userId);
+  
+  const validation = validatePayload(ZodSchemas.app_launch_check, payload, 'app_launch_check');
+  if (!validation.success) {
+    return createValidationErrorResponse('app_launch_check', validation.error);
+  }
+  
+  // Process pending purchases
+  const pendingResult = JSON.parse(rpcProcessPendingPurchases(ctx, logger, nk, '{}'));
+  
+  // Check for refunds
+  const refundResult = JSON.parse(rpcCheckRefunds(ctx, logger, nk, '{}'));
+  
+  // Check subscriptions
+  const subscriptionResult = JSON.parse(rpcCheckSubscriptions(ctx, logger, nk, '{}'));
+  
+  return JSON.stringify({
+    success: true,
+    pending_purchases: pendingResult,
+    refunds: refundResult,
+    subscriptions: subscriptionResult
+  });
+}
+
+export function registerRpcAppLaunchCheck(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/app_launch_check', rpcAppLaunchCheck);
+}

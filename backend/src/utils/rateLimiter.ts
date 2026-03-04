@@ -160,14 +160,14 @@ export function createRateLimitedRpcHandler(
     logger: Runtime.Logger,
     nk: Runtime.Nakama,
     payload: string
-  ) => string
-): (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => string {
-  return function (
+  ) => string | Promise<string>
+): (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => string | Promise<string> {
+  return async function (
     ctx: Runtime.Context,
     loggerParam: Runtime.Logger,
     nk: Runtime.Nakama,
     payload: string
-  ): string {
+  ): Promise<string> {
     const userId = ctx.userId || 'anonymous';
 
     const rateLimitResult = checkRateLimit(userId, endpoint);
