@@ -47,7 +47,7 @@ jobs:
           echo "PlayerStatsManager tests: $(grep -c 'func test_' test/test_player_stats_manager.gd)"
 
   godot-coverage-gate:
-    name: Coverage Gate (80% Target)
+    name: Coverage Gate (55% Target)
     runs-on: ubuntu-latest
     needs: godot-tests
     steps:
@@ -93,16 +93,16 @@ jobs:
             echo "coverage=100" >> $GITHUB_OUTPUT
           fi
       
-      - name: Fail if coverage below 80%
+      - name: Fail if coverage below 55%
         run: |
           COVERAGE=${{ steps.coverage.outputs.coverage }}
           echo "Current coverage: $COVERAGE%"
           
-          if [ "$COVERAGE" -lt 50 ]; then
-            echo "❌ Coverage $COVERAGE% is below 80% target!"
+          if [ "$COVERAGE" -lt 55 ]; then
+            echo "❌ Coverage $COVERAGE% is below 55% target!"
             exit 1
           else
-            echo "✅ Coverage $COVERAGE% meets 80% target"
+            echo "✅ Coverage $COVERAGE% meets 55% target"
           fi
 
   backend-tests:
