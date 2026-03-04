@@ -97,6 +97,7 @@ describe('season_system', () => {
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({
+        match_id: "match-123",
         winner_id: "winner-user",
         loser_id: "loser-user",
         winner_old_rank: 1500,
@@ -118,6 +119,7 @@ describe('season_system', () => {
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({
+        match_id: "match-456",
         winner_id: "new-winner",
         loser_id: "new-loser",
         winner_old_rank: 1000,

@@ -59,9 +59,9 @@ export const ZodSchemas = {
   submit_combat_action: z.object({
     match_id: z.string().min(1).max(100),
     action_type: z.enum(['shoot']),
-    angle: z.number().min(0).max(6.28318530718),  // 0 to 2π radians (0° to 360°)
-    power: z.number().min(0).max(1).optional(),   // Normalized 0.0-1.0
-    
+    angle: z.number().min(0).max(6.28318530718), // 0 to 2π radians (0° to 360°)
+    power: z.number().min(0).max(1).optional(), // Normalized 0.0-1.0
+
     // Anti-cheat fields (optional for backward compatibility)
     requestId: z.string().min(32).max(32).optional(),
     timestamp: z.number().int().min(0).optional(),
@@ -82,6 +82,7 @@ export const ZodSchemas = {
     .optional(),
 
   update_rank: z.object({
+    match_id: z.string().min(1).max(100),
     winner_id: z.string().min(1).max(100),
     loser_id: z.string().min(1).max(100),
     winner_old_rank: z.number().int(),
@@ -89,6 +90,11 @@ export const ZodSchemas = {
     winner_new_rank: z.number().int(),
     loser_new_rank: z.number().int(),
     is_punch_up: z.boolean(),
+    // Anti-cheat fields
+    requestId: z.string().optional(),
+    timestamp: z.number().optional(),
+    signature: z.string().optional(),
+    nonce: z.string().optional(),
   }),
 
   get_season_rewards: z.object({}),

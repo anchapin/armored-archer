@@ -5,6 +5,14 @@
 
 import { Runtime } from '../types/nakama';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import {
+  verifyRequestSignature,
+  detectTimingAttack,
+  recordMatchResult,
+  isPlayerFlagged,
+  getFlagReason,
+  RequestSignature,
+} from './anti_cheat';
 
 /**
  * Season rewards data structure.
@@ -279,6 +287,76 @@ export function rpcUpdateRank(
 
   const request = validation.data;
 
+  // Anti-cheat: Check if players are flagged
+  if (isPlayerFlagged(request.winner_id)) {
+    logger.warn(
+      'Update rank blocked - winner flagged: %s reason: %s',
+      request.winner_id,
+      getFlagReason(request.winner_id)
+    );
+    return JSON.stringify({
+      success: false,
+      error_code: 'PLAYER_FLAGGED',
+      error: 'Player is flagged for review: ' + getFlagReason(request.winner_id),
+    });
+  }
+
+  if (isPlayerFlagged(request.loser_id)) {
+    logger.warn(
+      'Update rank blocked - loser flagged: %s reason: %s',
+      request.loser_id,
+      getFlagReason(request.loser_id)
+    );
+    return JSON.stringify({
+      success: false,
+      error_code: 'PLAYER_FLAGGED',
+      error: 'Opponent is flagged for review: ' + getFlagReason(request.loser_id),
+    });
+  }
+
+  // Anti-cheat: Verify request signature if all anti-cheat fields provided
+  if (request.requestId && request.timestamp && request.signature && request.nonce) {
+    const signatureData: RequestSignature = {
+      requestId: request.requestId,
+      timestamp: request.timestamp,
+      signature: request.signature,
+      nonce: request.nonce,
+    };
+
+    // Create payload for signature verification (without anti-cheat fields)
+    const payloadForSig = JSON.stringify({
+      match_id: request.match_id,
+      winner_id: request.winner_id,
+      loser_id: request.loser_id,
+      winner_old_rank: request.winner_old_rank,
+      loser_old_rank: request.loser_old_rank,
+      winner_new_rank: request.winner_new_rank,
+      loser_new_rank: request.loser_new_rank,
+      is_punch_up: request.is_punch_up,
+    });
+
+    const sigResult = verifyRequestSignature(ctx, payloadForSig, signatureData, 'update_rank');
+    if (!sigResult.valid) {
+      logger.warn('Invalid signature for update_rank: %s', sigResult.violations.join(', '));
+      return JSON.stringify({
+        success: false,
+        error_code: 'ANTI_CHEAT_VIOLATION',
+        error: 'Invalid request signature',
+        violations: sigResult.violations,
+      });
+    }
+  }
+
+  // Anti-cheat: Detect timing attacks
+  if (detectTimingAttack(ctx.userId, 'update_rank', request.requestId || '')) {
+    logger.warn('Timing attack detected for user: %s', ctx.userId);
+    return JSON.stringify({
+      success: false,
+      error_code: 'TIMING_ANOMALY',
+      error: 'Suspicious request pattern detected',
+    });
+  }
+
   const currentSeason = getCurrentSeason();
 
   const winnerEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
@@ -335,6 +413,27 @@ export function rpcUpdateRank(
       win_rate: String(loserMeta.win_rate),
       punch_up_wins: String(loserMeta.punch_up_wins),
     }
+  );
+
+  // Anti-cheat: Record match result for analysis
+  // Winner record: win, Loser record: loss
+  recordMatchResult(
+    request.winner_id,
+    request.match_id,
+    request.loser_id,
+    'win',
+    true,
+    winnerOldElo,
+    winnerNewElo
+  );
+  recordMatchResult(
+    request.loser_id,
+    request.match_id,
+    request.winner_id,
+    'loss',
+    true,
+    loserOldElo,
+    loserNewElo
   );
 
   return JSON.stringify({

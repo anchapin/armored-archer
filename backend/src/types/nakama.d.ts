@@ -1,4 +1,10 @@
-import { MatchParams, MatchResult, BeforeAfterData, LeaderboardRecord, StreamUserListResult } from "./shared";
+import {
+  MatchParams,
+  MatchResult,
+  BeforeAfterData,
+  LeaderboardRecord,
+  StreamUserListResult,
+} from './shared';
 
 declare namespace Runtime {
   /**
@@ -22,7 +28,7 @@ declare namespace Runtime {
 
   /**
    * Runtime logger interface.
-   * 
+   *
    * @method info - Logs informational messages
    * @method warn - Logs warning messages
    * @method error - Logs error messages
@@ -37,7 +43,7 @@ declare namespace Runtime {
 
   /**
    * Storage read request interface.
-   * 
+   *
    * @property collection - Storage collection name
    * @property key - Storage key
    * @property userId - User ID for the storage
@@ -50,7 +56,7 @@ declare namespace Runtime {
 
   /**
    * Storage object interface.
-   * 
+   *
    * @property collection - Storage collection name
    * @property key - Storage key
    * @property userId - User ID for the storage
@@ -75,7 +81,7 @@ declare namespace Runtime {
 
   /**
    * Storage write request interface.
-   * 
+   *
    * @property collection - Storage collection name
    * @property key - Storage key
    * @property userId - User ID for the storage
@@ -96,7 +102,7 @@ declare namespace Runtime {
 
   /**
    * Nakama server interface.
-   * 
+   *
    * @method storageRead - Reads storage objects
    * @method storageWrite - Writes storage objects
    * @method storageList - Lists storage objects
@@ -119,52 +125,111 @@ declare namespace Runtime {
   export interface Nakama {
     storageRead(objects: StorageRead[]): StorageObject[];
     storageWrite(objects: StorageWrite[]): void;
-    storageList(userId: string, collection: string, limit: number, cursor: string, filter: string): StorageObject[];
+    storageList(
+      userId: string,
+      collection: string,
+      limit: number,
+      cursor: string,
+      filter: string
+    ): StorageObject[];
     walletUpdate(userId: string, changes: { [key: string]: number }): void;
     walletLedgerUpdate(userId: string, id: string, metadata: { [key: string]: string }): void;
-    leaderboardCreate(id: string, authoritative: boolean, sortOrder: string, operator: string, reset: string, metadata: { [key: string]: string }): void;
+    leaderboardCreate(
+      id: string,
+      authoritative: boolean,
+      sortOrder: string,
+      operator: string,
+      reset: string,
+      metadata: { [key: string]: string }
+    ): void;
     leaderboardDelete(id: string): void;
-    leaderboardRecordList(leaderboardId: string, ownerIds: string[], limit: number, cursor: string, expiry: number): LeaderboardRecord[];
-    leaderboardRecordWrite(leaderboardId: string, owner: string, username: string, score: number, subScore: number, metadata: { [key: string]: string }): void;
-    notificationSend(userId: string, subject: string, content: Record<string, unknown>, code: number, persist: boolean, senderId: string): void;
-    httpRequest(method: string, url: string, headers: { [key: string]: string }, body: string): { code: number, body: string, headers: { [key: string]: string } };
+    leaderboardRecordList(
+      leaderboardId: string,
+      ownerIds: string[],
+      limit: number,
+      cursor: string,
+      expiry: number
+    ): LeaderboardRecord[];
+    leaderboardRecordWrite(
+      leaderboardId: string,
+      owner: string,
+      username: string,
+      score: number,
+      subScore: number,
+      metadata: { [key: string]: string }
+    ): void;
+    notificationSend(
+      userId: string,
+      subject: string,
+      content: Record<string, unknown>,
+      code: number,
+      persist: boolean,
+      senderId: string
+    ): void;
+    httpRequest(
+      method: string,
+      url: string,
+      headers: { [key: string]: string },
+      body: string
+    ): { code: number; body: string; headers: { [key: string]: string } };
     uuidGenerateV4(): string;
     userIdGetFromUsername(username: string): string;
     streamUserJoin(stream: Stream, presences: Presence[]): void;
     streamUserLeave(stream: Stream, presences: Presence[]): void;
     streamUserKick(stream: Stream, presences: Presence[]): void;
-    streamUserList(userId: string, stream: Stream, limit: number, state: string, cursor: string): StreamUserListResult[];
+    streamUserList(
+      userId: string,
+      stream: Stream,
+      limit: number,
+      state: string,
+      cursor: string
+    ): StreamUserListResult[];
     streamCount(stream: Stream): number;
   }
 
   /**
    * Runtime initializer interface.
-   * 
+   *
    * @method registerRpc - Registers an RPC function
    * @method registerMatch - Registers a match handler
    * @method registerBefore - Registers a before hook
    * @method registerAfter - Registers an after hook
    */
   export interface Initializer {
-    registerRpc(id: string, fn: (ctx: Context, logger: Logger, nk: Nakama, payload: string) => string): void;
-    registerMatch(name: string, fn: (ctx: Context, logger: Logger, nk: Nakama, params: MatchParams) => MatchResult): void;
-    registerBefore(fn: (ctx: Context, logger: Logger, nk: Nakama, data: BeforeAfterData) => BeforeAfterData): void;
-    registerAfter(fn: (ctx: Context, logger: Logger, nk: Nakama, data: BeforeAfterData) => BeforeAfterData): void;
+    registerRpc(
+      id: string,
+      fn: (ctx: Context, logger: Logger, nk: Nakama, payload: string) => string
+    ): void;
+    registerMatch(
+      name: string,
+      fn: (ctx: Context, logger: Logger, nk: Nakama, params: MatchParams) => MatchResult
+    ): void;
+    registerBefore(
+      fn: (ctx: Context, logger: Logger, nk: Nakama, data: BeforeAfterData) => BeforeAfterData
+    ): void;
+    registerAfter(
+      fn: (ctx: Context, logger: Logger, nk: Nakama, data: BeforeAfterData) => BeforeAfterData
+    ): void;
   }
 
   /**
    * Module initialization function type.
-   * 
+   *
    * @param ctx - Runtime context
    * @param logger - Runtime logger
    * @param nk - Nakama server interface
    * @param initializer - Runtime initializer
    */
-  export type InitModule = (ctx: Context, logger: Logger, nk: Nakama, initializer: Initializer) => void;
+  export type InitModule = (
+    ctx: Context,
+    logger: Logger,
+    nk: Nakama,
+    initializer: Initializer
+  ) => void;
 
   /**
    * Stream interface.
-   * 
+   *
    * @property mode - Stream mode
    * @property subject - Stream subject
    * @property label - Stream label
@@ -179,7 +244,7 @@ declare namespace Runtime {
 
   /**
    * Presence interface.
-   * 
+   *
    * @property userId - ID of the user
    * @property sessionId - Session ID
    * @property node - Node name
