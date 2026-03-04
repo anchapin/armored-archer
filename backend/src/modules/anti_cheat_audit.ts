@@ -78,7 +78,11 @@ const VIOLATION_WEIGHTS: Record<ViolationType, number> = {
 /**
  * Initialize the audit logging system.
  */
-export function initializeAuditLogging(cfg: Partial<AuditConfig>, nakama: any, runtimeLogger: any): void {
+export function initializeAuditLogging(
+  cfg: Partial<AuditConfig>,
+  nakama: any,
+  runtimeLogger: any
+): void {
   config = { ...config, ...cfg };
   nk = nakama;
   logger = runtimeLogger;
@@ -99,7 +103,7 @@ export function recordViolation(
 ): void {
   const timestamp = Date.now();
   const severity = getSeverity(type);
-  
+
   const violation: AntiCheatViolation = {
     userId,
     type,
@@ -141,11 +145,13 @@ export function recordViolation(
   if (config.enablePersistence && nk) {
     try {
       const storageKey = `anti_cheat:violation:${userId}:${timestamp}`;
-      nk.storageWrite([{
-        collection: 'anti_cheat_violations',
-        key: storageKey,
-        value: violation,
-      }]);
+      nk.storageWrite([
+        {
+          collection: 'anti_cheat_violations',
+          key: storageKey,
+          value: violation,
+        },
+      ]);
     } catch (err) {
       logger.error('Failed to persist violation', { error: err, userId });
     }
@@ -193,9 +199,7 @@ export function getUserViolationSummary(userId: string): UserRiskProfile | null 
  */
 export function getTopViolators(limit: number = 10): UserRiskProfile[] {
   const profiles = Array.from(userRiskProfiles.values());
-  return profiles
-    .sort((a, b) => b.riskScore - a.riskScore)
-    .slice(0, limit);
+  return profiles.sort((a, b) => b.riskScore - a.riskScore).slice(0, limit);
 }
 
 /**
@@ -239,10 +243,18 @@ export function generateAuditReport(userId: string): {
   for (const v of profile.violations) {
     violationsByType[v.type]++;
     switch (v.severity) {
-      case 'critical': critical++; break;
-      case 'high': high++; break;
-      case 'medium': medium++; break;
-      case 'low': low++; break;
+      case 'critical':
+        critical++;
+        break;
+      case 'high':
+        high++;
+        break;
+      case 'medium':
+        medium++;
+        break;
+      case 'low':
+        low++;
+        break;
     }
   }
 
@@ -351,8 +363,8 @@ export function getAuditStats(): AuditStats {
   return {
     totalViolations,
     uniqueUsers: profiles.length,
-    suspendedUsers: profiles.filter(p => p.isSuspended).length,
-    highRiskUsers: profiles.filter(p => p.riskScore >= config.highRiskThreshold).length,
+    suspendedUsers: profiles.filter((p) => p.isSuspended).length,
+    highRiskUsers: profiles.filter((p) => p.riskScore >= config.highRiskThreshold).length,
     violationsByType,
   };
 }
