@@ -18,21 +18,30 @@ This checklist covers all requirements for submitting Armored Archer to the iOS 
 
 ### ✓ App Assets
 - [x] Create and add app icons in all required sizes (iOS: icon_ios_1024.png, Android: icon_android_512.png, icon_android_1024.png)
-- [ ] Prepare screenshots (6-10 for iOS, 2-8 for Android)
-  - [ ] Main menu/UI
-  - [ ] Character selection screen
-  - [ ] Combat gameplay
-  - [ ] Gear inventory
-  - [ ] Shop interface
-  - [ ] PvP leaderboard
-  - [ ] Stage selection
-  - [ ] Character customization
-- [ ] Prepare promotional images (1024x1024 for App Store, 1024x500 for Play Store)
+  - [x] iOS icons at `assets/icons/` (128, 256, 512, 1024px)
+  - [x] Android icons at `assets/icons/` (512, 1024px)
+- [x] Prepare screenshots (6-10 for iOS, 2-8 for Android)
+  - [x] Placeholder screenshots at `app_store_assets/ios/screenshots/`
+  - [x] Placeholder screenshots at `app_store_assets/android/screenshots/`
+  - [ ] Replace placeholders with actual game screenshots
+- [x] Prepare promotional images (1024x1024 for App Store, 1024x500 for Play Store)
+  - [x] iOS feature graphic (1200x600) at `app_store_assets/ios/`
+  - [x] Android feature graphic (1024x500) at `app_store_assets/android/`
 - [x] Verify icons display correctly on all devices
 
 ### ✓ Compliance
 - [x] Prepare Export Compliance documentation - see app_store_assets/EXPORT_COMPLIANCE.md
 - [x] Configure export_presets.cfg for proper IAP/compliance settings
+  - [x] in_app_purchases=true in export_presets.cfg (line 50)
+  - [x] Export compliance certification complete
+
+### ✓ iOS Code Signing (requires user action)
+- [ ] Note: iOS code signing is intentionally NOT pre-configured - requires user's Apple Developer certificate
+- [ ] After obtaining Apple Developer certificate, update export_presets.cfg:
+  - `application/code_signing_enabled=true`
+  - `application/code_signing_identity="Your Certificate Name"`
+  - `application/provisioning_profile="Your Profile Name"`
+- [ ] See APP_STORE_IOS_SETUP.md for detailed instructions
 
 ### ✓ Documentation
 - [x] Write app store descriptions (iOS and Android) - see app_store_assets/localized_descriptions.md
