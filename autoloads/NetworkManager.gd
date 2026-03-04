@@ -194,6 +194,9 @@ func _handle_authentication_error(response_code: int, response_text: String) -> 
 		is_offline = true
 		connection_status_changed.emit(false)
 		session_created.emit(false, "No internet connection")
+		
+		# Log network error for analytics
+		_log_network_error("connection_failed", "/v2/account/authenticate/device", response_code)
 	else:
 		is_connected = false
 		var error_message: String = "Authentication failed (code: %d)" % response_code
@@ -206,6 +209,16 @@ func _handle_authentication_error(response_code: int, response_text: String) -> 
 		
 		session_created.emit(false, error_message)
 		session_refreshed.emit(false, error_message)
+		
+		# Log authentication error for analytics
+		_log_network_error("authentication_failed", "/v2/account/authenticate/device", response_code)
+
+func _log_network_error(error_type: String, endpoint: String, status_code: int) -> void:
+	# Use AnalyticsManager if available
+	if has_node("/root/AnalyticsManager"):
+		var analytics: Node = get_node("/root/AnalyticsManager")
+		if analytics.has_method("log_network_error"):
+			analytics.log_network_error(error_type, endpoint, status_code)
 
 # --- Session Storage ---
 func _save_session_to_file() -> void:
@@ -280,6 +293,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	if not is_session_valid():
 		return {"error": "Not authenticated"}
 	
+	var start_time: int = Time.get_ticks_msec()
 	var url: String = "%s/v2/rpc/%s" % [base_url, rpc_id]
 	var headers: PackedStringArray = get_auth_headers()
 	
@@ -344,4 +358,15 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 		else:
 			response_data = {"error": "HTTP error: %d" % result[1]}
 	
+	# Log RPC latency for analytics
+	var latency_ms: int = Time.get_ticks_msec() - start_time
+	_log_rpc_latency(rpc_id, latency_ms)
+	
 	return response_data
+
+func _log_rpc_latency(rpc_name: String, latency_ms: int) -> void:
+	# Use AnalyticsManager if available
+	if has_node("/root/AnalyticsManager"):
+		var analytics: Node = get_node("/root/AnalyticsManager")
+		if analytics.has_method("log_rpc_latency"):
+			analytics.log_rpc_latency(rpc_name, latency_ms)
