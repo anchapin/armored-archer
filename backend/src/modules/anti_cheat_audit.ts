@@ -4,72 +4,48 @@
  * automatic account flagging/suspension, and compliance reporting.
  */
 
-import { Runtime } from '../types/nakama';
-import { AntiCheatViolation } from './anti_cheat';
-
-/**
- * Configuration for audit logging system.
- */
-export interface AuditConfig {
-  enablePersistence: boolean;
-  highRiskThreshold: number; // Risk score >= this triggers manual review
-  suspensionThreshold: number; // Violations >= this triggers auto-suspension
-  violationRetentionDays: number; // How long to keep violation records
-  replayWindowMs: number; // Time window for replay attack detection
+export interface AntiCheatViolation {
+  userId: string;
+  type: ViolationType;
+  timestamp: number;
+  details: Record<string, unknown>;
+  severity: 'low' | 'medium' | 'high' | 'critical';
 }
 
-/**
- * User risk profile for tracking violations and risk scoring.
- */
+export type ViolationType =
+  | 'replay_attack'
+  | 'invalid_signature'
+  | 'timing_attack'
+  | 'out_of_turn'
+  | 'clock_skew'
+  | 'invalid_progression'
+  | 'stat_manipulation'
+  | 'inventory_tampering';
+
 export interface UserRiskProfile {
   userId: string;
-  violations: UserViolation[];
+  violations: AntiCheatViolation[];
   riskScore: number;
-  isHighRisk: boolean;
   isSuspended: boolean;
-  suspensionReason?: string;
-  suspensionExpiresAt?: number;
-  lastViolationTime: number;
+  firstViolation: number;
+  lastViolation: number;
   violationCount: number;
 }
 
-/**
- * Individual user violation record.
- */
-export interface UserViolation {
-  id: string;
-  violationType: string;
-  timestamp: number;
-  rpcName: string;
-  details: Record<string, unknown>;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+export interface AuditConfig {
+  enablePersistence: boolean;
+  highRiskThreshold: number;
+  suspensionThreshold: number;
+  violationRetentionDays: number;
+  replayWindowMs: number;
 }
 
-/**
- * Audit log summary for a user.
- */
-export interface UserViolationSummary {
-  userId: string;
-  totalViolations: number;
-  violationsByType: Record<string, number>;
-  riskScore: number;
-  isHighRisk: boolean;
-  isSuspended: boolean;
-  lastViolationTime: number;
-}
-
-/**
- * Compliance report for a time period.
- */
-export interface AuditReport {
-  startTime: number;
-  endTime: number;
+export interface AuditStats {
   totalViolations: number;
   uniqueUsers: number;
-  violationsByType: Record<string, number>;
-  violationsBySeverity: Record<string, number>;
+  suspendedUsers: number;
   highRiskUsers: number;
-  autoSuspensions: number;
+  violationsByType: Record<ViolationType, number>;
 }
 
 const defaultConfig: AuditConfig = {
@@ -81,19 +57,22 @@ const defaultConfig: AuditConfig = {
 };
 
 let config: AuditConfig = { ...defaultConfig };
-let nk: Runtime.Nakama;
-let logger: Runtime.Logger;
+let nk: any;
+let logger: any;
 
 // In-memory storage for user risk profiles
 const userRiskProfiles = new Map<string, UserRiskProfile>();
 
 // Violation type weights for risk scoring
-const VIOLATION_WEIGHTS: Record<string, number> = {
+const VIOLATION_WEIGHTS: Record<ViolationType, number> = {
   replay_attack: 20,
   invalid_signature: 18,
   timing_attack: 12,
   out_of_turn: 8,
   clock_skew: 3,
+  invalid_progression: 15,
+  stat_manipulation: 25,
+  inventory_tampering: 20,
 };
 
 /**
@@ -101,8 +80,8 @@ const VIOLATION_WEIGHTS: Record<string, number> = {
  */
 export function initializeAuditLogging(
   cfg: Partial<AuditConfig>,
-  nakama: Runtime.Nakama,
-  runtimeLogger: Runtime.Logger
+  nakama: any,
+  runtimeLogger: any
 ): void {
   config = { ...config, ...cfg };
   nk = nakama;
@@ -115,376 +94,277 @@ export function initializeAuditLogging(
 }
 
 /**
- * Record an anti-cheat violation and update user risk profile.
+ * Record a violation for a user.
  */
-export function recordViolation(violation: AntiCheatViolation): void {
-  const userId = violation.userId;
-  const profile = getOrCreateUserProfile(userId);
+export function recordViolation(
+  userId: string,
+  type: ViolationType,
+  details: Record<string, unknown> = {}
+): void {
+  const timestamp = Date.now();
+  const severity = getSeverity(type);
 
-  // Determine severity based on violation type
-  const severity = getViolationSeverity(violation.violationType);
-
-  // Create violation record
-  const userViolation: UserViolation = {
-    id: `${violation.requestId}:${Date.now()}`,
-    violationType: violation.violationType,
-    timestamp: violation.timestamp,
-    rpcName: violation.rpcName,
-    details: violation.details,
+  const violation: AntiCheatViolation = {
+    userId,
+    type,
+    timestamp,
+    details,
     severity,
   };
 
-  profile.violations.push(userViolation);
-  profile.lastViolationTime = violation.timestamp;
+  let profile = userRiskProfiles.get(userId);
+  if (!profile) {
+    profile = {
+      userId,
+      violations: [],
+      riskScore: 0,
+      isSuspended: false,
+      firstViolation: timestamp,
+      lastViolation: timestamp,
+      violationCount: 0,
+    };
+    userRiskProfiles.set(userId, profile);
+  }
+
+  profile.violations.push(violation);
+  profile.riskScore += VIOLATION_WEIGHTS[type] || 5;
   profile.violationCount++;
-
-  // Clean up old violations
-  cleanupOldViolations(profile);
-
-  // Update risk score
-  updateRiskScore(profile);
+  profile.lastViolation = timestamp;
 
   // Check for auto-suspension
-  checkAutoSuspension(profile);
-
-  // Persist to storage if enabled
-  if (config.enablePersistence && nk) {
-    persistViolation(userId, userViolation);
-  }
-
-  // Log warning for critical violations
-  if (severity === 'CRITICAL') {
-    logger?.warn('CRITICAL anti-cheat violation for user %s: %s', userId, violation.violationType, {
-      rpcName: violation.rpcName,
-      requestId: violation.requestId,
+  if (profile.riskScore >= config.suspensionThreshold && !profile.isSuspended) {
+    profile.isSuspended = true;
+    logger.warn('User auto-suspended due to high risk score', {
+      userId,
+      riskScore: profile.riskScore,
+      violationCount: profile.violationCount,
     });
   }
+
+  // Log to storage if enabled
+  if (config.enablePersistence && nk) {
+    try {
+      const storageKey = `anti_cheat:violation:${userId}:${timestamp}`;
+      nk.storageWrite([
+        {
+          collection: 'anti_cheat_violations',
+          key: storageKey,
+          value: violation,
+        },
+      ]);
+    } catch (err) {
+      logger.error('Failed to persist violation', { error: err, userId });
+    }
+  }
+
+  logger.info('Anti-cheat violation recorded', {
+    userId,
+    type,
+    severity,
+    riskScore: profile.riskScore,
+  });
 }
 
 /**
- * Get user violation summary.
+ * Get the severity level for a violation type.
  */
-export function getUserViolationSummary(userId: string): UserViolationSummary | null {
-  const profile = userRiskProfiles.get(userId);
-  if (!profile) {
-    return null;
-  }
-
-  const violationsByType: Record<string, number> = {};
-  for (const v of profile.violations) {
-    violationsByType[v.violationType] = (violationsByType[v.violationType] || 0) + 1;
-  }
-
-  return {
-    userId: profile.userId,
-    totalViolations: profile.violationCount,
-    violationsByType,
-    riskScore: profile.riskScore,
-    isHighRisk: profile.isHighRisk,
-    isSuspended: profile.isSuspended,
-    lastViolationTime: profile.lastViolationTime,
+function getSeverity(type: ViolationType): 'low' | 'medium' | 'high' | 'critical' {
+  const weights: Record<ViolationType, number> = {
+    replay_attack: 20,
+    invalid_signature: 18,
+    timing_attack: 12,
+    out_of_turn: 8,
+    clock_skew: 3,
+    invalid_progression: 15,
+    stat_manipulation: 25,
+    inventory_tampering: 20,
   };
+
+  const weight = weights[type] || 5;
+  if (weight >= 20) return 'critical';
+  if (weight >= 15) return 'high';
+  if (weight >= 10) return 'medium';
+  return 'low';
+}
+
+/**
+ * Get a user's violation summary.
+ */
+export function getUserViolationSummary(userId: string): UserRiskProfile | null {
+  return userRiskProfiles.get(userId) || null;
 }
 
 /**
  * Get top violators by risk score.
  */
-export function getTopViolators(limit: number): UserViolationSummary[] {
+export function getTopViolators(limit: number = 10): UserRiskProfile[] {
   const profiles = Array.from(userRiskProfiles.values());
-
-  // Sort by risk score descending
-  profiles.sort((a, b) => b.riskScore - a.riskScore);
-
-  return profiles.slice(0, limit).map((profile) => ({
-    userId: profile.userId,
-    totalViolations: profile.violationCount,
-    violationsByType: profile.violations.reduce(
-      (acc, v) => {
-        acc[v.violationType] = (acc[v.violationType] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>
-    ),
-    riskScore: profile.riskScore,
-    isHighRisk: profile.isHighRisk,
-    isSuspended: profile.isSuspended,
-    lastViolationTime: profile.lastViolationTime,
-  }));
+  return profiles.sort((a, b) => b.riskScore - a.riskScore).slice(0, limit);
 }
 
 /**
- * Generate audit report for a time period.
+ * Generate an audit report for a user.
  */
-export function generateAuditReport(startTime: number, endTime: number): AuditReport {
-  const profiles = Array.from(userRiskProfiles.values());
+export function generateAuditReport(userId: string): {
+  userId: string;
+  profile: UserRiskProfile | null;
+  report: {
+    totalViolations: number;
+    criticalViolations: number;
+    highViolations: number;
+    mediumViolations: number;
+    lowViolations: number;
+    violationsByType: Record<ViolationType, number>;
+    riskLevel: string;
+    recommendedAction: string;
+  };
+} | null {
+  const profile = userRiskProfiles.get(userId);
+  if (!profile) {
+    return null;
+  }
 
-  const violationsByType: Record<string, number> = {};
-  const violationsBySeverity: Record<string, number> = {};
-  const uniqueUsers = new Set<string>();
-  let totalViolations = 0;
-  let highRiskUsers = 0;
-  let autoSuspensions = 0;
+  const violationsByType: Record<ViolationType, number> = {
+    replay_attack: 0,
+    invalid_signature: 0,
+    timing_attack: 0,
+    out_of_turn: 0,
+    clock_skew: 0,
+    invalid_progression: 0,
+    stat_manipulation: 0,
+    inventory_tampering: 0,
+  };
 
-  for (const profile of profiles) {
-    if (profile.isHighRisk) highRiskUsers++;
-    if (profile.isSuspended) autoSuspensions++;
+  let critical = 0;
+  let high = 0;
+  let medium = 0;
+  let low = 0;
 
-    for (const v of profile.violations) {
-      if (v.timestamp >= startTime && v.timestamp <= endTime) {
-        uniqueUsers.add(profile.userId);
-        totalViolations++;
-
-        violationsByType[v.violationType] = (violationsByType[v.violationType] || 0) + 1;
-        violationsBySeverity[v.severity] = (violationsBySeverity[v.severity] || 0) + 1;
-      }
+  for (const v of profile.violations) {
+    violationsByType[v.type]++;
+    switch (v.severity) {
+      case 'critical':
+        critical++;
+        break;
+      case 'high':
+        high++;
+        break;
+      case 'medium':
+        medium++;
+        break;
+      case 'low':
+        low++;
+        break;
     }
   }
 
+  let riskLevel = 'low';
+  let recommendedAction = 'none';
+
+  if (profile.riskScore >= config.suspensionThreshold) {
+    riskLevel = 'critical';
+    recommendedAction = 'suspend';
+  } else if (profile.riskScore >= config.highRiskThreshold) {
+    riskLevel = 'high';
+    recommendedAction = 'flag';
+  } else if (profile.riskScore >= 25) {
+    riskLevel = 'medium';
+    recommendedAction = 'monitor';
+  }
+
   return {
-    startTime,
-    endTime,
-    totalViolations,
-    uniqueUsers: uniqueUsers.size,
-    violationsByType,
-    violationsBySeverity,
-    highRiskUsers,
-    autoSuspensions,
+    userId,
+    profile,
+    report: {
+      totalViolations: profile.violationCount,
+      criticalViolations: critical,
+      highViolations: high,
+      mediumViolations: medium,
+      lowViolations: low,
+      violationsByType,
+      riskLevel,
+      recommendedAction,
+    },
   };
 }
 
 /**
- * Check if user is suspended.
+ * Check if a user is currently suspended.
  */
 export function isUserSuspended(userId: string): boolean {
+  const profile = userRiskProfiles.get(userId);
+  return profile?.isSuspended || false;
+}
+
+/**
+ * Clear a user's flag (admin action).
+ */
+export function clearUserFlag(userId: string): boolean {
   const profile = userRiskProfiles.get(userId);
   if (!profile) {
     return false;
   }
-
-  // Check if suspension has expired
-  if (profile.isSuspended && profile.suspensionExpiresAt) {
-    if (Date.now() > profile.suspensionExpiresAt) {
-      profile.isSuspended = false;
-      profile.suspensionReason = undefined;
-      profile.suspensionExpiresAt = undefined;
-      logger?.info('Suspension expired for user %s', userId);
-      return false;
-    }
-  }
-
-  return profile.isSuspended;
+  profile.isSuspended = false;
+  profile.riskScore = 0;
+  profile.violations = [];
+  logger.info('User flag cleared', { userId });
+  return true;
 }
 
 /**
- * Clear user flag (admin action).
+ * Suspend a user (admin action).
  */
-export function clearUserFlag(userId: string): void {
+export function suspendUser(userId: string, reason: string = 'admin_action'): boolean {
   const profile = userRiskProfiles.get(userId);
-  if (profile) {
-    profile.isHighRisk = false;
-    profile.riskScore = 0;
-    logger?.info('User flag cleared: %s', userId);
-  }
-}
-
-/**
- * Manually suspend a user (admin action).
- */
-export function suspendUser(userId: string, reason: string, durationDays: number): void {
-  const profile = getOrCreateUserProfile(userId);
-  profile.isSuspended = true;
-  profile.suspensionReason = reason;
-  profile.suspensionExpiresAt = Date.now() + durationDays * 24 * 60 * 60 * 1000;
-  profile.isHighRisk = true;
-
-  // Persist suspension to storage
-  if (config.enablePersistence && nk) {
-    persistSuspension(userId, profile);
+  if (!profile) {
+    userRiskProfiles.set(userId, {
+      userId,
+      violations: [],
+      riskScore: config.suspensionThreshold,
+      isSuspended: true,
+      firstViolation: Date.now(),
+      lastViolation: Date.now(),
+      violationCount: 0,
+    });
+  } else {
+    profile.isSuspended = true;
+    profile.riskScore = Math.max(profile.riskScore, config.suspensionThreshold);
   }
 
-  logger?.warn(
-    'User suspended: %s (reason: %s, expires: %s)',
-    userId,
-    reason,
-    new Date(profile.suspensionExpiresAt).toISOString()
-  );
+  logger.warn('User suspended manually', { userId, reason });
+  return true;
 }
 
 /**
  * Get audit statistics.
  */
-export function getAuditStats(): {
-  trackedUsers: number;
-  highRiskUsers: number;
-  suspendedUsers: number;
-  config: AuditConfig;
-} {
-  let highRiskCount = 0;
-  let suspendedCount = 0;
+export function getAuditStats(): AuditStats {
+  const profiles = Array.from(userRiskProfiles.values());
+  const violationsByType: Record<ViolationType, number> = {
+    replay_attack: 0,
+    invalid_signature: 0,
+    timing_attack: 0,
+    out_of_turn: 0,
+    clock_skew: 0,
+    invalid_progression: 0,
+    stat_manipulation: 0,
+    inventory_tampering: 0,
+  };
 
-  userRiskProfiles.forEach((profile) => {
-    if (profile.isHighRisk) highRiskCount++;
-    if (profile.isSuspended) suspendedCount++;
-  });
+  let totalViolations = 0;
+
+  for (const profile of profiles) {
+    totalViolations += profile.violations.length;
+    for (const v of profile.violations) {
+      violationsByType[v.type]++;
+    }
+  }
 
   return {
-    trackedUsers: userRiskProfiles.size,
-    highRiskUsers: highRiskCount,
-    suspendedUsers: suspendedCount,
-    config,
+    totalViolations,
+    uniqueUsers: profiles.length,
+    suspendedUsers: profiles.filter((p) => p.isSuspended).length,
+    highRiskUsers: profiles.filter((p) => p.riskScore >= config.highRiskThreshold).length,
+    violationsByType,
   };
 }
-
-// ============================================================
-// Private Helper Functions
-// ============================================================
-
-function getOrCreateUserProfile(userId: string): UserRiskProfile {
-  if (!userRiskProfiles.has(userId)) {
-    userRiskProfiles.set(userId, {
-      userId,
-      violations: [],
-      riskScore: 0,
-      isHighRisk: false,
-      isSuspended: false,
-      lastViolationTime: 0,
-      violationCount: 0,
-    });
-  }
-  return userRiskProfiles.get(userId)!;
-}
-
-function getViolationSeverity(violationType: string): 'CRITICAL' | 'HIGH' | 'MEDIUM' {
-  switch (violationType) {
-    case 'replay_attack':
-    case 'invalid_signature':
-      return 'CRITICAL';
-    case 'timing_attack':
-    case 'out_of_turn':
-      return 'HIGH';
-    case 'clock_skew':
-    default:
-      return 'MEDIUM';
-  }
-}
-
-function updateRiskScore(profile: UserRiskProfile): void {
-  let score = 0;
-
-  // Sum weights for each violation type
-  for (const v of profile.violations) {
-    const weight = VIOLATION_WEIGHTS[v.violationType] || 1;
-    score += weight;
-  }
-
-  // Add penalty for recent violations
-  const oneHourAgo = Date.now() - 3600000;
-  const recentViolations = profile.violations.filter((v) => v.timestamp > oneHourAgo);
-  if (recentViolations.length > 0) {
-    score += 10;
-  }
-
-  profile.riskScore = Math.min(score, 100); // Cap at 100
-  profile.isHighRisk = score >= config.highRiskThreshold;
-
-  // Persist high risk status
-  if (profile.isHighRisk && config.enablePersistence && nk) {
-    persistHighRiskUser(profile.userId);
-  }
-}
-
-function checkAutoSuspension(profile: UserRiskProfile): void {
-  const oneDayAgo = Date.now() - 86400000;
-  const recentViolations = profile.violations.filter((v) => v.timestamp > oneDayAgo);
-
-  if (recentViolations.length >= config.suspensionThreshold) {
-    profile.isSuspended = true;
-    profile.suspensionReason = `Auto-suspended: ${recentViolations.length} violations in 24 hours`;
-    profile.suspensionExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
-    profile.isHighRisk = true;
-
-    logger?.error(
-      'User auto-suspended: %s (%d violations in 24 hours)',
-      profile.userId,
-      recentViolations.length
-    );
-
-    // Persist suspension
-    if (config.enablePersistence && nk) {
-      persistSuspension(profile.userId, profile);
-    }
-  }
-}
-
-function cleanupOldViolations(profile: UserRiskProfile): void {
-  const cutoffTime = Date.now() - config.violationRetentionDays * 24 * 60 * 60 * 1000;
-  profile.violations = profile.violations.filter((v) => v.timestamp > cutoffTime);
-}
-
-function persistViolation(userId: string, violation: UserViolation): void {
-  try {
-    nk.storageWrite([
-      {
-        collection: 'anti_cheat_violations',
-        key: `${userId}:${violation.timestamp}:${violation.id}`,
-        userId,
-        value: JSON.stringify(violation),
-      },
-    ]);
-  } catch (err) {
-    logger?.error('Failed to persist violation: %s', err);
-  }
-}
-
-function persistHighRiskUser(userId: string): void {
-  try {
-    nk.storageWrite([
-      {
-        collection: 'high_risk_users',
-        key: userId,
-        userId: 'system', // System-owned
-        value: JSON.stringify({
-          userId,
-          flaggedAt: Date.now(),
-          reason: 'Risk score exceeded threshold',
-        }),
-      },
-    ]);
-  } catch (err) {
-    logger?.error('Failed to persist high risk user: %s', err);
-  }
-}
-
-function persistSuspension(userId: string, profile: UserRiskProfile): void {
-  try {
-    nk.storageWrite([
-      {
-        collection: 'player_suspensions',
-        key: userId,
-        userId: 'system',
-        value: JSON.stringify({
-          userId,
-          reason: profile.suspensionReason,
-          suspendedAt: profile.lastViolationTime,
-          expiresAt: profile.suspensionExpiresAt,
-        }),
-      },
-    ]);
-  } catch (err) {
-    logger?.error('Failed to persist suspension: %s', err);
-  }
-}
-
-// Cleanup old data periodically
-setInterval(() => {
-  const cutoffTime = Date.now() - config.violationRetentionDays * 24 * 60 * 60 * 1000;
-
-  userRiskProfiles.forEach((profile, userId) => {
-    cleanupOldViolations(profile);
-
-    // Remove profiles with no recent violations
-    if (profile.lastViolationTime > 0 && profile.lastViolationTime < cutoffTime) {
-      userRiskProfiles.delete(userId);
-    }
-  });
-}, 3600000); // Every hour
