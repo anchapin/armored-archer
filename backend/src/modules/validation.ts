@@ -82,6 +82,7 @@ export const ZodSchemas = {
     .optional(),
 
   update_rank: z.object({
+    match_id: z.string().min(1).max(100),
     winner_id: z.string().min(1).max(100),
     loser_id: z.string().min(1).max(100),
     winner_old_rank: z.number().int(),
@@ -89,6 +90,11 @@ export const ZodSchemas = {
     winner_new_rank: z.number().int(),
     loser_new_rank: z.number().int(),
     is_punch_up: z.boolean(),
+    // Anti-cheat fields
+    requestId: z.string().optional(),
+    timestamp: z.number().optional(),
+    signature: z.string().optional(),
+    nonce: z.string().optional(),
   }),
 
   get_season_rewards: z.object({}),
