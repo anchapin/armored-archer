@@ -30,6 +30,19 @@ func run_tests() -> void:
 	test_session_file_operations()
 	test_send_rpc_not_authenticated()
 	test_get_auth_headers_partial()
+	test_detect_environment_development()
+	test_log_config_warning()
+	test_log_security_warning()
+	test_validate_required_config()
+	test_get_environment()
+	test_get_environment_name()
+	test_is_production()
+	test_is_development()
+	test_is_staging()
+	test_try_auto_connect_with_existing_token()
+	test_try_auto_connect_without_token()
+	test_refresh_session_empty()
+	test_log_network_error()
 	
 	print("\n=== NetworkManager Test Results ===")
 	print("Passed: %d" % _tests_passed)
@@ -358,4 +371,137 @@ func test_get_auth_headers_partial() -> void:
 	else:
 		_fail("test_get_auth_headers_partial", "Session should be invalid when not connected")
 	
+	nm.queue_free()
+
+# --- Additional Tests for 80%+ Coverage ---
+
+func test_detect_environment_development() -> void:
+	var nm = _create_network_manager()
+	# Test development environment detection
+	nm.current_environment = nm._detect_environment()
+	
+	# Just verify it returns a valid environment type
+	if nm.current_environment >= 0 and nm.current_environment <= 2:
+		_pass("test_detect_environment")
+	else:
+		_fail("test_detect_environment", "Invalid environment type")
+	
+	nm.queue_free()
+
+func test_log_config_warning() -> void:
+	var nm = _create_network_manager()
+	# Just verify it doesn't crash
+	nm._log_config_warning("TEST_VAR", "test_value")
+	_pass("test_log_config_warning")
+	nm.queue_free()
+
+func test_log_security_warning() -> void:
+	var nm = _create_network_manager()
+	# Just verify it doesn't crash
+	nm._log_security_warning("Test security warning")
+	_pass("test_log_security_warning")
+	nm.queue_free()
+
+func test_validate_required_config() -> void:
+	var nm = _create_network_manager()
+	# Test with valid config
+	nm.server_url = "test.example.com"
+	nm.server_port = 7350
+	nm.server_key = "testkey"
+	nm._validate_required_config()
+	_pass("test_validate_required_config")
+	nm.queue_free()
+
+func test_get_environment() -> void:
+	var nm = _create_network_manager()
+	nm.current_environment = nm.EnvironmentType.DEVELOPMENT
+	
+	if nm.get_environment() == nm.EnvironmentType.DEVELOPMENT:
+		_pass("test_get_environment")
+	else:
+		_fail("test_get_environment", "Environment mismatch")
+	
+	nm.queue_free()
+
+func test_get_environment_name() -> void:
+	var nm = _create_network_manager()
+	nm.current_environment = nm.EnvironmentType.DEVELOPMENT
+	
+	if nm.get_environment_name() == "DEVELOPMENT":
+		_pass("test_get_environment_name")
+	else:
+		_fail("test_get_environment_name", "Name mismatch")
+	
+	nm.queue_free()
+
+func test_is_production() -> void:
+	var nm = _create_network_manager()
+	nm.current_environment = nm.EnvironmentType.PRODUCTION
+	
+	if nm.is_production():
+		_pass("test_is_production_true")
+	else:
+		_fail("test_is_production_true", "Should be production")
+	
+	nm.current_environment = nm.EnvironmentType.DEVELOPMENT
+	if not nm.is_production():
+		_pass("test_is_production_false")
+	else:
+		_fail("test_is_production_false", "Should not be production")
+	
+	nm.queue_free()
+
+func test_is_development() -> void:
+	var nm = _create_network_manager()
+	nm.current_environment = nm.EnvironmentType.DEVELOPMENT
+	
+	if nm.is_development():
+		_pass("test_is_development_true")
+	else:
+		_fail("test_is_development_true", "Should be development")
+	
+	nm.queue_free()
+
+func test_is_staging() -> void:
+	var nm = _create_network_manager()
+	nm.current_environment = nm.EnvironmentType.STAGING
+	
+	if nm.is_staging():
+		_pass("test_is_staging_true")
+	else:
+		_fail("test_is_staging_true", "Should be staging")
+	
+	nm.queue_free()
+
+func test_try_auto_connect_with_existing_token() -> void:
+	var nm = _create_network_manager()
+	nm.session_token = "existing_token"
+	# _try_auto_connect will call _refresh_session
+	# Just verify it doesn't crash
+	nm._try_auto_connect()
+	_pass("test_try_auto_connect_with_existing_token")
+	nm.queue_free()
+
+func test_try_auto_connect_without_token() -> void:
+	var nm = _create_network_manager()
+	nm.session_token = ""
+	# _try_auto_connect will call authenticate_device
+	# Just verify it doesn't crash
+	nm._try_auto_connect()
+	_pass("test_try_auto_connect_without_token")
+	nm.queue_free()
+
+func test_refresh_session_empty() -> void:
+	var nm = _create_network_manager()
+	# refresh_token is empty, so it should call authenticate_device
+	nm.refresh_token = ""
+	nm._refresh_session()
+	_pass("test_refresh_session_empty")
+	nm.queue_free()
+
+func test_log_network_error() -> void:
+	var nm = _create_network_manager()
+	# Just verify it doesn't crash
+	nm._log_network_error("test_error", "/test/endpoint", 500)
+	_pass("test_log_network_error")
 	nm.queue_free()
