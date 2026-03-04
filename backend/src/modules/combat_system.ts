@@ -272,6 +272,17 @@ export function rpcSubmitCombatAction(
   );
 
   if (!paramValidation.valid) {
+    // Check if this is an out_of_turn violation (anti-cheat detected it)
+    const outOfTurnViolation = paramValidation.violations.some(
+      (v) => v.violationType === 'out_of_turn'
+    );
+    if (outOfTurnViolation) {
+      logger.warn('Out of turn action from user: %s', ctx.userId);
+      return JSON.stringify({
+        error: 'Not your turn',
+      });
+    }
+
     // Invalid parameters (angle/power out of range)
     logger.warn('Invalid combat parameters from user: %s', ctx.userId);
     return JSON.stringify({

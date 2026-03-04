@@ -148,8 +148,8 @@ describe('Anti-Cheat Module', () => {
   });
 
   test('validateCombatActionParameters accepts valid combat action', () => {
-    // Out-of-turn check is now handled by combat_system.ts
-    const result = validateCombatActionParameters(1.57, 0.8, 'player-1', 'player-2', 'submit_combat_action', 'req-id');
+    // Pass correct currentTurnUserId to avoid out_of_turn violation
+    const result = validateCombatActionParameters(1.57, 0.8, 'player-1', 'player-1', 'submit_combat_action', 'req-id');
 
     expect(result.valid).toBe(true);
     expect(result.violations).toHaveLength(0);
