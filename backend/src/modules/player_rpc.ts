@@ -138,7 +138,8 @@ export function rpcGetPlayerStats(
 }
 
 /**
- * Registers the player report RPC endpoint.
+ * Registers the report player RPC endpoint.
+>>>>>>> origin/main
  *
  * @param initializer - Nakama runtime initializer
  */
@@ -152,7 +153,7 @@ export function registerRpcReportPlayer(initializer: Runtime.Initializer): void 
 }
 
 /**
- * Handles player report requests.
+ * Handles player reports for suspicious activity.
  *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
@@ -166,7 +167,7 @@ export function rpcReportPlayer(
   _nk: Runtime.Nakama,
   payload: string
 ): string {
-  logger.info('Player report request from user: %s', ctx.userId);
+  logger.info('Player report requested by user: %s', ctx.userId);
 
   const validation = validatePayload(ZodSchemas.report_player, payload, 'report_player');
   if (!validation.success) {
@@ -183,7 +184,17 @@ export function rpcReportPlayer(
     additional_info
   );
 
-  return JSON.stringify(result);
+  if (!result.success) {
+    return JSON.stringify({
+      success: false,
+      error: result.error,
+    });
+  }
+
+  return JSON.stringify({
+    success: true,
+    report_id: result.reportId,
+  });
 }
 
 /**
@@ -201,12 +212,12 @@ export function registerRpcGetPlayerReports(initializer: Runtime.Initializer): v
 }
 
 /**
- * Handles get player reports requests.
+ * Retrieves reports for a player (admin/reporter view).
  *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param _nk - Nakama server interface
- * @param payload - JSON string (unused, required for RPC format)
+ * @param payload - JSON string with optional user_id filter
  * @returns JSON string with reports
  */
 export function rpcGetPlayerReports(
@@ -215,14 +226,21 @@ export function rpcGetPlayerReports(
   _nk: Runtime.Nakama,
   payload: string
 ): string {
-  logger.info('Get player reports request from user: %s', ctx.userId);
+  logger.info('Get player reports requested by user: %s', ctx.userId);
 
   const validation = validatePayload(ZodSchemas.get_player_reports, payload, 'get_player_reports');
   if (!validation.success) {
     return createValidationErrorResponse('get_player_reports', validation.error);
   }
 
-  const reports = getReportsForUser(ctx.userId);
+  const { user_id } = validation.data;
 
-  return JSON.stringify({ reports });
+  // If user_id provided, get reports for that user (admin view)
+  // Otherwise, get reports filed by current user
+  const reports = user_id ? getReportsForUser(user_id) : getReportsForUser(ctx.userId);
+
+  return JSON.stringify({
+    success: true,
+    reports,
+  });
 }
