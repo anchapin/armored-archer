@@ -1,9 +1,38 @@
 extends Node
 
+# --- Environment Types ---
+enum EnvironmentType {
+	DEVELOPMENT,
+	STAGING,
+	PRODUCTION
+}
+
 # --- Configuration ---
 @export var server_url: String = ""
 @export var server_port: int = 0
 @export var server_key: String = ""
+
+# --- Environment State ---
+var current_environment: EnvironmentType = EnvironmentType.DEVELOPMENT
+
+# --- Default Configs (Development Only) ---
+const DEFAULT_CONFIG: Dictionary = {
+	EnvironmentType.DEVELOPMENT: {
+		"server_url": "127.0.0.1",
+		"server_port": 7350,
+		"server_key": "defaultkey"
+	},
+	EnvironmentType.STAGING: {
+		"server_url": "staging.armoredarcher.example.com",
+		"server_port": 7350,
+		"server_key": ""
+	},
+	EnvironmentType.PRODUCTION: {
+		"server_url": "",
+		"server_port": 0,
+		"server_key": ""
+	}
+}
 
 # --- Session State ---
 var session_token: String = ""
@@ -27,50 +56,119 @@ signal connection_status_changed(is_online: bool)
 const SESSION_FILE: String = "user://session_data.json"
 
 # --- Environment Variables ---
+func _detect_environment() -> EnvironmentType:
+	# Check for explicit environment setting
+	var env_name: String = OS.getenv("ARMORED_ARCHER_ENVIRONMENT")
+	if not env_name.is_empty():
+		match env_name.to_lower():
+			"production", "prod":
+				return EnvironmentType.PRODUCTION
+			"staging", "stage":
+				return EnvironmentType.STAGING
+			"development", "dev":
+				return EnvironmentType.DEVELOPMENT
+	
+	# Auto-detect based on build type or other indicators
+	# Check for debug build (typically development)
+	if OS.is_debug_build():
+		return EnvironmentType.DEVELOPMENT
+	
+	# Default to staging for release builds unless explicitly configured
+	return EnvironmentType.STAGING
+
 func _load_environment_variables() -> void:
+	# Detect current environment
+	current_environment = _detect_environment()
+	
+	# Get environment-specific configuration
 	var env_url: String = OS.getenv("NAKAMA_SERVER_URL")
 	var env_port: String = OS.getenv("NAKAMA_SERVER_PORT")
 	var env_key: String = OS.getenv("NAKAMA_SERVER_KEY")
 	
+	# Load from environment variables if set
 	if not env_url.is_empty():
 		server_url = env_url
 	else:
-		push_warning("NAKAMA_SERVER_URL not set, using default: 127.0.0.1")
-		server_url = "127.0.0.1"
+		# Fall back to environment-specific defaults
+		server_url = DEFAULT_CONFIG[current_environment]["server_url"]
+		_log_config_warning("NAKAMA_SERVER_URL", server_url)
 	
 	if not env_port.is_empty():
 		server_port = int(env_port)
 	else:
-		push_warning("NAKAMA_SERVER_PORT not set, using default: 7350")
-		server_port = 7350
+		# Fall back to environment-specific defaults
+		server_port = DEFAULT_CONFIG[current_environment]["server_port"]
+		_log_config_warning("NAKAMA_SERVER_PORT", str(server_port))
 	
 	if not env_key.is_empty():
 		server_key = env_key
 	else:
-		push_warning("NAKAMA_SERVER_KEY not set, using default: defaultkey")
-		server_key = "defaultkey"
+		# Fall back to environment-specific defaults
+		server_key = DEFAULT_CONFIG[current_environment]["server_key"]
+		_log_config_warning("NAKAMA_SERVER_KEY", server_key)
 	
 	_validate_required_config()
 
+func _log_config_warning(variable_name: String, fallback_value: String) -> void:
+	if current_environment == EnvironmentType.PRODUCTION:
+		push_error("PRODUCTION: %s not set! Using fallback: %s. Configure proper environment variables for production!" % [variable_name, fallback_value])
+		# Log critical security warning for production
+		_log_security_warning("Missing required environment variable in production: %s" % variable_name)
+	elif current_environment == EnvironmentType.STAGING:
+		push_warning("STAGING: %s not set, using fallback: %s" % [variable_name, fallback_value])
+	else:
+		push_warning("DEVELOPMENT: %s not set, using default: %s" % [variable_name, fallback_value])
+
+func _log_security_warning(message: String) -> void:
+	# Log security-related warnings for audit trail
+	print("SECURITY: %s" % message)
+	# Could also send to analytics/alerting system in production
+
+func _log_environment_info() -> void:
+	var env_name: String = EnvironmentType.keys()[current_environment]
+	print("=== NetworkManager Environment Info ===")
+	print("Environment: %s" % env_name)
+	print("Server URL: %s" % server_url)
+	print("Server Port: %d" % server_port)
+	print("Server Key: %s" % ("[SET]" if not server_key.is_empty() else "[NOT SET]"))
+	print("========================================")
+	
+	if current_environment == EnvironmentType.PRODUCTION:
+		print("WARNING: Running in PRODUCTION mode - ensure all secrets are properly configured!")
+
 func _validate_required_config() -> void:
 	var missing_vars: Array[String] = []
+	var is_production: bool = current_environment == EnvironmentType.PRODUCTION
 	
-	if server_url.is_empty():
+	# Production requires all config to be properly set via environment variables
+	if server_url.is_empty() or (is_production and server_url == DEFAULT_CONFIG[EnvironmentType.PRODUCTION]["server_url"]):
 		missing_vars.append("NAKAMA_SERVER_URL")
 	
-	if server_port == 0:
+	if server_port == 0 or (is_production and server_port == DEFAULT_CONFIG[EnvironmentType.PRODUCTION]["server_port"]):
 		missing_vars.append("NAKAMA_SERVER_PORT")
 	
-	if server_key.is_empty():
+	# Server key is critical in production - warn if using defaults
+	if is_production:
+		if server_key.is_empty() or server_key == "defaultkey":
+			missing_vars.append("NAKAMA_SERVER_KEY (CRITICAL: Using default key in production is insecure!)")
+	elif server_key.is_empty():
 		missing_vars.append("NAKAMA_SERVER_KEY")
 	
 	if not missing_vars.is_empty():
-		var warning_msg: String = "Using defaults for environment variables: %s" % ", ".join(missing_vars)
-		push_warning(warning_msg)
+		var warning_msg: String = "Environment: %s | Missing required config: %s" % [
+			EnvironmentType.keys()[current_environment],
+			", ".join(missing_vars)
+		]
+		if is_production:
+			push_error("PRODUCTION SECURITY ERROR: %s" % warning_msg)
+			# In production, we could also disable network operations if critical config is missing
+		else:
+			push_warning(warning_msg)
 
 # --- Initialization ---
 func _ready() -> void:
 	_load_environment_variables()
+	_log_environment_info()
 	base_url = "http://%s:%d" % [server_url, server_port]
 	
 	http_request = HTTPRequest.new()
@@ -287,6 +385,22 @@ func get_auth_headers() -> PackedStringArray:
 
 func is_session_valid() -> bool:
 	return not session_token.is_empty() and is_connected
+
+# --- Environment Info ---
+func get_environment() -> EnvironmentType:
+	return current_environment
+
+func get_environment_name() -> String:
+	return EnvironmentType.keys()[current_environment]
+
+func is_production() -> bool:
+	return current_environment == EnvironmentType.PRODUCTION
+
+func is_development() -> bool:
+	return current_environment == EnvironmentType.DEVELOPMENT
+
+func is_staging() -> bool:
+	return current_environment == EnvironmentType.STAGING
 
 # --- RPC Communication ---
 func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Dictionary:
