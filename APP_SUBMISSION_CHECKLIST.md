@@ -28,7 +28,11 @@ This checklist covers all requirements for submitting Armored Archer to the iOS 
   - [ ] Stage selection
   - [ ] Character customization
 - [ ] Prepare promotional images (1024x1024 for App Store, 1024x500 for Play Store)
-- [ ] Verify icons display correctly on all devices
+- [x] Verify icons display correctly on all devices
+
+### ✓ Compliance
+- [x] Prepare Export Compliance documentation - see app_store_assets/EXPORT_COMPLIANCE.md
+- [x] Configure export_presets.cfg for proper IAP/compliance settings
 
 ### ✓ Documentation
 - [x] Write app store descriptions (iOS and Android) - see app_store_assets/localized_descriptions.md
