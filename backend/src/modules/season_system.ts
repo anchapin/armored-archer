@@ -5,7 +5,14 @@
 
 import { Runtime } from '../types/nakama';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { verifyRequestSignature, detectTimingAttack, recordMatchResult, isPlayerFlagged, getFlagReason, RequestSignature } from './anti_cheat';
+import {
+  verifyRequestSignature,
+  detectTimingAttack,
+  recordMatchResult,
+  isPlayerFlagged,
+  getFlagReason,
+  RequestSignature,
+} from './anti_cheat';
 
 /**
  * Season rewards data structure.
@@ -282,7 +289,11 @@ export function rpcUpdateRank(
 
   // Anti-cheat: Check if players are flagged
   if (isPlayerFlagged(request.winner_id)) {
-    logger.warn('Update rank blocked - winner flagged: %s reason: %s', request.winner_id, getFlagReason(request.winner_id));
+    logger.warn(
+      'Update rank blocked - winner flagged: %s reason: %s',
+      request.winner_id,
+      getFlagReason(request.winner_id)
+    );
     return JSON.stringify({
       success: false,
       error_code: 'PLAYER_FLAGGED',
@@ -291,7 +302,11 @@ export function rpcUpdateRank(
   }
 
   if (isPlayerFlagged(request.loser_id)) {
-    logger.warn('Update rank blocked - loser flagged: %s reason: %s', request.loser_id, getFlagReason(request.loser_id));
+    logger.warn(
+      'Update rank blocked - loser flagged: %s reason: %s',
+      request.loser_id,
+      getFlagReason(request.loser_id)
+    );
     return JSON.stringify({
       success: false,
       error_code: 'PLAYER_FLAGGED',
