@@ -379,5 +379,267 @@ export function getAntiCheatStats(): {
   };
 }
 
+// ============================================================
+// LEADERBOARD & PvP ANTI-CHEAT
+// ============================================================
+
+/**
+ * Configuration for leaderboard anti-cheat detection.
+ */
+export interface LeaderboardAntiCheatConfig {
+  suspiciousWinRateThreshold: number; // 0.95 = 95%
+  minMatchesForWinRateCheck: number; // 100
+  maxSameOpponentMatches: number; // 50
+  abandonmentPenalty: number; // -50 rank
+  escalationMultiplier: number; // 2x for repeat offenses
+  gracePeriodMs: number; // Time before penalty kicks in
+}
+
+let leaderboardConfig: LeaderboardAntiCheatConfig = {
+  suspiciousWinRateThreshold: 0.95,
+  minMatchesForWinRateCheck: 100,
+  maxSameOpponentMatches: 50,
+  abandonmentPenalty: 50,
+  escalationMultiplier: 2.0,
+  gracePeriodMs: 30000, // 30 seconds to take an action
+};
+
+/**
+ * Player match history for anti-cheat analysis.
+ */
+interface PlayerMatchHistory {
+  userId: string;
+  matches: MatchResult[];
+  abandonmentCount: number;
+  lastAbandonmentTime: number;
+  flagged: boolean;
+  flagReason?: string;
+}
+
+/**
+ * Individual match result.
+ */
+interface MatchResult {
+  matchId: string;
+  opponentId: string;
+  result: 'win' | 'loss' | 'draw' | 'abandon';
+  timestamp: number;
+  wasRanked: boolean;
+  rankBefore: number;
+  rankAfter: number;
+}
+
+// In-memory storage for match history (in production, use database)
+const playerMatchHistories = new Map<string, PlayerMatchHistory>();
+
+/**
+ * Initialize leaderboard anti-cheat configuration.
+ */
+export function initializeLeaderboardAntiCheat(config: Partial<LeaderboardAntiCheatConfig>): void {
+  leaderboardConfig = { ...leaderboardConfig, ...config };
+  logger.info('Leaderboard anti-cheat initialized with config: %O', leaderboardConfig);
+}
+
+/**
+ * Record a completed match result for anti-cheat analysis.
+ */
+export function recordMatchResult(
+  userId: string,
+  matchId: string,
+  opponentId: string,
+  result: 'win' | 'loss' | 'draw',
+  wasRanked: boolean,
+  rankBefore: number,
+  rankAfter: number
+): { flagged: boolean; reason?: string } {
+  const history = getOrCreatePlayerHistory(userId);
+
+  history.matches.push({
+    matchId,
+    opponentId,
+    result,
+    timestamp: Date.now(),
+    wasRanked,
+    rankBefore,
+    rankAfter,
+  });
+
+  // Keep only recent matches (last 200)
+  if (history.matches.length > 200) {
+    history.matches = history.matches.slice(-200);
+  }
+
+  return analyzePlayerForCheating(history);
+}
+
+/**
+ * Record an abandonment (disconnect).
+ */
+export function recordAbandonment(
+  userId: string,
+  matchId: string,
+  opponentId: string,
+  wasRanked: boolean,
+  rankBefore: number
+): { penalty: number; escalationFactor: number } {
+  const history = getOrCreatePlayerHistory(userId);
+  const now = Date.now();
+
+  // Check if within grace period (not counted as abandonment)
+  if (history.matches.length > 0) {
+    const lastMatch = history.matches[history.matches.length - 1];
+    if (now - lastMatch.timestamp < leaderboardConfig.gracePeriodMs) {
+      return { penalty: 0, escalationFactor: 1 };
+    }
+  }
+
+  history.matches.push({
+    matchId,
+    opponentId,
+    result: 'abandon',
+    timestamp: now,
+    wasRanked,
+    rankBefore,
+    rankAfter: rankBefore - leaderboardConfig.abandonmentPenalty,
+  });
+
+  // Track abandonment count for escalation
+  if (now - history.lastAbandonmentTime < 3600000) { // Within 1 hour
+    history.abandonmentCount += 1;
+  } else {
+    history.abandonmentCount = 1;
+  }
+  history.lastAbandonmentTime = now;
+
+  // Calculate escalation penalty
+  const escalationFactor = Math.min(
+    Math.pow(leaderboardConfig.escalationMultiplier, history.abandonmentCount - 1),
+    10 // Cap at 10x
+  );
+  const penalty = Math.floor(leaderboardConfig.abandonmentPenalty * escalationFactor);
+
+  // Flag if too many abandonments
+  if (history.abandonmentCount >= 5) {
+    history.flagged = true;
+    history.flagReason = `Excessive abandonments: ${history.abandonmentCount} in last hour`;
+  }
+
+  logger.warn('Player abandonment recorded: %s (count: %d, penalty: %d)',
+    userId, history.abandonmentCount, penalty);
+
+  return { penalty, escalationFactor };
+}
+
+/**
+ * Get player match history.
+ */
+export function getPlayerMatchHistory(userId: string): PlayerMatchHistory | null {
+  return playerMatchHistories.get(userId) || null;
+}
+
+/**
+ * Check if player is flagged for suspicious activity.
+ */
+export function isPlayerFlagged(userId: string): boolean {
+  const history = playerMatchHistories.get(userId);
+  return history?.flagged || false;
+}
+
+/**
+ * Get flag reason for a player.
+ */
+export function getFlagReason(userId: string): string | undefined {
+  const history = playerMatchHistories.get(userId);
+  return history?.flagReason;
+}
+
+/**
+ * Clear player flag (admin action).
+ */
+export function clearPlayerFlag(userId: string): void {
+  const history = playerMatchHistories.get(userId);
+  if (history) {
+    history.flagged = false;
+    history.flagReason = undefined;
+    history.abandonmentCount = 0;
+    logger.info('Player flag cleared: %s', userId);
+  }
+}
+
+function getOrCreatePlayerHistory(userId: string): PlayerMatchHistory {
+  if (!playerMatchHistories.has(userId)) {
+    playerMatchHistories.set(userId, {
+      userId,
+      matches: [],
+      abandonmentCount: 0,
+      lastAbandonmentTime: 0,
+      flagged: false,
+    });
+  }
+  return playerMatchHistories.get(userId)!;
+}
+
+function analyzePlayerForCheating(history: PlayerMatchHistory): { flagged: boolean; reason?: string } {
+  const rankedMatches = history.matches.filter(m => m.wasRanked);
+  
+  if (rankedMatches.length < leaderboardConfig.minMatchesForWinRateCheck) {
+    return { flagged: false };
+  }
+
+  // Check recent matches for win rate analysis
+  const recentMatches = rankedMatches.slice(-leaderboardConfig.minMatchesForWinRateCheck);
+  const wins = recentMatches.filter(m => m.result === 'win').length;
+  const winRate = wins / recentMatches.length;
+
+  // Flag suspicious win rate
+  if (winRate >= leaderboardConfig.suspiciousWinRateThreshold) {
+    history.flagged = true;
+    history.flagReason = `Suspicious win rate: ${(winRate * 100).toFixed(1)}% over ${recentMatches.length} matches`;
+    logger.warn('Player flagged for suspicious win rate: %s (%.1f%%)',
+      history.userId, winRate * 100);
+    return { flagged: true, reason: history.flagReason };
+  }
+
+  // Check for same opponent played too many times
+  const opponentCounts = new Map<string, number>();
+  for (const match of recentMatches) {
+    if (match.opponentId) {
+      opponentCounts.set(match.opponentId, (opponentCounts.get(match.opponentId) || 0) + 1);
+    }
+  }
+
+  for (const [opponentId, count] of opponentCounts) {
+    if (count >= leaderboardConfig.maxSameOpponentMatches) {
+      history.flagged = true;
+      history.flagReason = `Played same opponent ${count} times (max: ${leaderboardConfig.maxSameOpponentMatches})`;
+      logger.warn('Player flagged for same opponent: %s vs %s (%d times)',
+        history.userId, opponentId, count);
+      return { flagged: true, reason: history.flagReason };
+    }
+  }
+
+  return { flagged: false };
+}
+
+/**
+ * Get leaderboard anti-cheat statistics.
+ */
+export function getLeaderboardAntiCheatStats(): {
+  trackedPlayers: number;
+  flaggedPlayers: number;
+  config: LeaderboardAntiCheatConfig;
+} {
+  let flaggedCount = 0;
+  playerMatchHistories.forEach(h => {
+    if (h.flagged) flaggedCount++;
+  });
+
+  return {
+    trackedPlayers: playerMatchHistories.size,
+    flaggedPlayers: flaggedCount,
+    config: leaderboardConfig,
+  };
+}
+
 // Cleanup job to prevent memory leaks
 setInterval(cleanupExpiredRequests, 60000); // Every minute
