@@ -59,9 +59,9 @@ export const ZodSchemas = {
   submit_combat_action: z.object({
     match_id: z.string().min(1).max(100),
     action_type: z.enum(['shoot']),
-    angle: z.number().min(0).max(6.28318530718),  // 0 to 2π radians (0° to 360°)
-    power: z.number().min(0).max(1).optional(),   // Normalized 0.0-1.0
-    
+    angle: z.number().min(0).max(6.28318530718), // 0 to 2π radians (0° to 360°)
+    power: z.number().min(0).max(1).optional(), // Normalized 0.0-1.0
+
     // Anti-cheat fields (optional for backward compatibility)
     requestId: z.string().min(32).max(32).optional(),
     timestamp: z.number().int().min(0).optional(),
