@@ -56,6 +56,35 @@ const processedRefunds: Map<string, Set<string>> = new Map();
 // const RECEIPT_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * Pending purchase queue for handling network-failed purchases.
+ * Stores purchases that were paid but failed to reach the server.
+ */
+interface PendingPurchase {
+  userId: string;
+  productId: string;
+  receipt: string;
+  platform: string;
+  timestamp: number;
+  retryCount: number;
+}
+
+/**
+ * In-memory store for pending purchases (use Redis in production).
+ * Format: Map of transaction_id -> PendingPurchase
+ */
+const pendingPurchases: Map<string, PendingPurchase> = new Map();
+
+/**
+ * Maximum retry attempts for pending purchases.
+ */
+const MAX_PENDING_RETRIES = 3;
+
+/**
+ * Maximum age of pending purchases before expiry (24 hours in milliseconds).
+ */
+const PENDING_PURCHASE_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+/**
  * Cleanup old entries from the receipts store.
  */
 function cleanupOldReceipts(): void {
@@ -142,6 +171,98 @@ function markRefundAsProcessed(userId: string, refundTransactionId: string): voi
   }
   userRefunds.add(refundTransactionId);
 }
+
+/**
+ * Add a purchase to the pending queue.
+ * Called when a purchase succeeds but server validation fails due to network issues.
+ *
+ * @param logger - Nakama logger instance
+ * @param transactionId - Unique transaction identifier
+ * @param purchase - Pending purchase data
+ */
+function addToPendingQueue(logger: Runtime.Logger, transactionId: string, purchase: PendingPurchase): void {
+  pendingPurchases.set(transactionId, purchase);
+  logger.info('Added purchase to pending queue: %s (retry %d)', transactionId, purchase.retryCount);
+}
+
+/**
+ * Remove a purchase from the pending queue.
+ *
+ * @param logger - Nakama logger instance
+ * @param transactionId - Unique transaction identifier
+ */
+function removeFromPendingQueue(logger: Runtime.Logger, transactionId: string): void {
+  pendingPurchases.delete(transactionId);
+  logger.info('Removed purchase from pending queue: %s', transactionId);
+}
+
+/**
+ * Get a pending purchase by transaction ID.
+ *
+ * @param logger - Nakama logger instance
+ * @param transactionId - Unique transaction identifier
+ * @returns Pending purchase or undefined
+ */
+function getPendingPurchase(logger: Runtime.Logger, transactionId: string): PendingPurchase | undefined {
+  const purchase = pendingPurchases.get(transactionId);
+  
+  // Check if expired
+  if (purchase && Date.now() - purchase.timestamp > PENDING_PURCHASE_EXPIRY_MS) {
+    pendingPurchases.delete(transactionId);
+    return undefined;
+  }
+  
+  return purchase;
+}
+
+/**
+ * Increment retry count for a pending purchase.
+ *
+ * @param logger - Nakama logger instance
+ * @param transactionId - Unique transaction identifier
+ * @returns Updated retry count or -1 if not found/max retries exceeded
+ */
+function incrementPendingRetry(logger: Runtime.Logger, transactionId: string): number {
+  const purchase = pendingPurchases.get(transactionId);
+  if (!purchase) {
+    return -1;
+  }
+  
+  purchase.retryCount += 1;
+  
+  if (purchase.retryCount >= MAX_PENDING_RETRIES) {
+    // Max retries exceeded, remove from queue
+    pendingPurchases.delete(transactionId);
+    logger.warn('Pending purchase exceeded max retries: %s', transactionId);
+    return -1;
+  }
+  
+  return purchase.retryCount;
+}
+
+/**
+ * Clean up expired pending purchases.
+ *
+ * @param logger - Nakama logger instance
+ */
+function cleanupPendingPurchases(logger: Runtime.Logger): void {
+  const now = Date.now();
+  for (const [transactionId, purchase] of pendingPurchases.entries()) {
+    if (now - purchase.timestamp > PENDING_PURCHASE_EXPIRY_MS) {
+      pendingPurchases.delete(transactionId);
+      logger.info('Cleaned up expired pending purchase: %s', transactionId);
+    }
+  }
+}
+
+// Run cleanup every hour - use a no-op logger for background cleanup
+const noOpLogger = {
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+};
+setInterval(() => cleanupPendingPurchases(noOpLogger as Runtime.Logger), 60 * 60 * 1000);
 
 /**
  * Validates the platform against the receipt data.
@@ -430,6 +551,51 @@ export function registerRpcGetCurrency(initializer: Runtime.Initializer): void {
  */
 export function registerRpcSpendGems(initializer: Runtime.Initializer): void {
   initializer.registerRpc('armored_archer/spend_gems', rpcSpendGems);
+}
+
+/**
+ * Registers the register pending purchase RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcRegisterPendingPurchase(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/register_pending_purchase', rpcRegisterPendingPurchase);
+}
+
+/**
+ * Registers the process pending purchases RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcProcessPendingPurchases(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/process_pending_purchases', rpcProcessPendingPurchases);
+}
+
+/**
+ * Registers the check refunds RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcCheckRefunds(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/check_refunds', rpcCheckRefunds);
+}
+
+/**
+ * Registers the check subscriptions RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcCheckSubscriptions(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/check_subscriptions', rpcCheckSubscriptions);
+}
+
+/**
+ * Registers the app launch check RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcAppLaunchCheck(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/app_launch_check', rpcAppLaunchCheck);
 }
 
 /**
@@ -781,5 +947,417 @@ export function rpcSpendGems(
     success: true,
     new_balance: playerCurrency.gems,
     amount_spent: request.amount,
+  });
+}
+
+/**
+ * Register a pending purchase that failed to process.
+ * Called when client detects network failure after payment but before server validation.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string containing purchase data
+ * @returns JSON string with registration result
+ *
+ * @example
+ * // Request payload
+ * {
+ *   "transaction_id": "tx_123",
+ *   "product_id": "gem_pack_100",
+ *   "transaction_receipt": "...",
+ *   "platform": "ios"
+ * }
+ *
+ * // Response
+ * {
+ *   "success": true,
+ *   "message": "Purchase queued for retry",
+ *   "retry_count": 0
+ * }
+ */
+export function rpcRegisterPendingPurchase(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Registering pending purchase for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.register_pending_purchase, payload, 'register_pending_purchase');
+  if (!validation.success) {
+    return createValidationErrorResponse('register_pending_purchase', validation.error);
+  }
+
+  const request = validation.data;
+  const transactionId = request.transaction_id;
+
+  // Check if already in queue
+  const existing = getPendingPurchase(logger, transactionId);
+  if (existing) {
+    logger.info('Purchase already in pending queue: %s', transactionId);
+    return JSON.stringify({
+      success: true,
+      message: 'Purchase already queued',
+      retry_count: existing.retryCount,
+    });
+  }
+
+  // Add to pending queue
+  const pendingPurchase: PendingPurchase = {
+    userId: ctx.userId,
+    productId: request.product_id,
+    receipt: request.transaction_receipt,
+    platform: request.platform,
+    timestamp: Date.now(),
+    retryCount: 0,
+  };
+
+  addToPendingQueue(logger, transactionId, pendingPurchase);
+
+  logger.info('Pending purchase registered: %s for user %s', transactionId, ctx.userId);
+
+  return JSON.stringify({
+    success: true,
+    message: 'Purchase queued for retry',
+    retry_count: 0,
+  });
+}
+
+/**
+ * Process all pending purchases for a user.
+ * Called when client network recovers after a period of being offline.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (unused, required for RPC format)
+ * @returns JSON string with processing results
+ *
+ * @example
+ * // Request payload
+ * { }
+ *
+ * // Response
+ * {
+ *   "success": true,
+ *   "processed": 2,
+ *   "failed": 0,
+ *   "results": [...]
+ * }
+ */
+export function rpcProcessPendingPurchases(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Processing pending purchases for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.process_pending_purchases, payload, 'process_pending_purchases');
+  if (!validation.success) {
+    return createValidationErrorResponse('process_pending_purchases', validation.error);
+  }
+
+  // Get all pending purchases for this user
+  const userPurchases: Array<{ transactionId: string; purchase: PendingPurchase }> = [];
+  for (const [transactionId, purchase] of pendingPurchases.entries()) {
+    if (purchase.userId === ctx.userId) {
+      userPurchases.push({ transactionId, purchase });
+    }
+  }
+
+  if (userPurchases.length === 0) {
+    return JSON.stringify({
+      success: true,
+      processed: 0,
+      failed: 0,
+      results: [],
+    });
+  }
+
+  const results: Array<{
+    transaction_id: string;
+    product_id: string;
+    success: boolean;
+    error?: string;
+    gems_awarded?: number;
+  }> = [];
+
+  let processed = 0;
+  let failed = 0;
+  const catalog = getStoreCatalog(logger);
+
+  for (const { transactionId, purchase } of userPurchases) {
+    // Check max retries
+    if (purchase.retryCount >= MAX_PENDING_RETRIES) {
+      removeFromPendingQueue(logger, transactionId);
+      results.push({
+        transaction_id: transactionId,
+        product_id: purchase.productId,
+        success: false,
+        error: 'Max retries exceeded',
+      });
+      failed++;
+      continue;
+    }
+
+    // Validate receipt
+    const receiptHash = hashReceipt(purchase.receipt);
+
+    // Check for duplicate receipt
+    if (isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
+      removeFromPendingQueue(logger, transactionId);
+      results.push({
+        transaction_id: transactionId,
+        product_id: purchase.productId,
+        success: false,
+        error: 'Receipt already used',
+      });
+      failed++;
+      continue;
+    }
+
+    // Validate product ID
+    const gemBundle = catalog[purchase.productId];
+    if (!gemBundle) {
+      incrementPendingRetry(logger, transactionId);
+      results.push({
+        transaction_id: transactionId,
+        product_id: purchase.productId,
+        success: false,
+        error: 'Invalid product ID',
+      });
+      failed++;
+      continue;
+    }
+
+    // Validate platform
+    if (!validatePlatform(purchase.platform, purchase.receipt, logger)) {
+      incrementPendingRetry(logger, transactionId);
+      results.push({
+        transaction_id: transactionId,
+        product_id: purchase.productId,
+        success: false,
+        error: 'Invalid platform',
+      });
+      failed++;
+      continue;
+    }
+
+    // Mark receipt as used
+    markReceiptAsUsed(ctx.userId, receiptHash);
+
+    // Get player currency and add gems
+    const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
+
+    // Check balance limit
+    if (wouldExceedMaxBalance(playerCurrency.gems, gemBundle.gem_amount)) {
+      incrementPendingRetry(logger, transactionId);
+      results.push({
+        transaction_id: transactionId,
+        product_id: purchase.productId,
+        success: false,
+        error: 'Would exceed max balance',
+      });
+      failed++;
+      continue;
+    }
+
+    playerCurrency.gems += gemBundle.gem_amount;
+
+    // Update storage and wallet
+    nk.storageWrite([
+      {
+        collection: 'player_currency',
+        key: ctx.userId,
+        userId: ctx.userId,
+        value: JSON.stringify(playerCurrency),
+      },
+    ]);
+
+    nk.walletUpdate(ctx.userId, {
+      gems: gemBundle.gem_amount,
+    });
+
+    invalidateCurrencyCache(ctx.userId, logger);
+
+    // Remove from pending queue
+    removeFromPendingQueue(logger, transactionId);
+
+    logger.info('Pending purchase processed: %s -> %d gems', transactionId, gemBundle.gem_amount);
+
+    results.push({
+      transaction_id: transactionId,
+      product_id: purchase.productId,
+      success: true,
+      gems_awarded: gemBundle.gem_amount,
+    });
+    processed++;
+  }
+
+  return JSON.stringify({
+    success: true,
+    processed,
+    failed,
+    results,
+  });
+}
+
+/**
+ * Check for refunds using RevenueCat API.
+ * In production, this would query RevenueCat for recent chargebacks.
+ * Called on app launch to detect refunds that occurred while the player was offline.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (unused, required for RPC format)
+ * @returns JSON string with refund check results
+ *
+ * @example
+ * // Request payload
+ * { }
+ *
+ * // Response
+ * {
+ *   "success": true,
+ *   "refunds_detected": 0,
+ *   "refunds": []
+ * }
+ */
+export function rpcCheckRefunds(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Checking for refunds for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.check_refunds, payload, 'check_refunds');
+  if (!validation.success) {
+    return createValidationErrorResponse('check_refunds', validation.error);
+  }
+
+  // In production, this would call RevenueCat API to get all refunds for this user
+  // For now, return empty result - webhook should handle most cases
+  // RevenueCat webhooks are the primary mechanism for refund detection
+
+  logger.info('Refund check completed for user: %s', ctx.userId);
+
+  return JSON.stringify({
+    success: true,
+    refunds_detected: 0,
+    refunds: [],
+  });
+}
+
+/**
+ * Check subscription status using RevenueCat API.
+ * Called on app launch to detect expired subscriptions.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (unused, required for RPC format)
+ * @returns JSON string with subscription check results
+ *
+ * @example
+ * // Request payload
+ * { }
+ *
+ * // Response
+ * {
+ *   "success": true,
+ *   "subscriptions": [
+ *     {
+ *       "product_id": "premium_monthly",
+ *       "status": "expired",
+ *       "expiration_date": "2024-01-01T00:00:00Z"
+ *     }
+ *   ]
+ * }
+ */
+export function rpcCheckSubscriptions(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Checking subscriptions for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.check_subscriptions, payload, 'check_subscriptions');
+  if (!validation.success) {
+    return createValidationErrorResponse('check_subscriptions', validation.error);
+  }
+
+  // In production, this would call RevenueCat API to get subscription status
+  // For now, return empty result - real implementation would query RevenueCat
+
+  logger.info('Subscription check completed for user: %s', ctx.userId);
+
+  return JSON.stringify({
+    success: true,
+    subscriptions: [],
+  });
+}
+
+/**
+ * Comprehensive app launch check.
+ * Combines pending purchase processing, refund detection, and subscription check.
+ * Should be called when the game launches to ensure player state is up to date.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (unused, required for RPC format)
+ * @returns JSON string with all check results
+ *
+ * @example
+ * // Request payload
+ * { }
+ *
+ * // Response
+ * {
+ *   "success": true,
+ *   "pending_purchases": { "processed": 0, "failed": 0 },
+ *   "refunds": { "detected": 0 },
+ *   "subscriptions": { "active": [] }
+ * }
+ */
+export function rpcAppLaunchCheck(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('App launch check for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.app_launch_check, payload, 'app_launch_check');
+  if (!validation.success) {
+    return createValidationErrorResponse('app_launch_check', validation.error);
+  }
+
+  // Process pending purchases
+  const pendingResult = JSON.parse(rpcProcessPendingPurchases(ctx, logger, nk, '{}'));
+
+  // Check for refunds
+  const refundResult = JSON.parse(rpcCheckRefunds(ctx, logger, nk, '{}'));
+
+  // Check subscriptions
+  const subscriptionResult = JSON.parse(rpcCheckSubscriptions(ctx, logger, nk, '{}'));
+
+  logger.info('App launch check completed for user: %s', ctx.userId);
+
+  return JSON.stringify({
+    success: true,
+    pending_purchases: {
+      processed: pendingResult.processed || 0,
+      failed: pendingResult.failed || 0,
+    },
+    refunds: {
+      detected: refundResult.refunds_detected || 0,
+    },
+    subscriptions: subscriptionResult.subscriptions || [],
   });
 }

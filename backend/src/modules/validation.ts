@@ -118,6 +118,25 @@ export const ZodSchemas = {
   spend_gems: z.object({
     amount: z.number().int().positive().max(1000000),
   }),
+
+  register_pending_purchase: z.object({
+    transaction_id: z.string().min(1).max(100),
+    product_id: z.enum([
+      'com.armoredarcher.gems.small',
+      'com.armoredarcher.gems.medium',
+      'com.armoredarcher.gems.large',
+    ]),
+    transaction_receipt: z.string().min(1).max(100000),
+    platform: z.enum(['ios', 'android']),
+  }),
+
+  process_pending_purchases: z.object({}),
+
+  check_refunds: z.object({}),
+
+  check_subscriptions: z.object({}),
+
+  app_launch_check: z.object({}),
 } as const;
 
 export type SchemaName = keyof typeof ZodSchemas;

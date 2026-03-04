@@ -22,7 +22,7 @@ import {
   registerRpcClaimSeasonRewards,
   registerRpcEndSeason
 } from "./modules/season_system";
-import { registerRpcValidatePurchase, registerRpcGetCurrency, registerRpcSpendGems } from "./modules/store";
+import { registerRpcValidatePurchase, registerRpcGetCurrency, registerRpcSpendGems, registerRpcRegisterPendingPurchase, registerRpcProcessPendingPurchases, registerRpcCheckRefunds, registerRpcCheckSubscriptions, registerRpcAppLaunchCheck } from "./modules/store";
 import {
   registerRpcGenerateGear,
   registerRpcEquipGear,
@@ -67,6 +67,11 @@ const InitModule: InitModule = function(ctx: Runtime.Context, loggerParam: Runti
     registerRpcWithRateLimit(initializer, "armored_archer/get_leaderboard", "get_leaderboard", rpcGetLeaderboardWrapper);
     registerRpcWithRateLimit(initializer, "armored_archer/validate_purchase", "validate_purchase", rpcValidatePurchaseWrapper);
     registerRpcWithRateLimit(initializer, "armored_archer/spend_gems", "spend_gems", rpcSpendGemsWrapper);
+    registerRpcWithRateLimit(initializer, "armored_archer/register_pending_purchase", "register_pending_purchase", rpcRegisterPendingPurchaseWrapper);
+    registerRpcWithRateLimit(initializer, "armored_archer/process_pending_purchases", "process_pending_purchases", rpcProcessPendingPurchasesWrapper);
+    registerRpcWithRateLimit(initializer, "armored_archer/check_refunds", "check_refunds", rpcCheckRefundsWrapper);
+    registerRpcWithRateLimit(initializer, "armored_archer/check_subscriptions", "check_subscriptions", rpcCheckSubscriptionsWrapper);
+    registerRpcWithRateLimit(initializer, "armored_archer/app_launch_check", "app_launch_check", rpcAppLaunchCheckWrapper);
     registerRpcWithRateLimit(initializer, "armored_archer/generate_gear", "generate_gear", rpcGenerateGearWrapper);
     registerRpcWithRateLimit(initializer, "armored_archer/equip_gear", "equip_gear", rpcEquipGearWrapper);
   } else {
@@ -89,6 +94,11 @@ const InitModule: InitModule = function(ctx: Runtime.Context, loggerParam: Runti
     registerRpcValidatePurchase(initializer);
     registerRpcGetCurrency(initializer);
     registerRpcSpendGems(initializer);
+    registerRpcRegisterPendingPurchase(initializer);
+    registerRpcProcessPendingPurchases(initializer);
+    registerRpcCheckRefunds(initializer);
+    registerRpcCheckSubscriptions(initializer);
+    registerRpcAppLaunchCheck(initializer);
     registerRpcGenerateGear(initializer);
     registerRpcEquipGear(initializer);
     registerRpcUnequipGear(initializer);
@@ -152,6 +162,31 @@ function rpcValidatePurchaseWrapper(ctx: Runtime.Context, logger: Runtime.Logger
 function rpcSpendGemsWrapper(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
   const { rpcSpendGems } = require("./modules/store");
   return rpcSpendGems(ctx, logger, nk, payload);
+}
+
+function rpcRegisterPendingPurchaseWrapper(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+  const { rpcRegisterPendingPurchase } = require("./modules/store");
+  return rpcRegisterPendingPurchase(ctx, logger, nk, payload);
+}
+
+function rpcProcessPendingPurchasesWrapper(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+  const { rpcProcessPendingPurchases } = require("./modules/store");
+  return rpcProcessPendingPurchases(ctx, logger, nk, payload);
+}
+
+function rpcCheckRefundsWrapper(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+  const { rpcCheckRefunds } = require("./modules/store");
+  return rpcCheckRefunds(ctx, logger, nk, payload);
+}
+
+function rpcCheckSubscriptionsWrapper(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+  const { rpcCheckSubscriptions } = require("./modules/store");
+  return rpcCheckSubscriptions(ctx, logger, nk, payload);
+}
+
+function rpcAppLaunchCheckWrapper(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
+  const { rpcAppLaunchCheck } = require("./modules/store");
+  return rpcAppLaunchCheck(ctx, logger, nk, payload);
 }
 
 function rpcGenerateGearWrapper(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {
