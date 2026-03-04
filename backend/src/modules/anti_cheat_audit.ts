@@ -12,10 +12,10 @@ import { AntiCheatViolation } from './anti_cheat';
  */
 export interface AuditConfig {
   enablePersistence: boolean;
-  highRiskThreshold: number;      // Risk score >= this triggers manual review
-  suspensionThreshold: number;    // Violations >= this triggers auto-suspension
+  highRiskThreshold: number; // Risk score >= this triggers manual review
+  suspensionThreshold: number; // Violations >= this triggers auto-suspension
   violationRetentionDays: number; // How long to keep violation records
-  replayWindowMs: number;         // Time window for replay attack detection
+  replayWindowMs: number; // Time window for replay attack detection
 }
 
 /**
@@ -191,27 +191,25 @@ export function getUserViolationSummary(userId: string): UserViolationSummary | 
  */
 export function getTopViolators(limit: number): UserViolationSummary[] {
   const profiles = Array.from(userRiskProfiles.values());
-  
+
   // Sort by risk score descending
   profiles.sort((a, b) => b.riskScore - a.riskScore);
-  
-  return profiles
-    .slice(0, limit)
-    .map((profile) => ({
-      userId: profile.userId,
-      totalViolations: profile.violationCount,
-      violationsByType: profile.violations.reduce(
-        (acc, v) => {
-          acc[v.violationType] = (acc[v.violationType] || 0) + 1;
-          return acc;
-        },
-        {} as Record<string, number>
-      ),
-      riskScore: profile.riskScore,
-      isHighRisk: profile.isHighRisk,
-      isSuspended: profile.isSuspended,
-      lastViolationTime: profile.lastViolationTime,
-    }));
+
+  return profiles.slice(0, limit).map((profile) => ({
+    userId: profile.userId,
+    totalViolations: profile.violationCount,
+    violationsByType: profile.violations.reduce(
+      (acc, v) => {
+        acc[v.violationType] = (acc[v.violationType] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    ),
+    riskScore: profile.riskScore,
+    isHighRisk: profile.isHighRisk,
+    isSuspended: profile.isSuspended,
+    lastViolationTime: profile.lastViolationTime,
+  }));
 }
 
 /**
@@ -219,7 +217,7 @@ export function getTopViolators(limit: number): UserViolationSummary[] {
  */
 export function generateAuditReport(startTime: number, endTime: number): AuditReport {
   const profiles = Array.from(userRiskProfiles.values());
-  
+
   const violationsByType: Record<string, number> = {};
   const violationsBySeverity: Record<string, number> = {};
   const uniqueUsers = new Set<string>();
@@ -235,7 +233,7 @@ export function generateAuditReport(startTime: number, endTime: number): AuditRe
       if (v.timestamp >= startTime && v.timestamp <= endTime) {
         uniqueUsers.add(profile.userId);
         totalViolations++;
-        
+
         violationsByType[v.violationType] = (violationsByType[v.violationType] || 0) + 1;
         violationsBySeverity[v.severity] = (violationsBySeverity[v.severity] || 0) + 1;
       }
@@ -292,11 +290,7 @@ export function clearUserFlag(userId: string): void {
 /**
  * Manually suspend a user (admin action).
  */
-export function suspendUser(
-  userId: string,
-  reason: string,
-  durationDays: number
-): void {
+export function suspendUser(userId: string, reason: string, durationDays: number): void {
   const profile = getOrCreateUserProfile(userId);
   profile.isSuspended = true;
   profile.suspensionReason = reason;
@@ -308,8 +302,12 @@ export function suspendUser(
     persistSuspension(userId, profile);
   }
 
-  logger?.warn('User suspended: %s (reason: %s, expires: %s)', 
-    userId, reason, new Date(profile.suspensionExpiresAt).toISOString());
+  logger?.warn(
+    'User suspended: %s (reason: %s, expires: %s)',
+    userId,
+    reason,
+    new Date(profile.suspensionExpiresAt).toISOString()
+  );
 }
 
 /**
@@ -398,15 +396,18 @@ function updateRiskScore(profile: UserRiskProfile): void {
 function checkAutoSuspension(profile: UserRiskProfile): void {
   const oneDayAgo = Date.now() - 86400000;
   const recentViolations = profile.violations.filter((v) => v.timestamp > oneDayAgo);
-  
+
   if (recentViolations.length >= config.suspensionThreshold) {
     profile.isSuspended = true;
     profile.suspensionReason = `Auto-suspended: ${recentViolations.length} violations in 24 hours`;
     profile.suspensionExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
     profile.isHighRisk = true;
 
-    logger?.error('User auto-suspended: %s (%d violations in 24 hours)', 
-      profile.userId, recentViolations.length);
+    logger?.error(
+      'User auto-suspended: %s (%d violations in 24 hours)',
+      profile.userId,
+      recentViolations.length
+    );
 
     // Persist suspension
     if (config.enablePersistence && nk) {
@@ -477,10 +478,10 @@ function persistSuspension(userId: string, profile: UserRiskProfile): void {
 // Cleanup old data periodically
 setInterval(() => {
   const cutoffTime = Date.now() - config.violationRetentionDays * 24 * 60 * 60 * 1000;
-  
+
   userRiskProfiles.forEach((profile, userId) => {
     cleanupOldViolations(profile);
-    
+
     // Remove profiles with no recent violations
     if (profile.lastViolationTime > 0 && profile.lastViolationTime < cutoffTime) {
       userRiskProfiles.delete(userId);

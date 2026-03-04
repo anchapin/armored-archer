@@ -199,7 +199,7 @@ export function verifyRequestSignature(
 export function validateCombatActionParameters(
   angle: number,
   power: number | undefined,
-  _currentTurnUserId: string,  // Kept for API compatibility but not checked here
+  _currentTurnUserId: string, // Kept for API compatibility but not checked here
   playerId: string,
   rpcName: string,
   requestId: string
@@ -492,7 +492,8 @@ export function recordAbandonment(
   });
 
   // Track abandonment count for escalation
-  if (now - history.lastAbandonmentTime < 3600000) { // Within 1 hour
+  if (now - history.lastAbandonmentTime < 3600000) {
+    // Within 1 hour
     history.abandonmentCount += 1;
   } else {
     history.abandonmentCount = 1;
@@ -512,8 +513,12 @@ export function recordAbandonment(
     history.flagReason = `Excessive abandonments: ${history.abandonmentCount} in last hour`;
   }
 
-  logger.warn('Player abandonment recorded: %s (count: %d, penalty: %d)',
-    userId, history.abandonmentCount, penalty);
+  logger.warn(
+    'Player abandonment recorded: %s (count: %d, penalty: %d)',
+    userId,
+    history.abandonmentCount,
+    penalty
+  );
 
   return { penalty, escalationFactor };
 }
@@ -567,24 +572,30 @@ function getOrCreatePlayerHistory(userId: string): PlayerMatchHistory {
   return playerMatchHistories.get(userId)!;
 }
 
-function analyzePlayerForCheating(history: PlayerMatchHistory): { flagged: boolean; reason?: string } {
-  const rankedMatches = history.matches.filter(m => m.wasRanked);
-  
+function analyzePlayerForCheating(history: PlayerMatchHistory): {
+  flagged: boolean;
+  reason?: string;
+} {
+  const rankedMatches = history.matches.filter((m) => m.wasRanked);
+
   if (rankedMatches.length < leaderboardConfig.minMatchesForWinRateCheck) {
     return { flagged: false };
   }
 
   // Check recent matches for win rate analysis
   const recentMatches = rankedMatches.slice(-leaderboardConfig.minMatchesForWinRateCheck);
-  const wins = recentMatches.filter(m => m.result === 'win').length;
+  const wins = recentMatches.filter((m) => m.result === 'win').length;
   const winRate = wins / recentMatches.length;
 
   // Flag suspicious win rate
   if (winRate >= leaderboardConfig.suspiciousWinRateThreshold) {
     history.flagged = true;
     history.flagReason = `Suspicious win rate: ${(winRate * 100).toFixed(1)}% over ${recentMatches.length} matches`;
-    logger.warn('Player flagged for suspicious win rate: %s (%.1f%%)',
-      history.userId, winRate * 100);
+    logger.warn(
+      'Player flagged for suspicious win rate: %s (%.1f%%)',
+      history.userId,
+      winRate * 100
+    );
     return { flagged: true, reason: history.flagReason };
   }
 
@@ -600,8 +611,12 @@ function analyzePlayerForCheating(history: PlayerMatchHistory): { flagged: boole
     if (count >= leaderboardConfig.maxSameOpponentMatches) {
       history.flagged = true;
       history.flagReason = `Played same opponent ${count} times (max: ${leaderboardConfig.maxSameOpponentMatches})`;
-      logger.warn('Player flagged for same opponent: %s vs %s (%d times)',
-        history.userId, opponentId, count);
+      logger.warn(
+        'Player flagged for same opponent: %s vs %s (%d times)',
+        history.userId,
+        opponentId,
+        count
+      );
       return { flagged: true, reason: history.flagReason };
     }
   }
@@ -618,7 +633,7 @@ export function getLeaderboardAntiCheatStats(): {
   config: LeaderboardAntiCheatConfig;
 } {
   let flaggedCount = 0;
-  playerMatchHistories.forEach(h => {
+  playerMatchHistories.forEach((h) => {
     if (h.flagged) flaggedCount++;
   });
 

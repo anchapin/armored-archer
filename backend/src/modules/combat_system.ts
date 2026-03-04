@@ -8,12 +8,10 @@ import { PvPMatch } from './matchmaker';
 import { PlayerStats } from '../types/game';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import {
-  initializeAntiCheat,
   verifyRequestSignature,
   validateCombatActionParameters,
   detectTimingAttack,
   RequestSignature,
-  AntiCheatViolation,
 } from './anti_cheat';
 
 /**
@@ -228,7 +226,7 @@ export function rpcSubmitCombatAction(
   }
 
   // === ANTI-CHEAT VALIDATION ===
-  
+
   // 1. Verify request signature if anti-cheat fields are provided
   if (action.requestId && action.timestamp && action.signature && action.nonce) {
     const signatureData: RequestSignature = {
@@ -237,7 +235,7 @@ export function rpcSubmitCombatAction(
       signature: action.signature,
       nonce: action.nonce,
     };
-    
+
     // Create payload for signature verification (without anti-cheat fields)
     const payloadForSig = JSON.stringify({
       match_id: action.match_id,
@@ -245,8 +243,13 @@ export function rpcSubmitCombatAction(
       angle: action.angle,
       power: action.power,
     });
-    
-    const sigResult = verifyRequestSignature(ctx, payloadForSig, signatureData, 'submit_combat_action');
+
+    const sigResult = verifyRequestSignature(
+      ctx,
+      payloadForSig,
+      signatureData,
+      'submit_combat_action'
+    );
     if (!sigResult.valid) {
       logger.warn('Anti-cheat signature verification failed for user: %s', ctx.userId);
       return JSON.stringify({
@@ -257,7 +260,8 @@ export function rpcSubmitCombatAction(
   }
 
   // 2. Validate combat action parameters (angle, power)
-  const requestId = action.requestId || `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  const requestId =
+    action.requestId || `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   const paramValidation = validateCombatActionParameters(
     action.angle,
     action.power,
@@ -266,7 +270,7 @@ export function rpcSubmitCombatAction(
     'submit_combat_action',
     requestId
   );
-  
+
   if (!paramValidation.valid) {
     // Invalid parameters (angle/power out of range)
     logger.warn('Invalid combat parameters from user: %s', ctx.userId);
