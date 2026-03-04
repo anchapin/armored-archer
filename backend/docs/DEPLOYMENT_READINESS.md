@@ -43,7 +43,7 @@ This document provides a comprehensive checklist for verifying backend deploymen
 
 - [ ] Environment validation script passes
   ```bash
-  cd backend && ./scripts/validate-env.sh
+  cd backend && ./validate-env.sh
   ```
 
 ### Build Verification
