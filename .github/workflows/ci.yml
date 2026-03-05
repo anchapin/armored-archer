@@ -71,11 +71,13 @@ jobs:
         run: npm run test:coverage
       
       - name: Upload coverage to Codecov
+        if: success()
+        continue-on-error: true
         uses: codecov/codecov-action@v4
         with:
           file: ./backend/coverage/lcov.info
           flags: backend
-          fail_ci_if_error: true
+          fail_ci_if_error: false
 
   security-audit:
     name: Security Audit

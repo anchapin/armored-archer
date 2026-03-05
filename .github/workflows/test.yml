@@ -214,11 +214,12 @@ jobs:
       
       - name: Upload coverage to Codecov
         if: success()
+        continue-on-error: true
         uses: codecov/codecov-action@v4
         with:
           file: ./backend/coverage/lcov.info
           flags: backend
-          fail_ci_if_error: true
+          fail_ci_if_error: false
 
   require-tests:
     name: All Tests Must Pass
