@@ -28,7 +28,7 @@ describe('store', () => {
   });
 
   describe('rpcValidatePurchase', () => {
-    it('should validate purchase and add gems', () => {
+    it('should validate purchase and add gems', async () => {
       const currency = createMockCurrency();
       mockNk.storageRead = jest.fn().mockReturnValue([{
         collection: "player_currency",
@@ -41,7 +41,7 @@ describe('store', () => {
         platform: "ios",
         transaction_receipt: "base64receipt"
       });
-      const result = rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -49,24 +49,24 @@ describe('store', () => {
       expect(parsed.product_id).toBe("com.armoredarcher.gems.small");
     });
 
-    it('should return error for invalid product ID', () => {
+    it('should return error for invalid product ID', async () => {
       const payload = JSON.stringify({
         product_id: "invalid.product.id",
         platform: "ios",
         transaction_receipt: "receipt"
       });
-      const result = rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.error).toContain("Invalid option");
     });
 
-    it('should validate input payload', () => {
+    it('should validate input payload', async () => {
       const payload = JSON.stringify({
         product_id: 123,
         platform: "invalid"
       });
-      const result = rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.error_code).toBe("VALIDATION_ERROR");
