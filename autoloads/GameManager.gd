@@ -10,6 +10,13 @@
 ##
 extends Node
 
+# --- Signals ---
+signal health_changed(new_health: int, max_health: int)
+signal player_died()
+signal game_won()
+signal boss_spawned(boss_node: Node)
+signal stage_completed(stage_id: String)
+
 # --- References ---
 @onready var analytics: Node = $"/root/AnalyticsManager" if has_node("/root/AnalyticsManager") else null
 

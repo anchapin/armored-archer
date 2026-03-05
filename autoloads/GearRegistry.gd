@@ -5,6 +5,16 @@ extends Node
 
 class_name GearRegistry
 
+# Inner class to expose GearSlot.SlotType for gear_data.gd and cosmetic_skin_data.gd
+# This allows scene scripts to reference GearSlot.SlotType without circular dependencies
+class GearSlot:
+	enum SlotType {
+		HELM,
+		ARMOR,
+		BOW,
+		ARROW
+	}
+
 var base_gear_db: Dictionary = {}
 var skin_db: Dictionary = {}
 
