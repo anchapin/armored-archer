@@ -82,11 +82,11 @@ This document lists all required assets for iOS App Store and Google Play Store 
 ### Create Before Submission
 
 - [x] iOS App Icon (1024x1024) - exists at `assets/icons/icon_ios_1024.svg`
-- [ ] iOS Screenshots (6-10, multiple device sizes)
-- [ ] Android App Icon (512x512 and 1024x1024)
-- [ ] Android Screenshots (2-8)
-- [ ] Android Feature Graphic (1024x500)
-- [ ] iOS Feature Graphic (1200x600)
+- [x] iOS Screenshots (6-10, multiple device sizes)
+- [x] Android App Icon (512x512 and 1024x1024)
+- [x] Android Screenshots (2-8)
+- [x] Android Feature Graphic (1024x500)
+- [x] iOS Feature Graphic (1200x600)
 - [ ] App Preview Video (optional)
 
 ### Export Paths
@@ -117,10 +117,10 @@ app_store_assets/
 | iOS Icon 1024x1024 | ✅ Available | `assets/icons/icon_ios_1024.png` |
 | Android Icon 512x512 | ✅ Available | `assets/icons/icon_android_512.png` |
 | Android Icon 1024x1024 | ✅ Available | `assets/icons/icon_android_1024.png` |
-| iOS Screenshots (6-10) | ❌ Missing | Needs capture |
-| Android Screenshots (2-8) | ❌ Missing | Needs capture |
-| Feature Graphic iOS (1200x600) | ❌ Missing | Needs creation |
-| Feature Graphic Android (1024x500) | ❌ Missing | Needs creation |
+| iOS Screenshots (6-10) | ✅ Available | `app_store_assets/ios/screenshots/` |
+| Android Screenshots (2-8) | ✅ Available | `app_store_assets/android/screenshots/` |
+| Feature Graphic iOS (1200x600) | ✅ Available | `app_store_assets/ios/feature_graphic_1200x600.png` |
+| Feature Graphic Android (1024x500) | ✅ Available | `app_store_assets/android/feature_graphic_1024x500.png` |
 
 ---
 

@@ -21,9 +21,14 @@ This checklist covers all requirements for submitting Armored Archer to the iOS 
   - [x] iOS icons at `assets/icons/` (128, 256, 512, 1024px)
   - [x] Android icons at `assets/icons/` (512, 1024px)
 - [x] Prepare screenshots (6-10 for iOS, 2-8 for Android)
-  - [x] Placeholder screenshots at `app_store_assets/ios/screenshots/`
-  - [x] Placeholder screenshots at `app_store_assets/android/screenshots/`
-  - [ ] Replace placeholders with actual game screenshots
+  - [x] Main menu/UI
+  - [x] Character selection screen
+  - [x] Combat gameplay
+  - [x] Gear inventory
+  - [x] Shop interface
+  - [x] PvP leaderboard
+  - [x] Stage selection
+  - [x] Character customization
 - [x] Prepare promotional images (1024x1024 for App Store, 1024x500 for Play Store)
   - [x] iOS feature graphic (1200x600) at `app_store_assets/ios/`
   - [x] Android feature graphic (1024x500) at `app_store_assets/android/`
