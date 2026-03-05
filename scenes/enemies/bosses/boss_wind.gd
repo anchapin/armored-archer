@@ -184,5 +184,6 @@ func die() -> void:
 	super.die(150)
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
-	if body.is_in_group("Player"):
-		body.take_damage(damage)
+	if body and body.is_in_group("Player"):
+		if body.has_method("take_damage"):
+			body.take_damage(damage)

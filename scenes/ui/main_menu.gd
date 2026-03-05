@@ -3,7 +3,6 @@ extends Control
 # --- UI References ---
 @onready var gem_label: Label = $CenterContainer/VBoxContainer/GemContainer/GemLabel
 @onready var play_button: Button = $CenterContainer/VBoxContainer/PlayButton
-<<<<<<< HEAD
 @onready var pvp_button: Button = $CenterContainer/VBoxContainer/PvpButton
 @onready var shop_button: Button = $CenterContainer/VBoxContainer/ShopButton
 @onready var buy_gems_button: Button = $CenterContainer/VBoxContainer/BuyGemsButton
@@ -14,26 +13,35 @@ extends Control
 @onready var gem_manager: Node = get_node_or_null("/root/GemManager")
 @onready var store_manager: Node = get_node_or_null("/root/StoreManager")
 
+# --- Signal connections for cleanup ---
+var _currency_updated_connection: Callable = Callable()
+
 # --- Initialization ---
 func _ready() -> void:
 	if store_manager:
-		store_manager.currency_updated.connect(_on_currency_updated)
+		_currency_updated_connection = store_manager.currency_updated.connect(_on_currency_updated)
 	
 	_update_gem_display()
 	
 	play_button.pressed.connect(_on_play_pressed)
-<<<<<<< HEAD
 	pvp_button.pressed.connect(_on_pvp_pressed)
 	shop_button.pressed.connect(_on_shop_pressed)
 	buy_gems_button.pressed.connect(_on_buy_gems_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 
+func _exit_tree() -> void:
+	# Clean up connected signals to prevent memory leaks
+	_cleanup_signal_connection(StoreManager, "currency_updated", _currency_updated_connection)
+
+func _cleanup_signal_connection(node: Node, signal_name: String, connection: Callable) -> void:
+	if node and connection.is_valid() and node.is_connected(signal_name, connection):
+		node.disconnect(signal_name, connection)
+
 # --- Button Handlers ---
 func _on_play_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
-<<<<<<< HEAD
 func _on_pvp_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
 

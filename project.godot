@@ -15,6 +15,14 @@ config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
 run/main_scene="res://scenes/ui/login_screen.tscn"
 
+[debug]
+
+# Enable strict type hints for better code quality
+gdscript/warnings/untyped_variable=2
+gdscript/warnings/untyped_call=2
+gdscript/warnings/incompatible_type_match=2
+gdscript/warnings/return_value_discarded=2
+
 [autoload]
 
 NetworkManager="*res://autoloads/NetworkManager.gd"
