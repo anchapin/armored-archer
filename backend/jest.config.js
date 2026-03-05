@@ -18,29 +18,29 @@ module.exports = {
   // Target 80%+ on: NetworkManager auth, CombatManager calculations, PlayerStatsManager XP
   coverageThreshold: {
     global: {
-      branches: 50,
-      functions: 50,
-      lines: 55,
-      statements: 55
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
-    // Per-file thresholds for critical modules
+    // Per-file thresholds for critical modules - all must meet 80%+
     './src/modules/combat_system.ts': {
-      branches: 60,
-      functions: 65,
-      lines: 70,
-      statements: 70
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
     './src/modules/rpg_system.ts': {
-      branches: 75,
-      functions: 55,
-      lines: 85,
-      statements: 85
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
     './src/modules/matchmaker.ts': {
-      branches: 85,
-      functions: 60,
-      lines: 90,
-      statements: 90
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     }
   },
   transform: {
