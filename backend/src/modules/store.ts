@@ -471,12 +471,12 @@ function getStoreCatalog(logger: Runtime.Logger): Record<string, GemBundle> {
  *   "product_id": "com.armoredarcher.gems.small"
  * }
  */
-export function rpcValidatePurchase(
+export async function rpcValidatePurchase(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string {
+): Promise<string> {
   logger.info('Validating purchase for user: %s', ctx.userId);
 
   const validation = validatePayload(ZodSchemas.validate_purchase, payload, 'validate_purchase');
@@ -534,11 +534,34 @@ export function rpcValidatePurchase(
     });
   }
 
-  // SECURITY NOTE: For production deployment, implement RevenueCat server-side receipt validation
-  // using the RevenueCat Server-Side API. This provides additional fraud protection by verifying
-  // receipts against Apple's App Store and Google Play servers.
+  // Validate receipt with RevenueCat server-side API for fraud protection
+  // This verifies receipts against Apple's App Store and Google Play servers
   // See: https://docs.revenuecat.com/docs/server-side-api
-  // Required: REVENUECAT_SECRET_KEY environment variable
+  // Required: REVENUECAT_API_KEY environment variable
+  const rcValidation = await validateWithRevenueCat(
+    logger,
+    request.transaction_receipt,
+    request.product_id,
+    request.platform
+  );
+  
+  if (!rcValidation.valid) {
+    logger.warn('RevenueCat validation failed for user %s: %s', ctx.userId, rcValidation.error);
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'validate_purchase',
+      'player_currency',
+      { product_id: request.product_id, platform: request.platform },
+      'failure',
+      rcValidation.error
+    );
+    return JSON.stringify({
+      error: 'Purchase validation failed',
+      error_code: 'VALIDATION_FAILED',
+    });
+  }
 
   const catalog = getStoreCatalog(logger);
 
@@ -826,6 +849,122 @@ function getRevenueCatApiKey(): string | undefined {
 }
 
 /**
+ * Result from RevenueCat validation.
+ */
+interface RevenueCatValidationResult {
+  valid: boolean;
+  error?: string;
+  subscriber?: Record<string, unknown>;
+  product_id?: string;
+}
+
+/**
+ * Validate a purchase receipt with RevenueCat server-side API.
+ * This provides additional fraud protection by verifying receipts against
+ * Apple's App Store and Google Play servers.
+ *
+ * @param logger - Nakama logger instance
+ * @param receipt - Base64 encoded receipt from the client
+ * @param productId - Product ID claimed by the client
+ * @param platform - Platform (ios or android)
+ * @returns Validation result with validity status and product ID from receipt
+ */
+async function validateWithRevenueCat(
+  logger: Runtime.Logger,
+  receipt: string,
+  productId: string,
+  platform: string
+): Promise<RevenueCatValidationResult> {
+  const apiKey = getRevenueCatApiKey();
+  if (!apiKey) {
+    logger.warn('RevenueCat API key not configured - skipping server-side validation');
+    // Return valid for development without API key
+    return { valid: true };
+  }
+
+  try {
+    // RevenueCat endpoint for validating subscriptions
+    const rcPlatform = platform === 'ios' ? 'apple' : 'google';
+    
+    // RevenueCat /receipts/validate endpoint
+    const response = await fetch(`${REVENUECAT_API_BASE}/receipts/validate`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        receipt: receipt,
+        platform: rcPlatform,
+        // Optional: include product ID to verify
+        product_id: productId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error('RevenueCat validation failed: %s - %s', response.status, errorText);
+      return { 
+        valid: false, 
+        error: `RevenueCat validation failed: ${response.status}` 
+      };
+    }
+
+    const data = await response.json() as Record<string, unknown>;
+    
+    // Check if the receipt is valid according to RevenueCat
+    const isValid = data.status === 'active' || data.status === 0 || data.valid === true;
+    
+    if (!isValid) {
+      logger.warn('RevenueCat rejected receipt: status=%s', data.status);
+      return { 
+        valid: false, 
+        error: `Invalid receipt: ${data.status}` 
+      };
+    }
+
+    // Extract product ID from RevenueCat response if available
+    const subscriber = data.subscriber as Record<string, unknown> | undefined;
+    let verifiedProductId: string | undefined;
+    
+    if (subscriber?.entitlements) {
+      const entitlements = subscriber.entitlements as Record<string, unknown>;
+      for (const entitlement of Object.values(entitlements)) {
+        const ent = entitlement as Record<string, unknown>;
+        if (ent.product_id) {
+          verifiedProductId = ent.product_id as string;
+          break;
+        }
+      }
+    }
+
+    // Verify product ID matches if we have one from the receipt
+    if (verifiedProductId && verifiedProductId !== productId) {
+      logger.warn('Product ID mismatch: claimed=%s, actual=%s', productId, verifiedProductId);
+      return { 
+        valid: false, 
+        error: `Product ID mismatch: claimed ${productId}, receipt contains ${verifiedProductId}`,
+        product_id: verifiedProductId,
+      };
+    }
+
+    logger.info('RevenueCat validation successful for user product: %s', productId);
+    return { 
+      valid: true, 
+      subscriber,
+      product_id: verifiedProductId,
+    };
+  } catch (error) {
+    logger.error('RevenueCat validation error: %s', error);
+    return { 
+      valid: false, 
+      error: `RevenueCat validation error: ${error}` 
+    };
+  }
+}
+
+
+/**
  * Add a purchase to the pending queue.
  * Called when network validation fails but receipt was received.
  */
@@ -876,12 +1015,12 @@ function cleanupPendingPurchases(userId: string): void {
  * Process pending purchases for a user.
  * Called when network recovers or on app launch.
  */
-export function rpcProcessPendingPurchases(
+export async function rpcProcessPendingPurchases(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string {
+): Promise<string> {
   logger.info('Processing pending purchases for user: %s', ctx.userId);
   
   const validation = validatePayload(ZodSchemas.process_pending_purchases, payload, 'process_pending_purchases');
@@ -985,12 +1124,12 @@ export function registerRpcProcessPendingPurchases(initializer: Runtime.Initiali
  * Check for refunds via RevenueCat API.
  * Should be called on app launch to detect chargebacks.
  */
-export function rpcCheckRefunds(
+export async function rpcCheckRefunds(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string {
+): Promise<string> {
   logger.info('Checking for refunds for user: %s', ctx.userId);
   
   const validation = validatePayload(ZodSchemas.check_refunds, payload, 'check_refunds');
@@ -1008,15 +1147,94 @@ export function rpcCheckRefunds(
     });
   }
   
-  // In production, call RevenueCat API to get refund history
-  // For now, return success with empty refunds
-  // RevenueCat API endpoint: GET /subscribers/{app_user_id}/refunds
-  
-  return JSON.stringify({
-    success: true,
-    refunds_found: 0,
-    message: 'No refunds detected'
-  });
+  // Call RevenueCat API to get refund history
+  // RevenueCat API endpoint: GET /subscribers/{app_user_id}
+  try {
+    const response = await fetch(`${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(validation.data.app_user_id)}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error('RevenueCat API error: %s - %s', response.status, errorText);
+      return JSON.stringify({
+        success: true,
+        refunds_found: 0,
+        message: 'Unable to check refunds'
+      });
+    }
+
+    const data = await response.json() as Record<string, unknown>;
+    const subscriber = data.subscriber as Record<string, unknown> | undefined;
+    
+    if (!subscriber) {
+      return JSON.stringify({
+        success: true,
+        refunds_found: 0,
+        message: 'No subscriber found'
+      });
+    }
+
+    // Check for refunds in the subscriber data
+    const entitlementHistory = subscriber.entitlement_details as Record<string, unknown> | undefined;
+    const refunds: { product_id: string; refunded_at: string }[] = [];
+    
+    // RevenueCat provides refund information in various fields
+    // Check for refund_date or cancellation fields
+    if (entitlementHistory) {
+      for (const [productId, details] of Object.entries(entitlementHistory)) {
+        const ent = details as Record<string, unknown>;
+        if (ent.refund_date || ent.refunded_at) {
+          refunds.push({
+            product_id: productId,
+            refunded_at: (ent.refund_date || ent.refunded_at) as string,
+          });
+        }
+      }
+    }
+    
+    // Process any detected refunds
+    let processedCount = 0;
+    for (const refund of refunds) {
+      if (!isRefundAlreadyProcessed(validation.data.app_user_id, refund.refunded_at)) {
+        // Get product info to determine gem amount
+        const catalog = getStoreCatalog(logger);
+        const productInfo = catalog[refund.product_id];
+        
+        if (productInfo) {
+          processRefund(
+            nk,
+            validation.data.app_user_id,
+            productInfo.gem_amount,
+            refund.refunded_at,
+            RefundReason.CHARGEBACK,
+            logger
+          );
+          processedCount++;
+        }
+      }
+    }
+    
+    logger.info('Refund check complete for user %s: found %d refunds', validation.data.app_user_id, refunds.length);
+    
+    return JSON.stringify({
+      success: true,
+      refunds_found: refunds.length,
+      processed: processedCount,
+      message: refunds.length > 0 ? `Found ${refunds.length} refunds` : 'No refunds detected'
+    });
+  } catch (error) {
+    logger.error('Error checking refunds: %s', error);
+    return JSON.stringify({
+      success: true,
+      refunds_found: 0,
+      message: 'Error checking refunds'
+    });
+  }
 }
 
 export function registerRpcCheckRefunds(initializer: Runtime.Initializer): void {
@@ -1031,12 +1249,12 @@ export function registerRpcCheckRefunds(initializer: Runtime.Initializer): void 
  * Check subscription status via RevenueCat API.
  * Should be called on app launch to detect expired subscriptions.
  */
-export function rpcCheckSubscriptions(
+export async function rpcCheckSubscriptions(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string {
+): Promise<string> {
   logger.info('Checking subscriptions for user: %s', ctx.userId);
   
   const validation = validatePayload(ZodSchemas.check_subscriptions, payload, 'check_subscriptions');
@@ -1054,15 +1272,75 @@ export function rpcCheckSubscriptions(
     });
   }
   
-  // In production, call RevenueCat API to get subscription status
-  // For now, return success with no active subscriptions
+  // Call RevenueCat API to get subscription status
   // RevenueCat API endpoint: GET /subscribers/{app_user_id}
-  
-  return JSON.stringify({
-    success: true,
-    active_subscriptions: [],
-    message: 'No active subscriptions'
-  });
+  try {
+    const response = await fetch(`${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(validation.data.app_user_id)}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error('RevenueCat API error: %s - %s', response.status, errorText);
+      return JSON.stringify({
+        success: true,
+        active_subscriptions: [],
+        message: 'Unable to check subscriptions'
+      });
+    }
+
+    const data = await response.json() as Record<string, unknown>;
+    const subscriber = data.subscriber as Record<string, unknown> | undefined;
+    
+    if (!subscriber) {
+      return JSON.stringify({
+        success: true,
+        active_subscriptions: [],
+        message: 'No subscriber found'
+      });
+    }
+
+    // Extract active subscriptions from entitlements
+    const entitlements = subscriber.entitlements as Record<string, unknown> | undefined;
+    const activeSubscriptions: { product_id: string; expires_date?: string; is_subscribed: boolean }[] = [];
+    
+    if (entitlements) {
+      for (const [entitlementId, entitlement] of Object.entries(entitlements)) {
+        const ent = entitlement as Record<string, unknown>;
+        
+        // Check if the entitlement is active
+        const isActive = ent.expires_date && new Date(ent.expires_date as string) > new Date();
+        const isSubscribed = (ent.is_subscribed === true) || (ent.product_plan_interval && !ent.cancellation_date);
+        
+        if (isActive || isSubscribed) {
+          activeSubscriptions.push({
+            product_id: (ent.product_id as string) || entitlementId,
+            expires_date: ent.expires_date as string | undefined,
+            is_subscribed: true,
+          });
+        }
+      }
+    }
+    
+    logger.info('Subscription check complete for user %s: %d active', validation.data.app_user_id, activeSubscriptions.length);
+    
+    return JSON.stringify({
+      success: true,
+      active_subscriptions: activeSubscriptions,
+      message: activeSubscriptions.length > 0 ? `Found ${activeSubscriptions.length} active subscriptions` : 'No active subscriptions'
+    });
+  } catch (error) {
+    logger.error('Error checking subscriptions: %s', error);
+    return JSON.stringify({
+      success: true,
+      active_subscriptions: [],
+      message: 'Error checking subscriptions'
+    });
+  }
 }
 
 export function registerRpcCheckSubscriptions(initializer: Runtime.Initializer): void {
@@ -1079,12 +1357,12 @@ export function registerRpcCheckSubscriptions(initializer: Runtime.Initializer):
  * - Refund detection
  * - Subscription status check
  */
-export function rpcAppLaunchCheck(
+export async function rpcAppLaunchCheck(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string {
+): Promise<string> {
   logger.info('Running app launch check for user: %s', ctx.userId);
   
   const validation = validatePayload(ZodSchemas.app_launch_check, payload, 'app_launch_check');
@@ -1093,13 +1371,13 @@ export function rpcAppLaunchCheck(
   }
   
   // Process pending purchases
-  const pendingResult = JSON.parse(rpcProcessPendingPurchases(ctx, logger, nk, '{}'));
+  const pendingResult = JSON.parse(await rpcProcessPendingPurchases(ctx, logger, nk, '{}'));
   
   // Check for refunds
-  const refundResult = JSON.parse(rpcCheckRefunds(ctx, logger, nk, '{}'));
+  const refundResult = JSON.parse(await rpcCheckRefunds(ctx, logger, nk, '{}'));
   
   // Check subscriptions
-  const subscriptionResult = JSON.parse(rpcCheckSubscriptions(ctx, logger, nk, '{}'));
+  const subscriptionResult = JSON.parse(await rpcCheckSubscriptions(ctx, logger, nk, '{}'));
   
   return JSON.stringify({
     success: true,
