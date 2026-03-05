@@ -1,3 +1,4 @@
+class_name BaseEnemy
 extends CharacterBody2D
 
 ## Base enemy class for all enemy types.
@@ -26,25 +27,13 @@ signal died(xp_reward: int)
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var hurt_area: Area2D = $HurtArea
 
-# --- Signal connections for cleanup ---
-var _hurt_area_connection: Callable = Callable()
-
 func _ready() -> void:
 	current_health = max_health
 	add_to_group("Enemies")
 	if hurt_area:
-		_hurt_area_connection = hurt_area.body_entered.connect(_on_hurt_area_body_entered)
+		hurt_area.body_entered.connect(_on_hurt_area_body_entered)
 	
 	AutoAimManager.register_enemy(self)
-
-func _exit_tree() -> void:
-	## Clean up AutoAimManager registration
-	AutoAimManager.unregister_enemy(self)
-	
-	## Clean up hurt_area signal to prevent ghost callbacks
-	if hurt_area and _hurt_area_connection.is_valid():
-		if hurt_area.is_connected("body_entered", _on_hurt_area_body_entered):
-			hurt_area.disconnect("body_entered", _hurt_area_connection)
 
 # Reset enemy state for reuse from object pool
 func reset_for_spawn() -> void:

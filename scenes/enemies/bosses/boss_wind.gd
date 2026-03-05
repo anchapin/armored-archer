@@ -35,13 +35,6 @@ var wind_projectile_cooldown: float = 5.0
 var wind_projectile_timer: float = 0.0
 var wind_projectile_speed: float = 300.0
 
-# --- Node References ---
-@onready var hurt_area: Area2D = $HurtArea
-@onready var sprite: Sprite2D = $Sprite2D
-
-# --- Signal connections for cleanup ---
-var _hurt_area_connection: Callable = Callable()
-
 # --- Signals ---
 signal boss_defeated(boss_name: String)
 signal health_changed(current: int, max: int)
@@ -54,16 +47,7 @@ func _ready() -> void:
 	add_to_group("Boss")
 	super._ready()
 	
-	if hurt_area:
-		_hurt_area_connection = hurt_area.body_entered.connect(_on_hurt_area_body_entered)
-	
 	health_changed.emit(current_health, max_health)
-
-func _exit_tree() -> void:
-	## Clean up connected signals to prevent memory leaks and ghost callbacks
-	if hurt_area and _hurt_area_connection.is_valid():
-		if hurt_area.is_connected("body_entered", _on_hurt_area_body_entered):
-			hurt_area.disconnect("body_entered", _hurt_area_connection)
 
 func _physics_process(delta: float) -> void:
 	if not player_ref:
@@ -181,7 +165,7 @@ func enter_phase_2() -> void:
 func die() -> void:
 	boss_defeated.emit(boss_name)
 	CampaignManager.unlock_modifier_pool("piercing_arrow")
-	super.die(150)
+	super.die()
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):

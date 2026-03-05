@@ -25,13 +25,14 @@ var time_remaining: int = 0
 var leaderboard: Array = []
 var season_rewards: Dictionary = {}
 var rewards_claimed: bool = false
+var has_claimed_rewards: bool = false  # Track if rewards have been claimed
 
 # --- Signals ---
 signal season_info_loaded(season_info: Dictionary)
 signal leaderboard_loaded(leaderboard: Array)
 signal rank_updated(rank_change: Dictionary)
 signal rewards_loaded(rewards: Dictionary)
-signal rewards_claimed(rewards: Dictionary)
+signal rewards_claimed_signal(rewards: Dictionary)
 
 # --- Network Reference ---
 @onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
@@ -168,7 +169,7 @@ func claim_season_rewards() -> void:
 	if response.get("success", false):
 		season_rewards = response.get("rewards", {})
 		rewards_claimed = response.get("claimed", false)
-		rewards_claimed.emit(season_rewards)
+		rewards_claimed_signal.emit(season_rewards)
 
 # --- Utility Methods ---
 func get_current_season() -> Dictionary:

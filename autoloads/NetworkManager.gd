@@ -58,7 +58,7 @@ const SESSION_FILE: String = "user://session_data.json"
 # --- Environment Variables ---
 func _detect_environment() -> EnvironmentType:
 	# Check for explicit environment setting
-	var env_name: String = OS.getenv("ARMORED_ARCHER_ENVIRONMENT")
+	var env_name: String = OS.get_environment("ARMORED_ARCHER_ENVIRONMENT")
 	if not env_name.is_empty():
 		match env_name.to_lower():
 			"production", "prod":
@@ -81,9 +81,9 @@ func _load_environment_variables() -> void:
 	current_environment = _detect_environment()
 	
 	# Get environment-specific configuration
-	var env_url: String = OS.getenv("NAKAMA_SERVER_URL")
-	var env_port: String = OS.getenv("NAKAMA_SERVER_PORT")
-	var env_key: String = OS.getenv("NAKAMA_SERVER_KEY")
+	var env_url: String = OS.get_environment("NAKAMA_SERVER_URL")
+	var env_port: String = OS.get_environment("NAKAMA_SERVER_PORT")
+	var env_key: String = OS.get_environment("NAKAMA_SERVER_KEY")
 	
 	# Load from environment variables if set
 	if not env_url.is_empty():

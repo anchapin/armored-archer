@@ -85,7 +85,11 @@ func _ready() -> void:
 	"""Detects platform and sets up signal connections."""
 	_detect_platform()
 	if network_manager:
-		network_manager.connected.connect(_on_connected)
+		network_manager.connection_status_changed.connect(_on_connection_status_changed)
+
+func _on_connection_status_changed(is_online: bool) -> void:
+	if is_online:
+		await load_currency()
 
 func _detect_platform() -> void:
 	"""Determines the current runtime platform."""

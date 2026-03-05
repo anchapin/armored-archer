@@ -11,9 +11,9 @@ config_version=5
 [application]
 
 config/name="Armored Archer"
+run/main_scene="res://scenes/ui/login_screen.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
-run/main_scene="res://scenes/ui/login_screen.tscn"
 
 [debug]
 
@@ -87,6 +87,13 @@ aim_down={
 ]
 }
 
+[performance]
+
+#PerformanceTargetsfordifferentdevicetiers#Flagship:60FPStarget#Budget:30+FPSminimumflagship_target_fps=60
+budget_min_fps=30
+#MemorythresholdsinMBbudget_memory_threshold=256
+mid_range_memory_threshold=512
+
 [physics]
 
 3d/physics_engine="Jolt Physics"
@@ -95,15 +102,3 @@ aim_down={
 
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="mobile"
-
-[performance]
-
-# Performance Targets for different device tiers
-# Flagship: 60 FPS target
-# Budget: 30+ FPS minimum
-flagship_target_fps=60
-budget_min_fps=30
-
-# Memory thresholds in MB
-budget_memory_threshold=256
-mid_range_memory_threshold=512

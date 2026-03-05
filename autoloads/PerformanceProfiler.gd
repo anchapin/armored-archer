@@ -172,13 +172,11 @@ func _check_memory_leak() -> void:
 	else:
 		_leak_suspect_count = 0
 
+
 func _get_memory_usage_mb() -> float:
-	if OS.has_feature("web"):
-		return 0.0  # Web platform doesn't support memory queries
-	
-	# Get process memory info
-	var mem_info = OS.get_memory_info()
-	return mem_info["physical"]["used"] / (1024.0 * 1024.0)
+	# Memory profiling disabled - returns 0 to avoid runtime errors
+	# Re-enable when needed with proper platform-specific handling
+	return 0.0
 
 func _get_memory_threshold() -> int:
 	match _device_tier:
@@ -196,8 +194,6 @@ func _detect_device_tier() -> void:
 	
 	# Get available RAM (if available)
 	var available_ram_mb: float = 0.0
-	if OS.has_method("get_free_memory"):
-		available_ram_mb = OS.get_free_memory() / (1024.0 * 1024.0)
 	
 	# Also check processor info
 	var processor_count = OS.get_processor_count()

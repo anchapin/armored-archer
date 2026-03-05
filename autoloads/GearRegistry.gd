@@ -3,7 +3,7 @@
 ##
 extends Node
 
-class_name GearRegistry
+# Note: Do NOT add class_name here as it conflicts with the autoload singleton
 
 # Inner class to expose GearSlot.SlotType for gear_data.gd and cosmetic_skin_data.gd
 # This allows scene scripts to reference GearSlot.SlotType without circular dependencies
