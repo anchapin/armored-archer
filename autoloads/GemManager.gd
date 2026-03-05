@@ -17,12 +17,16 @@ var owned_skins: Array = []
 var equipped_skins: Dictionary = {}
 
 # --- Slot Type Mapping ---
-var slot_type_mapping: Dictionary = {
-	"helm": GearSlot.SlotType.HELM,
-	"armor": GearSlot.SlotType.ARMOR,
-	"bow": GearSlot.SlotType.BOW,
-	"arrow": GearSlot.SlotType.ARROW
-}
+var slot_type_mapping: Dictionary = {}
+
+func _ready() -> void:
+	# Initialize slot_type_mapping after GearRegistry is ready
+	slot_type_mapping = {
+		"helm": GearRegistry.GearSlot.SlotType.HELM,
+		"armor": GearRegistry.GearSlot.SlotType.ARMOR,
+		"bow": GearRegistry.GearSlot.SlotType.BOW,
+		"arrow": GearRegistry.GearSlot.SlotType.ARROW
+	}
 
 # --- Signals ---
 signal skin_purchased(skin_id: String)

@@ -48,8 +48,8 @@ var http_request: HTTPRequest
 var base_url: String
 
 # --- Signals ---
-signal session_created(success: bool, error_message: String = "")
-signal session_refreshed(success: bool, error_message: String = "")
+signal session_created(success: bool, error_message: String)
+signal session_refreshed(success: bool, error_message: String)
 signal connection_status_changed(is_online: bool)
 
 # --- Constants ---
