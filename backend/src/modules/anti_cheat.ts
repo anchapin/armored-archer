@@ -674,7 +674,13 @@ export interface PlayerReport {
   status: 'pending' | 'reviewed' | 'dismissed' | 'actioned';
 }
 
-type ReportReason = 'win_trading' | 'match_manipulation' | 'suspicious_win_rate' | 'harassment' | 'exploiting_bugs' | 'other';
+type ReportReason =
+  | 'win_trading'
+  | 'match_manipulation'
+  | 'suspicious_win_rate'
+  | 'harassment'
+  | 'exploiting_bugs'
+  | 'other';
 
 // In-memory storage for player reports (in production, use database)
 const playerReports = new Map<string, PlayerReport>();

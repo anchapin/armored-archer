@@ -203,7 +203,11 @@ export function processRefund(
 ): { success: boolean; message: string; new_balance?: number } {
   // Check for duplicate refund
   if (isRefundAlreadyProcessed(userId, refundTransactionId)) {
-    logger.warn('Duplicate refund detected for user: %s, transaction: %s', userId, refundTransactionId);
+    logger.warn(
+      'Duplicate refund detected for user: %s, transaction: %s',
+      userId,
+      refundTransactionId
+    );
     return { success: false, message: 'Refund already processed' };
   }
 
@@ -249,7 +253,8 @@ export function processRefund(
     reason: reason,
     refund_transaction_id: refundTransactionId,
   };
-  const refundError = deduction < refundAmount ? 'Partial refund - player had insufficient balance' : undefined;
+  const refundError =
+    deduction < refundAmount ? 'Partial refund - player had insufficient balance' : undefined;
 
   logAudit(
     nk,
@@ -544,7 +549,7 @@ export async function rpcValidatePurchase(
     request.product_id,
     request.platform
   );
-  
+
   if (!rcValidation.valid) {
     logger.warn('RevenueCat validation failed for user %s: %s', ctx.userId, rcValidation.error);
     logAudit(
@@ -585,7 +590,11 @@ export async function rpcValidatePurchase(
 
   // Check for suspiciously large purchase amounts to prevent exploits
   if (gemBundle.gem_amount > MAX_PURCHASE_AMOUNT) {
-    logger.error('Suspicious purchase amount detected: %d gems (max: %d)', gemBundle.gem_amount, MAX_PURCHASE_AMOUNT);
+    logger.error(
+      'Suspicious purchase amount detected: %d gems (max: %d)',
+      gemBundle.gem_amount,
+      MAX_PURCHASE_AMOUNT
+    );
     logAudit(
       nk,
       ctx.userId,
@@ -609,8 +618,13 @@ export async function rpcValidatePurchase(
 
   // Check if adding gems would exceed maximum balance (overflow protection)
   if (wouldExceedMaxBalance(playerCurrency.gems, gemBundle.gem_amount)) {
-    logger.error('Purchase would exceed max balance for user %s: current %d + add %d > max %d',
-      ctx.userId, playerCurrency.gems, gemBundle.gem_amount, MAX_GEM_BALANCE);
+    logger.error(
+      'Purchase would exceed max balance for user %s: current %d + add %d > max %d',
+      ctx.userId,
+      playerCurrency.gems,
+      gemBundle.gem_amount,
+      MAX_GEM_BALANCE
+    );
     logAudit(
       nk,
       ctx.userId,
@@ -885,12 +899,12 @@ async function validateWithRevenueCat(
   try {
     // RevenueCat endpoint for validating subscriptions
     const rcPlatform = platform === 'ios' ? 'apple' : 'google';
-    
+
     // RevenueCat /receipts/validate endpoint
     const response = await fetch(`${REVENUECAT_API_BASE}/receipts/validate`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -904,29 +918,29 @@ async function validateWithRevenueCat(
     if (!response.ok) {
       const errorText = await response.text();
       logger.error('RevenueCat validation failed: %s - %s', response.status, errorText);
-      return { 
-        valid: false, 
-        error: `RevenueCat validation failed: ${response.status}` 
+      return {
+        valid: false,
+        error: `RevenueCat validation failed: ${response.status}`,
       };
     }
 
-    const data = await response.json() as Record<string, unknown>;
-    
+    const data = (await response.json()) as Record<string, unknown>;
+
     // Check if the receipt is valid according to RevenueCat
     const isValid = data.status === 'active' || data.status === 0 || data.valid === true;
-    
+
     if (!isValid) {
       logger.warn('RevenueCat rejected receipt: status=%s', data.status);
-      return { 
-        valid: false, 
-        error: `Invalid receipt: ${data.status}` 
+      return {
+        valid: false,
+        error: `Invalid receipt: ${data.status}`,
       };
     }
 
     // Extract product ID from RevenueCat response if available
     const subscriber = data.subscriber as Record<string, unknown> | undefined;
     let verifiedProductId: string | undefined;
-    
+
     if (subscriber?.entitlements) {
       const entitlements = subscriber.entitlements as Record<string, unknown>;
       for (const entitlement of Object.values(entitlements)) {
@@ -941,33 +955,33 @@ async function validateWithRevenueCat(
     // Verify product ID matches if we have one from the receipt
     if (verifiedProductId && verifiedProductId !== productId) {
       logger.warn('Product ID mismatch: claimed=%s, actual=%s', productId, verifiedProductId);
-      return { 
-        valid: false, 
+      return {
+        valid: false,
         error: `Product ID mismatch: claimed ${productId}, receipt contains ${verifiedProductId}`,
         product_id: verifiedProductId,
       };
     }
 
     logger.info('RevenueCat validation successful for user product: %s', productId);
-    return { 
-      valid: true, 
+    return {
+      valid: true,
       subscriber,
       product_id: verifiedProductId,
     };
   } catch (error) {
     logger.error('RevenueCat validation error: %s', error);
-    return { 
-      valid: false, 
-      error: `RevenueCat validation error: ${error}` 
+    return {
+      valid: false,
+      error: `RevenueCat validation error: ${error}`,
     };
   }
 }
-
 
 /**
  * Add a purchase to the pending queue.
  * Called when network validation fails but receipt was received.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function addToPendingQueue(
   userId: string,
   productId: string,
@@ -979,7 +993,7 @@ function addToPendingQueue(
     userPending = [];
     pendingPurchases.set(userId, userPending);
   }
-  
+
   userPending.push({
     product_id: productId,
     platform: platform,
@@ -987,7 +1001,7 @@ function addToPendingQueue(
     timestamp: Date.now(),
     retry_count: 0,
   });
-  
+
   // Clean up old entries
   cleanupPendingPurchases(userId);
 }
@@ -998,12 +1012,12 @@ function addToPendingQueue(
 function cleanupPendingPurchases(userId: string): void {
   const userPending = pendingPurchases.get(userId);
   if (!userPending) return;
-  
+
   const now = Date.now();
-  const valid = userPending.filter(p => 
-    now - p.timestamp < PENDING_PURCHASE_EXPIRY_MS && p.retry_count < MAX_PENDING_RETRIES
+  const valid = userPending.filter(
+    (p) => now - p.timestamp < PENDING_PURCHASE_EXPIRY_MS && p.retry_count < MAX_PENDING_RETRIES
   );
-  
+
   if (valid.length === 0) {
     pendingPurchases.delete(userId);
   } else {
@@ -1022,68 +1036,84 @@ export async function rpcProcessPendingPurchases(
   payload: string
 ): Promise<string> {
   logger.info('Processing pending purchases for user: %s', ctx.userId);
-  
-  const validation = validatePayload(ZodSchemas.process_pending_purchases, payload, 'process_pending_purchases');
+
+  const validation = validatePayload(
+    ZodSchemas.process_pending_purchases,
+    payload,
+    'process_pending_purchases'
+  );
   if (!validation.success) {
     return createValidationErrorResponse('process_pending_purchases', validation.error);
   }
-  
+
   const userPending = pendingPurchases.get(ctx.userId);
   if (!userPending || userPending.length === 0) {
     return JSON.stringify({
       success: true,
       processed: 0,
-      message: 'No pending purchases'
+      message: 'No pending purchases',
     });
   }
-  
+
   const results: { product_id: string; success: boolean; error?: string }[] = [];
   const catalog = getStoreCatalog(logger);
   const now = Date.now();
-  
+
   for (const purchase of userPending) {
     // Skip expired
     if (now - purchase.timestamp >= PENDING_PURCHASE_EXPIRY_MS) {
       results.push({ product_id: purchase.product_id, success: false, error: 'Expired' });
       continue;
     }
-    
+
     // Skip if max retries exceeded
     if (purchase.retry_count >= MAX_PENDING_RETRIES) {
-      results.push({ product_id: purchase.product_id, success: false, error: 'Max retries exceeded' });
+      results.push({
+        product_id: purchase.product_id,
+        success: false,
+        error: 'Max retries exceeded',
+      });
       continue;
     }
-    
+
     // Validate product ID
     if (!catalog[purchase.product_id]) {
       purchase.retry_count++;
-      results.push({ product_id: purchase.product_id, success: false, error: 'Invalid product ID' });
+      results.push({
+        product_id: purchase.product_id,
+        success: false,
+        error: 'Invalid product ID',
+      });
       continue;
     }
-    
+
     // Try to process the purchase
     const receiptHash = hashReceipt(purchase.transaction_receipt);
-    
+
     // Check for duplicate receipt
     if (isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
       results.push({ product_id: purchase.product_id, success: true, error: 'Already processed' });
       continue;
     }
-    
+
     // Award gems
     const gemBundle = catalog[purchase.product_id];
     const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
-    
+
     if (wouldExceedMaxBalance(playerCurrency.gems, gemBundle.gem_amount)) {
       purchase.retry_count++;
-      results.push({ product_id: purchase.product_id, success: false, error: 'Would exceed max balance' });
+      results.push({
+        product_id: purchase.product_id,
+        success: false,
+        error: 'Would exceed max balance',
+      });
       continue;
     }
-    
+
     // Mark receipt and add gems
     markReceiptAsUsed(ctx.userId, receiptHash);
     playerCurrency.gems += gemBundle.gem_amount;
-    
+
     nk.storageWrite([
       {
         collection: 'player_currency',
@@ -1092,23 +1122,28 @@ export async function rpcProcessPendingPurchases(
         value: JSON.stringify(playerCurrency),
       },
     ]);
-    
+
     nk.walletUpdate(ctx.userId, { gems: gemBundle.gem_amount });
     invalidateCurrencyCache(ctx.userId, logger);
-    
+
     results.push({ product_id: purchase.product_id, success: true });
-    logger.info('Processed pending purchase for user %s: %s (%d gems)', ctx.userId, purchase.product_id, gemBundle.gem_amount);
+    logger.info(
+      'Processed pending purchase for user %s: %s (%d gems)',
+      ctx.userId,
+      purchase.product_id,
+      gemBundle.gem_amount
+    );
   }
-  
+
   // Clean up processed purchases
   cleanupPendingPurchases(ctx.userId);
-  
-  const successful = results.filter(r => r.success).length;
+
+  const successful = results.filter((r) => r.success).length;
   return JSON.stringify({
     success: true,
     processed: results.length,
     successful: successful,
-    results: results
+    results: results,
   });
 }
 
@@ -1131,32 +1166,35 @@ export async function rpcCheckRefunds(
   payload: string
 ): Promise<string> {
   logger.info('Checking for refunds for user: %s', ctx.userId);
-  
+
   const validation = validatePayload(ZodSchemas.check_refunds, payload, 'check_refunds');
   if (!validation.success) {
     return createValidationErrorResponse('check_refunds', validation.error);
   }
-  
+
   const apiKey = getRevenueCatApiKey();
   if (!apiKey) {
     logger.warn('RevenueCat API key not configured - skipping refund check');
     return JSON.stringify({
       success: true,
       refunds_found: 0,
-      message: 'Refund check not configured'
+      message: 'Refund check not configured',
     });
   }
-  
+
   // Call RevenueCat API to get refund history
   // RevenueCat API endpoint: GET /subscribers/{app_user_id}
   try {
-    const response = await fetch(`${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(validation.data.app_user_id)}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await fetch(
+      `${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(validation.data.app_user_id)}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -1164,25 +1202,27 @@ export async function rpcCheckRefunds(
       return JSON.stringify({
         success: true,
         refunds_found: 0,
-        message: 'Unable to check refunds'
+        message: 'Unable to check refunds',
       });
     }
 
-    const data = await response.json() as Record<string, unknown>;
+    const data = (await response.json()) as Record<string, unknown>;
     const subscriber = data.subscriber as Record<string, unknown> | undefined;
-    
+
     if (!subscriber) {
       return JSON.stringify({
         success: true,
         refunds_found: 0,
-        message: 'No subscriber found'
+        message: 'No subscriber found',
       });
     }
 
     // Check for refunds in the subscriber data
-    const entitlementHistory = subscriber.entitlement_details as Record<string, unknown> | undefined;
+    const entitlementHistory = subscriber.entitlement_details as
+      | Record<string, unknown>
+      | undefined;
     const refunds: { product_id: string; refunded_at: string }[] = [];
-    
+
     // RevenueCat provides refund information in various fields
     // Check for refund_date or cancellation fields
     if (entitlementHistory) {
@@ -1196,7 +1236,7 @@ export async function rpcCheckRefunds(
         }
       }
     }
-    
+
     // Process any detected refunds
     let processedCount = 0;
     for (const refund of refunds) {
@@ -1204,7 +1244,7 @@ export async function rpcCheckRefunds(
         // Get product info to determine gem amount
         const catalog = getStoreCatalog(logger);
         const productInfo = catalog[refund.product_id];
-        
+
         if (productInfo) {
           processRefund(
             nk,
@@ -1218,21 +1258,25 @@ export async function rpcCheckRefunds(
         }
       }
     }
-    
-    logger.info('Refund check complete for user %s: found %d refunds', validation.data.app_user_id, refunds.length);
-    
+
+    logger.info(
+      'Refund check complete for user %s: found %d refunds',
+      validation.data.app_user_id,
+      refunds.length
+    );
+
     return JSON.stringify({
       success: true,
       refunds_found: refunds.length,
       processed: processedCount,
-      message: refunds.length > 0 ? `Found ${refunds.length} refunds` : 'No refunds detected'
+      message: refunds.length > 0 ? `Found ${refunds.length} refunds` : 'No refunds detected',
     });
   } catch (error) {
     logger.error('Error checking refunds: %s', error);
     return JSON.stringify({
       success: true,
       refunds_found: 0,
-      message: 'Error checking refunds'
+      message: 'Error checking refunds',
     });
   }
 }
@@ -1256,32 +1300,39 @@ export async function rpcCheckSubscriptions(
   payload: string
 ): Promise<string> {
   logger.info('Checking subscriptions for user: %s', ctx.userId);
-  
-  const validation = validatePayload(ZodSchemas.check_subscriptions, payload, 'check_subscriptions');
+
+  const validation = validatePayload(
+    ZodSchemas.check_subscriptions,
+    payload,
+    'check_subscriptions'
+  );
   if (!validation.success) {
     return createValidationErrorResponse('check_subscriptions', validation.error);
   }
-  
+
   const apiKey = getRevenueCatApiKey();
   if (!apiKey) {
     logger.warn('RevenueCat API key not configured - skipping subscription check');
     return JSON.stringify({
       success: true,
       active_subscriptions: [],
-      message: 'Subscription check not configured'
+      message: 'Subscription check not configured',
     });
   }
-  
+
   // Call RevenueCat API to get subscription status
   // RevenueCat API endpoint: GET /subscribers/{app_user_id}
   try {
-    const response = await fetch(`${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(validation.data.app_user_id)}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await fetch(
+      `${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(validation.data.app_user_id)}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -1289,33 +1340,38 @@ export async function rpcCheckSubscriptions(
       return JSON.stringify({
         success: true,
         active_subscriptions: [],
-        message: 'Unable to check subscriptions'
+        message: 'Unable to check subscriptions',
       });
     }
 
-    const data = await response.json() as Record<string, unknown>;
+    const data = (await response.json()) as Record<string, unknown>;
     const subscriber = data.subscriber as Record<string, unknown> | undefined;
-    
+
     if (!subscriber) {
       return JSON.stringify({
         success: true,
         active_subscriptions: [],
-        message: 'No subscriber found'
+        message: 'No subscriber found',
       });
     }
 
     // Extract active subscriptions from entitlements
     const entitlements = subscriber.entitlements as Record<string, unknown> | undefined;
-    const activeSubscriptions: { product_id: string; expires_date?: string; is_subscribed: boolean }[] = [];
-    
+    const activeSubscriptions: {
+      product_id: string;
+      expires_date?: string;
+      is_subscribed: boolean;
+    }[] = [];
+
     if (entitlements) {
       for (const [entitlementId, entitlement] of Object.entries(entitlements)) {
         const ent = entitlement as Record<string, unknown>;
-        
+
         // Check if the entitlement is active
         const isActive = ent.expires_date && new Date(ent.expires_date as string) > new Date();
-        const isSubscribed = (ent.is_subscribed === true) || (ent.product_plan_interval && !ent.cancellation_date);
-        
+        const isSubscribed =
+          ent.is_subscribed === true || (ent.product_plan_interval && !ent.cancellation_date);
+
         if (isActive || isSubscribed) {
           activeSubscriptions.push({
             product_id: (ent.product_id as string) || entitlementId,
@@ -1325,20 +1381,27 @@ export async function rpcCheckSubscriptions(
         }
       }
     }
-    
-    logger.info('Subscription check complete for user %s: %d active', validation.data.app_user_id, activeSubscriptions.length);
-    
+
+    logger.info(
+      'Subscription check complete for user %s: %d active',
+      validation.data.app_user_id,
+      activeSubscriptions.length
+    );
+
     return JSON.stringify({
       success: true,
       active_subscriptions: activeSubscriptions,
-      message: activeSubscriptions.length > 0 ? `Found ${activeSubscriptions.length} active subscriptions` : 'No active subscriptions'
+      message:
+        activeSubscriptions.length > 0
+          ? `Found ${activeSubscriptions.length} active subscriptions`
+          : 'No active subscriptions',
     });
   } catch (error) {
     logger.error('Error checking subscriptions: %s', error);
     return JSON.stringify({
       success: true,
       active_subscriptions: [],
-      message: 'Error checking subscriptions'
+      message: 'Error checking subscriptions',
     });
   }
 }
@@ -1364,26 +1427,26 @@ export async function rpcAppLaunchCheck(
   payload: string
 ): Promise<string> {
   logger.info('Running app launch check for user: %s', ctx.userId);
-  
+
   const validation = validatePayload(ZodSchemas.app_launch_check, payload, 'app_launch_check');
   if (!validation.success) {
     return createValidationErrorResponse('app_launch_check', validation.error);
   }
-  
+
   // Process pending purchases
   const pendingResult = JSON.parse(await rpcProcessPendingPurchases(ctx, logger, nk, '{}'));
-  
+
   // Check for refunds
   const refundResult = JSON.parse(await rpcCheckRefunds(ctx, logger, nk, '{}'));
-  
+
   // Check subscriptions
   const subscriptionResult = JSON.parse(await rpcCheckSubscriptions(ctx, logger, nk, '{}'));
-  
+
   return JSON.stringify({
     success: true,
     pending_purchases: pendingResult,
     refunds: refundResult,
-    subscriptions: subscriptionResult
+    subscriptions: subscriptionResult,
   });
 }
 

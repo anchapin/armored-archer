@@ -161,7 +161,12 @@ export function createRateLimitedRpcHandler(
     nk: Runtime.Nakama,
     payload: string
   ) => string | Promise<string>
-): (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => string | Promise<string> {
+): (
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+) => string | Promise<string> {
   return async function (
     ctx: Runtime.Context,
     loggerParam: Runtime.Logger,
