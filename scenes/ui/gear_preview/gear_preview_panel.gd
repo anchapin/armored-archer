@@ -2,6 +2,10 @@ extends Control
 
 class_name GearPreviewPanel
 
+## Panel for previewing gear and cosmetic skins.
+## Allows users to browse gear, preview items, and equip them.
+
+# --- Node References ---
 @onready var character_sprite: ModularCharacterSprite = $CenterContainer/CharacterPreview
 @onready var title_label: Label = $TitleLabel
 @onready var stats_label: Label = $StatsLabel
@@ -11,10 +15,18 @@ class_name GearPreviewPanel
 @onready var equip_button: Button = $EquipButton
 @onready var unequip_skin_button: Button = $UnequipSkinButton
 
+# --- State ---
 var current_slot: String = "helm"
 var current_item_id: String = ""
 var show_skin: bool = false
 var gear_registry: GearRegistry
+
+# --- Signal connections for cleanup ---
+var _preview_mode_connection: Callable = Callable()
+var _slot_selector_connection: Callable = Callable()
+var _item_selector_connection: Callable = Callable()
+var _equip_button_connection: Callable = Callable()
+var _unequip_skin_connection: Callable = Callable()
 
 enum PreviewMode {
 	BASE_GEAR,
@@ -28,6 +40,19 @@ func _ready() -> void:
 	_setup_ui()
 	_update_preview()
 
+func _exit_tree() -> void:
+	## Clean up all signal connections to prevent memory leaks
+	_cleanup_signal_connection(preview_mode, "item_selected", _preview_mode_connection)
+	_cleanup_signal_connection(slot_selector, "item_selected", _slot_selector_connection)
+	_cleanup_signal_connection(item_selector, "item_selected", _item_selector_connection)
+	_cleanup_signal_connection(equip_button, "pressed", _equip_button_connection)
+	_cleanup_signal_connection(unequip_skin_button, "pressed", _unequip_skin_connection)
+
+## Helper to safely disconnect signals
+func _cleanup_signal_connection(node: Node, signal_name: String, connection: Callable) -> void:
+	if node and connection.is_valid() and node.is_connected(signal_name, connection):
+		node.disconnect(signal_name, connection)
+
 func _setup_ui() -> void:
 	preview_mode.clear()
 	preview_mode.add_item("Base Gear", PreviewMode.BASE_GEAR)
@@ -39,63 +64,75 @@ func _setup_ui() -> void:
 	slot_selector.add_item("Bow")
 	slot_selector.add_item("Arrow")
 	
-	preview_mode.item_selected.connect(_on_preview_mode_changed)
-	slot_selector.item_selected.connect(_on_slot_changed)
-	item_selector.item_selected.connect(_on_item_changed)
-	equip_button.pressed.connect(_on_equip_pressed)
-	unequip_skin_button.pressed.connect(_on_unequip_skin_pressed)
+	## Connect signals with Callable references for proper cleanup
+	_preview_mode_connection = preview_mode.item_selected.connect(_on_preview_mode_changed)
+	_slot_selector_connection = slot_selector.item_selected.connect(_on_slot_changed)
+	_item_selector_connection = item_selector.item_selected.connect(_on_item_changed)
+	_equip_button_connection = equip_button.pressed.connect(_on_equip_pressed)
+	_unequip_skin_connection = unequip_skin_button.pressed.connect(_on_unequip_skin_pressed)
 	
 	_on_preview_mode_changed(0)
 	_on_slot_changed(0)
 
 func _on_preview_mode_changed(index: int) -> void:
 	show_skin = (index == PreviewMode.SKIN)
-	_unequip_skin_button.visible = show_skin
+	if unequip_skin_button:
+		unequip_skin_button.visible = show_skin
 	_update_item_selector()
 	_update_preview()
 
 func _on_slot_changed(index: int) -> void:
-	var slots = ["helm", "armor", "bow", "arrow"]
-	current_slot = slots[index]
-	_update_item_selector()
-	_update_preview()
+	var slots: Array[String] = ["helm", "armor", "bow", "arrow"]
+	if index >= 0 and index < slots.size():
+		current_slot = slots[index]
+		_update_item_selector()
+		_update_preview()
 
 func _on_item_changed(index: int) -> void:
 	if index == 0:
 		current_item_id = ""
 	else:
-		var items = _get_available_items()
+		var items: Array = _get_available_items()
 		if index - 1 < items.size():
 			current_item_id = items[index - 1]
 	_update_preview()
 
 func _get_available_items() -> Array:
 	var items: Array = []
-	var slot_type = _get_slot_type()
+	var slot_type: GearSlot.SlotType = _get_slot_type()
 	
 	if show_skin:
-		for skin_data in gear_registry.skin_db.values():
-			if skin_data.slot_type == slot_type:
-				items.append(skin_data.skin_id)
+		if gear_registry and gear_registry.skin_db:
+			for skin_data in gear_registry.skin_db.values():
+				if skin_data and skin_data.slot_type == slot_type:
+					items.append(skin_data.skin_id)
 	else:
-		for gear_data in gear_registry.base_gear_db.values():
-			if gear_data.slot_type == slot_type:
-				items.append(gear_data.gear_id)
+		if gear_registry and gear_registry.base_gear_db:
+			for gear_data in gear_registry.base_gear_db.values():
+				if gear_data and gear_data.slot_type == slot_type:
+					items.append(gear_data.gear_id)
 	
 	return items
 
 func _update_item_selector() -> void:
+	if not item_selector:
+		return
+		
 	item_selector.clear()
 	item_selector.add_item("None")
 	
-	var items = _get_available_items()
+	var items: Array = _get_available_items()
 	for item_id in items:
-		var item_name = ""
+		var item_name: String = ""
 		if show_skin:
-			var skin_data = gear_registry.get_skin(item_id)
+			var skin_data = null
+			if gear_registry:
+				skin_data = gear_registry.get_skin(item_id)
 			item_name = skin_data.skin_name if skin_data else item_id
 		else:
-			var gear_data = gear_registry.get_base_gear(item_id)
+			var gear_data = null
+			if gear_registry:
+				gear_data = gear_registry.get_base_gear(item_id)
 			item_name = gear_data.gear_name if gear_data else item_id
 		item_selector.add_item(item_name)
 	

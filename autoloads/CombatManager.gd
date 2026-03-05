@@ -40,7 +40,7 @@ func submit_combat_action(match_id: String, action_type: String, angle: float, p
 	var response: Dictionary = await network_manager.send_rpc(RPC_SUBMIT_COMBAT_ACTION, json.stringify(payload))
 	
 	if response.has("error"):
-		push_error("Failed to submit combat action: %s" % response.error)
+		push_error("Failed to submit combat action: %s" % response["error"])
 		return
 	
 	if response.get("success", false):
@@ -50,7 +50,7 @@ func submit_combat_action(match_id: String, action_type: String, angle: float, p
 		_update_local_state(result)
 		
 		if result.has("winner"):
-			combat_ended.emit(result.winner)
+			combat_ended.emit(result["winner"])
 
 # --- Get Match State ---
 func get_match_state(match_id: String) -> void:
@@ -70,7 +70,7 @@ func get_match_state(match_id: String) -> void:
 	var response: Dictionary = await network_manager.send_rpc(RPC_GET_MATCH_STATE, json.stringify(payload))
 	
 	if response.has("error"):
-		push_error("Failed to get match state: %s" % response.error)
+		push_error("Failed to get match state: %s" % response["error"])
 		return
 	
 	current_match_state = response

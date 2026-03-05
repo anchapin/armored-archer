@@ -1,6 +1,6 @@
 extends "res://scenes/enemies/base_enemy.gd"
 
-# --- AI State ---
+## AI state variables
 var player_ref: CharacterBody2D = null
 var detection_range: float = 400.0
 var attack_range: float = 50.0
@@ -8,13 +8,22 @@ var is_attacking: bool = false
 var attack_cooldown: float = 1.0
 var attack_timer: float = 0.0
 
-# --- Node References ---
+## Node references
 @onready var hurt_area: Area2D = $HurtArea
+
+## Connected signal references for cleanup
+var _hurt_area_connection: Callable = Callable()
 
 func _ready() -> void:
 	super._ready()
 	if hurt_area:
-		hurt_area.body_entered.connect(_on_hurt_area_body_entered)
+		_hurt_area_connection = hurt_area.body_entered.connect(_on_hurt_area_body_entered)
+
+func _exit_tree() -> void:
+	## Clean up connected signals to prevent memory leaks and ghost callbacks
+	if hurt_area and _hurt_area_connection.is_valid():
+		if hurt_area.is_connected("body_entered", _on_hurt_area_body_entered):
+			hurt_area.disconnect("body_entered", _hurt_area_connection)
 
 func _physics_process(delta: float) -> void:
 	if not player_ref:
@@ -39,9 +48,12 @@ func find_player() -> void:
 		player_ref = players[0]
 
 func chase_player() -> void:
-	var direction = (player_ref.global_position - global_position).normalized()
+	if not player_ref:
+		return
+	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed
-	sprite.flip_h = direction.x < 0
+	if sprite:
+		sprite.flip_h = direction.x < 0
 
 func attack_player(delta: float) -> void:
 	velocity = Vector2.ZERO
