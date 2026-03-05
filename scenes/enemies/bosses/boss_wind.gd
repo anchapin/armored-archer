@@ -1,5 +1,10 @@
 extends "res://scenes/enemies/base_enemy.gd"
 
+## Wind Guardian boss with multiple phases and special attacks.
+##
+## Phase 1: Standard attack patterns with wind projectiles
+## Phase 2 (below 50% health): Faster attacks and dash ability
+
 # --- Boss Stats ---
 @export var boss_name: String = "Wind Guardian"
 
@@ -34,6 +39,9 @@ var wind_projectile_speed: float = 300.0
 @onready var hurt_area: Area2D = $HurtArea
 @onready var sprite: Sprite2D = $Sprite2D
 
+# --- Signal connections for cleanup ---
+var _hurt_area_connection: Callable = Callable()
+
 # --- Signals ---
 signal boss_defeated(boss_name: String)
 signal health_changed(current: int, max: int)
@@ -47,9 +55,15 @@ func _ready() -> void:
 	super._ready()
 	
 	if hurt_area:
-		hurt_area.body_entered.connect(_on_hurt_area_body_entered)
+		_hurt_area_connection = hurt_area.body_entered.connect(_on_hurt_area_body_entered)
 	
 	health_changed.emit(current_health, max_health)
+
+func _exit_tree() -> void:
+	## Clean up connected signals to prevent memory leaks and ghost callbacks
+	if hurt_area and _hurt_area_connection.is_valid():
+		if hurt_area.is_connected("body_entered", _on_hurt_area_body_entered):
+			hurt_area.disconnect("body_entered", _hurt_area_connection)
 
 func _physics_process(delta: float) -> void:
 	if not player_ref:
@@ -57,7 +71,7 @@ func _physics_process(delta: float) -> void:
 	
 	if player_ref:
 		update_timers(delta)
-		var distance_to_player = global_position.distance_to(player_ref.global_position)
+		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
 		
 		if not is_dashing:
 			if distance_to_player <= detection_range:
@@ -79,12 +93,14 @@ func update_timers(delta: float) -> void:
 	wind_projectile_timer += delta
 
 func find_player() -> void:
-	var players = get_tree().get_nodes_in_group("Player")
+	var players: Array[Node] = get_tree().get_nodes_in_group("Player")
 	if players.size() > 0:
-		player_ref = players[0]
+		player_ref = players[0] as CharacterBody2D
 
 func chase_player() -> void:
-	var direction = (player_ref.global_position - global_position).normalized()
+	if not player_ref:
+		return
+	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed
 	if sprite:
 		sprite.flip_h = direction.x < 0
@@ -102,18 +118,18 @@ func perform_attack() -> void:
 
 func check_dash_ability() -> void:
 	if dash_timer >= dash_cooldown and player_ref:
-		var distance = global_position.distance_to(player_ref.global_position)
+		var distance: float = global_position.distance_to(player_ref.global_position)
 		if distance > attack_range and distance < detection_range:
 			perform_dash()
 
 func perform_dash() -> void:
-	if is_dashing:
+	if is_dashing or not player_ref:
 		return
 	
 	is_dashing = true
 	dash_timer = 0.0
 	
-	var direction = (player_ref.global_position - global_position).normalized()
+	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed * 3.0
 	
 	await get_tree().create_timer(0.3).timeout
@@ -122,23 +138,25 @@ func perform_dash() -> void:
 
 func check_wind_projectile() -> void:
 	if wind_projectile_timer >= wind_projectile_cooldown and player_ref:
-		var distance = global_position.distance_to(player_ref.global_position)
+		var distance: float = global_position.distance_to(player_ref.global_position)
 		if distance < detection_range:
 			fire_wind_projectile()
 			wind_projectile_timer = 0.0
 
 func fire_wind_projectile() -> void:
-	var projectile_scene = preload("res://scenes/arrow.tscn")
-	if projectile_scene:
-		var projectile = projectile_scene.instantiate()
+	if not player_ref:
+		return
 		
-		if player_ref:
-			var direction = (player_ref.global_position - global_position).normalized()
-			projectile.global_position = global_position + direction * 50.0
-			projectile.rotation = direction.angle()
-			projectile.scale = Vector2(1.5, 1.5)
-			
-			get_tree().root.add_child(projectile)
+	var projectile_scene: PackedScene = preload("res://scenes/arrow.tscn")
+	if projectile_scene:
+		var projectile: Node = projectile_scene.instantiate()
+		
+		var direction: Vector2 = (player_ref.global_position - global_position).normalized()
+		projectile.global_position = global_position + direction * 50.0
+		projectile.rotation = direction.angle()
+		projectile.scale = Vector2(1.5, 1.5)
+		
+		get_tree().root.add_child(projectile)
 
 func take_damage(amount: int) -> void:
 	current_health -= amount
