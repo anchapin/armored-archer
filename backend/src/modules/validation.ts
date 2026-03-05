@@ -101,7 +101,14 @@ export const ZodSchemas = {
 
   report_player: z.object({
     reported_user_id: z.string().min(1).max(100),
-    reason: z.enum(['win_trading', 'match_manipulation', 'suspicious_win_rate', 'harassment', 'exploiting_bugs', 'other']),
+    reason: z.enum([
+      'win_trading',
+      'match_manipulation',
+      'suspicious_win_rate',
+      'harassment',
+      'exploiting_bugs',
+      'other',
+    ]),
     match_id: z.string().min(1).max(100).optional(),
     additional_info: z.string().max(500).optional(),
   }),
