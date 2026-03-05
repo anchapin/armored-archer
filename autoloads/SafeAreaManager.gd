@@ -15,13 +15,10 @@ func _ready() -> void:
 func _update_safe_area() -> void:
 	"""Calculates safe area margins from display server."""
 	var screen_size: Vector2i = DisplayServer.screen_get_size()
-	var safe_rects: Array[Rect2i] = DisplayServer.screen_get_safe_rects()
 	
-	if safe_rects.is_empty():
-		safe_margins = {"left": 0.0, "top": 0.0, "right": 0.0, "bottom": 0.0}
-		return
+	# Default to full screen (no safe area)
+	var safe_rect: Rect2i = Rect2i(0, 0, screen_size.x, screen_size.y)
 	
-	var safe_rect: Rect2i = safe_rects[0]
 	safe_margins.left = float(safe_rect.position.x)
 	safe_margins.top = float(safe_rect.position.y)
 	safe_margins.right = float(screen_size.x - safe_rect.end.x)

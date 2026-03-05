@@ -34,11 +34,12 @@ signal stat_allocated(stat_name: String, amount: int)
 func _ready() -> void:
 	"""Sets up signal connections on initialization."""
 	if network_manager:
-		network_manager.connected.connect(_on_connected)
+		network_manager.connection_status_changed.connect(_on_connection_status_changed)
 
-func _on_connected() -> void:
+func _on_connection_status_changed(is_online: bool) -> void:
 	"""Fetches player stats when network connection is established."""
-	await get_player_stats()
+	if is_online:
+		await get_player_stats()
 
 # --- Public API ---
 func get_player_stats() -> Dictionary:

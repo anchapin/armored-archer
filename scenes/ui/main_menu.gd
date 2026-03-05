@@ -3,7 +3,6 @@ extends Control
 # --- UI References ---
 @onready var gem_label: Label = $CenterContainer/VBoxContainer/GemContainer/GemLabel
 @onready var play_button: Button = $CenterContainer/VBoxContainer/PlayButton
-<<<<<<< HEAD
 @onready var pvp_button: Button = $CenterContainer/VBoxContainer/PvpButton
 @onready var shop_button: Button = $CenterContainer/VBoxContainer/ShopButton
 @onready var buy_gems_button: Button = $CenterContainer/VBoxContainer/BuyGemsButton
@@ -22,7 +21,6 @@ func _ready() -> void:
 	_update_gem_display()
 	
 	play_button.pressed.connect(_on_play_pressed)
-<<<<<<< HEAD
 	pvp_button.pressed.connect(_on_pvp_pressed)
 	shop_button.pressed.connect(_on_shop_pressed)
 	buy_gems_button.pressed.connect(_on_buy_gems_pressed)
@@ -33,7 +31,6 @@ func _ready() -> void:
 func _on_play_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
-<<<<<<< HEAD
 func _on_pvp_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
 

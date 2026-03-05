@@ -6,7 +6,8 @@
 ##
 extends Node
 
-class_name TransmogManager
+# Autoload singleton - access methods directly via TransmogManager.method_name()
+# Note: Do NOT add class_name here as it conflicts with the autoload singleton
 
 signal transmog_applied(slot: String, base_gear_id: String, skin_id: String)
 
@@ -25,13 +26,14 @@ var current_loadout: Dictionary = {
 	}
 }
 
-var gear_registry: GearRegistry
+var gear_registry_instance: Node
 var character_sprite: ModularCharacterSprite
 
 func _ready() -> void:
 	"""Initializes the gear registry."""
-	gear_registry = GearRegistry.new()
-	gear_registry._ready()
+	# GearRegistry is an autoload but we can't use class_name on autoloads
+	# Get reference to the singleton via get_node
+	gear_registry_instance = get_node("/root/GearRegistry")
 
 func set_character_sprite(sprite: ModularCharacterSprite) -> void:
 	"""Sets the character sprite to apply transmog visuals to.
@@ -52,7 +54,7 @@ func equip_base_gear(slot: String, gear_id: String) -> bool:
 	Returns:
 		bool: True if equip succeeded
 	"""
-	var gear_data = gear_registry.get_base_gear(gear_id)
+	var gear_data = gear_registry_instance.get_base_gear(gear_id)
 	if not gear_data:
 		return false
 	current_loadout.base_gear[slot] = gear_id
@@ -71,7 +73,7 @@ func equip_skin(slot: String, skin_id: String) -> bool:
 	Returns:
 		bool: True if skin can be equipped
 	"""
-	var skin_data = gear_registry.get_skin(skin_id)
+	var skin_data = gear_registry_instance.get_skin(skin_id)
 	if not skin_data:
 		return false
 	var current_base_gear = current_loadout.base_gear.get(slot, "")
@@ -109,7 +111,7 @@ func get_total_stats() -> Dictionary:
 	Returns:
 		Dictionary: Summed stats (attack, defense, speed, health)
 	"""
-	return gear_registry.calculate_total_stats(current_loadout)
+	return gear_registry_instance.calculate_total_stats(current_loadout)
 
 func get_visual_combination(slot: String) -> Dictionary:
 	"""Gets visual data for a specific slot.
@@ -122,8 +124,8 @@ func get_visual_combination(slot: String) -> Dictionary:
 	"""
 	var base_gear_id = current_loadout.base_gear.get(slot, "")
 	var skin_id = current_loadout.skins.get(slot, "")
-	var base_gear_data = gear_registry.get_base_gear(base_gear_id)
-	var skin_data = gear_registry.get_skin(skin_id)
+	var base_gear_data = gear_registry_instance.get_base_gear(base_gear_id)
+	var skin_data = gear_registry_instance.get_skin(skin_id)
 	return {
 		"slot": slot,
 		"base_gear": base_gear_data,
@@ -143,8 +145,8 @@ func preview_combination(slot: String, base_gear_id: String, skin_id: String) ->
 	Returns:
 		Dictionary: Visual combination data
 	"""
-	var base_gear_data = gear_registry.get_base_gear(base_gear_id)
-	var skin_data = gear_registry.get_skin(skin_id)
+	var base_gear_data = gear_registry_instance.get_base_gear(base_gear_id)
+	var skin_data = gear_registry_instance.get_skin(skin_id)
 	return {
 		"slot": slot,
 		"base_gear": base_gear_data,
@@ -159,11 +161,11 @@ func _apply_current_loadout() -> void:
 		var base_gear_id = current_loadout.base_gear.get(slot, "")
 		var skin_id = current_loadout.skins.get(slot, "")
 		if base_gear_id:
-			var gear_data = gear_registry.get_base_gear(base_gear_id)
+			var gear_data = gear_registry_instance.get_base_gear(base_gear_id)
 			if gear_data and character_sprite:
 				character_sprite.equip_base_gear(slot, base_gear_id, gear_data.base_texture)
 		if skin_id:
-			var skin_data = gear_registry.get_skin(skin_id)
+			var skin_data = gear_registry_instance.get_skin(skin_id)
 			if skin_data and character_sprite:
 				character_sprite.equip_skin(slot, skin_id, skin_data.skin_texture)
 
@@ -177,7 +179,7 @@ func can_equip_skin(slot: String, skin_id: String) -> bool:
 	Returns:
 		bool: True if skin is compatible with current base gear
 	"""
-	var skin_data = gear_registry.get_skin(skin_id)
+	var skin_data = gear_registry_instance.get_skin(skin_id)
 	if not skin_data:
 		return false
 	var current_base_gear = current_loadout.base_gear.get(slot, "")
@@ -194,7 +196,7 @@ func get_available_skins_for_slot(slot: String) -> Array:
 	"""
 	var available_skins: Array = []
 	var current_base_gear = current_loadout.base_gear.get(slot, "")
-	for skin_data in gear_registry.skin_db.values():
+	for skin_data in gear_registry_instance.skin_db.values():
 		if skin_data.base_gear_required == current_base_gear:
 			available_skins.append(skin_data)
 	return available_skins

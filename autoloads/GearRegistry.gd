@@ -3,7 +3,7 @@
 ##
 extends Node
 
-class_name GearRegistry
+# Note: Do NOT add class_name here as it conflicts with the autoload singleton
 
 var base_gear_db: Dictionary = {}
 var skin_db: Dictionary = {}

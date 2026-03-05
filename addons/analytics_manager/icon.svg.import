@@ -1,15 +1,18 @@
 [remap]
 
 importer="svg"
-type="Texture2D"
-uid="uid://analytics_manager_icon"
-path="res://.godot/imported/icon.svg-xxxxxx.png"
+type="DPITexture"
+uid="uid://do6584qa0ar14"
+path="res://.godot/imported/icon.svg-6fe621cb24687115278fad1dc25ad75a.dpitex"
 
 [deps]
 
 source_file="res://addons/analytics_manager/icon.svg"
-dest_files=["res://.godot/imported/icon.svg-xxxxxx.png"]
+dest_files=["res://.godot/imported/icon.svg-6fe621cb24687115278fad1dc25ad75a.dpitex"]
 
 [params]
 
-compress_mode=0
+base_scale=1.0
+saturation=1.0
+color_map={}
+compress=true

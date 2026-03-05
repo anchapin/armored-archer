@@ -8,22 +8,8 @@ var is_attacking: bool = false
 var attack_cooldown: float = 1.0
 var attack_timer: float = 0.0
 
-## Node references
-@onready var hurt_area: Area2D = $HurtArea
-
-## Connected signal references for cleanup
-var _hurt_area_connection: Callable = Callable()
-
 func _ready() -> void:
 	super._ready()
-	if hurt_area:
-		_hurt_area_connection = hurt_area.body_entered.connect(_on_hurt_area_body_entered)
-
-func _exit_tree() -> void:
-	## Clean up connected signals to prevent memory leaks and ghost callbacks
-	if hurt_area and _hurt_area_connection.is_valid():
-		if hurt_area.is_connected("body_entered", _on_hurt_area_body_entered):
-			hurt_area.disconnect("body_entered", _hurt_area_connection)
 
 func _physics_process(delta: float) -> void:
 	if not player_ref:
