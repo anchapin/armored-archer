@@ -29,13 +29,16 @@ jobs:
         run: |
           # Run headless tests using the test runner scene
           # Note: This requires a test scene or headless mode
-          godot4 --headless --script test/run_all_tests.gd || true
+          # Capture output and check for test failures
+          TEST_OUTPUT=$(godot4 --headless --script test/run_all_tests.gd 2>&1)
+          echo "$TEST_OUTPUT"
           
-      - name: Parse Test Results
-        id: test-results
-        run: |
-          # Check if any test output exists and count failures
-          echo "Test execution completed"
+          # Check for test failures in output
+          if echo "$TEST_OUTPUT" | grep -q "Failed: [1-9]"; then
+            echo "❌ Godot tests failed!"
+            exit 1
+          fi
+          echo "✅ All Godot tests passed"
           
       - name: Check test coverage
         run: |

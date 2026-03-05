@@ -115,6 +115,14 @@ func test_signal_emission() -> void:
 
 func test_update_local_state() -> void:
 	var cm = _create_combat_manager()
+	
+	# Create a mock NetworkManager to provide user_id
+	var nm = Node.new()
+	nm.set("user_id", "user_123")
+	nm.set("is_connected", true)
+	add_child(nm)
+	# Manually set the network_manager reference in CombatManager
+	cm.network_manager = nm
 
 	# Simulate being the creator
 	cm.current_match_state = {
@@ -131,6 +139,7 @@ func test_update_local_state() -> void:
 		_fail("test_update_local_state_creator", "Health values incorrect for creator")
 
 	# Simulate being the opponent
+	nm.set("user_id", "opponent_user")
 	cm.current_match_state = {
 		"creator_id": "other_user",
 		"creator_health": 100,
@@ -143,6 +152,7 @@ func test_update_local_state() -> void:
 	else:
 		_fail("test_update_local_state_opponent", "Health values incorrect for opponent")
 
+	nm.queue_free()
 	cm.queue_free()
 
 # --- Additional CombatManager Tests for Higher Coverage ---
