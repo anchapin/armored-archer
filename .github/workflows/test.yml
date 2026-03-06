@@ -128,7 +128,47 @@ jobs:
       
       - name: Run tests with coverage
         working-directory: ./backend
-        run: npm run test:coverage
+        run: |
+          # Create test-results directory
+          mkdir -p test-results
+          
+          # Run tests with timing output to JSON
+          npm run test:coverage -- --outputFile=test-results/test-results.json
+          
+          # Display timing summary
+          echo ""
+          echo "=== Test Performance Summary ==="
+          node -e "
+            const fs = require('fs');
+            try {
+              if (fs.existsSync('test-results/test-results.json')) {
+                const data = JSON.parse(fs.readFileSync('test-results/test-results.json', 'utf8'));
+                const suites = data.testResults || [];
+                
+                // Collect all test results
+                const allTests = suites.flatMap(s => s.assertionResults || []);
+                
+                // Sort by duration (slowest first)
+                const sorted = allTests
+                  .filter(t => t.duration)
+                  .sort((a, b) => b.duration - a.duration);
+                
+                console.log('\\nTop 10 Slowest Tests:');
+                sorted.slice(0, 10).forEach((t, i) => {
+                  console.log(\`  \${i+1}. \${t.fullName}: \${t.duration}ms\`);
+                });
+                
+                const totalTime = sorted.reduce((sum, t) => sum + t.duration, 0);
+                const avgTime = sorted.length > 0 ? Math.round(totalTime / sorted.length) : 0;
+                console.log(\`\\nTest Execution Statistics:\`);
+                console.log(\`  Total tests: \${sorted.length}\`);
+                console.log(\`  Total execution time: \${totalTime}ms\`);
+                console.log(\`  Average test time: \${avgTime}ms\`);
+              }
+            } catch (e) {
+              console.log('Could not parse test results');
+            }
+          "
       
       - name: Generate coverage report summary
         id: coverage-summary
@@ -223,6 +263,13 @@ jobs:
           file: ./backend/coverage/lcov.info
           flags: backend
           fail_ci_if_error: false
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/test-results/
+          retention-days: 30
 
   require-tests:
     name: All Tests Must Pass
