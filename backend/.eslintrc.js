@@ -32,7 +32,10 @@ module.exports = {
     eqeqeq: ['error', 'always'],
     'jsdoc/require-jsdoc': 'off',
     'jsdoc/require-param-type': 'off',
-    'jsdoc/require-return-type': 'off'
+    'jsdoc/require-return-type': 'off',
+    // Cyclomatic complexity - recommended threshold is 10-20
+    // See: https://eslint.org/docs/latest/rules/complexity
+    'complexity': ['warn', { max: 15 }],
   },
   overrides: [
     {
