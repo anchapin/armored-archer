@@ -1,103 +1,80 @@
 # Armored Archer 🏹
 
-A 2D top-down mobile archery game built with Godot 4 and Nakama. Features a highly replayable PvE auto-shooter mode and asynchronous turn-based PvP duels. 
+A 2D top-down mobile archery game built with Godot 4 and Nakama. Features a highly replayable PvE auto-shooter mode and asynchronous turn-based PvP duels.
 
 Strictly Free-to-Play. Zero Pay-to-Win. Cosmetics only.
 
+## ✨ Key Features
+
+- **PvE Auto-Shooter** - Auto-aim archery combat with wave-based enemy spawning
+- **Asynchronous PvP** - Turn-based duels against other players' defenses
+- **Gear System** - Equipment customization with stats and modifiers
+- **Cosmetic Skins** - Transmog system for visual customization (IAP)
+- **Seasonal Content** - Leaderboards and limited-time events
+- **Cross-Platform** - Mobile (iOS/Android) with desktop support
+
 ## 🛠 Tech Stack
 
-* **Game Engine:** [Godot 4](https://godotengine.org/)
-* **Language:** GDScript (Client) / TypeScript (Server)
-* **Backend:** [Nakama](https://heroiclabs.com/)
-* **Database:** PostgreSQL
-* **IAP Infrastructure:** RevenueCat
+| Component | Technology |
+|-----------|------------|
+| Game Engine | [Godot 4](https://godotengine.org/) |
+| Client Language | GDScript |
+| Backend Server | [Nakama](https://heroiclabs.com/) (TypeScript) |
+| Database | PostgreSQL |
+| IAP Infrastructure | RevenueCat |
+| Authentication | Firebase |
 
-## 📊 Code Coverage
-
-[![codecov](https://img.shields.io/codecov/c/gh/anchapin/armored-archer/main)](https://codecov.io/gh/anchapin/armored-archer)
-
----
-
-## 🚀 Development Setup
-
-### Prerequisites
+## 📋 Prerequisites
 
 - **Godot 4.x** - Download from [godotengine.org](https://godotengine.org/)
 - **Docker & Docker Compose** - Required for local Nakama backend
 - **Node.js 18+** - Required for backend development
 - **npm** - Package manager (comes with Node.js)
-
----
+- **Git** - Version control
 
 ## ⚡ Single Command Setup
 
-For quick setup of the development environment, use the Makefile:
-
 ```bash
-# Install all dependencies
+# Install all dependencies and set up development environment
 make setup
-
-# Start backend (requires Docker)
-make backend-start
-
-# Run Godot game
-# Open project in Godot 4 Editor and press F5
 ```
 
-### Common Development Commands
+This will install:
+- Backend npm dependencies
+
+**Then start developing:**
+
+```bash
+# Start Nakama backend (Docker)
+make backend-start
+
+# Run Godot game (press F5 in Godot Editor)
+# OR for backend development with auto-reload
+make dev
+```
+
+**Other useful commands:**
 
 | Command | Description |
 |---------|-------------|
-| `make setup` | Install all dependencies |
-| `make backend-start` | Start Nakama backend with Docker |
-| `make backend-stop` | Stop backend services |
-| `make dev` | Start backend with auto-reload |
-| `make backend-test` | Run backend tests |
-| `make backend-build` | Build TypeScript backend |
-| `make backend-lint` | Lint backend code |
-| `make backend-check` | Run linting and type checking |
-| `make clean` | Clean build artifacts |
 | `make help` | Show all available commands |
+| `make backend-test` | Run backend tests |
+| `make backend-lint` | Lint backend code |
+| `make backend-stop` | Stop backend services |
+| `make clean` | Clean build artifacts |
 
 ---
 
-## 🎮 Godot Client
+## 🚀 Quick Start
 
-### Running the Game
+### 1. Clone the Repository
 
-1. Open the project in Godot 4 Editor
-2. Press `F5` to run the project
-
-### Testing
-
-- **Run All Tests:** Open and run the scene `res://test/run_all_tests.gd` in the Godot Editor
-- **Test Files:** Located in `test/test_*.gd`
-
-### Exporting
-
-To export the game for a specific platform:
-1. Open **Project → Export** in the Godot Editor
-2. Select the target platform (Android, iOS, Linux, Windows, etc.)
-3. Click **Export Project**
-
-### Project Structure
-
-```
-/                          # Godot project root
-├── autoloads/            # Singletons (NetworkManager, GameManager, etc.)
-├── scenes/               # .tscn files organized by feature
-├── scripts/              # .gd scripts
-├── assets/               # Sprites, sounds, music
-├── test/                 # GDScript test runner and framework
-├── export/               # Export presets and configurations
-└── res://                # Godot resource path prefix
+```bash
+git clone https://github.com/anchapin/armored-archer.git
+cd armored-archer
 ```
 
----
-
-## ⚙️ Backend (Nakama)
-
-### Quick Start
+### 2. Backend Setup
 
 ```bash
 # Navigate to backend directory
@@ -117,6 +94,53 @@ The backend will be available at:
 - **API:** http://localhost:7350
 - **Admin Console:** http://localhost:7351 (admin:password)
 
+### 3. Godot Client
+
+1. Open the project in Godot 4 Editor
+2. Press `F5` to run the project
+
+---
+
+## 🎮 Godot Client
+
+### Running the Game
+
+```bash
+# Open the project in Godot 4 Editor and press F5
+```
+
+### Testing
+
+- **Run All Tests:** Open and run the scene `res://test/run_all_tests.gd` in the Godot Editor
+- **Test Files:** Located in `test/test_*.gd`
+
+### Exporting
+
+To export the game for a specific platform:
+1. Open **Project → Export** in the Godot Editor
+2. Select the target platform (Android, iOS, Linux, Windows, etc.)
+3. Click **Export Project**
+
+### Project Structure
+
+```
+/                          # Godot project root
+├── autoloads/            # Singletons (NetworkManager, GameManager, etc.)
+├── scenes/               # .tscn files organized by feature
+│   ├── player/           # Player-related scenes
+│   ├── enemies/          # Enemy scenes
+│   └── ui/               # UI scenes
+├── scripts/              # .gd scripts
+├── assets/               # Sprites, sounds, music
+├── test/                 # GDScript test runner and framework
+├── export/               # Export presets and configurations
+└── res://                # Godot resource path prefix
+```
+
+---
+
+## ⚙️ Backend (Nakama)
+
 ### Environment Configuration
 
 1. Copy the environment template:
@@ -133,6 +157,11 @@ The backend will be available at:
    REFRESH_ENCRYPTION_KEY=your_refresh_key
    ```
 
+3. Start services with validation:
+   ```bash
+   ./start.sh
+   ```
+
 ### Development Commands
 
 | Command | Description |
@@ -143,7 +172,7 @@ The backend will be available at:
 | `npm run build:watch` | Build in watch mode |
 | `./validate-env.sh` | Validate environment variables |
 
-### Running Tests
+### Testing
 
 | Command | Description |
 |---------|-------------|
@@ -162,6 +191,7 @@ The backend will be available at:
 | `npm run typecheck` | Type check without building |
 | `npm run format` | Format code with Prettier |
 | `npm run format:check` | Check code formatting |
+| `npm run docs` | Generate TypeDoc documentation |
 
 ### Database
 
@@ -191,6 +221,53 @@ backend/
 
 ---
 
+## 🏗️ Architecture
+
+### Client-Server Communication
+
+- Client sends actions (e.g., `{"action": "shoot", "angle": 0.78}`)
+- Server validates and calculates results (damage, loot, etc.)
+- Server sends authoritative state back to client
+- Use Nakama RPCs for custom game logic
+
+### Key Autoloads (Godot)
+
+| Autoload | Purpose |
+|----------|---------|
+| NetworkManager | Handles Nakama server connection and RPC |
+| GameManager | Core game state and logic |
+| CombatManager | Combat calculations and effects |
+| GearManager/GearRegistry | Equipment system |
+| PlayerStatsManager | Player statistics |
+| MatchmakerManager | Asynchronous PvP matchmaking |
+| SeasonManager | Seasonal content and leaderboards |
+| StoreManager | In-app purchase handling |
+| TransmogManager | Cosmetic skin system |
+
+### Server-Authoritative Design
+
+- Never trust client input - validate all data on server
+- Calculate combat results server-side based on stored player stats
+- Generate loot drops server-side to prevent manipulation
+
+---
+
+## 🤝 Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our development workflow, code style, and pull request process.
+
+### Quick Contribution Guide
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b fix/issue-<number>` or `feat/<description>`
+3. Make changes and run tests:
+   - Backend: `npm test`, `npm run lint`, `npm run typecheck`
+   - Client: Run tests in Godot editor
+4. Commit with conventional commits: `git commit -m "fix: resolve issue"`
+5. Push and create a PR
+
+---
+
 ## 📁 Project Structure
 
 * `/` - Godot project root (client)
@@ -209,3 +286,15 @@ backend/
 | 3 | Weeks 7-9 | Backend & Database Setup | Local Nakama Docker setup, user authentication, database schemas (catalog, inventory, loadout). |
 | 4 | Weeks 10-13 | UI, IAP, & Turn-Based PvP | Modular sprite system, cosmetic shop UI, RevenueCat integration, Nakama matchmaker, and turn-based RPCs. |
 | 5 | Weeks 14-16 | Polish & App Store Submission | Safe-area UI adjustments, analytics (Crashlytics), TestFlight (iOS) / Play Console (Android) beta distribution. |
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 📊 Code Coverage
+
+[![codecov](https://img.shields.io/codecov/c/gh/anchapin/armored-archer/main)](https://codecov.io/gh/anchapin/armored-archer)
+
+---
