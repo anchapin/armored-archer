@@ -29,6 +29,38 @@ Strictly Free-to-Play. Zero Pay-to-Win. Cosmetics only.
 
 ---
 
+## ⚡ Single Command Setup
+
+For quick setup of the development environment, use the Makefile:
+
+```bash
+# Install all dependencies
+make setup
+
+# Start backend (requires Docker)
+make backend-start
+
+# Run Godot game
+# Open project in Godot 4 Editor and press F5
+```
+
+### Common Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `make setup` | Install all dependencies |
+| `make backend-start` | Start Nakama backend with Docker |
+| `make backend-stop` | Stop backend services |
+| `make dev` | Start backend with auto-reload |
+| `make backend-test` | Run backend tests |
+| `make backend-build` | Build TypeScript backend |
+| `make backend-lint` | Lint backend code |
+| `make backend-check` | Run linting and type checking |
+| `make clean` | Clean build artifacts |
+| `make help` | Show all available commands |
+
+---
+
 ## 🎮 Godot Client
 
 ### Running the Game
