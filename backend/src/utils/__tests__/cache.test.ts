@@ -17,10 +17,13 @@ describe('CacheManager', () => {
 
     it('logs cache creation', () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Cache %s created with max=%d, ttl=%dms',
-        'test',
-        100,
-        60
+        'Cache created',
+        expect.objectContaining({
+          cacheName: 'test',
+          max: 100,
+          ttl: 60,
+          operation: 'cache_create'
+        })
       );
     });
   });
