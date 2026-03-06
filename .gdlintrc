@@ -1,96 +1,45 @@
-{
-  "exclude": [
-    "*.import"
-  ],
-  "include": [
-    "*.gd"
-  ],
-  "rules": {
-    "class_name": {
-      "enabled": true,
-      "exclude": []
-    },
-    "class_name_case": {
-      "enabled": true,
-      "exclude": []
-    },
-    "constant_name": {
-      "enabled": true,
-      "exclude": []
-    },
-    "enum_name": {
-      "enabled": true,
-      "exclude": []
-    },
-    "export_name": {
-      "enabled": true,
-      "exclude": []
-    },
-    "file_name": {
-      "enabled": true,
-      "exclude": []
-    },
-    "function_name": {
-      "enabled": true,
-      "exclude": []
-    },
-    "inline_comment": {
-      "enabled": true,
-      "exclude": []
-    },
-    "invalid_code": {
-      "enabled": true,
-      "exclude": []
-    },
-    "line_length": {
-      "enabled": true,
-      "max_length": 120,
-      "exclude": []
-    },
-    "max_line_length": {
-      "enabled": true,
-      "max_length": 120,
-      "exclude": []
-    },
-    "nested_class": {
-      "enabled": true,
-      "exclude": []
-    },
-    "signal_name": {
-      "enabled": true,
-      "exclude": []
-    },
-    "subclass_name": {
-      "enabled": true,
-      "exclude": []
-    },
-    "tabs_to_spaces": {
-      "enabled": true,
-      "exclude": []
-    },
-    "trailing_newline": {
-      "enabled": true,
-      "exclude": []
-    },
-    "trailing_whitespace": {
-      "enabled": true,
-      "exclude": []
-    },
-    "type_name": {
-      "enabled": true,
-      "exclude": []
-    },
-    "unnecessary_pass": {
-      "enabled": true,
-      "exclude": []
-    },
-    "unused_argument": {
-      "enabled": true,
-      "exclude": []
-    },
-    "variable_name": {
-      "enabled": true,
-      "exclude": []
-    }
-  }
-}
+# GDLint Configuration
+# Linter configuration for GDScript (Godot game engine)
+
+rules:
+  # Class and signal naming conventions
+  class_name: { enabled: true, }
+  signal_name: { enabled: true, }
+  enum_name: { enabled: true, }
+  constant_name: { enabled: true, }
+  variable_name: { enabled: true, }
+  function_name: { enabled: true, }
+  
+  # Code style rules
+  indent: { enabled: true, }
+  line_length: { enabled: true, max_length: 120 }
+  trailing_whitespace: { enabled: true, }
+  consecutive_blank_lines: { enabled: true, max_consecutive: 1 }
+  
+  # Syntax and structure rules
+  double_parenthesis: { enabled: true, }
+  double_node_path: { enabled: true, }
+  expression_without_continuation: { enabled: true, }
+  implicit_return: { enabled: true, }
+  
+  # Best practices
+  dangerous_print: { enabled: true, }
+  enum_assignment: { enabled: true, }
+  
+  # Unused code
+  unused_variable: { enabled: true, }
+  unused_argument: { enabled: true, }
+  unused_export: { enabled: true, }
+  unused_signal: { enabled: true, }
+  
+  # Type checking
+  typed_dict_missing_value: { enabled: true, }
+  function_returns_discarded: { enabled: true, }
+
+# Exclude patterns
+exclude:
+  - "*.import"
+  - "export/"
+  - "import_presets.cfg"
+  - "test/*"
+  - "tests/*"

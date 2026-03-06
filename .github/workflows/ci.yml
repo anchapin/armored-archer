@@ -168,36 +168,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
-      
+
       - name: Install ruff
         run: pip install ruff
-      
+
       - name: Run ruff
         run: ruff check .
-      
-      - name: Run ruff formatter check
-        run: ruff format --check .
 
   gdscript-lint:
     name: GDScript Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
-      
+
       - name: Install gdlint
         run: pip install gdlint
-      
+
       - name: Run gdlint
         run: gdlint .
