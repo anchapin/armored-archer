@@ -16,36 +16,164 @@ Strictly Free-to-Play. Zero Pay-to-Win. Cosmetics only.
 
 [![codecov](https://img.shields.io/codecov/c/gh/anchapin/armored-archer/main)](https://codecov.io/gh/anchapin/armored-archer)
 
-## 🚀 Local Development Setup
+---
+
+## 🚀 Development Setup
 
 ### Prerequisites
-* Godot 4.x installed
-* Docker & Docker Compose (for local Nakama backend)
 
-### 1. Start the Backend
-Navigate to the `/backend` directory and spin up the Nakama server and PostgreSQL database:
-\`\`\`bash
+- **Godot 4.x** - Download from [godotengine.org](https://godotengine.org/)
+- **Docker & Docker Compose** - Required for local Nakama backend
+- **Node.js 18+** - Required for backend development
+- **npm** - Package manager (comes with Node.js)
+
+---
+
+## 🎮 Godot Client
+
+### Running the Game
+
+1. Open the project in Godot 4 Editor
+2. Press `F5` to run the project
+
+### Testing
+
+- **Run All Tests:** Open and run the scene `res://test/run_all_tests.gd` in the Godot Editor
+- **Test Files:** Located in `test/test_*.gd`
+
+### Exporting
+
+To export the game for a specific platform:
+1. Open **Project → Export** in the Godot Editor
+2. Select the target platform (Android, iOS, Linux, Windows, etc.)
+3. Click **Export Project**
+
+### Project Structure
+
+```
+/                          # Godot project root
+├── autoloads/            # Singletons (NetworkManager, GameManager, etc.)
+├── scenes/               # .tscn files organized by feature
+├── scripts/              # .gd scripts
+├── assets/               # Sprites, sounds, music
+├── test/                 # GDScript test runner and framework
+├── export/               # Export presets and configurations
+└── res://                # Godot resource path prefix
+```
+
+---
+
+## ⚙️ Backend (Nakama)
+
+### Quick Start
+
+```bash
+# Navigate to backend directory
 cd backend
-docker-compose up -d
-\`\`\`
-Nakama console will be available at `http://localhost:7351` (admin:password).
 
-### 2. Run the Game
-Open the `/client` folder in the Godot 4 Editor. 
-* Press `F5` to run the project.
-* Make sure your Nakama connection settings in `res://autoloads/NetworkManager.gd` point to `127.0.0.1:7350`.
+# Install dependencies
+npm install
+
+# Copy environment template and configure
+cp .env.example .env
+
+# Start Nakama and PostgreSQL
+./start.sh
+```
+
+The backend will be available at:
+- **API:** http://localhost:7350
+- **Admin Console:** http://localhost:7351 (admin:password)
+
+### Environment Configuration
+
+1. Copy the environment template:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` with your values:
+   ```bash
+   POSTGRES_PASSWORD=your_secure_password
+   DATABASE_ADDRESS=postgres:your_password@postgres:5432/nakama
+   NAKAMA_SERVER_KEY=your_server_key
+   SESSION_ENCRYPTION_KEY=your_token_key
+   REFRESH_ENCRYPTION_KEY=your_refresh_key
+   ```
+
+### Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `./start.sh` | Start Nakama and PostgreSQL with validation |
+| `npm run dev` | Start development server with auto-reload |
+| `npm run build` | Build TypeScript to JavaScript |
+| `npm run build:watch` | Build in watch mode |
+| `./validate-env.sh` | Validate environment variables |
+
+### Running Tests
+
+| Command | Description |
+|---------|-------------|
+| `npm test` | Run all tests |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run test:coverage` | Run tests with coverage report |
+| `npm run test:integration` | Run integration tests |
+| `npm run test:ci` | Run tests for CI (JUnit format) |
+
+### Linting & Code Quality
+
+| Command | Description |
+|---------|-------------|
+| `npm run lint` | Lint TypeScript |
+| `npm run lint:fix` | Fix linting issues |
+| `npm run typecheck` | Type check without building |
+| `npm run format` | Format code with Prettier |
+| `npm run format:check` | Check code formatting |
+
+### Database
+
+PostgreSQL is managed via Docker Compose:
+- **Connection:** `postgres://postgres:localdbpassword@localhost:5432/nakama`
+
+Run migrations:
+```bash
+docker exec -it armored_archer_server /nakama/nakama migrate up
+```
+
+### Backend Structure
+
+```
+backend/
+├── src/                  # TypeScript source files
+├── build/                # Compiled JavaScript output
+├── server/               # Nakama server configuration
+├── modules/              # Custom Nakama modules
+├── data/                 # Server data and migrations
+├── tests/                # TypeScript test files
+├── docker-compose.yml    # Docker Compose configuration
+├── nakama.yml            # Nakama server configuration
+├── package.json          # Node.js dependencies
+└── start.sh              # Startup script
+```
+
+---
 
 ## 📁 Project Structure
 
-* `/client` - Godot 4 project files (Scenes, Scripts, Assets).
-* `/backend` - Nakama server configuration, Docker Compose file, and TypeScript server logic.
-* `/design` - UI mockups, master cosmetic spreadsheets, and game design notes.
+* `/` - Godot project root (client)
+* `/backend` - Nakama server, TypeScript code, Docker Compose
+* `/test` - GDScript tests
+* `/docs` - Documentation
 
-## Roadmap
+---
 
-Phase,Timeline,Focus Area,Key Deliverables
-1. Core Mechanics,Weeks 1-3,Godot Engine Setup & Physics,"Touch controls (virtual joysticks), character movement, arrow trajectory physics, and hitbox collisions."
-2. PvE & Game Loop,Weeks 4-6,AI & Auto-Aim Logic,"Spawning simple enemies, implementing auto-aim logic, health systems, and core game loop (win/loss states)."
-3. Infrastructure,Weeks 7-9,Backend & Database Setup,"Local Nakama Docker setup, user authentication, database schemas (catalog, inventory, loadout)."
-4. Shop & Network,Weeks 10-13,"UI, IAP, & Turn-Based PvP","Modular sprite system, cosmetic shop UI, RevenueCat integration, Nakama matchmaker, and turn-based RPCs."
-5. Launch Prep,Weeks 14-16,Polish & App Store Submission,"Safe-area UI adjustments, analytics (Crashlytics), TestFlight (iOS) / Play Console (Android) beta distribution."
+## 🗺️ Roadmap
+
+| Phase | Timeline | Focus Area | Key Deliverables |
+|-------|----------|------------|------------------|
+| 1 | Weeks 1-3 | Godot Engine Setup & Physics | Touch controls (virtual joysticks), character movement, arrow trajectory physics, and hitbox collisions. |
+| 2 | Weeks 4-6 | AI & Auto-Aim Logic | Spawning simple enemies, implementing auto-aim logic, health systems, and core game loop (win/loss states). |
+| 3 | Weeks 7-9 | Backend & Database Setup | Local Nakama Docker setup, user authentication, database schemas (catalog, inventory, loadout). |
+| 4 | Weeks 10-13 | UI, IAP, & Turn-Based PvP | Modular sprite system, cosmetic shop UI, RevenueCat integration, Nakama matchmaker, and turn-based RPCs. |
+| 5 | Weeks 14-16 | Polish & App Store Submission | Safe-area UI adjustments, analytics (Crashlytics), TestFlight (iOS) / Play Console (Android) beta distribution. |
