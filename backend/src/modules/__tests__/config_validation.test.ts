@@ -17,7 +17,7 @@ describe('config_validation', () => {
         warn: jest.fn(),
         info: jest.fn(),
       };
-      
+
       // Set invalid port
       jest.doMock('../../config', () => ({
         config: {
@@ -27,7 +27,7 @@ describe('config_validation', () => {
           },
         },
       }));
-      
+
       // Need to reimport after mock change
       jest.resetModules();
       jest.doMock('../../config', () => ({
@@ -38,10 +38,10 @@ describe('config_validation', () => {
           },
         },
       }));
-      
+
       const { validateConfiguration } = require('../config_validation');
       validateConfiguration(mockLogger as any);
-      
+
       expect(mockLogger.warn).toHaveBeenCalledWith('Invalid server port: %d', 0);
       expect(mockLogger.info).toHaveBeenCalledWith('Configuration validated successfully');
     });
@@ -51,7 +51,7 @@ describe('config_validation', () => {
         warn: jest.fn(),
         info: jest.fn(),
       };
-      
+
       jest.resetModules();
       jest.doMock('../../config', () => ({
         config: {
@@ -61,10 +61,10 @@ describe('config_validation', () => {
           },
         },
       }));
-      
+
       const { validateConfiguration } = require('../config_validation');
       validateConfiguration(mockLogger as any);
-      
+
       expect(mockLogger.warn).toHaveBeenCalledWith('Invalid console port: %d', 0);
       expect(mockLogger.info).toHaveBeenCalledWith('Configuration validated successfully');
     });
@@ -74,7 +74,7 @@ describe('config_validation', () => {
         warn: jest.fn(),
         info: jest.fn(),
       };
-      
+
       jest.resetModules();
       jest.doMock('../../config', () => ({
         config: {
@@ -84,10 +84,10 @@ describe('config_validation', () => {
           },
         },
       }));
-      
+
       const { validateConfiguration } = require('../config_validation');
       validateConfiguration(mockLogger as any);
-      
+
       expect(mockLogger.warn).not.toHaveBeenCalled();
       expect(mockLogger.info).toHaveBeenCalledWith('Configuration validated successfully');
     });

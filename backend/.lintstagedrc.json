@@ -1,7 +1,7 @@
 {
   "**/*.ts": [
-    "npm run typecheck",
-    "eslint --fix",
+    "npm run typecheck --silent",
+    "eslint --fix --quiet",
     "prettier --write"
   ]
 }

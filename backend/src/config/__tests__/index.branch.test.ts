@@ -1,4 +1,4 @@
-import { validateRequiredConfig } from "../index";
+import { validateRequiredConfig } from '../index';
 
 describe('config/index branch coverage', () => {
   beforeEach(() => {
@@ -75,7 +75,7 @@ describe('config/index branch coverage', () => {
     process.env.REVENUECAT_PUBLIC_KEY = '';
     process.env.DATABASE_ADDRESS = '';
     jest.resetModules();
-    
+
     const { validateRequiredConfig } = require('../index');
     expect(() => validateRequiredConfig()).toThrow();
   });

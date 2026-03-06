@@ -1,4 +1,9 @@
-import { registerRpcMetrics, getMetricsRegistry, recordRateLimitViolation, updateActiveUsersCount } from '../metrics';
+import {
+  registerRpcMetrics,
+  getMetricsRegistry,
+  recordRateLimitViolation,
+  updateActiveUsersCount,
+} from '../metrics';
 
 // Mock dependencies - use correct path
 jest.mock('../../config', () => ({
@@ -43,9 +48,9 @@ describe('metrics', () => {
       const mockInitializer = {
         registerRpc: jest.fn(),
       };
-      
+
       registerRpcMetrics(mockInitializer as any);
-      
+
       expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
         'armored_archer/metrics',
         expect.any(Function)
