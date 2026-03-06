@@ -16,5 +16,15 @@ assignees: ''
 ## Describe alternatives you've considered
 <!-- A clear and concise description of any alternative solutions or features you've considered -->
 
+## Use Case
+<!-- Describe who would benefit from this feature and how -->
+- **Player Type**: <!-- e.g., Casual player, Competitive player -->
+- **Frequency**: <!-- Always needed / Sometimes needed / Rare -->
+
+## Design (Optional)
+<!-- If you have mockups, sketches, or design ideas, describe them here -->
+
 ## Additional Context
 <!-- Add any other context or screenshots about the feature request here -->
+- **Priority**: <!-- Must have / Nice to have / Future -->
+- **Related Issues**: <!-- Link any related issues -->
