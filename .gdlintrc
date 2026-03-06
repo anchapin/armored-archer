@@ -1,0 +1,96 @@
+{
+  "exclude": [
+    "*.import"
+  ],
+  "include": [
+    "*.gd"
+  ],
+  "rules": {
+    "class_name": {
+      "enabled": true,
+      "exclude": []
+    },
+    "class_name_case": {
+      "enabled": true,
+      "exclude": []
+    },
+    "constant_name": {
+      "enabled": true,
+      "exclude": []
+    },
+    "enum_name": {
+      "enabled": true,
+      "exclude": []
+    },
+    "export_name": {
+      "enabled": true,
+      "exclude": []
+    },
+    "file_name": {
+      "enabled": true,
+      "exclude": []
+    },
+    "function_name": {
+      "enabled": true,
+      "exclude": []
+    },
+    "inline_comment": {
+      "enabled": true,
+      "exclude": []
+    },
+    "invalid_code": {
+      "enabled": true,
+      "exclude": []
+    },
+    "line_length": {
+      "enabled": true,
+      "max_length": 120,
+      "exclude": []
+    },
+    "max_line_length": {
+      "enabled": true,
+      "max_length": 120,
+      "exclude": []
+    },
+    "nested_class": {
+      "enabled": true,
+      "exclude": []
+    },
+    "signal_name": {
+      "enabled": true,
+      "exclude": []
+    },
+    "subclass_name": {
+      "enabled": true,
+      "exclude": []
+    },
+    "tabs_to_spaces": {
+      "enabled": true,
+      "exclude": []
+    },
+    "trailing_newline": {
+      "enabled": true,
+      "exclude": []
+    },
+    "trailing_whitespace": {
+      "enabled": true,
+      "exclude": []
+    },
+    "type_name": {
+      "enabled": true,
+      "exclude": []
+    },
+    "unnecessary_pass": {
+      "enabled": true,
+      "exclude": []
+    },
+    "unused_argument": {
+      "enabled": true,
+      "exclude": []
+    },
+    "variable_name": {
+      "enabled": true,
+      "exclude": []
+    }
+  }
+}
