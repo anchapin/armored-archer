@@ -41,3 +41,5 @@ exclude:
   - "*.import"
   - "export/"
   - "import_presets.cfg"
+  - "test/*"
+  - "tests/*"
