@@ -2,12 +2,38 @@
 
 This file contains conventions and commands for agents working on the Armored Archer codebase.
 
+## Project Structure
+
+```
+/                          # Godot project root
+├── autoloads/            # Singletons (NetworkManager, GameManager, etc.)
+├── scenes/               # .tscn files organized by feature
+│   ├── player/           # Player-related scenes
+│   ├── enemies/          # Enemy scenes
+│   └── ui/               # UI scenes
+├── scripts/              # .gd scripts
+├── assets/               # Sprites, sounds, music
+├── test/                # GDScript test runner and framework
+├── docs/                 # Documentation
+└── res://                # Godot resource path prefix
+
+/backend/                 # Nakama TypeScript server
+├── src/                  # TypeScript source files
+├── build/                # Compiled JavaScript output
+├── server/               # Nakama server configuration
+├── modules/              # Custom Nakama modules
+├── data/                 # Server data and migrations
+├── tests/                # TypeScript test files
+└── docker-compose.yml   # Docker Compose configuration
+```
+
 ## Build & Development Commands
 
 ### Godot Client (GDScript)
 - **Run Project:** Open in Godot 4.x Editor and press `F5`
 - **Test Scene:** Open scene in editor and press `Ctrl+F5` for current scene only
 - **Export Project:** Project → Export → select platform → Export Project
+- **GDScript Tests:** Open Godot editor, run `res://test/run_all_tests.gd` scene
 
 ### Backend (TypeScript - Nakama)
 ```bash
@@ -35,6 +61,7 @@ npm run lint:fix         # Fix linting issues
 npm run typecheck        # Type check without building
 npm run format           # Format code with Prettier
 npm run format:check    # Check code formatting
+npm run docs             # Generate TypeDoc documentation
 ```
 
 ### Database
@@ -47,6 +74,25 @@ docker exec -it armored_archer_server /nakama/nakama migrate up
 ```
 
 ## GDScript Code Style
+
+### Autoloads (Singletons)
+The project uses Godot autoloads for game managers. Key autoloads include:
+- `NetworkManager.gd` - Handles Nakama server connection and RPC
+- `GameManager.gd` - Core game state and logic
+- `CombatManager.gd` - Combat calculations and effects
+- `GearManager.gd` / `GearRegistry.gd` - Equipment system
+- `PlayerStatsManager.gd` - Player statistics
+- `MatchmakerManager.gd` - Asynchronous PvP matchmaking
+- `SeasonManager.gd` - Seasonal content and leaderboards
+- `StoreManager.gd` - In-app purchase handling
+- `TransmogManager.gd` - Cosmetic skin system
+- `GemManager.gd` - Gem/socket system
+- `CampaignManager.gd` - Campaign progression
+- `AutoAimManager.gd` - Auto-aim assistance
+- `ObjectPool.gd` - Object pooling for performance
+- `PerformanceProfiler.gd` - Runtime performance monitoring
+- `SafeAreaManager.gd` - Mobile safe area handling
+- `UITransitionOptimizer.gd` - UI transition caching
 
 ### File Organization
 - **Class Declaration:** `extends NodeType` on first line
@@ -105,27 +151,22 @@ docker exec -it armored_archer_server /nakama/nakama migrate up
 - Wrap database operations in try-catch blocks
 - Log errors but don't expose sensitive data to clients
 
-## Project Structure
+### Backend Dependencies
+- `@heroiclabs/nakama-js` - Nakama client
+- `zod` - Schema validation
+- `@sentry/node` - Error tracking
+- `winston` - Logging
+- `prom-client` - Metrics
+- `uuid` - ID generation
+- `lru-cache` - In-memory caching
 
-```
-/                          # Godot project root
-├── autoloads/            # Singletons (NetworkManager, GameManager, etc.)
-├── scenes/               # .tscn files organized by feature
-├── scripts/              # .gd scripts
-├── assets/               # Sprites, sounds, music
-├── test/                 # GDScript test runner and framework
-├── docs/                 # Documentation
-└── res://                # Godot resource path prefix
+### Dependency Lockfiles
+The project uses `package-lock.json` to ensure reproducible builds.
 
-/backend/                 # Nakama TypeScript server
-├── src/                  # TypeScript source files
-├── build/                # Compiled JavaScript output
-├── server/               # Nakama server configuration
-├── modules/              # Custom Nakama modules
-├── data/                 # Server data and migrations
-├── tests/                # TypeScript test files
-└── docker-compose.yml   # Docker Compose configuration
-```
+- **Backend lockfile:** `backend/package-lock.json` - Already exists and is tracked in git
+- **Install with lockfile:** `cd backend && npm install` (uses lockfile automatically)
+- **Update dependencies:** `cd backend && npm install <package>@latest` (updates lockfile)
+- **Check for outdated packages:** `cd backend && npm outdated`
 
 ## Testing Guidelines
 
@@ -166,23 +207,19 @@ npm run test:ci          # CI-ready test run with JUnit output
 - Cosmetic skins store only visual data (purchased via IAP)
 - Client combines base gear + skin for rendering
 
-## Dependency Management
+## Commit & Pull Request Guidelines
 
-### Backend (Node.js/TypeScript)
-- **Lockfile:** `backend/package-lock.json` - Ensures reproducible builds
-- **Installation:** `npm install` (automatically uses lockfile)
-- **Adding Dependencies:** `npm install <package>` (automatically updates lockfile)
-- **Updating Dependencies:** 
-  - `npm update` - Update all packages within lockfile range
-  - `npm install <package>@latest` - Update to latest version (updates lockfile)
+### Commit Messages
+- Follow conventional commits: `fix:`, `feat:`, `refactor:`, `docs:`, `test:`
+- Example: `fix: resolve arrow collision issue with enemies`
 
-### Python Dependencies
-- This project does not use Python for any runtime or build processes
-- Python files in `node_modules/` are from Node.js dependencies and should not be modified
+### Branch Naming
+- `fix/issue-<number>` for bug fixes
+- `feat/<description>` for new features
+- `refactor/<description>` for code improvements
 
-## Important Notes
-
-- This is a F2P game with cosmetic-only monetization - never implement pay-to-win
-- Asynchronous PvP only - no real-time synchronous multiplayer in MVP
-- Player progression must be server-authoritative to prevent cheating
-- Mobile-first design - touch controls and safe area considerations required
+### PR Requirements
+- All tests must pass
+- Linting must pass without errors
+- TypeScript type checking must pass
+- Update documentation if needed
