@@ -17,6 +17,7 @@
 import { Runtime } from '../types/nakama';
 import { LRUCache as LRUCacheClass } from 'lru-cache';
 import { CacheValueType } from '../types/shared';
+import { logCacheOperation } from '../config/logger';
 
 type LRUCache<K, V> = InstanceType<typeof LRUCacheClass<K, V>>;
 
@@ -78,7 +79,12 @@ class CacheManager {
     this.metrics.set(name, { hits: 0, misses: 0 });
 
     if (this.logger) {
-      this.logger.info('Cache %s created with max=%d, ttl=%dms', name, max, ttl);
+      this.logger.info('Cache created', {
+        cacheName: name,
+        max,
+        ttl,
+        operation: 'cache_create',
+      });
     }
 
     return cache;
@@ -90,7 +96,10 @@ class CacheManager {
 
     if (!cache || !metrics) {
       if (this.logger) {
-        this.logger.error('Cache %s not found', cacheName);
+        this.logger.error('Cache not found', {
+          cacheName,
+          operation: 'cache_not_found',
+        });
       }
       return undefined;
     }
@@ -99,14 +108,10 @@ class CacheManager {
 
     if (value !== undefined) {
       metrics.hits++;
-      if (this.logger) {
-        this.logger.debug('Cache HIT: %s:%s', cacheName, key);
-      }
+      logCacheOperation('hit', cacheName, key);
     } else {
       metrics.misses++;
-      if (this.logger) {
-        this.logger.debug('Cache MISS: %s:%s', cacheName, key);
-      }
+      logCacheOperation('miss', cacheName, key);
     }
 
     return value as T;
@@ -117,16 +122,16 @@ class CacheManager {
 
     if (!cache) {
       if (this.logger) {
-        this.logger.error('Cache %s not found', cacheName);
+        this.logger.error('Cache not found', {
+          cacheName,
+          operation: 'cache_not_found',
+        });
       }
       return;
     }
 
     cache.set(key, value);
-
-    if (this.logger) {
-      this.logger.debug('Cache SET: %s:%s', cacheName, key);
-    }
+    logCacheOperation('set', cacheName, key);
   }
 
   delete(cacheName: string, key: string): void {
@@ -134,16 +139,16 @@ class CacheManager {
 
     if (!cache) {
       if (this.logger) {
-        this.logger.error('Cache %s not found', cacheName);
+        this.logger.error('Cache not found', {
+          cacheName,
+          operation: 'cache_not_found',
+        });
       }
       return;
     }
 
     cache.delete(key);
-
-    if (this.logger) {
-      this.logger.debug('Cache DELETE: %s:%s', cacheName, key);
-    }
+    logCacheOperation('delete', cacheName, key);
   }
 
   clear(cacheName: string): void {
@@ -152,7 +157,10 @@ class CacheManager {
 
     if (!cache || !metrics) {
       if (this.logger) {
-        this.logger.error('Cache %s not found', cacheName);
+        this.logger.error('Cache not found', {
+          cacheName,
+          operation: 'cache_not_found',
+        });
       }
       return;
     }
@@ -161,9 +169,7 @@ class CacheManager {
     metrics.hits = 0;
     metrics.misses = 0;
 
-    if (this.logger) {
-      this.logger.info('Cache %s cleared', cacheName);
-    }
+    logCacheOperation('clear', cacheName, '*');
   }
 
   getMetrics(cacheName: string): CacheMetrics | undefined {
