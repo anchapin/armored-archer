@@ -1,14 +1,14 @@
 /**
  * Deployment Readiness Tests
- * 
+ *
  * These tests verify that the backend is properly configured for deployment.
  * They test critical endpoints and configurations needed for production deployment.
  */
 
-import { createMockLogger, createMockContext, createMockNakama } from "../../__mocks__/nakama";
-import { rpcHealthCheck } from "../player_rpc";
-import { Runtime } from "../../types/nakama";
-import { initializeCaches } from "../../utils/cache";
+import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
+import { rpcHealthCheck } from '../player_rpc';
+import { Runtime } from '../../types/nakama';
+import { initializeCaches } from '../../utils/cache';
 
 describe('Deployment Readiness', () => {
   let mockLogger: Runtime.Logger;
@@ -17,7 +17,7 @@ describe('Deployment Readiness', () => {
 
   beforeEach(() => {
     mockLogger = createMockLogger();
-    mockCtx = createMockContext({ userId: "deployment-test-user" });
+    mockCtx = createMockContext({ userId: 'deployment-test-user' });
     mockNk = createMockNakama();
     jest.clearAllMocks();
     initializeCaches(mockLogger);
@@ -29,9 +29,9 @@ describe('Deployment Readiness', () => {
       const result = rpcHealthCheck(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
-      expect(parsed.status).toBe("ok");
+      expect(parsed.status).toBe('ok');
       expect(parsed.timestamp).toBeDefined();
-      expect(typeof parsed.timestamp).toBe("number");
+      expect(typeof parsed.timestamp).toBe('number');
     });
 
     it('should return current version', () => {
@@ -40,16 +40,16 @@ describe('Deployment Readiness', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.version).toBeDefined();
-      expect(typeof parsed.version).toBe("string");
+      expect(typeof parsed.version).toBe('string');
       expect(parsed.version).toMatch(/^\d+\.\d+\.\d+$/);
     });
 
     it('should accept empty payload', () => {
-      const payload = "";
+      const payload = '';
       const result = rpcHealthCheck(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
-      expect(parsed.status).toBe("ok");
+      expect(parsed.status).toBe('ok');
     });
 
     it('should accept null payload', () => {
@@ -59,7 +59,7 @@ describe('Deployment Readiness', () => {
       try {
         const result = rpcHealthCheck(mockCtx, mockLogger, mockNk, payload);
         const parsed = JSON.parse(result);
-        expect(parsed.status).toBe("ok");
+        expect(parsed.status).toBe('ok');
       } catch (e) {
         // If null causes an error, it's handled gracefully
         expect(true).toBe(true);
@@ -70,9 +70,7 @@ describe('Deployment Readiness', () => {
       const payload = JSON.stringify({});
       rpcHealthCheck(mockCtx, mockLogger, mockNk, payload);
 
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        'Armored Archer health check called'
-      );
+      expect(mockLogger.info).toHaveBeenCalledWith('Armored Archer health check called');
     });
   });
 
@@ -101,7 +99,7 @@ describe('Deployment Readiness', () => {
 
   describe('Error Handling', () => {
     it('should handle invalid JSON payload gracefully', () => {
-      const payload = "invalid-json";
+      const payload = 'invalid-json';
       const result = rpcHealthCheck(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -113,11 +111,11 @@ describe('Deployment Readiness', () => {
 
 describe('Environment Validation', () => {
   // These tests verify that environment variable validation works correctly
-  
+
   describe('Required Variables', () => {
     it('should validate NAKAMA_SERVER_KEY format when set', () => {
       const serverKey = process.env.NAKAMA_SERVER_KEY;
-      
+
       // Only test if variable is set (in test environment it may not be)
       if (serverKey) {
         expect(serverKey.length).toBeGreaterThan(0);
@@ -129,7 +127,7 @@ describe('Environment Validation', () => {
 
     it('should validate SESSION_ENCRYPTION_KEY exists when set', () => {
       const sessionKey = process.env.SESSION_ENCRYPTION_KEY;
-      
+
       if (sessionKey) {
         expect(sessionKey.length).toBeGreaterThanOrEqual(16);
       } else {
@@ -139,7 +137,7 @@ describe('Environment Validation', () => {
 
     it('should validate REFRESH_ENCRYPTION_KEY exists when set', () => {
       const refreshKey = process.env.REFRESH_ENCRYPTION_KEY;
-      
+
       if (refreshKey) {
         expect(refreshKey.length).toBeGreaterThanOrEqual(16);
       } else {
@@ -173,7 +171,7 @@ describe('Build Verification', () => {
   it('should have all required source files', () => {
     // This test verifies that critical modules exist and can be imported
     // The actual import happens at compile time, so we verify the structure
-    
+
     const requiredModules = [
       '../modules/player_rpc',
       '../modules/rpg_system',

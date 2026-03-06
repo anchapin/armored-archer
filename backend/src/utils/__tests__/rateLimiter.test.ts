@@ -1,8 +1,8 @@
-import { 
-  setEndpointRateLimit, 
-  checkRateLimit, 
+import {
+  setEndpointRateLimit,
+  checkRateLimit,
   resetUserRateLimit,
-  getRateLimitStats 
+  getRateLimitStats,
 } from '../rateLimiter';
 
 describe('RateLimiter', () => {
@@ -13,7 +13,7 @@ describe('RateLimiter', () => {
   test('should allow requests within limit', () => {
     setEndpointRateLimit('test-endpoint', {
       maxRequests: 5,
-      windowMs: 60000
+      windowMs: 60000,
     });
 
     for (let i = 0; i < 5; i++) {
@@ -26,7 +26,7 @@ describe('RateLimiter', () => {
   test('should block requests exceeding limit', () => {
     setEndpointRateLimit('test-endpoint', {
       maxRequests: 3,
-      windowMs: 60000
+      windowMs: 60000,
     });
 
     for (let i = 0; i < 3; i++) {
@@ -43,7 +43,7 @@ describe('RateLimiter', () => {
   test('should track stats correctly', () => {
     setEndpointRateLimit('test-endpoint', {
       maxRequests: 10,
-      windowMs: 60000
+      windowMs: 60000,
     });
 
     checkRateLimit('test-user', 'test-endpoint');
@@ -59,7 +59,7 @@ describe('RateLimiter', () => {
   test('should reset limits', () => {
     setEndpointRateLimit('test-endpoint', {
       maxRequests: 2,
-      windowMs: 60000
+      windowMs: 60000,
     });
 
     checkRateLimit('test-user', 'test-endpoint');

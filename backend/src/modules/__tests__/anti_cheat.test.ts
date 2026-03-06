@@ -87,7 +87,12 @@ describe('Anti-Cheat Module', () => {
     const timestamp = Date.now();
     const signature = computeSignature(payload, timestamp, nonce);
 
-    const result = verifyRequestSignature(mockContext, payload, { requestId, timestamp, signature, nonce }, 'test_rpc');
+    const result = verifyRequestSignature(
+      mockContext,
+      payload,
+      { requestId, timestamp, signature, nonce },
+      'test_rpc'
+    );
 
     expect(result.valid).toBe(true);
     expect(result.violations).toHaveLength(0);
@@ -99,7 +104,12 @@ describe('Anti-Cheat Module', () => {
     const timestamp = Date.now();
     const badSignature = 'a'.repeat(64);
 
-    const result = verifyRequestSignature(mockContext, payload, { requestId, timestamp, signature: badSignature, nonce }, 'test_rpc');
+    const result = verifyRequestSignature(
+      mockContext,
+      payload,
+      { requestId, timestamp, signature: badSignature, nonce },
+      'test_rpc'
+    );
 
     expect(result.valid).toBe(false);
     expect(result.violations.some((v) => v.violationType === 'invalid_signature')).toBe(true);
@@ -112,11 +122,21 @@ describe('Anti-Cheat Module', () => {
     const signature = computeSignature(payload, timestamp, nonce);
 
     // First submission should pass
-    const result1 = verifyRequestSignature(mockContext, payload, { requestId, timestamp, signature, nonce }, 'test_rpc');
+    const result1 = verifyRequestSignature(
+      mockContext,
+      payload,
+      { requestId, timestamp, signature, nonce },
+      'test_rpc'
+    );
     expect(result1.valid).toBe(true);
 
     // Same request should be detected as replay
-    const result2 = verifyRequestSignature(mockContext, payload, { requestId, timestamp, signature, nonce }, 'test_rpc');
+    const result2 = verifyRequestSignature(
+      mockContext,
+      payload,
+      { requestId, timestamp, signature, nonce },
+      'test_rpc'
+    );
     expect(result2.valid).toBe(false);
     expect(result2.violations.some((v) => v.violationType === 'replay_attack')).toBe(true);
   });
@@ -127,21 +147,40 @@ describe('Anti-Cheat Module', () => {
     const timestamp = Date.now() - 10000;
     const signature = computeSignature(payload, timestamp, nonce);
 
-    const result = verifyRequestSignature(mockContext, payload, { requestId, timestamp, signature, nonce }, 'test_rpc');
+    const result = verifyRequestSignature(
+      mockContext,
+      payload,
+      { requestId, timestamp, signature, nonce },
+      'test_rpc'
+    );
 
     expect(result.valid).toBe(false);
     expect(result.violations.some((v) => v.violationType === 'clock_skew')).toBe(true);
   });
 
   test('validateCombatActionParameters accepts valid parameters', () => {
-    const result = validateCombatActionParameters(1.57, 0.8, 'player-1', 'player-1', 'submit_combat_action', 'req-id');
+    const result = validateCombatActionParameters(
+      1.57,
+      0.8,
+      'player-1',
+      'player-1',
+      'submit_combat_action',
+      'req-id'
+    );
 
     expect(result.valid).toBe(true);
     expect(result.violations).toHaveLength(0);
   });
 
   test('validateCombatActionParameters rejects invalid angle', () => {
-    const result = validateCombatActionParameters(-0.5, 0.8, 'player-1', 'player-1', 'submit_combat_action', 'req-id');
+    const result = validateCombatActionParameters(
+      -0.5,
+      0.8,
+      'player-1',
+      'player-1',
+      'submit_combat_action',
+      'req-id'
+    );
 
     expect(result.valid).toBe(false);
     expect(result.violations.some((v) => v.details.parameterName === 'angle')).toBe(true);
@@ -149,7 +188,14 @@ describe('Anti-Cheat Module', () => {
 
   test('validateCombatActionParameters accepts valid combat action', () => {
     // Pass correct currentTurnUserId to avoid out_of_turn violation
-    const result = validateCombatActionParameters(1.57, 0.8, 'player-1', 'player-1', 'submit_combat_action', 'req-id');
+    const result = validateCombatActionParameters(
+      1.57,
+      0.8,
+      'player-1',
+      'player-1',
+      'submit_combat_action',
+      'req-id'
+    );
 
     expect(result.valid).toBe(true);
     expect(result.violations).toHaveLength(0);
@@ -185,11 +231,23 @@ describe('Anti-Cheat Module', () => {
     const signature = computeSignature(payload, timestamp, nonce);
 
     // Step 1: Verify signature
-    const sigResult = verifyRequestSignature(mockContext, payload, { requestId, timestamp, signature, nonce }, 'submit_combat_action');
+    const sigResult = verifyRequestSignature(
+      mockContext,
+      payload,
+      { requestId, timestamp, signature, nonce },
+      'submit_combat_action'
+    );
     expect(sigResult.valid).toBe(true);
 
     // Step 2: Validate parameters
-    const paramResult = validateCombatActionParameters(1.57, 0.8, mockContext.userId, mockContext.userId, 'submit_combat_action', requestId);
+    const paramResult = validateCombatActionParameters(
+      1.57,
+      0.8,
+      mockContext.userId,
+      mockContext.userId,
+      'submit_combat_action',
+      requestId
+    );
     expect(paramResult.valid).toBe(true);
 
     // Step 3: Check for timing attacks
@@ -209,11 +267,21 @@ describe('Anti-Cheat Module', () => {
     const requestSig = { requestId, timestamp, signature, nonce };
 
     // First submission
-    const result1 = verifyRequestSignature(mockContext, payload, requestSig, 'submit_combat_action');
+    const result1 = verifyRequestSignature(
+      mockContext,
+      payload,
+      requestSig,
+      'submit_combat_action'
+    );
     expect(result1.valid).toBe(true);
 
     // Replay attempt
-    const result2 = verifyRequestSignature(mockContext, payload, requestSig, 'submit_combat_action');
+    const result2 = verifyRequestSignature(
+      mockContext,
+      payload,
+      requestSig,
+      'submit_combat_action'
+    );
     expect(result2.valid).toBe(false);
     expect(violations.some((v) => v.violationType === 'replay_attack')).toBe(true);
   });

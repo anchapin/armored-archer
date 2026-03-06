@@ -3,10 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import {
-  validatePlayerStats,
-  validateGearInventory,
-} from '../progression_validation';
+import { validatePlayerStats, validateGearInventory } from '../progression_validation';
 import { PlayerStats } from '../rpg_system';
 import { PlayerInventory, GearItem } from '../gear_system';
 

@@ -1,4 +1,4 @@
-import { logRpcEntry, logRpcExit, logRpcError, captureRpcError } from "../logger";
+import { logRpcEntry, logRpcExit, logRpcError, captureRpcError } from '../logger';
 
 describe('logger branch coverage', () => {
   it('logRpcEntry executes without error', () => {
