@@ -12,12 +12,12 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --reporters=default --reporters=jest-junit",
     "test:integration": "jest -c backend/jest.integration.config.js",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "lint": "eslint src/**/*.ts --quiet",
+    "lint:fix": "eslint src/**/*.ts --fix --quiet",
     "typecheck": "tsc --noEmit",
     "docs": "typedoc --out docs src",
-    "format": "prettier --write",
-    "format:check": "prettier --check"
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/"
   },
   "keywords": [
     "nakama",

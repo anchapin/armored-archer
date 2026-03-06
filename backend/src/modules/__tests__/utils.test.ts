@@ -1,7 +1,7 @@
-import { calculateLevel } from "../rpg_system";
-import { calculateRank, generateMatchId } from "../matchmaker";
-import { calculateRewards } from "../season_system";
-import { PlayerStats } from "../types/game";
+import { calculateLevel } from '../rpg_system';
+import { calculateRank, generateMatchId } from '../matchmaker';
+import { calculateRewards } from '../season_system';
+import { PlayerStats } from '../types/game';
 
 describe('Utility Functions', () => {
   describe('calculateLevel', () => {
@@ -43,8 +43,8 @@ describe('Utility Functions', () => {
         defense: 10,
         dodge: 10,
         crit_rate: 5,
-        ...overrides
-      }
+        ...overrides,
+      },
     });
 
     it('should calculate rank from level and base stats', () => {
@@ -55,14 +55,14 @@ describe('Utility Functions', () => {
     it('should increase rank with level', () => {
       const lowLevel = { ...createStats(), level: 1 };
       const highLevel = { ...createStats(), level: 10 };
-      
+
       expect(calculateRank(highLevel)).toBeGreaterThan(calculateRank(lowLevel));
     });
 
     it('should increase rank with stats', () => {
       const lowStats = createStats({ attack: 10, defense: 10, dodge: 10, crit_rate: 5 });
       const highStats = createStats({ attack: 30, defense: 30, dodge: 30, crit_rate: 15 });
-      
+
       expect(calculateRank(highStats)).toBeGreaterThan(calculateRank(lowStats));
     });
   });
@@ -71,18 +71,18 @@ describe('Utility Functions', () => {
     it('should generate unique match IDs', () => {
       const id1 = generateMatchId();
       const id2 = generateMatchId();
-      
+
       expect(id1).not.toBe(id2);
     });
 
     it('should start with "match_" prefix', () => {
       const id = generateMatchId();
-      expect(id.startsWith("match_")).toBe(true);
+      expect(id.startsWith('match_')).toBe(true);
     });
 
     it('should contain timestamp', () => {
       const id = generateMatchId();
-      const parts = id.split("_");
+      const parts = id.split('_');
       expect(parts.length).toBeGreaterThanOrEqual(3);
     });
   });
@@ -90,39 +90,39 @@ describe('Utility Functions', () => {
   describe('calculateRewards', () => {
     it('should return legendary rewards for rank 1', () => {
       const rewards = calculateRewards(1, 1);
-      expect(rewards.rank_tier).toBe("legendary");
+      expect(rewards.rank_tier).toBe('legendary');
       expect(rewards.coins).toBe(10000);
       expect(rewards.gems).toBe(500);
     });
 
     it('should return legendary rewards for rank 10', () => {
       const rewards = calculateRewards(10, 1);
-      expect(rewards.rank_tier).toBe("legendary");
+      expect(rewards.rank_tier).toBe('legendary');
     });
 
     it('should return epic rewards for rank 50', () => {
       const rewards = calculateRewards(50, 1);
-      expect(rewards.rank_tier).toBe("epic");
+      expect(rewards.rank_tier).toBe('epic');
     });
 
     it('should return rare rewards for rank 100', () => {
       const rewards = calculateRewards(100, 1);
-      expect(rewards.rank_tier).toBe("rare");
+      expect(rewards.rank_tier).toBe('rare');
     });
 
     it('should return uncommon rewards for rank 500', () => {
       const rewards = calculateRewards(500, 1);
-      expect(rewards.rank_tier).toBe("uncommon");
+      expect(rewards.rank_tier).toBe('uncommon');
     });
 
     it('should return common rewards for rank 1000', () => {
       const rewards = calculateRewards(1000, 1);
-      expect(rewards.rank_tier).toBe("common");
+      expect(rewards.rank_tier).toBe('common');
     });
 
     it('should include season number in title', () => {
       const rewards = calculateRewards(1, 5);
-      expect(rewards.cosmetics?.title).toContain("5");
+      expect(rewards.cosmetics?.title).toContain('5');
     });
   });
 });

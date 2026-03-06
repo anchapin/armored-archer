@@ -4,3 +4,16 @@ dist/
 coverage/
 *.log
 package-lock.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated
+*.js
+*.d.ts
+src/types/

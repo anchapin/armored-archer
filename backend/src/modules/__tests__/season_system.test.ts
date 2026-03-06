@@ -1,14 +1,14 @@
-import { createMockLogger, createMockContext, createMockNakama } from "../../__mocks__/nakama";
-import { 
-  rpcGetSeasonInfo, 
-  rpcGetLeaderboard, 
+import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
+import {
+  rpcGetSeasonInfo,
+  rpcGetLeaderboard,
   rpcUpdateRank,
   rpcGetSeasonRewards,
   rpcClaimSeasonRewards,
   rpcEndSeason,
-  SeasonInfo
-} from "../season_system";
-import { Runtime } from "../../types/nakama";
+  SeasonInfo,
+} from '../season_system';
+import { Runtime } from '../../types/nakama';
 
 describe('season_system', () => {
   let mockLogger: Runtime.Logger;
@@ -17,21 +17,21 @@ describe('season_system', () => {
 
   beforeEach(() => {
     mockLogger = createMockLogger();
-    mockCtx = createMockContext({ userId: "test-user", username: "TestPlayer" });
+    mockCtx = createMockContext({ userId: 'test-user', username: 'TestPlayer' });
     mockNk = createMockNakama();
     jest.clearAllMocks();
   });
 
   const createMockLeaderboardRecord = (overrides?: any) => ({
-    ownerId: "test-user",
-    username: "TestPlayer",
+    ownerId: 'test-user',
+    username: 'TestPlayer',
     rank: 1,
     score: 1500,
     metadata: JSON.stringify({ wins: 10, losses: 2, win_rate: 0.83, punch_up_wins: 3 }),
     expiry: 0,
     maxNumScore: 0,
     numScore: 0,
-    ...overrides
+    ...overrides,
   });
 
   describe('rpcGetSeasonInfo', () => {
@@ -45,7 +45,7 @@ describe('season_system', () => {
       expect(parsed.success).toBe(true);
       expect(parsed.season).toBeDefined();
       expect(parsed.season.season_id).toBeDefined();
-      expect(parsed.season.status).toBe("active");
+      expect(parsed.season.status).toBe('active');
     });
 
     it('should include player rank when available', () => {
@@ -64,8 +64,8 @@ describe('season_system', () => {
   describe('rpcGetLeaderboard', () => {
     it('should return leaderboard entries', () => {
       const records = [
-        createMockLeaderboardRecord({ ownerId: "user1", rank: 1, score: 2000 }),
-        createMockLeaderboardRecord({ ownerId: "user2", rank: 2, score: 1800 }),
+        createMockLeaderboardRecord({ ownerId: 'user1', rank: 1, score: 2000 }),
+        createMockLeaderboardRecord({ ownerId: 'user2', rank: 2, score: 1800 }),
       ];
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue(records);
 
@@ -78,7 +78,7 @@ describe('season_system', () => {
     });
 
     it('should respect limit parameter', () => {
-      const records = Array.from({ length: 100 }, (_, i) => 
+      const records = Array.from({ length: 100 }, (_, i) =>
         createMockLeaderboardRecord({ ownerId: `user${i}`, rank: i + 1, score: 2000 - i * 10 })
       );
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue(records);
@@ -97,14 +97,14 @@ describe('season_system', () => {
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({
-        match_id: "match-123",
-        winner_id: "winner-user",
-        loser_id: "loser-user",
+        match_id: 'match-123',
+        winner_id: 'winner-user',
+        loser_id: 'loser-user',
         winner_old_rank: 1500,
         loser_old_rank: 1400,
         winner_new_rank: 1520,
         loser_new_rank: 1380,
-        is_punch_up: false
+        is_punch_up: false,
       });
       const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
@@ -119,14 +119,14 @@ describe('season_system', () => {
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({
-        match_id: "match-456",
-        winner_id: "new-winner",
-        loser_id: "new-loser",
+        match_id: 'match-456',
+        winner_id: 'new-winner',
+        loser_id: 'new-loser',
         winner_old_rank: 1000,
         loser_old_rank: 1000,
         winner_new_rank: 1032,
         loser_new_rank: 968,
-        is_punch_up: true
+        is_punch_up: true,
       });
       const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
@@ -137,14 +137,14 @@ describe('season_system', () => {
 
     it('should validate input payload', () => {
       const payload = JSON.stringify({
-        winner_id: "",
-        loser_id: "loser",
-        is_punch_up: "not a boolean"
+        winner_id: '',
+        loser_id: 'loser',
+        is_punch_up: 'not a boolean',
       });
       const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
-      expect(parsed.error_code).toBe("VALIDATION_ERROR");
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
     });
   });
 
@@ -170,7 +170,7 @@ describe('season_system', () => {
 
       expect(parsed.success).toBe(true);
       expect(parsed.rewards).toBeDefined();
-      expect(parsed.rewards.rank_tier).toBe("legendary");
+      expect(parsed.rewards.rank_tier).toBe('legendary');
     });
 
     it('should return epic rewards for ranks 11-50', () => {
@@ -182,7 +182,7 @@ describe('season_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.rewards.rank_tier).toBe("epic");
+      expect(parsed.rewards.rank_tier).toBe('epic');
     });
 
     it('should return rare rewards for ranks 51-100', () => {
@@ -194,7 +194,7 @@ describe('season_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.rewards.rank_tier).toBe("rare");
+      expect(parsed.rewards.rank_tier).toBe('rare');
     });
 
     it('should return uncommon rewards for ranks 101-500', () => {
@@ -206,7 +206,7 @@ describe('season_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.rewards.rank_tier).toBe("uncommon");
+      expect(parsed.rewards.rank_tier).toBe('uncommon');
     });
 
     it('should return common rewards for ranks below 500', () => {
@@ -218,7 +218,7 @@ describe('season_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.rewards.rank_tier).toBe("common");
+      expect(parsed.rewards.rank_tier).toBe('common');
     });
   });
 
@@ -239,17 +239,19 @@ describe('season_system', () => {
 
     it('should return error when rewards already claimed', () => {
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
-      mockNk.storageRead = jest.fn().mockReturnValue([{
-        collection: "season_rewards_claimed",
-        key: "season_1_test-user",
-        value: JSON.stringify({ claimed_at: Date.now() })
-      }]);
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'season_rewards_claimed',
+          key: 'season_1_test-user',
+          value: JSON.stringify({ claimed_at: Date.now() }),
+        },
+      ]);
 
       const payload = JSON.stringify({});
       const result = rpcClaimSeasonRewards(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
-      expect(parsed.error).toBe("Rewards already claimed for this season");
+      expect(parsed.error).toBe('Rewards already claimed for this season');
     });
 
     it('should return error when no leaderboard entry', () => {
@@ -260,7 +262,7 @@ describe('season_system', () => {
       const result = rpcClaimSeasonRewards(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
-      expect(parsed.error).toBe("No leaderboard entry found");
+      expect(parsed.error).toBe('No leaderboard entry found');
     });
   });
 

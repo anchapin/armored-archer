@@ -25,7 +25,16 @@ describe('logAudit', () => {
   });
 
   it('includes error on failure', () => {
-    logAudit(mockNk, 'user456', null, 'equip_gear', 'gear', { gear_id: 'abc' }, 'failure', 'Not found');
+    logAudit(
+      mockNk,
+      'user456',
+      null,
+      'equip_gear',
+      'gear',
+      { gear_id: 'abc' },
+      'failure',
+      'Not found'
+    );
 
     const callArg = mockStorageWrite.mock.calls[0][0][0];
     const value = JSON.parse(callArg.value);
@@ -34,7 +43,9 @@ describe('logAudit', () => {
   });
 
   it('handles storageWrite failure gracefully', () => {
-    mockNk.storageWrite = jest.fn(() => { throw new Error('DB error'); });
+    mockNk.storageWrite = jest.fn(() => {
+      throw new Error('DB error');
+    });
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     expect(() => logAudit(mockNk, 'user', null, 'test', 'res', {}, 'success')).not.toThrow();
