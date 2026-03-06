@@ -296,3 +296,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 📊 Code Coverage
 
 [![codecov](https://img.shields.io/codecov/c/gh/anchapin/armored-archer/main)](https://codecov.io/gh/anchapin/armored-archer)
+
+---
