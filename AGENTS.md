@@ -9,19 +9,32 @@ This file contains conventions and commands for agents working on the Armored Ar
 - **Test Scene:** Open scene in editor and press `Ctrl+F5` for current scene only
 - **Export Project:** Project → Export → select platform → Export Project
 
-### Backend (TypeScript - Not Yet Implemented)
+### Backend (TypeScript - Nakama)
 ```bash
 # Start backend with Docker Compose
-docker-compose up -d
+cd backend && ./start.sh
 
 # Nakama console (admin:password)
 open http://localhost:7351
 
-# When tests are added, likely patterns:
-npm test                          # Run all tests
-npm test -- path/to/test.ts      # Run single test file
-npm run lint                     # Lint TypeScript
-npm run lint:fix                 # Fix linting issues
+# Development
+npm run dev              # Start with auto-reload
+npm run build            # Build TypeScript
+npm run build:watch      # Build in watch mode
+
+# Testing
+npm test                 # Run all tests
+npm run test:watch       # Run tests in watch mode
+npm run test:coverage    # Run tests with coverage
+npm run test:integration # Run integration tests
+npm run test:ci          # Run tests for CI (JUnit format)
+
+# Linting & Type Checking
+npm run lint             # Lint TypeScript
+npm run lint:fix         # Fix linting issues
+npm run typecheck        # Type check without building
+npm run format           # Format code with Prettier
+npm run format:check    # Check code formatting
 ```
 
 ### Database
@@ -75,9 +88,7 @@ docker exec -it armored_archer_server /nakama/nakama migrate up
 - Deadzone for joysticks: check `length() > 0.1` to detect actual input
 - Store aim state: `var is_aiming: bool = false` to track thumb release
 
-## TypeScript Code Style (Future Backend)
-
-When the Nakama backend is implemented, follow these patterns:
+## TypeScript Code Style (Nakama Backend)
 
 ### Type Safety
 - Use strict TypeScript (`"strict": true` in tsconfig.json)
@@ -98,19 +109,51 @@ When the Nakama backend is implemented, follow these patterns:
 
 ```
 /                          # Godot project root
-  ├── autoloads/          # Singletons (NetworkManager, GameManager, etc.)
-  ├── scenes/             # .tscn files organized by feature
-  ├── scripts/            # .gd scripts
-  ├── assets/             # Sprites, sounds, music
-  └── res://              # Godot resource path prefix
+├── autoloads/            # Singletons (NetworkManager, GameManager, etc.)
+├── scenes/               # .tscn files organized by feature
+├── scripts/              # .gd scripts
+├── assets/               # Sprites, sounds, music
+├── test/                 # GDScript test runner and framework
+├── docs/                 # Documentation
+└── res://                # Godot resource path prefix
 
-/backend/                  # Nakama TypeScript server (not yet created)
-  ├── server/             # Nakama server code
-  ├── modules/            # Custom Nakama modules
-  └── data/               # Server configuration
+/backend/                 # Nakama TypeScript server
+├── src/                  # TypeScript source files
+├── build/                # Compiled JavaScript output
+├── server/               # Nakama server configuration
+├── modules/              # Custom Nakama modules
+├── data/                 # Server data and migrations
+├── tests/                # TypeScript test files
+└── docker-compose.yml   # Docker Compose configuration
 ```
 
+## Testing Guidelines
+
+### GDScript Tests
+- **Run Tests:** Open Godot editor, run `res://test/run_all_tests.gd` scene
+- **Test Location:** All test files are in `test/` directory
+- **Test Files:** `test/test_*.gd` - each manager/feature has corresponding tests
+
+### TypeScript Tests (Backend)
+```bash
+npm test                 # Run all tests
+npm run test:coverage    # Run with coverage report
+npm run test:integration # Run integration tests
+npm run test:ci          # CI-ready test run with JUnit output
+```
+
+### Test Organization
+- Backend tests in `/backend/tests/` directory
+- Use Jest as the testing framework
+- Integration tests use separate config: `backend/jest.integration.config.js`
+
 ## Architecture Notes
+
+### Environment Configuration
+- **Backend:** Uses `.env` files for configuration (never commit to version control)
+- Copy `.env.example` to `.env` and configure before starting
+- Use `./start.sh` script to validate environment and start services
+- Environment-specific configs: `.env.development`, `.env.staging`
 
 ### Client-Server Communication
 - Client sends actions (e.g., `{"action": "shoot", "angle": 0.78}`)
@@ -122,6 +165,20 @@ When the Nakama backend is implemented, follow these patterns:
 - Base gear stores all stats/modifiers (earned via gameplay)
 - Cosmetic skins store only visual data (purchased via IAP)
 - Client combines base gear + skin for rendering
+
+## Dependency Management
+
+### Backend (Node.js/TypeScript)
+- **Lockfile:** `backend/package-lock.json` - Ensures reproducible builds
+- **Installation:** `npm install` (automatically uses lockfile)
+- **Adding Dependencies:** `npm install <package>` (automatically updates lockfile)
+- **Updating Dependencies:** 
+  - `npm update` - Update all packages within lockfile range
+  - `npm install <package>@latest` - Update to latest version (updates lockfile)
+
+### Python Dependencies
+- This project does not use Python for any runtime or build processes
+- Python files in `node_modules/` are from Node.js dependencies and should not be modified
 
 ## Important Notes
 
