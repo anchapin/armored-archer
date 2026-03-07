@@ -42,7 +42,7 @@ describe('combat_system', () => {
   });
 
   describe('rpcSubmitCombatAction', () => {
-    it('should process combat action and return result', () => {
+    it('should process combat action and return result', async () => {
       const match = createMockMatch({ status: 'active' });
       mockNk.storageRead = jest.fn().mockReturnValue([
         {
@@ -99,14 +99,14 @@ describe('combat_system', () => {
         angle: 1.5,
         power: 0.5, // Use 0.0-1.0 format
       });
-      const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
       expect(parsed.result).toBeDefined();
     });
 
-    it('should return error for non-existent match', () => {
+    it('should return error for non-existent match', async () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({
@@ -114,13 +114,13 @@ describe('combat_system', () => {
         action_type: 'shoot',
         angle: 1.5,
       });
-      const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.error).toBe('Match not found');
     });
 
-    it('should return error for inactive match', () => {
+    it('should return error for inactive match', async () => {
       const match = createMockMatch({ status: 'completed' });
       mockNk.storageRead = jest.fn().mockReturnValue([
         {
@@ -135,13 +135,13 @@ describe('combat_system', () => {
         action_type: 'shoot',
         angle: 1.5,
       });
-      const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.error).toBe('Match is not active');
     });
 
-    it('should return error when not participant', () => {
+    it('should return error when not participant', async () => {
       const match = createMockMatch({ creator_id: 'other-user', opponent_id: 'another-user' });
       mockNk.storageRead = jest.fn().mockReturnValue([
         {
@@ -156,13 +156,13 @@ describe('combat_system', () => {
         action_type: 'shoot',
         angle: 1.5,
       });
-      const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.error).toBe('Not a participant in this match');
     });
 
-    it('should return error when not user turn', () => {
+    it('should return error when not user turn', async () => {
       const match = createMockMatch();
       const matchState: MatchState = {
         ...createMockMatch(),
@@ -201,19 +201,19 @@ describe('combat_system', () => {
         action_type: 'shoot',
         angle: 1.5,
       });
-      const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.error).toBe('Not your turn');
     });
 
-    it('should validate input payload', () => {
+    it('should validate input payload', async () => {
       const payload = JSON.stringify({
         match_id: '',
         action_type: 'invalid',
         angle: 'not a number',
       });
-      const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.error_code).toBe('VALIDATION_ERROR');
@@ -221,7 +221,7 @@ describe('combat_system', () => {
   });
 
   describe('rpcGetMatchState', () => {
-    it('should return match state', () => {
+    it('should return match state', async () => {
       const matchState: MatchState = {
         match_id: 'match-123',
         turn: 1,
@@ -253,17 +253,17 @@ describe('combat_system', () => {
       ]);
 
       const payload = JSON.stringify({ match_id: 'match-123' });
-      const result = rpcGetMatchState(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcGetMatchState(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.match_id).toBe('match-123');
     });
 
-    it('should return error when match state not found', () => {
+    it('should return error when match state not found', async () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({ match_id: 'nonexistent' });
-      const result = rpcGetMatchState(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcGetMatchState(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.error).toBe('Match state not found');
@@ -271,7 +271,7 @@ describe('combat_system', () => {
   });
 
   describe('registerRpcSubmitCombatAction', () => {
-    it('should register the RPC handler', () => {
+    it('should register the RPC handler', async () => {
       const mockInitializer = {
         registerRpc: jest.fn(),
       } as unknown as Runtime.Initializer;
@@ -286,7 +286,7 @@ describe('combat_system', () => {
   });
 
   describe('registerRpcGetMatchState', () => {
-    it('should register the RPC handler', () => {
+    it('should register the RPC handler', async () => {
       const mockInitializer = {
         registerRpc: jest.fn(),
       } as unknown as Runtime.Initializer;
@@ -301,7 +301,7 @@ describe('combat_system', () => {
   });
 
   describe('rpcSubmitCombatAction - anti-cheat', () => {
-    it('should return error for anti-cheat signature violation', () => {
+    it('should return error for anti-cheat signature violation', async () => {
       const match = {
         match_id: 'match-123',
         creator_id: 'creator-user',
@@ -359,7 +359,7 @@ describe('combat_system', () => {
         signature: 'invalid',
         nonce: 'nonce',
       });
-      const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       // Should have some validation error
@@ -368,7 +368,7 @@ describe('combat_system', () => {
   });
 
   describe('rpcSubmitCombatAction - turn timeout', () => {
-    it('should handle turn timeout and switch turns', () => {
+    it('should handle turn timeout and switch turns', async () => {
       const match = {
         match_id: 'match-123',
         creator_id: 'creator-user',
@@ -425,7 +425,7 @@ describe('combat_system', () => {
         action_type: 'shoot',
         angle: 1.5,
       });
-      const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
 
       // Just verify the result is valid JSON (doesn't error)
       expect(() => JSON.parse(result)).not.toThrow();
@@ -433,7 +433,7 @@ describe('combat_system', () => {
   });
 
   describe('rpcSubmitCombatAction - combat resolution', () => {
-    it('should complete match when health reaches zero', () => {
+    it('should complete match when health reaches zero', async () => {
       const match = {
         match_id: 'match-123',
         creator_id: 'creator-user',
@@ -490,13 +490,13 @@ describe('combat_system', () => {
         angle: 1.5,
         power: 1.0,
       });
-      const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
 
       // Just verify the result is valid JSON (doesn't error)
       expect(() => JSON.parse(result)).not.toThrow();
     });
 
-    it('should calculate XP on match completion', () => {
+    it('should calculate XP on match completion', async () => {
       const match = {
         match_id: 'match-123',
         creator_id: 'creator-user',
@@ -553,13 +553,13 @@ describe('combat_system', () => {
         angle: 1.5,
         power: 1.0,
       });
-      const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
 
       // Just verify the result is valid JSON (doesn't error)
       expect(() => JSON.parse(result)).not.toThrow();
     });
 
-    it('should handle draw scenario', () => {
+    it('should handle draw scenario', async () => {
       const match = {
         match_id: 'match-123',
         creator_id: 'creator-user',
@@ -616,13 +616,13 @@ describe('combat_system', () => {
         angle: 1.5,
         power: 0.5,
       });
-      const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
 
       // Just verify the result is valid JSON (doesn't error)
       expect(() => JSON.parse(result)).not.toThrow();
     });
 
-    it('should validate invalid action type', () => {
+    it('should validate invalid action type', async () => {
       const match = {
         match_id: 'match-123',
         creator_id: 'creator-user',
@@ -676,7 +676,7 @@ describe('combat_system', () => {
         action_type: 'invalid_action',
         angle: 1.5,
       });
-      const result = rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.error_code).toBe('VALIDATION_ERROR');

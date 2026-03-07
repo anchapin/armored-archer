@@ -12,8 +12,8 @@ import {
   RequestSignature,
 } from './anti_cheat';
 import { PvPMatch } from './matchmaker';
+import { profileFunction } from './profiling';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { profileFunction, initializeProfiling } from './profiling';
 
 /**
  * Combat action request data.
@@ -151,13 +151,13 @@ export function registerRpcSubmitCombatAction(initializer: Runtime.Initializer):
  *   }
  * }
  */
-export function rpcSubmitCombatAction(
+export async function rpcSubmitCombatAction(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string {
-  return profileFunction('combat.submit_combat_action', () => {
+): Promise<string> {
+  return await profileFunction('combat.submit_combat_action', async () => {
     logger.info('Submit combat action called for user: %s', ctx.userId);
 
     const validation = validatePayload(
@@ -209,121 +209,121 @@ export function rpcSubmitCombatAction(
     const matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
 
     // Check if turn has exceeded timeout
-  if (isTurnTimedOut(matchState)) {
-    logger.info(
-      'Turn timed out for user: %s in match: %s',
-      matchState.current_turn_user_id,
-      action.match_id
-    );
-    // Auto-forfeit the current player's turn, move to opponent
-    matchState.current_turn_user_id =
-      matchState.current_turn_user_id === matchState.creator_id
-        ? matchState.opponent_id
-        : matchState.creator_id;
-    matchState.last_turn_timestamp = Date.now();
-    saveMatchState(nk, matchState);
-    return JSON.stringify({
-      error: 'Your previous turn timed out, opponent now has their turn',
-    });
-  }
-
-  // === ANTI-CHEAT VALIDATION ===
-
-  // 1. Verify request signature if anti-cheat fields are provided
-  if (action.requestId && action.timestamp && action.signature && action.nonce) {
-    const signatureData: RequestSignature = {
-      requestId: action.requestId,
-      timestamp: action.timestamp,
-      signature: action.signature,
-      nonce: action.nonce,
-    };
-
-    // Create payload for signature verification (without anti-cheat fields)
-    const payloadForSig = JSON.stringify({
-      match_id: action.match_id,
-      action_type: action.action_type,
-      angle: action.angle,
-      power: action.power,
-    });
-
-    const sigResult = verifyRequestSignature(
-      ctx,
-      payloadForSig,
-      signatureData,
-      'submit_combat_action'
-    );
-    if (!sigResult.valid) {
-      logger.warn('Anti-cheat signature verification failed for user: %s', ctx.userId);
+    if (isTurnTimedOut(matchState)) {
+      logger.info(
+        'Turn timed out for user: %s in match: %s',
+        matchState.current_turn_user_id,
+        action.match_id
+      );
+      // Auto-forfeit the current player's turn, move to opponent
+      matchState.current_turn_user_id =
+        matchState.current_turn_user_id === matchState.creator_id
+          ? matchState.opponent_id
+          : matchState.creator_id;
+      matchState.last_turn_timestamp = Date.now();
+      saveMatchState(nk, matchState);
       return JSON.stringify({
-        error: 'ANTI_CHEAT_VIOLATION: Invalid request signature',
-        error_code: 'ANTI_CHEAT_VIOLATION',
+        error: 'Your previous turn timed out, opponent now has their turn',
       });
     }
-  }
 
-  // 2. Validate combat action parameters (angle, power)
-  const requestId =
-    action.requestId || `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-  const paramValidation = validateCombatActionParameters(
-    action.angle,
-    action.power,
-    matchState.current_turn_user_id,
-    ctx.userId,
-    'submit_combat_action',
-    requestId
-  );
+    // === ANTI-CHEAT VALIDATION ===
 
-  if (!paramValidation.valid) {
-    // Check if this is an out_of_turn violation (anti-cheat detected it)
-    const outOfTurnViolation = paramValidation.violations.some(
-      (v) => v.violationType === 'out_of_turn'
+    // 1. Verify request signature if anti-cheat fields are provided
+    if (action.requestId && action.timestamp && action.signature && action.nonce) {
+      const signatureData: RequestSignature = {
+        requestId: action.requestId,
+        timestamp: action.timestamp,
+        signature: action.signature,
+        nonce: action.nonce,
+      };
+
+      // Create payload for signature verification (without anti-cheat fields)
+      const payloadForSig = JSON.stringify({
+        match_id: action.match_id,
+        action_type: action.action_type,
+        angle: action.angle,
+        power: action.power,
+      });
+
+      const sigResult = verifyRequestSignature(
+        ctx,
+        payloadForSig,
+        signatureData,
+        'submit_combat_action'
+      );
+      if (!sigResult.valid) {
+        logger.warn('Anti-cheat signature verification failed for user: %s', ctx.userId);
+        return JSON.stringify({
+          error: 'ANTI_CHEAT_VIOLATION: Invalid request signature',
+          error_code: 'ANTI_CHEAT_VIOLATION',
+        });
+      }
+    }
+
+    // 2. Validate combat action parameters (angle, power)
+    const requestId =
+      action.requestId || `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const paramValidation = validateCombatActionParameters(
+      action.angle,
+      action.power,
+      matchState.current_turn_user_id,
+      ctx.userId,
+      'submit_combat_action',
+      requestId
     );
-    if (outOfTurnViolation) {
-      logger.warn('Out of turn action from user: %s', ctx.userId);
+
+    if (!paramValidation.valid) {
+      // Check if this is an out_of_turn violation (anti-cheat detected it)
+      const outOfTurnViolation = paramValidation.violations.some(
+        (v) => v.violationType === 'out_of_turn'
+      );
+      if (outOfTurnViolation) {
+        logger.warn('Out of turn action from user: %s', ctx.userId);
+        return JSON.stringify({
+          error: 'Not your turn',
+        });
+      }
+
+      // Invalid parameters (angle/power out of range)
+      logger.warn('Invalid combat parameters from user: %s', ctx.userId);
+      return JSON.stringify({
+        error: 'INVALID_PARAMETERS: Combat parameters out of valid range',
+        error_code: 'INVALID_PARAMETERS',
+      });
+    }
+
+    // 3. Detect timing attacks (rapid requests)
+    const timingAttack = detectTimingAttack(ctx.userId, 'submit_combat_action', requestId);
+    if (timingAttack) {
+      logger.warn('Timing attack detected for user: %s', ctx.userId);
+      return JSON.stringify({
+        error: 'TIMING_ANOMALY: Suspicious request pattern detected',
+        error_code: 'TIMING_ANOMALY',
+      });
+    }
+
+    // === END ANTI-CHEAT VALIDATION ===
+
+    // Check if it's the user's turn (this is the primary out-of-turn check)
+    if (matchState.current_turn_user_id !== ctx.userId) {
       return JSON.stringify({
         error: 'Not your turn',
       });
     }
 
-    // Invalid parameters (angle/power out of range)
-    logger.warn('Invalid combat parameters from user: %s', ctx.userId);
+    const result = processCombatAction(ctx.userId, action, match, matchState, nk, logger);
+
+    saveMatchState(nk, matchState);
+
+    if (result.winner) {
+      updateMatchStatus(nk, match, result.winner);
+    }
+
     return JSON.stringify({
-      error: 'INVALID_PARAMETERS: Combat parameters out of valid range',
-      error_code: 'INVALID_PARAMETERS',
+      success: true,
+      result: result,
     });
-  }
-
-  // 3. Detect timing attacks (rapid requests)
-  const timingAttack = detectTimingAttack(ctx.userId, 'submit_combat_action', requestId);
-  if (timingAttack) {
-    logger.warn('Timing attack detected for user: %s', ctx.userId);
-    return JSON.stringify({
-      error: 'TIMING_ANOMALY: Suspicious request pattern detected',
-      error_code: 'TIMING_ANOMALY',
-    });
-  }
-
-  // === END ANTI-CHEAT VALIDATION ===
-
-  // Check if it's the user's turn (this is the primary out-of-turn check)
-  if (matchState.current_turn_user_id !== ctx.userId) {
-    return JSON.stringify({
-      error: 'Not your turn',
-    });
-  }
-
-  const result = processCombatAction(ctx.userId, action, match, matchState, nk, logger);
-
-  saveMatchState(nk, matchState);
-
-  if (result.winner) {
-    updateMatchStatus(nk, match, result.winner);
-  }
-
-  return JSON.stringify({
-    success: true,
-    result: result,
-  });
   });
 }
 
@@ -359,13 +359,13 @@ export function registerRpcGetMatchState(initializer: Runtime.Initializer): void
  *   ...
  * }
  */
-export function rpcGetMatchState(
+export async function rpcGetMatchState(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string {
-  return profileFunction('combat.get_match_state', () => {
+): Promise<string> {
+  return await profileFunction('combat.get_match_state', async () => {
     logger.info('Get match state called for user: %s', ctx.userId);
 
     const validation = validatePayload(ZodSchemas.get_match_state, payload, 'get_match_state');
