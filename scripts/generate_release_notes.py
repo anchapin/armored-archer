@@ -154,7 +154,7 @@ def generate_release_notes(version: str, from_ref: str | None = None, to_ref: st
             notes.append(f"## {title}\n")
             for commit in type_commits:
                 scope = f"({commit['scope']}) " if commit.get('scope') else ""
-                pr_link = f" ([#{commit['pr_number']}](https://github.com/alex-armored-archer/armored-archer/pull/{commit['pr_number']}))" if commit.get('pr_number') else ""
+                pr_link = f" ([#{commit['pr_number']}](https://github.com/anchapin/armored-archer/pull/{commit['pr_number']}))" if commit.get('pr_number') else ""
                 notes.append(f"- {scope}{commit['subject']}{pr_link}\n")
             notes.append("\n")
 
