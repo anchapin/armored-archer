@@ -13,6 +13,7 @@ import {
 } from './anti_cheat';
 import { PvPMatch } from './matchmaker';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { profileFunction, initializeProfiling } from './profiling';
 
 /**
  * Combat action request data.
@@ -156,57 +157,58 @@ export function rpcSubmitCombatAction(
   nk: Runtime.Nakama,
   payload: string
 ): string {
-  logger.info('Submit combat action called for user: %s', ctx.userId);
+  return profileFunction('combat.submit_combat_action', () => {
+    logger.info('Submit combat action called for user: %s', ctx.userId);
 
-  const validation = validatePayload(
-    ZodSchemas.submit_combat_action,
-    payload,
-    'submit_combat_action'
-  );
-  if (!validation.success) {
-    return createValidationErrorResponse('submit_combat_action', validation.error);
-  }
+    const validation = validatePayload(
+      ZodSchemas.submit_combat_action,
+      payload,
+      'submit_combat_action'
+    );
+    if (!validation.success) {
+      return createValidationErrorResponse('submit_combat_action', validation.error);
+    }
 
-  const action = validation.data;
+    const action = validation.data;
 
-  const matchObjects = nk.storageRead([
-    {
-      collection: 'pvp_matches',
-      key: action.match_id,
-      userId: ctx.userId,
-    },
-  ]);
+    const matchObjects = nk.storageRead([
+      {
+        collection: 'pvp_matches',
+        key: action.match_id,
+        userId: ctx.userId,
+      },
+    ]);
 
-  if (matchObjects.length === 0) {
-    return JSON.stringify({
-      error: 'Match not found',
-    });
-  }
+    if (matchObjects.length === 0) {
+      return JSON.stringify({
+        error: 'Match not found',
+      });
+    }
 
-  const match = JSON.parse(matchObjects[0].value);
+    const match = JSON.parse(matchObjects[0].value);
 
-  // Check if match has expired
-  if (isMatchExpired(match)) {
-    return JSON.stringify({
-      error: 'Match has expired',
-    });
-  }
+    // Check if match has expired
+    if (isMatchExpired(match)) {
+      return JSON.stringify({
+        error: 'Match has expired',
+      });
+    }
 
-  if (match.status !== 'active') {
-    return JSON.stringify({
-      error: 'Match is not active',
-    });
-  }
+    if (match.status !== 'active') {
+      return JSON.stringify({
+        error: 'Match is not active',
+      });
+    }
 
-  if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
-    return JSON.stringify({
-      error: 'Not a participant in this match',
-    });
-  }
+    if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
+      return JSON.stringify({
+        error: 'Not a participant in this match',
+      });
+    }
 
-  const matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
+    const matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
 
-  // Check if turn has exceeded timeout
+    // Check if turn has exceeded timeout
   if (isTurnTimedOut(matchState)) {
     logger.info(
       'Turn timed out for user: %s in match: %s',
@@ -322,6 +324,7 @@ export function rpcSubmitCombatAction(
     success: true,
     result: result,
   });
+  });
 }
 
 /**
@@ -362,30 +365,32 @@ export function rpcGetMatchState(
   nk: Runtime.Nakama,
   payload: string
 ): string {
-  logger.info('Get match state called for user: %s', ctx.userId);
+  return profileFunction('combat.get_match_state', () => {
+    logger.info('Get match state called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.get_match_state, payload, 'get_match_state');
-  if (!validation.success) {
-    return createValidationErrorResponse('get_match_state', validation.error);
-  }
+    const validation = validatePayload(ZodSchemas.get_match_state, payload, 'get_match_state');
+    if (!validation.success) {
+      return createValidationErrorResponse('get_match_state', validation.error);
+    }
 
-  const request = validation.data;
+    const request = validation.data;
 
-  const stateObjects = nk.storageRead([
-    {
-      collection: 'pvp_match_states',
-      key: request.match_id,
-      userId: ctx.userId,
-    },
-  ]);
+    const stateObjects = nk.storageRead([
+      {
+        collection: 'pvp_match_states',
+        key: request.match_id,
+        userId: ctx.userId,
+      },
+    ]);
 
-  if (stateObjects.length === 0) {
-    return JSON.stringify({
-      error: 'Match state not found',
-    });
-  }
+    if (stateObjects.length === 0) {
+      return JSON.stringify({
+        error: 'Match state not found',
+      });
+    }
 
-  return stateObjects[0].value;
+    return stateObjects[0].value;
+  });
 }
 
 /**

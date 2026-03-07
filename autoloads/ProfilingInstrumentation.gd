@@ -219,25 +219,47 @@ func time_function_named(name: String, func_call: Callable) -> Variant:
 	return result
 
 ## Time a block of code using a scoped helper
-## Usage: var _ = ProfilingInstrumentation.profile_block("my_section")
-class ProfileBlock:
-	var _name: String
-	var _profiler: Node
-	var _start_time: int
+## Usage: var _block = ProfilingInstrumentation.create_profile_block("combat_calc")
+##        # ... code to profile ...
+##        _block = null  # This will trigger end_marker automatically
+class_name ProfileBlock
 
-	func _init(profiler: Node, name: String):
-		_profiler = profiler
-		_name = name
-		_start_time = Time.get_ticks_msec()
+var _profiler: Node
+var _name: String
+var _start_time: int
+var _ended: bool = false
 
-	func _notification(what):
-		if what == NOTIFICATION_PREDELETE:
-			ProfilerInstrumentation.end_marker(_name)
+func _init(profiler: Node, name: String):
+	_profiler = profiler
+	_name = name
+	_start_time = Time.get_ticks_msec()
+
+func _notification(what):
+	if what == NOTIFICATION_PREDELETE and not _ended:
+		_ended = true
+		if _profiler and _profiler.has_method("end_marker"):
+			_profiler.end_marker(_name)
+
+## Manually end the profile block
+func end() -> float:
+	if _ended:
+		return 0.0
+	_ended = true
+	if _profiler and _profiler.has_method("end_marker"):
+		return _profiler.end_marker(_name)
+	return 0.0
 
 ## Create a scoped profile block (call with 'await' or use as variable)
 ## Usage: var _ = ProfilingInstrumentation.scoped_marker("combat_calc")
 func scoped_marker(name: String) -> void:
 	start_marker(name)
+
+## Create a ProfileBlock instance for scoped profiling
+## Usage: var _block = ProfilingInstrumentation.create_profile_block("combat_calc")
+##        # ... code to profile ...
+##        _block.end()  # or let it go out of scope
+func create_profile_block(name: String) -> ProfileBlock:
+	return ProfileBlock.new(self, name)
 
 ## End a scoped profile block
 func end_scoped_marker(name: String) -> float:
