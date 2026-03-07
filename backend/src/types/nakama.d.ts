@@ -21,9 +21,10 @@ declare namespace Runtime {
     userId: string;
     username: string;
     variables: { [key: string]: string };
-    env: { [key: string]: string };
+    env: string;
     sessionExpiry: number;
     ipAddress?: string;
+    sessionId?: string;
   }
 
   /**

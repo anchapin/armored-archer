@@ -49,6 +49,7 @@ import {
 } from './modules/gear_system';
 import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
 import { initializeSentry } from './config/errorTracking';
+import { initializeTracing } from './config/tracing';
 import { logger, logSystemEvent } from './config/logger';
 
 const InitModule: InitModule = function (
@@ -58,6 +59,7 @@ const InitModule: InitModule = function (
   initializer: Runtime.Initializer
 ) {
   initializeSentry();
+  initializeTracing();
   logSystemEvent('info', 'Server initialization started');
 
   validateRequiredConfig();
