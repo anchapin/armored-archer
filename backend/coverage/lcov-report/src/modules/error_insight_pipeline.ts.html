@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/modules/season_system.ts</title>
+    <title>Code coverage report for src/modules/error_insight_pipeline.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../../prettify.css" />
     <link rel="stylesheet" href="../../base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/modules</a> season_system.ts</h1>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/modules</a> error_insight_pipeline.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">84.56% </span>
+                <span class="strong">37.86% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>126/149</span>
+                <span class='fraction'>128/338</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">65.78% </span>
+                <span class="strong">36.41% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>50/76</span>
+                <span class='fraction'>67/184</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">62.5% </span>
+                <span class="strong">48.83% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>10/16</span>
+                <span class='fraction'>21/43</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">84.45% </span>
+                <span class="strong">38.48% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>125/148</span>
+                <span class='fraction'>127/330</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -885,13 +885,131 @@
 <a name='L820'></a><a href='#L820'>820</a>
 <a name='L821'></a><a href='#L821'>821</a>
 <a name='L822'></a><a href='#L822'>822</a>
-<a name='L823'></a><a href='#L823'>823</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L823'></a><a href='#L823'>823</a>
+<a name='L824'></a><a href='#L824'>824</a>
+<a name='L825'></a><a href='#L825'>825</a>
+<a name='L826'></a><a href='#L826'>826</a>
+<a name='L827'></a><a href='#L827'>827</a>
+<a name='L828'></a><a href='#L828'>828</a>
+<a name='L829'></a><a href='#L829'>829</a>
+<a name='L830'></a><a href='#L830'>830</a>
+<a name='L831'></a><a href='#L831'>831</a>
+<a name='L832'></a><a href='#L832'>832</a>
+<a name='L833'></a><a href='#L833'>833</a>
+<a name='L834'></a><a href='#L834'>834</a>
+<a name='L835'></a><a href='#L835'>835</a>
+<a name='L836'></a><a href='#L836'>836</a>
+<a name='L837'></a><a href='#L837'>837</a>
+<a name='L838'></a><a href='#L838'>838</a>
+<a name='L839'></a><a href='#L839'>839</a>
+<a name='L840'></a><a href='#L840'>840</a>
+<a name='L841'></a><a href='#L841'>841</a>
+<a name='L842'></a><a href='#L842'>842</a>
+<a name='L843'></a><a href='#L843'>843</a>
+<a name='L844'></a><a href='#L844'>844</a>
+<a name='L845'></a><a href='#L845'>845</a>
+<a name='L846'></a><a href='#L846'>846</a>
+<a name='L847'></a><a href='#L847'>847</a>
+<a name='L848'></a><a href='#L848'>848</a>
+<a name='L849'></a><a href='#L849'>849</a>
+<a name='L850'></a><a href='#L850'>850</a>
+<a name='L851'></a><a href='#L851'>851</a>
+<a name='L852'></a><a href='#L852'>852</a>
+<a name='L853'></a><a href='#L853'>853</a>
+<a name='L854'></a><a href='#L854'>854</a>
+<a name='L855'></a><a href='#L855'>855</a>
+<a name='L856'></a><a href='#L856'>856</a>
+<a name='L857'></a><a href='#L857'>857</a>
+<a name='L858'></a><a href='#L858'>858</a>
+<a name='L859'></a><a href='#L859'>859</a>
+<a name='L860'></a><a href='#L860'>860</a>
+<a name='L861'></a><a href='#L861'>861</a>
+<a name='L862'></a><a href='#L862'>862</a>
+<a name='L863'></a><a href='#L863'>863</a>
+<a name='L864'></a><a href='#L864'>864</a>
+<a name='L865'></a><a href='#L865'>865</a>
+<a name='L866'></a><a href='#L866'>866</a>
+<a name='L867'></a><a href='#L867'>867</a>
+<a name='L868'></a><a href='#L868'>868</a>
+<a name='L869'></a><a href='#L869'>869</a>
+<a name='L870'></a><a href='#L870'>870</a>
+<a name='L871'></a><a href='#L871'>871</a>
+<a name='L872'></a><a href='#L872'>872</a>
+<a name='L873'></a><a href='#L873'>873</a>
+<a name='L874'></a><a href='#L874'>874</a>
+<a name='L875'></a><a href='#L875'>875</a>
+<a name='L876'></a><a href='#L876'>876</a>
+<a name='L877'></a><a href='#L877'>877</a>
+<a name='L878'></a><a href='#L878'>878</a>
+<a name='L879'></a><a href='#L879'>879</a>
+<a name='L880'></a><a href='#L880'>880</a>
+<a name='L881'></a><a href='#L881'>881</a>
+<a name='L882'></a><a href='#L882'>882</a>
+<a name='L883'></a><a href='#L883'>883</a>
+<a name='L884'></a><a href='#L884'>884</a>
+<a name='L885'></a><a href='#L885'>885</a>
+<a name='L886'></a><a href='#L886'>886</a>
+<a name='L887'></a><a href='#L887'>887</a>
+<a name='L888'></a><a href='#L888'>888</a>
+<a name='L889'></a><a href='#L889'>889</a>
+<a name='L890'></a><a href='#L890'>890</a>
+<a name='L891'></a><a href='#L891'>891</a>
+<a name='L892'></a><a href='#L892'>892</a>
+<a name='L893'></a><a href='#L893'>893</a>
+<a name='L894'></a><a href='#L894'>894</a>
+<a name='L895'></a><a href='#L895'>895</a>
+<a name='L896'></a><a href='#L896'>896</a>
+<a name='L897'></a><a href='#L897'>897</a>
+<a name='L898'></a><a href='#L898'>898</a>
+<a name='L899'></a><a href='#L899'>899</a>
+<a name='L900'></a><a href='#L900'>900</a>
+<a name='L901'></a><a href='#L901'>901</a>
+<a name='L902'></a><a href='#L902'>902</a>
+<a name='L903'></a><a href='#L903'>903</a>
+<a name='L904'></a><a href='#L904'>904</a>
+<a name='L905'></a><a href='#L905'>905</a>
+<a name='L906'></a><a href='#L906'>906</a>
+<a name='L907'></a><a href='#L907'>907</a>
+<a name='L908'></a><a href='#L908'>908</a>
+<a name='L909'></a><a href='#L909'>909</a>
+<a name='L910'></a><a href='#L910'>910</a>
+<a name='L911'></a><a href='#L911'>911</a>
+<a name='L912'></a><a href='#L912'>912</a>
+<a name='L913'></a><a href='#L913'>913</a>
+<a name='L914'></a><a href='#L914'>914</a>
+<a name='L915'></a><a href='#L915'>915</a>
+<a name='L916'></a><a href='#L916'>916</a>
+<a name='L917'></a><a href='#L917'>917</a>
+<a name='L918'></a><a href='#L918'>918</a>
+<a name='L919'></a><a href='#L919'>919</a>
+<a name='L920'></a><a href='#L920'>920</a>
+<a name='L921'></a><a href='#L921'>921</a>
+<a name='L922'></a><a href='#L922'>922</a>
+<a name='L923'></a><a href='#L923'>923</a>
+<a name='L924'></a><a href='#L924'>924</a>
+<a name='L925'></a><a href='#L925'>925</a>
+<a name='L926'></a><a href='#L926'>926</a>
+<a name='L927'></a><a href='#L927'>927</a>
+<a name='L928'></a><a href='#L928'>928</a>
+<a name='L929'></a><a href='#L929'>929</a>
+<a name='L930'></a><a href='#L930'>930</a>
+<a name='L931'></a><a href='#L931'>931</a>
+<a name='L932'></a><a href='#L932'>932</a>
+<a name='L933'></a><a href='#L933'>933</a>
+<a name='L934'></a><a href='#L934'>934</a>
+<a name='L935'></a><a href='#L935'>935</a>
+<a name='L936'></a><a href='#L936'>936</a>
+<a name='L937'></a><a href='#L937'>937</a>
+<a name='L938'></a><a href='#L938'>938</a>
+<a name='L939'></a><a href='#L939'>939</a>
+<a name='L940'></a><a href='#L940'>940</a>
+<a name='L941'></a><a href='#L941'>941</a>
+<a name='L942'></a><a href='#L942'>942</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -899,7 +1017,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -915,757 +1035,28 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">12x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">12x</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">102x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">14x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">14x</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1674,7 +1065,57 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1683,10 +1124,22 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1694,840 +1147,1744 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">125x</span>
+<span class="cline-any cline-yes">125x</span>
+<span class="cline-any cline-yes">125x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">18x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
- * Season System module.
- * @fileoverview Manages seasonal rewards and rankings.
+ * Error to Insight Pipeline
+ *
+ * This module provides an automated pipeline that transforms raw error data
+ * into meaningful patterns and recommendations for the Armored Archer backend.
+ *
+ * Features:
+ * - Collect error data from logs
+ * - Aggregate and analyze error patterns
+ * - Generate insights and recommendations
+ * - Provide RPC endpoints for error analysis dashboard
  */
 &nbsp;
-import { Runtime } from '../types/nakama';
+import { randomUUID } from 'crypto';
+import { config } from '../config';
+import { logger } from '../config/logger';
 import {
-  verifyRequestSignature,
-  detectTimingAttack,
-  recordMatchResult,
-  isPlayerFlagged,
-  getFlagReason,
-  RequestSignature,
-} from './anti_cheat';
+  RawErrorData,
+  ErrorPattern,
+  ErrorInsight,
+  ErrorSummary,
+  ErrorDashboardData,
+  PipelineStats,
+  ErrorSeverity,
+  ErrorSource,
+  InsightPriority,
+  InsightImpact,
+  TimeRange,
+  TrendData,
+} from '../types/errorInsights';
+import { Runtime } from '../types/nakama';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 &nbsp;
 /**
- * Season rewards data structure.
- *
- * @property rank_tier - Tier of rewards based on rank
- * @property coins - Number of coins awarded
- * @property gems - Number of gems awarded
- * @property cosmetics - Optional cosmetic rewards
+ * In-memory error data store
  */
-export interface SeasonRewards {
-  rank_tier: 'legendary' | 'epic' | 'rare' | 'uncommon' | 'common';
-  coins: number;
-  gems: number;
-  cosmetics?: {
-    title: string;
-    aura?: string;
-  };
-}
+class ErrorInsightStore {
+  private errors: RawErrorData[] = [];
+  private patterns: Map&lt;string, ErrorPattern&gt; = new Map();
+  private insights: ErrorInsight[] = [];
+  private startTime: Date = new Date();
+  private lastErrorProcessed?: Date;
 &nbsp;
-/**
- * Leaderboard record data structure.
- *
- * @property ownerId - ID of the player
- * @property username - Display name of the player
- * @property rank - Current rank
- * @property score - Current score
- * @property metadata - Optional metadata
- * @property expiry - Optional expiry time
- * @property maxNumScore - Maximum number of scores
- * @property numScore - Number of scores
- */
-export interface LeaderboardRecord {
-  ownerId: string;
-  username: string;
-  rank: number;
-  score: number;
-  metadata?: string;
-  expiry?: number;
-  maxNumScore?: number;
-  numScore?: number;
-}
+  /**
+   * Add an error to the store
+   */
+  addError(error: RawErrorData): void {
+    this.errors.push(error);
+    this.lastErrorProcessed = new Date();
 &nbsp;
-/**
- * Season information data structure.
- *
- * @property season_id - Unique identifier for the season
- * @property season_number - Sequential season number
- * @property start_time - Start timestamp
- * @property end_time - End timestamp
- * @property status - Current status ("active", "ended")
- * @property duration_weeks - Duration in weeks
- */
-export interface SeasonInfo {
-  season_id: string;
-  season_number: number;
-  start_time: number;
-  end_time: number;
-  status: string; // "active", "ended"
-  duration_weeks: number;
-}
-&nbsp;
-/**
- * Leaderboard entry data structure.
- *
- * @property owner_id - ID of the player
- * @property username - Display name of the player
- * @property rank - Current rank
- * @property score - Current score
- * @property meta - Additional metadata
- */
-export interface LeaderboardEntry {
-  owner_id: string;
-  username: string;
-  rank: number;
-  score: number;
-  meta: {
-    wins: number;
-    losses: number;
-    win_rate: number;
-    punch_up_wins: number;
-  };
-}
-&nbsp;
-/**
- * Rank change data structure.
- *
- * @property winner_id - ID of the winning player
- * @property loser_id - ID of the losing player
- * @property winner_old_rank - Previous rank of winner
- * @property loser_old_rank - Previous rank of loser
- * @property winner_new_rank - New rank of winner
- * @property loser_new_rank - New rank of loser
- * @property is_punch_up - Whether this was a punch-up match
- */
-export interface RankChange {
-  winner_id: string;
-  loser_id: string;
-  winner_old_rank: number;
-  loser_old_rank: number;
-  winner_new_rank: number;
-  loser_new_rank: number;
-  is_punch_up: boolean;
-}
-&nbsp;
-const SEASON_DURATION_WEEKS = 4;
-const SEASON_DURATION_MS = SEASON_DURATION_WEEKS * 7 * 24 * 60 * 60 * 1000;
-&nbsp;
-/**
- * Registers the get season info RPC endpoint.
- *
- * @param initializer - Nakama runtime initializer
- */
-export function <span class="fstat-no" title="function not covered" >registerRpcGetSeasonInfo(</span>initializer: Runtime.Initializer): void {
-<span class="cstat-no" title="statement not covered" >  initializer.registerRpc('armored_archer/get_season_info', rpcGetSeasonInfo);</span>
-}
-&nbsp;
-/**
- * Retrieves current season information and player stats.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - JSON string (unused, required for RPC format)
- * @returns JSON string with season info and player stats
- *
- * @example
- * // Request payload
- * { }
- *
- * // Response
- * {
- *   "success": true,
- *   "season": { ... },
- *   "player_rank": 15,
- *   "player_score": 1200,
- *   "time_remaining": 123456
- * }
- */
-export function rpcGetSeasonInfo(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('Get season info called for user: %s', ctx.userId);
-&nbsp;
-  const validation = validatePayload(ZodSchemas.get_season_info, payload, 'get_season_info');
-  <span class="missing-if-branch" title="if path not taken" >I</span>if (!validation.success) {
-<span class="cstat-no" title="statement not covered" >    return createValidationErrorResponse('get_season_info', validation.error);</span>
+    // Trim old errors if needed (keep last 10000)
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (this.errors.length &gt; 10000) {
+<span class="cstat-no" title="statement not covered" >      this.errors = this.errors.slice(-10000);</span>
+    }
   }
 &nbsp;
-  const currentSeason = getCurrentSeason();
-&nbsp;
-  const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
-&nbsp;
-  return JSON.stringify({
-    success: true,
-    season: currentSeason,
-    player_rank: playerEntry ? playerEntry.rank : null,
-    player_score: playerEntry ? playerEntry.score : 0,
-    time_remaining: Math.max(0, currentSeason.end_time - Date.now()),
-  });
-}
-&nbsp;
-/**
- * Registers the get leaderboard RPC endpoint.
- *
- * @param initializer - Nakama runtime initializer
- */
-export function <span class="fstat-no" title="function not covered" >registerRpcGetLeaderboard(</span>initializer: Runtime.Initializer): void {
-<span class="cstat-no" title="statement not covered" >  initializer.registerRpc('armored_archer/get_leaderboard', rpcGetLeaderboard);</span>
-}
-&nbsp;
-/**
- * Retrieves the current season leaderboard.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - JSON string containing limit parameter
- * @returns JSON string with leaderboard data
- *
- * @example
- * // Request payload
- * { "limit": 20 }
- *
- * // Response
- * {
- *   "success": true,
- *   "season": { ... },
- *   "leaderboard": [ ... ],
- *   "total": 100
- * }
- */
-export function rpcGetLeaderboard(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('Get leaderboard called for user: %s', ctx.userId);
-&nbsp;
-  const currentSeason = getCurrentSeason();
-  const validation = validatePayload(ZodSchemas.get_leaderboard, payload, 'get_leaderboard');
-  <span class="missing-if-branch" title="if path not taken" >I</span>if (!validation.success) {
-<span class="cstat-no" title="statement not covered" >    return createValidationErrorResponse('get_leaderboard', validation.error);</span>
-  }
-&nbsp;
-  const request = validation.data || <span class="branch-1 cbranch-no" title="branch not covered" >{};</span>
-  const limit = request.limit || <span class="branch-1 cbranch-no" title="branch not covered" >50;</span>
-&nbsp;
-  const records = nk.leaderboardRecordList(currentSeason.season_id, [], limit, '', 0);
-&nbsp;
-  const entries: LeaderboardEntry[] = records.map((record: LeaderboardRecord) =&gt; ({
-    owner_id: record.ownerId,
-    username: record.username,
-    rank: record.rank,
-    score: record.score,
-    meta: JSON.parse(record.metadata || <span class="branch-1 cbranch-no" title="branch not covered" >'{}')</span>,
-  }));
-&nbsp;
-  return JSON.stringify({
-    success: true,
-    season: currentSeason,
-    leaderboard: entries,
-    total: records.length,
-  });
-}
-&nbsp;
-/**
- * Registers the update rank RPC endpoint.
- *
- * @param initializer - Nakama runtime initializer
- */
-export function <span class="fstat-no" title="function not covered" >registerRpcUpdateRank(</span>initializer: Runtime.Initializer): void {
-<span class="cstat-no" title="statement not covered" >  initializer.registerRpc('armored_archer/update_rank', rpcUpdateRank);</span>
-}
-&nbsp;
-/**
- * Updates player ranks after a match using Elo rating system.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - JSON string containing match results
- * @returns JSON string with rank changes
- *
- * @example
- * // Request payload
- * { "winner_id": "user_1", "loser_id": "user_2", "is_punch_up": false }
- *
- * // Response
- * {
- *   "success": true,
- *   "winner": { ... },
- *   "loser": { ... },
- *   "is_punch_up": false
- * }
- */
-export function rpcUpdateRank(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('Update rank called for user: %s', ctx.userId);
-&nbsp;
-  const validation = validatePayload(ZodSchemas.update_rank, payload, 'update_rank');
-  if (!validation.success) {
-    return createValidationErrorResponse('update_rank', validation.error);
-  }
-&nbsp;
-  const request = validation.data;
-&nbsp;
-  // Anti-cheat: Check if players are flagged
-  <span class="missing-if-branch" title="if path not taken" >I</span>if (isPlayerFlagged(request.winner_id)) {
-<span class="cstat-no" title="statement not covered" >    logger.warn(</span>
-      'Update rank blocked - winner flagged: %s reason: %s',
-      request.winner_id,
-      getFlagReason(request.winner_id)
+  /**
+   * Get all errors within a time range
+   */
+  getErrorsInRange(startTime: Date, endTime: Date): RawErrorData[] {
+    return this.errors.filter(
+      (e) =&gt; new Date(e.timestamp) &gt;= startTime &amp;&amp; new Date(e.timestamp) &lt;= endTime
     );
-<span class="cstat-no" title="statement not covered" >    return JSON.stringify({</span>
-      success: false,
-      error_code: 'PLAYER_FLAGGED',
-      error: 'Player is flagged for review: ' + getFlagReason(request.winner_id),
-    });
   }
 &nbsp;
-  <span class="missing-if-branch" title="if path not taken" >I</span>if (isPlayerFlagged(request.loser_id)) {
-<span class="cstat-no" title="statement not covered" >    logger.warn(</span>
-      'Update rank blocked - loser flagged: %s reason: %s',
-      request.loser_id,
-      getFlagReason(request.loser_id)
-    );
-<span class="cstat-no" title="statement not covered" >    return JSON.stringify({</span>
-      success: false,
-      error_code: 'PLAYER_FLAGGED',
-      error: 'Opponent is flagged for review: ' + getFlagReason(request.loser_id),
-    });
+  /**
+   * Get all patterns
+   */
+  getPatterns(): ErrorPattern[] {
+    return Array.from(this.patterns.values());
   }
 &nbsp;
-  // Anti-cheat: Verify request signature if all anti-cheat fields provided
-  <span class="missing-if-branch" title="if path not taken" >I</span>if (request.requestId &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >request.timestamp </span>&amp;&amp; <span class="branch-2 cbranch-no" title="branch not covered" >request.signature </span>&amp;&amp; <span class="branch-3 cbranch-no" title="branch not covered" >request.nonce)</span> {
-    const signatureData: RequestSignature = <span class="cstat-no" title="statement not covered" >{</span>
-      requestId: request.requestId,
-      timestamp: request.timestamp,
-      signature: request.signature,
-      nonce: request.nonce,
+  /**
+   * Add or update a pattern
+   */
+  upsertPattern(pattern: ErrorPattern): void {
+    this.patterns.set(pattern.patternId, pattern);
+  }
+&nbsp;
+  /**
+   * Get all insights
+   */
+<span class="fstat-no" title="function not covered" >  getInsights(</span>): ErrorInsight[] {
+<span class="cstat-no" title="statement not covered" >    return this.insights;</span>
+  }
+&nbsp;
+  /**
+   * Add an insight
+   */
+<span class="fstat-no" title="function not covered" >  addInsight(</span>insight: ErrorInsight): void {
+<span class="cstat-no" title="statement not covered" >    this.insights.unshift(insight);</span>
+&nbsp;
+    // Keep only maxInsights
+    const maxInsights = <span class="cstat-no" title="statement not covered" >config.errorInsights.maxInsights;</span>
+<span class="cstat-no" title="statement not covered" >    if (this.insights.length &gt; maxInsights) {</span>
+<span class="cstat-no" title="statement not covered" >      this.insights = this.insights.slice(0, maxInsights);</span>
+    }
+  }
+&nbsp;
+  /**
+   * Get pipeline statistics
+   */
+  getStats(): PipelineStats {
+    const now = new Date();
+    const uptimeMs = now.getTime() - this.startTime.getTime();
+    const uptimeSec = Math.floor(uptimeMs / 1000);
+&nbsp;
+    // Calculate errors per minute
+    const recentErrors = this.getErrorsInRange(new Date(now.getTime() - 5 * 60 * 1000), now);
+    const errorsPerMinute = recentErrors.length / 5;
+&nbsp;
+    return {
+      totalErrorsProcessed: this.errors.length,
+      totalPatternsIdentified: this.patterns.size,
+      totalInsightsGenerated: this.insights.length,
+      uptime: this.formatUptime(uptimeSec),
+      lastErrorProcessed: this.lastErrorProcessed?.toISOString(),
+      errorsPerMinute: Math.round(errorsPerMinute * 10) / 10,
     };
+  }
 &nbsp;
-    // Create payload for signature verification (without anti-cheat fields)
-    const payloadForSig = <span class="cstat-no" title="statement not covered" >JSON.stringify({</span>
-      match_id: request.match_id,
-      winner_id: request.winner_id,
-      loser_id: request.loser_id,
-      winner_old_rank: request.winner_old_rank,
-      loser_old_rank: request.loser_old_rank,
-      winner_new_rank: request.winner_new_rank,
-      loser_new_rank: request.loser_new_rank,
-      is_punch_up: request.is_punch_up,
+  /**
+   * Format uptime string
+   */
+  private formatUptime(seconds: number): string {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+&nbsp;
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (days &gt; 0) {
+<span class="cstat-no" title="statement not covered" >      return `${days}d ${hours}h ${minutes}m`;</span>
+    }
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (hours &gt; 0) {
+<span class="cstat-no" title="statement not covered" >      return `${hours}h ${minutes}m`;</span>
+    }
+    return `${minutes}m`;
+  }
+&nbsp;
+  /**
+   * Clear old patterns that have expired TTL
+   */
+  cleanupExpiredPatterns(): void {
+    const ttlMs = config.errorInsights.patternTtlDays * 24 * 60 * 60 * 1000;
+    const cutoffTime = new Date(Date.now() - ttlMs);
+&nbsp;
+    for (const [patternId, pattern] of this.patterns) {
+      <span class="missing-if-branch" title="if path not taken" >I</span>if (new Date(pattern.lastSeen) &lt; cutoffTime) {
+<span class="cstat-no" title="statement not covered" >        this.patterns.delete(patternId);</span>
+      }
+    }
+  }
+&nbsp;
+  /**
+   * Clear all data (for testing)
+   */
+  clear(): void {
+    this.errors = [];
+    this.patterns.clear();
+    this.insights = [];
+  }
+}
+&nbsp;
+// Global store instance
+const errorStore = new ErrorInsightStore();
+&nbsp;
+/**
+ * Generate a signature for an error to identify patterns
+ */
+function generateErrorSignature(error: RawErrorData): string {
+  // Create a signature based on error type, RPC, and normalized message
+  const parts = [error.errorType, error.rpcName || 'unknown', error.source];
+&nbsp;
+  // Normalize message by removing specific values
+  let normalizedMessage = error.message;
+  // Remove UUIDs
+  normalizedMessage = normalizedMessage.replace(
+    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+    '&lt;UUID&gt;'
+  );
+  // Remove numbers
+  normalizedMessage = normalizedMessage.replace(/\d+/g, '&lt;N&gt;');
+  // Remove file paths
+  normalizedMessage = normalizedMessage.replace(/\/[\w/.-]+/g, '&lt;PATH&gt;');
+&nbsp;
+  parts.push(normalizedMessage.substring(0, 100));
+&nbsp;
+  // Simple hash
+  let hash = 0;
+  const str = parts.join('|');
+  for (let i = 0; i &lt; str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash &lt;&lt; 5) - hash + char;
+    hash = hash &amp; hash;
+  }
+  return Math.abs(hash).toString(16);
+}
+&nbsp;
+/**
+ * Detect error source from error characteristics
+ */
+function detectErrorSource(error: RawErrorData): ErrorSource {
+  if (error.source !== 'unknown') {
+    return error.source;
+  }
+&nbsp;
+  const message = error.message.toLowerCase();
+  const stack = error.stack?.toLowerCase() || <span class="branch-1 cbranch-no" title="branch not covered" >'';</span>
+&nbsp;
+  if (message.includes('database') || message.includes('postgres') || stack.includes('db_')) {
+    return 'database';
+  }
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (message.includes('cache') || message.includes('redis')) {
+<span class="cstat-no" title="statement not covered" >    return 'cache';</span>
+  }
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (message.includes('validation') || message.includes('invalid')) {
+<span class="cstat-no" title="statement not covered" >    return 'validation';</span>
+  }
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (message.includes('nakama') || message.includes('rpc')) {
+<span class="cstat-no" title="statement not covered" >    return 'nakama';</span>
+  }
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (message.includes('external') || message.includes('api')) {
+<span class="cstat-no" title="statement not covered" >    return 'external';</span>
+  }
+&nbsp;
+  return 'unknown';
+}
+&nbsp;
+/**
+ * Determine error severity
+ */
+function determineSeverity(error: RawErrorData): ErrorSeverity {
+  if (error.severity !== 'info') {
+    return error.severity;
+  }
+&nbsp;
+  const message = error.message.toLowerCase();
+  const stack = error.stack || <span class="branch-1 cbranch-no" title="branch not covered" >'';</span>
+&nbsp;
+  // Critical patterns
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (
+    message.includes('fatal') ||
+    message.includes('crash') ||
+    message.includes('out of memory') ||
+    stack.includes('segmentation')
+  ) {
+<span class="cstat-no" title="statement not covered" >    return 'critical';</span>
+  }
+&nbsp;
+  // Error patterns
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (message.includes('error') || message.includes('exception') || message.includes('failed')) {
+<span class="cstat-no" title="statement not covered" >    return 'error';</span>
+  }
+&nbsp;
+  // Warning patterns
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (message.includes('warning') || message.includes('deprecated')) {
+<span class="cstat-no" title="statement not covered" >    return 'warning';</span>
+  }
+&nbsp;
+  return 'info';
+}
+&nbsp;
+/**
+ * Analyze errors and identify patterns
+ */
+function analyzePatterns(errors: RawErrorData[]): ErrorPattern[] {
+  const patternMap = new Map&lt;string, ErrorPattern&gt;();
+&nbsp;
+  for (const error of errors) {
+    const signature = generateErrorSignature(error);
+    const existingPattern = patternMap.get(signature);
+&nbsp;
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (existingPattern) {
+      // Update existing pattern
+<span class="cstat-no" title="statement not covered" >      existingPattern.count++;</span>
+<span class="cstat-no" title="statement not covered" >      existingPattern.lastSeen = error.timestamp;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      if (error.rpcName &amp;&amp; !existingPattern.affectedRpcs.includes(error.rpcName)) {</span>
+<span class="cstat-no" title="statement not covered" >        existingPattern.affectedRpcs.push(error.rpcName);</span>
+      }
+<span class="cstat-no" title="statement not covered" >      if (error.userId &amp;&amp; !existingPattern.affectedUsers.includes(error.userId)) {</span>
+<span class="cstat-no" title="statement not covered" >        existingPattern.affectedUsers.push(error.userId);</span>
+      }
+    } else {
+      // Create new pattern
+      const pattern: ErrorPattern = {
+        patternId: randomUUID(),
+        signature,
+        count: 1,
+        firstSeen: error.timestamp,
+        lastSeen: error.timestamp,
+        errorType: error.errorType,
+        messageTemplate: error.message.substring(0, 200),
+        affectedRpcs: error.rpcName ? [error.rpcName] : [],
+        affectedUsers: error.userId ? [error.userId] : [],
+        occurrencesPerHour: 0,
+        severity: determineSeverity(error),
+        source: detectErrorSource(error),
+      };
+&nbsp;
+      patternMap.set(signature, pattern);
+    }
+  }
+&nbsp;
+  // Calculate occurrences per hour
+  const now = new Date();
+  for (const pattern of patternMap.values()) {
+    const firstSeen = new Date(pattern.firstSeen);
+    const hoursDiff = Math.max(1, (now.getTime() - firstSeen.getTime()) / (1000 * 60 * 60));
+    pattern.occurrencesPerHour = Math.round((pattern.count / hoursDiff) * 10) / 10;
+  }
+&nbsp;
+  return Array.from(patternMap.values());
+}
+&nbsp;
+/**
+ * Generate insights from patterns
+ */
+function generateInsights(patterns: ErrorPattern[]): ErrorInsight[] {
+  const insights: ErrorInsight[] = [];
+  const minOccurrences = config.errorInsights.minOccurrencesForInsight;
+&nbsp;
+  for (const pattern of patterns) {
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (pattern.count &lt; minOccurrences) {
+      continue;
+    }
+&nbsp;
+    const insight = <span class="cstat-no" title="statement not covered" >createInsightFromPattern(pattern);</span>
+<span class="cstat-no" title="statement not covered" >    if (insight) {</span>
+<span class="cstat-no" title="statement not covered" >      insights.push(insight);</span>
+    }
+  }
+&nbsp;
+  return insights;
+}
+&nbsp;
+/**
+ * Create an insight from a pattern
+ */
+function <span class="fstat-no" title="function not covered" >createInsightFromPattern(</span>pattern: ErrorPattern): ErrorInsight | null {
+  const recommendations = <span class="cstat-no" title="statement not covered" >generateRecommendations(pattern);</span>
+  const impact = <span class="cstat-no" title="statement not covered" >assessImpact(pattern);</span>
+&nbsp;
+  // Determine priority based on severity and count
+  let priority: InsightPriority;
+<span class="cstat-no" title="statement not covered" >  if (pattern.severity === 'critical' || pattern.count &gt; 100) {</span>
+<span class="cstat-no" title="statement not covered" >    priority = 'critical';</span>
+  } else <span class="cstat-no" title="statement not covered" >if (pattern.severity === 'error' || pattern.count &gt; 50) {</span>
+<span class="cstat-no" title="statement not covered" >    priority = 'high';</span>
+  } else <span class="cstat-no" title="statement not covered" >if (pattern.severity === 'warning' || pattern.count &gt; 10) {</span>
+<span class="cstat-no" title="statement not covered" >    priority = 'medium';</span>
+  } else {
+<span class="cstat-no" title="statement not covered" >    priority = 'low';</span>
+  }
+&nbsp;
+  const insight: ErrorInsight = <span class="cstat-no" title="statement not covered" >{</span>
+    id: randomUUID(),
+    generatedAt: new Date().toISOString(),
+    patternId: pattern.patternId,
+    title: generateInsightTitle(pattern),
+    description: generateInsightDescription(pattern),
+    priority,
+    recommendations,
+    impact,
+    actionable: recommendations.length &gt; 0,
+    errorCount: pattern.count,
+    affectedUserCount: pattern.affectedUsers.length,
+  };
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  return insight;</span>
+}
+&nbsp;
+/**
+ * Generate insight title
+ */
+function <span class="fstat-no" title="function not covered" >generateInsightTitle(</span>pattern: ErrorPattern): string {
+  const sourceLabel = <span class="cstat-no" title="statement not covered" >pattern.source.charAt(0).toUpperCase() + pattern.source.slice(1);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  switch (pattern.source) {</span>
+    case 'database':
+<span class="cstat-no" title="statement not covered" >      return `Database Errors in ${pattern.affectedRpcs.join(', ') || 'operations'}`;</span>
+    case 'cache':
+<span class="cstat-no" title="statement not covered" >      return `Cache Issues Affecting ${pattern.affectedRpcs.join(', ') || 'operations'}`;</span>
+    case 'validation':
+<span class="cstat-no" title="statement not covered" >      return `Validation Errors in ${pattern.affectedRpcs.join(', ') || 'input processing'}`;</span>
+    case 'nakama':
+<span class="cstat-no" title="statement not covered" >      return `Server Errors in ${pattern.affectedRpcs.join(', ') || 'RPC calls'}`;</span>
+    case 'external':
+<span class="cstat-no" title="statement not covered" >      return `External Service Errors (${sourceLabel})`;</span>
+    default:
+<span class="cstat-no" title="statement not covered" >      return `Recurring Error: ${pattern.errorType}`;</span>
+  }
+}
+&nbsp;
+/**
+ * Generate insight description
+ */
+function <span class="fstat-no" title="function not covered" >generateInsightDescription(</span>pattern: ErrorPattern): string {
+  const timeSpan = <span class="cstat-no" title="statement not covered" >getTimeSpanDescription(pattern.firstSeen, pattern.lastSeen);</span>
+  const userCount = <span class="cstat-no" title="statement not covered" >pattern.affectedUsers.length;</span>
+&nbsp;
+  let description = <span class="cstat-no" title="statement not covered" >`This error pattern has occurred ${pattern.count} times over ${timeSpan}.`;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  if (userCount &gt; 0) {</span>
+<span class="cstat-no" title="statement not covered" >    description += ` Affecting approximately ${userCount} unique user(s).`;</span>
+  }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  if (pattern.affectedRpcs.length &gt; 0) {</span>
+<span class="cstat-no" title="statement not covered" >    description += ` Primarily affecting: ${pattern.affectedRpcs.join(', ')}.`;</span>
+  }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  description += `\n\nError type: ${pattern.errorType}`;</span>
+<span class="cstat-no" title="statement not covered" >  description += `\nSource: ${pattern.source}`;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  return description;</span>
+}
+&nbsp;
+/**
+ * Get time span description
+ */
+function <span class="fstat-no" title="function not covered" >getTimeSpanDescription(</span>firstSeen: string, lastSeen: string): string {
+  const start = <span class="cstat-no" title="statement not covered" >new Date(firstSeen);</span>
+  const end = <span class="cstat-no" title="statement not covered" >new Date(lastSeen);</span>
+  const diffMs = <span class="cstat-no" title="statement not covered" >end.getTime() - start.getTime();</span>
+  const diffMins = <span class="cstat-no" title="statement not covered" >Math.floor(diffMs / (1000 * 60));</span>
+  const diffHours = <span class="cstat-no" title="statement not covered" >Math.floor(diffMs / (1000 * 60 * 60));</span>
+  const diffDays = <span class="cstat-no" title="statement not covered" >Math.floor(diffMs / (1000 * 60 * 60 * 24));</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  if (diffMins &lt; 60) {</span>
+<span class="cstat-no" title="statement not covered" >    return `${diffMins} minute(s)`;</span>
+  }
+<span class="cstat-no" title="statement not covered" >  if (diffHours &lt; 24) {</span>
+<span class="cstat-no" title="statement not covered" >    return `${diffHours} hour(s)`;</span>
+  }
+<span class="cstat-no" title="statement not covered" >  return `${diffDays} day(s)`;</span>
+}
+&nbsp;
+/**
+ * Assess impact of a pattern
+ */
+function <span class="fstat-no" title="function not covered" >assessImpact(</span>pattern: ErrorPattern): InsightImpact {
+  const userPercentage = <span class="cstat-no" title="statement not covered" >Math.min(100, Math.round((pattern.affectedUsers.length / 1000) * 100));</span>
+&nbsp;
+  let userImpact = <span class="cstat-no" title="statement not covered" >'Minimal user impact';</span>
+  let systemImpact = <span class="cstat-no" title="statement not covered" >'Low system impact';</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  if (pattern.severity === 'critical') {</span>
+<span class="cstat-no" title="statement not covered" >    userImpact = 'Users experiencing service disruption or crashes';</span>
+<span class="cstat-no" title="statement not covered" >    systemImpact = 'Potential service degradation or outage';</span>
+  } else <span class="cstat-no" title="statement not covered" >if (pattern.severity === 'error') {</span>
+<span class="cstat-no" title="statement not covered" >    userImpact = 'Users experiencing failed operations';</span>
+<span class="cstat-no" title="statement not covered" >    systemImpact = 'Increased error rates affecting service reliability';</span>
+  } else <span class="cstat-no" title="statement not covered" >if (pattern.severity === 'warning') {</span>
+<span class="cstat-no" title="statement not covered" >    userImpact = 'Some users experiencing issues';</span>
+<span class="cstat-no" title="statement not covered" >    systemImpact = 'Minor performance degradation';</span>
+  }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  return {</span>
+    userImpact,
+    systemImpact,
+    affectedPercentage: pattern.affectedUsers.length &gt; 0 ? userPercentage : undefined,
+  };
+}
+&nbsp;
+/**
+ * Generate recommendations based on pattern
+ */
+function <span class="fstat-no" title="function not covered" >generateRecommendations(</span>pattern: ErrorPattern): string[] {
+  const recommendations: string[] = <span class="cstat-no" title="statement not covered" >[];</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  switch (pattern.source) {</span>
+    case 'database':
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Review database query performance and add indexes where needed');</span>
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Check for connection pool exhaustion');</span>
+<span class="cstat-no" title="statement not covered" >      if (pattern.messageTemplate.toLowerCase().includes('timeout')) {</span>
+<span class="cstat-no" title="statement not covered" >        recommendations.push('Increase database query timeout settings');</span>
+      }
+<span class="cstat-no" title="statement not covered" >      break;</span>
+&nbsp;
+    case 'cache':
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Review cache eviction policies');</span>
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Check cache availability and memory limits');</span>
+<span class="cstat-no" title="statement not covered" >      if (pattern.occurrencesPerHour &gt; 10) {</span>
+<span class="cstat-no" title="statement not covered" >        recommendations.push('Consider implementing circuit breaker pattern');</span>
+      }
+<span class="cstat-no" title="statement not covered" >      break;</span>
+&nbsp;
+    case 'validation':
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Review client-side validation logic');</span>
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Add more descriptive error messages for users');</span>
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Consider implementing input sanitization');</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+&nbsp;
+    case 'nakama':
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Review RPC handler implementation');</span>
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Check for race conditions in state management');</span>
+<span class="cstat-no" title="statement not covered" >      if (pattern.affectedRpcs.length &gt; 0) {</span>
+<span class="cstat-no" title="statement not covered" >        recommendations.push(`Focus on fixing: ${pattern.affectedRpcs.join(', ')}`);</span>
+      }
+<span class="cstat-no" title="statement not covered" >      break;</span>
+&nbsp;
+    case 'external':
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Monitor external service health');</span>
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Implement retry logic with exponential backoff');</span>
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Consider adding fallback mechanisms');</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+&nbsp;
+    default:
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Investigate error root cause');</span>
+<span class="cstat-no" title="statement not covered" >      recommendations.push('Add detailed logging around this operation');</span>
+  }
+&nbsp;
+  // High frequency recommendation
+<span class="cstat-no" title="statement not covered" >  if (pattern.occurrencesPerHour &gt; 50) {</span>
+<span class="cstat-no" title="statement not covered" >    recommendations.unshift('URGENT: This error is occurring frequently - investigate immediately');</span>
+  }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  return recommendations;</span>
+}
+&nbsp;
+/**
+ * Calculate error trend data
+ */
+function <span class="fstat-no" title="function not covered" >calculateTrendData(</span>errors: RawErrorData[], hours: number): TrendData[] {
+  const now = <span class="cstat-no" title="statement not covered" >new Date();</span>
+  const startTime = <span class="cstat-no" title="statement not covered" >new Date(now.getTime() - hours * 60 * 60 * 1000);</span>
+  const trendMap = <span class="cstat-no" title="statement not covered" >new Map&lt;string, number&gt;();</span>
+&nbsp;
+  // Initialize all hours with 0
+<span class="cstat-no" title="statement not covered" >  for (let i = <span class="cstat-no" title="statement not covered" >0;</span> i &lt; hours; i++) {</span>
+    const hourTime = <span class="cstat-no" title="statement not covered" >new Date(startTime.getTime() + i * 60 * 60 * 1000);</span>
+    const key = <span class="cstat-no" title="statement not covered" >hourTime.toISOString().substring(0, 13);</span> // YYYY-MM-DDTHH
+<span class="cstat-no" title="statement not covered" >    trendMap.set(key, 0);</span>
+  }
+&nbsp;
+  // Count errors per hour
+<span class="cstat-no" title="statement not covered" >  for (const error of errors) {</span>
+    const errorTime = <span class="cstat-no" title="statement not covered" >new Date(error.timestamp);</span>
+<span class="cstat-no" title="statement not covered" >    if (errorTime &gt;= startTime &amp;&amp; errorTime &lt;= now) {</span>
+      const key = <span class="cstat-no" title="statement not covered" >errorTime.toISOString().substring(0, 13);</span>
+<span class="cstat-no" title="statement not covered" >      trendMap.set(key, (trendMap.get(key) || 0) + 1);</span>
+    }
+  }
+&nbsp;
+  // Convert to array
+  const trends: TrendData[] = <span class="cstat-no" title="statement not covered" >[];</span>
+<span class="cstat-no" title="statement not covered" >  for (const [timestamp, count] of trendMap) {</span>
+<span class="cstat-no" title="statement not covered" >    trends.push({</span>
+      timestamp: timestamp + ':00:00Z',
+      count,
     });
+  }
 &nbsp;
-    const sigResult = <span class="cstat-no" title="statement not covered" >verifyRequestSignature(ctx, payloadForSig, signatureData, 'update_rank');</span>
-<span class="cstat-no" title="statement not covered" >    if (!sigResult.valid) {</span>
-<span class="cstat-no" title="statement not covered" >      logger.warn('Invalid signature for update_rank: %s', sigResult.violations.join(', '));</span>
-<span class="cstat-no" title="statement not covered" >      return JSON.stringify({</span>
-        success: false,
-        error_code: 'ANTI_CHEAT_VIOLATION',
-        error: 'Invalid request signature',
-        violations: sigResult.violations,
+<span class="cstat-no" title="statement not covered" >  return trends.sort(<span class="fstat-no" title="function not covered" >(a</span>, b) =&gt; <span class="cstat-no" title="statement not covered" >a.timestamp.localeCompare(b.timestamp))</span>;</span>
+}
+&nbsp;
+/**
+ * Get error summary
+ */
+function <span class="fstat-no" title="function not covered" >getErrorSummary(</span>timeRange: TimeRange): ErrorSummary {
+  const startTime = <span class="cstat-no" title="statement not covered" >new Date(timeRange.startTime);</span>
+  const endTime = <span class="cstat-no" title="statement not covered" >new Date(timeRange.endTime);</span>
+&nbsp;
+  const errors = <span class="cstat-no" title="statement not covered" >errorStore.getErrorsInRange(startTime, endTime);</span>
+  const patterns = <span class="cstat-no" title="statement not covered" >errorStore.getPatterns();</span>
+  const insights = <span class="cstat-no" title="statement not covered" >errorStore.getInsights();</span>
+&nbsp;
+  // Calculate errors by severity
+  const errorsBySeverity: Record&lt;ErrorSeverity, number&gt; = <span class="cstat-no" title="statement not covered" >{</span>
+    critical: 0,
+    error: 0,
+    warning: 0,
+    info: 0,
+  };
+&nbsp;
+  // Calculate errors by source
+  const errorsBySource: Record&lt;ErrorSource, number&gt; = <span class="cstat-no" title="statement not covered" >{</span>
+    nakama: 0,
+    database: 0,
+    cache: 0,
+    external: 0,
+    validation: 0,
+    unknown: 0,
+  };
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  for (const error of errors) {</span>
+<span class="cstat-no" title="statement not covered" >    errorsBySeverity[error.severity]++;</span>
+<span class="cstat-no" title="statement not covered" >    errorsBySource[error.source]++;</span>
+  }
+&nbsp;
+  // Sort patterns by count
+  const topPatterns = <span class="cstat-no" title="statement not covered" >[...patterns].sort(<span class="fstat-no" title="function not covered" >(a</span>, b) =&gt; <span class="cstat-no" title="statement not covered" >b.count - a.count)</span>.slice(0, 10);</span>
+&nbsp;
+  // Recent insights
+  const recentInsights = <span class="cstat-no" title="statement not covered" >insights.slice(0, 5);</span>
+&nbsp;
+  // Calculate trend (last 24 hours)
+  const hours = <span class="cstat-no" title="statement not covered" >Math.min(</span>
+    24,
+    Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60))
+  );
+  const errorTrend = <span class="cstat-no" title="statement not covered" >calculateTrendData(errors, hours);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  return {</span>
+    totalErrors: errors.length,
+    errorsBySeverity,
+    errorsBySource,
+    topPatterns,
+    recentInsights,
+    errorTrend,
+    timeRange,
+  };
+}
+&nbsp;
+/**
+ * Get dashboard data
+ */
+function <span class="fstat-no" title="function not covered" >getDashboardData(</span>): ErrorDashboardData {
+  const now = <span class="cstat-no" title="statement not covered" >new Date();</span>
+  const hours = <span class="cstat-no" title="statement not covered" >config.errorInsights.insightWindowHours;</span>
+  const startTime = <span class="cstat-no" title="statement not covered" >new Date(now.getTime() - hours * 60 * 60 * 1000);</span>
+&nbsp;
+  const timeRange: TimeRange = <span class="cstat-no" title="statement not covered" >{</span>
+    startTime: startTime.toISOString(),
+    endTime: now.toISOString(),
+  };
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  return {</span>
+    summary: getErrorSummary(timeRange),
+    patterns: errorStore.getPatterns(),
+    insights: errorStore.getInsights(),
+    lastUpdated: now.toISOString(),
+    config: config.errorInsights,
+  };
+}
+&nbsp;
+/**
+ * Process errors and update patterns/insights
+ */
+function processErrors(): void {
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!config.errorInsights.enabled) {
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+  const now = new Date();
+  const windowMs = config.errorInsights.aggregationWindowMinutes * 60 * 1000;
+  const startTime = new Date(now.getTime() - windowMs);
+&nbsp;
+  // Get errors in current window
+  const recentErrors = errorStore.getErrorsInRange(startTime, now);
+&nbsp;
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (recentErrors.length === 0) {
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+  // Analyze patterns
+  const patterns = analyzePatterns(recentErrors);
+&nbsp;
+  // Update patterns in store
+  for (const pattern of patterns) {
+    const existingPatterns = errorStore.getPatterns();
+    const existing = existingPatterns.find(<span class="fstat-no" title="function not covered" >(p</span>) =&gt; <span class="cstat-no" title="statement not covered" >p.signature === pattern.signature)</span>;
+&nbsp;
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (existing) {
+      // Merge with existing
+<span class="cstat-no" title="statement not covered" >      existing.count += pattern.count;</span>
+<span class="cstat-no" title="statement not covered" >      existing.lastSeen = pattern.lastSeen;</span>
+<span class="cstat-no" title="statement not covered" >      for (const rpc of pattern.affectedRpcs) {</span>
+<span class="cstat-no" title="statement not covered" >        if (!existing.affectedRpcs.includes(rpc)) {</span>
+<span class="cstat-no" title="statement not covered" >          existing.affectedRpcs.push(rpc);</span>
+        }
+      }
+<span class="cstat-no" title="statement not covered" >      for (const user of pattern.affectedUsers) {</span>
+<span class="cstat-no" title="statement not covered" >        if (!existing.affectedUsers.includes(user)) {</span>
+<span class="cstat-no" title="statement not covered" >          existing.affectedUsers.push(user);</span>
+        }
+      }
+<span class="cstat-no" title="statement not covered" >      errorStore.upsertPattern(existing);</span>
+    } else {
+      errorStore.upsertPattern(pattern);
+    }
+  }
+&nbsp;
+  // Generate insights
+  const newInsights = generateInsights(patterns);
+&nbsp;
+  for (const insight of newInsights) {
+    // Check if similar insight already exists
+    const existingInsights = <span class="cstat-no" title="statement not covered" >errorStore.getInsights();</span>
+    const exists = <span class="cstat-no" title="statement not covered" >existingInsights.some(<span class="fstat-no" title="function not covered" >(i</span>) =&gt; <span class="cstat-no" title="statement not covered" >i.patternId === insight.patternId)</span>;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (!exists) {</span>
+<span class="cstat-no" title="statement not covered" >      errorStore.addInsight(insight);</span>
+&nbsp;
+      // Log new insight
+<span class="cstat-no" title="statement not covered" >      logger.warn('New error insight generated', {</span>
+        insightId: insight.id,
+        title: insight.title,
+        priority: insight.priority,
+        errorCount: insight.errorCount,
+        operation: 'error_insight_generated',
       });
     }
   }
 &nbsp;
-  // Anti-cheat: Detect timing attacks
-  <span class="missing-if-branch" title="if path not taken" >I</span>if (detectTimingAttack(ctx.userId, 'update_rank', request.requestId || '')) {
-<span class="cstat-no" title="statement not covered" >    logger.warn('Timing attack detected for user: %s', ctx.userId);</span>
-<span class="cstat-no" title="statement not covered" >    return JSON.stringify({</span>
-      success: false,
-      error_code: 'TIMING_ANOMALY',
-      error: 'Suspicious request pattern detected',
-    });
+  // Cleanup expired patterns
+  errorStore.cleanupExpiredPatterns();
+}
+&nbsp;
+/**
+ * Collect an error from log data
+ */
+export function collectError(
+  error: Error,
+  context: {
+    rpcName?: string;
+    userId?: string;
+    requestId?: string;
+    metadata?: Record&lt;string, unknown&gt;;
+    source?: ErrorSource;
+    severity?: ErrorSeverity;
+  }
+): void {
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!config.errorInsights.enabled) {
+<span class="cstat-no" title="statement not covered" >    return;</span>
   }
 &nbsp;
-  const currentSeason = getCurrentSeason();
+  const rawError: RawErrorData = {
+    id: randomUUID(),
+    timestamp: new Date().toISOString(),
+    message: error.message,
+    stack: error.stack,
+    errorType: error.constructor.name,
+    rpcName: context.rpcName,
+    userId: context.userId,
+    requestId: context.requestId,
+    metadata: context.metadata,
+    severity: context.severity || determineSeverityFromError(error),
+    source: context.source || 'unknown',
+  };
 &nbsp;
-  const winnerEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
-  const loserEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
+  // Update source based on error characteristics
+  rawError.source = detectErrorSource(rawError);
+  rawError.severity = determineSeverity(rawError);
 &nbsp;
-  const winnerOldElo = winnerEntry ? <span class="branch-0 cbranch-no" title="branch not covered" >winnerEntry.score </span>: 1000;
-  const loserOldElo = loserEntry ? <span class="branch-0 cbranch-no" title="branch not covered" >loserEntry.score </span>: 1000;
+  errorStore.addError(rawError);
 &nbsp;
-  const K = request.is_punch_up ? 60 : 32; // Punch Up has higher K-factor
-  const expectedWinner = 1 / (1 + Math.pow(10, (loserOldElo - winnerOldElo) / 400));
-  const expectedLoser = 1 - expectedWinner;
+  // Process errors periodically
+  processErrors();
+}
 &nbsp;
-  const winnerNewElo = Math.round(winnerOldElo + K * (1 - expectedWinner));
-  const loserNewElo = Math.round(loserOldElo + K * (0 - expectedLoser));
+/**
+ * Determine severity from error
+ */
+function determineSeverityFromError(error: Error): ErrorSeverity {
+  const message = error.message.toLowerCase();
 &nbsp;
-  // Update winner
-  const winnerMeta = winnerEntry
-    ? <span class="branch-0 cbranch-no" title="branch not covered" >winnerEntry.meta</span>
-    : { wins: 0, losses: 0, win_rate: 0, punch_up_wins: 0 };
-  winnerMeta.wins++;
-  winnerMeta.punch_up_wins += request.is_punch_up ? 1 : 0;
-  winnerMeta.win_rate = winnerMeta.wins / (winnerMeta.wins + winnerMeta.losses);
+  if (message.includes('fatal') || message.includes('crash')) {
+    return 'critical';
+  }
+  if (message.includes('error') || message.includes('exception')) {
+    return 'error';
+  }
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (message.includes('warning')) {
+<span class="cstat-no" title="statement not covered" >    return 'warning';</span>
+  }
+  return 'info';
+}
 &nbsp;
-  nk.leaderboardRecordWrite(
-    currentSeason.season_id,
-    request.winner_id,
-    ctx.username || <span class="branch-1 cbranch-no" title="branch not covered" >'Player',</span>
-    winnerNewElo,
-    0,
-    {
-      wins: String(winnerMeta.wins),
-      losses: String(winnerMeta.losses),
-      win_rate: String(winnerMeta.win_rate),
-      punch_up_wins: String(winnerMeta.punch_up_wins),
+/**
+ * Register RPC handlers for error insights
+ */
+export function registerErrorInsightRpcs(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/error_insights_dashboard', rpcGetErrorDashboard);
+  initializer.registerRpc('armored_archer/error_insights_summary', rpcGetErrorSummary);
+  initializer.registerRpc('armored_archer/error_insights_patterns', rpcGetErrorPatterns);
+  initializer.registerRpc('armored_archer/error_insights_stats', rpcGetErrorStats);
+  initializer.registerRpc('armored_archer/error_insights_dismiss', rpcDismissInsight);
+}
+&nbsp;
+/**
+ * RPC: Get error dashboard data
+ */
+async function <span class="fstat-no" title="function not covered" >rpcGetErrorDashboard(</span>
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  payload: string
+): Promise&lt;string&gt; {
+<span class="cstat-no" title="statement not covered" >  logger.info('Error insights dashboard requested by user: %s', ctx.userId);</span>
+&nbsp;
+  const validation = <span class="cstat-no" title="statement not covered" >validatePayload(ZodSchemas.health_check, payload, 'error_insights_dashboard');</span>
+<span class="cstat-no" title="statement not covered" >  if (!validation.success &amp;&amp; payload) {</span>
+<span class="cstat-no" title="statement not covered" >    return createValidationErrorResponse('error_insights_dashboard', validation.error);</span>
+  }
+&nbsp;
+  const dashboardData = <span class="cstat-no" title="statement not covered" >getDashboardData();</span>
+<span class="cstat-no" title="statement not covered" >  return JSON.stringify(dashboardData);</span>
+}
+&nbsp;
+/**
+ * RPC: Get error summary
+ */
+async function <span class="fstat-no" title="function not covered" >rpcGetErrorSummary(</span>
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  payload: string
+): Promise&lt;string&gt; {
+<span class="cstat-no" title="statement not covered" >  logger.info('Error insights summary requested by user: %s', ctx.userId);</span>
+&nbsp;
+  // Parse time range from payload if provided
+  let timeRange: TimeRange;
+<span class="cstat-no" title="statement not covered" >  try {</span>
+<span class="cstat-no" title="statement not covered" >    if (payload) {</span>
+      const parsed = <span class="cstat-no" title="statement not covered" >JSON.parse(payload);</span>
+<span class="cstat-no" title="statement not covered" >      timeRange = {</span>
+        startTime: parsed.startTime || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        endTime: parsed.endTime || new Date().toISOString(),
+      };
+    } else {
+      const hours = <span class="cstat-no" title="statement not covered" >config.errorInsights.insightWindowHours;</span>
+<span class="cstat-no" title="statement not covered" >      timeRange = {</span>
+        startTime: new Date(Date.now() - hours * 60 * 60 * 1000).toISOString(),
+        endTime: new Date().toISOString(),
+      };
     }
-  );
+  } catch {
+    const hours = <span class="cstat-no" title="statement not covered" >config.errorInsights.insightWindowHours;</span>
+<span class="cstat-no" title="statement not covered" >    timeRange = {</span>
+      startTime: new Date(Date.now() - hours * 60 * 60 * 1000).toISOString(),
+      endTime: new Date().toISOString(),
+    };
+  }
 &nbsp;
-  // Update loser
-  const loserMeta = loserEntry
-    ? <span class="branch-0 cbranch-no" title="branch not covered" >loserEntry.meta</span>
-    : { wins: 0, losses: 0, win_rate: 0, punch_up_wins: 0 };
-  loserMeta.losses++;
-  loserMeta.win_rate = loserMeta.wins / (loserMeta.wins + loserMeta.losses);
+  const summary = <span class="cstat-no" title="statement not covered" >getErrorSummary(timeRange);</span>
+<span class="cstat-no" title="statement not covered" >  return JSON.stringify(summary);</span>
+}
 &nbsp;
-  nk.leaderboardRecordWrite(
-    currentSeason.season_id,
-    request.loser_id,
-    'Opponent', // Will be updated with actual username
-    loserNewElo,
-    0,
-    {
-      wins: String(loserMeta.wins),
-      losses: String(loserMeta.losses),
-      win_rate: String(loserMeta.win_rate),
-      punch_up_wins: String(loserMeta.punch_up_wins),
+/**
+ * RPC: Get error patterns
+ */
+async function <span class="fstat-no" title="function not covered" >rpcGetErrorPatterns(</span>
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  _payload: string
+): Promise&lt;string&gt; {
+<span class="cstat-no" title="statement not covered" >  logger.info('Error insights patterns requested by user: %s', ctx.userId);</span>
+&nbsp;
+  const patterns = <span class="cstat-no" title="statement not covered" >errorStore.getPatterns();</span>
+&nbsp;
+  // Sort by count descending
+  const sorted = <span class="cstat-no" title="statement not covered" >[...patterns].sort(<span class="fstat-no" title="function not covered" >(a</span>, b) =&gt; <span class="cstat-no" title="statement not covered" >b.count - a.count)</span>;</span>
+&nbsp;
+  // Limit results
+  const limit = <span class="cstat-no" title="statement not covered" >config.errorInsights.maxPatterns;</span>
+<span class="cstat-no" title="statement not covered" >  return JSON.stringify(sorted.slice(0, limit));</span>
+}
+&nbsp;
+/**
+ * RPC: Get pipeline statistics
+ */
+async function <span class="fstat-no" title="function not covered" >rpcGetErrorStats(</span>
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  _payload: string
+): Promise&lt;string&gt; {
+<span class="cstat-no" title="statement not covered" >  logger.info('Error insights stats requested by user: %s', ctx.userId);</span>
+&nbsp;
+  const stats = <span class="cstat-no" title="statement not covered" >errorStore.getStats();</span>
+<span class="cstat-no" title="statement not covered" >  return JSON.stringify(stats);</span>
+}
+&nbsp;
+/**
+ * RPC: Dismiss an insight
+ */
+async function <span class="fstat-no" title="function not covered" >rpcDismissInsight(</span>
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  payload: string
+): Promise&lt;string&gt; {
+<span class="cstat-no" title="statement not covered" >  logger.info('Error insight dismiss requested by user: %s', ctx.userId);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  if (!payload) {</span>
+<span class="cstat-no" title="statement not covered" >    return JSON.stringify({ success: false, error: 'Missing insight ID' });</span>
+  }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  try {</span>
+    const { insightId } = <span class="cstat-no" title="statement not covered" >JSON.parse(payload);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (!insightId) {</span>
+<span class="cstat-no" title="statement not covered" >      return JSON.stringify({ success: false, error: 'Missing insight ID' });</span>
     }
-  );
 &nbsp;
-  // Anti-cheat: Record match result for analysis
-  // Winner record: win, Loser record: loss
-  recordMatchResult(
-    request.winner_id,
-    request.match_id,
-    request.loser_id,
-    'win',
-    true,
-    winnerOldElo,
-    winnerNewElo
-  );
-  recordMatchResult(
-    request.loser_id,
-    request.match_id,
-    request.winner_id,
-    'loss',
-    true,
-    loserOldElo,
-    loserNewElo
-  );
+    const insights = <span class="cstat-no" title="statement not covered" >errorStore.getInsights();</span>
+    const index = <span class="cstat-no" title="statement not covered" >insights.findIndex(<span class="fstat-no" title="function not covered" >(i</span>) =&gt; <span class="cstat-no" title="statement not covered" >i.id === insightId)</span>;</span>
 &nbsp;
-  return JSON.stringify({
-    success: true,
-    winner: {
-      user_id: request.winner_id,
-      old_rank: winnerOldElo,
-      new_rank: winnerNewElo,
-      rank_change: winnerNewElo - winnerOldElo,
-    },
-    loser: {
-      user_id: request.loser_id,
-      old_rank: loserOldElo,
-      new_rank: loserNewElo,
-      rank_change: loserNewElo - loserOldElo,
-    },
-    is_punch_up: request.is_punch_up,
+<span class="cstat-no" title="statement not covered" >    if (index === -1) {</span>
+<span class="cstat-no" title="statement not covered" >      return JSON.stringify({ success: false, error: 'Insight not found' });</span>
+    }
+&nbsp;
+    // Remove the insight
+<span class="cstat-no" title="statement not covered" >    insights.splice(index, 1);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    return JSON.stringify({ success: true });</span>
+  } catch {
+<span class="cstat-no" title="statement not covered" >    return JSON.stringify({ success: false, error: 'Invalid payload' });</span>
+  }
+}
+&nbsp;
+/**
+ * Initialize the error insight pipeline
+ */
+export function initializeErrorInsightsPipeline(_logger: Runtime.Logger): void {
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!config.errorInsights.enabled) {
+<span class="cstat-no" title="statement not covered" >    logger.info('Error Insights Pipeline is disabled');</span>
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+  logger.info('Initializing Error Insights Pipeline', {
+    aggregationWindowMinutes: config.errorInsights.aggregationWindowMinutes,
+    minOccurrencesForInsight: config.errorInsights.minOccurrencesForInsight,
+    insightWindowHours: config.errorInsights.insightWindowHours,
+    maxPatterns: config.errorInsights.maxPatterns,
+    maxInsights: config.errorInsights.maxInsights,
+  });
+&nbsp;
+  // Log initialization
+  logger.info('Error Insights Pipeline initialized successfully', {
+    operation: 'error_insights_init',
   });
 }
 &nbsp;
 /**
- * Registers the get season rewards RPC endpoint.
- *
- * @param initializer - Nakama runtime initializer
+ * Get the error store for testing
  */
-export function <span class="fstat-no" title="function not covered" >registerRpcGetSeasonRewards(</span>initializer: Runtime.Initializer): void {
-<span class="cstat-no" title="statement not covered" >  initializer.registerRpc('armored_archer/get_season_rewards', rpcGetSeasonRewards);</span>
-}
-&nbsp;
-/**
- * Retrieves season rewards for a player.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - JSON string (unused, required for RPC format)
- * @returns JSON string with season rewards
- *
- * @example
- * // Request payload
- * { }
- *
- * // Response
- * {
- *   "success": true,
- *   "rank": 15,
- *   "rewards": { ... }
- * }
- */
-export function rpcGetSeasonRewards(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('Get season rewards called for user: %s', ctx.userId);
-&nbsp;
-  const validation = validatePayload(ZodSchemas.get_season_rewards, payload, 'get_season_rewards');
-  <span class="missing-if-branch" title="if path not taken" >I</span>if (!validation.success) {
-<span class="cstat-no" title="statement not covered" >    return createValidationErrorResponse('get_season_rewards', validation.error);</span>
-  }
-&nbsp;
-  const currentSeason = getCurrentSeason();
-  const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
-&nbsp;
-  if (!playerEntry) {
-    return JSON.stringify({
-      success: true,
-      rewards: null,
-    });
-  }
-&nbsp;
-  const rewards = calculateRewards(playerEntry.rank, currentSeason.season_number);
-&nbsp;
-  return JSON.stringify({
-    success: true,
-    rank: playerEntry.rank,
-    rewards: rewards,
-  });
-}
-&nbsp;
-/**
- * Registers the claim season rewards RPC endpoint.
- *
- * @param initializer - Nakama runtime initializer
- */
-export function <span class="fstat-no" title="function not covered" >registerRpcClaimSeasonRewards(</span>initializer: Runtime.Initializer): void {
-<span class="cstat-no" title="statement not covered" >  initializer.registerRpc('armored_archer/claim_season_rewards', rpcClaimSeasonRewards);</span>
-}
-&nbsp;
-/**
- * Claims season rewards for a player.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - JSON string (unused, required for RPC format)
- * @returns JSON string with claim result
- *
- * @example
- * // Request payload
- * { }
- *
- * // Response
- * {
- *   "success": true,
- *   "rewards": { ... },
- *   "claimed": true
- * }
- */
-export function rpcClaimSeasonRewards(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('Claim season rewards called for user: %s', ctx.userId);
-&nbsp;
-  const validation = validatePayload(
-    ZodSchemas.claim_season_rewards,
-    payload,
-    'claim_season_rewards'
-  );
-  <span class="missing-if-branch" title="if path not taken" >I</span>if (!validation.success) {
-<span class="cstat-no" title="statement not covered" >    return createValidationErrorResponse('claim_season_rewards', validation.error);</span>
-  }
-&nbsp;
-  const currentSeason = getCurrentSeason();
-&nbsp;
-  const objects = nk.storageRead([
-    {
-      collection: 'season_rewards_claimed',
-      key: `${currentSeason.season_id}_${ctx.userId}`,
-      userId: ctx.userId,
-    },
-  ]);
-&nbsp;
-  if (objects.length &gt; 0) {
-    return JSON.stringify({
-      error: 'Rewards already claimed for this season',
-    });
-  }
-&nbsp;
-  const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
-&nbsp;
-  if (!playerEntry) {
-    return JSON.stringify({
-      error: 'No leaderboard entry found',
-    });
-  }
-&nbsp;
-  const rewards = calculateRewards(playerEntry.rank, currentSeason.season_number);
-&nbsp;
-  // Mark rewards as claimed
-  nk.storageWrite([
-    {
-      collection: 'season_rewards_claimed',
-      key: `${currentSeason.season_id}_${ctx.userId}`,
-      userId: ctx.userId,
-      value: JSON.stringify({
-        season_id: currentSeason.season_id,
-        user_id: ctx.userId,
-        claimed_at: Date.now(),
-        rank: playerEntry.rank,
-        rewards: rewards,
-      }),
-    },
-  ]);
-&nbsp;
-  // Give rewards (coins, cosmetics)
-  const rewardChanges: { [key: string]: number } = {};
-&nbsp;
-  <span class="missing-if-branch" title="else path not taken" >E</span>if (rewards.coins) {
-    rewardChanges['coins'] = rewards.coins;
-  }
-&nbsp;
-  <span class="missing-if-branch" title="else path not taken" >E</span>if (rewards.gems) {
-    rewardChanges['gems'] = rewards.gems;
-  }
-&nbsp;
-  <span class="missing-if-branch" title="else path not taken" >E</span>if (Object.keys(rewardChanges).length &gt; 0) {
-    nk.walletUpdate(ctx.userId, rewardChanges);
-  }
-&nbsp;
-  return JSON.stringify({
-    success: true,
-    rewards: rewards,
-    claimed: true,
-  });
-}
-&nbsp;
-/**
- * Registers the end season RPC endpoint.
- *
- * @param initializer - Nakama runtime initializer
- */
-export function <span class="fstat-no" title="function not covered" >registerRpcEndSeason(</span>initializer: Runtime.Initializer): void {
-<span class="cstat-no" title="statement not covered" >  initializer.registerRpc('armored_archer/end_season', rpcEndSeason);</span>
-}
-&nbsp;
-/**
- * Ends the current season and starts a new one.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - JSON string (unused, required for RPC format)
- * @returns JSON string with season transition result
- *
- * @example
- * // Request payload
- * { }
- *
- * // Response
- * {
- *   "success": true,
- *   "old_season": { ... },
- *   "new_season": { ... }
- * }
- */
-export function rpcEndSeason(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('End season called for user: %s', ctx.userId);
-&nbsp;
-  const validation = validatePayload(ZodSchemas.end_season, payload, 'end_season');
-  <span class="missing-if-branch" title="if path not taken" >I</span>if (!validation.success) {
-<span class="cstat-no" title="statement not covered" >    return createValidationErrorResponse('end_season', validation.error);</span>
-  }
-&nbsp;
-  const currentSeason = getCurrentSeason();
-&nbsp;
-  // Create new season
-  const nextSeasonNumber = currentSeason.season_number + 1;
-  const nextSeasonStartTime = Date.now();
-  const nextSeasonEndTime = nextSeasonStartTime + SEASON_DURATION_MS;
-&nbsp;
-  const nextSeason: SeasonInfo = {
-    season_id: `season_${nextSeasonNumber}`,
-    season_number: nextSeasonNumber,
-    start_time: nextSeasonStartTime,
-    end_time: nextSeasonEndTime,
-    status: 'active',
-    duration_weeks: SEASON_DURATION_WEEKS,
-  };
-&nbsp;
-  // Store new season info
-  nk.storageWrite([
-    {
-      collection: 'seasons',
-      key: nextSeason.season_id,
-      userId: ctx.userId,
-      value: JSON.stringify(nextSeason),
-    },
-  ]);
-&nbsp;
-  // Update current season status
-  const oldSeason = currentSeason;
-  oldSeason.status = 'ended';
-&nbsp;
-  nk.storageWrite([
-    {
-      collection: 'seasons',
-      key: oldSeason.season_id,
-      userId: ctx.userId,
-      value: JSON.stringify(oldSeason),
-    },
-  ]);
-&nbsp;
-  // Create new leaderboard for next season
-  nk.leaderboardCreate(nextSeason.season_id, true, 'desc', 'best', '', {
-    season_number: String(nextSeasonNumber),
-  });
-&nbsp;
-  return JSON.stringify({
-    success: true,
-    old_season: oldSeason,
-    new_season: nextSeason,
-  });
-}
-&nbsp;
-/**
- * Gets the current season information.
- *
- * @returns Current season data
- */
-function getCurrentSeason(): SeasonInfo {
-  const now = Date.now();
-  const seasonNumber = Math.floor(now / SEASON_DURATION_MS) + 1;
-  const seasonStartTime = (seasonNumber - 1) * SEASON_DURATION_MS;
-  const seasonEndTime = seasonStartTime + SEASON_DURATION_MS;
-&nbsp;
-  return {
-    season_id: `season_${seasonNumber}`,
-    season_number: seasonNumber,
-    start_time: seasonStartTime,
-    end_time: seasonEndTime,
-    status: 'active',
-    duration_weeks: SEASON_DURATION_WEEKS,
-  };
-}
-&nbsp;
-/**
- * Gets a player's leaderboard entry.
- *
- * @param nk - Nakama server interface
- * @param userId - ID of the player to retrieve
- * @param leaderboardId - ID of the leaderboard
- * @returns Leaderboard entry or null if not found
- */
-function getLeaderboardEntry(
-  nk: Runtime.Nakama,
-  userId: string,
-  leaderboardId: string
-): LeaderboardEntry | null {
-  const records = nk.leaderboardRecordList(leaderboardId, [userId], 1, '', 0);
-&nbsp;
-  if (records.length === 0) {
-    return null;
-  }
-&nbsp;
-  const record = records[0];
-  return {
-    owner_id: record.ownerId,
-    username: record.username,
-    rank: record.rank,
-    score: record.score,
-    meta: JSON.parse(record.metadata || <span class="branch-1 cbranch-no" title="branch not covered" >'{}')</span>,
-  };
-}
-&nbsp;
-/**
- * Calculates season rewards based on player rank.
- *
- * @param rank - Player's final rank
- * @param seasonNumber - Current season number
- * @returns Calculated season rewards
- */
-export function calculateRewards(rank: number, seasonNumber: number): SeasonRewards {
-  if (rank &lt;= 10) {
-    return {
-      rank_tier: 'legendary',
-      coins: 10000,
-      gems: 500,
-      cosmetics: {
-        title: `Season ${seasonNumber} Champion`,
-        aura: 'legendary_aura',
-      },
-    };
-  } else if (rank &lt;= 50) {
-    return {
-      rank_tier: 'epic',
-      coins: 5000,
-      gems: 200,
-      cosmetics: {
-        title: `Season ${seasonNumber} Elite`,
-        aura: 'epic_aura',
-      },
-    };
-  } else if (rank &lt;= 100) {
-    return {
-      rank_tier: 'rare',
-      coins: 2000,
-      gems: 100,
-      cosmetics: {
-        title: `Season ${seasonNumber} Veteran`,
-        aura: 'rare_aura',
-      },
-    };
-  } else if (rank &lt;= 500) {
-    return {
-      rank_tier: 'uncommon',
-      coins: 500,
-      gems: 0,
-    };
-  } else {
-    return {
-      rank_tier: 'common',
-      coins: 100,
-      gems: 0,
-    };
-  }
+export function getErrorStore(): ErrorInsightStore {
+  return errorStore;
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -2536,7 +2893,7 @@ export function calculateRewards(rank: number, seasonNumber: number): SeasonRewa
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-07T18:55:11.092Z
+                at 2026-03-07T18:55:11.010Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

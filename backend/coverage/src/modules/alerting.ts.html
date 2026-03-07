@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/config/errorTracking.ts</title>
+    <title>Code coverage report for src/modules/alerting.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../../prettify.css" />
     <link rel="stylesheet" href="../../base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/config</a> errorTracking.ts</h1>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/modules</a> alerting.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">16.34% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>17/104</span>
+                <span class='fraction'>57/114</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">9.21% </span>
+                <span class="strong">41.66% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>7/76</span>
+                <span class='fraction'>25/60</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">61.11% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/18</span>
+                <span class='fraction'>11/18</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">16.34% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>17/104</span>
+                <span class='fraction'>57/114</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -494,123 +494,8 @@
 <a name='L429'></a><a href='#L429'>429</a>
 <a name='L430'></a><a href='#L430'>430</a>
 <a name='L431'></a><a href='#L431'>431</a>
-<a name='L432'></a><a href='#L432'>432</a>
-<a name='L433'></a><a href='#L433'>433</a>
-<a name='L434'></a><a href='#L434'>434</a>
-<a name='L435'></a><a href='#L435'>435</a>
-<a name='L436'></a><a href='#L436'>436</a>
-<a name='L437'></a><a href='#L437'>437</a>
-<a name='L438'></a><a href='#L438'>438</a>
-<a name='L439'></a><a href='#L439'>439</a>
-<a name='L440'></a><a href='#L440'>440</a>
-<a name='L441'></a><a href='#L441'>441</a>
-<a name='L442'></a><a href='#L442'>442</a>
-<a name='L443'></a><a href='#L443'>443</a>
-<a name='L444'></a><a href='#L444'>444</a>
-<a name='L445'></a><a href='#L445'>445</a>
-<a name='L446'></a><a href='#L446'>446</a>
-<a name='L447'></a><a href='#L447'>447</a>
-<a name='L448'></a><a href='#L448'>448</a>
-<a name='L449'></a><a href='#L449'>449</a>
-<a name='L450'></a><a href='#L450'>450</a>
-<a name='L451'></a><a href='#L451'>451</a>
-<a name='L452'></a><a href='#L452'>452</a>
-<a name='L453'></a><a href='#L453'>453</a>
-<a name='L454'></a><a href='#L454'>454</a>
-<a name='L455'></a><a href='#L455'>455</a>
-<a name='L456'></a><a href='#L456'>456</a>
-<a name='L457'></a><a href='#L457'>457</a>
-<a name='L458'></a><a href='#L458'>458</a>
-<a name='L459'></a><a href='#L459'>459</a>
-<a name='L460'></a><a href='#L460'>460</a>
-<a name='L461'></a><a href='#L461'>461</a>
-<a name='L462'></a><a href='#L462'>462</a>
-<a name='L463'></a><a href='#L463'>463</a>
-<a name='L464'></a><a href='#L464'>464</a>
-<a name='L465'></a><a href='#L465'>465</a>
-<a name='L466'></a><a href='#L466'>466</a>
-<a name='L467'></a><a href='#L467'>467</a>
-<a name='L468'></a><a href='#L468'>468</a>
-<a name='L469'></a><a href='#L469'>469</a>
-<a name='L470'></a><a href='#L470'>470</a>
-<a name='L471'></a><a href='#L471'>471</a>
-<a name='L472'></a><a href='#L472'>472</a>
-<a name='L473'></a><a href='#L473'>473</a>
-<a name='L474'></a><a href='#L474'>474</a>
-<a name='L475'></a><a href='#L475'>475</a>
-<a name='L476'></a><a href='#L476'>476</a>
-<a name='L477'></a><a href='#L477'>477</a>
-<a name='L478'></a><a href='#L478'>478</a>
-<a name='L479'></a><a href='#L479'>479</a>
-<a name='L480'></a><a href='#L480'>480</a>
-<a name='L481'></a><a href='#L481'>481</a>
-<a name='L482'></a><a href='#L482'>482</a>
-<a name='L483'></a><a href='#L483'>483</a>
-<a name='L484'></a><a href='#L484'>484</a>
-<a name='L485'></a><a href='#L485'>485</a>
-<a name='L486'></a><a href='#L486'>486</a>
-<a name='L487'></a><a href='#L487'>487</a>
-<a name='L488'></a><a href='#L488'>488</a>
-<a name='L489'></a><a href='#L489'>489</a>
-<a name='L490'></a><a href='#L490'>490</a>
-<a name='L491'></a><a href='#L491'>491</a>
-<a name='L492'></a><a href='#L492'>492</a>
-<a name='L493'></a><a href='#L493'>493</a>
-<a name='L494'></a><a href='#L494'>494</a>
-<a name='L495'></a><a href='#L495'>495</a>
-<a name='L496'></a><a href='#L496'>496</a>
-<a name='L497'></a><a href='#L497'>497</a>
-<a name='L498'></a><a href='#L498'>498</a>
-<a name='L499'></a><a href='#L499'>499</a>
-<a name='L500'></a><a href='#L500'>500</a>
-<a name='L501'></a><a href='#L501'>501</a>
-<a name='L502'></a><a href='#L502'>502</a>
-<a name='L503'></a><a href='#L503'>503</a>
-<a name='L504'></a><a href='#L504'>504</a>
-<a name='L505'></a><a href='#L505'>505</a>
-<a name='L506'></a><a href='#L506'>506</a>
-<a name='L507'></a><a href='#L507'>507</a>
-<a name='L508'></a><a href='#L508'>508</a>
-<a name='L509'></a><a href='#L509'>509</a>
-<a name='L510'></a><a href='#L510'>510</a>
-<a name='L511'></a><a href='#L511'>511</a>
-<a name='L512'></a><a href='#L512'>512</a>
-<a name='L513'></a><a href='#L513'>513</a>
-<a name='L514'></a><a href='#L514'>514</a>
-<a name='L515'></a><a href='#L515'>515</a>
-<a name='L516'></a><a href='#L516'>516</a>
-<a name='L517'></a><a href='#L517'>517</a>
-<a name='L518'></a><a href='#L518'>518</a>
-<a name='L519'></a><a href='#L519'>519</a>
-<a name='L520'></a><a href='#L520'>520</a>
-<a name='L521'></a><a href='#L521'>521</a>
-<a name='L522'></a><a href='#L522'>522</a>
-<a name='L523'></a><a href='#L523'>523</a>
-<a name='L524'></a><a href='#L524'>524</a>
-<a name='L525'></a><a href='#L525'>525</a>
-<a name='L526'></a><a href='#L526'>526</a>
-<a name='L527'></a><a href='#L527'>527</a>
-<a name='L528'></a><a href='#L528'>528</a>
-<a name='L529'></a><a href='#L529'>529</a>
-<a name='L530'></a><a href='#L530'>530</a>
-<a name='L531'></a><a href='#L531'>531</a>
-<a name='L532'></a><a href='#L532'>532</a>
-<a name='L533'></a><a href='#L533'>533</a>
-<a name='L534'></a><a href='#L534'>534</a>
-<a name='L535'></a><a href='#L535'>535</a>
-<a name='L536'></a><a href='#L536'>536</a>
-<a name='L537'></a><a href='#L537'>537</a>
-<a name='L538'></a><a href='#L538'>538</a>
-<a name='L539'></a><a href='#L539'>539</a>
-<a name='L540'></a><a href='#L540'>540</a>
-<a name='L541'></a><a href='#L541'>541</a>
-<a name='L542'></a><a href='#L542'>542</a>
-<a name='L543'></a><a href='#L543'>543</a>
-<a name='L544'></a><a href='#L544'>544</a>
-<a name='L545'></a><a href='#L545'>545</a>
-<a name='L546'></a><a href='#L546'>546</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">13x</span>
+<a name='L432'></a><a href='#L432'>432</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -620,16 +505,18 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -638,6 +525,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -655,31 +543,13 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -688,16 +558,25 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -705,32 +584,28 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -742,43 +617,26 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -790,7 +648,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -800,34 +658,20 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -836,75 +680,29 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -915,29 +713,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -948,43 +724,19 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1001,8 +753,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1011,32 +763,24 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1044,28 +788,31 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1073,52 +820,67 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1126,11 +888,16 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1142,561 +909,452 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">11x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import * as Sentry from '@sentry/node';
-import type { ErrorEvent, EventHint } from '@sentry/node';
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
+ * Alerting Service Module
+ *
+ * This module provides alerting capabilities for production incidents and system health:
+ * - Health check alerts (CPU, memory, disk, database connections)
+ * - Metric-based alerts (active connections, match queue, response times)
+ * - Integration with multiple alert providers (PagerDuty, Slack, webhook, email)
+ * - Alert cooldowns to prevent alert fatigue
+ * - Integration with Sentry for error alerting
+ */
+&nbsp;
 import { config } from '../config';
+import {
+  AlertingConfig,
+  AlertSeverity,
+  AlertProvider,
+  alertingConfig,
+  isAlertingEnabled,
+  getAlertProvider,
+  getAlertCooldown,
+  shouldTriggerHealthAlert,
+} from '../config/alerting';
+import { captureMessage, captureException } from '../config/errorTracking';
+import { Runtime } from '../types/nakama';
 &nbsp;
-/**
- * Configuration for error tracking with Sentry.
- */
-export interface ErrorTrackingConfig {
-  dsn: string;
-  environment: string;
-  tracesSampleRate: number;
-  enabled: boolean;
-  /** Include game state context in error events */
-  includeGameState: boolean;
-  /** Include user session context in error events */
-  includeSessionContext: boolean;
+// Track last alert times for cooldown management
+interface AlertState {
+  lastAlertTime: number;
+  alertCount: number;
 }
 &nbsp;
-export const errorTrackingConfig: ErrorTrackingConfig = {
-  dsn: process.env.SENTRY_DSN || '',
-  environment: process.env.NODE_ENV || <span class="branch-1 cbranch-no" title="branch not covered" >config.environment,</span>
-  tracesSampleRate: parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE || '1.0'),
-  enabled: process.env.SENTRY_ENABLED === 'true' || config.environment === 'production',
-  includeGameState: process.env.SENTRY_INCLUDE_GAME_STATE !== 'false',
-  includeSessionContext: process.env.SENTRY_INCLUDE_SESSION_CONTEXT !== 'false',
-};
+const alertState: Map&lt;string, AlertState&gt; = new Map();
 &nbsp;
 /**
- * Game state context for error tracking.
- * Provides debugging information about player state at time of error.
+ * Alert payload structure
  */
-export interface GameStateContext {
-  playerId?: string;
-  level?: number;
-  xp?: number;
-  health?: number;
-  maxHealth?: number;
-  mana?: number;
-  maxMana?: number;
-  gold?: number;
-  gems?: number;
-  currentMatchId?: string;
-  matchState?: string;
-  seasonId?: string;
-  inventorySize?: number;
-  equippedItems?: string[];
-  stats?: {
-    strength?: number;
-    dexterity?: number;
-    intelligence?: number;
-    vitality?: number;
-    luck?: number;
-  };
+export interface AlertPayload {
+  title: string;
+  message: string;
+  severity: AlertSeverity;
+  tags: Record&lt;string, string&gt;;
+  metrics?: Record&lt;string, number&gt;;
+  timestamp: number;
+  source: string;
 }
 &nbsp;
 /**
- * User session context for error tracking.
- * Provides information about the user's session and connection.
+ * Initialize the alerting service
  */
-export interface SessionContext {
-  userId: string;
-  username?: string;
-  sessionId?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  platform?: string;
-  appVersion?: string;
-  connectionType?: string;
-  serverRegion?: string;
-}
-&nbsp;
-/**
- * Request context for error tracking.
- * Provides details about the incoming request.
- */
-export interface RequestContext {
-  rpcName: string;
-  requestId?: string;
-  method?: string;
-  payload?: string;
-  headers?: Record&lt;string, string&gt;;
-  queryParams?: Record&lt;string, string&gt;;
-  serverRegion?: string;
-}
-&nbsp;
-/**
- * Extended context for error tracking with all available information.
- */
-export interface ExtendedErrorContext {
-  userId?: string;
-  rpc?: string;
-  user?: SessionContext;
-  gameState?: GameStateContext;
-  request?: RequestContext;
-  extra?: Record&lt;string, unknown&gt;;
-}
-&nbsp;
-export function <span class="fstat-no" title="function not covered" >initializeSentry(</span>): void {
-<span class="cstat-no" title="statement not covered" >  if (!errorTrackingConfig.enabled || !errorTrackingConfig.dsn) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log('[ErrorTracking] Sentry is disabled - missing DSN or disabled by config');</span>
+export function initializeAlerting(logger: Runtime.Logger): void {
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!isAlertingEnabled()) {
+<span class="cstat-no" title="statement not covered" >    logger.info('[Alerting] Alerting is disabled for current environment');</span>
 <span class="cstat-no" title="statement not covered" >    return;</span>
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  Sentry.init({</span>
-    dsn: errorTrackingConfig.dsn,
-    environment: errorTrackingConfig.environment,
-    tracesSampleRate: errorTrackingConfig.tracesSampleRate,
-<span class="fstat-no" title="function not covered" >    beforeSend(</span>event: ErrorEvent, _hint: EventHint): ErrorEvent | null {
-      // Remove sensitive headers for privacy
-<span class="cstat-no" title="statement not covered" >      if (event.request) {</span>
-<span class="cstat-no" title="statement not covered" >        event.request.headers = undefined;</span>
-      }
-      // Add environment tag
-<span class="cstat-no" title="statement not covered" >      if (!event.tags) {</span>
-<span class="cstat-no" title="statement not covered" >        event.tags = {};</span>
-      }
-<span class="cstat-no" title="statement not covered" >      event.tags.environment = errorTrackingConfig.environment;</span>
-<span class="cstat-no" title="statement not covered" >      return event;</span>
-    },
-    // Add release information if available
-    release: process.env.APP_VERSION || 'unknown',
-  });
-&nbsp;
-<span class="cstat-no" title="statement not covered" >  console.log(</span>
-    `[ErrorTracking] Sentry initialized in ${errorTrackingConfig.environment} environment`
+  logger.info(
+    `[Alerting] Initialized - provider: ${config.alerting.defaultProvider}, min_env: ${config.alerting.minEnvironmentLevel}`
   );
 }
 &nbsp;
 /**
- * Sets persistent context for a user session.
- * This context will be included in all subsequent error events for this scope.
- *
- * @param context - The session context to set
+ * Check if an alert should be sent based on cooldown period
  */
-export function <span class="fstat-no" title="function not covered" >setSessionContext(</span>context: SessionContext): void {
-<span class="cstat-no" title="statement not covered" >  if (!errorTrackingConfig.enabled) {</span>
-<span class="cstat-no" title="statement not covered" >    return;</span>
+function shouldSendAlert(alertKey: string, severity: AlertSeverity): boolean {
+  const state = alertState.get(alertKey);
+  const cooldown = getAlertCooldown(severity) * 1000; // Convert to milliseconds
+  const now = Date.now();
+&nbsp;
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (!state) {
+    return true;
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  Sentry.setContext('session', {</span>
-    userId: context.userId,
-    username: context.username,
-    sessionId: context.sessionId,
-    ipAddress: context.ipAddress,
-    platform: context.platform,
-    appVersion: context.appVersion,
-    connectionType: context.connectionType,
-    serverRegion: context.serverRegion,
-  });
+<span class="cstat-no" title="statement not covered" >  return now - state.lastAlertTime &gt;= cooldown;</span>
+}
 &nbsp;
-  // Also set user in Sentry's built-in user context
-<span class="cstat-no" title="statement not covered" >  Sentry.setUser({</span>
-    id: context.userId,
-    username: context.username,
-    ip_address: context.ipAddress,
+/**
+ * Update alert state after sending an alert
+ */
+function updateAlertState(alertKey: string, _severity: AlertSeverity): void {
+  const now = Date.now();
+  const state = alertState.get(alertKey) || { lastAlertTime: 0, alertCount: 0 };
+&nbsp;
+  alertState.set(alertKey, {
+    lastAlertTime: now,
+    alertCount: state.alertCount + 1,
   });
 }
 &nbsp;
 /**
- * Sets game state context for error tracking.
- * This provides debugging information about player state at time of error.
- *
- * @param gameState - The game state context to set
+ * Route alert to the appropriate provider
  */
-export function <span class="fstat-no" title="function not covered" >setGameStateContext(</span>gameState: GameStateContext): void {
-<span class="cstat-no" title="statement not covered" >  if (!errorTrackingConfig.enabled || !errorTrackingConfig.includeGameState) {</span>
+async function routeAlert(payload: AlertPayload, provider: AlertProvider): Promise&lt;void&gt; {
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (provider === 'none') {
 <span class="cstat-no" title="statement not covered" >    return;</span>
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  Sentry.setContext('gameState', {</span>
-    playerId: gameState.playerId,
-    level: gameState.level,
-    xp: gameState.xp,
-    health: gameState.health,
-    maxHealth: gameState.maxHealth,
-    mana: gameState.mana,
-    maxMana: gameState.maxMana,
-    gold: gameState.gold,
-    gems: gameState.gems,
-    currentMatchId: gameState.currentMatchId,
-    matchState: gameState.matchState,
-    seasonId: gameState.seasonId,
-    inventorySize: gameState.inventorySize,
-    equippedItems: gameState.equippedItems,
-    stats: gameState.stats,
-  });
+  const alertingCfg = alertingConfig;
+&nbsp;
+  switch (provider) {
+    case 'slack':
+      await sendSlackAlert(payload, alertingCfg.slack);
+      break;
+<span class="branch-1 cbranch-no" title="branch not covered" >    case 'webhook':</span>
+<span class="cstat-no" title="statement not covered" >      await sendWebhookAlert(payload, alertingCfg.webhook);</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+<span class="branch-2 cbranch-no" title="branch not covered" >    case 'email':</span>
+<span class="cstat-no" title="statement not covered" >      await sendEmailAlert(payload, alertingCfg.email);</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+<span class="branch-3 cbranch-no" title="branch not covered" >    case 'pagerduty':</span>
+<span class="cstat-no" title="statement not covered" >      await sendPagerDutyAlert(payload, alertingCfg.pagerduty);</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+<span class="branch-4 cbranch-no" title="branch not covered" >    default:</span>
+<span class="cstat-no" title="statement not covered" >      console.warn(`[Alerting] Unknown provider: ${provider}`);</span>
+  }
 }
 &nbsp;
 /**
- * Clears all custom context.
- * Use this to prevent context leakage between requests.
+ * Send alert to Slack
  */
-export function <span class="fstat-no" title="function not covered" >clearContext(</span>): void {
-<span class="cstat-no" title="statement not covered" >  if (!errorTrackingConfig.enabled) {</span>
-<span class="cstat-no" title="statement not covered" >    return;</span>
+async function sendSlackAlert(
+  payload: AlertPayload,
+  slackConfig: AlertingConfig['slack']
+): Promise&lt;void&gt; {
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (!slackConfig?.webhookUrl) {
+    console.warn('[Alerting] Slack webhook URL not configured');
+    return;
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  Sentry.setContext('session', {});</span>
-<span class="cstat-no" title="statement not covered" >  Sentry.setContext('gameState', {});</span>
-<span class="cstat-no" title="statement not covered" >  Sentry.setContext('request', {});</span>
-<span class="cstat-no" title="statement not covered" >  Sentry.setUser(null);</span>
-}
-&nbsp;
-/**
- * Sets request context for error tracking.
- *
- * @param request - The request context to set
- */
-export function <span class="fstat-no" title="function not covered" >setRequestContext(</span>request: RequestContext): void {
-<span class="cstat-no" title="statement not covered" >  if (!errorTrackingConfig.enabled) {</span>
-<span class="cstat-no" title="statement not covered" >    return;</span>
-  }
-&nbsp;
-<span class="cstat-no" title="statement not covered" >  Sentry.setContext('request', {</span>
-    rpcName: request.rpcName,
-    requestId: request.requestId,
-    method: request.method,
-    payload: request.payload,
-    serverRegion: request.serverRegion,
-  });
-}
-&nbsp;
-/**
- * Captures an exception with extended context information.
- *
- * @param error - The error to capture
- * @param context - Extended context with user, game state, and request info
- */
-export function <span class="fstat-no" title="function not covered" >captureException(</span>error: Error, context: ExtendedErrorContext = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span>: void {
-<span class="cstat-no" title="statement not covered" >  if (!errorTrackingConfig.enabled) {</span>
-<span class="cstat-no" title="statement not covered" >    return;</span>
-  }
-&nbsp;
-  const tags: Record&lt;string, string&gt; = <span class="cstat-no" title="statement not covered" >{};</span>
-<span class="cstat-no" title="statement not covered" >  if (context.userId) {</span>
-<span class="cstat-no" title="statement not covered" >    tags.userId = context.userId;</span>
-  }
-<span class="cstat-no" title="statement not covered" >  if (context.rpc) {</span>
-<span class="cstat-no" title="statement not covered" >    tags.rpc = context.rpc;</span>
-  }
-&nbsp;
-  const extra: Record&lt;string, unknown&gt; = <span class="cstat-no" title="statement not covered" >{</span>
-    ...context.extra,
-    timestamp: new Date().toISOString(),
+  const severityEmoji: Record&lt;AlertSeverity, string&gt; = <span class="cstat-no" title="statement not covered" >{</span>
+    critical: ':rotating_light:',
+    error: ':x:',
+    warning: ':warning:',
+    info: ':information_source:',
   };
 &nbsp;
-  // Add game state if provided
-<span class="cstat-no" title="statement not covered" >  if (context.gameState &amp;&amp; errorTrackingConfig.includeGameState) {</span>
-<span class="cstat-no" title="statement not covered" >    extra.gameState = context.gameState;</span>
-  }
-&nbsp;
-  // Add request info if provided
-<span class="cstat-no" title="statement not covered" >  if (context.request) {</span>
-<span class="cstat-no" title="statement not covered" >    extra.request = {</span>
-      rpcName: context.request.rpcName,
-      requestId: context.request.requestId,
-      payload: context.request.payload,
-    };
-  }
-&nbsp;
-<span class="cstat-no" title="statement not covered" >  Sentry.captureException(error, {</span>
-    tags,
-    extra,
-    // Ensure user context is set
-    user: context.user?.userId
-      ? {
-          id: context.user.userId,
-          username: context.user.username,
-        }
-      : undefined,
-  });
-}
-&nbsp;
-/**
- * Captures a message with extended context information.
- *
- * @param message - The message to capture
- * @param level - Severity level
- * @param context - Extended context with user, game state, and request info
- */
-export function <span class="fstat-no" title="function not covered" >captureMessage(</span>
-  message: string,
-  level: 'info' | 'warning' | 'error' = <span class="branch-0 cbranch-no" title="branch not covered" >'info',</span>
-  context: ExtendedErrorContext = <span class="branch-0 cbranch-no" title="branch not covered" >{}</span>
-): void {
-<span class="cstat-no" title="statement not covered" >  if (!errorTrackingConfig.enabled) {</span>
-<span class="cstat-no" title="statement not covered" >    return;</span>
-  }
-&nbsp;
-  const tags: Record&lt;string, string&gt; = <span class="cstat-no" title="statement not covered" >{};</span>
-<span class="cstat-no" title="statement not covered" >  if (context.userId) {</span>
-<span class="cstat-no" title="statement not covered" >    tags.userId = context.userId;</span>
-  }
-<span class="cstat-no" title="statement not covered" >  if (context.rpc) {</span>
-<span class="cstat-no" title="statement not covered" >    tags.rpc = context.rpc;</span>
-  }
-&nbsp;
-  const extra: Record&lt;string, unknown&gt; = <span class="cstat-no" title="statement not covered" >{</span>
-    ...context.extra,
-    timestamp: new Date().toISOString(),
+  const color: Record&lt;AlertSeverity, string&gt; = <span class="cstat-no" title="statement not covered" >{</span>
+    critical: '#FF0000',
+    error: '#FFA500',
+    warning: '#FFFF00',
+    info: '#00FF00',
   };
 &nbsp;
-  // Add game state if provided
-<span class="cstat-no" title="statement not covered" >  if (context.gameState &amp;&amp; errorTrackingConfig.includeGameState) {</span>
-<span class="cstat-no" title="statement not covered" >    extra.gameState = context.gameState;</span>
-  }
-&nbsp;
-  // Add request info if provided
-<span class="cstat-no" title="statement not covered" >  if (context.request) {</span>
-<span class="cstat-no" title="statement not covered" >    extra.request = {</span>
-      rpcName: context.request.rpcName,
-      requestId: context.request.requestId,
-      payload: context.request.payload,
-    };
-  }
-&nbsp;
-<span class="cstat-no" title="statement not covered" >  Sentry.captureMessage(message, {</span>
-    level,
-    tags,
-    extra,
-    user: context.user?.userId
-      ? {
-          id: context.user.userId,
-          username: context.user.username,
-        }
-      : undefined,
-  });
-}
-&nbsp;
-/**
- * Captures an RPC error with full context.
- * This is the recommended way to capture RPC errors.
- *
- * @param rpcName - Name of the RPC
- * @param userId - User ID making the request
- * @param error - The error that occurred
- * @param payload - Optional payload for debugging
- * @param sessionContext - Optional session context
- * @param gameStateContext - Optional game state context
- */
-export function <span class="fstat-no" title="function not covered" >captureRpcError(</span>
-  rpcName: string,
-  userId: string,
-  error: Error,
-  payload?: string,
-  sessionContext?: SessionContext,
-  gameStateContext?: GameStateContext
-): void {
-<span class="cstat-no" title="statement not covered" >  if (!errorTrackingConfig.enabled) {</span>
-<span class="cstat-no" title="statement not covered" >    return;</span>
-  }
-&nbsp;
-  const tags: Record&lt;string, string&gt; = <span class="cstat-no" title="statement not covered" >{</span>
-    rpc: rpcName,
-  };
-<span class="cstat-no" title="statement not covered" >  if (userId) {</span>
-<span class="cstat-no" title="statement not covered" >    tags.userId = userId;</span>
-  }
-&nbsp;
-  const extra: Record&lt;string, unknown&gt; = <span class="cstat-no" title="statement not covered" >{</span>
-    timestamp: new Date().toISOString(),
+  const slackPayload = <span class="cstat-no" title="statement not covered" >{</span>
+    username: slackConfig.username,
+    icon_emoji: slackConfig.iconEmoji,
+    channel: slackConfig.channel,
+    attachments: [
+      {
+        color: color[payload.severity],
+        title: `${severityEmoji[payload.severity]} ${payload.title}`,
+        text: payload.message,
+        fields: [
+          { title: 'Severity', value: payload.severity, short: true },
+          { title: 'Source', value: payload.source, short: true },
+          ...Object.entries(payload.tags).map(<span class="fstat-no" title="function not covered" >([</span>key, value]) =&gt; (<span class="cstat-no" title="statement not covered" >{</span>
+            title: key,
+            value,
+            short: true,
+          })),
+        ],
+        footer: 'Armored Archer Alerting',
+        ts: Math.floor(payload.timestamp / 1000),
+      },
+    ],
   };
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  if (payload) {</span>
-<span class="cstat-no" title="statement not covered" >    extra.payload = payload;</span>
-  }
-&nbsp;
-  // Set contexts if provided
-<span class="cstat-no" title="statement not covered" >  if (sessionContext) {</span>
-<span class="cstat-no" title="statement not covered" >    Sentry.setContext('session', {</span>
-      userId: sessionContext.userId,
-      username: sessionContext.username,
-      sessionId: sessionContext.sessionId,
-      platform: sessionContext.platform,
-      appVersion: sessionContext.appVersion,
+<span class="cstat-no" title="statement not covered" >  try {</span>
+    const response = <span class="cstat-no" title="statement not covered" >await fetch(slackConfig.webhookUrl, {</span>
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(slackPayload),
     });
-<span class="cstat-no" title="statement not covered" >    Sentry.setUser({</span>
-      id: sessionContext.userId,
-      username: sessionContext.username,
-    });
-  }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  if (gameStateContext &amp;&amp; errorTrackingConfig.includeGameState) {</span>
-<span class="cstat-no" title="statement not covered" >    Sentry.setContext('gameState', gameStateContext as Record&lt;string, unknown&gt;);</span>
-<span class="cstat-no" title="statement not covered" >    extra.gameState = gameStateContext;</span>
-  }
-&nbsp;
-<span class="cstat-no" title="statement not covered" >  Sentry.captureException(error, {</span>
-    tags,
-    extra,
-  });
-&nbsp;
-  // Clear context after capturing to prevent leakage
-<span class="cstat-no" title="statement not covered" >  clearContext();</span>
-}
-&nbsp;
-/**
- * Creates an error boundary for wrapping async operations.
- * Catches errors and sends them to Sentry with proper context.
- *
- * @param context - Error context to include
- * @returns Object with safeExecute method
- */
-export function <span class="fstat-no" title="function not covered" >createErrorBoundary(</span>context: ExtendedErrorContext) {
-<span class="cstat-no" title="statement not covered" >  return {</span>
-    /**
-     * Executes a function and captures any errors that occur.
-     * @param fn - The function to execute
-     * @returns The result of the function, or undefined if error
-     */
-<span class="fstat-no" title="function not covered" >    async </span>safeExecute&lt;T&gt;(fn: () =&gt; Promise&lt;T&gt;): Promise&lt;T | undefined&gt; {
-<span class="cstat-no" title="statement not covered" >      try {</span>
-<span class="cstat-no" title="statement not covered" >        return await fn();</span>
-      } catch (error) {
-<span class="cstat-no" title="statement not covered" >        captureException(error as Error, context);</span>
-<span class="cstat-no" title="statement not covered" >        return undefined;</span>
-      }
-    },
-&nbsp;
-    /**
-     * Executes a synchronous function and captures any errors that occur.
-     * @param fn - The function to execute
-     * @returns The result of the function, or undefined if error
-     */
-<span class="fstat-no" title="function not covered" >    safeExecuteSync&lt;</span>T&gt;(fn: () =&gt; T): T | undefined {
-<span class="cstat-no" title="statement not covered" >      try {</span>
-<span class="cstat-no" title="statement not covered" >        return fn();</span>
-      } catch (error) {
-<span class="cstat-no" title="statement not covered" >        captureException(error as Error, context);</span>
-<span class="cstat-no" title="statement not covered" >        return undefined;</span>
-      }
-    },
-  };
-}
-&nbsp;
-/**
- * Higher-order function that wraps an async function with error tracking.
- *
- * @param fn - The function to wrap
- * @param context - Error context to include
- * @returns Wrapped function that captures errors
- */
-export function <span class="fstat-no" title="function not covered" >withErrorTracking&lt;</span>T extends (...args: unknown[]) =&gt; Promise&lt;unknown&gt;&gt;(
-  fn: T,
-  context: ExtendedErrorContext
-): T {
-<span class="cstat-no" title="statement not covered" >  return (<span class="fstat-no" title="function not covered" >async </span>(...args: unknown[]) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      return await fn(...args);</span>
-    } catch (error) {
-<span class="cstat-no" title="statement not covered" >      captureException(error as Error, {</span>
-        ...context,
-        extra: {
-          ...context.extra,
-          functionArgs: JSON.stringify(args),
-        },
-      });
-<span class="cstat-no" title="statement not covered" >      throw error;</span>
+<span class="cstat-no" title="statement not covered" >    if (!response.ok) {</span>
+<span class="cstat-no" title="statement not covered" >      console.error(`[Alerting] Failed to send Slack alert: ${response.statusText}`);</span>
     }
-  }) as T;
+  } catch (error) {
+<span class="cstat-no" title="statement not covered" >    console.error('[Alerting] Error sending Slack alert:', error);</span>
+  }
 }
 &nbsp;
 /**
- * Captures database operation errors with context.
- *
- * @param operation - The database operation (read, write, delete, etc.)
- * @param collection - The collection being operated on
- * @param error - The error that occurred
- * @param context - Additional context
+ * Send alert to generic webhook
  */
-export function <span class="fstat-no" title="function not covered" >captureDatabaseError(</span>
-  operation: 'read' | 'write' | 'delete' | 'list' | 'update',
-  collection: string,
-  error: Error,
-  context: ExtendedErrorContext = <span class="branch-0 cbranch-no" title="branch not covered" >{}</span>
-): void {
-<span class="cstat-no" title="statement not covered" >  captureException(error, {</span>
-    ...context,
-    extra: {
-      ...context.extra,
-      databaseOperation: operation,
-      collection,
-      timestamp: new Date().toISOString(),
+async function <span class="fstat-no" title="function not covered" >sendWebhookAlert(</span>
+  payload: AlertPayload,
+  webhookConfig: AlertingConfig['webhook']
+): Promise&lt;void&gt; {
+<span class="cstat-no" title="statement not covered" >  if (!webhookConfig?.url) {</span>
+<span class="cstat-no" title="statement not covered" >    console.warn('[Alerting] Webhook URL not configured');</span>
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+  const headers: Record&lt;string, string&gt; = <span class="cstat-no" title="statement not covered" >{ ...webhookConfig.headers };</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  if (webhookConfig.authType === 'bearer' &amp;&amp; webhookConfig.token) {</span>
+<span class="cstat-no" title="statement not covered" >    headers['Authorization'] = `Bearer ${webhookConfig.token}`;</span>
+  } else <span class="cstat-no" title="statement not covered" >if (</span>
+    webhookConfig.authType === 'basic' &amp;&amp;
+    webhookConfig.username &amp;&amp;
+    webhookConfig.password
+  ) {
+    const credentials = <span class="cstat-no" title="statement not covered" >Buffer.from(`${webhookConfig.username}:${webhookConfig.password}`).toString(</span>
+      'base64'
+    );
+<span class="cstat-no" title="statement not covered" >    headers['Authorization'] = `Basic ${credentials}`;</span>
+  }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  try {</span>
+    const response = <span class="cstat-no" title="statement not covered" >await fetch(webhookConfig.url, {</span>
+      method: webhookConfig.method,
+      headers,
+      body: JSON.stringify(payload),
+    });
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (!response.ok) {</span>
+<span class="cstat-no" title="statement not covered" >      console.error(`[Alerting] Failed to send webhook alert: ${response.statusText}`);</span>
+    }
+  } catch (error) {
+<span class="cstat-no" title="statement not covered" >    console.error('[Alerting] Error sending webhook alert:', error);</span>
+  }
+}
+&nbsp;
+/**
+ * Send alert via email (SMTP)
+ */
+async function <span class="fstat-no" title="function not covered" >sendEmailAlert(</span>
+  payload: AlertPayload,
+  emailConfig: AlertingConfig['email']
+): Promise&lt;void&gt; {
+  // Note: This is a placeholder implementation
+  // In production, you would use a library like 'nodemailer'
+<span class="cstat-no" title="statement not covered" >  if (!emailConfig?.host) {</span>
+<span class="cstat-no" title="statement not covered" >    console.warn('[Alerting] Email not configured');</span>
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  console.log(`[Alerting] Email alert: ${payload.title} to ${emailConfig.to.join(', ')}`);</span>
+  // Implementation would use nodemailer or similar
+}
+&nbsp;
+/**
+ * Send alert to PagerDuty
+ */
+async function <span class="fstat-no" title="function not covered" >sendPagerDutyAlert(</span>
+  payload: AlertPayload,
+  pagerdutyConfig: AlertingConfig['pagerduty']
+): Promise&lt;void&gt; {
+<span class="cstat-no" title="statement not covered" >  if (!pagerdutyConfig?.apiKey) {</span>
+<span class="cstat-no" title="statement not covered" >    console.warn('[Alerting] PagerDuty not configured');</span>
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+  const urgency: Record&lt;AlertSeverity, 'high' | 'low'&gt; = <span class="cstat-no" title="statement not covered" >{</span>
+    critical: 'high',
+    error: 'high',
+    warning: 'low',
+    info: 'low',
+  };
+&nbsp;
+  const payloadPD = <span class="cstat-no" title="statement not covered" >{</span>
+    routing_key: pagerdutyConfig.integrationKey,
+    event_action: 'trigger',
+    payload: {
+      summary: payload.title,
+      severity: payload.severity,
+      source: payload.source,
+      custom_details: {
+        message: payload.message,
+        tags: payload.tags,
+        metrics: payload.metrics,
+      },
     },
-  });
+    urgency: urgency[payload.severity],
+  };
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  try {</span>
+    const response = <span class="cstat-no" title="statement not covered" >await fetch(`https://events.pagerduty.com/v2/enqueue`, {</span>
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payloadPD),
+    });
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (!response.ok) {</span>
+<span class="cstat-no" title="statement not covered" >      console.error(`[Alerting] Failed to send PagerDuty alert: ${response.statusText}`);</span>
+    }
+  } catch (error) {
+<span class="cstat-no" title="statement not covered" >    console.error('[Alerting] Error sending PagerDuty alert:', error);</span>
+  }
 }
 &nbsp;
 /**
- * Captures cache operation errors with context.
- *
- * @param operation - The cache operation (get, set, delete, etc.)
- * @param cacheName - The name of the cache
- * @param key - The cache key
- * @param error - The error that occurred
- * @param context - Additional context
+ * Send an alert with the given parameters
  */
-export function <span class="fstat-no" title="function not covered" >captureCacheError(</span>
-  operation: 'get' | 'set' | 'delete' | 'clear',
-  cacheName: string,
-  key: string,
-  error: Error,
-  context: ExtendedErrorContext = <span class="branch-0 cbranch-no" title="branch not covered" >{}</span>
-): void {
-<span class="cstat-no" title="statement not covered" >  captureException(error, {</span>
-    ...context,
-    extra: {
-      ...context.extra,
-      cacheOperation: operation,
-      cacheName,
-      cacheKey: key,
-      timestamp: new Date().toISOString(),
-    },
-  });
-}
-&nbsp;
-/**
- * Legacy function for backward compatibility.
- * @deprecated Use captureException with ExtendedErrorContext instead
- */
-export function <span class="fstat-no" title="function not covered" >captureExceptionLegacy(</span>
-  error: Error,
-  context: {
-    userId?: string;
-    rpc?: string;
-    extra?: Record&lt;string, unknown&gt;;
-  } = <span class="branch-0 cbranch-no" title="branch not covered" >{}</span>
-): void {
-<span class="cstat-no" title="statement not covered" >  captureException(error, context);</span>
-}
-&nbsp;
-/**
- * Legacy function for backward compatibility.
- * @deprecated Use captureMessage with ExtendedErrorContext instead
- */
-export function <span class="fstat-no" title="function not covered" >captureMessageLegacy(</span>
+export async function sendAlert(
+  title: string,
   message: string,
-  level: 'info' | 'warning' | 'error' = <span class="branch-0 cbranch-no" title="branch not covered" >'info',</span>
+  severity: AlertSeverity,
+  tags: Record&lt;string, string&gt; = {},
+  metrics: Record&lt;string, number&gt; = {}
+): Promise&lt;void&gt; {
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!isAlertingEnabled()) {
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+  const provider = getAlertProvider(severity);
+  const alertKey = `${title}:${severity}`;
+&nbsp;
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!shouldSendAlert(alertKey, severity)) {
+<span class="cstat-no" title="statement not covered" >    console.log(`[Alerting] Alert suppressed due to cooldown: ${title}`);</span>
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+  const alertPayload: AlertPayload = {
+    title,
+    message,
+    severity,
+    tags: {
+      ...config.alerting.tags,
+      ...tags,
+    },
+    metrics,
+    timestamp: Date.now(),
+    source: 'armored-archer-backend',
+  };
+&nbsp;
+  await routeAlert(alertPayload, provider);
+  updateAlertState(alertKey, severity);
+&nbsp;
+  // Also send to Sentry for error-level alerts
+  if (severity === 'critical' || severity === 'error') {
+    // Map critical to error for Sentry compatibility
+    const sentrySeverity = severity === 'critical' ? <span class="branch-0 cbranch-no" title="branch not covered" >'error' </span>: severity;
+    captureMessage(`${title}: ${message}`, sentrySeverity, {
+      extra: { ...tags, ...metrics },
+    });
+  }
+}
+&nbsp;
+/**
+ * Trigger health alert based on metric threshold
+ */
+export function triggerHealthAlert(
+  metricName: string,
+  value: number,
+  currentMetrics: Record&lt;string, number&gt;
+): void {
+  const severity = shouldTriggerHealthAlert(
+    metricName as keyof typeof alertingConfig.healthAlerts,
+    value
+  );
+&nbsp;
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!severity) {
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+  const metricLabel = metricName.replace(/([A-Z])/g, ' $1').trim(); // Convert camelCase to spaces
+  const title = `Health Alert: ${metricLabel}`;
+  const message = `Current value: ${value}% (threshold: ${severity})`;
+&nbsp;
+  sendAlert(title, message, severity, { metric: metricName }, currentMetrics).catch(<span class="fstat-no" title="function not covered" >(e</span>rr) =&gt; {
+<span class="cstat-no" title="statement not covered" >    console.error('[Alerting] Failed to send health alert:', err);</span>
+  });
+}
+&nbsp;
+/**
+ * Trigger metric alert based on custom threshold
+ */
+export function triggerMetricAlert(
+  metricName: string,
+  value: number,
+  threshold: number,
+  severity: AlertSeverity,
+  additionalTags: Record&lt;string, string&gt; = {}
+): void {
+  const title = `Metric Alert: ${metricName}`;
+  const message = `Current value: ${value} (threshold: ${threshold})`;
+&nbsp;
+  sendAlert(title, message, severity, { metric: metricName, ...additionalTags }).catch(<span class="fstat-no" title="function not covered" >(e</span>rr) =&gt; {
+<span class="cstat-no" title="statement not covered" >    console.error('[Alerting] Failed to send metric alert:', err);</span>
+  });
+}
+&nbsp;
+/**
+ * Send error alert with context
+ */
+export function sendErrorAlert(
+  error: Error,
   context: {
     userId?: string;
     rpc?: string;
     extra?: Record&lt;string, unknown&gt;;
   } = <span class="branch-0 cbranch-no" title="branch not covered" >{}</span>
 ): void {
-<span class="cstat-no" title="statement not covered" >  captureMessage(message, level, context);</span>
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!isAlertingEnabled()) {
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+  captureException(error, { userId: context.userId, rpc: context.rpc, extra: context.extra });
+&nbsp;
+  const title = `Error: ${error.message}`;
+  const message = `An error occurred in ${context.rpc || 'unknown RPC'}`;
+&nbsp;
+  sendAlert(title, message, 'error', {
+    errorType: error.constructor.name,
+    userId: context.userId || 'unknown',
+    rpc: context.rpc || 'unknown',
+  }).catch(<span class="fstat-no" title="function not covered" >(e</span>rr) =&gt; {
+<span class="cstat-no" title="statement not covered" >    console.error('[Alerting] Failed to send error alert:', err);</span>
+  });
+}
+&nbsp;
+/**
+ * Get alert statistics
+ */
+export function getAlertStats(): Record&lt;string, { lastAlertTime: number; alertCount: number }&gt; {
+  const stats: Record&lt;string, { lastAlertTime: number; alertCount: number }&gt; = {};
+&nbsp;
+  for (const [key, state] of alertState.entries()) {
+<span class="cstat-no" title="statement not covered" >    stats[key] = { lastAlertTime: state.lastAlertTime, alertCount: state.alertCount };</span>
+  }
+&nbsp;
+  return stats;
+}
+&nbsp;
+/**
+ * Clear alert state (useful for testing)
+ */
+export function clearAlertState(): void {
+  alertState.clear();
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -1705,7 +1363,7 @@ export function <span class="fstat-no" title="function not covered" >captureMess
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-07T18:55:11.010Z
+                at 2026-03-07T18:55:11.092Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

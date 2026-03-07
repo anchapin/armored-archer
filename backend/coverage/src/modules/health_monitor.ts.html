@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/config/alerting.ts</title>
+    <title>Code coverage report for src/modules/health_monitor.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../../prettify.css" />
     <link rel="stylesheet" href="../../base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/config</a> alerting.ts</h1>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/modules</a> health_monitor.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">72.78% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/32</span>
+                <span class='fraction'>107/147</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">34.32% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/80</span>
+                <span class='fraction'>23/67</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">94.11% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/8</span>
+                <span class='fraction'>16/17</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">72.78% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/28</span>
+                <span class='fraction'>107/147</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -421,7 +421,66 @@
 <a name='L356'></a><a href='#L356'>356</a>
 <a name='L357'></a><a href='#L357'>357</a>
 <a name='L358'></a><a href='#L358'>358</a>
-<a name='L359'></a><a href='#L359'>359</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L359'></a><a href='#L359'>359</a>
+<a name='L360'></a><a href='#L360'>360</a>
+<a name='L361'></a><a href='#L361'>361</a>
+<a name='L362'></a><a href='#L362'>362</a>
+<a name='L363'></a><a href='#L363'>363</a>
+<a name='L364'></a><a href='#L364'>364</a>
+<a name='L365'></a><a href='#L365'>365</a>
+<a name='L366'></a><a href='#L366'>366</a>
+<a name='L367'></a><a href='#L367'>367</a>
+<a name='L368'></a><a href='#L368'>368</a>
+<a name='L369'></a><a href='#L369'>369</a>
+<a name='L370'></a><a href='#L370'>370</a>
+<a name='L371'></a><a href='#L371'>371</a>
+<a name='L372'></a><a href='#L372'>372</a>
+<a name='L373'></a><a href='#L373'>373</a>
+<a name='L374'></a><a href='#L374'>374</a>
+<a name='L375'></a><a href='#L375'>375</a>
+<a name='L376'></a><a href='#L376'>376</a>
+<a name='L377'></a><a href='#L377'>377</a>
+<a name='L378'></a><a href='#L378'>378</a>
+<a name='L379'></a><a href='#L379'>379</a>
+<a name='L380'></a><a href='#L380'>380</a>
+<a name='L381'></a><a href='#L381'>381</a>
+<a name='L382'></a><a href='#L382'>382</a>
+<a name='L383'></a><a href='#L383'>383</a>
+<a name='L384'></a><a href='#L384'>384</a>
+<a name='L385'></a><a href='#L385'>385</a>
+<a name='L386'></a><a href='#L386'>386</a>
+<a name='L387'></a><a href='#L387'>387</a>
+<a name='L388'></a><a href='#L388'>388</a>
+<a name='L389'></a><a href='#L389'>389</a>
+<a name='L390'></a><a href='#L390'>390</a>
+<a name='L391'></a><a href='#L391'>391</a>
+<a name='L392'></a><a href='#L392'>392</a>
+<a name='L393'></a><a href='#L393'>393</a>
+<a name='L394'></a><a href='#L394'>394</a>
+<a name='L395'></a><a href='#L395'>395</a>
+<a name='L396'></a><a href='#L396'>396</a>
+<a name='L397'></a><a href='#L397'>397</a>
+<a name='L398'></a><a href='#L398'>398</a>
+<a name='L399'></a><a href='#L399'>399</a>
+<a name='L400'></a><a href='#L400'>400</a>
+<a name='L401'></a><a href='#L401'>401</a>
+<a name='L402'></a><a href='#L402'>402</a>
+<a name='L403'></a><a href='#L403'>403</a>
+<a name='L404'></a><a href='#L404'>404</a>
+<a name='L405'></a><a href='#L405'>405</a>
+<a name='L406'></a><a href='#L406'>406</a>
+<a name='L407'></a><a href='#L407'>407</a>
+<a name='L408'></a><a href='#L408'>408</a>
+<a name='L409'></a><a href='#L409'>409</a>
+<a name='L410'></a><a href='#L410'>410</a>
+<a name='L411'></a><a href='#L411'>411</a>
+<a name='L412'></a><a href='#L412'>412</a>
+<a name='L413'></a><a href='#L413'>413</a>
+<a name='L414'></a><a href='#L414'>414</a>
+<a name='L415'></a><a href='#L415'>415</a>
+<a name='L416'></a><a href='#L416'>416</a>
+<a name='L417'></a><a href='#L417'>417</a>
+<a name='L418'></a><a href='#L418'>418</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -432,53 +491,67 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -486,27 +559,46 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">120x</span>
+<span class="cline-any cline-yes">600x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">120x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -515,6 +607,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -523,6 +616,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -530,6 +624,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -537,6 +632,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -544,6 +640,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -551,25 +648,59 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -585,18 +716,76 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -612,16 +801,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -629,514 +808,512 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">14x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { AppConfig } from './index';
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
+ * Health Monitor Module
+ *
+ * This module provides continuous health monitoring for the Nakama backend:
+ * - System health checks (CPU, memory, disk usage)
+ * - Database health monitoring
+ * - Custom metric monitoring (active connections, match queue, etc.)
+ * - Automatic alerting when thresholds are exceeded
+ * - Integration with Prometheus metrics
+ */
+&nbsp;
+import * as os from 'os';
+import { Gauge, Registry } from 'prom-client';
+import { alertingConfig, isAlertingEnabled } from '../config/alerting';
+import { Runtime } from '../types/nakama';
+import { triggerHealthAlert, triggerMetricAlert } from './alerting';
+&nbsp;
+// Create a dedicated registry for health metrics
+const healthRegistry = new Registry();
 &nbsp;
 /**
- * Alert severity levels
+ * Health metrics
  */
-export type AlertSeverity = 'critical' | 'error' | 'warning' | 'info';
+const healthCheckCpuUsage = new Gauge({
+  name: 'armored_archer_health_cpu_usage_percent',
+  help: 'Current CPU usage percentage',
+  registers: [healthRegistry],
+});
+&nbsp;
+const healthCheckMemoryUsage = new Gauge({
+  name: 'armored_archer_health_memory_usage_percent',
+  help: 'Current memory usage percentage',
+  registers: [healthRegistry],
+});
+&nbsp;
+const healthCheckDiskUsage = new Gauge({
+  name: 'armored_archer_health_disk_usage_percent',
+  help: 'Current disk usage percentage',
+  registers: [healthRegistry],
+});
+&nbsp;
+const healthCheckDbConnections = new Gauge({
+  name: 'armored_archer_health_db_connections_percent',
+  help: 'Current database connection usage percentage',
+  registers: [healthRegistry],
+});
+&nbsp;
+const healthCheckResponseTime = new Gauge({
+  name: 'armored_archer_health_response_time_ms',
+  help: 'Current average response time in milliseconds',
+  registers: [healthRegistry],
+});
+&nbsp;
+const healthCheckErrorRate = new Gauge({
+  name: 'armored_archer_health_error_rate_percent',
+  help: 'Current error rate percentage',
+  registers: [healthRegistry],
+});
+&nbsp;
+const healthCheckActiveConnections = new Gauge({
+  name: 'armored_archer_health_active_connections',
+  help: 'Current number of active connections',
+  registers: [healthRegistry],
+});
+&nbsp;
+const healthCheckMatchQueue = new Gauge({
+  name: 'armored_archer_health_match_queue_size',
+  help: 'Current match queue size',
+  registers: [healthRegistry],
+});
+&nbsp;
+const healthStatus = new Gauge({
+  name: 'armored_archer_health_status',
+  help: 'Overall health status (1=healthy, 0=unhealthy)',
+  labelNames: ['component'],
+  registers: [healthRegistry],
+});
+&nbsp;
+// Health monitoring state
+let healthMonitorInterval: NodeJS.Timeout | null = null;
+let isMonitoring = false;
 &nbsp;
 /**
- * Alert provider types
+ * Get the health metrics registry
  */
-export type AlertProvider = 'pagerduty' | 'slack' | 'webhook' | 'email' | 'none';
-&nbsp;
-/**
- * PagerDuty configuration
- */
-export interface PagerDutyConfig {
-  apiKey: string;
-  serviceId: string;
-  integrationKey: string;
+export function getHealthRegistry(): Registry {
+  return healthRegistry;
 }
 &nbsp;
-// Re-export AppConfig for external use
-export type { AppConfig };
-&nbsp;
 /**
- * Slack configuration
+ * Get current CPU usage percentage
  */
-export interface SlackConfig {
-  webhookUrl: string;
-  channel: string;
-  username: string;
-  iconEmoji: string;
+function getCpuUsage(): number {
+  const cpus = os.cpus();
+  let totalIdle = 0;
+  let totalTick = 0;
+&nbsp;
+  for (const cpu of cpus) {
+    for (const type in cpu.times) {
+      totalTick += cpu.times[type as keyof typeof cpu.times];
+    }
+    totalIdle += cpu.times.idle;
+  }
+&nbsp;
+  const idle = totalIdle / cpus.length;
+  const total = totalTick / cpus.length;
+  const usage = 100 - (100 * idle) / total;
+&nbsp;
+  return Math.round(usage * 100) / 100;
 }
 &nbsp;
 /**
- * Generic webhook configuration
+ * Get current memory usage percentage
  */
-export interface WebhookConfig {
-  url: string;
-  method: 'POST' | 'PUT';
-  headers: Record&lt;string, string&gt;;
-  authType: 'none' | 'basic' | 'bearer';
-  username?: string;
-  password?: string;
-  token?: string;
+function getMemoryUsage(): number {
+  const totalMemory = os.totalmem();
+  const freeMemory = os.freemem();
+  const usedMemory = totalMemory - freeMemory;
+  return Math.round((usedMemory / totalMemory) * 100 * 100) / 100;
 }
 &nbsp;
 /**
- * Email notification configuration
+ * Get current disk usage percentage (placeholder - would need fs.statfs in real implementation)
  */
-export interface EmailConfig {
-  host: string;
-  port: number;
-  secure: boolean;
-  username: string;
-  password: string;
-  from: string;
-  to: string[];
+function getDiskUsage(): number {
+  // In a real implementation, you would use fs.statfs() or similar
+  // For now, return a placeholder value
+  return 0;
 }
 &nbsp;
 /**
- * Alert routing configuration
- * Maps specific alert types to providers
+ * Get current database connection usage (placeholder - would need actual DB metrics)
  */
-export interface AlertRouting {
-  /** Provider to use for critical alerts */
-  critical: AlertProvider;
-  /** Provider to use for error alerts */
-  error: AlertProvider;
-  /** Provider to use for warning alerts */
-  warning: AlertProvider;
-  /** Provider to use for info alerts */
-  info: AlertProvider;
+function getDbConnectionUsage(): number {
+  // In a real implementation, you would query the database for connection count
+  // For now, return a placeholder value
+  return 0;
 }
 &nbsp;
 /**
- * Health check alert thresholds
+ * Get current active connections (placeholder - would need actual connection tracking)
  */
-export interface HealthAlertThresholds {
-  /** CPU usage percentage that triggers warning */
-  cpuWarningPercent: number;
-  /** CPU usage percentage that triggers critical */
-  cpuCriticalPercent: number;
-  /** Memory usage percentage that triggers warning */
-  memoryWarningPercent: number;
-  /** Memory usage percentage that triggers critical */
-  memoryCriticalPercent: number;
-  /** Database connection usage percentage that triggers warning */
-  dbConnectionsWarningPercent: number;
-  /** Database connection usage percentage that triggers critical */
-  dbConnectionsCriticalPercent: number;
-  /** Disk usage percentage that triggers warning */
-  diskWarningPercent: number;
-  /** Disk usage percentage that triggers critical */
-  diskCriticalPercent: number;
-  /** Response time in ms that triggers warning */
-  responseTimeWarningMs: number;
-  /** Response time in ms that triggers critical */
-  responseTimeCriticalMs: number;
-  /** Error rate percentage that triggers warning */
-  errorRateWarningPercent: number;
-  /** Error rate percentage that triggers critical */
-  errorRateCriticalPercent: number;
+function getActiveConnections(): number {
+  // In a real implementation, you would get this from Nakama or a connection tracker
+  return 0;
 }
 &nbsp;
 /**
- * Metric-based alert thresholds
+ * Get current match queue size (placeholder - would need actual matchmaker metrics)
  */
-export interface MetricAlertThresholds {
-  /** Active connections warning threshold */
-  activeConnectionsWarning: number;
-  /** Active connections critical threshold */
-  activeConnectionsCritical: number;
-  /** Match queue size warning threshold */
-  matchQueueWarning: number;
-  /** Match queue size critical threshold */
-  matchQueueCritical: number;
-  /** Match wait time warning in seconds */
-  matchWaitTimeWarningSec: number;
-  /** Match wait time critical in seconds */
-  matchWaitTimeCriticalSec: number;
-  /** Database query time warning in ms */
-  dbQueryTimeWarningMs: number;
-  /** Database query time critical in ms */
-  dbQueryTimeCriticalMs: number;
-  /** Failed logins warning threshold per minute */
-  failedLoginsWarning: number;
-  /** Failed logins critical threshold per minute */
-  failedLoginsCritical: number;
-  /** Purchase failures warning threshold per minute */
-  purchaseFailuresWarning: number;
-  /** Purchase failures critical threshold per minute */
-  purchaseFailuresCritical: number;
+function getMatchQueueSize(): number {
+  // In a real implementation, you would get this from the matchmaker
+  return 0;
 }
 &nbsp;
 /**
- * Alert cooldown periods (in seconds)
- * Prevents alert fatigue by limiting how often the same alert can be sent
+ * Get current response time (placeholder - would need actual latency tracking)
  */
-export interface AlertCooldowns {
-  /** Cooldown for critical alerts (default: 300s = 5 minutes) */
-  critical: number;
-  /** Cooldown for error alerts (default: 600s = 10 minutes) */
-  error: number;
-  /** Cooldown for warning alerts (default: 900s = 15 minutes) */
-  warning: number;
-  /** Cooldown for info alerts (default: 1800s = 30 minutes) */
-  info: number;
+function getResponseTime(): number {
+  // In a real implementation, you would calculate this from actual request metrics
+  return 0;
 }
 &nbsp;
 /**
- * Complete alerting configuration
+ * Get current error rate (placeholder - would need actual error tracking)
  */
-export interface AlertingConfig {
-  /** Enable or disable alerting system */
-  enabled: boolean;
-  /** Default provider to use when not specified in routing */
-  defaultProvider: AlertProvider;
-  /** Alert routing configuration */
-  routing: AlertRouting;
-  /** PagerDuty configuration */
-  pagerduty?: PagerDutyConfig;
-  /** Slack configuration */
-  slack?: SlackConfig;
-  /** Generic webhook configuration */
-  webhook?: WebhookConfig;
-  /** Email configuration */
-  email?: EmailConfig;
-  /** Health check alert thresholds */
-  healthAlerts: HealthAlertThresholds;
-  /** Metric-based alert thresholds */
-  metricAlerts: MetricAlertThresholds;
-  /** Alert cooldown periods */
-  cooldowns: AlertCooldowns;
-  /** Minimum environment level to send alerts (development, staging, production) */
-  minEnvironmentLevel: 'development' | 'staging' | 'production';
-  /** Custom tags to include in all alerts */
-  tags: Record&lt;string, string&gt;;
+function getErrorRate(): number {
+  // In a real implementation, you would calculate this from actual error counts
+  return 0;
 }
 &nbsp;
 /**
- * Parse boolean environment variable
+ * Perform health check and update metrics
  */
-function <span class="fstat-no" title="function not covered" >parseBoolean(</span>value: string | undefined, defaultValue: boolean): boolean {
-<span class="cstat-no" title="statement not covered" >  if (value === undefined) <span class="cstat-no" title="statement not covered" >return defaultValue;</span></span>
-<span class="cstat-no" title="statement not covered" >  return value.toLowerCase() === 'true';</span>
-}
+export function performHealthCheck(): Record&lt;string, number&gt; {
+  const cpuUsage = getCpuUsage();
+  const memoryUsage = getMemoryUsage();
+  const diskUsage = getDiskUsage();
+  const dbConnections = getDbConnectionUsage();
+  const activeConnections = getActiveConnections();
+  const matchQueue = getMatchQueueSize();
+  const responseTime = getResponseTime();
+  const errorRate = getErrorRate();
 &nbsp;
-/**
- * Parse number from environment variable with default
- */
-function <span class="fstat-no" title="function not covered" >parseNumber(</span>value: string | undefined, defaultValue: number): number {
-<span class="cstat-no" title="statement not covered" >  if (value === undefined) <span class="cstat-no" title="statement not covered" >return defaultValue;</span></span>
-  const parsed = <span class="cstat-no" title="statement not covered" >parseInt(value, 10);</span>
-<span class="cstat-no" title="statement not covered" >  return isNaN(parsed) ? defaultValue : parsed;</span>
-}
+  // Update Prometheus metrics
+  healthCheckCpuUsage.set(cpuUsage);
+  healthCheckMemoryUsage.set(memoryUsage);
+  healthCheckDiskUsage.set(diskUsage);
+  healthCheckDbConnections.set(dbConnections);
+  healthCheckResponseTime.set(responseTime);
+  healthCheckErrorRate.set(errorRate);
+  healthCheckActiveConnections.set(activeConnections);
+  healthCheckMatchQueue.set(matchQueue);
 &nbsp;
-/**
- * Parse comma-separated string array from environment variable
- */
-function <span class="fstat-no" title="function not covered" >parseStringArray(</span>value: string | undefined): string[] {
-<span class="cstat-no" title="statement not covered" >  if (!value) <span class="cstat-no" title="statement not covered" >return [];</span></span>
-<span class="cstat-no" title="statement not covered" >  return value.split(',').map(<span class="fstat-no" title="function not covered" >(s</span>) =&gt; <span class="cstat-no" title="statement not covered" >s.trim())</span>;</span>
-}
+  // Determine overall health
+  const healthAlerts = alertingConfig.healthAlerts;
+  let overallHealthy = true;
 &nbsp;
-/**
- * Load alerting configuration from environment variables
- */
-export const <span class="cstat-no" title="statement not covered" >alertingConfig: AlertingConfig = {</span>
-  enabled: parseBoolean(process.env.ALERTING_ENABLED, false),
-  defaultProvider: (process.env.ALERTING_DEFAULT_PROVIDER || 'none') as AlertProvider,
-  routing: {
-    critical: (process.env.ALERTING_ROUTING_CRITICAL || 'pagerduty') as AlertProvider,
-    error: (process.env.ALERTING_ROUTING_ERROR || 'slack') as AlertProvider,
-    warning: (process.env.ALERTING_ROUTING_WARNING || 'slack') as AlertProvider,
-    info: (process.env.ALERTING_ROUTING_INFO || 'none') as AlertProvider,
-  },
-  pagerduty: process.env.PAGERDUTY_API_KEY
-    ? {
-        apiKey: process.env.PAGERDUTY_API_KEY || '',
-        serviceId: process.env.PAGERDUTY_SERVICE_ID || '',
-        integrationKey: process.env.PAGERDUTY_INTEGRATION_KEY || '',
-      }
-    : undefined,
-  slack: process.env.SLACK_WEBHOOK_URL
-    ? {
-        webhookUrl: process.env.SLACK_WEBHOOK_URL || '',
-        channel: process.env.SLACK_CHANNEL || '#alerts',
-        username: process.env.SLACK_USERNAME || 'Armored Archer Alert Bot',
-        iconEmoji: process.env.SLACK_ICON_EMOJI || ':warning:',
-      }
-    : undefined,
-  webhook: process.env.ALERT_WEBHOOK_URL
-    ? {
-        url: process.env.ALERT_WEBHOOK_URL || '',
-        method: (process.env.ALERT_WEBHOOK_METHOD || 'POST') as 'POST' | 'PUT',
-        headers: process.env.ALERT_WEBHOOK_HEADERS
-          ? JSON.parse(process.env.ALERT_WEBHOOK_HEADERS)
-          : { 'Content-Type': 'application/json' },
-        authType: (process.env.ALERT_WEBHOOK_AUTH_TYPE || 'none') as 'none' | 'basic' | 'bearer',
-        username: process.env.ALERT_WEBHOOK_USERNAME,
-        password: process.env.ALERT_WEBHOOK_PASSWORD,
-        token: process.env.ALERT_WEBHOOK_TOKEN,
-      }
-    : undefined,
-  email: process.env.SMTP_HOST
-    ? {
-        host: process.env.SMTP_HOST || '',
-        port: parseNumber(process.env.SMTP_PORT, 587),
-        secure: parseBoolean(process.env.SMTP_SECURE, false),
-        username: process.env.SMTP_USERNAME || '',
-        password: process.env.SMTP_PASSWORD || '',
-        from: process.env.SMTP_FROM || 'alerts@armored-archer.com',
-        to: parseStringArray(process.env.SMTP_TO),
-      }
-    : undefined,
-  healthAlerts: {
-    cpuWarningPercent: parseNumber(process.env.ALERT_CPU_WARNING_PERCENT, 70),
-    cpuCriticalPercent: parseNumber(process.env.ALERT_CPU_CRITICAL_PERCENT, 90),
-    memoryWarningPercent: parseNumber(process.env.ALERT_MEMORY_WARNING_PERCENT, 75),
-    memoryCriticalPercent: parseNumber(process.env.ALERT_MEMORY_CRITICAL_PERCENT, 90),
-    dbConnectionsWarningPercent: parseNumber(process.env.ALERT_DB_CONNECTIONS_WARNING_PERCENT, 70),
-    dbConnectionsCriticalPercent: parseNumber(
-      process.env.ALERT_DB_CONNECTIONS_CRITICAL_PERCENT,
-      90
-    ),
-    diskWarningPercent: parseNumber(process.env.ALERT_DISK_WARNING_PERCENT, 80),
-    diskCriticalPercent: parseNumber(process.env.ALERT_DISK_CRITICAL_PERCENT, 95),
-    responseTimeWarningMs: parseNumber(process.env.ALERT_RESPONSE_TIME_WARNING_MS, 500),
-    responseTimeCriticalMs: parseNumber(process.env.ALERT_RESPONSE_TIME_CRITICAL_MS, 2000),
-    errorRateWarningPercent: parseNumber(process.env.ALERT_ERROR_RATE_WARNING_PERCENT, 5),
-    errorRateCriticalPercent: parseNumber(process.env.ALERT_ERROR_RATE_CRITICAL_PERCENT, 10),
-  },
-  metricAlerts: {
-    activeConnectionsWarning: parseNumber(process.env.ALERT_ACTIVE_CONNECTIONS_WARNING, 1000),
-    activeConnectionsCritical: parseNumber(process.env.ALERT_ACTIVE_CONNECTIONS_CRITICAL, 2000),
-    matchQueueWarning: parseNumber(process.env.ALERT_MATCH_QUEUE_WARNING, 50),
-    matchQueueCritical: parseNumber(process.env.ALERT_MATCH_QUEUE_CRITICAL, 100),
-    matchWaitTimeWarningSec: parseNumber(process.env.ALERT_MATCH_WAIT_TIME_WARNING_SEC, 60),
-    matchWaitTimeCriticalSec: parseNumber(process.env.ALERT_MATCH_WAIT_TIME_CRITICAL_SEC, 180),
-    dbQueryTimeWarningMs: parseNumber(process.env.ALERT_DB_QUERY_TIME_WARNING_MS, 100),
-    dbQueryTimeCriticalMs: parseNumber(process.env.ALERT_DB_QUERY_TIME_CRITICAL_MS, 500),
-    failedLoginsWarning: parseNumber(process.env.ALERT_FAILED_LOGINS_WARNING, 10),
-    failedLoginsCritical: parseNumber(process.env.ALERT_FAILED_LOGINS_CRITICAL, 50),
-    purchaseFailuresWarning: parseNumber(process.env.ALERT_PURCHASE_FAILURES_WARNING, 5),
-    purchaseFailuresCritical: parseNumber(process.env.ALERT_PURCHASE_FAILURES_CRITICAL, 20),
-  },
-  cooldowns: {
-    critical: parseNumber(process.env.ALERT_COOLDOWN_CRITICAL, 300),
-    error: parseNumber(process.env.ALERT_COOLDOWN_ERROR, 600),
-    warning: parseNumber(process.env.ALERT_COOLDOWN_WARNING, 900),
-    info: parseNumber(process.env.ALERT_COOLDOWN_INFO, 1800),
-  },
-  minEnvironmentLevel: (process.env.ALERTING_MIN_ENV_LEVEL || 'staging') as
-    | 'development'
-    | 'staging'
-    | 'production',
-  tags: {
-    service: 'armored-archer-backend',
-    version: process.env.APP_VERSION || 'unknown',
-  },
-};
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (cpuUsage &gt;= healthAlerts.cpuCriticalPercent) {
+<span class="cstat-no" title="statement not covered" >    overallHealthy = false;</span>
+  } else <span class="missing-if-branch" title="if path not taken" >I</span>if (memoryUsage &gt;= healthAlerts.memoryCriticalPercent) {
+<span class="cstat-no" title="statement not covered" >    overallHealthy = false;</span>
+  } else <span class="missing-if-branch" title="if path not taken" >I</span>if (diskUsage &gt;= healthAlerts.diskCriticalPercent) {
+<span class="cstat-no" title="statement not covered" >    overallHealthy = false;</span>
+  } else <span class="missing-if-branch" title="if path not taken" >I</span>if (dbConnections &gt;= healthAlerts.dbConnectionsCriticalPercent) {
+<span class="cstat-no" title="statement not covered" >    overallHealthy = false;</span>
+  }
 &nbsp;
-/**
- * Check if alerting is enabled for the current environment
- */
-<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >i</span>sAlertingEnabled(</span>): boolean {
-  const environmentLevels: Record&lt;string, number&gt; = <span class="cstat-no" title="statement not covered" >{</span>
-    development: 0,
-    staging: 1,
-    production: 2,
+  healthStatus.set({ component: 'overall' }, overallHealthy ? 1 : <span class="branch-1 cbranch-no" title="branch not covered" >0)</span>;
+  healthStatus.set({ component: 'cpu' }, cpuUsage &lt; healthAlerts.cpuCriticalPercent ? 1 : <span class="branch-1 cbranch-no" title="branch not covered" >0)</span>;
+  healthStatus.set(
+    { component: 'memory' },
+    memoryUsage &lt; healthAlerts.memoryCriticalPercent ? 1 : <span class="branch-1 cbranch-no" title="branch not covered" >0</span>
+  );
+  healthStatus.set({ component: 'disk' }, diskUsage &lt; healthAlerts.diskCriticalPercent ? 1 : <span class="branch-1 cbranch-no" title="branch not covered" >0)</span>;
+  healthStatus.set(
+    { component: 'database' },
+    dbConnections &lt; healthAlerts.dbConnectionsCriticalPercent ? 1 : <span class="branch-1 cbranch-no" title="branch not covered" >0</span>
+  );
+&nbsp;
+  return {
+    cpuUsage,
+    memoryUsage,
+    diskUsage,
+    dbConnections,
+    activeConnections,
+    matchQueue,
+    responseTime,
+    errorRate,
   };
-&nbsp;
-  const currentLevel = <span class="cstat-no" title="statement not covered" >environmentLevels[process.env.NODE_ENV || 'development'];</span>
-  const minLevel = <span class="cstat-no" title="statement not covered" >environmentLevels[alertingConfig.minEnvironmentLevel];</span>
-&nbsp;
-<span class="cstat-no" title="statement not covered" >  return alertingConfig.enabled &amp;&amp; currentLevel &gt;= minLevel;</span>
 }
 &nbsp;
 /**
- * Get the provider for a specific severity level
+ * Check health metrics against thresholds and trigger alerts
  */
-<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >g</span>etAlertProvider(</span>severity: AlertSeverity): AlertProvider {
-<span class="cstat-no" title="statement not covered" >  return alertingConfig.routing[severity] || alertingConfig.defaultProvider;</span>
-}
-&nbsp;
-/**
- * Get cooldown period for a specific severity level
- */
-<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >g</span>etAlertCooldown(</span>severity: AlertSeverity): number {
-<span class="cstat-no" title="statement not covered" >  return alertingConfig.cooldowns[severity] || alertingConfig.cooldowns.info;</span>
-}
-&nbsp;
-/**
- * Check if health alerts are enabled and should trigger
- */
-<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >s</span>houldTriggerHealthAlert(</span>
-  metric: keyof AlertingConfig['healthAlerts'],
-  value: number
-): AlertSeverity | null {
-  const thresholds = <span class="cstat-no" title="statement not covered" >alertingConfig.healthAlerts;</span>
-  const metricKey = <span class="cstat-no" title="statement not covered" >metric as keyof typeof thresholds;</span>
-&nbsp;
-<span class="cstat-no" title="statement not covered" >  if (metricKey.includes('Critical') &amp;&amp; typeof thresholds[metricKey] === 'number') {</span>
-<span class="cstat-no" title="statement not covered" >    if (value &gt;= (thresholds[metricKey as keyof typeof thresholds] as number)) {</span>
-<span class="cstat-no" title="statement not covered" >      return 'critical';</span>
-    }
-  }
-<span class="cstat-no" title="statement not covered" >  if (metricKey.includes('Warning') &amp;&amp; typeof thresholds[metricKey] === 'number') {</span>
-<span class="cstat-no" title="statement not covered" >    if (value &gt;= (thresholds[metricKey as keyof typeof thresholds] as number)) {</span>
-<span class="cstat-no" title="statement not covered" >      return 'warning';</span>
-    }
+function checkHealthThresholds(metrics: Record&lt;string, number&gt;): void {
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!isAlertingEnabled()) {
+<span class="cstat-no" title="statement not covered" >    return;</span>
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return null;</span>
+  const healthAlerts = alertingConfig.healthAlerts;
+  const currentMetrics = metrics;
+&nbsp;
+  // Check CPU
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (metrics.cpuUsage &gt;= healthAlerts.cpuCriticalPercent) {
+<span class="cstat-no" title="statement not covered" >    triggerHealthAlert('cpuCriticalPercent', metrics.cpuUsage, currentMetrics);</span>
+  } else <span class="missing-if-branch" title="if path not taken" >I</span>if (metrics.cpuUsage &gt;= healthAlerts.cpuWarningPercent) {
+<span class="cstat-no" title="statement not covered" >    triggerHealthAlert('cpuWarningPercent', metrics.cpuUsage, currentMetrics);</span>
+  }
+&nbsp;
+  // Check Memory
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (metrics.memoryUsage &gt;= healthAlerts.memoryCriticalPercent) {
+<span class="cstat-no" title="statement not covered" >    triggerHealthAlert('memoryCriticalPercent', metrics.memoryUsage, currentMetrics);</span>
+  } else <span class="missing-if-branch" title="else path not taken" >E</span>if (metrics.memoryUsage &gt;= healthAlerts.memoryWarningPercent) {
+    triggerHealthAlert('memoryWarningPercent', metrics.memoryUsage, currentMetrics);
+  }
+&nbsp;
+  // Check Disk
+<span class="cstat-no" title="statement not covered" >  if (metrics.diskUsage &gt;= healthAlerts.diskCriticalPercent) {</span>
+<span class="cstat-no" title="statement not covered" >    triggerHealthAlert('diskCriticalPercent', metrics.diskUsage, currentMetrics);</span>
+  } else <span class="cstat-no" title="statement not covered" >if (metrics.diskUsage &gt;= healthAlerts.diskWarningPercent) {</span>
+<span class="cstat-no" title="statement not covered" >    triggerHealthAlert('diskWarningPercent', metrics.diskUsage, currentMetrics);</span>
+  }
+&nbsp;
+  // Check DB Connections
+<span class="cstat-no" title="statement not covered" >  if (metrics.dbConnections &gt;= healthAlerts.dbConnectionsCriticalPercent) {</span>
+<span class="cstat-no" title="statement not covered" >    triggerHealthAlert('dbConnectionsCriticalPercent', metrics.dbConnections, currentMetrics);</span>
+  } else <span class="cstat-no" title="statement not covered" >if (metrics.dbConnections &gt;= healthAlerts.dbConnectionsWarningPercent) {</span>
+<span class="cstat-no" title="statement not covered" >    triggerHealthAlert('dbConnectionsWarningPercent', metrics.dbConnections, currentMetrics);</span>
+  }
+&nbsp;
+  // Check Response Time
+<span class="cstat-no" title="statement not covered" >  if (metrics.responseTime &gt;= healthAlerts.responseTimeCriticalMs) {</span>
+<span class="cstat-no" title="statement not covered" >    triggerHealthAlert('responseTimeCriticalMs', metrics.responseTime, currentMetrics);</span>
+  } else <span class="cstat-no" title="statement not covered" >if (metrics.responseTime &gt;= healthAlerts.responseTimeWarningMs) {</span>
+<span class="cstat-no" title="statement not covered" >    triggerHealthAlert('responseTimeWarningMs', metrics.responseTime, currentMetrics);</span>
+  }
+&nbsp;
+  // Check Error Rate
+<span class="cstat-no" title="statement not covered" >  if (metrics.errorRate &gt;= healthAlerts.errorRateCriticalPercent) {</span>
+<span class="cstat-no" title="statement not covered" >    triggerHealthAlert('errorRateCriticalPercent', metrics.errorRate, currentMetrics);</span>
+  } else <span class="cstat-no" title="statement not covered" >if (metrics.errorRate &gt;= healthAlerts.errorRateWarningPercent) {</span>
+<span class="cstat-no" title="statement not covered" >    triggerHealthAlert('errorRateWarningPercent', metrics.errorRate, currentMetrics);</span>
+  }
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export default alertingConfig;</span>
+/**
+ * Check custom metric thresholds and trigger alerts
+ */
+function <span class="fstat-no" title="function not covered" >checkMetricThresholds(</span>metrics: Record&lt;string, number&gt;): void {
+<span class="cstat-no" title="statement not covered" >  if (!isAlertingEnabled()) {</span>
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+  const metricAlerts = <span class="cstat-no" title="statement not covered" >alertingConfig.metricAlerts;</span>
+&nbsp;
+  // Check Active Connections
+<span class="cstat-no" title="statement not covered" >  if (metrics.activeConnections &gt;= metricAlerts.activeConnectionsCritical) {</span>
+<span class="cstat-no" title="statement not covered" >    triggerMetricAlert(</span>
+      'activeConnections',
+      metrics.activeConnections,
+      metricAlerts.activeConnectionsCritical,
+      'critical'
+    );
+  } else <span class="cstat-no" title="statement not covered" >if (metrics.activeConnections &gt;= metricAlerts.activeConnectionsWarning) {</span>
+<span class="cstat-no" title="statement not covered" >    triggerMetricAlert(</span>
+      'activeConnections',
+      metrics.activeConnections,
+      metricAlerts.activeConnectionsWarning,
+      'warning'
+    );
+  }
+&nbsp;
+  // Check Match Queue
+<span class="cstat-no" title="statement not covered" >  if (metrics.matchQueue &gt;= metricAlerts.matchQueueCritical) {</span>
+<span class="cstat-no" title="statement not covered" >    triggerMetricAlert(</span>
+      'matchQueue',
+      metrics.matchQueue,
+      metricAlerts.matchQueueCritical,
+      'critical'
+    );
+  } else <span class="cstat-no" title="statement not covered" >if (metrics.matchQueue &gt;= metricAlerts.matchQueueWarning) {</span>
+<span class="cstat-no" title="statement not covered" >    triggerMetricAlert('matchQueue', metrics.matchQueue, metricAlerts.matchQueueWarning, 'warning');</span>
+  }
+}
+&nbsp;
+/**
+ * Run health monitoring cycle
+ */
+function runHealthCheck(): void {
+  try {
+    const metrics = performHealthCheck();
+    checkHealthThresholds(metrics);
+<span class="cstat-no" title="statement not covered" >    checkMetricThresholds(metrics);</span>
+  } catch (error) {
+    console.error('[HealthMonitor] Error during health check:', error);
+  }
+}
+&nbsp;
+/**
+ * Start the health monitoring loop
+ */
+export function startHealthMonitoring(intervalMs: number = <span class="branch-0 cbranch-no" title="branch not covered" >60000)</span>: void {
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (isMonitoring) {
+<span class="cstat-no" title="statement not covered" >    console.log('[HealthMonitor] Health monitoring already running');</span>
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!isAlertingEnabled()) {
+<span class="cstat-no" title="statement not covered" >    console.log('[HealthMonitor] Health monitoring disabled - alerting not enabled');</span>
+<span class="cstat-no" title="statement not covered" >    return;</span>
+  }
+&nbsp;
+  isMonitoring = true;
+  healthMonitorInterval = setInterval(runHealthCheck, intervalMs);
+&nbsp;
+  console.log(`[HealthMonitor] Started health monitoring (interval: ${intervalMs}ms)`);
+&nbsp;
+  // Run initial health check
+  runHealthCheck();
+}
+&nbsp;
+/**
+ * Stop the health monitoring loop
+ */
+export function stopHealthMonitoring(): void {
+  if (healthMonitorInterval) {
+    clearInterval(healthMonitorInterval);
+    healthMonitorInterval = null;
+  }
+  isMonitoring = false;
+  console.log('[HealthMonitor] Stopped health monitoring');
+}
+&nbsp;
+/**
+ * Get current health status
+ */
+export function getHealthStatus(): {
+  healthy: boolean;
+  metrics: Record&lt;string, number&gt;;
+  isMonitoring: boolean;
+} {
+  const metrics = performHealthCheck();
+  const healthAlerts = alertingConfig.healthAlerts;
+&nbsp;
+  const healthy =
+    metrics.cpuUsage &lt; healthAlerts.cpuCriticalPercent &amp;&amp;
+    metrics.memoryUsage &lt; healthAlerts.memoryCriticalPercent &amp;&amp;
+    metrics.diskUsage &lt; healthAlerts.diskCriticalPercent &amp;&amp;
+    metrics.dbConnections &lt; healthAlerts.dbConnectionsCriticalPercent;
+&nbsp;
+  return {
+    healthy,
+    metrics,
+    isMonitoring,
+  };
+}
+&nbsp;
+/**
+ * Initialize health monitoring
+ */
+export function initializeHealthMonitoring(logger: Runtime.Logger): void {
+  // Set initial health status
+  healthStatus.set({ component: 'overall' }, 1);
+  healthStatus.set({ component: 'cpu' }, 1);
+  healthStatus.set({ component: 'memory' }, 1);
+  healthStatus.set({ component: 'disk' }, 1);
+  healthStatus.set({ component: 'database' }, 1);
+&nbsp;
+  logger.info('[HealthMonitor] Initialized health monitoring');
+&nbsp;
+  // Start monitoring if enabled
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (isAlertingEnabled()) {
+    // Default to 60 second intervals
+    startHealthMonitoring(60000);
+  }
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
