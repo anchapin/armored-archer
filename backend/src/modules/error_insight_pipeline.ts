@@ -12,7 +12,6 @@
  */
 
 import { randomUUID } from 'crypto';
-import { Runtime } from '../types/nakama';
 import { config } from '../config';
 import { logger } from '../config/logger';
 import {
@@ -28,8 +27,8 @@ import {
   InsightImpact,
   TimeRange,
   TrendData,
-  ErrorInsightConfig,
 } from '../types/errorInsights';
+import { Runtime } from '../types/nakama';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
@@ -107,10 +106,7 @@ class ErrorInsightStore {
     const uptimeSec = Math.floor(uptimeMs / 1000);
 
     // Calculate errors per minute
-    const recentErrors = this.getErrorsInRange(
-      new Date(now.getTime() - 5 * 60 * 1000),
-      now
-    );
+    const recentErrors = this.getErrorsInRange(new Date(now.getTime() - 5 * 60 * 1000), now);
     const errorsPerMinute = recentErrors.length / 5;
 
     return {
@@ -172,11 +168,7 @@ const errorStore = new ErrorInsightStore();
  */
 function generateErrorSignature(error: RawErrorData): string {
   // Create a signature based on error type, RPC, and normalized message
-  const parts = [
-    error.errorType,
-    error.rpcName || 'unknown',
-    error.source,
-  ];
+  const parts = [error.errorType, error.rpcName || 'unknown', error.source];
 
   // Normalize message by removing specific values
   let normalizedMessage = error.message;
@@ -197,7 +189,7 @@ function generateErrorSignature(error: RawErrorData): string {
   const str = parts.join('|');
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
   return Math.abs(hash).toString(16);
@@ -255,11 +247,7 @@ function determineSeverity(error: RawErrorData): ErrorSeverity {
   }
 
   // Error patterns
-  if (
-    message.includes('error') ||
-    message.includes('exception') ||
-    message.includes('failed')
-  ) {
+  if (message.includes('error') || message.includes('exception') || message.includes('failed')) {
     return 'error';
   }
 
@@ -698,9 +686,7 @@ function processErrors(): void {
   for (const insight of newInsights) {
     // Check if similar insight already exists
     const existingInsights = errorStore.getInsights();
-    const exists = existingInsights.some(
-      (i) => i.patternId === insight.patternId
-    );
+    const exists = existingInsights.some((i) => i.patternId === insight.patternId);
 
     if (!exists) {
       errorStore.addInsight(insight);
@@ -857,7 +843,7 @@ async function rpcGetErrorPatterns(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
-  payload: string
+  _payload: string
 ): Promise<string> {
   logger.info('Error insights patterns requested by user: %s', ctx.userId);
 
@@ -878,7 +864,7 @@ async function rpcGetErrorStats(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
-  payload: string
+  _payload: string
 ): Promise<string> {
   logger.info('Error insights stats requested by user: %s', ctx.userId);
 
