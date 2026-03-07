@@ -209,7 +209,7 @@ function hashUserId(userId: string, featureName: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
   return Math.abs(hash % 100);
@@ -386,10 +386,7 @@ export function checkRollbackCriteria(featureName: string): {
 /**
  * Record rollout metrics for a feature
  */
-export function recordRolloutMetrics(
-  featureName: string,
-  metrics: Partial<RolloutMetrics>
-): void {
+export function recordRolloutMetrics(featureName: string, metrics: Partial<RolloutMetrics>): void {
   const existing = rolloutMetrics.get(featureName) || {
     featureName,
     phase: 'disabled' as RolloutPhase,
@@ -428,7 +425,10 @@ function updateMetrics(flag: FeatureFlag): void {
     full: 3,
   };
 
-  rolloutPhaseGauge.set({ feature_name: flag.name, phase: flag.rolloutPhase }, phaseValues[flag.rolloutPhase]);
+  rolloutPhaseGauge.set(
+    { feature_name: flag.name, phase: flag.rolloutPhase },
+    phaseValues[flag.rolloutPhase]
+  );
 
   // Update percentage gauge
   rolloutPercentageGauge.set({ feature_name: flag.name }, flag.rolloutPercentage);
@@ -444,7 +444,10 @@ function updateMetrics(flag: FeatureFlag): void {
       metrics.errorRate <= phase.maxErrorRatePercent &&
       metrics.avgLatencyMs <= phase.maxLatencyMs &&
       metrics.healthCheckFails < phase.rollbackCriteria.healthCheckFails;
-    rolloutHealthGauge.set({ feature_name: flag.name, phase: flag.rolloutPhase }, isHealthy ? 1 : 0);
+    rolloutHealthGauge.set(
+      { feature_name: flag.name, phase: flag.rolloutPhase },
+      isHealthy ? 1 : 0
+    );
   } else {
     rolloutHealthGauge.set({ feature_name: flag.name, phase: flag.rolloutPhase }, 1);
   }
@@ -500,7 +503,11 @@ async function rpcCreateFeatureFlag(
 ): Promise<string> {
   logger.info('Creating feature flag');
 
-  const validation = validatePayload(ZodSchemas.rollout_create_flag, payload, 'rollout_create_flag');
+  const validation = validatePayload(
+    ZodSchemas.rollout_create_flag,
+    payload,
+    'rollout_create_flag'
+  );
   if (!validation.success) {
     return createValidationErrorResponse('rollout_create_flag', validation.error);
   }
@@ -536,7 +543,11 @@ async function rpcUpdateFeatureFlag(
 ): Promise<string> {
   logger.info('Updating feature flag');
 
-  const validation = validatePayload(ZodSchemas.rollout_update_flag, payload, 'rollout_update_flag');
+  const validation = validatePayload(
+    ZodSchemas.rollout_update_flag,
+    payload,
+    'rollout_update_flag'
+  );
   if (!validation.success) {
     return createValidationErrorResponse('rollout_update_flag', validation.error);
   }
@@ -687,7 +698,11 @@ async function rpcGetRolloutMetrics(
 ): Promise<string> {
   logger.info('Getting rollout metrics');
 
-  const validation = validatePayload(ZodSchemas.rollout_get_metrics, payload, 'rollout_get_metrics');
+  const validation = validatePayload(
+    ZodSchemas.rollout_get_metrics,
+    payload,
+    'rollout_get_metrics'
+  );
   if (!validation.success) {
     return createValidationErrorResponse('rollout_get_metrics', validation.error);
   }
@@ -721,12 +736,26 @@ async function rpcRecordMetrics(
   _nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
-  const validation = validatePayload(ZodSchemas.rollout_record_metrics, payload, 'rollout_record_metrics');
+  const validation = validatePayload(
+    ZodSchemas.rollout_record_metrics,
+    payload,
+    'rollout_record_metrics'
+  );
   if (!validation.success) {
     return createValidationErrorResponse('rollout_record_metrics', validation.error);
   }
 
-  const { feature_name, total_users, active_users, error_count, error_rate, avg_latency_ms, p99_latency_ms, health_check_passes, health_check_fails } = validation.data;
+  const {
+    feature_name,
+    total_users,
+    active_users,
+    error_count,
+    error_rate,
+    avg_latency_ms,
+    p99_latency_ms,
+    health_check_passes,
+    health_check_fails,
+  } = validation.data;
 
   recordRolloutMetrics(feature_name, {
     totalUsers: total_users,
@@ -741,13 +770,26 @@ async function rpcRecordMetrics(
 
   // Update Prometheus counters
   if (total_users) {
-    rolloutUsersTotal.inc({ feature_name, phase: rolloutMetrics.get(feature_name)?.phase || 'disabled' }, total_users);
+    rolloutUsersTotal.inc(
+      { feature_name, phase: rolloutMetrics.get(feature_name)?.phase || 'disabled' },
+      total_users
+    );
   }
   if (error_count) {
-    rolloutErrorsTotal.inc({ feature_name, phase: rolloutMetrics.get(feature_name)?.phase || 'disabled', error_type: 'total' }, error_count);
+    rolloutErrorsTotal.inc(
+      {
+        feature_name,
+        phase: rolloutMetrics.get(feature_name)?.phase || 'disabled',
+        error_type: 'total',
+      },
+      error_count
+    );
   }
   if (avg_latency_ms) {
-    rolloutLatencyHistogram.observe({ feature_name, phase: rolloutMetrics.get(feature_name)?.phase || 'disabled' }, avg_latency_ms);
+    rolloutLatencyHistogram.observe(
+      { feature_name, phase: rolloutMetrics.get(feature_name)?.phase || 'disabled' },
+      avg_latency_ms
+    );
   }
 
   // Check rollback criteria after recording metrics
@@ -781,7 +823,8 @@ async function rpcRolloutHealth(
 
   for (const flag of flags) {
     if (flag.enabled && flag.currentPhaseIndex >= 0) {
-      const flagMetrics = metrics.find(m => m.featureName === flag.name);
+      // Find metrics for this flag (used for potential future health checks)
+      metrics.find((m) => m.featureName === flag.name);
       const rollbackCheck = checkRollbackCriteria(flag.name);
       featureHealth[flag.name] = !rollbackCheck.shouldRollback;
       if (rollbackCheck.shouldRollback) {

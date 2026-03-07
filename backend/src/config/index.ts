@@ -575,21 +575,22 @@ const config: AppConfig = {
       : undefined,
   },
 
-  datadog: process.env.DATADOG_ENABLED === 'true'
-    ? {
-        enabled: true,
-        apiKey: process.env.DATADOG_API_KEY,
-        appKey: process.env.DATADOG_APP_KEY,
-        host: process.env.DATADOG_HOST || 'localhost',
-        port: parseInt(process.env.DATADOG_PORT || '8125', 10),
-        prefix: process.env.DATADOG_PREFIX || 'armed_archer',
-        tags: {
-          environment: process.env.NODE_ENV || 'development',
-          service: 'armored-archer-backend',
-          ...(process.env.DATADOG_TAGS ? JSON.parse(process.env.DATADOG_TAGS) : {}),
-        },
-      }
-    : undefined,
+  datadog:
+    process.env.DATADOG_ENABLED === 'true'
+      ? {
+          enabled: true,
+          apiKey: process.env.DATADOG_API_KEY,
+          appKey: process.env.DATADOG_APP_KEY,
+          host: process.env.DATADOG_HOST || 'localhost',
+          port: parseInt(process.env.DATADOG_PORT || '8125', 10),
+          prefix: process.env.DATADOG_PREFIX || 'armed_archer',
+          tags: {
+            environment: process.env.NODE_ENV || 'development',
+            service: 'armored-archer-backend',
+            ...(process.env.DATADOG_TAGS ? JSON.parse(process.env.DATADOG_TAGS) : {}),
+          },
+        }
+      : undefined,
 };
 
 export function validateRequiredConfig(): void {
