@@ -8,6 +8,61 @@ import { Runtime } from '../types/nakama';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
+// Analytics event types for type safety
+export enum AnalyticsEventType {
+  // Session events
+  SESSION_START = 'session_start',
+  SESSION_END = 'session_end',
+  
+  // Tutorial events
+  TUTORIAL_STARTED = 'tutorial_started',
+  TUTORIAL_COMPLETED = 'tutorial_completed',
+  TUTORIAL_FAILED = 'tutorial_failed',
+  
+  // PVE events
+  PVE_STAGE_STARTED = 'pve_stage_started',
+  PVE_STAGE_COMPLETED = 'pve_stage_completed',
+  PVE_STAGE_FAILED = 'pve_stage_failed',
+  PVE_BOSS_DEFEATED = 'pve_boss_defeated',
+  
+  // PVP events
+  PVP_MATCH_STARTED = 'pvp_match_started',
+  PVP_MATCH_COMPLETED = 'pvp_match_completed',
+  PVP_MATCH_ABANDONED = 'pvp_match_abandoned',
+  PVP_DISCONNECT = 'pvp_disconnect',
+  
+  // Store events
+  STORE_OPENED = 'store_opened',
+  PURCHASE_INITIATED = 'purchase_initiated',
+  PURCHASE_COMPLETED = 'purchase_completed',
+  PURCHASE_FAILED = 'purchase_failed',
+  GEM_PURCHASED = 'gem_purchased',
+  COSMETIC_PURCHASED = 'cosmetic_purchased',
+  SUBSCRIPTION_STARTED = 'subscription_started',
+  
+  // Progression events
+  GEAR_OBTAINED = 'gear_obtained',
+  GEAR_EQUIPPED = 'gear_equipped',
+  TRANSMOG_APPLIED = 'transmog_applied',
+  LEVEL_UP = 'level_up',
+  ABILITY_UNLOCKED = 'ability_unlocked',
+  SEASON_START = 'season_start',
+  SEASON_END = 'season_end',
+  
+  // Engagement events
+  FIRST_SESSION = 'first_session',
+  DAILY_LOGIN = 'daily_login',
+  RETURNING_PLAYER = 'returning_player',
+  
+  // Network events
+  NETWORK_ERROR = 'network_error',
+  RPC_ERROR = 'rpc_error',
+  RPC_LATENCY = 'rpc_latency',
+  
+  // Custom events
+  CUSTOM = 'custom',
+}
+
 // In-memory analytics storage (in production, use a database or external service)
 interface AnalyticsEvent {
   id: string;
@@ -123,25 +178,180 @@ function updateDailyMetrics(event: AnalyticsEvent): void {
 /**
  * Forwards analytics event to external services (Mixpanel, Amplitude, etc.)
  */
-function forwardToExternalAnalytics(event: AnalyticsEvent): void {
+async function forwardToExternalAnalytics(event: AnalyticsEvent): Promise<void> {
   if (!config.analytics?.enabled) {
     return;
   }
 
   // Mixpanel forwarding
   if (config.analytics.mixpanel?.enabled && config.analytics.mixpanel.apiKey) {
-    // In production, use actual HTTP request to Mixpanel API
-    console.log(`[Analytics] Forwarding to Mixpanel: ${event.eventName}`, event.properties);
+    await forwardToMixpanel(event);
   }
 
   // Amplitude forwarding
   if (config.analytics.amplitude?.enabled && config.analytics.amplitude.apiKey) {
-    console.log(`[Analytics] Forwarding to Amplitude: ${event.eventName}`, event.properties);
+    await forwardToAmplitude(event);
   }
 
   // Segment forwarding
   if (config.analytics.segment?.enabled && config.analytics.segment.writeKey) {
-    console.log(`[Analytics] Forwarding to Segment: ${event.eventName}`, event.properties);
+    await forwardToSegment(event);
+  }
+
+  // Custom endpoint forwarding
+  if (config.analytics.customEndpoint?.url) {
+    await forwardToCustomEndpoint(event);
+  }
+}
+
+/**
+ * Forward event to Mixpanel
+ */
+async function forwardToMixpanel(event: AnalyticsEvent): Promise<void> {
+  const apiKey = config.analytics?.mixpanel?.apiKey;
+  if (!apiKey) return;
+
+  const mixpanelEvent = {
+    event: event.eventName,
+    properties: {
+      ...event.properties,
+      distinct_id: event.userId,
+      time: Math.floor(event.timestamp / 1000),
+      platform: event.platform,
+      session_id: event.sessionId,
+    },
+  };
+
+  try {
+    const response = await fetch('https://api.mixpanel.com/track', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        api_key: apiKey,
+        data: Buffer.from(JSON.stringify(mixpanelEvent)).toString('base64'),
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(`[Analytics] Mixpanel forward failed: ${response.status}`);
+    }
+  } catch (error) {
+    console.error(`[Analytics] Mixpanel forward error: ${error}`);
+  }
+}
+
+/**
+ * Forward event to Amplitude
+ */
+async function forwardToAmplitude(event: AnalyticsEvent): Promise<void> {
+  const apiKey = config.analytics?.amplitude?.apiKey;
+  if (!apiKey) return;
+
+  const amplitudeEvent = {
+    api_key: apiKey,
+    events: [
+      {
+        event_type: event.eventName,
+        user_id: event.userId,
+        time: event.timestamp,
+        platform: event.platform,
+        session_id: event.sessionId,
+        event_properties: event.properties,
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch('https://api.amplitude.com/2/httpapi', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(amplitudeEvent),
+    });
+
+    if (!response.ok) {
+      console.error(`[Analytics] Amplitude forward failed: ${response.status}`);
+    }
+  } catch (error) {
+    console.error(`[Analytics] Amplitude forward error: ${error}`);
+  }
+}
+
+/**
+ * Forward event to Segment
+ */
+async function forwardToSegment(event: AnalyticsEvent): Promise<void> {
+  const writeKey = config.analytics?.segment?.writeKey;
+  if (!writeKey) return;
+
+  const segmentEvent = {
+    userId: event.userId,
+    event: event.eventName,
+    timestamp: new Date(event.timestamp).toISOString(),
+    properties: event.properties,
+    context: {
+      platform: event.platform,
+      session_id: event.sessionId,
+    },
+  };
+
+  try {
+    const response = await fetch(`https://api.segment.io/v1/track`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${Buffer.from(writeKey + ':').toString('base64')}`,
+      },
+      body: JSON.stringify(segmentEvent),
+    });
+
+    if (!response.ok) {
+      console.error(`[Analytics] Segment forward failed: ${response.status}`);
+    }
+  } catch (error) {
+    console.error(`[Analytics] Segment forward error: ${error}`);
+  }
+}
+
+/**
+ * Forward event to custom endpoint
+ */
+async function forwardToCustomEndpoint(event: AnalyticsEvent): Promise<void> {
+  const endpoint = config.analytics?.customEndpoint;
+  if (!endpoint?.url) return;
+
+  const payload = {
+    event: event.eventName,
+    userId: event.userId,
+    timestamp: event.timestamp,
+    properties: event.properties,
+    platform: event.platform,
+    sessionId: event.sessionId,
+  };
+
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (endpoint.apiKey) {
+      headers['Authorization'] = `Bearer ${endpoint.apiKey}`;
+    }
+
+    const response = await fetch(endpoint.url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.error(`[Analytics] Custom endpoint forward failed: ${response.status}`);
+    }
+  } catch (error) {
+    console.error(`[Analytics] Custom endpoint forward error: ${error}`);
   }
 }
 
@@ -177,7 +387,7 @@ export function rpcTrackEvent(
 
   const validation = validateEventPayload(payload);
   if (!validation.success) {
-    return createValidationErrorResponse('track_event', validation.error);
+    return createValidationErrorResponse('track_event', (validation as { success: false; error: string }).error);
   }
 
   const { event_name, properties, platform, session_id } = validation.data;
@@ -251,7 +461,7 @@ export function rpcGetAnalyticsSummary(
     'get_analytics_summary'
   );
   if (!validation.success) {
-    return createValidationErrorResponse('get_analytics_summary', validation.error);
+    return createValidationErrorResponse('get_analytics_summary', (validation as { success: false; error: string }).error);
   }
 
   const { start_date, end_date, event_names } = validation.data;
@@ -333,7 +543,7 @@ export function rpcTrackRevenue(
 
   const validation = validatePayload(ZodSchemas.track_revenue, payload, 'track_revenue');
   if (!validation.success) {
-    return createValidationErrorResponse('track_revenue', validation.error);
+    return createValidationErrorResponse('track_revenue', (validation as { success: false; error: string }).error);
   }
 
   const { amount, currency, product_id, transaction_id, platform } = validation.data;
@@ -394,7 +604,7 @@ export function getDailyMetrics(startDate: string, endDate: string): DailyMetric
   const endTime = new Date(endDate).getTime() + 86400000;
 
   const result: DailyMetric[] = [];
-  for (const [, metric] of dailyMetrics) {
+  dailyMetrics.forEach((metric) => {
     const metricTime = new Date(metric.date).getTime();
     if (metricTime >= startTime && metricTime <= endTime) {
       result.push({
@@ -402,6 +612,6 @@ export function getDailyMetrics(startDate: string, endDate: string): DailyMetric
         uniqueUsers: metric.uniqueUsers,
       });
     }
-  }
+  });
   return result;
 }
