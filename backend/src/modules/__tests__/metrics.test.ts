@@ -16,6 +16,13 @@ jest.mock('../../config', () => ({
     rateLimit: {
       enabled: false,
     },
+    tracing: {
+      enabled: false,
+      serviceName: 'test',
+      serviceVersion: '0.1.0',
+      exporter: 'none',
+      sampleRate: 0,
+    },
   },
 }));
 

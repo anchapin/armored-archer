@@ -2,6 +2,7 @@ import { Counter, Histogram, Registry, collectDefaultMetrics, Gauge } from 'prom
 import { config } from '../config';
 import { Runtime } from '../types/nakama';
 import * as rateLimiter from '../utils/rateLimiter';
+import { getDeploymentRegistry } from './deployment_observability';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 const register = new Registry();
@@ -62,10 +63,15 @@ async function rpcGetMetrics(
     return createValidationErrorResponse('metrics', validation.error);
   }
 
-  // Get metrics in Prometheus text format
-  const metrics = await register.metrics();
+  // Get base metrics in Prometheus text format
+  const baseMetrics = await register.metrics();
 
-  return metrics;
+  // Get deployment metrics
+  const deploymentRegistry = getDeploymentRegistry();
+  const deploymentMetrics = await deploymentRegistry.metrics();
+
+  // Combine both metrics (deployment metrics have different metric names to avoid conflicts)
+  return baseMetrics + '\n# Deployment metrics\n' + deploymentMetrics;
 }
 
 export type RpcHandler = (

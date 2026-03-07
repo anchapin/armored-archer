@@ -142,6 +142,14 @@ export const ZodSchemas = {
   process_pending_purchases: z.object({}),
 
   app_launch_check: z.object({}),
+
+  // Deployment observability
+  deployment_record: z.object({
+    environment: z.enum(['development', 'staging', 'production']),
+    version: z.string().min(1).max(50),
+    status: z.enum(['started', 'success', 'failed', 'rollback']),
+    metadata: z.record(z.string(), z.string()).optional(),
+  }),
 } as const;
 
 export type SchemaName = keyof typeof ZodSchemas;
@@ -177,6 +185,7 @@ export function validatePayload<T>(
 
 export function createValidationErrorResponse(rpcName: string, error: string): string {
   return JSON.stringify({
+    success: false,
     error: error,
     error_code: 'VALIDATION_ERROR',
     rpc_name: rpcName,

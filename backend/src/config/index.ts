@@ -115,6 +115,82 @@ export interface TracingConfig {
   instrumentations: string[];
 }
 
+export interface AlertingConfig {
+  enabled: boolean;
+  defaultProvider: 'pagerduty' | 'slack' | 'webhook' | 'email' | 'none';
+  routing: {
+    critical: 'pagerduty' | 'slack' | 'webhook' | 'email' | 'none';
+    error: 'pagerduty' | 'slack' | 'webhook' | 'email' | 'none';
+    warning: 'pagerduty' | 'slack' | 'webhook' | 'email' | 'none';
+    info: 'pagerduty' | 'slack' | 'webhook' | 'email' | 'none';
+  };
+  pagerduty?: {
+    apiKey: string;
+    serviceId: string;
+    integrationKey: string;
+  };
+  slack?: {
+    webhookUrl: string;
+    channel: string;
+    username: string;
+    iconEmoji: string;
+  };
+  webhook?: {
+    url: string;
+    method: 'POST' | 'PUT';
+    headers: Record<string, string>;
+    authType: 'none' | 'basic' | 'bearer';
+    username?: string;
+    password?: string;
+    token?: string;
+  };
+  email?: {
+    host: string;
+    port: number;
+    secure: boolean;
+    username: string;
+    password: string;
+    from: string;
+    to: string[];
+  };
+  healthAlerts: {
+    cpuWarningPercent: number;
+    cpuCriticalPercent: number;
+    memoryWarningPercent: number;
+    memoryCriticalPercent: number;
+    dbConnectionsWarningPercent: number;
+    dbConnectionsCriticalPercent: number;
+    diskWarningPercent: number;
+    diskCriticalPercent: number;
+    responseTimeWarningMs: number;
+    responseTimeCriticalMs: number;
+    errorRateWarningPercent: number;
+    errorRateCriticalPercent: number;
+  };
+  metricAlerts: {
+    activeConnectionsWarning: number;
+    activeConnectionsCritical: number;
+    matchQueueWarning: number;
+    matchQueueCritical: number;
+    matchWaitTimeWarningSec: number;
+    matchWaitTimeCriticalSec: number;
+    dbQueryTimeWarningMs: number;
+    dbQueryTimeCriticalMs: number;
+    failedLoginsWarning: number;
+    failedLoginsCritical: number;
+    purchaseFailuresWarning: number;
+    purchaseFailuresCritical: number;
+  };
+  cooldowns: {
+    critical: number;
+    error: number;
+    warning: number;
+    info: number;
+  };
+  minEnvironmentLevel: 'development' | 'staging' | 'production';
+  tags: Record<string, string>;
+}
+
 export interface AppConfig {
   environment: 'development' | 'staging' | 'production';
   server: ServerConfig;
@@ -126,6 +202,7 @@ export interface AppConfig {
   metrics: MetricsConfig;
   rateLimit: RateLimitConfig;
   tracing: TracingConfig;
+  alerting: AlertingConfig;
 }
 
 function parseDatabaseAddress(address: string): DatabaseConfig {
@@ -279,6 +356,114 @@ const config: AppConfig = {
       ? process.env.TRACING_INSTRUMENTATIONS.split(',').map((i) => i.trim())
       : ['http', 'express', 'pg'],
   },
+
+  alerting: {
+    enabled: process.env.ALERTING_ENABLED === 'true',
+    defaultProvider: (process.env.ALERTING_DEFAULT_PROVIDER || 'none') as
+      | 'pagerduty'
+      | 'slack'
+      | 'webhook'
+      | 'email'
+      | 'none',
+    routing: {
+      critical: (process.env.ALERTING_ROUTING_CRITICAL || 'pagerduty') as
+        | 'pagerduty'
+        | 'slack'
+        | 'webhook'
+        | 'email'
+        | 'none',
+      error: (process.env.ALERTING_ROUTING_ERROR || 'slack') as
+        | 'pagerduty'
+        | 'slack'
+        | 'webhook'
+        | 'email'
+        | 'none',
+      warning: (process.env.ALERTING_ROUTING_WARNING || 'slack') as
+        | 'pagerduty'
+        | 'slack'
+        | 'webhook'
+        | 'email'
+        | 'none',
+      info: (process.env.ALERTING_ROUTING_INFO || 'none') as
+        | 'pagerduty'
+        | 'slack'
+        | 'webhook'
+        | 'email'
+        | 'none',
+    },
+    pagerduty: process.env.PAGERDUTY_API_KEY
+      ? {
+          apiKey: process.env.PAGERDUTY_API_KEY || '',
+          serviceId: process.env.PAGERDUTY_SERVICE_ID || '',
+          integrationKey: process.env.PAGERDUTY_INTEGRATION_KEY || '',
+        }
+      : undefined,
+    slack: process.env.SLACK_WEBHOOK_URL
+      ? {
+          webhookUrl: process.env.SLACK_WEBHOOK_URL || '',
+          channel: process.env.SLACK_CHANNEL || '#alerts',
+          username: process.env.SLACK_USERNAME || 'Armored Archer Alert Bot',
+          iconEmoji: process.env.SLACK_ICON_EMOJI || ':warning:',
+        }
+      : undefined,
+    healthAlerts: {
+      cpuWarningPercent: parseInt(process.env.ALERT_CPU_WARNING_PERCENT || '70', 10),
+      cpuCriticalPercent: parseInt(process.env.ALERT_CPU_CRITICAL_PERCENT || '90', 10),
+      memoryWarningPercent: parseInt(process.env.ALERT_MEMORY_WARNING_PERCENT || '75', 10),
+      memoryCriticalPercent: parseInt(process.env.ALERT_MEMORY_CRITICAL_PERCENT || '90', 10),
+      dbConnectionsWarningPercent: parseInt(
+        process.env.ALERT_DB_CONNECTIONS_WARNING_PERCENT || '70',
+        10
+      ),
+      dbConnectionsCriticalPercent: parseInt(
+        process.env.ALERT_DB_CONNECTIONS_CRITICAL_PERCENT || '90',
+        10
+      ),
+      diskWarningPercent: parseInt(process.env.ALERT_DISK_WARNING_PERCENT || '80', 10),
+      diskCriticalPercent: parseInt(process.env.ALERT_DISK_CRITICAL_PERCENT || '95', 10),
+      responseTimeWarningMs: parseInt(process.env.ALERT_RESPONSE_TIME_WARNING_MS || '500', 10),
+      responseTimeCriticalMs: parseInt(process.env.ALERT_RESPONSE_TIME_CRITICAL_MS || '2000', 10),
+      errorRateWarningPercent: parseInt(process.env.ALERT_ERROR_RATE_WARNING_PERCENT || '5', 10),
+      errorRateCriticalPercent: parseInt(process.env.ALERT_ERROR_RATE_CRITICAL_PERCENT || '10', 10),
+    },
+    metricAlerts: {
+      activeConnectionsWarning: parseInt(
+        process.env.ALERT_ACTIVE_CONNECTIONS_WARNING || '1000',
+        10
+      ),
+      activeConnectionsCritical: parseInt(
+        process.env.ALERT_ACTIVE_CONNECTIONS_CRITICAL || '2000',
+        10
+      ),
+      matchQueueWarning: parseInt(process.env.ALERT_MATCH_QUEUE_WARNING || '50', 10),
+      matchQueueCritical: parseInt(process.env.ALERT_MATCH_QUEUE_CRITICAL || '100', 10),
+      matchWaitTimeWarningSec: parseInt(process.env.ALERT_MATCH_WAIT_TIME_WARNING_SEC || '60', 10),
+      matchWaitTimeCriticalSec: parseInt(
+        process.env.ALERT_MATCH_WAIT_TIME_CRITICAL_SEC || '180',
+        10
+      ),
+      dbQueryTimeWarningMs: parseInt(process.env.ALERT_DB_QUERY_TIME_WARNING_MS || '100', 10),
+      dbQueryTimeCriticalMs: parseInt(process.env.ALERT_DB_QUERY_TIME_CRITICAL_MS || '500', 10),
+      failedLoginsWarning: parseInt(process.env.ALERT_FAILED_LOGINS_WARNING || '10', 10),
+      failedLoginsCritical: parseInt(process.env.ALERT_FAILED_LOGINS_CRITICAL || '50', 10),
+      purchaseFailuresWarning: parseInt(process.env.ALERT_PURCHASE_FAILURES_WARNING || '5', 10),
+      purchaseFailuresCritical: parseInt(process.env.ALERT_PURCHASE_FAILURES_CRITICAL || '20', 10),
+    },
+    cooldowns: {
+      critical: parseInt(process.env.ALERT_COOLDOWN_CRITICAL || '300', 10),
+      error: parseInt(process.env.ALERT_COOLDOWN_ERROR || '600', 10),
+      warning: parseInt(process.env.ALERT_COOLDOWN_WARNING || '900', 10),
+      info: parseInt(process.env.ALERT_COOLDOWN_INFO || '1800', 10),
+    },
+    minEnvironmentLevel: (process.env.ALERTING_MIN_ENV_LEVEL || 'staging') as
+      | 'development'
+      | 'staging'
+      | 'production',
+    tags: {
+      service: 'armored-archer-backend',
+      version: process.env.APP_VERSION || 'unknown',
+    },
+  },
 };
 
 export function validateRequiredConfig(): void {
@@ -372,6 +557,12 @@ export function logConfiguration(logger: {
     'Metrics: namespace=%s, prometheus_port=%d',
     config.metrics.namespace,
     config.metrics.prometheusPort
+  );
+  logger.info(
+    'Alerting: enabled=%s, default_provider=%s, min_env_level=%s',
+    config.alerting.enabled,
+    config.alerting.defaultProvider,
+    config.alerting.minEnvironmentLevel
   );
   logger.info('====================');
 }
