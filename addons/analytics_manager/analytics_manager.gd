@@ -1032,3 +1032,78 @@ func export_analytics_data() -> Dictionary:
 			"network_quality": network_quality
 		}
 	}
+
+# ============================================================================
+# Backend RPC Integration
+# ============================================================================
+
+## Send analytics event to backend server
+## This allows the backend to aggregate analytics and forward to external services
+func track_event_to_backend(event_name: String, properties: Dictionary = {}) -> void:
+	if not is_initialized:
+		_queue_event(event_name, properties)
+		return
+	
+	var network_manager = _get_network_manager()
+	if network_manager == null:
+		push_warning("AnalyticsManager: NetworkManager not available, cannot send event to backend")
+		_queue_event(event_name, properties)
+		return
+	
+	var payload := {
+		"event_name": event_name,
+		"properties": properties,
+		"platform": platform,
+		"session_id": current_session_id
+	}
+	
+	var rpc_id := "armored_archer/track_event"
+	var response = await network_manager.send_rpc(rpc_id, JSON.stringify(payload))
+	
+	if is_debug_mode:
+		print("AnalyticsManager: Backend track_event response: ", response)
+
+## Send revenue event to backend
+func track_revenue_to_backend(amount: int, currency: String, product_id: String, transaction_id: String) -> void:
+	var network_manager = _get_network_manager()
+	if network_manager == null:
+		push_warning("AnalyticsManager: NetworkManager not available, cannot track revenue")
+		return
+	
+	var payload := {
+		"amount": amount,
+		"currency": currency,
+		"product_id": product_id,
+		"transaction_id": transaction_id,
+		"platform": platform
+	}
+	
+	var rpc_id := "armored_archer/track_revenue"
+	var response = await network_manager.send_rpc(rpc_id, JSON.stringify(payload))
+	
+	if is_debug_mode:
+		print("AnalyticsManager: Backend track_revenue response: ", response)
+
+## Get analytics summary from backend
+func get_analytics_summary_from_backend(start_date: String, end_date: String, event_names: Array = []) -> Dictionary:
+	var network_manager = _get_network_manager()
+	if network_manager == null:
+		push_warning("AnalyticsManager: NetworkManager not available, cannot get analytics summary")
+		return {}
+	
+	var payload := {
+		"start_date": start_date,
+		"end_date": end_date,
+		"event_names": event_names
+	}
+	
+	var rpc_id := "armored_archer/get_analytics_summary"
+	var response = await network_manager.send_rpc(rpc_id, JSON.stringify(payload))
+	
+	if response and response.has("summary"):
+		return response["summary"]
+	return {}
+
+## Get NetworkManager node reference
+func _get_network_manager() -> Node:
+	return get_node_or_null("/root/NetworkManager")
