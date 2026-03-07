@@ -4,9 +4,9 @@
  * and malicious request detection for combat actions and sensitive RPCs.
  */
 
-import { Runtime } from '../types/nakama';
 import { createHmac, randomBytes } from 'crypto';
 import { logger } from '../config/logger';
+import { Runtime } from '../types/nakama';
 
 /**
  * Configuration for anti-cheat detection.
