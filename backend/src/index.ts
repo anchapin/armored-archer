@@ -51,7 +51,6 @@ import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics'
 import { registerDeploymentObservability, initializeDeploymentObservability } from './modules/deployment_observability';
 import { initializeAlerting } from './modules/alerting';
 import { initializeHealthMonitoring } from './modules/health_monitor';
-import { registerAnalyticsEndpoints } from './modules/analytics';
 import { initializeSentry } from './config/errorTracking';
 import { initializeTracing } from './config/tracing';
 import { logger, logSystemEvent } from './config/logger';
@@ -88,7 +87,6 @@ const InitModule: InitModule = function (
 
   registerRpcMetrics(initializer);
   registerDeploymentObservability(initializer);
-  registerAnalyticsEndpoints(initializer);
   registerErrorInsightRpcs(initializer);
 
   if (config.rateLimit.enabled) {
@@ -201,24 +199,6 @@ const InitModule: InitModule = function (
       'get_player_reports',
       rpcGetPlayerReportsWrapper
     );
-    registerRpcWithRateLimit(
-      initializer,
-      'armored_archer/track_event',
-      'track_event',
-      rpcTrackEventWrapper
-    );
-    registerRpcWithRateLimit(
-      initializer,
-      'armored_archer/get_analytics_summary',
-      'get_analytics_summary',
-      rpcGetAnalyticsSummaryWrapper
-    );
-    registerRpcWithRateLimit(
-      initializer,
-      'armored_archer/track_revenue',
-      'track_revenue',
-      rpcTrackRevenueWrapper
-    );
   } else {
     registerRpcHealthCheck(initializer);
     registerRpcGainXP(initializer);
@@ -250,9 +230,6 @@ const InitModule: InitModule = function (
     registerRpcUnlockModifierPool(initializer);
     registerRpcReportPlayer(initializer);
     registerRpcGetPlayerReports(initializer);
-    registerRpcTrackEvent(initializer);
-    registerRpcGetAnalyticsSummary(initializer);
-    registerRpcTrackRevenue(initializer);
   }
 
   logSystemEvent('info', 'Armored Archer server module initialized');
@@ -406,36 +383,6 @@ function rpcGetPlayerReportsWrapper(
 ): string {
   const { rpcGetPlayerReports } = require('./modules/player_rpc');
   return rpcGetPlayerReports(ctx, logger, nk, payload);
-}
-
-function rpcTrackEventWrapper(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  const { rpcTrackEvent } = require('./modules/analytics');
-  return rpcTrackEvent(ctx, logger, nk, payload);
-}
-
-function rpcGetAnalyticsSummaryWrapper(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  const { rpcGetAnalyticsSummary } = require('./modules/analytics');
-  return rpcGetAnalyticsSummary(ctx, logger, nk, payload);
-}
-
-function rpcTrackRevenueWrapper(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  const { rpcTrackRevenue } = require('./modules/analytics');
-  return rpcTrackRevenue(ctx, logger, nk, payload);
 }
 
 export default InitModule;
