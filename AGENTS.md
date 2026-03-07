@@ -223,3 +223,20 @@ npm run test:ci          # CI-ready test run with JUnit output
 - Linting must pass without errors
 - TypeScript type checking must pass
 - Update documentation if needed
+
+## Skills
+
+OpenHands supports skills for enhanced agent capabilities. Skills are stored in `.agents/skills/` and provide specialized guidance for different aspects of the project.
+
+### Available Skills
+
+- **godot-backend** - Guidelines for working with Godot backend and Nakama server integration
+
+### Adding New Skills
+
+To add a new skill:
+1. Create a new directory under `.agents/skills/`
+2. Add a `SKILL.md` file with frontmatter containing:
+   - `keywords`: Array of relevant keywords
+   - `description`: Brief description of the skill
+3. Add the skill to the list in this section
