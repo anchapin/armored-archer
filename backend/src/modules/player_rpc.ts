@@ -5,9 +5,9 @@
 
 import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
+import { submitPlayerReport, getReportsForUser } from './anti_cheat';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { submitPlayerReport, getReportsForUser } from './anti_cheat';
 
 /**
  * Registers the health check RPC endpoint.

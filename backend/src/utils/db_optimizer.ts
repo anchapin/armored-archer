@@ -1,6 +1,6 @@
 import { Runtime } from '../types/nakama';
-import { safeParse } from './safeParse';
 import { getCacheManager } from './cache';
+import { safeParse } from './safeParse';
 
 export interface PlayerStats {
   user_id: string;
