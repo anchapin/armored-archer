@@ -32,6 +32,18 @@ Strictly Free-to-Play. Zero Pay-to-Win. Cosmetics only.
 - **npm** - Package manager (comes with Node.js)
 - **Git** - Version control
 
+## ⚡ Quick Reference
+
+| Command | Description |
+|---------|-------------|
+| `make setup` | Install all dependencies |
+| `make backend-start` | Start Nakama backend (Docker) |
+| `make backend-test` | Run backend tests |
+| `make backend-lint` | Lint backend code |
+| `make backend-build` | Build TypeScript backend |
+| `make dev` | Start development with auto-reload |
+| `make clean` | Clean build artifacts |
+
 ## ⚡ Single Command Setup
 
 ```bash
