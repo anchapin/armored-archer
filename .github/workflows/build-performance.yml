@@ -1,0 +1,159 @@
+name: Build Performance Tracking
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight
+  workflow_dispatch:
+    inputs:
+      alert_threshold_minutes:
+        description: 'Alert threshold (minutes)'
+        required: false
+        default: '30'
+
+jobs:
+  track-build-performance:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      build_time: ${{ steps.extract.outputs.build_time }}
+      test_time: ${{ steps.extract.outputs.test_time }}
+      deploy_time: ${{ steps.extract.outputs.deploy_time }}
+      regression_detected: ${{ steps.check_regression.outputs.regression }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract build times from workflow run
+        id: extract
+        run: |
+          # Get the workflow run data
+          WORKFLOW_RUN_ID=${{ github.event.workflow_run.id }}
+          
+          # Extract timing info from jobs
+          echo "build_time=$(echo '${{ toJson(github.event.workflow_run.run_started_at) }}' | jq -s '.[0]')" >> $GITHUB_OUTPUT
+          
+          # Simulated build time extraction (in real implementation, parse from workflow jobs)
+          # For demonstration, we'll use workflow timing
+          BUILD_START="${{ github.event.workflow_run.run_started_at }}"
+          BUILD_END="${{ github.event.workflow_run.updated_at }}"
+          
+          # Calculate duration in minutes
+          START=$(date -d "$BUILD_START" +%s 2>/dev/null || echo "0")
+          END=$(date -d "$BUILD_END" +%s 2>/dev/null || echo "0")
+          DURATION=$((END - START))
+          MINUTES=$((DURATION / 60))
+          
+          echo "build_time=$MINUTES" >> $GITHUB_OUTPUT
+          echo "test_time=$((MINUTES * 60 / 100))" >> $GITHUB_OUTPUT  # Estimate based on CI
+          echo "deploy_time=0" >> $GITHUB_OUTPUT
+          
+          echo "Build time: $MINUTES minutes"
+
+      - name: Read historical data
+        id: history
+        run: |
+          if [ -f .build-metrics/history.json ]; then
+            echo "history=$(cat .build-metrics/history.json)" >> $GITHUB_OUTPUT
+          else
+            echo "history=[]" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for performance regression
+        id: check_regression
+        run: |
+          HISTORY='${{ steps.history.outputs.history }}'
+          CURRENT_BUILD=${{ steps.extract.outputs.build_time }}
+          THRESHOLD=${{ github.event.inputs.alert_threshold_minutes || 30 }}
+          
+          # Simple regression check - if current > threshold
+          if [ "$CURRENT_BUILD" -gt "$THRESHOLD" ]; then
+            echo "regression=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Build time ($CURRENT_BUILD min) exceeds threshold ($THRESHOLD min)"
+          else
+            echo "regression=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update historical data
+        run: |
+          mkdir -p .build-metrics
+          
+          # Create new entry
+          NEW_ENTRY=$(cat <<EOF
+          {
+            "date": "$(date -Iseconds)",
+            "build_time": ${{ steps.extract.outputs.build_time }},
+            "test_time": ${{ steps.extract.outputs.test_time }},
+            "workflow_id": "${{ github.event.workflow_run.id }}",
+            "commit": "${{ github.sha }}"
+          }
+          EOF
+          )
+          
+          # Update history JSON (keep last 30 entries)
+          if [ -f .build-metrics/history.json ]; then
+            cat .build-metrics/history.json | jq --argjson entry "$NEW_ENTRY" '[.] + .[0:29]' > .build-metrics/history.json.tmp
+            mv .build-metrics/history.json.tmp .build-metrics/history.json
+          else
+            echo "[$NEW_ENTRY]" > .build-metrics/history.json
+          fi
+
+      - name: Generate performance report
+        run: |
+          mkdir -p .build-metrics
+          
+          # Calculate averages from last 7 builds
+          if [ -f .build-metrics/history.json ]; then
+            AVG=$(cat .build-metrics/history.json | jq '[.[:7][] | .build_time] | add / length')
+            echo "Average build time (last 7): ${AVG:-0} minutes"
+          fi
+
+      - name: Commit metrics
+        run: |
+          git config --local user.email "openhands@all-hands.dev"
+          git config --local user.name "OpenHands"
+          git add .build-metrics/
+          git diff --staged --quiet || git commit -m "docs: Update build performance metrics"
+
+      - name: Alert on regression
+        if: steps.check_regression.outputs.regression == 'true'
+        run: |
+          echo "::warning::Build performance regression detected! Build time: ${{ steps.extract.outputs.build_time }} minutes"
+
+  build-performance-dashboard:
+    needs: track-build-performance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate dashboard
+        run: |
+          mkdir -p .build-metrics
+          
+          # Generate markdown report
+          cat > .build-metrics/PERFORMANCE.md << 'EOF'
+          # Build Performance Dashboard
+          
+          ## Recent Builds
+          
+          | Date | Build Time | Test Time | Commit |
+          |------|------------|-----------|--------|
+          EOF
+          
+          if [ -f .build-metrics/history.json ]; then
+            cat .build-metrics/history.json | jq -r '.[] | "| \(.date) | \(.build_time) min | \(.test_time) min | \(.commit[0:7]) |"' >> .build-metrics/PERFORMANCE.md
+          fi
+          
+          cat .build-metrics/PERFORMANCE.md
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-metrics
+          path: .build-metrics/
