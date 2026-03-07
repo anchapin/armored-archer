@@ -150,6 +150,28 @@ export const ZodSchemas = {
     status: z.enum(['started', 'success', 'failed', 'rollback']),
     metadata: z.record(z.string(), z.string()).optional(),
   }),
+
+  // Product Analytics
+  track_event: z.object({
+    event_name: z.string().min(1).max(100),
+    properties: z.record(z.string(), z.unknown()).optional(),
+    platform: z.enum(['android', 'ios', 'web', 'desktop']).optional(),
+    session_id: z.string().max(100).optional(),
+  }),
+
+  get_analytics_summary: z.object({
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    event_names: z.array(z.string()).optional(),
+  }),
+
+  track_revenue: z.object({
+    amount: z.number().positive(),
+    currency: z.string().length(3),
+    product_id: z.string().min(1).max(100),
+    transaction_id: z.string().min(1).max(100),
+    platform: z.enum(['ios', 'android']).optional(),
+  }),
 } as const;
 
 export type SchemaName = keyof typeof ZodSchemas;
