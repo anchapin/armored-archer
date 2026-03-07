@@ -32,16 +32,16 @@ func _ready() -> void:
 	current_health = max_health
 	add_to_group("Boss")
 	super._ready()
-	
+
 	health_changed.emit(current_health, max_health)
 
 func _physics_process(delta: float) -> void:
 	if not player_ref:
 		find_player()
-	
+
 	if player_ref:
 		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
-		
+
 		if distance_to_player <= detection_range:
 			if distance_to_player > attack_range:
 				chase_player()
@@ -49,7 +49,7 @@ func _physics_process(delta: float) -> void:
 				attack_player(delta)
 		else:
 			velocity = Vector2.ZERO
-	
+
 	move_and_slide()
 
 func find_player() -> void:
@@ -68,7 +68,7 @@ func chase_player() -> void:
 func attack_player(delta: float) -> void:
 	velocity = Vector2.ZERO
 	attack_timer += delta
-	
+
 	if attack_timer >= attack_cooldown:
 		attack_timer = 0.0
 		perform_attack()
@@ -80,12 +80,12 @@ func perform_attack() -> void:
 func take_damage(amount: int) -> void:
 	current_health -= amount
 	health_changed.emit(current_health, max_health)
-	
+
 	var health_percentage = float(current_health) / float(max_health)
-	
+
 	if health_percentage <= 0.5 and phase == 1:
 		enter_phase_2()
-	
+
 	if current_health <= 0:
 		die()
 

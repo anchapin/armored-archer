@@ -52,7 +52,7 @@ func take_damage(amount: int) -> void:
 	current_health -= amount
 	current_health = max(0, current_health)
 	health_changed.emit(current_health, max_health)
-	
+
 	if current_health <= 0:
 		_die()
 

@@ -75,49 +75,49 @@ func _initialize_profiler() -> void:
 	# Get initial memory
 	_startup_memory_mb = _get_memory_usage_mb()
 	_peak_memory_mb = _startup_memory_mb
-	
+
 	# Initialize session start time for leak detection
 	_session_start_time = Time.get_unix_time_from_system()
-	
+
 	# Detect device tier
 	_detect_device_tier()
-	
+
 	# Apply performance settings based on device tier
 	_apply_performance_settings()
-	
-	print("[PerformanceProfiler] Initialized - Device tier: %s, Target FPS: %d, Startup Memory: %.1f MB" % 
+
+	print("[PerformanceProfiler] Initialized - Device tier: %s, Target FPS: %d, Startup Memory: %.1f MB" %
 		[_get_tier_name(), _target_fps, _startup_memory_mb])
 
 func _process(_delta: float) -> void:
 	# Update FPS tracking
 	var current_fps = Engine.get_frames_per_second()
 	_update_fps_tracking(current_fps)
-	
+
 	# Update memory tracking
 	var current_memory = _get_memory_usage_mb()
 	if current_memory > _peak_memory_mb:
 		_peak_memory_mb = current_memory
-	
+
 	# Sample memory for leak detection (every 60 frames)
 	if _leak_detection_enabled and Engine.get_frames_drawn() % 60 == 0:
 		_sample_memory_for_leak_detection(current_memory)
-	
+
 	# Check for performance issues
 	_check_performance_warnings()
 
 func _update_fps_tracking(current_fps: float) -> void:
 	_current_fps = current_fps
 	_fps_history.append(current_fps)
-	
+
 	if _fps_history.size() > _fps_sample_count:
 		_fps_history.pop_front()
-	
+
 	# Calculate average FPS
 	var sum: float = 0.0
 	for fps in _fps_history:
 		sum += fps
 	var avg_fps = sum / _fps_history.size()
-	
+
 	# Emit warning if FPS drops significantly
 	if avg_fps < _target_fps * 0.8 and _fps_history.size() >= _fps_sample_count:
 		fps_dropped.emit(avg_fps, _target_fps)
@@ -126,10 +126,10 @@ func _check_performance_warnings() -> void:
 	# Memory warning check
 	var current_memory = _get_memory_usage_mb()
 	var memory_threshold = _get_memory_threshold()
-	
+
 	if current_memory > memory_threshold:
 		memory_warning.emit(current_memory, memory_threshold)
-	
+
 	# Memory leak detection check
 	if _leak_detection_enabled and _memory_samples.size() >= MEMORY_LEAK_SAMPLE_COUNT:
 		_check_memory_leak()
@@ -137,7 +137,7 @@ func _check_performance_warnings() -> void:
 func _sample_memory_for_leak_detection(current_memory: float) -> void:
 	_memory_samples.append(current_memory)
 	_memory_sample_times.append(Time.get_unix_time_from_system())
-	
+
 	# Keep only recent samples
 	if _memory_samples.size() > MEMORY_LEAK_SAMPLE_COUNT + 10:
 		_memory_samples.pop_front()
@@ -146,10 +146,10 @@ func _sample_memory_for_leak_detection(current_memory: float) -> void:
 func _check_memory_leak() -> void:
 	if _memory_samples.size() < MEMORY_LEAK_SAMPLE_COUNT:
 		return
-	
+
 	var current_memory = _memory_samples.back()
 	var memory_growth = current_memory - _startup_memory_mb
-	
+
 	# Calculate growth rate if we have enough time data
 	var session_duration_min: float = 0.0
 	if _memory_sample_times.size() >= 2:
@@ -157,15 +157,15 @@ func _check_memory_leak() -> void:
 		var last_time = _memory_sample_times.back()
 		var duration_seconds = last_time - first_time
 		session_duration_min = duration_seconds / 60.0
-	
+
 	var growth_rate: float = 0.0
 	if session_duration_min > 0:
 		growth_rate = memory_growth / session_duration_min
-	
+
 	# Check if memory growth exceeds threshold
 	if memory_growth > MEMORY_LEAK_THRESHOLD_MB:
 		_leak_suspect_count += 1
-		
+
 		# If sustained growth, emit leak signal
 		if _leak_suspect_count >= 5:
 			memory_leak_detected.emit(current_memory, memory_growth, growth_rate)
@@ -191,13 +191,13 @@ func _detect_device_tier() -> void:
 	# Check for budget device indicators
 	var is_mobile = OS.has_feature("mobile")
 	var is_web = OS.has_feature("web")
-	
+
 	# Get available RAM (if available)
 	var available_ram_mb: float = 0.0
-	
+
 	# Also check processor info
 	var processor_count = OS.get_processor_count()
-	
+
 	# Determine tier
 	if is_mobile or not OS.has_feature("desktop"):
 		# Mobile device - likely budget or mid-range
@@ -210,7 +210,7 @@ func _detect_device_tier() -> void:
 	else:
 		# Desktop or other - assume flagship
 		_device_tier = DeviceTier.FLAGSHP
-	
+
 	device_tier_detected.emit(_device_tier)
 
 func _apply_performance_settings() -> void:
@@ -253,7 +253,7 @@ func get_fps() -> float:
 func get_average_fps() -> float:
 	if _fps_history.is_empty():
 		return _current_fps
-	
+
 	var sum: float = 0.0
 	for fps in _fps_history:
 		sum += fps
@@ -339,7 +339,7 @@ func get_profiling_snapshot() -> Dictionary:
 func log_profiling_snapshot(label: String) -> void:
 	var snapshot = get_profiling_snapshot()
 	print("[PerformanceProfiler] %s - FPS: %.1f (avg: %.1f), Frame: %.2fms, Memory: %.1fMB (peak: %.1fMB), Tier: %s" %
-		[label, snapshot.current_fps, snapshot.average_fps, snapshot.avg_frame_time_ms, 
+		[label, snapshot.current_fps, snapshot.average_fps, snapshot.avg_frame_time_ms,
 		 snapshot.memory_current_mb, snapshot.memory_peak_mb, snapshot.device_tier])
 
 ## Set target FPS (can be used for dynamic performance adjustment)
@@ -361,23 +361,23 @@ func reset_performance_settings() -> void:
 func get_memory_leak_status() -> Dictionary:
 	var current_memory = _get_memory_usage_mb()
 	var memory_growth = current_memory - _startup_memory_mb
-	
+
 	# Calculate growth rate
 	var growth_rate: float = 0.0
 	var session_duration_min: float = 0.0
-	
+
 	if _memory_sample_times.size() >= 2 and _session_start_time > 0:
 		var last_time = _memory_sample_times.back()
 		var duration_seconds = last_time - _session_start_time
 		session_duration_min = duration_seconds / 60.0
-	
+
 	if session_duration_min > 0:
 		growth_rate = memory_growth / session_duration_min
-	
+
 	# Determine if leak detected
 	var leak_detected = false
 	var reason = ""
-	
+
 	if OS.has_feature("web"):
 		reason = "Web platform - memory detection not supported"
 	elif _memory_samples.size() < MEMORY_LEAK_SAMPLE_COUNT:
@@ -391,7 +391,7 @@ func get_memory_leak_status() -> Dictionary:
 		reason = "Growth rate exceeds threshold (%.1f > %.1f MB/min)" % [growth_rate, MEMORY_GROWTH_RATE_THRESHOLD]
 	else:
 		reason = "No leak detected"
-	
+
 	return {
 		"leak_detected": leak_detected,
 		"current_memory_mb": current_memory,
@@ -428,6 +428,6 @@ func get_instrumentation_data() -> Dictionary:
 func get_combined_report() -> Dictionary:
 	var snapshot = get_profiling_snapshot()
 	var instrumentation = get_instrumentation_data()
-	
+
 	snapshot["instrumentation"] = instrumentation
 	return snapshot

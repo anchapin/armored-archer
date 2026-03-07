@@ -1,7 +1,7 @@
 extends Node
 
 ## Game Analytics & Monitoring System
-## 
+##
 ## This module provides comprehensive analytics and monitoring for the Godot client.
 ## It integrates with Firebase Analytics and Crashlytics for mobile platforms.
 ##
@@ -104,7 +104,7 @@ const EVENT_RPC_LATENCY := "rpc_latency"
 
 func _ready() -> void:
 	_initialize_analytics()
-	
+
 	# Set up performance monitoring
 	last_performance_check = Time.get_ticks_msec()
 	last_network_check = Time.get_ticks_msec()
@@ -115,7 +115,7 @@ func _process(delta: float) -> void:
 	if current_time - last_performance_check > performance_check_interval:
 		_perform_performance_check()
 		last_performance_check = current_time
-	
+
 	# Periodic network quality check
 	if current_time - last_network_check > 60000:  # Every minute
 		_check_network_quality()
@@ -136,11 +136,11 @@ func _initialize_analytics() -> void:
 		platform = "web"
 	else:
 		platform = "desktop"
-	
+
 	# Get app and engine versions
 	app_version = _get_app_version()
 	engine_version = Engine.get_version_info()["string"]
-	
+
 	# Initialize Firebase on mobile platforms
 	if platform in ["android", "ios"]:
 		_initialize_firebase()
@@ -149,7 +149,7 @@ func _initialize_analytics() -> void:
 		push_warning("AnalyticsManager: Running on " + platform + " - limited analytics support")
 		# Still allow analytics for testing purposes
 		_initialize_local_analytics()
-	
+
 	# Start first session
 	start_session()
 
@@ -165,14 +165,14 @@ func _initialize_firebase() -> void:
 		config_path = "res://firebase_config/google-services.json"
 	elif OS.has_feature("ios"):
 		config_path = "res://firebase_config/GoogleService-Info.plist"
-	
+
 	if not FileAccess.file_exists(config_path):
 		push_error("AnalyticsManager: Firebase config file not found at " + config_path)
 		analytics_error.emit("Firebase config file not found")
 		# Fall back to local analytics
 		_initialize_local_analytics()
 		return
-	
+
 	_load_firebase_config(config_path)
 	_setup_crashlytics()
 	_setup_firebase_analytics()
@@ -191,7 +191,7 @@ func _load_firebase_config(config_path: String) -> void:
 	if config_file:
 		var config_content: String = config_file.get_as_text()
 		config_file.close()
-		
+
 		if OS.has_feature("android"):
 			_parse_android_config(config_content)
 		elif OS.has_feature("ios"):
@@ -217,25 +217,25 @@ func _parse_ios_config(config_content: String) -> void:
 func _parse_plist(plist_content: String) -> Dictionary:
 	var result: Dictionary = {}
 	var lines: PackedStringArray = plist_content.split("\n")
-	
+
 	for line: String in lines:
 		var key_regex: RegEx = RegEx.new()
 		key_regex.compile("<key>(.*?)</key>")
 		var string_regex: RegEx = RegEx.new()
 		string_regex.compile("<string>(.*?)</string>")
-		
+
 		var key_match: RegExMatch = key_regex.search(line)
 		var string_match: RegExMatch = string_regex.search(line)
-		
+
 		if key_match and string_match:
 			result[key_match.get_string(1)] = string_match.get_string(1)
-	
+
 	return result
 
 func _setup_crashlytics() -> void:
 	if not is_crashlytics_enabled:
 		return
-	
+
 	if OS.has_feature("android"):
 		_setup_android_crashlytics()
 	elif OS.has_feature("ios"):
@@ -289,12 +289,12 @@ func start_session() -> void:
 	if current_session_id != "":
 		# End previous session before starting new one
 		end_session()
-	
+
 	current_session_id = _generate_session_id()
 	session_start_time = Time.get_unix_time_from_system()
 	session_count += 1
 	breadcrumbs.clear()
-	
+
 	# Log session start
 	_log_event("session_start", {
 		"session_id": current_session_id,
@@ -302,7 +302,7 @@ func start_session() -> void:
 		"platform": platform,
 		"app_version": app_version
 	})
-	
+
 	add_breadcrumb("session_start", {"session_id": current_session_id})
 	session_started.emit(current_session_id)
 	print("AnalyticsManager: Session started - ", current_session_id)
@@ -310,10 +310,10 @@ func start_session() -> void:
 func end_session() -> void:
 	if current_session_id == "":
 		return
-	
+
 	var duration := Time.get_unix_time_from_system() - session_start_time
 	total_play_time_seconds += duration
-	
+
 	# Log session end
 	_log_event("session_end", {
 		"session_id": current_session_id,
@@ -322,15 +322,15 @@ func end_session() -> void:
 		"session_count": session_count,
 		"breadcrumb_count": breadcrumbs.size()
 	})
-	
+
 	add_breadcrumb("session_end", {
 		"session_id": current_session_id,
 		"duration": duration
 	})
-	
+
 	session_ended.emit(current_session_id, duration)
 	print("AnalyticsManager: Session ended - ", current_session_id, ", duration: ", duration)
-	
+
 	current_session_id = ""
 	session_start_time = 0
 
@@ -345,10 +345,10 @@ func _generate_session_id() -> String:
 
 func set_user_id(user_identifier: String) -> void:
 	user_id = user_identifier
-	
+
 	if is_initialized and platform in ["android", "ios"]:
 		_set_firebase_user_id(user_identifier)
-	
+
 	_log_event("user_id_set", {
 		"user_id": user_identifier,
 		"previous_user_id": user_id if user_id != user_identifier else ""
@@ -363,10 +363,10 @@ func _set_firebase_user_id(user_id: String) -> void:
 func set_user_property(property_name: String, property_value: String) -> void:
 	user_properties[property_name] = property_value
 	user_properties_to_set[property_name] = property_value
-	
+
 	if is_initialized and platform in ["android", "ios"]:
 		_set_firebase_user_property(property_name, property_value)
-	
+
 	_log_event("user_property_set", {
 		"property_name": property_name,
 		"property_value": property_value
@@ -762,12 +762,12 @@ func log_rpc_latency(rpc_name: String, latency_ms: int) -> void:
 func log_custom_event(event_name: String, parameters: Dictionary) -> void:
 	if not is_initialized:
 		return
-	
+
 	var event_params := parameters.duplicate()
 	event_params["platform"] = platform
 	event_params["session_id"] = current_session_id
 	event_params["timestamp"] = Time.get_unix_time_from_system()
-	
+
 	_log_event(event_name, event_params)
 
 # ============================================================================
@@ -781,13 +781,13 @@ func add_breadcrumb(label: String, metadata: Dictionary = {}) -> void:
 		"session_id": current_session_id,
 		"metadata": metadata
 	}
-	
+
 	breadcrumbs.append(breadcrumb)
-	
+
 	# Keep breadcrumbs limited to prevent memory issues
 	if breadcrumbs.size() > 100:
 		breadcrumbs = breadcrumbs.slice(-100)
-	
+
 	# Log breadcrumb as event for Firebase
 	_log_event("breadcrumb_" + label, metadata)
 
@@ -805,7 +805,7 @@ func _perform_performance_check() -> void:
 	# Collect performance metrics
 	var fps := Engine.get_frames_per_second()
 	var memory := OS.get_static_memory_usage() / (1024.0 * 1024.0)  # Convert to MB
-	
+
 	# Log performance metrics
 	_log_event("performance_check", {
 		"fps": fps,
@@ -814,14 +814,14 @@ func _perform_performance_check() -> void:
 		"session_duration": Time.get_unix_time_from_system() - session_start_time,
 		"breadcrumb_count": breadcrumbs.size()
 	})
-	
+
 	# Store for potential crash reporting
 	memory_usage_mb = memory
-	
+
 	# Check for performance issues
 	if fps < 30:
 		add_breadcrumb("low_fps", {"fps": fps})
-	
+
 	if memory > 500:  # Warning threshold
 		add_breadcrumb("high_memory", {"memory_mb": memory})
 
@@ -830,7 +830,7 @@ func log_performance_issue(issue_type: String, details: Dictionary) -> void:
 	params["issue_type"] = issue_type
 	params["fps"] = Engine.get_frames_per_second()
 	params["memory_mb"] = OS.get_static_memory_usage() / (1024.0 * 1024.0)
-	
+
 	_log_event("performance_issue", params)
 
 # ============================================================================
@@ -841,11 +841,11 @@ func _check_network_quality() -> void:
 	# Simple network quality check based on last RPC latency
 	# In a real implementation, this would use actual network tests
 	var new_quality := "unknown"
-	
+
 	# This is a placeholder - in production, you'd implement actual network testing
 	if NetworkManager and NetworkManager.is_connected:
 		new_quality = "good"  # Assume good if connected
-	
+
 	network_quality = new_quality
 
 func set_network_quality(quality: String) -> void:
@@ -865,31 +865,31 @@ func set_network_quality(quality: String) -> void:
 func _log_event(event_name: String, parameters: Dictionary) -> void:
 	if not is_analytics_enabled:
 		return
-	
+
 	# Add common parameters
 	var event_params := parameters.duplicate()
 	event_params["_timestamp"] = Time.get_unix_time_from_system()
-	
+
 	if current_session_id != "":
 		event_params["session_id"] = current_session_id
-	
+
 	if platform != "":
 		event_params["platform"] = platform
-	
+
 	# Queue event if not initialized
 	if not is_initialized:
 		_queue_event(event_name, event_params)
 		return
-	
+
 	# Log to appropriate backend
 	if platform in ["android", "ios"]:
 		_log_to_firebase(event_name, event_params)
 	else:
 		_log_locally(event_name, event_params)
-	
+
 	# Emit event signal
 	event_logged.emit(event_name, event_params)
-	
+
 	# Print in debug mode
 	if is_debug_mode:
 		print("Analytics: ", event_name, " - ", JSON.stringify(event_params))
@@ -900,9 +900,9 @@ func _queue_event(event_name: String, parameters: Dictionary) -> void:
 		"parameters": parameters,
 		"timestamp": Time.get_unix_time_from_system()
 	}
-	
+
 	event_queue.append(event)
-	
+
 	# Remove oldest events if queue too large
 	while event_queue.size() > max_queue_size:
 		event_queue.pop_front()
@@ -910,13 +910,13 @@ func _queue_event(event_name: String, parameters: Dictionary) -> void:
 func _flush_event_queue() -> void:
 	if not is_initialized:
 		return
-	
+
 	for event: Dictionary in event_queue:
 		if platform in ["android", "ios"]:
 			_log_to_firebase(event["event_name"], event["parameters"])
 		else:
 			_log_locally(event["event_name"], event["parameters"])
-	
+
 	event_queue.clear()
 
 func _log_to_firebase(event_name: String, parameters: Dictionary) -> void:
@@ -936,21 +936,21 @@ func _log_locally(event_name: String, parameters: Dictionary) -> void:
 func record_custom_error(message: String, stack_trace: String = "", metadata: Dictionary = {}) -> void:
 	if not is_initialized or not is_crashlytics_enabled:
 		return
-	
+
 	var params := metadata.duplicate()
 	params["message"] = message
 	if stack_trace != "":
 		params["stack_trace"] = stack_trace
-	
+
 	_log_crashlytics_error(message, stack_trace, params)
 	print("Analytics: Recorded custom error: ", message)
-	
+
 	crash_reported.emit(_generate_crash_id(), message)
 
 func record_exception(error: Error, context: String = "") -> void:
 	if not is_initialized or not is_crashlytics_enabled:
 		return
-	
+
 	var message := "Error " + str(error) + ": " + context
 	record_custom_error(message, "", {
 		"error_code": error,
@@ -982,7 +982,7 @@ func _generate_crash_id() -> String:
 func test_crash() -> void:
 	# For testing crash reporting
 	push_error("AnalyticsManager: Test crash triggered!")
-	
+
 	# Also record via our error tracking
 	record_custom_error("Test crash from AnalyticsManager", "test_crash() function", {
 		"function": "test_crash",

@@ -25,7 +25,7 @@ func _setup_ui() -> void:
 		button.text = slot.capitalize()
 		button.pressed.connect(_on_slot_button_pressed.bind(slot))
 		slot_buttons.add_child(button)
-	
+
 	var none_button = Button.new()
 	none_button.text = "None"
 	none_button.pressed.connect(_on_none_skin_pressed)
@@ -58,15 +58,15 @@ func _on_none_skin_pressed() -> void:
 
 func _update_character_display() -> void:
 	var loadout = TransmogManager.get_current_loadout()
-	
+
 	for slot in SLOTS:
 		var base_gear_id = loadout.base_gear.get(slot, "")
 		var skin_id = loadout.skins.get(slot, "")
-		
+
 		var gear_data = GearRegistry.get_base_gear(base_gear_id)
 		if gear_data:
 			modular_character.equip_base_gear(slot, base_gear_id, gear_data.base_texture)
-		
+
 		if not skin_id.is_empty():
 			var skin_data = GearRegistry.get_skin(skin_id)
 			if skin_data:
@@ -79,12 +79,12 @@ func _update_info() -> void:
 	info_text += "Current Slot: %s\n" % current_slot.capitalize()
 	info_text += "Base Gear: %s\n" % current_base_gear
 	info_text += "Skin: %s\n\n" % (current_skin if not current_skin.is_empty() else "None")
-	
+
 	var stats = TransmogManager.get_total_stats()
 	info_text += "Total Stats:\n"
 	info_text += "  Attack: +%d\n" % stats.attack
 	info_text += "  Defense: +%d\n" % stats.defense
 	info_text += "  Speed: +%d\n" % stats.speed
 	info_text += "  Health: +%d\n" % stats.health
-	
+
 	info_label.text = info_text

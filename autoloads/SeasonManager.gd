@@ -43,20 +43,20 @@ func get_season_info() -> void:
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
-	
+
 	var json: JSON = JSON.new()
 	var response: Dictionary = await network_manager.send_rpc(RPC_GET_SEASON_INFO, json.stringify({}))
-	
+
 	if response.has("error"):
 		push_error("Failed to get season info: %s" % response.error)
 		return
-	
+
 	if response.get("success", false):
 		current_season = response.get("season", {})
 		player_rank = response.get("player_rank", 0)
 		player_score = response.get("player_score", 0)
 		time_remaining = response.get("time_remaining", 0)
-		
+
 		season_info_loaded.emit({
 			"season": current_season,
 			"player_rank": player_rank,
@@ -67,25 +67,25 @@ func get_season_info() -> void:
 # --- Get Leaderboard ---
 func get_leaderboard(limit: int = 50) -> void:
 	"""Retrieves the top players leaderboard.
-	
+
 	Parameters:
 		limit: Maximum number of entries to retrieve (default 50)
 	"""
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
-	
+
 	var payload: Dictionary = {
 		"limit": limit
 	}
-	
+
 	var json: JSON = JSON.new()
 	var response: Dictionary = await network_manager.send_rpc(RPC_GET_LEADERBOARD, json.stringify(payload))
-	
+
 	if response.has("error"):
 		push_error("Failed to get leaderboard: %s" % response.error)
 		return
-	
+
 	if response.get("success", false):
 		leaderboard = response.get("leaderboard", [])
 		leaderboard_loaded.emit(leaderboard)
@@ -93,7 +93,7 @@ func get_leaderboard(limit: int = 50) -> void:
 # --- Update Rank ---
 func update_rank(winner_id: String, loser_id: String, is_punch_up: bool = false) -> void:
 	"""Updates player ranks after a match concludes.
-	
+
 	Parameters:
 		winner_id: User ID of the match winner
 		loser_id: User ID of the match loser
@@ -102,36 +102,36 @@ func update_rank(winner_id: String, loser_id: String, is_punch_up: bool = false)
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
-	
+
 	if winner_id.is_empty() or loser_id.is_empty():
 		push_error("Winner and loser IDs required")
 		return
-	
+
 	var payload: Dictionary = {
 		"winner_id": winner_id,
 		"loser_id": loser_id,
 		"is_punch_up": is_punch_up
 	}
-	
+
 	var json: JSON = JSON.new()
 	var response: Dictionary = await network_manager.send_rpc(RPC_UPDATE_RANK, json.stringify(payload))
-	
+
 	if response.has("error"):
 		push_error("Failed to update rank: %s" % response.error)
 		return
-	
+
 	if response.get("success", false):
 		var rank_change: Dictionary = {
 			"winner": response.get("winner", {}),
 			"loser": response.get("loser", {}),
 			"is_punch_up": response.get("is_punch_up", false)
 		}
-		
+
 		if NetworkManager.user_id == winner_id:
 			player_score = rank_change.winner.get("new_rank", player_score)
 		elif NetworkManager.user_id == loser_id:
 			player_score = rank_change.loser.get("new_rank", player_score)
-		
+
 		rank_updated.emit(rank_change)
 
 # --- Get Season Rewards ---
@@ -140,14 +140,14 @@ func get_season_rewards() -> void:
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
-	
+
 	var json: JSON = JSON.new()
 	var response: Dictionary = await network_manager.send_rpc(RPC_GET_SEASON_REWARDS, json.stringify({}))
-	
+
 	if response.has("error"):
 		push_error("Failed to get season rewards: %s" % response.error)
 		return
-	
+
 	if response.get("success", false):
 		season_rewards = response.get("rewards", {})
 		rewards_loaded.emit(season_rewards)
@@ -158,14 +158,14 @@ func claim_season_rewards() -> void:
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
-	
+
 	var json: JSON = JSON.new()
 	var response: Dictionary = await network_manager.send_rpc(RPC_CLAIM_SEASON_REWARDS, json.stringify({}))
-	
+
 	if response.has("error"):
 		push_error("Failed to claim rewards: %s" % response.error)
 		return
-	
+
 	if response.get("success", false):
 		season_rewards = response.get("rewards", {})
 		rewards_claimed = response.get("claimed", false)
@@ -174,7 +174,7 @@ func claim_season_rewards() -> void:
 # --- Utility Methods ---
 func get_current_season() -> Dictionary:
 	"""Returns current season data.
-	
+
 	Returns:
 		Dictionary: Season configuration and state
 	"""
@@ -182,7 +182,7 @@ func get_current_season() -> Dictionary:
 
 func get_player_rank_sync() -> int:
 	"""Returns current PvP rank (synchronous, no network call).
-	
+
 	Returns:
 		int: Current player rank
 	"""
@@ -190,7 +190,7 @@ func get_player_rank_sync() -> int:
 
 func get_player_score_sync() -> int:
 	"""Returns current score/rating (synchronous).
-	
+
 	Returns:
 		int: Current score/rating value
 	"""
@@ -198,7 +198,7 @@ func get_player_score_sync() -> int:
 
 func get_time_remaining() -> int:
 	"""Returns time remaining in current season in milliseconds.
-	
+
 	Returns:
 		int: Milliseconds remaining
 	"""
@@ -206,7 +206,7 @@ func get_time_remaining() -> int:
 
 func get_leaderboard_sync() -> Array:
 	"""Returns cached leaderboard data (synchronous).
-	
+
 	Returns:
 		Array: Leaderboard entries
 	"""
@@ -214,7 +214,7 @@ func get_leaderboard_sync() -> Array:
 
 func get_rewards_sync() -> Dictionary:
 	"""Returns cached season rewards (synchronous).
-	
+
 	Returns:
 		Dictionary: Available rewards
 	"""
@@ -222,7 +222,7 @@ func get_rewards_sync() -> Dictionary:
 
 func is_rewards_claimed() -> bool:
 	"""Checks if season rewards have been claimed.
-	
+
 	Returns:
 		bool: True if already claimed
 	"""
@@ -230,7 +230,7 @@ func is_rewards_claimed() -> bool:
 
 func format_time_remaining() -> String:
 	"""Formats remaining time as human-readable string.
-	
+
 	Returns:
 		String: Formatted time like "2d 5h" or "3h 30m" or "45m"
 	"""
@@ -238,7 +238,7 @@ func format_time_remaining() -> String:
 	var days: int = seconds / 86400
 	var hours: int = (seconds % 86400) / 3600
 	var minutes: int = (seconds % 3600) / 60
-	
+
 	if days > 0:
 		return "%dd %dh" % [days, hours]
 	elif hours > 0:
@@ -248,10 +248,10 @@ func format_time_remaining() -> String:
 
 func get_rank_tier(rank: int) -> String:
 	"""Gets the tier name for a given rank.
-	
+
 	Parameters:
 		rank: Player rank number
-	
+
 	Returns:
 		String: Tier name (Legendary, Epic, Rare, Uncommon, Common)
 	"""
@@ -268,10 +268,10 @@ func get_rank_tier(rank: int) -> String:
 
 func get_rank_color(rank: int) -> Color:
 	"""Gets the display color for a rank tier.
-	
+
 	Parameters:
 		rank: Player rank number
-	
+
 	Returns:
 		Color: Color for this rank tier
 	"""

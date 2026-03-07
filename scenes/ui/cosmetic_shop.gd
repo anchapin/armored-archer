@@ -34,26 +34,26 @@ var skin_buttons: Dictionary = {}
 func _ready() -> void:
 	if store_manager:
 		store_manager.currency_updated.connect(_on_currency_updated)
-	
+
 	if gem_manager:
 		gem_manager.skin_purchased.connect(_on_skin_purchased)
 		gem_manager.skin_equipped.connect(_on_skin_equipped)
-	
+
 	_setup_button_connections()
 	_update_gem_display()
 	_load_slot(current_slot)
 
 func _setup_button_connections() -> void:
 	back_button.pressed.connect(_on_back_pressed)
-	
+
 	helm_button.pressed.connect(func(): _on_slot_button_pressed("helm"))
 	armor_button.pressed.connect(func(): _on_slot_button_pressed("armor"))
 	bow_button.pressed.connect(func(): _on_slot_button_pressed("bow"))
 	arrow_button.pressed.connect(func(): _on_slot_button_pressed("arrow"))
-	
+
 	purchase_button.pressed.connect(_on_purchase_button_pressed)
 	equip_button.pressed.connect(_on_equip_button_pressed)
-	
+
 	purchase_confirmation_dialog.confirmed.connect(_on_purchase_confirmed)
 	purchase_confirmation_dialog.canceled.connect(_on_purchase_canceled)
 
@@ -75,9 +75,9 @@ func _on_slot_button_pressed(slot: String) -> void:
 
 func _load_slot(slot: String) -> void:
 	_clear_skin_grid()
-	
+
 	var skins = gem_manager.get_skins_by_slot(slot)
-	
+
 	for skin in skins:
 		var button = _create_skin_button(skin)
 		skin_grid.add_child(button)
@@ -92,18 +92,18 @@ func _create_skin_button(skin_data) -> Button:
 	var button = Button.new()
 	button.custom_minimum_size = Vector2(100, 100)
 	button.text = skin_data.skin_name
-	
+
 	if gem_manager.is_skin_owned(skin_data.skin_id):
 		button.modulate = Color(1, 1, 1, 1)
 	else:
 		button.modulate = Color(0.6, 0.6, 0.6, 1)
-	
+
 	var equipped_skin_id = gem_manager.get_equipped_skin(current_slot)
 	if skin_data.skin_id == equipped_skin_id:
 		button.text += " (Equipped)"
-	
+
 	button.pressed.connect(func(): _on_skin_button_pressed(skin_data.skin_id))
-	
+
 	return button
 
 # --- Skin Selection ---
@@ -113,17 +113,17 @@ func _on_skin_button_pressed(skin_id: String) -> void:
 
 func _show_skin_preview(skin_id: String) -> void:
 	var skin_info = gem_manager.get_skin_info(skin_id)
-	
+
 	if not skin_info:
 		_clear_preview()
 		return
-	
+
 	preview_name_label.text = skin_info.skin_name
 	preview_price_label.text = "Price: %d gems" % skin_info.price
-	
+
 	var is_owned = gem_manager.is_skin_owned(skin_id)
 	var is_equipped = gem_manager.get_equipped_skin(current_slot) == skin_id
-	
+
 	if is_owned:
 		preview_owned_label.text = "Owned"
 		if is_equipped:
@@ -132,7 +132,7 @@ func _show_skin_preview(skin_id: String) -> void:
 	else:
 		preview_owned_label.text = "Not Owned"
 		preview_owned_label.modulate = Color.RED
-	
+
 	_update_preview_buttons()
 
 func _clear_preview() -> void:
@@ -147,11 +147,11 @@ func _update_preview_buttons() -> void:
 		purchase_button.disabled = true
 		equip_button.disabled = true
 		return
-	
+
 	var skin_info = gem_manager.get_skin_info(selected_skin_id)
 	var is_owned = gem_manager.is_skin_owned(selected_skin_id)
 	var is_equipped = gem_manager.get_equipped_skin(current_slot) == selected_skin_id
-	
+
 	if is_owned:
 		purchase_button.disabled = true
 		equip_button.disabled = is_equipped
@@ -163,18 +163,18 @@ func _update_preview_buttons() -> void:
 func _on_purchase_button_pressed() -> void:
 	if selected_skin_id.is_empty():
 		return
-	
+
 	var skin_info = gem_manager.get_skin_info(selected_skin_id)
 	if not skin_info:
 		return
-	
+
 	confirmation_label.text = "Are you sure you want to purchase %s for %d gems?" % [skin_info.skin_name, skin_info.price]
 	purchase_confirmation_dialog.popup_centered()
 
 func _on_purchase_confirmed() -> void:
 	if selected_skin_id.is_empty():
 		return
-	
+
 	if gem_manager.purchase_skin(selected_skin_id):
 		_show_skin_preview(selected_skin_id)
 		_load_slot(current_slot)
@@ -191,7 +191,7 @@ func _on_skin_purchased(skin_id: String) -> void:
 func _on_equip_button_pressed() -> void:
 	if selected_skin_id.is_empty():
 		return
-	
+
 	if gem_manager.equip_skin(current_slot, selected_skin_id):
 		_show_skin_preview(selected_skin_id)
 		_load_slot(current_slot)

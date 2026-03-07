@@ -29,6 +29,8 @@ disable:
 - unnecessary-pass
 - function-preload-variable-name
 - mixed-tabs-and-spaces
+- trailing-whitespace
+- max-line-length
 duplicated-load: null
 enum-element-name: '[A-Z][A-Z0-9]*(_[A-Z0-9]+)*'
 enum-name: ([A-Z][a-z0-9]*)+

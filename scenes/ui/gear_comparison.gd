@@ -32,32 +32,32 @@ func set_gear_comparison(gear1: Dictionary, gear2: Dictionary, comparison: Dicti
 func _display_gear(gear: Dictionary, name_label: Label, rarity_label: Label, stats_container: VBoxContainer, modifiers_container: VBoxContainer) -> void:
 	var rarity: String = gear.get("rarity", "common")
 	var color: Color = rarity_colors.get(rarity, Color.WHITE)
-	
+
 	name_label.text = gear.get("name", "Unknown")
 	name_label.modulate = color
-	
+
 	rarity_label.text = rarity.capitalize()
 	rarity_label.modulate = color
-	
+
 	_clear_container(stats_container)
 	var stats: Array = gear.get("stats", [])
 	for stat in stats:
 		var stat_label: Label = Label.new()
 		stat_label.text = "%s: %d" % [stat.get("name", ""), stat.get("value", 0)]
 		stats_container.add_child(stat_label)
-	
+
 	_clear_container(modifiers_container)
 	var modifiers: Array = gear.get("modifiers", [])
 	for modifier in modifiers:
 		var mod_container: HBoxContainer = HBoxContainer.new()
-		
+
 		var mod_name_label: Label = Label.new()
 		mod_name_label.text = modifier.get("name", "Unknown")
 		mod_name_label.add_theme_color_override("font_color", Color.YELLOW)
-		
+
 		var mod_desc_label: Label = Label.new()
 		mod_desc_label.text = ": %s" % modifier.get("description", "")
-		
+
 		mod_container.add_child(mod_name_label)
 		mod_container.add_child(mod_desc_label)
 		modifiers_container.add_child(mod_container)
@@ -68,7 +68,7 @@ func _clear_container(container: VBoxContainer) -> void:
 
 func _display_comparison_result(comparison: Dictionary) -> void:
 	var better: String = comparison.get("better", "equal")
-	
+
 	match better:
 		"gear1":
 			result_label.text = "Left gear is better"

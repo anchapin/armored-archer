@@ -46,17 +46,17 @@ func _ready() -> void:
 	current_health = max_health
 	add_to_group("Boss")
 	super._ready()
-	
+
 	health_changed.emit(current_health, max_health)
 
 func _physics_process(delta: float) -> void:
 	if not player_ref:
 		find_player()
-	
+
 	if player_ref:
 		update_timers(delta)
 		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
-		
+
 		if not is_dashing:
 			if distance_to_player <= detection_range:
 				if distance_to_player > attack_range:
@@ -65,10 +65,10 @@ func _physics_process(delta: float) -> void:
 					attack_player(delta)
 			else:
 				velocity = Vector2.ZERO
-		
+
 		check_dash_ability()
 		check_wind_projectile()
-	
+
 	move_and_slide()
 
 func update_timers(delta: float) -> void:
@@ -91,7 +91,7 @@ func chase_player() -> void:
 
 func attack_player(delta: float) -> void:
 	velocity = Vector2.ZERO
-	
+
 	if attack_timer >= attack_cooldown:
 		attack_timer = 0.0
 		perform_attack()
@@ -109,13 +109,13 @@ func check_dash_ability() -> void:
 func perform_dash() -> void:
 	if is_dashing or not player_ref:
 		return
-	
+
 	is_dashing = true
 	dash_timer = 0.0
-	
+
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed * 3.0
-	
+
 	await get_tree().create_timer(0.3).timeout
 	is_dashing = false
 	velocity = Vector2.ZERO
@@ -130,27 +130,27 @@ func check_wind_projectile() -> void:
 func fire_wind_projectile() -> void:
 	if not player_ref:
 		return
-		
+
 	var projectile_scene: PackedScene = preload("res://scenes/arrow.tscn")
 	if projectile_scene:
 		var projectile: Node = projectile_scene.instantiate()
-		
+
 		var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 		projectile.global_position = global_position + direction * 50.0
 		projectile.rotation = direction.angle()
 		projectile.scale = Vector2(1.5, 1.5)
-		
+
 		get_tree().root.add_child(projectile)
 
 func take_damage(amount: int) -> void:
 	current_health -= amount
 	health_changed.emit(current_health, max_health)
-	
+
 	var health_percentage = float(current_health) / float(max_health)
-	
+
 	if health_percentage <= 0.5 and phase == 1:
 		enter_phase_2()
-	
+
 	if current_health <= 0:
 		die()
 

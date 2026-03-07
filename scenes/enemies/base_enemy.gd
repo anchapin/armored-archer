@@ -32,7 +32,7 @@ func _ready() -> void:
 	add_to_group("Enemies")
 	if hurt_area:
 		hurt_area.body_entered.connect(_on_hurt_area_body_entered)
-	
+
 	AutoAimManager.register_enemy(self)
 
 # Reset enemy state for reuse from object pool

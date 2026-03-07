@@ -31,7 +31,7 @@ func _connect_signals() -> void:
 		StoreManager.currency_updated.connect(_on_currency_updated)
 		StoreManager.purchase_succeeded.connect(_on_purchase_succeeded)
 		StoreManager.purchase_failed.connect(_on_purchase_failed)
-	
+
 	test_small_button.pressed.connect(_on_test_small)
 	test_medium_button.pressed.connect(_on_test_medium)
 	test_large_button.pressed.connect(_on_test_large)
@@ -43,12 +43,12 @@ func _update_display() -> void:
 	if StoreManager:
 		currency_label.text = "Gems: %d | Gold: %d" % [StoreManager.get_gems(), StoreManager.get_gold()]
 		_log("Currency updated: %d gems, %d gold" % [StoreManager.get_gems(), StoreManager.get_gold()])
-	
+
 	var platform_info = "Platform: %s" % OS.get_name()
 	if StoreManager:
 		platform_info += " (Detected: %s)" % StoreManager.platform
 	platform_label.text = platform_info
-	
+
 	if NetworkManager and NetworkManager.is_connected:
 		connection_status_label.text = "Status: Connected"
 		connection_status_label.modulate = Color.GREEN
@@ -96,10 +96,10 @@ func _log(message: String) -> void:
 	var timestamp = Time.get_datetime_string_from_system()
 	var log_entry = "[%s] %s" % [timestamp, message]
 	logs.append(log_entry)
-	
+
 	if logs.size() > max_logs:
 		logs.pop_front()
-	
+
 	log_text.text = "\n".join(logs)
 	print(log_entry)
 
