@@ -25,7 +25,7 @@ const logScrubberInstance = initializeLogScrubber();
  * Custom format that scrubs sensitive data from log messages and metadata.
  */
 const scrubFormat = winston.format((info: winston.Logform.TransformableInfo) => {
-  const { message, ...meta } = info;
+  const { message, level, ...meta } = info;
 
   // Scrub the message if it's a string
   let scrubbedMessage = message;
@@ -42,6 +42,7 @@ const scrubFormat = winston.format((info: winston.Logform.TransformableInfo) => 
 
   return {
     ...scrubbedMeta,
+    level: level,
     message: scrubbedMessage,
   };
 });
