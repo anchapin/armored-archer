@@ -151,12 +151,12 @@ export function registerRpcSubmitCombatAction(initializer: Runtime.Initializer):
  *   }
  * }
  */
-export function rpcSubmitCombatAction(
+export async function rpcSubmitCombatAction(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string | Promise<string> {
+): Promise<string> {
   return profileFunction<string>('combat.submit_combat_action', () => {
     logger.info('Submit combat action called for user: %s', ctx.userId);
 
@@ -359,12 +359,12 @@ export function registerRpcGetMatchState(initializer: Runtime.Initializer): void
  *   ...
  * }
  */
-export function rpcGetMatchState(
+export async function rpcGetMatchState(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string | Promise<string> {
+): Promise<string> {
   return profileFunction<string>('combat.get_match_state', () => {
     logger.info('Get match state called for user: %s', ctx.userId);
 

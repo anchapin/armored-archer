@@ -136,12 +136,12 @@ export async function profileAsync<T>(name: string, fn: () => Promise<T>): Promi
  * Profile a function (works with both sync and async)
  * Detects the type automatically
  */
-export function profileFunction<T>(
+export async function profileFunction<T>(
   name: string,
   fn: (() => T) | (() => Promise<T>)
-): T | Promise<T> {
+): Promise<T> {
   if (!profilingConfig.enabled) {
-    return fn();
+    return fn() as Promise<T>;
   }
 
   // Check if function returns a promise
