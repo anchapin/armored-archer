@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes
 
 # Default target
 all: help
@@ -40,6 +40,9 @@ help:
 	@echo "$(GREEN)Development$(RESET)"
 	@echo "  make dev                Start development (backend with auto-reload)"
 	@echo "  make clean              Clean build artifacts"
+	@echo ""
+	@echo "$(GREEN)Release Notes$(RESET)"
+	@echo "  make release-notes      Generate release notes from git history"
 	@echo ""
 	@echo "$(GREEN)Notes$(RESET)"
 	@echo "  - Godot: Open project in Godot 4.x Editor and press F5 to run"
@@ -127,3 +130,8 @@ backend-migrate-new:
 backend-db-schema:
 	@echo "$(BLUE)Current database schema...$(RESET)"
 	@docker exec -it armored_archer_postgres psql -U postgres -d nakama -c '\dt' 2>/dev/null || echo "$(YELLOW)Make sure backend is running: make backend-start$(RESET)"
+
+## Release Notes
+release-notes:
+	@echo "$(BLUE)Generating release notes...$(RESET)"
+	@python3 scripts/generate_release_notes.py

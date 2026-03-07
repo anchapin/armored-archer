@@ -13,4 +13,6 @@ export type {
   LoggerConfig,
   MatchConfig,
   MetricsConfig,
+  TracingConfig,
+  AlertingConfig,
 } from './config/index';

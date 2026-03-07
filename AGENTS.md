@@ -240,3 +240,48 @@ To add a new skill:
    - `keywords`: Array of relevant keywords
    - `description`: Brief description of the skill
 3. Add the skill to the list in this section
+
+## Release Notes Automation
+
+The project includes automated release notes generation from git history using conventional commits.
+
+### Generate Release Notes Locally
+
+```bash
+# Using Make
+make release-notes
+
+# Using Python directly
+python scripts/generate_release_notes.py
+python scripts/generate_release_notes.py v1.0.0           # From tag to HEAD
+python scripts/generate_release_notes.py v0.9.0 v1.0.0    # Between two tags
+python scripts/generate_release_notes.py -o RELEASE.md    # Output to file
+```
+
+### GitHub Actions Workflow
+
+The release notes workflow (`.github/workflows/release-notes.yml`) runs:
+- **On Release:** When a new GitHub release is published
+- **Manual:** Can be triggered via workflow_dispatch with optional from/to tag inputs
+
+The workflow:
+1. Checks out code with full git history
+2. Generates release notes using the Python script
+3. Creates a GitHub Release with the generated notes
+4. Uploads release notes as an artifact
+
+### Conventional Commits
+
+Release notes are generated from commits following the conventional commits format:
+- `feat:` - New features
+- `fix:` - Bug fixes
+- `docs:` - Documentation changes
+- `style:` - Code style changes
+- `refactor:` - Code refactoring
+- `perf:` - Performance improvements
+- `test:` - Test changes
+- `build:` - Build system changes
+- `ci:` - CI/CD changes
+- `chore:` - Maintenance tasks
+
+Example: `feat: Add new weapon type (#123)` will appear in Features with a link to PR #123.

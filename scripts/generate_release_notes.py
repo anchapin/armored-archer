@@ -7,19 +7,19 @@ Supports parsing commits with types: feat, fix, docs, style, refactor, perf, tes
 
 Usage:
     python scripts/generate_release_notes.py [version_tag]
-    
+
 Examples:
     python scripts/generate_release_notes.py             # Generate from last tag to HEAD
     python scripts/generate_release_notes.py v1.0.0      # Generate from v1.0.0 to HEAD
     python scripts/generate_release_notes.py v0.9.0 v1.0.0  # Generate between two tags
+    python scripts/generate_release_notes.py -o RELEASE.md  # Output to file
 """
 
 import argparse
-import subprocess
 import re
+import subprocess
+import sys
 from datetime import datetime
-from typing import Optional
-
 
 # Conventional commit types with descriptions
 COMMIT_TYPES = {
@@ -39,13 +39,17 @@ COMMIT_TYPES = {
 
 def run_git_command(args: list[str]) -> str:
     """Run a git command and return the output."""
-    result = subprocess.run(
-        ["git"] + args,
-        capture_output=True,
-        text=True,
-        check=True
-    )
-    return result.stdout.strip()
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        print(f"Error running git command: {e.stderr}", file=sys.stderr)
+        sys.exit(1)
 
 
 def get_tags() -> list[str]:
@@ -57,7 +61,7 @@ def get_tags() -> list[str]:
         return []
 
 
-def get_commits_since(from_ref: Optional[str] = None, to_ref: str = "HEAD") -> list[dict]:
+def get_commits_since(from_ref: str | None = None, to_ref: str = "HEAD") -> list[dict]:
     """Get commits from from_ref to to_ref."""
     if from_ref:
         range_ref = f"{from_ref}..{to_ref}"
@@ -76,10 +80,10 @@ def get_commits_since(from_ref: Optional[str] = None, to_ref: str = "HEAD") -> l
             "--format=%H|%s|%b",
             "--reverse"
         ])
-        
+
         if not output:
             return []
-            
+
         commits = []
         for line in output.split("\n"):
             if not line.strip():
@@ -88,21 +92,21 @@ def get_commits_since(from_ref: Optional[str] = None, to_ref: str = "HEAD") -> l
             commit_hash = parts[0][:7]
             message = parts[1] if len(parts) > 1 else ""
             body = parts[2] if len(parts) > 2 else ""
-            
+
             if not message:
                 continue
-            
+
             # Parse conventional commit format
             match = re.match(r'^(\w+)(?:\(([^)]+)\))?:\s+(.+)$', message)
             if match:
                 commit_type = match.group(1)
                 scope = match.group(2)
                 subject = match.group(3)
-                
+
                 # Check for PR number in body or message
                 pr_match = re.search(r'\(#(\d+)\)', message) or re.search(r'#(\d+)', body)
                 pr_number = pr_match.group(1) if pr_match else None
-                
+
                 commits.append({
                     "hash": commit_hash,
                     "type": commit_type,
@@ -112,42 +116,59 @@ def get_commits_since(from_ref: Optional[str] = None, to_ref: str = "HEAD") -> l
                     "message": message,
                     "body": body
                 })
-        
+
         return commits
     except subprocess.CalledProcessError as e:
-        print(f"Error getting commits: {e}")
+        print(f"Error getting commits: {e}", file=sys.stderr)
         return []
 
 
 def group_commits_by_type(commits: list[dict]) -> dict:
     """Group commits by their type."""
     grouped = {commit_type: [] for commit_type in COMMIT_TYPES}
-    
+
     for commit in commits:
         commit_type = commit.get("type", "chore")
         if commit_type in grouped:
             grouped[commit_type].append(commit)
         else:
             grouped["chore"].append(commit)
-    
+
     return grouped
 
 
-def generate_release_notes(version: str, from_ref: Optional[str] = None, to_ref: str = "HEAD") -> str:
+def generate_release_notes(version: str, from_ref: str | None = None, to_ref: str = "HEAD") -> str:
     """Generate release notes for a version."""
     commits = get_commits_since(from_ref, to_ref)
-    
+
     if not commits:
         return f"# Release Notes for {version}\n\nNo changes since last release.\n"
-    
+
     grouped = group_commits_by_type(commits)
-    
+
     # Get today's date
     date = datetime.now().strftime("%Y-%m-%d")
-    
+
     # Build release notes
     notes = [f"# Release Notes for {version} ({date})\n"]
-    
+
+    # Add summary of changes
+    total_changes = sum(len(cmts) for cmts in grouped.values() if cmts)
+    notes.append(f"**Total Changes:** {total_changes}\n")
+
+    # Summary by type
+    type_counts = {title: len(cmts) for title, cmts in (
+        (COMMIT_TYPES.get(t, (t, ""))[0], grouped.get(t, [])) for t in COMMIT_TYPES
+    ) if cmts}
+    if type_counts:
+        summary_parts = [f"- **{title}:** {count}\n" for title, count in type_counts.items() if count > 0]
+        if summary_parts:
+            notes.append("### Summary\n")
+            notes.extend(summary_parts)
+            notes.append("\n")
+
+    notes.append("---\n")
+
     has_changes = False
     for commit_type, (title, _) in COMMIT_TYPES.items():
         type_commits = grouped.get(commit_type, [])
@@ -159,20 +180,29 @@ def generate_release_notes(version: str, from_ref: Optional[str] = None, to_ref:
                 pr_link = f" ([#{commit['pr_number']}](https://github.com/alex-armored-archer/armored-archer/pull/{commit['pr_number']}))" if commit.get('pr_number') else ""
                 notes.append(f"- {scope}{commit['subject']}{pr_link}\n")
             notes.append("\n")
-    
+
     if not has_changes:
         notes.append("No significant changes.\n")
-    
+
     # Add footer
     notes.append("---\n")
-    notes.append("*Generated by automated release notes script*\n")
-    
+    notes.append(f"*Generated on {date} from git history*\n")
+
     return "".join(notes)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate release notes from git history"
+        description="Generate release notes from git history",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s                                    Generate from last tag to HEAD
+  %(prog)s v1.0.0                             Generate from v1.0.0 to HEAD
+  %(prog)s v0.9.0 v1.0.0                      Generate between two tags
+  %(prog)s -o RELEASE.md                      Output to file
+  %(prog)s Unreleased --from-ref v1.0.0      Custom version with specific ref
+        """
     )
     parser.add_argument(
         "version",
@@ -196,22 +226,31 @@ def main():
         "--output", "-o",
         help="Output file (default: stdout)"
     )
-    
+    parser.add_argument(
+        "--quiet", "-q",
+        action="store_true",
+        help="Suppress non-essential output"
+    )
+
     args = parser.parse_args()
-    
+
     version = args.version
     from_ref = args.from_ref
-    
+
     # Auto-detect from_ref if not provided
     if from_ref is None and version != "Unreleased":
         from_ref = version
-    
+
+    if not args.quiet:
+        print(f"Generating release notes for {version}...", file=sys.stderr)
+
     notes = generate_release_notes(version, from_ref, args.to_ref)
-    
+
     if args.output:
         with open(args.output, 'w') as f:
             f.write(notes)
-        print(f"Release notes written to {args.output}")
+        if not args.quiet:
+            print(f"Release notes written to {args.output}", file=sys.stderr)
     else:
         print(notes)
 
