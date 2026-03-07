@@ -337,7 +337,10 @@ export class LogScrubber {
    * @param meta - Additional metadata to scrub
    * @returns Object with scrubbed message and metadata
    */
-  scrubLog(message: string, meta?: Record<string, unknown>): { message: string; meta?: Record<string, unknown> } {
+  scrubLog(
+    message: string,
+    meta?: Record<string, unknown>
+  ): { message: string; meta?: Record<string, unknown> } {
     const scrubbedMessage = this.config.enabled ? scrubString(message) : message;
 
     if (!meta) {
