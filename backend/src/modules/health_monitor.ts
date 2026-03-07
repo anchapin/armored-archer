@@ -11,17 +11,9 @@
 
 import * as os from 'os';
 import { Gauge, Registry } from 'prom-client';
-import { config } from '../config';
-import {
-  alertingConfig,
-  isAlertingEnabled,
-} from '../config/alerting';
-import {
-  sendAlert,
-  triggerHealthAlert,
-  triggerMetricAlert,
-} from './alerting';
+import { alertingConfig, isAlertingEnabled } from '../config/alerting';
 import { Runtime } from '../types/nakama';
+import { triggerHealthAlert, triggerMetricAlert } from './alerting';
 
 // Create a dedicated registry for health metrics
 const healthRegistry = new Registry();
@@ -112,7 +104,7 @@ function getCpuUsage(): number {
 
   const idle = totalIdle / cpus.length;
   const total = totalTick / cpus.length;
-  const usage = 100 - (100 * idle / total);
+  const usage = 100 - (100 * idle) / total;
 
   return Math.round(usage * 100) / 100;
 }
@@ -216,9 +208,15 @@ export function performHealthCheck(): Record<string, number> {
 
   healthStatus.set({ component: 'overall' }, overallHealthy ? 1 : 0);
   healthStatus.set({ component: 'cpu' }, cpuUsage < healthAlerts.cpuCriticalPercent ? 1 : 0);
-  healthStatus.set({ component: 'memory' }, memoryUsage < healthAlerts.memoryCriticalPercent ? 1 : 0);
+  healthStatus.set(
+    { component: 'memory' },
+    memoryUsage < healthAlerts.memoryCriticalPercent ? 1 : 0
+  );
   healthStatus.set({ component: 'disk' }, diskUsage < healthAlerts.diskCriticalPercent ? 1 : 0);
-  healthStatus.set({ component: 'database' }, dbConnections < healthAlerts.dbConnectionsCriticalPercent ? 1 : 0);
+  healthStatus.set(
+    { component: 'database' },
+    dbConnections < healthAlerts.dbConnectionsCriticalPercent ? 1 : 0
+  );
 
   return {
     cpuUsage,
@@ -322,12 +320,7 @@ function checkMetricThresholds(metrics: Record<string, number>): void {
       'critical'
     );
   } else if (metrics.matchQueue >= metricAlerts.matchQueueWarning) {
-    triggerMetricAlert(
-      'matchQueue',
-      metrics.matchQueue,
-      metricAlerts.matchQueueWarning,
-      'warning'
-    );
+    triggerMetricAlert('matchQueue', metrics.matchQueue, metricAlerts.matchQueueWarning, 'warning');
   }
 }
 

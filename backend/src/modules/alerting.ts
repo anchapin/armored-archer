@@ -76,10 +76,10 @@ function shouldSendAlert(alertKey: string, severity: AlertSeverity): boolean {
 /**
  * Update alert state after sending an alert
  */
-function updateAlertState(alertKey: string, severity: AlertSeverity): void {
+function updateAlertState(alertKey: string, _severity: AlertSeverity): void {
   const now = Date.now();
   const state = alertState.get(alertKey) || { lastAlertTime: 0, alertCount: 0 };
-  
+
   alertState.set(alertKey, {
     lastAlertTime: now,
     alertCount: state.alertCount + 1,
@@ -195,8 +195,14 @@ async function sendWebhookAlert(
 
   if (webhookConfig.authType === 'bearer' && webhookConfig.token) {
     headers['Authorization'] = `Bearer ${webhookConfig.token}`;
-  } else if (webhookConfig.authType === 'basic' && webhookConfig.username && webhookConfig.password) {
-    const credentials = Buffer.from(`${webhookConfig.username}:${webhookConfig.password}`).toString('base64');
+  } else if (
+    webhookConfig.authType === 'basic' &&
+    webhookConfig.username &&
+    webhookConfig.password
+  ) {
+    const credentials = Buffer.from(`${webhookConfig.username}:${webhookConfig.password}`).toString(
+      'base64'
+    );
     headers['Authorization'] = `Basic ${credentials}`;
   }
 
@@ -269,14 +275,11 @@ async function sendPagerDutyAlert(
   };
 
   try {
-    const response = await fetch(
-      `https://events.pagerduty.com/v2/enqueue`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payloadPD),
-      }
-    );
+    const response = await fetch(`https://events.pagerduty.com/v2/enqueue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payloadPD),
+    });
 
     if (!response.ok) {
       console.error(`[Alerting] Failed to send PagerDuty alert: ${response.statusText}`);
@@ -412,11 +415,11 @@ export function sendErrorAlert(
  */
 export function getAlertStats(): Record<string, { lastAlertTime: number; alertCount: number }> {
   const stats: Record<string, { lastAlertTime: number; alertCount: number }> = {};
-  
+
   for (const [key, state] of alertState.entries()) {
     stats[key] = { lastAlertTime: state.lastAlertTime, alertCount: state.alertCount };
   }
-  
+
   return stats;
 }
 
