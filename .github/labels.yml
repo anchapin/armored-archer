@@ -37,3 +37,6 @@ labels:
   - name: "security"
     color: "b60205"
     description: "Security related issue"
+  - name: "secrets_management"
+    color: "b60205"
+    description: "Secrets management related issue"

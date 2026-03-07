@@ -196,6 +196,14 @@ npm run test:ci          # CI-ready test run with JUnit output
 - Use `./start.sh` script to validate environment and start services
 - Environment-specific configs: `.env.development`, `.env.staging`
 
+### Secrets Management
+- See [SECRETS_MANAGEMENT.md](./SECRETS_MANAGEMENT.md) for complete documentation
+- Never commit secrets to version control - all `.env*` files are gitignored
+- Use GitHub Secrets for CI/CD (Settings → Secrets and variables → Actions)
+- Client-side only gets non-sensitive config (server URL, public API keys)
+- Server-side secrets include: server keys, database passwords, encryption keys
+- Follow rotation procedures in [SECRETS_ROTATION.md](./SECRETS_ROTATION.md)
+
 ### Client-Server Communication
 - Client sends actions (e.g., `{"action": "shoot", "angle": 0.78}`)
 - Server validates and calculates results (damage, loot, etc.)
