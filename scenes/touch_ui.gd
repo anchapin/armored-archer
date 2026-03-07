@@ -14,11 +14,11 @@ var player: CharacterBody2D
 func _ready() -> void:
 	_connect_signals()
 	_connect_safe_area_manager()
-	
+
 	await get_tree().process_frame
 	if get_parent() and get_parent().has_node("Player"):
 		player = get_parent().get_node_or_null("Player")
-	
+
 	_adjust_joysticks_for_safe_area()
 
 func _connect_signals() -> void:
@@ -38,7 +38,7 @@ func _exit_tree() -> void:
 	_cleanup_signal_connection(movement_joystick, "joystick_moved", _movement_joystick_connection)
 	_cleanup_signal_connection(aiming_joystick, "joystick_moved", _aiming_joystick_moved_connection)
 	_cleanup_signal_connection(aiming_joystick, "joystick_released", _aiming_joystick_released_connection)
-	
+
 	var safe_area_manager: Node = get_node_or_null("/root/SafeAreaManager")
 	_cleanup_signal_connection(safe_area_manager, "safe_area_changed", _safe_area_changed_connection)
 
@@ -51,11 +51,11 @@ func _on_safe_area_changed() -> void:
 
 func _adjust_joysticks_for_safe_area() -> void:
 	var safe_margins: Dictionary = SafeAreaManager.get_safe_margins()
-	
+
 	if movement_joystick:
 		movement_joystick.offset_left = -200.0 - safe_margins.right
 		movement_joystick.offset_bottom = 200.0 - safe_margins.bottom
-	
+
 	if aiming_joystick:
 		aiming_joystick.offset_right = 200.0 - safe_margins.left
 		aiming_joystick.offset_top = -200.0 - safe_margins.top

@@ -55,7 +55,7 @@ func _initialize_skins() -> void:
 
 func _register_base_gear(gear_id: String, name: String, slot: GearSlot.SlotType, attack: int, defense: int, speed: int, health: int, rarity: String, texture_path: String) -> void:
 	"""Registers a base gear item in the database (internal).
-	
+
 	Parameters:
 		gear_id: Unique identifier
 		name: Display name
@@ -77,7 +77,7 @@ func _register_base_gear(gear_id: String, name: String, slot: GearSlot.SlotType,
 
 func _register_skin(skin_id: String, name: String, slot: GearSlot.SlotType, base_required: String, price: int, is_premium: bool, texture_path: String) -> void:
 	"""Registers a cosmetic skin in the database (internal).
-	
+
 	Parameters:
 		skin_id: Unique identifier
 		name: Display name
@@ -98,10 +98,10 @@ func _register_skin(skin_id: String, name: String, slot: GearSlot.SlotType, base
 
 func get_base_gear(gear_id: String) -> GearData:
 	"""Retrieves base gear data by ID.
-	
+
 	Parameters:
 		gear_id: Gear identifier to look up
-	
+
 	Returns:
 		GearData: Gear data object or null if not found
 	"""
@@ -109,10 +109,10 @@ func get_base_gear(gear_id: String) -> GearData:
 
 func get_skin(skin_id: String) -> CosmeticSkinData:
 	"""Retrieves skin data by ID.
-	
+
 	Parameters:
 		skin_id: Skin identifier to look up
-	
+
 	Returns:
 		CosmeticSkinData: Skin data object or null if not found
 	"""
@@ -120,10 +120,10 @@ func get_skin(skin_id: String) -> CosmeticSkinData:
 
 func get_gear_by_slot(slot_type: GearSlot.SlotType) -> Array:
 	"""Gets all base gear items for a specific slot.
-	
+
 	Parameters:
 		slot_type: GearSlot.SlotType to filter by
-	
+
 	Returns:
 		Array: List of GearData objects for the slot
 	"""
@@ -135,10 +135,10 @@ func get_gear_by_slot(slot_type: GearSlot.SlotType) -> Array:
 
 func get_skins_by_slot(slot_type: GearSlot.SlotType) -> Array:
 	"""Gets all skins for a specific slot type.
-	
+
 	Parameters:
 		slot_type: GearSlot.SlotType to filter by
-	
+
 	Returns:
 		Array: List of CosmeticSkinData objects for the slot
 	"""
@@ -150,10 +150,10 @@ func get_skins_by_slot(slot_type: GearSlot.SlotType) -> Array:
 
 func calculate_total_stats(loadout: Dictionary) -> Dictionary:
 	"""Calculates combined stats from all equipped base gear.
-	
+
 	Parameters:
 		loadout: Dictionary with "base_gear" mapping slots to gear IDs
-	
+
 	Returns:
 		Dictionary: Summed stats (attack, defense, speed, health)
 	"""

@@ -24,31 +24,31 @@ func submit_combat_action(match_id: String, action_type: String, angle: float, p
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
-	
+
 	if match_id.is_empty() or action_type.is_empty():
 		push_error("Invalid combat action parameters")
 		return
-	
+
 	var payload: Dictionary = {
 		"match_id": match_id,
 		"action_type": action_type,
 		"angle": angle,
 		"power": power
 	}
-	
+
 	var json: JSON = JSON.new()
 	var response: Dictionary = await network_manager.send_rpc(RPC_SUBMIT_COMBAT_ACTION, json.stringify(payload))
-	
+
 	if response.has("error"):
 		push_error("Failed to submit combat action: %s" % response["error"])
 		return
-	
+
 	if response.get("success", false):
 		var result: Dictionary = response.get("result", {})
 		combat_action_submitted.emit(result)
-		
+
 		_update_local_state(result)
-		
+
 		if result.has("winner"):
 			combat_ended.emit(result["winner"])
 
@@ -57,22 +57,22 @@ func get_match_state(match_id: String) -> void:
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
-	
+
 	if match_id.is_empty():
 		push_error("Match ID required")
 		return
-	
+
 	var payload: Dictionary = {
 		"match_id": match_id
 	}
-	
+
 	var json: JSON = JSON.new()
 	var response: Dictionary = await network_manager.send_rpc(RPC_GET_MATCH_STATE, json.stringify(payload))
-	
+
 	if response.has("error"):
 		push_error("Failed to get match state: %s" % response["error"])
 		return
-	
+
 	current_match_state = response
 	match_state_updated.emit(current_match_state)
 	_update_from_match_state()
@@ -81,7 +81,7 @@ func get_match_state(match_id: String) -> void:
 func _update_local_state(result: Dictionary) -> void:
 	if current_match_state.has("creator_id"):
 		var is_creator: bool = current_match_state.get("creator_id") == NetworkManager.user_id
-		
+
 		if is_creator:
 			my_health = current_match_state.get("creator_health", 100)
 			opponent_health = current_match_state.get("opponent_health", 100)
@@ -92,19 +92,19 @@ func _update_local_state(result: Dictionary) -> void:
 func _update_from_match_state() -> void:
 	if current_match_state.is_empty():
 		return
-	
+
 	var current_turn_user_id: String = current_match_state.get("current_turn_user_id", "")
 	is_my_turn = (current_turn_user_id == NetworkManager.user_id)
-	
+
 	var is_creator: bool = current_match_state.get("creator_id") == NetworkManager.user_id
-	
+
 	if is_creator:
 		my_health = current_match_state.get("creator_health", 100)
 		opponent_health = current_match_state.get("opponent_health", 100)
 	else:
 		my_health = current_match_state.get("opponent_health", 100)
 		opponent_health = current_match_state.get("creator_health", 100)
-	
+
 	turn_changed.emit(is_my_turn)
 
 # --- Utility Methods ---

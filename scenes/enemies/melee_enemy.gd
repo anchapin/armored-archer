@@ -14,10 +14,10 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if not player_ref:
 		find_player()
-	
+
 	if player_ref:
 		var distance_to_player = global_position.distance_to(player_ref.global_position)
-		
+
 		if distance_to_player <= detection_range:
 			if distance_to_player > attack_range:
 				chase_player()
@@ -25,7 +25,7 @@ func _physics_process(delta: float) -> void:
 				attack_player(delta)
 		else:
 			velocity = Vector2.ZERO
-	
+
 	move_and_slide()
 
 func find_player() -> void:
@@ -44,7 +44,7 @@ func chase_player() -> void:
 func attack_player(delta: float) -> void:
 	velocity = Vector2.ZERO
 	attack_timer += delta
-	
+
 	if attack_timer >= attack_cooldown:
 		attack_timer = 0.0
 		perform_attack()

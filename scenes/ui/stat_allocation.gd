@@ -32,12 +32,12 @@ func _ready() -> void:
 		player_stats_manager.level_up.connect(_on_level_up)
 		player_stats_manager.xp_gained.connect(_on_xp_gained)
 		player_stats_manager.stat_allocated.connect(_on_stat_allocated)
-		
+
 		if player_stats_manager.is_initialized:
 			refresh_ui()
 		else:
 			await player_stats_manager.get_player_stats()
-	
+
 	_setup_button_connections()
 
 func _setup_button_connections() -> void:
@@ -50,21 +50,21 @@ func _setup_button_connections() -> void:
 func refresh_ui() -> void:
 	if not player_stats_manager:
 		return
-	
+
 	current_level = player_stats_manager.get_level()
 	current_xp = player_stats_manager.get_xp()
 	current_ability_points = player_stats_manager.get_ability_points()
 	current_stats = player_stats_manager.player_stats.get("stats", {})
-	
+
 	level_label.text = "Level: %d" % current_level
 	xp_label.text = "XP: %d" % current_xp
 	ability_points_label.text = "Ability Points: %d" % current_ability_points
-	
+
 	attack_value.text = str(current_stats.get("attack", 10))
 	defense_value.text = str(current_stats.get("defense", 10))
 	dodge_value.text = str(current_stats.get("dodge", 10))
 	crit_rate_value.text = str(current_stats.get("crit_rate", 5))
-	
+
 	_update_button_states()
 	_update_xp_progress()
 
@@ -79,7 +79,7 @@ func _update_xp_progress() -> void:
 	var xp_for_next_level: int = _get_xp_for_level(current_level + 1)
 	var xp_in_current_level: int = current_xp - xp_for_current_level
 	var xp_needed_for_next_level: int = xp_for_next_level - xp_for_current_level
-	
+
 	var progress: float = float(xp_in_current_level) / float(xp_needed_for_next_level)
 	xp_progress_bar.value = progress * 100.0
 
@@ -88,11 +88,11 @@ func _get_xp_for_level(level: int) -> int:
 	var growth_factor: float = 1.5
 	var total_xp: int = 0
 	var xp_for_level: int = base_xp
-	
+
 	for i in range(1, level):
 		total_xp += xp_for_level
 		xp_for_level = int(xp_for_level * growth_factor)
-	
+
 	return total_xp
 
 func _on_stats_updated(stats: Dictionary) -> void:

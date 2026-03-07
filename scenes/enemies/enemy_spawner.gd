@@ -52,7 +52,7 @@ func _exit_tree() -> void:
 	## Clean up all connected signals to prevent memory leaks
 	_cleanup_timer_signal(spawn_timer_node, _on_spawn_timer_timeout)
 	_cleanup_timer_signal(wave_timer_node, _on_wave_timer_timeout)
-	
+
 	## Disconnect enemy died signals from active enemies
 	for enemy in active_enemies:
 		if is_instance_valid(enemy) and enemy.has_signal("died"):
@@ -69,11 +69,11 @@ func start_next_wave() -> void:
 		if boss_id != "":
 			spawn_boss()
 		return
-	
+
 	current_wave += 1
 	enemies_to_spawn = base_enemy_count + (current_wave - 1) * enemy_count_increment
 	is_spawning = true
-	
+
 	if spawn_timer_node:
 		spawn_timer_node.wait_time = time_between_enemies
 		spawn_timer_node.start()
@@ -85,23 +85,23 @@ func spawn_enemy() -> void:
 			wave_timer_node.wait_time = time_between_waves
 			wave_timer_node.start()
 		return
-	
+
 	var spawn_position: Vector2 = get_random_spawn_position()
-	
+
 	# Use object pool for enemy instantiation (performance optimization)
 	var enemy_instance: Node = ObjectPool.get_enemy()
-	
+
 	# Validate enemy instance before connecting signals
 	if enemy_instance and enemy_instance.has_signal("died"):
 		var died_connection: Callable = enemy_instance.died.connect(_on_enemy_died)
 		_signal_connections.append(died_connection)
-	
+
 	enemy_instance.global_position = spawn_position
-	
+
 	# Reset enemy stats for new spawn with null safety
 	if enemy_instance and enemy_instance.has_method("reset_for_spawn"):
 		enemy_instance.reset_for_spawn()
-	
+
 	active_enemies.append(enemy_instance)
 	enemies_to_spawn -= 1
 
@@ -124,14 +124,14 @@ func _on_enemy_died(xp_reward: int) -> void:
 		if not is_instance_valid(enemy):
 			enemy_to_remove = enemy
 			break
-	
+
 	if enemy_to_remove:
 		active_enemies.erase(enemy_to_remove)
-	
+
 	# Return enemy to object pool instead of waiting for cleanup
 	# (The enemy is already queued for cleanup via its died signal)
 	# We handle pool return in the enemy's own cleanup
-	
+
 	if active_enemies.size() == 0 and not is_spawning:
 		if current_wave >= max_waves:
 			if boss_id == "" or not is_boss_alive():
@@ -142,7 +142,7 @@ func _on_enemy_died(xp_reward: int) -> void:
 func spawn_boss() -> void:
 	if boss_id == "":
 		return
-	
+
 	GameManager.spawn_boss(boss_id)
 
 func is_boss_alive() -> bool:

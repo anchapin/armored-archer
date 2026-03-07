@@ -8,7 +8,7 @@ var _margin_bottom_offset: float = 0.0
 func _ready() -> void:
 	if SafeAreaManager.safe_area_changed.is_connected(_on_safe_area_changed):
 		SafeAreaManager.safe_area_changed.disconnect(_on_safe_area_changed)
-	
+
 	SafeAreaManager.safe_area_changed.connect(_on_safe_area_changed)
 	_update_margins()
 
