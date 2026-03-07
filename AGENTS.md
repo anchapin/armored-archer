@@ -188,6 +188,54 @@ npm run test:ci          # CI-ready test run with JUnit output
 - Use Jest as the testing framework
 - Integration tests use separate config: `backend/jest.integration.config.js`
 
+### Flaky Test Detection
+The project includes automated flaky test detection to identify non-deterministic test failures.
+
+#### Backend (TypeScript/Jest)
+```bash
+# Run flaky test detection
+npm run test:flaky
+
+# Run with custom settings
+npm run test:flaky -- --runs=5 --threshold=0.4
+
+# Run in CI mode (exit with error if flaky tests found)
+npm run test:flaky:ci
+```
+
+#### Godot (GDScript)
+```bash
+# Run Godot flaky test detection
+python3 scripts/detect_godot_flaky_tests.py
+
+# Run with custom settings
+python3 scripts/detect_godot_flaky_tests.py --runs=5 --verbose
+```
+
+#### Generate Reports
+```bash
+# Using Make
+make test-flaky-report
+
+# Or directly
+cd backend && npm run test:report
+```
+
+#### Configuration Options
+- `--runs=N`: Number of times to run each test (default: 3)
+- `--threshold=N`: Minimum failure rate to consider flaky (default: 0.33)
+- `--verbose`: Show detailed output
+
+#### Flaky Test History
+History is stored in:
+- Backend: `backend/data/flaky-test-history.json`
+- Godot: `data/godot-flaky-test-history.json`
+
+#### CI Integration
+- GitHub workflow: `.github/workflows/flaky-tests.yml`
+- Can be run manually via workflow_dispatch
+- Scheduled weekly via cron
+
 ## Architecture Notes
 
 ### Environment Configuration

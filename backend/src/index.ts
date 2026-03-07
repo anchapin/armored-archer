@@ -54,6 +54,7 @@ import { initializeHealthMonitoring } from './modules/health_monitor';
 import { initializeSentry } from './config/errorTracking';
 import { initializeTracing } from './config/tracing';
 import { logger, logSystemEvent } from './config/logger';
+import { registerErrorInsightRpcs, initializeErrorInsightsPipeline } from './modules/error_insight_pipeline';
 
 const InitModule: InitModule = function (
   ctx: Runtime.Context,
@@ -70,6 +71,7 @@ const InitModule: InitModule = function (
   initializeCaches(loggerParam);
   initializeDeploymentObservability(loggerParam);
   initializeHealthMonitoring(loggerParam);
+  initializeErrorInsightsPipeline(loggerParam);
 
   if (config.rateLimit.enabled) {
     logSystemEvent('info', 'Rate limiting enabled', {
@@ -85,6 +87,7 @@ const InitModule: InitModule = function (
 
   registerRpcMetrics(initializer);
   registerDeploymentObservability(initializer);
+  registerErrorInsightRpcs(initializer);
 
   if (config.rateLimit.enabled) {
     registerRpcWithRateLimit(
