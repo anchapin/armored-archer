@@ -188,7 +188,11 @@ export function getDataDogClient(): DataDogMetricsClient | null {
 /**
  * Send RPC metrics to DataDog
  */
-export function sendRpcMetricsToDataDog(rpcName: string, durationMs: number, success: boolean): void {
+export function sendRpcMetricsToDataDog(
+  rpcName: string,
+  durationMs: number,
+  success: boolean
+): void {
   if (!dataDogClient) return;
 
   const tags = {
@@ -212,7 +216,11 @@ export function sendPlayerMetricsToDataDog(activeSessions: number): void {
 /**
  * Send match metrics to DataDog
  */
-export function sendMatchMetricsToDataDog(matchType: string, queueSize: number, waitTimeMs: number): void {
+export function sendMatchMetricsToDataDog(
+  matchType: string,
+  queueSize: number,
+  waitTimeMs: number
+): void {
   if (!dataDogClient) return;
 
   const tags = { match_type: matchType };
@@ -247,7 +255,11 @@ export function sendEconomyMetricsToDataDog(
 /**
  * Send health metrics to DataDog
  */
-export function sendHealthMetricsToDataDog(healthy: boolean, cpuUsage: number, memoryUsage: number): void {
+export function sendHealthMetricsToDataDog(
+  healthy: boolean,
+  cpuUsage: number,
+  memoryUsage: number
+): void {
   if (!dataDogClient) return;
 
   dataDogClient.gauge('health.status', healthy ? 1 : 0);

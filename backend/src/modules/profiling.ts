@@ -30,9 +30,7 @@
  *   npx clinic flame -- node build/index.js
  */
 
-import { config } from '../config';
 import { Runtime } from '../types/nakama';
-import { recordRateLimitViolation } from './metrics';
 
 // --- Profiling Configuration ---
 
@@ -265,6 +263,7 @@ export function getProfileReport(): Array<{
   avgTimeMs: number;
   minTimeMs: number;
   maxTimeMs: number;
+  errors: number;
   errorRate: number;
   lastCalled: number;
 }> {
@@ -275,6 +274,7 @@ export function getProfileReport(): Array<{
     avgTimeMs: number;
     minTimeMs: number;
     maxTimeMs: number;
+    errors: number;
     errorRate: number;
     lastCalled: number;
   }> = [];
@@ -287,6 +287,7 @@ export function getProfileReport(): Array<{
       avgTimeMs: data.callCount > 0 ? data.totalTimeMs / data.callCount : 0,
       minTimeMs: data.minTimeMs === Number.MAX_SAFE_INTEGER ? 0 : data.minTimeMs,
       maxTimeMs: data.maxTimeMs,
+      errors: data.errors,
       errorRate: data.callCount > 0 ? data.errors / data.callCount : 0,
       lastCalled: data.lastCalled,
     });
@@ -449,7 +450,8 @@ export function profileMethod(name: string) {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: unknown[]): Promise<unknown> {
-      const fullName = `${target.constructor?.name || 'unknown'}.${name}`;
+      const targetObj = target as object;
+      const fullName = `${targetObj.constructor?.name || 'unknown'}.${name}`;
       return profileAsync(fullName, () => originalMethod.apply(this, args));
     };
 

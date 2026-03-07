@@ -177,24 +177,26 @@ export const ZodSchemas = {
   rollout_create_flag: z.object({
     name: z.string().min(1).max(100),
     description: z.string().max(500),
-    phases: z.array(
-      z.object({
-        phase: z.enum(['disabled', 'canary', 'gradual', 'full']),
-        percentage: z.number().int().min(0).max(100),
-        durationMinutes: z.number().int().min(0),
-        minHealthPercent: z.number().min(0).max(100),
-        maxErrorRatePercent: z.number().min(0).max(100),
-        maxLatencyMs: z.number().min(0),
-        sampleSize: z.number().int().min(0),
-        autoPromote: z.boolean(),
-        rollbackCriteria: z.object({
-          errorRateThreshold: z.number().min(0).max(100),
-          latencyThreshold: z.number().min(0),
-          healthCheckFails: z.number().int().min(0),
-          customMetrics: z.record(z.string(), z.number()).optional(),
-        }),
-      })
-    ).min(1),
+    phases: z
+      .array(
+        z.object({
+          phase: z.enum(['disabled', 'canary', 'gradual', 'full']),
+          percentage: z.number().int().min(0).max(100),
+          durationMinutes: z.number().int().min(0),
+          minHealthPercent: z.number().min(0).max(100),
+          maxErrorRatePercent: z.number().min(0).max(100),
+          maxLatencyMs: z.number().min(0),
+          sampleSize: z.number().int().min(0),
+          autoPromote: z.boolean(),
+          rollbackCriteria: z.object({
+            errorRateThreshold: z.number().min(0).max(100),
+            latencyThreshold: z.number().min(0),
+            healthCheckFails: z.number().int().min(0),
+            customMetrics: z.record(z.string(), z.number()).optional(),
+          }),
+        })
+      )
+      .min(1),
   }),
 
   rollout_update_flag: z.object({
