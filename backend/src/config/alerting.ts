@@ -19,6 +19,9 @@ export interface PagerDutyConfig {
   integrationKey: string;
 }
 
+// Re-export AppConfig for external use
+export type { AppConfig };
+
 /**
  * Slack configuration
  */

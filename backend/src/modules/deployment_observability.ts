@@ -96,7 +96,7 @@ export function recordDeployment(
   environment: string,
   version: string,
   status: DeploymentStatus,
-  metadata?: Record<string, string>
+  _metadata?: Record<string, string>
 ): void {
   const now = Date.now();
 
@@ -106,10 +106,17 @@ export function recordDeployment(
   // Update state and gauge based on status
   if (status === 'started') {
     activeDeployments.inc({ environment });
-    currentDeploymentState = { environment, version, activeCount: currentDeploymentState.activeCount + 1 };
+    currentDeploymentState = {
+      environment,
+      version,
+      activeCount: currentDeploymentState.activeCount + 1,
+    };
   } else if (status === 'success' || status === 'failed' || status === 'rollback') {
     activeDeployments.dec({ environment });
-    currentDeploymentState = { ...currentDeploymentState, activeCount: Math.max(0, currentDeploymentState.activeCount - 1) };
+    currentDeploymentState = {
+      ...currentDeploymentState,
+      activeCount: Math.max(0, currentDeploymentState.activeCount - 1),
+    };
 
     // Record last successful deployment
     if (status === 'success') {
@@ -177,7 +184,10 @@ async function rpcRecordDeployment(
   recordDeployment(environment, version, status as DeploymentStatus, metadata);
 
   // If deployment completed, record duration if start time provided
-  if (metadata?.startedAt && (status === 'success' || status === 'failed' || status === 'rollback')) {
+  if (
+    metadata?.startedAt &&
+    (status === 'success' || status === 'failed' || status === 'rollback')
+  ) {
     const startedAt = parseInt(metadata.startedAt, 10);
     const durationSeconds = (Date.now() - startedAt) / 1000;
     recordDeploymentDuration(environment, status as DeploymentStatus, durationSeconds);
@@ -221,10 +231,14 @@ async function rpcDeploymentHealth(
 
   // Get health status for current environment using get() method (async)
   const healthMetric = await deploymentHealthStatus.get();
-  
+
   // Handle empty metric case (prom-client returns empty object when no values set)
-  const healthMetricValues = (healthMetric as { values?: Array<{ labels: { environment: string; component: string }; value: number }> }).values;
-  
+  const healthMetricValues = (
+    healthMetric as {
+      values?: Array<{ labels: { environment: string; component: string }; value: number }>;
+    }
+  ).values;
+
   const healthStatus: Record<string, boolean> = {};
   if (healthMetricValues && Array.isArray(healthMetricValues)) {
     for (const value of healthMetricValues) {

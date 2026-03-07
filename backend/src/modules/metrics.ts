@@ -2,8 +2,8 @@ import { Counter, Histogram, Registry, collectDefaultMetrics, Gauge } from 'prom
 import { config } from '../config';
 import { Runtime } from '../types/nakama';
 import * as rateLimiter from '../utils/rateLimiter';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { getDeploymentRegistry } from './deployment_observability';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 const register = new Registry();
 
