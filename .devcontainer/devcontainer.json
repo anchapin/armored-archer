@@ -1,0 +1,30 @@
+{
+  "name": "Armored Archer - Godot 4.6 Development",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      "GODOT_VERSION": "4.6.2"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "github.copilot"
+      ],
+      "settings": {
+        "files.associations": {
+          "*.gd": "gdscript",
+          "*.tscn": "gdscript",
+          "*.tres": "gdscript"
+        }
+      }
+    }
+  },
+  "postCreateCommand": "godot --version",
+  "remoteUser": "vscode",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace"
+}
