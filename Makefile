@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check clean
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-docs backend-docs-validate clean
 
 # Default target
 all: help
@@ -31,6 +31,8 @@ help:
 	@echo "  make backend-build      Build TypeScript backend"
 	@echo "  make backend-lint       Lint backend code"
 	@echo "  make backend-check      Run linting and type checking"
+	@echo "  make backend-docs       Generate API documentation"
+	@echo "  make backend-docs-validate Validate API documentation"
 	@echo ""
 	@echo "$(GREEN)Development$(RESET)"
 	@echo "  make dev                Start development (backend with auto-reload)"
@@ -83,6 +85,17 @@ backend-lint:
 backend-check:
 	@echo "$(BLUE)Running linting and type checking...$(RESET)"
 	cd $(BACKEND_DIR) && npm run lint && npm run typecheck
+
+## Documentation
+backend-docs:
+	@echo "$(BLUE)Generating API documentation...$(RESET)"
+	cd $(BACKEND_DIR) && npm run docs:api
+	@echo "$(GREEN)API docs generated: backend/docs/openapi.yaml$(RESET)"
+
+backend-docs-validate:
+	@echo "$(BLUE)Validating API documentation...$(RESET)"
+	cd $(BACKEND_DIR) && npm run docs:validate
+	@echo "$(GREEN)API docs validated successfully$(RESET)"
 
 dev: backend-dev
 
