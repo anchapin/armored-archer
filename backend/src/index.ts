@@ -250,6 +250,9 @@ const InitModule: InitModule = function (
     registerRpcUnlockModifierPool(initializer);
     registerRpcReportPlayer(initializer);
     registerRpcGetPlayerReports(initializer);
+    registerRpcTrackEvent(initializer);
+    registerRpcGetAnalyticsSummary(initializer);
+    registerRpcTrackRevenue(initializer);
   }
 
   logSystemEvent('info', 'Armored Archer server module initialized');
