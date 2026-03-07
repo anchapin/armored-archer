@@ -33,27 +33,27 @@ module.exports = {
   // Coverage thresholds - adjusted to match current codebase coverage
   coverageThreshold: {
     global: {
-      branches: 40,
-      functions: 40,
-      lines: 50,
-      statements: 50
+      branches: 45,
+      functions: 45,
+      lines: 52,
+      statements: 52
     },
-    // Per-file thresholds for critical modules
+    // Per-file thresholds for critical modules (must meet or exceed 80%)
     './src/modules/combat_system.ts': {
-      branches: 60,
-      functions: 65,
-      lines: 70,
-      statements: 70
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
     './src/modules/rpg_system.ts': {
-      branches: 75,
-      functions: 55,
-      lines: 85,
-      statements: 85
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
     './src/modules/matchmaker.ts': {
       branches: 85,
-      functions: 60,
+      functions: 80,
       lines: 90,
       statements: 90
     },
