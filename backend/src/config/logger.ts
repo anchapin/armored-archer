@@ -66,9 +66,8 @@ export function createRpcMetadata(options: {
   }
 
   if (options.payload) {
-    metadata.payload = typeof options.payload === 'string'
-      ? options.payload
-      : JSON.stringify(options.payload);
+    metadata.payload =
+      typeof options.payload === 'string' ? options.payload : JSON.stringify(options.payload);
   }
 
   return metadata;
@@ -225,7 +224,11 @@ export function logRpcEntry(
     rpc: rpcName,
     userId,
     requestId,
-    payload: payload ? (typeof payload === 'string' ? payload : JSON.stringify(payload)) : undefined,
+    payload: payload
+      ? typeof payload === 'string'
+        ? payload
+        : JSON.stringify(payload)
+      : undefined,
     operation: 'rpc_entry',
   });
 }

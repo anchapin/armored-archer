@@ -28,6 +28,27 @@ jobs:
         working-directory: ./backend
         run: npm run lint -- --no-ignore
 
+  backend-complexity:
+    name: Cyclomatic Complexity Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run ESLint complexity analysis
+        working-directory: ./backend
+        run: npm run lint -- --no-ignore
+
   backend-typecheck:
     name: Backend Type Check
     runs-on: ubuntu-latest
