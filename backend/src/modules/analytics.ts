@@ -13,24 +13,24 @@ export enum AnalyticsEventType {
   // Session events
   SESSION_START = 'session_start',
   SESSION_END = 'session_end',
-  
+
   // Tutorial events
   TUTORIAL_STARTED = 'tutorial_started',
   TUTORIAL_COMPLETED = 'tutorial_completed',
   TUTORIAL_FAILED = 'tutorial_failed',
-  
+
   // PVE events
   PVE_STAGE_STARTED = 'pve_stage_started',
   PVE_STAGE_COMPLETED = 'pve_stage_completed',
   PVE_STAGE_FAILED = 'pve_stage_failed',
   PVE_BOSS_DEFEATED = 'pve_boss_defeated',
-  
+
   // PVP events
   PVP_MATCH_STARTED = 'pvp_match_started',
   PVP_MATCH_COMPLETED = 'pvp_match_completed',
   PVP_MATCH_ABANDONED = 'pvp_match_abandoned',
   PVP_DISCONNECT = 'pvp_disconnect',
-  
+
   // Store events
   STORE_OPENED = 'store_opened',
   PURCHASE_INITIATED = 'purchase_initiated',
@@ -39,7 +39,7 @@ export enum AnalyticsEventType {
   GEM_PURCHASED = 'gem_purchased',
   COSMETIC_PURCHASED = 'cosmetic_purchased',
   SUBSCRIPTION_STARTED = 'subscription_started',
-  
+
   // Progression events
   GEAR_OBTAINED = 'gear_obtained',
   GEAR_EQUIPPED = 'gear_equipped',
@@ -48,17 +48,17 @@ export enum AnalyticsEventType {
   ABILITY_UNLOCKED = 'ability_unlocked',
   SEASON_START = 'season_start',
   SEASON_END = 'season_end',
-  
+
   // Engagement events
   FIRST_SESSION = 'first_session',
   DAILY_LOGIN = 'daily_login',
   RETURNING_PLAYER = 'returning_player',
-  
+
   // Network events
   NETWORK_ERROR = 'network_error',
   RPC_ERROR = 'rpc_error',
   RPC_LATENCY = 'rpc_latency',
-  
+
   // Custom events
   CUSTOM = 'custom',
 }
@@ -303,7 +303,7 @@ async function forwardToSegment(event: AnalyticsEvent): Promise<void> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(writeKey + ':').toString('base64')}`,
+        Authorization: `Basic ${Buffer.from(writeKey + ':').toString('base64')}`,
       },
       body: JSON.stringify(segmentEvent),
     });
@@ -387,7 +387,10 @@ export function rpcTrackEvent(
 
   const validation = validateEventPayload(payload);
   if (!validation.success) {
-    return createValidationErrorResponse('track_event', (validation as { success: false; error: string }).error);
+    return createValidationErrorResponse(
+      'track_event',
+      (validation as { success: false; error: string }).error
+    );
   }
 
   const { event_name, properties, platform, session_id } = validation.data;
@@ -461,7 +464,10 @@ export function rpcGetAnalyticsSummary(
     'get_analytics_summary'
   );
   if (!validation.success) {
-    return createValidationErrorResponse('get_analytics_summary', (validation as { success: false; error: string }).error);
+    return createValidationErrorResponse(
+      'get_analytics_summary',
+      (validation as { success: false; error: string }).error
+    );
   }
 
   const { start_date, end_date, event_names } = validation.data;
@@ -543,7 +549,10 @@ export function rpcTrackRevenue(
 
   const validation = validatePayload(ZodSchemas.track_revenue, payload, 'track_revenue');
   if (!validation.success) {
-    return createValidationErrorResponse('track_revenue', (validation as { success: false; error: string }).error);
+    return createValidationErrorResponse(
+      'track_revenue',
+      (validation as { success: false; error: string }).error
+    );
   }
 
   const { amount, currency, product_id, transaction_id, platform } = validation.data;
