@@ -5,7 +5,7 @@ import {
   SessionContext,
   GameStateContext,
 } from './errorTracking';
-import { LogScrubber, logScrubber as defaultScrubber } from './logScrubber';
+import { LogScrubber, logScrubber } from './logScrubber';
 
 /**
  * Initialize log scrubber with configuration from config.
