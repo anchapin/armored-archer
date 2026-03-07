@@ -48,6 +48,7 @@ import {
   registerRpcUnlockModifierPool,
 } from './modules/gear_system';
 import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
+import { registerDeploymentObservability, initializeDeploymentObservability } from './modules/deployment_observability';
 import { initializeSentry } from './config/errorTracking';
 import { initializeTracing } from './config/tracing';
 import { logger, logSystemEvent } from './config/logger';
@@ -64,6 +65,7 @@ const InitModule: InitModule = function (
 
   validateRequiredConfig();
   initializeCaches(loggerParam);
+  initializeDeploymentObservability(loggerParam);
 
   if (config.rateLimit.enabled) {
     logSystemEvent('info', 'Rate limiting enabled', {
@@ -78,6 +80,7 @@ const InitModule: InitModule = function (
   logSystemEvent('info', 'Registering RPC handlers');
 
   registerRpcMetrics(initializer);
+  registerDeploymentObservability(initializer);
 
   if (config.rateLimit.enabled) {
     registerRpcWithRateLimit(
