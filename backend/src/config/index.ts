@@ -72,6 +72,12 @@ export interface LoggerConfig {
   level: string;
   format: string;
   output: string;
+  /** Enable or disable log scrubbing */
+  scrubLogs: boolean;
+  /** Additional field names to treat as sensitive */
+  additionalSensitiveFields?: string[];
+  /** Maximum depth to scrub in nested objects */
+  maxScrubDepth?: number;
 }
 
 export interface MatchConfig {
@@ -166,6 +172,13 @@ const config: AppConfig = {
     level: process.env.LOG_LEVEL || 'info',
     format: process.env.LOG_FORMAT || 'json',
     output: process.env.LOG_OUTPUT || 'stdout',
+    scrubLogs: process.env.LOG_SCRUB_ENABLED !== 'false',
+    additionalSensitiveFields: process.env.LOG_SCRUB_ADDITIONAL_FIELDS
+      ? process.env.LOG_SCRUB_ADDITIONAL_FIELDS.split(',').map((f) => f.trim())
+      : undefined,
+    maxScrubDepth: process.env.LOG_SCRUB_MAX_DEPTH
+      ? parseInt(process.env.LOG_SCRUB_MAX_DEPTH, 10)
+      : undefined,
   },
 
   match: {
@@ -319,10 +332,11 @@ export function logConfiguration(logger: {
   logger.info('RevenueCat: public_key=%s', maskSecret(config.revenuecat.publicKey));
   logger.info('Session: expiry_sec=%d', config.session.expirySec);
   logger.info(
-    'Logger: level=%s, format=%s, output=%s',
+    'Logger: level=%s, format=%s, output=%s, scrubLogs=%s',
     config.logger.level,
     config.logger.format,
-    config.logger.output
+    config.logger.output,
+    config.logger.scrubLogs
   );
   logger.info('Match: allow_host_loopback=%s', config.match.allowHostLoopback);
   logger.info(

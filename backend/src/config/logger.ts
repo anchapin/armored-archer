@@ -5,6 +5,46 @@ import {
   SessionContext,
   GameStateContext,
 } from './errorTracking';
+import { LogScrubber, logScrubber as defaultScrubber } from './logScrubber';
+
+/**
+ * Initialize log scrubber with configuration from config.
+ */
+function initializeLogScrubber(): LogScrubber {
+  return new LogScrubber({
+    enabled: config.logger.scrubLogs,
+    additionalSensitiveFields: config.logger.additionalSensitiveFields,
+    maxDepth: config.logger.maxScrubDepth,
+  });
+}
+
+// Create the log scrubber instance with configuration
+const logScrubberInstance = initializeLogScrubber();
+
+/**
+ * Custom format that scrubs sensitive data from log messages and metadata.
+ */
+const scrubFormat = winston.format((info: winston.Logform.TransformableInfo) => {
+  const { message, ...meta } = info;
+
+  // Scrub the message if it's a string
+  let scrubbedMessage = message;
+  if (typeof message === 'string') {
+    const scrubbed = logScrubberInstance.scrubLog(message, meta as Record<string, unknown>);
+    scrubbedMessage = scrubbed.message;
+  }
+
+  // Scrub metadata
+  let scrubbedMeta = meta;
+  if (typeof meta === 'object' && meta !== null) {
+    scrubbedMeta = logScrubberInstance.scrub(meta) as Record<string, unknown>;
+  }
+
+  return {
+    ...scrubbedMeta,
+    message: scrubbedMessage,
+  };
+});
 
 /**
  * Log levels for the application.
@@ -98,8 +138,10 @@ export function createSystemEventMetadata(
 /**
  * JSON format for structured logging.
  * Outputs logs in JSON format with consistent fields.
+ * Includes log scrubbing to prevent sensitive data in logs.
  */
 const jsonFormat = winston.format.combine(
+  scrubFormat(),
   winston.format.timestamp({
     format: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
   }),
@@ -111,8 +153,10 @@ const jsonFormat = winston.format.combine(
 /**
  * Console format for human-readable output.
  * Includes colors and formatted output for development.
+ * Includes log scrubbing to prevent sensitive data in logs.
  */
 const consoleFormat = winston.format.combine(
+  scrubFormat(),
   winston.format.colorize({ all: true }),
   winston.format.timestamp({
     format: 'YYYY-MM-DD HH:mm:ss',
