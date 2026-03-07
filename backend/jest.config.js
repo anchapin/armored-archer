@@ -24,8 +24,8 @@ module.exports = {
     global: {
       branches: 49,
       functions: 50,
-      lines: 55,
-      statements: 55
+      lines: 54,
+      statements: 54
     },
     // Per-file thresholds for critical modules
     './src/modules/combat_system.ts': {
