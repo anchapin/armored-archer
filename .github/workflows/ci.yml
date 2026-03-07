@@ -220,7 +220,7 @@ jobs:
           cache: 'pip'
 
       - name: Install gdlint
-        run: pip install gdlint
+        run: pip install gdtoolkit
 
       - name: Run gdlint
         run: gdlint .
