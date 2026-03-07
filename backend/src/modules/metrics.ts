@@ -1,6 +1,6 @@
-import { Runtime } from '../types/nakama';
 import { Counter, Histogram, Registry, collectDefaultMetrics, Gauge } from 'prom-client';
 import { config } from '../config';
+import { Runtime } from '../types/nakama';
 import * as rateLimiter from '../utils/rateLimiter';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -49,12 +49,12 @@ export function registerRpcMetrics(initializer: Runtime.Initializer): void {
   initializer.registerRpc('armored_archer/metrics', rpcGetMetrics);
 }
 
-function rpcGetMetrics(
+async function rpcGetMetrics(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): string {
+): Promise<string> {
   logger.info('Metrics endpoint called by user: %s', ctx.userId);
 
   const validation = validatePayload(ZodSchemas.health_check, payload, 'metrics');
@@ -62,10 +62,10 @@ function rpcGetMetrics(
     return createValidationErrorResponse('metrics', validation.error);
   }
 
-  register.metrics().then((metrics) => {
-    return metrics;
-  });
-  return JSON.stringify({ message: 'Metrics are being collected asynchronously' });
+  // Get metrics in Prometheus text format
+  const metrics = await register.metrics();
+
+  return metrics;
 }
 
 export type RpcHandler = (

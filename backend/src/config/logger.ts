@@ -1,5 +1,10 @@
 import winston from 'winston';
 import { config } from '../config';
+import {
+  captureRpcError as sentryCaptureRpcError,
+  SessionContext,
+  GameStateContext,
+} from './errorTracking';
 
 /**
  * Log levels for the application.
@@ -357,4 +362,34 @@ export function captureRpcError(
   _payload?: string
 ): void {
   logRpcError(rpcName, userId, 'unknown', error, 0);
+}
+
+/**
+ * Captures an RPC error with Sentry for error tracking.
+ * This version supports extended context for better debugging.
+ *
+ * @param rpcName - Name of the RPC that errored
+ * @param userId - User ID who made the request
+ * @param requestId - Unique request identifier
+ * @param error - The error that occurred
+ * @param durationMs - Time taken before the error occurred
+ * @param payload - Optional payload for debugging
+ * @param sessionContext - Optional session context
+ * @param gameStateContext - Optional game state context
+ */
+export function captureRpcErrorWithContext(
+  rpcName: string,
+  userId: string,
+  requestId: string,
+  error: Error,
+  durationMs: number,
+  payload?: string,
+  sessionContext?: SessionContext,
+  gameStateContext?: GameStateContext
+): void {
+  // Log the error locally
+  logRpcError(rpcName, userId, requestId, error, durationMs);
+
+  // Also send to Sentry with full context
+  sentryCaptureRpcError(rpcName, userId, error, payload, sessionContext, gameStateContext);
 }
