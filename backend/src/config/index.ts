@@ -191,6 +191,40 @@ export interface AlertingConfig {
   tags: Record<string, string>;
 }
 
+export interface AnalyticsProviderConfig {
+  enabled: boolean;
+  apiKey?: string;
+  secretKey?: string;
+}
+
+export interface AnalyticsConfig {
+  enabled: boolean;
+  mixpanel?: AnalyticsProviderConfig;
+  amplitude?: AnalyticsProviderConfig;
+  segment?: {
+    enabled: boolean;
+    writeKey?: string;
+  };
+  customEndpoint?: {
+    url: string;
+    apiKey?: string;
+  };
+}
+
+/**
+ * Configuration for the Error to Insight Pipeline
+ */
+export interface ErrorInsightConfig {
+  enabled: boolean;
+  aggregationWindowMinutes: number;
+  minOccurrencesForInsight: number;
+  insightWindowHours: number;
+  maxPatterns: number;
+  maxInsights: number;
+  autoResolvePatterns: boolean;
+  patternTtlDays: number;
+}
+
 export interface AppConfig {
   environment: 'development' | 'staging' | 'production';
   server: ServerConfig;
@@ -203,6 +237,8 @@ export interface AppConfig {
   rateLimit: RateLimitConfig;
   tracing: TracingConfig;
   alerting: AlertingConfig;
+  errorInsights: ErrorInsightConfig;
+  analytics: AnalyticsConfig;
 }
 
 function parseDatabaseAddress(address: string): DatabaseConfig {
@@ -339,6 +375,18 @@ const config: AppConfig = {
         maxRequests: parseInt(process.env.RATE_LIMIT_EQUIP_GEAR_MAX || '30', 10),
         windowMs: parseInt(process.env.RATE_LIMIT_EQUIP_GEAR_WINDOW_MS || '60000', 10),
       },
+      track_event: {
+        maxRequests: parseInt(process.env.RATE_LIMIT_TRACK_EVENT_MAX || '60', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_TRACK_EVENT_WINDOW_MS || '60000', 10),
+      },
+      get_analytics_summary: {
+        maxRequests: parseInt(process.env.RATE_LIMIT_GET_ANALYTICS_SUMMARY_MAX || '10', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_GET_ANALYTICS_SUMMARY_WINDOW_MS || '60000', 10),
+      },
+      track_revenue: {
+        maxRequests: parseInt(process.env.RATE_LIMIT_TRACK_REVENUE_MAX || '30', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_TRACK_REVENUE_WINDOW_MS || '60000', 10),
+      },
     },
   },
 
@@ -463,6 +511,45 @@ const config: AppConfig = {
       service: 'armored-archer-backend',
       version: process.env.APP_VERSION || 'unknown',
     },
+  },
+
+  errorInsights: {
+    enabled: process.env.ERROR_INSIGHTS_ENABLED === 'true',
+    aggregationWindowMinutes: parseInt(process.env.ERROR_INSIGHTS_AGGREGATION_WINDOW || '15', 10),
+    minOccurrencesForInsight: parseInt(process.env.ERROR_INSIGHTS_MIN_OCCURRENCES || '3', 10),
+    insightWindowHours: parseInt(process.env.ERROR_INSIGHTS_WINDOW_HOURS || '24', 10),
+    maxPatterns: parseInt(process.env.ERROR_INSIGHTS_MAX_PATTERNS || '100', 10),
+    maxInsights: parseInt(process.env.ERROR_INSIGHTS_MAX_INSIGHTS || '50', 10),
+    autoResolvePatterns: process.env.ERROR_INSIGHTS_AUTO_RESOLVE !== 'false',
+    patternTtlDays: parseInt(process.env.ERROR_INSIGHTS_PATTERN_TTL_DAYS || '7', 10),
+  },
+
+  analytics: {
+    enabled: process.env.ANALYTICS_ENABLED === 'true',
+    mixpanel: process.env.MIXPANEL_API_KEY
+      ? {
+          enabled: process.env.MIXPANEL_ENABLED !== 'false',
+          apiKey: process.env.MIXPANEL_API_KEY,
+        }
+      : undefined,
+    amplitude: process.env.AMPLITUDE_API_KEY
+      ? {
+          enabled: process.env.AMPLITUDE_ENABLED !== 'false',
+          apiKey: process.env.AMPLITUDE_API_KEY,
+        }
+      : undefined,
+    segment: process.env.SEGMENT_WRITE_KEY
+      ? {
+          enabled: process.env.SEGMENT_ENABLED !== 'false',
+          writeKey: process.env.SEGMENT_WRITE_KEY,
+        }
+      : undefined,
+    customEndpoint: process.env.ANALYTICS_CUSTOM_ENDPOINT
+      ? {
+          url: process.env.ANALYTICS_CUSTOM_ENDPOINT,
+          apiKey: process.env.ANALYTICS_CUSTOM_API_KEY,
+        }
+      : undefined,
   },
 };
 
