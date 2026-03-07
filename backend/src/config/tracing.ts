@@ -1,7 +1,7 @@
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
-import { ZipkinExporter } from '@opentelemetry/exporter-zipkin';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { ZipkinExporter } from '@opentelemetry/exporter-zipkin';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import {
