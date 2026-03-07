@@ -38,17 +38,35 @@ const DEFAULT_SENSITIVE_FIELDS = [
  */
 const SENSITIVE_PATTERNS = [
   // JWT tokens
-  { pattern: /eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*/g, replacement: '[JWT_REDACTED]' },
+  {
+    pattern: /eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*/g,
+    replacement: '[JWT_REDACTED]',
+  },
   // AWS access keys
-  { pattern: /(?:A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}/g, replacement: '[AWS_KEY_REDACTED]' },
+  {
+    pattern: /(?:A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}/g,
+    replacement: '[AWS_KEY_REDACTED]',
+  },
   // Generic API keys (high entropy strings)
-  { pattern: /api[_-]?key["']?\s*[:=]\s*["']?([a-zA-Z0-9_-]{20,})["']?/gi, replacement: 'api_key=[API_KEY_REDACTED]' },
+  {
+    pattern: /api[_-]?key["']?\s*[:=]\s*["']?([a-zA-Z0-9_-]{20,})["']?/gi,
+    replacement: 'api_key=[API_KEY_REDACTED]',
+  },
   // Passwords in URLs or config
-  { pattern: /(?:password|passwd|pwd)["']?\s*[:=]\s*["']?([^"'\s,}]+)["']?/gi, replacement: 'password=[PASSWORD_REDACTED]' },
+  {
+    pattern: /(?:password|passwd|pwd)["']?\s*[:=]\s*["']?([^"'\s,}]+)["']?/gi,
+    replacement: 'password=[PASSWORD_REDACTED]',
+  },
   // Bearer tokens
-  { pattern: /Bearer\s+[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*/g, replacement: 'Bearer [TOKEN_REDACTED]' },
+  {
+    pattern: /Bearer\s+[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*/g,
+    replacement: 'Bearer [TOKEN_REDACTED]',
+  },
   // Base64 encoded secrets (common in configs)
-  { pattern: /["'](?:secret|token|key)["']\s*[:=]\s*["']([A-Za-z0-9+/=]{32,})["']/g, replacement: '"secret":"[SECRET_REDACTED]"' },
+  {
+    pattern: /["'](?:secret|token|key)["']\s*[:=]\s*["']([A-Za-z0-9+/=]{32,})["']/g,
+    replacement: '"secret":"[SECRET_REDACTED]"',
+  },
   // Credit card numbers (basic pattern)
   { pattern: /\b(?:\d{4}[- ]?){3}\d{4}\b/g, replacement: '[CREDIT_CARD_REDACTED]' },
   // Social Security Number pattern
@@ -313,7 +331,10 @@ export class LogScrubber {
    * @param meta - Additional metadata to scrub
    * @returns Object with scrubbed message and metadata
    */
-  scrubLog(message: string, meta?: Record<string, unknown>): { message: string; meta?: Record<string, unknown> } {
+  scrubLog(
+    message: string,
+    meta?: Record<string, unknown>
+  ): { message: string; meta?: Record<string, unknown> } {
     const scrubbedMessage = this.config.enabled ? scrubString(message) : message;
 
     if (!meta) {
