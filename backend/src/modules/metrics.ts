@@ -3,14 +3,6 @@ import { config } from '../config';
 import { Runtime } from '../types/nakama';
 import * as rateLimiter from '../utils/rateLimiter';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import {
-  captureRpcError,
-  setSessionContext,
-  clearContext,
-  SessionContext,
-  GameStateContext,
-  errorTrackingConfig,
-} from '../config/errorTracking';
 
 const register = new Registry();
 
@@ -92,21 +84,6 @@ export function wrapRpcWithMetrics(rpcName: string, handler: RpcHandler): RpcHan
   ): Promise<string> {
     const endTimer = rpcDurationSeconds.startTimer({ rpc: rpcName });
 
-    // Set up session context for error tracking if enabled
-    let sessionContext: SessionContext | undefined;
-    if (errorTrackingConfig.enabled && errorTrackingConfig.includeSessionContext) {
-      const userId = ctx.userId || 'anonymous';
-      sessionContext = {
-        userId,
-        sessionId: ctx.sessionExpiry ? `expiry:${ctx.sessionExpiry}` : undefined,
-        serverRegion: typeof ctx.env === 'string' ? ctx.env : JSON.stringify(ctx.env),
-      };
-      // Only set context if we have valid userId
-      if (userId && userId !== 'anonymous') {
-        setSessionContext(sessionContext);
-      }
-    }
-
     try {
       const result = await handler(ctx, logger, nk, payload);
       rpcCallsTotal.inc({ rpc: rpcName, status: 'success' });
@@ -115,26 +92,9 @@ export function wrapRpcWithMetrics(rpcName: string, handler: RpcHandler): RpcHan
       const errorType = error instanceof Error ? error.constructor.name : 'unknown';
       rpcCallsTotal.inc({ rpc: rpcName, status: 'error' });
       rpcErrorsTotal.inc({ rpc: rpcName, error_type: errorType });
-
-      // Capture error with contextual information for debugging
-      if (error instanceof Error && errorTrackingConfig.enabled) {
-        captureRpcError(
-          rpcName,
-          ctx.userId || 'anonymous',
-          error,
-          payload,
-          sessionContext,
-          undefined // gameStateContext would need to be fetched separately
-        );
-      }
-
       throw error;
     } finally {
       endTimer();
-      // Clear context to prevent leakage between requests
-      if (errorTrackingConfig.enabled) {
-        clearContext();
-      }
     }
   };
 }

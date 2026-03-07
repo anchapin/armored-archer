@@ -68,9 +68,15 @@ const SENSITIVE_PATTERNS = [
     replacement: '"secret":"[SECRET_REDACTED]"',
   },
   // Credit card numbers (basic pattern)
-  { pattern: /\b(?:\d{4}[- ]?){3}\d{4}\b/g, replacement: '[CREDIT_CARD_REDACTED]' },
+  {
+    pattern: /\b(?:\d{4}[- ]?){3}\d{4}\b/g,
+    replacement: '[CREDIT_CARD_REDACTED]',
+  },
   // Social Security Number pattern
-  { pattern: /\b\d{3}[-]?\d{2}[-]?\d{4}\b/g, replacement: '[SSN_REDACTED]' },
+  {
+    pattern: /\b\d{3}[-]?\d{2}[-]?\d{4}\b/g,
+    replacement: '[SSN_REDACTED]',
+  },
 ];
 
 /**

@@ -11,9 +11,8 @@ export const createMockContext = (overrides?: Partial<Runtime.Context>): Runtime
   userId: 'test-user-123',
   username: 'TestPlayer',
   variables: {},
-  env: 'development',
+  env: {},
   sessionExpiry: Date.now() + 3600000,
-  sessionId: 'test-session-id',
   ...overrides,
 });
 
