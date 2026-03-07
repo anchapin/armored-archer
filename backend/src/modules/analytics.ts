@@ -3,10 +3,10 @@
  * @fileoverview Handles analytics event collection, storage, and forwarding for the game.
  */
 
-import { Runtime } from '../types/nakama';
 import { config } from '../config';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { Runtime } from '../types/nakama';
 import { registerRpcWithMetrics } from './metrics';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 // In-memory analytics storage (in production, use a database or external service)
 interface AnalyticsEvent {
@@ -38,12 +38,7 @@ const MAX_EVENTS = 100000; // Limit in-memory storage
  * @param initializer - Nakama runtime initializer
  */
 export function registerAnalyticsEndpoints(initializer: Runtime.Initializer): void {
-  registerRpcWithMetrics(
-    initializer,
-    'armored_archer/track_event',
-    'track_event',
-    rpcTrackEvent
-  );
+  registerRpcWithMetrics(initializer, 'armored_archer/track_event', 'track_event', rpcTrackEvent);
 
   registerRpcWithMetrics(
     initializer,
@@ -250,7 +245,11 @@ export function rpcGetAnalyticsSummary(
 ): string {
   logger.info('Analytics summary requested by user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.get_analytics_summary, payload, 'get_analytics_summary');
+  const validation = validatePayload(
+    ZodSchemas.get_analytics_summary,
+    payload,
+    'get_analytics_summary'
+  );
   if (!validation.success) {
     return createValidationErrorResponse('get_analytics_summary', validation.error);
   }
