@@ -18,31 +18,30 @@ module.exports = {
   // Performance tracking configuration
   // Enable performance metrics for detecting regressions
   // Note: Jest natively tracks test durations in the JSON reporter
-  // Coverage thresholds for critical systems
-  // Target 80%+ on: NetworkManager auth, CombatManager calculations, PlayerStatsManager XP
+  // Coverage thresholds - minimum 80% for all metrics
   coverageThreshold: {
     global: {
-      branches: 49,
-      functions: 50,
-      lines: 54,
-      statements: 54
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
-    // Per-file thresholds for critical modules
+    // Per-file thresholds for critical modules (must meet or exceed 80%)
     './src/modules/combat_system.ts': {
-      branches: 60,
-      functions: 65,
-      lines: 70,
-      statements: 70
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
     './src/modules/rpg_system.ts': {
-      branches: 75,
-      functions: 55,
-      lines: 85,
-      statements: 85
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
     './src/modules/matchmaker.ts': {
       branches: 85,
-      functions: 60,
+      functions: 80,
       lines: 90,
       statements: 90
     }
