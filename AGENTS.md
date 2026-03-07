@@ -15,6 +15,8 @@ This file contains conventions and commands for agents working on the Armored Ar
 ├── assets/               # Sprites, sounds, music
 ├── test/                # GDScript test runner and framework
 ├── docs/                 # Documentation
+├── .agents/              # Agent skills for OpenHands
+│   └── skills/           # Skill definitions (see Skills section)
 └── res://                # Godot resource path prefix
 
 /backend/                 # Nakama TypeScript server
@@ -223,3 +225,28 @@ npm run test:ci          # CI-ready test run with JUnit output
 - Linting must pass without errors
 - TypeScript type checking must pass
 - Update documentation if needed
+
+## Skills
+
+OpenHands supports skills for enhanced agent capabilities. Skills are stored in `.agents/skills/` and provide specialized guidance for different aspects of the project.
+
+### Available Skills
+
+- **godot-backend** - Guidelines for working with the Nakama backend server and client-server communication
+
+### Adding New Skills
+
+To add a new skill:
+1. Create a directory under `.agents/skills/<skill-name>/`
+2. Add a `SKILL.md` file with skill content
+3. Optionally add frontmatter with keywords and description
+
+Example skill structure:
+```
+.agents/
+└── skills/
+    └── <skill-name>/
+        ├── SKILL.md        # Required skill definition
+        ├── scripts/        # Optional scripts
+        └── references/     # Optional reference docs
+```
