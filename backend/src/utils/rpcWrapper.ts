@@ -1,5 +1,5 @@
-import { Runtime } from '../types/nakama';
 import { logRpcEntry, logRpcExit, logRpcError, captureRpcError } from '../config/logger';
+import { Runtime } from '../types/nakama';
 
 export type RpcHandler = (
   ctx: Runtime.Context,
