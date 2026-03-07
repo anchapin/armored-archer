@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-docs backend-docs-validate clean
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean
 
 # Default target
 all: help
@@ -31,8 +31,11 @@ help:
 	@echo "  make backend-build      Build TypeScript backend"
 	@echo "  make backend-lint       Lint backend code"
 	@echo "  make backend-check      Run linting and type checking"
-	@echo "  make backend-docs       Generate API documentation"
-	@echo "  make backend-docs-validate Validate API documentation"
+	@echo ""
+	@echo "$(GREEN)Database Commands$(RESET)"
+	@echo "  make backend-migrate    Run database migrations"
+	@echo "  make backend-migrate-new Create new migration file"
+	@echo "  make backend-db-schema   Display current database schema"
 	@echo ""
 	@echo "$(GREEN)Development$(RESET)"
 	@echo "  make dev                Start development (backend with auto-reload)"
@@ -86,17 +89,6 @@ backend-check:
 	@echo "$(BLUE)Running linting and type checking...$(RESET)"
 	cd $(BACKEND_DIR) && npm run lint && npm run typecheck
 
-## Documentation
-backend-docs:
-	@echo "$(BLUE)Generating API documentation...$(RESET)"
-	cd $(BACKEND_DIR) && npm run docs:api
-	@echo "$(GREEN)API docs generated: backend/docs/openapi.yaml$(RESET)"
-
-backend-docs-validate:
-	@echo "$(BLUE)Validating API documentation...$(RESET)"
-	cd $(BACKEND_DIR) && npm run docs:validate
-	@echo "$(GREEN)API docs validated successfully$(RESET)"
-
 dev: backend-dev
 
 ## Cleanup
@@ -104,3 +96,34 @@ clean:
 	@echo "$(BLUE)Cleaning build artifacts...$(RESET)"
 	cd $(BACKEND_DIR) && rm -rf build/ coverage/ test-results.txt
 	@echo "$(GREEN)✓ Clean complete$(RESET)"
+
+## Database Commands
+backend-migrate:
+	@echo "$(BLUE)Running database migrations...$(RESET)"
+	@docker exec -it armored_archer_server /nakama/nakama migrate up --database.address postgres://postgres:localdbpassword@postgres:5432/nakama || echo "$(YELLOW)Make sure backend is running: make backend-start$(RESET)"
+
+backend-migrate-new:
+	@echo "$(BLUE)Creating new migration file...$(RESET)"
+	@read -p "Migration name (e.g., create_users_table): " MIGRATION_NAME; \
+	if [ -z "$$MIGRATION_NAME" ]; then \
+		echo "$(YELLOW)Migration name required$(RESET)"; \
+		exit 1; \
+	fi; \
+	NEXT_NUM=$$(ls -1 $(BACKEND_DIR)/data/*.sql 2>/dev/null | tail -1 | sed 's/.*\/\([0-9]*\)_.*/\1/' | head -1); \
+	if [ -z "$$NEXT_NUM" ]; then NEXT_NUM=0; fi; \
+	NEXT_NUM=$$((NEXT_NUM + 1)); \
+	TIMESTAMP=$$(date +%Y%m%d%H%M%S); \
+	FILENAME=$(BACKEND_DIR)/data/$${NEXT_NUM}_$${MIGRATION_NAME}.sql; \
+	echo "-- Migration: $$MIGRATION_NAME" > "$$FILENAME"; \
+	echo "-- Created: $$(date)" >> "$$FILENAME"; \
+	echo "" >> "$$FILENAME"; \
+	echo "BEGIN;" >> "$$FILENAME"; \
+	echo "" >> "$$FILENAME"; \
+	echo "-- Add your SQL here" >> "$$FILENAME"; \
+	echo "" >> "$$FILENAME"; \
+	echo "COMMIT;" >> "$$FILENAME"; \
+	echo "$(GREEN)Created: $$FILENAME$(RESET)"
+
+backend-db-schema:
+	@echo "$(BLUE)Current database schema...$(RESET)"
+	@docker exec -it armored_archer_postgres psql -U postgres -d nakama -c '\dt' 2>/dev/null || echo "$(YELLOW)Make sure backend is running: make backend-start$(RESET)"
