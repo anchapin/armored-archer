@@ -49,6 +49,8 @@ import {
 } from './modules/gear_system';
 import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
 import { registerDeploymentObservability, initializeDeploymentObservability } from './modules/deployment_observability';
+import { initializeAlerting } from './modules/alerting';
+import { initializeHealthMonitoring } from './modules/health_monitor';
 import { initializeSentry } from './config/errorTracking';
 import { initializeTracing } from './config/tracing';
 import { logger, logSystemEvent } from './config/logger';
@@ -61,11 +63,13 @@ const InitModule: InitModule = function (
 ) {
   initializeSentry();
   initializeTracing();
+  initializeAlerting(loggerParam);
   logSystemEvent('info', 'Server initialization started');
 
   validateRequiredConfig();
   initializeCaches(loggerParam);
   initializeDeploymentObservability(loggerParam);
+  initializeHealthMonitoring(loggerParam);
 
   if (config.rateLimit.enabled) {
     logSystemEvent('info', 'Rate limiting enabled', {
