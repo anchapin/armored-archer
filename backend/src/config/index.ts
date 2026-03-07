@@ -427,7 +427,10 @@ const config: AppConfig = {
       errorRateCriticalPercent: parseInt(process.env.ALERT_ERROR_RATE_CRITICAL_PERCENT || '10', 10),
     },
     metricAlerts: {
-      activeConnectionsWarning: parseInt(process.env.ALERT_ACTIVE_CONNECTIONS_WARNING || '1000', 10),
+      activeConnectionsWarning: parseInt(
+        process.env.ALERT_ACTIVE_CONNECTIONS_WARNING || '1000',
+        10
+      ),
       activeConnectionsCritical: parseInt(
         process.env.ALERT_ACTIVE_CONNECTIONS_CRITICAL || '2000',
         10
@@ -444,10 +447,7 @@ const config: AppConfig = {
       failedLoginsWarning: parseInt(process.env.ALERT_FAILED_LOGINS_WARNING || '10', 10),
       failedLoginsCritical: parseInt(process.env.ALERT_FAILED_LOGINS_CRITICAL || '50', 10),
       purchaseFailuresWarning: parseInt(process.env.ALERT_PURCHASE_FAILURES_WARNING || '5', 10),
-      purchaseFailuresCritical: parseInt(
-        process.env.ALERT_PURCHASE_FAILURES_CRITICAL || '20',
-        10
-      ),
+      purchaseFailuresCritical: parseInt(process.env.ALERT_PURCHASE_FAILURES_CRITICAL || '20', 10),
     },
     cooldowns: {
       critical: parseInt(process.env.ALERT_COOLDOWN_CRITICAL || '300', 10),
