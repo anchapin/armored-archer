@@ -323,7 +323,7 @@ export function getFormattedProfileReport(): string {
   // Show top 20 operations
   for (const op of report.slice(0, 20)) {
     lines.push(
-      `${op.name.substring(0, 40).padEnd(40)} ${op.callCount.toString().padEnd(8)} ${op.totalTimeMs.toFixed(2).padEnd(12)} ${op.avgTimeMs.toFixed(2).padEnd(12)} ${op.maxTimeMs.toFixed(2).padEnd(12)} ${op.errors.toString().padEnd(8)}`
+      `${op.name.substring(0, 40).padEnd(40)} ${op.callCount.toString().padEnd(8)} ${op.totalTimeMs.toFixed(2).padEnd(12)} ${op.avgTimeMs.toFixed(2).padEnd(12)} ${op.maxTimeMs.toFixed(2).padEnd(12)} ${op.errors.toString().padEnd(8)} ${(op.errorRate * 100).toFixed(1).padEnd(8)}`
     );
   }
 
