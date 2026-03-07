@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report
 
 # Default target
 all: help
@@ -31,6 +31,11 @@ help:
 	@echo "  make backend-build      Build TypeScript backend"
 	@echo "  make backend-lint       Lint backend code"
 	@echo "  make backend-check      Run linting and type checking"
+	@echo ""
+	@echo "$(GREEN)Flaky Test Detection$(RESET)"
+	@echo "  make test-flaky-backend Run flaky test detection for backend"
+	@echo "  make test-flaky-godot   Run flaky test detection for Godot"
+	@echo "  make test-flaky-report  Generate flaky test report"
 	@echo ""
 	@echo "$(GREEN)Database Commands$(RESET)"
 	@echo "  make backend-migrate    Run database migrations"
@@ -135,3 +140,16 @@ backend-db-schema:
 release-notes:
 	@echo "$(BLUE)Generating release notes...$(RESET)"
 	@python3 scripts/generate_release_notes.py
+
+## Flaky Test Detection
+test-flaky-backend:
+	@echo "$(BLUE)Running backend flaky test detection...$(RESET)"
+	cd $(BACKEND_DIR) && npm run test:flaky
+
+test-flaky-godot:
+	@echo "$(BLUE)Running Godot flaky test detection...$(RESET)"
+	python3 scripts/detect_godot_flaky_tests.py
+
+test-flaky-report:
+	@echo "$(BLUE)Generating flaky test report...$(RESET)"
+	cd $(BACKEND_DIR) && npm run test:report
