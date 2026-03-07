@@ -1,9 +1,9 @@
-import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
-import { ZipkinExporter } from '@opentelemetry/exporter-zipkin';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { ZipkinExporter } from '@opentelemetry/exporter-zipkin';
 import { resourceFromAttributes } from '@opentelemetry/resources';
+import { NodeSDK } from '@opentelemetry/sdk-node';
 import {
   SEMRESATTRS_SERVICE_NAME,
   SEMRESATTRS_SERVICE_VERSION,
@@ -11,7 +11,6 @@ import {
 } from '@opentelemetry/semantic-conventions';
 import { config } from '../config';
 import { logger } from './logger';
-import type { Instrumentation } from '@opentelemetry/instrumentation';
 
 /**
  * Configuration for distributed tracing.
