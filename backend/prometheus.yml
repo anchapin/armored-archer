@@ -1,0 +1,85 @@
+# Prometheus configuration for Armored Archer
+# Scrape configurations for collecting metrics
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'armored-archer'
+    environment: 'development'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files: []
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter for system metrics
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['node_exporter:9100']
+
+  # Nakama server metrics - expose via RPC endpoint
+  - job_name: 'nakama'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['host.docker.internal:7350']
+        labels:
+          service: 'nakama'
+          component: 'game-server'
+
+  # PostgreSQL database metrics (if postgres_exporter is added)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'database'
+
+  # Custom application metrics from Nakama RPC endpoint
+  - job_name: 'armored_archer_metrics'
+    metrics_path: '/api/nakama/rpc/armored_archer/metrics'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['host.docker.internal:7350']
+        labels:
+          service: 'armored-archer-backend'
+          component: 'application'
+    # Basic auth for metrics endpoint (configure in production)
+    # basic_auth:
+    #   username: metrics_user
+    #   password: metrics_password
+
+  # Deployment metrics
+  - job_name: 'armored_archer_deployment'
+    metrics_path: '/api/nakama/rpc/armored_archer/deployment_metrics'
+    scrape_interval: 60s
+    static_configs:
+      - targets: ['host.docker.internal:7350']
+        labels:
+          service: 'armored-archer-backend'
+          component: 'deployment'
+
+  # Health metrics
+  - job_name: 'armored_archer_health'
+    metrics_path: '/api/nakama/rpc/armored_archer/health'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['host.docker.internal:7350']
+        labels:
+          service: 'armored-archer-backend'
+          component: 'health'
+
+# Remote write configuration for pushing to remote storage (optional)
+# remote_write:
+#   - url: https://prometheus-prod-xxx.grafana.net/api/prom/push
+#     basic_auth:
+#       username: <username>
+#       password: <password>

@@ -5,7 +5,12 @@
 
 import { config } from '../config';
 import { Runtime } from '../types/nakama';
-import { registerRpcWithMetrics } from './metrics';
+import {
+  registerRpcWithMetrics,
+  recordAnalyticsEvent,
+  recordRevenue as recordMetricsRevenue,
+  recordPurchase,
+} from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 // Analytics event types for type safety
@@ -147,6 +152,9 @@ function processEvent(
 
   // Update daily metrics
   updateDailyMetrics(event);
+
+  // Record metrics for analytics events
+  recordAnalyticsEvent('game', eventName);
 
   // Forward to external analytics if configured
   forwardToExternalAnalytics(event);
@@ -575,6 +583,10 @@ export function rpcTrackRevenue(
   };
 
   analyticsEvents.push(revenueEvent);
+
+  // Record revenue metrics
+  recordMetricsRevenue(amount * 100, currency, product_id); // Convert to cents for metrics
+  recordPurchase(product_id, true);
 
   // Update daily metrics
   updateDailyMetrics({
