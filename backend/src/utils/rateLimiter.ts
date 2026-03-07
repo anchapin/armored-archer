@@ -1,5 +1,5 @@
-import { Runtime } from '../types/nakama';
 import { logger } from '../config/logger';
+import { Runtime } from '../types/nakama';
 
 let recordRateLimitViolation: (endpoint: string) => void = () => {};
 let updateActiveUsersCount: (count: number) => void = () => {};
