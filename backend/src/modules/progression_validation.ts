@@ -1,7 +1,7 @@
 import { Runtime } from '../types/nakama';
-import { PlayerStats } from './rpg_system';
-import { PlayerInventory } from './gear_system';
 import { logAudit } from './audit';
+import { PlayerInventory } from './gear_system';
+import { PlayerStats } from './rpg_system';
 
 export interface ValidationResult {
   is_valid: boolean;
