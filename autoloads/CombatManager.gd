@@ -4,6 +4,9 @@ extends Node
 const RPC_SUBMIT_COMBAT_ACTION = "armored_archer/submit_combat_action"
 const RPC_GET_MATCH_STATE = "armored_archer/get_match_state"
 
+# --- Profiling Reference ---
+@onready var _profiler: Node = get_node_or_null("/root/ProfilingInstrumentation")
+
 # --- Combat State ---
 var current_match_state: Dictionary = {}
 var is_my_turn: bool = false
@@ -21,12 +24,18 @@ signal combat_ended(winner: String)
 
 # --- Submit Combat Action ---
 func submit_combat_action(match_id: String, action_type: String, angle: float, power: float = 1.0) -> void:
+	var _profiling_block = _profiler.create_profile_block("CombatManager.submit_combat_action") if _profiler else null
+	
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
+		if _profiling_block:
+			_profiling_block.end()
 		return
 
 	if match_id.is_empty() or action_type.is_empty():
 		push_error("Invalid combat action parameters")
+		if _profiling_block:
+			_profiling_block.end()
 		return
 
 	var payload: Dictionary = {
@@ -41,6 +50,8 @@ func submit_combat_action(match_id: String, action_type: String, angle: float, p
 
 	if response.has("error"):
 		push_error("Failed to submit combat action: %s" % response["error"])
+		if _profiling_block:
+			_profiling_block.end()
 		return
 
 	if response.get("success", false):
@@ -51,15 +62,24 @@ func submit_combat_action(match_id: String, action_type: String, angle: float, p
 
 		if result.has("winner"):
 			combat_ended.emit(result["winner"])
+	
+	if _profiling_block:
+		_profiling_block.end()
 
 # --- Get Match State ---
 func get_match_state(match_id: String) -> void:
+	var _profiling_block = _profiler.create_profile_block("CombatManager.get_match_state") if _profiler else null
+	
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
+		if _profiling_block:
+			_profiling_block.end()
 		return
 
 	if match_id.is_empty():
 		push_error("Match ID required")
+		if _profiling_block:
+			_profiling_block.end()
 		return
 
 	var payload: Dictionary = {
@@ -71,11 +91,16 @@ func get_match_state(match_id: String) -> void:
 
 	if response.has("error"):
 		push_error("Failed to get match state: %s" % response["error"])
+		if _profiling_block:
+			_profiling_block.end()
 		return
 
 	current_match_state = response
 	match_state_updated.emit(current_match_state)
 	_update_from_match_state()
+	
+	if _profiling_block:
+		_profiling_block.end()
 
 # --- State Updates ---
 func _update_local_state(result: Dictionary) -> void:
