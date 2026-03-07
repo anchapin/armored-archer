@@ -14,10 +14,10 @@
  * @module utils/cache
  */
 
-import { Runtime } from '../types/nakama';
 import { LRUCache as LRUCacheClass } from 'lru-cache';
-import { CacheValueType } from '../types/shared';
 import { logCacheOperation } from '../config/logger';
+import { Runtime } from '../types/nakama';
+import { CacheValueType } from '../types/shared';
 
 type LRUCache<K, V> = InstanceType<typeof LRUCacheClass<K, V>>;
 

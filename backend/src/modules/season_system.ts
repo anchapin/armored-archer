@@ -4,7 +4,6 @@
  */
 
 import { Runtime } from '../types/nakama';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import {
   verifyRequestSignature,
   detectTimingAttack,
@@ -13,6 +12,7 @@ import {
   getFlagReason,
   RequestSignature,
 } from './anti_cheat';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Season rewards data structure.
@@ -819,47 +819,4 @@ export function calculateRewards(rank: number, seasonNumber: number): SeasonRewa
       gems: 0,
     };
   }
-}
-
-export interface LeaderboardRecord {
-  ownerId: string;
-  username: string;
-  rank: number;
-  score: number;
-  metadata?: string;
-  expiry?: number;
-  maxNumScore?: number;
-  numScore?: number;
-}
-
-export interface SeasonInfo {
-  season_id: string;
-  season_number: number;
-  start_time: number;
-  end_time: number;
-  status: string; // "active", "ended"
-  duration_weeks: number;
-}
-
-export interface LeaderboardEntry {
-  owner_id: string;
-  username: string;
-  rank: number;
-  score: number;
-  meta: {
-    wins: number;
-    losses: number;
-    win_rate: number;
-    punch_up_wins: number;
-  };
-}
-
-export interface RankChange {
-  winner_id: string;
-  loser_id: string;
-  winner_old_rank: number;
-  loser_old_rank: number;
-  winner_new_rank: number;
-  loser_new_rank: number;
-  is_punch_up: boolean;
 }
