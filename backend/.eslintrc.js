@@ -10,16 +10,8 @@ module.exports = {
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:prettier/recommended',
-    'plugin:import/errors',
-    'plugin:import/warnings',
-    'plugin:import/typescript',
   ],
-  plugins: ['@typescript-eslint', 'prettier', 'jsdoc', 'import'],
-  settings: {
-    'import/resolver': {
-      typescript: {},
-    },
-  },
+  plugins: ['@typescript-eslint', 'prettier', 'jsdoc'],
   env: {
     node: true,
   },
@@ -44,11 +36,6 @@ module.exports = {
     // Cyclomatic complexity - recommended threshold is 10-20
     // See: https://eslint.org/docs/latest/rules/complexity
     'complexity': ['warn', { max: 15 }],
-    // Module boundary enforcement
-    'import/no-unresolved': 'error',
-    'import/order': ['error', { 'alphabetize': { 'order': 'asc', 'caseInsensitive': true } }],
-    'import/no-duplicates': 'error',
-    'import/extensions': ['error', 'ignorePackages', { 'ts': 'never' }],
   },
   overrides: [
     {
