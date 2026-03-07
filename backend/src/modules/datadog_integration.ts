@@ -7,8 +7,8 @@
  * - Custom event forwarding
  */
 
+import * as dgram from 'dgram';
 import { config } from '../config';
-import { getMetricsRegistry } from './metrics';
 
 // DataDog configuration interface
 interface DataDogConfig {
@@ -25,7 +25,7 @@ interface DataDogConfig {
 let dataDogConfig: DataDogConfig = {
   enabled: false,
   port: 8125,
-  prefix: 'armored_archer',
+  prefix: 'armed_archer',
   tags: {
     environment: 'development',
     service: 'armored-archer-backend',
@@ -38,7 +38,7 @@ class DataDogMetricsClient {
   private port: number;
   private prefix: string;
   private defaultTags: string[];
-  private socket: ReturnType<typeof require('dgram').createSocket> | null = null;
+  private socket: dgram.Socket | null = null;
   private enabled: boolean;
 
   constructor(config: DataDogConfig) {
@@ -59,7 +59,6 @@ class DataDogMetricsClient {
     }
 
     try {
-      const dgram = require('dgram');
       this.socket = dgram.createSocket('udp4');
       console.log(`[DataDog] Initialized metrics client: ${this.host}:${this.port}`);
     } catch (error) {
@@ -165,7 +164,7 @@ export function initializeDataDog(): void {
     appKey: ddConfig.appKey,
     host: ddConfig.host,
     port: ddConfig.port || 8125,
-    prefix: ddConfig.prefix || 'armored_archer',
+    prefix: ddConfig.prefix || 'armed_archer',
     tags: {
       environment: config.environment,
       service: 'armored-archer-backend',
