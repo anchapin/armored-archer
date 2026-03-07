@@ -37,6 +37,7 @@ help:
 	@echo "  make test-flaky-godot   Run flaky test detection for Godot"
 	@echo "  make test-flaky-report  Generate flaky test report"
 	@echo ""
+	@echo ""
 	@echo "$(GREEN)Build Performance$(RESET)"
 	@echo "  make build-perf-track   View build performance metrics"
 	@echo ""
@@ -159,6 +160,7 @@ test-flaky-godot:
 test-flaky-report:
 	@echo "$(BLUE)Generating flaky test report...$(RESET)"
 	cd $(BACKEND_DIR) && npm run test:report
+<<<<<<< ours
 
 ## Build Performance Tracking
 build-perf-track:
@@ -185,3 +187,5 @@ rollback:
 	@echo "  - full: Rollback all components (database, nakama, godot)"
 	@echo "  - database: Rollback database migrations only"
 	@echo "  - nakama: Rollback Nakama server only"
+=======
+>>>>>>> theirs

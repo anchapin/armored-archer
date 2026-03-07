@@ -28,7 +28,6 @@ import {
   InsightImpact,
   TimeRange,
   TrendData,
-  ErrorInsightConfig,
 } from '../types/errorInsights';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -107,10 +106,7 @@ class ErrorInsightStore {
     const uptimeSec = Math.floor(uptimeMs / 1000);
 
     // Calculate errors per minute
-    const recentErrors = this.getErrorsInRange(
-      new Date(now.getTime() - 5 * 60 * 1000),
-      now
-    );
+    const recentErrors = this.getErrorsInRange(new Date(now.getTime() - 5 * 60 * 1000), now);
     const errorsPerMinute = recentErrors.length / 5;
 
     return {
@@ -857,7 +853,7 @@ async function rpcGetErrorPatterns(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
-  payload: string
+  _payload: string
 ): Promise<string> {
   logger.info('Error insights patterns requested by user: %s', ctx.userId);
 
@@ -878,7 +874,7 @@ async function rpcGetErrorStats(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
-  payload: string
+  _payload: string
 ): Promise<string> {
   logger.info('Error insights stats requested by user: %s', ctx.userId);
 
