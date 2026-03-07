@@ -1,45 +1,61 @@
-# GDLint Configuration
-# Linter configuration for GDScript (Godot game engine)
+class-definitions-order:
+- tools
+- classnames
+- extends
+- docstrings
+- signals
+- enums
+- consts
+- staticvars
+- exports
+- pubvars
+- prvvars
+- onreadypubvars
+- onreadyprvvars
+- others
+class-load-variable-name: (([A-Z][a-z0-9]*)+|_?[a-z][a-z0-9]*(_[a-z0-9]+)*)
+class-name: ([A-Z][a-z0-9]*)+
+class-variable-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*
+comparison-with-itself: null
+constant-name: _?[A-Z][A-Z0-9]*(_[A-Z0-9]+)*
+disable:
+- class-definitions-order
+- no-elif-return
+- no-else-return
+- function-argument-name
+- max-public-methods
+- max-file-lines
+- unused-argument
+- unnecessary-pass
+- function-preload-variable-name
+- mixed-tabs-and-spaces
+duplicated-load: null
+enum-element-name: '[A-Z][A-Z0-9]*(_[A-Z0-9]+)*'
+enum-name: ([A-Z][a-z0-9]*)+
+excluded_directories:
+  .git: null
+  templates: null
+  test: null
+  tests: null
+expression-not-assigned: null
+function-argument-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*
+function-arguments-number: 10
+function-name: (_on_([A-Z][a-z0-9]*)+(_[a-z0-9]+)*|_?[a-z][a-z0-9]*(_[a-z0-9]+)*)
+function-preload-variable-name: ([A-Z][a-z0-9]*)+
+function-variable-name: '[a-z][a-z0-9]*(_[a-z0-9]+)*'
+load-constant-name: (([A-Z][a-z0-9]*)+|_?[A-Z][A-Z0-9]*(_[A-Z0-9]+)*)
+loop-variable-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*
+max-file-lines: 2000
+max-line-length: 120
+max-public-methods: 100
+max-returns: 6
+mixed-tabs-and-spaces: null
+no-elif-return: null
+no-else-return: null
+signal-name: '[a-z][a-z0-9]*(_[a-z0-9]+)*'
+sub-class-name: _?([A-Z][a-z0-9]*)+
+tab-characters: 1
+trailing-whitespace: null
+unnecessary-pass: null
+unused-argument: null
 
-rules:
-  # Class and signal naming conventions
-  class_name: { enabled: true, }
-  signal_name: { enabled: true, }
-  enum_name: { enabled: true, }
-  constant_name: { enabled: true, }
-  variable_name: { enabled: true, }
-  function_name: { enabled: true, }
-  
-  # Code style rules
-  indent: { enabled: true, }
-  line_length: { enabled: true, max_length: 120 }
-  trailing_whitespace: { enabled: true, }
-  consecutive_blank_lines: { enabled: true, max_consecutive: 1 }
-  
-  # Syntax and structure rules
-  double_parenthesis: { enabled: true, }
-  double_node_path: { enabled: true, }
-  expression_without_continuation: { enabled: true, }
-  implicit_return: { enabled: true, }
-  
-  # Best practices
-  dangerous_print: { enabled: true, }
-  enum_assignment: { enabled: true, }
-  
-  # Unused code
-  unused_variable: { enabled: true, }
-  unused_argument: { enabled: true, }
-  unused_export: { enabled: true, }
-  unused_signal: { enabled: true, }
-  
-  # Type checking
-  typed_dict_missing_value: { enabled: true, }
-  function_returns_discarded: { enabled: true, }
-
-# Exclude patterns
-exclude:
-  - "*.import"
-  - "export/"
-  - "import_presets.cfg"
-  - "test/*"
-  - "tests/*"
