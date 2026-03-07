@@ -49,6 +49,7 @@ import {
 } from './modules/gear_system';
 import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
 import { registerDeploymentObservability, initializeDeploymentObservability } from './modules/deployment_observability';
+import { registerProgressiveRollout, initializeProgressiveRollout } from './modules/progressive_rollout';
 import { initializeAlerting } from './modules/alerting';
 import { initializeHealthMonitoring } from './modules/health_monitor';
 import { registerAnalyticsEndpoints } from './modules/analytics';
@@ -73,6 +74,7 @@ const InitModule: InitModule = function (
   initializeDeploymentObservability(loggerParam);
   initializeHealthMonitoring(loggerParam);
   initializeErrorInsightsPipeline(loggerParam);
+  initializeProgressiveRollout(loggerParam);
 
   if (config.rateLimit.enabled) {
     logSystemEvent('info', 'Rate limiting enabled', {
@@ -88,6 +90,7 @@ const InitModule: InitModule = function (
 
   registerRpcMetrics(initializer);
   registerDeploymentObservability(initializer);
+  registerProgressiveRollout(initializer);
   registerAnalyticsEndpoints(initializer);
   registerErrorInsightRpcs(initializer);
 

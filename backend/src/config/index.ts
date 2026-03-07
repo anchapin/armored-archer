@@ -137,21 +137,8 @@ export interface AlertingConfig {
   };
   webhook?: {
     url: string;
-    method: 'POST' | 'PUT';
-    headers: Record<string, string>;
-    authType: 'none' | 'basic' | 'bearer';
-    username?: string;
-    password?: string;
-    token?: string;
-  };
-  email?: {
-    host: string;
-    port: number;
-    secure: boolean;
-    username: string;
-    password: string;
-    from: string;
-    to: string[];
+    method: 'POST' | 'PUT' | 'PATCH';
+    headers?: Record<string, string>;
   };
   healthAlerts: {
     cpuWarningPercent: number;
@@ -191,10 +178,39 @@ export interface AlertingConfig {
   tags: Record<string, string>;
 }
 
-export interface AnalyticsProviderConfig {
+export interface DataDogConfig {
   enabled: boolean;
   apiKey?: string;
-  secretKey?: string;
+  appKey?: string;
+  host?: string;
+  port: number;
+  prefix: string;
+  tags: Record<string, string>;
+}
+
+export interface ErrorInsightConfig {
+  enabled: boolean;
+  provider: 'sentry' | 'bugsnag' | 'raygun' | 'none';
+  dsn?: string;
+  apiKey?: string;
+  appId?: string;
+  environment: string;
+  release: string;
+  sampleRate: number;
+  maxBreadcrumbs: number;
+  attachStacktrace: boolean;
+  healthAlerts: {
+    cpuWarningPercent: number;
+    cpuCriticalPercent: number;
+    memoryWarningPercent: number;
+    memoryCriticalPercent: number;
+    dbConnectionsWarningPercent: number;
+    dbConnectionsCriticalPercent: number;
+    latencyWarningMs: number;
+    latencyCriticalMs: number;
+    errorRateWarningPercent: number;
+    errorRateCriticalPercent: number;
+  };
 }
 
 export interface AnalyticsConfig {
@@ -211,10 +227,16 @@ export interface AnalyticsConfig {
   };
 }
 
+export interface AnalyticsProviderConfig {
+  enabled: boolean;
+  apiKey?: string;
+  secretKey?: string;
+}
+
 /**
  * Configuration for the Error to Insight Pipeline
  */
-export interface ErrorInsightConfig {
+export interface ErrorInsightPipelineConfig {
   enabled: boolean;
   aggregationWindowMinutes: number;
   minOccurrencesForInsight: number;
@@ -237,8 +259,9 @@ export interface AppConfig {
   rateLimit: RateLimitConfig;
   tracing: TracingConfig;
   alerting: AlertingConfig;
-  errorInsights: ErrorInsightConfig;
+  errorInsights: ErrorInsightPipelineConfig;
   analytics: AnalyticsConfig;
+  datadog?: DataDogConfig;
 }
 
 function parseDatabaseAddress(address: string): DatabaseConfig {
@@ -551,6 +574,23 @@ const config: AppConfig = {
         }
       : undefined,
   },
+
+  datadog:
+    process.env.DATADOG_ENABLED === 'true'
+      ? {
+          enabled: true,
+          apiKey: process.env.DATADOG_API_KEY,
+          appKey: process.env.DATADOG_APP_KEY,
+          host: process.env.DATADOG_HOST || 'localhost',
+          port: parseInt(process.env.DATADOG_PORT || '8125', 10),
+          prefix: process.env.DATADOG_PREFIX || 'armed_archer',
+          tags: {
+            environment: process.env.NODE_ENV || 'development',
+            service: 'armored-archer-backend',
+            ...(process.env.DATADOG_TAGS ? JSON.parse(process.env.DATADOG_TAGS) : {}),
+          },
+        }
+      : undefined,
 };
 
 export function validateRequiredConfig(): void {

@@ -157,7 +157,7 @@ export async function rpcSubmitCombatAction(
   nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
-  return await profileFunction('combat.submit_combat_action', async () => {
+  return profileFunction<string>('combat.submit_combat_action', () => {
     logger.info('Submit combat action called for user: %s', ctx.userId);
 
     const validation = validatePayload(
@@ -365,7 +365,7 @@ export async function rpcGetMatchState(
   nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
-  return await profileFunction('combat.get_match_state', async () => {
+  return profileFunction<string>('combat.get_match_state', () => {
     logger.info('Get match state called for user: %s', ctx.userId);
 
     const validation = validatePayload(ZodSchemas.get_match_state, payload, 'get_match_state');

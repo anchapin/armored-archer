@@ -263,6 +263,7 @@ export function getProfileReport(): Array<{
   avgTimeMs: number;
   minTimeMs: number;
   maxTimeMs: number;
+  errors: number;
   errorRate: number;
   lastCalled: number;
 }> {
@@ -273,6 +274,7 @@ export function getProfileReport(): Array<{
     avgTimeMs: number;
     minTimeMs: number;
     maxTimeMs: number;
+    errors: number;
     errorRate: number;
     lastCalled: number;
   }> = [];
@@ -285,6 +287,7 @@ export function getProfileReport(): Array<{
       avgTimeMs: data.callCount > 0 ? data.totalTimeMs / data.callCount : 0,
       minTimeMs: data.minTimeMs === Number.MAX_SAFE_INTEGER ? 0 : data.minTimeMs,
       maxTimeMs: data.maxTimeMs,
+      errors: data.errors,
       errorRate: data.callCount > 0 ? data.errors / data.callCount : 0,
       lastCalled: data.lastCalled,
     });
@@ -320,7 +323,7 @@ export function getFormattedProfileReport(): string {
   // Show top 20 operations
   for (const op of report.slice(0, 20)) {
     lines.push(
-      `${op.name.substring(0, 40).padEnd(40)} ${op.callCount.toString().padEnd(8)} ${op.totalTimeMs.toFixed(2).padEnd(12)} ${op.avgTimeMs.toFixed(2).padEnd(12)} ${op.maxTimeMs.toFixed(2).padEnd(12)} ${(op.errorRate * 100).toFixed(1).padEnd(8)}`
+      `${op.name.substring(0, 40).padEnd(40)} ${op.callCount.toString().padEnd(8)} ${op.totalTimeMs.toFixed(2).padEnd(12)} ${op.avgTimeMs.toFixed(2).padEnd(12)} ${op.maxTimeMs.toFixed(2).padEnd(12)} ${op.errors.toString().padEnd(8)} ${(op.errorRate * 100).toFixed(1).padEnd(8)}`
     );
   }
 
@@ -447,7 +450,7 @@ export function profileMethod(name: string) {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: unknown[]): Promise<unknown> {
-      const targetObj = target as { constructor?: { name?: string } };
+      const targetObj = target as object;
       const fullName = `${targetObj.constructor?.name || 'unknown'}.${name}`;
       return profileAsync(fullName, () => originalMethod.apply(this, args));
     };
