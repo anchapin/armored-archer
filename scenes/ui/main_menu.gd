@@ -20,9 +20,9 @@ var _currency_updated_connection: Callable = Callable()
 func _ready() -> void:
 	if store_manager:
 		_currency_updated_connection = store_manager.currency_updated.connect(_on_currency_updated)
-	
+
 	_update_gem_display()
-	
+
 	play_button.pressed.connect(_on_play_pressed)
 	pvp_button.pressed.connect(_on_pvp_pressed)
 	shop_button.pressed.connect(_on_shop_pressed)

@@ -37,7 +37,7 @@ func _ready() -> void:
 
 func set_character_sprite(sprite: ModularCharacterSprite) -> void:
 	"""Sets the character sprite to apply transmog visuals to.
-	
+
 	Parameters:
 		sprite: ModularCharacterSprite node to control
 	"""
@@ -46,11 +46,11 @@ func set_character_sprite(sprite: ModularCharacterSprite) -> void:
 
 func equip_base_gear(slot: String, gear_id: String) -> bool:
 	"""Equips base gear for a slot (stats only, visuals may differ with skins).
-	
+
 	Parameters:
 		slot: Equipment slot ("helm", "armor", "bow", "arrow")
 		gear_id: Base gear identifier
-	
+
 	Returns:
 		bool: True if equip succeeded
 	"""
@@ -65,11 +65,11 @@ func equip_base_gear(slot: String, gear_id: String) -> bool:
 
 func equip_skin(slot: String, skin_id: String) -> bool:
 	"""Equips a cosmetic skin over base gear.
-	
+
 	Parameters:
 		slot: Equipment slot
 		skin_id: Skin identifier
-	
+
 	Returns:
 		bool: True if skin can be equipped
 	"""
@@ -88,7 +88,7 @@ func equip_skin(slot: String, skin_id: String) -> bool:
 
 func unequip_skin(slot: String) -> void:
 	"""Removes skin from slot, showing only base gear.
-	
+
 	Parameters:
 		slot: Equipment slot to unequip skin from
 	"""
@@ -99,7 +99,7 @@ func unequip_skin(slot: String) -> void:
 
 func get_current_loadout() -> Dictionary:
 	"""Returns current gear and skin configuration.
-	
+
 	Returns:
 		Dictionary: Complete loadout with base_gear and skins
 	"""
@@ -107,7 +107,7 @@ func get_current_loadout() -> Dictionary:
 
 func get_total_stats() -> Dictionary:
 	"""Calculates total stats from equipped base gear.
-	
+
 	Returns:
 		Dictionary: Summed stats (attack, defense, speed, health)
 	"""
@@ -115,10 +115,10 @@ func get_total_stats() -> Dictionary:
 
 func get_visual_combination(slot: String) -> Dictionary:
 	"""Gets visual data for a specific slot.
-	
+
 	Parameters:
 		slot: Equipment slot to query
-	
+
 	Returns:
 		Dictionary: Visual combination with base gear, skin, and textures
 	"""
@@ -136,12 +136,12 @@ func get_visual_combination(slot: String) -> Dictionary:
 
 func preview_combination(slot: String, base_gear_id: String, skin_id: String) -> Dictionary:
 	"""Preview what a gear/skin combination would look like without equipping.
-	
+
 	Parameters:
 		slot: Equipment slot
 		base_gear_id: Base gear ID
 		skin_id: Skin ID
-	
+
 	Returns:
 		Dictionary: Visual combination data
 	"""
@@ -171,11 +171,11 @@ func _apply_current_loadout() -> void:
 
 func can_equip_skin(slot: String, skin_id: String) -> bool:
 	"""Checks if a skin can be equipped with current base gear.
-	
+
 	Parameters:
 		slot: Equipment slot
 		skin_id: Skin identifier
-	
+
 	Returns:
 		bool: True if skin is compatible with current base gear
 	"""
@@ -187,10 +187,10 @@ func can_equip_skin(slot: String, skin_id: String) -> bool:
 
 func get_available_skins_for_slot(slot: String) -> Array:
 	"""Gets all skins compatible with current base gear in slot.
-	
+
 	Parameters:
 		slot: Equipment slot to query
-	
+
 	Returns:
 		Array: List of compatible skin data
 	"""

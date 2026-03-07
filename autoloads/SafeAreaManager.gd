@@ -15,15 +15,15 @@ func _ready() -> void:
 func _update_safe_area() -> void:
 	"""Calculates safe area margins from display server."""
 	var screen_size: Vector2i = DisplayServer.screen_get_size()
-	
+
 	# Default to full screen (no safe area)
 	var safe_rect: Rect2i = Rect2i(0, 0, screen_size.x, screen_size.y)
-	
+
 	safe_margins.left = float(safe_rect.position.x)
 	safe_margins.top = float(safe_rect.position.y)
 	safe_margins.right = float(screen_size.x - safe_rect.end.x)
 	safe_margins.bottom = float(screen_size.y - safe_rect.end.y)
-	
+
 	safe_area_changed.emit()
 
 func _on_screen_size_changed() -> void:
@@ -32,7 +32,7 @@ func _on_screen_size_changed() -> void:
 
 func get_safe_margins() -> Dictionary:
 	"""Returns current safe area margins.
-	
+
 	Returns:
 		Dictionary: Margins with keys "left", "top", "right", "bottom"
 	"""
@@ -40,7 +40,7 @@ func get_safe_margins() -> Dictionary:
 
 func apply_to_control(control: Control) -> void:
 	"""Applies safe area margins to a Control node.
-	
+
 	Parameters:
 		control: Control node to adjust with safe area offsets
 	"""

@@ -48,18 +48,18 @@ func _initialize_pools() -> void:
 	_arrow_scene = preload("res://scenes/arrow.tscn")
 	_enemy_scene = preload("res://scenes/enemies/melee_enemy.tscn")
 	_hit_effect_scene = preload("res://assets/particles/hit_effect.tscn")
-	
+
 	# Adjust pool sizes based on device tier
 	var pool_size_multiplier: float = 1.0
 	if PerformanceProfiler.is_budget_device():
 		pool_size_multiplier = 0.5  # Smaller pools on budget devices
 	elif PerformanceProfiler.is_mid_range_device():
 		pool_size_multiplier = 0.75
-	
+
 	var adjusted_arrow_pool = int(ARROW_POOL_SIZE * pool_size_multiplier)
 	var adjusted_enemy_pool = int(ENEMY_POOL_SIZE * pool_size_multiplier)
 	var adjusted_hit_pool = int(HIT_EFFECT_POOL_SIZE * pool_size_multiplier)
-	
+
 	# Create initial pools
 	for i in range(max(adjusted_arrow_pool, 5)):
 		var arrow = _arrow_scene.instantiate()
@@ -68,7 +68,7 @@ func _initialize_pools() -> void:
 		arrow.visible = false
 		_arrow_pool.append(arrow)
 		add_child(arrow)
-	
+
 	for i in range(max(adjusted_enemy_pool, 3)):
 		var enemy = _enemy_scene.instantiate()
 		enemy.set_process(false)
@@ -76,15 +76,15 @@ func _initialize_pools() -> void:
 		enemy.visible = false
 		_enemy_pool.append(enemy)
 		add_child(enemy)
-	
+
 	for i in range(max(adjusted_hit_pool, 3)):
 		var effect = _hit_effect_scene.instantiate()
 		effect.set_process(false)
 		effect.visible = false
 		_hit_effect_pool.append(effect)
 		add_child(effect)
-	
-	print("[ObjectPool] Initialized - Arrows: %d, Enemies: %d, HitEffects: %d" % 
+
+	print("[ObjectPool] Initialized - Arrows: %d, Enemies: %d, HitEffects: %d" %
 		[adjusted_arrow_pool, adjusted_enemy_pool, adjusted_hit_pool])
 
 # --- Arrow Pool ---
@@ -92,7 +92,7 @@ func _initialize_pools() -> void:
 ## Get an arrow from the pool, or create a new one if pool is empty
 func get_arrow() -> Node:
 	var arrow: Node
-	
+
 	if _arrow_pool.size() > 0:
 		arrow = _arrow_pool.pop_back()
 		_arrows_reused += 1
@@ -100,27 +100,27 @@ func get_arrow() -> Node:
 		arrow = _arrow_scene.instantiate()
 		_arrows_created += 1
 		add_child(arrow)
-	
+
 	arrow.set_process(true)
 	arrow.set_physics_process(true)
 	arrow.visible = true
 	_active_arrows.append(arrow)
-	
+
 	return arrow
 
 ## Return an arrow to the pool
 func return_arrow(arrow: Node) -> void:
 	if not is_instance_valid(arrow):
 		return
-	
+
 	arrow.set_process(false)
 	arrow.set_physics_process(false)
 	arrow.visible = false
-	
+
 	# Reset arrow state if it has a setup method
 	if arrow.has_method("reset_pooled_state"):
 		arrow.reset_pooled_state()
-	
+
 	_arrow_pool.append(arrow)
 	_active_arrows.erase(arrow)
 
@@ -129,7 +129,7 @@ func return_arrow(arrow: Node) -> void:
 ## Get an enemy from the pool, or create a new one if pool is empty
 func get_enemy() -> Node:
 	var enemy: Node
-	
+
 	if _enemy_pool.size() > 0:
 		enemy = _enemy_pool.pop_back()
 		_enemies_reused += 1
@@ -137,27 +137,27 @@ func get_enemy() -> Node:
 		enemy = _enemy_scene.instantiate()
 		_enemies_created += 1
 		add_child(enemy)
-	
+
 	enemy.set_process(true)
 	enemy.set_physics_process(true)
 	enemy.visible = true
 	_active_enemies.append(enemy)
-	
+
 	return enemy
 
 ## Return an enemy to the pool
 func return_enemy(enemy: Node) -> void:
 	if not is_instance_valid(enemy):
 		return
-	
+
 	enemy.set_process(false)
 	enemy.set_physics_process(false)
 	enemy.visible = false
-	
+
 	# Reset enemy state if it has a reset method
 	if enemy.has_method("reset_pooled_state"):
 		enemy.reset_pooled_state()
-	
+
 	_enemy_pool.append(enemy)
 	_active_enemies.erase(enemy)
 
@@ -166,7 +166,7 @@ func return_enemy(enemy: Node) -> void:
 ## Get a hit effect from the pool, or create a new one if pool is empty
 func get_hit_effect() -> Node:
 	var effect: Node
-	
+
 	if _hit_effect_pool.size() > 0:
 		effect = _hit_effect_pool.pop_back()
 		_hit_effects_reused += 1
@@ -174,25 +174,25 @@ func get_hit_effect() -> Node:
 		effect = _hit_effect_scene.instantiate()
 		_hit_effects_created += 1
 		add_child(effect)
-	
+
 	effect.set_process(true)
 	effect.visible = true
 	_active_hit_effects.append(effect)
-	
+
 	return effect
 
 ## Return a hit effect to the pool
 func return_hit_effect(effect: Node) -> void:
 	if not is_instance_valid(effect):
 		return
-	
+
 	effect.set_process(false)
 	effect.visible = false
-	
+
 	# Reset effect state if it has a reset method
 	if effect.has_method("reset_pooled_state"):
 		effect.reset_pooled_state()
-	
+
 	_hit_effect_pool.append(effect)
 	_active_hit_effects.erase(effect)
 
@@ -250,7 +250,7 @@ func cleanup_invalid_instances() -> void:
 			invalid_arrows.append(arrow)
 	for arrow in invalid_arrows:
 		_active_arrows.erase(arrow)
-	
+
 	# Clean up enemies
 	var invalid_enemies: Array[Node] = []
 	for enemy in _active_enemies:
@@ -258,7 +258,7 @@ func cleanup_invalid_instances() -> void:
 			invalid_enemies.append(enemy)
 	for enemy in invalid_enemies:
 		_active_enemies.erase(enemy)
-	
+
 	# Clean up hit effects
 	var invalid_effects: Array[Node] = []
 	for effect in _active_hit_effects:

@@ -16,10 +16,10 @@ signal login_complete(success: bool)
 func _ready() -> void:
 	NetworkManager.session_created.connect(_on_session_created)
 	NetworkManager.connection_status_changed.connect(_on_connection_status_changed)
-	
+
 	retry_button.pressed.connect(_on_retry_pressed)
 	retry_button.hide()
-	
+
 	_start_authentication()
 
 func _start_authentication() -> void:
@@ -27,33 +27,33 @@ func _start_authentication() -> void:
 	loading_label.text = "Connecting..."
 	status_label.text = "Authenticating with Nakama server..."
 	progress_bar.value = 0.0
-	
+
 	var tween: Tween = create_tween()
 	tween.tween_property(progress_bar, "value", 50.0, 1.0)
 	tween.tween_interval(0.5)
-	
+
 	NetworkManager.authenticate_device()
 
 # --- Signal Handlers ---
 func _on_session_created(success: bool, error_message: String) -> void:
 	is_connecting = false
-	
+
 	var tween: Tween = create_tween()
-	
+
 	if success:
 		loading_label.text = "Connected!"
 		status_label.text = "Welcome back, %s!" % NetworkManager.username
 		progress_bar.value = 100.0
-		
+
 		tween.tween_interval(0.5)
 		tween.tween_callback(_load_main_menu)
-		
+
 		login_complete.emit(true)
 	else:
 		loading_label.text = "Connection Failed"
 		status_label.text = error_message
 		progress_bar.value = 0.0
-		
+
 		retry_button.show()
 
 func _on_connection_status_changed(is_online: bool) -> void:
@@ -64,7 +64,7 @@ func _on_connection_status_changed(is_online: bool) -> void:
 		loading_label.text = "Offline"
 		status_label.text = "Please check your internet connection"
 		progress_bar.value = 0.0
-		
+
 		if is_connecting:
 			is_connecting = false
 			retry_button.show()

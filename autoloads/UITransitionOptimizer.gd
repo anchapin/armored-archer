@@ -27,11 +27,11 @@ func _ready() -> void:
 func _apply_ui_optimizations() -> void:
 	if not has_node("/root/PerformanceProfiler"):
 		return
-	
+
 	var perf_profiler = get_node("/root/PerformanceProfiler")
 	var is_budget = perf_profiler.is_budget_device()
 	var is_mid_range = perf_profiler.is_mid_range_device()
-	
+
 	if is_budget:
 		# Budget device: faster transitions, fewer effects
 		_transition_duration = 0.15
@@ -50,7 +50,7 @@ func _apply_ui_optimizations() -> void:
 		_fade_enabled = true
 		_ui_animation_enabled = true
 		_particle_effects_enabled = true
-	
+
 	print("[UITransitionOptimizer] Applied optimizations - Duration: %.2fs, Fade: %s, Particles: %s" %
 		[_transition_duration, _fade_enabled, _particle_effects_enabled])
 
@@ -73,7 +73,7 @@ func is_particle_effects_enabled() -> bool:
 ## Change scene with optimized transition
 func transition_to_scene(scene_path: String) -> void:
 	var tree = get_tree()
-	
+
 	if _fade_enabled and not PerformanceProfiler.is_budget_device():
 		# Use fade transition on better devices
 		# For now, just do immediate change
@@ -85,7 +85,7 @@ func transition_to_scene(scene_path: String) -> void:
 ## Add a child with optimized animation
 func add_child_with_animation(child: Node, parent: Node) -> void:
 	parent.add_child(child)
-	
+
 	if _ui_animation_enabled and not PerformanceProfiler.is_budget_device():
 		# Simple scale-in animation for non-budget devices
 		child.scale = Vector2.ZERO

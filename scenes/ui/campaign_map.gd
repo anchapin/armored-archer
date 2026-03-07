@@ -14,15 +14,15 @@ func _ready() -> void:
 	var chapter_data = get_campaign_data(current_chapter)
 	if chapter_data:
 		chapter_title.text = chapter_data.get("name", "Campaign")
-	
+
 	build_stage_buttons()
 
 func build_stage_buttons() -> void:
 	for child in stages_container.get_children():
 		child.queue_free()
-	
+
 	var stages = get_campaign_stages(current_chapter)
-	
+
 	for stage_data in stages:
 		var stage_button = create_stage_button(stage_data)
 		stages_container.add_child(stage_button)
@@ -31,24 +31,24 @@ func create_stage_button(stage_data: Dictionary) -> Button:
 	var button = Button.new()
 	button.text = "%s: %s (%d waves)" % [stage_data.get("id"), stage_data.get("name"), stage_data.get("waves")]
 	button.custom_minimum_size = Vector2(400, 60)
-	
+
 	var stage_id = stage_data.get("id")
 	var is_unlocked = CampaignManager.is_stage_unlocked(stage_id)
 	var is_completed = CampaignManager.is_stage_completed(stage_id)
-	
+
 	if not is_unlocked:
 		button.disabled = true
 		button.text += " [LOCKED]"
 	elif is_completed:
 		button.text += " [DONE]"
-	
+
 	if stage_data.get("boss"):
 		button.text += " [BOSS]"
 		button.modulate = Color(1.0, 0.8, 0.2)
-	
+
 	if is_unlocked:
 		button.pressed.connect(_on_stage_pressed.bind(stage_id))
-	
+
 	return button
 
 func _on_stage_pressed(stage_id: String) -> void:
@@ -56,7 +56,7 @@ func _on_stage_pressed(stage_id: String) -> void:
 	GameManager.current_stage_id = stage_id
 	GameManager.current_waves = stage_data.get("waves", 3)
 	GameManager.boss_id = stage_data.get("boss", "")
-	
+
 	get_tree().change_scene_to_packed(MAIN_SCENE)
 
 func _on_stage_unlocked(stage_id: String) -> void:

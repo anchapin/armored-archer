@@ -76,11 +76,11 @@ func _ready() -> void:
 func _initialize_profiler() -> void:
 	# Initialize frame timing
 	_frame_start_time = _get_tick_count()
-	
+
 	# Check for profiling enable flag in project settings or environment
 	_profiling_enabled = _should_enable_profiling()
 	_frame_profiling_enabled = _profiling_enabled
-	
+
 	print("[ProfilingInstrumentation] Initialized - Profiling: %s, Frame Profiling: %s" %
 		[_profiling_enabled, _frame_profiling_enabled])
 
@@ -88,12 +88,12 @@ func _should_enable_profiling() -> bool:
 	# Enable in debug builds or when explicitly enabled
 	if OS.has_feature("debug"):
 		return true
-	
+
 	# Check for environment variable
 	var env_value = OS.get_environment("PROFILING_ENABLED")
 	if env_value == "true" or env_value == "1":
 		return true
-	
+
 	# Default to enabled for development
 	return true
 
@@ -105,17 +105,17 @@ func _update_frame_profiling() -> void:
 	var current_time = _get_tick_count()
 	var frame_time = (current_time - _frame_start_time) / 1000.0  # Convert to ms
 	_frame_start_time = current_time
-	
+
 	_frame_times.append(frame_time)
 	if _frame_times.size() > MAX_FRAME_HISTORY:
 		_frame_times.pop_front()
-	
+
 	# Calculate average
 	var sum: float = 0.0
 	for ft in _frame_times:
 		sum += ft
 	var avg = sum / _frame_times.size() if _frame_times.size() > 0 else 0.0
-	
+
 	frame_profiled.emit(frame_time, avg)
 
 func _get_tick_count() -> int:
@@ -147,7 +147,7 @@ func set_frame_profiling_enabled(enabled: bool) -> void:
 func start_marker(name: String) -> int:
 	if not _profiling_enabled:
 		return -1
-	
+
 	var marker_id = _get_tick_count()
 	_active_markers[name] = {
 		"start_time": marker_id,
@@ -160,25 +160,25 @@ func start_marker(name: String) -> int:
 func end_marker(name: String, marker_id: int = -1) -> float:
 	if not _profiling_enabled:
 		return 0.0
-	
+
 	var marker = _active_markers.get(name)
 	if marker == null:
 		push_warning("[ProfilingInstrumentation] No active marker found: " + name)
 		return 0.0
-	
+
 	var end_time = _get_tick_count()
 	var duration = (end_time - marker.start_time) as float
-	
+
 	# Record the marker
 	_record_marker(name, duration)
-	
+
 	# Remove active marker
 	_active_markers.erase(name)
-	
+
 	# Emit warning for slow markers
 	if duration > MIN_SIGNIFICANT_TIME_MS:
 		slow_marker_detected.emit(name, duration, _marker_call_counts.get(name, 0))
-	
+
 	return duration
 
 ## Time a function call and return the result
@@ -186,36 +186,36 @@ func end_marker(name: String, marker_id: int = -1) -> float:
 func time_function(func_call: Callable) -> Variant:
 	if not _profiling_enabled:
 		return func_call.call()
-	
+
 	# Generate marker name from callable
 	var func_name = _get_callable_name(func_call)
 	var start = _get_tick_count()
-	
+
 	var result = func_call.call()
-	
+
 	var duration = (_get_tick_count() - start) as float
 	_record_marker(func_name, duration)
-	
+
 	if duration > MIN_SIGNIFICANT_TIME_MS:
 		slow_marker_detected.emit(func_name, duration, _marker_call_counts.get(func_name, 0))
-	
+
 	return result
 
 ## Time a function with custom name
 func time_function_named(name: String, func_call: Callable) -> Variant:
 	if not _profiling_enabled:
 		return func_call.call()
-	
+
 	var start = _get_tick_count()
-	
+
 	var result = func_call.call()
-	
+
 	var duration = (_get_tick_count() - start) as float
 	_record_marker(name, duration)
-	
+
 	if duration > MIN_SIGNIFICANT_TIME_MS:
 		slow_marker_detected.emit(name, duration, _marker_call_counts.get(name, 0))
-	
+
 	return result
 
 ## Time a block of code using a scoped helper
@@ -224,12 +224,12 @@ class ProfileBlock:
 	var _name: String
 	var _profiler: Node
 	var _start_time: int
-	
+
 	func _init(profiler: Node, name: String):
 		_profiler = profiler
 		_name = name
 		_start_time = Time.get_ticks_msec()
-	
+
 	func _notification(what):
 		if what == NOTIFICATION_PREDELETE:
 			ProfilerInstrumentation.end_marker(_name)
@@ -256,16 +256,16 @@ func _record_marker(name: String, duration_ms: float) -> void:
 			"avg": duration_ms,
 			"count": 0
 		}
-	
+
 	# Record timing
 	_marker_history[name].append(duration_ms)
 	_marker_call_counts[name] += 1
 	_marker_total_times[name] += duration_ms
-	
+
 	# Keep history limited
 	if _marker_history[name].size() > MAX_MARKER_HISTORY:
 		_marker_history[name].pop_front()
-	
+
 	# Update statistics
 	var stats = _marker_stats[name]
 	stats.min = min(stats.min, duration_ms)
@@ -278,12 +278,12 @@ func _get_callable_name(callable: Callable) -> String:
 	var method = callable.get_method()
 	var target = callable.get_object()
 	var target_name = "unknown"
-	
+
 	if target != null:
 		target_name = target.get_class()
 		if target.has_method("get_class_name"):
 			target_name = target.get_class_name()
-	
+
 	return target_name + "." + method
 
 ## Get current call stack (debug)
@@ -308,7 +308,7 @@ func get_all_marker_stats() -> Dictionary:
 ## Get profile report as dictionary
 func get_profile_report() -> Dictionary:
 	var markers: Array[Dictionary] = []
-	
+
 	for name in _marker_stats:
 		var stats = _marker_stats[name]
 		markers.append({
@@ -319,10 +319,10 @@ func get_profile_report() -> Dictionary:
 			"min_ms": stats.min,
 			"max_ms": stats.max
 		})
-	
+
 	# Sort by total time descending
 	markers.sort_custom(func(a, b): return a.total_ms > b.total_ms)
-	
+
 	# Get frame stats
 	var frame_avg: float = 0.0
 	var frame_max: float = 0.0
@@ -333,7 +333,7 @@ func get_profile_report() -> Dictionary:
 		frame_avg = sum / _frame_times.size()
 		for ft in _frame_times:
 			frame_max = max(frame_max, ft)
-	
+
 	return {
 		"profiling_enabled": _profiling_enabled,
 		"frame_profiling_enabled": _frame_profiling_enabled,
@@ -350,22 +350,22 @@ func get_profile_report() -> Dictionary:
 func get_formatted_report() -> String:
 	var report = get_profile_report()
 	var lines: Array[String] = []
-	
+
 	lines.append("=== Profiling Report ===")
 	lines.append("Profiling: %s | Frame Profiling: %s" % [report.profiling_enabled, report.frame_profiling_enabled])
 	lines.append("Total Markers: %d" % report.marker_count)
-	
+
 	if report.frame_stats.sample_count > 0:
 		lines.append("")
 		lines.append("--- Frame Stats ---")
 		lines.append("Avg: %.2fms | Max: %.2fms | Samples: %d" %
 			[report.frame_stats.average_ms, report.frame_stats.max_ms, report.frame_stats.sample_count])
-	
+
 	if report.markers.size() > 0:
 		lines.append("")
 		lines.append("--- Top Markers (by total time) ---")
 		lines.append("%-40s %10s %10s %10s %10s" % ["Name", "Calls", "Total(ms)", "Avg(ms)", "Max(ms)"])
-		
+
 		# Show top 20
 		var count = 0
 		for marker in report.markers:
@@ -374,7 +374,7 @@ func get_formatted_report() -> String:
 			lines.append("%-40s %10d %10.2f %10.2f %10.2f" %
 				[marker.name.substr(0, 40), marker.count, marker.total_ms, marker.avg_ms, marker.max_ms])
 			count += 1
-	
+
 	return "\n".join(lines)
 
 ## Print profile report to console
@@ -382,7 +382,7 @@ func log_profile_report(label: String = "") -> void:
 	var prefix = "[ProfilingInstrumentation]"
 	if label != "":
 		prefix += " [" + label + "]"
-	
+
 	print(prefix)
 	print(get_formatted_report())
 
@@ -429,7 +429,7 @@ func get_memory_usage_mb() -> float:
 	# Use Godot's Performance monitor
 	var object_count = Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 	var memory = Performance.get_monitor(Performance.MEMORY_STATIC)
-	
+
 	# Rough estimation - actual memory usage varies by platform
 	# This is a simplified version
 	return memory / (1024.0 * 1024.0)
@@ -443,13 +443,13 @@ func take_memory_snapshot(label: String = "") -> Dictionary:
 		"object_count": Performance.get_monitor(Performance.OBJECT_NODE_COUNT),
 		"frame_time_ms": get_average_frame_time_ms()
 	}
-	
+
 	_memory_snapshots.append(snapshot)
-	
+
 	# Keep limited history
 	if _memory_snapshots.size() > 100:
 		_memory_snapshots.pop_front()
-	
+
 	return snapshot
 
 ## Get memory snapshots

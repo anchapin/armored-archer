@@ -44,31 +44,31 @@ func _on_connection_status_changed(is_online: bool) -> void:
 # --- Public API ---
 func get_player_stats() -> Dictionary:
 	"""Retrieves player statistics from the server.
-	
+
 	Returns:
 		Dictionary: Player stats data or empty dict on failure
 	"""
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return {}
-	
+
 	var payload = JSON.stringify({})
 	var response = await network_manager.send_rpc(RPC_GET_PLAYER_STATS, payload)
-	
+
 	if response.has("error"):
 		push_error("Failed to get player stats: %s" % response.error)
 		return {}
-	
+
 	player_stats = JSON.parse_string(response)
 	is_initialized = true
-	
+
 	emit_signal("stats_updated", player_stats)
-	
+
 	return player_stats
 
 func gain_xp(amount: int, source: String) -> void:
 	"""Requests XP gain from the server.
-	
+
 	Parameters:
 		amount: Amount of XP to gain (must be positive)
 		source: Source of XP gain ("pve" or "pvp")
@@ -76,36 +76,36 @@ func gain_xp(amount: int, source: String) -> void:
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
-	
+
 	if amount <= 0:
 		push_error("Invalid XP amount")
 		return
-	
+
 	var payload = JSON.stringify({
 		"xp_amount": amount,
 		"source": source
 	})
-	
+
 	var response = await network_manager.send_rpc(RPC_GAIN_XP, payload)
-	
+
 	if response.has("error"):
 		push_error("Failed to gain XP: %s" % response.error)
 		return
-	
+
 	var result = JSON.parse_string(response)
-	
+
 	if result.get("success", false):
 		var xp_gained: int = result.get("xp_gained", 0)
 		var levels_gained: int = result.get("levels_gained", 0)
 		var previous_level: int = player_stats.get("level", 1)
-		
+
 		emit_signal("xp_gained", xp_gained, player_stats.get("xp", 0))
-		
+
 		if levels_gained > 0:
 			var new_level: int = result.player_stats.level
 			var ability_points_gained: int = levels_gained
 			emit_signal("level_up", new_level, ability_points_gained)
-			
+
 			# Track level up in analytics
 			if analytics and analytics.has_method("log_custom_event"):
 				analytics.log_custom_event("player_level_up", {
@@ -114,10 +114,10 @@ func gain_xp(amount: int, source: String) -> void:
 					"levels_gained": levels_gained,
 					"source": source
 				})
-		
+
 		player_stats = result.player_stats
 		emit_signal("stats_updated", player_stats)
-		
+
 		# Track XP gain in analytics
 		if analytics and analytics.has_method("log_custom_event"):
 			analytics.log_custom_event("xp_gained", {
@@ -129,7 +129,7 @@ func gain_xp(amount: int, source: String) -> void:
 
 func allocate_stat(stat_name: String, points: int) -> void:
 	"""Allocates ability points to a specific stat.
-	
+
 	Parameters:
 		stat_name: Name of the stat to allocate points to
 		points: Number of points to allocate (must be positive)
@@ -137,29 +137,29 @@ func allocate_stat(stat_name: String, points: int) -> void:
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
-	
+
 	if points <= 0:
 		push_error("Invalid points amount")
 		return
-	
+
 	var payload = JSON.stringify({
 		"stat_name": stat_name,
 		"points": points
 	})
-	
+
 	var response = await network_manager.send_rpc(RPC_ALLOCATE_STATS, payload)
-	
+
 	if response.has("error"):
 		push_error("Failed to allocate stat: %s" % response.error)
 		return
-	
+
 	var result = JSON.parse_string(response)
-	
+
 	if result.get("success", false):
 		emit_signal("stat_allocated", stat_name, points)
 		player_stats = result.player_stats
 		emit_signal("stats_updated", player_stats)
-		
+
 		# Track stat allocation in analytics
 		if analytics and analytics.has_method("log_custom_event"):
 			analytics.log_custom_event("stat_allocated", {
@@ -171,7 +171,7 @@ func allocate_stat(stat_name: String, points: int) -> void:
 # --- Getters ---
 func get_level() -> int:
 	"""Returns the current player level.
-	
+
 	Returns:
 		int: Current level (minimum 1)
 	"""
@@ -179,7 +179,7 @@ func get_level() -> int:
 
 func get_xp() -> int:
 	"""Returns current XP.
-	
+
 	Returns:
 		int: Current XP amount
 	"""
@@ -187,7 +187,7 @@ func get_xp() -> int:
 
 func get_ability_points() -> int:
 	"""Returns available unallocated ability points.
-	
+
 	Returns:
 		int: Number of available points
 	"""
@@ -195,10 +195,10 @@ func get_ability_points() -> int:
 
 func get_stat(stat_name: String) -> int:
 	"""Gets the value of a specific stat.
-	
+
 	Parameters:
 		stat_name: Name of the stat to retrieve
-	
+
 	Returns:
 		int: Current value of the stat (0 if not found)
 	"""
@@ -208,7 +208,7 @@ func get_stat(stat_name: String) -> int:
 
 func get_attack() -> int:
 	"""Returns the attack stat value.
-	
+
 	Returns:
 		int: Attack value
 	"""
@@ -216,7 +216,7 @@ func get_attack() -> int:
 
 func get_defense() -> int:
 	"""Returns the defense stat value.
-	
+
 	Returns:
 		int: Defense value
 	"""
@@ -224,7 +224,7 @@ func get_defense() -> int:
 
 func get_dodge() -> int:
 	"""Returns the dodge stat value.
-	
+
 	Returns:
 		int: Dodge value
 	"""
@@ -232,7 +232,7 @@ func get_dodge() -> int:
 
 func get_crit_rate() -> int:
 	"""Returns the critical hit rate stat value.
-	
+
 	Returns:
 		int: Critical hit rate percentage
 	"""

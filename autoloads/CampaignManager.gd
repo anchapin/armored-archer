@@ -41,10 +41,10 @@ func load_campaigns_data() -> void:
 
 func get_stage_data(stage_id: String) -> Dictionary:
 	"""Retrieves data for a specific stage.
-	
+
 	Parameters:
 		stage_id: Stage identifier (e.g., "1_1", "2_3")
-	
+
 	Returns:
 		Dictionary: Stage configuration data or empty dict if not found
 	"""
@@ -56,28 +56,28 @@ func get_stage_data(stage_id: String) -> Dictionary:
 
 func complete_stage(stage_id: String) -> void:
 	"""Marks a stage as completed and triggers progression.
-	
+
 	Parameters:
 		stage_id: ID of the completed stage
 	"""
 	if not stage_id in completed_stages:
 		completed_stages.append(stage_id)
 		stage_completed.emit(stage_id)
-		
+
 		var stage_data = get_stage_data(stage_id)
 		if stage_data.get("boss"):
 			handle_boss_defeat(stage_data.get("boss"))
-		
+
 		unlock_next_stage(stage_id)
 		save_progress()
 		update_campaign_progress()
 
 func is_stage_unlocked(stage_id: String) -> bool:
 	"""Checks if a stage is available to play.
-	
+
 	Parameters:
 		stage_id: Stage identifier to check
-	
+
 	Returns:
 		bool: True if stage is unlocked
 	"""
@@ -85,10 +85,10 @@ func is_stage_unlocked(stage_id: String) -> bool:
 
 func is_stage_completed(stage_id: String) -> bool:
 	"""Checks if a stage has been completed.
-	
+
 	Parameters:
 		stage_id: Stage identifier to check
-	
+
 	Returns:
 		bool: True if stage is completed
 	"""
@@ -96,16 +96,16 @@ func is_stage_completed(stage_id: String) -> bool:
 
 func unlock_next_stage(stage_id: String) -> void:
 	"""Unlocks the next stage in sequence after completing current one.
-	
+
 	Parameters:
 		stage_id: ID of the just-completed stage
 	"""
 	var parts = stage_id.split("_")
 	var current_chapter = parts[0]
 	var current_stage_num = int(parts[1])
-	
+
 	var next_stage_id = "%s_%d" % [current_chapter, current_stage_num + 1]
-	
+
 	if get_stage_data(next_stage_id):
 		if not next_stage_id in unlocked_stages:
 			unlocked_stages.append(next_stage_id)
@@ -113,7 +113,7 @@ func unlock_next_stage(stage_id: String) -> void:
 
 func handle_boss_defeat(boss_id: String) -> void:
 	"""Handles special rewards for defeating a boss.
-	
+
 	Parameters:
 		boss_id: Identifier of the defeated boss
 	"""
@@ -123,7 +123,7 @@ func handle_boss_defeat(boss_id: String) -> void:
 
 func unlock_modifier_pool(modifier_id: String) -> void:
 	"""Unlocks a modifier pool for gear generation.
-	
+
 	Parameters:
 		modifier_id: Identifier of the modifier to unlock
 	"""
@@ -136,11 +136,11 @@ func update_campaign_progress() -> void:
 		var chapter_id = campaign.id
 		var total_stages = campaign.get("stages", []).size()
 		var completed_in_chapter = 0
-		
+
 		for stage in campaign.get("stages", []):
 			if stage.id in completed_stages:
 				completed_in_chapter += 1
-		
+
 		var progress = float(completed_in_chapter) / float(total_stages)
 		campaign_progress_updated.emit(chapter_id, progress)
 
