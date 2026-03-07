@@ -231,6 +231,7 @@ OpenHands supports skills for enhanced agent capabilities. Skills are stored in 
 ### Available Skills
 
 - **godot-backend** - Guidelines for working with Godot backend and Nakama server integration
+- **releasenotes** - Guidelines for automated release notes generation from git history
 
 ### Adding New Skills
 
