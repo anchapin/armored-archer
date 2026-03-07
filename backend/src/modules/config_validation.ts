@@ -1,5 +1,5 @@
-import { Runtime } from '../types/nakama';
 import { config } from '../config';
+import { Runtime } from '../types/nakama';
 
 export function validateConfiguration(logger: Runtime.Logger): void {
   if (config.server.port < 1 || config.server.port > 65535) {
