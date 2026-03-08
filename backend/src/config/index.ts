@@ -548,7 +548,7 @@ const config: AppConfig = {
   },
 
   analytics: {
-    enabled: process.env.ANALYTICS_ENABLED === 'true',
+    enabled: process.env.ANALYTICS_ENABLED !== 'false', // Enabled by default, disabled only when explicitly set to 'false'
     mixpanel: process.env.MIXPANEL_API_KEY
       ? {
           enabled: process.env.MIXPANEL_ENABLED !== 'false',
