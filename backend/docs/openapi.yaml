@@ -2,11 +2,36 @@ openapi: 3.0.3
 info:
   title: Armored Archer API
   description: |
-    API documentation for the Armored Archer game backend.
+    API documentation for the Armored Archer game backend powered by Nakama.
 
     ## Authentication
-    All RPC endpoints require a valid Nakama session token. The token should be
-    included in the `Authorization` header as `Bearer <token>`.
+    The Armored Archer API uses Nakama's authentication system. All RPC endpoints
+    require a valid Nakama session token.
+
+    ### Authentication Methods
+    1. **Device Authentication** (`/v2/account/authenticate/device`)
+       - Authenticate using a unique device identifier
+       - Best for mobile platforms (iOS/Android)
+       - No user input required
+
+    2. **Email Authentication** (`/v2/account/authenticate/email`)
+       - Authenticate using email and password
+       - Requires account creation
+
+    ### Including the Token
+    All RPC endpoints require the token to be included in the `Authorization` header:
+    ```
+    Authorization: Bearer <your_session_token>
+    ```
+
+    ### Token Lifecycle
+    - Tokens expire after 30 days by default
+    - Use refresh tokens to extend sessions
+    - Store tokens securely on the client
+
+    ## Authorization
+    Most endpoints require authentication. The following endpoints are public:
+    - `/v2/account/authenticate/*` (all authentication endpoints)
 
     ## Rate Limits
     - Authentication endpoints: 10 requests/minute
@@ -22,6 +47,15 @@ info:
       "rpc_name": "rpc_name"
     }
     ```
+
+    ## Common Error Codes
+    | Code | Description |
+    |------|-------------|
+    | ERR_AUTHENTICATION_FAILED | Invalid credentials or expired token |
+    | ERR_AUTHORIZATION_FAILED | User lacks permission |
+    | ERR_RATE_LIMITED | Too many requests |
+    | ERR_VALIDATION_FAILED | Invalid request parameters |
+    | ERR_INTERNAL_ERROR | Server-side error |
   version: 1.0.0
   contact:
     name: Armored Archer Support
@@ -49,6 +83,10 @@ tags:
     description: In-game purchases and currency
   - name: Gear System
     description: Gear generation and inventory management
+  - name: Analytics
+    description: Event tracking and analytics
+  - name: Player RPC
+    description: Player reporting and health check
 paths:
   /v2/account/authenticate/device:
     post:
@@ -1059,10 +1097,12 @@ paths:
   /rpc/armored_archer/get_player_reports:
     post:
       tags:
-        - Player rpc
-      summary: 'RPC: armored_archer/get_player_reports'
-      description: Auto-generated endpoint for armored_archer/get_player_reports
-      operationId: armored_archer_get_player_reports
+        - Player RPC
+      summary: Get player reports
+      description: |
+        Get reports filed by or against the current player. Returns a list of
+        player reports for moderation and dispute resolution purposes.
+      operationId: getPlayerReports
       security:
         - BearerAuth: []
       requestBody:
@@ -1071,13 +1111,298 @@ paths:
           application/json:
             schema:
               type: object
+            example: {}
       responses:
         '200':
-          description: Successful response
+          description: Reports retrieved successfully
           content:
             application/json:
               schema:
                 type: object
+                properties:
+                  success:
+                    type: boolean
+                  reports:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        reporter_id:
+                          type: string
+                        reported_user_id:
+                          type: string
+                        reason:
+                          type: string
+                        status:
+                          type: string
+                        created_at:
+                          type: integer
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /rpc/armored_archer/process_pending_purchases:
+    post:
+      tags:
+        - Store
+      summary: Process pending purchases
+      description: |
+        Process any pending purchases that were not completed during app launch.
+        This is typically called when the app regains focus or after a network
+        reconnection. Processes any stored pending purchases from local storage.
+      operationId: processPendingPurchases
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+      responses:
+        '200':
+          description: Purchases processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessPendingPurchasesResponse'
+              example:
+                success: true
+                processed: 2
+                successful: 2
+                results:
+                  - product_id: gem_pack_100
+                    success: true
+                  - product_id: gem_pack_500
+                    success: true
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /rpc/armored_archer/check_refunds:
+    post:
+      tags:
+        - Store
+      summary: Check for refunds
+      description: |
+        Check for refunds via RevenueCat API. Should be called on app launch
+        to detect chargebacks and reverse any previously granted benefits.
+      operationId: checkRefunds
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+      responses:
+        '200':
+          description: Refund check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckRefundsResponse'
+              example:
+                success: true
+                refunds_found: 0
+        '500':
+          description: Server error checking refunds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /rpc/armored_archer/check_subscriptions:
+    post:
+      tags:
+        - Store
+      summary: Check subscription status
+      description: |
+        Check subscription status via RevenueCat API. Verifies active subscriptions
+        and updates player benefits accordingly.
+      operationId: checkSubscriptions
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+      responses:
+        '200':
+          description: Subscription check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckSubscriptionsResponse'
+              example:
+                success: true
+                active_subscription: true
+                subscription_tier: premium
+        '500':
+          description: Server error checking subscriptions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /rpc/armored_archer/app_launch_check:
+    post:
+      tags:
+        - Store
+      summary: App launch check
+      description: |
+        Comprehensive check performed on app launch. Processes pending purchases,
+        checks for refunds, and verifies subscription status. This is the main
+        entry point for store-related initialization.
+      operationId: appLaunchCheck
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+      responses:
+        '200':
+          description: App launch check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppLaunchCheckResponse'
+              example:
+                success: true
+                pending_purchases:
+                  processed: 0
+                refunds:
+                  found: 0
+                subscription:
+                  active: true
+                  tier: premium
+  /rpc/armored_archer/track_event:
+    post:
+      tags:
+        - Analytics
+      summary: Track analytics event
+      description: |
+        Track a custom analytics event. Events are sent to the analytics pipeline
+        for processing and storage.
+      operationId: trackEvent
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackEventRequest'
+            example:
+              event_name: level_completed
+              properties:
+                level: 5
+                score: 1500
+                time_seconds: 120
+      responses:
+        '200':
+          description: Event tracked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackEventResponse'
+              example:
+                success: true
+        '400':
+          description: Invalid event data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /rpc/armored_archer/get_analytics_summary:
+    post:
+      tags:
+        - Analytics
+      summary: Get analytics summary
+      description: |
+        Get an analytics summary for the current player. Returns aggregated
+        statistics about player behavior and engagement.
+      operationId: getAnalyticsSummary
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                time_range:
+                  type: string
+                  enum: [day, week, month, all_time]
+                  default: week
+            example:
+              time_range: week
+      responses:
+        '200':
+          description: Analytics summary retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsSummaryResponse'
+              example:
+                success: true
+                summary:
+                  total_sessions: 25
+                  total_playtime_minutes: 450
+                  levels_completed: 42
+                  enemies_defeated: 1250
+  /rpc/armored_archer/track_revenue:
+    post:
+      tags:
+        - Analytics
+      summary: Track revenue event
+      description: |
+        Track a revenue event. Records purchase information for analytics
+        and revenue reporting purposes.
+      operationId: trackRevenue
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackRevenueRequest'
+            example:
+              product_id: gem_pack_100
+              amount: 0.99
+              currency: USD
+              transaction_id: transaction_abc123
+      responses:
+        '200':
+          description: Revenue event tracked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackRevenueResponse'
+              example:
+                success: true
+        '400':
+          description: Invalid revenue data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   securitySchemes:
     BearerAuth:
@@ -1636,6 +1961,118 @@ components:
           type: integer
         amount_spent:
           type: integer
+    ProcessPendingPurchasesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        processed:
+          type: integer
+        successful:
+          type: integer
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: string
+              success:
+                type: boolean
+              error:
+                type: string
+                nullable: true
+    CheckRefundsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        refunds_found:
+          type: integer
+    CheckSubscriptionsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        active_subscription:
+          type: boolean
+        subscription_tier:
+          type: string
+          nullable: true
+    AppLaunchCheckResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        pending_purchases:
+          type: object
+          properties:
+            processed:
+              type: integer
+        refunds:
+          type: object
+          properties:
+            found:
+              type: integer
+        subscription:
+          type: object
+          properties:
+            active:
+              type: boolean
+            tier:
+              type: string
+              nullable: true
+    TrackEventRequest:
+      type: object
+      required:
+        - event_name
+      properties:
+        event_name:
+          type: string
+        properties:
+          type: object
+          additionalProperties: true
+    TrackEventResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+    AnalyticsSummaryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        summary:
+          type: object
+          properties:
+            total_sessions:
+              type: integer
+            total_playtime_minutes:
+              type: integer
+            levels_completed:
+              type: integer
+            enemies_defeated:
+              type: integer
+    TrackRevenueRequest:
+      type: object
+      required:
+        - product_id
+        - amount
+        - currency
+      properties:
+        product_id:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        transaction_id:
+          type: string
+    TrackRevenueResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
     GearItem:
       type: object
       properties:
