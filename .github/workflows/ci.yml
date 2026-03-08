@@ -50,9 +50,9 @@ jobs:
         working-directory: ./backend
         run: npm ci
       
-      - name: Run ESLint complexity analysis
+      - name: Run ESLint complexity check
         working-directory: ./backend
-        run: npm run lint -- --no-ignore
+        run: npm run lint -- --no-ignore --max-warnings=0
 
   backend-typecheck:
     name: Backend Type Check
