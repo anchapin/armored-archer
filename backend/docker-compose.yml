@@ -29,6 +29,7 @@ services:
     restart: unless_stopped
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alerts.yml:/etc/prometheus/alerts.yml
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -54,6 +55,23 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning
     ports:
       - "3000:3000"
+    networks:
+      - backend-network
+    depends_on:
+      - prometheus
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: armored_archer_alertmanager
+    restart: unless_stopped
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    ports:
+      - "9093:9093"
     networks:
       - backend-network
     depends_on:
@@ -124,6 +142,7 @@ volumes:
   data:
   prometheus_data:
   grafana_data:
+  alertmanager_data:
 
 networks:
   backend-network:
