@@ -23,7 +23,9 @@
     "format:check": "prettier --check src/",
     "bundle:analyze": "webpack --mode=production --config webpack.analyze.config.js --analyze",
     "bundle:analyze:dev": "webpack --mode=development --config webpack.analyze.config.js --analyze",
-    "bundle:check": "node scripts/bundle-analysis.js"
+    "bundle:check": "node scripts/bundle-analysis.js",
+    "depcheck": "depcheck",
+    "dep:count": "node -e \"const p = require('./package.json'); console.log('Total:', Object.keys(p.dependencies).length + Object.keys(p.devDependencies).length); console.log('Prod:', Object.keys(p.dependencies).length); console.log('Dev:', Object.keys(p.devDependencies).length);\""
   },
   "keywords": [
     "nakama",
@@ -37,6 +39,7 @@
     "@types/node": "^25.3.3",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
+    "depcheck": "^1.4.7",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.4",

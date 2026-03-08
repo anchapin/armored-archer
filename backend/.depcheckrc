@@ -1,0 +1,10 @@
+{
+  "ignores": [
+    "@types/jest",
+    "husky",
+    "lint-staged",
+    "webpack*",
+    "ts-loader"
+  ],
+  "skipMissing": ["@jest/globals"]
+}

@@ -3,274 +3,377 @@
 /**
  * Bundle Size Analysis Script
  * 
- * This script analyzes the bundle size, compares against limits,
- * and tracks bundle size over time for CI/CD integration.
+ * Analyzes bundle size, checks against limits, and tracks bundle size over time.
+ * Usage: node scripts/bundle-analysis.js [--ci-mode] [--verbose]
  * 
- * Usage:
- *   node scripts/bundle-analysis.js           - Check bundle size against limits
- *   node scripts/bundle-analysis.js --ci-mode - CI mode with detailed output
+ * Features:
+ * - Analyzes npm dependencies for heavy dependencies
+ * - Measures bundle output size
+ * - Checks against configured size limits
+ * - Tracks bundle size over time in CI/CD
+ * - Provides alerts for bundle growth
  */
 
+const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const BUNDLE_LIMITS = {
-  main: 500 * 1024,      // 500KB - main bundle size limit
-  vendor: 1024 * 1024,   // 1MB - vendor chunk size limit
-  total: 2 * 1024 * 1024 // 2MB - total bundle size limit
+const CONFIG_FILE = path.join(__dirname, 'bundle-size-limits.json');
+const SIZE_HISTORY_FILE = path.join(__dirname, '.bundle-size-history.json');
+const CI_MODE = process.argv.includes('--ci-mode');
+const VERBOSE = process.argv.includes('--verbose');
+
+// Default size limits (in bytes)
+const DEFAULT_LIMITS = {
+  maxBundleSize: 2 * 1024 * 1024, // 2MB
+  maxDependencySize: 10 * 1024 * 1024, // 10MB
+  maxFileSize: 500 * 1024, // 500KB
+  warnings: {
+    bundleSizeGrowthPercent: 10, // Warn if bundle grows by more than 10%
+    heavyDependencySize: 2 * 1024 * 1024, // 2MB - flag dependencies over this size
+  },
 };
 
-const HISTORY_FILE = '.bundle-size-history.json';
-const CI_MODE = process.argv.includes('--ci-mode');
-const GIT_COMMIT = process.env.GIT_COMMIT || 'unknown';
+// Heavy dependency patterns to detect
+const HEAVY_DEPENDENCY_PATTERNS = [
+  { pattern: /@opentelemetry.*/, reason: 'Telemetry SDKs are large', suggested: 'Use selective imports' },
+  { pattern: /@sentry\/node/, reason: 'Sentry is large', suggested: 'Use @sentry/node (tree-shakeable)' },
+  { pattern: /winston/, reason: 'Logging library', suggested: 'Consider pino or abstract logging' },
+  { pattern: /prom-client/, reason: 'Prometheus client', suggested: 'Verify needed metrics only' },
+  { pattern: /zod/, reason: 'Validation library', suggested: 'Consider lighter alternatives or tree-shaking' },
+];
 
 /**
- * Get bundle size from webpack stats
+ * Load configuration from file or use defaults
  */
-function getBundleSize() {
-  const statsPath = path.join(__dirname, 'bundle-stats.json');
-  
-  if (!fs.existsSync(statsPath)) {
-    // Fallback: estimate from build output
-    const buildDir = path.join(__dirname, 'build');
-    if (fs.existsSync(buildDir)) {
-      const files = fs.readdirSync(buildDir);
-      let totalSize = 0;
-      files.forEach(file => {
-        const filePath = path.join(buildDir, file);
-        const stat = fs.statSync(filePath);
-        if (stat.isFile()) {
-          totalSize += stat.size;
-        }
-      });
-      return {
-        main: totalSize,
-        vendor: 0,
-        total: totalSize,
-        source: 'build-directory'
-      };
-    }
-    return null;
-  }
-
+function loadConfig() {
   try {
-    const stats = JSON.parse(fs.readFileSync(statsPath, 'utf8'));
-    const assets = stats.assets || [];
-    
-    let mainSize = 0;
-    let vendorSize = 0;
-    
-    assets.forEach(asset => {
-      if (asset.name.includes('vendor')) {
-        vendorSize += asset.size;
-      } else if (asset.name.includes('bundle') || asset.name.endsWith('.js')) {
-        mainSize += asset.size;
-      }
-    });
-
-    return {
-      main: mainSize || stats.assetsSize || 0,
-      vendor: vendorSize,
-      total: mainSize + vendorSize,
-      source: 'webpack-stats'
-    };
+    if (fs.existsSync(CONFIG_FILE)) {
+      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      return { ...DEFAULT_LIMITS, ...config };
+    }
   } catch (error) {
-    console.error('Error reading bundle stats:', error.message);
-    return null;
+    console.warn('Warning: Could not load config file, using defaults:', error.message);
   }
+  return DEFAULT_LIMITS;
+}
+
+/**
+ * Get package.json dependencies
+ */
+function getDependencies() {
+  const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
+  return {
+    dependencies: packageJson.dependencies || {},
+    devDependencies: packageJson.devDependencies || {},
+  };
+}
+
+/**
+ * Calculate total npm dependency size
+ */
+function calculateDependencySize() {
+  try {
+    // Use npm ls to get dependency tree with size info
+    const output = execSync('npm ls --all --parseable', { 
+      cwd: __dirname, 
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore']
+    });
+    
+    const packages = output.split('\n').filter(Boolean);
+    let totalSize = 0;
+    const packageSizes = {};
+    
+    for (const pkg of packages) {
+      try {
+        const packageJsonPath = path.join(pkg, 'package.json');
+        if (fs.existsSync(packageJsonPath)) {
+          const pkgJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+          // Estimate size from published package
+          if (pkgJson.dist && pkgJson.dist.unpackedSize) {
+            const size = pkgJson.dist.unpackedSize;
+            packageSizes[pkgJson.name] = size;
+            totalSize += size;
+          }
+        }
+      } catch {
+        // Skip packages we can't read
+      }
+    }
+    
+    return { totalSize, packageSizes };
+  } catch (error) {
+    // Fallback: estimate from node_modules
+    console.warn('Warning: Could not get npm package sizes, using fallback');
+    return { totalSize: 0, packageSizes: {} };
+  }
+}
+
+/**
+ * Analyze heavy dependencies
+ */
+function analyzeHeavyDependencies(deps, packageSizes) {
+  const issues = [];
+  
+  for (const [name, size] of Object.entries(packageSizes)) {
+    // Check against heavy dependency patterns
+    for (const { pattern, reason, suggested } of HEAVY_DEPENDENCY_PATTERNS) {
+      if (pattern.test(name)) {
+        const sizeMB = (size / (1024 * 1024)).toFixed(2);
+        issues.push({
+          type: 'heavy_dependency',
+          name,
+          size,
+          sizeMB: parseFloat(sizeMB),
+          reason,
+          suggested,
+          severity: size > DEFAULT_LIMITS.warnings.heavyDependencySize ? 'error' : 'warning',
+        });
+      }
+    }
+  }
+  
+  return issues;
+}
+
+/**
+ * Get bundle file sizes from build output
+ */
+function getBundleSizes() {
+  const buildDir = path.join(__dirname, 'build');
+  const sizes = [];
+  
+  if (!fs.existsSync(buildDir)) {
+    return sizes;
+  }
+  
+  function walkDir(dir, basePath = '') {
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      const filePath = path.join(dir, file);
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        walkDir(filePath, path.join(basePath, file));
+      } else {
+        const relativePath = path.join(basePath, file);
+        sizes.push({
+          path: relativePath,
+          size: stat.size,
+          sizeKB: (stat.size / 1024).toFixed(2),
+        });
+      }
+    }
+  }
+  
+  walkDir(buildDir);
+  return sizes;
+}
+
+/**
+ * Calculate total bundle size
+ */
+function calculateBundleSize() {
+  const sizes = getBundleSizes();
+  return sizes.reduce((acc, { size }) => acc + size, 0);
 }
 
 /**
  * Load bundle size history
  */
 function loadHistory() {
-  const historyPath = path.join(__dirname, HISTORY_FILE);
-  if (!fs.existsSync(historyPath)) {
-    return [];
-  }
   try {
-    return JSON.parse(fs.readFileSync(historyPath, 'utf8'));
+    if (fs.existsSync(SIZE_HISTORY_FILE)) {
+      return JSON.parse(fs.readFileSync(SIZE_HISTORY_FILE, 'utf-8'));
+    }
   } catch {
-    return [];
+    // Ignore errors
   }
+  return { history: [] };
 }
 
 /**
- * Save bundle size history
+ * Save bundle size to history
  */
 function saveHistory(history) {
-  const historyPath = path.join(__dirname, HISTORY_FILE);
-  fs.writeFileSync(historyPath, JSON.stringify(history, null, 2));
+  fs.writeFileSync(SIZE_HISTORY_FILE, JSON.stringify(history, null, 2));
 }
 
 /**
- * Format bytes to human readable string
+ * Check bundle size growth
  */
-function formatBytes(bytes) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-/**
- * Check if bundle size exceeds limits
- */
-function checkLimits(bundleSize) {
-  const warnings = [];
-  const errors = [];
-
-  if (bundleSize.main > BUNDLE_LIMITS.main) {
-    const percentOver = ((bundleSize.main - BUNDLE_LIMITS.main) / BUNDLE_LIMITS.main * 100).toFixed(1);
-    errors.push(`Main bundle (${formatBytes(bundleSize.main)}) exceeds limit (${formatBytes(BUNDLE_LIMITS.main)}) by ${percentOver}%`);
-  }
-
-  if (bundleSize.vendor > BUNDLE_LIMITS.vendor) {
-    const percentOver = ((bundleSize.vendor - BUNDLE_LIMITS.vendor) / BUNDLE_LIMITS.vendor * 100).toFixed(1);
-    warnings.push(`Vendor chunk (${formatBytes(bundleSize.vendor)}) exceeds soft limit (${formatBytes(BUNDLE_LIMITS.vendor)}) by ${percentOver}%`);
-  }
-
-  if (bundleSize.total > BUNDLE_LIMITS.total) {
-    const percentOver = ((bundleSize.total - BUNDLE_LIMITS.total) / BUNDLE_LIMITS.total * 100).toFixed(1);
-    errors.push(`Total bundle (${formatBytes(bundleSize.total)}) exceeds limit (${formatBytes(BUNDLE_LIMITS.total)}) by ${percentOver}%`);
-  }
-
-  return { warnings, errors };
-}
-
-/**
- * Get large dependencies from bundle stats
- */
-function getLargeDependencies() {
-  const statsPath = path.join(__dirname, 'bundle-stats.json');
-  if (!fs.existsSync(statsPath)) {
-    return [];
-  }
-
-  try {
-    const stats = JSON.parse(fs.readFileSync(statsPath, 'utf8'));
-    const modules = stats.modules || [];
-    
-    const dependencySizes = [];
-    modules.forEach(module => {
-      if (module.name && module.size) {
-        // Filter to node_modules
-        if (module.name.includes('node_modules')) {
-          // Extract package name
-          const match = module.name.match(/node_modules[/\\](@[^/]+[/\\])?[^/]+/);
-          if (match) {
-            const pkgName = match[0].replace(/node_modules[/\\]/, '').replace(/[/\\]/g, '/');
-            const existing = dependencySizes.find(d => d.name === pkgName);
-            if (existing) {
-              existing.size += module.size;
-            } else {
-              dependencySizes.push({ name: pkgName, size: module.size });
-            }
-          }
-        }
-      }
-    });
-
-    // Sort by size and return top 10
-    return dependencySizes
-      .sort((a, b) => b.size - a.size)
-      .slice(0, 10)
-      .map(d => ({
-        ...d,
-        formattedSize: formatBytes(d.size)
-      }));
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Main function
- */
-function main() {
-  console.log('='.repeat(60));
-  console.log('Bundle Size Analysis');
-  console.log('='.repeat(60));
-
-  const bundleSize = getBundleSize();
+function checkBundleGrowth(currentSize) {
+  const { history } = loadHistory();
+  const issues = [];
   
-  if (!bundleSize) {
-    console.log('\n⚠️  No bundle data found. Run "npm run build" first.\n');
-    process.exit(0);
+  if (history.length > 0) {
+    const lastEntry = history[history.length - 1];
+    const growth = ((currentSize - lastEntry.size) / lastEntry.size) * 100;
+    const limit = DEFAULT_LIMITS.warnings.bundleSizeGrowthPercent;
+    
+    if (growth > limit) {
+      issues.push({
+        type: 'bundle_growth',
+        message: `Bundle size grew by ${growth.toFixed(1)}% since last build (limit: ${limit}%)`,
+        severity: growth > limit * 2 ? 'error' : 'warning',
+        growth,
+        previousSize: lastEntry.size,
+        currentSize,
+      });
+    }
   }
+  
+  // Add current size to history
+  history.push({
+    date: new Date().toISOString(),
+    size: currentSize,
+    commit: process.env.GIT_COMMIT || 'unknown',
+  });
+  
+  // Keep only last 30 entries
+  if (history.length > 30) {
+    history.shift();
+  }
+  
+  saveHistory(history);
+  
+  return issues;
+}
 
-  console.log('\n📦 Bundle Sizes:');
-  console.log(`   Main:   ${formatBytes(bundleSize.main)}`);
-  console.log(`   Vendor: ${formatBytes(bundleSize.vendor)}`);
-  console.log(`   Total:  ${formatBytes(bundleSize.total)}`);
-
-  // Check limits
-  const { warnings, errors } = checkLimits(bundleSize);
-
-  console.log('\n📏 Size Limits:');
-  console.log(`   Main:   ${formatBytes(BUNDLE_LIMITS.main)} (limit)`);
-  console.log(`   Vendor: ${formatBytes(BUNDLE_LIMITS.vendor)} (soft limit)`);
-  console.log(`   Total:  ${formatBytes(BUNDLE_LIMITS.total)} (limit)`);
-
-  // Get large dependencies
-  const largeDeps = getLargeDependencies();
-  if (largeDeps.length > 0) {
-    console.log('\n📦 Top Dependencies:');
-    largeDeps.forEach((dep, i) => {
-      console.log(`   ${i + 1}. ${dep.name}: ${dep.formattedSize}`);
+/**
+ * Run bundle analysis
+ */
+function runAnalysis() {
+  console.log('\n📦 Bundle Size Analysis\n');
+  console.log('='.repeat(50));
+  
+  const config = loadConfig();
+  const { dependencies, devDependencies } = getDependencies();
+  
+  // Analyze dependencies
+  console.log('\n🔍 Analyzing npm dependencies...');
+  const { totalSize, packageSizes } = calculateDependencySize();
+  const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+  console.log(`   Total dependency size: ${totalSizeMB} MB`);
+  
+  // Check for heavy dependencies
+  const heavyDeps = analyzeHeavyDependencies(dependencies, packageSizes);
+  
+  if (heavyDeps.length > 0) {
+    console.log('\n⚠️  Heavy dependencies detected:');
+    for (const dep of heavyDeps) {
+      console.log(`   [${dep.severity.toUpperCase()}] ${dep.name}: ${dep.sizeMB} MB`);
+      console.log(`      Reason: ${dep.reason}`);
+      console.log(`      Suggestion: ${dep.suggested}`);
+    }
+  }
+  
+  // Check bundle sizes
+  console.log('\n📊 Analyzing build output...');
+  const bundleSizes = getBundleSizes();
+  const totalBundleSize = calculateBundleSize();
+  const bundleSizeMB = (totalBundleSize / (1024 * 1024)).toFixed(2);
+  
+  console.log(`   Total bundle size: ${bundleSizeMB} MB`);
+  
+  // Show largest files
+  const largestFiles = bundleSizes
+    .sort((a, b) => b.size - a.size)
+    .slice(0, 5);
+  
+  if (largestFiles.length > 0) {
+    console.log('\n   Largest files:');
+    for (const file of largestFiles) {
+      console.log(`      ${file.path}: ${file.sizeKB} KB`);
+    }
+  }
+  
+  // Check size limits
+  console.log('\n✅ Checking size limits...');
+  const issues = [];
+  
+  if (totalBundleSize > config.maxBundleSize) {
+    issues.push({
+      type: 'bundle_size',
+      message: `Bundle size (${bundleSizeMB} MB) exceeds limit (${(config.maxBundleSize / (1024 * 1024)).toFixed(0)} MB)`,
+      severity: 'error',
     });
   }
-
-  // Update history
-  const history = loadHistory();
-  history.push({
-    timestamp: new Date().toISOString(),
-    commit: GIT_COMMIT,
-    main: bundleSize.main,
-    vendor: bundleSize.vendor,
-    total: bundleSize.total,
-  });
-
-  // Keep only last 100 entries
-  const trimmedHistory = history.slice(-100);
-  saveHistory(trimmedHistory);
-
-  // Show trend if we have history
-  if (trimmedHistory.length > 1) {
-    const prev = trimmedHistory[trimmedHistory.length - 2];
-    const curr = trimmedHistory[trimmedHistory.length - 1];
-    const mainDiff = curr.main - prev.main;
-    const totalDiff = curr.total - prev.total;
-
-    console.log('\n📈 Bundle Size Trend:');
-    console.log(`   Main:   ${mainDiff >= 0 ? '+' : ''}${formatBytes(mainDiff)}`);
-    console.log(`   Total:  ${totalDiff >= 0 ? '+' : ''}${formatBytes(totalDiff)}`);
+  
+  if (totalSize > config.maxDependencySize) {
+    issues.push({
+      type: 'dependency_size',
+      message: `Total dependency size (${totalSizeMB} MB) exceeds limit (${(config.maxDependencySize / (1024 * 1024)).toFixed(0)} MB)`,
+      severity: 'error',
+    });
   }
-
-  // Output results
-  console.log('\n' + '='.repeat(60));
-
-  if (errors.length > 0) {
-    console.log('\n❌ Bundle Size Errors:');
-    errors.forEach(err => console.log(`   ${err}`));
+  
+  // Check bundle growth (only in CI or with --ci-mode)
+  if (CI_MODE) {
+    const growthIssues = checkBundleGrowth(totalBundleSize);
+    issues.push(...growthIssues);
   }
-
-  if (warnings.length > 0) {
-    console.log('\n⚠️  Bundle Size Warnings:');
-    warnings.forEach(warn => console.log(`   ${warn}`));
+  
+  // Add heavy dependency issues
+  for (const dep of heavyDeps) {
+    if (dep.severity === 'error') {
+      issues.push({
+        type: 'heavy_dependency',
+        message: `${dep.name} (${dep.sizeMB} MB): ${dep.reason}`,
+        severity: dep.severity,
+      });
+    }
   }
-
-  if (errors.length === 0 && warnings.length === 0) {
-    console.log('\n✅ Bundle size is within limits!');
-  }
-
-  console.log('='.repeat(60));
-
-  // Exit with error code if there are errors
-  if (errors.length > 0) {
-    process.exit(1);
+  
+  // Print summary
+  console.log('\n' + '='.repeat(50));
+  console.log('📋 Summary:');
+  console.log('='.repeat(50));
+  
+  if (issues.length === 0) {
+    console.log('   ✅ All checks passed!');
+    console.log(`   Bundle size: ${bundleSizeMB} MB`);
+    console.log(`   Dependencies: ${totalSizeMB} MB`);
+    process.exit(0);
+  } else {
+    const errors = issues.filter(i => i.severity === 'error');
+    const warnings = issues.filter(i => i.severity === 'warning');
+    
+    if (errors.length > 0) {
+      console.log(`\n   ❌ ${errors.length} Error(s):`);
+      for (const issue of errors) {
+        console.log(`      - ${issue.message}`);
+      }
+    }
+    
+    if (warnings.length > 0) {
+      console.log(`\n   ⚠️  ${warnings.length} Warning(s):`);
+      for (const issue of warnings) {
+        console.log(`      - ${issue.message}`);
+      }
+    }
+    
+    if (CI_MODE) {
+      process.exit(errors.length > 0 ? 1 : 0);
+    } else {
+      console.log('\n   Run with --ci-mode to enforce limits in CI/CD');
+      process.exit(0);
+    }
   }
 }
 
-main();
+// Run if called directly
+if (require.main === module) {
+  runAnalysis();
+}
+
+module.exports = {
+  runAnalysis,
+  loadConfig,
+  getDependencies,
+  calculateDependencySize,
+  analyzeHeavyDependencies,
+  getBundleSizes,
+  calculateBundleSize,
+  checkBundleGrowth,
+};

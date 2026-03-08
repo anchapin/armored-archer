@@ -1,21 +1,19 @@
 {
-  "limits": {
-    "main": 512000,
-    "vendor": 1048576,
-    "total": 2097152
+  "maxBundleSize": 2097152,
+  "maxDependencySize": 10485760,
+  "maxFileSize": 512000,
+  "warnings": {
+    "bundleSizeGrowthPercent": 10,
+    "heavyDependencySize": 2097152
   },
-  "alerts": {
-    "main": 450560,
-    "vendor": 943718,
-    "total": 1887436
-  },
-  "tracking": {
-    "enabled": true,
-    "historySize": 100,
-    "trendThreshold": 0.1
-  },
-  "dependencies": {
-    "maxSize": 102400,
-    "warningThreshold": 51200
-  }
+  "excludedDependencies": [],
+  "trackedDependencies": [
+    "@opentelemetry/*",
+    "@sentry/*",
+    "winston",
+    "prom-client",
+    "zod",
+    "@heroiclabs/*"
+  ],
+  "description": "Bundle size limits and configuration for armored-archer backend"
 }

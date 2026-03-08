@@ -1,55 +1,71 @@
+/**
+ * Webpack configuration for bundle analysis
+ * Used to analyze bundle size and dependencies for the backend
+ */
 const path = require('path');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const fs = require('fs');
+
+// Determine if we should run in analyze mode
+const shouldAnalyze = process.argv.includes('--analyze') || process.env.ANALYZE === 'true';
 
 module.exports = {
   mode: 'production',
-  entry: './src/index.ts',
-  target: 'node',
+  entry: './build/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'bundle.js',
     libraryTarget: 'commonjs2',
   },
+  externals: {
+    // Exclude Node.js built-ins and common external modules
+    'node:console': 'commonjs console',
+    'node:process': 'commonjs process',
+    'node:util': 'commonjs util',
+    'node:path': 'commonjs path',
+    'node:url': 'commonjs url',
+    'node:stream': 'commonjs stream',
+    'node:events': 'commonjs events',
+    'node:buffer': 'commonjs buffer',
+    'node:http': 'commonjs http',
+    'node:https': 'commonjs https',
+    'node:zlib': 'commonjs zlib',
+    'node:fs': 'commonjs fs',
+    'node:os': 'commonjs os',
+    'node:crypto': 'commonjs crypto',
+    'node:net': 'commonjs net',
+    'node:tls': 'commonjs tls',
+  },
   resolve: {
-    extensions: ['.ts', '.js'],
+    extensions: ['.js', '.json'],
   },
   module: {
     rules: [
       {
-        test: /\.ts$/,
-        use: 'ts-loader',
-        exclude: /node_modules/,
+        test: /\.node$/,
+        use: 'node-loader',
       },
     ],
   },
-  externals: [
-    '@heroiclabs/nakama-js',
-    '@opentelemetry/auto-instrumentations-node',
-    '@opentelemetry/exporter-jaeger',
-    '@opentelemetry/exporter-trace-otlp-http',
-    '@opentelemetry/exporter-zipkin',
-    '@opentelemetry/sdk-node',
-    '@sentry/node',
-    'js-yaml',
-    'lru-cache',
-    'prom-client',
-    'uuid',
-    'winston',
-    'zod',
-  ],
   plugins: [
-    new BundleAnalyzerPlugin({
-      analyzerMode: process.argv.includes('--analyze') ? 'static' : 'disabled',
+    // Only enable analyzer in analyze mode
+    ...(shouldAnalyze ? [new BundleAnalyzerPlugin({
+      analyzerMode: 'static',
       reportFilename: 'bundle-report.html',
       openAnalyzer: false,
-      generateStatsFile: true,
-      statsFilename: 'bundle-stats.json',
-    }),
+      logLevel: 'info',
+    })] : []),
   ],
-  optimization: {
-    minimize: false,
-  },
   performance: {
-    hints: false,
+    hints: 'warning',
+    maxEntrypointSize: 512000,
+    maxAssetSize: 512000,
+  },
+  stats: {
+    colors: true,
+    modules: false,
+    children: false,
+    chunks: false,
+    chunkModules: false,
   },
 };
