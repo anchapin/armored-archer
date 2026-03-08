@@ -183,7 +183,7 @@ jobs:
       
       - name: Build backend
         working-directory: ./backend
-        run: npm run build
+        run: npm run bundle:analyze
       
       - name: Run bundle analysis
         working-directory: ./backend
