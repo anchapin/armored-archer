@@ -289,6 +289,124 @@ To add a new skill:
    - `description`: Brief description of the skill
 3. Add the skill to the list in this section
 
+## AI Agent-Assisted Development Guidelines
+
+This project supports AI agent-assisted development to enhance productivity and code quality. All AI-assisted contributions must follow these guidelines to ensure proper tracking, review, and accountability.
+
+### Overview
+
+AI agents can assist with various development tasks including:
+- Code generation and implementation
+- Bug detection and fixing
+- Documentation improvements
+- Refactoring and code optimization
+- Test creation and maintenance
+
+### Tracking AI-Generated Code Changes
+
+All AI-generated code changes must be properly tracked in version control.
+
+#### Required Attribution
+
+AI-assisted contributions must include clear attribution in:
+- **Commit messages**: Use `[AI-assisted]` or `(AI)` prefix in commit message
+- **Code comments**: Add inline comments noting AI assistance for complex implementations
+- **PR description**: Document which parts of the change were AI-assisted
+
+#### Commit Message Format for AI-Assisted Changes
+
+```
+[AI-assisted] <type>: <description>
+
+- AI Model: <model name>
+- Task: <brief description of what was done>
+```
+
+Example:
+```
+[AI-assisted] feat: Add new weapon type
+
+- AI Model: Claude/Codex/GPT-4
+- Task: Implemented WeaponFactory with configurable weapon stats
+- Human Review: Required for combat balance verification
+```
+
+### Code Review Requirements for AI-Assisted Contributions
+
+All AI-assisted contributions require human review before merging:
+
+1. **Mandatory Code Review**: At least one human team member must review all AI-assisted changes
+2. **Focus Areas for Review**:
+   - Verify code follows project conventions and style guides
+   - Check for potential bugs or edge cases
+   - Ensure security best practices are followed
+   - Validate performance implications
+   - Confirm tests are included and passing
+
+3. **Review Checklist for AI-Assisted Code**:
+   - [ ] Code follows GDScript/TypeScript style guides
+   - [ ] No hardcoded secrets or credentials
+   - [ ] Error handling is appropriate
+   - [ ] Tests are included and passing
+   - [ ] Documentation is updated if needed
+   - [ ] No debug code or print statements left behind
+   - [ ] Security implications considered
+
+4. **Approval Requirements**:
+   - Same approval rules as human-written code
+   - Additional focus on AI-specific concerns (see below)
+
+### AI-Specific Review Concerns
+
+When reviewing AI-generated code, pay extra attention to:
+
+1. **Security**:
+   - No exposed API keys or secrets
+   - Input validation on all user data
+   - Proper escaping/parameterization to prevent injection
+
+2. **Logic Errors**:
+   - AI may miss edge cases
+   - Verify business logic matches requirements
+   - Check for off-by-one errors or boundary conditions
+
+3. **Dependencies**:
+   - Verify new dependencies are necessary
+   - Check for version conflicts
+   - Ensure lockfiles are updated properly
+
+4. **Code Quality**:
+   - AI may generate verbose or redundant code
+   - Check for proper error handling
+   - Verify type hints are correct and complete
+
+### Process for AI-Assisted Development
+
+1. **Task Assignment**: AI agent is assigned a specific task with clear requirements
+2. **Implementation**: AI generates code following project conventions
+3. **Self-Testing**: AI runs existing tests and adds new tests
+4. **Human Review**: Human reviewer examines the changes
+5. **Revision**: Any issues are addressed by AI or human
+6. **Attribution**: Changes are committed with proper AI attribution
+7. **Merge**: After approval, changes are merged following project workflow
+
+### AI Agent Configuration
+
+When working on this project, AI agents should:
+
+1. **Read First**: Review AGENTS.md and relevant documentation before starting
+2. **Follow Conventions**: Adhere to all code style and commit message guidelines
+3. **Test Thoroughly**: Run tests before submitting changes
+4. **Document Changes**: Update documentation for any new features
+5. **Request Review**: Clearly mark AI-assisted contributions for human review
+
+### Exceptions and Edge Cases
+
+- **Security-Critical Code**: AI should not generate security-critical code without human supervision
+- **Complex Business Logic**: Human review must verify AI-generated business logic
+- **Database Migrations**: Always require human review for schema changes
+- **Secret/Key Handling**: AI must not generate or modify secret management code
+
 ## Release Notes Automation
 
 The project includes automated release notes generation from git history using conventional commits.
