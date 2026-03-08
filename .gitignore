@@ -8,3 +8,5 @@
 .env.staging
 .env.production
 .env.*.local
+backend/coverage
+backend/tsconfig.tsbuildinfo

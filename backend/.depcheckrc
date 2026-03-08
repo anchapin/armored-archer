@@ -3,7 +3,8 @@
     "@types/jest",
     "husky",
     "lint-staged",
-    "webpack*"
+    "webpack*",
+    "ts-loader"
   ],
   "skipMissing": ["@jest/globals"]
 }

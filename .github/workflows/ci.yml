@@ -237,7 +237,7 @@ jobs:
           fi
           echo "Build output verified"
 
-  bundle-size-check:
+  bundle-size-tracking:
     name: Bundle Size Tracking
     needs: backend-test
     runs-on: ubuntu-latest
