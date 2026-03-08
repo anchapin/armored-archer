@@ -334,6 +334,7 @@ If deployment fails:
 - [Integration Tests](./INTEGRATION_TESTS.md)
 - [Environment Configuration](./ENVIRONMENTS.md)
 - [Monitoring Setup](./MONITORING.md)
+- [Metrics Collection](./METRICS.md)
 
 ---
 
