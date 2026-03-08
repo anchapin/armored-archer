@@ -1,0 +1,11 @@
+# Python dependencies for Armored Archer project
+# These dependencies are used in CI/CD workflows and development tools
+
+# Linting
+ruff==0.15.5
+
+# Godot development tools
+gdtoolkit==4.5.0
+
+# Release notes generation
+packaging==25.0

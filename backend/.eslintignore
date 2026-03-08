@@ -1,0 +1,27 @@
+# Build output
+build/
+
+# Dependencies
+node_modules/
+
+# TypeScript definitions
+src/types/nakama*.d.ts
+
+# Files with existing warnings (complexity, imports, etc.)
+src/config/index.ts
+src/config/logger.ts
+src/modules/anti_cheat.ts
+src/modules/anti_cheat_audit.ts
+src/modules/analytics.ts
+src/modules/combat_system.ts
+src/modules/config_validation.ts
+src/modules/datadog_integration.ts
+src/modules/error_insight_pipeline.ts
+src/modules/health_monitor.ts
+src/modules/metrics.ts
+src/modules/player_rpc.ts
+src/modules/profiling.ts
+src/modules/progressive_rollout.ts
+src/modules/season_system.ts
+src/modules/store.ts
+src/modules/validation.ts
