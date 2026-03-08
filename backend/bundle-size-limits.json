@@ -1,0 +1,19 @@
+{
+  "maxBundleSize": 2097152,
+  "maxDependencySize": 10485760,
+  "maxFileSize": 512000,
+  "warnings": {
+    "bundleSizeGrowthPercent": 10,
+    "heavyDependencySize": 2097152
+  },
+  "excludedDependencies": [],
+  "trackedDependencies": [
+    "@opentelemetry/*",
+    "@sentry/*",
+    "winston",
+    "prom-client",
+    "zod",
+    "@heroiclabs/*"
+  ],
+  "description": "Bundle size limits and configuration for armored-archer backend"
+}

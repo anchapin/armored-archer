@@ -20,7 +20,12 @@
     "typecheck": "tsc --noEmit",
     "docs": "typedoc --out docs src",
     "format": "prettier --write src/",
-    "format:check": "prettier --check src/"
+    "format:check": "prettier --check src/",
+    "depcheck": "depcheck",
+    "bundle:analyze": "webpack --mode=production --config webpack.analyze.config.js --analyze",
+    "bundle:analyze:dev": "webpack --mode=development --config webpack.analyze.config.js --analyze",
+    "bundle:check": "node scripts/bundle-analysis.js",
+    "dep:count": "node -e \"const p = require('./package.json'); console.log('Total:', Object.keys(p.dependencies).length + Object.keys(p.devDependencies).length); console.log('Prod:', Object.keys(p.dependencies).length); console.log('Dev:', Object.keys(p.devDependencies).length);\""
   },
   "keywords": [
     "nakama",
@@ -48,7 +53,10 @@
     "ts-node": "^10.9.0",
     "ts-node-dev": "^2.0.0",
     "typedoc": "^0.28.17",
-    "typescript": "^5.2.0"
+    "typescript": "^5.2.0",
+    "webpack": "^5.97.1",
+    "webpack-bundle-analyzer": "^4.10.2",
+    "webpack-cli": "^6.0.1"
   },
   "dependencies": {
     "@heroiclabs/nakama-js": "^2.5.1",
