@@ -9,6 +9,7 @@ import {
   SEMRESATTRS_SERVICE_NAME,
   SEMRESATTRS_SERVICE_VERSION,
 } from '@opentelemetry/semantic-conventions';
+import { Context, Span, SpanKind, SpanStatusCode, trace, context, propagation } from '@opentelemetry/api';
 
 import { config } from '../config';
 import { logger } from './logger';
@@ -29,8 +30,224 @@ export interface TracingConfig {
   instrumentations: string[];
 }
 
+/**
+ * Trace context carrier for propagating trace information across service boundaries.
+ */
+export interface TraceContext {
+  traceId?: string;
+  spanId?: string;
+  traceFlags?: number;
+  traceState?: string;
+}
+
+/**
+ * Options for creating a traced function wrapper.
+ */
+export interface TracedFunctionOptions {
+  name: string;
+  kind?: SpanKind;
+  attributes?: Record<string, string | number | boolean>;
+}
+
 let tracingInitialized = false;
 let sdk: NodeSDK | null = null;
+let tracer: ReturnType<typeof trace.getTracer> | null = null;
+
+/**
+ * Get the OpenTelemetry tracer instance.
+ * Creates a new tracer if tracing is enabled, otherwise returns a no-op tracer.
+ */
+export function getTracer(): ReturnType<typeof trace.getTracer> {
+  if (!tracer) {
+    tracer = trace.getTracer(
+      config.tracing.serviceName,
+      config.tracing.serviceVersion
+    );
+  }
+  return tracer;
+}
+
+/**
+ * Extract trace context from HTTP headers (W3C Trace Context format).
+ * This enables distributed trace context propagation across service calls.
+ */
+export function extractTraceContext(headers: Record<string, string | string[] | undefined>): { extractedContext: Context } {
+  try {
+    // Use OpenTelemetry's built-in W3C Trace Context propagation
+    const carrier: Record<string, string> = {};
+    
+    // Convert headers to simple string record
+    for (const [key, value] of Object.entries(headers)) {
+      if (Array.isArray(value)) {
+        carrier[key] = value[0];
+      } else if (value) {
+        carrier[key] = value;
+      }
+    }
+    
+    const extracted = propagation.extract(context.active(), carrier);
+    return { extractedContext: extracted };
+  } catch (error) {
+    logger.warn('[Tracing] Failed to extract trace context', { error });
+    return { extractedContext: context.active() };
+  }
+}
+
+/**
+ * Inject current trace context into headers for outgoing requests.
+ * Uses W3C Trace Context format for standardized propagation.
+ */
+export function injectTraceContext(headers: Record<string, string>): void {
+  try {
+    propagation.inject(context.active(), headers);
+  } catch (error) {
+    logger.warn('[Tracing] Failed to inject trace context', { error });
+  }
+}
+
+/**
+ * Start a new span with optional parent context.
+ */
+export function startSpan(
+  name: string,
+  options?: {
+    kind?: SpanKind;
+    attributes?: Record<string, string | number | boolean>;
+  }
+): Span {
+  const tracer = getTracer();
+  
+  return tracer.startSpan(name, {
+    kind: options?.kind || SpanKind.INTERNAL,
+    attributes: options?.attributes || {},
+  });
+}
+
+/**
+ * Execute a function within a traced span.
+ * Automatically handles span creation, status, and end.
+ */
+export async function traceAsync<T>(
+  name: string,
+  fn: (span: Span) => Promise<T>,
+  options?: {
+    kind?: SpanKind;
+    attributes?: Record<string, string | number | boolean>;
+  }
+): Promise<T> {
+  const span = startSpan(name, options);
+  
+  try {
+    const result = await fn(span);
+    span.setStatus({ code: SpanStatusCode.OK });
+    return result;
+  } catch (error) {
+    span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    span.recordException(error instanceof Error ? error : new Error(String(error)));
+    throw error;
+  } finally {
+    span.end();
+  }
+}
+
+/**
+ * Execute a synchronous function within a traced span.
+ */
+export function traceSync<T>(
+  name: string,
+  fn: (span: Span) => T,
+  options?: {
+    kind?: SpanKind;
+    attributes?: Record<string, string | number | boolean>;
+  }
+): T {
+  const span = startSpan(name, options);
+  
+  try {
+    const result = fn(span);
+    span.setStatus({ code: SpanStatusCode.OK });
+    return result;
+  } catch (error) {
+    span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    span.recordException(error instanceof Error ? error : new Error(String(error)));
+    throw error;
+  } finally {
+    span.end();
+  }
+}
+
+/**
+ * Add event to current span.
+ */
+export function addSpanEvent(name: string, attributes?: Record<string, string | number | boolean>): void {
+  const activeSpan = trace.getSpan(context.active());
+  if (activeSpan) {
+    activeSpan.addEvent(name, attributes);
+  }
+}
+
+/**
+ * Set attribute on current span.
+ */
+export function setSpanAttribute(key: string, value: string | number | boolean): void {
+  const activeSpan = trace.getSpan(context.active());
+  if (activeSpan) {
+    activeSpan.setAttribute(key, value);
+  }
+}
+
+/**
+ * Wrap an RPC handler with tracing.
+ * Automatically creates spans with relevant Nakama context information.
+ */
+export function wrapRpcHandler<T>(
+  handlerName: string,
+  handler: (ctx: unknown, logger: unknown, nk: unknown, payload: string) => Promise<T> | T
+): (ctx: unknown, logger: unknown, nk: unknown, payload: string) => Promise<T> | T {
+  return async (ctx: unknown, logger: unknown, nk: unknown, payload: string) => {
+    const span = startSpan(`rpc.${handlerName}`, {
+      kind: SpanKind.SERVER,
+      attributes: {
+        'rpc.system': 'nakama',
+        'rpc.method': handlerName,
+        'deployment.environment': config.environment,
+      },
+    });
+    
+    // Add context attributes if available
+    const nakamaCtx = ctx as { userId?: string; sessionId?: string; matchId?: string } | null;
+    if (nakamaCtx?.userId) {
+      span.setAttribute('user.id', nakamaCtx.userId);
+    }
+    if ( nakamaCtx?.sessionId) {
+      span.setAttribute('session.id', nakamaCtx.sessionId);
+    }
+    if (nakamaCtx?.matchId) {
+      span.setAttribute('match.id', nakamaCtx.matchId);
+    }
+    
+    try {
+      const result = await handler(ctx, logger, nk, payload);
+      span.setStatus({ code: SpanStatusCode.OK });
+      return result;
+    } catch (error) {
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      span.recordException(error instanceof Error ? error : new Error(String(error)));
+      throw error;
+    } finally {
+      span.end();
+    }
+  };
+}
 
 /**
  * Initialize the OpenTelemetry tracing SDK.

@@ -1,4 +1,4 @@
-import { CacheManager, getCacheManager, initializeCaches } from '../cache';
+import { CacheManager, getCacheManager, initializeCaches, resetCacheManager } from '../cache';
 
 describe('CacheManager', () => {
   let cacheManager: CacheManager;
@@ -8,6 +8,11 @@ describe('CacheManager', () => {
     mockLogger = { debug: jest.fn(), info: jest.fn(), error: jest.fn() };
     cacheManager = new CacheManager(mockLogger);
     cacheManager.createCache('test', 100, 60);
+  });
+
+  afterEach(() => {
+    // Clean up the cache manager to prevent resource leaks
+    cacheManager.destroy();
   });
 
   describe('createCache', () => {
@@ -129,6 +134,11 @@ describe('CacheManager', () => {
 });
 
 describe('CacheManager singleton', () => {
+  afterEach(() => {
+    // Clean up the singleton to prevent resource leaks between tests
+    resetCacheManager();
+  });
+
   it('getCacheManager returns same instance', () => {
     const cm1 = getCacheManager();
     const cm2 = getCacheManager();

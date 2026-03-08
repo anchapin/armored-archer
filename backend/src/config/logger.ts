@@ -364,7 +364,7 @@ export function logSystemEvent(
  * @param metadata - Additional metadata
  */
 export function logCacheOperation(
-  operation: 'hit' | 'miss' | 'set' | 'delete' | 'clear',
+  operation: 'hit' | 'miss' | 'set' | 'delete' | 'clear' | 'destroy',
   cacheName: string,
   key: string,
   metadata?: Record<string, unknown>
