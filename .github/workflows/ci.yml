@@ -145,7 +145,7 @@ jobs:
       
       - name: Install dependencies
         working-directory: ./backend
-        run: npm ci
+        run: npm install
       
       - name: Run depcheck
         working-directory: ./backend
@@ -164,7 +164,8 @@ jobs:
           echo "Dependency count: Total=$TOTAL, Prod=$PROD, Dev=$DEV"
       
       - name: Print dependency summary
-        run: echo "Dependencies: ${{ steps.dep-count.outputs.total }} total (${{ steps.dep-count.outputs.prod }} prod, ${{ steps.dep-count.outputs.dev }} dev)"
+        run: |
+          echo "Dependencies: ${{ steps.dep-count.outputs.total }} total (${{ steps.dep-count.outputs.prod }} prod, ${{ steps.dep-count.outputs.dev }} dev)"
 
   bundle-size-check:
     name: Bundle Size Tracking
