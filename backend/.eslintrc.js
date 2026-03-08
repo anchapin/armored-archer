@@ -41,14 +41,20 @@ module.exports = {
     'jsdoc/require-jsdoc': 'off',
     'jsdoc/require-param-type': 'off',
     'jsdoc/require-return-type': 'off',
-    // Cyclomatic complexity - recommended threshold is 10-20
+    // Cyclomatic complexity - recommended threshold is 10-15
     // See: https://eslint.org/docs/latest/rules/complexity
-    'complexity': ['warn', { max: 15 }],
-    // Module boundary enforcement
+    'complexity': ['error', { max: 15 }],
+    // ============================================================
+    // Module Boundary Enforcement (Issue #314)
+    // ============================================================
+    // Basic import checks
     'import/no-unresolved': 'error',
     'import/order': ['error', { 'alphabetize': { 'order': 'asc', 'caseInsensitive': true } }],
     'import/no-duplicates': 'error',
     'import/extensions': ['error', 'ignorePackages', { 'ts': 'never' }],
+    // Circular dependency detection - prevents tight coupling
+    // This rule detects and prevents circular imports between modules
+    'import/no-cycle': ['error', { maxDepth: Infinity }],
   },
   overrides: [
     {
