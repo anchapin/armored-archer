@@ -37,11 +37,14 @@ module.exports = {
     '@typescript-eslint/no-floating-promises': 'off',
     '@typescript-eslint/no-misused-promises': 'off',
     'no-console': 'off',
+    'import/no-named-as-default-member': 'off',
     eqeqeq: ['error', 'always'],
     'jsdoc/require-jsdoc': 'off',
     'jsdoc/require-param-type': 'off',
     'jsdoc/require-return-type': 'off',
-    'import/no-named-as-default-member': 'off',
+    // Cyclomatic complexity - recommended threshold is 10-15
+    // See: https://eslint.org/docs/latest/rules/complexity
+    'complexity': ['error', { max: 15 }],
     // ============================================================
     // Module Boundary Enforcement (Issue #314)
     // ============================================================
