@@ -8,6 +8,15 @@ import { getCacheManager } from '../utils/cache';
 import { submitPlayerReport, getReportsForUser } from './anti_cheat';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { getStructuredLogger } from '../index';
+import { getCacheManager } from '../utils/cache';
+
+/**
+ * Helper to get structured logger for this module
+ */
+function getLogger() {
+  return getStructuredLogger();
+}
 
 /**
  * Registers the health check RPC endpoint.
@@ -49,7 +58,9 @@ export function rpcHealthCheck(
   _nk: Runtime.Nakama,
   payload: string
 ): string {
-  logger.info('Armored Archer health check called');
+  getLogger().info('Armored Archer health check called', {
+    rpcName: 'armored_archer/health_check',
+  });
 
   const validation = validatePayload(ZodSchemas.health_check, payload, 'health_check');
   if (!validation.success) {
@@ -103,7 +114,10 @@ export function rpcGetPlayerStats(
   nk: Runtime.Nakama,
   payload: string
 ): string {
-  logger.info('Getting player stats for user: %s', ctx.userId);
+  getLogger().info('Getting player stats for user', {
+    rpcName: 'armored_archer/get_player_stats',
+    userId: ctx.userId,
+  });
 
   const validation = validatePayload(ZodSchemas.get_player_stats, payload, 'get_player_stats');
   if (!validation.success) {
@@ -167,7 +181,10 @@ export function rpcReportPlayer(
   _nk: Runtime.Nakama,
   payload: string
 ): string {
-  logger.info('Player report requested by user: %s', ctx.userId);
+  getLogger().info('Player report requested', {
+    rpcName: 'armored_archer/report_player',
+    userId: ctx.userId,
+  });
 
   const validation = validatePayload(ZodSchemas.report_player, payload, 'report_player');
   if (!validation.success) {
@@ -226,7 +243,10 @@ export function rpcGetPlayerReports(
   _nk: Runtime.Nakama,
   payload: string
 ): string {
-  logger.info('Get player reports requested by user: %s', ctx.userId);
+  getLogger().info('Get player reports requested', {
+    rpcName: 'armored_archer/get_player_reports',
+    userId: ctx.userId,
+  });
 
   const validation = validatePayload(ZodSchemas.get_player_reports, payload, 'get_player_reports');
   if (!validation.success) {

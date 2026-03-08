@@ -56,7 +56,37 @@ import { registerAnalyticsEndpoints } from './modules/analytics';
 import { initializeSentry } from './config/errorTracking';
 import { initializeTracing } from './config/tracing';
 import { logger, logSystemEvent } from './config/logger';
+import { createStructuredLogger, StructuredLogger } from './config/structuredLogger';
 import { registerErrorInsightRpcs, initializeErrorInsightsPipeline } from './modules/error_insight_pipeline';
+
+// Global structured logger instance for use by all modules
+let globalStructuredLogger: StructuredLogger | null = null;
+
+/**
+ * Gets the global structured logger instance.
+ * Must be initialized during module startup.
+ *
+ * @returns The global StructuredLogger instance
+ * @throws Error if not initialized
+ */
+export function getStructuredLogger(): StructuredLogger {
+  if (!globalStructuredLogger) {
+    throw new Error('StructuredLogger not initialized. Call initializeStructuredLogger first.');
+  }
+  return globalStructuredLogger;
+}
+
+/**
+ * Initializes the global structured logger with the Nakama runtime logger.
+ *
+ * @param runtimeLogger - The Nakama Runtime.Logger instance
+ * @param serviceName - Name of the service
+ */
+export function initializeStructuredLogger(runtimeLogger: Runtime.Logger, serviceName: string = 'armored-archer-backend'): void {
+  globalStructuredLogger = createStructuredLogger(runtimeLogger, serviceName, {
+    environment: process.env.NODE_ENV || 'development',
+  });
+}
 
 const InitModule: InitModule = function (
   ctx: Runtime.Context,
@@ -67,6 +97,7 @@ const InitModule: InitModule = function (
   initializeSentry();
   initializeTracing();
   initializeAlerting(loggerParam);
+  initializeStructuredLogger(loggerParam);
   logSystemEvent('info', 'Server initialization started');
 
   validateRequiredConfig();
