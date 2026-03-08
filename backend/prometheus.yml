@@ -77,6 +77,16 @@ scrape_configs:
           service: 'armored-archer-backend'
           component: 'health'
 
+  # Progressive rollout metrics
+  - job_name: 'armored_archer_rollout'
+    metrics_path: '/api/nakama/rpc/armored_archer/rollout_prometheus_metrics'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['host.docker.internal:7350']
+        labels:
+          service: 'armored-archer-backend'
+          component: 'rollout'
+
 # Remote write configuration for pushing to remote storage (optional)
 # remote_write:
 #   - url: https://prometheus-prod-xxx.grafana.net/api/prom/push
