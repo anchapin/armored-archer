@@ -199,6 +199,24 @@ class CacheManager {
       ttl: cache.ttl ?? 0,
     };
   }
+
+  /**
+   * Destroys all caches and clears all metrics.
+   * This is important for proper cleanup of internal timers in lru-cache.
+   */
+  destroy(): void {
+    for (const [name, cache] of this.caches.entries()) {
+      // lru-cache v11+ has a destroy method that stops internal timers
+      if (typeof cache.destroy === 'function') {
+        cache.destroy();
+      } else {
+        cache.clear();
+      }
+      logCacheOperation('destroy', name, '*');
+    }
+    this.caches.clear();
+    this.metrics.clear();
+  }
 }
 
 const TTL = {
@@ -220,6 +238,17 @@ export function getCacheManager(logger?: Runtime.Logger): CacheManager {
     cacheManagerInstance = new CacheManager(logger || null);
   }
   return cacheManagerInstance;
+}
+
+/**
+ * Resets the cache manager singleton instance.
+ * This should be called in test teardown to prevent resource leaks.
+ */
+export function resetCacheManager(): void {
+  if (cacheManagerInstance) {
+    cacheManagerInstance.destroy();
+    cacheManagerInstance = null;
+  }
 }
 
 export function initializeCaches(logger?: Runtime.Logger): CacheManager {
