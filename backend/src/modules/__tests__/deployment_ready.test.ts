@@ -9,6 +9,7 @@ import { createMockLogger, createMockContext, createMockNakama } from '../../__m
 import { rpcHealthCheck } from '../player_rpc';
 import { Runtime } from '../../types/nakama';
 import { initializeCaches } from '../../utils/cache';
+import { initializeStructuredLogger } from '../../index';
 
 describe('Deployment Readiness', () => {
   let mockLogger: Runtime.Logger;
@@ -21,6 +22,8 @@ describe('Deployment Readiness', () => {
     mockNk = createMockNakama();
     jest.clearAllMocks();
     initializeCaches(mockLogger);
+    // Initialize structured logger with mock for logging verification tests
+    initializeStructuredLogger(mockLogger, 'test-backend');
   });
 
   describe('Health Check Endpoint', () => {
@@ -70,7 +73,26 @@ describe('Deployment Readiness', () => {
       const payload = JSON.stringify({});
       rpcHealthCheck(mockCtx, mockLogger, mockNk, payload);
 
-      expect(mockLogger.info).toHaveBeenCalledWith('Armored Archer health check called');
+      // Structured logger outputs JSON format, so we check that info was called
+      // The message is wrapped in JSON format by structuredLogger
+      expect(mockLogger.info).toHaveBeenCalled();
+      
+      // Get the actual call arguments - structured logger passes JSON string
+      const infoCalls = mockLogger.info.mock.calls;
+      // Find a call that contains our health check message when parsed as JSON
+      const hasHealthCheckLog = infoCalls.some((call: unknown[]) => {
+        const arg = call[0];
+        if (typeof arg === 'string') {
+          try {
+            const parsed = JSON.parse(arg);
+            return parsed.message && parsed.message.includes('health check');
+          } catch {
+            return arg.includes('health check');
+          }
+        }
+        return false;
+      });
+      expect(hasHealthCheckLog).toBe(true);
     });
   });
 

@@ -24,18 +24,18 @@ signal combat_ended(winner: String)
 
 # --- Submit Combat Action ---
 func submit_combat_action(match_id: String, action_type: String, angle: float, power: float = 1.0) -> void:
-	var _profiling_block = _profiler.create_profile_block("CombatManager.submit_combat_action") if _profiler else null
+	var profiling_block = _profiler.create_profile_block("CombatManager.submit_combat_action") if _profiler else null
 	
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
-		if _profiling_block:
-			_profiling_block.end()
+		if profiling_block:
+			profiling_block.end()
 		return
 
 	if match_id.is_empty() or action_type.is_empty():
 		push_error("Invalid combat action parameters")
-		if _profiling_block:
-			_profiling_block.end()
+		if profiling_block:
+			profiling_block.end()
 		return
 
 	var payload: Dictionary = {
@@ -63,23 +63,23 @@ func submit_combat_action(match_id: String, action_type: String, angle: float, p
 		if result.has("winner"):
 			combat_ended.emit(result["winner"])
 	
-	if _profiling_block:
-		_profiling_block.end()
+	if profiling_block:
+		profiling_block.end()
 
 # --- Get Match State ---
 func get_match_state(match_id: String) -> void:
-	var _profiling_block = _profiler.create_profile_block("CombatManager.get_match_state") if _profiler else null
+	var profiling_block = _profiler.create_profile_block("CombatManager.get_match_state") if _profiler else null
 	
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
-		if _profiling_block:
-			_profiling_block.end()
+		if profiling_block:
+			profiling_block.end()
 		return
 
 	if match_id.is_empty():
 		push_error("Match ID required")
-		if _profiling_block:
-			_profiling_block.end()
+		if profiling_block:
+			profiling_block.end()
 		return
 
 	var payload: Dictionary = {

@@ -134,11 +134,10 @@ export class StructuredLogger {
    * @returns New StructuredLogger with enriched context
    */
   public child(additionalContext: LogContext): StructuredLogger {
-    return new StructuredLogger(
-      this.runtimeLogger,
-      this.serviceName,
-      { ...this.defaultContext, ...additionalContext }
-    );
+    return new StructuredLogger(this.runtimeLogger, this.serviceName, {
+      ...this.defaultContext,
+      ...additionalContext,
+    });
   }
 
   /**
@@ -265,14 +264,18 @@ export class StructuredLogger {
     error: Error,
     durationMs: number
   ): void {
-    this.error('RPC error', {
-      rpcName,
-      userId,
-      requestId,
-      durationMs,
-      operation: 'rpc_error',
-      errorMessage: error.message,
-    }, error);
+    this.error(
+      'RPC error',
+      {
+        rpcName,
+        userId,
+        requestId,
+        durationMs,
+        operation: 'rpc_error',
+        errorMessage: error.message,
+      },
+      error
+    );
   }
 
   /**
