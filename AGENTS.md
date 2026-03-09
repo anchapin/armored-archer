@@ -267,6 +267,49 @@ History is stored in:
 - Use `./start.sh` script to validate environment and start services
 - Environment-specific configs: `.env.development`, `.env.staging`
 
+### Local Services Management
+
+The project uses Docker Compose for local development services (Nakama game server, PostgreSQL).
+
+#### Start Services
+```bash
+make services-start
+# Or use backend-start
+make backend-start
+```
+
+#### Stop Services
+```bash
+make services-stop
+# Or use backend-stop
+make backend-stop
+```
+
+#### Check Status
+```bash
+make services-status
+```
+
+#### Health Check
+```bash
+make services-health
+```
+
+#### View Logs
+```bash
+make services-logs
+```
+
+#### Validate Prerequisites
+```bash
+make services-validate
+```
+
+#### Clean (Stop + Remove Volumes)
+```bash
+make services-clean
+```
+
 ### Client-Server Communication
 - Client sends actions (e.g., `{"action": "shoot", "angle": 0.78}`)
 - Server validates and calculates results (damage, loot, etc.)
