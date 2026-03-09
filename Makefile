@@ -305,7 +305,8 @@ dead-code-check:
 	@echo "$(BLUE)Running dead code detection...$(RESET)"
 	@echo ""
 	@echo "$(BLUE)Checking GDScript (unused function arguments)...$(RESET)"
-	@gdlint autoloads/ scripts/ scenes/ --disable=max-line-length,class-definitions-order,trailing-whitespace,no-elif-return,no-else-return,unnecessary-pass,mixed-tabs-and-spaces,max-public-methods 2>&1 || true
+	@echo "(Note: Only checking unused-argument rule, other rules disabled)"
+	@grep -r "unused-argument: true" gdlintrc > /dev/null && gdlint autoloads/ scripts/ scenes/ 2>&1 | grep "unused-argument" || echo "No unused arguments found in GDScript"
 	@echo ""
 	@echo "$(BLUE)Checking Python (unused imports/variables)...$(RESET)"
 	@ruff check scripts/ --select=F401,F841 2>&1 || true
@@ -318,19 +319,19 @@ dead-code-check:
 dead-code-check-ci:
 	@echo "$(BLUE)Running dead code detection (CI mode)...$(RESET)"
 	@echo ""
-	@FAILED=0
 	@echo "$(BLUE)Checking GDScript (unused function arguments)...$(RESET)"
-	@gdlint autoloads/ scripts/ scenes/ --disable=max-line-length,class-definitions-order,trailing-whitespace,no-elif-return,no-else-return,unnecessary-pass,mixed-tabs-and-spaces,max-public-methods 2>&1 || FAILED=1
+	@if gdlint autoloads/ scripts/ scenes/ 2>&1 | grep -q "unused-argument"; then \
+		echo "$(YELLOW)✗ Dead code detected in GDScript (unused function arguments)$(RESET)"; \
+		exit 1; \
+	fi
 	@echo ""
 	@echo "$(BLUE)Checking Python (unused imports/variables)...$(RESET)"
-	@ruff check scripts/ --select=F401,F841 2>&1 || FAILED=1
-	@echo ""
-	@if [ $$FAILED -eq 1 ]; then \
-		echo "$(YELLOW)✗ Dead code detected - please fix the issues above$(RESET)"; \
+	@if ruff check scripts/ --select=F401,F841 2>&1 | grep -q ";"; then \
+		echo "$(YELLOW)✗ Dead code detected in Python (unused imports/variables)$(RESET)"; \
 		exit 1; \
-	else \
-		echo "$(GREEN)✓ No dead code detected$(RESET)"; \
 	fi
+	@echo ""
+	@echo "$(GREEN)✓ No dead code detected$(RESET)"
 
 ## AGENTS.md Validation
 agents-md-check:
