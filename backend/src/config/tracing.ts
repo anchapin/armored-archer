@@ -1,3 +1,12 @@
+import {
+  Context,
+  Span,
+  SpanKind,
+  SpanStatusCode,
+  trace,
+  context,
+  propagation,
+} from '@opentelemetry/api';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
@@ -9,7 +18,6 @@ import {
   SEMRESATTRS_SERVICE_NAME,
   SEMRESATTRS_SERVICE_VERSION,
 } from '@opentelemetry/semantic-conventions';
-import { Context, Span, SpanKind, SpanStatusCode, trace, context, propagation } from '@opentelemetry/api';
 
 import { config } from '../config';
 import { logger } from './logger';
@@ -59,10 +67,7 @@ let tracer: ReturnType<typeof trace.getTracer> | null = null;
  */
 export function getTracer(): ReturnType<typeof trace.getTracer> {
   if (!tracer) {
-    tracer = trace.getTracer(
-      config.tracing.serviceName,
-      config.tracing.serviceVersion
-    );
+    tracer = trace.getTracer(config.tracing.serviceName, config.tracing.serviceVersion);
   }
   return tracer;
 }
@@ -71,11 +76,13 @@ export function getTracer(): ReturnType<typeof trace.getTracer> {
  * Extract trace context from HTTP headers (W3C Trace Context format).
  * This enables distributed trace context propagation across service calls.
  */
-export function extractTraceContext(headers: Record<string, string | string[] | undefined>): { extractedContext: Context } {
+export function extractTraceContext(headers: Record<string, string | string[] | undefined>): {
+  extractedContext: Context;
+} {
   try {
     // Use OpenTelemetry's built-in W3C Trace Context propagation
     const carrier: Record<string, string> = {};
-    
+
     // Convert headers to simple string record
     for (const [key, value] of Object.entries(headers)) {
       if (Array.isArray(value)) {
@@ -84,7 +91,7 @@ export function extractTraceContext(headers: Record<string, string | string[] | 
         carrier[key] = value;
       }
     }
-    
+
     const extracted = propagation.extract(context.active(), carrier);
     return { extractedContext: extracted };
   } catch (error) {
@@ -116,7 +123,7 @@ export function startSpan(
   }
 ): Span {
   const tracer = getTracer();
-  
+
   return tracer.startSpan(name, {
     kind: options?.kind || SpanKind.INTERNAL,
     attributes: options?.attributes || {},
@@ -136,7 +143,7 @@ export async function traceAsync<T>(
   }
 ): Promise<T> {
   const span = startSpan(name, options);
-  
+
   try {
     const result = await fn(span);
     span.setStatus({ code: SpanStatusCode.OK });
@@ -165,7 +172,7 @@ export function traceSync<T>(
   }
 ): T {
   const span = startSpan(name, options);
-  
+
   try {
     const result = fn(span);
     span.setStatus({ code: SpanStatusCode.OK });
@@ -185,7 +192,10 @@ export function traceSync<T>(
 /**
  * Add event to current span.
  */
-export function addSpanEvent(name: string, attributes?: Record<string, string | number | boolean>): void {
+export function addSpanEvent(
+  name: string,
+  attributes?: Record<string, string | number | boolean>
+): void {
   const activeSpan = trace.getSpan(context.active());
   if (activeSpan) {
     activeSpan.addEvent(name, attributes);
@@ -219,19 +229,19 @@ export function wrapRpcHandler<T>(
         'deployment.environment': config.environment,
       },
     });
-    
+
     // Add context attributes if available
     const nakamaCtx = ctx as { userId?: string; sessionId?: string; matchId?: string } | null;
     if (nakamaCtx?.userId) {
       span.setAttribute('user.id', nakamaCtx.userId);
     }
-    if ( nakamaCtx?.sessionId) {
+    if (nakamaCtx?.sessionId) {
       span.setAttribute('session.id', nakamaCtx.sessionId);
     }
     if (nakamaCtx?.matchId) {
       span.setAttribute('match.id', nakamaCtx.matchId);
     }
-    
+
     try {
       const result = await handler(ctx, logger, nk, payload);
       span.setStatus({ code: SpanStatusCode.OK });
