@@ -362,6 +362,27 @@ jobs:
             backend/tech-debt-report.json
           retention-days: 30
 
+  dead-code-detection:
+    name: Dead Code Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Install gdlint
+        run: pip install gdtoolkit
+
+      - name: Run dead code detection (CI mode)
+        run: make dead-code-check-ci
+
   schema-validation:
     name: Database Schema Validation
     runs-on: ubuntu-latest
