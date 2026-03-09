@@ -79,7 +79,8 @@ const SENSITIVE_PATTERNS = [
   },
   // Private keys (PEM format)
   {
-    pattern: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g,
+    pattern:
+      /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g,
     replacement: '[PRIVATE_KEY_REDACTED]',
   },
   // Google API keys
@@ -119,7 +120,8 @@ const SENSITIVE_PATTERNS = [
   },
   // Generic secret patterns in JSON
   {
-    pattern: /"(?:api[_-]?key|access[_-]?token|refresh[_-]?token|secret[_-]?key)["']\s*:\s*"[^"]+"/gi,
+    pattern:
+      /"(?:api[_-]?key|access[_-]?token|refresh[_-]?token|secret[_-]?key)["']\s*:\s*"[^"]+"/gi,
     replacement: '"[KEY]_redacted": "[REDACTED]"',
   },
 ];
