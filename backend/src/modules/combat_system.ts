@@ -3,6 +3,7 @@
  * @fileoverview Manages PvP combat actions and turn processing.
  */
 
+import { Span } from '@opentelemetry/api';
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { traceAsync, setTracingAttribute } from '../utils/tracing';
@@ -15,7 +16,6 @@ import {
 import { PvPMatch } from './matchmaker';
 import { profileFunction } from './profiling';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { Span } from '@opentelemetry/api';
 
 /**
  * Combat action request data.
@@ -344,7 +344,11 @@ export async function rpcSubmitCombatAction(
       const antiCheatError = validateAntiCheat(ctx, action, matchState, logger);
       if (antiCheatError) {
         const response: { error: string; error_code?: string } = { error: antiCheatError };
-        if (antiCheatError.startsWith('ANTI_CHEAT') || antiCheatError.startsWith('INVALID') || antiCheatError.startsWith('TIMING')) {
+        if (
+          antiCheatError.startsWith('ANTI_CHEAT') ||
+          antiCheatError.startsWith('INVALID') ||
+          antiCheatError.startsWith('TIMING')
+        ) {
           response.error_code = antiCheatError.split(':')[0];
         }
         return JSON.stringify(response);

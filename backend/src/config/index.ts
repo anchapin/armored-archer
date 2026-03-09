@@ -599,7 +599,10 @@ const config: AppConfig = {
 function isInvalidConfigValue(value: unknown, productionOnly = false): boolean {
   if (!value) return true;
   const strValue = String(value);
-  const isDefault = strValue === 'defaultkey' || strValue === 'default-token-key' || strValue === 'default-refresh-key';
+  const isDefault =
+    strValue === 'defaultkey' ||
+    strValue === 'default-token-key' ||
+    strValue === 'default-refresh-key';
   if (isDefault && productionOnly) return true;
   return false;
 }
@@ -628,7 +631,7 @@ function validateSessionKeys(): string[] {
   const errors: string[] = [];
   const requiredKeys = [
     'session.encryptionKey',
-    'session.refreshEncryptionKey', 
+    'session.refreshEncryptionKey',
     'session.tokenEncryptionKey',
   ];
 
@@ -669,9 +672,7 @@ export function validateRequiredConfig(): void {
 
   // Validate port numbers
   if (!isValidPort(config.server.port)) {
-    throw new Error(
-      `Invalid server port: ${config.server.port}. Must be between 1 and 65535`
-    );
+    throw new Error(`Invalid server port: ${config.server.port}. Must be between 1 and 65535`);
   }
 
   if (!isValidPort(config.server.consolePort)) {
@@ -681,9 +682,7 @@ export function validateRequiredConfig(): void {
   }
 
   if (!isValidPort(config.database.port)) {
-    throw new Error(
-      `Invalid database port: ${config.database.port}. Must be between 1 and 65535`
-    );
+    throw new Error(`Invalid database port: ${config.database.port}. Must be between 1 and 65535`);
   }
 }
 

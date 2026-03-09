@@ -9,8 +9,8 @@ import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { isPII } from './privacy_compliance';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Maximum gem balance allowed to prevent overflow exploits.
@@ -486,7 +486,9 @@ function validatePurchaseRequest(
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): { valid: true; request: { product_id: string; platform: string; transaction_receipt: string } } | { valid: false; error: string; errorCode?: string } {
+):
+  | { valid: true; request: { product_id: string; platform: string; transaction_receipt: string } }
+  | { valid: false; error: string; errorCode?: string } {
   const validation = validatePayload(ZodSchemas.validate_purchase, payload, 'validate_purchase');
   if (!validation.success) {
     logAudit(
@@ -564,7 +566,10 @@ async function validatePurchaseWithRevenueCat(
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   request: { product_id: string; platform: string; transaction_receipt: string }
-): Promise<{ valid: true; gemBundle: { gem_amount: number } } | { valid: false; error: string; errorCode?: string }> {
+): Promise<
+  | { valid: true; gemBundle: { gem_amount: number } }
+  | { valid: false; error: string; errorCode?: string }
+> {
   // Validate receipt with RevenueCat server-side API for fraud protection
   const rcValidation = await validateWithRevenueCat(
     logger,
@@ -651,7 +656,7 @@ function awardGems(
   gemBundle: { gem_amount: number }
 ): { success: true; gems_awarded: number; new_balance: number } {
   const receiptHash = hashReceipt(request.transaction_receipt);
-  
+
   // Mark receipt as used BEFORE awarding gems to prevent replay attacks
   markReceiptAsUsed(ctx.userId, receiptHash);
 
@@ -731,14 +736,20 @@ export async function rpcValidatePurchase(
   // Step 1: Validate payload
   const requestValidation = validatePurchaseRequest(ctx, logger, nk, payload);
   if (!requestValidation.valid) {
-    return JSON.stringify({ error: requestValidation.error, error_code: requestValidation.errorCode });
+    return JSON.stringify({
+      error: requestValidation.error,
+      error_code: requestValidation.errorCode,
+    });
   }
   const request = requestValidation.request;
 
   // Step 2: Check for duplicates and platform
   const securityError = validatePurchaseSecurity(ctx, logger, nk, request);
   if (securityError) {
-    return JSON.stringify({ error: securityError, error_code: securityError.includes('Duplicate') ? 'DUPLICATE_RECEIPT' : 'INVALID_PLATFORM' });
+    return JSON.stringify({
+      error: securityError,
+      error_code: securityError.includes('Duplicate') ? 'DUPLICATE_RECEIPT' : 'INVALID_PLATFORM',
+    });
   }
 
   // Step 3: Validate with RevenueCat

@@ -288,9 +288,10 @@ function checkPlayerFlagged(
       playerId,
       getFlagReason(playerId)
     );
-    const errorMsg = playerType === 'winner'
-      ? `Player is flagged for review: ${getFlagReason(playerId)}`
-      : `Opponent is flagged for review: ${getFlagReason(playerId)}`;
+    const errorMsg =
+      playerType === 'winner'
+        ? `Player is flagged for review: ${getFlagReason(playerId)}`
+        : `Opponent is flagged for review: ${getFlagReason(playerId)}`;
     return JSON.stringify({
       success: false,
       error_code: 'PLAYER_FLAGGED',
@@ -306,7 +307,20 @@ function checkPlayerFlagged(
 function validateRankUpdateSignature(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  request: { match_id: string; winner_id: string; loser_id: string; winner_old_rank: number; loser_old_rank: number; winner_new_rank: number; loser_new_rank: number; is_punch_up: boolean; requestId?: string; timestamp?: number; signature?: string; nonce?: string }
+  request: {
+    match_id: string;
+    winner_id: string;
+    loser_id: string;
+    winner_old_rank: number;
+    loser_old_rank: number;
+    winner_new_rank: number;
+    loser_new_rank: number;
+    is_punch_up: boolean;
+    requestId?: string;
+    timestamp?: number;
+    signature?: string;
+    nonce?: string;
+  }
 ): string | null {
   if (request.requestId && request.timestamp && request.signature && request.nonce) {
     const signatureData: RequestSignature = {
@@ -392,19 +406,12 @@ function applyEloUpdates(
   loserMeta.losses++;
   loserMeta.win_rate = loserMeta.wins / (loserMeta.wins + loserMeta.losses);
 
-  nk.leaderboardRecordWrite(
-    currentSeason.season_id,
-    loserId,
-    'Opponent',
-    loserNewElo,
-    0,
-    {
-      wins: String(loserMeta.wins),
-      losses: String(loserMeta.losses),
-      win_rate: String(loserMeta.win_rate),
-      punch_up_wins: String(loserMeta.punch_up_wins),
-    }
-  );
+  nk.leaderboardRecordWrite(currentSeason.season_id, loserId, 'Opponent', loserNewElo, 0, {
+    wins: String(loserMeta.wins),
+    losses: String(loserMeta.losses),
+    win_rate: String(loserMeta.win_rate),
+    punch_up_wins: String(loserMeta.punch_up_wins),
+  });
 
   return { winnerNewElo, loserNewElo };
 }
