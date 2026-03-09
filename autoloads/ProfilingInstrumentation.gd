@@ -157,7 +157,7 @@ func start_marker(name: String) -> int:
 	return marker_id
 
 ## End timing a code section started with start_marker
-func end_marker(name: String, marker_id: int = -1) -> float:
+func end_marker(name: String, _marker_id: int = -1) -> float:
 	if not _profiling_enabled:
 		return 0.0
 

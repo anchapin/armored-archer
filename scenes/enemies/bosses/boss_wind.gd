@@ -49,7 +49,7 @@ func _ready() -> void:
 
 	health_changed.emit(current_health, max_health)
 
-func _physics_process(delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	if not player_ref:
 		find_player()
 
@@ -71,7 +71,7 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
-func update_timers(delta: float) -> void:
+func update_timers( _delta: float) -> void:
 	attack_timer += delta
 	dash_timer += delta
 	wind_projectile_timer += delta
@@ -89,7 +89,7 @@ func chase_player() -> void:
 	if sprite:
 		sprite.flip_h = direction.x < 0
 
-func attack_player(delta: float) -> void:
+func attack_player( _delta: float) -> void:
 	velocity = Vector2.ZERO
 
 	if attack_timer >= attack_cooldown:

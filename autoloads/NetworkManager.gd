@@ -246,7 +246,7 @@ func _refresh_session() -> void:
 	http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
 
 # --- HTTP Response Handling ---
-func _on_http_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+func _on_http_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	var response_text: String = body.get_string_from_utf8()
 
 	if response_code >= 200 and response_code < 300:

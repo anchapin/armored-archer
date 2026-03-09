@@ -51,7 +51,7 @@ func create_stage_button(stage_data: Dictionary) -> Button:
 
 	return button
 
-func _on_stage_pressed(stage_id: String) -> void:
+func _on_stage_pressed( ) -> void:
 	var stage_data = CampaignManager.get_stage_data(stage_id)
 	GameManager.current_stage_id = stage_id
 	GameManager.current_waves = stage_data.get("waves", 3)
@@ -59,10 +59,10 @@ func _on_stage_pressed(stage_id: String) -> void:
 
 	get_tree().change_scene_to_packed(MAIN_SCENE)
 
-func _on_stage_unlocked(stage_id: String) -> void:
+func _on_stage_unlocked( ) -> void:
 	build_stage_buttons()
 
-func _on_stage_completed(stage_id: String) -> void:
+func _on_stage_completed( ) -> void:
 	build_stage_buttons()
 
 func _on_progress_updated(chapter_id: String, progress: float) -> void:

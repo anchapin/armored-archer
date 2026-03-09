@@ -63,7 +63,7 @@ func _on_angle_changed(value: float) -> void:
 	angle_value_label.text = "%.1f°" % value
 
 # --- Combat Handlers ---
-func _on_combat_action_submitted(result: Dictionary) -> void:
+func _on_combat_action_submitted(_result: Dictionary) -> void:
 	_refresh_match_state()
 
 func _on_match_state_updated(match_state: Dictionary) -> void:

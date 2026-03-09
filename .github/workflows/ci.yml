@@ -427,7 +427,7 @@ jobs:
       - name: Install Nakama
         run: |
           # Download and extract Nakama server
-          curl -sL https://github.com/heroiclabs/nakama/releases/download/v3.23.0/nakama-v3.23.0-linux-amd64.tar.gz -o nakama.tar.gz
+          curl -sL https://github.com/heroiclabs/nakama/releases/download/v3.23.0/nakama-3.23.0-linux-amd64.tar.gz -o nakama.tar.gz
           tar xzf nakama.tar.gz
           chmod +x nakama
       

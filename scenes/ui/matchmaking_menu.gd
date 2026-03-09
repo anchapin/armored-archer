@@ -135,21 +135,21 @@ func _on_accept_match(match_id: String) -> void:
 func _on_leaderboard_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/leaderboard_menu.tscn")
 
-func _on_match_created(match: Dictionary) -> void:
+func _on_match_created( _match: Dictionary) -> void:
 	print("Match created: %s" % match.get("match_id", ""))
 	_show_match_created_dialog(match)
 
-func _on_match_accepted(match: Dictionary) -> void:
+func _on_match_accepted( _match: Dictionary) -> void:
 	print("Match accepted: %s" % match.get("match_id", ""))
 	_show_match_accepted_dialog(match)
 
-func _on_match_accepted_dialog_confirmed(match: Dictionary) -> void:
+func _on_match_accepted_dialog_confirmed( _match: Dictionary) -> void:
 	var combat_scene = load("res://scenes/ui/combat_menu.tscn")
 	var combat_ui = combat_scene.instantiate()
 	combat_ui.set_match_id(match.get("match_id", ""))
 	get_tree().current_scene.add_child(combat_ui)
 
-func _show_match_created_dialog(match: Dictionary) -> void:
+func _show_match_created_dialog( _match: Dictionary) -> void:
 	var dialog: AcceptDialog = AcceptDialog.new()
 	dialog.title = "Match Created"
 	dialog.dialog_text = "Your match has been created!\nWaiting for opponent..."
@@ -160,7 +160,7 @@ func _show_match_created_dialog(match: Dictionary) -> void:
 
 	back_button.pressed.connect(dialog.queue_free.unbind(1), CONNECT_DEFERRED)
 
-func _show_match_accepted_dialog(match: Dictionary) -> void:
+func _show_match_accepted_dialog( _match: Dictionary) -> void:
 	var dialog: AcceptDialog = AcceptDialog.new()
 	dialog.title = "Match Accepted"
 	dialog.dialog_text = "Match joined successfully!\nGood luck!"

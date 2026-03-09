@@ -25,7 +25,7 @@ signal combat_ended(winner: String)
 # --- Submit Combat Action ---
 func submit_combat_action(match_id: String, action_type: String, angle: float, power: float = 1.0) -> void:
 	var profiling_block = _profiler.create_profile_block("CombatManager.submit_combat_action") if _profiler else null
-	
+
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		if profiling_block:
@@ -62,14 +62,14 @@ func submit_combat_action(match_id: String, action_type: String, angle: float, p
 
 		if result.has("winner"):
 			combat_ended.emit(result["winner"])
-	
+
 	if profiling_block:
 		profiling_block.end()
 
 # --- Get Match State ---
 func get_match_state(match_id: String) -> void:
 	var profiling_block = _profiler.create_profile_block("CombatManager.get_match_state") if _profiler else null
-	
+
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		if profiling_block:
@@ -98,12 +98,12 @@ func get_match_state(match_id: String) -> void:
 	current_match_state = response
 	match_state_updated.emit(current_match_state)
 	_update_from_match_state()
-	
+
 	if _profiling_block:
 		_profiling_block.end()
 
 # --- State Updates ---
-func _update_local_state(result: Dictionary) -> void:
+func _update_local_state(_result: Dictionary) -> void:
 	if current_match_state.has("creator_id"):
 		var is_creator: bool = current_match_state.get("creator_id") == NetworkManager.user_id
 
