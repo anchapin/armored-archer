@@ -53,7 +53,7 @@ func _initialize_skins() -> void:
 	_register_skin("skin_arrow_ice", "Ice Arrows", GearSlot.SlotType.ARROW, "arrow_iron", 350, false, "")
 	_register_skin("skin_arrow_lightning", "Lightning Arrows", GearSlot.SlotType.ARROW, "arrow_dragon", 900, true, "")
 
-func _register_base_gear(gear_id: String, name: String, slot: GearSlot.SlotType, attack: int, defense: int, speed: int, health: int, rarity: String, texture_path: String) -> void:
+func _register_base_gear(gear_id: String, name: String, slot: GearSlot.SlotType, attack: int, defense: int, speed: int, health: int, rarity: String, _texture_path: String) -> void:
 	"""Registers a base gear item in the database (internal).
 
 	Parameters:
@@ -75,7 +75,7 @@ func _register_base_gear(gear_id: String, name: String, slot: GearSlot.SlotType,
 	gear_data.rarity = rarity
 	base_gear_db[gear_id] = gear_data
 
-func _register_skin(skin_id: String, name: String, slot: GearSlot.SlotType, base_required: String, price: int, is_premium: bool, texture_path: String) -> void:
+func _register_skin(skin_id: String, name: String, slot: GearSlot.SlotType, base_required: String, price: int, is_premium: bool, _texture_path: String) -> void:
 	"""Registers a cosmetic skin in the database (internal).
 
 	Parameters:

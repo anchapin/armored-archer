@@ -117,7 +117,7 @@ func _on_spawn_timer_timeout() -> void:
 func _on_wave_timer_timeout() -> void:
 	start_next_wave()
 
-func _on_enemy_died(xp_reward: int) -> void:
+func _on_enemy_died(_xp_reward: int) -> void:
 	# Find and remove the dead enemy from active list
 	var enemy_to_remove: Node = null
 	for enemy in active_enemies:

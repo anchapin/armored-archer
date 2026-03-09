@@ -55,7 +55,7 @@ func get_gem_balance() -> int:
 		return store_manager.get_gems()
 	return 0
 
-func _on_currency_updated(gems: int, gold: int) -> void:
+func _on_currency_updated(_gems: int, _gold: int) -> void:
 	"""Handles currency updates (placeholder for future functionality)."""
 	pass
 

@@ -83,7 +83,7 @@ func _on_medium_gems_pressed() -> void:
 func _on_large_gems_pressed() -> void:
 	_initiate_purchase(store_manager.PRODUCT_LARGE_GEMS)
 
-func _initiate_purchase(product_id: String) -> void:
+func _initiate_purchase( _product_id: String) -> void:
 	if is_processing:
 		return
 
@@ -98,7 +98,7 @@ func _initiate_purchase(product_id: String) -> void:
 	store_manager.purchase_product(product_id)
 
 # --- Callbacks ---
-func _on_currency_updated(gems: int, gold: int) -> void:
+func _on_currency_updated(_gems: int, _gold: int) -> void:
 	_update_currency_display()
 
 	if gem_manager:
@@ -117,7 +117,7 @@ func _on_purchase_succeeded(product_id: String, gems_awarded: int) -> void:
 
 	print("Purchase succeeded! Product: %s, Gems awarded: %d" % [product_id, gems_awarded])
 
-func _on_purchase_failed(product_id: String, error: String) -> void:
+func _on_purchase_failed(_product_id: String, _error: String) -> void:
 	is_processing = false
 	loading_indicator.visible = false
 	_set_buttons_enabled(true)
