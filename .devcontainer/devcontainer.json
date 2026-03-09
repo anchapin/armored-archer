@@ -4,7 +4,7 @@
     "dockerfile": "Dockerfile",
     "context": "..",
     "args": {
-      "GODOT_VERSION": "4.6.2"
+      "GODOT_VERSION": "4.6.1"
     }
   },
   "customizations": {
@@ -12,7 +12,8 @@
       "extensions": [
         "ms-vscode.cpptools",
         "ms-vscode.cmake-tools",
-        "github.copilot"
+        "github.copilot",
+        "gedehis.godot-support"
       ],
       "settings": {
         "files.associations": {

@@ -259,6 +259,50 @@ History is stored in:
 - Can be run manually via workflow_dispatch
 - Scheduled weekly via cron
 
+### Duplicate Code Detection
+The project includes automated duplicate code detection to identify and prevent code duplication across the codebase.
+
+#### Running Duplicate Code Detection
+```bash
+# Using Make
+make duplicate-code-check
+
+# Using npm (backend only)
+cd backend && npm run detect-duplicate
+
+# CI mode (strict - fails if threshold exceeded)
+make duplicate-code-check-ci
+```
+
+#### Configuration
+- **Tool:** jscpd (JavaScript/TypeScript Clone Petector)
+- **Thresholds:**
+  - Minimum lines: 5
+  - Minimum tokens: 30
+  - CI threshold: 3% (percentage of duplicated lines)
+- **Supported Languages:**
+  - TypeScript (.ts)
+  - GDScript (.gd)
+  - Python (.py)
+
+#### Ignore Patterns
+The following are excluded from duplicate detection:
+- Test files (*.test.ts, *.test.gd)
+- Build artifacts (node_modules, build, dist)
+- Generated files
+
+#### CI Integration
+- GitHub workflow: `.github/workflows/ci.yml` (duplicate-code-detection job)
+- Runs automatically on push and pull requests
+- Fails if duplicated lines exceed threshold
+
+#### Fixing Duplicates
+When duplicates are detected:
+1. Review the duplicate code
+2. Extract common logic into shared functions/modules
+3. Consider using inheritance for similar classes
+4. Create utility functions for repeated patterns
+
 ## Architecture Notes
 
 ### Environment Configuration
@@ -560,3 +604,50 @@ Tech debt tracking is integrated into the CI pipeline (`.github/workflows/ci.yml
 - Generates JSON report with all detected issues
 - Fails on critical/high severity issues in CI mode
 - Uploads reports as artifacts for analysis
+
+## Bundle Size Tracking
+
+The project includes a comprehensive bundle size tracking system to monitor and control the size of the backend bundle.
+
+### Running Bundle Analysis
+
+```bash
+# Using Make
+make bundle-size-check
+
+# Using npm directly
+cd backend
+npm run bundle:analyze
+
+# CI mode (enforces limits and fails on errors)
+npm run bundle:analyze:ci
+
+# JSON output for integration
+node scripts/bundle-analysis.js --json
+```
+
+### Configuration
+
+Bundle size limits are configured in `backend/bundle-size-limits.json`:
+- `maxBundleSize`: Maximum allowed bundle size (bytes)
+- `maxDependencySize`: Maximum total dependency size (bytes)
+- `heavyDependencyDetection`: Patterns to detect and flag heavy dependencies
+
+### Heavy Dependency Detection
+
+The system detects heavy dependencies and provides recommendations:
+- **@sentry/***: Use selective imports or @sentry/lite
+- **winston**: Consider pino or abstract logging
+- **prom-client**: Verify needed metrics only
+- **zod**: Consider lighter alternatives
+- **@heroiclabs/***: Verify only needed modules are imported
+- **pg**: Use pg-query-stream for bulk operations
+- **opentelemetry**: Use selective instrumentations
+
+### CI/CD Integration
+
+Bundle size tracking is integrated into CI (`.github/workflows/ci.yml`):
+- Runs bundle analysis on every push
+- Tracks bundle size over time
+- Enforces limits in CI mode
+- Uploads reports as artifacts
