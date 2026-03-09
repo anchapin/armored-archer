@@ -90,10 +90,21 @@ function calculateDependencySize() {
   return { totalSize, packageSizes };
 }
 
-function analyzeHeavyDependencies(packageSizes) {
+function analyzeHeavyDependencies(packageSizes, config) {
   const issues = [];
+  const heavyDepLimit = config?.warnings?.heavyDependencySize || DEFAULT_LIMITS.warnings.heavyDependencySize;
 
   for (const [name, size] of Object.entries(packageSizes)) {
+    // Check if dependency is excluded
+    const isExcluded = (config?.excludedDependencies || []).some(pattern => {
+      if (pattern.endsWith('/*')) {
+        const prefix = pattern.slice(0, -2);
+        return name.startsWith(prefix);
+      }
+      return name === pattern;
+    });
+    if (isExcluded) continue;
+
     for (const { pattern, reason, suggested } of HEAVY_DEPENDENCY_PATTERNS) {
       if (pattern.test(name)) {
         const sizeMB = (size / (1024 * 1024)).toFixed(2);
@@ -104,7 +115,7 @@ function analyzeHeavyDependencies(packageSizes) {
           sizeMB: parseFloat(sizeMB),
           reason,
           suggested,
-          severity: size > DEFAULT_LIMITS.warnings.heavyDependencySize ? 'error' : 'warning',
+          severity: size > heavyDepLimit ? 'error' : 'warning',
         });
       }
     }
@@ -183,7 +194,7 @@ async function runAnalysis() {
   const depSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
   console.log('   Total dependency size: ' + depSizeMB + ' MB');
 
-  const heavyDeps = analyzeHeavyDependencies(packageSizes);
+  const heavyDeps = analyzeHeavyDependencies(packageSizes, config);
   if (heavyDeps.length > 0) {
     console.log('Heavy dependencies detected:');
     for (const dep of heavyDeps) {

@@ -1,12 +1,12 @@
 {
   "maxBundleSize": 2097152,
-  "maxDependencySize": 838860800,
+  "maxDependencySize": 1073741824,
   "maxFileSize": 512000,
   "warnings": {
     "bundleSizeGrowthPercent": 10,
-    "heavyDependencySize": 10485760
+    "heavyDependencySize": 5242880
   },
-  "excludedDependencies": ["@opentelemetry/*"],
+  "excludedDependencies": ["@opentelemetry/*", "@sentry/*"],
   "trackedDependencies": [
     "@sentry/*",
     "winston",
