@@ -1,0 +1,12 @@
+{
+  "name": "armored-archer",
+  "version": "1.0.0",
+  "description": "Armored Archer Game",
+  "scripts": {
+    "detect-duplicate": "jscpd --config .jscpd.json",
+    "detect-duplicate:ci": "jscpd --config .jscpd.json --threshold 3"
+  },
+  "devDependencies": {
+    "jscpd": "^4.0.8"
+  }
+}
