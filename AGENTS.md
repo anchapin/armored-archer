@@ -4,7 +4,7 @@ This file contains conventions and commands for agents working on the Armored Ar
 
 ## Project Structure
 
-```
+```text
 /                          # Godot project root
 ├── autoloads/            # Singletons (NetworkManager, GameManager, etc.)
 ├── scenes/               # .tscn files organized by feature
@@ -80,11 +80,11 @@ cd backend
 npm run test:schema
 ```
 
-#### Database Schema Documentation
+### Database Schema Documentation
 - **Schema Reference**: [DATABASE_SCHEMA.md](backend/DATABASE_SCHEMA.md)
 - **Migration Files**: `backend/data/*.sql`
 
-#### Key Tables
+### Key Tables
 | Table | Description |
 |-------|-------------|
 | `player_stats` | Player level, experience, ability points, stats |
@@ -92,7 +92,7 @@ npm run test:schema
 | `inventory` | Player gear ownership |
 | `loadout` | 5 equipment slots (helm, armor, bow, arrow, amulet) |
 
-#### Database Enums
+### Database Enums
 - `gear_type`: helm, armor, bow, arrow, amulet
 - `gear_rarity`: common, rare, epic, legendary
 
@@ -226,7 +226,7 @@ npm run test:flaky -- --runs=5 --threshold=0.4
 npm run test:flaky:ci
 ```
 
-#### Godot (GDScript)
+### Godot (GDScript)
 ```bash
 # Run Godot flaky test detection
 python3 scripts/detect_godot_flaky_tests.py
@@ -235,7 +235,7 @@ python3 scripts/detect_godot_flaky_tests.py
 python3 scripts/detect_godot_flaky_tests.py --runs=5 --verbose
 ```
 
-#### Generate Reports
+### Generate Reports
 ```bash
 # Using Make
 make test-flaky-report
@@ -244,17 +244,17 @@ make test-flaky-report
 cd backend && npm run test:report
 ```
 
-#### Configuration Options
+### Configuration Options
 - `--runs=N`: Number of times to run each test (default: 3)
 - `--threshold=N`: Minimum failure rate to consider flaky (default: 0.33)
 - `--verbose`: Show detailed output
 
-#### Flaky Test History
+### Flaky Test History
 History is stored in:
 - Backend: `backend/data/flaky-test-history.json`
 - Godot: `data/godot-flaky-test-history.json`
 
-#### CI Integration
+### CI Integration
 - GitHub workflow: `.github/workflows/flaky-tests.yml`
 - Can be run manually via workflow_dispatch
 - Scheduled weekly via cron
@@ -262,7 +262,7 @@ History is stored in:
 ### Duplicate Code Detection
 The project includes automated duplicate code detection to identify and prevent code duplication across the codebase.
 
-#### Running Duplicate Code Detection
+### Running Duplicate Code Detection
 ```bash
 # Using Make
 make duplicate-code-check
@@ -274,7 +274,7 @@ cd backend && npm run detect-duplicate
 make duplicate-code-check-ci
 ```
 
-#### Configuration
+### Configuration
 - **Tool:** jscpd (JavaScript/TypeScript Clone Petector)
 - **Thresholds:**
   - Minimum lines: 5
@@ -285,18 +285,18 @@ make duplicate-code-check-ci
   - GDScript (.gd)
   - Python (.py)
 
-#### Ignore Patterns
+### Ignore Patterns
 The following are excluded from duplicate detection:
 - Test files (*.test.ts, *.test.gd)
 - Build artifacts (node_modules, build, dist)
 - Generated files
 
-#### CI Integration
+### CI Integration
 - GitHub workflow: `.github/workflows/ci.yml` (duplicate-code-detection job)
 - Runs automatically on push and pull requests
 - Fails if duplicated lines exceed threshold
 
-#### Fixing Duplicates
+### Fixing Duplicates
 When duplicates are detected:
 1. Review the duplicate code
 2. Extract common logic into shared functions/modules
@@ -315,41 +315,41 @@ When duplicates are detected:
 
 The project uses Docker Compose for local development services (Nakama game server, PostgreSQL).
 
-#### Start Services
+### Start Services
 ```bash
 make services-start
 # Or use backend-start
 make backend-start
 ```
 
-#### Stop Services
+### Stop Services
 ```bash
 make services-stop
 # Or use backend-stop
 make backend-stop
 ```
 
-#### Check Status
+### Check Status
 ```bash
 make services-status
 ```
 
-#### Health Check
+### Health Check
 ```bash
 make services-health
 ```
 
-#### View Logs
+### View Logs
 ```bash
 make services-logs
 ```
 
-#### Validate Prerequisites
+### Validate Prerequisites
 ```bash
 make services-validate
 ```
 
-#### Clean (Stop + Remove Volumes)
+### Clean (Stop + Remove Volumes)
 ```bash
 make services-clean
 ```
@@ -425,7 +425,7 @@ AI-assisted contributions must include clear attribution in:
 
 #### Commit Message Format for AI-Assisted Changes
 
-```
+```text
 [AI-assisted] <type>: <description>
 
 - AI Model: <model name>
@@ -433,7 +433,7 @@ AI-assisted contributions must include clear attribution in:
 ```
 
 Example:
-```
+```text
 [AI-assisted] feat: Add new weapon type
 
 - AI Model: Claude/Codex/GPT-4
