@@ -52,7 +52,7 @@ jobs:
       
       - name: Run ESLint complexity analysis
         working-directory: ./backend
-        run: npm run lint -- --no-ignore
+        run: npm run complexity
 
   backend-typecheck:
     name: Backend Type Check

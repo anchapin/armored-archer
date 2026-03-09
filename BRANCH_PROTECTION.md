@@ -6,23 +6,24 @@ This document describes the branch protection rules configured for this reposito
 
 - `main` (default branch)
 
-## Protection Requirements
+## Current Configuration
 
-### Pull Request Reviews
+The following branch protection rules are currently enforced on the `main` branch:
+
+### Pull Request Reviews ✓
 - Require at least 1 pull request review before merging
 - Dismiss stale reviews when new commits are pushed
-- Require review from code owners (optional, configurable via workflow)
+- Require review from code owners
 
-### Status Checks
+### Status Checks ✓
 - Require all status checks to pass before merging
-- Require branches to be up to date with base branch before merging
+- Require branches to be up to date with base branch before merging (strict mode)
 
-### Other Protections
+### Other Protections ✓
 - Require conversation resolution before merging
 - Include administrators in protection rules
 - Prevent force pushes
 - Prevent branch deletion
-- Require linear history (optional)
 
 ## Manual Configuration
 
@@ -40,6 +41,7 @@ https://github.com/anchapin/armored-archer/settings/branches
 5. Configure the following:
    - [x] Require pull request reviews before merging
    - [x] Dismiss stale reviews when new commits are pushed
+   - [x] Require code owner reviews
    - [x] Require status checks to pass before merging
    - [x] Require branches to be up to date
    - [x] Require conversation resolution before merging
@@ -69,7 +71,5 @@ To run the workflow:
 
 ## Note
 
-This repository is currently a private user repository, which requires GitHub Pro
-to use branch protection features. The workflow and documentation are in place
-to enable branch protection once the repository is upgraded or transferred to
-an organization.
+This repository was made public to enable branch protection features.
+Branch protection is now fully configured and active.
