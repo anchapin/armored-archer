@@ -316,7 +316,9 @@ dead-code-check:
 	@ruff check scripts/ --select=F401,F841 2>&1 || true
 	@echo ""
 	@echo "$(BLUE)Checking TypeScript (unused variables)...$(RESET)"
-	@echo "(Backend ESLint with no-unused-vars is already included in backend-lint)"
+	@echo "(Note: Using ESLint no-unused-vars rule)"
+	@cd backend && npm run lint -- --quiet --rule '@typescript-eslint/no-unused-vars: warn' 2>&1 || true
+	@echo ""
 	@echo "$(GREEN)✓ Dead code check complete$(RESET)"
 
 # CI mode - strict dead code detection (fails on findings)
@@ -324,8 +326,10 @@ dead-code-check-ci:
 	@echo "$(BLUE)Running dead code detection (CI mode)...$(RESET)"
 	@echo ""
 	@echo "$(BLUE)Checking GDScript (unused function arguments)...$(RESET)"
+	@# Run gdlint but only check for unused-argument errors
 	@if gdlint autoloads/ scripts/ scenes/ 2>&1 | grep -q "unused-argument"; then \
 		echo "$(YELLOW)✗ Dead code detected in GDScript (unused function arguments)$(RESET)"; \
+		gdlint autoloads/ scripts/ scenes/ 2>&1 | grep "unused-argument"; \
 		exit 1; \
 	fi
 	@echo ""
@@ -334,6 +338,9 @@ dead-code-check-ci:
 		echo "$(YELLOW)✗ Dead code detected in Python (unused imports/variables)$(RESET)"; \
 		exit 1; \
 	fi
+	@echo ""
+	@echo "$(BLUE)Checking TypeScript (unused variables)...$(RESET)"
+	@cd backend && npm run lint -- --quiet --rule '@typescript-eslint/no-unused-vars: error'
 	@echo ""
 	@echo "$(GREEN)✓ No dead code detected$(RESET)"
 
