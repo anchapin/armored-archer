@@ -300,3 +300,43 @@ When adding new tables or modifying existing ones:
 3. Update this documentation
 4. Add schema tests to verify the changes
 5. Test migrations on a staging environment before production
+
+## Schema Change Tracking
+
+### Version History
+
+The database schema is versioned using migration files. Each migration has an incrementing prefix that indicates its order in the sequence.
+
+| Version | Migration File | Description | Date |
+|---------|---------------|-------------|------|
+| 1 | `001_create_player_stats.sql` | Creates player_stats table | 2024-02-28 |
+| 2 | `002_create_catalog.sql` | Creates catalog table with enums | 2024-02-28 |
+| 3 | `003_create_inventory.sql` | Creates inventory table | 2024-02-28 |
+| 4 | `004_create_loadout.sql` | Creates loadout table | 2024-02-28 |
+
+### CI/CD Schema Validation
+
+Schema validation runs automatically in CI/CD via the `schema-validation` job in `.github/workflows/ci.yml`:
+
+1. **PostgreSQL Setup**: Starts a PostgreSQL 15 instance
+2. **Nakama Installation**: Downloads and configures Nakama server
+3. **Migration Execution**: Runs all migration files in order
+4. **Schema Tests**: Validates the schema using `npm run test:schema`
+
+The schema tests verify:
+- All required tables exist with correct columns
+- Primary keys and foreign keys are properly defined
+- CHECK constraints are enforced
+- Indexes are created on appropriate columns
+- Triggers function correctly
+- Table and column comments are present
+
+### Making Schema Changes
+
+When making schema changes:
+
+1. **Create a new migration**: Add a new file with the next sequential number
+2. **Update documentation**: Add the change to the Version History table
+3. **Update tests**: Ensure schema tests cover the new/changed structure
+4. **Run validation**: Ensure `npm run test:schema` passes locally
+5. **CI validation**: The PR must pass the `schema-validation` job
