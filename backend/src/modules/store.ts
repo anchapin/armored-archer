@@ -9,8 +9,8 @@ import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { isPII } from './privacy_compliance';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Maximum gem balance allowed to prevent overflow exploits.
@@ -477,14 +477,18 @@ function getStoreCatalog(logger: Runtime.Logger): Record<string, GemBundle> {
  *   "product_id": "com.armoredarcher.gems.small"
  * }
  */
-export async function rpcValidatePurchase(
+
+/**
+ * Validates purchase request and performs initial security checks
+ */
+function validatePurchaseRequest(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
-  logger.info('Validating purchase');
-
+):
+  | { valid: true; request: { product_id: string; platform: string; transaction_receipt: string } }
+  | { valid: false; error: string; errorCode?: string } {
   const validation = validatePayload(ZodSchemas.validate_purchase, payload, 'validate_purchase');
   if (!validation.success) {
     logAudit(
@@ -497,7 +501,7 @@ export async function rpcValidatePurchase(
       'failure',
       validation.error
     );
-    return createValidationErrorResponse('validate_purchase', validation.error);
+    return { valid: false, error: validation.error, errorCode: 'VALIDATION_ERROR' };
   }
 
   const request = validation.data;
@@ -507,6 +511,18 @@ export async function rpcValidatePurchase(
     logger.warn('Potential PII detected in transaction receipt');
   }
 
+  return { valid: true, request };
+}
+
+/**
+ * Checks for duplicate receipts and validates platform
+ */
+function validatePurchaseSecurity(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  request: { product_id: string; platform: string; transaction_receipt: string }
+): string | null {
   // Check for duplicate receipt to prevent replay attacks
   const receiptHash = hashReceipt(request.transaction_receipt);
   if (isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
@@ -521,10 +537,7 @@ export async function rpcValidatePurchase(
       'failure',
       'Duplicate receipt detected'
     );
-    return JSON.stringify({
-      error: 'Duplicate receipt - this purchase has already been processed',
-      error_code: 'DUPLICATE_RECEIPT',
-    });
+    return 'Duplicate receipt - this purchase has already been processed';
   }
 
   // Validate platform to ensure it's from a recognized source
@@ -539,16 +552,25 @@ export async function rpcValidatePurchase(
       'failure',
       'Invalid platform'
     );
-    return JSON.stringify({
-      error: 'Invalid or unsupported platform',
-      error_code: 'INVALID_PLATFORM',
-    });
+    return 'Invalid or unsupported platform';
   }
 
+  return null;
+}
+
+/**
+ * Validates the purchase with RevenueCat and checks product availability
+ */
+async function validatePurchaseWithRevenueCat(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  request: { product_id: string; platform: string; transaction_receipt: string }
+): Promise<
+  | { valid: true; gemBundle: { gem_amount: number } }
+  | { valid: false; error: string; errorCode?: string }
+> {
   // Validate receipt with RevenueCat server-side API for fraud protection
-  // This verifies receipts against Apple's App Store and Google Play servers
-  // See: https://docs.revenuecat.com/docs/server-side-api
-  // Required: REVENUECAT_API_KEY environment variable
   const rcValidation = await validateWithRevenueCat(
     logger,
     request.transaction_receipt,
@@ -568,10 +590,7 @@ export async function rpcValidatePurchase(
       'failure',
       rcValidation.error
     );
-    return JSON.stringify({
-      error: 'Purchase validation failed',
-      error_code: 'VALIDATION_FAILED',
-    });
+    return { valid: false, error: 'Purchase validation failed', errorCode: 'VALIDATION_FAILED' };
   }
 
   const catalog = getStoreCatalog(logger);
@@ -587,13 +606,22 @@ export async function rpcValidatePurchase(
       'failure',
       'Invalid product ID'
     );
-    return JSON.stringify({
-      error: 'Invalid product ID',
-    });
+    return { valid: false, error: 'Invalid product ID' };
   }
 
-  const gemBundle = catalog[request.product_id];
+  return { valid: true, gemBundle: catalog[request.product_id] };
+}
 
+/**
+ * Checks purchase amount and balance limits
+ */
+function validatePurchaseLimits(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  request: { product_id: string; platform: string },
+  gemBundle: { gem_amount: number }
+): string | null {
   // Check for suspiciously large purchase amounts to prevent exploits
   if (gemBundle.gem_amount > MAX_PURCHASE_AMOUNT) {
     logger.error(
@@ -611,11 +639,23 @@ export async function rpcValidatePurchase(
       'failure',
       'Excessive purchase amount'
     );
-    return JSON.stringify({
-      error: 'Purchase amount exceeds maximum allowed',
-      error_code: 'EXCESSIVE_AMOUNT',
-    });
+    return 'Purchase amount exceeds maximum allowed';
   }
+
+  return null;
+}
+
+/**
+ * Awards gems to player after all validations pass
+ */
+function awardGems(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  request: { product_id: string; platform: string; transaction_receipt: string },
+  gemBundle: { gem_amount: number }
+): { success: true; gems_awarded: number; new_balance: number } {
+  const receiptHash = hashReceipt(request.transaction_receipt);
 
   // Mark receipt as used BEFORE awarding gems to prevent replay attacks
   markReceiptAsUsed(ctx.userId, receiptHash);
@@ -641,10 +681,7 @@ export async function rpcValidatePurchase(
       'failure',
       'Would exceed max balance'
     );
-    return JSON.stringify({
-      error: 'Purchase would exceed maximum gem balance',
-      error_code: 'EXCEEDS_MAX_BALANCE',
-    });
+    throw new Error('EXCEEDS_MAX_BALANCE');
   }
 
   playerCurrency.gems += gemBundle.gem_amount;
@@ -681,12 +718,71 @@ export async function rpcValidatePurchase(
     'success'
   );
 
-  return JSON.stringify({
+  return {
     success: true,
     gems_awarded: gemBundle.gem_amount,
     new_balance: playerCurrency.gems,
-    product_id: request.product_id,
-  });
+  };
+}
+
+export async function rpcValidatePurchase(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): Promise<string> {
+  logger.info('Validating purchase');
+
+  // Step 1: Validate payload
+  const requestValidation = validatePurchaseRequest(ctx, logger, nk, payload);
+  if (!requestValidation.valid) {
+    return JSON.stringify({
+      error: requestValidation.error,
+      error_code: requestValidation.errorCode,
+    });
+  }
+  const request = requestValidation.request;
+
+  // Step 2: Check for duplicates and platform
+  const securityError = validatePurchaseSecurity(ctx, logger, nk, request);
+  if (securityError) {
+    return JSON.stringify({
+      error: securityError,
+      error_code: securityError.includes('Duplicate') ? 'DUPLICATE_RECEIPT' : 'INVALID_PLATFORM',
+    });
+  }
+
+  // Step 3: Validate with RevenueCat
+  const rcValidation = await validatePurchaseWithRevenueCat(ctx, logger, nk, request);
+  if (!rcValidation.valid) {
+    return JSON.stringify({ error: rcValidation.error, error_code: rcValidation.errorCode });
+  }
+  const gemBundle = rcValidation.gemBundle;
+
+  // Step 4: Check purchase limits
+  const limitsError = validatePurchaseLimits(ctx, logger, nk, request, gemBundle);
+  if (limitsError) {
+    return JSON.stringify({ error: limitsError, error_code: 'EXCESSIVE_AMOUNT' });
+  }
+
+  // Step 5: Award gems
+  try {
+    const result = awardGems(ctx, logger, nk, request, gemBundle);
+    return JSON.stringify({
+      gems_awarded: result.gems_awarded,
+      new_balance: result.new_balance,
+      product_id: request.product_id,
+      success: true,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === 'EXCEEDS_MAX_BALANCE') {
+      return JSON.stringify({
+        error: 'Purchase would exceed maximum gem balance',
+        error_code: 'EXCEEDS_MAX_BALANCE',
+      });
+    }
+    throw e;
+  }
 }
 
 /**

@@ -273,11 +273,27 @@ export const ZodSchemas = {
 
   pii_scan: z.object({
     text: z.string().min(1).max(100000),
-    types: z.array(z.enum([
-      'email', 'phone', 'ssn', 'credit_card', 'ip_address', 'device_id',
-      'user_id', 'username', 'full_name', 'address', 'date_of_birth',
-      'geolocation', 'password', 'auth_token', 'session_id'
-    ])).optional(),
+    types: z
+      .array(
+        z.enum([
+          'email',
+          'phone',
+          'ssn',
+          'credit_card',
+          'ip_address',
+          'device_id',
+          'user_id',
+          'username',
+          'full_name',
+          'address',
+          'date_of_birth',
+          'geolocation',
+          'password',
+          'auth_token',
+          'session_id',
+        ])
+      )
+      .optional(),
   }),
 
   classify_data: z.object({
