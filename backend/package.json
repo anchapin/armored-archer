@@ -28,7 +28,9 @@
     "bundle:analyze:dev": "webpack --mode=development --config webpack.analyze.config.js --analyze",
     "bundle:check": "node scripts/bundle-analysis.js",
     "depcheck": "depcheck",
-    "dep:count": "node -e \"const p = require('./package.json'); console.log('Total:', Object.keys(p.dependencies).length + Object.keys(p.devDependencies).length); console.log('Prod:', Object.keys(p.dependencies).length); console.log('Dev:', Object.keys(p.devDependencies).length);\""
+    "dep:count": "node -e \"const p = require('./package.json'); console.log('Total:', Object.keys(p.dependencies).length + Object.keys(p.devDependencies).length); console.log('Prod:', Object.keys(p.dependencies).length); console.log('Dev:', Object.keys(p.devDependencies).length);\"",
+    "detect-n-plus-one": "ts-node --transpile-only ./scripts/detect-n-plus-one.ts",
+    "detect-n-plus-one:ci": "ts-node --transpile-only ./scripts/detect-n-plus-one.ts --ci-mode"
   },
   "keywords": [
     "nakama",
