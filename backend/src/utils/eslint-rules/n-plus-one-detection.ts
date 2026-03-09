@@ -49,7 +49,6 @@ export const NPlusOneDetectionRule: RuleModule<'nPlusOneQuery' | 'nPlusOneIterat
     type: 'problem' as const,
     docs: {
       description: 'Detects potential N+1 query patterns (database operations inside loops)',
-      recommended: 'warn',
       url: 'https://docs.example.com/n-plus-one-detection',
     },
     messages: {
