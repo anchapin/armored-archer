@@ -11,6 +11,7 @@ import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { isPII } from './privacy_compliance';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { withCircuitBreaker } from '../utils/circuitBreaker';
 
 /**
  * Maximum gem balance allowed to prevent overflow exploits.
@@ -998,85 +999,91 @@ async function validateWithRevenueCat(
     return { valid: true };
   }
 
-  try {
-    // RevenueCat endpoint for validating subscriptions
-    const rcPlatform = platform === 'ios' ? 'apple' : 'google';
+  // RevenueCat endpoint for validating subscriptions
+  const rcPlatform = platform === 'ios' ? 'apple' : 'google';
 
-    // RevenueCat /receipts/validate endpoint
-    const response = await fetch(`${REVENUECAT_API_BASE}/receipts/validate`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        receipt: receipt,
-        platform: rcPlatform,
-        // Optional: include product ID to verify
-        product_id: productId,
-      }),
-    });
+  // Wrap external API call with circuit breaker for resilience
+  // If RevenueCat is down, we fail open (allow purchase) to not block revenue
+  // The client-side validation and other checks still provide fraud protection
+  const validationResult = await withCircuitBreaker(
+    'revenuecat',
+    async () => {
+      const response = await fetch(`${REVENUECAT_API_BASE}/receipts/validate`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          receipt: receipt,
+          platform: rcPlatform,
+          // Optional: include product ID to verify
+          product_id: productId,
+        }),
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error('RevenueCat validation failed: %s - %s', response.status, errorText);
-      return {
-        valid: false,
-        error: `RevenueCat validation failed: ${response.status}`,
-      };
-    }
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('RevenueCat validation failed: %s - %s', response.status, errorText);
+        return {
+          valid: false,
+          error: `RevenueCat validation failed: ${response.status}`,
+        };
+      }
 
-    const data = (await response.json()) as Record<string, unknown>;
+      const data = (await response.json()) as Record<string, unknown>;
 
-    // Check if the receipt is valid according to RevenueCat
-    const isValid = data.status === 'active' || data.status === 0 || data.valid === true;
+      // Check if the receipt is valid according to RevenueCat
+      const isValid = data.status === 'active' || data.status === 0 || data.valid === true;
 
-    if (!isValid) {
-      logger.warn('RevenueCat rejected receipt: status=%s', data.status);
-      return {
-        valid: false,
-        error: `Invalid receipt: ${data.status}`,
-      };
-    }
+      if (!isValid) {
+        logger.warn('RevenueCat rejected receipt: status=%s', data.status);
+        return {
+          valid: false,
+          error: `Invalid receipt: ${data.status}`,
+        };
+      }
 
-    // Extract product ID from RevenueCat response if available
-    const subscriber = data.subscriber as Record<string, unknown> | undefined;
-    let verifiedProductId: string | undefined;
+      // Extract product ID from RevenueCat response if available
+      const subscriber = data.subscriber as Record<string, unknown> | undefined;
+      let verifiedProductId: string | undefined;
 
-    if (subscriber?.entitlements) {
-      const entitlements = subscriber.entitlements as Record<string, unknown>;
-      for (const entitlement of Object.values(entitlements)) {
-        const ent = entitlement as Record<string, unknown>;
-        if (ent.product_id) {
-          verifiedProductId = ent.product_id as string;
-          break;
+      if (subscriber?.entitlements) {
+        const entitlements = subscriber.entitlements as Record<string, unknown>;
+        for (const entitlement of Object.values(entitlements)) {
+          const ent = entitlement as Record<string, unknown>;
+          if (ent.product_id) {
+            verifiedProductId = ent.product_id as string;
+            break;
+          }
         }
       }
-    }
 
-    // Verify product ID matches if we have one from the receipt
-    if (verifiedProductId && verifiedProductId !== productId) {
-      logger.warn('Product ID mismatch: claimed=%s, actual=%s', productId, verifiedProductId);
+      // Verify product ID matches if we have one from the receipt
+      if (verifiedProductId && verifiedProductId !== productId) {
+        logger.warn('Product ID mismatch: claimed=%s, actual=%s', productId, verifiedProductId);
+        return {
+          valid: false,
+          error: `Product ID mismatch: claimed ${productId}, receipt contains ${verifiedProductId}`,
+          product_id: verifiedProductId,
+        };
+      }
+
+      logger.info('RevenueCat validation successful for user product: %s', productId);
       return {
-        valid: false,
-        error: `Product ID mismatch: claimed ${productId}, receipt contains ${verifiedProductId}`,
+        valid: true,
+        subscriber,
         product_id: verifiedProductId,
       };
+    },
+    // Fallback: fail open to not block purchases if RevenueCat is unavailable
+    async () => {
+      logger.warn('RevenueCat circuit open - failing open for purchase validation');
+      return { valid: true };
     }
+  );
 
-    logger.info('RevenueCat validation successful for user product: %s', productId);
-    return {
-      valid: true,
-      subscriber,
-      product_id: verifiedProductId,
-    };
-  } catch (error) {
-    logger.error('RevenueCat validation error: %s', error);
-    return {
-      valid: false,
-      error: `RevenueCat validation error: ${error}`,
-    };
-  }
+  return validationResult;
 }
 
 /**
@@ -1286,101 +1293,126 @@ export async function rpcCheckRefunds(
 
   // Call RevenueCat API to get refund history
   // RevenueCat API endpoint: GET /subscribers/{app_user_id}
-  try {
-    const response = await fetch(
-      `${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(validation.data.app_user_id)}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
+  // Wrap external API call with circuit breaker for resilience
+  const refundResult = await withCircuitBreaker(
+    'revenuecat',
+    async () => {
+      const response = await fetch(
+        `${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(validation.data.app_user_id)}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('RevenueCat API error: %s - %s', response.status, errorText);
+        return {
+          success: true,
+          refunds_found: 0,
+          message: 'Unable to check refunds',
+          apiError: true,
+        };
       }
-    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error('RevenueCat API error: %s - %s', response.status, errorText);
-      return JSON.stringify({
-        success: true,
-        refunds_found: 0,
-        message: 'Unable to check refunds',
-      });
-    }
+      const data = (await response.json()) as Record<string, unknown>;
+      const subscriber = data.subscriber as Record<string, unknown> | undefined;
 
-    const data = (await response.json()) as Record<string, unknown>;
-    const subscriber = data.subscriber as Record<string, unknown> | undefined;
+      if (!subscriber) {
+        return {
+          success: true,
+          refunds_found: 0,
+          message: 'No subscriber found',
+        };
+      }
 
-    if (!subscriber) {
-      return JSON.stringify({
-        success: true,
-        refunds_found: 0,
-        message: 'No subscriber found',
-      });
-    }
+      // Check for refunds in the subscriber data
+      const entitlementHistory = subscriber.entitlement_details as
+        | Record<string, unknown>
+        | undefined;
+      const refunds: { product_id: string; refunded_at: string }[] = [];
 
-    // Check for refunds in the subscriber data
-    const entitlementHistory = subscriber.entitlement_details as
-      | Record<string, unknown>
-      | undefined;
-    const refunds: { product_id: string; refunded_at: string }[] = [];
-
-    // RevenueCat provides refund information in various fields
-    // Check for refund_date or cancellation fields
-    if (entitlementHistory) {
-      for (const [productId, details] of Object.entries(entitlementHistory)) {
-        const ent = details as Record<string, unknown>;
-        if (ent.refund_date || ent.refunded_at) {
-          refunds.push({
-            product_id: productId,
-            refunded_at: (ent.refund_date || ent.refunded_at) as string,
-          });
+      // RevenueCat provides refund information in various fields
+      // Check for refund_date or cancellation fields
+      if (entitlementHistory) {
+        for (const [productId, details] of Object.entries(entitlementHistory)) {
+          const ent = details as Record<string, unknown>;
+          if (ent.refund_date || ent.refunded_at) {
+            refunds.push({
+              product_id: productId,
+              refunded_at: (ent.refund_date || ent.refunded_at) as string,
+            });
+          }
         }
       }
+
+      return { success: true, refunds, message: '' };
+    },
+    // Fallback: fail safe - return no refunds if circuit is open
+    async () => {
+      logger.warn('RevenueCat circuit open - skipping refund check');
+      return {
+        success: true,
+        refunds_found: 0,
+        message: 'Refund check unavailable',
+        circuitOpen: true,
+      };
     }
+  );
 
-    // Process any detected refunds
-    let processedCount = 0;
-    for (const refund of refunds) {
-      if (!isRefundAlreadyProcessed(validation.data.app_user_id, refund.refunded_at)) {
-        // Get product info to determine gem amount
-        const catalog = getStoreCatalog(logger);
-        const productInfo = catalog[refund.product_id];
+  // Handle circuit breaker fallback result
+  if ('apiError' in refundResult || 'circuitOpen' in refundResult) {
+    return JSON.stringify(refundResult);
+  }
 
-        if (productInfo) {
-          processRefund(
-            nk,
-            validation.data.app_user_id,
-            productInfo.gem_amount,
-            refund.refunded_at,
-            RefundReason.CHARGEBACK,
-            logger
-          );
-          processedCount++;
-        }
-      }
-    }
-
-    logger.info(
-      'Refund check complete for user %s: found %d refunds',
-      validation.data.app_user_id,
-      refunds.length
-    );
-
-    return JSON.stringify({
-      success: true,
-      refunds_found: refunds.length,
-      processed: processedCount,
-      message: refunds.length > 0 ? `Found ${refunds.length} refunds` : 'No refunds detected',
-    });
-  } catch (error) {
-    logger.error('Error checking refunds: %s', error);
+  // Process any detected refunds
+  const refunds = refundResult.refunds;
+  if (!refunds) {
+    logger.error('Refund result missing refunds array');
     return JSON.stringify({
       success: true,
       refunds_found: 0,
-      message: 'Error checking refunds',
+      message: 'Error processing refunds',
     });
   }
+
+  let processedCount = 0;
+  for (const refund of refunds) {
+    if (!isRefundAlreadyProcessed(validation.data.app_user_id, refund.refunded_at)) {
+      // Get product info to determine gem amount
+      const catalog = getStoreCatalog(logger);
+      const productInfo = catalog[refund.product_id];
+
+      if (productInfo) {
+        processRefund(
+          nk,
+          validation.data.app_user_id,
+          productInfo.gem_amount,
+          refund.refunded_at,
+          RefundReason.CHARGEBACK,
+          logger
+        );
+        processedCount++;
+      }
+    }
+  }
+
+  logger.info(
+    'Refund check complete for user %s: found %d refunds',
+    validation.data.app_user_id,
+    refunds.length
+  );
+
+  return JSON.stringify({
+    success: true,
+    refunds_found: refunds.length,
+    processed: processedCount,
+    message: refunds.length > 0 ? `Found ${refunds.length} refunds` : 'No refunds detected',
+  });
 }
 
 export function registerRpcCheckRefunds(initializer: Runtime.Initializer): void {
@@ -1424,88 +1456,103 @@ export async function rpcCheckSubscriptions(
 
   // Call RevenueCat API to get subscription status
   // RevenueCat API endpoint: GET /subscribers/{app_user_id}
-  try {
-    const response = await fetch(
-      `${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(validation.data.app_user_id)}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
+  // Wrap external API call with circuit breaker for resilience
+  const subscriptionResult = await withCircuitBreaker(
+    'revenuecat',
+    async () => {
+      const response = await fetch(
+        `${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(validation.data.app_user_id)}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('RevenueCat API error: %s - %s', response.status, errorText);
+        return {
+          success: true,
+          active_subscriptions: [],
+          message: 'Unable to check subscriptions',
+          apiError: true,
+        };
       }
-    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error('RevenueCat API error: %s - %s', response.status, errorText);
-      return JSON.stringify({
-        success: true,
-        active_subscriptions: [],
-        message: 'Unable to check subscriptions',
-      });
-    }
+      const data = (await response.json()) as Record<string, unknown>;
+      const subscriber = data.subscriber as Record<string, unknown> | undefined;
 
-    const data = (await response.json()) as Record<string, unknown>;
-    const subscriber = data.subscriber as Record<string, unknown> | undefined;
+      if (!subscriber) {
+        return {
+          success: true,
+          active_subscriptions: [],
+          message: 'No subscriber found',
+        };
+      }
 
-    if (!subscriber) {
-      return JSON.stringify({
-        success: true,
-        active_subscriptions: [],
-        message: 'No subscriber found',
-      });
-    }
+      // Extract active subscriptions from entitlements
+      const entitlements = subscriber.entitlements as Record<string, unknown> | undefined;
+      const activeSubscriptions: {
+        product_id: string;
+        expires_date?: string;
+        is_subscribed: boolean;
+      }[] = [];
 
-    // Extract active subscriptions from entitlements
-    const entitlements = subscriber.entitlements as Record<string, unknown> | undefined;
-    const activeSubscriptions: {
-      product_id: string;
-      expires_date?: string;
-      is_subscribed: boolean;
-    }[] = [];
+      if (entitlements) {
+        for (const [entitlementId, entitlement] of Object.entries(entitlements)) {
+          const ent = entitlement as Record<string, unknown>;
 
-    if (entitlements) {
-      for (const [entitlementId, entitlement] of Object.entries(entitlements)) {
-        const ent = entitlement as Record<string, unknown>;
+          // Check if the entitlement is active
+          const isActive = ent.expires_date && new Date(ent.expires_date as string) > new Date();
+          const isSubscribed =
+            ent.is_subscribed === true || (ent.product_plan_interval && !ent.cancellation_date);
 
-        // Check if the entitlement is active
-        const isActive = ent.expires_date && new Date(ent.expires_date as string) > new Date();
-        const isSubscribed =
-          ent.is_subscribed === true || (ent.product_plan_interval && !ent.cancellation_date);
-
-        if (isActive || isSubscribed) {
-          activeSubscriptions.push({
-            product_id: (ent.product_id as string) || entitlementId,
-            expires_date: ent.expires_date as string | undefined,
-            is_subscribed: true,
-          });
+          if (isActive || isSubscribed) {
+            activeSubscriptions.push({
+              product_id: (ent.product_id as string) || entitlementId,
+              expires_date: ent.expires_date as string | undefined,
+              is_subscribed: true,
+            });
+          }
         }
       }
+
+      return {
+        success: true,
+        active_subscriptions: activeSubscriptions,
+        message:
+          activeSubscriptions.length > 0
+            ? `Found ${activeSubscriptions.length} active subscriptions`
+            : 'No active subscriptions',
+      };
+    },
+    // Fallback: fail safe - return no subscriptions if circuit is open
+    async () => {
+      logger.warn('RevenueCat circuit open - skipping subscription check');
+      return {
+        success: true,
+        active_subscriptions: [],
+        message: 'Subscription check unavailable',
+        circuitOpen: true,
+      };
     }
+  );
 
-    logger.info(
-      'Subscription check complete for user %s: %d active',
-      validation.data.app_user_id,
-      activeSubscriptions.length
-    );
-
-    return JSON.stringify({
-      success: true,
-      active_subscriptions: activeSubscriptions,
-      message:
-        activeSubscriptions.length > 0
-          ? `Found ${activeSubscriptions.length} active subscriptions`
-          : 'No active subscriptions',
-    });
-  } catch (error) {
-    logger.error('Error checking subscriptions: %s', error);
-    return JSON.stringify({
-      success: true,
-      active_subscriptions: [],
-      message: 'Error checking subscriptions',
-    });
+  // Handle circuit breaker fallback result
+  if ('apiError' in subscriptionResult || 'circuitOpen' in subscriptionResult) {
+    return JSON.stringify(subscriptionResult);
   }
+
+  logger.info(
+    'Subscription check complete for user %s: %d active',
+    validation.data.app_user_id,
+    subscriptionResult.active_subscriptions.length
+  );
+
+  return JSON.stringify(subscriptionResult);
 }
 
 export function registerRpcCheckSubscriptions(initializer: Runtime.Initializer): void {
