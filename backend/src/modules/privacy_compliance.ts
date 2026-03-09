@@ -1,0 +1,645 @@
+/**
+ * Privacy Compliance Module
+ *
+ * Provides PII detection, data handling compliance checks, and privacy-preserving
+ * utilities for the Armored Archer backend.
+ *
+ * This module helps ensure compliance with:
+ * - GDPR (General Data Protection Regulation)
+ * - CCPA (California Consumer Privacy Act)
+ * - COPPA (Children's Online Privacy Protection Act)
+ */
+
+import { z } from 'zod';
+
+/**
+ * Types of Personally Identifiable Information (PII)
+ */
+export enum PIIType {
+  EMAIL = 'email',
+  PHONE = 'phone',
+  SSN = 'ssn',
+  CREDIT_CARD = 'credit_card',
+  IP_ADDRESS = 'ip_address',
+  DEVICE_ID = 'device_id',
+  USER_ID = 'user_id',
+  USERNAME = 'username',
+  FULL_NAME = 'full_name',
+  ADDRESS = 'address',
+  DATE_OF_BIRTH = 'date_of_birth',
+  GEOLOCATION = 'geolocation',
+  PASSWORD = 'password',
+  AUTH_TOKEN = 'auth_token',
+  SESSION_ID = 'session_id',
+}
+
+/**
+ * Sensitivity levels for data classification
+ */
+export enum SensitivityLevel {
+  PUBLIC = 'public',
+  INTERNAL = 'internal',
+  CONFIDENTIAL = 'confidential',
+  RESTRICTED = 'restricted',
+}
+
+/**
+ * Regular expressions for PII detection
+ */
+const PII_PATTERNS: Record<PIIType, RegExp> = {
+  [PIIType.EMAIL]: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
+  [PIIType.PHONE]: /\b(\+?1[-.\s]?)?(\([0-9]{3}\)|[0-9]{3})[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b/g,
+  [PIIType.SSN]: /\b\d{3}[-]?\d{2}[-]?\d{4}\b/g,
+  [PIIType.CREDIT_CARD]: /\b(?:\d{4}[- ]?){3}\d{4}\b/g,
+  [PIIType.IP_ADDRESS]: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
+  [PIIType.DEVICE_ID]: /\b(?:device[_-]?id|uuid|udid)[=:\s]*["']?([a-f0-9-]{16,})["']?/gi,
+  [PIIType.USER_ID]: /\b(?:user[_-]?id|player[_-]?id|account[_-]?id)[=:\s]*["']?([a-zA-Z0-9_-]{8,})["']?/gi,
+  [PIIType.USERNAME]: /\b(?:username|user[_-]?name|display[_-]?name)[=:\s]*["']?([a-zA-Z0-9_-]{2,20})["']?/gi,
+  [PIIType.FULL_NAME]: /\b(?:full[_-]?name|real[_-]?name|legal[_-]?name)[=:\s]*["']?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)["']?/gi,
+  [PIIType.ADDRESS]: /\b(?:address|street|city|postal[_-]?code)[=:\s]*["']?([^"'\n]{10,100})["']?/gi,
+  [PIIType.DATE_OF_BIRTH]: /\b(?:dob|date[_-]?of[_-]?birth|birth[_-]?date)[=:\s]*["']?(\d{4}[-/]\d{2}[-/]\d{2})["']?/gi,
+  [PIIType.GEOLOCATION]: /\b(?:lat[itude]|lon[gitude]?|location|geo)[=:\s]*["']?(-?\d+\.?\d+)[,\s]+["']?(-?\d+\.?\d+)["']?/gi,
+  [PIIType.PASSWORD]: /\b(?:password|passwd|pwd|secret)[=:\s]*["']?([^\s"']{4,})["']?/gi,
+  [PIIType.AUTH_TOKEN]: /\b(?:token|access[_-]?token|refresh[_-]?token|auth[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*)["']?/gi,
+  [PIIType.SESSION_ID]: /\b(?:session[_-]?id|session[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]{16,})["']?/gi,
+};
+
+/**
+ * Data field sensitivity classifications
+ */
+const FIELD_SENSITIVITY: Record<string, SensitivityLevel> = {
+  // Authentication - RESTRICTED
+  password: SensitivityLevel.RESTRICTED,
+  passwd: SensitivityLevel.RESTRICTED,
+  secret: SensitivityLevel.RESTRICTED,
+  token: SensitivityLevel.RESTRICTED,
+  access_token: SensitivityLevel.RESTRICTED,
+  refresh_token: SensitivityLevel.RESTRICTED,
+  auth_token: SensitivityLevel.RESTRICTED,
+  session_id: SensitivityLevel.RESTRICTED,
+  private_key: SensitivityLevel.RESTRICTED,
+
+  // Personal Data - CONFIDENTIAL
+  email: SensitivityLevel.CONFIDENTIAL,
+  phone: SensitivityLevel.CONFIDENTIAL,
+  first_name: SensitivityLevel.CONFIDENTIAL,
+  last_name: SensitivityLevel.CONFIDENTIAL,
+  full_name: SensitivityLevel.CONFIDENTIAL,
+  date_of_birth: SensitivityLevel.CONFIDENTIAL,
+  dob: SensitivityLevel.CONFIDENTIAL,
+  address: SensitivityLevel.CONFIDENTIAL,
+  ip_address: SensitivityLevel.CONFIDENTIAL,
+  device_id: SensitivityLevel.CONFIDENTIAL,
+  ssn: SensitivityLevel.RESTRICTED,
+  credit_card: SensitivityLevel.RESTRICTED,
+  payment_info: SensitivityLevel.RESTRICTED,
+
+  // Account Data - INTERNAL
+  user_id: SensitivityLevel.INTERNAL,
+  player_id: SensitivityLevel.INTERNAL,
+  account_id: SensitivityLevel.INTERNAL,
+  username: SensitivityLevel.INTERNAL,
+  display_name: SensitivityLevel.INTERNAL,
+  created_at: SensitivityLevel.INTERNAL,
+  updated_at: SensitivityLevel.INTERNAL,
+  last_login: SensitivityLevel.INTERNAL,
+
+  // Game Data - PUBLIC/INTERNAL
+  level: SensitivityLevel.PUBLIC,
+  xp: SensitivityLevel.PUBLIC,
+  rank: SensitivityLevel.PUBLIC,
+  gear: SensitivityLevel.PUBLIC,
+  stats: SensitivityLevel.PUBLIC,
+  achievements: SensitivityLevel.PUBLIC,
+  match_history: SensitivityLevel.INTERNAL,
+  gameplay_data: SensitivityLevel.INTERNAL,
+};
+
+/**
+ * Detected PII information
+ */
+export interface DetectedPII {
+  type: PIIType;
+  value: string;
+  startIndex: number;
+  endIndex: number;
+  fieldName?: string;
+  context?: string;
+}
+
+/**
+ * Privacy check result
+ */
+export interface PrivacyCheckResult {
+  compliant: boolean;
+  issues: PrivacyIssue[];
+  warnings: string[];
+  metadata: {
+    checkedAt: number;
+    dataTypes: PIIType[];
+    sensitivityLevels: SensitivityLevel[];
+  };
+}
+
+/**
+ * Privacy issue details
+ */
+export interface PrivacyIssue {
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  type: string;
+  description: string;
+  fieldName?: string;
+  suggestion?: string;
+}
+
+/**
+ * Data classification result
+ */
+export interface DataClassification {
+  level: SensitivityLevel;
+  fields: Record<string, SensitivityLevel>;
+  piiFields: string[];
+  restrictedFields: string[];
+}
+
+/**
+ * Anonymization options
+ */
+export interface AnonymizationOptions {
+  preserveFormat?: boolean;
+  salt?: string;
+  hashAlgorithm?: 'sha256' | 'sha512';
+}
+
+/**
+ * Scan text for PII and return detected instances
+ *
+ * @param text - The text to scan
+ * @param types - Optional array of PII types to scan for (defaults to all)
+ * @returns Array of detected PII instances
+ */
+export function scanForPII(text: string, types?: PIIType[]): DetectedPII[] {
+  const detections: DetectedPII[] = [];
+  const piiTypes = types || Object.values(PIIType);
+
+  for (const piiType of piiTypes) {
+    const pattern = PII_PATTERNS[piiType];
+    if (!pattern) continue;
+
+    // Reset lastIndex for global regex
+    const regex = new RegExp(pattern.source, pattern.flags);
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(text)) !== null) {
+      detections.push({
+        type: piiType,
+        value: match[0],
+        startIndex: match.index,
+        endIndex: match.index + match[0].length,
+        context: text.substring(
+          Math.max(0, match.index - 20),
+          Math.min(text.length, match.index + match[0].length + 20)
+        ),
+      });
+    }
+  }
+
+  return detections;
+}
+
+/**
+ * Check if text contains any PII
+ *
+ * @param text - The text to check
+ * @param types - Optional array of PII types to check for
+ * @returns True if PII is detected
+ */
+export function containsPII(text: string, types?: PIIType[]): boolean {
+  return scanForPII(text, types).length > 0;
+}
+
+/**
+ * Classify the sensitivity level of a data field
+ *
+ * @param fieldName - The name of the field
+ * @returns The sensitivity level
+ */
+export function classifyField(fieldName: string): SensitivityLevel {
+  const lowerFieldName = fieldName.toLowerCase();
+
+  // Direct match
+  if (FIELD_SENSITIVITY[lowerFieldName]) {
+    return FIELD_SENSITIVITY[lowerFieldName];
+  }
+
+  // Check for partial matches
+  for (const [key, level] of Object.entries(FIELD_SENSITIVITY)) {
+    if (lowerFieldName.includes(key)) {
+      return level;
+    }
+  }
+
+  // Default to INTERNAL for unknown fields
+  return SensitivityLevel.INTERNAL;
+}
+
+/**
+ * Classify an entire data object
+ *
+ * @param data - The data object to classify
+ * @returns Classification result
+ */
+export function classifyData(data: unknown): DataClassification {
+  const result: DataClassification = {
+    level: SensitivityLevel.PUBLIC,
+    fields: {},
+    piiFields: [],
+    restrictedFields: [],
+  };
+
+  if (typeof data !== 'object' || data === null) {
+    return result;
+  }
+
+  const entries = Object.entries(data as Record<string, unknown>);
+
+  for (const [key, value] of entries) {
+    const level = classifyField(key);
+    result.fields[key] = level;
+
+    // Track overall classification
+    if (level === SensitivityLevel.RESTRICTED) {
+      result.level = SensitivityLevel.RESTRICTED;
+      result.restrictedFields.push(key);
+    } else if (level === SensitivityLevel.CONFIDENTIAL && result.level !== SensitivityLevel.RESTRICTED) {
+      result.level = SensitivityLevel.CONFIDENTIAL;
+      result.piiFields.push(key);
+    } else if (level === SensitivityLevel.INTERNAL && result.level === SensitivityLevel.PUBLIC) {
+      result.level = SensitivityLevel.INTERNAL;
+    }
+
+    // Check value for embedded PII
+    if (typeof value === 'string' && containsPII(value)) {
+      if (!result.piiFields.includes(key)) {
+        result.piiFields.push(key);
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Check privacy compliance for data
+ *
+ * @param data - The data to check
+ * @param context - Optional context for the check
+ * @returns Privacy check result
+ */
+export function checkPrivacyCompliance(data: unknown, context?: string): PrivacyCheckResult {
+  const issues: PrivacyIssue[] = [];
+  const warnings: string[] = [];
+  const detectedTypes = new Set<PIIType>();
+  const detectedLevels = new Set<SensitivityLevel>();
+
+  if (typeof data !== 'object' || data === null) {
+    return {
+      compliant: true,
+      issues,
+      warnings,
+      metadata: {
+        checkedAt: Date.now(),
+        dataTypes: [],
+        sensitivityLevels: [],
+      },
+    };
+  }
+
+  const entries = Object.entries(data as Record<string, unknown>);
+
+  for (const [key, value] of entries) {
+    const level = classifyField(key);
+    detectedLevels.add(level);
+
+    // Check for PII in value
+    if (typeof value === 'string') {
+      const detections = scanForPII(value);
+      for (const detection of detections) {
+        detectedTypes.add(detection.type);
+      }
+    }
+
+    // Check for high-risk combinations
+    if (level === SensitivityLevel.RESTRICTED) {
+      issues.push({
+        severity: 'critical',
+        type: 'restricted_data',
+        description: `Restricted data field "${key}" requires special handling`,
+        fieldName: key,
+        suggestion: 'Ensure data is encrypted and access is controlled',
+      });
+    }
+
+    // Check for large data volumes
+    if (typeof value === 'object' && value !== null) {
+      const size = JSON.stringify(value).length;
+      if (size > 10000 && level === SensitivityLevel.RESTRICTED) {
+        warnings.push(`Large data volume in restricted field "${key}" - ensure logging is appropriate`);
+      }
+    }
+  }
+
+  // GDPR-specific checks
+  if (detectedTypes.has(PIIType.EMAIL) || detectedTypes.has(PIIType.USER_ID)) {
+    const hasConsentField = entries.some(
+      ([key]) => key.toLowerCase().includes('consent') || key.toLowerCase().includes('gdpr')
+    );
+    if (!hasConsentField) {
+      warnings.push(
+        'Data contains personal identifiers but no consent field found - ensure GDPR compliance'
+      );
+    }
+  }
+
+  // CCPA-specific checks
+  if (detectedTypes.has(PIIType.EMAIL) || detectedTypes.has(PIIType.PHONE)) {
+    const hasOptOutField = entries.some(
+      ([key]) => key.toLowerCase().includes('opt') || key.toLowerCase().includes('ccpa')
+    );
+    if (!hasOptOutField) {
+      warnings.push('Data may be subject to CCPA - consider adding opt-out field');
+    }
+  }
+
+  // Check for missing encryption on sensitive fields
+  const hasEncryptedField = entries.some(([key]) => key.toLowerCase().includes('encrypted'));
+  if (detectedLevels.has(SensitivityLevel.RESTRICTED) && !hasEncryptedField) {
+    warnings.push('Restricted data detected but no encryption indicator found');
+  }
+
+  const compliant = issues.filter((i) => i.severity === 'critical').length === 0;
+
+  return {
+    compliant,
+    issues,
+    warnings,
+    metadata: {
+      checkedAt: Date.now(),
+      dataTypes: Array.from(detectedTypes),
+      sensitivityLevels: Array.from(detectedLevels),
+    },
+  };
+}
+
+/**
+ * Anonymize PII in a string
+ *
+ * @param text - The text to anonymize
+ * @param types - Optional array of PII types to anonymize
+ * @returns Anonymized text
+ */
+export function anonymizePII(text: string, types?: PIIType[]): string {
+  let result = text;
+  const piiTypes = types || Object.values(PIIType);
+
+  for (const piiType of piiTypes) {
+    const pattern = PII_PATTERNS[piiType];
+    if (!pattern) continue;
+
+    const replacement = `[${piiType.toUpperCase()}_REDACTED]`;
+    result = result.replace(new RegExp(pattern.source, pattern.flags), replacement);
+  }
+
+  return result;
+}
+
+/**
+ * Hash sensitive data for safe logging/storage
+ *
+ * @param value - The value to hash
+ * @param salt - Optional salt
+ * @returns Hashed value
+ */
+export function hashSensitiveData(value: string, salt: string = ''): string {
+  let hash = 0;
+  const combined = value + salt;
+
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+
+  return `hashed_${Math.abs(hash).toString(16)}_${value.substring(0, 2)}`;
+}
+
+/**
+ * Redact a value based on its sensitivity
+ *
+ * @param value - The value to redact
+ * @param level - The sensitivity level
+ * @returns Redacted value
+ */
+export function redactBySensitivity(value: unknown, level: SensitivityLevel): unknown {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  switch (level) {
+    case SensitivityLevel.RESTRICTED:
+      return '[REDACTED]';
+    case SensitivityLevel.CONFIDENTIAL:
+      if (typeof value === 'string' && value.length > 4) {
+        return value.substring(0, 2) + '***' + value.substring(value.length - 2);
+      }
+      return '[MASKED]';
+    case SensitivityLevel.INTERNAL:
+      return value;
+    case SensitivityLevel.PUBLIC:
+    default:
+      return value;
+  }
+}
+
+/**
+ * Prepare data for logging by redacting sensitive fields
+ *
+ * @param data - The data to prepare for logging
+ * @param customFields - Optional custom sensitive fields to redact
+ * @returns Logging-safe data
+ */
+export function prepareForLogging(data: unknown, customFields: string[] = []): unknown {
+  if (typeof data !== 'object' || data === null) {
+    return data;
+  }
+
+  const sensitiveFields = new Set([
+    ...Object.keys(FIELD_SENSITIVITY).filter(
+      (k) =>
+        FIELD_SENSITIVITY[k] === SensitivityLevel.RESTRICTED ||
+        FIELD_SENSITIVITY[k] === SensitivityLevel.CONFIDENTIAL
+    ),
+    ...customFields.map((f) => f.toLowerCase()),
+  ]);
+
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    const level = classifyField(key);
+    const lowerKey = key.toLowerCase();
+
+    if (sensitiveFields.has(lowerKey)) {
+      result[key] = redactBySensitivity(value, level);
+    } else if (typeof value === 'object') {
+      result[key] = prepareForLogging(value, customFields);
+    } else {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Validate data handling compliance for a specific operation
+ *
+ * @param operation - The operation being performed (e.g., 'store', 'log', 'transmit')
+ * @param data - The data involved
+ * @returns Compliance result
+ */
+export function validateDataHandling(operation: string, data: unknown): PrivacyCheckResult {
+  const issues: PrivacyIssue[] = [];
+  const classification = classifyData(data);
+
+  switch (operation.toLowerCase()) {
+    case 'store':
+    case 'persist':
+      if (classification.restrictedFields.length > 0) {
+        issues.push({
+          severity: 'critical',
+          type: 'storage_compliance',
+          description: 'Restricted data must be encrypted at rest',
+          suggestion: 'Use encryption before storing restricted data',
+        });
+      }
+      break;
+
+    case 'log':
+      if (classification.restrictedFields.length > 0 || classification.piiFields.length > 0) {
+        issues.push({
+          severity: 'high',
+          type: 'logging_compliance',
+          description: 'Sensitive data should not be logged directly',
+          suggestion: 'Use prepareForLogging() or hashSensitiveData() before logging',
+        });
+      }
+      break;
+
+    case 'transmit':
+    case 'send':
+      if (classification.restrictedFields.length > 0) {
+        issues.push({
+          severity: 'critical',
+          type: 'transmission_compliance',
+          description: 'Restricted data must be encrypted in transit',
+          suggestion: 'Use TLS/HTTPS for transmitting restricted data',
+        });
+      }
+      break;
+
+    case 'share':
+    case 'export':
+      if (classification.piiFields.length > 0) {
+        issues.push({
+          severity: 'high',
+          type: 'sharing_compliance',
+          description: 'PII data sharing requires user consent and proper handling',
+          suggestion: 'Ensure GDPR/CCPA compliance before sharing PII',
+        });
+      }
+      break;
+  }
+
+  return {
+    compliant: issues.filter((i) => i.severity === 'critical').length === 0,
+    issues,
+    warnings:
+      classification.piiFields.length > 0
+        ? [`Data contains ${classification.piiFields.length} potentially sensitive field(s)`]
+        : [],
+    metadata: {
+      checkedAt: Date.now(),
+      dataTypes: [],
+      sensitivityLevels: [classification.level],
+    },
+  };
+}
+
+/**
+ * Zod schema for privacy compliance check request
+ */
+export const privacyCheckSchema = z.object({
+  data: z.record(z.string(), z.unknown()),
+  operation: z.enum(['store', 'persist', 'log', 'transmit', 'send', 'share', 'export']),
+  context: z.string().optional(),
+});
+
+/**
+ * Zod schema for PII scan request
+ */
+export const piiScanSchema = z.object({
+  text: z.string().min(1).max(100000),
+  types: z.array(z.nativeEnum(PIIType)).optional(),
+});
+
+/**
+ * Zod schema for data classification request
+ */
+export const classifyDataSchema = z.object({
+  data: z.record(z.string(), z.unknown()),
+});
+
+/**
+ * Type for privacy check request
+ */
+export type PrivacyCheckRequest = z.infer<typeof privacyCheckSchema>;
+
+/**
+ * Type for PII scan request
+ */
+export type PIIScanRequest = z.infer<typeof piiScanSchema>;
+
+/**
+ * Type for data classification request
+ */
+export type ClassifyDataRequest = z.infer<typeof classifyDataSchema>;
+
+/**
+ * Check if a value contains PII (simple boolean check for any value)
+ *
+ * @param value - The value to check
+ * @returns True if the value appears to contain PII
+ */
+export function isPII(value: unknown): boolean {
+  if (typeof value === 'string') {
+    return containsPII(value);
+  }
+  if (typeof value === 'object' && value !== null) {
+    const str = JSON.stringify(value);
+    return containsPII(str);
+  }
+  return false;
+}
+
+/**
+ * Sanitize data for logging by removing PII
+ *
+ * @param data - The data to sanitize
+ * @returns Sanitized data safe for logging
+ */
+export function sanitizeForLogging(data: unknown): unknown {
+  if (typeof data === 'string') {
+    return anonymizePII(data);
+  }
+  return prepareForLogging(data);
+}
