@@ -71,7 +71,30 @@ npm run docs             # Generate TypeDoc documentation
 
 # Run Nakama migrations
 docker exec -it armored_archer_server /nakama/nakama migrate up
+
+# View database schema
+docker exec -it armored_archer_postgres psql -U postgres -d nakama -c '\dt'
+
+# Run schema migration tests
+cd backend
+npm run test:schema
 ```
+
+#### Database Schema Documentation
+- **Schema Reference**: [DATABASE_SCHEMA.md](backend/DATABASE_SCHEMA.md)
+- **Migration Files**: `backend/data/*.sql`
+
+#### Key Tables
+| Table | Description |
+|-------|-------------|
+| `player_stats` | Player level, experience, ability points, stats |
+| `catalog` | Master gear catalog with types, rarities, stats |
+| `inventory` | Player gear ownership |
+| `loadout` | 5 equipment slots (helm, armor, bow, arrow, amulet) |
+
+#### Database Enums
+- `gear_type`: helm, armor, bow, arrow, amulet
+- `gear_rarity`: common, rare, epic, legendary
 
 ## GDScript Code Style
 

@@ -12,6 +12,7 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage",
     "test:integration": "jest -c backend/jest.integration.config.js",
+    "test:schema": "jest backend/tests/integration/schema.test.ts",
     "test:flaky": "ts-node scripts/detect-flaky-tests.ts",
     "test:flaky:ci": "ts-node scripts/detect-flaky-tests.ts --ci-mode",
     "test:report": "ts-node scripts/flaky-test-report.ts",
@@ -39,6 +40,7 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^25.3.3",
+    "@types/pg": "^8.11.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
     "depcheck": "^1.4.7",
@@ -74,6 +76,7 @@
     "@sentry/node": "^10.40.0",
     "js-yaml": "^4.1.1",
     "lru-cache": "^11.2.6",
+    "pg": "^8.11.0",
     "prom-client": "^15.0.0",
     "uuid": "^9.0.0",
     "winston": "^3.11.0",
