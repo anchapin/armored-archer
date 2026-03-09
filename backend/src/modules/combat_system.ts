@@ -15,6 +15,7 @@ import {
 import { PvPMatch } from './matchmaker';
 import { profileFunction } from './profiling';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { Span } from '@opentelemetry/api';
 
 /**
  * Combat action request data.
@@ -152,6 +153,143 @@ export function registerRpcSubmitCombatAction(initializer: Runtime.Initializer):
  *   }
  * }
  */
+/**
+ * Validates match is valid and active for combat
+ */
+function validateMatchForCombat(
+  nk: Runtime.Nakama,
+  matchId: string,
+  userId: string,
+  span: Span
+): { valid: true; match: PvPMatch } | { valid: false; error: string; errorCode?: string } {
+  const matchObjects = nk.storageRead([
+    {
+      collection: 'pvp_matches',
+      key: matchId,
+      userId: userId,
+    },
+  ]);
+
+  if (matchObjects.length === 0) {
+    span.setAttribute('error', true);
+    span.setAttribute('error.message', 'Match not found');
+    return { valid: false, error: 'Match not found' };
+  }
+
+  const match = JSON.parse(matchObjects[0].value);
+
+  if (isMatchExpired(match)) {
+    span.setAttribute('error', true);
+    span.setAttribute('error.message', 'Match has expired');
+    return { valid: false, error: 'Match has expired' };
+  }
+
+  if (match.status !== 'active') {
+    span.setAttribute('error', true);
+    span.setAttribute('error.message', 'Match is not active');
+    return { valid: false, error: 'Match is not active' };
+  }
+
+  if (match.creator_id !== userId && match.opponent_id !== userId) {
+    span.setAttribute('error', true);
+    span.setAttribute('error.message', 'Not a participant in this match');
+    return { valid: false, error: 'Not a participant in this match' };
+  }
+
+  return { valid: true, match };
+}
+
+/**
+ * Handles turn timeout by switching to opponent's turn
+ */
+function handleTurnTimeout(
+  nk: Runtime.Nakama,
+  matchState: MatchState,
+  logger: Runtime.Logger
+): void {
+  logger.info(
+    'Turn timed out for user: %s in match: %s',
+    matchState.current_turn_user_id,
+    matchState.match_id
+  );
+  matchState.current_turn_user_id =
+    matchState.current_turn_user_id === matchState.creator_id
+      ? matchState.opponent_id
+      : matchState.creator_id;
+  matchState.last_turn_timestamp = Date.now();
+  saveMatchState(nk, matchState);
+}
+
+/**
+ * Performs anti-cheat validations for combat action
+ */
+function validateAntiCheat(
+  ctx: Runtime.Context,
+  action: CombatAction,
+  matchState: MatchState,
+  logger: Runtime.Logger
+): string | null {
+  // 1. Verify request signature if anti-cheat fields are provided
+  if (action.requestId && action.timestamp && action.signature && action.nonce) {
+    const signatureData: RequestSignature = {
+      requestId: action.requestId,
+      timestamp: action.timestamp,
+      signature: action.signature,
+      nonce: action.nonce,
+    };
+
+    const payloadForSig = JSON.stringify({
+      match_id: action.match_id,
+      action_type: action.action_type,
+      angle: action.angle,
+      power: action.power,
+    });
+
+    const sigResult = verifyRequestSignature(
+      ctx,
+      payloadForSig,
+      signatureData,
+      'submit_combat_action'
+    );
+    if (!sigResult.valid) {
+      logger.warn('Anti-cheat signature verification failed for user: %s', ctx.userId);
+      return 'ANTI_CHEAT_VIOLATION: Invalid request signature';
+    }
+  }
+
+  // 2. Validate combat action parameters (angle, power)
+  const requestId =
+    action.requestId || `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  const paramValidation = validateCombatActionParameters(
+    action.angle,
+    action.power,
+    matchState.current_turn_user_id,
+    ctx.userId,
+    'submit_combat_action',
+    requestId
+  );
+
+  if (!paramValidation.valid) {
+    const outOfTurnViolation = paramValidation.violations.some(
+      (v) => v.violationType === 'out_of_turn'
+    );
+    if (outOfTurnViolation) {
+      logger.warn('Out of turn action from user: %s', ctx.userId);
+      return 'Not your turn';
+    }
+    logger.warn('Invalid combat parameters from user: %s', ctx.userId);
+    return 'INVALID_PARAMETERS: Combat parameters out of valid range';
+  }
+
+  // 3. Detect timing attacks (rapid requests)
+  if (detectTimingAttack(ctx.userId, 'submit_combat_action', requestId)) {
+    logger.warn('Timing attack detected for user: %s', ctx.userId);
+    return 'TIMING_ANOMALY: Suspicious request pattern detected';
+  }
+
+  return null;
+}
+
 export async function rpcSubmitCombatAction(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -164,7 +302,6 @@ export async function rpcSubmitCombatAction(
     return profileFunction<string>('combat.submit_combat_action', () => {
       logger.info('Submit combat action called for user: %s', ctx.userId);
 
-      // Add initial span attributes
       setTracingAttribute('rpc.payload_size', payload.length);
 
       const validation = validatePayload(
@@ -185,154 +322,37 @@ export async function rpcSubmitCombatAction(
         setTracingAttribute('combat.power', action.power);
       }
 
-      const matchObjects = nk.storageRead([
-        {
-          collection: 'pvp_matches',
-          key: action.match_id,
-          userId: ctx.userId,
-        },
-      ]);
-
-      if (matchObjects.length === 0) {
-        span.setAttribute('error', true);
-        span.setAttribute('error.message', 'Match not found');
-        return JSON.stringify({
-          error: 'Match not found',
-        });
+      // Validate match
+      const matchValidation = validateMatchForCombat(nk, action.match_id, ctx.userId, span);
+      if (!matchValidation.valid) {
+        return JSON.stringify({ error: matchValidation.error });
       }
-
-      const match = JSON.parse(matchObjects[0].value);
-
-      // Check if match has expired
-      if (isMatchExpired(match)) {
-        span.setAttribute('error', true);
-        span.setAttribute('error.message', 'Match has expired');
-        return JSON.stringify({
-          error: 'Match has expired',
-        });
-      }
-
-      if (match.status !== 'active') {
-        span.setAttribute('error', true);
-        span.setAttribute('error.message', 'Match is not active');
-        return JSON.stringify({
-          error: 'Match is not active',
-        });
-      }
-
-      if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
-        span.setAttribute('error', true);
-        span.setAttribute('error.message', 'Not a participant in this match');
-        return JSON.stringify({
-          error: 'Not a participant in this match',
-        });
-      }
+      const match = matchValidation.match;
 
       const matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
 
-      // Check if turn has exceeded timeout
+      // Handle turn timeout
       if (isTurnTimedOut(matchState)) {
-        logger.info(
-          'Turn timed out for user: %s in match: %s',
-          matchState.current_turn_user_id,
-          action.match_id
-        );
-        // Auto-forfeit the current player's turn, move to opponent
-        matchState.current_turn_user_id =
-          matchState.current_turn_user_id === matchState.creator_id
-            ? matchState.opponent_id
-            : matchState.creator_id;
-        matchState.last_turn_timestamp = Date.now();
-        saveMatchState(nk, matchState);
+        handleTurnTimeout(nk, matchState, logger);
         span.setAttribute('combat.turn_timeout', true);
         return JSON.stringify({
           error: 'Your previous turn timed out, opponent now has their turn',
         });
       }
 
-      // === ANTI-CHEAT VALIDATION ===
-
-      // 1. Verify request signature if anti-cheat fields are provided
-      if (action.requestId && action.timestamp && action.signature && action.nonce) {
-        const signatureData: RequestSignature = {
-          requestId: action.requestId,
-          timestamp: action.timestamp,
-          signature: action.signature,
-          nonce: action.nonce,
-        };
-
-        // Create payload for signature verification (without anti-cheat fields)
-        const payloadForSig = JSON.stringify({
-          match_id: action.match_id,
-          action_type: action.action_type,
-          angle: action.angle,
-          power: action.power,
-        });
-
-        const sigResult = verifyRequestSignature(
-          ctx,
-          payloadForSig,
-          signatureData,
-          'submit_combat_action'
-        );
-        if (!sigResult.valid) {
-          logger.warn('Anti-cheat signature verification failed for user: %s', ctx.userId);
-          return JSON.stringify({
-            error: 'ANTI_CHEAT_VIOLATION: Invalid request signature',
-            error_code: 'ANTI_CHEAT_VIOLATION',
-          });
+      // Anti-cheat validations
+      const antiCheatError = validateAntiCheat(ctx, action, matchState, logger);
+      if (antiCheatError) {
+        const response: { error: string; error_code?: string } = { error: antiCheatError };
+        if (antiCheatError.startsWith('ANTI_CHEAT') || antiCheatError.startsWith('INVALID') || antiCheatError.startsWith('TIMING')) {
+          response.error_code = antiCheatError.split(':')[0];
         }
+        return JSON.stringify(response);
       }
 
-      // 2. Validate combat action parameters (angle, power)
-      const requestId =
-        action.requestId || `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      const paramValidation = validateCombatActionParameters(
-        action.angle,
-        action.power,
-        matchState.current_turn_user_id,
-        ctx.userId,
-        'submit_combat_action',
-        requestId
-      );
-
-      if (!paramValidation.valid) {
-        // Check if this is an out_of_turn violation (anti-cheat detected it)
-        const outOfTurnViolation = paramValidation.violations.some(
-          (v) => v.violationType === 'out_of_turn'
-        );
-        if (outOfTurnViolation) {
-          logger.warn('Out of turn action from user: %s', ctx.userId);
-          return JSON.stringify({
-            error: 'Not your turn',
-          });
-        }
-
-        // Invalid parameters (angle/power out of range)
-        logger.warn('Invalid combat parameters from user: %s', ctx.userId);
-        return JSON.stringify({
-          error: 'INVALID_PARAMETERS: Combat parameters out of valid range',
-          error_code: 'INVALID_PARAMETERS',
-        });
-      }
-
-      // 3. Detect timing attacks (rapid requests)
-      const timingAttack = detectTimingAttack(ctx.userId, 'submit_combat_action', requestId);
-      if (timingAttack) {
-        logger.warn('Timing attack detected for user: %s', ctx.userId);
-        return JSON.stringify({
-          error: 'TIMING_ANOMALY: Suspicious request pattern detected',
-          error_code: 'TIMING_ANOMALY',
-        });
-      }
-
-      // === END ANTI-CHEAT VALIDATION ===
-
-      // Check if it's the user's turn (this is the primary out-of-turn check)
+      // Final turn check
       if (matchState.current_turn_user_id !== ctx.userId) {
-        return JSON.stringify({
-          error: 'Not your turn',
-        });
+        return JSON.stringify({ error: 'Not your turn' });
       }
 
       const result = processCombatAction(ctx.userId, action, match, matchState, nk, logger);
@@ -351,7 +371,7 @@ export async function rpcSubmitCombatAction(
 
       return JSON.stringify({
         success: true,
-        result: result,
+        result,
       });
     });
   });
