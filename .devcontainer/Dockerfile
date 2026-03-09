@@ -20,12 +20,13 @@ RUN apt-get update && apt-get install -y \
     libxi6 \
     python3 \
     python3-pip \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
-# Install gdlint for GDScript linting (project uses gdlintrc)
-# Note: The package was renamed to gdtoolkit, but we install it via pipx or skip for now
-# as the base pip in Ubuntu 22.04 doesn't support --break-system-packages
-# Users can install it via: pip3 install gdtoolkit
+# Install Python dependencies for the project (ruff for linting, gdtoolkit for GDScript)
+# Use --break-system-packages flag for Python 3.12+ compatibility
+COPY requirements.txt /tmp/requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
 # Install Godot 4.6.1 headless (server version for CI/builds)
 # Godot version matches project.godot: config/features=PackedStringArray("4.6", "Mobile")
