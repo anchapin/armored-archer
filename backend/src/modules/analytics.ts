@@ -668,10 +668,10 @@ export function getDailyMetrics(startDate: string, endDate: string): DailyMetric
 
 /**
  * RPC: Get circuit breaker states for all monitored services.
- * 
+ *
  * This RPC provides visibility into the health of external service connections
  * protected by circuit breakers.
- * 
+ *
  * // Response
  * {
  *   "success": true,
@@ -705,10 +705,10 @@ export function rpcGetCircuitBreakerStates(
 
   try {
     const circuits = getAllCircuitInfo();
-    
+
     return JSON.stringify({
       success: true,
-      circuits: circuits.map(circuit => ({
+      circuits: circuits.map((circuit) => ({
         serviceName: circuit.serviceName,
         state: circuit.state,
         stats: circuit.stats,
