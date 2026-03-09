@@ -189,9 +189,15 @@ jobs:
         working-directory: ./backend
         run: npm ci
       
-      - name: Run duplicate code detection
+      - name: Install jscpd at root
+        run: npm install --save-dev jscpd
+      
+      - name: Run duplicate code detection on TypeScript (backend)
         working-directory: ./backend
-        run: npm run detect-duplicate:ci
+        run: npx jscpd --config .jscpd.json --threshold 3
+      
+      - name: Run duplicate code detection on GDScript and Python
+        run: npx jscpd --config .jscpd.json --threshold 3 autoloads/ scripts/ scenes/
 
   dependency-check:
     name: Unused Dependency Detection

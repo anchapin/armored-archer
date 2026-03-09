@@ -18,7 +18,10 @@
     "**/*.test.js",
     "**/*.test.gd",
     "**/__pycache__/**",
-    "**/*.pyc"
+    "**/*.pyc",
+    "**/backend/node_modules/**",
+    "**/backend/dist/**",
+    "**/backend/build/**"
   ],
   "extensions": ["ts", "tsx", "js", "jsx", "gd", "py"],
   "mode": "weak"

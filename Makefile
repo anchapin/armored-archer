@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci
 
 # Default target
 all: help
@@ -73,6 +73,10 @@ help:
 	@echo "$(GREEN)Dead Code Detection$(RESET)"
 	@echo "  make dead-code-check     Run dead code detection for all languages"
 	@echo "  make dead-code-check-ci  Run dead code detection in CI mode (strict)"
+	@echo ""
+	@echo "$(GREEN)Duplicate Code Detection$(RESET)"
+	@echo "  make duplicate-code-check     Run duplicate code detection for all languages"
+	@echo "  make duplicate-code-check-ci  Run duplicate code detection in CI mode (strict)"
 	@echo ""
 	@echo "$(GREEN)AGENTS.md Validation$(RESET)"
 	@echo "  make agents-md-check     Validate AGENTS.md format and structure"
@@ -332,6 +336,37 @@ dead-code-check-ci:
 	fi
 	@echo ""
 	@echo "$(GREEN)✓ No dead code detected$(RESET)"
+
+## Duplicate Code Detection
+# Run duplicate code detection for all languages (GDScript, TypeScript, Python)
+duplicate-code-check:
+	@echo "$(BLUE)Running duplicate code detection...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Installing jscpd if needed...$(RESET)"
+	@npm list jscpd >/dev/null 2>&1 || npm install --save-dev jscpd
+	@echo ""
+	@echo "$(BLUE)Checking for duplicate code in TypeScript (backend)...$(RESET)"
+	@cd backend && npx jscpd --config .jscpd.json --threshold 0 || true
+	@echo ""
+	@echo "$(BLUE)Checking for duplicate code in GDScript and Python...$(RESET)"
+	@npx jscpd --config .jscpd.json --threshold 0 autoloads/ scripts/ scenes/ 2>&1 || true
+	@echo ""
+	@echo "$(GREEN)✓ Duplicate code check complete$(RESET)"
+
+# CI mode - strict duplicate code detection (fails if threshold exceeded)
+duplicate-code-check-ci:
+	@echo "$(BLUE)Running duplicate code detection (CI mode)...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Installing jscpd if needed...$(RESET)"
+	@npm list jscpd >/dev/null 2>&1 || npm install --save-dev jscpd
+	@echo ""
+	@echo "$(BLUE)Checking TypeScript (backend)...$(RESET)"
+	@cd backend && npx jscpd --config .jscpd.json --threshold 3
+	@echo ""
+	@echo "$(BLUE)Checking GDScript and Python...$(RESET)"
+	@npx jscpd --config .jscpd.json --threshold 3 autoloads/ scripts/ scenes/
+	@echo ""
+	@echo "$(GREEN)✓ No duplicate code detected above threshold$(RESET)"
 
 ## AGENTS.md Validation
 agents-md-check:
