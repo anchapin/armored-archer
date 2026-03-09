@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check:ci tech-debt-sync tech-debt-sync:dry tech-debt-github tech-debt-github:create bundle-size-check bundle-size-check
 
 # Default target
 all: help
@@ -264,3 +264,28 @@ services-clean:
 tech-debt-check:
 	@echo "$(BLUE)Running tech debt detection...$(RESET)"
 	cd $(BACKEND_DIR) && npm run tech-debt:report
+
+tech-debt-check:ci
+	@echo "$(BLUE)Running tech debt detection (CI mode)...$(RESET)"
+	cd $(BACKEND_DIR) && npm run tech-debt:report:ci
+
+tech-debt-sync:
+	@echo "$(BLUE)Syncing tech debt items to documentation...$(RESET)"
+	cd $(BACKEND_DIR) && npm run tech-debt:sync
+
+tech-debt-sync:dry
+	@echo "$(BLUE)Syncing tech debt items (dry run)...$(RESET)"
+	cd $(BACKEND_DIR) && npm run tech-debt:sync:dry
+
+tech-debt-github:
+	@echo "$(BLUE)Creating GitHub issues from tech debt...$(RESET)"
+	cd $(BACKEND_DIR) && npm run tech-debt:github
+
+tech-debt-github:create
+	@echo "$(BLUE)Creating GitHub issues from tech debt...$(RESET)"
+	cd $(BACKEND_DIR) && npm run tech-debt:github:create
+
+## Bundle Size Tracking
+bundle-size-check:
+	@echo "$(BLUE)Running bundle size analysis...$(RESET)"
+	cd $(BACKEND_DIR) && npm run bundle:check

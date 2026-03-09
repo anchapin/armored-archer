@@ -33,6 +33,13 @@
     "detect-n-plus-one:ci": "ts-node --transpile-only ./scripts/detect-n-plus-one.ts --ci-mode",
     "tech-debt:report": "ts-node scripts/detect-tech-debt.ts",
     "tech-debt:report:ci": "ts-node scripts/detect-tech-debt.ts --ci-mode",
+    "tech-debt:report:json": "ts-node scripts/detect-tech-debt.ts --json-output",
+    "tech-debt:report:age": "ts-node scripts/detect-tech-debt.ts --track-age",
+    "tech-debt:sync": "ts-node scripts/tech-debt-sync.ts",
+    "tech-debt:sync:dry": "ts-node scripts/tech-debt-sync.ts --dry-run",
+    "tech-debt:github": "ts-node scripts/tech-debt-github.ts",
+    "tech-debt:github:create": "ts-node scripts/tech-debt-github.ts --create-issues",
+    "tech-debt:github:dry": "ts-node scripts/tech-debt-github.ts --dry-run",
     "scan:pii": "ts-node --transpile-only ./scripts/scan-pii.ts",
     "test:privacy": "jest src/modules/__tests__/privacy_compliance.test.ts"
   },

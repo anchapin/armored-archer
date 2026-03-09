@@ -9,10 +9,12 @@
  * - Missing error handling
  *
  * Usage:
- *   npx ts-node scripts/detect-tech-debt.ts [--ci-mode]
+ *   npx ts-node scripts/detect-tech-debt.ts [--ci-mode] [--json-output]
  *
  * Options:
- *   --ci-mode    Output in CI-friendly format (exit with error if issues found)
+ *   --ci-mode       Output in CI-friendly format (exit with error if issues found)
+ *   --json-output   Output only JSON report (for programmatic use)
+ *   --track-age     Track age of TODO/FIXME comments by extracting dates
  */
 
 import * as fs from 'fs';
@@ -23,85 +25,131 @@ const BACKEND_DIR = path.join(__dirname, '..');
 const SRC_DIR = path.join(BACKEND_DIR, 'src');
 const EXCLUDED_DIRS = ['node_modules', 'build', '.git', 'dist', '__mocks__', '__tests__'];
 const CI_MODE = process.argv.includes('--ci-mode');
+const JSON_OUTPUT = process.argv.includes('--json-output');
+const TRACK_AGE = process.argv.includes('--track-age');
 
-// Tech debt patterns to detect
+// Date pattern to extract dates from comments (e.g., TODO: 2024-01-15 or TODO: Jan 15, 2024)
+const DATE_PATTERN = /(\d{4}-\d{2}-\d{2}|\w{3}\s+\d{1,2},?\s+\d{4}|\d{1,2}\/\d{1,2}\/\d{4})/;
+
+// Tech debt patterns to detect with enhanced extraction
 const DEPRECATED_PATTERNS = [
   {
     // @deprecated JSDoc tag
     pattern: /@deprecated/,
     type: 'deprecated',
     severity: 'medium',
-    description: 'Deprecated API usage detected'
+    description: 'Deprecated API usage detected',
+    extractDetails: (line: string) => {
+      const match = line.match(/@deprecated\s+(.+)/);
+      return match ? match[1].trim() : 'Deprecated API';
+    }
   },
   {
     // Deprecated function calls in code
     pattern: /(captureExceptionLegacy|captureMessageLegacy|logRpcErrorLegacy)\s*\(/,
     type: 'deprecated',
     severity: 'medium',
-    description: 'Using deprecated function'
+    description: 'Using deprecated function',
+    extractDetails: (line: string) => {
+      const match = line.match(/(captureExceptionLegacy|captureMessageLegacy|logRpcErrorLegacy)/);
+      return match ? `Using ${match[1]}` : 'Deprecated function';
+    }
   },
   {
     // console.log warnings that should be replaced
     pattern: /console\.(log|warn|error)\s*\(/,
     type: 'logging',
     severity: 'low',
-    description: 'Console logging should use proper logger'
+    description: 'Console logging should use proper logger',
+    extractDetails: (line: string) => {
+      const match = line.match(/console\.(log|warn|error)/);
+      return match ? `console.${match[1]} used` : 'Console logging';
+    }
   },
   {
-    // TODO comments
-    pattern: /\/\/\s*TODO/,
+    // TODO comments with enhanced extraction
+    pattern: /\/\/\s*TODO(?::|\s+)(.+)/i,
     type: 'todo',
     severity: 'low',
-    description: 'TODO comment found - work incomplete'
+    description: 'TODO comment found - work incomplete',
+    extractDetails: (line: string) => {
+      const match = line.match(/\/\/\s*TODO(?::|\s+)(.+)/i);
+      const details = match ? match[1].trim() : 'Unspecified TODO';
+      // Try to extract date
+      const dateMatch = details.match(DATE_PATTERN);
+      return dateMatch ? details : `TODO: ${details}`;
+    },
+    extractDate: (line: string) => {
+      const match = line.match(DATE_PATTERN);
+      return match ? match[1] : null;
+    }
   },
   {
-    // FIXME comments
-    pattern: /\/\/\s*FIXME/,
+    // FIXME comments with enhanced extraction
+    pattern: /\/\/\s*FIXME(?::|\s+)(.+)/i,
     type: 'fixme',
     severity: 'medium',
-    description: 'FIXME comment found - bug needs fixing'
+    description: 'FIXME comment found - bug needs fixing',
+    extractDetails: (line: string) => {
+      const match = line.match(/\/\/\s*FIXME(?::|\s+)(.+)/i);
+      return match ? match[1].trim() : 'Unspecified FIXME';
+    },
+    extractDate: (line: string) => {
+      const match = line.match(DATE_PATTERN);
+      return match ? match[1] : null;
+    }
   },
   {
     // HACK comments
-    pattern: /\/\/\s*HACK/,
+    pattern: /\/\/\s*HACK(?::|\s+)(.+)/i,
     type: 'hack',
     severity: 'medium',
-    description: 'HACK comment found - workaround in code'
+    description: 'HACK comment found - workaround in code',
+    extractDetails: (line: string) => {
+      const match = line.match(/\/\/\s*HACK(?::|\s+)(.+)/i);
+      return match ? match[1].trim() : 'Unspecified HACK';
+    }
   },
   {
     // XXX comments
-    pattern: /\/\/\s*XXX/,
+    pattern: /\/\/\s*XXX(?::|\s+)(.+)/i,
     type: 'xxx',
     severity: 'low',
-    description: 'XXX comment found - needs attention'
+    description: 'XXX comment found - needs attention',
+    extractDetails: (line: string) => {
+      const match = line.match(/\/\/\s*XXX(?::|\s+)(.+)/i);
+      return match ? match[1].trim() : 'Unspecified XXX';
+    }
   },
   {
     // Any() type usage - type safety issue
     pattern: /\b:\s*any\b/,
     type: 'type-safety',
     severity: 'low',
-    description: 'Using any type - reduces type safety'
+    description: 'Using any type - reduces type safety',
+    extractDetails: (line: string) => {
+      const match = line.match(/:(\s*any)\b/);
+      return match ? `Variable typed as 'any'` : 'Using any type';
+    }
   },
   {
     // @ts-ignore or @ts-expect-error - type errors being suppressed
     pattern: /\/\/\s*@ts-(ignore|expect-error)/,
     type: 'type-suppression',
     severity: 'low',
-    description: 'TypeScript error being suppressed'
+    description: 'TypeScript error being suppressed',
+    extractDetails: (line: string) => {
+      const match = line.match(/\/\/\s*@ts-(ignore|expect-error)/);
+      return match ? `@ts-${match[1]} used` : 'TypeScript error suppressed';
+    }
   },
   {
     // Empty catch block - error swallowing
     pattern: /catch\s*\([^)]*\)\s*{\s*}/,
     type: 'error-handling',
     severity: 'high',
-    description: 'Empty catch block - errors are being swallowed'
-  },
-  {
-    // TODO-FIXME: combined patterns in comments
-    pattern: /\/\/\s*(TODO|FIXME|HACK|XXX|BUG):/i,
-    type: 'marker',
-    severity: 'low',
-    description: 'Marker comment found'
+    description: 'Empty catch block - errors are being swallowed',
+    extractDetails: () => 'Empty catch block - errors silently swallowed'
   }
 ];
 
@@ -113,6 +161,9 @@ interface TechDebtIssue {
   type: string;
   severity: string;
   description: string;
+  details?: string;
+  dateAdded?: string;
+  age?: number;
 }
 
 function shouldExclude(filePath: string): boolean {
@@ -166,8 +217,29 @@ function detectTechDebtInFile(filePath: string): TechDebtIssue[] {
       }
 
       if (config.pattern.test(line)) {
-        // For severity 'high', always report
-        // For others, skip if it's just a minor issue in a test file
+        // Extract details if available
+        const details = config.extractDetails ? config.extractDetails(line) : undefined;
+        
+        // Extract date and calculate age if available
+        let dateAdded: string | undefined;
+        let age: number | undefined;
+        if (TRACK_AGE && config.extractDate) {
+          const dateStr = config.extractDate(line);
+          if (dateStr) {
+            dateAdded = dateStr;
+            // Try to calculate age in days
+            try {
+              const parsedDate = new Date(dateStr);
+              if (!isNaN(parsedDate.getTime())) {
+                const today = new Date();
+                age = Math.floor((today.getTime() - parsedDate.getTime()) / (1000 * 60 * 60 * 24));
+              }
+            } catch {
+              // Ignore date parsing errors
+            }
+          }
+        }
+        
         issues.push({
           file: relativePath,
           line: lineNum,
@@ -175,7 +247,10 @@ function detectTechDebtInFile(filePath: string): TechDebtIssue[] {
           code: line.trim().substring(0, 100),
           type: config.type,
           severity: config.severity,
-          description: config.description
+          description: config.description,
+          details,
+          dateAdded,
+          age
         });
       }
     }
@@ -243,11 +318,33 @@ function printResults(issues: TechDebtIssue[]): void {
         console.log(`  📁 ${file}`);
         for (const issue of fileIssues.slice(0, 3)) { // Limit to 3 per file
           console.log(`     Line ${issue.line}: ${issue.description}`);
+          if (issue.details) {
+            console.log(`     Details: ${issue.details}`);
+          }
+          if (issue.age !== undefined) {
+            const ageText = issue.age > 30 ? `⚠️ Aging (${issue.age} days old)` : `(${issue.age} days old)`;
+            console.log(`     Age: ${ageText}`);
+          }
           console.log(`     Code: ${issue.code}`);
         }
         if (fileIssues.length > 3) {
           console.log(`     ... and ${fileIssues.length - 3} more`);
         }
+      }
+      console.log();
+    }
+  }
+
+  // Show aging issues if track-age is enabled
+  if (TRACK_AGE) {
+    const agingIssues = issues.filter(i => i.age !== undefined && i.age! > 90);
+    if (agingIssues.length > 0) {
+      console.log('⚠️  Aging Issues (>90 days old):');
+      for (const issue of agingIssues.slice(0, 10)) {
+        console.log(`   - ${issue.file}:${issue.line} (${issue.age} days) - ${issue.description}`);
+      }
+      if (agingIssues.length > 10) {
+        console.log(`   ... and ${agingIssues.length - 10} more`);
       }
       console.log();
     }
@@ -283,7 +380,10 @@ function generateJSONReport(issues: TechDebtIssue[]): string {
       type: issue.type,
       severity: issue.severity,
       description: issue.description,
-      code: issue.code
+      code: issue.code,
+      details: issue.details,
+      dateAdded: issue.dateAdded,
+      age: issue.age
     }))
   };
   
@@ -291,6 +391,21 @@ function generateJSONReport(issues: TechDebtIssue[]): string {
 }
 
 function main(): void {
+  if (JSON_OUTPUT) {
+    // JSON-only mode for programmatic use
+    const files = getTypeScriptFiles(SRC_DIR);
+    const allIssues: TechDebtIssue[] = [];
+
+    for (const file of files) {
+      const issues = detectTechDebtInFile(file);
+      allIssues.push(...issues);
+    }
+
+    const jsonReport = generateJSONReport(allIssues);
+    console.log(jsonReport);
+    return;
+  }
+
   console.log('🔍 Starting technical debt detection...\n');
 
   const files = getTypeScriptFiles(SRC_DIR);

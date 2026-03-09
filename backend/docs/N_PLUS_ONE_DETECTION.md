@@ -185,3 +185,133 @@ for (const userId of userIds) {
 
 - [N+1 Problem Wikipedia](https://en.wikipedia.org/wiki/N%2B1_problem)
 - [Database Optimization Best Practices](https://www.example.com/db-optimization)
+
+---
+
+## Runtime N+1 Query Detection (New)
+
+This section describes the runtime detection capabilities added to the backend.
+
+### Overview
+
+The runtime N+1 query detection system provides real-time monitoring of database queries during execution. Unlike static analysis, this system can detect actual N+1 patterns at runtime and provide detailed metrics.
+
+### Configuration
+
+The system is configured in `src/config/index.ts`:
+
+```typescript
+nPlusOne: {
+  enabled: process.env.N_PLUS_ONE_ENABLED === 'true',
+  threshold: parseInt(process.env.N_PLUS_ONE_THRESHOLD || '3', 10),
+  logEnabled: process.env.N_PLUS_ONE_LOG_ENABLED === 'true',
+  metricsEnabled: process.env.N_PLUS_ONE_METRICS_ENABLED === 'true',
+  slowQueryThresholdMs: parseInt(process.env.N_PLUS_ONE_SLOW_QUERY_MS || '100', 10),
+  autoTrackStorage: process.env.N_PLUS_ONE_AUTO_TRACK_STORAGE !== 'false',
+}
+```
+
+**Environment Variables:**
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `N_PLUS_ONE_ENABLED` | Enable runtime N+1 detection | `true` |
+| `N_PLUS_ONE_THRESHOLD` | Number of queries to trigger N+1 warning | `3` |
+| `N_PLUS_ONE_LOG_ENABLED` | Enable logging of N+1 detections | `false` |
+| `N_PLUS_ONE_METRICS_ENABLED` | Expose metrics via Prometheus | `false` |
+| `N_PLUS_ONE_SLOW_QUERY_MS` | Slow query threshold in milliseconds | `100` |
+| `N_PLUS_ONE_AUTO_TRACK_STORAGE` | Auto-track Nakama storage operations | `true` |
+
+### Usage
+
+#### 1. Manual Query Tracking
+
+```typescript
+import { trackQuery, startOperationTracking, stopOperationTracking } from './modules/n_plus_one_detection';
+
+// Track a synchronous query
+const result = trackQuery('get_player_items', 'storage', () => {
+  return nk.storageRead(ctx, { collection: 'items' });
+});
+
+// Track an async query
+const asyncResult = await trackQueryAsync('fetch_leaderboard', 'leaderboard', async () => {
+  return await nk.leaderboardRecordsFetch(ctx, 'global', userIds);
+});
+```
+
+#### 2. Operation-Level Tracking
+
+```typescript
+import { startOperationTracking, stopOperationTracking, trackQuery } from './modules/n_plus_one_detection';
+
+function getPlayersWithInventory(playerIds: string[]): Player[] {
+  // Start tracking an operation
+  startOperationTracking('get_players_with_inventory');
+
+  const players = nk.usersGetId(playerIds);
+
+  // Each inventory query is tracked
+  for (const player of players) {
+    const inventory = trackQuery(
+      'get_players_with_inventory',
+      'storage',
+      () => nk.storageRead(ctx, { collection: 'inventory', key: player.id })
+    );
+    player.inventory = inventory;
+  }
+
+  // Stop tracking and get the result
+  const result = stopOperationTracking('get_players_with_inventory');
+  
+  if (result.nPlusOneDetected) {
+    logger.warn('N+1 detected in get_players_with_inventory', { 
+      queryCount: result.queryCount,
+      warnings: result.warnings 
+    });
+  }
+
+  return players;
+}
+```
+
+#### 3. Wrapper Functions
+
+```typescript
+import { withNPlusOneTracking, withNPlusOneTrackingAsync } from './modules/n_plus_one_detection';
+
+// Wrap any function with automatic tracking
+const result = withNPlusOneTracking('process_matches', () => {
+  // All queries inside will be tracked under 'process_matches'
+  for (const matchId of matchIds) {
+    trackQuery('process_matches', 'storage', () => ...);
+  }
+  return processed;
+});
+
+// Async version
+const asyncResult = await withNPlusOneTrackingAsync('async_operation', async () => {
+  // ...
+});
+```
+
+### Metrics
+
+When `N_PLUS_ONE_METRICS_ENABLED=true`, the following Prometheus metrics are exposed:
+
+- `armored_archer_n_plus_one_operations_total` - Total N+1 operations detected
+- `armored_archer_n_plus_one_queries_total` - Total queries tracked
+- `armored_archer_n_plus_one_query_duration_seconds` - Query duration histogram
+- `armored_archer_n_plus_one_active_operations` - Currently active tracked operations
+
+### RPC Endpoints
+
+- `armored_archer/n_plus_one_report` - Returns a JSON report of all tracked operations
+
+### Best Practices
+
+1. **Use operation tracking for complex functions**: Wrap functions that iterate over multiple entities
+2. **Set appropriate thresholds**: Default threshold of 3 works for most cases, adjust based on your use case
+3. **Enable in development**: Use `N_PLUS_ONE_LOG_ENABLED=true` during development to catch issues early
+4. **Monitor in staging**: Enable metrics in staging to identify patterns before production
+5. **Use the report endpoint**: Regularly check the N+1 report to identify problematic patterns
