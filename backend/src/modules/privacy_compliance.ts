@@ -51,17 +51,26 @@ const PII_PATTERNS: Record<PIIType, RegExp> = {
   [PIIType.PHONE]: /\b(\+?1[-.\s]?)?(\([0-9]{3}\)|[0-9]{3})[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b/g,
   [PIIType.SSN]: /\b\d{3}[-]?\d{2}[-]?\d{4}\b/g,
   [PIIType.CREDIT_CARD]: /\b(?:\d{4}[- ]?){3}\d{4}\b/g,
-  [PIIType.IP_ADDRESS]: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
+  [PIIType.IP_ADDRESS]:
+    /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
   [PIIType.DEVICE_ID]: /\b(?:device[_-]?id|uuid|udid)[=:\s]*["']?([a-f0-9-]{16,})["']?/gi,
-  [PIIType.USER_ID]: /\b(?:user[_-]?id|player[_-]?id|account[_-]?id)[=:\s]*["']?([a-zA-Z0-9_-]{8,})["']?/gi,
-  [PIIType.USERNAME]: /\b(?:username|user[_-]?name|display[_-]?name)[=:\s]*["']?([a-zA-Z0-9_-]{2,20})["']?/gi,
-  [PIIType.FULL_NAME]: /\b(?:full[_-]?name|real[_-]?name|legal[_-]?name)[=:\s]*["']?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)["']?/gi,
-  [PIIType.ADDRESS]: /\b(?:address|street|city|postal[_-]?code)[=:\s]*["']?([^"'\n]{10,100})["']?/gi,
-  [PIIType.DATE_OF_BIRTH]: /\b(?:dob|date[_-]?of[_-]?birth|birth[_-]?date)[=:\s]*["']?(\d{4}[-/]\d{2}[-/]\d{2})["']?/gi,
-  [PIIType.GEOLOCATION]: /\b(?:lat[itude]|lon[gitude]?|location|geo)[=:\s]*["']?(-?\d+\.?\d+)[,\s]+["']?(-?\d+\.?\d+)["']?/gi,
+  [PIIType.USER_ID]:
+    /\b(?:user[_-]?id|player[_-]?id|account[_-]?id)[=:\s]*["']?([a-zA-Z0-9_-]{8,})["']?/gi,
+  [PIIType.USERNAME]:
+    /\b(?:username|user[_-]?name|display[_-]?name)[=:\s]*["']?([a-zA-Z0-9_-]{2,20})["']?/gi,
+  [PIIType.FULL_NAME]:
+    /\b(?:full[_-]?name|real[_-]?name|legal[_-]?name)[=:\s]*["']?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)["']?/gi,
+  [PIIType.ADDRESS]:
+    /\b(?:address|street|city|postal[_-]?code)[=:\s]*["']?([^"'\n]{10,100})["']?/gi,
+  [PIIType.DATE_OF_BIRTH]:
+    /\b(?:dob|date[_-]?of[_-]?birth|birth[_-]?date)[=:\s]*["']?(\d{4}[-/]\d{2}[-/]\d{2})["']?/gi,
+  [PIIType.GEOLOCATION]:
+    /\b(?:lat[itude]|lon[gitude]?|location|geo)[=:\s]*["']?(-?\d+\.?\d+)[,\s]+["']?(-?\d+\.?\d+)["']?/gi,
   [PIIType.PASSWORD]: /\b(?:password|passwd|pwd|secret)[=:\s]*["']?([^\s"']{4,})["']?/gi,
-  [PIIType.AUTH_TOKEN]: /\b(?:token|access[_-]?token|refresh[_-]?token|auth[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*)["']?/gi,
-  [PIIType.SESSION_ID]: /\b(?:session[_-]?id|session[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]{16,})["']?/gi,
+  [PIIType.AUTH_TOKEN]:
+    /\b(?:token|access[_-]?token|refresh[_-]?token|auth[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*)["']?/gi,
+  [PIIType.SESSION_ID]:
+    /\b(?:session[_-]?id|session[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]{16,})["']?/gi,
 };
 
 /**
@@ -271,7 +280,10 @@ export function classifyData(data: unknown): DataClassification {
     if (level === SensitivityLevel.RESTRICTED) {
       result.level = SensitivityLevel.RESTRICTED;
       result.restrictedFields.push(key);
-    } else if (level === SensitivityLevel.CONFIDENTIAL && result.level !== SensitivityLevel.RESTRICTED) {
+    } else if (
+      level === SensitivityLevel.CONFIDENTIAL &&
+      result.level !== SensitivityLevel.RESTRICTED
+    ) {
       result.level = SensitivityLevel.CONFIDENTIAL;
       result.piiFields.push(key);
     } else if (level === SensitivityLevel.INTERNAL && result.level === SensitivityLevel.PUBLIC) {
@@ -293,10 +305,10 @@ export function classifyData(data: unknown): DataClassification {
  * Check privacy compliance for data
  *
  * @param data - The data to check
- * @param context - Optional context for the check
+ * @param _context - Optional context for the check (unused, reserved for future use)
  * @returns Privacy check result
  */
-export function checkPrivacyCompliance(data: unknown, context?: string): PrivacyCheckResult {
+export function checkPrivacyCompliance(data: unknown, _context?: string): PrivacyCheckResult {
   const issues: PrivacyIssue[] = [];
   const warnings: string[] = [];
   const detectedTypes = new Set<PIIType>();
@@ -318,35 +330,7 @@ export function checkPrivacyCompliance(data: unknown, context?: string): Privacy
   const entries = Object.entries(data as Record<string, unknown>);
 
   for (const [key, value] of entries) {
-    const level = classifyField(key);
-    detectedLevels.add(level);
-
-    // Check for PII in value
-    if (typeof value === 'string') {
-      const detections = scanForPII(value);
-      for (const detection of detections) {
-        detectedTypes.add(detection.type);
-      }
-    }
-
-    // Check for high-risk combinations
-    if (level === SensitivityLevel.RESTRICTED) {
-      issues.push({
-        severity: 'critical',
-        type: 'restricted_data',
-        description: `Restricted data field "${key}" requires special handling`,
-        fieldName: key,
-        suggestion: 'Ensure data is encrypted and access is controlled',
-      });
-    }
-
-    // Check for large data volumes
-    if (typeof value === 'object' && value !== null) {
-      const size = JSON.stringify(value).length;
-      if (size > 10000 && level === SensitivityLevel.RESTRICTED) {
-        warnings.push(`Large data volume in restricted field "${key}" - ensure logging is appropriate`);
-      }
-    }
+    processField({ key, value, detectedTypes, detectedLevels, issues, warnings });
   }
 
   // GDPR-specific checks
@@ -389,6 +373,57 @@ export function checkPrivacyCompliance(data: unknown, context?: string): Privacy
       sensitivityLevels: Array.from(detectedLevels),
     },
   };
+}
+
+/**
+ * Process a single field for privacy compliance
+ */
+function processField({
+  key,
+  value,
+  detectedTypes,
+  detectedLevels,
+  issues,
+  warnings,
+}: {
+  key: string;
+  value: unknown;
+  detectedTypes: Set<PIIType>;
+  detectedLevels: Set<SensitivityLevel>;
+  issues: PrivacyIssue[];
+  warnings: string[];
+}): void {
+  const level = classifyField(key);
+  detectedLevels.add(level);
+
+  // Check for PII in value
+  if (typeof value === 'string') {
+    const detections = scanForPII(value);
+    for (const detection of detections) {
+      detectedTypes.add(detection.type);
+    }
+  }
+
+  // Check for high-risk combinations
+  if (level === SensitivityLevel.RESTRICTED) {
+    issues.push({
+      severity: 'critical',
+      type: 'restricted_data',
+      description: `Restricted data field "${key}" requires special handling`,
+      fieldName: key,
+      suggestion: 'Ensure data is encrypted and access is controlled',
+    });
+  }
+
+  // Check for large data volumes
+  if (typeof value === 'object' && value !== null) {
+    const size = JSON.stringify(value).length;
+    if (size > 10000 && level === SensitivityLevel.RESTRICTED) {
+      warnings.push(
+        `Large data volume in restricted field "${key}" - ensure logging is appropriate`
+      );
+    }
+  }
 }
 
 /**
