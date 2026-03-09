@@ -71,7 +71,30 @@ npm run docs             # Generate TypeDoc documentation
 
 # Run Nakama migrations
 docker exec -it armored_archer_server /nakama/nakama migrate up
+
+# View database schema
+docker exec -it armored_archer_postgres psql -U postgres -d nakama -c '\dt'
+
+# Run schema migration tests
+cd backend
+npm run test:schema
 ```
+
+#### Database Schema Documentation
+- **Schema Reference**: [DATABASE_SCHEMA.md](backend/DATABASE_SCHEMA.md)
+- **Migration Files**: `backend/data/*.sql`
+
+#### Key Tables
+| Table | Description |
+|-------|-------------|
+| `player_stats` | Player level, experience, ability points, stats |
+| `catalog` | Master gear catalog with types, rarities, stats |
+| `inventory` | Player gear ownership |
+| `loadout` | 5 equipment slots (helm, armor, bow, arrow, amulet) |
+
+#### Database Enums
+- `gear_type`: helm, armor, bow, arrow, amulet
+- `gear_rarity`: common, rare, epic, legendary
 
 ## GDScript Code Style
 
@@ -243,6 +266,49 @@ History is stored in:
 - Copy `.env.example` to `.env` and configure before starting
 - Use `./start.sh` script to validate environment and start services
 - Environment-specific configs: `.env.development`, `.env.staging`
+
+### Local Services Management
+
+The project uses Docker Compose for local development services (Nakama game server, PostgreSQL).
+
+#### Start Services
+```bash
+make services-start
+# Or use backend-start
+make backend-start
+```
+
+#### Stop Services
+```bash
+make services-stop
+# Or use backend-stop
+make backend-stop
+```
+
+#### Check Status
+```bash
+make services-status
+```
+
+#### Health Check
+```bash
+make services-health
+```
+
+#### View Logs
+```bash
+make services-logs
+```
+
+#### Validate Prerequisites
+```bash
+make services-validate
+```
+
+#### Clean (Stop + Remove Volumes)
+```bash
+make services-clean
+```
 
 ### Client-Server Communication
 - Client sends actions (e.g., `{"action": "shoot", "angle": 0.78}`)
