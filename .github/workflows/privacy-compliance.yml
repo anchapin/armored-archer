@@ -51,7 +51,7 @@ jobs:
         with:
           category: "/tool:PIIScan"
           upload: always
-         sarif_file: .agent_tmp/pii-scan.sarif
+          sarif_file: .agent_tmp/pii-scan.sarif
 
   privacy-checks:
     name: Privacy Compliance Checks
