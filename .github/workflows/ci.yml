@@ -172,6 +172,27 @@ jobs:
         working-directory: ./backend
         run: npm run detect-n-plus-one:ci
 
+  duplicate-code-detection:
+    name: Duplicate Code Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run duplicate code detection
+        working-directory: ./backend
+        run: npm run detect-duplicate:ci
+
   dependency-check:
     name: Unused Dependency Detection
     runs-on: ubuntu-latest
@@ -408,4 +429,34 @@ jobs:
         with:
           name: schema-test-results
           path: backend/test-results/
+          retention-days: 7
+
+  agents-md-validation:
+    name: AGENTS.md Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Validate AGENTS.md
+        working-directory: ./backend
+        run: npm run validate:agents-md:ci
+      
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agents-md-validation-report
+          path: |
+            backend/agents-md-validation-report.json
           retention-days: 7

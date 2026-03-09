@@ -1,0 +1,18 @@
+{
+  "threshold": 3,
+  "min-lines": 5,
+  "min-tokens": 30,
+  "reporters": ["console", "json"],
+  "output": "./.jscpd-report",
+  "ignore": [
+    "**/node_modules/**",
+    "**/build/**",
+    "**/dist/**",
+    "**/.git/**",
+    "**/coverage/**",
+    "**/__mocks__/**",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "extensions": ["ts", "tsx", "js", "jsx"]
+}
