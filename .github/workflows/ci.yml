@@ -357,3 +357,106 @@ jobs:
 
       - name: Run gdlint
         run: gdlint .
+
+  tech-debt-tracking:
+    name: Tech Debt Tracking
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Generate Tech Debt Report
+        working-directory: ./backend
+        run: npm run tech-debt:report
+      
+      - name: Check for critical tech debt
+        working-directory: ./backend
+        run: npm run tech-debt:report:ci
+      
+      - name: Upload Tech Debt Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tech-debt-report
+          path: |
+            backend/tech-debt-report.json
+          retention-days: 30
+
+  schema-validation:
+    name: Database Schema Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Start PostgreSQL
+        uses: harmon758/postgresql-action@v1
+        with:
+          postgresql version: '15'
+          postgresql db: nakama
+          postgresql user: postgres
+          postgresql password: localdbpassword
+      
+      - name: Wait for PostgreSQL to be ready
+        run: sleep 10
+      
+      - name: Install Nakama
+        run: |
+          # Download and extract Nakama server
+          curl -sL https://github.com/heroiclabs/nakama/releases/download/v3.23.0/nakama-v3.23.0-linux-amd64.tar.gz -o nakama.tar.gz
+          tar xzf nakama.tar.gz
+          chmod +x nakama
+      
+      - name: Configure Nakama
+        run: |
+          # Create nakama config with database connection
+          cat > nakama.yml << EOF
+          database:
+            address: "postgres:localdbpassword@localhost:5432/nakama?sslmode=disable"
+          EOF
+      
+      - name: Run migrations
+        working-directory: ./backend/data
+        run: |
+          for migration in $(ls -1 *.sql | sort); do
+            echo "Running migration: $migration"
+            PGPASSWORD=localdbpassword psql -h localhost -U postgres -d nakama -f "$migration"
+          done
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run schema validation tests
+        working-directory: ./backend
+        env:
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5432
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: localdbpassword
+          TEST_DB_NAME: nakama
+        run: npm run test:schema
+      
+      - name: Upload schema test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-test-results
+          path: backend/test-results/
+          retention-days: 7
