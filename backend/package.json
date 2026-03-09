@@ -78,7 +78,7 @@
     "@opentelemetry/exporter-zipkin": "^1.28.0",
     "@opentelemetry/resources": "2.6.0",
     "@opentelemetry/sdk-node": "^0.57.0",
-    "@opentelemetry/semantic-conventions": "1.27.0",
+    "@opentelemetry/semantic-conventions": "1.40.0",
     "@sentry/node": "^10.40.0",
     "js-yaml": "^4.1.1",
     "lru-cache": "^11.2.6",
