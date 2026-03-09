@@ -5,6 +5,7 @@
 
 import { config } from '../config';
 import { Runtime } from '../types/nakama';
+import { withCircuitBreaker, getAllCircuitInfo } from '../utils/circuitBreaker';
 import {
   registerRpcWithMetrics,
   recordAnalyticsEvent,
@@ -13,7 +14,6 @@ import {
 } from './metrics';
 import { isPII } from './privacy_compliance';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { withCircuitBreaker, getAllCircuitInfo } from '../utils/circuitBreaker';
 
 // Analytics event types for type safety
 export enum AnalyticsEventType {
