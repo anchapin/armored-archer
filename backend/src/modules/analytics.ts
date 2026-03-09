@@ -12,6 +12,7 @@ import {
   recordPurchase,
 } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { isPII } from './privacy_compliance';
 
 // Analytics event types for type safety
 export enum AnalyticsEventType {
@@ -391,7 +392,7 @@ export function rpcTrackEvent(
   _nk: Runtime.Nakama,
   payload: string
 ): string {
-  logger.info('Analytics event track requested by user: %s', ctx.userId);
+  logger.info('Analytics event track requested');
 
   const validation = validateEventPayload(payload);
   if (!validation.success) {
@@ -403,6 +404,15 @@ export function rpcTrackEvent(
 
   const { event_name, properties, platform, session_id } = validation.data;
 
+  // Check for PII in properties before processing
+  if (properties) {
+    for (const [key, value] of Object.entries(properties)) {
+      if (isPII(value)) {
+        logger.warn(`Potential PII detected in event ${event_name}: ${key}`);
+      }
+    }
+  }
+
   try {
     const event = processEvent(
       ctx.userId,
@@ -412,7 +422,7 @@ export function rpcTrackEvent(
       session_id || ''
     );
 
-    logger.info(`Analytics event tracked: ${event_name} for user ${ctx.userId}`);
+    logger.info(`Analytics event tracked: ${event_name}`);
 
     return JSON.stringify({
       success: true,
@@ -553,7 +563,7 @@ export function rpcTrackRevenue(
   _nk: Runtime.Nakama,
   payload: string
 ): string {
-  logger.info('Revenue event tracked by user: %s', ctx.userId);
+  logger.info('Revenue event tracked');
 
   const validation = validatePayload(ZodSchemas.track_revenue, payload, 'track_revenue');
   if (!validation.success) {
@@ -594,7 +604,7 @@ export function rpcTrackRevenue(
     eventName: 'revenue',
   });
 
-  logger.info(`Revenue tracked: ${amount} ${currency} for user ${ctx.userId}`);
+  logger.info(`Revenue tracked: ${amount} ${currency}`);
 
   return JSON.stringify({
     success: true,

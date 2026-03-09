@@ -239,6 +239,50 @@ export const ZodSchemas = {
     health_check_passes: z.number().int().min(0).optional(),
     health_check_fails: z.number().int().min(0).optional(),
   }),
+
+  // Privacy compliance schemas
+  consent: z.object({
+    analytics_consent: z.boolean(),
+    marketing_consent: z.boolean().optional(),
+    timestamp: z.number().int().positive(),
+    version: z.string().max(20).optional(),
+  }),
+
+  data_deletion: z.object({
+    user_id: z.string().min(1).max(100),
+    reason: z.string().max(500).optional(),
+  }),
+
+  data_export: z.object({
+    user_id: z.string().min(1).max(100),
+    include_game_data: z.boolean().optional(),
+    include_purchase_history: z.boolean().optional(),
+  }),
+
+  privacy_settings_update: z.object({
+    analytics_enabled: z.boolean().optional(),
+    marketing_enabled: z.boolean().optional(),
+    data_retention_days: z.number().int().min(1).max(730).optional(),
+  }),
+
+  privacy_check: z.object({
+    data: z.record(z.string(), z.unknown()),
+    operation: z.enum(['store', 'persist', 'log', 'transmit', 'send', 'share', 'export']),
+    context: z.string().optional(),
+  }),
+
+  pii_scan: z.object({
+    text: z.string().min(1).max(100000),
+    types: z.array(z.enum([
+      'email', 'phone', 'ssn', 'credit_card', 'ip_address', 'device_id',
+      'user_id', 'username', 'full_name', 'address', 'date_of_birth',
+      'geolocation', 'password', 'auth_token', 'session_id'
+    ])).optional(),
+  }),
+
+  classify_data: z.object({
+    data: z.record(z.string(), z.unknown()),
+  }),
 } as const;
 
 export type SchemaName = keyof typeof ZodSchemas;

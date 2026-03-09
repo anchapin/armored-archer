@@ -10,6 +10,7 @@ import { getCacheManager } from '../utils/cache';
 import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { isPII } from './privacy_compliance';
 
 /**
  * Maximum gem balance allowed to prevent overflow exploits.
@@ -482,7 +483,7 @@ export async function rpcValidatePurchase(
   nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
-  logger.info('Validating purchase for user: %s', ctx.userId);
+  logger.info('Validating purchase');
 
   const validation = validatePayload(ZodSchemas.validate_purchase, payload, 'validate_purchase');
   if (!validation.success) {
@@ -501,10 +502,15 @@ export async function rpcValidatePurchase(
 
   const request = validation.data;
 
+  // Check for PII in receipt data (privacy compliance)
+  if (isPII(request.transaction_receipt)) {
+    logger.warn('Potential PII detected in transaction receipt');
+  }
+
   // Check for duplicate receipt to prevent replay attacks
   const receiptHash = hashReceipt(request.transaction_receipt);
   if (isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
-    logger.warn('Duplicate receipt detected for user: %s', ctx.userId);
+    logger.warn('Duplicate receipt detected');
     logAudit(
       nk,
       ctx.userId,
