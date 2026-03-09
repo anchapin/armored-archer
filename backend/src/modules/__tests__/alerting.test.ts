@@ -50,6 +50,11 @@ jest.mock('../../config', () => ({
         },
       },
     },
+    logger: {
+      scrubLogs: false,
+      additionalSensitiveFields: [],
+      maxScrubDepth: 10,
+    },
   },
 }));
 

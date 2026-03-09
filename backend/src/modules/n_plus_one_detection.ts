@@ -600,11 +600,7 @@ export function getFormattedNPlusOneReport(): string {
  */
 export function initializeNPlusOneDetection(
   logger?: Runtime.Logger,
-<<<<<<< HEAD
-  _appConfig?: { metrics?: { namespace?: string; prefix?: string; prometheusPort?: number } }
-=======
   appConfig?: { metrics?: { namespace?: string; prefix?: string; prometheusPort?: number } }
->>>>>>> b269644 (feat: n_plus_one_detection implementation (#330))
 ): void {
   if (!nPlusOneConfig.enabled) {
     if (logger) {
@@ -665,14 +661,10 @@ export type RpcHandler = (
 /**
  * Wrap an RPC handler with N+1 query tracking
  */
-<<<<<<< HEAD
-export function wrapRpcWithNPlusOneTracking(rpcName: string, handler: RpcHandler): RpcHandler {
-=======
 export function wrapRpcWithNPlusOneTracking(
   rpcName: string,
   handler: RpcHandler
 ): RpcHandler {
->>>>>>> b269644 (feat: n_plus_one_detection implementation (#330))
   return async function (
     ctx: Runtime.Context,
     logger: Runtime.Logger,
@@ -714,28 +706,17 @@ export function registerRpcWithNPlusOneTracking(
 /**
  * Wrap storageRead with N+1 tracking
  */
-<<<<<<< HEAD
-export function wrapStorageRead(
-=======
 export function wrapStorageRead<T>(
->>>>>>> b269644 (feat: n_plus_one_detection implementation (#330))
   nk: Runtime.Nakama,
   objects: Runtime.StorageRead[],
   operationName: string = 'storage_read'
 ): Runtime.StorageObject[] {
-<<<<<<< HEAD
-  return trackQuery(operationName, 'storage', () => nk.storageRead(objects), {
-    collection: objects[0]?.collection,
-    key: objects[0]?.key,
-  });
-=======
   return trackQuery(
     operationName,
     'storage',
     () => nk.storageRead(objects),
     { collection: objects[0]?.collection, key: objects[0]?.key }
   );
->>>>>>> b269644 (feat: n_plus_one_detection implementation (#330))
 }
 
 /**
@@ -746,19 +727,12 @@ export function wrapStorageWrite(
   objects: Runtime.StorageWrite[],
   operationName: string = 'storage_write'
 ): void {
-<<<<<<< HEAD
-  trackQuery(operationName, 'storage', () => nk.storageWrite(objects), {
-    collection: objects[0]?.collection,
-    key: objects[0]?.key,
-  });
-=======
   trackQuery(
     operationName,
     'storage',
     () => nk.storageWrite(objects),
     { collection: objects[0]?.collection, key: objects[0]?.key }
   );
->>>>>>> b269644 (feat: n_plus_one_detection implementation (#330))
 }
 
 /**
