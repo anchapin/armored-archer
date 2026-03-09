@@ -62,7 +62,7 @@ func _update_gem_display() -> void:
 	if gem_manager:
 		gem_label.text = str(gem_manager.get_gem_balance())
 
-func _on_currency_updated(gems: int, gold: int) -> void:
+func _on_currency_updated( _gems: int, _gold: int) -> void:
 	_update_gem_display()
 	_update_preview_buttons()
 

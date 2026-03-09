@@ -42,6 +42,6 @@ func _on_boss_health_changed(current: int, max_health: int) -> void:
 	health_bar.value = health_percent
 	health_label.text = "%d / %d" % [current, max_health]
 
-func _on_boss_defeated(boss_name: String) -> void:
+func _on_boss_defeated( _boss_name: String) -> void:
 	await get_tree().create_timer(1.0).timeout
 	hide()

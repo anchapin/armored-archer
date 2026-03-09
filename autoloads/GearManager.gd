@@ -144,7 +144,7 @@ func unlock_modifier_pool(modifier_id: String) -> void:
 	if error != OK:
 		push_error("Failed to unlock modifier pool request")
 
-func _on_http_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+func _on_http_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	"""Handles HTTP responses for gear-related requests."""
 	var response_text: String = body.get_string_from_utf8()
 
@@ -166,7 +166,7 @@ func _on_http_request_completed(result: int, response_code: int, headers: Packed
 	else:
 		push_error("Gear system request failed with code: %d" % response_code)
 
-func _process_payload(payload: Dictionary, response_data: Dictionary) -> void:
+func _process_payload(payload: Dictionary, _response_data: Dictionary) -> void:
 	"""Processes server response payload and emits appropriate signals."""
 	if payload.has("gear"):
 		var gear_data: Dictionary = payload.gear

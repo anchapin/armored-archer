@@ -189,20 +189,20 @@ func _on_compare_button_pressed() -> void:
 func _on_back_button_pressed() -> void:
 	queue_free()
 
-func _on_inventory_updated(inventory: Dictionary) -> void:
+func _on_inventory_updated( _inventory: Dictionary) -> void:
 	_refresh_gear_list()
 
-func _on_gear_equipped(slot: String, gear_id: String) -> void:
-	_refresh_gear_list()
-	_display_gear_details(current_gear)
-	_update_button_states()
-
-func _on_gear_unequipped(slot: String) -> void:
+func _on_gear_equipped(_slot: String, _gear_id: String) -> void:
 	_refresh_gear_list()
 	_display_gear_details(current_gear)
 	_update_button_states()
 
-func _on_filter_toggled(button_pressed: bool) -> void:
+func _on_gear_unequipped( _slot: String) -> void:
+	_refresh_gear_list()
+	_display_gear_details(current_gear)
+	_update_button_states()
+
+func _on_filter_toggled( ) -> void:
 	_refresh_gear_list()
 
 func show_comparison(gear1: Dictionary, gear2: Dictionary) -> void:
