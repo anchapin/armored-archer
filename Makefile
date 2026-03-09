@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check bundle-size-check
 
 # Default target
 all: help
@@ -264,3 +264,8 @@ services-clean:
 tech-debt-check:
 	@echo "$(BLUE)Running tech debt detection...$(RESET)"
 	cd $(BACKEND_DIR) && npm run tech-debt:report
+
+## Bundle Size Tracking
+bundle-size-check:
+	@echo "$(BLUE)Running bundle size analysis...$(RESET)"
+	cd $(BACKEND_DIR) && npm run bundle:check

@@ -560,3 +560,50 @@ Tech debt tracking is integrated into the CI pipeline (`.github/workflows/ci.yml
 - Generates JSON report with all detected issues
 - Fails on critical/high severity issues in CI mode
 - Uploads reports as artifacts for analysis
+
+## Bundle Size Tracking
+
+The project includes a comprehensive bundle size tracking system to monitor and control the size of the backend bundle.
+
+### Running Bundle Analysis
+
+```bash
+# Using Make
+make bundle-size-check
+
+# Using npm directly
+cd backend
+npm run bundle:analyze
+
+# CI mode (enforces limits and fails on errors)
+npm run bundle:analyze:ci
+
+# JSON output for integration
+node scripts/bundle-analysis.js --json
+```
+
+### Configuration
+
+Bundle size limits are configured in `backend/bundle-size-limits.json`:
+- `maxBundleSize`: Maximum allowed bundle size (bytes)
+- `maxDependencySize`: Maximum total dependency size (bytes)
+- `heavyDependencyDetection`: Patterns to detect and flag heavy dependencies
+
+### Heavy Dependency Detection
+
+The system detects heavy dependencies and provides recommendations:
+- **@sentry/***: Use selective imports or @sentry/lite
+- **winston**: Consider pino or abstract logging
+- **prom-client**: Verify needed metrics only
+- **zod**: Consider lighter alternatives
+- **@heroiclabs/***: Verify only needed modules are imported
+- **pg**: Use pg-query-stream for bulk operations
+- **opentelemetry**: Use selective instrumentations
+
+### CI/CD Integration
+
+Bundle size tracking is integrated into CI (`.github/workflows/ci.yml`):
+- Runs bundle analysis on every push
+- Tracks bundle size over time
+- Enforces limits in CI mode
+- Uploads reports as artifacts
