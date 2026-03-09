@@ -9,15 +9,6 @@ import { getCacheManager } from '../utils/cache';
 import { submitPlayerReport, getReportsForUser } from './anti_cheat';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { getStructuredLogger } from '../index';
-import { getCacheManager } from '../utils/cache';
-
-/**
- * Helper to get structured logger for this module
- */
-function getLogger() {
-  return getStructuredLogger();
-}
 
 /**
  * Helper to get structured logger for this module
