@@ -4,10 +4,16 @@ import { Runtime } from '../types/nakama';
 import * as rateLimiter from '../utils/rateLimiter';
 import { getDeploymentRegistry } from './deployment_observability';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { initializeNPlusOneDetectionWithMetrics, getNPlusOneReport } from './n_plus_one_detection';
 
 const register = new Registry();
 
 collectDefaultMetrics({ register });
+
+// Initialize N+1 detection with metrics if enabled
+if (config.nPlusOne && config.nPlusOne.enabled && config.nPlusOne.metricsEnabled) {
+  initializeNPlusOneDetectionWithMetrics(register);
+}
 
 // ==========================================
 // Core RPC Metrics
@@ -248,6 +254,20 @@ rateLimiter.setMetricsCallbacks(recordRateLimitViolation, updateActiveUsersCount
 
 export function registerRpcMetrics(initializer: Runtime.Initializer): void {
   initializer.registerRpc('armored_archer/metrics', rpcGetMetrics);
+  initializer.registerRpc('armored_archer/n_plus_one_report', rpcGetNPlusOneReport);
+}
+
+// RPC handler for N+1 detection report
+async function rpcGetNPlusOneReport(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  payload: string
+): Promise<string> {
+  logger.info('N+1 report endpoint called by user: %s', ctx.userId);
+
+  const report = getNPlusOneReport();
+  return JSON.stringify(report, null, 2);
 }
 
 async function rpcGetMetrics(
