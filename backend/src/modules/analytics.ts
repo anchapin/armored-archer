@@ -11,8 +11,8 @@ import {
   recordRevenue as recordMetricsRevenue,
   recordPurchase,
 } from './metrics';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { isPII } from './privacy_compliance';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 // Analytics event types for type safety
 export enum AnalyticsEventType {

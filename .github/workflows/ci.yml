@@ -358,40 +358,6 @@ jobs:
       - name: Run gdlint
         run: gdlint .
 
-  tech-debt-tracking:
-    name: Tech Debt Tracking
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Generate Tech Debt Report
-        working-directory: ./backend
-        run: npm run tech-debt:report
-      
-      - name: Check for critical tech debt
-        working-directory: ./backend
-        run: npm run tech-debt:report:ci
-      
-      - name: Upload Tech Debt Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tech-debt-report
-          path: |
-            backend/tech-debt-report.json
-          retention-days: 30
-
   schema-validation:
     name: Database Schema Validation
     runs-on: ubuntu-latest

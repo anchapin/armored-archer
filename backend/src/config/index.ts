@@ -593,57 +593,96 @@ const config: AppConfig = {
       : undefined,
 };
 
-export function validateRequiredConfig(): void {
-  const errors: string[] = [];
+/**
+ * Validates that a config value is not a default/empty value
+ */
+function isInvalidConfigValue(value: unknown, productionOnly = false): boolean {
+  if (!value) return true;
+  const strValue = String(value);
+  const isDefault =
+    strValue === 'defaultkey' ||
+    strValue === 'default-token-key' ||
+    strValue === 'default-refresh-key';
+  if (isDefault && productionOnly) return true;
+  return false;
+}
 
-  if (!config.server.key || config.server.key === 'defaultkey') {
-    if (config.environment === 'production') {
-      errors.push('NAKAMA_SERVER_KEY must be set in production');
+/**
+ * Gets a nested config value by path
+ */
+function getNestedConfigValue(path: string): unknown {
+  return path.split('.').reduce((obj: unknown, k) => {
+    if (typeof obj !== 'object' || obj === null) return undefined;
+    return (obj as Record<string, unknown>)[k];
+  }, config);
+}
+
+/**
+ * Validates a port number is in valid range
+ */
+function isValidPort(port: number): boolean {
+  return port >= 1 && port <= 65535;
+}
+
+/**
+ * Validates required session keys in production
+ */
+function validateSessionKeys(): string[] {
+  const errors: string[] = [];
+  const requiredKeys = [
+    'session.encryptionKey',
+    'session.refreshEncryptionKey',
+    'session.tokenEncryptionKey',
+  ];
+
+  const isProduction = config.environment === 'production';
+
+  for (const key of requiredKeys) {
+    const value = getNestedConfigValue(key);
+    if (isInvalidConfigValue(value, isProduction)) {
+      errors.push(`${key} must be set in production`);
     }
   }
 
+  return errors;
+}
+
+export function validateRequiredConfig(): void {
+  // Validate server key in production
+  if (config.environment === 'production' && isInvalidConfigValue(config.server.key, true)) {
+    throw new Error('NAKAMA_SERVER_KEY must be set in production');
+  }
+
+  // Validate required config values
   if (!config.revenuecat.publicKey) {
-    errors.push('REVENUECAT_PUBLIC_KEY is required');
+    throw new Error('REVENUECAT_PUBLIC_KEY is required');
   }
 
   if (!config.database.address) {
-    errors.push('DATABASE_ADDRESS or NAKAMA_DATABASE_ADDRESS is required');
+    throw new Error('DATABASE_ADDRESS or NAKAMA_DATABASE_ADDRESS is required');
   }
 
-  const requiredKeys: { key: string; path: string }[] = [
-    { key: 'session.encryptionKey', path: 'session.encryptionKey' },
-    { key: 'session.refreshEncryptionKey', path: 'session.refreshEncryptionKey' },
-    { key: 'session.tokenEncryptionKey', path: 'session.tokenEncryptionKey' },
-  ];
-
-  for (const { key, path: configPath } of requiredKeys) {
-    const value = key.split('.').reduce((obj: unknown, k) => {
-      if (typeof obj !== 'object' || obj === null) return undefined;
-      return (obj as Record<string, unknown>)[k];
-    }, config);
-    if (!value || value === 'default-token-key' || value === 'default-refresh-key') {
-      if (config.environment === 'production') {
-        errors.push(`${configPath} must be set in production`);
-      }
-    }
-  }
-
-  if (config.server.port < 1 || config.server.port > 65535) {
-    errors.push(`Invalid server port: ${config.server.port}. Must be between 1 and 65535`);
-  }
-
-  if (config.server.consolePort < 1 || config.server.consolePort > 65535) {
-    errors.push(`Invalid console port: ${config.server.consolePort}. Must be between 1 and 65535`);
-  }
-
-  if (config.database.port < 1 || config.database.port > 65535) {
-    errors.push(`Invalid database port: ${config.database.port}. Must be between 1 and 65535`);
-  }
-
-  if (errors.length > 0) {
+  // Validate session keys in production
+  const sessionErrors = validateSessionKeys();
+  if (sessionErrors.length > 0) {
     throw new Error(
-      `Configuration validation failed:\n${errors.map((e) => `  - ${e}`).join('\n')}`
+      `Configuration validation failed:\n${sessionErrors.map((e) => `  - ${e}`).join('\n')}`
     );
+  }
+
+  // Validate port numbers
+  if (!isValidPort(config.server.port)) {
+    throw new Error(`Invalid server port: ${config.server.port}. Must be between 1 and 65535`);
+  }
+
+  if (!isValidPort(config.server.consolePort)) {
+    throw new Error(
+      `Invalid console port: ${config.server.consolePort}. Must be between 1 and 65535`
+    );
+  }
+
+  if (!isValidPort(config.database.port)) {
+    throw new Error(`Invalid database port: ${config.database.port}. Must be between 1 and 65535`);
   }
 }
 
