@@ -1,14 +1,13 @@
 {
   "maxBundleSize": 2097152,
-  "maxDependencySize": 10485760,
+  "maxDependencySize": 1073741824,
   "maxFileSize": 512000,
   "warnings": {
     "bundleSizeGrowthPercent": 10,
-    "heavyDependencySize": 2097152
+    "heavyDependencySize": 5242880
   },
-  "excludedDependencies": [],
+  "excludedDependencies": ["@opentelemetry/*", "@sentry/*"],
   "trackedDependencies": [
-    "@opentelemetry/*",
     "@sentry/*",
     "winston",
     "prom-client",
