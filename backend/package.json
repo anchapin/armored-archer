@@ -75,7 +75,7 @@
     "@opentelemetry/auto-instrumentations-node": "^0.71.0",
     "@opentelemetry/exporter-jaeger": "^2.6.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.57.0",
-    "@opentelemetry/exporter-zipkin": "^1.28.0",
+    "@opentelemetry/exporter-zipkin": "^2.6.0",
     "@opentelemetry/resources": "1.27.0",
     "@opentelemetry/sdk-node": "^0.57.0",
     "@opentelemetry/semantic-conventions": "1.27.0",
