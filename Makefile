@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean
 
 # Default target
 all: help
@@ -48,6 +48,16 @@ help:
 	@echo "  make backend-migrate    Run database migrations"
 	@echo "  make backend-migrate-new Create new migration file"
 	@echo "  make backend-db-schema   Display current database schema"
+	@echo ""
+	@echo "$(GREEN)Local Services$(RESET)"
+	@echo "  make services-start     Start Nakama + PostgreSQL containers"
+	@echo "  make services-stop      Stop all service containers"
+	@echo "  make services-restart  Restart all services"
+	@echo "  make services-status    Show service status"
+	@echo "  make services-health   Check service health"
+	@echo "  make services-logs     View service logs"
+	@echo "  make services-validate Validate prerequisites"
+	@echo "  make services-clean    Stop and remove services + volumes"
 	@echo ""
 	@echo "$(GREEN)Development$(RESET)"
 	@echo "  make dev                Start development (backend with auto-reload)"
@@ -186,6 +196,63 @@ rollback:
 	@echo "  - full: Rollback all components (database, nakama, godot)"
 	@echo "  - database: Rollback database migrations only"
 	@echo "  - nakama: Rollback Nakama server only"
-=======
->>>>>>> theirs
->>>>>>> main
+
+## Local Services Management
+services-start:
+	@echo "$(BLUE)Starting local services (Nakama + PostgreSQL)...$(RESET)"
+	cd $(BACKEND_DIR) && docker-compose up -d
+	@echo "$(GREEN)✓ Services started$(RESET)"
+	@echo "  - Nakama API:     http://localhost:7350"
+	@echo "  - Nakama Console: http://localhost:7351 (admin:password)"
+	@echo "  - PostgreSQL:    localhost:5432"
+	@echo ""
+	@echo "Run 'make services-health' to verify services are healthy."
+
+services-stop:
+	@echo "$(BLUE)Stopping local services...$(RESET)"
+	cd $(BACKEND_DIR) && docker-compose down
+	@echo "$(GREEN)✓ Services stopped$(RESET)"
+
+services-restart:
+	@echo "$(BLUE)Restarting local services...$(RESET)"
+	cd $(BACKEND_DIR) && docker-compose restart
+	@echo "$(GREEN)✓ Services restarted$(RESET)"
+
+services-status:
+	@echo "$(BLUE)Local Services Status:$(RESET)"
+	cd $(BACKEND_DIR) && docker-compose ps
+
+services-health:
+	@echo "$(BLUE)Running health checks...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Container Status:$(RESET)"
+	@docker ps --filter "name=armored" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null || true
+	@echo ""
+	@echo -n "$(BLUE)Checking Nakama API: $(RESET)"
+	@curl -s --max-time 5 http://localhost:7350/ > /dev/null 2>&1 && echo "$(GREEN)Healthy$(RESET)" || echo "$(YELLOW)Not responding$(RESET)"
+	@echo -n "$(BLUE)Checking PostgreSQL: $(RESET)"
+	@docker exec armored_archer_db pg_isready -U postgres > /dev/null 2>&1 && echo "$(GREEN)Healthy$(RESET)" || (docker exec $$(docker ps --filter "name=postgres" --format "{{.Names}}" | head -1) pg_isready -U postgres > /dev/null 2>&1 && echo "$(GREEN)Healthy$(RESET)" || echo "$(YELLOW)Not responding$(RESET)")
+
+services-logs:
+	@echo "$(BLUE)Viewing service logs (Ctrl+C to exit)...$(RESET)"
+	cd $(BACKEND_DIR) && docker-compose logs -f
+
+services-validate:
+	@echo "$(BLUE)Validating local services setup...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Checking prerequisites...$(RESET)"
+	@command -v docker >/dev/null 2>&1 && echo "$(GREEN)✓ Docker installed$(RESET)" || echo "$(YELLOW)✗ Docker not found$(RESET)"
+	@command -v docker-compose >/dev/null 2>&1 && echo "$(GREEN)✓ Docker Compose installed$(RESET)" || echo "$(YELLOW)✗ Docker Compose not found$(RESET)"
+	@docker ps >/dev/null 2>&1 && echo "$(GREEN)✓ Docker daemon running$(RESET)" || echo "$(YELLOW)✗ Docker daemon not running$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Checking environment file...$(RESET)"
+	@if [ -f $(BACKEND_DIR)/.env ]; then \
+		echo "$(GREEN)✓ .env file exists$(RESET)"; \
+	else \
+		echo "$(YELLOW)✗ .env file not found - run: cp $(BACKEND_DIR)/.env.example $(BACKEND_DIR)/.env$(RESET)"; \
+	fi
+
+services-clean:
+	@echo "$(BLUE)Stopping and removing local services...$(RESET)"
+	cd $(BACKEND_DIR) && docker-compose down -v
+	@echo "$(GREEN)✓ Services and volumes removed$(RESET)"

@@ -18,8 +18,11 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const CONFIG_FILE = path.join(__dirname, 'bundle-size-limits.json');
-const SIZE_HISTORY_FILE = path.join(__dirname, '.bundle-size-history.json');
+// Get project root (backend folder - go up one level from scripts)
+const PROJECT_ROOT = path.resolve(__dirname, '..');
+
+const CONFIG_FILE = path.join(PROJECT_ROOT, 'bundle-size-limits.json');
+const SIZE_HISTORY_FILE = path.join(PROJECT_ROOT, '.bundle-size-history.json');
 const CI_MODE = process.argv.includes('--ci-mode');
 const VERBOSE = process.argv.includes('--verbose');
 
@@ -62,7 +65,7 @@ function loadConfig() {
  * Get package.json dependencies
  */
 function getDependencies() {
-  const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
+  const packageJson = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, 'package.json'), 'utf-8'));
   return {
     dependencies: packageJson.dependencies || {},
     devDependencies: packageJson.devDependencies || {},
@@ -76,7 +79,7 @@ function calculateDependencySize() {
   try {
     // Use npm ls to get dependency tree with size info
     const output = execSync('npm ls --all --parseable', { 
-      cwd: __dirname, 
+      cwd: PROJECT_ROOT, 
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'ignore']
     });
@@ -113,8 +116,9 @@ function calculateDependencySize() {
 /**
  * Analyze heavy dependencies
  */
-function analyzeHeavyDependencies(deps, packageSizes) {
+function analyzeHeavyDependencies(deps, packageSizes, config) {
   const issues = [];
+  const heavyDependencyThreshold = config?.warnings?.heavyDependencySize || DEFAULT_LIMITS.warnings.heavyDependencySize;
   
   for (const [name, size] of Object.entries(packageSizes)) {
     // Check against heavy dependency patterns
@@ -128,7 +132,7 @@ function analyzeHeavyDependencies(deps, packageSizes) {
           sizeMB: parseFloat(sizeMB),
           reason,
           suggested,
-          severity: size > DEFAULT_LIMITS.warnings.heavyDependencySize ? 'error' : 'warning',
+          severity: size > heavyDependencyThreshold ? 'error' : 'warning',
         });
       }
     }
@@ -257,7 +261,7 @@ function runAnalysis() {
   console.log(`   Total dependency size: ${totalSizeMB} MB`);
   
   // Check for heavy dependencies
-  const heavyDeps = analyzeHeavyDependencies(dependencies, packageSizes);
+  const heavyDeps = analyzeHeavyDependencies(dependencies, packageSizes, config);
   
   if (heavyDeps.length > 0) {
     console.log('\n⚠️  Heavy dependencies detected:');

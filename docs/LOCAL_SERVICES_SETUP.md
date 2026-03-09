@@ -77,18 +77,44 @@ REFRESH_ENCRYPTION_KEY=default-refresh-key
 #### Option A: Using Make (Recommended)
 
 ```bash
-# From project root
+# From project root - full services management
+make services-start
+
+# Or use the legacy command
 make backend-start
 ```
 
-#### Option B: Using Docker Compose Directly
+The `make services-*` commands provide additional features:
+- `services-start` - Start Nakama + PostgreSQL
+- `services-stop` - Stop all services
+- `services-restart` - Restart services
+- `services-status` - Show service status
+- `services-health` - Check health of each service
+- `services-logs` - View live logs
+- `services-validate` - Validate prerequisites
+- `services-clean` - Stop and remove with volumes
+
+#### Option B: Using the Script
+
+```bash
+# From project root
+./scripts/local_services.sh start
+
+# Other available commands
+./scripts/local_services.sh status    # Show service status
+./scripts/local_services.sh health    # Check service health
+./scripts/local_services.sh logs      # View logs
+./scripts/local_services.sh clean     # Stop and remove with volumes
+```
+
+#### Option C: Using Docker Compose Directly
 
 ```bash
 cd backend
 docker-compose up -d
 ```
 
-#### Option C: Using the Setup Script
+#### Option D: Using the Setup Script
 
 ```bash
 cd backend
