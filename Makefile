@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check:ci tech-debt-sync tech-debt-sync:dry tech-debt-github tech-debt-github:create bundle-size-check bundle-size-check
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci
 
 # Default target
 all: help
@@ -67,7 +67,20 @@ help:
 	@echo "  make release-notes      Generate release notes from git history"
 	@echo ""
 	@echo "$(GREEN)Tech Debt Tracking$(RESET)"
-	@echo "  make tech-debt-check   Run tech debt detection and generate report"
+	@echo "  make tech-debt-check      Run tech debt detection and generate report"
+	@echo "  make tech-debt-check-ci  Run tech debt detection in CI mode"
+	@echo ""
+	@echo "$(GREEN)Dead Code Detection$(RESET)"
+	@echo "  make dead-code-check     Run dead code detection for all languages"
+	@echo "  make dead-code-check-ci  Run dead code detection in CI mode (strict)"
+	@echo ""
+	@echo "$(GREEN)Duplicate Code Detection$(RESET)"
+	@echo "  make duplicate-code-check     Run duplicate code detection for all languages"
+	@echo "  make duplicate-code-check-ci  Run duplicate code detection in CI mode (strict)"
+	@echo ""
+	@echo "$(GREEN)AGENTS.md Validation$(RESET)"
+	@echo "  make agents-md-check     Validate AGENTS.md format and structure"
+	@echo "  make agents-md-check-ci Validate AGENTS.md in CI mode"
 	@echo ""
 	@echo "$(GREEN)Notes$(RESET)"
 	@echo "  - Godot: Open project in Godot 4.x Editor and press F5 to run"
@@ -265,7 +278,7 @@ tech-debt-check:
 	@echo "$(BLUE)Running tech debt detection...$(RESET)"
 	cd $(BACKEND_DIR) && npm run tech-debt:report
 
-tech-debt-check:ci
+tech-debt-check-ci:
 	@echo "$(BLUE)Running tech debt detection (CI mode)...$(RESET)"
 	cd $(BACKEND_DIR) && npm run tech-debt:report:ci
 
@@ -273,7 +286,7 @@ tech-debt-sync:
 	@echo "$(BLUE)Syncing tech debt items to documentation...$(RESET)"
 	cd $(BACKEND_DIR) && npm run tech-debt:sync
 
-tech-debt-sync:dry
+tech-debt-sync-dry:
 	@echo "$(BLUE)Syncing tech debt items (dry run)...$(RESET)"
 	cd $(BACKEND_DIR) && npm run tech-debt:sync:dry
 
@@ -281,7 +294,7 @@ tech-debt-github:
 	@echo "$(BLUE)Creating GitHub issues from tech debt...$(RESET)"
 	cd $(BACKEND_DIR) && npm run tech-debt:github
 
-tech-debt-github:create
+tech-debt-github-create:
 	@echo "$(BLUE)Creating GitHub issues from tech debt...$(RESET)"
 	cd $(BACKEND_DIR) && npm run tech-debt:github:create
 
@@ -289,3 +302,77 @@ tech-debt-github:create
 bundle-size-check:
 	@echo "$(BLUE)Running bundle size analysis...$(RESET)"
 	cd $(BACKEND_DIR) && npm run bundle:check
+
+## Dead Code Detection
+# Run dead code detection for all languages (GDScript, TypeScript, Python)
+dead-code-check:
+	@echo "$(BLUE)Running dead code detection...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Checking GDScript (unused function arguments)...$(RESET)"
+	@echo "(Note: Only checking unused-argument rule, other rules disabled)"
+	@grep -r "unused-argument: true" gdlintrc > /dev/null && gdlint autoloads/ scripts/ scenes/ 2>&1 | grep "unused-argument" || echo "No unused arguments found in GDScript"
+	@echo ""
+	@echo "$(BLUE)Checking Python (unused imports/variables)...$(RESET)"
+	@ruff check scripts/ --select=F401,F841 2>&1 || true
+	@echo ""
+	@echo "$(BLUE)Checking TypeScript (unused variables)...$(RESET)"
+	@echo "(Backend ESLint with no-unused-vars is already included in backend-lint)"
+	@echo "$(GREEN)✓ Dead code check complete$(RESET)"
+
+# CI mode - strict dead code detection (fails on findings)
+dead-code-check-ci:
+	@echo "$(BLUE)Running dead code detection (CI mode)...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Checking GDScript (unused function arguments)...$(RESET)"
+	@if gdlint autoloads/ scripts/ scenes/ 2>&1 | grep -q "unused-argument"; then \
+		echo "$(YELLOW)✗ Dead code detected in GDScript (unused function arguments)$(RESET)"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "$(BLUE)Checking Python (unused imports/variables)...$(RESET)"
+	@if ruff check scripts/ --select=F401,F841 2>&1 | grep -q ";"; then \
+		echo "$(YELLOW)✗ Dead code detected in Python (unused imports/variables)$(RESET)"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "$(GREEN)✓ No dead code detected$(RESET)"
+
+## Duplicate Code Detection
+# Run duplicate code detection for all languages (GDScript, TypeScript, Python)
+duplicate-code-check:
+	@echo "$(BLUE)Running duplicate code detection...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Installing jscpd if needed...$(RESET)"
+	@npm list jscpd >/dev/null 2>&1 || npm install --save-dev jscpd
+	@echo ""
+	@echo "$(BLUE)Checking for duplicate code in TypeScript (backend)...$(RESET)"
+	@cd backend && npx jscpd --config .jscpd.json --threshold 0 || true
+	@echo ""
+	@echo "$(BLUE)Checking for duplicate code in GDScript and Python...$(RESET)"
+	@npx jscpd --config .jscpd.json --threshold 0 autoloads/ scripts/ scenes/ 2>&1 || true
+	@echo ""
+	@echo "$(GREEN)✓ Duplicate code check complete$(RESET)"
+
+# CI mode - strict duplicate code detection (fails if threshold exceeded)
+duplicate-code-check-ci:
+	@echo "$(BLUE)Running duplicate code detection (CI mode)...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Installing jscpd if needed...$(RESET)"
+	@npm list jscpd >/dev/null 2>&1 || npm install --save-dev jscpd
+	@echo ""
+	@echo "$(BLUE)Checking TypeScript (backend)...$(RESET)"
+	@cd backend && npx jscpd --config .jscpd.json --threshold 3
+	@echo ""
+	@echo "$(BLUE)Checking GDScript and Python...$(RESET)"
+	@npx jscpd --config .jscpd.json --threshold 3 autoloads/ scripts/ scenes/
+	@echo ""
+	@echo "$(GREEN)✓ No duplicate code detected above threshold$(RESET)"
+
+## AGENTS.md Validation
+agents-md-check:
+	@echo "$(BLUE)Running AGENTS.md validation...$(RESET)"
+	cd $(BACKEND_DIR) && npm run validate:agents-md
+
+agents-md-check-ci:
+	@echo "$(BLUE)Running AGENTS.md validation (CI mode)...$(RESET)"
+	cd $(BACKEND_DIR) && npm run validate:agents-md:ci

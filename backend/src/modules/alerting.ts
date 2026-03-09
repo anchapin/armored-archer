@@ -22,6 +22,7 @@ import {
 } from '../config/alerting';
 import { captureMessage, captureException } from '../config/errorTracking';
 import { Runtime } from '../types/nakama';
+import { withCircuitBreaker } from '../utils/circuitBreaker';
 
 // Track last alert times for cooldown management
 interface AlertState {
@@ -164,19 +165,25 @@ async function sendSlackAlert(
     ],
   };
 
-  try {
-    const response = await fetch(slackConfig.webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(slackPayload),
-    });
+  // Wrap external API call with circuit breaker for resilience
+  await withCircuitBreaker(
+    'slack',
+    async () => {
+      const response = await fetch(slackConfig.webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(slackPayload),
+      });
 
-    if (!response.ok) {
-      console.error(`[Alerting] Failed to send Slack alert: ${response.statusText}`);
+      if (!response.ok) {
+        console.error(`[Alerting] Failed to send Slack alert: ${response.statusText}`);
+      }
+    },
+    // Fallback: log error but don't throw - alerting failures shouldn't break the app
+    async () => {
+      console.error('[Alerting] Slack circuit open - alert not sent:', payload.title);
     }
-  } catch (error) {
-    console.error('[Alerting] Error sending Slack alert:', error);
-  }
+  );
 }
 
 /**
@@ -206,19 +213,25 @@ async function sendWebhookAlert(
     headers['Authorization'] = `Basic ${credentials}`;
   }
 
-  try {
-    const response = await fetch(webhookConfig.url, {
-      method: webhookConfig.method,
-      headers,
-      body: JSON.stringify(payload),
-    });
+  // Wrap external API call with circuit breaker for resilience
+  await withCircuitBreaker(
+    'alerting_webhook',
+    async () => {
+      const response = await fetch(webhookConfig.url, {
+        method: webhookConfig.method,
+        headers,
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-      console.error(`[Alerting] Failed to send webhook alert: ${response.statusText}`);
+      if (!response.ok) {
+        console.error(`[Alerting] Failed to send webhook alert: ${response.statusText}`);
+      }
+    },
+    // Fallback: log error but don't throw - alerting failures shouldn't break the app
+    async () => {
+      console.error('[Alerting] Webhook circuit open - alert not sent:', payload.title);
     }
-  } catch (error) {
-    console.error('[Alerting] Error sending webhook alert:', error);
-  }
+  );
 }
 
 /**
@@ -274,19 +287,25 @@ async function sendPagerDutyAlert(
     urgency: urgency[payload.severity],
   };
 
-  try {
-    const response = await fetch(`https://events.pagerduty.com/v2/enqueue`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payloadPD),
-    });
+  // Wrap external API call with circuit breaker for resilience
+  await withCircuitBreaker(
+    'pagerduty',
+    async () => {
+      const response = await fetch(`https://events.pagerduty.com/v2/enqueue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadPD),
+      });
 
-    if (!response.ok) {
-      console.error(`[Alerting] Failed to send PagerDuty alert: ${response.statusText}`);
+      if (!response.ok) {
+        console.error(`[Alerting] Failed to send PagerDuty alert: ${response.statusText}`);
+      }
+    },
+    // Fallback: log error but don't throw - alerting failures shouldn't break the app
+    async () => {
+      console.error('[Alerting] PagerDuty circuit open - alert not sent:', payload.title);
     }
-  } catch (error) {
-    console.error('[Alerting] Error sending PagerDuty alert:', error);
-  }
+  );
 }
 
 /**

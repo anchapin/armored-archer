@@ -29,8 +29,8 @@
  *   N_PLUS_ONE_METRICS_ENABLED=true - Emit metrics
  */
 
-import { Counter, Histogram, Gauge, Registry } from 'prom-client';
 import { Runtime } from '../types/nakama';
+import { Counter, Histogram, Gauge, Registry } from 'prom-client';
 
 // --- Configuration ---
 
@@ -270,7 +270,11 @@ export async function trackQueryAsync<T>(
 /**
  * Update query statistics
  */
-function updateQueryStats(operationName: string, queryType: string, durationMs: number): void {
+function updateQueryStats(
+  operationName: string,
+  queryType: string,
+  durationMs: number
+): void {
   let stats = queryStats.get(operationName);
   if (!stats) {
     stats = {
@@ -423,7 +427,9 @@ function detectNPlusOnePatterns(
   }
 
   const detected = warnings.length > 0;
-  const summary = detected ? `Found ${queries.length} queries with potential N+1 pattern` : '';
+  const summary = detected
+    ? `Found ${queries.length} queries with potential N+1 pattern`
+    : '';
 
   return { detected, warnings, summary };
 }
@@ -594,7 +600,7 @@ export function getFormattedNPlusOneReport(): string {
  */
 export function initializeNPlusOneDetection(
   logger?: Runtime.Logger,
-  _appConfig?: { metrics?: { namespace?: string; prefix?: string; prometheusPort?: number } }
+  appConfig?: { metrics?: { namespace?: string; prefix?: string; prometheusPort?: number } }
 ): void {
   if (!nPlusOneConfig.enabled) {
     if (logger) {
@@ -655,7 +661,10 @@ export type RpcHandler = (
 /**
  * Wrap an RPC handler with N+1 query tracking
  */
-export function wrapRpcWithNPlusOneTracking(rpcName: string, handler: RpcHandler): RpcHandler {
+export function wrapRpcWithNPlusOneTracking(
+  rpcName: string,
+  handler: RpcHandler
+): RpcHandler {
   return async function (
     ctx: Runtime.Context,
     logger: Runtime.Logger,
@@ -697,15 +706,17 @@ export function registerRpcWithNPlusOneTracking(
 /**
  * Wrap storageRead with N+1 tracking
  */
-export function wrapStorageRead(
+export function wrapStorageRead<T>(
   nk: Runtime.Nakama,
   objects: Runtime.StorageRead[],
   operationName: string = 'storage_read'
 ): Runtime.StorageObject[] {
-  return trackQuery(operationName, 'storage', () => nk.storageRead(objects), {
-    collection: objects[0]?.collection,
-    key: objects[0]?.key,
-  });
+  return trackQuery(
+    operationName,
+    'storage',
+    () => nk.storageRead(objects),
+    { collection: objects[0]?.collection, key: objects[0]?.key }
+  );
 }
 
 /**
@@ -716,10 +727,12 @@ export function wrapStorageWrite(
   objects: Runtime.StorageWrite[],
   operationName: string = 'storage_write'
 ): void {
-  trackQuery(operationName, 'storage', () => nk.storageWrite(objects), {
-    collection: objects[0]?.collection,
-    key: objects[0]?.key,
-  });
+  trackQuery(
+    operationName,
+    'storage',
+    () => nk.storageWrite(objects),
+    { collection: objects[0]?.collection, key: objects[0]?.key }
+  );
 }
 
 /**

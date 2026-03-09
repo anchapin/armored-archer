@@ -19,6 +19,11 @@ jest.mock('../../config', () => ({
       defaultProvider: 'slack',
       cooldownMinutes: 5,
     },
+    logger: {
+      scrubLogs: false,
+      additionalSensitiveFields: [],
+      maxScrubDepth: 10,
+    },
   },
 }));
 
