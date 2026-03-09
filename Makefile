@@ -349,14 +349,11 @@ dead-code-check-ci:
 duplicate-code-check:
 	@echo "$(BLUE)Running duplicate code detection...$(RESET)"
 	@echo ""
-	@echo "$(BLUE)Installing jscpd if needed...$(RESET)"
-	@npm list jscpd >/dev/null 2>&1 || npm install --save-dev jscpd
-	@echo ""
 	@echo "$(BLUE)Checking for duplicate code in TypeScript (backend)...$(RESET)"
-	@cd backend && npx jscpd --config .jscpd.json --threshold 0 || true
+	@cd backend && npm run detect-duplicate || true
 	@echo ""
 	@echo "$(BLUE)Checking for duplicate code in GDScript and Python...$(RESET)"
-	@npx jscpd --config .jscpd.json --threshold 0 autoloads/ scripts/ scenes/ 2>&1 || true
+	@npm run detect-duplicate -- autoloads/ scripts/ scenes/ || true
 	@echo ""
 	@echo "$(GREEN)✓ Duplicate code check complete$(RESET)"
 
@@ -364,14 +361,11 @@ duplicate-code-check:
 duplicate-code-check-ci:
 	@echo "$(BLUE)Running duplicate code detection (CI mode)...$(RESET)"
 	@echo ""
-	@echo "$(BLUE)Installing jscpd if needed...$(RESET)"
-	@npm list jscpd >/dev/null 2>&1 || npm install --save-dev jscpd
-	@echo ""
 	@echo "$(BLUE)Checking TypeScript (backend)...$(RESET)"
-	@cd backend && npx jscpd --config .jscpd.json --threshold 3
+	@cd backend && npm run detect-duplicate:ci
 	@echo ""
 	@echo "$(BLUE)Checking GDScript and Python...$(RESET)"
-	@npx jscpd --config .jscpd.json --threshold 3 autoloads/ scripts/ scenes/
+	@npm run detect-duplicate:ci -- autoloads/ scripts/ scenes/
 	@echo ""
 	@echo "$(GREEN)✓ No duplicate code detected above threshold$(RESET)"
 
