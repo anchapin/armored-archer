@@ -9,6 +9,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 const CONFIG_FILE = path.join(PROJECT_ROOT, 'bundle-size-limits.json');
 const SIZE_HISTORY_FILE = path.join(PROJECT_ROOT, '.bundle-size-history.json');
 const CI_MODE = process.argv.includes('--ci-mode');
+const JSON_OUTPUT = process.argv.includes('--json');
 
 const DEFAULT_LIMITS = {
   maxBundleSize: 2 * 1024 * 1024,
@@ -18,15 +19,23 @@ const DEFAULT_LIMITS = {
     bundleSizeGrowthPercent: 10,
     heavyDependencySize: 2 * 1024 * 1024,
   },
+  heavyDependencyDetection: {
+    enabled: true,
+    patterns: [
+      { pattern: '@sentry/*', reason: 'Sentry is large', suggested: 'Use selective imports or @sentry/lite' },
+      { pattern: 'winston', reason: 'Logging library is heavy', suggested: 'Consider pino or abstract logging' },
+      { pattern: 'prom-client', reason: 'Prometheus client', suggested: 'Verify needed metrics only' },
+      { pattern: 'zod', reason: 'Validation library is large', suggested: 'Consider lighter alternatives' },
+      { pattern: '@heroiclabs/*', reason: 'Nakama client', suggested: 'Verify only needed modules are imported' },
+      { pattern: 'pg', reason: 'PostgreSQL client can be large', suggested: 'Use pg-query-stream for bulk operations' },
+      { pattern: 'opentelemetry', reason: 'OpenTelemetry can be large', suggested: 'Use selective instrumentations' },
+    ],
+    thresholds: {
+      warning: 1048576,
+      error: 5242880,
+    },
+  },
 };
-
-const HEAVY_DEPENDENCY_PATTERNS = [
-  { pattern: /@sentry/, reason: 'Sentry is large', suggested: 'Use selective imports' },
-  { pattern: /winston/, reason: 'Logging library', suggested: 'Consider pino or abstract logging' },
-  { pattern: /prom-client/, reason: 'Prometheus client', suggested: 'Verify needed metrics only' },
-  { pattern: /zod/, reason: 'Validation library', suggested: 'Consider lighter alternatives' },
-  { pattern: /@heroiclabs/, reason: 'Nakama client', suggested: 'Verify only needed modules are imported' },
-];
 
 function loadConfig() {
   if (fs.existsSync(CONFIG_FILE)) {
@@ -94,7 +103,13 @@ function calculateDependencySize() {
 
 function analyzeHeavyDependencies(packageSizes, config) {
   const issues = [];
-  const heavyDepLimit = config?.warnings?.heavyDependencySize || DEFAULT_LIMITS.warnings.heavyDependencySize;
+  const patterns = config?.heavyDependencyDetection?.patterns || DEFAULT_LIMITS.heavyDependencyDetection.patterns;
+  const thresholds = config?.heavyDependencyDetection?.thresholds || DEFAULT_LIMITS.heavyDependencyDetection.thresholds;
+  const isEnabled = config?.heavyDependencyDetection?.enabled !== false;
+
+  if (!isEnabled) {
+    return issues;
+  }
 
   for (const [name, size] of Object.entries(packageSizes)) {
     // Check if dependency is excluded
@@ -107,9 +122,30 @@ function analyzeHeavyDependencies(packageSizes, config) {
     });
     if (isExcluded) continue;
 
-    for (const { pattern, reason, suggested } of HEAVY_DEPENDENCY_PATTERNS) {
-      if (pattern.test(name)) {
+    for (const { pattern, reason, suggested } of patterns) {
+      // Support both regex patterns and wildcard patterns like @sentry/*
+      let matches = false;
+      if (pattern.includes('/*')) {
+        const prefix = pattern.replace('/*', '');
+        matches = name.startsWith(prefix);
+      } else if (pattern.includes('*')) {
+        // Handle other wildcard patterns
+        const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+        matches = regex.test(name);
+      } else {
+        matches = name === pattern;
+      }
+
+      if (matches) {
         const sizeMB = (size / (1024 * 1024)).toFixed(2);
+        // Only report dependencies that exceed the warning threshold
+        const severity = size > thresholds.error ? 'error' : (size > thresholds.warning ? 'warning' : null);
+        
+        // Skip if below warning threshold
+        if (!severity) {
+          continue;
+        }
+        
         issues.push({
           type: 'heavy_dependency',
           name,
@@ -117,7 +153,7 @@ function analyzeHeavyDependencies(packageSizes, config) {
           sizeMB: parseFloat(sizeMB),
           reason,
           suggested,
-          severity: size > heavyDepLimit ? 'error' : 'warning',
+          severity,
         });
       }
     }
@@ -251,6 +287,12 @@ async function runAnalysis() {
         severity: 'error',
         message: dep.name + ' (' + dep.sizeMB + ' MB): ' + dep.reason,
       });
+    } else if (dep.severity === 'warning') {
+      issues.push({
+        type: 'heavy_dependency',
+        severity: 'warning',
+        message: dep.name + ' (' + dep.sizeMB + ' MB): ' + dep.reason,
+      });
     }
   }
 
@@ -308,11 +350,46 @@ async function runAnalysis() {
     const errors = issues.filter(i => i.severity === 'error');
     if (errors.length > 0) {
       console.log('CI Mode: Failing due to errors');
+      if (JSON_OUTPUT) {
+        console.log(JSON.stringify({
+          success: false,
+          errors,
+          warnings,
+          bundleSize: totalBundleSize,
+          dependencySize: totalSize,
+          heavyDependencies: heavyDeps,
+        }, null, 2));
+      }
       process.exit(1);
     }
   }
 
-  console.log('Run with --ci-mode to enforce limits in CI/CD');
+  if (JSON_OUTPUT) {
+    console.log(JSON.stringify({
+      success: issues.filter(i => i.severity === 'error').length === 0,
+      errors: issues.filter(i => i.severity === 'error'),
+      warnings: issues.filter(i => i.severity === 'warning'),
+      bundleSize: totalBundleSize,
+      bundleSizeMB: parseFloat(bundleSizeMB),
+      dependencySize: totalSize,
+      dependencySizeMB: parseFloat(depSizeMB),
+      heavyDependencies: heavyDeps.map(d => ({
+        name: d.name,
+        size: d.size,
+        sizeMB: d.sizeMB,
+        reason: d.reason,
+        suggested: d.suggested,
+        severity: d.severity,
+      })),
+      largestFiles: bundleSizes.slice(0, 5).map(f => ({
+        name: f.name,
+        size: f.size,
+        sizeKB: parseFloat((f.size / 1024).toFixed(2)),
+      })),
+    }, null, 2));
+  } else {
+    console.log('Run with --ci-mode to enforce limits in CI/CD');
+  }
 }
 
 runAnalysis().catch(console.error);

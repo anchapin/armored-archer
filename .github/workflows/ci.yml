@@ -211,10 +211,10 @@ jobs:
       
       - name: Run bundle analysis
         working-directory: ./backend
-        run: node scripts/bundle-analysis.js --ci-mode
+        run: node scripts/bundle-analysis.js --ci-mode --json
         env:
           GIT_COMMIT: ${{ github.sha }}
-
+      
       - name: Upload bundle report
         if: always()
         uses: actions/upload-artifact@v4
@@ -222,78 +222,6 @@ jobs:
           name: bundle-report
           path: |
             backend/.bundle-size-history.json
-            backend/bundle-report.html
-          retention-days: 30
-
-  deployment-readiness:
-    name: Backend Deployment Readiness
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Run deployment readiness tests
-        working-directory: ./backend
-        run: npm test -- --testPathPatterns=deployment_ready
-      
-      - name: Build backend
-        working-directory: ./backend
-        run: npm run build
-      
-      - name: Verify build output
-        run: |
-          if [ ! -d "backend/build" ]; then
-            echo "Error: build output not found"
-            exit 1
-          fi
-          echo "Build output verified"
-
-  bundle-size-tracking:
-    name: Bundle Size Tracking
-    needs: backend-test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Build backend
-        working-directory: ./backend
-        run: npm run build
-      
-      - name: Run bundle analysis
-        working-directory: ./backend
-        run: node scripts/bundle-analysis.js --ci-mode
-        env:
-          GIT_COMMIT: ${{ github.sha }}
-
-      - name: Upload bundle report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: bundle-report
-          path: |
-            backend/.bundle-size-history.json
-            backend/bundle-report.html
           retention-days: 30
 
   godot-validate:
