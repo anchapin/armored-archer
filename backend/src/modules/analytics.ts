@@ -5,6 +5,7 @@
 
 import { config } from '../config';
 import { Runtime } from '../types/nakama';
+import { withCircuitBreaker, getAllCircuitInfo } from '../utils/circuitBreaker';
 import {
   registerRpcWithMetrics,
   recordAnalyticsEvent,
@@ -13,7 +14,6 @@ import {
 } from './metrics';
 import { isPII } from './privacy_compliance';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { withCircuitBreaker, getAllCircuitInfo } from '../utils/circuitBreaker';
 
 // Analytics event types for type safety
 export enum AnalyticsEventType {
@@ -668,10 +668,10 @@ export function getDailyMetrics(startDate: string, endDate: string): DailyMetric
 
 /**
  * RPC: Get circuit breaker states for all monitored services.
- * 
+ *
  * This RPC provides visibility into the health of external service connections
  * protected by circuit breakers.
- * 
+ *
  * // Response
  * {
  *   "success": true,
@@ -705,10 +705,10 @@ export function rpcGetCircuitBreakerStates(
 
   try {
     const circuits = getAllCircuitInfo();
-    
+
     return JSON.stringify({
       success: true,
-      circuits: circuits.map(circuit => ({
+      circuits: circuits.map((circuit) => ({
         serviceName: circuit.serviceName,
         state: circuit.state,
         stats: circuit.stats,
