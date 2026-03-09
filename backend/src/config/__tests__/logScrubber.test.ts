@@ -283,4 +283,158 @@ describe('LogScrubber', () => {
       expect(scrubber.scrub('')).toBe('');
     });
   });
+
+  describe('log level-based scrubbing', () => {
+    it('should be enabled for all levels by default', () => {
+      const scrubber = new LogScrubber({ enabled: true });
+      expect(scrubber.isEnabledForLevel('error')).toBe(true);
+      expect(scrubber.isEnabledForLevel('warn')).toBe(true);
+      expect(scrubber.isEnabledForLevel('info')).toBe(true);
+      expect(scrubber.isEnabledForLevel('debug')).toBe(true);
+    });
+
+    it('should respect per-level enabled setting', () => {
+      const scrubber = new LogScrubber({
+        enabled: true,
+        scrubByLevel: {
+          error: { enabled: true },
+          warn: { enabled: true },
+          info: { enabled: false },
+          debug: { enabled: false },
+        },
+      });
+      expect(scrubber.isEnabledForLevel('error')).toBe(true);
+      expect(scrubber.isEnabledForLevel('warn')).toBe(true);
+      expect(scrubber.isEnabledForLevel('info')).toBe(false);
+      expect(scrubber.isEnabledForLevel('debug')).toBe(false);
+    });
+
+    it('should return false for all levels when globally disabled', () => {
+      const scrubber = new LogScrubber({
+        enabled: false,
+        scrubByLevel: {
+          error: { enabled: true },
+          warn: { enabled: true },
+        },
+      });
+      expect(scrubber.isEnabledForLevel('error')).toBe(false);
+      expect(scrubber.isEnabledForLevel('warn')).toBe(false);
+      expect(scrubber.isEnabledForLevel('info')).toBe(false);
+    });
+
+    it('should use scrubLogByLevel with per-level config', () => {
+      const scrubber = new LogScrubber({
+        enabled: true,
+        scrubByLevel: {
+          error: { enabled: true },
+          warn: { enabled: true },
+          info: { enabled: false },
+          debug: { enabled: false },
+        },
+      });
+
+      // info level - should not scrub
+      const infoResult = scrubber.scrubLogByLevel('password: secret', 'info', {});
+      expect(infoResult.message).toBe('password: secret');
+
+      // error level - should scrub
+      const errorResult = scrubber.scrubLogByLevel('password: secret', 'error', {});
+      expect(errorResult.message).toContain('[PASSWORD_REDACTED]');
+    });
+
+    it('should handle metadata in scrubLogByLevel', () => {
+      const scrubber = new LogScrubber({ enabled: true });
+      const result = scrubber.scrubLogByLevel(
+        'User login',
+        'info',
+        { password: 'secret', userId: 123 }
+      );
+      expect(result.message).toBe('User login');
+      expect(result.meta?.['[REDACTED_PASSWORD]']).toBe('[REDACTED]');
+      expect(result.meta?.userId).toBe(123);
+    });
+  });
+
+  describe('output-based scrubbing', () => {
+    it('should apply to all outputs by default', () => {
+      const scrubber = new LogScrubber({ enabled: true });
+      expect(scrubber.isEnabledForOutput('console')).toBe(true);
+      expect(scrubber.isEnabledForOutput('file')).toBe(true);
+    });
+
+    it('should respect scrubOutputs configuration', () => {
+      const scrubber = new LogScrubber({
+        enabled: true,
+        scrubOutputs: ['console'],
+      });
+      expect(scrubber.isEnabledForOutput('console')).toBe(true);
+      expect(scrubber.isEnabledForOutput('file')).toBe(false);
+    });
+
+    it('should return false for all outputs when globally disabled', () => {
+      const scrubber = new LogScrubber({
+        enabled: false,
+        scrubOutputs: ['console', 'file'],
+      });
+      expect(scrubber.isEnabledForOutput('console')).toBe(false);
+      expect(scrubber.isEnabledForOutput('file')).toBe(false);
+    });
+
+    it('should return false for empty scrubOutputs when global enabled is true', () => {
+      const scrubber = new LogScrubber({
+        enabled: true,
+        scrubOutputs: [],
+      });
+      // Empty array means apply to all outputs
+      expect(scrubber.isEnabledForOutput('console')).toBe(true);
+      expect(scrubber.isEnabledForOutput('file')).toBe(true);
+    });
+  });
+
+  describe('additional sensitive patterns', () => {
+    it('should scrub private keys (PEM format)', () => {
+      const scrubber = new LogScrubber({ enabled: true });
+      const input = '-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQ...\n-----END RSA PRIVATE KEY-----';
+      const result = scrubber.scrub(input);
+      expect(result).toContain('[PRIVATE_KEY_REDACTED]');
+    });
+
+    it('should scrub Google API keys', () => {
+      const scrubber = new LogScrubber({ enabled: true });
+      const result = scrubber.scrub('AIzaSyD1234567890abcdefghijklmnopqrstu');
+      expect(result).toContain('[GOOGLE_API_KEY_REDACTED]');
+    });
+
+    it('should scrub Stripe API keys', () => {
+      const scrubber = new LogScrubber({ enabled: true });
+      // Using fake test pattern that won't trigger secret scanning
+      const result = scrubber.scrub('sk_test_51AbCdEfGhIjKlMnOpQrStUvWx');
+      expect(result).toContain('[STRIPE_KEY_REDACTED]');
+    });
+
+    it('should scrub GitHub tokens', () => {
+      const scrubber = new LogScrubber({ enabled: true });
+      const result = scrubber.scrub('ghp_abcdefghijklmnopqrstuvwxyz1234567890');
+      expect(result).toContain('[GITHUB_TOKEN_REDACTED]');
+    });
+
+    it('should scrub connection strings with credentials', () => {
+      const scrubber = new LogScrubber({ enabled: true });
+      const result = scrubber.scrub('postgresql://user:password@localhost:5432/mydb');
+      expect(result).toContain('[CONNECTION_STRING_REDACTED]');
+    });
+
+    it('should scrub MongoDB connection strings', () => {
+      const scrubber = new LogScrubber({ enabled: true });
+      const result = scrubber.scrub('mongodb+srv://admin:secretpassword@cluster.mongodb.net/test');
+      expect(result).toContain('[CONNECTION_STRING_REDACTED]');
+    });
+
+    it('should scrub Slack tokens', () => {
+      const scrubber = new LogScrubber({ enabled: true });
+      // Using fake test pattern that won't trigger secret scanning
+      const result = scrubber.scrub('xoxb-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
+      expect(result).toContain('[SLACK_TOKEN_REDACTED]');
+    });
+  });
 });

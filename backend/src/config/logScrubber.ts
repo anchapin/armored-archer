@@ -77,13 +77,68 @@ const SENSITIVE_PATTERNS = [
     pattern: /\b\d{3}[-]?\d{2}[-]?\d{4}\b/g,
     replacement: '[SSN_REDACTED]',
   },
+  // Private keys (PEM format)
+  {
+    pattern: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g,
+    replacement: '[PRIVATE_KEY_REDACTED]',
+  },
+  // Google API keys
+  {
+    pattern: /AIza[0-9A-Za-z_-]{20,}/g,
+    replacement: '[GOOGLE_API_KEY_REDACTED]',
+  },
+  // Stripe API keys
+  {
+    pattern: /(?:sk|pk)_(?:live|test)_[0-9a-zA-Z]{24,}/g,
+    replacement: '[STRIPE_KEY_REDACTED]',
+  },
+  // GitHub tokens
+  {
+    pattern: /(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}/g,
+    replacement: '[GITHUB_TOKEN_REDACTED]',
+  },
+  // Connection strings with credentials (e.g., PostgreSQL, MySQL, MongoDB)
+  {
+    pattern: /(?:mongodb(?:\+srv)?|mysql|postgresql|redis):\/\/[^:]+:[^@]+@/gi,
+    replacement: '[CONNECTION_STRING_REDACTED]://[user]:[password]@',
+  },
+  // Basic Auth credentials in URLs
+  {
+    pattern: /:\/\/[^:]+:[^@]+@/g,
+    replacement: '://[credentials_redacted]@',
+  },
+  // Slack tokens
+  {
+    pattern: /xox[baprs]-[0-9a-zA-Z-]+/g,
+    replacement: '[SLACK_TOKEN_REDACTED]',
+  },
+  // Azure access tokens
+  {
+    pattern: /(?:<|eyJ[A-Za-z0-9+/=]*\.)[A-Za-z0-9+/=]{20,}/g,
+    replacement: '[AZURE_TOKEN_REDACTED]',
+  },
+  // Generic secret patterns in JSON
+  {
+    pattern: /"(?:api[_-]?key|access[_-]?token|refresh[_-]?token|secret[_-]?key)["']\s*:\s*"[^"]+"/gi,
+    replacement: '"[KEY]_redacted": "[REDACTED]"',
+  },
 ];
+
+/**
+ * Configuration for per-level scrubbing.
+ */
+export interface LogScrubberLevelConfig {
+  /** Enable scrubbing for this log level */
+  enabled: boolean;
+  /** Additional sensitive fields specific to this level */
+  additionalFields?: string[];
+}
 
 /**
  * Configuration options for log scrubbing.
  */
 export interface LogScrubberConfig {
-  /** Enable or disable log scrubbing */
+  /** Enable or disable log scrubbing globally */
   enabled: boolean;
   /** Additional field names to treat as sensitive (added to defaults) */
   additionalSensitiveFields?: string[];
@@ -95,7 +150,19 @@ export interface LogScrubberConfig {
   maxDepth?: number;
   /** Whether to scrub keys in addition to values */
   scrubKeys: boolean;
+  /** Scrubbing configuration per log level */
+  scrubByLevel?: {
+    error?: LogScrubberLevelConfig;
+    warn?: LogScrubberLevelConfig;
+    info?: LogScrubberLevelConfig;
+    debug?: LogScrubberLevelConfig;
+  };
+  /** List of output types where scrubbing is applied */
+  scrubOutputs?: ('console' | 'file')[];
 }
+
+/** Log levels supported by the scrubber */
+export type LogScrubberLevel = 'error' | 'warn' | 'info' | 'debug';
 
 /**
  * Default configuration for log scrubbing.
@@ -342,6 +409,79 @@ export class LogScrubber {
     meta?: Record<string, unknown>
   ): { message: string; meta?: Record<string, unknown> } {
     const scrubbedMessage = this.config.enabled ? scrubString(message) : message;
+
+    if (!meta) {
+      return { message: scrubbedMessage };
+    }
+
+    const scrubbedMeta = this.scrub(meta) as Record<string, unknown>;
+
+    return {
+      message: scrubbedMessage,
+      meta: scrubbedMeta,
+    };
+  }
+
+  /**
+   * Checks if scrubbing is enabled for a specific log level.
+   * If per-level configuration is not set, falls back to global enabled setting.
+   *
+   * @param level - The log level to check
+   * @returns Whether scrubbing is enabled for the level
+   */
+  isEnabledForLevel(level: LogScrubberLevel): boolean {
+    if (!this.config.enabled) {
+      return false;
+    }
+
+    const levelConfig = this.config.scrubByLevel?.[level];
+    if (levelConfig !== undefined) {
+      return levelConfig.enabled;
+    }
+
+    // Default to enabled if per-level config not set
+    return true;
+  }
+
+  /**
+   * Checks if scrubbing should be applied for a specific output type.
+   * If scrubOutputs is not configured, scrubbing is applied to all outputs.
+   *
+   * @param output - The output type to check (console or file)
+   * @returns Whether scrubbing should be applied for the output
+   */
+  isEnabledForOutput(output: 'console' | 'file'): boolean {
+    if (!this.config.enabled) {
+      return false;
+    }
+
+    if (!this.config.scrubOutputs || this.config.scrubOutputs.length === 0) {
+      // If not configured, apply to all outputs
+      return true;
+    }
+
+    return this.config.scrubOutputs.includes(output);
+  }
+
+  /**
+   * Scrubs sensitive data from a log message with log level context.
+   * Uses per-level configuration to determine scrubbing behavior.
+   *
+   * @param message - The log message
+   * @param level - The log level
+   * @param meta - Additional metadata to scrub
+   * @returns Object with scrubbed message and metadata
+   */
+  scrubLogByLevel(
+    message: string,
+    level: LogScrubberLevel,
+    meta?: Record<string, unknown>
+  ): { message: string; meta?: Record<string, unknown> } {
+    if (!this.isEnabledForLevel(level)) {
+      return { message, meta };
+    }
+
+    const scrubbedMessage = scrubString(message);
 
     if (!meta) {
       return { message: scrubbedMessage };

@@ -2,9 +2,11 @@
  * Structured Logger Module.
  * @fileoverview Provides structured logging for Nakama RPC handlers with JSON format.
  * Ensures all logs include: timestamp, level, message, and context.
+ * Includes integration with log scrubbing for sensitive data protection.
  */
 
 import { Runtime } from '../types/nakama';
+import { logScrubber, LogScrubber } from './logScrubber';
 
 /**
  * Log levels supported by the structured logger.
@@ -109,6 +111,7 @@ export class StructuredLogger {
   private readonly runtimeLogger: Runtime.Logger;
   private readonly serviceName: string;
   private defaultContext: LogContext;
+  private scrubber: LogScrubber;
 
   /**
    * Creates a new StructuredLogger instance.
@@ -116,15 +119,18 @@ export class StructuredLogger {
    * @param runtimeLogger - The Nakama Runtime.Logger instance
    * @param serviceName - Name of the service (default: 'armored-archer-backend')
    * @param defaultContext - Default context to include in all logs
+   * @param scrubber - Optional LogScrubber instance (defaults to global instance)
    */
   constructor(
     runtimeLogger: Runtime.Logger,
     serviceName: string = 'armored-archer-backend',
-    defaultContext: LogContext = {}
+    defaultContext: LogContext = {},
+    scrubber: LogScrubber = logScrubber
   ) {
     this.runtimeLogger = runtimeLogger;
     this.serviceName = serviceName;
     this.defaultContext = defaultContext;
+    this.scrubber = scrubber;
   }
 
   /**
@@ -134,10 +140,38 @@ export class StructuredLogger {
    * @returns New StructuredLogger with enriched context
    */
   public child(additionalContext: LogContext): StructuredLogger {
-    return new StructuredLogger(this.runtimeLogger, this.serviceName, {
-      ...this.defaultContext,
-      ...additionalContext,
-    });
+    return new StructuredLogger(
+      this.runtimeLogger,
+      this.serviceName,
+      {
+        ...this.defaultContext,
+        ...additionalContext,
+      },
+      this.scrubber
+    );
+  }
+
+  /**
+   * Scrubs sensitive data from message and context.
+   *
+   * @param level - Log level for per-level scrubbing
+   * @param message - Log message
+   * @param context - Log context
+   * @returns Scrubbed message and context
+   */
+  private scrub(level: LogLevel, message: string, context: LogContext): {
+    message: string;
+    context: LogContext;
+  } {
+    if (!this.scrubber.isEnabled()) {
+      return { message, context };
+    }
+
+    const scrubbed = this.scrubber.scrubLogByLevel(message, level, context);
+    return {
+      message: scrubbed.message,
+      context: (scrubbed.meta as LogContext) || context,
+    };
   }
 
   /**
@@ -155,11 +189,18 @@ export class StructuredLogger {
     context: LogContext,
     error?: Error
   ): string {
+    // Scrub sensitive data before formatting
+    const { message: scrubbedMessage, context: scrubbedContext } = this.scrub(
+      level,
+      message,
+      context
+    );
+
     const entry: StructuredLogEntry = {
       timestamp: new Date().toISOString(),
       level,
-      message,
-      context: { ...this.defaultContext, ...context },
+      message: scrubbedMessage,
+      context: { ...this.defaultContext, ...scrubbedContext },
       service: this.serviceName,
     };
 
@@ -338,12 +379,14 @@ export class StructuredLogger {
  * @param runtimeLogger - The Nakama Runtime.Logger instance
  * @param serviceName - Name of the service
  * @param defaultContext - Default context to include in all logs
+ * @param scrubber - Optional LogScrubber instance (defaults to global instance)
  * @returns A new StructuredLogger instance
  */
 export function createStructuredLogger(
   runtimeLogger: Runtime.Logger,
   serviceName: string = 'armored-archer-backend',
-  defaultContext: LogContext = {}
+  defaultContext: LogContext = {},
+  scrubber: LogScrubber = logScrubber
 ): StructuredLogger {
-  return new StructuredLogger(runtimeLogger, serviceName, defaultContext);
+  return new StructuredLogger(runtimeLogger, serviceName, defaultContext, scrubber);
 }

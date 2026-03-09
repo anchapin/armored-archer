@@ -68,16 +68,36 @@ export interface SessionConfig {
   expirySec: number;
 }
 
+export interface LoggerScrubLevelConfig {
+  /** Enable scrubbing for this log level */
+  enabled: boolean;
+  /** Additional sensitive fields specific to this level */
+  additionalFields?: string[];
+}
+
 export interface LoggerConfig {
   level: string;
   format: string;
   output: string;
-  /** Enable or disable log scrubbing */
+  /** Enable or disable log scrubbing globally */
   scrubLogs: boolean;
   /** Additional field names to treat as sensitive */
   additionalSensitiveFields?: string[];
   /** Maximum depth to scrub in nested objects */
   maxScrubDepth?: number;
+  /** Scrubbing configuration per log level */
+  scrubByLevel?: {
+    /** Configuration for error level logs */
+    error?: LoggerScrubLevelConfig;
+    /** Configuration for warn level logs */
+    warn?: LoggerScrubLevelConfig;
+    /** Configuration for info level logs */
+    info?: LoggerScrubLevelConfig;
+    /** Configuration for debug level logs */
+    debug?: LoggerScrubLevelConfig;
+  };
+  /** List of output types where scrubbing is applied (console, file, all) */
+  scrubOutputs?: ('console' | 'file')[];
 }
 
 export interface MatchConfig {
@@ -247,6 +267,18 @@ export interface ErrorInsightPipelineConfig {
   patternTtlDays: number;
 }
 
+/**
+ * Configuration for N+1 Query Detection
+ */
+export interface NPlusOneConfig {
+  enabled: boolean;
+  threshold: number;
+  logEnabled: boolean;
+  metricsEnabled: boolean;
+  slowQueryThresholdMs: number;
+  autoTrackStorage: boolean;
+}
+
 export interface AppConfig {
   environment: 'development' | 'staging' | 'production';
   server: ServerConfig;
@@ -260,6 +292,7 @@ export interface AppConfig {
   tracing: TracingConfig;
   alerting: AlertingConfig;
   errorInsights: ErrorInsightPipelineConfig;
+  nPlusOne: NPlusOneConfig;
   analytics: AnalyticsConfig;
   datadog?: DataDogConfig;
 }
@@ -328,6 +361,17 @@ const config: AppConfig = {
       : undefined,
     maxScrubDepth: process.env.LOG_SCRUB_MAX_DEPTH
       ? parseInt(process.env.LOG_SCRUB_MAX_DEPTH, 10)
+      : undefined,
+    scrubByLevel: process.env.LOG_SCRUB_BY_LEVEL === 'true'
+      ? {
+          error: { enabled: process.env.LOG_SCRUB_ERROR_ENABLED !== 'false' },
+          warn: { enabled: process.env.LOG_SCRUB_WARN_ENABLED !== 'false' },
+          info: { enabled: process.env.LOG_SCRUB_INFO_ENABLED !== 'false' },
+          debug: { enabled: process.env.LOG_SCRUB_DEBUG_ENABLED !== 'false' },
+        }
+      : undefined,
+    scrubOutputs: process.env.LOG_SCRUB_OUTPUTS
+      ? process.env.LOG_SCRUB_OUTPUTS.split(',').map((o) => o.trim()) as ('console' | 'file')[]
       : undefined,
   },
 
@@ -545,6 +589,15 @@ const config: AppConfig = {
     maxInsights: parseInt(process.env.ERROR_INSIGHTS_MAX_INSIGHTS || '50', 10),
     autoResolvePatterns: process.env.ERROR_INSIGHTS_AUTO_RESOLVE !== 'false',
     patternTtlDays: parseInt(process.env.ERROR_INSIGHTS_PATTERN_TTL_DAYS || '7', 10),
+  },
+
+  nPlusOne: {
+    enabled: process.env.N_PLUS_ONE_ENABLED === 'true',
+    threshold: parseInt(process.env.N_PLUS_ONE_THRESHOLD || '3', 10),
+    logEnabled: process.env.N_PLUS_ONE_LOG_ENABLED !== 'false',
+    metricsEnabled: process.env.N_PLUS_ONE_METRICS_ENABLED !== 'false',
+    slowQueryThresholdMs: parseInt(process.env.N_PLUS_ONE_SLOW_QUERY_MS || '100', 10),
+    autoTrackStorage: process.env.N_PLUS_ONE_AUTO_TRACK_STORAGE !== 'false',
   },
 
   analytics: {
