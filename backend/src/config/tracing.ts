@@ -333,9 +333,10 @@ export function initializeTracing(): void {
     }
 
     // Create and start the SDK
+    // Note: Type assertion needed due to version mismatch between exporters in dependency tree
     sdk = new NodeSDK({
       resource,
-      traceExporter: exporter,
+      traceExporter: exporter as any,
       instrumentations: instrumentations as never[],
       serviceName: tracingConfig.serviceName,
     });
