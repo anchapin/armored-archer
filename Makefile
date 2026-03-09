@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check
 
 # Default target
 all: help
@@ -65,6 +65,9 @@ help:
 	@echo ""
 	@echo "$(GREEN)Release Notes$(RESET)"
 	@echo "  make release-notes      Generate release notes from git history"
+	@echo ""
+	@echo "$(GREEN)Tech Debt Tracking$(RESET)"
+	@echo "  make tech-debt-check   Run tech debt detection and generate report"
 	@echo ""
 	@echo "$(GREEN)Notes$(RESET)"
 	@echo "  - Godot: Open project in Godot 4.x Editor and press F5 to run"
@@ -256,3 +259,8 @@ services-clean:
 	@echo "$(BLUE)Stopping and removing local services...$(RESET)"
 	cd $(BACKEND_DIR) && docker-compose down -v
 	@echo "$(GREEN)✓ Services and volumes removed$(RESET)"
+
+## Tech Debt Tracking
+tech-debt-check:
+	@echo "$(BLUE)Running tech debt detection...$(RESET)"
+	cd $(BACKEND_DIR) && npm run tech-debt:report

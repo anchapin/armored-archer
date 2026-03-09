@@ -517,3 +517,46 @@ Release notes are generated from commits following the conventional commits form
 - `chore:` - Maintenance tasks
 
 Example: `feat: Add new weapon type (#123)` will appear in Features with a link to PR #123.
+
+## Technical Debt Tracking
+
+The project includes a technical debt tracking system to identify, document, and manage technical debt over time.
+
+### Tech Debt Documentation
+
+All technical debt items are documented in [TECH_DEBT.md](TECH_DEBT.md), which includes:
+- Active debt items with severity, status, and estimated effort
+- Historical debt that has been resolved
+- Categories for classification (Deprecated APIs, Code Quality, Testing, etc.)
+
+### Running Tech Debt Detection
+
+```bash
+# Using Make
+make tech-debt-check
+
+# Using npm directly
+cd backend
+npm run tech-debt:report
+
+# CI mode (fails on critical/high severity)
+npm run tech-debt:report:ci
+```
+
+### Automated Detection
+
+The tech debt detection script (`backend/scripts/detect-tech-debt.ts`) automatically detects:
+- Deprecated API usage (`@deprecated` markers)
+- TODO/FIXME/HACK comments
+- Console logging instead of proper logger
+- Type safety issues (`any` type usage)
+- Empty catch blocks
+- TypeScript error suppressions
+
+### CI/CD Integration
+
+Tech debt tracking is integrated into the CI pipeline (`.github/workflows/ci.yml`):
+- Runs on every push to main/develop and on PRs
+- Generates JSON report with all detected issues
+- Fails on critical/high severity issues in CI mode
+- Uploads reports as artifacts for analysis
