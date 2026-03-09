@@ -145,34 +145,79 @@ function validateAgentsMd(): ValidationResult {
   }
 
   // 2. Check for code blocks with language hints
-  const codeBlockWithoutLang = content.match(/```\s*\n/);
-  if (codeBlockWithoutLang) {
+  // Find code blocks that start with just ``` followed by newline (no language hint)
+  // Only flag opening code blocks (not closing ones)
+  let hasCodeBlockWithoutLang = false;
+  let inCodeBlock = false;
+  const lines_array = content.split('\n');
+  for (let i = 0; i < lines_array.length; i++) {
+    const line = lines_array[i];
+    const codeBlockStartMatch = line.match(/^```(\w+)?/);
+    
+    if (codeBlockStartMatch) {
+      if (!inCodeBlock) {
+        // This is an opening code block
+        inCodeBlock = true;
+        // Check if it has a language hint (group 1 would be the language if present)
+        if (!codeBlockStartMatch[1]) {
+          result.issues.push({
+            type: 'warning',
+            category: 'format',
+            message: `Code block without language hint at line ${i + 1}`,
+            line: i + 1,
+            context: line,
+          });
+          result.summary.warnings++;
+          hasCodeBlockWithoutLang = true;
+        }
+      } else {
+        // This is a closing code block
+        inCodeBlock = false;
+      }
+    }
+  }
+  
+  // If we found code blocks without lang, also add a summary message
+  if (hasCodeBlockWithoutLang) {
     result.issues.push({
       type: 'warning',
       category: 'format',
-      message: 'Found code blocks without language hints. Add language hints for better syntax highlighting (e.g., ```bash, ```typescript)',
+      message: 'Add language hints to code blocks for better syntax highlighting (e.g., ```bash, ```typescript, ```text)',
     });
     result.summary.warnings++;
   }
 
   // 3. Check for consistent heading levels (should not skip levels like ## then ####)
-  let currentLevel = 0;
+  // Track the immediate parent heading level to detect skipping
+  // Note: H1 (#) is typically the document title and should be ignored for section level tracking
+  let lastHeadingLevel = 0;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const headingMatch = line.match(/^(#{1,6})\s/);
     if (headingMatch) {
       const level = headingMatch[1].length;
-      if (level > currentLevel + 1 && currentLevel > 0) {
+      
+      // Skip H1 (document title) - don't use it as a parent for section headings
+      if (level === 1) {
+        lastHeadingLevel = 0;
+        continue;
+      }
+      
+      // Warn if skipping more than one level (e.g., ### to ##### or ## to ####)
+      // The only valid progression is: ## -> ### -> #### -> ##### -> ######
+      // So we warn if level > lastHeadingLevel + 1
+      if (lastHeadingLevel > 0 && level > lastHeadingLevel + 1) {
         result.issues.push({
           type: 'warning',
           category: 'format',
-          message: `Heading level skipped: found ${level} level after ${currentLevel} level`,
+          message: `Heading level skipped: found ${level} level after ${lastHeadingLevel} level. Headings should increment by 1.`,
           line: i + 1,
           context: line,
         });
         result.summary.warnings++;
       }
-      currentLevel = level;
+      
+      lastHeadingLevel = level;
     }
   }
 

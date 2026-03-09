@@ -386,6 +386,17 @@ jobs:
       - name: Install gdlint
         run: pip install gdtoolkit
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
       - name: Run dead code detection (CI mode)
         run: make dead-code-check-ci
 
