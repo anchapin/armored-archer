@@ -13,6 +13,7 @@ import {
 } from './metrics';
 import { isPII } from './privacy_compliance';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { withCircuitBreaker, getAllCircuitInfo } from '../utils/circuitBreaker';
 
 // Analytics event types for type safety
 export enum AnalyticsEventType {
@@ -113,6 +114,14 @@ export function registerAnalyticsEndpoints(initializer: Runtime.Initializer): vo
     'armored_archer/track_revenue',
     'track_revenue',
     rpcTrackRevenue
+  );
+
+  // Register circuit breaker state monitoring RPC
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/get_circuit_breaker_states',
+    'get_circuit_breaker_states',
+    rpcGetCircuitBreakerStates
   );
 }
 
@@ -231,24 +240,30 @@ async function forwardToMixpanel(event: AnalyticsEvent): Promise<void> {
     },
   };
 
-  try {
-    const response = await fetch('https://api.mixpanel.com/track', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        api_key: apiKey,
-        data: Buffer.from(JSON.stringify(mixpanelEvent)).toString('base64'),
-      }),
-    });
+  // Wrap external API call with circuit breaker for resilience
+  await withCircuitBreaker(
+    'mixpanel',
+    async () => {
+      const response = await fetch('https://api.mixpanel.com/track', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          api_key: apiKey,
+          data: Buffer.from(JSON.stringify(mixpanelEvent)).toString('base64'),
+        }),
+      });
 
-    if (!response.ok) {
-      console.error(`[Analytics] Mixpanel forward failed: ${response.status}`);
+      if (!response.ok) {
+        console.error(`[Analytics] Mixpanel forward failed: ${response.status}`);
+      }
+    },
+    // Fallback: silently drop analytics if circuit is open (analytics are non-critical)
+    async () => {
+      console.warn('[Analytics] Mixpanel circuit open - dropping event');
     }
-  } catch (error) {
-    console.error(`[Analytics] Mixpanel forward error: ${error}`);
-  }
+  );
 }
 
 /**
@@ -272,21 +287,27 @@ async function forwardToAmplitude(event: AnalyticsEvent): Promise<void> {
     ],
   };
 
-  try {
-    const response = await fetch('https://api.amplitude.com/2/httpapi', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(amplitudeEvent),
-    });
+  // Wrap external API call with circuit breaker for resilience
+  await withCircuitBreaker(
+    'amplitude',
+    async () => {
+      const response = await fetch('https://api.amplitude.com/2/httpapi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(amplitudeEvent),
+      });
 
-    if (!response.ok) {
-      console.error(`[Analytics] Amplitude forward failed: ${response.status}`);
+      if (!response.ok) {
+        console.error(`[Analytics] Amplitude forward failed: ${response.status}`);
+      }
+    },
+    // Fallback: silently drop analytics if circuit is open (analytics are non-critical)
+    async () => {
+      console.warn('[Analytics] Amplitude circuit open - dropping event');
     }
-  } catch (error) {
-    console.error(`[Analytics] Amplitude forward error: ${error}`);
-  }
+  );
 }
 
 /**
@@ -307,22 +328,28 @@ async function forwardToSegment(event: AnalyticsEvent): Promise<void> {
     },
   };
 
-  try {
-    const response = await fetch(`https://api.segment.io/v1/track`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Basic ${Buffer.from(writeKey + ':').toString('base64')}`,
-      },
-      body: JSON.stringify(segmentEvent),
-    });
+  // Wrap external API call with circuit breaker for resilience
+  await withCircuitBreaker(
+    'segment',
+    async () => {
+      const response = await fetch(`https://api.segment.io/v1/track`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Basic ${Buffer.from(writeKey + ':').toString('base64')}`,
+        },
+        body: JSON.stringify(segmentEvent),
+      });
 
-    if (!response.ok) {
-      console.error(`[Analytics] Segment forward failed: ${response.status}`);
+      if (!response.ok) {
+        console.error(`[Analytics] Segment forward failed: ${response.status}`);
+      }
+    },
+    // Fallback: silently drop analytics if circuit is open (analytics are non-critical)
+    async () => {
+      console.warn('[Analytics] Segment circuit open - dropping event');
     }
-  } catch (error) {
-    console.error(`[Analytics] Segment forward error: ${error}`);
-  }
+  );
 }
 
 /**
@@ -341,27 +368,33 @@ async function forwardToCustomEndpoint(event: AnalyticsEvent): Promise<void> {
     sessionId: event.sessionId,
   };
 
-  try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
 
-    if (endpoint.apiKey) {
-      headers['Authorization'] = `Bearer ${endpoint.apiKey}`;
-    }
-
-    const response = await fetch(endpoint.url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      console.error(`[Analytics] Custom endpoint forward failed: ${response.status}`);
-    }
-  } catch (error) {
-    console.error(`[Analytics] Custom endpoint forward error: ${error}`);
+  if (endpoint.apiKey) {
+    headers['Authorization'] = `Bearer ${endpoint.apiKey}`;
   }
+
+  // Wrap external API call with circuit breaker for resilience
+  await withCircuitBreaker(
+    'external_api',
+    async () => {
+      const response = await fetch(endpoint.url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        console.error(`[Analytics] Custom endpoint forward failed: ${response.status}`);
+      }
+    },
+    // Fallback: silently drop analytics if circuit is open (analytics are non-critical)
+    async () => {
+      console.warn('[Analytics] Custom endpoint circuit open - dropping event');
+    }
+  );
 }
 
 /**
@@ -614,20 +647,6 @@ export function rpcTrackRevenue(
 }
 
 /**
- * Get recent analytics events for debugging.
- */
-export function getRecentEvents(limit: number = 100): AnalyticsEvent[] {
-  return analyticsEvents.slice(-limit);
-}
-
-/**
- * Get all analytics events (for admin/debug purposes).
- */
-export function getAllEvents(): AnalyticsEvent[] {
-  return [...analyticsEvents];
-}
-
-/**
  * Get daily metrics for a specific date range.
  */
 export function getDailyMetrics(startDate: string, endDate: string): DailyMetric[] {
@@ -645,4 +664,77 @@ export function getDailyMetrics(startDate: string, endDate: string): DailyMetric
     }
   });
   return result;
+}
+
+/**
+ * RPC: Get circuit breaker states for all monitored services.
+ * 
+ * This RPC provides visibility into the health of external service connections
+ * protected by circuit breakers.
+ * 
+ * // Response
+ * {
+ *   "success": true,
+ *   "circuits": [
+ *     {
+ *       "serviceName": "mixpanel",
+ *       "state": "CLOSED",
+ *       "stats": {
+ *         "failures": 0,
+ *         "successes": 10,
+ *         "rejects": 0,
+ *         "lastFailure": null
+ *       },
+ *       "options": {
+ *         "timeout": 5000,
+ *         "errorThresholdPercentage": 50,
+ *         "volumeThreshold": 3,
+ *         "resetTimeout": 30000
+ *       }
+ *     }
+ *   ]
+ * }
+ */
+export function rpcGetCircuitBreakerStates(
+  _ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  _payload: string
+): string {
+  logger.info('Circuit breaker states requested');
+
+  try {
+    const circuits = getAllCircuitInfo();
+    
+    return JSON.stringify({
+      success: true,
+      circuits: circuits.map(circuit => ({
+        serviceName: circuit.serviceName,
+        state: circuit.state,
+        stats: circuit.stats,
+        options: circuit.options,
+      })),
+    });
+  } catch (error) {
+    logger.error('Error getting circuit breaker states: %s', error);
+    return JSON.stringify({
+      success: false,
+      error: 'INTERNAL_ERROR',
+      message: 'Failed to get circuit breaker states',
+    });
+  }
+}
+
+/**
+ * Get recent analytics events.
+ */
+export function getRecentEvents(limit: number = 100): AnalyticsEvent[] {
+  return analyticsEvents.slice(-limit);
+}
+
+/**
+ * Get all analytics events (for admin/debug purposes).
+ */
+export function getAllEvents(): AnalyticsEvent[] {
+  return [...analyticsEvents];
 }
