@@ -7,6 +7,7 @@ import {
   context,
   propagation,
 } from '@opentelemetry/api';
+import { SpanExporter } from '@opentelemetry/sdk-trace-base';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
@@ -333,9 +334,10 @@ export function initializeTracing(): void {
     }
 
     // Create and start the SDK
+    // Note: Type assertion needed due to version mismatch between exporters in dependency tree
     sdk = new NodeSDK({
       resource,
-      traceExporter: exporter,
+      traceExporter: exporter as any,
       instrumentations: instrumentations as never[],
       serviceName: tracingConfig.serviceName,
     });
