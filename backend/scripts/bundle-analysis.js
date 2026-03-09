@@ -3,9 +3,11 @@
 const fs = require('fs');
 const path = require('path');
 
-const BACKEND_DIR = path.join(__dirname, '..');
-const CONFIG_FILE = path.join(BACKEND_DIR, 'bundle-size-limits.json');
-const SIZE_HISTORY_FILE = path.join(BACKEND_DIR, '.bundle-size-history.json');
+// Get project root (backend folder - go up one level from scripts)
+const PROJECT_ROOT = path.resolve(__dirname, '..');
+
+const CONFIG_FILE = path.join(PROJECT_ROOT, 'bundle-size-limits.json');
+const SIZE_HISTORY_FILE = path.join(PROJECT_ROOT, '.bundle-size-history.json');
 const CI_MODE = process.argv.includes('--ci-mode');
 
 const DEFAULT_LIMITS = {
@@ -35,7 +37,7 @@ function loadConfig() {
 }
 
 function calculateDependencySize() {
-  const nodeModulesDir = path.join(BACKEND_DIR, 'node_modules');
+  const nodeModulesDir = path.join(PROJECT_ROOT, 'node_modules');
   let totalSize = 0;
   const packageSizes = {};
 
@@ -125,7 +127,7 @@ function analyzeHeavyDependencies(packageSizes, config) {
 }
 
 function getBundleSizes() {
-  const buildDir = path.join(BACKEND_DIR, 'build');
+  const buildDir = path.join(PROJECT_ROOT, 'build');
   const sizes = [];
 
   if (!fs.existsSync(buildDir)) {

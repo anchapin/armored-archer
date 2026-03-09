@@ -12,8 +12,9 @@
  * @version 1.0.0
  */
 
-import { TSESTree } from '@typescript-eslint/utils';
-import { ESLintUtils, AST_NODE_TYPES } from '@typescript-eslint/utils/dist/eslint-utils';
+import { TSESTree, ESLintUtils, AST_NODE_TYPES } from '@typescript-eslint/utils';
+import type { RuleModule } from '@typescript-eslint/utils/dist/ts-eslint/Rule';
+import type { RuleContext } from '@typescript-eslint/utils/dist/ts-eslint';
 
 // Database method patterns
 const DB_METHOD_PATTERNS = [
@@ -36,8 +37,14 @@ const DB_METHOD_PATTERNS = [
   'readStorageObjects',
 ];
 
+// Define rule options interface
+interface RuleOptions {
+  allowedMethods?: string[];
+  maxLoopDepth?: number;
+}
+
 // Create the rule
-export const NPlusOneDetectionRule = {
+export const NPlusOneDetectionRule: RuleModule<'nPlusOneQuery' | 'nPlusOneIteration', [RuleOptions?]> = {
   meta: {
     type: 'problem' as const,
     docs: {
@@ -67,7 +74,7 @@ export const NPlusOneDetectionRule = {
       },
     ],
   },
-  create(context) {
+  create(context: any) {
     // Merge with defaults
     const options = context.options[0] || {};
     const customMethods = options.allowedMethods || [];
