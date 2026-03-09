@@ -159,7 +159,11 @@ export class StructuredLogger {
    * @param context - Log context
    * @returns Scrubbed message and context
    */
-  private scrub(level: LogLevel, message: string, context: LogContext): {
+  private scrub(
+    level: LogLevel,
+    message: string,
+    context: LogContext
+  ): {
     message: string;
     context: LogContext;
   } {
