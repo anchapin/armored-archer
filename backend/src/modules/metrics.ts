@@ -3,8 +3,8 @@ import { config } from '../config';
 import { Runtime } from '../types/nakama';
 import * as rateLimiter from '../utils/rateLimiter';
 import { getDeploymentRegistry } from './deployment_observability';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { initializeNPlusOneDetectionWithMetrics, getNPlusOneReport } from './n_plus_one_detection';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 const register = new Registry();
 
@@ -262,7 +262,7 @@ async function rpcGetNPlusOneReport(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
-  payload: string
+  _payload: string
 ): Promise<string> {
   logger.info('N+1 report endpoint called by user: %s', ctx.userId);
 

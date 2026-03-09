@@ -362,16 +362,17 @@ const config: AppConfig = {
     maxScrubDepth: process.env.LOG_SCRUB_MAX_DEPTH
       ? parseInt(process.env.LOG_SCRUB_MAX_DEPTH, 10)
       : undefined,
-    scrubByLevel: process.env.LOG_SCRUB_BY_LEVEL === 'true'
-      ? {
-          error: { enabled: process.env.LOG_SCRUB_ERROR_ENABLED !== 'false' },
-          warn: { enabled: process.env.LOG_SCRUB_WARN_ENABLED !== 'false' },
-          info: { enabled: process.env.LOG_SCRUB_INFO_ENABLED !== 'false' },
-          debug: { enabled: process.env.LOG_SCRUB_DEBUG_ENABLED !== 'false' },
-        }
-      : undefined,
+    scrubByLevel:
+      process.env.LOG_SCRUB_BY_LEVEL === 'true'
+        ? {
+            error: { enabled: process.env.LOG_SCRUB_ERROR_ENABLED !== 'false' },
+            warn: { enabled: process.env.LOG_SCRUB_WARN_ENABLED !== 'false' },
+            info: { enabled: process.env.LOG_SCRUB_INFO_ENABLED !== 'false' },
+            debug: { enabled: process.env.LOG_SCRUB_DEBUG_ENABLED !== 'false' },
+          }
+        : undefined,
     scrubOutputs: process.env.LOG_SCRUB_OUTPUTS
-      ? process.env.LOG_SCRUB_OUTPUTS.split(',').map((o) => o.trim()) as ('console' | 'file')[]
+      ? (process.env.LOG_SCRUB_OUTPUTS.split(',').map((o) => o.trim()) as ('console' | 'file')[])
       : undefined,
   },
 

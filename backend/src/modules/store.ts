@@ -7,11 +7,11 @@
 import { createHash } from 'crypto';
 import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
+import { withCircuitBreaker } from '../utils/circuitBreaker';
 import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { isPII } from './privacy_compliance';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { withCircuitBreaker } from '../utils/circuitBreaker';
 
 /**
  * Maximum gem balance allowed to prevent overflow exploits.
