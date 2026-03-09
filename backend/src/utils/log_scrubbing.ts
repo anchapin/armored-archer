@@ -10,7 +10,11 @@
  * Compliance: GDPR, CCPA, COPPA
  */
 
-import { PIIType, SensitivityLevel, classifyField, redactBySensitivity } from '../modules/privacy_compliance';
+import {
+  SensitivityLevel,
+  classifyField,
+  redactBySensitivity,
+} from '../modules/privacy_compliance';
 
 /**
  * Patterns for sensitive data that should be scrubbed from logs
@@ -19,31 +23,35 @@ const SCRUB_PATTERNS: Record<string, RegExp> = {
   // Authentication credentials - more specific patterns first
   password: /(?:password|passwd|pwd)[=:\s]*["']?([^\s"']{4,})["']?/gi,
   api_key: /(?:api[_-]?key|apikey)[=:\s]*["']?([a-zA-Z0-9_-]{16,})["']?/gi,
-  access_token: /(?:access[_-]?token|bearer[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*)["']?/gi,
-  refresh_token: /(?:refresh[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*)["']?/gi,
-  auth_token: /(?:auth[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*)["']?/gi,
+  access_token:
+    /(?:access[_-]?token|bearer[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*)["']?/gi,
+  refresh_token:
+    /(?:refresh[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*)["']?/gi,
+  auth_token:
+    /(?:auth[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*)["']?/gi,
   private_key: /(?:private[_-]?key|rsa[_-]?key)[=:\s]*["']?([a-zA-Z0-9_-]{64,})["']?/gi,
-  
+
   // Personal identification
   email: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
   phone: /\b(\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b/g,
   ssn: /\b\d{3}[-]?\d{2}[-]?\d{4}\b/g,
   credit_card: /\b(?:\d{4}[- ]?){3}\d{4}\b/g,
-  
+
   // Network identifiers
-  ip_address: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
+  ip_address:
+    /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
   session_id: /(?:session[_-]?id)[=:\s]*["']?([a-zA-Z0-9_-]{16,})["']?/gi,
-  
+
   // Device identifiers - more permissive for shorter IDs
   device_id: /(?:device[_-]?id|uuid|udid)[=:\s]*["']?([a-f0-9-]{8,})["']?/gi,
-  
+
   // Database connection strings
   db_connection: /(?:postgres|mysql|mongodb|redis):\/\/[^\s]+/gi,
-  
+
   // AWS keys
   aws_access_key: /(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}/g,
-  aws_secret_key: /(?:aws[_-]?secret)[=:\s]*["']?([a-zA-Z0-9\/+]{40})["']?/gi,
-  
+  aws_secret_key: /(?:aws[_-]?secret)[=:\s]*["']?([a-zA-Z0-9/+]{40})["']?/gi,
+
   // Generic secret patterns - should come after specific patterns
   secret: /(?:secret)[=:\s]*["']?([a-zA-Z0-9_-]{4,})["']?/gi,
 };
@@ -152,11 +160,11 @@ export function scrubLogMessage(message: string, options?: ScrubOptions): ScrubR
 
     const regex = new RegExp(pattern.source, pattern.flags);
     const matches = result.match(regex);
-    
+
     if (matches && matches.length > 0) {
       scrubbedTypes.push(type);
       scrubCount += matches.length;
-      
+
       if (opts.preserveFormat) {
         // Replace with format-preserving placeholder
         result = result.replace(regex, `[${type.toUpperCase()}_REDACTED]`);
@@ -174,7 +182,7 @@ export function scrubLogMessage(message: string, options?: ScrubOptions): ScrubR
       'gi'
     );
     const matches = result.match(fieldPattern);
-    
+
     if (matches && matches.length > 0) {
       scrubbedTypes.push(`custom:${field}`);
       scrubCount += matches.length;
@@ -206,20 +214,20 @@ export function scrubObjectForLogging<T extends Record<string, unknown>>(
   }
 
   const opts = { ...DEFAULT_OPTIONS, ...options };
-  const customFieldsLower = opts.customFields.map(f => f.toLowerCase());
-  
+  const customFieldsLower = opts.customFields.map((f) => f.toLowerCase());
+
   // Handle arrays
   if (Array.isArray(data)) {
-    return data.map(item => {
+    return data.map((item) => {
       if (typeof item === 'object' && item !== null) {
         return scrubObjectForLogging(item as Record<string, unknown>, options);
       } else if (typeof item === 'string') {
         return scrubLogMessage(item, opts).message;
       }
       return item;
-    }) as T;
+    }) as unknown as T;
   }
-  
+
   const result: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(data)) {
@@ -246,7 +254,7 @@ export function scrubObjectForLogging<T extends Record<string, unknown>>(
     }
   }
 
-  return result as T;
+  return result as unknown as T;
 }
 
 /**
@@ -256,10 +264,7 @@ export function scrubObjectForLogging<T extends Record<string, unknown>>(
  * @param options - Scrubbing options
  * @returns Scrubbed arguments
  */
-export function scrubArgumentsForLogging(
-  args: unknown[],
-  options?: ScrubOptions
-): unknown[] {
+export function scrubArgumentsForLogging(args: unknown[], options?: ScrubOptions): unknown[] {
   return args.map((arg) => {
     if (typeof arg === 'string') {
       return scrubLogMessage(arg, options).message;
@@ -334,10 +339,7 @@ export function detectSensitiveData(message: string): {
 
   // Check for field matches
   for (const field of SCRUB_FIELDS) {
-    const fieldPattern = new RegExp(
-      `(?:${field}[=:\\s]*["']?)([^"']{1,})["']?`,
-      'gi'
-    );
+    const fieldPattern = new RegExp(`(?:${field}[=:\\s]*["']?)([^"']{1,})["']?`, 'gi');
     if (fieldPattern.test(message)) {
       detectedTypes.push(`field:${field}`);
       recommendations.push(`Scrub field: ${field}`);
@@ -370,9 +372,7 @@ export function validateLogSafety(
   const detection = detectSensitiveData(message);
 
   if (detection.containsSensitive) {
-    issues.push(
-      `Log message contains sensitive data: ${detection.detectedTypes.join(', ')}`
-    );
+    issues.push(`Log message contains sensitive data: ${detection.detectedTypes.join(', ')}`);
   }
 
   // If issues found, provide scrubbed version

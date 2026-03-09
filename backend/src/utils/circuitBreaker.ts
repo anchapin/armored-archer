@@ -1,6 +1,6 @@
 /**
  * Circuit Breaker Utility
- * 
+ *
  * Provides circuit breaker pattern implementation for external service calls.
  * Prevents cascading failures when downstream services become unavailable.
  */
@@ -25,7 +25,17 @@ export interface CircuitBreakerOptions {
 /**
  * Service identifier for circuit breaker instances
  */
-export type ServiceName = 'postgres' | 'nakama' | 'revenuecat' | 'mixpanel' | 'amplitude' | 'segment' | 'external_api' | 'slack' | 'pagerduty' | 'alerting_webhook';
+export type ServiceName =
+  | 'postgres'
+  | 'nakama'
+  | 'revenuecat'
+  | 'mixpanel'
+  | 'amplitude'
+  | 'segment'
+  | 'external_api'
+  | 'slack'
+  | 'pagerduty'
+  | 'alerting_webhook';
 
 /**
  * Circuit breaker states
@@ -74,7 +84,7 @@ const cbLogger = {
 
 /**
  * Creates a circuit breaker for a given service
- * 
+ *
  * @param serviceName - The name of the service to protect
  * @param options - Custom circuit breaker options
  * @returns The circuit breaker instance
@@ -85,7 +95,9 @@ export function createCircuitBreaker(
 ): CircuitBreaker {
   // If circuit already exists, return existing instance
   if (circuits.has(serviceName)) {
-    cbLogger.warn('Circuit breaker already exists for ' + serviceName + ', returning existing instance');
+    cbLogger.warn(
+      'Circuit breaker already exists for ' + serviceName + ', returning existing instance'
+    );
     return circuits.get(serviceName)!.breaker;
   }
 
@@ -94,15 +106,18 @@ export function createCircuitBreaker(
     ...options,
   };
 
-  const breaker = new CircuitBreaker(async () => {
-    // Placeholder - actual function will be passed when calling fire()
-    throw new Error('Circuit breaker called without function');
-  }, {
-    timeout: mergedOptions.timeout,
-    errorThresholdPercentage: mergedOptions.errorThresholdPercentage,
-    volumeThreshold: mergedOptions.volumeThreshold,
-    resetTimeout: mergedOptions.resetTimeout,
-  });
+  const breaker = new CircuitBreaker(
+    async () => {
+      // Placeholder - actual function will be passed when calling fire()
+      throw new Error('Circuit breaker called without function');
+    },
+    {
+      timeout: mergedOptions.timeout,
+      errorThresholdPercentage: mergedOptions.errorThresholdPercentage,
+      volumeThreshold: mergedOptions.volumeThreshold,
+      resetTimeout: mergedOptions.resetTimeout,
+    }
+  );
 
   const instance: CircuitBreakerInstance = {
     breaker,
@@ -137,7 +152,15 @@ export function createCircuitBreaker(
   breaker.on('failure', (error: Error, latency: number) => {
     instance.stats.failures++;
     instance.stats.lastFailure = new Date();
-    cbLogger.error('Request failed for ' + serviceName + ' (error: ' + error.message + ', latency: ' + latency + 'ms)');
+    cbLogger.error(
+      'Request failed for ' +
+        serviceName +
+        ' (error: ' +
+        error.message +
+        ', latency: ' +
+        latency +
+        'ms)'
+    );
   });
 
   breaker.on('reject', () => {
@@ -146,7 +169,7 @@ export function createCircuitBreaker(
   });
 
   circuits.set(serviceName, instance);
-  
+
   cbLogger.info('Circuit breaker created for ' + serviceName);
 
   return breaker;
@@ -154,7 +177,7 @@ export function createCircuitBreaker(
 
 /**
  * Gets or creates a circuit breaker for a service
- * 
+ *
  * @param serviceName - The service name
  * @param options - Options (only used if creating new circuit)
  * @returns The circuit breaker instance
@@ -172,7 +195,7 @@ export function getCircuitBreaker(
 
 /**
  * Executes a function with circuit breaker protection
- * 
+ *
  * @param serviceName - The service to call
  * @param fn - The function to execute
  * @param fallback - Optional fallback function if circuit is open
@@ -186,7 +209,7 @@ export async function withCircuitBreaker<T>(
   options?: CircuitBreakerOptions
 ): Promise<T> {
   const breaker = getCircuitBreaker(serviceName, options);
-  
+
   try {
     // Fire the function through the circuit breaker
     // We need to wrap this because opossum's fire method expects specific usage
@@ -204,7 +227,7 @@ export async function withCircuitBreaker<T>(
 
 /**
  * Gets the current state of a circuit breaker
- * 
+ *
  * @param serviceName - The service name
  * @returns Current circuit state or null if not found
  */
@@ -220,7 +243,7 @@ export function getCircuitState(serviceName: ServiceName): CircuitState | null {
 
 /**
  * Gets statistics for a circuit breaker
- * 
+ *
  * @param serviceName - The service name
  * @returns Statistics or null if not found
  */
@@ -231,7 +254,7 @@ export function getCircuitStats(serviceName: ServiceName): CircuitBreakerInstanc
 
 /**
  * Gets all circuit breaker states
- * 
+ *
  * @returns Map of service names to their states
  */
 export function getAllCircuitStates(): Map<ServiceName, CircuitState> {
@@ -247,7 +270,7 @@ export function getAllCircuitStates(): Map<ServiceName, CircuitState> {
 
 /**
  * Manually opens a circuit breaker (for testing or emergency use)
- * 
+ *
  * @param serviceName - The service name
  */
 export function openCircuit(serviceName: ServiceName): boolean {
@@ -256,7 +279,7 @@ export function openCircuit(serviceName: ServiceName): boolean {
     cbLogger.warn('Cannot open circuit - not found: ' + serviceName);
     return false;
   }
-  
+
   instance.breaker.open();
   cbLogger.warn('Circuit manually opened for ' + serviceName);
   return true;
@@ -264,7 +287,7 @@ export function openCircuit(serviceName: ServiceName): boolean {
 
 /**
  * Manually closes a circuit breaker (for testing or recovery)
- * 
+ *
  * @param serviceName - The service name
  */
 export function closeCircuit(serviceName: ServiceName): boolean {
@@ -273,7 +296,7 @@ export function closeCircuit(serviceName: ServiceName): boolean {
     cbLogger.warn('Cannot close circuit - not found: ' + serviceName);
     return false;
   }
-  
+
   instance.breaker.close();
   cbLogger.info('Circuit manually closed for ' + serviceName);
   return true;
@@ -281,7 +304,7 @@ export function closeCircuit(serviceName: ServiceName): boolean {
 
 /**
  * Gets all circuit breaker information
- * 
+ *
  * @returns Array of circuit breaker details
  */
 export function getAllCircuitInfo(): Array<{
@@ -301,7 +324,7 @@ export function getAllCircuitInfo(): Array<{
     let state: CircuitState = 'CLOSED';
     if (instance.breaker.opened) state = 'OPEN';
     else if (instance.breaker.halfOpen) state = 'HALF_OPEN';
-    
+
     info.push({
       serviceName: name,
       state: state,
