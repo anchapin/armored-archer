@@ -386,6 +386,17 @@ jobs:
       - name: Install gdlint
         run: pip install gdtoolkit
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
       - name: Run dead code detection (CI mode)
         run: make dead-code-check-ci
 
@@ -416,7 +427,7 @@ jobs:
       - name: Install Nakama
         run: |
           # Download and extract Nakama server
-          curl -sL https://github.com/heroiclabs/nakama/releases/download/v3.23.0/nakama-v3.23.0-linux-amd64.tar.gz -o nakama.tar.gz
+          curl -sL https://github.com/heroiclabs/nakama/releases/download/v3.23.0/nakama-3.23.0-linux-amd64.tar.gz -o nakama.tar.gz
           tar xzf nakama.tar.gz
           chmod +x nakama
       
