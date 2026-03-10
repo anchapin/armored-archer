@@ -21,10 +21,10 @@ jobs:
       - name: Setup Godot
         run: |
           # Download Godot headless binary directly
-          wget -q https://github.com/godotengine/godot/releases/download/4.6.1.stable.14d19694e/Godot_v4.6.1.stable.linux.x86_64.zip -O godot.zip
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
           unzip -q godot.zip
-          chmod +x Godot_v4.6.1.stable.linux.x86_64
-          mv Godot_v4.6.1.stable.linux.x86_64 godot4
+          chmod +x Godot_v4.6-stable_linux.x86_64
+          mv Godot_v4.6-stable_linux.x86_64 godot4
       
       - name: Run Godot Tests
         run: |
