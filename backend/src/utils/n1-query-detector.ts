@@ -1,13 +1,13 @@
 /**
  * N+1 Query Detection Utility
- * 
+ *
  * This utility provides infrastructure for detecting N+1 query patterns
  * in the database layer. It can be used during development and testing
  * to identify performance issues.
- * 
+ *
  * Usage:
  *   import { N1QueryDetector } from './utils/n1-query-detector';
- *   
+ *
  *   // Wrap database operations
  *   const result = await N1QueryDetector.track(async () => {
  *     const players = await getAllPlayers();
@@ -16,7 +16,7 @@
  *       const stats = await getPlayerStats(player.id);
  *     }
  *   });
- *   
+ *
  *   if (result.n1Queries.length > 0) {
  *     console.warn('N+1 queries detected:', result.n1Queries);
  *   }
@@ -61,7 +61,7 @@ class N1QueryDetectorClass {
    */
   logQuery(sql: string, duration?: number, stackTrace?: string): void {
     if (!this.enabled) return;
-    
+
     this.queryLog.push({
       sql: this.sanitizeSql(sql),
       timestamp: Date.now(),
@@ -80,18 +80,20 @@ class N1QueryDetectorClass {
 
     const previousLogLength = this.queryLog.length;
     const startTime = Date.now();
-    
+
     try {
       const result = await operation();
       return result;
     } finally {
       const queries = this.queryLog.slice(previousLogLength);
+      // Track operation duration for analysis
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const operationDuration = Date.now() - startTime;
-      
+
       // Mark queries with duration for analysis
       queries.forEach((q, i) => {
-        if (i > 0 && queries[i-1].duration) {
-          q.duration = q.timestamp - queries[i-1].timestamp;
+        if (i > 0 && queries[i - 1].duration) {
+          q.duration = q.timestamp - queries[i - 1].timestamp;
         }
       });
     }
@@ -102,7 +104,7 @@ class N1QueryDetectorClass {
    */
   analyze(): N1QueryResult {
     // Simple heuristic: detect repeated similar SELECT queries
-    const selectQueries = this.queryLog.filter(q => 
+    const selectQueries = this.queryLog.filter((q) =>
       q.sql.trim().toUpperCase().startsWith('SELECT')
     );
 
@@ -116,7 +118,7 @@ class N1QueryDetectorClass {
         const table = tableMatch[1].toLowerCase();
         const count = queryPatterns.get(table) || 0;
         queryPatterns.set(table, count + 1);
-        
+
         // If same table is queried more than threshold times, flag as N+1
         if (count + 1 > this.threshold && !n1Queries.includes(table)) {
           n1Queries.push(table);

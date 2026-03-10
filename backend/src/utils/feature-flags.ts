@@ -1,12 +1,12 @@
 /**
  * Simple feature flag system for the backend.
- * 
+ *
  * This provides a basic feature flag infrastructure that can be extended
  * to integrate with services like LaunchDarkly, Statsig, or Unleash.
- * 
+ *
  * Usage:
  *   import { FeatureFlags } from './utils/feature-flags';
- *   
+ *
  *   if (FeatureFlags.isEnabled('new_combat_system')) {
  *     // New combat logic
  *   } else {
@@ -63,8 +63,8 @@ export class FeatureFlags {
    * @returns true if the feature is enabled, false otherwise
    */
   static isEnabled(flagName: string): boolean {
-    const flag = this.flags.flags.find(f => f.name === flagName);
-    
+    const flag = this.flags.flags.find((f) => f.name === flagName);
+
     if (!flag) {
       return this.flags.defaultEnabled;
     }
@@ -94,7 +94,7 @@ export class FeatureFlags {
    * @returns The feature flag or undefined if not found
    */
   static getFlag(flagName: string): FeatureFlag | undefined {
-    return this.flags.flags.find(f => f.name === flagName);
+    return this.flags.flags.find((f) => f.name === flagName);
   }
 
   /**
@@ -102,7 +102,7 @@ export class FeatureFlags {
    * @param flagName - The name of the feature flag to enable
    */
   static enable(flagName: string): void {
-    const flag = this.flags.flags.find(f => f.name === flagName);
+    const flag = this.flags.flags.find((f) => f.name === flagName);
     if (flag) {
       flag.enabled = true;
     }
@@ -113,7 +113,7 @@ export class FeatureFlags {
    * @param flagName - The name of the feature flag to disable
    */
   static disable(flagName: string): void {
-    const flag = this.flags.flags.find(f => f.name === flagName);
+    const flag = this.flags.flags.find((f) => f.name === flagName);
     if (flag) {
       flag.enabled = false;
     }
@@ -125,7 +125,7 @@ export class FeatureFlags {
    * @param percentage - Rollout percentage (0-100)
    */
   static setRolloutPercentage(flagName: string, percentage: number): void {
-    const flag = this.flags.flags.find(f => f.name === flagName);
+    const flag = this.flags.flags.find((f) => f.name === flagName);
     if (flag) {
       flag.rolloutPercentage = Math.max(0, Math.min(100, percentage));
     }
@@ -138,7 +138,7 @@ export class FeatureFlags {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32bit integer
     }
     return Math.abs(hash);
