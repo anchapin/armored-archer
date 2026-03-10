@@ -61,8 +61,7 @@ const PII_PATTERNS: Record<PIIType, RegExp> = {
     /\b(?:username|user[_-]?name|display[_-]?name)[=:\s]*["']([a-zA-Z0-9_-]{2,20})["']/gi,
   [PIIType.FULL_NAME]:
     /\b(?:full[_-]?name|real[_-]?name|legal[_-]?name)[=:\s]*["']([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)["']/gi,
-  [PIIType.ADDRESS]:
-    /\b(?:address|street|city|postal[_-]?code)[=:\s]*["']([^"'\n]{10,100})["']/gi,
+  [PIIType.ADDRESS]: /\b(?:address|street|city|postal[_-]?code)[=:\s]*["']([^"'\n]{10,100})["']/gi,
   [PIIType.DATE_OF_BIRTH]:
     /\b(?:dob|date[_-]?of[_-]?birth|birth[_-]?date)[=:\s]*["'](\d{4}[-/]\d{2}[-/]\d{2})["']/gi,
   [PIIType.GEOLOCATION]:
