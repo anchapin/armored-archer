@@ -1,0 +1,54 @@
+{
+  "name": "armored-archer-module-boundaries",
+  "version": "1.0.0",
+  "description": "ESLint module boundary rules for architectural enforcement",
+  "rules": {
+    "import/no-restricted-paths": [
+      "error",
+      {
+        "baseTypes": [
+          "Config",
+          "Features",
+          "Modules"
+        ],
+        "fromPathStart": true,
+        "restrictions": [
+          {
+            "from": "modules/**",
+            "allowTypeImports": [
+              "modules/types/**"
+            ],
+            "message": "Modules should not import from other modules directly. Use the features layer for cross-module communication."
+          },
+          {
+            "from": "features/**",
+            "allowTypeImports": [
+              "modules/types/**"
+            ],
+            "message": "Features should use modules through the features interface, not import modules directly."
+          },
+          {
+            "from": "config/**",
+            "deny": [
+              {
+                "from": "modules/**",
+                "message": "Config should not depend on modules."
+              },
+              {
+                "from": "features/**",
+                "message": "Config should not depend on features."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "import/no-cycle": [
+      "error",
+      {
+        "maxDepth": 1,
+        "ignoreExternal": true
+      }
+    ]
+  }
+}
