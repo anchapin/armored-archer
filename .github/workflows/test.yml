@@ -12,25 +12,26 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        godot-version: ['4.2']
+        godot-version: ['4.6']
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
       - name: Setup Godot
-        uses: notifiarr/godot-action@v0.2.2
-        with:
-          godot-version: ${{ matrix.godot-version }}
-          # Use the headless version for CI
-          godot-executable: godot4
+        run: |
+          # Download Godot headless binary directly
+          wget -q https://github.com/godotengine/godot/releases/download/4.6.1.stable.14d19694e/Godot_v4.6.1.stable.linux.x86_64.zip -O godot.zip
+          unzip -q godot.zip
+          chmod +x Godot_v4.6.1.stable.linux.x86_64
+          mv Godot_v4.6.1.stable.linux.x86_64 godot4
       
       - name: Run Godot Tests
         run: |
           # Run headless tests using the test runner scene
           # Note: This requires a test scene or headless mode
           # Capture output and check for test failures
-          TEST_OUTPUT=$(godot4 --headless --script test/run_all_tests.gd 2>&1)
+          TEST_OUTPUT=$(./godot4 --headless --script test/run_all_tests.gd 2>&1)
           echo "$TEST_OUTPUT"
           
           # Check for test failures in output
