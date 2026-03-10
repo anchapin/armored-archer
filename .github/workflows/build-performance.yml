@@ -2,9 +2,9 @@ name: Build Performance Tracking
 
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [CI, CD]
     types: [completed]
-    branches: [main]
+    branches: [main, develop]
   schedule:
     - cron: '0 0 * * *'  # Daily at midnight
   workflow_dispatch:
@@ -13,47 +13,111 @@ on:
         description: 'Alert threshold (minutes)'
         required: false
         default: '30'
+      collect_detailed_metrics:
+        description: 'Collect detailed metrics'
+        required: false
+        default: 'true'
+        type: boolean
+
+# Permissions for metrics collection
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
-  track-build-performance:
+  collect-build-metrics:
+    name: Collect Build Metrics
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' }}
     outputs:
       build_time: ${{ steps.extract.outputs.build_time }}
       test_time: ${{ steps.extract.outputs.test_time }}
       deploy_time: ${{ steps.extract.outputs.deploy_time }}
+      total_time: ${{ steps.extract.outputs.total_time }}
       regression_detected: ${{ steps.check_regression.outputs.regression }}
+      workflow_name: ${{ steps.extract.outputs.workflow_name }}
+      jobs_count: ${{ steps.extract.outputs.jobs_count }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Extract build times from workflow run
+      - name: Get workflow run details
         id: extract
-        run: |
-          # Get the workflow run data
-          WORKFLOW_RUN_ID=${{ github.event.workflow_run.id }}
-          
-          # Extract timing info from jobs
-          echo "build_time=$(echo '${{ toJson(github.event.workflow_run.run_started_at) }}' | jq -s '.[0]')" >> $GITHUB_OUTPUT
-          
-          # Simulated build time extraction (in real implementation, parse from workflow jobs)
-          # For demonstration, we'll use workflow timing
-          BUILD_START="${{ github.event.workflow_run.run_started_at }}"
-          BUILD_END="${{ github.event.workflow_run.updated_at }}"
-          
-          # Calculate duration in minutes
-          START=$(date -d "$BUILD_START" +%s 2>/dev/null || echo "0")
-          END=$(date -d "$BUILD_END" +%s 2>/dev/null || echo "0")
-          DURATION=$((END - START))
-          MINUTES=$((DURATION / 60))
-          
-          echo "build_time=$MINUTES" >> $GITHUB_OUTPUT
-          echo "test_time=$((MINUTES * 60 / 100))" >> $GITHUB_OUTPUT  # Estimate based on CI
-          echo "deploy_time=0" >> $GITHUB_OUTPUT
-          
-          echo "Build time: $MINUTES minutes"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runId = '${{ github.event.workflow_run.id }}';
+            const run = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: parseInt(runId)
+            });
+            
+            const jobs = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: parseInt(runId)
+            });
+            
+            // Calculate timing for each job
+            let totalRunTime = 0;
+            let buildTime = 0;
+            let testTime = 0;
+            let deployTime = 0;
+            
+            const jobDetails = [];
+            
+            for (const job of jobs.data.jobs) {
+              const started = new Date(job.started_at);
+              const ended = new Date(job.completed_at);
+              const duration = (ended - started) / 1000; // seconds
+              
+              jobDetails.push({
+                name: job.name,
+                status: job.status,
+                conclusion: job.conclusion,
+                duration_seconds: duration,
+                started_at: job.started_at,
+                completed_at: job.completed_at
+              });
+              
+              // Categorize by job name
+              const name = job.name.toLowerCase();
+              if (name.includes('build') || name.includes('compile')) {
+                buildTime = Math.max(buildTime, duration);
+              } else if (name.includes('test')) {
+                testTime = Math.max(testTime, duration);
+              } else if (name.includes('deploy')) {
+                deployTime = Math.max(deployTime, duration);
+              }
+              
+              totalRunTime = Math.max(totalRunTime, duration);
+            }
+            
+            // Output as JSON for parsing
+            console.log('Workflow:', run.data.name);
+            console.log('Total jobs:', jobs.data.jobs.length);
+            console.log('Total time:', totalRunTime, 'seconds');
+            console.log('Build time:', buildTime, 'seconds');
+            console.log('Test time:', testTime, 'seconds');
+            console.log('Deploy time:', deployTime, 'seconds');
+            
+            // Set outputs
+            const totalMinutes = Math.round(totalRunTime / 60);
+            const buildMinutes = Math.round(buildTime / 60);
+            const testMinutes = Math.round(testTime / 60);
+            const deployMinutes = Math.round(deployTime / 60);
+            
+            core.setOutput('workflow_name', run.data.name);
+            core.setOutput('jobs_count', jobs.data.jobs.length);
+            core.setOutput('total_time', totalMinutes);
+            core.setOutput('build_time', buildMinutes);
+            core.setOutput('test_time', testMinutes);
+            core.setOutput('deploy_time', deployMinutes);
+            core.setOutput('job_details', JSON.stringify(jobDetails));
 
       - name: Read historical data
         id: history
@@ -83,34 +147,74 @@ jobs:
         run: |
           mkdir -p .build-metrics
           
+          # Get workflow name
+          WORKFLOW_NAME="${{ steps.extract.outputs.workflow_name }}"
+          if [ -z "$WORKFLOW_NAME" ]; then
+            WORKFLOW_NAME="${{ github.event.workflow_run.name }}"
+          fi
+          
           # Create new entry
           NEW_ENTRY=$(cat <<EOF
           {
             "date": "$(date -Iseconds)",
+            "workflow": "$WORKFLOW_NAME",
             "build_time": ${{ steps.extract.outputs.build_time }},
             "test_time": ${{ steps.extract.outputs.test_time }},
+            "deploy_time": ${{ steps.extract.outputs.deploy_time }},
+            "total_time": ${{ steps.extract.outputs.total_time }},
+            "jobs_count": ${{ steps.extract.outputs.jobs_count }},
             "workflow_id": "${{ github.event.workflow_run.id }}",
-            "commit": "${{ github.sha }}"
+            "workflow_run_url": "${{ github.event.workflow_run.html_url }}",
+            "commit": "${{ github.sha }}",
+            "conclusion": "${{ github.event.workflow_run.conclusion }}"
           }
           EOF
           )
           
-          # Update history JSON (keep last 30 entries)
+          # Update history JSON (keep last 60 entries)
           if [ -f .build-metrics/history.json ]; then
-            cat .build-metrics/history.json | jq --argjson entry "$NEW_ENTRY" '[.] + .[0:29]' > .build-metrics/history.json.tmp
+            cat .build-metrics/history.json | jq --argjson entry "$NEW_ENTRY" '[.] + .[0:59]' > .build-metrics/history.json.tmp
             mv .build-metrics/history.json.tmp .build-metrics/history.json
           else
             echo "[$NEW_ENTRY]" > .build-metrics/history.json
           fi
+          
+          echo "Updated history with new entry"
 
-      - name: Generate performance report
+      - name: Generate performance statistics
         run: |
           mkdir -p .build-metrics
           
-          # Calculate averages from last 7 builds
+          # Calculate statistics
           if [ -f .build-metrics/history.json ]; then
-            AVG=$(cat .build-metrics/history.json | jq '[.[:7][] | .build_time] | add / length')
-            echo "Average build time (last 7): ${AVG:-0} minutes"
+            # Average build time
+            AVG_BUILD=$(cat .build-metrics/history.json | jq '[.[:30][] | .build_time] | add / length | floor')
+            AVG_TEST=$(cat .build-metrics/history.json | jq '[.[:30][] | .test_time] | add / length | floor')
+            AVG_TOTAL=$(cat .build-metrics/history.json | jq '[.[:30][] | .total_time] | add / length | floor')
+            
+            # Max values
+            MAX_BUILD=$(cat .build-metrics/history.json | jq '[.[:30][] | .build_time] | max')
+            MAX_TEST=$(cat .build-metrics/history.json | jq '[.[:30][] | .test_time] | max')
+            
+            # Latest values
+            LATEST_BUILD=$(cat .build-metrics/history.json | jq '.[0].build_time')
+            
+            echo "Average (last 30): Build=${AVG_BUILD}min, Test=${AVG_TEST}min, Total=${AVG_TOTAL}min"
+            echo "Max (last 30): Build=${MAX_BUILD}min, Test=${MAX_TEST}min"
+            echo "Latest: Build=${LATEST_BUILD}min"
+            
+            # Create statistics object
+            cat > .build-metrics/latest-stats.json << EOF
+            {
+              "avg_build_time": $AVG_BUILD,
+              "avg_test_time": $AVG_TEST,
+              "avg_total_time": $AVG_TOTAL,
+              "max_build_time": $MAX_BUILD,
+              "max_test_time": $MAX_TEST,
+              "latest_build_time": $LATEST_BUILD,
+              "updated_at": "$(date -Iseconds)"
+            }
+            EOF
           fi
 
       - name: Commit metrics
@@ -124,9 +228,107 @@ jobs:
         if: steps.check_regression.outputs.regression == 'true'
         run: |
           echo "::warning::Build performance regression detected! Build time: ${{ steps.extract.outputs.build_time }} minutes"
+          
+          # Create issue for regression
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues" \
+            -d '{
+              "title": "[Build Regression] Build time exceeded threshold",
+              "body": "## Build Performance Regression Alert\n\nBuild time exceeded the configured threshold.\n\n- **Threshold:** 30 minutes\n- **Actual:** ${{ steps.extract.outputs.build_time }} minutes\n- **Workflow:** ${{ steps.extract.outputs.workflow_name }}\n- **Run:** ${{ github.event.workflow_run.html_url }}\n\nPlease investigate and optimize the build process.",
+              "labels": ["build", "performance", "regression"]
+            }'
+
+  detailed-metrics-collection:
+    name: Detailed Metrics Collection
+    needs: collect-build-metrics
+    runs-on: ubuntu-latest
+    if: github.inputs.collect_detailed_metrics == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Collect repository metrics
+        id: repo_metrics
+        run: |
+          mkdir -p .build-metrics
+          
+          # Get repository statistics
+          echo "=== Repository Metrics ==="
+          
+          # Line count by language
+          echo "Lines of code:"
+          find . -name "*.ts" -o -name "*.js" -o -name "*.gd" -o -name "*.py" 2>/dev/null | head -100 | xargs wc -l 2>/dev/null | tail -1
+          
+          # File count
+          TS_COUNT=$(find . -name "*.ts" -o -name "*.tsx" 2>/dev/null | wc -l)
+          JS_COUNT=$(find . -name "*.js" 2>/dev/null | wc -l)
+          GD_COUNT=$(find . -name "*.gd" 2>/dev/null | wc -l)
+          PY_COUNT=$(find . -name "*.py" 2>/dev/null | wc -l)
+          
+          echo "TypeScript: $TS_COUNT files"
+          echo "JavaScript: $JS_COUNT files"
+          echo "GDScript: $GD_COUNT files"
+          echo "Python: $PY_COUNT files"
+          
+          # Test coverage if available
+          if [ -f backend/coverage/coverage-summary.json ]; then
+            echo "=== Test Coverage ==="
+            cat backend/coverage/coverage-summary.json | jq '.total'
+          fi
+          
+          # Save to metrics
+          cat > .build-metrics/repo-stats.json << EOF
+          {
+            "typescript_files": $TS_COUNT,
+            "javascript_files": $JS_COUNT,
+            "gdscript_files": $GD_COUNT,
+            "python_files": $PY_COUNT,
+            "collected_at": "$(date -Iseconds)"
+          }
+          EOF
+
+      - name: Generate performance insights
+        run: |
+          mkdir -p .build-metrics
+          
+          # Analyze trends
+          if [ -f .build-metrics/history.json ]; then
+            # Calculate trend (positive = getting slower)
+            LAST_5=$(cat .build-metrics/history.json | jq '[.[:5] | reverse[] | .build_time]')
+            PREV_5=$(cat .build-metrics/history.json | jq '[.[5:10][] | .build_time]' 2>/dev/null || echo "[]")
+            
+            # Simple trend analysis
+            TREND=$(cat .build-metrics/history.json | jq '
+              (.[:5] | map(.build_time) | add / 5) as $recent |
+              (.[5:10] | map(.build_time) | add / length) as $older |
+              if $older > 0 then (($recent - $older) / $older * 100 | floor) else 0 end
+            ')
+            
+            echo "Build time trend: $TREND%"
+            
+            # Create insights
+            cat > .build-metrics/insights.json << EOF
+            {
+              "trend_percentage": $TREND,
+              "trend_direction": $(if [ "$TREND" -gt 5 ]; then echo "degrading"; elif [ "$TREND" -lt -5 ]; then echo "improving"; else echo "stable"; fi),
+              "analyzed_at": "$(date -Iseconds)"
+            }
+            EOF
+          fi
+
+      - name: Commit detailed metrics
+        run: |
+          git config --local user.email "openhands@all-hands.dev"
+          git config --local user.name "OpenHands"
+          git add .build-metrics/
+          git diff --staged --quiet || git commit -m "docs: Update detailed build metrics"
 
   build-performance-dashboard:
-    needs: track-build-performance
+    needs: collect-build-metrics
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -136,19 +338,55 @@ jobs:
         run: |
           mkdir -p .build-metrics
           
+          # Get stats
+          if [ -f .build-metrics/latest-stats.json ]; then
+            AVG_BUILD=$(cat .build-metrics/latest-stats.json | jq -r '.avg_build_time')
+            AVG_TEST=$(cat .build-metrics/latest-stats.json | jq -r '.avg_test_time')
+            MAX_BUILD=$(cat .build-metrics/latest-stats.json | jq -r '.max_build_time')
+          else
+            AVG_BUILD="N/A"
+            AVG_TEST="N/A"
+            MAX_BUILD="N/A"
+          fi
+          
           # Generate markdown report
-          cat > .build-metrics/PERFORMANCE.md << 'EOF'
+          cat > .build-metrics/PERFORMANCE.md << EOF
           # Build Performance Dashboard
+          
+          ## Summary Statistics (Last 30 Builds)
+          
+          | Metric | Value |
+          |--------|-------|
+          | Average Build Time | ${AVG_BUILD} minutes |
+          | Average Test Time | ${AVG_TEST} minutes |
+          | Max Build Time | ${MAX_BUILD} minutes |
           
           ## Recent Builds
           
-          | Date | Build Time | Test Time | Commit |
-          |------|------------|-----------|--------|
+          | Date | Build | Test | Total | Workflow | Status |
+          |------|-------|------|-------|----------|--------|
           EOF
           
           if [ -f .build-metrics/history.json ]; then
-            cat .build-metrics/history.json | jq -r '.[] | "| \(.date) | \(.build_time) min | \(.test_time) min | \(.commit[0:7]) |"' >> .build-metrics/PERFORMANCE.md
+            cat .build-metrics/history.json | jq -r '.[:10][] | "| \(.date[0:10]) | \(.build_time) min | \(.test_time) min | \(.total_time) min | \(.workflow) | \(.conclusion) |"' >> .build-metrics/PERFORMANCE.md
           fi
+          
+          cat >> .build-metrics/PERFORMANCE.md << 'EOF'
+          
+          ## Performance Trends
+          
+          ![Build Time Trend](build-time-trend.png)
+          
+          ## Jobs Breakdown
+          
+          Latest workflow ran ${{ needs.collect-build-metrics.outputs.jobs_count }} jobs:
+          - Build: ${{ needs.collect-build-metrics.outputs.build_time }} min
+          - Test: ${{ needs.collect-build-metrics.outputs.test_time }} min
+          - Deploy: ${{ needs.collect-build-metrics.outputs.deploy_time }} min
+          
+          ---
+          *Updated: $(date)*
+          EOF
           
           cat .build-metrics/PERFORMANCE.md
 
@@ -157,3 +395,28 @@ jobs:
         with:
           name: build-metrics
           path: .build-metrics/
+          retention-days: 90
+
+  notify-performance-channel:
+    name: Notify Performance Channel
+    needs: collect-build-metrics
+    runs-on: ubuntu-latest
+    if: |
+      always() &&
+      (needs.collect-build-metrics.outputs.regression_detected == 'true' ||
+       github.event_name == 'schedule')
+    steps:
+      - name: Create performance summary
+        run: |
+          echo "## Build Performance Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow:** ${{ needs.collect-build-metrics.outputs.workflow_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Total Time:** ${{ needs.collect-build-metrics.outputs.total_time }} minutes" >> $GITHUB_STEP_SUMMARY
+          echo "**Build:** ${{ needs.collect-build-metrics.outputs.build_time }} minutes" >> $GITHUB_STEP_SUMMARY
+          echo "**Test:** ${{ needs.collect-build-metrics.outputs.test_time }} minutes" >> $GITHUB_STEP_SUMMARY
+          echo "**Deploy:** ${{ needs.collect-build-metrics.outputs.deploy_time }} minutes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.collect-build-metrics.outputs.regression_detected }}" == "true" ]; then
+            echo "⚠️ **Regression Detected!**" >> $GITHUB_STEP_SUMMARY
+          fi

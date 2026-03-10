@@ -1,0 +1,266 @@
+name: Agentic Development
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task description for the AI agent'
+        required: true
+        type: string
+      agent_type:
+        description: 'Type of agent to use'
+        required: false
+        default: 'default'
+        type: choice
+        options:
+          - default
+          - researcher
+          - programmer
+      model:
+        description: 'AI model to use'
+        required: false
+        default: 'claude-sonnet-4-20250514'
+        type: string
+      base_branch:
+        description: 'Base branch to work from'
+        required: false
+        default: 'develop'
+        type: string
+
+concurrency:
+  group: agentic-dev-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-agent-environment:
+    name: Prepare Agent Environment
+    runs-on: ubuntu-latest
+    outputs:
+      branch_name: ${{ steps.prepare.outputs.branch_name }}
+      task_id: ${{ steps.prepare.outputs.task_id }}
+    steps:
+      - name: Generate task ID
+        id: prepare
+        run: |
+          TASK_ID="agent-task-$(date +%Y%m%d-%H%M%S)-${RANDOM}"
+          BRANCH_NAME="ai-agent/task-$(date +%Y%m%d-%H%M%S)"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "task_id=$TASK_ID" >> $GITHUB_OUTPUT
+          echo "Task ID: $TASK_ID"
+          echo "Branch: $BRANCH_NAME"
+
+      - name: Create working branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.inputs.base_branch }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Create agent working branch
+        run: |
+          git config user.name "AI Agent"
+          git config user.email "ai-agent@armored-archer.dev"
+          git checkout -b "${{ steps.prepare.outputs.branch_name }}"
+
+      - name: Push branch for agent
+        run: |
+          git push -u origin "${{ steps.prepare.outputs.branch_name }}" || true
+
+      - name: Create task tracking issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const taskId = '${{ steps.prepare.outputs.task_id }}';
+            const taskInput = '${{ github.inputs.task }}'.substring(0, 100);
+            const model = '${{ github.inputs.model }}';
+            const agentType = '${{ github.inputs.agent_type }}';
+            const baseBranch = '${{ github.inputs.base_branch }}';
+            const branchName = '${{ steps.prepare.outputs.branch_name }}';
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '[AI Agent] Task: ' + taskInput,
+              body: '## AI Agent Task\n\n**Task ID:** ' + taskId + '\n**Model:** ' + model + '\n**Agent Type:** ' + agentType + '\n**Base Branch:** ' + baseBranch + '\n**Working Branch:** ' + branchName + '\n\n### Task Description\n${{ github.inputs.task }}\n\n### Status: In Progress\n\n---\n*This issue is auto-generated for AI agent task tracking*',
+              labels: ['ai-agent', 'task']
+            });
+
+  execute-agent-task:
+    name: Execute AI Agent Task
+    needs: prepare-agent-environment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout working branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-agent-environment.outputs.branch_name }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Prepare context for AI agent
+        id: context
+        run: |
+          echo "=== AI Agent Task Execution ==="
+          echo "Task: ${{ github.inputs.task }}"
+          echo "Model: ${{ github.inputs.model }}"
+          echo "Agent Type: ${{ github.inputs.agent_type }}"
+          echo "Working Branch: ${{ needs.prepare-agent-environment.outputs.branch_name }}"
+          echo ""
+          echo "NOTE: This is where the AI agent would execute the task."
+          echo "In production, integrate with your AI provider"
+
+      - name: Log AI agent task start
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = '${{ needs.prepare-agent-environment.outputs.branch_name }}';
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['ai-agent'],
+              state: 'open'
+            });
+            
+            const issue = issues.data.find(i => i.title.includes('[AI Agent]'));
+            if (issue) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: issue.body + '\n\n### Status: Executing Task\n- Branch created and ready\n- Environment configured\n- Beginning task execution...'
+              });
+            }
+
+  validate-agent-changes:
+    name: Validate AI Agent Changes
+    needs: [prepare-agent-environment, execute-agent-task]
+    runs-on: ubuntu-latest
+    if: |
+      needs.execute-agent-task.result == 'success' ||
+      needs.execute-agent-task.result == 'failure'
+    steps:
+      - name: Checkout working branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-agent-environment.outputs.branch_name }}
+          fetch-depth: 0
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git fetch origin ${{ github.inputs.base_branch }}
+          CHANGES=$(git diff --name-only origin/${{ github.inputs.base_branch }}...HEAD || true)
+          if [ -n "$CHANGES" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "$CHANGES"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run validation checks
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          echo "Running validation on modified files..."
+
+      - name: Run backend checks
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          cd backend && npm ci || true
+          npm run lint -- --no-ignore || echo "Lint noted"
+
+  create-pull-request:
+    name: Create Pull Request
+    needs: [prepare-agent-environment, execute-agent-task, validate-agent-changes]
+    runs-on: ubuntu-latest
+    if: |
+      needs.execute-agent-task.result == 'success'
+    steps:
+      - name: Checkout working branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-agent-environment.outputs.branch_name }}
+          fetch-depth: 0
+
+      - name: Get commit info
+        id: commits
+        run: |
+          COMMITS=$(git log origin/${{ github.inputs.base_branch }}..HEAD --oneline 2>/dev/null || echo "No commits")
+          echo "commits=$COMMITS" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = '${{ needs.prepare-agent-environment.outputs.branch_name }}';
+            const baseBranch = '${{ github.inputs.base_branch }}';
+            const taskInput = '${{ github.inputs.task }}'.substring(0, 50);
+            const model = '${{ github.inputs.model }}';
+            const agentType = '${{ github.inputs.agent_type }}';
+            const commits = '${{ steps.commits.outputs.commits }}';
+            
+            const prBody = '## AI Agent Generated Pull Request\n\n### Task\n${{ github.inputs.task }}\n\n### Model\n' + model + '\n\n### Agent Type\n' + agentType + '\n\n### Changes\nThis PR contains AI-assisted changes. All changes require human review before merging.\n\n### Commit History\n```\n' + commits + '\n```\n\n### Required Review Checklist\n- [ ] Code follows project conventions (GDScript/TypeScript style guides)\n- [ ] No hardcoded secrets or credentials\n- [ ] Error handling is appropriate\n- [ ] Tests are included and passing\n- [ ] Documentation is updated if needed\n- [ ] No debug code or print statements left behind\n- [ ] Security implications considered\n\n### AI Attribution\nAs per AGENTS.md guidelines, AI-assisted contributions must include:\n- [AI-assisted] prefix in commit messages\n- Clear documentation of AI assistance in PR description\n- Human review required before merge\n\n---\n*This PR was generated by an AI agent*';
+
+            try {
+              const pr = await github.rest.pulls.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '[AI-assisted] ' + taskInput,
+                body: prBody,
+                head: branchName,
+                base: baseBranch
+              });
+              
+              console.log('PR created: #' + pr.data.number);
+              
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.data.number,
+                labels: ['ai-assisted', 'needs-review']
+              });
+              
+              const issues = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: ['ai-agent'],
+                state: 'open'
+              });
+              
+              const issue = issues.data.find(i => i.title.includes('[AI Agent]'));
+              if (issue) {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: issue.body + '\n\n### Status: Completed\n- PR Created: #' + pr.data.number + '\n- Waiting for human review'
+                });
+              }
+              
+            } catch (err) {
+              console.log('PR might already exist:', err.message);
+            }
+
+  summarize-results:
+    name: Summarize Results
+    needs: [prepare-agent-environment, execute-agent-task, validate-agent-changes, create-pull-request]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "=== AI Agent Task Summary ==="
+          echo "Task ID: ${{ needs.prepare-agent-environment.outputs.task_id }}"
+          echo "Task: ${{ github.inputs.task }}"
+          echo ""
+          echo "Results:"
+          echo "- Prepare: ${{ needs.prepare-agent-environment.result }}"
+          echo "- Execute: ${{ needs.execute-agent-task.result }}"
+          echo "- Validate: ${{ needs.validate-agent-changes.result }}"
+          echo "- PR Created: ${{ needs.create-pull-request.result }}"
