@@ -109,7 +109,7 @@ func _ready() -> void:
 	last_performance_check = Time.get_ticks_msec()
 	last_network_check = Time.get_ticks_msec()
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	# Periodic performance checks
 	var current_time := Time.get_ticks_msec()
 	if current_time - last_performance_check > performance_check_interval:

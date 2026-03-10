@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Setup Godot
-        uses: barichello/godot-action@v0.2
+        uses: notifiarr/godot-action@v0.2.2
         with:
           godot-version: ${{ matrix.godot-version }}
           # Use the headless version for CI

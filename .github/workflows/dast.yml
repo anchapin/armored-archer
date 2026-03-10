@@ -24,11 +24,17 @@ jobs:
         working-directory: ./backend
         run: |
           echo "Waiting for PostgreSQL to be ready..."
-          until docker-compose exec -T postgres pg_isready -U postgres -d nakama; do
-            echo "PostgreSQL is not ready yet..."
+          for i in {1..30}; do
+            if docker-compose exec -T postgres pg_isready -U postgres -d nakama 2>/dev/null; then
+              echo "PostgreSQL is ready!"
+              exit 0
+            fi
+            echo "PostgreSQL is not ready yet (attempt $i/30)..."
             sleep 2
           done
-          echo "PostgreSQL is ready!"
+          echo "PostgreSQL failed to start, showing logs:"
+          docker-compose logs postgres
+          exit 1
 
       - name: Build TypeScript
         working-directory: ./backend
@@ -42,11 +48,17 @@ jobs:
       - name: Wait for Nakama
         run: |
           echo "Waiting for Nakama to be ready..."
-          until curl -s http://localhost:7350 > /dev/null; do
-            echo "Nakama is not ready yet..."
+          for i in {1..60}; do
+            if curl -s http://localhost:7350 > /dev/null 2>&1; then
+              echo "Nakama is ready!"
+              exit 0
+            fi
+            echo "Nakama is not ready yet (attempt $i/60)..."
             sleep 2
           done
-          echo "Nakama is ready!"
+          echo "Nakama failed to start, showing logs:"
+          docker-compose logs nakama
+          exit 1
 
       - name: OWASP ZAP Scan
         uses: zaproxy/action-baseline@v0.9.0
