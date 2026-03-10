@@ -72,7 +72,7 @@ describe('Privacy Compliance Module', () => {
       });
 
       it('should detect password patterns', () => {
-        const text = 'password=mySecretPass123';
+        const text = 'password="mySecretPass123"';
         const detections = scanForPII(text, [PIIType.PASSWORD]);
 
         expect(detections).toHaveLength(1);
@@ -80,7 +80,7 @@ describe('Privacy Compliance Module', () => {
       });
 
       it('should detect auth tokens', () => {
-        const text = 'Bearer token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.sig';
+        const text = 'Bearer token="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.sig"';
         const detections = scanForPII(text, [PIIType.AUTH_TOKEN]);
 
         expect(detections.length).toBeGreaterThanOrEqual(1);

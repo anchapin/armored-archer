@@ -1,6 +1,11 @@
-extends Node
+extends SceneTree
 
-func _ready():
+func _init():
+    # Run tests immediately when the script is loaded
+    _run_tests()
+    quit()
+
+func _run_tests():
     var test_files = [
         "res://test/test_combat_manager.gd",
         "res://test/test_game_manager.gd",
@@ -19,14 +24,22 @@ func _ready():
         "res://test/test_ui_transition_optimizer.gd"
     ]
 
+    var test_root = Node.new()
+    test_root.name = "TestRoot"
+    
     for test_file in test_files:
         var test_script = load(test_file)
         if test_script:
             var test_instance = test_script.new()
-            add_child(test_instance)
+            test_root.add_child(test_instance)
         else:
             print("Warning: Could not load test file: " + test_file)
 
     # Quit the test runner after a short delay to allow tests to run
-    await get_tree().create_timer(5.0).timeout
-    get_tree().quit()
+    await create_timer(5.0).timeout
+    
+    # Clean up
+    for child in test_root.get_children():
+        child.free()
+    
+    quit()

@@ -109,7 +109,7 @@ func _ready() -> void:
 	last_performance_check = Time.get_ticks_msec()
 	last_network_check = Time.get_ticks_msec()
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	# Periodic performance checks
 	var current_time := Time.get_ticks_msec()
 	if current_time - last_performance_check > performance_check_interval:
@@ -1043,23 +1043,23 @@ func track_event_to_backend(event_name: String, properties: Dictionary = {}) -> 
 	if not is_initialized:
 		_queue_event(event_name, properties)
 		return
-	
+
 	var network_manager = _get_network_manager()
 	if network_manager == null:
 		push_warning("AnalyticsManager: NetworkManager not available, cannot send event to backend")
 		_queue_event(event_name, properties)
 		return
-	
+
 	var payload := {
 		"event_name": event_name,
 		"properties": properties,
 		"platform": platform,
 		"session_id": current_session_id
 	}
-	
+
 	var rpc_id := "armored_archer/track_event"
 	var response = await network_manager.send_rpc(rpc_id, JSON.stringify(payload))
-	
+
 	if is_debug_mode:
 		print("AnalyticsManager: Backend track_event response: ", response)
 
@@ -1069,7 +1069,7 @@ func track_revenue_to_backend(amount: int, currency: String, product_id: String,
 	if network_manager == null:
 		push_warning("AnalyticsManager: NetworkManager not available, cannot track revenue")
 		return
-	
+
 	var payload := {
 		"amount": amount,
 		"currency": currency,
@@ -1077,10 +1077,10 @@ func track_revenue_to_backend(amount: int, currency: String, product_id: String,
 		"transaction_id": transaction_id,
 		"platform": platform
 	}
-	
+
 	var rpc_id := "armored_archer/track_revenue"
 	var response = await network_manager.send_rpc(rpc_id, JSON.stringify(payload))
-	
+
 	if is_debug_mode:
 		print("AnalyticsManager: Backend track_revenue response: ", response)
 
@@ -1090,16 +1090,16 @@ func get_analytics_summary_from_backend(start_date: String, end_date: String, ev
 	if network_manager == null:
 		push_warning("AnalyticsManager: NetworkManager not available, cannot get analytics summary")
 		return {}
-	
+
 	var payload := {
 		"start_date": start_date,
 		"end_date": end_date,
 		"event_names": event_names
 	}
-	
+
 	var rpc_id := "armored_archer/get_analytics_summary"
 	var response = await network_manager.send_rpc(rpc_id, JSON.stringify(payload))
-	
+
 	if response and response.has("summary"):
 		return response["summary"]
 	return {}

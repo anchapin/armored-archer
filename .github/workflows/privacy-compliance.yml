@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: backend/requirements-lock.txt
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install backend dependencies
         run: |
@@ -46,12 +46,12 @@ jobs:
         continue-on-error: true
 
       - name: Upload PII scan results
-        uses: github/codeql-action/upload-security-results@v3
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true
         with:
           category: "/tool:PIIScan"
-          upload: always
-          sarif_file: .agent_tmp/pii-scan.sarif
+          sarif_file: backend/.agent_tmp/pii-scan.sarif
 
   privacy-checks:
     name: Privacy Compliance Checks
@@ -66,7 +66,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: backend/requirements-lock.txt
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         run: |
@@ -102,7 +102,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: backend/requirements-lock.txt
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         run: |
@@ -133,7 +133,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: backend/requirements-lock.txt
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         run: |
@@ -173,6 +173,9 @@ jobs:
           echo "=== Checking for PII handling ==="
           grep -r -n -E "email|phone|name|address" --include="*.ts" backend/src/modules/ | head -20
 
+      - name: Create temp directory
+        run: |
+          mkdir -p .agent_tmp
       - name: Generate data handling report
         run: |
           echo "# Privacy Compliance Report" > .agent_tmp/privacy-report.md
