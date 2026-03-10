@@ -225,35 +225,60 @@ jobs:
             node -e "
               const fs = require('fs');
               const data = JSON.parse(fs.readFileSync('coverage/coverage-final.json', 'utf8'));
-              const totals = data.total;
+              
+              // Calculate totals from all source files
+              const paths = Object.keys(data).filter(k => k.includes('/src/') && !k.includes('/node_modules/'));
+              let totalStmts = 0, coveredStmts = 0;
+              let totalBranches = 0, coveredBranches = 0;
+              let totalFuncs = 0, coveredFuncs = 0;
+              let totalLines = 0, coveredLines = 0;
+              
+              paths.forEach(p => {
+                const f = data[p];
+                // Statement coverage
+                if (f.s) {
+                  Object.values(f.s).forEach(count => {
+                    totalStmts++;
+                    if (count > 0) coveredStmts++;
+                  });
+                }
+                // Branch coverage
+                if (f.b) {
+                  Object.values(f.b).forEach(branchArray => {
+                    branchArray.forEach(branch => {
+                      totalBranches++;
+                      if (branch > 0) coveredBranches++;
+                    });
+                  });
+                }
+                // Function coverage
+                if (f.f) {
+                  Object.values(f.f).forEach(count => {
+                    totalFuncs++;
+                    if (count > 0) coveredFuncs++;
+                  });
+                }
+                // Line coverage
+                if (f.statementMap) {
+                  Object.keys(f.statementMap).forEach(() => {
+                    totalLines++;
+                  });
+                }
+              });
+              
+              const stmtPct = totalStmts > 0 ? (coveredStmts / totalStmts * 100).toFixed(2) : 0;
+              const branchPct = totalBranches > 0 ? (coveredBranches / totalBranches * 100).toFixed(2) : 0;
+              const funcPct = totalFuncs > 0 ? (coveredFuncs / totalFuncs * 100).toFixed(2) : 0;
+              const linePct = totalLines > 0 ? (coveredLines / totalLines * 100).toFixed(2) : 0;
               
               console.log('Coverage Report:');
-              console.log('  Statements: ' + totals.stmts.pct + '%');
-              console.log('  Branches: ' + totals.branches.pct + '%');
-              console.log('  Functions: ' + totals.functions.pct + '%');
-              console.log('  Lines: ' + totals.lines.pct + '%');
+              console.log('  Statements: ' + stmtPct + '%');
+              console.log('  Branches: ' + branchPct + '%');
+              console.log('  Functions: ' + funcPct + '%');
+              console.log('  Lines: ' + linePct + '%');
               console.log('');
-              
-              // Check critical systems
-              console.log('Critical Systems:');
-              
-              if (data['src/modules/combat_system.ts']) {
-                const cs = data['src/modules/combat_system.ts'];
-                console.log('  combat_system: ' + cs.stmts.pct + '% (target: 70%+)');
-              }
-              
-              if (data['src/modules/rpg_system.ts']) {
-                const rs = data['src/modules/rpg_system.ts'];
-                console.log('  rpg_system: ' + rs.stmts.pct + '% (target: 85%+)');
-              }
-              
-              if (data['src/modules/matchmaker.ts']) {
-                const mm = data['src/modules/matchmaker.ts'];
-                console.log('  matchmaker: ' + mm.stmts.pct + '% (target: 90%+)');
-              }
-            "
-            echo ""
-            echo "✅ Coverage thresholds configured in jest.config.js"
+              console.log('✅ Coverage thresholds configured in jest.config.js');
+            " 2>/dev/null || echo "⚠️ Could not parse coverage details, but Jest threshold check will enforce requirements"
           fi
       
       - name: Upload coverage to Codecov
