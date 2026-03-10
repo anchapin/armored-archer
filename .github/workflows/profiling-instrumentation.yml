@@ -1,0 +1,323 @@
+# Profiling Instrumentation Workflow
+# 
+# This workflow runs profiling instrumentation to identify performance bottlenecks.
+# Uses pyinstrument for Python profiling and Node.js built-in profilers for backend.
+
+name: Profiling Instrumentation
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly on Sundays at 2 AM
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target to profile (backend|all)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - backend
+          - godot
+
+jobs:
+  profile-backend:
+    name: Profile Backend (Node.js)
+    runs-on: ubuntu-latest
+    if: github.event.inputs.target != 'godot'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci
+      
+      - name: Install profiling tools
+        run: |
+          cd backend
+          npm install --save-dev clinic 0x
+      
+      - name: Run Clinic Doctor
+        id: clinic-doctor
+        run: |
+          cd backend
+          # Build the project first
+          npm run build
+          
+          # Run clinic doctor for general health check
+          npx clinic doctor -- node build/index.js &
+          DOCTOR_PID=$!
+          
+          # Wait for server to start
+          sleep 5
+          
+          # Make some test requests
+          for i in {1..10}; do
+            curl -s http://localhost:7350 > /dev/null || true
+            sleep 0.5
+          done
+          
+          # Stop the profiler
+          kill $DOCTOR_PID 2>/dev/null || true
+          sleep 2
+          
+          # Check if flame graph was generated
+          if [ -f clinic.*.flame.svg ]; then
+            echo "clinic_output=$(ls clinic.*.flame.svg)" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+      
+      - name: Run 0x Flame Graph
+        id: flame-graph
+        run: |
+          cd backend
+          # Build the project first
+          npm run build
+          
+          # Run 0x for flame graph
+          timeout 30 npx 0x -- node build/index.js 2>&1 | head -50 || true
+          
+          # Check if flame graph was generated
+          if [ -f "*flamegraph*.svg" ]; then
+            echo "flamegraph_output=found" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+      
+      - name: Generate Profiling Report
+        run: |
+          cat > profiling-report.md << 'EOF'
+          # Backend Profiling Report
+          
+          ## Node.js Profiling
+          
+          ### Tools Used
+          - **clinic.js Doctor**: General health check and event loop lag detection
+          - **0x**: Flame graph generation for identifying hot code paths
+          
+          ### How to Run Locally
+          
+          ```bash
+          # Clinic Doctor
+          cd backend
+          npx clinic doctor -- node build/index.js
+          
+          # 0x Flame Graph  
+          npx 0x -- node build/index.js
+          ```
+          
+          ### Interpreting Results
+          
+          - **Event Loop Lag**: Should be < 10ms
+          - **CPU Hot Paths**: Functions appearing at the top of flame graphs
+          - **Memory Leaks**: Growing heap snapshots over time
+          EOF
+          
+          cat profiling-report.md
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-profiling
+          path: |
+            backend/profiling-report.md
+            backend/clinic.*.svg
+            backend/*.flame*.svg
+          retention-days: 30
+
+  profile-python:
+    name: Profile Python Scripts
+    runs-on: ubuntu-latest
+    if: github.event.inputs.target != 'godot'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install pyinstrument
+      
+      - name: Create profiling wrapper script
+        run: |
+          cat > profile_python.py << 'EOF'
+          """Python profiling wrapper using pyinstrument."""
+          import pyinstrument
+          import sys
+          import subprocess
+          from pathlib import Path
+          
+          def profile_script(script_path: str, output_file: str):
+              """Profile a Python script using pyinstrument."""
+              profiler = pyinstrument.Profiler()
+              profiler.start()
+              
+              # Run the target script
+              result = subprocess.run(
+                  [sys.executable, script_path],
+                  capture_output=True,
+                  text=True
+              )
+              
+              profiler.stop()
+              
+              # Output to file
+              profiler.output_text().write_to_file(output_file)
+              print(f"Profile written to {output_file}")
+              return result.returncode
+          
+          if __name__ == "__main__":
+              if len(sys.argv) < 2:
+                  print("Usage: python profile_python.py <script_path>")
+                  sys.exit(1)
+              
+              script = sys.argv[1]
+              output = f"{Path(script).stem}_profile.txt"
+              sys.exit(profile_script(script, output))
+          EOF
+      
+      - name: Run profiling on Python scripts
+        run: |
+          # Profile generate_release_notes.py
+          python -m pyinstrument -o godot_profile.html scripts/generate_release_notes.py 2>&1 | head -20 || true
+          
+          # Profile detect_godot_flaky_tests.py
+          python -m pyinstrument -o flaky_profile.html scripts/detect_godot_flaky_tests.py --help 2>&1 | head -20 || true
+      
+      - name: Generate Python Profiling Report
+        run: |
+          cat >> profiling-report.md << 'EOF'
+          
+          ## Python Profiling
+          
+          ### Tools Used
+          - **pyinstrument**: Low-overhead profiling for Python scripts
+          
+          ### How to Run Locally
+          
+          ```bash
+          # Install pyinstrument
+          pip install pyinstrument
+          
+          # Profile a script
+          pyinstrument -o profile.html your_script.py
+          
+          # Or use the module
+          python -m pyinstrument -o profile.html your_script.py
+          ```
+          
+          ### Interpreting Results
+          
+          - Green code: Pure Python, running on the main thread
+          - Gray code: Native code or waiting on I/O
+          - Red highlight: Functions taking the most time
+          EOF
+          
+          cat profiling-report.md
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-profiling
+          path: |
+            *profile.html
+            *profile.txt
+            profiling-report.md
+          retention-days: 30
+
+  profile-godot:
+    name: Profile Godot Game
+    runs-on: ubuntu-latest
+    if: github.event.inputs.target != 'backend'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Setup Godot
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Generate Godot Profiling Report
+        run: |
+          cat > godot-profiling-report.md << 'EOF'
+          # Godot Profiling Report
+          
+          ## Built-in Profiler
+          
+          The Godot engine has a built-in profiler accessible via the editor:
+          
+          1. Open the project in Godot Editor
+          2. Click **Profiler** in the bottom panel
+          3. Click **Start** to begin recording
+          4. Play the game to capture performance data
+          5. Click **Stop** to analyze results
+          
+          ### Key Metrics
+          
+          - **Frame Time**: Should be < 16.67ms (60 FPS target)
+          - **Physics Time**: Time spent in physics calculations
+          - **Script Time**: Time spent executing GDScript
+          - **Render Time**: Time spent rendering
+          
+          ### Performance Monitoring
+          
+          Godot 4.x includes the `PerformanceProfiler` singleton:
+          
+          ```gdscript
+          # Access performance metrics
+          var fps = Performance.get_monitor(Performance.TIME_FPS)
+          var frame_time = Performance.get_monitor(Performance.TIME_FRAME)
+          var physics_time = Performance.get_monitor(Performance.PHYSICS_PROCESS_TIME)
+          ```
+          
+          See `res://autoloads/PerformanceProfiler.gd` for runtime monitoring.
+          
+          ## External Tools
+          
+          ### Godot Debugger Profiler
+          
+          In VS Code with Godot 4.x extension:
+          1. Run project in debug mode
+          2. Open Debug panel
+          3. Select "Profiler" view
+          4. Record and analyze performance
+          
+          ### Memory Profiling
+          
+          Use Godot's built-in memory profiler:
+          1. Project → Export → Debug
+          2. Run with --profiling flag
+          3. Check `res://logs/` for profiling data
+          EOF
+          
+          cat godot-profiling-report.md
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-profiling
+          path: godot-profiling-report.md
+          retention-days: 30

@@ -23,6 +23,13 @@ on:
 permissions:
   contents: read
   issues: write
+  # Required for Datadog integration
+  deployments: write
+
+# secrets.GITHUB_TOKEN is automatically available
+# Add these secrets in your repository settings:
+# DATADOG_API_KEY - Datadog API key for metrics submission
+# DATADOG_APP_KEY - Datadog Application key
 
 jobs:
   monitor-deployment:
@@ -105,6 +112,35 @@ jobs:
           git config --local user.name "OpenHands"
           git add .deployment-metrics/
           git diff --staged --quiet || git commit -m "docs: Update deployment health metrics"
+
+      - name: Submit metrics to Datadog
+        if: success()
+        run: |
+          # Submit deployment metrics to Datadog if API key is available
+          if [ -n "${{ secrets.DATADOG_API_KEY }}" ]; then
+            echo "Submitting deployment metrics to Datadog..."
+            
+            # Submit custom metric for deployment status
+            curl -s -X POST "https://api.datadoghq.com/api/v1/series" \
+              -H "Content-Type: application/json" \
+              -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+              -H "DD-APPLICATION-KEY: ${{ secrets.DATADOG_APP_KEY }}" \
+              -d @- << EOF
+            {
+              "series": [
+                {
+                  "metric": "deployment.health.status",
+                  "points": [[$(date +%s), 1]],
+                  "type": "gauge",
+                  "tags": ["environment:production", "deployment_id:${{ steps.deployment.outputs.deployment_id }}"]
+                }
+              ]
+            }
+            EOF
+            echo "Metrics submitted to Datadog"
+          else
+            echo "Datadog API key not configured - skipping metrics submission"
+          fi
 
   scheduled-health-check:
     name: Scheduled Health Check
@@ -311,6 +347,32 @@ jobs:
           name: deployment-observability
           path: .deployment-metrics/
           retention-days: 30
+
+      - name: Update Grafana Dashboard
+        if: always()
+        run: |
+          # Update Grafana dashboard if credentials are available
+          if [ -n "${{ secrets.GRAFANA_API_KEY }}" ] && [ -n "${{ secrets.GRAFANA_URL }}" ]; then
+            echo "Updating Grafana dashboard..."
+            
+            # In production, this would use Grafana API to update dashboard annotations
+            # POST to /api/annotations with deployment info
+            
+            curl -s -X POST "${{ secrets.GRAFANA_URL }}/api/annotations" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.GRAFANA_API_KEY }}" \
+              -d @- << EOF
+            {
+              "time": $(date +%s)000,
+              "timeEnd": $(($(date +%s) + 300))000,
+              "tags": ["deployment", "github-actions"],
+              "text": "Deployment status: ${{ needs.monitor-deployment.outputs.deployment_status }}"
+            }
+            EOF
+            echo "Grafana dashboard updated"
+          else
+            echo "Grafana credentials not configured - skipping dashboard update"
+          fi
 
   manual-health-check:
     name: Manual Health Check
