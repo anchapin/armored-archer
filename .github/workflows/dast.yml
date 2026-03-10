@@ -41,7 +41,9 @@ jobs:
 
       - name: Build TypeScript
         working-directory: ./backend
-        run: npm run build
+        run: |
+          npm ci --ignore-scripts
+          npm run build
 
       - name: Start Nakama server
         working-directory: ./backend
