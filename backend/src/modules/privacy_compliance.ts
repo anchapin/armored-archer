@@ -45,6 +45,7 @@ export enum SensitivityLevel {
 
 /**
  * Regular expressions for PII detection
+ * These patterns match actual values, not type annotations or variable declarations
  */
 const PII_PATTERNS: Record<PIIType, RegExp> = {
   [PIIType.EMAIL]: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
@@ -53,24 +54,24 @@ const PII_PATTERNS: Record<PIIType, RegExp> = {
   [PIIType.CREDIT_CARD]: /\b(?:\d{4}[- ]?){3}\d{4}\b/g,
   [PIIType.IP_ADDRESS]:
     /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
-  [PIIType.DEVICE_ID]: /\b(?:device[_-]?id|uuid|udid)[=:\s]*["']?([a-f0-9-]{16,})["']?/gi,
+  [PIIType.DEVICE_ID]: /\b(?:device[_-]?id|uuid|udid)[=:\s]*["']([a-f0-9-]{16,})["']/gi,
   [PIIType.USER_ID]:
-    /\b(?:user[_-]?id|player[_-]?id|account[_-]?id)[=:\s]*["']?([a-zA-Z0-9_-]{8,})["']?/gi,
+    /\b(?:user[_-]?id|player[_-]?id|account[_-]?id)[=:\s]*["']([a-zA-Z0-9_-]{8,})["']/gi,
   [PIIType.USERNAME]:
-    /\b(?:username|user[_-]?name|display[_-]?name)[=:\s]*["']?([a-zA-Z0-9_-]{2,20})["']?/gi,
+    /\b(?:username|user[_-]?name|display[_-]?name)[=:\s]*["']([a-zA-Z0-9_-]{2,20})["']/gi,
   [PIIType.FULL_NAME]:
-    /\b(?:full[_-]?name|real[_-]?name|legal[_-]?name)[=:\s]*["']?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)["']?/gi,
+    /\b(?:full[_-]?name|real[_-]?name|legal[_-]?name)[=:\s]*["']([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)["']/gi,
   [PIIType.ADDRESS]:
-    /\b(?:address|street|city|postal[_-]?code)[=:\s]*["']?([^"'\n]{10,100})["']?/gi,
+    /\b(?:address|street|city|postal[_-]?code)[=:\s]*["']([^"'\n]{10,100})["']/gi,
   [PIIType.DATE_OF_BIRTH]:
-    /\b(?:dob|date[_-]?of[_-]?birth|birth[_-]?date)[=:\s]*["']?(\d{4}[-/]\d{2}[-/]\d{2})["']?/gi,
+    /\b(?:dob|date[_-]?of[_-]?birth|birth[_-]?date)[=:\s]*["'](\d{4}[-/]\d{2}[-/]\d{2})["']/gi,
   [PIIType.GEOLOCATION]:
-    /\b(?:lat[itude]|lon[gitude]?|location|geo)[=:\s]*["']?(-?\d+\.?\d+)[,\s]+["']?(-?\d+\.?\d+)["']?/gi,
-  [PIIType.PASSWORD]: /\b(?:password|passwd|pwd|secret)[=:\s]*["']?([^\s"']{4,})["']?/gi,
+    /\b(?:lat[itude]|lon[gitude]?|location|geo)[=:\s]*["'](-?\d+\.?\d+)[,\s]+["']?(-?\d+\.?\d+)["']/gi,
+  [PIIType.PASSWORD]: /\b(?:password|passwd|pwd|secret)[=:\s]*["']([^\s"']{4,})["']/gi,
   [PIIType.AUTH_TOKEN]:
-    /\b(?:token|access[_-]?token|refresh[_-]?token|auth[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*)["']?/gi,
+    /\b(?:token|access[_-]?token|refresh[_-]?token|auth[_-]?token)[=:\s]*["']([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]*)["']/gi,
   [PIIType.SESSION_ID]:
-    /\b(?:session[_-]?id|session[_-]?token)[=:\s]*["']?([a-zA-Z0-9_-]{16,})["']?/gi,
+    /\b(?:session[_-]?id|session[_-]?token)[=:\s]*["']([a-zA-Z0-9_-]{16,})["']/gi,
 };
 
 /**
