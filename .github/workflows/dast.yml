@@ -15,17 +15,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
       - name: Start Nakama and PostgreSQL
         working-directory: ./backend
         run: |
-          docker-compose up -d postgres
+          docker compose up -d postgres
           
       - name: Wait for PostgreSQL
         working-directory: ./backend
         run: |
           echo "Waiting for PostgreSQL to be ready..."
           for i in {1..30}; do
-            if docker-compose exec -T postgres pg_isready -U postgres -d nakama 2>/dev/null; then
+            if docker compose exec -T postgres pg_isready -U postgres -d nakama 2>/dev/null; then
               echo "PostgreSQL is ready!"
               exit 0
             fi
@@ -33,7 +36,7 @@ jobs:
             sleep 2
           done
           echo "PostgreSQL failed to start, showing logs:"
-          docker-compose logs postgres
+          docker compose logs postgres
           exit 1
 
       - name: Build TypeScript
@@ -43,7 +46,7 @@ jobs:
       - name: Start Nakama server
         working-directory: ./backend
         run: |
-          docker-compose up -d nakama
+          docker compose up -d nakama
           
       - name: Wait for Nakama
         run: |
@@ -57,7 +60,7 @@ jobs:
             sleep 2
           done
           echo "Nakama failed to start, showing logs:"
-          docker-compose logs nakama
+          docker compose logs nakama
           exit 1
 
       - name: OWASP ZAP Scan
@@ -76,4 +79,4 @@ jobs:
       - name: Stop services
         if: always()
         working-directory: ./backend
-        run: docker-compose down
+        run: docker compose down
