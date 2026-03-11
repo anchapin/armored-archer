@@ -25,6 +25,14 @@ export const PLAYER_DATA_NOT_FOUND_RESPONSE = {
 };
 
 /**
+ * Standard error response for unexpected failures when reading player data
+ * (e.g. parse/runtime errors). This is distinct from "not found".
+ */
+export const PLAYER_DATA_READ_ERROR_RESPONSE = {
+  error: 'Failed to read player data',
+};
+
+/**
  * Creates a "not found" JSON response for player data.
  * This ensures consistent error responses across the codebase.
  *
@@ -34,6 +42,19 @@ export const PLAYER_DATA_NOT_FOUND_RESPONSE = {
 export function createPlayerDataNotFoundResponse(customMessage?: string): string {
   return JSON.stringify({
     error: customMessage || 'Player data not found',
+  });
+}
+
+/**
+ * Creates an error response for failures when reading player data.
+ * This ensures consistent error responses across the codebase.
+ *
+ * @param customMessage - Optional custom error message
+ * @returns JSON string with error response
+ */
+export function createPlayerDataReadErrorResponse(customMessage?: string): string {
+  return JSON.stringify({
+    error: customMessage || 'Failed to read player data',
   });
 }
 
@@ -88,9 +109,8 @@ export function readPlayerData<T>(
  * This is a simplified version that returns the raw value.
  *
  * @param nk - Nakama server interface
- * @param ctx - Nakama runtime context
- * @param collection - Storage collection name
  * @param userId - User ID for the storage key
+ * @param collection - Storage collection name
  * @returns The storage objects array (empty if not found)
  */
 export function readPlayerStorage(
@@ -112,6 +132,7 @@ export function readPlayerStorage(
  * This helper combines storage read with caching for improved performance.
  *
  * @param nk - Nakama server interface
+ * @param logger - Nakama logger instance
  * @param ctx - Nakama runtime context
  * @param collection - Storage collection name
  * @param cacheManager - Cache manager instance (optional)
@@ -122,12 +143,19 @@ export function readPlayerStorage(
  */
 export function readPlayerDataWithCache<T>(
   nk: Runtime.Nakama,
+  logger: Runtime.Logger,
   ctx: Runtime.Context,
   collection: string,
-  cacheManager: { get: <T>(name: string, key: string) => T | undefined; set: (name: string, key: string, value: string) => void } | null | undefined,
+  cacheManager:
+    | {
+        get: <T>(name: string, key: string) => T | undefined;
+        set: (name: string, key: string, value: string) => void;
+      }
+    | null
+    | undefined,
   cacheName: string,
   parseFn: (value: unknown) => T | null,
-  ttlSeconds: number = 60
+  _ttlSeconds: number = 60
 ): StorageReadResult<T> {
   const cacheKey = ctx.userId;
 
@@ -149,6 +177,15 @@ export function readPlayerDataWithCache<T>(
   // Read from storage
   const storageResult = readPlayerData(nk, ctx, collection, cacheKey, parseFn);
 
+  // Log error if storage read failed (distinct from "not found")
+  if (storageResult.error) {
+    logger.error('Failed to read player data from storage', {
+      collection,
+      key: cacheKey,
+      error: storageResult.error,
+    });
+  }
+
   // Cache the result if found
   if (storageResult.found && storageResult.data && cacheManager) {
     cacheManager.set(cacheName, cacheKey, JSON.stringify(storageResult.data));
@@ -162,7 +199,9 @@ export function readPlayerDataWithCache<T>(
 /**
  * Parse player stats from storage value
  */
-export function parsePlayerStatsValue(value: unknown): { level: number; xp: number; stats: unknown } | null {
+export function parsePlayerStatsValue(
+  value: unknown
+): { level: number; xp: number; stats: unknown } | null {
   if (!value) {
     return null;
   }
@@ -184,23 +223,35 @@ export function parsePlayerStatsValue(value: unknown): { level: number; xp: numb
  * This is a shared implementation for both player_rpc and rpg_system.
  *
  * @param nk - Nakama server interface
+ * @param logger - Nakama logger instance
  * @param ctx - Nakama runtime context
  * @param cacheManager - Cache manager instance
  * @returns JSON string with player stats or error response
  */
 export function getPlayerStatsWithCache(
   nk: Runtime.Nakama,
+  logger: Runtime.Logger,
   ctx: Runtime.Context,
-  cacheManager: { get: <T>(name: string, key: string) => T | undefined; set: (name: string, key: string, value: string) => void }
+  cacheManager: {
+    get: <T>(name: string, key: string) => T | undefined;
+    set: (name: string, key: string, value: string) => void;
+  }
 ): string {
   const result = readPlayerDataWithCache(
     nk,
+    logger,
     ctx,
     'player_stats',
     cacheManager,
     'player_stats',
     parsePlayerStatsValue
   );
+
+  // Check for errors first (distinct from "not found")
+  if (result.error) {
+    logger.error('Failed to read player stats', { error: result.error, userId: ctx.userId });
+    return createPlayerDataReadErrorResponse('Failed to read player stats');
+  }
 
   if (!result.found) {
     return createPlayerDataNotFoundResponse('Player stats not found');
