@@ -5,8 +5,9 @@
 
 import { Runtime } from '../types/nakama';
 
+import { getCacheManager } from '../utils/cache';
 import { invalidatePlayerStatsCache } from '../utils/db_optimizer';
-
+import { getPlayerStatsWithCache } from '../utils/player-data-helpers';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
@@ -354,6 +355,57 @@ export function rpcAllocateStats(
     success: true,
     player_stats: playerStats,
   });
+}
+
+/**
+ * Registers the get player stats RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): void {
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/get_player_stats',
+    'get_player_stats',
+    rpcGetPlayerStats
+  );
+}
+
+/**
+ * Retrieves player statistics with caching.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (unused, required for RPC format)
+ * @returns JSON string with player stats or error
+ *
+ * @example
+ * // Request payload
+ * { }
+ *
+ * // Response
+ * {
+ *   "level": 5,
+ *   "xp": 450,
+ *   "stats": { ... }
+ * }
+ */
+export function rpcGetPlayerStats(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get player stats called for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_player_stats, payload, 'get_player_stats');
+  if (!validation.success) {
+    return createValidationErrorResponse('get_player_stats', validation.error);
+  }
+
+  const cache = getCacheManager(logger);
+  return getPlayerStatsWithCache(nk, logger, ctx, cache);
 }
 
 /**
