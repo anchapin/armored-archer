@@ -21,7 +21,8 @@ func _run_tests():
         "res://test/test_transmog_manager.gd",
         "res://test/test_safe_area_manager.gd",
         "res://test/test_auto_aim_manager.gd",
-        "res://test/test_ui_transition_optimizer.gd"
+        "res://test/test_ui_transition_optimizer.gd",
+        "res://test/test_object_pool.gd"
     ]
 
     var test_root = Node.new()
