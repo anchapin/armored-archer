@@ -21,6 +21,7 @@ import {
 
 import { config } from '../config';
 import { logger } from './logger';
+import { withSpanAsync, withSpanSync, setNakamaContextAttributes } from '../utils/tracing-helpers';
 
 /**
  * Configuration for distributed tracing.
@@ -142,22 +143,7 @@ export async function traceAsync<T>(
     attributes?: Record<string, string | number | boolean>;
   }
 ): Promise<T> {
-  const span = startSpan(name, options);
-
-  try {
-    const result = await fn(span);
-    span.setStatus({ code: SpanStatusCode.OK });
-    return result;
-  } catch (error) {
-    span.setStatus({
-      code: SpanStatusCode.ERROR,
-      message: error instanceof Error ? error.message : String(error),
-    });
-    span.recordException(error instanceof Error ? error : new Error(String(error)));
-    throw error;
-  } finally {
-    span.end();
-  }
+  return withSpanAsync(name, fn, options);
 }
 
 /**
@@ -171,22 +157,7 @@ export function traceSync<T>(
     attributes?: Record<string, string | number | boolean>;
   }
 ): T {
-  const span = startSpan(name, options);
-
-  try {
-    const result = fn(span);
-    span.setStatus({ code: SpanStatusCode.OK });
-    return result;
-  } catch (error) {
-    span.setStatus({
-      code: SpanStatusCode.ERROR,
-      message: error instanceof Error ? error.message : String(error),
-    });
-    span.recordException(error instanceof Error ? error : new Error(String(error)));
-    throw error;
-  } finally {
-    span.end();
-  }
+  return withSpanSync(name, fn, options);
 }
 
 /**
@@ -221,7 +192,8 @@ export function wrapRpcHandler<T>(
   handler: (ctx: unknown, logger: unknown, nk: unknown, payload: string) => Promise<T> | T
 ): (ctx: unknown, logger: unknown, nk: unknown, payload: string) => Promise<T> | T {
   return async (ctx: unknown, logger: unknown, nk: unknown, payload: string) => {
-    const span = startSpan(`rpc.${handlerName}`, {
+    const tracer = getTracer();
+    const span = tracer.startSpan(`rpc.${handlerName}`, {
       kind: SpanKind.SERVER,
       attributes: {
         'rpc.system': 'nakama',
@@ -232,15 +204,7 @@ export function wrapRpcHandler<T>(
 
     // Add context attributes if available
     const nakamaCtx = ctx as { userId?: string; sessionId?: string; matchId?: string } | null;
-    if (nakamaCtx?.userId) {
-      span.setAttribute('user.id', nakamaCtx.userId);
-    }
-    if (nakamaCtx?.sessionId) {
-      span.setAttribute('session.id', nakamaCtx.sessionId);
-    }
-    if (nakamaCtx?.matchId) {
-      span.setAttribute('match.id', nakamaCtx.matchId);
-    }
+    setNakamaContextAttributes(span, nakamaCtx || {});
 
     try {
       const result = await handler(ctx, logger, nk, payload);
