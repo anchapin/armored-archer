@@ -4,6 +4,7 @@
  */
 
 import { Runtime } from '../types/nakama';
+
 import { getCacheManager } from '../utils/cache';
 import { invalidatePlayerStatsCache } from '../utils/db_optimizer';
 import { getPlayerStatsWithCache } from '../utils/player-data-helpers';
@@ -11,6 +12,30 @@ import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+
+/**
+ * Helper function to save player stats to storage and invalidate cache.
+ */
+function savePlayerStats(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  playerStats: PlayerStats,
+  action: string
+): void {
+  nk.storageWrite([
+    {
+      collection: 'player_stats',
+      key: ctx.userId,
+      userId: ctx.userId,
+      value: JSON.stringify(playerStats),
+    },
+  ]);
+
+  invalidatePlayerStatsCache(ctx.userId, logger);
+
+  logAudit(nk, ctx.userId, `ctx.ipAddress ?? null`, action, 'player_stats', playerStats, 'success');
+}
 
 /**
  * Player statistics data structure.
@@ -187,32 +212,7 @@ export function rpcGainXP(
     );
   }
 
-  nk.storageWrite([
-    {
-      collection: 'player_stats',
-      key: ctx.userId,
-      userId: ctx.userId,
-      value: JSON.stringify(playerStats),
-    },
-  ]);
-
-  invalidatePlayerStatsCache(ctx.userId, logger);
-
-  logAudit(
-    nk,
-    ctx.userId,
-    `ctx.ipAddress ?? null`,
-    'gain_xp',
-    'player_stats',
-    {
-      xp_amount: request.xp_amount,
-      old_level: oldLevel,
-      new_level: newLevel,
-      ability_points_gained: Math.max(0, newLevel - oldLevel),
-      total_xp: playerStats.xp,
-    },
-    'success'
-  );
+  savePlayerStats(nk, ctx, logger, playerStats, 'gain_xp');
 
   return JSON.stringify({
     success: true,
@@ -349,31 +349,7 @@ export function rpcAllocateStats(
   playerStats.ability_points -= request.points;
   playerStats.stats[request.stat_name as keyof typeof playerStats.stats] += request.points;
 
-  nk.storageWrite([
-    {
-      collection: 'player_stats',
-      key: ctx.userId,
-      userId: ctx.userId,
-      value: JSON.stringify(playerStats),
-    },
-  ]);
-
-  invalidatePlayerStatsCache(ctx.userId, logger);
-
-  logAudit(
-    nk,
-    ctx.userId,
-    `ctx.ipAddress ?? null`,
-    'allocate_stats',
-    'player_stats',
-    {
-      stat_name: request.stat_name,
-      points: request.points,
-      new_stats: playerStats.stats,
-      remaining_ability_points: playerStats.ability_points,
-    },
-    'success'
-  );
+  savePlayerStats(nk, ctx, logger, playerStats, 'allocate_stats');
 
   return JSON.stringify({
     success: true,
@@ -428,8 +404,8 @@ export function rpcGetPlayerStats(
     return createValidationErrorResponse('get_player_stats', validation.error);
   }
 
-  const cacheManager = getCacheManager(logger);
-  return getPlayerStatsWithCache(nk, logger, ctx, cacheManager);
+  const cache = getCacheManager(logger);
+  return getPlayerStatsWithCache(nk, logger, ctx, cache);
 }
 
 /**
