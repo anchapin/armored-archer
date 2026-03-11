@@ -1,0 +1,2905 @@
+{
+  "statistics": {
+    "detectionDate": "2026-03-11T04:11:21.205Z",
+    "formats": {
+      "typescript": {
+        "sources": {
+          "/home/alex/armored-archer/backend/src/utils/eslint-rules/n-plus-one-detection.ts": {
+            "lines": 226,
+            "tokens": 1572,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 22,
+            "duplicatedTokens": 216,
+            "percentage": 9.73,
+            "percentageTokens": 13.74,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/utils/eslint-rules/index.ts": {
+            "lines": 0,
+            "tokens": 14,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/__tests__/test_matchmaker.ts": {
+            "lines": 81,
+            "tokens": 692,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/utils/tracing.ts": {
+            "lines": 220,
+            "tokens": 1923,
+            "sources": 1,
+            "clones": 9,
+            "duplicatedLines": 162,
+            "duplicatedTokens": 1398,
+            "percentage": 73.64,
+            "percentageTokens": 72.7,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/utils/safeParse.ts": {
+            "lines": 50,
+            "tokens": 410,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/utils/rpcWrapper.ts": {
+            "lines": 93,
+            "tokens": 823,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/utils/rateLimiter.ts": {
+            "lines": 195,
+            "tokens": 1624,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/utils/n1-query-detector.ts": {
+            "lines": 136,
+            "tokens": 978,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/utils/log_scrubbing.ts": {
+            "lines": 406,
+            "tokens": 2871,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 10,
+            "duplicatedTokens": 212,
+            "percentage": 2.46,
+            "percentageTokens": 7.38,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/utils/feature-flags.ts": {
+            "lines": 131,
+            "tokens": 866,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 6,
+            "duplicatedTokens": 91,
+            "percentage": 4.58,
+            "percentageTokens": 10.51,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/utils/dead-flag-detector.ts": {
+            "lines": 84,
+            "tokens": 520,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/utils/db_optimizer.ts": {
+            "lines": 131,
+            "tokens": 1087,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/utils/circuitBreaker.ts": {
+            "lines": 329,
+            "tokens": 2074,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 14,
+            "duplicatedTokens": 166,
+            "percentage": 4.26,
+            "percentageTokens": 8,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/utils/cache.ts": {
+            "lines": 253,
+            "tokens": 1824,
+            "sources": 1,
+            "clones": 4,
+            "duplicatedLines": 48,
+            "duplicatedTokens": 368,
+            "percentage": 18.97,
+            "percentageTokens": 20.18,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/types/shared.ts": {
+            "lines": 128,
+            "tokens": 403,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/types/nakama.d.ts": {
+            "lines": 263,
+            "tokens": 1433,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/types/nakama-runtime.d.ts": {
+            "lines": 144,
+            "tokens": 640,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/types/lru-cache.d.ts": {
+            "lines": 3,
+            "tokens": 39,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/types/game.ts": {
+            "lines": 18,
+            "tokens": 85,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/types/errors.ts": {
+            "lines": 97,
+            "tokens": 514,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/types/errorInsights.ts": {
+            "lines": 208,
+            "tokens": 944,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/validation.ts": {
+            "lines": 341,
+            "tokens": 3798,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/season_system.ts": {
+            "lines": 874,
+            "tokens": 5101,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/rpg_system.ts": {
+            "lines": 473,
+            "tokens": 2555,
+            "sources": 1,
+            "clones": 7,
+            "duplicatedLines": 160,
+            "duplicatedTokens": 847,
+            "percentage": 33.83,
+            "percentageTokens": 33.15,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/progression_validation.ts": {
+            "lines": 206,
+            "tokens": 1813,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/profiling.ts": {
+            "lines": 454,
+            "tokens": 3251,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/privacy_compliance.ts": {
+            "lines": 667,
+            "tokens": 4703,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/player_rpc.ts": {
+            "lines": 259,
+            "tokens": 1280,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 84,
+            "duplicatedTokens": 366,
+            "percentage": 32.43,
+            "percentageTokens": 28.59,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/n_plus_one_detection.ts": {
+            "lines": 713,
+            "tokens": 5153,
+            "sources": 1,
+            "clones": 3,
+            "duplicatedLines": 105,
+            "duplicatedTokens": 760,
+            "percentage": 14.73,
+            "percentageTokens": 14.75,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/metrics.ts": {
+            "lines": 489,
+            "tokens": 3919,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/matchmaker.ts": {
+            "lines": 567,
+            "tokens": 3235,
+            "sources": 1,
+            "clones": 7,
+            "duplicatedLines": 118,
+            "duplicatedTokens": 753,
+            "percentage": 20.81,
+            "percentageTokens": 23.28,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/health_monitor.ts": {
+            "lines": 405,
+            "tokens": 2840,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/gear_system.ts": {
+            "lines": 985,
+            "tokens": 5745,
+            "sources": 1,
+            "clones": 6,
+            "duplicatedLines": 116,
+            "duplicatedTokens": 918,
+            "percentage": 11.78,
+            "percentageTokens": 15.98,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/error_insight_pipeline.ts": {
+            "lines": 927,
+            "tokens": 7523,
+            "sources": 1,
+            "clones": 3,
+            "duplicatedLines": 22,
+            "duplicatedTokens": 257,
+            "percentage": 2.37,
+            "percentageTokens": 3.42,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/deployment_observability.ts": {
+            "lines": 337,
+            "tokens": 2453,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/datadog_integration.ts": {
+            "lines": 272,
+            "tokens": 2043,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/config_validation.ts": {
+            "lines": 11,
+            "tokens": 151,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/combat_system.ts": {
+            "lines": 728,
+            "tokens": 4448,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/audit.ts": {
+            "lines": 63,
+            "tokens": 361,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/anti_cheat_audit.ts": {
+            "lines": 363,
+            "tokens": 2578,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/anti_cheat.ts": {
+            "lines": 739,
+            "tokens": 5233,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/analytics.ts": {
+            "lines": 734,
+            "tokens": 4539,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/modules/alerting.ts": {
+            "lines": 438,
+            "tokens": 3232,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/features/FeatureFlags.ts": {
+            "lines": 517,
+            "tokens": 3602,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/config/tracing.ts": {
+            "lines": 386,
+            "tokens": 2949,
+            "sources": 1,
+            "clones": 4,
+            "duplicatedLines": 65,
+            "duplicatedTokens": 552,
+            "percentage": 16.84,
+            "percentageTokens": 18.72,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/config/structuredLogger.ts": {
+            "lines": 388,
+            "tokens": 1919,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/config/logger.ts": {
+            "lines": 439,
+            "tokens": 2439,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/config/logScrubber.ts": {
+            "lines": 503,
+            "tokens": 2655,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/config/index.ts": {
+            "lines": 789,
+            "tokens": 7088,
+            "sources": 1,
+            "clones": 5,
+            "duplicatedLines": 98,
+            "duplicatedTokens": 622,
+            "percentage": 12.42,
+            "percentageTokens": 8.78,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/config/errorTracking.ts": {
+            "lines": 544,
+            "tokens": 3343,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 68,
+            "duplicatedTokens": 522,
+            "percentage": 12.5,
+            "percentageTokens": 15.61,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/config/alerting.ts": {
+            "lines": 357,
+            "tokens": 2629,
+            "sources": 1,
+            "clones": 3,
+            "duplicatedLines": 78,
+            "duplicatedTokens": 414,
+            "percentage": 21.85,
+            "percentageTokens": 15.75,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/index.ts": {
+            "lines": 506,
+            "tokens": 3270,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/src/config.ts": {
+            "lines": 17,
+            "tokens": 82,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/scripts/validate-agents-md.ts": {
+            "lines": 423,
+            "tokens": 2626,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/scripts/tech-debt-sync.ts": {
+            "lines": 432,
+            "tokens": 3727,
+            "sources": 1,
+            "clones": 4,
+            "duplicatedLines": 68,
+            "duplicatedTokens": 491,
+            "percentage": 15.74,
+            "percentageTokens": 13.17,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/scripts/tech-debt-github.ts": {
+            "lines": 366,
+            "tokens": 2957,
+            "sources": 1,
+            "clones": 6,
+            "duplicatedLines": 78,
+            "duplicatedTokens": 657,
+            "percentage": 21.31,
+            "percentageTokens": 22.22,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/scripts/scan-pii.ts": {
+            "lines": 246,
+            "tokens": 2031,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/scripts/detect-tech-debt.ts": {
+            "lines": 442,
+            "tokens": 3998,
+            "sources": 1,
+            "clones": 3,
+            "duplicatedLines": 34,
+            "duplicatedTokens": 338,
+            "percentage": 7.69,
+            "percentageTokens": 8.45,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/scripts/detect-n-plus-one.ts": {
+            "lines": 203,
+            "tokens": 1526,
+            "sources": 1,
+            "clones": 3,
+            "duplicatedLines": 34,
+            "duplicatedTokens": 338,
+            "percentage": 16.75,
+            "percentageTokens": 22.15,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/scripts/detect-flaky-tests.ts": {
+            "lines": 427,
+            "tokens": 2185,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/scripts/detect-dead-flags.ts": {
+            "lines": 170,
+            "tokens": 1439,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 21396,
+          "tokens": 147755,
+          "sources": 61,
+          "clones": 39,
+          "duplicatedLines": 695,
+          "duplicatedTokens": 5143,
+          "percentage": 3.25,
+          "percentageTokens": 3.48,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "javascript": {
+        "sources": {
+          "/home/alex/armored-archer/backend/src/modules/__tests__/debug_matchmaker.js": {
+            "lines": 28,
+            "tokens": 267,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/scripts/validate-openapi.js": {
+            "lines": 96,
+            "tokens": 724,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/scripts/generate-openapi.js": {
+            "lines": 311,
+            "tokens": 2052,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/scripts/bundle-analysis.js": {
+            "lines": 394,
+            "tokens": 3931,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/webpack.analyze.config.js": {
+            "lines": 66,
+            "tokens": 465,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/jest.setup.js": {
+            "lines": 15,
+            "tokens": 79,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/jest.integration.config.js": {
+            "lines": 12,
+            "tokens": 98,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/jest.config.js": {
+            "lines": 99,
+            "tokens": 581,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/jest-performance-reporter.js": {
+            "lines": 236,
+            "tokens": 2168,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/.eslintrc.js": {
+            "lines": 76,
+            "tokens": 617,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 1333,
+          "tokens": 10982,
+          "sources": 10,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "yaml": {
+        "sources": {
+          "/home/alex/armored-archer/backend/grafana/provisioning/datasources/datasources.yml": {
+            "lines": 11,
+            "tokens": 65,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/grafana/provisioning/dashboards/dashboards.yml": {
+            "lines": 12,
+            "tokens": 67,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/prometheus.yml": {
+            "lines": 85,
+            "tokens": 435,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/otel-collector-config.yaml": {
+            "lines": 44,
+            "tokens": 242,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/nakama.yml": {
+            "lines": 54,
+            "tokens": 264,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docker-compose.yml": {
+            "lines": 148,
+            "tokens": 838,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/alerts.yml": {
+            "lines": 256,
+            "tokens": 1491,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/alertmanager.yml": {
+            "lines": 270,
+            "tokens": 1209,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 880,
+          "tokens": 4611,
+          "sources": 8,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "bash": {
+        "sources": {
+          "/home/alex/armored-archer/backend/scripts/profile.sh": {
+            "lines": 218,
+            "tokens": 887,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/validate-env.sh": {
+            "lines": 101,
+            "tokens": 507,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/start.sh": {
+            "lines": 78,
+            "tokens": 414,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/setup.sh": {
+            "lines": 42,
+            "tokens": 145,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 439,
+          "tokens": 1953,
+          "sources": 4,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "markdown": {
+        "sources": {
+          "/home/alex/armored-archer/backend/docs/N_PLUS_ONE_DETECTION.md": {
+            "lines": 314,
+            "tokens": 2092,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/FEATURE_FLAGS.md": {
+            "lines": 226,
+            "tokens": 1609,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/DEPLOYMENT_READINESS.md": {
+            "lines": 339,
+            "tokens": 2170,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/DEPLOYMENT.md": {
+            "lines": 827,
+            "tokens": 3730,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 96,
+            "duplicatedTokens": 314,
+            "percentage": 11.61,
+            "percentageTokens": 8.42,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/data/README.md": {
+            "lines": 133,
+            "tokens": 947,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/test-results.txt": {
+            "lines": 523,
+            "tokens": 1611,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/README.md": {
+            "lines": 165,
+            "tokens": 1212,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/RATE_LIMITING.md": {
+            "lines": 165,
+            "tokens": 1174,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/ONCALL_ESCALATION.md": {
+            "lines": 251,
+            "tokens": 1894,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/METRICS.md": {
+            "lines": 192,
+            "tokens": 1184,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/INTEGRATION_TESTS.md": {
+            "lines": 202,
+            "tokens": 1661,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/ENVIRONMENTS.md": {
+            "lines": 185,
+            "tokens": 1434,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/DB_OPTIMIZATION.md": {
+            "lines": 191,
+            "tokens": 1650,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/DATABASE_SCHEMA.md": {
+            "lines": 335,
+            "tokens": 3223,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/CACHE_STRATEGY.md": {
+            "lines": 227,
+            "tokens": 1866,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/ALERTING.md": {
+            "lines": 206,
+            "tokens": 1348,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 4481,
+          "tokens": 28805,
+          "sources": 16,
+          "clones": 1,
+          "duplicatedLines": 48,
+          "duplicatedTokens": 157,
+          "percentage": 1.07,
+          "percentageTokens": 0.55,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "sql": {
+        "sources": {
+          "/home/alex/armored-archer/backend/data/004_create_loadout.sql": {
+            "lines": 36,
+            "tokens": 459,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/data/003_create_inventory.sql": {
+            "lines": 20,
+            "tokens": 247,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/data/002_create_catalog.sql": {
+            "lines": 41,
+            "tokens": 390,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/data/001_create_player_stats.sql": {
+            "lines": 35,
+            "tokens": 336,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 132,
+          "tokens": 1432,
+          "sources": 4,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "json": {
+        "sources": {
+          "/home/alex/armored-archer/backend/tsconfig.json": {
+            "lines": 28,
+            "tokens": 165,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/tech-debt-report.json": {
+            "lines": 547,
+            "tokens": 3336,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/package.json": {
+            "lines": 114,
+            "tokens": 763,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/nx.json": {
+            "lines": 35,
+            "tokens": 217,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/bundle-size-limits.json": {
+            "lines": 61,
+            "tokens": 330,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/.lintstagedrc.json": {
+            "lines": 6,
+            "tokens": 22,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/.jscpd.json": {
+            "lines": 24,
+            "tokens": 137,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/.eslintrc.modules.json": {
+            "lines": 53,
+            "tokens": 248,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 868,
+          "tokens": 5218,
+          "sources": 8,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      }
+    },
+    "total": {
+      "lines": 29529,
+      "tokens": 200756,
+      "sources": 111,
+      "clones": 40,
+      "duplicatedLines": 743,
+      "duplicatedTokens": 5300,
+      "percentage": 2.52,
+      "percentageTokens": 2.64,
+      "newDuplicatedLines": 0,
+      "newClones": 0
+    }
+  },
+  "duplicates": [
+    {
+      "format": "typescript",
+      "lines": 12,
+      "fragment": "{\n            const dbMethod = isDatabaseMethodCall(node);\n            if (dbMethod && loopStack.length > 0) {\n              const currentLoop = loopStack[loopStack.length - 1];\n              if (!currentLoop.hasDbCall) {\n                currentLoop.hasDbCall = true;\n                context.report({\n                  node,\n                  messageId: 'nPlusOneQuery',\n                  data: {\n                    method: dbMethod,\n                    loopType:",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/utils/eslint-rules/n-plus-one-detection.ts",
+        "start": 217,
+        "end": 228,
+        "startLoc": {
+          "line": 217,
+          "column": 2,
+          "position": 1418
+        },
+        "endLoc": {
+          "line": 228,
+          "column": 2,
+          "position": 1526
+        }
+      },
+      "secondFile": {
+        "name": "src/utils/eslint-rules/n-plus-one-detection.ts",
+        "start": 120,
+        "end": 131,
+        "startLoc": {
+          "line": 120,
+          "column": 2,
+          "position": 725
+        },
+        "endLoc": {
+          "line": 131,
+          "column": 2,
+          "position": 833
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": ");\n      span.setStatus({ code: SpanStatusCode.OK });\n      return result;\n    } catch (error) {\n      span.setStatus({\n        code: SpanStatusCode.ERROR,\n        message: error instanceof Error ? error.message : String(error),\n      });\n      span.recordException(error instanceof Error ? error : new Error(String(error)));\n      throw error;\n    } finally {\n      span.end();\n    }\n  })",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/utils/tracing.ts",
+        "start": 128,
+        "end": 141,
+        "startLoc": {
+          "line": 128,
+          "column": 2,
+          "position": 1071
+        },
+        "endLoc": {
+          "line": 141,
+          "column": 2,
+          "position": 1209
+        }
+      },
+      "secondFile": {
+        "name": "src/utils/tracing.ts",
+        "start": 99,
+        "end": 117,
+        "startLoc": {
+          "line": 99,
+          "column": 5,
+          "position": 809
+        },
+        "endLoc": {
+          "line": 117,
+          "column": 7,
+          "position": 950
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 22,
+      "fragment": ", operationName);\n\n      const result = await operation();\n      span.setStatus({ code: SpanStatusCode.OK });\n      return result;\n    } catch (error) {\n      span.setStatus({\n        code: SpanStatusCode.ERROR,\n        message: error instanceof Error ? error.message : String(error),\n      });\n      span.recordException(error instanceof Error ? error : new Error(String(error)));\n      throw error;\n    } finally {\n      span.end();\n    }\n  });\n}\n\n/**\n * Execute a function with tracing for external service calls.\n */\nexport async function traceExternalCall",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/utils/tracing.ts",
+        "start": 156,
+        "end": 177,
+        "startLoc": {
+          "line": 156,
+          "column": 18,
+          "position": 1320
+        },
+        "endLoc": {
+          "line": 177,
+          "column": 18,
+          "position": 1490
+        }
+      },
+      "secondFile": {
+        "name": "src/utils/tracing.ts",
+        "start": 126,
+        "end": 147,
+        "startLoc": {
+          "line": 126,
+          "column": 15,
+          "position": 1053
+        },
+        "endLoc": {
+          "line": 147,
+          "column": 20,
+          "position": 1223
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 22,
+      "fragment": ", operationName);\n\n      const result = await operation();\n      span.setStatus({ code: SpanStatusCode.OK });\n      return result;\n    } catch (error) {\n      span.setStatus({\n        code: SpanStatusCode.ERROR,\n        message: error instanceof Error ? error.message : String(error),\n      });\n      span.recordException(error instanceof Error ? error : new Error(String(error)));\n      throw error;\n    } finally {\n      span.end();\n    }\n  });\n}\n\n/**\n * Add custom event to current active span.\n */\nexport function",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/utils/tracing.ts",
+        "start": 187,
+        "end": 208,
+        "startLoc": {
+          "line": 187,
+          "column": 14,
+          "position": 1598
+        },
+        "endLoc": {
+          "line": 208,
+          "column": 9,
+          "position": 1764
+        }
+      },
+      "secondFile": {
+        "name": "src/utils/tracing.ts",
+        "start": 126,
+        "end": 147,
+        "startLoc": {
+          "line": 126,
+          "column": 15,
+          "position": 1053
+        },
+        "endLoc": {
+          "line": 147,
+          "column": 6,
+          "position": 1219
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 6,
+      "fragment": ": {\n  debug: (format: string, ...args: unknown[]) => void;\n  info: (format: string, ...args: unknown[]) => void;\n  warn: (format: string, ...args: unknown[]) => void;\n  error: (format: string, ...args: unknown[]) => void;\n} {",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/utils/log_scrubbing.ts",
+        "start": 294,
+        "end": 299,
+        "startLoc": {
+          "line": 294,
+          "column": 2,
+          "position": 1948
+        },
+        "endLoc": {
+          "line": 299,
+          "column": 2,
+          "position": 2054
+        }
+      },
+      "secondFile": {
+        "name": "src/utils/log_scrubbing.ts",
+        "start": 287,
+        "end": 292,
+        "startLoc": {
+          "line": 287,
+          "column": 7,
+          "position": 1832
+        },
+        "endLoc": {
+          "line": 292,
+          "column": 2,
+          "position": 1938
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 8,
+      "fragment": ";\n\n  Array.from(circuits.entries()).forEach(([name, instance]) => {\n    let state: CircuitState = 'CLOSED';\n    if (instance.breaker.opened) state = 'OPEN';\n    else if (instance.breaker.halfOpen) state = 'HALF_OPEN';\n\n    info",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/utils/circuitBreaker.ts",
+        "start": 321,
+        "end": 328,
+        "startLoc": {
+          "line": 321,
+          "column": 2,
+          "position": 1929
+        },
+        "endLoc": {
+          "line": 328,
+          "column": 5,
+          "position": 2012
+        }
+      },
+      "secondFile": {
+        "name": "src/utils/circuitBreaker.ts",
+        "start": 261,
+        "end": 266,
+        "startLoc": {
+          "line": 261,
+          "column": 2,
+          "position": 1519
+        },
+        "endLoc": {
+          "line": 266,
+          "column": 7,
+          "position": 1600
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": "): void {\n    const cache = this.caches.get(cacheName);\n\n    if (!cache) {\n      if (this.logger) {\n        this.logger.error('Cache not found', {\n          cacheName,\n          operation: 'cache_not_found',\n        });\n      }\n      return;\n    }\n\n    cache.delete",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/utils/cache.ts",
+        "start": 137,
+        "end": 150,
+        "startLoc": {
+          "line": 137,
+          "column": 7,
+          "position": 791
+        },
+        "endLoc": {
+          "line": 150,
+          "column": 7,
+          "position": 879
+        }
+      },
+      "secondFile": {
+        "name": "src/utils/cache.ts",
+        "start": 120,
+        "end": 133,
+        "startLoc": {
+          "line": 120,
+          "column": 15,
+          "position": 664
+        },
+        "endLoc": {
+          "line": 133,
+          "column": 4,
+          "position": 752
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 12,
+      "fragment": "{\n    const cache = this.caches.get(cacheName);\n    const metrics = this.metrics.get(cacheName);\n\n    if (!cache || !metrics) {\n      if (this.logger) {\n        this.logger.error('Cache not found', {\n          cacheName,\n          operation: 'cache_not_found',\n        });\n      }\n      return;",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/utils/cache.ts",
+        "start": 154,
+        "end": 165,
+        "startLoc": {
+          "line": 154,
+          "column": 2,
+          "position": 914
+        },
+        "endLoc": {
+          "line": 165,
+          "column": 2,
+          "position": 1010
+        }
+      },
+      "secondFile": {
+        "name": "src/utils/cache.ts",
+        "start": 93,
+        "end": 104,
+        "startLoc": {
+          "line": 93,
+          "column": 2,
+          "position": 447
+        },
+        "endLoc": {
+          "line": 104,
+          "column": 10,
+          "position": 544
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 16,
+      "fragment": "nk.storageWrite([\n    {\n      collection: 'player_stats',\n      key: ctx.userId,\n      userId: ctx.userId,\n      value: JSON.stringify(playerStats),\n    },\n  ]);\n\n  invalidatePlayerStatsCache(ctx.userId, logger);\n\n  logAudit(\n    nk,\n    ctx.userId,\n    `ctx.ipAddress ?? null`,\n    'allocate_stats'",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/rpg_system.ts",
+        "start": 351,
+        "end": 366,
+        "startLoc": {
+          "line": 351,
+          "column": 3,
+          "position": 1908
+        },
+        "endLoc": {
+          "line": 366,
+          "column": 17,
+          "position": 1996
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/rpg_system.ts",
+        "start": 189,
+        "end": 204,
+        "startLoc": {
+          "line": 189,
+          "column": 3,
+          "position": 990
+        },
+        "endLoc": {
+          "line": 204,
+          "column": 10,
+          "position": 1078
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 45,
+      "fragment": ",\n  });\n}\n\n/**\n * Registers the get player stats RPC endpoint.\n *\n * @param initializer - Nakama runtime initializer\n */\nexport function registerRpcGetPlayerStats(initializer: Runtime.Initializer): void {\n  registerRpcWithMetrics(\n    initializer,\n    'armored_archer/get_player_stats',\n    'get_player_stats',\n    rpcGetPlayerStats\n  );\n}\n\n/**\n * Retrieves player statistics with caching.\n *\n * @param ctx - Nakama runtime context\n * @param logger - Nakama logger instance\n * @param nk - Nakama server interface\n * @param payload - JSON string (unused, required for RPC format)\n * @returns JSON string with player stats or error\n *\n * @example\n * // Request payload\n * { }\n *\n * // Response\n * {\n *   \"level\": 5,\n *   \"xp\": 450,\n *   \"stats\": { ... }\n * }\n */\nexport function rpcGetPlayerStats(\n  ctx: Runtime.Context,\n  logger: Runtime.Logger,\n  nk: Runtime.Nakama,\n  payload: string\n): string {\n  getLogger",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/player_rpc.ts",
+        "start": 72,
+        "end": 116,
+        "startLoc": {
+          "line": 72,
+          "column": 8,
+          "position": 316
+        },
+        "endLoc": {
+          "line": 116,
+          "column": 10,
+          "position": 423
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/rpg_system.ts",
+        "start": 379,
+        "end": 423,
+        "startLoc": {
+          "line": 379,
+          "column": 12,
+          "position": 2075
+        },
+        "endLoc": {
+          "line": 423,
+          "column": 7,
+          "position": 2182
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 41,
+      "fragment": ");\n\n  const validation = validatePayload(ZodSchemas.get_player_stats, payload, 'get_player_stats');\n  if (!validation.success) {\n    return createValidationErrorResponse('get_player_stats', validation.error);\n  }\n\n  const cacheManager = getCacheManager(logger);\n  const cachedStats = cacheManager.get<string>('player_stats', ctx.userId);\n\n  if (cachedStats !== undefined) {\n    return cachedStats;\n  }\n\n  const objects = nk.storageRead([\n    {\n      collection: 'player_stats',\n      key: ctx.userId,\n      userId: ctx.userId,\n    },\n  ]);\n\n  if (objects.length === 0) {\n    return JSON.stringify({\n      error: 'Player stats not found',\n    });\n  }\n\n  const stats = objects[0].value ?? '{}';\n  cacheManager.set('player_stats', ctx.userId, stats);\n\n  return stats;\n}\n\n/**\n * Registers the report player RPC endpoint.\n>>>>>>> origin/main\n *\n * @param initializer - Nakama runtime initializer\n */\nexport function registerRpcReportPlayer",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/player_rpc.ts",
+        "start": 119,
+        "end": 159,
+        "startLoc": {
+          "line": 119,
+          "column": 2,
+          "position": 452
+        },
+        "endLoc": {
+          "line": 159,
+          "column": 24,
+          "position": 711
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/rpg_system.ts",
+        "start": 423,
+        "end": 466,
+        "startLoc": {
+          "line": 423,
+          "column": 7,
+          "position": 2192
+        },
+        "endLoc": {
+          "line": 466,
+          "column": 15,
+          "position": 2451
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 50,
+      "fragment": "fn();\n  } catch (error) {\n    success = false;\n    throw error;\n  } finally {\n    const durationMs = performance.now() - startTime;\n    globalQueryCount++;\n\n    // Record the query\n    const record: QueryRecord = {\n      operation: operationName,\n      queryType,\n      timestamp: Date.now(),\n      durationMs,\n      collection: options?.collection,\n      key: options?.key,\n      userId: options?.userId,\n      success,\n    };\n\n    // Add to current operation context\n    const context = operationContexts.get(operationName);\n    if (context && context.isActive) {\n      context.queries.push(record);\n    }\n\n    // Update stats\n    updateQueryStats(operationName, queryType, durationMs);\n\n    // Emit metrics\n    if (nPlusOneConfig.metricsEnabled && queryDurationHistogram) {\n      queryDurationHistogram.observe(\n        { operation: operationName, query_type: queryType },\n        durationMs / 1000\n      );\n    }\n\n    // Log slow queries\n    if (nPlusOneConfig.logEnabled && durationMs > nPlusOneConfig.slowQueryThresholdMs) {\n      console.log(\n        `[N+1] Slow query detected: ${operationName} (${queryType}) took ${durationMs.toFixed(2)}ms`\n      );\n    }\n  }\n}\n\n/**\n * Update query statistics\n */\nfunction",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/n_plus_one_detection.ts",
+        "start": 224,
+        "end": 273,
+        "startLoc": {
+          "line": 224,
+          "column": 2,
+          "position": 1450
+        },
+        "endLoc": {
+          "line": 273,
+          "column": 9,
+          "position": 1777
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/n_plus_one_detection.ts",
+        "start": 157,
+        "end": 206,
+        "startLoc": {
+          "line": 157,
+          "column": 2,
+          "position": 976
+        },
+        "endLoc": {
+          "line": 206,
+          "column": 7,
+          "position": 1303
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 15,
+      "fragment": "const objects = nk.storageRead([\n    {\n      collection: 'player_stats',\n      key: ctx.userId,\n      userId: ctx.userId,\n    },\n  ]);\n\n  if (objects.length === 0) {\n    return JSON.stringify({\n      error: 'Player stats not found',\n    });\n  }\n\n  const playerStats",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/matchmaker.ts",
+        "start": 131,
+        "end": 145,
+        "startLoc": {
+          "line": 131,
+          "column": 3,
+          "position": 497
+        },
+        "endLoc": {
+          "line": 145,
+          "column": 12,
+          "position": 590
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/rpg_system.ts",
+        "start": 437,
+        "end": 451,
+        "startLoc": {
+          "line": 437,
+          "column": 3,
+          "position": 2308
+        },
+        "endLoc": {
+          "line": 451,
+          "column": 6,
+          "position": 2401
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 15,
+      "fragment": ", validation.error);\n  }\n\n  const request = validation.data;\n\n  const objects = nk.storageRead([\n    {\n      collection: 'player_stats',\n      key: ctx.userId,\n      userId: ctx.userId,\n    },\n  ]);\n\n  if (objects.length === 0) {\n    return",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/matchmaker.ts",
+        "start": 236,
+        "end": 250,
+        "startLoc": {
+          "line": 236,
+          "column": 15,
+          "position": 1149
+        },
+        "endLoc": {
+          "line": 250,
+          "column": 7,
+          "position": 1241
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/rpg_system.ts",
+        "start": 277,
+        "end": 291,
+        "startLoc": {
+          "line": 277,
+          "column": 17,
+          "position": 1416
+        },
+        "endLoc": {
+          "line": 291,
+          "column": 9,
+          "position": 1508
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 20,
+      "fragment": ";\n\n  const objects = nk.storageRead([\n    {\n      collection: 'player_stats',\n      key: ctx.userId,\n      userId: ctx.userId,\n    },\n  ]);\n\n  if (objects.length === 0) {\n    return JSON.stringify({\n      error: 'Player stats not found',\n    });\n  }\n\n  const playerStats = JSON.parse(objects[0].value);\n  const playerRank = calculateRank(playerStats);\n\n  if",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/matchmaker.ts",
+        "start": 239,
+        "end": 258,
+        "startLoc": {
+          "line": 239,
+          "column": 5,
+          "position": 1171
+        },
+        "endLoc": {
+          "line": 258,
+          "column": 3,
+          "position": 1300
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/matchmaker.ts",
+        "start": 129,
+        "end": 148,
+        "startLoc": {
+          "line": 129,
+          "column": 3,
+          "position": 493
+        },
+        "endLoc": {
+          "line": 148,
+          "column": 6,
+          "position": 622
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 18,
+      "fragment": ",\n    };\n\n    nk.storageWrite([\n      {\n        collection: 'pvp_matches',\n        key: match.match_id,\n        userId: ctx.userId,\n        value: JSON.stringify(match),\n      },\n    ]);\n\n    return JSON.stringify({\n      success: true,\n      match: match,\n    });\n  }\n}",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/matchmaker.ts",
+        "start": 326,
+        "end": 343,
+        "startLoc": {
+          "line": 326,
+          "column": 4,
+          "position": 1861
+        },
+        "endLoc": {
+          "line": 343,
+          "column": 2,
+          "position": 1956
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/matchmaker.ts",
+        "start": 294,
+        "end": 310,
+        "startLoc": {
+          "line": 294,
+          "column": 2,
+          "position": 1619
+        },
+        "endLoc": {
+          "line": 310,
+          "column": 5,
+          "position": 1714
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 19,
+      "fragment": ";\n  }\n\n  const objects = nk.storageRead([\n    {\n      collection: 'player_stats',\n      key: ctx.userId,\n      userId: ctx.userId,\n    },\n  ]);\n\n  if (objects.length === 0) {\n    return JSON.stringify({\n      error: 'Player stats not found',\n    });\n  }\n\n  const playerStats = JSON.parse(objects[0].value);\n  const rank",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/matchmaker.ts",
+        "start": 521,
+        "end": 539,
+        "startLoc": {
+          "line": 521,
+          "column": 2,
+          "position": 2904
+        },
+        "endLoc": {
+          "line": 539,
+          "column": 5,
+          "position": 3024
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/rpg_system.ts",
+        "start": 434,
+        "end": 146,
+        "startLoc": {
+          "line": 434,
+          "column": 12,
+          "position": 2301
+        },
+        "endLoc": {
+          "line": 146,
+          "column": 11,
+          "position": 610
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 34,
+      "fragment": ", validation.error);\n  }\n\n  const request = validation.data;\n\n  const inventoryObjects = nk.storageRead([\n    {\n      collection: 'player_inventory',\n      key: ctx.userId,\n      userId: ctx.userId,\n    },\n  ]);\n\n  if (inventoryObjects.length === 0) {\n    return JSON.stringify({\n      error: 'Player inventory not found',\n    });\n  }\n\n  const value = inventoryObjects[0].value;\n  if (!value) {\n    return JSON.stringify({\n      error: 'Invalid inventory data',\n    });\n  }\n\n  const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');\n  if (!parseResult.success || !parseResult.data) {\n    logger.error('Failed to parse data');\n    return createErrorResponse('INVALID_DATA', 'Failed to parse data');\n  }\n  const inventory: PlayerInventory = parseResult.data;\n\n  if",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/gear_system.ts",
+        "start": 722,
+        "end": 755,
+        "startLoc": {
+          "line": 722,
+          "column": 15,
+          "position": 4204
+        },
+        "endLoc": {
+          "line": 755,
+          "column": 3,
+          "position": 4455
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/gear_system.ts",
+        "start": 592,
+        "end": 625,
+        "startLoc": {
+          "line": 592,
+          "column": 13,
+          "position": 3422
+        },
+        "endLoc": {
+          "line": 625,
+          "column": 6,
+          "position": 3673
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 18,
+      "fragment": ";\n\n  const inventoryObjects = nk.storageRead([\n    {\n      collection: 'player_inventory',\n      key: ctx.userId,\n      userId: ctx.userId,\n    },\n  ]);\n\n  let inventory: PlayerInventory;\n\n  if (inventoryObjects.length === 0) {\n    inventory = {\n      user_id: ctx.userId,\n      gear: [],\n      equipped_gear: {},\n      unlocked_modifier_pools: [modifierId",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/gear_system.ts",
+        "start": 924,
+        "end": 941,
+        "startLoc": {
+          "line": 924,
+          "column": 12,
+          "position": 5266
+        },
+        "endLoc": {
+          "line": 941,
+          "column": 11,
+          "position": 5382
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/gear_system.ts",
+        "start": 465,
+        "end": 482,
+        "startLoc": {
+          "line": 465,
+          "column": 5,
+          "position": 2679
+        },
+        "endLoc": {
+          "line": 482,
+          "column": 2,
+          "position": 2795
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "fragment": "],\n    };\n  } else {\n    const value = inventoryObjects[0].value;\n    if (value) {\n      const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');\n      if (!parseResult.success || !parseResult.data) {\n        logger.error('Failed to parse data');\n        return",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/gear_system.ts",
+        "start": 941,
+        "end": 949,
+        "startLoc": {
+          "line": 941,
+          "column": 11,
+          "position": 5383
+        },
+        "endLoc": {
+          "line": 949,
+          "column": 7,
+          "position": 5475
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/gear_system.ts",
+        "start": 482,
+        "end": 490,
+        "startLoc": {
+          "line": 482,
+          "column": 2,
+          "position": 2795
+        },
+        "endLoc": {
+          "line": 490,
+          "column": 9,
+          "position": 2887
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 7,
+      "fragment": ";\n  for (let i = 0; i < str.length; i++) {\n    const char = str.charCodeAt(i);\n    hash = (hash << 5) - hash + char;\n    hash = hash & hash;\n  }\n  return Math.abs(hash).",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/error_insight_pipeline.ts",
+        "start": 189,
+        "end": 195,
+        "startLoc": {
+          "line": 189,
+          "column": 2,
+          "position": 1338
+        },
+        "endLoc": {
+          "line": 195,
+          "column": 2,
+          "position": 1429
+        }
+      },
+      "secondFile": {
+        "name": "src/utils/feature-flags.ts",
+        "start": 138,
+        "end": 144,
+        "startLoc": {
+          "line": 138,
+          "column": 2,
+          "position": 763
+        },
+        "endLoc": {
+          "line": 144,
+          "column": 2,
+          "position": 856
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "fragment": "{\n    const hours = config.errorInsights.insightWindowHours;\n    timeRange = {\n      startTime: new Date(Date.now() - hours * 60 * 60 * 1000).toISOString(),\n      endTime: new Date().toISOString(),\n    };\n  }\n\n  const",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/modules/error_insight_pipeline.ts",
+        "start": 827,
+        "end": 835,
+        "startLoc": {
+          "line": 827,
+          "column": 2,
+          "position": 6667
+        },
+        "endLoc": {
+          "line": 835,
+          "column": 6,
+          "position": 6750
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/error_insight_pipeline.ts",
+        "start": 820,
+        "end": 827,
+        "startLoc": {
+          "line": 820,
+          "column": 2,
+          "position": 6581
+        },
+        "endLoc": {
+          "line": 827,
+          "column": 2,
+          "position": 6663
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 22,
+      "fragment": ");\n\n  try {\n    const result = await fn(span);\n    span.setStatus({ code: SpanStatusCode.OK });\n    return result;\n  } catch (error) {\n    span.setStatus({\n      code: SpanStatusCode.ERROR,\n      message: error instanceof Error ? error.message : String(error),\n    });\n    span.recordException(error instanceof Error ? error : new Error(String(error)));\n    throw error;\n  } finally {\n    span.end();\n  }\n}\n\n/**\n * Execute a synchronous function within a traced span.\n */\nexport function",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/config/tracing.ts",
+        "start": 145,
+        "end": 166,
+        "startLoc": {
+          "line": 145,
+          "column": 8,
+          "position": 1034
+        },
+        "endLoc": {
+          "line": 166,
+          "column": 9,
+          "position": 1198
+        }
+      },
+      "secondFile": {
+        "name": "src/utils/tracing.ts",
+        "start": 96,
+        "end": 117,
+        "startLoc": {
+          "line": 96,
+          "column": 5,
+          "position": 788
+        },
+        "endLoc": {
+          "line": 117,
+          "column": 6,
+          "position": 952
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 19,
+      "fragment": "fn(span);\n    span.setStatus({ code: SpanStatusCode.OK });\n    return result;\n  } catch (error) {\n    span.setStatus({\n      code: SpanStatusCode.ERROR,\n      message: error instanceof Error ? error.message : String(error),\n    });\n    span.recordException(error instanceof Error ? error : new Error(String(error)));\n    throw error;\n  } finally {\n    span.end();\n  }\n}\n\n/**\n * Add event to current span.\n */\nexport function addSpanEvent",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/config/tracing.ts",
+        "start": 177,
+        "end": 195,
+        "startLoc": {
+          "line": 177,
+          "column": 2,
+          "position": 1305
+        },
+        "endLoc": {
+          "line": 195,
+          "column": 13,
+          "position": 1453
+        }
+      },
+      "secondFile": {
+        "name": "src/utils/tracing.ts",
+        "start": 99,
+        "end": 166,
+        "startLoc": {
+          "line": 99,
+          "column": 2,
+          "position": 806
+        },
+        "endLoc": {
+          "line": 166,
+          "column": 10,
+          "position": 1200
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": ");\n      span.setStatus({ code: SpanStatusCode.OK });\n      return result;\n    } catch (error) {\n      span.setStatus({\n        code: SpanStatusCode.ERROR,\n        message: error instanceof Error ? error.message : String(error),\n      });\n      span.recordException(error instanceof Error ? error : new Error(String(error)));\n      throw error;\n    } finally {\n      span.end();\n    }\n  };",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/config/tracing.ts",
+        "start": 246,
+        "end": 259,
+        "startLoc": {
+          "line": 246,
+          "column": 8,
+          "position": 1973
+        },
+        "endLoc": {
+          "line": 259,
+          "column": 2,
+          "position": 2111
+        }
+      },
+      "secondFile": {
+        "name": "src/utils/tracing.ts",
+        "start": 99,
+        "end": 117,
+        "startLoc": {
+          "line": 99,
+          "column": 5,
+          "position": 809
+        },
+        "endLoc": {
+          "line": 117,
+          "column": 7,
+          "position": 950
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": "export interface TracingConfig {\n  enabled: boolean;\n  serviceName: string;\n  serviceVersion: string;\n  exporter: 'jaeger' | 'zipkin' | 'otlp' | 'none';\n  sampleRate: number;\n  jaegerEndpoint?: string;\n  zipkinEndpoint?: string;\n  otlpEndpoint?: string;\n  autoInstrumentations: boolean;\n  instrumentations: string[];\n}\n\nexport interface AlertingConfig",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/config/index.ts",
+        "start": 125,
+        "end": 138,
+        "startLoc": {
+          "line": 125,
+          "column": 1,
+          "position": 892
+        },
+        "endLoc": {
+          "line": 138,
+          "column": 15,
+          "position": 994
+        }
+      },
+      "secondFile": {
+        "name": "src/config/tracing.ts",
+        "start": 28,
+        "end": 44,
+        "startLoc": {
+          "line": 28,
+          "column": 1,
+          "position": 170
+        },
+        "endLoc": {
+          "line": 44,
+          "column": 13,
+          "position": 274
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 8,
+      "fragment": "{\n    enabled: process.env.N_PLUS_ONE_ENABLED === 'true',\n    threshold: parseInt(process.env.N_PLUS_ONE_THRESHOLD || '3', 10),\n    logEnabled: process.env.N_PLUS_ONE_LOG_ENABLED !== 'false',\n    metricsEnabled: process.env.N_PLUS_ONE_METRICS_ENABLED !== 'false',\n    slowQueryThresholdMs: parseInt(process.env.N_PLUS_ONE_SLOW_QUERY_MS || '100', 10),\n    autoTrackStorage: process.env.N_PLUS_ONE_AUTO_TRACK_STORAGE !== 'false',\n  },",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/config/index.ts",
+        "start": 595,
+        "end": 602,
+        "startLoc": {
+          "line": 595,
+          "column": 2,
+          "position": 5477
+        },
+        "endLoc": {
+          "line": 602,
+          "column": 2,
+          "position": 5583
+        }
+      },
+      "secondFile": {
+        "name": "src/modules/n_plus_one_detection.ts",
+        "start": 46,
+        "end": 53,
+        "startLoc": {
+          "line": 46,
+          "column": 2,
+          "position": 106
+        },
+        "endLoc": {
+          "line": 53,
+          "column": 2,
+          "position": 211
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 35,
+      "fragment": ",\n  context: ExtendedErrorContext = {}\n): void {\n  if (!errorTrackingConfig.enabled) {\n    return;\n  }\n\n  const tags: Record<string, string> = {};\n  if (context.userId) {\n    tags.userId = context.userId;\n  }\n  if (context.rpc) {\n    tags.rpc = context.rpc;\n  }\n\n  const extra: Record<string, unknown> = {\n    ...context.extra,\n    timestamp: new Date().toISOString(),\n  };\n\n  // Add game state if provided\n  if (context.gameState && errorTrackingConfig.includeGameState) {\n    extra.gameState = context.gameState;\n  }\n\n  // Add request info if provided\n  if (context.request) {\n    extra.request = {\n      rpcName: context.request.rpcName,\n      requestId: context.request.requestId,\n      payload: context.request.payload,\n    };\n  }\n\n  Sentry.captureMessage",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/config/errorTracking.ts",
+        "start": 283,
+        "end": 317,
+        "startLoc": {
+          "line": 283,
+          "column": 7,
+          "position": 1808
+        },
+        "endLoc": {
+          "line": 317,
+          "column": 15,
+          "position": 2069
+        }
+      },
+      "secondFile": {
+        "name": "src/config/errorTracking.ts",
+        "start": 229,
+        "end": 261,
+        "startLoc": {
+          "line": 229,
+          "column": 6,
+          "position": 1443
+        },
+        "endLoc": {
+          "line": 261,
+          "column": 17,
+          "position": 1702
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 31,
+      "fragment": "{\n  /** CPU usage percentage that triggers warning */\n  cpuWarningPercent: number;\n  /** CPU usage percentage that triggers critical */\n  cpuCriticalPercent: number;\n  /** Memory usage percentage that triggers warning */\n  memoryWarningPercent: number;\n  /** Memory usage percentage that triggers critical */\n  memoryCriticalPercent: number;\n  /** Database connection usage percentage that triggers warning */\n  dbConnectionsWarningPercent: number;\n  /** Database connection usage percentage that triggers critical */\n  dbConnectionsCriticalPercent: number;\n  /** Disk usage percentage that triggers warning */\n  diskWarningPercent: number;\n  /** Disk usage percentage that triggers critical */\n  diskCriticalPercent: number;\n  /** Response time in ms that triggers warning */\n  responseTimeWarningMs: number;\n  /** Response time in ms that triggers critical */\n  responseTimeCriticalMs: number;\n  /** Error rate percentage that triggers warning */\n  errorRateWarningPercent: number;\n  /** Error rate percentage that triggers critical */\n  errorRateCriticalPercent: number;\n}\n\n/**\n * Metric-based alert thresholds\n */\nexport",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/config/alerting.ts",
+        "start": 79,
+        "end": 109,
+        "startLoc": {
+          "line": 79,
+          "column": 2,
+          "position": 369
+        },
+        "endLoc": {
+          "line": 109,
+          "column": 7,
+          "position": 496
+        }
+      },
+      "secondFile": {
+        "name": "src/config/index.ts",
+        "start": 163,
+        "end": 176,
+        "startLoc": {
+          "line": 163,
+          "column": 2,
+          "position": 1252
+        },
+        "endLoc": {
+          "line": 176,
+          "column": 2,
+          "position": 1340
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 32,
+      "fragment": "{\n  /** Active connections warning threshold */\n  activeConnectionsWarning: number;\n  /** Active connections critical threshold */\n  activeConnectionsCritical: number;\n  /** Match queue size warning threshold */\n  matchQueueWarning: number;\n  /** Match queue size critical threshold */\n  matchQueueCritical: number;\n  /** Match wait time warning in seconds */\n  matchWaitTimeWarningSec: number;\n  /** Match wait time critical in seconds */\n  matchWaitTimeCriticalSec: number;\n  /** Database query time warning in ms */\n  dbQueryTimeWarningMs: number;\n  /** Database query time critical in ms */\n  dbQueryTimeCriticalMs: number;\n  /** Failed logins warning threshold per minute */\n  failedLoginsWarning: number;\n  /** Failed logins critical threshold per minute */\n  failedLoginsCritical: number;\n  /** Purchase failures warning threshold per minute */\n  purchaseFailuresWarning: number;\n  /** Purchase failures critical threshold per minute */\n  purchaseFailuresCritical: number;\n}\n\n/**\n * Alert cooldown periods (in seconds)\n * Prevents alert fatigue by limiting how often the same alert can be sent\n */\nexport",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/config/alerting.ts",
+        "start": 109,
+        "end": 140,
+        "startLoc": {
+          "line": 109,
+          "column": 2,
+          "position": 502
+        },
+        "endLoc": {
+          "line": 140,
+          "column": 7,
+          "position": 629
+        }
+      },
+      "secondFile": {
+        "name": "src/config/index.ts",
+        "start": 177,
+        "end": 190,
+        "startLoc": {
+          "line": 177,
+          "column": 2,
+          "position": 1346
+        },
+        "endLoc": {
+          "line": 190,
+          "column": 2,
+          "position": 1434
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 18,
+      "fragment": ",\n  },\n  pagerduty: process.env.PAGERDUTY_API_KEY\n    ? {\n        apiKey: process.env.PAGERDUTY_API_KEY || '',\n        serviceId: process.env.PAGERDUTY_SERVICE_ID || '',\n        integrationKey: process.env.PAGERDUTY_INTEGRATION_KEY || '',\n      }\n    : undefined,\n  slack: process.env.SLACK_WEBHOOK_URL\n    ? {\n        webhookUrl: process.env.SLACK_WEBHOOK_URL || '',\n        channel: process.env.SLACK_CHANNEL || '#alerts',\n        username: process.env.SLACK_USERNAME || 'Armored Archer Alert Bot',\n        iconEmoji: process.env.SLACK_ICON_EMOJI || ':warning:',\n      }\n    : undefined,\n  webhook",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/config/alerting.ts",
+        "start": 216,
+        "end": 233,
+        "startLoc": {
+          "line": 216,
+          "column": 14,
+          "position": 1177
+        },
+        "endLoc": {
+          "line": 233,
+          "column": 8,
+          "position": 1337
+        }
+      },
+      "secondFile": {
+        "name": "src/config/index.ts",
+        "start": 508,
+        "end": 525,
+        "startLoc": {
+          "line": 508,
+          "column": 7,
+          "position": 4433
+        },
+        "endLoc": {
+          "line": 525,
+          "column": 13,
+          "position": 4593
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 29,
+      "fragment": ";\n\ninterface TechDebtIssue {\n  file: string;\n  line: number;\n  type: string;\n  severity: string;\n  description: string;\n  code: string;\n  details?: string;\n  dateAdded?: string;\n  age?: number;\n}\n\ninterface TechDebtReport {\n  timestamp: string;\n  summary: {\n    total: number;\n    critical: number;\n    high: number;\n    medium: number;\n    low: number;\n    byCategory: Record<string, number>;\n  };\n  issues: TechDebtIssue[];\n}\n\n// Configuration\nconst",
+      "tokens": 0,
+      "firstFile": {
+        "name": "scripts/tech-debt-github.ts",
+        "start": 23,
+        "end": 51,
+        "startLoc": {
+          "line": 23,
+          "column": 8,
+          "position": 55
+        },
+        "endLoc": {
+          "line": 51,
+          "column": 6,
+          "position": 218
+        }
+      },
+      "secondFile": {
+        "name": "scripts/tech-debt-sync.ts",
+        "start": 21,
+        "end": 48,
+        "startLoc": {
+          "line": 21,
+          "column": 7,
+          "position": 42
+        },
+        "endLoc": {
+          "line": 48,
+          "column": 10,
+          "position": 203
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 12,
+      "fragment": ";\n\nconst severityOrder = ['critical', 'high', 'medium', 'low'];\nconst minSeverityIndex = severityOrder.indexOf(MIN_SEVERITY);\n\nfunction shouldInclude(severity: string): boolean {\n  const issueSeverityIndex = severityOrder.indexOf(severity);\n  return issueSeverityIndex >= 0 && issueSeverityIndex <= minSeverityIndex;\n}\n\n// Labels for GitHub issues\nconst severityLabels",
+      "tokens": 0,
+      "firstFile": {
+        "name": "scripts/tech-debt-github.ts",
+        "start": 65,
+        "end": 76,
+        "startLoc": {
+          "line": 65,
+          "column": 7,
+          "position": 412
+        },
+        "endLoc": {
+          "line": 76,
+          "column": 15,
+          "position": 505
+        }
+      },
+      "secondFile": {
+        "name": "scripts/tech-debt-sync.ts",
+        "start": 76,
+        "end": 87,
+        "startLoc": {
+          "line": 76,
+          "column": 6,
+          "position": 476
+        },
+        "endLoc": {
+          "line": 87,
+          "column": 12,
+          "position": 569
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 17,
+      "fragment": "};\n\nfunction loadReport(): TechDebtReport | null {\n  try {\n    if (!fs.existsSync(REPORT_PATH)) {\n      console.log('⚠️  No tech-debt-report.json found. Run detect-tech-debt.ts first.');\n      return null;\n    }\n    const content = fs.readFileSync(REPORT_PATH, 'utf-8');\n    return JSON.parse(content);\n  } catch (error) {\n    console.error('❌ Error loading report:', error);\n    return null;\n  }\n}\n\nfunction generateIssueTitle",
+      "tokens": 0,
+      "firstFile": {
+        "name": "scripts/tech-debt-github.ts",
+        "start": 107,
+        "end": 123,
+        "startLoc": {
+          "line": 107,
+          "column": 1,
+          "position": 727
+        },
+        "endLoc": {
+          "line": 123,
+          "column": 19,
+          "position": 850
+        }
+      },
+      "secondFile": {
+        "name": "scripts/tech-debt-sync.ts",
+        "start": 106,
+        "end": 122,
+        "startLoc": {
+          "line": 106,
+          "column": 1,
+          "position": 703
+        },
+        "endLoc": {
+          "line": 122,
+          "column": 19,
+          "position": 826
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 6,
+      "fragment": "} else {\n      // Save draft locally\n      const filename = `${issue.type}-${issue.line}.md`;\n      const filepath = path.join(issuesDir, filename);\n      fs.writeFileSync(filepath, `# ${title}\\n\\n${body}\\n\\n---\\nLabels: ${labels.join(', ')}`);\n      console.log(`   💾 Saved draft: ",
+      "tokens": 0,
+      "firstFile": {
+        "name": "scripts/tech-debt-github.ts",
+        "start": 292,
+        "end": 297,
+        "startLoc": {
+          "line": 292,
+          "column": 5,
+          "position": 2268
+        },
+        "endLoc": {
+          "line": 297,
+          "column": 21,
+          "position": 2351
+        }
+      },
+      "secondFile": {
+        "name": "scripts/tech-debt-github.ts",
+        "start": 284,
+        "end": 289,
+        "startLoc": {
+          "line": 284,
+          "column": 7,
+          "position": 2168
+        },
+        "endLoc": {
+          "line": 289,
+          "column": 29,
+          "position": 2251
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": ") {\n    if (!bySeverity[issue.severity]) {\n      bySeverity[issue.severity] = [];\n    }\n    bySeverity[issue.severity].push(issue);\n  }\n  \n  for (const severity of severityOrder) {\n    if (bySeverity[severity]) {\n      console.log(`   ${severity}: ${bySeverity[severity].length}`);\n    }\n  }\n\n  await",
+      "tokens": 0,
+      "firstFile": {
+        "name": "scripts/tech-debt-github.ts",
+        "start": 349,
+        "end": 362,
+        "startLoc": {
+          "line": 349,
+          "column": 15,
+          "position": 2813
+        },
+        "endLoc": {
+          "line": 362,
+          "column": 6,
+          "position": 2925
+        }
+      },
+      "secondFile": {
+        "name": "scripts/tech-debt-sync.ts",
+        "start": 406,
+        "end": 420,
+        "startLoc": {
+          "line": 406,
+          "column": 10,
+          "position": 3549
+        },
+        "endLoc": {
+          "line": 420,
+          "column": 3,
+          "position": 3664
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 12,
+      "fragment": ";\n}\n\nfunction shouldExclude(filePath: string): boolean {\n  return EXCLUDED_DIRS.some(excluded => filePath.includes(excluded));\n}\n\nfunction getTypeScriptFiles(dir: string): string[] {\n  const files: string[] = [];\n\n  function traverse(currentDir: string) {\n    const",
+      "tokens": 0,
+      "firstFile": {
+        "name": "scripts/detect-n-plus-one.ts",
+        "start": 58,
+        "end": 69,
+        "startLoc": {
+          "line": 58,
+          "column": 7,
+          "position": 229
+        },
+        "endLoc": {
+          "line": 69,
+          "column": 6,
+          "position": 320
+        }
+      },
+      "secondFile": {
+        "name": "scripts/detect-tech-debt.ts",
+        "start": 166,
+        "end": 177,
+        "startLoc": {
+          "line": 166,
+          "column": 7,
+          "position": 1270
+        },
+        "endLoc": {
+          "line": 177,
+          "column": 4,
+          "position": 1361
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 17,
+      "fragment": "{\n    const entries = fs.readdirSync(currentDir, { withFileTypes: true });\n\n    for (const entry of entries) {\n      const fullPath = path.join(currentDir, entry.name);\n\n      if (entry.isDirectory() && !shouldExclude(fullPath)) {\n        traverse(fullPath);\n      } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx'))) {\n        if (!shouldExclude(fullPath)) {\n          files.push(fullPath);\n        }\n      }\n    }\n  }\n\n  try",
+      "tokens": 0,
+      "firstFile": {
+        "name": "scripts/detect-n-plus-one.ts",
+        "start": 68,
+        "end": 84,
+        "startLoc": {
+          "line": 68,
+          "column": 2,
+          "position": 317
+        },
+        "endLoc": {
+          "line": 84,
+          "column": 4,
+          "position": 486
+        }
+      },
+      "secondFile": {
+        "name": "scripts/detect-tech-debt.ts",
+        "start": 177,
+        "end": 191,
+        "startLoc": {
+          "line": 177,
+          "column": 2,
+          "position": 1363
+        },
+        "endLoc": {
+          "line": 191,
+          "column": 6,
+          "position": 1530
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 8,
+      "fragment": ") {\n    const existing = byFile.get(issue.file) || [];\n    existing.push(issue);\n    byFile.set(issue.file, existing);\n  }\n\n  for (const [file, fileIssues] of byFile) {\n    console.log(`📁 ",
+      "tokens": 0,
+      "firstFile": {
+        "name": "scripts/detect-n-plus-one.ts",
+        "start": 167,
+        "end": 174,
+        "startLoc": {
+          "line": 167,
+          "column": 7,
+          "position": 1209
+        },
+        "endLoc": {
+          "line": 174,
+          "column": 5,
+          "position": 1287
+        }
+      },
+      "secondFile": {
+        "name": "scripts/detect-tech-debt.ts",
+        "start": 311,
+        "end": 318,
+        "startLoc": {
+          "line": 311,
+          "column": 9,
+          "position": 2759
+        },
+        "endLoc": {
+          "line": 318,
+          "column": 7,
+          "position": 2838
+        }
+      }
+    },
+    {
+      "format": "markdown",
+      "lines": 49,
+      "fragment": " build exported to: $EXPORT_PATH\"\nelse\n    echo \"❌ Android export failed\"\n    exit 1\nfi\n```\n\n## Deployment Scripts\n\n### Production Deployment Script\n\nCreate `deploy.sh`:\n\n```bash\n#!/bin/bash\n\n# Production deployment script for Armored Archer\n\n# Colors\nRED='\\033[0;31m'\nGREEN='\\033[0;32m'\nYELLOW='\\033[1;33m'\nNC='\\033[0m'\n\n# Configuration\nPROJECT_PATH=\"/path/to/armored-archer\"\nBACKUP_DIR=\"/var/backups/armored-archer\"\nLOG_FILE=\"/var/log/armored-archer/deploy.log\"\n\necho \"🚀 Armored Archer Production Deployment\"\necho \"======================================\"\n\n# Backup current version\nCURRENT_VERSION=$(git rev-parse --short HEAD)\necho \"Backing up current version: $CURRENT_VERSION\"\n\n# Create backup directory\nmkdir -p \"$BACKUP_DIR/$CURRENT_VERSION\"\n\n# Backup database\nif pg_dump -U nakama_user -h localhost -F c -b -v -f \"$BACKUP_DIR/$CURRENT_VERSI",
+      "tokens": 0,
+      "firstFile": {
+        "name": "docs/DEPLOYMENT.md",
+        "start": 693,
+        "end": 741,
+        "startLoc": {
+          "line": 693,
+          "column": 1,
+          "position": 3058
+        },
+        "endLoc": {
+          "line": 741,
+          "column": 8,
+          "position": 3215
+        }
+      },
+      "secondFile": {
+        "name": "docs/DEPLOYMENT.md",
+        "start": 613,
+        "end": 661,
+        "startLoc": {
+          "line": 613,
+          "column": 1,
+          "position": 2810
+        },
+        "endLoc": {
+          "line": 661,
+          "column": 11,
+          "position": 2967
+        }
+      }
+    }
+  ]
+}

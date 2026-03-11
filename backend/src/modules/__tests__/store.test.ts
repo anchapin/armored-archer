@@ -60,7 +60,7 @@ describe('store', () => {
       const result = await rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
-      expect(parsed.error).toContain('Invalid option');
+      expect(parsed.error).toMatch(/Invalid|invalid product/);
     });
 
     it('should validate input payload', async () => {

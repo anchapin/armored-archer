@@ -20,6 +20,8 @@
 import { LRUCache } from 'lru-cache';
 import { logger } from '../config/logger';
 
+// Note: Database integration deferred - feature flags currently use in-memory storage
+
 // Feature flag configuration types
 export interface FeatureFlagConfig {
   name: string;
@@ -148,6 +150,9 @@ export async function initializeFeatureFlags(): Promise<void> {
   for (const flag of DEFAULT_FLAGS) {
     inMemoryFlags.set(flag.name, flag);
   }
+
+  // Database integration can be added later if needed
+  // For now, using in-memory storage
 
   logger.info('Feature flag system initialized', {
     flagCount: inMemoryFlags.size,
