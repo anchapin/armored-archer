@@ -1,0 +1,548 @@
+{
+  "timestamp": "2026-03-11T04:11:04.742Z",
+  "summary": {
+    "total": 59,
+    "critical": 0,
+    "high": 0,
+    "medium": 5,
+    "low": 54,
+    "byCategory": {
+      "logging": 48,
+      "deprecated": 5,
+      "type-safety": 6
+    }
+  },
+  "issues": [
+    {
+      "file": "src/config/errorTracking.ts",
+      "line": 100,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log('[ErrorTracking] Sentry is disabled - missing DSN or disabled by config');",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/config/errorTracking.ts",
+      "line": 124,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/config/errorTracking.ts",
+      "line": 518,
+      "type": "deprecated",
+      "severity": "medium",
+      "description": "Deprecated API usage detected",
+      "code": "* @deprecated Use captureException with ExtendedErrorContext instead",
+      "details": "Use captureException with ExtendedErrorContext instead"
+    },
+    {
+      "file": "src/config/errorTracking.ts",
+      "line": 520,
+      "type": "deprecated",
+      "severity": "medium",
+      "description": "Using deprecated function",
+      "code": "export function captureExceptionLegacy(",
+      "details": "Using captureExceptionLegacy"
+    },
+    {
+      "file": "src/config/errorTracking.ts",
+      "line": 533,
+      "type": "deprecated",
+      "severity": "medium",
+      "description": "Deprecated API usage detected",
+      "code": "* @deprecated Use captureMessage with ExtendedErrorContext instead",
+      "details": "Use captureMessage with ExtendedErrorContext instead"
+    },
+    {
+      "file": "src/config/errorTracking.ts",
+      "line": 535,
+      "type": "deprecated",
+      "severity": "medium",
+      "description": "Using deprecated function",
+      "code": "export function captureMessageLegacy(",
+      "details": "Using captureMessageLegacy"
+    },
+    {
+      "file": "src/config/logger.ts",
+      "line": 401,
+      "type": "deprecated",
+      "severity": "medium",
+      "description": "Deprecated API usage detected",
+      "code": "* @deprecated Use logRpcError instead",
+      "details": "Use logRpcError instead"
+    },
+    {
+      "file": "src/features/FeatureFlags.ts",
+      "line": 171,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "async function loadFlagsFromDatabase(db: any): Promise<void> {",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 114,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.warn(`[Alerting] Unknown provider: ${provider}`);",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 126,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.warn('[Alerting] Slack webhook URL not configured');",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 179,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error(`[Alerting] Failed to send Slack alert: ${response.statusText}`);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 184,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('[Alerting] Slack circuit open - alert not sent:', payload.title);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 197,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.warn('[Alerting] Webhook URL not configured');",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 227,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error(`[Alerting] Failed to send webhook alert: ${response.statusText}`);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 232,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('[Alerting] Webhook circuit open - alert not sent:', payload.title);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 247,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.warn('[Alerting] Email not configured');",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 251,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(`[Alerting] Email alert: ${payload.title} to ${emailConfig.to.join(', ')}`);",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 263,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.warn('[Alerting] PagerDuty not configured');",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 301,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error(`[Alerting] Failed to send PagerDuty alert: ${response.statusText}`);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 306,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('[Alerting] PagerDuty circuit open - alert not sent:', payload.title);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 329,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(`[Alerting] Alert suppressed due to cooldown: ${title}`);",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 381,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('[Alerting] Failed to send health alert:', err);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 399,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('[Alerting] Failed to send metric alert:', err);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/alerting.ts",
+      "line": 428,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('[Alerting] Failed to send error alert:', err);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/analytics.ts",
+      "line": 259,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error(`[Analytics] Mixpanel forward failed: ${response.status}`);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/analytics.ts",
+      "line": 264,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.warn('[Analytics] Mixpanel circuit open - dropping event');",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/modules/analytics.ts",
+      "line": 303,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error(`[Analytics] Amplitude forward failed: ${response.status}`);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/analytics.ts",
+      "line": 308,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.warn('[Analytics] Amplitude circuit open - dropping event');",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/modules/analytics.ts",
+      "line": 345,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error(`[Analytics] Segment forward failed: ${response.status}`);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/analytics.ts",
+      "line": 350,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.warn('[Analytics] Segment circuit open - dropping event');",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/modules/analytics.ts",
+      "line": 390,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error(`[Analytics] Custom endpoint forward failed: ${response.status}`);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/analytics.ts",
+      "line": 395,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.warn('[Analytics] Custom endpoint circuit open - dropping event');",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/modules/anti_cheat_audit.ts",
+      "line": 60,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "let nk: any;",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/anti_cheat_audit.ts",
+      "line": 61,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "let logger: any;",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/anti_cheat_audit.ts",
+      "line": 83,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "nakama: any,",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/anti_cheat_audit.ts",
+      "line": 84,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "runtimeLogger: any",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/audit.ts",
+      "line": 62,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to write audit log:', err);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/datadog_integration.ts",
+      "line": 57,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log('[DataDog] DataDog metrics disabled');",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/datadog_integration.ts",
+      "line": 63,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(`[DataDog] Initialized metrics client: ${this.host}:${this.port}`);",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/datadog_integration.ts",
+      "line": 65,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('[DataDog] Failed to initialize metrics client:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/datadog_integration.ts",
+      "line": 141,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('[DataDog] Error sending metric:', err);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/datadog_integration.ts",
+      "line": 157,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log('[DataDog] DataDog integration disabled');",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/datadog_integration.ts",
+      "line": 178,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(`[DataDog] Initialized with prefix: ${dataDogConfig.prefix}`);",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/deployment_observability.ts",
+      "line": 128,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/health_monitor.ts",
+      "line": 336,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('[HealthMonitor] Error during health check:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/health_monitor.ts",
+      "line": 345,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log('[HealthMonitor] Health monitoring already running');",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/health_monitor.ts",
+      "line": 350,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log('[HealthMonitor] Health monitoring disabled - alerting not enabled');",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/health_monitor.ts",
+      "line": 357,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(`[HealthMonitor] Started health monitoring (interval: ${intervalMs}ms)`);",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/health_monitor.ts",
+      "line": 372,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log('[HealthMonitor] Stopped health monitoring');",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/n_plus_one_detection.ts",
+      "line": 196,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/n_plus_one_detection.ts",
+      "line": 263,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/n_plus_one_detection.ts",
+      "line": 351,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.warn(logMessage);",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/modules/n_plus_one_detection.ts",
+      "line": 616,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/profiling.ts",
+      "line": 204,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/profiling.ts",
+      "line": 413,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/modules/profiling.ts",
+      "line": 428,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.log(report);",
+      "details": "console.log used"
+    },
+    {
+      "file": "src/utils/dead-flag-detector.ts",
+      "line": 14,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "*     console.warn('Unused feature flags:', unused);",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/utils/eslint-rules/n-plus-one-detection.ts",
+      "line": 76,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "create(context: any) {",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/utils/n1-query-detector.ts",
+      "line": 21,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "*     console.warn('N+1 queries detected:', result.n1Queries);",
+      "details": "console.warn used"
+    }
+  ]
+}

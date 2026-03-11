@@ -1,0 +1,21 @@
+# Import Linter Configuration
+# Enforces module boundaries for the backend TypeScript code
+
+[importlinter]
+package_root = backend/src
+exclude_patterns = ["**/node_modules/**", "**/__mocks__/**", "**/*.test.ts", "**/*.spec.ts"]
+
+[[importlinter.rules]]
+name = "domain-layer-dependencies"
+type = "layers"
+layers = [
+    {name = "modules", = ["^backend/src/modules"]},
+    {name = "features", = ["^backend/src/features"]},
+    {name = "utils", = ["^backend/src/utils"]},
+    {name = "config", = ["^backend/src/config"]},
+]
+
+# Modules can depend on features, utils, and config
+# Features can depend on utils and config
+# Utils can depend on config
+# Config should have no internal dependencies

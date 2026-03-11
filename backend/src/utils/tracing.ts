@@ -5,6 +5,7 @@
 
 import { Span, SpanKind, SpanStatusCode, trace, context } from '@opentelemetry/api';
 import { config } from '../config';
+import { withSpanAsync, withActiveSpanAsync } from './tracing-helpers';
 
 /**
  * Wrapper options for traced RPC handlers.
@@ -92,23 +93,7 @@ export function createTracedRpcHandler<
  * Provides a simpler API than createTracedRpcHandler for inline usage.
  */
 export async function traceAsync<T>(name: string, fn: (span: Span) => Promise<T>): Promise<T> {
-  const tracer = getTracingTracer();
-  const span = tracer.startSpan(name);
-
-  try {
-    const result = await fn(span);
-    span.setStatus({ code: SpanStatusCode.OK });
-    return result;
-  } catch (error) {
-    span.setStatus({
-      code: SpanStatusCode.ERROR,
-      message: error instanceof Error ? error.message : String(error),
-    });
-    span.recordException(error instanceof Error ? error : new Error(String(error)));
-    throw error;
-  } finally {
-    span.end();
-  }
+  return withSpanAsync(name, fn);
 }
 
 /**
@@ -118,26 +103,10 @@ export async function traceDbOperation<T>(
   operationName: string,
   operation: () => Promise<T>
 ): Promise<T> {
-  const tracer = getTracingTracer();
-
-  return tracer.startActiveSpan(`db.${operationName}`, async (span) => {
-    try {
-      span.setAttribute('db.system', 'postgresql');
-      span.setAttribute('db.operation', operationName);
-
-      const result = await operation();
-      span.setStatus({ code: SpanStatusCode.OK });
-      return result;
-    } catch (error) {
-      span.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: error instanceof Error ? error.message : String(error),
-      });
-      span.recordException(error instanceof Error ? error : new Error(String(error)));
-      throw error;
-    } finally {
-      span.end();
-    }
+  return withActiveSpanAsync(`db.${operationName}`, async (span) => {
+    span.setAttribute('db.system', 'postgresql');
+    span.setAttribute('db.operation', operationName);
+    return operation();
   });
 }
 
@@ -148,26 +117,10 @@ export async function traceCacheOperation<T>(
   operationName: string,
   operation: () => Promise<T>
 ): Promise<T> {
-  const tracer = getTracingTracer();
-
-  return tracer.startActiveSpan(`cache.${operationName}`, async (span) => {
-    try {
-      span.setAttribute('cache.system', 'memory');
-      span.setAttribute('cache.operation', operationName);
-
-      const result = await operation();
-      span.setStatus({ code: SpanStatusCode.OK });
-      return result;
-    } catch (error) {
-      span.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: error instanceof Error ? error.message : String(error),
-      });
-      span.recordException(error instanceof Error ? error : new Error(String(error)));
-      throw error;
-    } finally {
-      span.end();
-    }
+  return withActiveSpanAsync(`cache.${operationName}`, async (span) => {
+    span.setAttribute('cache.system', 'memory');
+    span.setAttribute('cache.operation', operationName);
+    return operation();
   });
 }
 
@@ -179,26 +132,10 @@ export async function traceExternalCall<T>(
   operationName: string,
   operation: () => Promise<T>
 ): Promise<T> {
-  const tracer = getTracingTracer();
-
-  return tracer.startActiveSpan(`external.${serviceName}.${operationName}`, async (span) => {
-    try {
-      span.setAttribute('peer.service', serviceName);
-      span.setAttribute('http.method', operationName);
-
-      const result = await operation();
-      span.setStatus({ code: SpanStatusCode.OK });
-      return result;
-    } catch (error) {
-      span.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: error instanceof Error ? error.message : String(error),
-      });
-      span.recordException(error instanceof Error ? error : new Error(String(error)));
-      throw error;
-    } finally {
-      span.end();
-    }
+  return withActiveSpanAsync(`external.${serviceName}.${operationName}`, async (span) => {
+    span.setAttribute('peer.service', serviceName);
+    span.setAttribute('http.method', operationName);
+    return operation();
   });
 }
 

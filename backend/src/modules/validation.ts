@@ -1,107 +1,130 @@
-import { z } from 'zod';
+import {
+  object,
+  number,
+  string,
+  boolean,
+  enum as enumType,
+  array,
+  record,
+  minValue,
+  maxValue,
+  minLength,
+  maxLength,
+  length,
+  regex,
+  optional,
+  pipe,
+  integer,
+  safeParse,
+  unknown,
+} from 'valibot';
 
-export const ZodSchemas = {
-  health_check: z.object({}),
+// Type assertion helper for enum schemas
+function createEnum<T extends string>(values: readonly T[]): ReturnType<typeof enumType> {
+  return enumType(values as any);
+}
 
-  get_player_stats: z.object({}),
+export const ValibotSchemas = {
+  health_check: object({}),
 
-  gain_xp: z.object({
-    xp_amount: z.number().int().positive().max(1000000),
-    source: z.enum(['pve', 'pvp']),
+  get_player_stats: object({}),
+
+  gain_xp: object({
+    xp_amount: pipe(number(), integer(), minValue(1), maxValue(1000000)),
+    source: createEnum(['pve', 'pvp']),
   }),
 
-  allocate_stats: z.object({
-    stat_name: z.enum(['attack', 'defense', 'dodge', 'crit_rate']),
-    points: z.number().int().positive().max(1000),
+  allocate_stats: object({
+    stat_name: createEnum(['attack', 'defense', 'dodge', 'crit_rate']),
+    points: pipe(number(), integer(), minValue(1), maxValue(1000)),
   }),
 
-  generate_gear: z.object({
-    stage_id: z.string().min(1).max(100),
-    boss_defeated: z.boolean(),
+  generate_gear: object({
+    stage_id: pipe(string(), minLength(1), maxLength(100)),
+    boss_defeated: boolean(),
   }),
 
-  equip_gear: z.object({
-    gear_id: z.string().min(1).max(100),
-    slot: z.enum(['weapon', 'armor', 'accessory']),
+  equip_gear: object({
+    gear_id: pipe(string(), minLength(1), maxLength(100)),
+    slot: createEnum(['weapon', 'armor', 'accessory']),
   }),
 
-  unequip_gear: z.object({
-    slot: z.enum(['weapon', 'armor', 'accessory']),
+  unequip_gear: object({
+    slot: createEnum(['weapon', 'armor', 'accessory']),
   }),
 
-  get_inventory: z.object({}),
+  get_inventory: object({}),
 
-  unlock_modifier_pool: z.object({
-    modifier_id: z.string().min(1).max(100),
+  unlock_modifier_pool: object({
+    modifier_id: pipe(string(), minLength(1), maxLength(100)),
   }),
 
-  list_matches: z
-    .object({
-      match_type: z.enum(['ranked', 'casual']).optional(),
-      min_rank: z.number().int().min(1).optional(),
-      max_rank: z.number().int().min(1).optional(),
-      limit: z.number().int().min(1).max(100).optional(),
+  list_matches: optional(
+    object({
+      match_type: optional(createEnum(['ranked', 'casual'])),
+      min_rank: optional(pipe(number(), integer(), minValue(1))),
+      max_rank: optional(pipe(number(), integer(), minValue(1))),
+      limit: optional(pipe(number(), integer(), minValue(1), maxValue(100))),
     })
-    .optional(),
+  ),
 
-  create_match: z.object({
-    match_type: z.enum(['ranked', 'casual']),
-    is_punch_up: z.boolean().optional(),
-    target_opponent_id: z.string().min(1).max(100).optional(),
+  create_match: object({
+    match_type: createEnum(['ranked', 'casual']),
+    is_punch_up: optional(boolean()),
+    target_opponent_id: optional(pipe(string(), minLength(1), maxLength(100))),
   }),
 
-  accept_match: z.object({
-    match_id: z.string().min(1).max(100),
+  accept_match: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
   }),
 
-  get_player_rank: z.object({}),
+  get_player_rank: object({}),
 
-  submit_combat_action: z.object({
-    match_id: z.string().min(1).max(100),
-    action_type: z.enum(['shoot']),
-    angle: z.number().min(0).max(6.28318530718), // 0 to 2π radians (0° to 360°)
-    power: z.number().min(0).max(1).optional(), // Normalized 0.0-1.0
-
+  submit_combat_action: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    action_type: createEnum(['shoot']),
+    angle: pipe(number(), minValue(0), maxValue(6.28318530718)),
+    power: optional(pipe(number(), minValue(0), maxValue(1))),
     // Anti-cheat fields (optional for backward compatibility)
-    requestId: z.string().min(32).max(32).optional(),
-    timestamp: z.number().int().min(0).optional(),
-    signature: z.string().min(64).max(64).optional(),
-    nonce: z.string().min(32).max(32).optional(),
+    requestId: optional(pipe(string(), minLength(32), maxLength(32))),
+    timestamp: optional(number()),
+    signature: optional(pipe(string(), minLength(64), maxLength(64))),
+    nonce: optional(pipe(string(), minLength(32), maxLength(32))),
   }),
 
-  get_match_state: z.object({
-    match_id: z.string().min(1).max(100),
+  get_match_state: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
   }),
 
-  get_season_info: z.object({}),
+  get_season_info: object({}),
 
-  get_leaderboard: z
-    .object({
-      limit: z.number().int().min(1).max(100).optional(),
+  get_leaderboard: optional(
+    object({
+      limit: optional(pipe(number(), integer(), minValue(1), maxValue(100))),
     })
-    .optional(),
+  ),
 
-  update_rank: z.object({
-    match_id: z.string().min(1).max(100),
-    winner_id: z.string().min(1).max(100),
-    loser_id: z.string().min(1).max(100),
-    winner_old_rank: z.number().int(),
-    loser_old_rank: z.number().int(),
-    winner_new_rank: z.number().int(),
-    loser_new_rank: z.number().int(),
-    is_punch_up: z.boolean(),
+  update_rank: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    winner_id: pipe(string(), minLength(1), maxLength(100)),
+    loser_id: pipe(string(), minLength(1), maxLength(100)),
+    winner_old_rank: number(),
+    loser_old_rank: number(),
+    winner_new_rank: number(),
+    loser_new_rank: number(),
+    is_punch_up: boolean(),
     // Anti-cheat fields
-    requestId: z.string().optional(),
-    timestamp: z.number().optional(),
-    signature: z.string().optional(),
-    nonce: z.string().optional(),
+    requestId: optional(string()),
+    timestamp: optional(number()),
+    signature: optional(string()),
+    nonce: optional(string()),
   }),
 
-  get_season_rewards: z.object({}),
+  get_season_rewards: object({}),
 
-  report_player: z.object({
-    reported_user_id: z.string().min(1).max(100),
-    reason: z.enum([
+  report_player: object({
+    reported_user_id: pipe(string(), minLength(1), maxLength(100)),
+    reason: createEnum([
       'win_trading',
       'match_manipulation',
       'suspicious_win_rate',
@@ -109,173 +132,174 @@ export const ZodSchemas = {
       'exploiting_bugs',
       'other',
     ]),
-    match_id: z.string().min(1).max(100).optional(),
-    additional_info: z.string().max(500).optional(),
+    match_id: optional(pipe(string(), minLength(1), maxLength(100))),
+    additional_info: optional(pipe(string(), maxLength(500))),
   }),
 
-  get_player_reports: z.object({}),
+  get_player_reports: object({}),
 
-  claim_season_rewards: z.object({}),
+  claim_season_rewards: object({}),
 
-  end_season: z.object({}),
+  end_season: object({}),
 
-  validate_purchase: z.object({
-    product_id: z.enum([
+  validate_purchase: object({
+    product_id: createEnum([
       'com.armoredarcher.gems.small',
       'com.armoredarcher.gems.medium',
       'com.armoredarcher.gems.large',
     ]),
-    platform: z.enum(['ios', 'android']),
-    transaction_receipt: z.string().min(1).max(100000),
+    platform: createEnum(['ios', 'android']),
+    transaction_receipt: pipe(string(), minLength(1), maxLength(100000)),
   }),
 
-  get_currency: z.object({}),
+  get_currency: object({}),
 
-  spend_gems: z.object({
-    amount: z.number().int().positive().max(1000000),
+  spend_gems: object({
+    amount: pipe(number(), integer(), minValue(1), maxValue(1000000)),
   }),
 
-  check_refunds: z.object({}),
+  check_refunds: object({}),
 
-  check_subscriptions: z.object({}),
+  check_subscriptions: object({}),
 
-  process_pending_purchases: z.object({}),
+  process_pending_purchases: object({}),
 
-  app_launch_check: z.object({}),
+  app_launch_check: object({}),
 
   // Deployment observability
-  deployment_record: z.object({
-    environment: z.enum(['development', 'staging', 'production']),
-    version: z.string().min(1).max(50),
-    status: z.enum(['started', 'success', 'failed', 'rollback']),
-    metadata: z.record(z.string(), z.string()).optional(),
+  deployment_record: object({
+    environment: createEnum(['development', 'staging', 'production']),
+    version: pipe(string(), minLength(1), maxLength(50)),
+    status: createEnum(['started', 'success', 'failed', 'rollback']),
+    metadata: optional(record(string(), string())),
   }),
 
   // Product Analytics
-  track_event: z.object({
-    event_name: z.string().min(1).max(100),
-    properties: z.record(z.string(), z.unknown()).optional(),
-    platform: z.enum(['android', 'ios', 'web', 'desktop']).optional(),
-    session_id: z.string().max(100).optional(),
+  track_event: object({
+    event_name: pipe(string(), minLength(1), maxLength(100)),
+    properties: optional(record(string(), unknown())),
+    platform: optional(createEnum(['android', 'ios', 'web', 'desktop'])),
+    session_id: optional(pipe(string(), maxLength(100))),
   }),
 
-  get_analytics_summary: z.object({
-    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    event_names: z.array(z.string()).optional(),
+  get_analytics_summary: object({
+    start_date: pipe(string(), regex(/^\d{4}-\d{2}-\d{2}$/)),
+    end_date: pipe(string(), regex(/^\d{4}-\d{2}-\d{2}$/)),
+    event_names: optional(array(string())),
   }),
 
-  track_revenue: z.object({
-    amount: z.number().positive(),
-    currency: z.string().length(3),
-    product_id: z.string().min(1).max(100),
-    transaction_id: z.string().min(1).max(100),
-    platform: z.enum(['ios', 'android']).optional(),
+  track_revenue: object({
+    amount: pipe(number(), minValue(0)),
+    currency: pipe(string(), length(3)),
+    product_id: pipe(string(), minLength(1), maxLength(100)),
+    transaction_id: pipe(string(), minLength(1), maxLength(100)),
+    platform: optional(createEnum(['ios', 'android'])),
   }),
 
   // Progressive Rollout
-  rollout_create_flag: z.object({
-    name: z.string().min(1).max(100),
-    description: z.string().max(500),
-    phases: z
-      .array(
-        z.object({
-          phase: z.enum(['disabled', 'canary', 'gradual', 'full']),
-          percentage: z.number().int().min(0).max(100),
-          durationMinutes: z.number().int().min(0),
-          minHealthPercent: z.number().min(0).max(100),
-          maxErrorRatePercent: z.number().min(0).max(100),
-          maxLatencyMs: z.number().min(0),
-          sampleSize: z.number().int().min(0),
-          autoPromote: z.boolean(),
-          rollbackCriteria: z.object({
-            errorRateThreshold: z.number().min(0).max(100),
-            latencyThreshold: z.number().min(0),
-            healthCheckFails: z.number().int().min(0),
-            customMetrics: z.record(z.string(), z.number()).optional(),
+  rollout_create_flag: object({
+    name: pipe(string(), minLength(1), maxLength(100)),
+    description: pipe(string(), maxLength(500)),
+    phases: pipe(
+      array(
+        object({
+          phase: createEnum(['disabled', 'canary', 'gradual', 'full']),
+          percentage: pipe(number(), integer(), minValue(0), maxValue(100)),
+          durationMinutes: pipe(number(), integer(), minValue(0)),
+          minHealthPercent: pipe(number(), minValue(0), maxValue(100)),
+          maxErrorRatePercent: pipe(number(), minValue(0), maxValue(100)),
+          maxLatencyMs: pipe(number(), minValue(0)),
+          sampleSize: pipe(number(), integer(), minValue(0)),
+          autoPromote: boolean(),
+          rollbackCriteria: object({
+            errorRateThreshold: pipe(number(), minValue(0), maxValue(100)),
+            latencyThreshold: pipe(number(), minValue(0)),
+            healthCheckFails: pipe(number(), integer(), minValue(0)),
+            customMetrics: optional(record(string(), number())),
           }),
         })
-      )
-      .min(1),
+      ),
+      minLength(1)
+    ),
   }),
 
-  rollout_update_flag: z.object({
-    name: z.string().min(1).max(100),
-    description: z.string().max(500).optional(),
-    enabled: z.boolean().optional(),
-    rolloutPhase: z.enum(['disabled', 'canary', 'gradual', 'full']).optional(),
-    rolloutPercentage: z.number().int().min(0).max(100).optional(),
-    canaryUserIds: z.array(z.string()).optional(),
-    canaryVersionMin: z.string().max(50).optional(),
-    canaryVersionMax: z.string().max(50).optional(),
+  rollout_update_flag: object({
+    name: pipe(string(), minLength(1), maxLength(100)),
+    description: optional(pipe(string(), maxLength(500))),
+    enabled: optional(boolean()),
+    rolloutPhase: optional(createEnum(['disabled', 'canary', 'gradual', 'full'])),
+    rolloutPercentage: optional(pipe(number(), integer(), minValue(0), maxValue(100))),
+    canaryUserIds: optional(array(string())),
+    canaryVersionMin: optional(pipe(string(), maxLength(50))),
+    canaryVersionMax: optional(pipe(string(), maxLength(50))),
   }),
 
-  rollout_check: z.object({
-    feature_name: z.string().min(1).max(100),
-    user_id: z.string().min(1).max(100),
-    game_version: z.string().max(50).optional(),
+  rollout_check: object({
+    feature_name: pipe(string(), minLength(1), maxLength(100)),
+    user_id: pipe(string(), minLength(1), maxLength(100)),
+    game_version: optional(pipe(string(), maxLength(50))),
   }),
 
-  rollout_advance: z.object({
-    feature_name: z.string().min(1).max(100),
+  rollout_advance: object({
+    feature_name: pipe(string(), minLength(1), maxLength(100)),
   }),
 
-  rollout_rollback: z.object({
-    feature_name: z.string().min(1).max(100),
+  rollout_rollback: object({
+    feature_name: pipe(string(), minLength(1), maxLength(100)),
   }),
 
-  rollout_get_metrics: z.object({
-    feature_name: z.string().min(1).max(100),
+  rollout_get_metrics: object({
+    feature_name: pipe(string(), minLength(1), maxLength(100)),
   }),
 
-  rollout_record_metrics: z.object({
-    feature_name: z.string().min(1).max(100),
-    total_users: z.number().int().min(0).optional(),
-    active_users: z.number().int().min(0).optional(),
-    error_count: z.number().int().min(0).optional(),
-    error_rate: z.number().min(0).optional(),
-    avg_latency_ms: z.number().min(0).optional(),
-    p99_latency_ms: z.number().min(0).optional(),
-    health_check_passes: z.number().int().min(0).optional(),
-    health_check_fails: z.number().int().min(0).optional(),
+  rollout_record_metrics: object({
+    feature_name: pipe(string(), minLength(1), maxLength(100)),
+    total_users: optional(pipe(number(), integer(), minValue(0))),
+    active_users: optional(pipe(number(), integer(), minValue(0))),
+    error_count: optional(pipe(number(), integer(), minValue(0))),
+    error_rate: optional(pipe(number(), minValue(0))),
+    avg_latency_ms: optional(pipe(number(), minValue(0))),
+    p99_latency_ms: optional(pipe(number(), minValue(0))),
+    health_check_passes: optional(pipe(number(), integer(), minValue(0))),
+    health_check_fails: optional(pipe(number(), integer(), minValue(0))),
   }),
 
   // Privacy compliance schemas
-  consent: z.object({
-    analytics_consent: z.boolean(),
-    marketing_consent: z.boolean().optional(),
-    timestamp: z.number().int().positive(),
-    version: z.string().max(20).optional(),
+  consent: object({
+    analytics_consent: boolean(),
+    marketing_consent: optional(boolean()),
+    timestamp: pipe(number(), integer(), minValue(1)),
+    version: optional(pipe(string(), maxLength(20))),
   }),
 
-  data_deletion: z.object({
-    user_id: z.string().min(1).max(100),
-    reason: z.string().max(500).optional(),
+  data_deletion: object({
+    user_id: pipe(string(), minLength(1), maxLength(100)),
+    reason: optional(pipe(string(), maxLength(500))),
   }),
 
-  data_export: z.object({
-    user_id: z.string().min(1).max(100),
-    include_game_data: z.boolean().optional(),
-    include_purchase_history: z.boolean().optional(),
+  data_export: object({
+    user_id: pipe(string(), minLength(1), maxLength(100)),
+    include_game_data: optional(boolean()),
+    include_purchase_history: optional(boolean()),
   }),
 
-  privacy_settings_update: z.object({
-    analytics_enabled: z.boolean().optional(),
-    marketing_enabled: z.boolean().optional(),
-    data_retention_days: z.number().int().min(1).max(730).optional(),
+  privacy_settings_update: object({
+    analytics_enabled: optional(boolean()),
+    marketing_enabled: optional(boolean()),
+    data_retention_days: optional(pipe(number(), integer(), minValue(1), maxValue(730))),
   }),
 
-  privacy_check: z.object({
-    data: z.record(z.string(), z.unknown()),
-    operation: z.enum(['store', 'persist', 'log', 'transmit', 'send', 'share', 'export']),
-    context: z.string().optional(),
+  privacy_check: object({
+    data: record(string(), unknown()),
+    operation: createEnum(['store', 'persist', 'log', 'transmit', 'send', 'share', 'export']),
+    context: optional(string()),
   }),
 
-  pii_scan: z.object({
-    text: z.string().min(1).max(100000),
-    types: z
-      .array(
-        z.enum([
+  pii_scan: object({
+    text: pipe(string(), minLength(1), maxLength(100000)),
+    types: optional(
+      array(
+        createEnum([
           'email',
           'phone',
           'ssn',
@@ -293,20 +317,26 @@ export const ZodSchemas = {
           'session_id',
         ])
       )
-      .optional(),
+    ),
   }),
 
-  classify_data: z.object({
-    data: z.record(z.string(), z.unknown()),
+  classify_data: object({
+    data: record(string(), unknown()),
   }),
 } as const;
 
-export type SchemaName = keyof typeof ZodSchemas;
+// Export with Zod-like names for backward compatibility
+export const ZodSchemas = ValibotSchemas;
+
+export type SchemaName = keyof typeof ValibotSchemas;
 
 export type ValidationResult<T> = { success: true; data: T } | { success: false; error: string };
 
-export function validatePayload<T>(
-  schema: z.ZodSchema<T>,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySchema = any;
+
+export function validatePayload<T = any>(
+  schema: AnySchema,
   payload: string,
   rpcName: string
 ): ValidationResult<T> {
@@ -317,16 +347,20 @@ export function validatePayload<T>(
     } else {
       parsed = JSON.parse(payload);
     }
-    const result = schema.safeParse(parsed);
+
+    const result = safeParse(schema, parsed);
 
     if (!result.success) {
-      const errorMessages = result.error.issues
-        .map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`)
+      const errorMessages = result.issues
+        .map(
+          (issue: any) =>
+            `${issue.path?.map((p: any) => p.key).join('.') || 'root'}: ${issue.message}`
+        )
         .join(', ');
       return { success: false, error: `Validation failed for ${rpcName}: ${errorMessages}` };
     }
 
-    return { success: true, data: result.data as T };
+    return { success: true, data: result.output as T };
   } catch (error) {
     return { success: false, error: `Invalid JSON in ${rpcName}: ${error}` };
   }
