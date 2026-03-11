@@ -124,10 +124,16 @@ export function readPlayerDataWithCache<T>(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
   collection: string,
-  cacheManager: { get: <T>(name: string, key: string) => T | undefined; set: (name: string, key: string, value: string) => void } | null | undefined,
+  cacheManager:
+    | {
+        get: <T>(name: string, key: string) => T | undefined;
+        set: (name: string, key: string, value: string) => void;
+      }
+    | null
+    | undefined,
   cacheName: string,
   parseFn: (value: unknown) => T | null,
-  ttlSeconds: number = 60
+  _ttlSeconds: number = 60
 ): StorageReadResult<T> {
   const cacheKey = ctx.userId;
 
@@ -162,7 +168,9 @@ export function readPlayerDataWithCache<T>(
 /**
  * Parse player stats from storage value
  */
-export function parsePlayerStatsValue(value: unknown): { level: number; xp: number; stats: unknown } | null {
+export function parsePlayerStatsValue(
+  value: unknown
+): { level: number; xp: number; stats: unknown } | null {
   if (!value) {
     return null;
   }
@@ -191,7 +199,10 @@ export function parsePlayerStatsValue(value: unknown): { level: number; xp: numb
 export function getPlayerStatsWithCache(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
-  cacheManager: { get: <T>(name: string, key: string) => T | undefined; set: (name: string, key: string, value: string) => void }
+  cacheManager: {
+    get: <T>(name: string, key: string) => T | undefined;
+    set: (name: string, key: string, value: string) => void;
+  }
 ): string {
   const result = readPlayerDataWithCache(
     nk,
