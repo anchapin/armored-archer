@@ -1,0 +1,60 @@
+name: Dead Code Detection
+# vulture: Python dead code detection
+# knip: TypeScript/JavaScript dead code detection
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Weekly on Sunday
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '**.py'
+      - '**.ts'
+      - '**.js'
+      - 'requirements.txt'
+      - 'package.json'
+
+jobs:
+  detect-dead-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python dependencies
+        run: |
+          pip install vulture
+          pip install -r requirements.txt
+
+      - name: Install Node.js dependencies
+        run: npm install
+
+      - name: Run Python dead code detection
+        run: |
+          # Find Python files
+          find . -name "*.py" -type f > python_files.txt
+          # Run vulture on Python files
+          vulture --min-confidence 80 python_files.txt || true
+
+      - name: Run TypeScript/JavaScript dead code detection
+        run: |
+          # Use knip if available
+          npx knip --reporter json > knip-report.json || true
+
+      - name: Upload dead code report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dead-code-report
+          path: |
+            knip-report.json
+          retention-days: 30

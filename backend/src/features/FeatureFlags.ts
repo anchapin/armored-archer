@@ -19,8 +19,8 @@
 
 import { LRUCache } from 'lru-cache';
 import { logger } from '../config/logger';
-// Database loading is optional - commented out until proper db module is available
-// import { getDatabase } from '../utils/db';
+
+// Note: Database integration deferred - feature flags currently use in-memory storage
 
 // Feature flag configuration types
 export interface FeatureFlagConfig {
@@ -151,6 +151,7 @@ export async function initializeFeatureFlags(): Promise<void> {
     inMemoryFlags.set(flag.name, flag);
   }
 
+<<<<<<< HEAD
   // Database loading disabled - using in-memory flags only
   // TODO: Re-enable database loading when proper db module is available
   /*
@@ -163,6 +164,10 @@ export async function initializeFeatureFlags(): Promise<void> {
     logger.warn('Could not load feature flags from database, using defaults', { error });
   }
   */
+=======
+  // Database integration can be added later if needed
+  // For now, using in-memory storage
+>>>>>>> origin/main
 
   logger.info('Feature flag system initialized', {
     flagCount: inMemoryFlags.size,

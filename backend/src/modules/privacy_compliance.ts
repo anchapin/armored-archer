@@ -10,7 +10,18 @@
  * - COPPA (Children's Online Privacy Protection Act)
  */
 
-import { z } from 'zod';
+import {
+  object,
+  record,
+  string,
+  enum as enumType,
+  array,
+  optional,
+  pipe,
+  minLength,
+  maxLength,
+  unknown,
+} from 'valibot';
 
 /**
  * Types of Personally Identifiable Information (PII)
@@ -611,43 +622,53 @@ export function validateDataHandling(operation: string, data: unknown): PrivacyC
 }
 
 /**
- * Zod schema for privacy compliance check request
+ * Valibot schema for privacy compliance check request
  */
-export const privacyCheckSchema = z.object({
-  data: z.record(z.string(), z.unknown()),
-  operation: z.enum(['store', 'persist', 'log', 'transmit', 'send', 'share', 'export']),
-  context: z.string().optional(),
+const operationEnum = ['store', 'persist', 'log', 'transmit', 'send', 'share', 'export'] as any;
+export const privacyCheckSchema = object({
+  data: record(string(), unknown()),
+  operation: enumType(operationEnum),
+  context: optional(string()),
 });
 
 /**
- * Zod schema for PII scan request
+ * Valibot schema for PII scan request
  */
-export const piiScanSchema = z.object({
-  text: z.string().min(1).max(100000),
-  types: z.array(z.nativeEnum(PIIType)).optional(),
+export const piiScanSchema = object({
+  text: pipe(string(), minLength(1), maxLength(100000)),
+  types: optional(array(enumType(PIIType as any))),
 });
 
 /**
- * Zod schema for data classification request
+ * Valibot schema for data classification request
  */
-export const classifyDataSchema = z.object({
-  data: z.record(z.string(), z.unknown()),
+export const classifyDataSchema = object({
+  data: record(string(), unknown()),
 });
 
 /**
  * Type for privacy check request
  */
-export type PrivacyCheckRequest = z.infer<typeof privacyCheckSchema>;
+export type PrivacyCheckRequest = {
+  data: Record<string, unknown>;
+  operation: 'store' | 'persist' | 'log' | 'transmit' | 'send' | 'share' | 'export';
+  context?: string;
+};
 
 /**
  * Type for PII scan request
  */
-export type PIIScanRequest = z.infer<typeof piiScanSchema>;
+export type PIIScanRequest = {
+  text: string;
+  types?: PIIType[];
+};
 
 /**
  * Type for data classification request
  */
-export type ClassifyDataRequest = z.infer<typeof classifyDataSchema>;
+export type ClassifyDataRequest = {
+  data: Record<string, unknown>;
+};
 
 /**
  * Check if a value contains PII (simple boolean check for any value)
