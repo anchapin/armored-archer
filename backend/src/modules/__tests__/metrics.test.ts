@@ -23,6 +23,12 @@ jest.mock('../../config', () => ({
       exporter: 'none',
       sampleRate: 0,
     },
+    logger: {
+      level: 'info',
+      format: 'json',
+      output: 'stdout',
+      scrubLogs: false,
+    },
   },
 }));
 
@@ -30,6 +36,27 @@ jest.mock('../../utils/rateLimiter', () => ({
   setMetricsCallbacks: jest.fn(),
   createRateLimitedRpcHandler: jest.fn(),
   setEndpointRateLimit: jest.fn(),
+}));
+
+jest.mock('../../config/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
+jest.mock('../deployment_observability', () => ({
+  getDeploymentRegistry: jest.fn().mockReturnValue({
+    metrics: jest.fn().mockResolvedValue('mock metrics'),
+    contentType: 'text/plain',
+  }),
+}));
+
+jest.mock('../n_plus_one_detection', () => ({
+  initializeNPlusOneDetectionWithMetrics: jest.fn(),
+  getNPlusOneReport: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('prom-client', () => ({

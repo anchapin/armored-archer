@@ -18,6 +18,7 @@ import { LRUCache as LRUCacheClass } from 'lru-cache';
 import { logCacheOperation } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { CacheValueType } from '../types/shared';
+import { getCacheEntry, setCacheEntry, deleteCacheEntry } from './cache-helpers';
 
 type LRUCache<K, V> = InstanceType<typeof LRUCacheClass<K, V>>;
 
@@ -94,25 +95,13 @@ class CacheManager {
     const cache = this.caches.get(cacheName);
     const metrics = this.metrics.get(cacheName);
 
-    if (!cache || !metrics) {
-      if (this.logger) {
-        this.logger.error('Cache not found', {
-          cacheName,
-          operation: 'cache_not_found',
-        });
-      }
-      return undefined;
-    }
-
-    const value = cache.get(key);
-
-    if (value !== undefined) {
-      metrics.hits++;
-      logCacheOperation('hit', cacheName, key);
-    } else {
-      metrics.misses++;
-      logCacheOperation('miss', cacheName, key);
-    }
+    const value = getCacheEntry(
+      cache,
+      metrics,
+      this.logger,
+      cacheName,
+      key
+    );
 
     return value as T;
   }
@@ -120,35 +109,24 @@ class CacheManager {
   set(cacheName: string, key: string, value: CacheValueType): void {
     const cache = this.caches.get(cacheName);
 
-    if (!cache) {
-      if (this.logger) {
-        this.logger.error('Cache not found', {
-          cacheName,
-          operation: 'cache_not_found',
-        });
-      }
-      return;
-    }
-
-    cache.set(key, value);
-    logCacheOperation('set', cacheName, key);
+    setCacheEntry(
+      cache,
+      this.logger,
+      cacheName,
+      key,
+      value
+    );
   }
 
   delete(cacheName: string, key: string): void {
     const cache = this.caches.get(cacheName);
 
-    if (!cache) {
-      if (this.logger) {
-        this.logger.error('Cache not found', {
-          cacheName,
-          operation: 'cache_not_found',
-        });
-      }
-      return;
-    }
-
-    cache.delete(key);
-    logCacheOperation('delete', cacheName, key);
+    deleteCacheEntry(
+      cache,
+      this.logger,
+      cacheName,
+      key
+    );
   }
 
   clear(cacheName: string): void {

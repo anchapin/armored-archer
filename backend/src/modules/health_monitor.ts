@@ -14,6 +14,7 @@ import { Gauge, Registry } from 'prom-client';
 import { alertingConfig, isAlertingEnabled } from '../config/alerting';
 import { Runtime } from '../types/nakama';
 import { triggerHealthAlert, triggerMetricAlert } from './alerting';
+import { logger } from '../config/logger';
 
 // Create a dedicated registry for health metrics
 const healthRegistry = new Registry();
@@ -333,7 +334,7 @@ function runHealthCheck(): void {
     checkHealthThresholds(metrics);
     checkMetricThresholds(metrics);
   } catch (error) {
-    console.error('[HealthMonitor] Error during health check:', error);
+    logger.error('Error during health check:', error);
   }
 }
 
@@ -342,19 +343,19 @@ function runHealthCheck(): void {
  */
 export function startHealthMonitoring(intervalMs: number = 60000): void {
   if (isMonitoring) {
-    console.log('[HealthMonitor] Health monitoring already running');
+    logger.warn('Health monitoring already running');
     return;
   }
 
   if (!isAlertingEnabled()) {
-    console.log('[HealthMonitor] Health monitoring disabled - alerting not enabled');
+    logger.info('Health monitoring disabled - alerting not enabled');
     return;
   }
 
   isMonitoring = true;
   healthMonitorInterval = setInterval(runHealthCheck, intervalMs);
 
-  console.log(`[HealthMonitor] Started health monitoring (interval: ${intervalMs}ms)`);
+  logger.info(`Started health monitoring (interval: ${intervalMs}ms)`);
 
   // Run initial health check
   runHealthCheck();
@@ -369,7 +370,7 @@ export function stopHealthMonitoring(): void {
     healthMonitorInterval = null;
   }
   isMonitoring = false;
-  console.log('[HealthMonitor] Stopped health monitoring');
+  logger.info('Stopped health monitoring');
 }
 
 /**

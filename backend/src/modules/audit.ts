@@ -1,4 +1,5 @@
 import { Runtime } from '../types/nakama';
+import { logger } from '../config/logger';
 
 /**
  * Audit log entry details.
@@ -59,6 +60,6 @@ export function logAudit(
     ]);
   } catch (err) {
     // Audit failures should not disrupt the main operation
-    console.error('Failed to write audit log:', err);
+    logger.error('Failed to write audit log:', err);
   }
 }

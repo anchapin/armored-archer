@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/node';
 import { config } from '../config';
+import { logger } from './logger';
 
 /**
  * Configuration for error tracking with Sentry.
@@ -97,7 +98,7 @@ export interface ExtendedErrorContext {
 
 export function initializeSentry(): void {
   if (!errorTrackingConfig.enabled || !errorTrackingConfig.dsn) {
-    console.log('[ErrorTracking] Sentry is disabled - missing DSN or disabled by config');
+    logger.info('Sentry is disabled - missing DSN or disabled by config');
     return;
   }
 
@@ -121,9 +122,7 @@ export function initializeSentry(): void {
     release: process.env.APP_VERSION || 'unknown',
   });
 
-  console.log(
-    `[ErrorTracking] Sentry initialized in ${errorTrackingConfig.environment} environment`
-  );
+  logger.info(`Sentry initialized in ${errorTrackingConfig.environment} environment`);
 }
 
 /**

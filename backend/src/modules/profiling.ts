@@ -31,6 +31,7 @@
  */
 
 import { Runtime } from '../types/nakama';
+import { logger } from '../config/logger';
 
 // --- Profiling Configuration ---
 
@@ -201,8 +202,8 @@ function recordProfileData(name: string, durationMs: number, error: Error | null
 
   // Log slow operations
   if (profilingConfig.logSlowOperations && durationMs > profilingConfig.slowThresholdMs) {
-    console.log(
-      `[PROFILING] Slow operation: ${name} took ${durationMs.toFixed(2)}ms (threshold: ${profilingConfig.slowThresholdMs}ms)`
+    logger.info(
+      `Slow operation: ${name} took ${durationMs.toFixed(2)}ms (threshold: ${profilingConfig.slowThresholdMs}ms)`
     );
   }
 }
@@ -404,29 +405,18 @@ export function registerRpcWithProfiling(
 /**
  * Initialize profiling module
  */
-export function initializeProfiling(logger?: Runtime.Logger): void {
-  if (logger) {
-    logger.info(
-      `Profiling initialized - Enabled: ${profilingConfig.enabled}, Slow Threshold: ${profilingConfig.slowThresholdMs}ms`
-    );
-  } else {
-    console.log(
-      `[PROFILING] Initialized - Enabled: ${profilingConfig.enabled}, Slow Threshold: ${profilingConfig.slowThresholdMs}ms`
-    );
-  }
+export function initializeProfiling(_logger?: Runtime.Logger): void {
+  logger.info(
+    `Profiling initialized - Enabled: ${profilingConfig.enabled}, Slow Threshold: ${profilingConfig.slowThresholdMs}ms`
+  );
 }
 
 /**
  * Log profiling report (useful for debugging)
  */
-export function logProfileReport(logger?: Runtime.Logger): void {
+export function logProfileReport(_logger?: Runtime.Logger): void {
   const report = getFormattedProfileReport();
-
-  if (logger) {
-    logger.info(report);
-  } else {
-    console.log(report);
-  }
+  logger.info(report);
 }
 
 // --- Decorator-style Profiling (for TypeScript) ---
