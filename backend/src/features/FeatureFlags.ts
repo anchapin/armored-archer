@@ -1,25 +1,26 @@
 /**
  * Feature Flag System for Armored Archer Backend
- * 
+ *
  * Provides a centralized feature flag infrastructure for:
  * - Gradual rollouts
  * - A/B testing
  * - Kill switches
  * - Percentage-based rollouts
- * 
+ *
  * Usage:
  *   import { FeatureFlags, isFeatureEnabled, getFeatureVariant } from './features/FeatureFlags';
- *   
+ *
  *   // Check if feature is enabled
  *   if (await isFeatureEnabled('new_combat_system')) { ... }
- *   
+ *
  *   // Get A/B test variant
  *   const variant = await getFeatureVariant('battle_pass', 'control');
  */
 
 import { LRUCache } from 'lru-cache';
-import { logger } from '../core/logger';
-import { getDatabase } from '../core/database';
+import { logger } from '../config/logger';
+
+// Note: Database integration deferred - feature flags currently use in-memory storage
 
 // Feature flag configuration types
 export interface FeatureFlagConfig {
@@ -70,7 +71,7 @@ const rolloutCache = new LRUCache<string, boolean>({
 });
 
 // In-memory flag storage for development
-let inMemoryFlags: Map<string, FeatureFlagConfig> = new Map();
+const inMemoryFlags: Map<string, FeatureFlagConfig> = new Map();
 
 // Default feature flags
 const DEFAULT_FLAGS: FeatureFlagConfig[] = [
@@ -101,9 +102,9 @@ const DEFAULT_FLAGS: FeatureFlagConfig[] = [
     enabled: true,
     rolloutPercentage: 25,
     variants: {
-      'control': 50,
-      'treatment_a': 25,
-      'treatment_b': 25,
+      control: 50,
+      treatment_a: 25,
+      treatment_b: 25,
     },
     defaultVariant: 'control',
     environment: 'production',
@@ -150,28 +151,12 @@ export async function initializeFeatureFlags(): Promise<void> {
     inMemoryFlags.set(flag.name, flag);
   }
 
-  // Try to load from database
-  try {
-    const db = getDatabase();
-    if (db) {
-      await loadFlagsFromDatabase(db);
-    }
-  } catch (error) {
-    logger.warn('Could not load feature flags from database, using defaults', { error });
-  }
+  // Database integration can be added later if needed
+  // For now, using in-memory storage
 
-  logger.info('Feature flag system initialized', { 
-    flagCount: inMemoryFlags.size 
+  logger.info('Feature flag system initialized', {
+    flagCount: inMemoryFlags.size,
   });
-}
-
-/**
- * Load feature flags from database
- */
-async function loadFlagsFromDatabase(db: any): Promise<void> {
-  // In production, this would query the database
-  // For now, we use the in-memory flags
-  logger.info('Feature flags loaded from database');
 }
 
 /**
@@ -210,7 +195,7 @@ export async function getFeatureFlag(name: string): Promise<FeatureFlag | null> 
 
 /**
  * Check if a feature flag is enabled
- * 
+ *
  * @param flagName - Name of the feature flag
  * @param userId - Optional user ID for user-specific evaluation
  * @param userSegment - Optional user segment for segment-based rollout
@@ -223,7 +208,7 @@ export async function isFeatureEnabled(
   environment: string = 'production'
 ): Promise<boolean> {
   const cacheKey = `${flagName}:${userId || 'anonymous'}:${environment}`;
-  
+
   // Check cache
   const cached = rolloutCache.get(cacheKey);
   if (cached !== undefined) {
@@ -232,7 +217,7 @@ export async function isFeatureEnabled(
 
   // Get the flag configuration
   const config = inMemoryFlags.get(flagName);
-  
+
   if (!config) {
     logger.warn('Feature flag not found', { flagName });
     rolloutCache.set(cacheKey, false);
@@ -259,7 +244,7 @@ export async function isFeatureEnabled(
 
   // Check rollout percentage
   const rolloutPercentage = config.rolloutPercentage || 100;
-  
+
   if (rolloutPercentage >= 100) {
     rolloutCache.set(cacheKey, true);
     return true;
@@ -281,7 +266,7 @@ export async function isFeatureEnabled(
     // Use hash for deterministic assignment
     const hash = hashUserToFeature(userId, flagName);
     const threshold = rolloutPercentage / 100;
-    
+
     const enabled = hash < threshold;
     rolloutCache.set(cacheKey, enabled);
     return enabled;
@@ -289,14 +274,14 @@ export async function isFeatureEnabled(
 
   // No user ID, use random for anonymous users
   const randomValue = Math.random();
-  const enabled = randomValue < (rolloutPercentage / 100);
+  const enabled = randomValue < rolloutPercentage / 100;
   rolloutCache.set(cacheKey, enabled);
   return enabled;
 }
 
 /**
  * Get A/B test variant for a feature flag
- * 
+ *
  * @param flagName - Name of the feature flag
  * @param userId - User ID for deterministic assignment
  * @param defaultVariant - Fallback variant if none is assigned
@@ -307,7 +292,7 @@ export async function getFeatureVariant(
   defaultVariant?: string
 ): Promise<string> {
   const config = inMemoryFlags.get(flagName);
-  
+
   if (!config || !config.variants) {
     return defaultVariant || 'control';
   }
@@ -321,11 +306,11 @@ export async function getFeatureVariant(
   // Get deterministic variant based on user ID
   const hash = hashUserToFeature(userId, flagName);
   const variants = config.variants;
-  
+
   // Calculate cumulative weights
   const entries = Object.entries(variants);
   let cumulative = 0;
-  
+
   for (const [variant, weight] of entries) {
     cumulative += weight;
     if (hash < cumulative / 100) {
@@ -342,13 +327,13 @@ export async function getFeatureVariant(
 function hashUserToFeature(userId: string, featureName: string): number {
   const str = `${userId}:${featureName}`;
   let hash = 0;
-  
+
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
-  
+
   // Normalize to 0-1
   return Math.abs(hash) / 2147483647;
 }
@@ -363,16 +348,16 @@ export async function evaluateFeatures(
   environment?: string
 ): Promise<FeatureFlagEvaluation[]> {
   const results: FeatureFlagEvaluation[] = [];
-  
+
   for (const name of flagNames) {
     const enabled = await isFeatureEnabled(name, userId, userSegment, environment);
     let variant: string | undefined;
-    
+
     const config = inMemoryFlags.get(name);
     if (config?.variants && userId) {
       variant = await getFeatureVariant(name, userId);
     }
-    
+
     results.push({
       flagName: name,
       enabled,
@@ -381,7 +366,7 @@ export async function evaluateFeatures(
       evaluatedAt: new Date(),
     });
   }
-  
+
   return results;
 }
 
@@ -393,23 +378,23 @@ export async function updateFeatureFlag(
   updates: Partial<FeatureFlagConfig>
 ): Promise<boolean> {
   const existing = inMemoryFlags.get(name);
-  
+
   if (!existing) {
     logger.warn('Cannot update non-existent feature flag', { name });
     return false;
   }
-  
+
   const updated: FeatureFlagConfig = {
     ...existing,
     ...updates,
   };
-  
+
   inMemoryFlags.set(name, updated);
-  
+
   // Invalidate cache
   flagCache.delete(name);
   rolloutCache.clear();
-  
+
   logger.info('Feature flag updated', { name, updates });
   return true;
 }
@@ -417,16 +402,14 @@ export async function updateFeatureFlag(
 /**
  * Create a new feature flag
  */
-export async function createFeatureFlag(
-  config: FeatureFlagConfig
-): Promise<boolean> {
+export async function createFeatureFlag(config: FeatureFlagConfig): Promise<boolean> {
   if (inMemoryFlags.has(config.name)) {
     logger.warn('Feature flag already exists', { name: config.name });
     return false;
   }
-  
+
   inMemoryFlags.set(config.name, config);
-  
+
   logger.info('Feature flag created', { name: config.name });
   return true;
 }
@@ -439,13 +422,13 @@ export async function deleteFeatureFlag(name: string): Promise<boolean> {
     logger.warn('Feature flag not found', { name });
     return false;
   }
-  
+
   inMemoryFlags.delete(name);
-  
+
   // Invalidate cache
   flagCache.delete(name);
   rolloutCache.clear();
-  
+
   logger.info('Feature flag deleted', { name });
   return true;
 }
@@ -460,11 +443,9 @@ export function getAllFeatureFlags(): FeatureFlagConfig[] {
 /**
  * Get feature flags for a specific environment
  */
-export function getFeatureFlagsByEnvironment(
-  environment: string
-): FeatureFlagConfig[] {
+export function getFeatureFlagsByEnvironment(environment: string): FeatureFlagConfig[] {
   return Array.from(inMemoryFlags.values()).filter(
-    flag => flag.environment === environment || flag.environment === 'all'
+    (flag) => flag.environment === environment || flag.environment === 'all'
   );
 }
 
@@ -477,20 +458,20 @@ export async function checkDependencies(
   environment?: string
 ): Promise<{ satisfied: boolean; missing: string[] }> {
   const config = inMemoryFlags.get(flagName);
-  
+
   if (!config || !config.dependencies || config.dependencies.length === 0) {
     return { satisfied: true, missing: [] };
   }
-  
+
   const missing: string[] = [];
-  
+
   for (const dep of config.dependencies) {
     const enabled = await isFeatureEnabled(dep, userId, undefined, environment);
     if (!enabled) {
       missing.push(dep);
     }
   }
-  
+
   return {
     satisfied: missing.length === 0,
     missing,
@@ -502,11 +483,11 @@ export async function checkDependencies(
  */
 export async function toggleFeatureFlag(name: string): Promise<boolean> {
   const config = inMemoryFlags.get(name);
-  
+
   if (!config) {
     return false;
   }
-  
+
   return updateFeatureFlag(name, { enabled: !config.enabled });
 }
 
