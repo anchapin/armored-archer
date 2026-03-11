@@ -136,9 +136,12 @@ func end_game(won: bool) -> void:
 				"duration_seconds": game_duration
 			})
 
-		if current_stage_id != "":
+		if current_stage_id != "" and CampaignManager.has_method("complete_stage"):
 			CampaignManager.complete_stage(current_stage_id)
 			stage_completed.emit(current_stage_id)
+			
+			# Return to campaign map after completing a stage
+			get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
 	else:
 		player_died.emit()
 

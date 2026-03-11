@@ -14,6 +14,7 @@ signal compare_requested(gear_data1: Dictionary, gear_data2: Dictionary)
 @onready var unequip_button: Button = $VBoxContainer/GearDetails/UnequipButton
 @onready var compare_button: Button = $VBoxContainer/GearDetails/CompareButton
 @onready var back_button: Button = $VBoxContainer/BackButton
+@onready var loadout_button: Button = $VBoxContainer/LoadoutButton
 @onready var filter_common: CheckBox = $VBoxContainer/FilterContainer/FilterCommon
 @onready var filter_rare: CheckBox = $VBoxContainer/FilterContainer/FilterRare
 @onready var filter_legendary: CheckBox = $VBoxContainer/FilterContainer/FilterLegendary
@@ -29,9 +30,11 @@ var rarity_colors: Dictionary = {
 }
 
 var gear_types: Dictionary = {
-	"weapon": "Weapon",
+	"helm": "Helm",
 	"armor": "Armor",
-	"accessory": "Accessory"
+	"bow": "Bow",
+	"arrow": "Arrow",
+	"amulet": "Amulet"
 }
 
 func _ready() -> void:
@@ -57,6 +60,7 @@ func _setup_button_connections() -> void:
 	unequip_button.pressed.connect(_on_unequip_button_pressed)
 	compare_button.pressed.connect(_on_compare_button_pressed)
 	back_button.pressed.connect(_on_back_button_pressed)
+	loadout_button.pressed.connect(_on_loadout_button_pressed)
 	gear_list.item_selected.connect(_on_gear_list_item_selected)
 	filter_common.toggled.connect(_on_filter_toggled)
 	filter_rare.toggled.connect(_on_filter_toggled)
@@ -188,6 +192,11 @@ func _on_compare_button_pressed() -> void:
 
 func _on_back_button_pressed() -> void:
 	queue_free()
+
+func _on_loadout_button_pressed() -> void:
+	var loadout_scene = preload("res://scenes/ui/loadout.tscn")
+	var loadout_instance = loadout_scene.instantiate()
+	get_tree().root.add_child(loadout_instance)
 
 func _on_inventory_updated( _inventory: Dictionary) -> void:
 	_refresh_gear_list()
