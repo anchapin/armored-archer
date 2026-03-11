@@ -151,23 +151,8 @@ export async function initializeFeatureFlags(): Promise<void> {
     inMemoryFlags.set(flag.name, flag);
   }
 
-<<<<<<< HEAD
-  // Database loading disabled - using in-memory flags only
-  // TODO: Re-enable database loading when proper db module is available
-  /*
-  try {
-    const db = getDatabase();
-    if (db) {
-      await loadFlagsFromDatabase(db);
-    }
-  } catch (error) {
-    logger.warn('Could not load feature flags from database, using defaults', { error });
-  }
-  */
-=======
   // Database integration can be added later if needed
   // For now, using in-memory storage
->>>>>>> origin/main
 
   logger.info('Feature flag system initialized', {
     flagCount: inMemoryFlags.size,
