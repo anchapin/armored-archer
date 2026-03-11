@@ -10,9 +10,9 @@
 
 import { Counter, Gauge, Histogram, Registry } from 'prom-client';
 import { config } from '../config';
+import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { logger } from '../config/logger';
 
 // Create a dedicated registry for deployment metrics
 const deploymentRegistry = new Registry();

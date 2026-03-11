@@ -30,8 +30,8 @@
  */
 
 import { Counter, Histogram, Gauge, Registry } from 'prom-client';
-import { Runtime } from '../types/nakama';
 import { logger as appLogger } from '../config/logger';
+import { Runtime } from '../types/nakama';
 
 // --- Configuration ---
 
@@ -305,7 +305,7 @@ export function startOperationTracking(operationName: string): void {
  */
 export function stopOperationTracking(
   operationName: string,
-  logger?: Runtime.Logger
+  _logger?: Runtime.Logger
 ): { queryCount: number; nPlusOneDetected: boolean; warnings: string[] } {
   if (!nPlusOneConfig.enabled) {
     return { queryCount: 0, nPlusOneDetected: false, warnings: [] };

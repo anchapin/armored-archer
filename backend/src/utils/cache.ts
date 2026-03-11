@@ -95,13 +95,7 @@ class CacheManager {
     const cache = this.caches.get(cacheName);
     const metrics = this.metrics.get(cacheName);
 
-    const value = getCacheEntry(
-      cache,
-      metrics,
-      this.logger,
-      cacheName,
-      key
-    );
+    const value = getCacheEntry(cache, metrics, this.logger, cacheName, key);
 
     return value as T;
   }
@@ -109,24 +103,13 @@ class CacheManager {
   set(cacheName: string, key: string, value: CacheValueType): void {
     const cache = this.caches.get(cacheName);
 
-    setCacheEntry(
-      cache,
-      this.logger,
-      cacheName,
-      key,
-      value
-    );
+    setCacheEntry(cache, this.logger, cacheName, key, value);
   }
 
   delete(cacheName: string, key: string): void {
     const cache = this.caches.get(cacheName);
 
-    deleteCacheEntry(
-      cache,
-      this.logger,
-      cacheName,
-      key
-    );
+    deleteCacheEntry(cache, this.logger, cacheName, key);
   }
 
   clear(cacheName: string): void {

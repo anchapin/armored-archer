@@ -125,7 +125,7 @@ export function rpcGetPlayerStats(
   }
 
   const cacheManager = getCacheManager(logger);
-  return getPlayerStatsWithCache(nk, ctx, cacheManager);
+  return getPlayerStatsWithCache(nk, logger, ctx, cacheManager);
 }
 
 /**
