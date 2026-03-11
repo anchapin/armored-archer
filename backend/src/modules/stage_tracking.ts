@@ -5,8 +5,8 @@
  */
 
 import { Runtime } from '../types/nakama';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { logAudit } from './audit';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Stage completion record stored in database.
@@ -27,14 +27,17 @@ export interface StageCompletion {
  */
 export interface StageCompletionStorage {
   user_id: string;
-  completions: Record<string, {
-    stage_id: string;
-    stage_prefix: string;
-    stars_earned: number;
-    score: number;
-    completed_at: string;
-    updated_at: string;
-  }>;
+  completions: Record<
+    string,
+    {
+      stage_id: string;
+      stage_prefix: string;
+      stars_earned: number;
+      score: number;
+      completed_at: string;
+      updated_at: string;
+    }
+  >;
 }
 
 /**
@@ -97,6 +100,60 @@ export function registerRpcCompleteStage(initializer: Runtime.Initializer): void
  */
 export function registerRpcGetCompletedStages(initializer: Runtime.Initializer): void {
   initializer.registerRpc('armored_archer/get_completed_stages', rpcGetCompletedStages);
+}
+
+/**
+ * Determines if new completion is better than existing one
+ */
+function isBetterCompletion(
+  newStars: number,
+  newScore: number,
+  existingStars: number,
+  existingScore: number
+): boolean {
+  return newStars > existingStars || (newStars === existingStars && newScore > existingScore);
+}
+
+/**
+ * Creates a new completion record
+ */
+function createCompletionRecord(
+  stageId: string,
+  stagePrefix: string,
+  starsEarned: number,
+  score: number
+): StageCompletion {
+  const now = new Date().toISOString();
+  return {
+    id: '',
+    user_id: '',
+    stage_id: stageId,
+    stage_prefix: stagePrefix,
+    stars_earned: starsEarned,
+    score,
+    completed_at: now,
+    updated_at: now,
+  };
+}
+
+/**
+ * Updates an existing completion record
+ */
+function updateCompletionRecord(
+  stageId: string,
+  stagePrefix: string,
+  starsEarned: number,
+  score: number,
+  existingCompletion: StageCompletion
+): StageCompletion {
+  return {
+    ...existingCompletion,
+    stage_id: stageId,
+    stage_prefix: stagePrefix,
+    stars_earned: starsEarned,
+    score,
+    updated_at: new Date().toISOString(),
+  };
 }
 
 /**
@@ -193,10 +250,14 @@ export function rpcCompleteStage(
       };
 
       // Only update if new completion is better (more stars or same stars with higher score)
-      const isBetterStars = stars_earned > existingCompletion.stars_earned;
-      const isSameStarsWithBetterScore = stars_earned === existingCompletion.stars_earned && score > existingCompletion.score;
-
-      if (!isBetterStars && !isSameStarsWithBetterScore) {
+      if (
+        !isBetterCompletion(
+          stars_earned,
+          score,
+          existingCompletion.stars_earned,
+          existingCompletion.score
+        )
+      ) {
         logger.info(
           'Stage replay did not improve: stage=%s new_stars=%d existing_stars=%d new_score=%d existing_score=%d',
           stage_id,
@@ -218,14 +279,13 @@ export function rpcCompleteStage(
       }
 
       // Update existing completion
-      storageData.completions[stage_id] = {
+      storageData.completions[stage_id] = updateCompletionRecord(
         stage_id,
         stage_prefix,
         stars_earned,
         score,
-        completed_at: existingCompletion.completed_at,
-        updated_at: new Date().toISOString(),
-      };
+        existingCompletion
+      );
 
       logger.info(
         'Updated stage completion: stage=%s stars=%d score=%d',
@@ -235,15 +295,12 @@ export function rpcCompleteStage(
       );
     } else {
       // Create new completion
-      const now = new Date().toISOString();
-      storageData.completions[stage_id] = {
+      storageData.completions[stage_id] = createCompletionRecord(
         stage_id,
         stage_prefix,
         stars_earned,
-        score,
-        completed_at: now,
-        updated_at: now,
-      };
+        score
+      );
 
       logger.info(
         'Created new stage completion: stage=%s stars=%d score=%d',
@@ -377,14 +434,14 @@ export function rpcGetCompletedStages(
 
     // Filter completions by prefix if specified
     let completions = Object.values(storageData.completions);
-    
+
     if (request.stage_prefix) {
-      completions = completions.filter(c => c.stage_prefix === request.stage_prefix);
+      completions = completions.filter((c) => c.stage_prefix === request.stage_prefix);
     }
 
     // Sort by completion date (most recent first)
-    completions.sort((a, b) => 
-      new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
+    completions.sort(
+      (a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
     );
 
     logger.info(
