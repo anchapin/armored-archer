@@ -21,6 +21,7 @@ import {
   shouldTriggerHealthAlert,
 } from '../config/alerting';
 import { captureMessage, captureException } from '../config/errorTracking';
+import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { withCircuitBreaker } from '../utils/circuitBreaker';
 
@@ -111,7 +112,7 @@ async function routeAlert(payload: AlertPayload, provider: AlertProvider): Promi
       await sendPagerDutyAlert(payload, alertingCfg.pagerduty);
       break;
     default:
-      console.warn(`[Alerting] Unknown provider: ${provider}`);
+      logger.warn(`Unknown provider: ${provider}`);
   }
 }
 
@@ -123,7 +124,7 @@ async function sendSlackAlert(
   slackConfig: AlertingConfig['slack']
 ): Promise<void> {
   if (!slackConfig?.webhookUrl) {
-    console.warn('[Alerting] Slack webhook URL not configured');
+    logger.warn('Slack webhook URL not configured');
     return;
   }
 
@@ -176,12 +177,12 @@ async function sendSlackAlert(
       });
 
       if (!response.ok) {
-        console.error(`[Alerting] Failed to send Slack alert: ${response.statusText}`);
+        logger.error(`Failed to send Slack alert: ${response.statusText}`);
       }
     },
     // Fallback: log error but don't throw - alerting failures shouldn't break the app
     async () => {
-      console.error('[Alerting] Slack circuit open - alert not sent:', payload.title);
+      logger.error('Slack circuit open - alert not sent:', payload.title);
     }
   );
 }
@@ -194,7 +195,7 @@ async function sendWebhookAlert(
   webhookConfig: AlertingConfig['webhook']
 ): Promise<void> {
   if (!webhookConfig?.url) {
-    console.warn('[Alerting] Webhook URL not configured');
+    logger.warn('Webhook URL not configured');
     return;
   }
 
@@ -224,12 +225,12 @@ async function sendWebhookAlert(
       });
 
       if (!response.ok) {
-        console.error(`[Alerting] Failed to send webhook alert: ${response.statusText}`);
+        logger.error(`Failed to send webhook alert: ${response.statusText}`);
       }
     },
     // Fallback: log error but don't throw - alerting failures shouldn't break the app
     async () => {
-      console.error('[Alerting] Webhook circuit open - alert not sent:', payload.title);
+      logger.error('Webhook circuit open - alert not sent:', payload.title);
     }
   );
 }
@@ -244,11 +245,11 @@ async function sendEmailAlert(
   // Note: This is a placeholder implementation
   // In production, you would use a library like 'nodemailer'
   if (!emailConfig?.host) {
-    console.warn('[Alerting] Email not configured');
+    logger.warn('Email not configured');
     return;
   }
 
-  console.log(`[Alerting] Email alert: ${payload.title} to ${emailConfig.to.join(', ')}`);
+  logger.info(`Email alert: ${payload.title} to ${emailConfig.to.join(', ')}`);
   // Implementation would use nodemailer or similar
 }
 
@@ -260,7 +261,7 @@ async function sendPagerDutyAlert(
   pagerdutyConfig: AlertingConfig['pagerduty']
 ): Promise<void> {
   if (!pagerdutyConfig?.apiKey) {
-    console.warn('[Alerting] PagerDuty not configured');
+    logger.warn('PagerDuty not configured');
     return;
   }
 
@@ -298,12 +299,12 @@ async function sendPagerDutyAlert(
       });
 
       if (!response.ok) {
-        console.error(`[Alerting] Failed to send PagerDuty alert: ${response.statusText}`);
+        logger.error(`Failed to send PagerDuty alert: ${response.statusText}`);
       }
     },
     // Fallback: log error but don't throw - alerting failures shouldn't break the app
     async () => {
-      console.error('[Alerting] PagerDuty circuit open - alert not sent:', payload.title);
+      logger.error('PagerDuty circuit open - alert not sent:', payload.title);
     }
   );
 }
@@ -326,7 +327,7 @@ export async function sendAlert(
   const alertKey = `${title}:${severity}`;
 
   if (!shouldSendAlert(alertKey, severity)) {
-    console.log(`[Alerting] Alert suppressed due to cooldown: ${title}`);
+    logger.info(`Alert suppressed due to cooldown: ${title}`);
     return;
   }
 
@@ -378,7 +379,7 @@ export function triggerHealthAlert(
   const message = `Current value: ${value}% (threshold: ${severity})`;
 
   sendAlert(title, message, severity, { metric: metricName }, currentMetrics).catch((err) => {
-    console.error('[Alerting] Failed to send health alert:', err);
+    logger.error('Failed to send health alert:', err);
   });
 }
 
@@ -396,7 +397,7 @@ export function triggerMetricAlert(
   const message = `Current value: ${value} (threshold: ${threshold})`;
 
   sendAlert(title, message, severity, { metric: metricName, ...additionalTags }).catch((err) => {
-    console.error('[Alerting] Failed to send metric alert:', err);
+    logger.error('Failed to send metric alert:', err);
   });
 }
 
@@ -425,7 +426,7 @@ export function sendErrorAlert(
     userId: context.userId || 'unknown',
     rpc: context.rpc || 'unknown',
   }).catch((err) => {
-    console.error('[Alerting] Failed to send error alert:', err);
+    logger.error('Failed to send error alert:', err);
   });
 }
 

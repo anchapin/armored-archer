@@ -9,6 +9,7 @@
 
 import * as dgram from 'dgram';
 import { config } from '../config';
+import { logger } from '../config/logger';
 
 // DataDog configuration interface
 interface DataDogConfig {
@@ -54,15 +55,15 @@ class DataDogMetricsClient {
    */
   initialize(): void {
     if (!this.enabled) {
-      console.log('[DataDog] DataDog metrics disabled');
+      logger.info('DataDog metrics disabled');
       return;
     }
 
     try {
       this.socket = dgram.createSocket('udp4');
-      console.log(`[DataDog] Initialized metrics client: ${this.host}:${this.port}`);
+      logger.info(`Initialized DataDog metrics client: ${this.host}:${this.port}`);
     } catch (error) {
-      console.error('[DataDog] Failed to initialize metrics client:', error);
+      logger.error('Failed to initialize DataDog metrics client:', error);
       this.enabled = false;
     }
   }
@@ -138,7 +139,7 @@ class DataDogMetricsClient {
     const buffer = Buffer.from(message);
     this.socket.send(buffer, 0, buffer.length, this.port, this.host, (err: Error | null) => {
       if (err) {
-        console.error('[DataDog] Error sending metric:', err);
+        logger.error('Error sending DataDog metric:', err);
       }
     });
   }
@@ -154,7 +155,7 @@ export function initializeDataDog(): void {
   const ddConfig = config.datadog;
 
   if (!ddConfig?.enabled) {
-    console.log('[DataDog] DataDog integration disabled');
+    logger.info('DataDog integration disabled');
     return;
   }
 
@@ -175,7 +176,7 @@ export function initializeDataDog(): void {
   dataDogClient = new DataDogMetricsClient(dataDogConfig);
   dataDogClient.initialize();
 
-  console.log(`[DataDog] Initialized with prefix: ${dataDogConfig.prefix}`);
+  logger.info(`DataDog initialized with prefix: ${dataDogConfig.prefix}`);
 }
 
 /**

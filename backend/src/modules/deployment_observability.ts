@@ -12,6 +12,7 @@ import { Counter, Gauge, Histogram, Registry } from 'prom-client';
 import { config } from '../config';
 import { Runtime } from '../types/nakama';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { logger } from '../config/logger';
 
 // Create a dedicated registry for deployment metrics
 const deploymentRegistry = new Registry();
@@ -125,8 +126,8 @@ export function recordDeployment(
   }
 
   // Log the deployment event
-  console.log(
-    `[Deployment] ${status.toUpperCase()} - environment: ${environment}, version: ${version}`
+  logger.info(
+    `Deployment ${status.toUpperCase()} - environment: ${environment}, version: ${version}`
   );
 }
 
