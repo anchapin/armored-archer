@@ -2,11 +2,14 @@
  * Stage Tracking module.
  * @fileoverview Manages PvE stage completion tracking for player progression.
  * Uses Nakama's storage system for data persistence.
+ * Automatically generates loot rewards upon stage completion.
  */
 
 import { Runtime } from '../types/nakama';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
+import { generateGearItem, GearItem, PlayerInventory } from './gear_system';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Stage completion record stored in database.
@@ -27,14 +30,17 @@ export interface StageCompletion {
  */
 export interface StageCompletionStorage {
   user_id: string;
-  completions: Record<string, {
-    stage_id: string;
-    stage_prefix: string;
-    stars_earned: number;
-    score: number;
-    completed_at: string;
-    updated_at: string;
-  }>;
+  completions: Record<
+    string,
+    {
+      stage_id: string;
+      stage_prefix: string;
+      stars_earned: number;
+      score: number;
+      completed_at: string;
+      updated_at: string;
+    }
+  >;
 }
 
 /**
@@ -74,12 +80,156 @@ export interface StageCompletionResponse {
     stars_earned: number;
     score: number;
   };
+  loot?: {
+    id: string;
+    name: string;
+    rarity: string;
+    type: string;
+    stats: Array<{ name: string; base_value: number; value: number }>;
+    modifiers: Array<{
+      id: string;
+      name: string;
+      description: string;
+      stat: string;
+      value_range: [number, number];
+      rarity: string;
+      boss_unlock: string | null;
+    }>;
+  };
 }
 
 /**
  * Storage collection name for stage completions.
  */
 const STAGE_COMPLETION_COLLECTION = 'stage_completion';
+const PLAYER_INVENTORY_COLLECTION = 'player_inventory';
+
+/**
+ * Helper function to generate and save loot for stage completion.
+ * Extracts loot generation logic to reduce function complexity.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param stageId - ID of completed stage
+ * @returns Generated gear item or null if generation failed
+ */
+async function generateAndSaveLoot(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  stageId: string
+): Promise<GearItem | null> {
+  try {
+    // Read player's inventory to get unlocked modifier pools
+    const inventoryObjects = nk.storageRead([
+      {
+        collection: PLAYER_INVENTORY_COLLECTION,
+        key: ctx.userId,
+        userId: ctx.userId,
+      },
+    ]);
+
+    let unlockedPools: string[] = [];
+    if (inventoryObjects.length > 0 && inventoryObjects[0].value) {
+      const parseResult = safeParse<PlayerInventory>(
+        inventoryObjects[0].value,
+        null,
+        logger,
+        'inventory_data'
+      );
+      if (parseResult.success && parseResult.data) {
+        unlockedPools = parseResult.data.unlocked_modifier_pools;
+      }
+    }
+
+    // Generate loot gear item
+    const generatedGear = generateGearItem(stageId, unlockedPools, logger);
+
+    // Add gear to inventory
+    let inventory: PlayerInventory;
+    if (inventoryObjects.length > 0 && inventoryObjects[0].value) {
+      const parseResult = safeParse<PlayerInventory>(
+        inventoryObjects[0].value,
+        null,
+        logger,
+        'inventory_data'
+      );
+      inventory =
+        parseResult.success && parseResult.data
+          ? parseResult.data
+          : {
+              user_id: ctx.userId,
+              gear: [],
+              equipped_gear: {},
+              unlocked_modifier_pools: unlockedPools,
+            };
+    } else {
+      inventory = {
+        user_id: ctx.userId,
+        gear: [],
+        equipped_gear: {},
+        unlocked_modifier_pools: [],
+      };
+    }
+
+    inventory.gear.push(generatedGear);
+
+    // Write updated inventory
+    nk.storageWrite([
+      {
+        collection: PLAYER_INVENTORY_COLLECTION,
+        key: ctx.userId,
+        userId: ctx.userId,
+        value: JSON.stringify(inventory),
+      },
+    ]);
+
+    logger.info(
+      'Generated loot %s (%s) for user %s on stage %s',
+      generatedGear.name,
+      generatedGear.rarity,
+      ctx.userId,
+      stageId
+    );
+
+    // Log loot generation
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'generate_loot',
+      'stage_completion',
+      {
+        stage_id: stageId,
+        gear_id: generatedGear.id,
+        gear_name: generatedGear.name,
+        gear_rarity: generatedGear.rarity,
+        gear_type: generatedGear.type,
+      },
+      'success',
+      'Loot generated on stage completion'
+    );
+
+    return generatedGear;
+  } catch (lootError) {
+    // Log the error but don't fail stage completion
+    logger.error('Failed to generate loot for stage completion: %s', String(lootError));
+
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'generate_loot',
+      'stage_completion',
+      { stage_id: stageId },
+      'failure',
+      String(lootError)
+    );
+
+    return null;
+  }
+}
 
 /**
  * Registers the complete_stage RPC endpoint.
@@ -103,6 +253,7 @@ export function registerRpcGetCompletedStages(initializer: Runtime.Initializer):
  * Handles stage completion requests from players.
  * Validates input and records stage completion using Nakama storage.
  * Allows stage replay - only updates if new score is better.
+ * When a stage is completed for the first time, loot is automatically generated.
  *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
@@ -110,12 +261,13 @@ export function registerRpcGetCompletedStages(initializer: Runtime.Initializer):
  * @param payload - JSON string containing stage completion data
  * @returns JSON string with completion result
  */
-export function rpcCompleteStage(
+// eslint-disable-next-line complexity
+export async function rpcCompleteStage(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string {
+): Promise<string> {
   logger.info('Complete stage called for user: %s', ctx.userId);
 
   // Validate authentication
@@ -194,7 +346,8 @@ export function rpcCompleteStage(
 
       // Only update if new completion is better (more stars or same stars with higher score)
       const isBetterStars = stars_earned > existingCompletion.stars_earned;
-      const isSameStarsWithBetterScore = stars_earned === existingCompletion.stars_earned && score > existingCompletion.score;
+      const isSameStarsWithBetterScore =
+        stars_earned === existingCompletion.stars_earned && score > existingCompletion.score;
 
       if (!isBetterStars && !isSameStarsWithBetterScore) {
         logger.info(
@@ -263,6 +416,11 @@ export function rpcCompleteStage(
       },
     ]);
 
+    // Generate loot reward for new stage completions
+    const generatedGear = isNewCompletion
+      ? await generateAndSaveLoot(ctx, logger, nk, stage_id)
+      : null;
+
     // Log audit event
     logAudit(
       nk,
@@ -285,6 +443,18 @@ export function rpcCompleteStage(
 
     if (previousBest) {
       response.previous_best = previousBest;
+    }
+
+    // Include generated loot in response if applicable
+    if (generatedGear) {
+      response.loot = {
+        id: generatedGear.id,
+        name: generatedGear.name,
+        rarity: generatedGear.rarity,
+        type: generatedGear.type,
+        stats: generatedGear.stats,
+        modifiers: generatedGear.modifiers,
+      };
     }
 
     return JSON.stringify(response);
@@ -377,14 +547,14 @@ export function rpcGetCompletedStages(
 
     // Filter completions by prefix if specified
     let completions = Object.values(storageData.completions);
-    
+
     if (request.stage_prefix) {
-      completions = completions.filter(c => c.stage_prefix === request.stage_prefix);
+      completions = completions.filter((c) => c.stage_prefix === request.stage_prefix);
     }
 
     // Sort by completion date (most recent first)
-    completions.sort((a, b) => 
-      new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
+    completions.sort(
+      (a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
     );
 
     logger.info(

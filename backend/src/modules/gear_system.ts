@@ -379,14 +379,15 @@ function generateModifiers(
 }
 
 /**
- * Generates a complete gear item.
+ * Generates a gear item for stage completion rewards.
+ * Exported for use by stage_tracking module.
  *
  * @param stageId - ID of the stage where gear is being generated
  * @param unlockedPools - List of unlocked modifier pools
  * @param logger - Nakama logger instance
  * @returns Generated gear item
  */
-function generateGearItem(
+export function generateGearItem(
   stageId: string,
   unlockedPools: string[],
   logger: Runtime.Logger
