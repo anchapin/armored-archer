@@ -94,14 +94,7 @@ jobs:
             const totalCount = detectionResults.totalFlags || 0;
             
             // Create PR comment
-            const body = `## 🔍 Dead Feature Flag Detection Results
-          
-          **Total Flags:** ${totalCount}
-          **Dead Flags:** ${deadCount}
-          
-          ${deadCount > 0 ? '⚠️ Dead feature flags detected - review and clean up unused flags' : '✅ No dead feature flags detected'}
-          
-          Run this workflow manually to force re-scan.`;
+            const body = "## Dead Feature Flag Detection Results\n\n**Total Flags:** " + totalCount + "\n**Dead Flags:** " + deadCount + "\n\n" + (deadCount > 0 ? "⚠️ Dead feature flags detected - review and clean up unused flags" : "✅ No dead feature flags detected") + "\n\nRun this workflow manually to force re-scan.";
             
             console.log(body);
       
