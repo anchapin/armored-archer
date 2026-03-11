@@ -137,6 +137,18 @@ function createCompletionRecord(
 }
 
 /**
+ * Storage record type (without id and user_id)
+ */
+type StageCompletionRecord = {
+  stage_id: string;
+  stage_prefix: string;
+  stars_earned: number;
+  score: number;
+  completed_at: string;
+  updated_at: string;
+};
+
+/**
  * Updates an existing completion record
  */
 function updateCompletionRecord(
@@ -144,8 +156,8 @@ function updateCompletionRecord(
   stagePrefix: string,
   starsEarned: number,
   score: number,
-  existingCompletion: StageCompletion
-): StageCompletion {
+  existingCompletion: StageCompletionRecord
+): StageCompletionRecord {
   return {
     ...existingCompletion,
     stage_id: stageId,
