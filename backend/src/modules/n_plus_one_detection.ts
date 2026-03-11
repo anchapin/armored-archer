@@ -31,6 +31,7 @@
 
 import { Counter, Histogram, Gauge, Registry } from 'prom-client';
 import { Runtime } from '../types/nakama';
+import { logger as appLogger } from '../config/logger';
 
 // --- Configuration ---
 
@@ -190,8 +191,8 @@ function recordQueryMetrics(
 
   // Log slow queries
   if (nPlusOneConfig.logEnabled && durationMs > nPlusOneConfig.slowQueryThresholdMs) {
-    console.log(
-      `[N+1] Slow query detected: ${operationName} (${queryType}) took ${durationMs.toFixed(2)}ms`
+    appLogger.info(
+      `Slow query detected: ${operationName} (${queryType}) took ${durationMs.toFixed(2)}ms`
     );
   }
 }
@@ -329,12 +330,8 @@ export function stopOperationTracking(
     warnings.push(...nPlusOneResult.warnings);
 
     if (nPlusOneConfig.logEnabled) {
-      const logMessage = `[N+1] ${severity.toUpperCase()}: ${operationName} - ${nPlusOneResult.summary}`;
-      if (logger) {
-        logger.warn(logMessage);
-      } else {
-        console.warn(logMessage);
-      }
+      const logMessage = `N+1 ${severity.toUpperCase()}: ${operationName} - ${nPlusOneResult.summary}`;
+      appLogger.warn(logMessage);
     }
 
     // Emit metrics
@@ -598,8 +595,9 @@ export function initializeNPlusOneDetection(
     );
   }
 
-  console.log(
-    `[N+1] Detection initialized - Enabled: ${nPlusOneConfig.enabled}, Threshold: ${nPlusOneConfig.threshold}`
+  // Also log using the app logger
+  appLogger.info(
+    `Detection initialized - Enabled: ${nPlusOneConfig.enabled}, Threshold: ${nPlusOneConfig.threshold}`
   );
 }
 

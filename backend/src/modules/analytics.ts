@@ -4,6 +4,7 @@
  */
 
 import { config } from '../config';
+import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { withCircuitBreaker, getAllCircuitInfo } from '../utils/circuitBreaker';
 import {
@@ -256,12 +257,12 @@ async function forwardToMixpanel(event: AnalyticsEvent): Promise<void> {
       });
 
       if (!response.ok) {
-        console.error(`[Analytics] Mixpanel forward failed: ${response.status}`);
+        logger.error(`Mixpanel forward failed: ${response.status}`);
       }
     },
     // Fallback: silently drop analytics if circuit is open (analytics are non-critical)
     async () => {
-      console.warn('[Analytics] Mixpanel circuit open - dropping event');
+      logger.warn('Mixpanel circuit open - dropping event');
     }
   );
 }
@@ -300,12 +301,12 @@ async function forwardToAmplitude(event: AnalyticsEvent): Promise<void> {
       });
 
       if (!response.ok) {
-        console.error(`[Analytics] Amplitude forward failed: ${response.status}`);
+        logger.error(`Amplitude forward failed: ${response.status}`);
       }
     },
     // Fallback: silently drop analytics if circuit is open (analytics are non-critical)
     async () => {
-      console.warn('[Analytics] Amplitude circuit open - dropping event');
+      logger.warn('Amplitude circuit open - dropping event');
     }
   );
 }
@@ -342,12 +343,12 @@ async function forwardToSegment(event: AnalyticsEvent): Promise<void> {
       });
 
       if (!response.ok) {
-        console.error(`[Analytics] Segment forward failed: ${response.status}`);
+        logger.error(`Segment forward failed: ${response.status}`);
       }
     },
     // Fallback: silently drop analytics if circuit is open (analytics are non-critical)
     async () => {
-      console.warn('[Analytics] Segment circuit open - dropping event');
+      logger.warn('Segment circuit open - dropping event');
     }
   );
 }
@@ -387,12 +388,12 @@ async function forwardToCustomEndpoint(event: AnalyticsEvent): Promise<void> {
       });
 
       if (!response.ok) {
-        console.error(`[Analytics] Custom endpoint forward failed: ${response.status}`);
+        logger.error(`Custom endpoint forward failed: ${response.status}`);
       }
     },
     // Fallback: silently drop analytics if circuit is open (analytics are non-critical)
     async () => {
-      console.warn('[Analytics] Custom endpoint circuit open - dropping event');
+      logger.warn('Custom endpoint circuit open - dropping event');
     }
   );
 }

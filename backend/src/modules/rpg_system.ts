@@ -11,6 +11,7 @@ import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { getPlayerStatsWithCache } from '../utils/player-data-helpers';
 
 /**
  * Player statistics data structure.
