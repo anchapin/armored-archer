@@ -3,7 +3,7 @@
  * This module extracts common patterns for async operations with OpenTelemetry spans.
  */
 
-import { Span, SpanStatusCode, trace, context } from '@opentelemetry/api';
+import { Span, SpanStatusCode, trace } from '@opentelemetry/api';
 import { config } from '../config';
 
 /**
@@ -68,11 +68,7 @@ export async function withSpanAsync<T>(
  * @param options - Optional span configuration
  * @returns The result of the function
  */
-export function withSpanSync<T>(
-  name: string,
-  fn: (span: Span) => T,
-  options?: WithSpanOptions
-): T {
+export function withSpanSync<T>(name: string, fn: (span: Span) => T, options?: WithSpanOptions): T {
   const tracer = getTracingTracer();
   const span = tracer.startSpan(name, {
     kind: options?.kind,

@@ -38,10 +38,7 @@ export interface StorageWriteOptions {
 /**
  * Read player stats from storage with error handling
  */
-export function readPlayerStats(
-  nk: Runtime.Nakama,
-  userId: string
-): Runtime.StorageObject[] {
+export function readPlayerStats(nk: Runtime.Nakama, userId: string): Runtime.StorageObject[] {
   return nk.storageRead([
     {
       collection: STORAGE_COLLECTIONS.PLAYER_STATS,
@@ -154,10 +151,7 @@ export function batchStorageRead(
 /**
  * Batch storage write
  */
-export function batchStorageWrite(
-  nk: Runtime.Nakama,
-  writes: StorageWriteOptions[]
-): void {
+export function batchStorageWrite(nk: Runtime.Nakama, writes: StorageWriteOptions[]): void {
   if (writes.length === 0) {
     return;
   }

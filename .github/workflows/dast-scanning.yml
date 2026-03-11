@@ -1,0 +1,34 @@
+name: DAST Security Scan
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly on Sunday at 2 AM
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+
+jobs:
+  zap-scan:
+    name: OWASP ZAP Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.9.0
+        with:
+          target: 'https://staging.armored-archer.example.com'
+      
+      - name: Run OWASP ZAP Full Scan
+        if: github.ref == 'refs/heads/main'
+        uses: zaproxy/action-full-scan@v0.9.0
+        with:
+          target: 'https://armored-archer.example.com'
+      
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap_report.html
+          retention-days: 30
