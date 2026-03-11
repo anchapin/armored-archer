@@ -88,9 +88,8 @@ export function readPlayerData<T>(
  * This is a simplified version that returns the raw value.
  *
  * @param nk - Nakama server interface
- * @param ctx - Nakama runtime context
- * @param collection - Storage collection name
  * @param userId - User ID for the storage key
+ * @param collection - Storage collection name
  * @returns The storage objects array (empty if not found)
  */
 export function readPlayerStorage(
@@ -127,7 +126,7 @@ export function readPlayerDataWithCache<T>(
   cacheManager: { get: <T>(name: string, key: string) => T | undefined; set: (name: string, key: string, value: string) => void } | null | undefined,
   cacheName: string,
   parseFn: (value: unknown) => T | null,
-  ttlSeconds: number = 60
+  _ttlSeconds: number = 60
 ): StorageReadResult<T> {
   const cacheKey = ctx.userId;
 
