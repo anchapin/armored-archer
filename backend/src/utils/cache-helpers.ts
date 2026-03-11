@@ -3,8 +3,6 @@
  * This module extracts common patterns for cache management.
  */
 
-import { CacheValueType } from '../types/shared';
-
 /**
  * Cache operation types for logging
  */
@@ -14,9 +12,9 @@ export type CacheOperation = 'hit' | 'miss' | 'set' | 'delete' | 'clear' | 'dest
  * Log cache operation for debugging and metrics
  */
 export function logCacheOperation(
-  operation: CacheOperation,
-  cacheName: string,
-  key: string
+  _operation: CacheOperation,
+  _cacheName: string,
+  _key: string
 ): void {
   // This is a shared implementation - actual logging is done by CacheManager
   // which has access to the logger
