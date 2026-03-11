@@ -1,10 +1,32 @@
 import { logAudit } from '../audit';
 
+// Mock config and logger
+jest.mock('../../config', () => ({
+  config: {
+    logger: {
+      level: 'info',
+      format: 'json',
+      output: 'stdout',
+      scrubLogs: false,
+    },
+  },
+}));
+
+jest.mock('../../config/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 describe('logAudit', () => {
   let mockNk: any;
   let mockStorageWrite: jest.Mock;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     mockStorageWrite = jest.fn().mockReturnValue({});
     mockNk = { storageWrite: mockStorageWrite };
   });
@@ -43,15 +65,15 @@ describe('logAudit', () => {
   });
 
   it('handles storageWrite failure gracefully', () => {
+    // Import the logger after mocks are set up
+    const { logger } = require('../../config/logger');
+    
     mockNk.storageWrite = jest.fn(() => {
       throw new Error('DB error');
     });
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     expect(() => logAudit(mockNk, 'user', null, 'test', 'res', {}, 'success')).not.toThrow();
-    expect(consoleSpy).toHaveBeenCalledWith('Failed to write audit log:', expect.any(Error));
-
-    consoleSpy.mockRestore();
+    expect(logger.error).toHaveBeenCalledWith('Failed to write audit log:', expect.any(Error));
   });
 
   it('generates unique keys for each log entry', () => {
