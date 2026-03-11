@@ -332,6 +332,37 @@ function generateGearStats(type: string, rarity: string, logger: Runtime.Logger)
 }
 
 /**
+ * Applies modifiers to gear stats.
+ *
+ * @param stats - Array of gear stats
+ * @param modifiers - Array of gear modifiers
+ * @returns Modified gear stats with base_value preserved
+ */
+function applyModifiersToGearStats(stats: GearStat[], modifiers: GearModifier[]): GearStat[] {
+  return stats.map((stat) => {
+    // Find all modifiers that affect this stat
+    const matchingModifiers = modifiers.filter((mod) => mod.stat === stat.name);
+
+    if (matchingModifiers.length === 0) {
+      return stat;
+    }
+
+    // Calculate total modifier value (sum of all modifier values)
+    const totalModifierValue = matchingModifiers.reduce((sum, mod) => {
+      // Use the actual rolled value from the modifier
+      const modifierValue = mod.value_range[0];
+      return sum + modifierValue;
+    }, 0);
+
+    // Apply modifier to the stat value
+    return {
+      ...stat,
+      value: stat.value + totalModifierValue,
+    };
+  });
+}
+
+/**
  * Generates gear modifiers based on rarity and unlocked pools.
  *
  * @param rarity - Rarity of the gear
@@ -396,13 +427,22 @@ function generateGearItem(
   const type = getRandomItem(definitions.gearTypes);
   const name = getGearName(type, rarity, logger);
 
+  // Generate modifiers first so they can be applied to stats
+  const modifiers = generateModifiers(rarity, unlockedPools, logger);
+
+  // Generate base stats
+  const stats = generateGearStats(type, rarity, logger);
+
+  // Apply modifiers to stats
+  const finalStats = applyModifiersToGearStats(stats, modifiers);
+
   const gear: GearItem = {
     id: generateGearId(),
     name: name,
     rarity: rarity,
     type: type,
-    stats: generateGearStats(type, rarity, logger),
-    modifiers: generateModifiers(rarity, unlockedPools, logger),
+    stats: finalStats,
+    modifiers: modifiers,
     level: 1,
     timestamp: Date.now(),
   };
