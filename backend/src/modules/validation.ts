@@ -1,4 +1,4 @@
-import {  
+import {
   object,
   number,
   string,
@@ -23,9 +23,6 @@ import {
 function createEnum<T extends string>(values: readonly T[]): ReturnType<typeof enumType> {
   return enumType(values as any);
 }
-
-// Use any for schema type to avoid complex TypeScript typing
-type SchemaType = any;
 
 export const ValibotSchemas = {
   health_check: object({}),
@@ -62,12 +59,14 @@ export const ValibotSchemas = {
     modifier_id: pipe(string(), minLength(1), maxLength(100)),
   }),
 
-  list_matches: optional(object({
-    match_type: optional(createEnum(['ranked', 'casual'])),
-    min_rank: optional(pipe(number(), integer(), minValue(1))),
-    max_rank: optional(pipe(number(), integer(), minValue(1))),
-    limit: optional(pipe(number(), integer(), minValue(1), maxValue(100))),
-  })),
+  list_matches: optional(
+    object({
+      match_type: optional(createEnum(['ranked', 'casual'])),
+      min_rank: optional(pipe(number(), integer(), minValue(1))),
+      max_rank: optional(pipe(number(), integer(), minValue(1))),
+      limit: optional(pipe(number(), integer(), minValue(1), maxValue(100))),
+    })
+  ),
 
   create_match: object({
     match_type: createEnum(['ranked', 'casual']),
@@ -99,9 +98,11 @@ export const ValibotSchemas = {
 
   get_season_info: object({}),
 
-  get_leaderboard: optional(object({
-    limit: optional(pipe(number(), integer(), minValue(1), maxValue(100))),
-  })),
+  get_leaderboard: optional(
+    object({
+      limit: optional(pipe(number(), integer(), minValue(1), maxValue(100))),
+    })
+  ),
 
   update_rank: object({
     match_id: pipe(string(), minLength(1), maxLength(100)),
@@ -123,7 +124,14 @@ export const ValibotSchemas = {
 
   report_player: object({
     reported_user_id: pipe(string(), minLength(1), maxLength(100)),
-    reason: createEnum(['win_trading', 'match_manipulation', 'suspicious_win_rate', 'harassment', 'exploiting_bugs', 'other']),
+    reason: createEnum([
+      'win_trading',
+      'match_manipulation',
+      'suspicious_win_rate',
+      'harassment',
+      'exploiting_bugs',
+      'other',
+    ]),
     match_id: optional(pipe(string(), minLength(1), maxLength(100))),
     additional_info: optional(pipe(string(), maxLength(500))),
   }),
@@ -135,7 +143,11 @@ export const ValibotSchemas = {
   end_season: object({}),
 
   validate_purchase: object({
-    product_id: createEnum(['com.armoredarcher.gems.small', 'com.armoredarcher.gems.medium', 'com.armoredarcher.gems.large']),
+    product_id: createEnum([
+      'com.armoredarcher.gems.small',
+      'com.armoredarcher.gems.medium',
+      'com.armoredarcher.gems.large',
+    ]),
     platform: createEnum(['ios', 'android']),
     transaction_receipt: pipe(string(), minLength(1), maxLength(100000)),
   }),
@@ -189,22 +201,24 @@ export const ValibotSchemas = {
     name: pipe(string(), minLength(1), maxLength(100)),
     description: pipe(string(), maxLength(500)),
     phases: pipe(
-      array(object({
-        phase: createEnum(['disabled', 'canary', 'gradual', 'full']),
-        percentage: pipe(number(), integer(), minValue(0), maxValue(100)),
-        durationMinutes: pipe(number(), integer(), minValue(0)),
-        minHealthPercent: pipe(number(), minValue(0), maxValue(100)),
-        maxErrorRatePercent: pipe(number(), minValue(0), maxValue(100)),
-        maxLatencyMs: pipe(number(), minValue(0)),
-        sampleSize: pipe(number(), integer(), minValue(0)),
-        autoPromote: boolean(),
-        rollbackCriteria: object({
-          errorRateThreshold: pipe(number(), minValue(0), maxValue(100)),
-          latencyThreshold: pipe(number(), minValue(0)),
-          healthCheckFails: pipe(number(), integer(), minValue(0)),
-          customMetrics: optional(record(string(), number())),
-        }),
-      })),
+      array(
+        object({
+          phase: createEnum(['disabled', 'canary', 'gradual', 'full']),
+          percentage: pipe(number(), integer(), minValue(0), maxValue(100)),
+          durationMinutes: pipe(number(), integer(), minValue(0)),
+          minHealthPercent: pipe(number(), minValue(0), maxValue(100)),
+          maxErrorRatePercent: pipe(number(), minValue(0), maxValue(100)),
+          maxLatencyMs: pipe(number(), minValue(0)),
+          sampleSize: pipe(number(), integer(), minValue(0)),
+          autoPromote: boolean(),
+          rollbackCriteria: object({
+            errorRateThreshold: pipe(number(), minValue(0), maxValue(100)),
+            latencyThreshold: pipe(number(), minValue(0)),
+            healthCheckFails: pipe(number(), integer(), minValue(0)),
+            customMetrics: optional(record(string(), number())),
+          }),
+        })
+      ),
       minLength(1)
     ),
   }),
@@ -283,7 +297,27 @@ export const ValibotSchemas = {
 
   pii_scan: object({
     text: pipe(string(), minLength(1), maxLength(100000)),
-    types: optional(array(createEnum(['email', 'phone', 'ssn', 'credit_card', 'ip_address', 'device_id', 'user_id', 'username', 'full_name', 'address', 'date_of_birth', 'geolocation', 'password', 'auth_token', 'session_id']))),
+    types: optional(
+      array(
+        createEnum([
+          'email',
+          'phone',
+          'ssn',
+          'credit_card',
+          'ip_address',
+          'device_id',
+          'user_id',
+          'username',
+          'full_name',
+          'address',
+          'date_of_birth',
+          'geolocation',
+          'password',
+          'auth_token',
+          'session_id',
+        ])
+      )
+    ),
   }),
 
   classify_data: object({
@@ -313,12 +347,15 @@ export function validatePayload<T = any>(
     } else {
       parsed = JSON.parse(payload);
     }
-    
+
     const result = safeParse(schema, parsed);
 
     if (!result.success) {
       const errorMessages = result.issues
-        .map((issue: any) => `${issue.path?.map((p: any) => p.key).join('.') || 'root'}: ${issue.message}`)
+        .map(
+          (issue: any) =>
+            `${issue.path?.map((p: any) => p.key).join('.') || 'root'}: ${issue.message}`
+        )
         .join(', ');
       return { success: false, error: `Validation failed for ${rpcName}: ${errorMessages}` };
     }
