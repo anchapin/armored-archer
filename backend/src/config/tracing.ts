@@ -20,8 +20,8 @@ import {
 } from '@opentelemetry/semantic-conventions';
 
 import { config } from '../config';
-import { logger } from './logger';
 import { withSpanAsync, withSpanSync, setNakamaContextAttributes } from '../utils/tracing-helpers';
+import { logger } from './logger';
 
 /**
  * Configuration for distributed tracing.
