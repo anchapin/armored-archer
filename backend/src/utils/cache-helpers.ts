@@ -72,3 +72,120 @@ export function getRelatedCacheKeys(userId: string): string[] {
     getPlayerCacheKey(userId, CACHE_KEYS.LEADERBOARD),
   ];
 }
+
+/**
+ * Logger interface for cache operations
+ */
+export interface CacheLogger {
+  error: (message: string, metadata?: Record<string, unknown>) => void;
+  info?: (message: string, metadata?: Record<string, unknown>) => void;
+  debug?: (message: string, metadata?: Record<string, unknown>) => void;
+}
+
+/**
+ * Standard cache not found error message
+ */
+export const CACHE_ERROR_MESSAGES = {
+  NOT_FOUND: 'Cache not found',
+} as const;
+
+/**
+ * Get a cache entry with consistent error handling and metrics logging.
+ * This helper reduces duplication in cache get operations.
+ *
+ * @param cache - The cache Map
+ * @param metrics - The metrics tracker
+ * @param logger - Optional logger (can be null, undefined, or a logger)
+ * @param cacheName - Name of the cache for logging
+ * @param key - Cache key
+ * @returns The cached value or undefined
+ */
+export function getCacheEntry<T>(
+  cache: Map<string, T> | undefined,
+  metrics: { hits: number; misses: number } | undefined,
+  logger: CacheLogger | null | undefined,
+  cacheName: string,
+  key: string
+): T | undefined {
+  if (!cache || !metrics) {
+    if (logger) {
+      logger.error(CACHE_ERROR_MESSAGES.NOT_FOUND, {
+        cacheName,
+        operation: 'cache_not_found',
+      });
+    }
+    return undefined;
+  }
+
+  const value = cache.get(key);
+
+  if (value !== undefined) {
+    metrics.hits++;
+    logCacheOperation('hit', cacheName, key);
+  } else {
+    metrics.misses++;
+    logCacheOperation('miss', cacheName, key);
+  }
+
+  return value;
+}
+
+/**
+ * Set a cache entry with consistent error handling.
+ * This helper reduces duplication in cache set operations.
+ *
+ * @param cache - The cache Map
+ * @param logger - Optional logger (can be null, undefined, or a logger)
+ * @param cacheName - Name of the cache for logging
+ * @param key - Cache key
+ * @param value - Value to cache
+ */
+export function setCacheEntry(
+  cache: Map<string, unknown> | undefined,
+  logger: CacheLogger | null | undefined,
+  cacheName: string,
+  key: string,
+  value: unknown
+): void {
+  if (!cache) {
+    if (logger) {
+      logger.error(CACHE_ERROR_MESSAGES.NOT_FOUND, {
+        cacheName,
+        operation: 'cache_not_found',
+      });
+    }
+    return;
+  }
+
+  cache.set(key, value);
+  logCacheOperation('set', cacheName, key);
+}
+
+/**
+ * Delete a cache entry with consistent error handling.
+ * This helper reduces duplication in cache delete operations.
+ *
+ * @param cache - The cache Map
+ * @param logger - Optional logger (can be null, undefined, or a logger)
+ * @param cacheName - Name of the cache for logging
+ * @param key - Cache key to delete
+ */
+export function deleteCacheEntry(
+  cache: Map<string, unknown> | undefined,
+  logger: CacheLogger | null | undefined,
+  cacheName: string,
+  key: string
+): void {
+  if (!cache) {
+    if (logger) {
+      logger.error(CACHE_ERROR_MESSAGES.NOT_FOUND, {
+        cacheName,
+        operation: 'cache_not_found',
+      });
+    }
+    return;
+  }
+
+  cache.delete(key);
+  logCacheOperation('delete', cacheName, key);
+}

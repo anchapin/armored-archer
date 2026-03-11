@@ -9,6 +9,7 @@ import { getCacheManager } from '../utils/cache';
 import { submitPlayerReport, getReportsForUser } from './anti_cheat';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { getPlayerStatsWithCache } from '../utils/player-data-helpers';
 
 /**
  * Helper to get structured logger for this module
@@ -124,35 +125,11 @@ export function rpcGetPlayerStats(
   }
 
   const cacheManager = getCacheManager(logger);
-  const cachedStats = cacheManager.get<string>('player_stats', ctx.userId);
-
-  if (cachedStats !== undefined) {
-    return cachedStats;
-  }
-
-  const objects = nk.storageRead([
-    {
-      collection: 'player_stats',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
-
-  if (objects.length === 0) {
-    return JSON.stringify({
-      error: 'Player stats not found',
-    });
-  }
-
-  const stats = objects[0].value ?? '{}';
-  cacheManager.set('player_stats', ctx.userId, stats);
-
-  return stats;
+  return getPlayerStatsWithCache(nk, ctx, cacheManager);
 }
 
 /**
  * Registers the report player RPC endpoint.
->>>>>>> origin/main
  *
  * @param initializer - Nakama runtime initializer
  */

@@ -134,17 +134,76 @@ function initializeMetrics(registry: Registry): void {
 // --- Query Tracking Functions ---
 
 /**
+ * Options for query tracking functions
+ */
+export interface QueryTrackingOptions {
+  collection?: string;
+  key?: string;
+  userId?: string;
+}
+
+/**
+ * Records query execution metrics and updates internal state.
+ * This is the shared implementation for both sync and async query tracking.
+ *
+ * @param operationName - Name of the operation
+ * @param queryType - Type of query (read, write, etc.)
+ * @param durationMs - Duration of the query in milliseconds
+ * @param success - Whether the query succeeded
+ * @param options - Additional options (collection, key, userId)
+ */
+function recordQueryMetrics(
+  operationName: string,
+  queryType: QueryRecord['queryType'],
+  durationMs: number,
+  success: boolean,
+  options?: QueryTrackingOptions
+): void {
+  // Record the query
+  const record: QueryRecord = {
+    operation: operationName,
+    queryType,
+    timestamp: Date.now(),
+    durationMs,
+    collection: options?.collection,
+    key: options?.key,
+    userId: options?.userId,
+    success,
+  };
+
+  // Add to current operation context
+  const context = operationContexts.get(operationName);
+  if (context && context.isActive) {
+    context.queries.push(record);
+  }
+
+  // Update stats
+  updateQueryStats(operationName, queryType, durationMs);
+
+  // Emit metrics
+  if (nPlusOneConfig.metricsEnabled && queryDurationHistogram) {
+    queryDurationHistogram.observe(
+      { operation: operationName, query_type: queryType },
+      durationMs / 1000
+    );
+  }
+
+  // Log slow queries
+  if (nPlusOneConfig.logEnabled && durationMs > nPlusOneConfig.slowQueryThresholdMs) {
+    console.log(
+      `[N+1] Slow query detected: ${operationName} (${queryType}) took ${durationMs.toFixed(2)}ms`
+    );
+  }
+}
+
+/**
  * Track a single database query operation
  */
 export function trackQuery<T>(
   operationName: string,
   queryType: QueryRecord['queryType'],
   fn: () => T,
-  options?: {
-    collection?: string;
-    key?: string;
-    userId?: string;
-  }
+  options?: QueryTrackingOptions
 ): T {
   if (!nPlusOneConfig.enabled) {
     return fn();
@@ -161,42 +220,7 @@ export function trackQuery<T>(
   } finally {
     const durationMs = performance.now() - startTime;
     globalQueryCount++;
-
-    // Record the query
-    const record: QueryRecord = {
-      operation: operationName,
-      queryType,
-      timestamp: Date.now(),
-      durationMs,
-      collection: options?.collection,
-      key: options?.key,
-      userId: options?.userId,
-      success,
-    };
-
-    // Add to current operation context
-    const context = operationContexts.get(operationName);
-    if (context && context.isActive) {
-      context.queries.push(record);
-    }
-
-    // Update stats
-    updateQueryStats(operationName, queryType, durationMs);
-
-    // Emit metrics
-    if (nPlusOneConfig.metricsEnabled && queryDurationHistogram) {
-      queryDurationHistogram.observe(
-        { operation: operationName, query_type: queryType },
-        durationMs / 1000
-      );
-    }
-
-    // Log slow queries
-    if (nPlusOneConfig.logEnabled && durationMs > nPlusOneConfig.slowQueryThresholdMs) {
-      console.log(
-        `[N+1] Slow query detected: ${operationName} (${queryType}) took ${durationMs.toFixed(2)}ms`
-      );
-    }
+    recordQueryMetrics(operationName, queryType, durationMs, success, options);
   }
 }
 
@@ -207,11 +231,7 @@ export async function trackQueryAsync<T>(
   operationName: string,
   queryType: QueryRecord['queryType'],
   fn: () => Promise<T>,
-  options?: {
-    collection?: string;
-    key?: string;
-    userId?: string;
-  }
+  options?: QueryTrackingOptions
 ): Promise<T> {
   if (!nPlusOneConfig.enabled) {
     return fn();
@@ -228,42 +248,7 @@ export async function trackQueryAsync<T>(
   } finally {
     const durationMs = performance.now() - startTime;
     globalQueryCount++;
-
-    // Record the query
-    const record: QueryRecord = {
-      operation: operationName,
-      queryType,
-      timestamp: Date.now(),
-      durationMs,
-      collection: options?.collection,
-      key: options?.key,
-      userId: options?.userId,
-      success,
-    };
-
-    // Add to current operation context
-    const context = operationContexts.get(operationName);
-    if (context && context.isActive) {
-      context.queries.push(record);
-    }
-
-    // Update stats
-    updateQueryStats(operationName, queryType, durationMs);
-
-    // Emit metrics
-    if (nPlusOneConfig.metricsEnabled && queryDurationHistogram) {
-      queryDurationHistogram.observe(
-        { operation: operationName, query_type: queryType },
-        durationMs / 1000
-      );
-    }
-
-    // Log slow queries
-    if (nPlusOneConfig.logEnabled && durationMs > nPlusOneConfig.slowQueryThresholdMs) {
-      console.log(
-        `[N+1] Slow query detected: ${operationName} (${queryType}) took ${durationMs.toFixed(2)}ms`
-      );
-    }
+    recordQueryMetrics(operationName, queryType, durationMs, success, options);
   }
 }
 
