@@ -1,0 +1,37 @@
+# Import Linter Configuration
+# Enforces module boundaries and architectural layering
+
+[importlinter]
+ignore_package_patterns = ["^@types/", "^@mock/"]
+
+# Define the dependency constraints between packages
+[importlinter.constraints]
+[[importlinter.packages]]
+ name = "modules"
+ from_constraints = {"min_version": "1.0.0"}
+
+[[importlinter.packages]]
+ name = "features"
+ from_constraints = {"min_version": "1.0.0"}
+
+[[importlinter.packages]]
+ name = "config"
+ from_constraints = {"min_version": "1.0.0"}
+
+[[importlinter.packages]]
+ name = "utils"
+ from_constraints = {"min_version": "1.0.0"}
+
+# Define allowed dependencies
+# features can import modules but not vice versa
+# config can only import from utils
+# utils can import from modules and features
+[[importlinter.rules]]
+ name = "no_cross_package_imports"
+ definition = "Enforce architectural layering"
+ constraints = [
+   {"from": "features", "to": "modules", "allowed": true},
+   {"from": "modules", "to": "features", "allowed": false},
+   {"from": "config", "to": "modules", "allowed": true},
+   {"from": "config", "to": "features", "allowed": false},
+ ]

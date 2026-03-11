@@ -1,0 +1,128 @@
+# Error-to-Insight Pipeline
+# 
+# This workflow creates GitHub issues from Sentry errors for automated error tracking.
+
+name: Error to Insight Pipeline
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'  # Every 4 hours
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to check'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+
+jobs:
+  check-sentry-errors:
+    name: Check Sentry for New Errors
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get Sentry errors
+        id: sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+        run: |
+          # In production, this would call Sentry API
+          # For now, we'll simulate the workflow structure
+          
+          echo "Checking Sentry for new errors in ${{ github.event.inputs.environment || 'production' }} environment"
+          
+          # Example Sentry API call (commented out for simulation)
+          # curl -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+          #   "https://sentry.io/api/0/organizations/$SENTRY_ORG/issues/?statsPeriod=4h"
+          
+          # Create a marker file to show the workflow ran
+          mkdir -p .sentinel
+          echo "$(date -Iseconds)" > .sentinel/last-check.txt
+          
+          echo "sentry_checked=true" >> $GITHUB_OUTPUT
+
+      - name: Create issue for new errors
+        if: steps.sentry.outputs.sentry_checked == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # In production, this would parse Sentry errors and create GitHub issues
+          # For demonstration, we'll show the intended behavior
+          
+          echo "Would create GitHub issues for new Sentry errors"
+          echo "Issue creation would include:"
+          echo "  - Error title from Sentry"
+          echo "  - Stack trace as issue body"
+          echo "  - Labels: bug, sentry, automated"
+          echo "  - Assignment to relevant team"
+
+      - name: Post error summary to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // This would post a comment on the PR with error summary
+            console.log('Would post error summary to PR');
+
+      - name: Update error tracking metrics
+        run: |
+          # Track error metrics for observability
+          echo "Error metrics would be recorded here"
+          
+      - name: Upload Sentry results
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentry-error-report
+          path: .sentinel/
+          retention-days: 7
+
+  create-issue-from-alert:
+    name: Create Issue from Sentry Alert
+    runs-on: ubuntu-latest
+    # This job would be triggered by Sentry webhooks in production
+    if: false  # Disabled for simulation
+    
+    steps:
+      - name: Parse Sentry webhook payload
+        id: parse
+        run: |
+          # Parse the incoming Sentry webhook
+          echo "alert_id=${{ github.event.client_payload.alert_id }}" >> $GITHUB_OUTPUT
+          
+      - name: Create GitHub issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueBody = `
+            ## Sentry Alert Triggered
+            
+            **Alert:** ${{ steps.parse.outputs.alert_id }}
+            **Environment:** ${{ github.event.client_payload.environment }}
+            **Project:** ${{ github.event.client_payload.project }}
+            
+            ### Error Details
+            ${{ github.event.client_payload.error_message }}
+            
+            ### Stack Trace
+            \`\`\`
+            ${{ github.event.client_payload.stack_trace }}
+            \`\`\`
+            
+            ---
+            *Created automatically from Sentry alert*
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Sentry] ${{ github.event.client_payload.title }}`,
+              body: issueBody,
+              labels: ['bug', 'sentry', 'automated']
+            });

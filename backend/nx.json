@@ -1,0 +1,36 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build"]
+    },
+    "lint": {
+      "inputs": ["default", "{workspaceRoot}/.eslintrc.modules.json"]
+    }
+  },
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*"],
+    "production": ["!{projectRoot}/**/*.spec.ts", "!{projectRoot}/**/*.test.ts"]
+  },
+  "plugins": [
+    {
+      "plugin": "@nx/typescript",
+      "options": {
+        "typecheck": {
+          "enabled": true
+        }
+      }
+    }
+  ],
+  "pluginsDirectory": "node_modules",
+  "modules": {
+    "strict": true,
+    "allowedDependencies": {
+      "modules": [],
+      "features": ["modules"],
+      "config": ["modules", "features"],
+      "utils": ["modules", "features", "config"],
+      "types": []
+    }
+  }
+}
