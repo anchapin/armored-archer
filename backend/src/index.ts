@@ -58,6 +58,10 @@ import { initializeTracing } from './config/tracing';
 import { logger, logSystemEvent } from './config/logger';
 import { createStructuredLogger, StructuredLogger } from './config/structuredLogger';
 import { registerErrorInsightRpcs, initializeErrorInsightsPipeline } from './modules/error_insight_pipeline';
+import {
+  registerRpcCompleteStage,
+  registerRpcGetCompletedStages,
+} from './modules/stage_tracking';
 
 // Global structured logger instance for use by all modules
 let globalStructuredLogger: StructuredLogger | null = null;
@@ -319,6 +323,8 @@ const InitModule: InitModule = function (
     registerRpcUnlockModifierPool(initializer);
     registerRpcReportPlayer(initializer);
     registerRpcGetPlayerReports(initializer);
+    registerRpcCompleteStage(initializer);
+    registerRpcGetCompletedStages(initializer);
   }
 
   logSystemEvent('info', 'Armored Archer server module initialized');

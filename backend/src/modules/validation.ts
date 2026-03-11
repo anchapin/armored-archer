@@ -29,6 +29,22 @@ export const ValibotSchemas = {
 
   get_player_stats: object({}),
 
+  // Stage completion schemas for PvE progression
+  complete_stage: object({
+    stage_id: pipe(string(), minLength(1), maxLength(100)),
+    stage_prefix: pipe(string(), minLength(1), maxLength(50)),
+    stars_earned: pipe(number(), integer(), minValue(0), maxValue(3)),
+    score: pipe(number(), integer(), minValue(0)),
+  }),
+
+  get_stage_completion: object({
+    stage_id: pipe(string(), minLength(1), maxLength(100)),
+  }),
+
+  get_all_stage_completions: object({
+    stage_prefix: optional(pipe(string(), minLength(1), maxLength(50))),
+  }),
+
   gain_xp: object({
     xp_amount: pipe(number(), integer(), minValue(1), maxValue(1000000)),
     source: createEnum(['pve', 'pvp']),
