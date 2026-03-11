@@ -1,5 +1,6 @@
 import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
-import { rpcGainXP, rpcAllocateStats, rpcGetPlayerStats, PlayerStats } from '../rpg_system';
+import { rpcGainXP, rpcAllocateStats, PlayerStats } from '../rpg_system';
+import { rpcGetPlayerStats } from '../player_rpc';
 import { Runtime } from '../../types/nakama';
 
 describe('rpg_system', () => {

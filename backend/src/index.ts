@@ -6,11 +6,11 @@ import {
   registerRpcHealthCheck,
   registerRpcReportPlayer,
   registerRpcGetPlayerReports,
+  registerRpcGetPlayerStats,
 } from './modules/player_rpc';
 import {
   registerRpcGainXP,
   registerRpcAllocateStats,
-  registerRpcGetPlayerStats,
 } from './modules/rpg_system';
 import {
   registerRpcListMatches,
