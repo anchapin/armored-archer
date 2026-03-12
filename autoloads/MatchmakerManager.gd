@@ -21,12 +21,17 @@ var available_matches: Array = []
 var player_rank: int = 0
 var current_match: Dictionary = {}
 
+# --- Punch Up Statistics ---
+var punch_up_wins: int = 0
+var punch_up_losses: int = 0
+
 # --- Signals ---
 signal matches_loaded(matches: Array, player_rank: int)
 signal match_created(match: Dictionary)
 signal match_accepted(match: Dictionary)
 signal rank_retrieved(rank: int)
 signal match_completed(match_result: Dictionary)
+signal punch_up_stats_updated(wins: int, losses: int, win_rate: float)
 
 # --- Network Reference ---
 @onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
@@ -205,6 +210,14 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 		elif my_user_id == loser_id:
 			player_rank = response.get("loser", {}).get("new_rank", player_rank)
 
+		# Update Punch Up statistics
+		if is_punch_up:
+			if my_user_id == winner_id:
+				punch_up_wins += 1
+			elif my_user_id == loser_id:
+				punch_up_losses += 1
+			_emit_punch_up_stats_updated()
+
 		# Clear current match
 		current_match = {}
 
@@ -242,3 +255,47 @@ func is_in_match() -> bool:
 		bool: True if in active match that hasn't completed
 	"""
 	return not current_match.is_empty() and current_match.get("status", "") != "completed"
+
+# --- Punch Up Statistics ---
+func _emit_punch_up_stats_updated() -> void:
+	"""Emits punch_up_stats_updated signal with current statistics."""
+	var win_rate: float = 0.0
+	var total: int = punch_up_wins + punch_up_losses
+	if total > 0:
+		win_rate = float(punch_up_wins) / float(total)
+	punch_up_stats_updated.emit(punch_up_wins, punch_up_losses, win_rate)
+
+func get_punch_up_wins() -> int:
+	"""Returns the number of Punch Up matches won.
+
+	Returns:
+		int: Number of Punch Up wins
+	"""
+	return punch_up_wins
+
+func get_punch_up_losses() -> int:
+	"""Returns the number of Punch Up matches lost.
+
+	Returns:
+		int: Number of Punch Up losses
+	"""
+	return punch_up_losses
+
+func get_punch_up_win_rate() -> float:
+	"""Returns the Punch Up win rate as a percentage (0.0 to 1.0).
+
+	Returns:
+		float: Win rate (0.0 to 1.0)
+	"""
+	var total: int = punch_up_wins + punch_up_losses
+	if total == 0:
+		return 0.0
+	return float(punch_up_wins) / float(total)
+
+func get_punch_up_total_matches() -> int:
+	"""Returns the total number of Punch Up matches played.
+
+	Returns:
+		int: Total Punch Up matches
+	"""
+	return punch_up_wins + punch_up_losses
