@@ -43,6 +43,10 @@ horizontal_alignment = 1
 layout_mode = 2
 text = "Play"
 
+[node name="LoadoutButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "Loadout"
+
 [node name="PvpButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
 layout_mode = 2
 text = "PvP"
