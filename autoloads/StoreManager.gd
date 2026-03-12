@@ -147,6 +147,21 @@ func get_gold() -> int:
 	"""
 	return current_gold
 
+func add_gems(amount: int, reason: String = "") -> void:
+	"""Adds gems to player's balance (for rewards, achievements, etc).
+
+	Parameters:
+		amount: Number of gems to add
+		reason: Reason for adding gems (for logging)
+	"""
+	if amount <= 0:
+		push_error("Invalid gem amount to add")
+		return
+	
+	current_gems += amount
+	emit_signal("currency_updated", current_gems, current_gold)
+	print("Added %d gems. Reason: %s. New balance: %d" % [amount, reason, current_gems])
+
 # --- Purchase Flow ---
 func purchase_product(product_id: String) -> void:
 	"""Initiates a purchase for the specified product.
