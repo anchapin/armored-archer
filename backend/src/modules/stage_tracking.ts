@@ -5,14 +5,13 @@
  */
 
 import { Runtime } from '../types/nakama';
-import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import {
   generateGearItem,
   calculateDropRate,
-  PlayerInventory,
   GearItem,
   getModifiersUnlockedByBoss,
+  getPlayerInventory,
 } from './gear_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -247,112 +246,32 @@ export function rpcCompleteStage(
   );
 
   try {
-    // Read existing stage completions from storage
-    const storageObjects = nk.storageRead([
-      {
-        collection: STAGE_COMPLETION_COLLECTION,
-        key: ctx.userId,
-        userId: ctx.userId,
-      },
-    ]);
+    // Read and process stage completion data
+    const completionResult = readAndProcessStageCompletion(
+      nk,
+      ctx.userId,
+      stage_id,
+      stage_prefix,
+      stars_earned,
+      score,
+      logger
+    );
 
-    let storageData: StageCompletionStorage = {
-      user_id: ctx.userId,
-      completions: {},
-    };
-
-    let isNewCompletion = true;
-    let previousBest: { stars_earned: number; score: number } | undefined;
-
-    // Parse existing data if it exists
-    if (storageObjects.length > 0 && storageObjects[0].value) {
-      try {
-        storageData = JSON.parse(storageObjects[0].value) as StageCompletionStorage;
-      } catch (e) {
-        logger.warn('Failed to parse stage completion storage, creating new: %s', String(e));
-      }
+    // Handle case where replay didn't improve
+    if (completionResult.noImprovement) {
+      return JSON.stringify({
+        success: true,
+        stage_id,
+        stars_earned: completionResult.existingCompletion!.stars_earned,
+        score: completionResult.existingCompletion!.score,
+        is_new_completion: false,
+        previous_best: completionResult.previousBest,
+        message: 'No improvement over previous completion',
+      });
     }
 
-    // Check for existing completion of this stage
-    const existingCompletion = storageData.completions[stage_id];
-
-    if (existingCompletion) {
-      isNewCompletion = false;
-      previousBest = {
-        stars_earned: existingCompletion.stars_earned,
-        score: existingCompletion.score,
-      };
-
-      // Only update if new completion is better (more stars or same stars with higher score)
-      if (
-        !isBetterCompletion(
-          stars_earned,
-          score,
-          existingCompletion.stars_earned,
-          existingCompletion.score
-        )
-      ) {
-        logger.info(
-          'Stage replay did not improve: stage=%s new_stars=%d existing_stars=%d new_score=%d existing_score=%d',
-          stage_id,
-          stars_earned,
-          existingCompletion.stars_earned,
-          score,
-          existingCompletion.score
-        );
-
-        return JSON.stringify({
-          success: true,
-          stage_id,
-          stars_earned: existingCompletion.stars_earned,
-          score: existingCompletion.score,
-          is_new_completion: false,
-          previous_best: previousBest,
-          message: 'No improvement over previous completion',
-        });
-      }
-
-      // Update existing completion
-      storageData.completions[stage_id] = updateCompletionRecord(
-        stage_id,
-        stage_prefix,
-        stars_earned,
-        score,
-        existingCompletion
-      );
-
-      logger.info(
-        'Updated stage completion: stage=%s stars=%d score=%d',
-        stage_id,
-        stars_earned,
-        score
-      );
-    } else {
-      // Create new completion
-      storageData.completions[stage_id] = createCompletionRecord(
-        stage_id,
-        stage_prefix,
-        stars_earned,
-        score
-      );
-
-      logger.info(
-        'Created new stage completion: stage=%s stars=%d score=%d',
-        stage_id,
-        stars_earned,
-        score
-      );
-    }
-
-    // Write updated completions to storage
-    nk.storageWrite([
-      {
-        collection: STAGE_COMPLETION_COLLECTION,
-        key: ctx.userId,
-        userId: ctx.userId,
-        value: JSON.stringify(storageData),
-      },
-    ]);
+    const isNewCompletion = completionResult.isNewCompletion;
+    const previousBest = completionResult.previousBest;
 
     // Server-side loot generation (only if difficulty is provided)
     const lootResult: LootResult = { dropped: false, gear: null };
@@ -360,121 +279,12 @@ export function rpcCompleteStage(
     let unlockedModifierPools: string[] = [];
 
     if (request.difficulty) {
-      // Calculate drop rate server-side
-      dropRate = calculateDropRate(request.difficulty, request.boss_defeated || false);
-      const roll = Math.random();
-
-      logger.info(
-        'Loot roll for user %s: roll=%f, dropRate=%f, difficulty=%s, bossDefeated=%s',
-        ctx.userId,
-        roll,
-        dropRate,
-        request.difficulty,
-        request.boss_defeated
-      );
-
-      // Read or create player inventory
-      const inventoryObjects = nk.storageRead([
-        {
-          collection: 'player_inventory',
-          key: ctx.userId,
-          userId: ctx.userId,
-        },
-      ]);
-
-      let inventory: PlayerInventory;
-
-      if (inventoryObjects.length === 0) {
-        inventory = {
-          user_id: ctx.userId,
-          gear: [],
-          equipped_gear: {},
-          unlocked_modifier_pools: [],
-        };
-      } else {
-        const value = inventoryObjects[0].value;
-        if (value) {
-          const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
-          if (!parseResult.success || !parseResult.data) {
-            logger.error('Failed to parse inventory data');
-            inventory = {
-              user_id: ctx.userId,
-              gear: [],
-              equipped_gear: {},
-              unlocked_modifier_pools: [],
-            };
-          } else {
-            inventory = parseResult.data;
-          }
-        } else {
-          inventory = {
-            user_id: ctx.userId,
-            gear: [],
-            equipped_gear: {},
-            unlocked_modifier_pools: [],
-          };
-        }
-      }
-
-      // Unlock modifier pools when boss is defeated
-      if (request.boss_defeated && request.boss_id) {
-        const modifiersToUnlock = getModifiersUnlockedByBoss(request.boss_id);
-        for (const modifierId of modifiersToUnlock) {
-          if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
-            inventory.unlocked_modifier_pools.push(modifierId);
-            logger.info(
-              'Unlocked modifier pool %s for user %s after defeating boss %s',
-              modifierId,
-              ctx.userId,
-              request.boss_id
-            );
-          }
-        }
-      }
-
-      unlockedModifierPools = inventory.unlocked_modifier_pools;
-
-      // Roll for loot
-      if (roll < dropRate) {
-        const gear = generateGearItem(stage_id, inventory.unlocked_modifier_pools, logger);
-        inventory.gear.push(gear);
-
-        lootResult.dropped = true;
-        lootResult.gear = gear;
-
-        logger.info('Loot dropped for user %s: %s (%s)', ctx.userId, gear.name, gear.rarity);
-      }
-
-      // Save inventory with new gear (if any)
-      nk.storageWrite([
-        {
-          collection: 'player_inventory',
-          key: ctx.userId,
-          userId: ctx.userId,
-          value: JSON.stringify(inventory),
-        },
-      ]);
-
-      // Audit the loot drop
-      logAudit(
-        nk,
-        ctx.userId,
-        ctx.ipAddress ?? null,
-        'stage_complete_loot',
-        'stage_progression',
-        {
-          stage_id,
-          difficulty: request.difficulty,
-          boss_defeated: request.boss_defeated,
-          boss_id: request.boss_id ?? null,
-          loot_dropped: lootResult.dropped,
-          loot_gear_id: lootResult.gear?.id ?? null,
-          loot_gear_rarity: lootResult.gear?.rarity ?? null,
-          drop_rate_used: dropRate,
-          roll_value: roll,
-        },
-        'success'
-      );
+      // Process loot generation
+      const lootProcessingResult = processStageLoot(nk, ctx.userId, request, stage_id, logger);
+      lootResult.dropped = lootProcessingResult.lootResult.dropped;
+      lootResult.gear = lootProcessingResult.lootResult.gear;
+      dropRate = lootProcessingResult.dropRate;
+      unlockedModifierPools = lootProcessingResult.unlockedModifierPools;
     }
 
     // Log audit event
@@ -635,4 +445,248 @@ export function rpcGetCompletedStages(
       error_code: 'INTERNAL_ERROR',
     });
   }
+}
+
+/**
+ * Result of loot processing
+ */
+interface LootProcessingResult {
+  lootResult: { dropped: boolean; gear: GearItem | null };
+  dropRate: number;
+  unlockedModifierPools: string[];
+}
+
+/**
+ * Process stage completion loot generation
+ */
+function processStageLoot(
+  nk: Runtime.Nakama,
+  userId: string,
+  request: CompleteStageRequest,
+  stageId: string,
+  logger: Runtime.Logger
+): LootProcessingResult {
+  const lootResult: LootProcessingResult = {
+    lootResult: { dropped: false, gear: null },
+    dropRate: 0,
+    unlockedModifierPools: [],
+  };
+
+  // Calculate drop rate server-side
+  lootResult.dropRate = calculateDropRate(request.difficulty!, request.boss_defeated || false);
+  const roll = Math.random();
+
+  logger.info(
+    'Loot roll for user %s: roll=%f, dropRate=%f, difficulty=%s, bossDefeated=%s',
+    userId,
+    roll,
+    lootResult.dropRate,
+    request.difficulty,
+    request.boss_defeated
+  );
+
+  // Get player inventory using helper function
+  const inventory = getPlayerInventory(nk, userId, logger);
+
+  // Unlock modifier pools when boss is defeated
+  if (request.boss_defeated && request.boss_id) {
+    const modifiersToUnlock = getModifiersUnlockedByBoss(request.boss_id);
+    for (const modifierId of modifiersToUnlock) {
+      if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
+        inventory.unlocked_modifier_pools.push(modifierId);
+        logger.info(
+          'Unlocked modifier pool %s for user %s after defeating boss %s',
+          modifierId,
+          userId,
+          request.boss_id
+        );
+      }
+    }
+  }
+
+  lootResult.unlockedModifierPools = inventory.unlocked_modifier_pools;
+
+  // Roll for loot
+  if (roll < lootResult.dropRate) {
+    const gear = generateGearItem(stageId, inventory.unlocked_modifier_pools, logger);
+    inventory.gear.push(gear);
+
+    lootResult.lootResult.dropped = true;
+    lootResult.lootResult.gear = gear;
+
+    logger.info('Loot dropped for user %s: %s (%s)', userId, gear.name, gear.rarity);
+  }
+
+  // Save inventory with new gear (if any)
+  nk.storageWrite([
+    {
+      collection: 'player_inventory',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(inventory),
+    },
+  ]);
+
+  // Audit the loot drop
+  logAudit(
+    nk,
+    userId,
+    null,
+    'stage_complete_loot',
+    'stage_progression',
+    {
+      stage_id: stageId,
+      difficulty: request.difficulty,
+      boss_defeated: request.boss_defeated,
+      boss_id: request.boss_id ?? null,
+      loot_dropped: lootResult.lootResult.dropped,
+      loot_gear_id: lootResult.lootResult.gear?.id ?? null,
+      loot_gear_rarity: lootResult.lootResult.gear?.rarity ?? null,
+      drop_rate_used: lootResult.dropRate,
+      roll_value: roll,
+    },
+    'success'
+  );
+
+  return lootResult;
+}
+
+/**
+ * Result of reading and processing stage completion
+ */
+interface StageCompletionResult {
+  storageData: StageCompletionStorage;
+  isNewCompletion: boolean;
+  noImprovement: boolean;
+  previousBest: { stars_earned: number; score: number } | undefined;
+  existingCompletion:
+    | {
+        stage_id: string;
+        stage_prefix: string;
+        stars_earned: number;
+        score: number;
+        completed_at: string;
+        updated_at: string;
+      }
+    | undefined;
+}
+
+/**
+ * Read and process stage completion data from storage
+ */
+function readAndProcessStageCompletion(
+  nk: Runtime.Nakama,
+  userId: string,
+  stageId: string,
+  stagePrefix: string,
+  starsEarned: number,
+  score: number,
+  logger: Runtime.Logger
+): StageCompletionResult {
+  // Read existing stage completions from storage
+  const storageObjects = nk.storageRead([
+    {
+      collection: STAGE_COMPLETION_COLLECTION,
+      key: userId,
+      userId: userId,
+    },
+  ]);
+
+  let storageData: StageCompletionStorage = {
+    user_id: userId,
+    completions: {},
+  };
+
+  // Parse existing data if it exists
+  if (storageObjects.length > 0 && storageObjects[0].value) {
+    try {
+      storageData = JSON.parse(storageObjects[0].value) as StageCompletionStorage;
+    } catch (e) {
+      logger.warn('Failed to parse stage completion storage, creating new: %s', String(e));
+    }
+  }
+
+  // Check for existing completion of this stage
+  const existingCompletion = storageData.completions[stageId];
+  const result: StageCompletionResult = {
+    storageData,
+    isNewCompletion: true,
+    noImprovement: false,
+    previousBest: undefined,
+    existingCompletion: undefined,
+  };
+
+  if (existingCompletion) {
+    result.isNewCompletion = false;
+    result.previousBest = {
+      stars_earned: existingCompletion.stars_earned,
+      score: existingCompletion.score,
+    };
+
+    // Only update if new completion is better
+    if (
+      !isBetterCompletion(
+        starsEarned,
+        score,
+        existingCompletion.stars_earned,
+        existingCompletion.score
+      )
+    ) {
+      logger.info(
+        'Stage replay did not improve: stage=%s new_stars=%d existing_stars=%d new_score=%d existing_score=%d',
+        stageId,
+        starsEarned,
+        existingCompletion.stars_earned,
+        score,
+        existingCompletion.score
+      );
+
+      result.noImprovement = true;
+      result.existingCompletion = existingCompletion;
+      return result;
+    }
+
+    // Update existing completion
+    storageData.completions[stageId] = updateCompletionRecord(
+      stageId,
+      stagePrefix,
+      starsEarned,
+      score,
+      existingCompletion
+    );
+
+    logger.info(
+      'Updated stage completion: stage=%s stars=%d score=%d',
+      stageId,
+      starsEarned,
+      score
+    );
+  } else {
+    // Create new completion
+    storageData.completions[stageId] = createCompletionRecord(
+      stageId,
+      stagePrefix,
+      starsEarned,
+      score
+    );
+
+    logger.info(
+      'Created new stage completion: stage=%s stars=%d score=%d',
+      stageId,
+      starsEarned,
+      score
+    );
+  }
+
+  // Write updated completions to storage
+  nk.storageWrite([
+    {
+      collection: STAGE_COMPLETION_COLLECTION,
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(storageData),
+    },
+  ]);
+
+  return result;
 }

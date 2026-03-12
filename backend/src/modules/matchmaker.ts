@@ -688,7 +688,33 @@ export function rpcCompleteMatch(
   const loserFlagged = checkPlayerFlagged(logger, request.loser_id, 'loser');
   if (loserFlagged) return loserFlagged;
 
-  // Fetch the match
+  // Fetch and validate the match
+  const matchResult = getAndValidateMatch(nk, ctx, request);
+  if (matchResult.error || !matchResult.match) {
+    return JSON.stringify({ error: matchResult.error || 'Match not found' });
+  }
+  const match = matchResult.match;
+
+  // Validate winner/loser are valid participants
+  const participantError = validateMatchParticipants(match, request);
+  if (participantError) {
+    return JSON.stringify({ error: participantError });
+  }
+
+  const isPunchUp = request.is_punch_up || match.is_punch_up;
+
+  // Process match result
+  return processMatchResult(ctx, logger, nk, request, match, isPunchUp);
+}
+
+/**
+ * Fetch and validate the match from storage
+ */
+function getAndValidateMatch(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  request: { match_id: string }
+): { match?: PvPMatch; error?: string } {
   const objects = nk.storageRead([
     {
       collection: 'pvp_matches',
@@ -698,46 +724,56 @@ export function rpcCompleteMatch(
   ]);
 
   if (objects.length === 0) {
-    return JSON.stringify({
-      error: 'Match not found',
-    });
+    return { error: 'Match not found' };
   }
 
   const match: PvPMatch = JSON.parse(objects[0].value);
 
-  // Validate the match status
   if (match.status !== 'active') {
-    return JSON.stringify({
-      error: 'Match is not active',
-    });
+    return { error: 'Match is not active' };
   }
 
-  // Validate that the caller is one of the participants
   if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
-    return JSON.stringify({
-      error: 'Not authorized to complete this match',
-    });
+    return { error: 'Not authorized to complete this match' };
   }
 
+  return { match };
+}
+
+/**
+ * Validate that winner and loser are valid match participants
+ */
+function validateMatchParticipants(
+  match: PvPMatch,
+  request: { winner_id: string; loser_id: string }
+): string | null {
   // Validate winner and loser are the match participants
   if (
     (request.winner_id !== match.creator_id && request.winner_id !== match.opponent_id) ||
     (request.loser_id !== match.creator_id && request.loser_id !== match.opponent_id)
   ) {
-    return JSON.stringify({
-      error: 'Winner and loser must be match participants',
-    });
+    return 'Winner and loser must be match participants';
   }
 
   // Validate winner and loser are different
   if (request.winner_id === request.loser_id) {
-    return JSON.stringify({
-      error: 'Winner and loser must be different',
-    });
+    return 'Winner and loser must be different';
   }
 
-  const isPunchUp = request.is_punch_up || match.is_punch_up;
+  return null;
+}
 
+/**
+ * Process the match result, calculate ranks, and update storage
+ */
+function processMatchResult(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  request: { match_id: string; winner_id: string; loser_id: string },
+  match: PvPMatch,
+  isPunchUp: boolean
+): string {
   // Only process rank changes for ranked matches
   let winnerNewRank = match.creator_rank;
   let loserNewRank = match.opponent_rank;
@@ -799,28 +835,17 @@ export function rpcCompleteMatch(
   recordPlayerActivity(nk, request.loser_id);
 
   // Apply rank decay if applicable (for inactive players)
-  const winnerDecayedRank = applyRankDecay(nk, request.winner_id, winnerNewRank);
-  const loserDecayedRank = applyRankDecay(nk, request.loser_id, loserNewRank);
+  const { winnerNewRank: winnerDecayedRank, loserNewRank: loserDecayedRank } = applyMatchRankDecay(
+    nk,
+    request.winner_id,
+    request.loser_id,
+    winnerNewRank,
+    loserNewRank,
+    logger
+  );
 
-  // If decay was applied, update the ranks
-  if (winnerDecayedRank !== winnerNewRank) {
-    logger.info(
-      'Rank decay applied for winner %s: %d -> %d',
-      request.winner_id,
-      winnerNewRank,
-      winnerDecayedRank
-    );
-    winnerNewRank = winnerDecayedRank;
-  }
-  if (loserDecayedRank !== loserNewRank) {
-    logger.info(
-      'Rank decay applied for loser %s: %d -> %d',
-      request.loser_id,
-      loserNewRank,
-      loserDecayedRank
-    );
-    loserNewRank = loserDecayedRank;
-  }
+  winnerNewRank = winnerDecayedRank;
+  loserNewRank = loserDecayedRank;
 
   // Update match status to completed
   const now = Date.now();
@@ -893,4 +918,33 @@ export function rpcCompleteMatch(
     },
     is_punch_up: isPunchUp,
   });
+}
+
+/**
+ * Apply rank decay to match participants
+ */
+function applyMatchRankDecay(
+  nk: Runtime.Nakama,
+  winnerId: string,
+  loserId: string,
+  winnerRank: number,
+  loserRank: number,
+  logger: Runtime.Logger
+): { winnerNewRank: number; loserNewRank: number } {
+  const winnerDecayedRank = applyRankDecay(nk, winnerId, winnerRank);
+  const loserDecayedRank = applyRankDecay(nk, loserId, loserRank);
+
+  if (winnerDecayedRank !== winnerRank) {
+    logger.info(
+      'Rank decay applied for winner %s: %d -> %d',
+      winnerId,
+      winnerRank,
+      winnerDecayedRank
+    );
+  }
+  if (loserDecayedRank !== loserRank) {
+    logger.info('Rank decay applied for loser %s: %d -> %d', loserId, loserRank, loserDecayedRank);
+  }
+
+  return { winnerNewRank: winnerDecayedRank, loserNewRank: loserDecayedRank };
 }

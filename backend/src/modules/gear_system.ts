@@ -1301,52 +1301,8 @@ export function rpcStageComplete(
     gear: null,
   };
 
-  // Read or create player inventory
-  const inventoryObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
-
-  let inventory: PlayerInventory;
-
-  if (inventoryObjects.length === 0) {
-    inventory = {
-      user_id: ctx.userId,
-      gear: [],
-      equipped_gear: {},
-      unlocked_modifier_pools: [],
-    };
-  } else {
-    const value = inventoryObjects[0].value;
-    if (value) {
-      const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
-      if (!parseResult.success || !parseResult.data) {
-        logger.error('Failed to parse inventory data');
-        logAudit(
-          nk,
-          ctx.userId,
-          `ctx.ipAddress ?? null`,
-          'stage_complete',
-          'player_inventory',
-          { stage_id: request.stage_id },
-          'failure',
-          'Failed to parse inventory data'
-        );
-        return createErrorResponse('INVALID_DATA', 'Failed to parse data');
-      }
-      inventory = parseResult.data;
-    } else {
-      inventory = {
-        user_id: ctx.userId,
-        gear: [],
-        equipped_gear: {},
-        unlocked_modifier_pools: [],
-      };
-    }
-  }
+  // Get player inventory
+  const inventory = getPlayerInventory(nk, ctx.userId, logger);
 
   // Unlock modifier pools when boss is defeated
   if (request.boss_defeated && request.boss_id) {
