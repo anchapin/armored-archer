@@ -331,7 +331,7 @@ func _save_session_to_file() -> void:
 	var file: FileAccess = FileAccess.open(SESSION_FILE, FileAccess.WRITE)
 	if file:
 		var json: JSON = JSON.new()
-		file.store_string(json.stringify(session_data))
+		var _discard = file.store_string(json.stringify(session_data))
 		file.close()
 
 func _load_session_from_file() -> void:
@@ -372,7 +372,7 @@ func logout() -> void:
 
 	var file: FileAccess = FileAccess.open(SESSION_FILE, FileAccess.WRITE)
 	if file:
-		file.store_string("{}")
+		var _discard = file.store_string("{}")
 		file.close()
 
 	session_created.emit(false, "Logged out")

@@ -9,6 +9,7 @@ import {
   PlayerInventory,
   GearItem,
   getModifiersUnlockedByBoss,
+  getModifiersUnlockedByEnemy,
   getEquippedGearModifierBonuses,
   applyGearModifiersToPlayerStats,
 } from '../gear_system';
@@ -471,6 +472,34 @@ describe('gear_system', () => {
 
     it('should return empty array for unknown boss', () => {
       const result = getModifiersUnlockedByBoss('unknown_boss');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getModifiersUnlockedByEnemy', () => {
+    it('should return modifier pools for goblin', () => {
+      const result = getModifiersUnlockedByEnemy('goblin');
+      expect(result).toContain('vitality_boost');
+    });
+
+    it('should return modifier pools for skeleton', () => {
+      const result = getModifiersUnlockedByEnemy('skeleton');
+      expect(result).toContain('fortification');
+    });
+
+    it('should return modifier pools for orc', () => {
+      const result = getModifiersUnlockedByEnemy('orc');
+      expect(result).toContain('heavy_impact');
+    });
+
+    it('should return modifier pools for dragon', () => {
+      const result = getModifiersUnlockedByEnemy('dragon');
+      expect(result).toContain('piercing_arrow');
+      expect(result).toContain('wind_fury');
+    });
+
+    it('should return empty array for unknown enemy type', () => {
+      const result = getModifiersUnlockedByEnemy('unknown_enemy');
       expect(result).toEqual([]);
     });
   });
