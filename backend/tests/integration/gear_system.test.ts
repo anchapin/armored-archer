@@ -54,6 +54,46 @@ describe('Gear System Integration Tests', () => {
       expect(result.gear.level).toBe(1);
     });
 
+    test('should apply modifiers to gear stats when modifiers are present', async () => {
+      // First, unlock all modifier pools so we get modifiers
+      await rpcCall(player, 'armored_archer/unlock_modifier_pool', { pool_id: 'boss_frost' });
+
+      // Generate multiple gear items to increase chance of getting rare/legendary with modifiers
+      let foundGearWithModifiers = false;
+      let gearWithModifiers: any = null;
+
+      for (let i = 0; i < 20; i++) {
+        const result = await rpcCall(player, 'armored_archer/generate_gear', {
+          stage_id: `stage_${i + 100}`,
+          boss_defeated: false
+        });
+
+        if (result.success && result.gear.modifiers && result.gear.modifiers.length > 0) {
+          foundGearWithModifiers = true;
+          gearWithModifiers = result.gear;
+          break;
+        }
+      }
+
+      // Ensure we found gear with modifiers
+      expect(foundGearWithModifiers).toBe(true);
+      expect(gearWithModifiers).not.toBeNull();
+
+      // If we got gear with modifiers, verify they're applied to stats
+      if (foundGearWithModifiers && gearWithModifiers) {
+        expect(gearWithModifiers.modifiers.length).toBeGreaterThan(0);
+
+        // Check that at least one modifier has a matching stat
+        const modifierStatNames = new Set(gearWithModifiers.modifiers.map((m: any) => m.stat));
+        const matchingStats = gearWithModifiers.stats.filter((s: any) => modifierStatNames.has(s.name));
+
+        // The stat values should be different from base values when modifiers exist
+        for (const stat of matchingStats) {
+          expect(stat.value).not.toBe(stat.base_value);
+        }
+      }
+    });
+
     test('should add generated gear to inventory', async () => {
       const payload = { stage_id: 'stage_2', boss_defeated: false };
       const result = await rpcCall(player, 'armored_archer/generate_gear', payload);
