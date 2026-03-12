@@ -280,7 +280,9 @@ export function applyModifiersToGearStats(
  * @param inventory - Player inventory containing equipped gear
  * @returns Object with stat name as key and total bonus as value
  */
-export function getEquippedGearModifierBonuses(inventory: PlayerInventory): { [statName: string]: number } {
+export function getEquippedGearModifierBonuses(inventory: PlayerInventory): {
+  [statName: string]: number;
+} {
   const bonuses: { [statName: string]: number } = {};
 
   // Get equipped gear items
@@ -1352,7 +1354,12 @@ export function rpcStageComplete(
     for (const modifierId of modifiersToUnlock) {
       if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
         inventory.unlocked_modifier_pools.push(modifierId);
-        logger.info('Unlocked modifier pool %s for user %s after defeating boss %s', modifierId, ctx.userId, request.boss_id);
+        logger.info(
+          'Unlocked modifier pool %s for user %s after defeating boss %s',
+          modifierId,
+          ctx.userId,
+          request.boss_id
+        );
       }
     }
   }
@@ -1365,12 +1372,7 @@ export function rpcStageComplete(
     lootResult.dropped = true;
     lootResult.gear = gear;
 
-    logger.info(
-      'Loot dropped for user %s: %s (%s)',
-      ctx.userId,
-      gear.name,
-      gear.rarity
-    );
+    logger.info('Loot dropped for user %s: %s (%s)', ctx.userId, gear.name, gear.rarity);
   }
 
   // Save inventory with new gear (if any)
@@ -1398,7 +1400,9 @@ export function rpcStageComplete(
       loot_dropped: lootResult.dropped,
       loot_gear_id: lootResult.gear?.id ?? null,
       loot_gear_rarity: lootResult.gear?.rarity ?? null,
-      unlocked_modifiers: request.boss_defeated ? getModifiersUnlockedByBoss(request.boss_id ?? '') : [],
+      unlocked_modifiers: request.boss_defeated
+        ? getModifiersUnlockedByBoss(request.boss_id ?? '')
+        : [],
       drop_rate_used: dropRate,
       roll_value: roll,
     },
