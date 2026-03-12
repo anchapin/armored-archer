@@ -1,7 +1,6 @@
-[gd_scene load_steps=3 format=3 uid="uid://loadout_scene"]
+[gd_scene load_steps=2 format=3 uid="uid://loadout"]
 
-[ext_resource type="Script" path="res://scenes/ui/loadout.gd" id="1_loadout"]
-[ext_resource type="PackedScene" uid="uid://safe_area_container" path="res://scenes/ui/safe_area_container.tscn" id="2"]
+[ext_resource type="Script" path="res://scenes/ui/loadout.gd" id="1"]
 
 [node name="Loadout" type="Control"]
 layout_mode = 3
@@ -10,9 +9,9 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_loadout")
+script = ExtResource("1")
 
-[node name="SafeAreaContainer" parent="." instance=ExtResource("2")]
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -20,168 +19,28 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="SafeAreaContainer"]
+[node name="TitleLabel" type="Label" parent="VBoxContainer"]
 layout_mode = 2
-offset_left = 20.0
-offset_top = 20.0
-offset_right = -20.0
-offset_bottom = -20.0
-
-[node name="Title" type="Label" parent="SafeAreaContainer/VBoxContainer"]
-layout_mode = 2
-text = "Loadout"
+text = "LOADOUT"
 horizontal_alignment = 1
 
-[node name="SlotsContainer" type="GridContainer" parent="SafeAreaContainer/VBoxContainer"]
+[node name="SlotsContainer" type="GridContainer" parent="VBoxContainer"]
 layout_mode = 2
-columns = 2
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 20
+columns = 3
 
-[node name="HelmSlot" type="TextureRect" parent="SafeAreaContainer/VBoxContainer/SlotsContainer"]
-custom_minimum_size = Vector2(150, 150)
-layout_mode = 2
-texture_filter = 1
-expand_mode = 1
-stretch_mode = 1
-
-[node name="Label" type="Label" parent="SafeAreaContainer/VBoxContainer/SlotsContainer/HelmSlot"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -50.0
-offset_top = -10.0
-offset_right = 50.0
-offset_bottom = 10.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "Helm"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="ArmorSlot" type="TextureRect" parent="SafeAreaContainer/VBoxContainer/SlotsContainer"]
-custom_minimum_size = Vector2(150, 150)
-layout_mode = 2
-texture_filter = 1
-expand_mode = 1
-stretch_mode = 1
-
-[node name="Label" type="Label" parent="SafeAreaContainer/VBoxContainer/SlotsContainer/ArmorSlot"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -50.0
-offset_top = -10.0
-offset_right = 50.0
-offset_bottom = 10.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "Armor"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="BowSlot" type="TextureRect" parent="SafeAreaContainer/VBoxContainer/SlotsContainer"]
-custom_minimum_size = Vector2(150, 150)
-layout_mode = 2
-texture_filter = 1
-expand_mode = 1
-stretch_mode = 1
-
-[node name="Label" type="Label" parent="SafeAreaContainer/VBoxContainer/SlotsContainer/BowSlot"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -50.0
-offset_top = -10.0
-offset_right = 50.0
-offset_bottom = 10.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "Bow"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="ArrowSlot" type="TextureRect" parent="SafeAreaContainer/VBoxContainer/SlotsContainer"]
-custom_minimum_size = Vector2(150, 150)
-layout_mode = 2
-texture_filter = 1
-expand_mode = 1
-stretch_mode = 1
-
-[node name="Label" type="Label" parent="SafeAreaContainer/VBoxContainer/SlotsContainer/ArrowSlot"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -50.0
-offset_top = -10.0
-offset_right = 50.0
-offset_bottom = 10.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "Arrow"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="AmuletSlot" type="TextureRect" parent="SafeAreaContainer/VBoxContainer/SlotsContainer"]
-custom_minimum_size = Vector2(150, 150)
-layout_mode = 2
-texture_filter = 1
-expand_mode = 1
-stretch_mode = 1
-
-[node name="Label" type="Label" parent="SafeAreaContainer/VBoxContainer/SlotsContainer/AmuletSlot"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -50.0
-offset_top = -10.0
-offset_right = 50.0
-offset_bottom = 10.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "Amulet"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="HSeparator" type="HSeparator" parent="SafeAreaContainer/VBoxContainer"]
+[node name="StatsContainer" type="VBoxContainer" parent="VBoxContainer"]
 layout_mode = 2
 
-[node name="StatsLabel" type="Label" parent="SafeAreaContainer/VBoxContainer"]
+[node name="StatsTitle" type="Label" parent="VBoxContainer/StatsContainer"]
 layout_mode = 2
 text = "Total Stats:"
 
-[node name="StatsContainer" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer"]
+[node name="InventoryButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
+text = "Open Inventory"
 
-[node name="TotalAttack" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer"]
-layout_mode = 2
-text = "Attack: 0"
-
-[node name="TotalDefense" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer"]
-layout_mode = 2
-text = "Defense: 0"
-
-[node name="TotalSpeed" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer"]
-layout_mode = 2
-text = "Speed: 0"
-
-[node name="TotalHealth" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer"]
-layout_mode = 2
-text = "Health: 0"
-
-[node name="BackButton" type="Button" parent="SafeAreaContainer/VBoxContainer"]
+[node name="BackButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
 text = "Back"

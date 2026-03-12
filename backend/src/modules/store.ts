@@ -1807,6 +1807,7 @@ export async function rpcRevenueCatWebhook(
     });
   }
 
+
   // Extract event type (RevenueCat sends event nested under "event" key)
   const eventObj = webhookData.event as Record<string, unknown> | undefined;
   const eventType = (eventObj?.type as string) || (webhookData.type as string) || '';
@@ -1846,6 +1847,7 @@ export async function rpcRevenueCatWebhook(
     case 'non_renewing_purchase':
     case 'renewal':
       const purchaseResult = await handleInitialPurchase(nk, userId, productId, logger);
+
       return JSON.stringify({ ...purchaseResult, event_type: eventType });
 
     case 'cancellation':
@@ -1860,6 +1862,7 @@ export async function rpcRevenueCatWebhook(
         cancelReason,
         logger
       );
+
       return JSON.stringify({ ...cancelResult, event_type: eventType });
 
     case 'expiration':
@@ -1874,6 +1877,7 @@ export async function rpcRevenueCatWebhook(
         expirationReason,
         logger
       );
+
       return JSON.stringify({ ...expireResult, event_type: eventType });
 
     case 'product_change':
