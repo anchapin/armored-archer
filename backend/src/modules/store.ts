@@ -1737,7 +1737,6 @@ function handleSubscriptionCancelled(
       logger.warn('No valid subscription data found for user %s', userId);
       return { success: true, message: 'Cancellation noted (no subscription found)' };
     }
-
     const subscription = JSON.parse(value);
     subscription.active = false;
     subscription.cancelled = true;
@@ -1785,7 +1784,6 @@ function handleBillingIssue(
       logger.warn('No valid subscription data found for user %s', userId);
       return { success: true, message: 'Billing issue recorded (no subscription found)' };
     }
-
     const subscription = JSON.parse(value);
     subscription.billing_issue = true;
     subscription.billing_issue_at = new Date().toISOString();
@@ -1896,11 +1894,6 @@ export async function rpcRevenueCatWebhook(
   // Extract event type (check top-level first for test payloads, then nested under "event")
   const eventObj = webhookData.event as Record<string, unknown> | undefined;
   const eventType = (webhookData.event_type as string) ||  // Check top-level first (test payloads)
-                    (eventObj?.type as string) ||
-                    (eventObj?.event_type as string) ||
-                    (webhookData.type as string) ||
-                    '';
-  logger.info('Webhook event type: %s', eventType);
 
   // Normalize event type to lowercase for case-insensitive matching
   const normalizedEventType = eventType.toLowerCase();
