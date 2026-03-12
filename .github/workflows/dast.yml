@@ -15,6 +15,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create .env file
+        run: |
+          echo "NAMESPACE=armored-archer" >> .env
+          echo "TARGET=backend" >> .env
+          echo "LOG_LEVEL=debug" >> .env
+          echo "ENABLE_DEBUG=true" >> .env
+          echo "API_RATE_LIMIT=1000" >> .env
+
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
 
