@@ -946,6 +946,53 @@ export function registerRpcGetInventory(initializer: Runtime.Initializer): void 
  *   "unlocked_modifier_pools": [ ... ]
  * }
  */
+/**
+ * Retrieves player inventory from storage.
+ * Exported for use by combat_system module.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param logger - Nakama logger instance
+ * @returns Player inventory or default inventory if not found
+ */
+export function getPlayerInventory(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): PlayerInventory {
+  const inventoryObjects = nk.storageRead([
+    {
+      collection: 'player_inventory',
+      key: userId,
+      userId: userId,
+    },
+  ]);
+
+  if (inventoryObjects.length === 0) {
+    return {
+      user_id: userId,
+      gear: [],
+      equipped_gear: {},
+      unlocked_modifier_pools: [],
+    };
+  }
+
+  const value = inventoryObjects[0].value;
+  if (value) {
+    const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
+    if (parseResult.success && parseResult.data) {
+      return parseResult.data;
+    }
+  }
+
+  return {
+    user_id: userId,
+    gear: [],
+    equipped_gear: {},
+    unlocked_modifier_pools: [],
+  };
+}
+
 export function rpcGetInventory(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
