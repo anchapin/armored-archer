@@ -138,6 +138,13 @@ const DEFAULT_FLAGS: FeatureFlagConfig[] = [
     rolloutPercentage: 5,
     environment: 'staging',
   },
+  {
+    name: 'push_notifications',
+    description: 'Push notifications via Firebase Cloud Messaging',
+    enabled: true,
+    rolloutPercentage: 100,
+    environment: 'production',
+  },
 ];
 
 /**

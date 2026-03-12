@@ -65,6 +65,8 @@ import {
   registerRpcCompleteStage,
   registerRpcGetCompletedStages,
 } from './modules/stage_tracking';
+import { initializeNotifications, registerNotificationEndpoints } from './modules/notifications_rpc';
+import { startNotificationScheduler, stopNotificationScheduler } from './modules/notification_scheduler';
 
 // Global structured logger instance for use by all modules
 let globalStructuredLogger: StructuredLogger | null = null;
@@ -148,6 +150,7 @@ const InitModule: InitModule = function (
   initializeHealthMonitoring(loggerParam);
   initializeErrorInsightsPipeline(loggerParam);
   initializeProgressiveRollout(loggerParam);
+  initializeNotifications();
 
   if (config.rateLimit.enabled) {
     logSystemEvent('info', 'Rate limiting enabled', {
@@ -166,6 +169,7 @@ const InitModule: InitModule = function (
   registerProgressiveRollout(initializer);
   registerAnalyticsEndpoints(initializer);
   registerErrorInsightRpcs(initializer);
+  registerNotificationEndpoints(initializer);
 
   if (config.rateLimit.enabled) {
     registerRpcWithRateLimit(
@@ -562,6 +566,22 @@ function rpcTrackRevenueWrapper(
 ): string {
   const { rpcTrackRevenue } = require('./modules/analytics');
   return rpcTrackRevenue(ctx, logger, nk, payload);
+}
+
+// Register RPC to start notification scheduler (can be called externally)
+function startNotificationSchedulerWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  try {
+    startNotificationScheduler(nk, 60000); // Run every minute
+    return JSON.stringify({ success: true });
+  } catch (error) {
+    logger.error('Failed to start notification scheduler', { error: String(error) });
+    return JSON.stringify({ success: false, error: String(error) });
+  }
 }
 
 export default InitModule;
