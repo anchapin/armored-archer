@@ -59,6 +59,7 @@ export interface DatabaseConfig {
 export interface RevenueCatConfig {
   publicKey: string;
   secretKey: string;
+  webhookSecret: string;
 }
 
 export interface SessionConfig {
@@ -342,6 +343,7 @@ const config: AppConfig = {
   revenuecat: {
     publicKey: process.env.REVENUECAT_PUBLIC_KEY || '',
     secretKey: process.env.REVENUECAT_SECRET_KEY || '',
+    webhookSecret: process.env.REVENUECAT_WEBHOOK_SECRET || '',
   },
 
   session: {
@@ -763,7 +765,9 @@ export function logConfiguration(logger: {
     config.database.port,
     config.database.database
   );
-  logger.info('RevenueCat: public_key=%s', maskSecret(config.revenuecat.publicKey));
+  logger.info('RevenueCat: public_key=%s, webhook_secret_configured=%s', 
+    maskSecret(config.revenuecat.publicKey), 
+    config.revenuecat.webhookSecret ? 'true' : 'false');
   logger.info('Session: expiry_sec=%d', config.session.expirySec);
   logger.info(
     'Logger: level=%s, format=%s, output=%s, scrubLogs=%s',

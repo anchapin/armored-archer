@@ -9,6 +9,7 @@ import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { withCircuitBreaker } from '../utils/circuitBreaker';
 import { safeParse } from '../utils/safeParse';
+import { config } from '../config';
 import { logAudit } from './audit';
 import { isPII } from './privacy_compliance';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
@@ -1612,7 +1613,7 @@ export function registerRpcAppLaunchCheck(initializer: Runtime.Initializer): voi
  * Configure via REVENUECAT_WEBHOOK_SECRET environment variable.
  */
 function getRevenueCatWebhookSecret(): string | undefined {
-  return process.env.REVENUECAT_WEBHOOK_SECRET;
+  return config.revenuecat.webhookSecret || process.env.REVENUECAT_WEBHOOK_SECRET;
 }
 
 /**
@@ -1806,16 +1807,22 @@ export async function rpcRevenueCatWebhook(
     });
   }
 
-  // Extract event type
-  const eventType = (webhookData.event as string) || (webhookData.type as string) || '';
+
+  // Extract event type (RevenueCat sends event nested under "event" key)
+  const eventObj = webhookData.event as Record<string, unknown> | undefined;
+  const eventType = (eventObj?.type as string) || (webhookData.type as string) || '';
   logger.info('Webhook event type: %s', eventType);
 
-  // Extract common fields
-  const appUserId = (webhookData.app_user_id as string) ||
+  // Extract common fields (check both top-level and nested under "event")
+  const appUserId = (eventObj?.app_user_id as string) ||
+    (eventObj?.appUserId as string) ||
+    (webhookData.app_user_id as string) ||
     (webhookData.appUserId as string) ||
     (webhookData.user_id as string) ||
     '';
-  const productId = (webhookData.product_id as string) ||
+  const productId = (eventObj?.product_id as string) ||
+    (eventObj?.productId as string) ||
+    (webhookData.product_id as string) ||
     (webhookData.productId as string) ||
     '';
 
@@ -1840,10 +1847,13 @@ export async function rpcRevenueCatWebhook(
     case 'non_renewing_purchase':
     case 'renewal':
       const purchaseResult = await handleInitialPurchase(nk, userId, productId, logger);
-      return JSON.stringify(purchaseResult);
+
+      return JSON.stringify({ ...purchaseResult, event_type: eventType });
 
     case 'cancellation':
-      const cancelReason = (webhookData.cancellation_reason as string) ||
+      const cancelReason = (eventObj?.cancellation_reason as string) ||
+        (eventObj?.cancellationReason as string) ||
+        (webhookData.cancellation_reason as string) ||
         (webhookData.cancellationReason as string);
       const cancelResult = handleSubscriptionCancelled(
         nk,
@@ -1852,10 +1862,13 @@ export async function rpcRevenueCatWebhook(
         cancelReason,
         logger
       );
-      return JSON.stringify(cancelResult);
+
+      return JSON.stringify({ ...cancelResult, event_type: eventType });
 
     case 'expiration':
-      const expirationReason = (webhookData.expiration_reason as string) ||
+      const expirationReason = (eventObj?.expiration_reason as string) ||
+        (eventObj?.expirationReason as string) ||
+        (webhookData.expiration_reason as string) ||
         (webhookData.expirationReason as string);
       const expireResult = handleSubscriptionExpired(
         nk,
@@ -1864,10 +1877,14 @@ export async function rpcRevenueCatWebhook(
         expirationReason,
         logger
       );
-      return JSON.stringify(expireResult);
+
+      return JSON.stringify({ ...expireResult, event_type: eventType });
 
     case 'product_change':
-      const transferredFrom = (webhookData.transferred_from as string) ||
+      const transferredFrom = (eventObj?.transferred_from as string) ||
+        (eventObj?.transferredFrom as string) ||
+        (eventObj?.originalAppUserId as string) ||
+        (webhookData.transferred_from as string) ||
         (webhookData.transferredFrom as string) ||
         (webhookData.originalAppUserId as string);
       if (transferredFrom) {
