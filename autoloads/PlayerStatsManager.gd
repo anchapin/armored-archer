@@ -106,14 +106,9 @@ func gain_xp(amount: int, source: String) -> void:
 			var ability_points_gained: int = levels_gained
 			emit_signal("level_up", new_level, ability_points_gained)
 
-			# Track level up in analytics
-			if analytics and analytics.has_method("log_custom_event"):
-				analytics.log_custom_event("player_level_up", {
-					"previous_level": previous_level,
-					"new_level": new_level,
-					"levels_gained": levels_gained,
-					"source": source
-				})
+			# Track level up in analytics using dedicated method
+			if analytics and analytics.has_method("log_level_up"):
+				analytics.log_level_up(new_level, previous_level, source)
 
 		player_stats = result.player_stats
 		emit_signal("stats_updated", player_stats)

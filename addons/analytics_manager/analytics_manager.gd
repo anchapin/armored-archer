@@ -102,6 +102,17 @@ const EVENT_NETWORK_ERROR := "network_error"
 const EVENT_RPC_ERROR := "rpc_error"
 const EVENT_RPC_LATENCY := "rpc_latency"
 
+# Funnel Analysis Events
+const EVENT_APP_OPENED := "app_opened"
+const EVENT_MAIN_MENU_VIEWED := "main_menu_viewed"
+const EVENT_CAMPAIGN_STARTED := "campaign_started"
+const EVENT_CAMPAIGN_COMPLETED := "campaign_completed"
+const EVENT_STORE_VIEWED := "store_viewed"
+const EVENT_PVP_LOBBY_ENTERED := "pvp_lobby_entered"
+const EVENT_INVENTORY_VIEWED := "inventory_viewed"
+const EVENT_SETTINGS_OPENED := "settings_opened"
+const EVENT_TUTORIAL_SKIPPED := "tutorial_skipped"
+
 func _ready() -> void:
 	_initialize_analytics()
 
@@ -813,6 +824,73 @@ func log_custom_event(event_name: String, parameters: Dictionary) -> void:
 	event_params["timestamp"] = Time.get_unix_time_from_system()
 
 	_log_event(event_name, event_params)
+
+# ============================================================================
+# Funnel Analysis Events
+# ============================================================================
+
+func log_app_opened() -> void:
+	"""Logs when the app is opened/launched."""
+	_log_event(EVENT_APP_OPENED, {
+		"platform": platform,
+		"app_version": app_version,
+		"engine_version": engine_version
+	})
+
+func log_main_menu_viewed() -> void:
+	"""Logs when the main menu is displayed."""
+	_log_event(EVENT_MAIN_MENU_VIEWED, {
+		"platform": platform
+	})
+
+func log_campaign_started(chapter: int = 1, stage: int = 1) -> void:
+	"""Logs when a campaign stage is started."""
+	_log_event(EVENT_CAMPAIGN_STARTED, {
+		"chapter": chapter,
+		"stage": stage,
+		"platform": platform
+	})
+
+func log_campaign_completed(chapter: int = 1, stages_completed: int = 0) -> void:
+	"""Logs when a campaign chapter is completed."""
+	_log_event(EVENT_CAMPAIGN_COMPLETED, {
+		"chapter": chapter,
+		"stages_completed": stages_completed,
+		"platform": platform
+	})
+
+func log_store_viewed(store_location: String = "main_menu") -> void:
+	"""Logs when the store is viewed."""
+	_log_event(EVENT_STORE_VIEWED, {
+		"store_location": store_location,
+		"platform": platform
+	})
+
+func log_pvp_lobby_entered(season_id: int = 0) -> void:
+	"""Logs when entering the PvP matchmaking lobby."""
+	_log_event(EVENT_PVP_LOBBY_ENTERED, {
+		"season_id": season_id,
+		"platform": platform
+	})
+
+func log_inventory_viewed() -> void:
+	"""Logs when the inventory screen is viewed."""
+	_log_event(EVENT_INVENTORY_VIEWED, {
+		"platform": platform
+	})
+
+func log_settings_opened() -> void:
+	"""Logs when settings screen is opened."""
+	_log_event(EVENT_SETTINGS_OPENED, {
+		"platform": platform
+	})
+
+func log_tutorial_skipped(step_id: String = "") -> void:
+	"""Logs when the tutorial is skipped."""
+	_log_event(EVENT_TUTORIAL_SKIPPED, {
+		"step_id": step_id,
+		"platform": platform
+	})
 
 # ============================================================================
 # Breadcrumb Logging

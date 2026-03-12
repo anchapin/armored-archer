@@ -25,6 +25,9 @@ var current_match: Dictionary = {}
 var punch_up_wins: int = 0
 var punch_up_losses: int = 0
 
+# --- Analytics Reference ---
+@onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
+
 # --- Signals ---
 signal matches_loaded(matches: Array, player_rank: int)
 signal match_created(match: Dictionary)
@@ -107,6 +110,16 @@ func create_match(match_type: String, is_punch_up: bool = false, target_opponent
 	if response.get("success", false):
 		current_match = response.get("match", {})
 		match_created.emit(current_match)
+		
+		# Track PvP match started in analytics
+		if analytics and analytics.has_method("log_pvp_match_started"):
+			var match_id: String = current_match.get("match_id", "")
+			var opponent_id: String = current_match.get("opponent_id", "")
+			var season_id: int = 0
+			if has_node("/root/SeasonManager"):
+				var season_manager = get_node("/root/SeasonManager")
+				season_id = season_manager.get("current_season_id", 0)
+			analytics.log_pvp_match_started(match_id, opponent_id, season_id, player_rank)
 
 # --- Match Acceptance ---
 func accept_match(match_id: String) -> void:
@@ -217,6 +230,47 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 			elif my_user_id == loser_id:
 				punch_up_losses += 1
 			_emit_punch_up_stats_updated()
+
+		# Track PvP match completed in analytics
+		if analytics and analytics.has_method("log_pvp_match_completed"):
+			var match_id: String = current_match.get("match_id", "")
+			var opponent_id: String = current_match.get("opponent_id", "")
+			var season_id: int = 0
+			if has_node("/root/SeasonManager"):
+				var season_manager = get_node("/root/SeasonManager")
+				season_id = season_manager.get("current_season_id", 0)
+			
+			var result: String = "loss"
+			var my_score: int = 0
+			var opponent_score: int = 0
+			var rank_change: int = 0
+			
+			if my_user_id == winner_id:
+				result = "win"
+				my_score = response.get("winner", {}).get("score", 0)
+				opponent_score = response.get("loser", {}).get("score", 0)
+				rank_change = response.get("winner", {}).get("rank_change", 0)
+			elif my_user_id == loser_id:
+				result = "loss"
+				my_score = response.get("loser", {}).get("score", 0)
+				opponent_score = response.get("winner", {}).get("score", 0)
+				rank_change = response.get("loser", {}).get("rank_change", 0)
+			
+			# Calculate match duration (assuming match_start_time is stored)
+			var match_duration: float = 0.0
+			if current_match.has("match_start_time"):
+				match_duration = (Time.get_unix_time_from_system() - current_match.match_start_time)
+			
+			analytics.log_pvp_match_completed(
+				match_id,
+				result,
+				opponent_id,
+				season_id,
+				match_duration,
+				my_score,
+				opponent_score,
+				rank_change
+			)
 
 		# Clear current match
 		current_match = {}
