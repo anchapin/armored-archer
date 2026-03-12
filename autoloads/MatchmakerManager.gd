@@ -14,6 +14,7 @@ const RPC_LIST_MATCHES = "armored_archer/list_matches"
 const RPC_CREATE_MATCH = "armored_archer/create_match"
 const RPC_ACCEPT_MATCH = "armored_archer/accept_match"
 const RPC_GET_PLAYER_RANK = "armored_archer/get_player_rank"
+const RPC_COMPLETE_MATCH = "armored_archer/complete_match"
 
 # --- Match Data ---
 var available_matches: Array = []
@@ -25,6 +26,7 @@ signal matches_loaded(matches: Array, player_rank: int)
 signal match_created(match: Dictionary)
 signal match_accepted(match: Dictionary)
 signal rank_retrieved(rank: int)
+signal match_completed(match_result: Dictionary)
 
 # --- Network Reference ---
 @onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
@@ -148,6 +150,65 @@ func get_player_rank() -> void:
 	if response.get("success", false):
 		player_rank = response.get("rank", 0)
 		rank_retrieved.emit(player_rank)
+
+# --- Match Completion ---
+func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = false) -> void:
+	"""Completes a PvP match and updates player ranks.
+
+	Parameters:
+		winner_id: User ID of the match winner
+		loser_id: User ID of the match loser
+		is_punch_up: True if winner fought a higher-ranked opponent
+	"""
+	if not network_manager or not network_manager.is_connected:
+		push_error("Not connected to server")
+		return
+
+	if current_match.is_empty():
+		push_error("No active match to complete")
+		return
+
+	if winner_id.is_empty() or loser_id.is_empty():
+		push_error("Winner and loser IDs required")
+		return
+
+	if winner_id == loser_id:
+		push_error("Winner and loser must be different")
+		return
+
+	var payload: Dictionary = {
+		"match_id": current_match.get("match_id", ""),
+		"winner_id": winner_id,
+		"loser_id": loser_id,
+		"is_punch_up": is_punch_up
+	}
+
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_COMPLETE_MATCH, json.stringify(payload))
+
+	if response.has("error"):
+		push_error("Failed to complete match: %s" % response.error)
+		return
+
+	if response.get("success", false):
+		var match_result: Dictionary = {
+			"match": response.get("match", {}),
+			"winner": response.get("winner", {}),
+			"loser": response.get("loser", {}),
+			"is_punch_up": response.get("is_punch_up", false)
+		}
+
+		# Update cached player rank
+		var my_user_id: String = NetworkManager.user_id
+		if my_user_id == winner_id:
+			player_rank = response.get("winner", {}).get("new_rank", player_rank)
+		elif my_user_id == loser_id:
+			player_rank = response.get("loser", {}).get("new_rank", player_rank)
+
+		# Clear current match
+		current_match = {}
+
+		match_completed.emit(match_result)
 
 # --- Utility Methods ---
 func get_available_matches() -> Array:

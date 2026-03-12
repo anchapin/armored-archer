@@ -17,6 +17,7 @@ import {
   registerRpcCreateMatch,
   registerRpcAcceptMatch,
   registerRpcGetPlayerRank,
+  registerRpcCompleteMatch,
 } from './modules/matchmaker';
 import { registerRpcSubmitCombatAction, registerRpcGetMatchState } from './modules/combat_system';
 import {
@@ -309,6 +310,7 @@ const InitModule: InitModule = function (
     registerRpcCreateMatch(initializer);
     registerRpcAcceptMatch(initializer);
     registerRpcGetPlayerRank(initializer);
+    registerRpcCompleteMatch(initializer);
     registerRpcSubmitCombatAction(initializer);
     registerRpcGetMatchState(initializer);
     registerRpcGetSeasonInfo(initializer);

@@ -144,6 +144,18 @@ export const ValibotSchemas = {
     nonce: optional(string()),
   }),
 
+  complete_match: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    winner_id: pipe(string(), minLength(1), maxLength(100)),
+    loser_id: pipe(string(), minLength(1), maxLength(100)),
+    is_punch_up: optional(boolean()),
+    // Anti-cheat fields
+    requestId: optional(string()),
+    timestamp: optional(number()),
+    signature: optional(string()),
+    nonce: optional(string()),
+  }),
+
   get_season_rewards: object({}),
 
   report_player: object({

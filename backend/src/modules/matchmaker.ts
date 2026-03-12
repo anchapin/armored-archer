@@ -7,6 +7,8 @@ import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { getCurrentSeason, applyEloUpdates, getLeaderboardEntry, calculateRewards, recordPlayerActivity, applyRankDecay } from './season_system';
+import { isPlayerFlagged, getFlagReason, verifyRequestSignature, detectTimingAttack, recordMatchResult } from './anti_cheat';
 
 /**
  * PvP match data structure.
@@ -80,6 +82,21 @@ export interface ListMatchesRequest {
   min_rank?: number;
   max_rank?: number;
   limit?: number;
+}
+
+/**
+ * Request payload for completing a match.
+ *
+ * @property match_id - ID of the match to complete
+ * @property winner_id - ID of the match winner
+ * @property loser_id - ID of the match loser
+ * @property is_punch_up - Whether this was a punch-up match
+ */
+export interface CompleteMatchRequest {
+  match_id: string;
+  winner_id: string;
+  loser_id: string;
+  is_punch_up?: boolean;
 }
 
 /**
@@ -538,9 +555,12 @@ export function rpcGetPlayerRank(
   const playerStats = JSON.parse(objects[0].value);
   const rank = calculateRank(playerStats);
 
+  // Apply rank decay check - this updates the player's rank if they've been inactive
+  const decayedRank = applyRankDecay(nk, ctx.userId, rank);
+
   return JSON.stringify({
     success: true,
-    rank: rank,
+    rank: decayedRank,
     level: playerStats.level,
     xp: playerStats.xp,
   });
@@ -570,4 +590,281 @@ export function calculateRank(playerStats: PlayerStats): number {
  */
 export function generateMatchId(): string {
   return 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+/**
+ * Checks if a player is flagged and returns error response if so.
+ */
+function checkPlayerFlagged(
+  logger: Runtime.Logger,
+  playerId: string,
+  playerType: 'winner' | 'loser'
+): string | null {
+  if (isPlayerFlagged(playerId)) {
+    logger.warn(
+      'Complete match blocked - %s flagged: %s reason: %s',
+      playerType,
+      playerId,
+      getFlagReason(playerId)
+    );
+    const errorMsg =
+      playerType === 'winner'
+        ? `Player is flagged for review: ${getFlagReason(playerId)}`
+        : `Opponent is flagged for review: ${getFlagReason(playerId)}`;
+    return JSON.stringify({
+      success: false,
+      error_code: 'PLAYER_FLAGGED',
+      error: errorMsg,
+    });
+  }
+  return null;
+}
+
+/**
+ * Registers the complete match RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcCompleteMatch(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/complete_match', rpcCompleteMatch);
+}
+
+/**
+ * Completes a PvP match and updates player ranks using Elo rating system.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string containing match completion data
+ * @returns JSON string with match result and rank changes
+ *
+ * @example
+ * // Request payload
+ * { "match_id": "match_123", "winner_id": "user_1", "loser_id": "user_2", "is_punch_up": false }
+ *
+ * // Response
+ * {
+ *   "success": true,
+ *   "match": { ... },
+ *   "winner": { "user_id": "user_1", "old_rank": 1200, "new_rank": 1220, "rank_change": 20 },
+ *   "loser": { "user_id": "user_2", "old_rank": 1200, "new_rank": 1180, "rank_change": -20 }
+ * }
+ */
+export function rpcCompleteMatch(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Complete match called for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.complete_match, payload, 'complete_match');
+  if (!validation.success) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'complete_match',
+      'pvp_matches',
+      { match_id: 'unknown', winner_id: 'unknown', loser_id: 'unknown' },
+      'failure',
+      validation.error
+    );
+    return createValidationErrorResponse('complete_match', validation.error);
+  }
+
+  const request = validation.data;
+
+  // Anti-cheat: Check if players are flagged
+  const winnerFlagged = checkPlayerFlagged(logger, request.winner_id, 'winner');
+  if (winnerFlagged) return winnerFlagged;
+
+  const loserFlagged = checkPlayerFlagged(logger, request.loser_id, 'loser');
+  if (loserFlagged) return loserFlagged;
+
+  // Fetch the match
+  const objects = nk.storageRead([
+    {
+      collection: 'pvp_matches',
+      key: request.match_id,
+      userId: ctx.userId,
+    },
+  ]);
+
+  if (objects.length === 0) {
+    return JSON.stringify({
+      error: 'Match not found',
+    });
+  }
+
+  const match: PvPMatch = JSON.parse(objects[0].value);
+
+  // Validate the match status
+  if (match.status !== 'active') {
+    return JSON.stringify({
+      error: 'Match is not active',
+    });
+  }
+
+  // Validate that the caller is one of the participants
+  if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
+    return JSON.stringify({
+      error: 'Not authorized to complete this match',
+    });
+  }
+
+  // Validate winner and loser are the match participants
+  if (
+    (request.winner_id !== match.creator_id && request.winner_id !== match.opponent_id) ||
+    (request.loser_id !== match.creator_id && request.loser_id !== match.opponent_id)
+  ) {
+    return JSON.stringify({
+      error: 'Winner and loser must be match participants',
+    });
+  }
+
+  // Validate winner and loser are different
+  if (request.winner_id === request.loser_id) {
+    return JSON.stringify({
+      error: 'Winner and loser must be different',
+    });
+  }
+
+  const isPunchUp = request.is_punch_up || match.is_punch_up;
+
+  // Only process rank changes for ranked matches
+  let winnerNewRank = match.creator_rank;
+  let loserNewRank = match.opponent_rank;
+  let winnerRankChange = 0;
+  let loserRankChange = 0;
+
+  if (match.match_type === 'ranked') {
+    const currentSeason = getCurrentSeason();
+
+    // Get current Elo ratings from leaderboard
+    const winnerEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
+    const loserEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
+
+    const winnerOldElo = winnerEntry ? winnerEntry.score : 1000;
+    const loserOldElo = loserEntry ? loserEntry.score : 1000;
+
+    // Apply Elo updates
+    const { winnerNewElo, loserNewElo } = applyEloUpdates(
+      nk,
+      ctx,
+      currentSeason,
+      request.winner_id,
+      request.loser_id,
+      winnerOldElo,
+      loserOldElo,
+      isPunchUp,
+      winnerEntry,
+      loserEntry
+    );
+
+    winnerNewRank = winnerNewElo;
+    loserNewRank = loserNewElo;
+    winnerRankChange = winnerNewElo - winnerOldElo;
+    loserRankChange = loserNewElo - loserOldElo;
+
+    // Record match results for anti-cheat analysis
+    recordMatchResult(
+      request.winner_id,
+      request.match_id,
+      request.loser_id,
+      'win',
+      true,
+      winnerOldElo,
+      winnerNewElo
+    );
+    recordMatchResult(
+      request.loser_id,
+      request.match_id,
+      request.winner_id,
+      'loss',
+      true,
+      loserOldElo,
+      loserNewElo
+    );
+  }
+
+  // Record player activity for rank decay tracking
+  recordPlayerActivity(nk, request.winner_id);
+  recordPlayerActivity(nk, request.loser_id);
+
+  // Apply rank decay if applicable (for inactive players)
+  const winnerDecayedRank = applyRankDecay(nk, request.winner_id, winnerNewRank);
+  const loserDecayedRank = applyRankDecay(nk, request.loser_id, loserNewRank);
+
+  // If decay was applied, update the ranks
+  if (winnerDecayedRank !== winnerNewRank) {
+    logger.info('Rank decay applied for winner %s: %d -> %d', request.winner_id, winnerNewRank, winnerDecayedRank);
+    winnerNewRank = winnerDecayedRank;
+  }
+  if (loserDecayedRank !== loserNewRank) {
+    logger.info('Rank decay applied for loser %s: %d -> %d', request.loser_id, loserNewRank, loserDecayedRank);
+    loserNewRank = loserDecayedRank;
+  }
+
+  // Update match status to completed
+  const now = Date.now();
+  match.status = 'completed';
+  match.winner = request.winner_id;
+  match.updated_at = now;
+
+  // Update the match in storage
+  nk.storageWrite([
+    {
+      collection: 'pvp_matches',
+      key: match.match_id,
+      userId: match.creator_id,
+      value: JSON.stringify(match),
+    },
+  ]);
+
+  // Log audit event
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'complete_match',
+    'pvp_matches',
+    {
+      match_id: match.match_id,
+      winner_id: request.winner_id,
+      loser_id: request.loser_id,
+      match_type: match.match_type,
+      is_punch_up: isPunchUp,
+      winner_rank_change: winnerRankChange,
+      loser_rank_change: loserRankChange,
+    },
+    'success'
+  );
+
+  logger.info(
+    'Match completed: %s, winner: %s, loser: %s, type: %s, rank_change: %d',
+    match.match_id,
+    request.winner_id,
+    request.loser_id,
+    match.match_type,
+    winnerRankChange
+  );
+
+  return JSON.stringify({
+    success: true,
+    match: match,
+    winner: {
+      user_id: request.winner_id,
+      old_rank: match.match_type === 'ranked' ? (request.winner_id === match.creator_id ? match.creator_rank : match.opponent_rank) : 0,
+      new_rank: winnerNewRank,
+      rank_change: winnerRankChange,
+    },
+    loser: {
+      user_id: request.loser_id,
+      old_rank: match.match_type === 'ranked' ? (request.loser_id === match.creator_id ? match.creator_rank : match.opponent_rank) : 0,
+      new_rank: loserNewRank,
+      rank_change: loserRankChange,
+    },
+    is_punch_up: isPunchUp,
+  });
 }
