@@ -40,7 +40,7 @@ func _cleanup_signal_connection(node: Node, signal_name: String, connection: Cal
 
 # --- Button Handlers ---
 func _on_play_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
 
 func _on_pvp_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")

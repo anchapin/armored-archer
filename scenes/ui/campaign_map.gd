@@ -17,6 +17,14 @@ func _ready() -> void:
 
 	build_stage_buttons()
 
+	# Connect to CampaignManager signals
+	CampaignManager.stage_unlocked.connect(_on_stage_unlocked)
+	CampaignManager.stage_completed.connect(_on_stage_completed)
+	CampaignManager.campaign_progress_updated.connect(_on_progress_updated)
+
+	# Connect back button
+	$BackButton.pressed.connect(_on_back_button_pressed)
+
 func build_stage_buttons() -> void:
 	for child in stages_container.get_children():
 		child.queue_free()
@@ -51,7 +59,7 @@ func create_stage_button(stage_data: Dictionary) -> Button:
 
 	return button
 
-func _on_stage_pressed( ) -> void:
+func _on_stage_pressed(stage_id: String) -> void:
 	var stage_data = CampaignManager.get_stage_data(stage_id)
 	GameManager.current_stage_id = stage_id
 	GameManager.current_waves = stage_data.get("waves", 3)
@@ -59,10 +67,10 @@ func _on_stage_pressed( ) -> void:
 
 	get_tree().change_scene_to_packed(MAIN_SCENE)
 
-func _on_stage_unlocked( ) -> void:
+func _on_stage_unlocked(stage_id: String) -> void:
 	build_stage_buttons()
 
-func _on_stage_completed( ) -> void:
+func _on_stage_completed(stage_id: String) -> void:
 	build_stage_buttons()
 
 func _on_progress_updated(chapter_id: String, progress: float) -> void:

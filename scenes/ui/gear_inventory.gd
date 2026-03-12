@@ -68,7 +68,7 @@ func _refresh_gear_list() -> void:
 
 	gear_list.clear()
 
-	var inventory: Dictionary = gear_manager._get_full_inventory()
+	var inventory: Dictionary = gear_manager.get_full_inventory()
 	var gear_array: Array = inventory.get("gear", [])
 	var equipped_gear: Dictionary = inventory.get("equipped_gear", {})
 
@@ -154,7 +154,7 @@ func _update_button_states() -> void:
 		return
 
 	var gear_type: String = current_gear.get("type", "")
-	var inventory: Dictionary = gear_manager._get_full_inventory()
+	var inventory: Dictionary = gear_manager.get_full_inventory()
 	var equipped_gear: Dictionary = inventory.get("equipped_gear", {})
 
 	var is_equipped: bool = equipped_gear.has(gear_type) and equipped_gear[gear_type] == selected_gear_id
@@ -175,7 +175,7 @@ func _on_unequip_button_pressed() -> void:
 
 func _on_compare_button_pressed() -> void:
 	if not current_gear.is_empty():
-		var inventory: Dictionary = gear_manager._get_full_inventory()
+		var inventory: Dictionary = gear_manager.get_full_inventory()
 		var equipped_gear: Dictionary = inventory.get("equipped_gear", {})
 		var gear_type: String = current_gear.get("type", "")
 

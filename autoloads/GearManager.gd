@@ -207,6 +207,14 @@ func _get_full_inventory() -> Dictionary:
 		"unlocked_modifier_pools": unlocked_modifier_pools
 	}
 
+func get_full_inventory() -> Dictionary:
+	"""Public method to get the full inventory state.
+
+	Returns:
+		Dictionary: Full inventory data structure including gear, equipped gear, and unlocked modifier pools
+	"""
+	return _get_full_inventory()
+
 func get_gear_by_id(gear_id: String) -> Dictionary:
 	"""Retrieves gear data by ID.
 
@@ -288,7 +296,46 @@ func compare_gear(gear1: Dictionary, gear2: Dictionary) -> Dictionary:
 	else:
 		comparison.better = "equal"
 
+	# Calculate stat differences
+	var stats1: Dictionary = _get_stat_map(gear1.get("stats", []))
+	var stats2: Dictionary = _get_stat_map(gear2.get("stats", []))
+
+	# Get all unique stat names
+	var all_stats: Array = []
+	all_stats.append_array(stats1.keys())
+	all_stats.append_array(stats2.keys())
+	all_stats = all_stats.unique()
+
+	for stat_name in all_stats:
+		var val1: int = stats1.get(stat_name, 0)
+		var val2: int = stats2.get(stat_name, 0)
+		var diff: int = val1 - val2
+
+		comparison.differences.append({
+			"stat": stat_name,
+			"gear1_value": val1,
+			"gear2_value": val2,
+			"difference": diff,
+			"better": "gear1" if diff > 0 else ("gear2" if diff < 0 else "equal")
+		})
+
 	return comparison
+
+func _get_stat_map(stats: Array) -> Dictionary:
+	"""Converts an array of stats to a dictionary for easier comparison.
+
+	Parameters:
+		stats: Array of stat dictionaries
+
+	Returns:
+		Dictionary mapping stat names to values
+	"""
+	var result: Dictionary = {}
+	for stat in stats:
+		var name: String = stat.get("name", "")
+		var value: int = stat.get("value", 0)
+		result[name] = value
+	return result
 
 func _calculate_gear_score(gear_data: Dictionary) -> int:
 	"""Calculates a numeric score for gear comparison (internal).
@@ -318,3 +365,35 @@ func _calculate_gear_score(gear_data: Dictionary) -> int:
 		score += modifier_value * 2
 
 	return score
+
+func get_total_equipped_stats() -> Dictionary:
+	"""Calculates total stats from all equipped gear.
+
+	Returns:
+		Dictionary: Total stats from equipped gear (attack, defense, health, dodge, crit_rate)
+	"""
+	var total_stats: Dictionary = {
+		"attack": 0,
+		"defense": 0,
+		"health": 0,
+		"dodge": 0,
+		"crit_rate": 0
+	}
+
+	for slot in equipped_gear.keys():
+		var gear_id: String = equipped_gear[slot]
+		if gear_id.is_empty():
+			continue
+
+		var gear_data: Dictionary = get_gear_by_id(gear_id)
+		if gear_data.is_empty():
+			continue
+
+		for stat in gear_data.get("stats", []):
+			var stat_name: String = stat.get("name", "")
+			var stat_value: int = stat.get("value", 0)
+
+			if total_stats.has(stat_name):
+				total_stats[stat_name] += stat_value
+
+	return total_stats

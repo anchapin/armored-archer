@@ -1602,3 +1602,311 @@ export async function rpcAppLaunchCheck(
 export function registerRpcAppLaunchCheck(initializer: Runtime.Initializer): void {
   initializer.registerRpc('armored_archer/app_launch_check', rpcAppLaunchCheck);
 }
+
+// ============================================================
+// REVENUECAT WEBHOOK HANDLER
+// ============================================================
+
+/**
+ * RevenueCat webhook secret for signature verification.
+ * Configure via REVENUECAT_WEBHOOK_SECRET environment variable.
+ */
+function getRevenueCatWebhookSecret(): string | undefined {
+  return process.env.REVENUECAT_WEBHOOK_SECRET;
+}
+
+/**
+ * Verify RevenueCat webhook signature (HMAC-SHA256).
+ * This ensures the webhook request actually came from RevenueCat.
+ */
+function verifyWebhookSignature(payload: string, signature: string | undefined, secret: string): boolean {
+  if (!signature) {
+    return false;
+  }
+
+  const crypto = require('crypto');
+  const expectedSignature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+
+  // Use timing-safe comparison to prevent timing attacks
+  if (signature.length !== expectedSignature.length) {
+    return false;
+  }
+
+  let result = 0;
+  for (let i = 0; i < signature.length; i++) {
+    result |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+/**
+ * Map RevenueCat product ID to gem amount.
+ */
+function getGemAmountForProduct(productId: string, logger: Runtime.Logger): number | null {
+  const catalog = getStoreCatalog(logger);
+  const bundle = catalog[productId];
+  return bundle ? bundle.gem_amount : null;
+}
+
+/**
+ * Handle initial purchase event - award gems to player.
+ */
+async function handleInitialPurchase(
+  nk: Runtime.Nakama,
+  userId: string,
+  productId: string,
+  logger: Runtime.Logger
+): Promise<{ success: boolean; message: string; gems_awarded?: number }> {
+  const gemAmount = getGemAmountForProduct(productId, logger);
+
+  if (!gemAmount) {
+    logger.error('Unknown product ID in webhook: %s', productId);
+    return { success: false, message: 'Unknown product ID' };
+  }
+
+  // Get current player currency
+  const playerCurrency = getPlayerCurrencyWithCache(nk, userId, logger);
+
+  // Check for max balance
+  if (wouldExceedMaxBalance(playerCurrency.gems, gemAmount)) {
+    logger.warn('Purchase would exceed max balance for user %s', userId);
+    return {
+      success: false,
+      message: 'Gem balance would exceed maximum',
+      gems_awarded: 0,
+    };
+  }
+
+  // Award gems
+  playerCurrency.gems += gemAmount;
+
+  // Update storage
+  nk.storageWrite([
+    {
+      collection: 'player_currency',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(playerCurrency),
+    },
+  ]);
+
+  // Update wallet
+  nk.walletUpdate(userId, {
+    gems: gemAmount,
+  });
+
+  // Invalidate cache
+  invalidateCurrencyCache(userId, logger);
+
+  logger.info('Webhook: Awarded %d gems to user %s for product %s', gemAmount, userId, productId);
+
+  return { success: true, message: 'Gems awarded', gems_awarded: gemAmount };
+}
+
+/**
+ * Handle non-renewal/cancellation event.
+ */
+function handleSubscriptionCancelled(
+  _nk: Runtime.Nakama,
+  userId: string,
+  productId: string,
+  reason: string | undefined,
+  logger: Runtime.Logger
+): { success: boolean; message: string } {
+  logger.info(
+    'Webhook: Subscription cancelled for user %s, product %s, reason: %s',
+    userId,
+    productId,
+    reason || 'not specified'
+  );
+
+  return { success: true, message: 'Cancellation noted' };
+}
+
+/**
+ * Handle subscription expiration.
+ */
+function handleSubscriptionExpired(
+  _nk: Runtime.Nakama,
+  userId: string,
+  productId: string,
+  reason: string | undefined,
+  logger: Runtime.Logger
+): { success: boolean; message: string } {
+  logger.info(
+    'Webhook: Subscription expired for user %s, product %s, reason: %s',
+    userId,
+    productId,
+    reason || 'not specified'
+  );
+
+  return { success: true, message: 'Expiration noted' };
+}
+
+/**
+ * Handle product transfer (account migration).
+ */
+async function handleProductChange(
+  nk: Runtime.Nakama,
+  userId: string,
+  transferredFrom: string,
+  productId: string,
+  logger: Runtime.Logger
+): Promise<{ success: boolean; message: string }> {
+  logger.info(
+    'Webhook: Product transferred from %s to %s for product %s',
+    transferredFrom,
+    userId,
+    productId
+  );
+
+  const result = await handleInitialPurchase(nk, userId, productId, logger);
+  return result;
+}
+
+/**
+ * RevenueCat webhook handler.
+ * Processes incoming webhooks from RevenueCat.
+ */
+export async function rpcRevenueCatWebhook(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): Promise<string> {
+  logger.info('Processing RevenueCat webhook');
+
+  // Get webhook secret for signature verification
+  const webhookSecret = getRevenueCatWebhookSecret();
+
+  // Verify webhook signature if secret is configured
+  if (webhookSecret) {
+    const signature = ctx.variables['x-revenuecat-signature'] || '';
+
+    if (!verifyWebhookSignature(payload, signature, webhookSecret)) {
+      logger.error('Invalid webhook signature');
+      return JSON.stringify({
+        success: false,
+        error: 'Invalid signature',
+      });
+    }
+  } else {
+    logger.warn('RevenueCat webhook secret not configured - skipping signature verification');
+  }
+
+  // Parse webhook payload
+  let webhookData: Record<string, unknown>;
+  try {
+    webhookData = JSON.parse(payload) as Record<string, unknown>;
+  } catch (e) {
+    logger.error('Failed to parse webhook payload: %s', e);
+    return JSON.stringify({
+      success: false,
+      error: 'Invalid payload',
+    });
+  }
+
+  // Extract event type
+  const eventType = (webhookData.event as string) || (webhookData.type as string) || '';
+  logger.info('Webhook event type: %s', eventType);
+
+  // Extract common fields
+  const appUserId = (webhookData.app_user_id as string) ||
+    (webhookData.appUserId as string) ||
+    (webhookData.user_id as string) ||
+    '';
+  const productId = (webhookData.product_id as string) ||
+    (webhookData.productId as string) ||
+    '';
+
+  if (!appUserId || !productId) {
+    logger.error('Webhook missing required fields: app_user_id or product_id');
+    return JSON.stringify({
+      success: false,
+      error: 'Missing required fields',
+    });
+  }
+
+  // Map Nakama user ID to RevenueCat app user ID
+  const userId = appUserId.startsWith('nakama:') ? appUserId.substring(7) : appUserId;
+
+  // Get environment (sandbox vs production)
+  const environment = (webhookData.environment as string) || 'production';
+  logger.info('Webhook environment: %s', environment);
+
+  // Process based on event type
+  switch (eventType) {
+    case 'initial_purchase':
+    case 'non_renewing_purchase':
+    case 'renewal':
+      const purchaseResult = await handleInitialPurchase(nk, userId, productId, logger);
+      return JSON.stringify(purchaseResult);
+
+    case 'cancellation':
+      const cancelReason = (webhookData.cancellation_reason as string) ||
+        (webhookData.cancellationReason as string);
+      const cancelResult = handleSubscriptionCancelled(
+        nk,
+        userId,
+        productId,
+        cancelReason,
+        logger
+      );
+      return JSON.stringify(cancelResult);
+
+    case 'expiration':
+      const expirationReason = (webhookData.expiration_reason as string) ||
+        (webhookData.expirationReason as string);
+      const expireResult = handleSubscriptionExpired(
+        nk,
+        userId,
+        productId,
+        expirationReason,
+        logger
+      );
+      return JSON.stringify(expireResult);
+
+    case 'product_change':
+      const transferredFrom = (webhookData.transferred_from as string) ||
+        (webhookData.transferredFrom as string) ||
+        (webhookData.originalAppUserId as string);
+      if (transferredFrom) {
+        const transferResult = await handleProductChange(
+          nk,
+          userId,
+          transferredFrom,
+          productId,
+          logger
+        );
+        return JSON.stringify(transferResult);
+      }
+      logger.warn('Product change event missing transferred_from field');
+      return JSON.stringify({ success: true, message: 'Product change noted' });
+
+    case 'refund':
+    case 'subscription_rc_auto_refund':
+      const refundReason = (webhookData.refund_reason as string) ||
+        (webhookData.refundReason as string) ||
+        'CHARGEBACK';
+      const refundResult = processRefund(
+        nk,
+        userId,
+        getGemAmountForProduct(productId, logger) || 0,
+        `${eventType}_${Date.now()}`,
+        refundReason as RefundReason,
+        logger
+      );
+      return JSON.stringify(refundResult);
+
+    default:
+      logger.info('Unknown webhook event type: %s', eventType);
+      return JSON.stringify({
+        success: true,
+        message: `Event ${eventType} noted but not processed`,
+      });
+  }
+}
+
+export function registerRpcRevenueCatWebhook(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/revenuecat_webhook', rpcRevenueCatWebhook);
+}
