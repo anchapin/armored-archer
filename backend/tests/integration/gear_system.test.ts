@@ -75,6 +75,10 @@ describe('Gear System Integration Tests', () => {
         }
       }
 
+      // Ensure we found gear with modifiers
+      expect(foundGearWithModifiers).toBe(true);
+      expect(gearWithModifiers).not.toBeNull();
+
       // If we got gear with modifiers, verify they're applied to stats
       if (foundGearWithModifiers && gearWithModifiers) {
         expect(gearWithModifiers.modifiers.length).toBeGreaterThan(0);
