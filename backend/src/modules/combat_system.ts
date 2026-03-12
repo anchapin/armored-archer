@@ -17,6 +17,11 @@ import { PvPMatch } from './matchmaker';
 import { profileFunction } from './profiling';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
+// Match-level inactivity timeout: 2 minutes of inactivity results in auto-forfeit
+const MATCH_INACTIVE_TIMEOUT_MS = 2 * 60 * 1000;
+// Maximum consecutive turn timeouts before auto-forfeit
+const MAX_CONSECUTIVE_TIMEOUTS = 2;
+
 /**
  * Combat action request data.
  *
@@ -81,6 +86,8 @@ export interface CombatResult {
  * @property log - Combat log entries
  * @property last_turn_timestamp - Timestamp of the last turn action
  * @property turn_timeout_ms - Milliseconds before a turn is considered abandoned
+ * @property consecutive_timeouts - Number of consecutive turn timeouts for current player
+ * @property forfeit_reason - Reason for match ending (timeout, disconnect, etc.)
  */
 export interface MatchState {
   match_id: string;
@@ -97,6 +104,8 @@ export interface MatchState {
   log: CombatLogEntry[];
   last_turn_timestamp: number;
   turn_timeout_ms: number;
+  consecutive_timeouts: number;
+  forfeit_reason?: string;
 }
 
 /**
@@ -201,23 +210,84 @@ function validateMatchForCombat(
 
 /**
  * Handles turn timeout by switching to opponent's turn
+ * Returns true if match was forfeited due to consecutive timeouts
  */
 function handleTurnTimeout(
   nk: Runtime.Nakama,
   matchState: MatchState,
   logger: Runtime.Logger
-): void {
+): boolean {
+  const timedOutUserId = matchState.current_turn_user_id;
+  const opponentId =
+    timedOutUserId === matchState.creator_id ? matchState.opponent_id : matchState.creator_id;
+
   logger.info(
-    'Turn timed out for user: %s in match: %s',
-    matchState.current_turn_user_id,
-    matchState.match_id
+    'Turn timed out for user: %s in match: %s (consecutive timeouts: %d)',
+    timedOutUserId,
+    matchState.match_id,
+    matchState.consecutive_timeouts + 1
   );
-  matchState.current_turn_user_id =
-    matchState.current_turn_user_id === matchState.creator_id
-      ? matchState.opponent_id
-      : matchState.creator_id;
+
+  // Increment consecutive timeouts
+  matchState.consecutive_timeouts++;
+
+  // Check if we should auto-forfeit
+  if (matchState.consecutive_timeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
+    logger.info(
+      'Auto-forfeit triggered for match: %s due to consecutive timeouts',
+      matchState.match_id
+    );
+
+    // Determine winner (the player who didn't timeout)
+    const winnerId = opponentId;
+    const loserId = timedOutUserId;
+
+    // Update match state
+    matchState.status = 'completed';
+    matchState.winner = winnerId;
+    matchState.forfeit_reason = 'timeout';
+
+    // Add forfeit entry to log
+    const forfeitLogEntry: CombatLogEntry = {
+      turn: matchState.turn,
+      attacker_id: loserId,
+      action: 'forfeit',
+      hit: false,
+      damage: 0,
+      is_crit: false,
+      timestamp: Date.now(),
+    };
+    matchState.log.push(forfeitLogEntry);
+
+    // Save match state
+    saveMatchState(nk, matchState);
+
+    // Get the match and update its status
+    const matchObjects = nk.storageRead([
+      {
+        collection: 'pvp_matches',
+        key: matchState.match_id,
+        userId: matchState.creator_id,
+      },
+    ]);
+
+    if (matchObjects.length > 0) {
+      const match = JSON.parse(matchObjects[0].value);
+      updateMatchStatus(nk, match, winnerId);
+    }
+
+    // Notify opponent of forfeit
+    notifyOpponentOfForfeit(nk, matchState, opponentId, 'timeout');
+
+    return true;
+  }
+
+  // Switch to opponent's turn
+  matchState.current_turn_user_id = opponentId;
   matchState.last_turn_timestamp = Date.now();
   saveMatchState(nk, matchState);
+
+  return false;
 }
 
 /**
@@ -333,12 +403,24 @@ export async function rpcSubmitCombatAction(
 
       // Handle turn timeout
       if (isTurnTimedOut(matchState)) {
-        handleTurnTimeout(nk, matchState, logger);
+        const wasForfeited = handleTurnTimeout(nk, matchState, logger);
         span.setAttribute('combat.turn_timeout', true);
+
+        if (wasForfeited) {
+          return JSON.stringify({
+            error: 'Match forfeited due to consecutive timeouts',
+            forfeit: true,
+            winner: matchState.winner,
+          });
+        }
+
         return JSON.stringify({
           error: 'Your previous turn timed out, opponent now has their turn',
         });
       }
+
+      // Reset consecutive timeouts when player successfully takes a turn
+      matchState.consecutive_timeouts = 0;
 
       // Anti-cheat validations
       const antiCheatError = validateAntiCheat(ctx, action, matchState, logger);
@@ -497,6 +579,7 @@ function getOrCreateMatchState(
     log: [],
     last_turn_timestamp: now,
     turn_timeout_ms: TURN_TIMEOUT_MS,
+    consecutive_timeouts: 0,
   };
 
   return matchState;
@@ -731,4 +814,160 @@ function isMatchExpired(match: PvPMatch): boolean {
 function isTurnTimedOut(matchState: MatchState): boolean {
   const timeSinceLastTurn = Date.now() - matchState.last_turn_timestamp;
   return timeSinceLastTurn > matchState.turn_timeout_ms;
+}
+
+/**
+ * Notifies opponent of a forfeit via Nakama notifications.
+ *
+ * @param nk - Nakama server interface
+ * @param matchState - Current match state
+ * @param opponentId - ID of the opponent to notify
+ * @param forfeitReason - Reason for forfeit (timeout, disconnect, etc.)
+ */
+function notifyOpponentOfForfeit(
+  nk: Runtime.Nakama,
+  matchState: MatchState,
+  opponentId: string,
+  forfeitReason: string
+): void {
+  try {
+    const winnerId = matchState.winner || opponentId;
+    const loserId =
+      winnerId === matchState.creator_id ? matchState.opponent_id : matchState.creator_id;
+
+    nk.notificationSend(
+      opponentId,
+      'Match Forfeited',
+      {
+        match_id: matchState.match_id,
+        forfeit_reason: forfeitReason,
+        winner_id: winnerId,
+        loser_id: loserId,
+        message: `Your opponent has forfeited the match. You win!`,
+      },
+      2, // Custom notification code for match forfeit
+      true, // persist
+      '' // senderId (empty for server)
+    );
+  } catch (error) {
+    // Log error but don't fail the operation
+    console.error('Failed to send forfeit notification:', error);
+  }
+}
+
+/**
+ * Handles a player disconnect/leave match request.
+ * This allows graceful handling of disconnections.
+ */
+export async function rpcPlayerDisconnect(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): Promise<string> {
+  return traceAsync('rpc.player_disconnect', async (span) => {
+    span.setAttribute('user.id', ctx.userId || 'anonymous');
+
+    return profileFunction<string>('combat.player_disconnect', () => {
+      logger.info('Player disconnect called for user: %s', ctx.userId);
+
+      const validation = validatePayload(
+        ZodSchemas.player_disconnect,
+        payload,
+        'player_disconnect'
+      );
+      if (!validation.success) {
+        span.setAttribute('validation.error', true);
+        return createValidationErrorResponse('player_disconnect', validation.error);
+      }
+
+      const { match_id, reason } = validation.data;
+
+      // Read match
+      const matchObjects = nk.storageRead([
+        {
+          collection: 'pvp_matches',
+          key: match_id,
+          userId: ctx.userId,
+        },
+      ]);
+
+      if (matchObjects.length === 0) {
+        span.setAttribute('error', true);
+        span.setAttribute('error.message', 'Match not found');
+        return JSON.stringify({ error: 'Match not found' });
+      }
+
+      const match = JSON.parse(matchObjects[0].value);
+
+      if (match.status !== 'active') {
+        return JSON.stringify({ error: 'Match is not active' });
+      }
+
+      if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
+        return JSON.stringify({ error: 'Not a participant in this match' });
+      }
+
+      // Read match state
+      const stateObjects = nk.storageRead([
+        {
+          collection: 'pvp_match_states',
+          key: match_id,
+          userId: match.creator_id,
+        },
+      ]);
+
+      if (stateObjects.length === 0) {
+        return JSON.stringify({ error: 'Match state not found' });
+      }
+
+      const matchState: MatchState = JSON.parse(stateObjects[0].value);
+
+      // Determine winner (opponent)
+      const winnerId = ctx.userId === match.creator_id ? match.opponent_id : match.creator_id;
+      const loserId = ctx.userId;
+
+      // Update match state
+      matchState.status = 'completed';
+      matchState.winner = winnerId;
+      matchState.forfeit_reason = reason || 'disconnect';
+
+      // Add forfeit entry to log
+      const forfeitLogEntry: CombatLogEntry = {
+        turn: matchState.turn,
+        attacker_id: loserId,
+        action: 'forfeit',
+        hit: false,
+        damage: 0,
+        is_crit: false,
+        timestamp: Date.now(),
+      };
+      matchState.log.push(forfeitLogEntry);
+
+      // Save match state
+      saveMatchState(nk, matchState);
+
+      // Update match status
+      updateMatchStatus(nk, match, winnerId);
+
+      // Notify opponent
+      notifyOpponentOfForfeit(nk, matchState, winnerId, reason || 'disconnect');
+
+      return JSON.stringify({
+        success: true,
+        forfeit: true,
+        winner: winnerId,
+        reason: reason || 'disconnect',
+      });
+    });
+  });
+}
+
+/**
+ * Registers the player disconnect RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcPlayerDisconnect(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/player_disconnect', rpcPlayerDisconnect);
 }
