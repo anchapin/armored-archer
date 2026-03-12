@@ -548,4 +548,103 @@ describe('Gear System Integration Tests', () => {
       expect(inventory.unlocked_modifier_pools).toContain('wind_fury');
     });
   });
+
+  describe('rpcGetUnlockedModifiers', () => {
+    test('should return unlocked modifiers and boss defeat counts', async () => {
+      // First, unlock a modifier pool
+      await rpcCall(player, 'armored_archer/unlock_modifier_pool', {
+        modifier_id: 'piercing_arrow'
+      });
+
+      // Get unlocked modifiers
+      const result = await rpcCall(player, 'armored_archer/get_unlocked_modifiers', {});
+
+      expect(result.success).toBe(true);
+      expect(result.unlocked_modifier_pools).toContain('piercing_arrow');
+      expect(result.boss_defeats).toBeDefined();
+    });
+
+    test('should return empty boss defeats initially', async () => {
+      const result = await rpcCall(player, 'armored_archer/get_unlocked_modifiers', {});
+
+      expect(result.success).toBe(true);
+      expect(result.boss_defeats).toEqual({});
+    });
+  });
+
+  describe('rpcStageComplete - Boss Defeat Tracking', () => {
+    afterEach(async () => {
+      // Clean up boss defeat tracking data
+      await testHelper.deleteStorageObject('boss_defeat_tracking', player.userId, player.userId);
+    });
+
+    test('should track boss defeat and unlock modifiers', async () => {
+      // Complete a stage with boss defeated
+      const payload = {
+        stage_id: 'stage_wind_boss',
+        boss_defeated: true,
+        difficulty: 'medium' as const,
+        boss_id: 'boss_wind'
+      };
+
+      const result = await rpcCall(player, 'armored_archer/stage_complete', payload);
+
+      expect(result.success).toBe(true);
+      expect(result.boss_defeat_count).toBe(1);
+      expect(result.newly_unlocked_modifiers).toContain('piercing_arrow');
+      expect(result.unlocked_modifier_pools).toContain('piercing_arrow');
+    });
+
+    test('should increment boss defeat count on repeated defeats', async () => {
+      const payload = {
+        stage_id: 'stage_wind_boss',
+        boss_defeated: true,
+        difficulty: 'easy' as const,
+        boss_id: 'boss_wind'
+      };
+
+      // First defeat
+      const result1 = await rpcCall(player, 'armored_archer/stage_complete', payload);
+      expect(result1.boss_defeat_count).toBe(1);
+
+      // Second defeat
+      const result2 = await rpcCall(player, 'armored_archer/stage_complete', payload);
+      expect(result2.boss_defeat_count).toBe(2);
+
+      // Verify via get_unlocked_modifiers
+      const modifiers = await rpcCall(player, 'armored_archer/get_unlocked_modifiers', {});
+      expect(modifiers.boss_defeats.boss_wind).toBe(2);
+    });
+
+    test('should not track boss defeat when boss_defeated is false', async () => {
+      const payload = {
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'easy' as const,
+      };
+
+      const result = await rpcCall(player, 'armored_archer/stage_complete', payload);
+
+      expect(result.success).toBe(true);
+      expect(result.boss_defeat_count).toBeUndefined();
+    });
+
+    test('should not duplicate modifiers when boss defeated multiple times', async () => {
+      const payload = {
+        stage_id: 'stage_wind_boss',
+        boss_defeated: true,
+        difficulty: 'easy' as const,
+        boss_id: 'boss_wind'
+      };
+
+      // Defeat the same boss twice
+      await rpcCall(player, 'armored_archer/stage_complete', payload);
+      await rpcCall(player, 'armored_archer/stage_complete', payload);
+
+      // Get modifiers - should only have piercing_arrow once
+      const result = await rpcCall(player, 'armored_archer/get_unlocked_modifiers', {});
+      const piercingCount = result.unlocked_modifier_pools.filter((m: string) => m === 'piercing_arrow').length;
+      expect(piercingCount).toBe(1);
+    });
+  });
 });

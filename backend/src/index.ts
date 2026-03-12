@@ -48,6 +48,7 @@ import {
   registerRpcGetInventory,
   registerRpcUnlockModifierPool,
   registerRpcStageComplete,
+  registerRpcGetUnlockedModifiers,
 } from './modules/gear_system';
 import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
 import { registerDeploymentObservability, initializeDeploymentObservability } from './modules/deployment_observability';
@@ -331,6 +332,7 @@ const InitModule: InitModule = function (
     registerRpcGetInventory(initializer);
     registerRpcUnlockModifierPool(initializer);
     registerRpcStageComplete(initializer);
+    registerRpcGetUnlockedModifiers(initializer);
     registerRpcReportPlayer(initializer);
     registerRpcGetPlayerReports(initializer);
     registerRpcCompleteStage(initializer);

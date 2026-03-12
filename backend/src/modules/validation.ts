@@ -83,6 +83,8 @@ export const ValibotSchemas = {
     modifier_id: pipe(string(), minLength(1), maxLength(100)),
   }),
 
+  get_unlocked_modifiers: object({}),
+
   list_matches: optional(
     object({
       match_type: optional(createEnum(['ranked', 'casual'])),

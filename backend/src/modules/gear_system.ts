@@ -223,6 +223,18 @@ const BOSS_MODIFIER_UNLOCKS: { [bossId: string]: string[] } = {
 };
 
 /**
+ * Maps enemy type IDs to their unlocked modifier pool IDs.
+ * When an enemy of a specific type is defeated, all modifiers
+ * associated with that enemy type are unlocked for future drops.
+ */
+const ENEMY_MODIFIER_UNLOCKS: { [enemyType: string]: string[] } = {
+  goblin: ['vitality_boost'],
+  skeleton: ['fortification'],
+  orc: ['heavy_impact'],
+  dragon: ['piercing_arrow', 'wind_fury'],
+};
+
+/**
  * Retrieves the list of modifier IDs that are unlocked by defeating a specific boss.
  *
  * @param bossId - The ID of the defeated boss
@@ -230,6 +242,16 @@ const BOSS_MODIFIER_UNLOCKS: { [bossId: string]: string[] } = {
  */
 export function getModifiersUnlockedByBoss(bossId: string): string[] {
   return BOSS_MODIFIER_UNLOCKS[bossId] || [];
+}
+
+/**
+ * Retrieves the list of modifier IDs that are unlocked by defeating an enemy of a specific type.
+ *
+ * @param enemyType - The type of enemy defeated
+ * @returns Array of modifier IDs that may now drop from future loot
+ */
+export function getModifiersUnlockedByEnemy(enemyType: string): string[] {
+  return ENEMY_MODIFIER_UNLOCKS[enemyType] || [];
 }
 
 /**
@@ -280,7 +302,9 @@ export function applyModifiersToGearStats(
  * @param inventory - Player inventory containing equipped gear
  * @returns Object with stat name as key and total bonus as value
  */
-export function getEquippedGearModifierBonuses(inventory: PlayerInventory): { [statName: string]: number } {
+export function getEquippedGearModifierBonuses(inventory: PlayerInventory): {
+  [statName: string]: number;
+} {
   const bonuses: { [statName: string]: number } = {};
 
   // Get equipped gear items
@@ -946,6 +970,53 @@ export function registerRpcGetInventory(initializer: Runtime.Initializer): void 
  *   "unlocked_modifier_pools": [ ... ]
  * }
  */
+/**
+ * Retrieves player inventory from storage.
+ * Exported for use by combat_system module.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param logger - Nakama logger instance
+ * @returns Player inventory or default inventory if not found
+ */
+export function getPlayerInventory(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): PlayerInventory {
+  const inventoryObjects = nk.storageRead([
+    {
+      collection: 'player_inventory',
+      key: userId,
+      userId: userId,
+    },
+  ]);
+
+  if (inventoryObjects.length === 0) {
+    return {
+      user_id: userId,
+      gear: [],
+      equipped_gear: {},
+      unlocked_modifier_pools: [],
+    };
+  }
+
+  const value = inventoryObjects[0].value;
+  if (value) {
+    const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
+    if (parseResult.success && parseResult.data) {
+      return parseResult.data;
+    }
+  }
+
+  return {
+    user_id: userId,
+    gear: [],
+    equipped_gear: {},
+    unlocked_modifier_pools: [],
+  };
+}
+
 export function rpcGetInventory(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -1112,18 +1183,243 @@ export function rpcUnlockModifierPool(
 }
 
 /**
+ * Boss defeat tracking data structure.
+ *
+ * @property user_id - Unique identifier for the player
+ * @property defeats - Map of boss_id to defeat count
+ * @property unlocked_modifiers - List of unlocked modifier IDs
+ */
+export interface BossDefeatData {
+  user_id: string;
+  defeats: { [bossId: string]: number };
+  unlocked_modifiers: string[];
+}
+
+/**
+ * Registers the get unlocked modifiers RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcGetUnlockedModifiers(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_unlocked_modifiers', rpcGetUnlockedModifiers);
+}
+
+/**
+ * Retrieves all unlocked modifiers for a player.
+ * This includes modifiers unlocked by defeating bosses and enemies.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (unused, required for RPC format)
+ * @returns JSON string with unlocked modifiers and boss defeat counts
+ *
+ * @example
+ * // Request payload
+ * { }
+ *
+ * // Response
+ * {
+ *   "success": true,
+ *   "unlocked_modifier_pools": ["piercing_arrow", "wind_fury"],
+ *   "boss_defeats": {
+ *     "boss_wind": 3,
+ *     "boss_basic": 1
+ *   }
+ * }
+ */
+export function rpcGetUnlockedModifiers(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get unlocked modifiers called for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_unlocked_modifiers, payload, 'get_unlocked_modifiers');
+  if (!validation.success) {
+    return createValidationErrorResponse('get_unlocked_modifiers', validation.error);
+  }
+
+  // Get player inventory to retrieve unlocked modifier pools
+  const inventory = getPlayerInventory(nk, ctx.userId, logger);
+
+  // Get boss defeat tracking data
+  const bossDefeatData = getBossDefeatData(nk, ctx.userId, logger);
+
+  return JSON.stringify({
+    success: true,
+    unlocked_modifier_pools: inventory.unlocked_modifier_pools,
+    boss_defeats: bossDefeatData.defeats,
+  });
+}
+
+/**
+ * Retrieves boss defeat data for a player from storage.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param logger - Nakama logger instance
+ * @returns Boss defeat data with defeat counts and unlocked modifiers
+ */
+function getBossDefeatData(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): BossDefeatData {
+  const objects = nk.storageRead([
+    {
+      collection: 'boss_defeat_tracking',
+      key: userId,
+      userId: userId,
+    },
+  ]);
+
+  if (objects.length === 0) {
+    return {
+      user_id: userId,
+      defeats: {},
+      unlocked_modifiers: [],
+    };
+  }
+
+  const value = objects[0].value;
+  if (value) {
+    const parseResult = safeParse<BossDefeatData>(value, null, logger, 'boss_defeat_data');
+    if (parseResult.success && parseResult.data) {
+      return parseResult.data;
+    }
+  }
+
+  return {
+    user_id: userId,
+    defeats: {},
+    unlocked_modifiers: [],
+  };
+}
+
+/**
+ * Saves boss defeat data for a player to storage.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param data - Boss defeat data to save
+ * @param logger - Nakama logger instance
+ */
+function saveBossDefeatData(
+  nk: Runtime.Nakama,
+  userId: string,
+  data: BossDefeatData,
+  logger: Runtime.Logger
+): void {
+  nk.storageWrite([
+    {
+      collection: 'boss_defeat_tracking',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(data),
+    },
+  ]);
+
+  logger.debug('Saved boss defeat data for user: %s', userId);
+}
+
+/**
+ * Records a boss defeat for a player and unlocks associated modifier pools.
+ * This function is called when a player defeats a boss in PvE.
+ *
+ * @param nk - Nakama server interface
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param bossId - ID of the boss that was defeated
+ * @returns Object containing defeat count and newly unlocked modifiers
+ */
+export function recordBossDefeat(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  bossId: string
+): { defeat_count: number; newly_unlocked_modifiers: string[] } {
+  const bossDefeatData = getBossDefeatData(nk, ctx.userId, logger);
+  const inventory = getPlayerInventory(nk, ctx.userId, logger);
+
+  // Increment defeat count for this boss
+  const previousDefeatCount = bossDefeatData.defeats[bossId] || 0;
+  bossDefeatData.defeats[bossId] = previousDefeatCount + 1;
+
+  // Get modifiers unlocked by this boss
+  const modifiersToUnlock = getModifiersUnlockedByBoss(bossId);
+  const newlyUnlockedModifiers: string[] = [];
+
+  // Unlock any new modifier pools
+  for (const modifierId of modifiersToUnlock) {
+    if (!bossDefeatData.unlocked_modifiers.includes(modifierId)) {
+      bossDefeatData.unlocked_modifiers.push(modifierId);
+      newlyUnlockedModifiers.push(modifierId);
+    }
+    if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
+      inventory.unlocked_modifier_pools.push(modifierId);
+    }
+  }
+
+  // Save updated data
+  saveBossDefeatData(nk, ctx.userId, bossDefeatData, logger);
+
+  // Save inventory with new modifiers
+  nk.storageWrite([
+    {
+      collection: 'player_inventory',
+      key: ctx.userId,
+      userId: ctx.userId,
+      value: JSON.stringify(inventory),
+    },
+  ]);
+
+  logger.info(
+    'User %s defeated boss %s (total: %d), unlocked modifiers: %s',
+    ctx.userId,
+    bossId,
+    bossDefeatData.defeats[bossId],
+    newlyUnlockedModifiers.join(', ')
+  );
+
+  // Audit the boss defeat
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'boss_defeat',
+    'boss_defeat_tracking',
+    {
+      boss_id: bossId,
+      defeat_count: bossDefeatData.defeats[bossId],
+      newly_unlocked_modifiers: newlyUnlockedModifiers,
+      all_unlocked_modifiers: bossDefeatData.unlocked_modifiers,
+    },
+    'success'
+  );
+
+  return {
+    defeat_count: bossDefeatData.defeats[bossId],
+    newly_unlocked_modifiers: newlyUnlockedModifiers,
+  };
+}
+
+/**
  * Request payload for stage completion with loot generation.
  *
  * @property stage_id - ID of the completed stage
  * @property boss_defeated - Whether a boss was defeated
  * @property difficulty - Difficulty level of the stage
  * @property boss_id - ID of the boss defeated (if any)
+ * @property enemy_type - Type of enemy defeated (for modifier unlock tracking)
  */
 export interface StageCompleteRequest {
   stage_id: string;
   boss_defeated: boolean;
   difficulty: 'easy' | 'medium' | 'hard' | 'nightmare';
   boss_id?: string;
+  enemy_type?: string;
 }
 
 /**
@@ -1164,7 +1460,7 @@ const BASE_DROP_RATE = 0.3;
  * @param bossDefeated - Whether a boss was defeated
  * @returns Calculated drop rate between 0 and 1
  */
-function calculateDropRate(difficulty: string, bossDefeated: boolean): number {
+export function calculateDropRate(difficulty: string, bossDefeated: boolean): number {
   const multiplier = DIFFICULTY_DROP_MULTIPLIERS[difficulty] || 1.0;
   let dropRate = BASE_DROP_RATE * multiplier;
 
@@ -1209,6 +1505,56 @@ export function registerRpcStageComplete(initializer: Runtime.Initializer): void
  *   }
  * }
  */
+/**
+ * Unlocks modifier pools for a player based on defeated enemies.
+ * Returns the list of newly unlocked modifier IDs.
+ */
+function unlockModifierPools(
+  inventory: PlayerInventory,
+  logger: Runtime.Logger,
+  ctxUserId: string,
+  bossId?: string,
+  enemyType?: string
+): string[] {
+  const newlyUnlocked: string[] = [];
+
+  // Unlock modifier pools when boss is defeated
+  if (bossId) {
+    const modifiersToUnlock = getModifiersUnlockedByBoss(bossId);
+    for (const modifierId of modifiersToUnlock) {
+      if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
+        inventory.unlocked_modifier_pools.push(modifierId);
+        newlyUnlocked.push(modifierId);
+        logger.info(
+          'Unlocked modifier pool %s for user %s after defeating boss %s',
+          modifierId,
+          ctxUserId,
+          bossId
+        );
+      }
+    }
+  }
+
+  // Unlock modifier pools when enemy is defeated (for future drop chances)
+  if (enemyType) {
+    const enemyModifiersToUnlock = getModifiersUnlockedByEnemy(enemyType);
+    for (const modifierId of enemyModifiersToUnlock) {
+      if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
+        inventory.unlocked_modifier_pools.push(modifierId);
+        newlyUnlocked.push(modifierId);
+        logger.info(
+          'Unlocked modifier pool %s for user %s after defeating enemy type %s',
+          modifierId,
+          ctxUserId,
+          enemyType
+        );
+      }
+    }
+  }
+
+  return newlyUnlocked;
+}
+
 export function rpcStageComplete(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -1252,63 +1598,30 @@ export function rpcStageComplete(
     gear: null,
   };
 
-  // Read or create player inventory
-  const inventoryObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
+  // Get player inventory
+  const inventory = getPlayerInventory(nk, ctx.userId, logger);
 
-  let inventory: PlayerInventory;
-
-  if (inventoryObjects.length === 0) {
-    inventory = {
-      user_id: ctx.userId,
-      gear: [],
-      equipped_gear: {},
-      unlocked_modifier_pools: [],
-    };
-  } else {
-    const value = inventoryObjects[0].value;
-    if (value) {
-      const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
-      if (!parseResult.success || !parseResult.data) {
-        logger.error('Failed to parse inventory data');
-        logAudit(
-          nk,
-          ctx.userId,
-          `ctx.ipAddress ?? null`,
-          'stage_complete',
-          'player_inventory',
-          { stage_id: request.stage_id },
-          'failure',
-          'Failed to parse inventory data'
-        );
-        return createErrorResponse('INVALID_DATA', 'Failed to parse data');
-      }
-      inventory = parseResult.data;
-    } else {
-      inventory = {
-        user_id: ctx.userId,
-        gear: [],
-        equipped_gear: {},
-        unlocked_modifier_pools: [],
-      };
-    }
-  }
-
-  // Unlock modifier pools when boss is defeated
+  // Track boss defeat and unlock modifier pools when boss is defeated
+  let bossDefeatResult: { defeat_count: number; newly_unlocked_modifiers: string[] } | undefined;
   if (request.boss_defeated && request.boss_id) {
-    const modifiersToUnlock = getModifiersUnlockedByBoss(request.boss_id);
-    for (const modifierId of modifiersToUnlock) {
-      if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
-        inventory.unlocked_modifier_pools.push(modifierId);
-        logger.info('Unlocked modifier pool %s for user %s after defeating boss %s', modifierId, ctx.userId, request.boss_id);
-      }
-    }
+    bossDefeatResult = recordBossDefeat(nk, ctx, logger, request.boss_id);
   }
+
+  // Unlock modifier pools when enemy is defeated (non-boss enemies)
+  // Note: Boss modifiers are already unlocked by recordBossDefeat
+  const newlyUnlockedModifiers = unlockModifierPools(
+    inventory,
+    logger,
+    ctx.userId,
+    undefined, // Boss modifiers already handled by recordBossDefeat
+    request.enemy_type
+  );
+
+  // Combine modifiers from boss defeat and enemy defeat
+  const allUnlockedModifiers = [
+    ...(bossDefeatResult?.newly_unlocked_modifiers || []),
+    ...newlyUnlockedModifiers,
+  ];
 
   // Roll for loot
   if (roll < dropRate) {
@@ -1318,12 +1631,7 @@ export function rpcStageComplete(
     lootResult.dropped = true;
     lootResult.gear = gear;
 
-    logger.info(
-      'Loot dropped for user %s: %s (%s)',
-      ctx.userId,
-      gear.name,
-      gear.rarity
-    );
+    logger.info('Loot dropped for user %s: %s (%s)', ctx.userId, gear.name, gear.rarity);
   }
 
   // Save inventory with new gear (if any)
@@ -1348,10 +1656,16 @@ export function rpcStageComplete(
       difficulty: request.difficulty,
       boss_defeated: request.boss_defeated,
       boss_id: request.boss_id ?? null,
+      boss_defeat_count: bossDefeatResult?.defeat_count ?? null,
+      enemy_type: request.enemy_type ?? null,
       loot_dropped: lootResult.dropped,
       loot_gear_id: lootResult.gear?.id ?? null,
       loot_gear_rarity: lootResult.gear?.rarity ?? null,
-      unlocked_modifiers: request.boss_defeated ? getModifiersUnlockedByBoss(request.boss_id ?? '') : [],
+      unlocked_modifiers_from_boss: bossDefeatResult?.newly_unlocked_modifiers ?? [],
+      unlocked_modifiers_from_enemy: newlyUnlockedModifiers.filter((m) =>
+        request.enemy_type ? getModifiersUnlockedByEnemy(request.enemy_type).includes(m) : false
+      ),
+      all_unlocked_modifiers: inventory.unlocked_modifier_pools,
       drop_rate_used: dropRate,
       roll_value: roll,
     },
@@ -1364,5 +1678,7 @@ export function rpcStageComplete(
     loot: lootResult,
     drop_rate: dropRate,
     unlocked_modifier_pools: inventory.unlocked_modifier_pools,
+    boss_defeat_count: bossDefeatResult?.defeat_count,
+    newly_unlocked_modifiers: allUnlockedModifiers,
   });
 }
