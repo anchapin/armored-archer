@@ -7,6 +7,8 @@
 import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { generateGearItem, calculateDropRate, PlayerInventory, GearItem, getModifiersUnlockedByBoss } from './gear_system';
+import { safeParse, createErrorResponse } from '../utils/safeParse';
 
 /**
  * Stage completion record stored in database.
@@ -41,13 +43,24 @@ export interface StageCompletionStorage {
 }
 
 /**
- * Request payload for completing a stage.
+ * Request payload for completing a stage (with optional loot generation).
  */
 export interface CompleteStageRequest {
   stage_id: string;
   stage_prefix: string;
   stars_earned: number;
   score: number;
+  difficulty?: 'easy' | 'medium' | 'hard' | 'nightmare';
+  boss_defeated?: boolean;
+  boss_id?: string;
+}
+
+/**
+ * Loot result from stage completion.
+ */
+export interface LootResult {
+  dropped: boolean;
+  gear: GearItem | null;
 }
 
 /**
@@ -65,7 +78,7 @@ export interface GetAllStageCompletionsRequest {
 }
 
 /**
- * Response for stage completion.
+ * Response for stage completion (with optional loot).
  */
 export interface StageCompletionResponse {
   success: boolean;
@@ -77,6 +90,9 @@ export interface StageCompletionResponse {
     stars_earned: number;
     score: number;
   };
+  loot?: LootResult;
+  drop_rate?: number;
+  unlocked_modifier_pools?: string[];
 }
 
 /**
@@ -332,6 +348,129 @@ export function rpcCompleteStage(
       },
     ]);
 
+    // Server-side loot generation (only if difficulty is provided)
+    let lootResult: LootResult = { dropped: false, gear: null };
+    let dropRate = 0;
+    let unlockedModifierPools: string[] = [];
+
+    if (request.difficulty) {
+      // Calculate drop rate server-side
+      dropRate = calculateDropRate(request.difficulty, request.boss_defeated || false);
+      const roll = Math.random();
+
+      logger.info(
+        'Loot roll for user %s: roll=%f, dropRate=%f, difficulty=%s, bossDefeated=%s',
+        ctx.userId,
+        roll,
+        dropRate,
+        request.difficulty,
+        request.boss_defeated
+      );
+
+      // Read or create player inventory
+      const inventoryObjects = nk.storageRead([
+        {
+          collection: 'player_inventory',
+          key: ctx.userId,
+          userId: ctx.userId,
+        },
+      ]);
+
+      let inventory: PlayerInventory;
+
+      if (inventoryObjects.length === 0) {
+        inventory = {
+          user_id: ctx.userId,
+          gear: [],
+          equipped_gear: {},
+          unlocked_modifier_pools: [],
+        };
+      } else {
+        const value = inventoryObjects[0].value;
+        if (value) {
+          const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
+          if (!parseResult.success || !parseResult.data) {
+            logger.error('Failed to parse inventory data');
+            inventory = {
+              user_id: ctx.userId,
+              gear: [],
+              equipped_gear: {},
+              unlocked_modifier_pools: [],
+            };
+          } else {
+            inventory = parseResult.data;
+          }
+        } else {
+          inventory = {
+            user_id: ctx.userId,
+            gear: [],
+            equipped_gear: {},
+            unlocked_modifier_pools: [],
+          };
+        }
+      }
+
+      // Unlock modifier pools when boss is defeated
+      if (request.boss_defeated && request.boss_id) {
+        const modifiersToUnlock = getModifiersUnlockedByBoss(request.boss_id);
+        for (const modifierId of modifiersToUnlock) {
+          if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
+            inventory.unlocked_modifier_pools.push(modifierId);
+            logger.info('Unlocked modifier pool %s for user %s after defeating boss %s', modifierId, ctx.userId, request.boss_id);
+          }
+        }
+      }
+
+      unlockedModifierPools = inventory.unlocked_modifier_pools;
+
+      // Roll for loot
+      if (roll < dropRate) {
+        const gear = generateGearItem(stage_id, inventory.unlocked_modifier_pools, logger);
+        inventory.gear.push(gear);
+
+        lootResult.dropped = true;
+        lootResult.gear = gear;
+
+        logger.info(
+          'Loot dropped for user %s: %s (%s)',
+          ctx.userId,
+          gear.name,
+          gear.rarity
+        );
+      }
+
+      // Save inventory with new gear (if any)
+      nk.storageWrite([
+        {
+          collection: 'player_inventory',
+          key: ctx.userId,
+          userId: ctx.userId,
+          value: JSON.stringify(inventory),
+        },
+      ]);
+
+      // Audit the loot drop
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'stage_complete_loot',
+        'stage_progression',
+        {
+          stage_id,
+          difficulty: request.difficulty,
+          boss_defeated: request.boss_defeated,
+          boss_id: request.boss_id ?? null,
+          loot_dropped: lootResult.dropped,
+          loot_gear_id: lootResult.gear?.id ?? null,
+          loot_gear_rarity: lootResult.gear?.rarity ?? null,
+          drop_rate_used: dropRate,
+          roll_value: roll,
+        },
+        'success'
+      );
+    }
+
     // Log audit event
     logAudit(
       nk,
@@ -354,6 +493,13 @@ export function rpcCompleteStage(
 
     if (previousBest) {
       response.previous_best = previousBest;
+    }
+
+    // Add loot information if difficulty was provided
+    if (request.difficulty) {
+      response.loot = lootResult;
+      response.drop_rate = dropRate;
+      response.unlocked_modifier_pools = unlockedModifierPools;
     }
 
     return JSON.stringify(response);

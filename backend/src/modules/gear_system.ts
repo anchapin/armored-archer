@@ -1164,7 +1164,7 @@ const BASE_DROP_RATE = 0.3;
  * @param bossDefeated - Whether a boss was defeated
  * @returns Calculated drop rate between 0 and 1
  */
-function calculateDropRate(difficulty: string, bossDefeated: boolean): number {
+export function calculateDropRate(difficulty: string, bossDefeated: boolean): number {
   const multiplier = DIFFICULTY_DROP_MULTIPLIERS[difficulty] || 1.0;
   let dropRate = BASE_DROP_RATE * multiplier;
 
