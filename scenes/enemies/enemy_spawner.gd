@@ -23,6 +23,18 @@ extends Node2D
 
 # --- Enemy Scenes ---
 const MELEE_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/melee_enemy.tscn")
+const RANGED_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/ranged_enemy.tscn")
+const SCOUT_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/scout_enemy.tscn")
+const BRUTE_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/brute_enemy.tscn")
+const GUARDIAN_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/guardian_enemy.tscn")
+const NECROMANCER_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/necromancer_enemy.tscn")
+
+# --- Boss Scenes ---
+const BOSS_BASIC_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_basic.tscn")
+const BOSS_WIND_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_wind.tscn")
+const BOSS_FIRE_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_fire.tscn")
+const BOSS_ICE_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_ice.tscn")
+const BOSS_EARTH_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_earth.tscn")
 
 # --- State ---
 var current_wave: int = 0
