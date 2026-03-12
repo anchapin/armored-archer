@@ -2,13 +2,10 @@
  * Stage Tracking module.
  * @fileoverview Manages PvE stage completion tracking for player progression.
  * Uses Nakama's storage system for data persistence.
- * Automatically generates loot rewards upon stage completion.
  */
 
 import { Runtime } from '../types/nakama';
-import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
-import { generateGearItem, GearItem, PlayerInventory } from './gear_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
@@ -80,156 +77,12 @@ export interface StageCompletionResponse {
     stars_earned: number;
     score: number;
   };
-  loot?: {
-    id: string;
-    name: string;
-    rarity: string;
-    type: string;
-    stats: Array<{ name: string; base_value: number; value: number }>;
-    modifiers: Array<{
-      id: string;
-      name: string;
-      description: string;
-      stat: string;
-      value_range: [number, number];
-      rarity: string;
-      boss_unlock: string | null;
-    }>;
-  };
 }
 
 /**
  * Storage collection name for stage completions.
  */
 const STAGE_COMPLETION_COLLECTION = 'stage_completion';
-const PLAYER_INVENTORY_COLLECTION = 'player_inventory';
-
-/**
- * Helper function to generate and save loot for stage completion.
- * Extracts loot generation logic to reduce function complexity.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param stageId - ID of completed stage
- * @returns Generated gear item or null if generation failed
- */
-async function generateAndSaveLoot(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  stageId: string
-): Promise<GearItem | null> {
-  try {
-    // Read player's inventory to get unlocked modifier pools
-    const inventoryObjects = nk.storageRead([
-      {
-        collection: PLAYER_INVENTORY_COLLECTION,
-        key: ctx.userId,
-        userId: ctx.userId,
-      },
-    ]);
-
-    let unlockedPools: string[] = [];
-    if (inventoryObjects.length > 0 && inventoryObjects[0].value) {
-      const parseResult = safeParse<PlayerInventory>(
-        inventoryObjects[0].value,
-        null,
-        logger,
-        'inventory_data'
-      );
-      if (parseResult.success && parseResult.data) {
-        unlockedPools = parseResult.data.unlocked_modifier_pools;
-      }
-    }
-
-    // Generate loot gear item
-    const generatedGear = generateGearItem(stageId, unlockedPools, logger);
-
-    // Add gear to inventory
-    let inventory: PlayerInventory;
-    if (inventoryObjects.length > 0 && inventoryObjects[0].value) {
-      const parseResult = safeParse<PlayerInventory>(
-        inventoryObjects[0].value,
-        null,
-        logger,
-        'inventory_data'
-      );
-      inventory =
-        parseResult.success && parseResult.data
-          ? parseResult.data
-          : {
-              user_id: ctx.userId,
-              gear: [],
-              equipped_gear: {},
-              unlocked_modifier_pools: unlockedPools,
-            };
-    } else {
-      inventory = {
-        user_id: ctx.userId,
-        gear: [],
-        equipped_gear: {},
-        unlocked_modifier_pools: [],
-      };
-    }
-
-    inventory.gear.push(generatedGear);
-
-    // Write updated inventory
-    nk.storageWrite([
-      {
-        collection: PLAYER_INVENTORY_COLLECTION,
-        key: ctx.userId,
-        userId: ctx.userId,
-        value: JSON.stringify(inventory),
-      },
-    ]);
-
-    logger.info(
-      'Generated loot %s (%s) for user %s on stage %s',
-      generatedGear.name,
-      generatedGear.rarity,
-      ctx.userId,
-      stageId
-    );
-
-    // Log loot generation
-    logAudit(
-      nk,
-      ctx.userId,
-      ctx.ipAddress ?? null,
-      'generate_loot',
-      'stage_completion',
-      {
-        stage_id: stageId,
-        gear_id: generatedGear.id,
-        gear_name: generatedGear.name,
-        gear_rarity: generatedGear.rarity,
-        gear_type: generatedGear.type,
-      },
-      'success',
-      'Loot generated on stage completion'
-    );
-
-    return generatedGear;
-  } catch (lootError) {
-    // Log the error but don't fail stage completion
-    logger.error('Failed to generate loot for stage completion: %s', String(lootError));
-
-    logAudit(
-      nk,
-      ctx.userId,
-      ctx.ipAddress ?? null,
-      'generate_loot',
-      'stage_completion',
-      { stage_id: stageId },
-      'failure',
-      String(lootError)
-    );
-
-    return null;
-  }
-}
 
 /**
  * Registers the complete_stage RPC endpoint.
@@ -250,10 +103,75 @@ export function registerRpcGetCompletedStages(initializer: Runtime.Initializer):
 }
 
 /**
+ * Determines if new completion is better than existing one
+ */
+function isBetterCompletion(
+  newStars: number,
+  newScore: number,
+  existingStars: number,
+  existingScore: number
+): boolean {
+  return newStars > existingStars || (newStars === existingStars && newScore > existingScore);
+}
+
+/**
+ * Creates a new completion record
+ */
+function createCompletionRecord(
+  stageId: string,
+  stagePrefix: string,
+  starsEarned: number,
+  score: number
+): StageCompletion {
+  const now = new Date().toISOString();
+  return {
+    id: '',
+    user_id: '',
+    stage_id: stageId,
+    stage_prefix: stagePrefix,
+    stars_earned: starsEarned,
+    score,
+    completed_at: now,
+    updated_at: now,
+  };
+}
+
+/**
+ * Storage record type (without id and user_id)
+ */
+type StageCompletionRecord = {
+  stage_id: string;
+  stage_prefix: string;
+  stars_earned: number;
+  score: number;
+  completed_at: string;
+  updated_at: string;
+};
+
+/**
+ * Updates an existing completion record
+ */
+function updateCompletionRecord(
+  stageId: string,
+  stagePrefix: string,
+  starsEarned: number,
+  score: number,
+  existingCompletion: StageCompletionRecord
+): StageCompletionRecord {
+  return {
+    ...existingCompletion,
+    stage_id: stageId,
+    stage_prefix: stagePrefix,
+    stars_earned: starsEarned,
+    score,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/**
  * Handles stage completion requests from players.
  * Validates input and records stage completion using Nakama storage.
  * Allows stage replay - only updates if new score is better.
- * When a stage is completed for the first time, loot is automatically generated.
  *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
@@ -261,13 +179,12 @@ export function registerRpcGetCompletedStages(initializer: Runtime.Initializer):
  * @param payload - JSON string containing stage completion data
  * @returns JSON string with completion result
  */
-// eslint-disable-next-line complexity
-export async function rpcCompleteStage(
+export function rpcCompleteStage(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Complete stage called for user: %s', ctx.userId);
 
   // Validate authentication
@@ -345,11 +262,14 @@ export async function rpcCompleteStage(
       };
 
       // Only update if new completion is better (more stars or same stars with higher score)
-      const isBetterStars = stars_earned > existingCompletion.stars_earned;
-      const isSameStarsWithBetterScore =
-        stars_earned === existingCompletion.stars_earned && score > existingCompletion.score;
-
-      if (!isBetterStars && !isSameStarsWithBetterScore) {
+      if (
+        !isBetterCompletion(
+          stars_earned,
+          score,
+          existingCompletion.stars_earned,
+          existingCompletion.score
+        )
+      ) {
         logger.info(
           'Stage replay did not improve: stage=%s new_stars=%d existing_stars=%d new_score=%d existing_score=%d',
           stage_id,
@@ -371,14 +291,13 @@ export async function rpcCompleteStage(
       }
 
       // Update existing completion
-      storageData.completions[stage_id] = {
+      storageData.completions[stage_id] = updateCompletionRecord(
         stage_id,
         stage_prefix,
         stars_earned,
         score,
-        completed_at: existingCompletion.completed_at,
-        updated_at: new Date().toISOString(),
-      };
+        existingCompletion
+      );
 
       logger.info(
         'Updated stage completion: stage=%s stars=%d score=%d',
@@ -388,15 +307,12 @@ export async function rpcCompleteStage(
       );
     } else {
       // Create new completion
-      const now = new Date().toISOString();
-      storageData.completions[stage_id] = {
+      storageData.completions[stage_id] = createCompletionRecord(
         stage_id,
         stage_prefix,
         stars_earned,
-        score,
-        completed_at: now,
-        updated_at: now,
-      };
+        score
+      );
 
       logger.info(
         'Created new stage completion: stage=%s stars=%d score=%d',
@@ -415,11 +331,6 @@ export async function rpcCompleteStage(
         value: JSON.stringify(storageData),
       },
     ]);
-
-    // Generate loot reward for new stage completions
-    const generatedGear = isNewCompletion
-      ? await generateAndSaveLoot(ctx, logger, nk, stage_id)
-      : null;
 
     // Log audit event
     logAudit(
@@ -443,18 +354,6 @@ export async function rpcCompleteStage(
 
     if (previousBest) {
       response.previous_best = previousBest;
-    }
-
-    // Include generated loot in response if applicable
-    if (generatedGear) {
-      response.loot = {
-        id: generatedGear.id,
-        name: generatedGear.name,
-        rarity: generatedGear.rarity,
-        type: generatedGear.type,
-        stats: generatedGear.stats,
-        modifiers: generatedGear.modifiers,
-      };
     }
 
     return JSON.stringify(response);

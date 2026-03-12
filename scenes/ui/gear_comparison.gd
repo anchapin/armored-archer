@@ -69,16 +69,37 @@ func _clear_container(container: VBoxContainer) -> void:
 func _display_comparison_result(comparison: Dictionary) -> void:
 	var better: String = comparison.get("better", "equal")
 
+	# Build result text with stat differences
+	var result_text: String = ""
+	var differences: Array = comparison.get("differences", [])
+
 	match better:
 		"gear1":
-			result_label.text = "Left gear is better"
-			result_label.modulate = Color.GREEN
+			result_text = "[color=green]Left gear is better[/color]\n"
 		"gear2":
-			result_label.text = "Right gear is better"
-			result_label.modulate = Color.GREEN
+			result_text = "[color=green]Right gear is better[/color]\n"
 		"equal":
-			result_label.text = "Both gear are equal"
-			result_label.modulate = Color.YELLOW
+			result_text = "[color=yellow]Both gear are equal[/color]\n"
+
+	# Add stat differences to the result
+	if differences.size() > 0:
+		result_text += "\n[color=white]Stat Differences:[/color]\n"
+		for diff in differences:
+			var stat: String = diff.get("stat", "")
+			var gear1_val: int = diff.get("gear1_value", 0)
+			var gear2_val: int = diff.get("gear2_value", 0)
+			var diff_val: int = diff.get("difference", 0)
+			var diff_better: String = diff.get("better", "equal")
+
+			var diff_text: String = "%s: %d vs %d" % [stat, gear1_val, gear2_val]
+			if diff_better == "gear1":
+				diff_text += " [color=green](+%d)[/color]" % diff_val
+			elif diff_better == "gear2":
+				diff_text += " [color=red](%d)[/color]" % diff_val
+
+			result_text += diff_text + "\n"
+
+	result_label.text = result_text
 
 func _on_close_button_pressed() -> void:
 	comparison_closed.emit()
