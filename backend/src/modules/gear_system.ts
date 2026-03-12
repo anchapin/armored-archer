@@ -224,7 +224,7 @@ const BOSS_MODIFIER_UNLOCKS: { [bossId: string]: string[] } = {
 
 /**
  * Maps enemy type IDs to their unlocked modifier pool IDs.
- * When an enemy of a specific type is defeated, all modifiers 
+ * When an enemy of a specific type is defeated, all modifiers
  * associated with that enemy type are unlocked for future drops.
  */
 const ENEMY_MODIFIER_UNLOCKS: { [enemyType: string]: string[] } = {
@@ -1189,12 +1189,14 @@ export function rpcUnlockModifierPool(
  * @property boss_defeated - Whether a boss was defeated
  * @property difficulty - Difficulty level of the stage
  * @property boss_id - ID of the boss defeated (if any)
+ * @property enemy_type - Type of enemy defeated (for modifier unlock tracking)
  */
 export interface StageCompleteRequest {
   stage_id: string;
   boss_defeated: boolean;
   difficulty: 'easy' | 'medium' | 'hard' | 'nightmare';
   boss_id?: string;
+  enemy_type?: string;
 }
 
 /**
@@ -1280,6 +1282,56 @@ export function registerRpcStageComplete(initializer: Runtime.Initializer): void
  *   }
  * }
  */
+/**
+ * Unlocks modifier pools for a player based on defeated enemies.
+ * Returns the list of newly unlocked modifier IDs.
+ */
+function unlockModifierPools(
+  inventory: PlayerInventory,
+  logger: Runtime.Logger,
+  ctxUserId: string,
+  bossId?: string,
+  enemyType?: string
+): string[] {
+  const newlyUnlocked: string[] = [];
+
+  // Unlock modifier pools when boss is defeated
+  if (bossId) {
+    const modifiersToUnlock = getModifiersUnlockedByBoss(bossId);
+    for (const modifierId of modifiersToUnlock) {
+      if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
+        inventory.unlocked_modifier_pools.push(modifierId);
+        newlyUnlocked.push(modifierId);
+        logger.info(
+          'Unlocked modifier pool %s for user %s after defeating boss %s',
+          modifierId,
+          ctxUserId,
+          bossId
+        );
+      }
+    }
+  }
+
+  // Unlock modifier pools when enemy is defeated (for future drop chances)
+  if (enemyType) {
+    const enemyModifiersToUnlock = getModifiersUnlockedByEnemy(enemyType);
+    for (const modifierId of enemyModifiersToUnlock) {
+      if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
+        inventory.unlocked_modifier_pools.push(modifierId);
+        newlyUnlocked.push(modifierId);
+        logger.info(
+          'Unlocked modifier pool %s for user %s after defeating enemy type %s',
+          modifierId,
+          ctxUserId,
+          enemyType
+        );
+      }
+    }
+  }
+
+  return newlyUnlocked;
+}
+
 export function rpcStageComplete(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -1326,21 +1378,14 @@ export function rpcStageComplete(
   // Get player inventory
   const inventory = getPlayerInventory(nk, ctx.userId, logger);
 
-  // Unlock modifier pools when boss is defeated
-  if (request.boss_defeated && request.boss_id) {
-    const modifiersToUnlock = getModifiersUnlockedByBoss(request.boss_id);
-    for (const modifierId of modifiersToUnlock) {
-      if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
-        inventory.unlocked_modifier_pools.push(modifierId);
-        logger.info(
-          'Unlocked modifier pool %s for user %s after defeating boss %s',
-          modifierId,
-          ctx.userId,
-          request.boss_id
-        );
-      }
-    }
-  }
+  // Unlock modifier pools when boss or enemy is defeated
+  const newlyUnlockedModifiers = unlockModifierPools(
+    inventory,
+    logger,
+    ctx.userId,
+    request.boss_defeated ? request.boss_id : undefined,
+    request.enemy_type
+  );
 
   // Roll for loot
   if (roll < dropRate) {
@@ -1375,12 +1420,16 @@ export function rpcStageComplete(
       difficulty: request.difficulty,
       boss_defeated: request.boss_defeated,
       boss_id: request.boss_id ?? null,
+      enemy_type: request.enemy_type ?? null,
       loot_dropped: lootResult.dropped,
       loot_gear_id: lootResult.gear?.id ?? null,
       loot_gear_rarity: lootResult.gear?.rarity ?? null,
-      unlocked_modifiers: request.boss_defeated
+      unlocked_modifiers_from_boss: request.boss_defeated
         ? getModifiersUnlockedByBoss(request.boss_id ?? '')
         : [],
+      unlocked_modifiers_from_enemy: newlyUnlockedModifiers.filter((m) =>
+        request.enemy_type ? getModifiersUnlockedByEnemy(request.enemy_type).includes(m) : false
+      ),
       drop_rate_used: dropRate,
       roll_value: roll,
     },
