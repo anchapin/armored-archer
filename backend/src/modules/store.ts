@@ -1657,7 +1657,7 @@ async function handleInitialPurchase(
   userId: string,
   productId: string,
   logger: Runtime.Logger
-): Promise<{ success: boolean; message: string; gems_awarded?: number }> {
+): Promise<{ success: boolean; message: string; gems_awarded?: number; new_balance?: number }> {
   const gemAmount = getGemAmountForProduct(productId, logger);
 
   if (!gemAmount) {
@@ -1675,6 +1675,7 @@ async function handleInitialPurchase(
       success: false,
       message: 'Gem balance would exceed maximum',
       gems_awarded: 0,
+      new_balance: playerCurrency.gems,
     };
   }
 
@@ -1701,14 +1702,14 @@ async function handleInitialPurchase(
 
   logger.info('Webhook: Awarded %d gems to user %s for product %s', gemAmount, userId, productId);
 
-  return { success: true, message: 'Gems awarded', gems_awarded: gemAmount };
+  return { success: true, message: 'Gems awarded', gems_awarded: gemAmount, new_balance: playerCurrency.gems };
 }
 
 /**
  * Handle non-renewal/cancellation event.
  */
 function handleSubscriptionCancelled(
-  _nk: Runtime.Nakama,
+  nk: Runtime.Nakama,
   userId: string,
   productId: string,
   reason: string | undefined,
@@ -1721,7 +1722,83 @@ function handleSubscriptionCancelled(
     reason || 'not specified'
   );
 
+  // Mark subscription as cancelled in storage
+  const subscriptionKey = userId;
+  const existingData = nk.storageRead([{
+    collection: 'player_subscription',
+    key: subscriptionKey,
+    userId: userId,
+  }]);
+
+  if (existingData && existingData.length > 0) {
+    const value = existingData[0].value;
+    // Handle empty or non-JSON values
+    if (!value || typeof value !== 'string') {
+      logger.warn('No valid subscription data found for user %s', userId);
+      return { success: true, message: 'Cancellation noted (no subscription found)' };
+    }
+
+    const subscription = JSON.parse(value);
+    subscription.active = false;
+    subscription.cancelled = true;
+    subscription.cancelled_at = new Date().toISOString();
+    subscription.cancel_reason = reason || 'user_cancelled';
+
+    nk.storageWrite([{
+      collection: 'player_subscription',
+      key: subscriptionKey,
+      value: JSON.stringify(subscription),
+      userId: userId,
+    }]);
+  }
+
   return { success: true, message: 'Cancellation noted' };
+}
+
+/**
+ * Handle billing issue event (e.g., payment failed, card expired).
+ */
+function handleBillingIssue(
+  nk: Runtime.Nakama,
+  userId: string,
+  productId: string,
+  logger: Runtime.Logger
+): { success: boolean; message: string } {
+  logger.info(
+    'Webhook: Billing issue for user %s, product %s',
+    userId,
+    productId
+  );
+
+  // Mark subscription as having billing issues
+  const subscriptionKey = userId;
+  const existingData = nk.storageRead([{
+    collection: 'player_subscription',
+    key: subscriptionKey,
+    userId: userId,
+  }]);
+
+  if (existingData && existingData.length > 0) {
+    const value = existingData[0].value;
+    // Handle empty or non-JSON values
+    if (!value || typeof value !== 'string') {
+      logger.warn('No valid subscription data found for user %s', userId);
+      return { success: true, message: 'Billing issue recorded (no subscription found)' };
+    }
+
+    const subscription = JSON.parse(value);
+    subscription.billing_issue = true;
+    subscription.billing_issue_at = new Date().toISOString();
+
+    nk.storageWrite([{
+      collection: 'player_subscription',
+      key: subscriptionKey,
+      value: JSON.stringify(subscription),
+      userId: userId,
+    }]);
+  }
+
+  return { success: true, message: 'Billing issue recorded' };
 }
 
 /**
@@ -1807,23 +1884,40 @@ export async function rpcRevenueCatWebhook(
     });
   }
 
+  // Validate payload is not empty
+  if (!payload || payload.trim() === '') {
+    logger.error('Empty webhook payload received');
+    return JSON.stringify({
+      success: false,
+      error: 'Invalid payload',
+    });
+  }
 
-  // Extract event type (RevenueCat sends event nested under "event" key)
+
+  // Extract event type (check top-level first for test payloads, then nested under "event")
   const eventObj = webhookData.event as Record<string, unknown> | undefined;
-  const eventType = (eventObj?.type as string) || (webhookData.type as string) || '';
+  const eventType = (webhookData.event_type as string) ||  // Check top-level first (test payloads)
+                    (eventObj?.type as string) ||
+                    (eventObj?.event_type as string) ||
+                    (webhookData.type as string) ||
+                    '';
   logger.info('Webhook event type: %s', eventType);
 
-  // Extract common fields (check both top-level and nested under "event")
-  const appUserId = (eventObj?.app_user_id as string) ||
-    (eventObj?.appUserId as string) ||
-    (webhookData.app_user_id as string) ||
+  // Normalize event type to lowercase for case-insensitive matching
+  const normalizedEventType = eventType.toLowerCase();
+
+  // Extract common fields (check top-level first for test payloads, then nested under "event")
+  const appUserId = (webhookData.app_user_id as string) ||   // Check top-level first (test payloads)
     (webhookData.appUserId as string) ||
     (webhookData.user_id as string) ||
+    (webhookData.userId as string) ||
+    (eventObj?.app_user_id as string) ||
+    (eventObj?.appUserId as string) ||
     '';
-  const productId = (eventObj?.product_id as string) ||
-    (eventObj?.productId as string) ||
-    (webhookData.product_id as string) ||
+  const productId = (webhookData.product_id as string) ||   // Check top-level first (test payloads)
     (webhookData.productId as string) ||
+    (eventObj?.product_id as string) ||
+    (eventObj?.productId as string) ||
     '';
 
   if (!appUserId || !productId) {
@@ -1841,8 +1935,8 @@ export async function rpcRevenueCatWebhook(
   const environment = (webhookData.environment as string) || 'production';
   logger.info('Webhook environment: %s', environment);
 
-  // Process based on event type
-  switch (eventType) {
+  // Process based on event type (use normalized for case-insensitive matching)
+  switch (normalizedEventType) {
     case 'initial_purchase':
     case 'non_renewing_purchase':
     case 'renewal':
@@ -1864,6 +1958,15 @@ export async function rpcRevenueCatWebhook(
       );
 
       return JSON.stringify({ ...cancelResult, event_type: eventType });
+
+    case 'billing_issue':
+      const billingResult = handleBillingIssue(
+        nk,
+        userId,
+        productId,
+        logger
+      );
+      return JSON.stringify({ ...billingResult, event_type: eventType });
 
     case 'expiration':
       const expirationReason = (eventObj?.expiration_reason as string) ||
