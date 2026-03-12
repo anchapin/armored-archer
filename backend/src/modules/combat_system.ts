@@ -16,6 +16,7 @@ import {
 import { PvPMatch } from './matchmaker';
 import { profileFunction } from './profiling';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { getPlayerInventory, getEquippedGearModifierBonuses, PlayerInventory } from './gear_system';
 
 /**
  * Combat action request data.
@@ -642,13 +643,14 @@ function calculateCrit(critRate: number): boolean {
 
 /**
  * Retrieves player statistics for combat calculations.
+ * Applies gear modifier bonuses from equipped gear.
  *
  * @param nk - Nakama server interface
  * @param userId - ID of the player to retrieve stats for
- * @param _logger - Nakama logger instance
- * @returns Player stats or default stats if not found
+ * @param logger - Nakama logger instance
+ * @returns Player stats with gear modifier bonuses applied
  */
-function getPlayerStats(nk: Runtime.Nakama, userId: string, _logger: Runtime.Logger): PlayerStats {
+function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logger): PlayerStats {
   const objects = nk.storageRead([
     {
       collection: 'player_stats',
@@ -657,8 +659,10 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string, _logger: Runtime.Log
     },
   ]);
 
+  let baseStats: PlayerStats;
+
   if (objects.length === 0) {
-    return {
+    baseStats = {
       level: 1,
       xp: 0,
       stats: {
@@ -668,9 +672,24 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string, _logger: Runtime.Log
         crit_rate: 5,
       },
     };
+  } else {
+    baseStats = JSON.parse(objects[0].value);
   }
 
-  return JSON.parse(objects[0].value);
+  // Apply gear modifier bonuses from equipped gear
+  const inventory = getPlayerInventory(nk, userId, logger);
+  const gearBonuses = getEquippedGearModifierBonuses(inventory);
+
+  // Return stats with gear bonuses applied
+  return {
+    ...baseStats,
+    stats: {
+      attack: baseStats.stats.attack + (gearBonuses['attack'] || 0),
+      defense: baseStats.stats.defense + (gearBonuses['defense'] || 0),
+      dodge: baseStats.stats.dodge + (gearBonuses['dodge'] || 0),
+      crit_rate: baseStats.stats.crit_rate + (gearBonuses['crit_rate'] || 0),
+    },
+  };
 }
 
 /**

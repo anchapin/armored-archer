@@ -10,11 +10,12 @@ app_store_assets/
 ├── ICON_SPECIFICATION.md       # Complete icon size specifications
 ├── icon_config.json            # Machine-readable icon configuration
 ├── generate_icons.sh           # Icon generation script
+├── generate_screenshots.py     # Screenshot placeholder generation script
 ├── localized_descriptions.md   # App store descriptions in multiple languages
 ├── ios/
 │   ├── screenshots/
 │   │   ├── iphone_6_7/        # 1290x2796 pixels (6.7" displays)
-│   │   ├── iphone_5_5/        # 1242x2688 pixels (5.5" displays)
+│   │   ├── iphone_5_5/        # 1242x2208 pixels (5.5" displays)
 │   │   └── ipad/              # 2048x2732 pixels (iPad)
 │   └── preview_video.mov     # Optional 15-30 second video
 └── android/
@@ -33,12 +34,25 @@ app_store_assets/
 - **Feature Graphic**: 1024x500 PNG
 - **Screenshots**: 2-8 screenshots
 
-## Creating Screenshots
+## Screenshots
 
-To capture screenshots for the app store:
+### Current Screenshots
+The following screenshots have been created with placeholder content:
 
-1. **iOS**: Run the game on a simulator or device, use Cmd+S to capture
-2. **Android**: Use Android Studio's screenshot tool or device buttons
+| Screen | iOS Sizes | Android Sizes |
+|--------|-----------|----------------|
+| Main Menu | iphone_6_7, iphone_5_5, ipad | phone portrait |
+| Combat Gameplay | iphone_6_7, iphone_5_5, ipad | phone portrait |
+| Gear Inventory | iphone_6_7, iphone_5_5, ipad | phone portrait |
+| Shop Interface | iphone_6_7, iphone_5_5, ipad | phone portrait |
+| PvP Leaderboard | iphone_6_7, iphone_5_5, ipad | phone portrait |
+| Campaign/Stage Selection | iphone_6_7, iphone_5_5, ipad | phone portrait |
+
+### Creating Real Screenshots
+
+1. **Using Godot**: Run `scripts/screenshot_capture.gd` in your game to capture screenshots
+2. **iOS Simulator**: Run the game on simulator, use Cmd+S
+3. **Android**: Use Android Studio or device buttons
 
 ### Recommended Screenshot Content
 1. Main Menu/UI

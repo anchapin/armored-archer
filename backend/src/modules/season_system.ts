@@ -120,6 +120,13 @@ export interface RankChange {
 const SEASON_DURATION_WEEKS = 4;
 const SEASON_DURATION_MS = SEASON_DURATION_WEEKS * 7 * 24 * 60 * 60 * 1000;
 
+// Rank decay configuration
+const RANK_DECAY_DAYS = 7; // Days of inactivity before decay starts
+const RANK_DECAY_AMOUNT = 25; // Points lost per decay period
+const RANK_DECAY_MAX_LOSS = 100; // Maximum points that can be lost per decay
+const RANK_DECAY_MIN_SCORE = 800; // Minimum score after decay
+const RANK_DECAY_CHECK_MS = 24 * 60 * 60 * 1000; // Check every 24 hours
+
 /**
  * Registers the get season info RPC endpoint.
  *
@@ -358,7 +365,7 @@ function validateRankUpdateSignature(
 /**
  * Applies Elo rating updates to both players
  */
-function applyEloUpdates(
+export function applyEloUpdates(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
   currentSeason: { season_id: string },
@@ -781,7 +788,7 @@ export function rpcEndSeason(
  *
  * @returns Current season data
  */
-function getCurrentSeason(): SeasonInfo {
+export function getCurrentSeason(): SeasonInfo {
   const now = Date.now();
   const seasonNumber = Math.floor(now / SEASON_DURATION_MS) + 1;
   const seasonStartTime = (seasonNumber - 1) * SEASON_DURATION_MS;
@@ -805,7 +812,7 @@ function getCurrentSeason(): SeasonInfo {
  * @param leaderboardId - ID of the leaderboard
  * @returns Leaderboard entry or null if not found
  */
-function getLeaderboardEntry(
+export function getLeaderboardEntry(
   nk: Runtime.Nakama,
   userId: string,
   leaderboardId: string
@@ -877,4 +884,117 @@ export function calculateRewards(rank: number, seasonNumber: number): SeasonRewa
       gems: 0,
     };
   }
+}
+
+/**
+ * Records player match activity for rank decay tracking.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ */
+export function recordPlayerActivity(nk: Runtime.Nakama, userId: string): void {
+  const now = Date.now();
+  nk.storageWrite([
+    {
+      collection: 'player_activity',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify({ last_match_time: now }),
+    },
+  ]);
+}
+
+/**
+ * Gets the timestamp of the player's last match.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @returns Last match timestamp or 0 if never played
+ */
+function getLastMatchTime(nk: Runtime.Nakama, userId: string): number {
+  try {
+    const records = nk.storageRead([
+      {
+        collection: 'player_activity',
+        key: userId,
+        userId: userId,
+      },
+    ]);
+
+    if (records.length > 0 && records[0].value) {
+      const data = JSON.parse(records[0].value);
+      return data.last_match_time || 0;
+    }
+  } catch (e) {
+    // Ignore errors, return 0
+  }
+  return 0;
+}
+
+/**
+ * Calculates and applies rank decay for a player based on inactivity.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param currentScore - Player's current rank score
+ * @returns New score after decay (or original if no decay applies)
+ */
+export function applyRankDecay(
+  nk: Runtime.Nakama,
+  userId: string,
+  currentScore: number
+): number {
+  // Don't decay players below minimum score
+  if (currentScore < RANK_DECAY_MIN_SCORE) {
+    return currentScore;
+  }
+
+  const lastMatchTime = getLastMatchTime(nk, userId);
+  const now = Date.now();
+  const inactiveMs = now - lastMatchTime;
+  const inactiveDays = Math.floor(inactiveMs / (24 * 60 * 60 * 1000));
+
+  // No decay if player has been active within the decay period
+  if (inactiveDays < RANK_DECAY_DAYS) {
+    return currentScore;
+  }
+
+  // Calculate decay periods
+  const decayPeriods = Math.floor((inactiveDays - RANK_DECAY_DAYS) / RANK_DECAY_DAYS);
+  const decayLoss = Math.min(decayPeriods * RANK_DECAY_AMOUNT, RANK_DECAY_MAX_LOSS);
+  const newScore = Math.max(currentScore - decayLoss, RANK_DECAY_MIN_SCORE);
+
+  return newScore;
+}
+
+/**
+ * Gets the rank decay info for a player.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param currentScore - Player's current rank score
+ * @returns Decay information including days inactive and points at risk
+ */
+export function getRankDecayInfo(
+  nk: Runtime.Nakama,
+  userId: string,
+  currentScore: number
+): { days_inactive: number; points_at_risk: number; can_decay: boolean } {
+  const lastMatchTime = getLastMatchTime(nk, userId);
+  const now = Date.now();
+  const inactiveMs = now - lastMatchTime;
+  const daysInactive = Math.floor(inactiveMs / (24 * 60 * 60 * 1000));
+
+  // Calculate points at risk
+  let pointsAtRisk = 0;
+  if (currentScore >= RANK_DECAY_MIN_SCORE && daysInactive >= RANK_DECAY_DAYS) {
+    const decayPeriods = Math.floor((daysInactive - RANK_DECAY_DAYS) / RANK_DECAY_DAYS);
+    pointsAtRisk = Math.min(decayPeriods * RANK_DECAY_AMOUNT, RANK_DECAY_MAX_LOSS);
+  }
+
+  return {
+    days_inactive: daysInactive,
+    points_at_risk: pointsAtRisk,
+    can_decay: pointsAtRisk > 0,
+  };
 }

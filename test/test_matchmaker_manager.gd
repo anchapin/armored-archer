@@ -20,6 +20,9 @@ func run_tests() -> void:
 	test_get_player_rank_sync()
 	test_is_in_match()
 	test_signal_emission()
+	test_punch_up_stats_initial()
+	test_punch_up_win_rate_calculation()
+	test_punch_up_total_matches()
 	
 	print("\n=== MatchmakerManager Test Results ===")
 	print("Passed: %d" % _tests_passed)
@@ -165,22 +168,63 @@ func test_signal_emission() -> void:
 	var match_created = false
 	var match_accepted = false
 	var rank_retrieved = false
+	var punch_up_stats_updated = false
 	
 	mm.matches_loaded.connect(func(m, r): matches_loaded = true)
 	mm.match_created.connect(func(m): match_created = true)
 	mm.match_accepted.connect(func(m): match_accepted = true)
 	mm.rank_retrieved.connect(func(r): rank_retrieved = true)
+	mm.punch_up_stats_updated.connect(func(w, l, wr): punch_up_stats_updated = true)
 	
 	mm.matches_loaded.emit([], 100)
 	mm.match_created.emit({})
 	mm.match_accepted.emit({})
 	mm.rank_retrieved.emit(1500)
+	mm.punch_up_stats_updated.emit(5, 3, 0.625)
 	
 	await get_tree().create_timer(0.1).timeout
 	
-	if matches_loaded and match_created and match_accepted and rank_retrieved:
+	if matches_loaded and match_created and match_accepted and rank_retrieved and punch_up_stats_updated:
 		_pass("test_signal_emission")
 	else:
 		_fail("test_signal_emission", "All signals should be emitted")
+	
+	mm.queue_free()
+
+# --- Punch Up Tests ---
+func test_punch_up_stats_initial() -> void:
+	var mm = _create_matchmaker_manager()
+	
+	if mm.get_punch_up_wins() == 0 and mm.get_punch_up_losses() == 0 and mm.get_punch_up_win_rate() == 0.0:
+		_pass("test_punch_up_stats_initial")
+	else:
+		_fail("test_punch_up_stats_initial", "Initial punch up stats should be zero")
+	
+	mm.queue_free()
+
+func test_punch_up_win_rate_calculation() -> void:
+	var mm = _create_matchmaker_manager()
+	
+	mm.punch_up_wins = 3
+	mm.punch_up_losses = 1
+	
+	var win_rate = mm.get_punch_up_win_rate()
+	if win_rate == 0.75:
+		_pass("test_punch_up_win_rate_calculation")
+	else:
+		_fail("test_punch_up_win_rate_calculation", "Win rate should be 0.75, got: %f" % win_rate)
+	
+	mm.queue_free()
+
+func test_punch_up_total_matches() -> void:
+	var mm = _create_matchmaker_manager()
+	
+	mm.punch_up_wins = 10
+	mm.punch_up_losses = 5
+	
+	if mm.get_punch_up_total_matches() == 15:
+		_pass("test_punch_up_total_matches")
+	else:
+		_fail("test_punch_up_total_matches", "Total should be 15")
 	
 	mm.queue_free()

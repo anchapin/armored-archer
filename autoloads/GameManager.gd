@@ -192,6 +192,18 @@ func spawn_boss(boss_name: String) -> void:
 			boss_scene = preload("res://scenes/enemies/bosses/boss_basic.tscn")
 		"boss_wind":
 			boss_scene = preload("res://scenes/enemies/bosses/boss_wind.tscn")
+		"boss_iron":
+			# boss_iron - Use boss_basic as placeholder
+			boss_scene = preload("res://scenes/enemies/bosses/boss_basic.tscn")
+		"boss_king":
+			# boss_king - Use boss_wind as placeholder
+			boss_scene = preload("res://scenes/enemies/bosses/boss_wind.tscn")
+		"boss_nightmare":
+			# boss_nightmare - Use boss_basic as placeholder
+			boss_scene = preload("res://scenes/enemies/bosses/boss_basic.tscn")
+		"boss_shadow":
+			# boss_shadow - Use boss_wind as placeholder
+			boss_scene = preload("res://scenes/enemies/bosses/boss_wind.tscn")
 
 	if boss_scene:
 		var boss_instance = boss_scene.instantiate() as CharacterBody2D

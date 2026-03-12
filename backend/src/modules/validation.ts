@@ -29,12 +29,15 @@ export const ValibotSchemas = {
 
   get_player_stats: object({}),
 
-  // Stage completion schemas for PvE progression
+  // Stage completion schemas for PvE progression (with loot generation)
   complete_stage: object({
     stage_id: pipe(string(), minLength(1), maxLength(100)),
     stage_prefix: pipe(string(), minLength(1), maxLength(50)),
     stars_earned: pipe(number(), integer(), minValue(0), maxValue(3)),
     score: pipe(number(), integer(), minValue(0)),
+    difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare']),
+    boss_defeated: optional(boolean()),
+    boss_id: optional(pipe(string(), minLength(1), maxLength(100))),
   }),
 
   get_stage_completion: object({
@@ -66,6 +69,7 @@ export const ValibotSchemas = {
     boss_defeated: boolean(),
     difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare']),
     boss_id: optional(pipe(string(), minLength(1), maxLength(100))),
+    enemy_type: optional(pipe(string(), minLength(1), maxLength(100))),
   }),
 
   equip_gear: object({
@@ -137,6 +141,18 @@ export const ValibotSchemas = {
     winner_new_rank: number(),
     loser_new_rank: number(),
     is_punch_up: boolean(),
+    // Anti-cheat fields
+    requestId: optional(string()),
+    timestamp: optional(number()),
+    signature: optional(string()),
+    nonce: optional(string()),
+  }),
+
+  complete_match: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    winner_id: pipe(string(), minLength(1), maxLength(100)),
+    loser_id: pipe(string(), minLength(1), maxLength(100)),
+    is_punch_up: optional(boolean()),
     // Anti-cheat fields
     requestId: optional(string()),
     timestamp: optional(number()),

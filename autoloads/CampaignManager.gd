@@ -23,8 +23,12 @@ signal campaign_progress_updated(chapter_id: String, progress: float)
 func _ready() -> void:
 	"""Initializes campaign data and loads saved progress."""
 	load_campaigns_data()
-	unlocked_stages = ["1_1"]
-	save_progress()
+	load_progress()
+	
+	# If no saved progress, initialize with first stage unlocked
+	if unlocked_stages.is_empty():
+		unlocked_stages = ["1_1"]
+		save_progress()
 
 func load_campaigns_data() -> void:
 	"""Loads campaign definitions from res://data/campaigns.json."""
@@ -160,7 +164,7 @@ func save_progress() -> void:
 	}
 	var file = FileAccess.open("user://campaign_progress.json", FileAccess.WRITE)
 	if file:
-		file.store_string(JSON.stringify(save_data))
+		var _discard = file.store_string(JSON.stringify(save_data))
 		file.close()
 
 func load_progress() -> void:

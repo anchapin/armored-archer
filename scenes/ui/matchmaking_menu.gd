@@ -5,12 +5,13 @@ extends Control
 @onready var match_type_option: OptionButton = $VBoxContainer/FilterPanel/MatchTypeOption
 @onready var list_button: Button = $VBoxContainer/FilterPanel/ListButton
 @onready var matches_container: VBoxContainer = $VBoxContainer/ScrollContainer/MatchesContainer
-@onready var create_ranked_button: Button = $VBoxContainer/CreatePanel/CreateRankedButton
-@onready var create_casual_button: Button = $VBoxContainer/CreatePanel/CreateCasualButton
-@onready var punch_up_check: CheckBox = $VBoxContainer/CreatePanel/PunchUpCheck
+@onready var create_ranked_button: Button = $VBoxContainer/CreatePanel/CreateVBox/CreateRankedButton
+@onready var create_casual_button: Button = $VBoxContainer/CreatePanel/CreateVBox/CreateCasualButton
+@onready var punch_up_check: CheckBox = $VBoxContainer/CreatePanel/CreateVBox/PunchUpCheck
 @onready var leaderboard_button: Button = $VBoxContainer/BottomPanel/LeaderboardButton
 @onready var back_button: Button = $VBoxContainer/BottomPanel/BackButton
 @onready var loading_label: Label = $VBoxContainer/LoadingLabel
+@onready var punch_up_stats_label: Label = $VBoxContainer/TopPanel/StatsContainer/PunchUpStatsLabel
 
 # --- State ---
 var matchmaker_manager: Node = null
@@ -34,8 +35,10 @@ func _ready() -> void:
 		matchmaker_manager.matches_loaded.connect(_on_matches_loaded)
 		matchmaker_manager.match_created.connect(_on_match_created)
 		matchmaker_manager.match_accepted.connect(_on_match_accepted)
+		matchmaker_manager.punch_up_stats_updated.connect(_on_punch_up_stats_updated)
 
 	refresh_matches()
+	_update_punch_up_stats_display()
 
 # --- List Matches ---
 func _on_list_pressed() -> void:
@@ -104,8 +107,24 @@ func _create_match_item(match_data: Dictionary) -> Control:
 	var type_label: Label = Label.new()
 	type_label.text = "%s" % match_data.get("match_type", "unknown").capitalize()
 
+	var opponent_rank: int = match_data.get("creator_rank", 0)
+	var player_rank_val: int = matchmaker_manager.get_player_rank_sync() if matchmaker_manager else 0
+	
 	var rank_label: Label = Label.new()
-	rank_label.text = "Opponent Rank: %d" % match_data.get("creator_rank", 0)
+	rank_label.text = "Opponent Rank: %d" % opponent_rank
+
+	# Display rank difference
+	var rank_diff_label: Label = Label.new()
+	var rank_diff: int = opponent_rank - player_rank_val
+	if rank_diff > 0:
+		rank_diff_label.text = "(+%d above you)" % rank_diff
+		rank_diff_label.modulate = Color.ORANGE
+	elif rank_diff < 0:
+		rank_diff_label.text = "(%d below you)" % rank_diff
+		rank_diff_label.modulate = Color.GREEN
+	else:
+		rank_diff_label.text = "(same rank)"
+		rank_diff_label.modulate = Color.WHITE
 
 	var punch_up_label: Label = Label.new()
 	if match_data.get("is_punch_up", false):
@@ -114,6 +133,7 @@ func _create_match_item(match_data: Dictionary) -> Control:
 
 	info_vbox.add_child(type_label)
 	info_vbox.add_child(rank_label)
+	info_vbox.add_child(rank_diff_label)
 	if match_data.get("is_punch_up", false):
 		info_vbox.add_child(punch_up_label)
 
@@ -135,21 +155,21 @@ func _on_accept_match(match_id: String) -> void:
 func _on_leaderboard_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/leaderboard_menu.tscn")
 
-func _on_match_created( _match: Dictionary) -> void:
-	print("Match created: %s" % match.get("match_id", ""))
-	_show_match_created_dialog(match)
+func _on_match_created(match_data: Dictionary) -> void:
+	print("Match created: %s" % match_data.get("match_id", ""))
+	_show_match_created_dialog(match_data)
 
-func _on_match_accepted( _match: Dictionary) -> void:
-	print("Match accepted: %s" % match.get("match_id", ""))
-	_show_match_accepted_dialog(match)
+func _on_match_accepted(match_data: Dictionary) -> void:
+	print("Match accepted: %s" % match_data.get("match_id", ""))
+	_show_match_accepted_dialog(match_data)
 
-func _on_match_accepted_dialog_confirmed( _match: Dictionary) -> void:
+func _on_match_accepted_dialog_confirmed(match_data: Dictionary) -> void:
 	var combat_scene = load("res://scenes/ui/combat_menu.tscn")
 	var combat_ui = combat_scene.instantiate()
-	combat_ui.set_match_id(match.get("match_id", ""))
+	combat_ui.set_match_id(match_data.get("match_id", ""))
 	get_tree().current_scene.add_child(combat_ui)
 
-func _show_match_created_dialog( _match: Dictionary) -> void:
+func _show_match_created_dialog(match_data: Dictionary) -> void:
 	var dialog: AcceptDialog = AcceptDialog.new()
 	dialog.title = "Match Created"
 	dialog.dialog_text = "Your match has been created!\nWaiting for opponent..."
@@ -160,7 +180,7 @@ func _show_match_created_dialog( _match: Dictionary) -> void:
 
 	back_button.pressed.connect(dialog.queue_free.unbind(1), CONNECT_DEFERRED)
 
-func _show_match_accepted_dialog( _match: Dictionary) -> void:
+func _show_match_accepted_dialog(match_data: Dictionary) -> void:
 	var dialog: AcceptDialog = AcceptDialog.new()
 	dialog.title = "Match Accepted"
 	dialog.dialog_text = "Match joined successfully!\nGood luck!"
@@ -169,9 +189,30 @@ func _show_match_accepted_dialog( _match: Dictionary) -> void:
 	get_tree().current_scene.add_child(dialog)
 	dialog.show()
 
-	dialog.confirmed.connect(_on_match_accepted_dialog_confirmed.bind(match))
+	dialog.confirmed.connect(_on_match_accepted_dialog_confirmed.bind(match_data))
 	back_button.pressed.connect(dialog.queue_free.unbind(1), CONNECT_DEFERRED)
 
 # --- Navigation ---
 func _on_back_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+
+# --- Punch Up Statistics ---
+func _on_punch_up_stats_updated(wins: int, losses: int, win_rate: float) -> void:
+	"""Handles Punch Up statistics updates from MatchmakerManager."""
+	_update_punch_up_stats_display()
+
+func _update_punch_up_stats_display() -> void:
+	"""Updates the Punch Up statistics display in the UI."""
+	if not matchmaker_manager or punch_up_stats_label == null:
+		return
+	
+	var wins: int = matchmaker_manager.get_punch_up_wins()
+	var losses: int = matchmaker_manager.get_punch_up_losses()
+	var win_rate: float = matchmaker_manager.get_punch_up_win_rate()
+	var total: int = wins + losses
+	
+	if total == 0:
+		punch_up_stats_label.text = "Punch Up: No matches yet"
+	else:
+		var win_rate_percent: int = int(win_rate * 100)
+		punch_up_stats_label.text = "Punch Up: %dW/%dL (%d%%)" % [wins, losses, win_rate_percent]

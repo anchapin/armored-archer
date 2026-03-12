@@ -42,6 +42,10 @@ layout_mode = 2
 layout_mode = 2
 text = "Rank: Loading..."
 
+[node name="PunchUpStatsLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/TopPanel/StatsContainer"]
+layout_mode = 2
+text = "Punch Up: No matches yet"
+
 [node name="FilterPanel" type="HBoxContainer" parent="SafeAreaContainer/VBoxContainer"]
 layout_mode = 2
 
