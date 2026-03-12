@@ -273,6 +273,18 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/stage_complete',
+      'stage_complete',
+      rpcStageCompleteWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/complete_stage',
+      'complete_stage',
+      rpcCompleteStageWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/report_player',
       'report_player',
       rpcReportPlayerWrapper
@@ -480,6 +492,26 @@ function rpcEquipGearWrapper(
 ): string {
   const { rpcEquipGear } = require('./modules/gear_system');
   return rpcEquipGear(ctx, logger, nk, payload);
+}
+
+function rpcStageCompleteWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcStageComplete } = require('./modules/gear_system');
+  return rpcStageComplete(ctx, logger, nk, payload);
+}
+
+function rpcCompleteStageWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcCompleteStage } = require('./modules/stage_tracking');
+  return rpcCompleteStage(ctx, logger, nk, payload);
 }
 
 function rpcReportPlayerWrapper(

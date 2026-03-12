@@ -445,6 +445,14 @@ const config: AppConfig = {
         maxRequests: parseInt(process.env.RATE_LIMIT_EQUIP_GEAR_MAX || '30', 10),
         windowMs: parseInt(process.env.RATE_LIMIT_EQUIP_GEAR_WINDOW_MS || '60000', 10),
       },
+      stage_complete: {
+        maxRequests: parseInt(process.env.RATE_LIMIT_STAGE_COMPLETE_MAX || '30', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_STAGE_COMPLETE_WINDOW_MS || '60000', 10),
+      },
+      complete_stage: {
+        maxRequests: parseInt(process.env.RATE_LIMIT_COMPLETE_STAGE_MAX || '30', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_COMPLETE_STAGE_WINDOW_MS || '60000', 10),
+      },
       track_event: {
         maxRequests: parseInt(process.env.RATE_LIMIT_TRACK_EVENT_MAX || '60', 10),
         windowMs: parseInt(process.env.RATE_LIMIT_TRACK_EVENT_WINDOW_MS || '60000', 10),

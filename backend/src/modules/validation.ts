@@ -69,6 +69,7 @@ export const ValibotSchemas = {
     boss_defeated: boolean(),
     difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare']),
     boss_id: optional(pipe(string(), minLength(1), maxLength(100))),
+    enemy_type: optional(pipe(string(), minLength(1), maxLength(100))),
   }),
 
   equip_gear: object({

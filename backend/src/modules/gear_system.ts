@@ -223,6 +223,18 @@ const BOSS_MODIFIER_UNLOCKS: { [bossId: string]: string[] } = {
 };
 
 /**
+ * Maps enemy type IDs to their unlocked modifier pool IDs.
+ * When an enemy of a specific type is defeated, all modifiers 
+ * associated with that enemy type are unlocked for future drops.
+ */
+const ENEMY_MODIFIER_UNLOCKS: { [enemyType: string]: string[] } = {
+  goblin: ['vitality_boost'],
+  skeleton: ['fortification'],
+  orc: ['heavy_impact'],
+  dragon: ['piercing_arrow', 'wind_fury'],
+};
+
+/**
  * Retrieves the list of modifier IDs that are unlocked by defeating a specific boss.
  *
  * @param bossId - The ID of the defeated boss
@@ -230,6 +242,16 @@ const BOSS_MODIFIER_UNLOCKS: { [bossId: string]: string[] } = {
  */
 export function getModifiersUnlockedByBoss(bossId: string): string[] {
   return BOSS_MODIFIER_UNLOCKS[bossId] || [];
+}
+
+/**
+ * Retrieves the list of modifier IDs that are unlocked by defeating an enemy of a specific type.
+ *
+ * @param enemyType - The type of enemy defeated
+ * @returns Array of modifier IDs that may now drop from future loot
+ */
+export function getModifiersUnlockedByEnemy(enemyType: string): string[] {
+  return ENEMY_MODIFIER_UNLOCKS[enemyType] || [];
 }
 
 /**

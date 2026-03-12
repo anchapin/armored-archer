@@ -2,7 +2,7 @@
  * RevenueCat Webhook Handler Unit Tests
  * Tests for IAP purchase validation with RevenueCat webhooks (Issue #460)
  */
-import { handleRevenueCatWebhook } from '../store';
+import { rpcRevenueCatWebhook } from '../store';
 import { createMockLogger, createMockNakama } from '../../__mocks__/nakama';
 import { Runtime } from '../../types/nakama';
 
@@ -23,7 +23,7 @@ const mockCtx = {
   env: {},
 };
 
-describe('handleRevenueCatWebhook', () => {
+describe('rpcRevenueCatWebhook', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -32,7 +32,7 @@ describe('handleRevenueCatWebhook', () => {
     it('should reject empty payload', async () => {
       const nk = createTestNakama();
       
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -47,7 +47,7 @@ describe('handleRevenueCatWebhook', () => {
     it('should reject invalid JSON payload', async () => {
       const nk = createTestNakama();
       
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -63,7 +63,7 @@ describe('handleRevenueCatWebhook', () => {
       const nk = createTestNakama();
       const payload = JSON.stringify({ some_field: 'value' });
       
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -98,7 +98,7 @@ describe('handleRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -141,7 +141,7 @@ describe('handleRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -173,7 +173,7 @@ describe('handleRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      await handleRevenueCatWebhook(
+      await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -213,7 +213,7 @@ describe('handleRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -255,7 +255,7 @@ describe('handleRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -294,7 +294,7 @@ describe('handleRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -328,7 +328,7 @@ describe('handleRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -370,7 +370,7 @@ describe('handleRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -412,7 +412,7 @@ describe('handleRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -441,7 +441,7 @@ describe('handleRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
@@ -483,7 +483,7 @@ describe('handleRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await handleRevenueCatWebhook(
+      const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
         nk,
