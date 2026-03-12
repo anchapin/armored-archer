@@ -117,10 +117,13 @@ app_store_assets/
 | iOS Icon 1024x1024 | ✅ Available | `assets/icons/icon_ios_1024.png` |
 | Android Icon 512x512 | ✅ Available | `assets/icons/icon_android_512.png` |
 | Android Icon 1024x1024 | ✅ Available | `assets/icons/icon_android_1024.png` |
-| iOS Screenshots (11 total) | ✅ Available | `app_store_assets/ios/screenshots/` |
-| Android Screenshots (3) | ✅ Available | `app_store_assets/android/screenshots/` |
+| iOS Screenshots (18 total) | ✅ Placeholders | `app_store_assets/ios/screenshots/` |
+| Android Screenshots (6) | ✅ Placeholders | `app_store_assets/android/screenshots/` |
 | Feature Graphic iOS (1200x600) | ✅ Available | `app_store_assets/ios/feature_graphic_1200x600.png` |
 | Feature Graphic Android (1024x500) | ✅ Available | `app_store_assets/android/feature_graphic_1024x500.png` |
+| Screenshot Capture Script | ✅ Available | `scripts/screenshot_capture.gd` |
+
+**Note**: Current screenshots are placeholders with labels. Replace with actual game screenshots using the capture script.
 
 ### Export Configuration Status
 
