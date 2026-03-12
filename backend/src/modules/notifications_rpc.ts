@@ -1,6 +1,5 @@
-import { InitModule, Runtime } from '../types/nakama';
-import { config } from '../config';
 import { logger } from '../config/logger';
+import { InitModule, Runtime } from '../types/nakama';
 import {
   initializeFirebase,
   isFirebaseInitialized,
@@ -11,10 +10,6 @@ import {
   scheduleNotification,
   cancelScheduledNotification,
   getNotificationTemplate,
-  sendPushNotification,
-  sendDailyRewardNotification,
-  sendEventNotification,
-  sendPvpChallengeNotification,
 } from './notifications';
 
 /**
@@ -86,10 +81,11 @@ export function registerRpcRemoveDeviceToken(initializer: InitModule): void {
 export function registerRpcGetNotificationPreferences(initializer: InitModule): void {
   initializer.registerRpc(
     'armored_archer_get_notification_preferences',
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
         const prefs = await getNotificationPreferences(nk, ctx.userId!);
-        
+
         if (!prefs) {
           return JSON.stringify({
             success: false,
@@ -141,8 +137,10 @@ export function registerRpcUpdateNotificationPreferences(initializer: InitModule
         ];
 
         for (const key of Object.keys(preferences)) {
-          if (!validFields.includes(key) && 
-              !['quietHoursStart', 'quietHoursEnd', 'timezone'].includes(key)) {
+          if (
+            !validFields.includes(key) &&
+            !['quietHoursStart', 'quietHoursEnd', 'timezone'].includes(key)
+          ) {
             return JSON.stringify({ success: false, error: `Invalid field: ${key}` });
           }
         }
@@ -233,13 +231,14 @@ export function registerRpcCancelNotification(initializer: InitModule): void {
 export function registerRpcGetNotificationStatus(initializer: InitModule): void {
   initializer.registerRpc(
     'armored_archer_get_notification_status',
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
         const initialized = isFirebaseInitialized();
-        const deviceTokens = await nk.dbQuery(
+        const deviceTokens = (await nk.dbQuery(
           `SELECT COUNT(*) as count FROM device_tokens WHERE user_id = $1`,
           [ctx.userId!]
-        );
+        )) as { count: number }[];
 
         return JSON.stringify({
           firebaseEnabled: initialized,
@@ -264,7 +263,7 @@ export function registerNotificationEndpoints(initializer: InitModule): void {
   registerRpcScheduleNotification(initializer);
   registerRpcCancelNotification(initializer);
   registerRpcGetNotificationStatus(initializer);
-  
+
   logger.info('Notification RPCs registered');
 }
 

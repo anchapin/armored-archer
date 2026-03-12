@@ -1,5 +1,5 @@
-import { Runtime, Runtime.Nakama } from '../types/nakama';
 import { logger } from '../config/logger';
+import { Runtime } from '../types/nakama';
 import {
   processScheduledNotifications,
   sendDailyRewardNotification,
@@ -23,7 +23,10 @@ async function processPendingNotifications(nk: Runtime.Nakama): Promise<void> {
   try {
     const result = await processScheduledNotifications(nk);
     if (result.sent > 0 || result.failed > 0) {
-      logger.info('Processed scheduled notifications', { sent: result.sent, failed: result.failed });
+      logger.info('Processed scheduled notifications', {
+        sent: result.sent,
+        failed: result.failed,
+      });
     }
   } catch (error) {
     logger.error('Error processing scheduled notifications', { error: String(error) });
@@ -36,14 +39,15 @@ async function processPendingNotifications(nk: Runtime.Nakama): Promise<void> {
  * Send daily reward reminders to users
  * This is called at a specific time each day (e.g., 9 AM)
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function sendDailyRewardReminders(nk: Runtime.Nakama): Promise<void> {
   try {
     // Get all users who have daily rewards enabled
-    const users = await nk.dbQuery(
+    const users = (await nk.dbQuery(
       `SELECT u.id, u.username FROM users u
        JOIN notification_preferences np ON u.id = np.user_id
        WHERE np.daily_rewards_enabled = true`
-    );
+    )) as { id: string; username: string }[];
 
     logger.info('Sending daily reward reminders', { userCount: users.length });
 
@@ -82,7 +86,10 @@ export async function scheduleNextDailyReward(
       [userId, nextAvailableTime.toISOString()]
     );
 
-    logger.info('Next daily reward scheduled', { userId, nextAvailable: nextAvailableTime.toISOString() });
+    logger.info('Next daily reward scheduled', {
+      userId,
+      nextAvailable: nextAvailableTime.toISOString(),
+    });
   } catch (error) {
     logger.error('Error scheduling next daily reward', { error: String(error), userId });
   }
@@ -102,10 +109,7 @@ export async function notifyUsersAboutEvent(
 
     if (targetUserIds && targetUserIds.length > 0) {
       // Get specific users
-      users = await nk.dbQuery(
-        `SELECT id FROM users WHERE id = ANY($1)`,
-        [targetUserIds]
-      );
+      users = await nk.dbQuery(`SELECT id FROM users WHERE id = ANY($1)`, [targetUserIds]);
     } else {
       // Get all users with events enabled
       users = await nk.dbQuery(

@@ -1,6 +1,6 @@
-import { Runtime, Runtime.Nakama } from '../types/nakama';
 import { config } from '../config';
 import { logger } from '../config/logger';
+import { Runtime } from '../types/nakama';
 
 // Firebase Admin SDK types
 interface FirebaseMessagingPayload {
@@ -85,6 +85,7 @@ export function initializeFirebase(): boolean {
 
   try {
     // Dynamic import to avoid issues when Firebase is not configured
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const admin = require('firebase-admin');
 
     const serviceAccount = {
@@ -253,11 +254,8 @@ export async function registerDeviceToken(
   fcmToken?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Check if token already exists
-    const existingTokens = await nk.stripeGetUserSubscriptionProducts(userId);
-    
     // Use raw SQL for device tokens table
-    const result = await nk.dbQuery(
+    await nk.dbQuery(
       `INSERT INTO device_tokens (user_id, device_token, platform, app_version, fcm_token, updated_at, last_used_at)
        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
        ON CONFLICT (device_token) DO UPDATE SET
@@ -288,10 +286,7 @@ export async function removeDeviceToken(
   deviceToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await nk.dbQuery(
-      `DELETE FROM device_tokens WHERE device_token = $1`,
-      [deviceToken]
-    );
+    await nk.dbQuery(`DELETE FROM device_tokens WHERE device_token = $1`, [deviceToken]);
 
     logger.info('Device token removed', { deviceToken });
     return { success: true };
@@ -329,15 +324,11 @@ export async function getUserDeviceTokens(
 /**
  * Get user notification preferences
  */
-export async function getNotificationPreferences(
-  nk: Runtime.Nakama,
-  userId: string
-): Promise<any> {
+export async function getNotificationPreferences(nk: Runtime.Nakama, userId: string): Promise<any> {
   try {
-    const result = await nk.dbQuery(
-      `SELECT * FROM notification_preferences WHERE user_id = $1`,
-      [userId]
-    );
+    const result = await nk.dbQuery(`SELECT * FROM notification_preferences WHERE user_id = $1`, [
+      userId,
+    ]);
 
     if (result.length === 0) {
       // Create default preferences
@@ -449,12 +440,12 @@ export async function scheduleNotification(
   data: Record<string, string> = {}
 ): Promise<{ success: boolean; notificationId?: string; error?: string }> {
   try {
-    const result = await nk.dbQuery(
+    const result = (await nk.dbQuery(
       `INSERT INTO scheduled_notifications (user_id, notification_type, title, body, data, scheduled_for, status)
        VALUES ($1, $2, $3, $4, $5, $6, 'pending')
        RETURNING notification_id`,
       [userId, type, title, body, JSON.stringify(data), scheduledFor.toISOString()]
-    );
+    )) as { notification_id: string }[];
 
     logger.info('Notification scheduled', { userId, type, scheduledFor });
     return { success: true, notificationId: result[0]?.notification_id };
@@ -550,7 +541,16 @@ export async function logNotificationHistory(
       `INSERT INTO notification_history 
        (notification_id, user_id, notification_type, title, body, device_token, status, error_message)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [notificationId, userId, notificationType, title, body, deviceToken, status, errorMessage || null]
+      [
+        notificationId,
+        userId,
+        notificationType,
+        title,
+        body,
+        deviceToken,
+        status,
+        errorMessage || null,
+      ]
     );
   } catch (error) {
     logger.error('Failed to log notification history', { error: String(error) });
@@ -567,7 +567,7 @@ export async function shouldSendNotification(
 ): Promise<boolean> {
   try {
     const prefs = await getNotificationPreferences(nk, userId);
-    
+
     if (!prefs) {
       return true; // Default to sending if no preferences
     }
@@ -609,7 +609,11 @@ export async function processScheduledNotifications(nk: Runtime.Nakama): Promise
 
   for (const notification of pending) {
     // Check user preferences
-    const shouldSend = await shouldSendNotification(nk, notification.user_id, notification.notification_type);
+    const shouldSend = await shouldSendNotification(
+      nk,
+      notification.user_id,
+      notification.notification_type
+    );
     if (!shouldSend) {
       await markNotificationSent(nk, notification.notification_id, true);
       sent++;
@@ -625,7 +629,7 @@ export async function processScheduledNotifications(nk: Runtime.Nakama): Promise
     }
 
     // Send to all devices
-    const tokens = deviceTokens.map(t => t.fcmToken || t.deviceToken);
+    const tokens = deviceTokens.map((t) => t.fcmToken || t.deviceToken);
     const result = await sendBatchNotifications(
       tokens,
       notification.title,
@@ -681,15 +685,15 @@ export async function sendDailyRewardNotification(
     return { success: false, error: 'No device tokens' };
   }
 
-  const tokens = deviceTokens.map(t => t.fcmToken || t.deviceToken);
+  const tokens = deviceTokens.map((t) => t.fcmToken || t.deviceToken);
   const result = await sendBatchNotifications(tokens, template.title, template.body, {
     type: 'daily_reward',
     action: 'claim_rewards',
   });
 
-  return { 
-    success: result.success > 0, 
-    error: result.errors.join('; ') 
+  return {
+    success: result.success > 0,
+    error: result.errors.join('; '),
   };
 }
 
@@ -714,16 +718,16 @@ export async function sendEventNotification(
     return { success: false, error: 'No device tokens' };
   }
 
-  const tokens = deviceTokens.map(t => t.fcmToken || t.deviceToken);
+  const tokens = deviceTokens.map((t) => t.fcmToken || t.deviceToken);
   const result = await sendBatchNotifications(tokens, `🎉 ${eventName}`, template.body, {
     type: 'event',
     eventId,
     action: 'view_event',
   });
 
-  return { 
-    success: result.success > 0, 
-    error: result.errors.join('; ') 
+  return {
+    success: result.success > 0,
+    error: result.errors.join('; '),
   };
 }
 
@@ -747,7 +751,7 @@ export async function sendPvpChallengeNotification(
     return { success: false, error: 'No device tokens' };
   }
 
-  const tokens = deviceTokens.map(t => t.fcmToken || t.deviceToken);
+  const tokens = deviceTokens.map((t) => t.fcmToken || t.deviceToken);
   const result = await sendBatchNotifications(
     tokens,
     template.title,
@@ -758,8 +762,8 @@ export async function sendPvpChallengeNotification(
     }
   );
 
-  return { 
-    success: result.success > 0, 
-    error: result.errors.join('; ') 
+  return {
+    success: result.success > 0,
+    error: result.errors.join('; '),
   };
 }
