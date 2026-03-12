@@ -11,19 +11,19 @@ var current_chapter: String = "chapter_1"
 const MAIN_SCENE = preload("res://scenes/main.tscn")
 
 func _ready() -> void:
-	# Connect to CampaignManager signals for live updates
-	if CampaignManager.has_signal("stage_unlocked"):
-		CampaignManager.stage_unlocked.connect(_on_stage_unlocked)
-	if CampaignManager.has_signal("stage_completed"):
-		CampaignManager.stage_completed.connect(_on_stage_completed)
-	if CampaignManager.has_signal("campaign_progress_updated"):
-		CampaignManager.campaign_progress_updated.connect(_on_progress_updated)
-	
 	var chapter_data = get_campaign_data(current_chapter)
 	if chapter_data:
 		chapter_title.text = chapter_data.get("name", "Campaign")
 
 	build_stage_buttons()
+
+	# Connect to CampaignManager signals
+	CampaignManager.stage_unlocked.connect(_on_stage_unlocked)
+	CampaignManager.stage_completed.connect(_on_stage_completed)
+	CampaignManager.campaign_progress_updated.connect(_on_progress_updated)
+
+	# Connect back button
+	$BackButton.pressed.connect(_on_back_button_pressed)
 
 func build_stage_buttons() -> void:
 	for child in stages_container.get_children():
@@ -61,20 +61,16 @@ func create_stage_button(stage_data: Dictionary) -> Button:
 
 func _on_stage_pressed(stage_id: String) -> void:
 	var stage_data = CampaignManager.get_stage_data(stage_id)
-	if stage_data.is_empty():
-		push_error("Failed to load stage data for: " + stage_id)
-		return
-	
 	GameManager.current_stage_id = stage_id
 	GameManager.current_waves = stage_data.get("waves", 3)
 	GameManager.boss_id = stage_data.get("boss", "")
 
 	get_tree().change_scene_to_packed(MAIN_SCENE)
 
-func _on_stage_unlocked(_stage_id: String) -> void:
+func _on_stage_unlocked(stage_id: String) -> void:
 	build_stage_buttons()
 
-func _on_stage_completed(_stage_id: String) -> void:
+func _on_stage_completed(stage_id: String) -> void:
 	build_stage_buttons()
 
 func _on_progress_updated(chapter_id: String, progress: float) -> void:
@@ -86,15 +82,6 @@ func _on_back_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func get_campaign_data(chapter_id: String) -> Dictionary:
-	# Validate CampaignManager has the expected data
-	if not CampaignManager.has_method("get_stage_data"):
-		push_error("CampaignManager methods not available")
-		return {}
-	
-	if CampaignManager.campaigns_data.is_empty():
-		push_warning("Campaign data not loaded yet")
-		return {}
-	
 	for campaign in CampaignManager.campaigns_data.get("campaigns", []):
 		if campaign.get("id") == chapter_id:
 			return campaign

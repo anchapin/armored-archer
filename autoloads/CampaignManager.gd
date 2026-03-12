@@ -23,33 +23,21 @@ signal campaign_progress_updated(chapter_id: String, progress: float)
 func _ready() -> void:
 	"""Initializes campaign data and loads saved progress."""
 	load_campaigns_data()
-	load_progress()
-	
-	# If no saved progress exists, initialize with first stage unlocked
-	if unlocked_stages.is_empty():
-		unlocked_stages = ["1_1"]
-		save_progress()
+	unlocked_stages = ["1_1"]
+	save_progress()
 
 func load_campaigns_data() -> void:
 	"""Loads campaign definitions from res://data/campaigns.json."""
 	var file = FileAccess.open("res://data/campaigns.json", FileAccess.READ)
-	if file == null:
-		push_error("Failed to open campaigns.json file")
-		return
-	
-	var json_string = file.get_as_text()
-	file.close()
-	
-	if json_string.is_empty():
-		push_error("campaigns.json is empty")
-		return
-	
-	var json = JSON.new()
-	var parse_result = json.parse(json_string)
-	if parse_result == OK:
-		campaigns_data = json.data
-	else:
-		push_error("Failed to parse campaigns.json: " + str(parse_result))
+	if file:
+		var json_string = file.get_as_text()
+		file.close()
+		var json = JSON.new()
+		var parse_result = json.parse(json_string)
+		if parse_result == OK:
+			campaigns_data = json.data
+		else:
+			push_error("Failed to parse campaigns.json")
 
 func get_stage_data(stage_id: String) -> Dictionary:
 	"""Retrieves data for a specific stage.
@@ -60,10 +48,6 @@ func get_stage_data(stage_id: String) -> Dictionary:
 	Returns:
 		Dictionary: Stage configuration data or empty dict if not found
 	"""
-	if campaigns_data.is_empty():
-		push_warning("Campaign data not loaded")
-		return {}
-	
 	for campaign in campaigns_data.get("campaigns", []):
 		for stage in campaign.get("stages", []):
 			if stage.get("id") == stage_id:
@@ -135,13 +119,15 @@ func handle_boss_defeat(boss_id: String) -> void:
 	"""
 	match boss_id:
 		"boss_wind":
-			# Try to unlock modifier pool via GearManager if available
-			var gear_manager: Node = get_node_or_null("/root/GearManager")
-			if gear_manager and gear_manager.has_method("unlock_modifier_pool"):
-				gear_manager.unlock_modifier_pool("piercing_arrow")
-			else:
-				# Fallback: just print the unlock
-				unlock_modifier_pool("piercing_arrow")
+			unlock_modifier_pool("piercing_arrow")
+		"boss_iron":
+			unlock_modifier_pool("iron_forged")
+		"boss_king":
+			unlock_modifier_pool("royal_blessing")
+		"boss_nightmare":
+			unlock_modifier_pool("nightmare_essence")
+		"boss_shadow":
+			unlock_modifier_pool("shadow_touched")
 
 func unlock_modifier_pool(modifier_id: String) -> void:
 	"""Unlocks a modifier pool for gear generation.
@@ -180,21 +166,12 @@ func save_progress() -> void:
 func load_progress() -> void:
 	"""Loads campaign progress from user://campaign_progress.json."""
 	var file = FileAccess.open("user://campaign_progress.json", FileAccess.READ)
-	if file == null:
-		# No saved progress - this is fine for new players
-		return
-	
-	var json_string = file.get_as_text()
-	file.close()
-	
-	if json_string.is_empty():
-		return
-	
-	var json = JSON.new()
-	var parse_result = json.parse(json_string)
-	if parse_result == OK:
-		var save_data = json.data
-		unlocked_stages = save_data.get("unlocked_stages", [])
-		completed_stages = save_data.get("completed_stages", [])
-	else:
-		push_warning("Failed to parse campaign progress, using defaults")
+	if file:
+		var json_string = file.get_as_text()
+		file.close()
+		var json = JSON.new()
+		var parse_result = json.parse(json_string)
+		if parse_result == OK:
+			var save_data = json.data
+			unlocked_stages = save_data.get("unlocked_stages", [])
+			completed_stages = save_data.get("completed_stages", [])

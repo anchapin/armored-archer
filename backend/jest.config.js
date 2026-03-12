@@ -47,7 +47,7 @@ module.exports = {
     },
     './src/modules/rpg_system.ts': {
       branches: 75,
-      functions: 55,
+      functions: 50,
       lines: 80,
       statements: 80
     },

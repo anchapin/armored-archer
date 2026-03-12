@@ -3,7 +3,6 @@ extends Control
 # --- UI References ---
 @onready var gem_label: Label = $CenterContainer/VBoxContainer/GemContainer/GemLabel
 @onready var play_button: Button = $CenterContainer/VBoxContainer/PlayButton
-@onready var loadout_button: Button = $CenterContainer/VBoxContainer/LoadoutButton
 @onready var pvp_button: Button = $CenterContainer/VBoxContainer/PvpButton
 @onready var shop_button: Button = $CenterContainer/VBoxContainer/ShopButton
 @onready var buy_gems_button: Button = $CenterContainer/VBoxContainer/BuyGemsButton
@@ -25,7 +24,6 @@ func _ready() -> void:
 	_update_gem_display()
 
 	play_button.pressed.connect(_on_play_pressed)
-	loadout_button.pressed.connect(_on_loadout_pressed)
 	pvp_button.pressed.connect(_on_pvp_pressed)
 	shop_button.pressed.connect(_on_shop_pressed)
 	buy_gems_button.pressed.connect(_on_buy_gems_pressed)
@@ -42,13 +40,7 @@ func _cleanup_signal_connection(node: Node, signal_name: String, connection: Cal
 
 # --- Button Handlers ---
 func _on_play_pressed() -> void:
-	# Navigate to campaign map for stage selection
 	get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
-
-func _on_loadout_pressed() -> void:
-	var loadout_scene = preload("res://scenes/ui/loadout.tscn")
-	var loadout_instance = loadout_scene.instantiate()
-	get_tree().root.add_child(loadout_instance)
 
 func _on_pvp_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")

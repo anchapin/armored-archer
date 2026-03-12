@@ -7,6 +7,9 @@ This directory contains all assets required for iOS App Store and Google Play St
 ```
 app_store_assets/
 ├── ASSETS_REQUIREMENTS.md      # Detailed requirements for all assets
+├── ICON_SPECIFICATION.md       # Complete icon size specifications
+├── icon_config.json            # Machine-readable icon configuration
+├── generate_icons.sh           # Icon generation script
 ├── localized_descriptions.md   # App store descriptions in multiple languages
 ├── ios/
 │   ├── screenshots/

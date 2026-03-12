@@ -89,7 +89,7 @@ Armored Archer is a free-to-play mobile RPG combining strategic turn-based comba
 
 ## Privacy Policy
 
-See our Privacy Policy: [Add URL to privacy policy]
+Privacy Policy URL: https://anchapin.github.io/armored-archer/docs/privacy-policy.html
 
 ## Support
 
