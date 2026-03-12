@@ -47,6 +47,7 @@ import {
   registerRpcUnequipGear,
   registerRpcGetInventory,
   registerRpcUnlockModifierPool,
+  registerRpcStageComplete,
 } from './modules/gear_system';
 import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
 import { registerDeploymentObservability, initializeDeploymentObservability } from './modules/deployment_observability';
@@ -253,6 +254,12 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/revenuecat_webhook',
+      'revenuecat_webhook',
+      rpcRevenueCatWebhookWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/generate_gear',
       'generate_gear',
       rpcGenerateGearWrapper
@@ -323,6 +330,7 @@ const InitModule: InitModule = function (
     registerRpcUnequipGear(initializer);
     registerRpcGetInventory(initializer);
     registerRpcUnlockModifierPool(initializer);
+    registerRpcStageComplete(initializer);
     registerRpcReportPlayer(initializer);
     registerRpcGetPlayerReports(initializer);
     registerRpcCompleteStage(initializer);
@@ -440,6 +448,16 @@ function rpcSpendGemsWrapper(
 ): string {
   const { rpcSpendGems } = require('./modules/store');
   return rpcSpendGems(ctx, logger, nk, payload);
+}
+
+function rpcRevenueCatWebhookWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcRevenueCatWebhook } = require('./modules/store');
+  return rpcRevenueCatWebhook(ctx, logger, nk, payload);
 }
 
 function rpcGenerateGearWrapper(

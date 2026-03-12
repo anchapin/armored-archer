@@ -84,7 +84,7 @@ RPG, archer, turn-based, strategy, combat, PvP, gear, customization, fantasy, ad
 
 ## Privacy Policy
 
-See our Privacy Policy: [Add URL to privacy policy]
+Privacy Policy URL: https://anchapin.github.io/armored-archer/docs/privacy-policy.html
 
 ## Support
 

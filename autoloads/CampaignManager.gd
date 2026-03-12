@@ -120,6 +120,14 @@ func handle_boss_defeat(boss_id: String) -> void:
 	match boss_id:
 		"boss_wind":
 			unlock_modifier_pool("piercing_arrow")
+		"boss_iron":
+			unlock_modifier_pool("iron_forged")
+		"boss_king":
+			unlock_modifier_pool("royal_blessing")
+		"boss_nightmare":
+			unlock_modifier_pool("nightmare_essence")
+		"boss_shadow":
+			unlock_modifier_pool("shadow_touched")
 
 func unlock_modifier_pool(modifier_id: String) -> void:
 	"""Unlocks a modifier pool for gear generation.
