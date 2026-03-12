@@ -211,6 +211,18 @@ declare namespace Runtime {
     registerAfter(
       fn: (ctx: Context, logger: Logger, nk: Nakama, data: BeforeAfterData) => BeforeAfterData
     ): void;
+    /**
+     * Register an HTTP route for webhook endpoints (e.g., RevenueCat webhooks).
+     *
+     * @param method - HTTP method (GET, POST, etc.)
+     * @param path - URL path for the route
+     * @param fn - Handler function
+     */
+    registerHttpRoute(
+      method: string,
+      path: string,
+      fn: (ctx: Context, logger: Logger, nk: Nakama, params: Record<string, string>, body: string) => string | Promise<string>
+    ): void;
   }
 
   /**
