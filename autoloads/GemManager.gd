@@ -36,6 +36,73 @@ signal skin_unequipped(slot: String)
 # --- Save Data Path ---
 const SAVE_FILE_PATH = "user://cosmetic_data.save"
 
+# --- Default Gem Rewards ---
+const ACHIEVEMENT_GEM_REWARDS: Dictionary = {
+	"first_battle": 10,
+	"first_victory": 25,
+	"first_pvp_win": 50,
+	"streak_3": 15,
+	"streak_5": 30,
+	"collect_100_enemies": 100,
+	"reach_level_5": 50,
+	"reach_level_10": 100,
+	"first_purchase": 25
+}
+
+# --- Tracked Achievements ---
+var completed_achievements: Array = []  # Track completed achievements for one-time rewards
+
+# --- Achievement Rewards ---
+func claim_achievement_reward(achievement_id: String) -> int:
+	"""Claims gem reward for completing an achievement (one-time only).
+
+	Parameters:
+		achievement_id: The achievement identifier
+
+	Returns:
+		int: Number of gems awarded (0 if already claimed or invalid)
+	"""
+	# Check if already claimed
+	if achievement_id in completed_achievements:
+		print("Achievement reward already claimed: %s" % achievement_id)
+		return 0
+
+	# Check if achievement exists in rewards
+	if not ACHIEVEMENT_GEM_REWARDS.has(achievement_id):
+		push_error("Unknown achievement: %s" % achievement_id)
+		return 0
+
+	var reward = ACHIEVEMENT_GEM_REWARDS[achievement_id]
+	
+	# Mark as completed and award gems
+	completed_achievements.append(achievement_id)
+	add_gems(reward, "achievement:" + achievement_id)
+	
+	print("Achievement completed: %s, Awarded %d gems" % [achievement_id, reward])
+	return reward
+
+func get_achievement_reward(achievement_id: String) -> int:
+	"""Gets the gem reward amount for an achievement without claiming it.
+
+	Parameters:
+		achievement_id: The achievement identifier
+
+	Returns:
+		int: Number of gems the achievement awards (0 if invalid)
+	"""
+	return ACHIEVEMENT_GEM_REWARDS.get(achievement_id, 0)
+
+func is_achievement_completed(achievement_id: String) -> bool:
+	"""Checks if an achievement has been completed (reward claimed).
+
+	Parameters:
+		achievement_id: The achievement identifier
+
+	Returns:
+		bool: True if the achievement reward has been claimed
+	"""
+	return achievement_id in completed_achievements
+
 # --- Initialization ---
 func _ready() -> void:
 	"""Sets up signal connections and loads saved cosmetic data."""
@@ -45,15 +112,63 @@ func _ready() -> void:
 	load_data()
 
 # --- Gem Management (Delegates to StoreManager) ---
+signal gems_updated(new_balance: int)
+
+var _local_gems: int = 0  # Local cache for gems when server unavailable
+
 func get_gem_balance() -> int:
-	"""Gets current gem balance from StoreManager.
+	"""Gets current gem balance from StoreManager or local cache.
 
 	Returns:
 		int: Number of gems available
 	"""
 	if store_manager:
 		return store_manager.get_gems()
-	return 0
+	return _local_gems
+
+func add_gems(amount: int, reason: String = "") -> void:
+	"""Adds gems to player's balance.
+
+	Parameters:
+		amount: Number of gems to add (must be positive)
+		reason: Reason for adding gems (achievement, quest_reward, etc.)
+	"""
+	if amount <= 0:
+		push_error("Invalid gem amount to add")
+		return
+
+	_local_gems += amount
+	
+	if store_manager:
+		store_manager.add_gems(amount)
+	
+	gems_updated.emit(_local_gems)
+	save_data()
+	print("Added %d gems. Reason: %s. New balance: %d" % [amount, reason, _local_gems])
+
+func remove_gems(amount: int, reason: String = "") -> void:
+	"""Removes gems from player's balance.
+
+	Parameters:
+		amount: Number of gems to remove (must be positive)
+		reason: Reason for removing gems
+	"""
+	if amount <= 0:
+		push_error("Invalid gem amount to remove")
+		return
+
+	if _local_gems < amount:
+		push_error("Insufficient gems. Need: %d, Have: %d" % [amount, _local_gems])
+		return
+
+	_local_gems -= amount
+	
+	if store_manager:
+		store_manager.spend_gems(amount, reason)
+	
+	gems_updated.emit(_local_gems)
+	save_data()
+	print("Removed %d gems. Reason: %s. New balance: %d" % [amount, reason, _local_gems])
 
 func _on_currency_updated(_gems: int, _gold: int) -> void:
 	"""Handles currency updates (placeholder for future functionality)."""
@@ -191,24 +306,28 @@ func get_equipped_skin(slot_name: String) -> String:
 
 # --- Save/Load Data ---
 func save_data() -> void:
-	"""Saves skin ownership and equipment data to disk."""
+	"""Saves skin ownership, equipment, and gem data to disk."""
 	var config = ConfigFile.new()
 
 	config.set_value("skins", "owned", owned_skins)
 	config.set_value("skins", "equipped", equipped_skins)
+	config.set_value("gems", "balance", _local_gems)
+	config.set_value("achievements", "completed", completed_achievements)
 
 	var error = config.save(SAVE_FILE_PATH)
 	if error != OK:
 		push_error("Failed to save cosmetic data: %s" % error)
 
 func load_data() -> void:
-	"""Loads skin ownership and equipment data from disk."""
+	"""Loads skin ownership, equipment, and gem data from disk."""
 	var config = ConfigFile.new()
 	var error = config.load(SAVE_FILE_PATH)
 
 	if error == OK:
 		owned_skins = config.get_value("skins", "owned", [])
 		equipped_skins = config.get_value("skins", "equipped", {})
+		_local_gems = config.get_value("gems", "balance", 0)
+		completed_achievements = config.get_value("achievements", "completed", [])
 	else:
 		initialize_default_data()
 
@@ -216,4 +335,6 @@ func initialize_default_data() -> void:
 	"""Initializes with default empty data."""
 	owned_skins = []
 	equipped_skins = {}
+	_local_gems = 0
+	completed_achievements = []
 	save_data()
