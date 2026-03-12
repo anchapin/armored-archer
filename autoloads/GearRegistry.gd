@@ -12,7 +12,8 @@ class GearSlot:
 		HELM,
 		ARMOR,
 		BOW,
-		ARROW
+		ARROW,
+		AMULET
 	}
 
 var base_gear_db: Dictionary = {}
@@ -37,6 +38,9 @@ func _initialize_base_gear() -> void:
 	_register_base_gear("arrow_wooden", "Wooden Arrows", GearSlot.SlotType.ARROW, 0, 0, 5, 0, "common", "")
 	_register_base_gear("arrow_iron", "Iron Arrows", GearSlot.SlotType.ARROW, 5, 0, 0, 0, "uncommon", "")
 	_register_base_gear("arrow_dragon", "Dragon Arrows", GearSlot.SlotType.ARROW, 15, 0, 10, 0, "legendary", "")
+	_register_base_gear("amulet_protection", "Protection Amulet", GearSlot.SlotType.AMULET, 0, 10, 0, 10, "common", "")
+	_register_base_gear("amulet_power", "Power Amulet", GearSlot.SlotType.AMULET, 10, 0, 0, 5, "uncommon", "")
+	_register_base_gear("amulet_dragon", "Dragon Amulet", GearSlot.SlotType.AMULET, 15, 5, 5, 15, "legendary", "")
 
 func _initialize_skins() -> void:
 	"""Populates the skin database with all available cosmetic skins."""
@@ -52,6 +56,9 @@ func _initialize_skins() -> void:
 	_register_skin("skin_arrow_fire", "Fire Arrows", GearSlot.SlotType.ARROW, "arrow_wooden", 200, false, "")
 	_register_skin("skin_arrow_ice", "Ice Arrows", GearSlot.SlotType.ARROW, "arrow_iron", 350, false, "")
 	_register_skin("skin_arrow_lightning", "Lightning Arrows", GearSlot.SlotType.ARROW, "arrow_dragon", 900, true, "")
+	_register_skin("skin_amulet_golden", "Golden Amulet", GearSlot.SlotType.AMULET, "amulet_protection", 400, false, "")
+	_register_skin("skin_amulet_crystal", "Crystal Amulet", GearSlot.SlotType.AMULET, "amulet_power", 600, false, "")
+	_register_skin("skin_amulet_legendary", "Legendary Amulet", GearSlot.SlotType.AMULET, "amulet_dragon", 1200, true, "")
 
 func _register_base_gear(gear_id: String, name: String, slot: GearSlot.SlotType, attack: int, defense: int, speed: int, health: int, rarity: String, _texture_path: String) -> void:
 	"""Registers a base gear item in the database (internal).

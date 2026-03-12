@@ -51,6 +51,10 @@ text = "PvP"
 layout_mode = 2
 text = "Shop"
 
+[node name="LoadoutButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "Loadout"
+
 [node name="BuyGemsButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
 layout_mode = 2
 text = "Buy Gems"

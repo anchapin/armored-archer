@@ -213,6 +213,117 @@ const MODIFIER_POOLS: GearModifier[] = [
   },
 ];
 
+/**
+ * Maps boss IDs to their unlocked modifier pool IDs.
+ * When a boss is defeated, all modifiers associated with that boss are unlocked.
+ */
+const BOSS_MODIFIER_UNLOCKS: { [bossId: string]: string[] } = {
+  boss_basic: ['heavy_impact'],
+  boss_wind: ['piercing_arrow', 'wind_fury'],
+};
+
+/**
+ * Retrieves the list of modifier IDs that are unlocked by defeating a specific boss.
+ *
+ * @param bossId - The ID of the defeated boss
+ * @returns Array of modifier IDs unlocked by the boss
+ */
+export function getModifiersUnlockedByBoss(bossId: string): string[] {
+  return BOSS_MODIFIER_UNLOCKS[bossId] || [];
+}
+
+/**
+ * Applies gear modifiers to a base stat value.
+ *
+ * @param baseValue - The base stat value before modifiers
+ * @param modifiers - Array of gear modifiers to apply
+ * @param statName - The name of the stat to modify
+ * @returns The final stat value after applying all modifiers
+ */
+export function applyModifiersToStat(
+  baseValue: number,
+  modifiers: GearModifier[],
+  statName: string
+): number {
+  let finalValue = baseValue;
+
+  for (const modifier of modifiers) {
+    if (modifier.stat === statName && modifier.value_range) {
+      // value_range is already resolved to a single value when gear is generated
+      finalValue += modifier.value_range[0];
+    }
+  }
+
+  return finalValue;
+}
+
+/**
+ * Applies all gear modifiers to gear stats.
+ *
+ * @param stats - Array of gear stats to modify
+ * @param modifiers - Array of gear modifiers to apply
+ * @returns Modified gear stats with applied modifiers
+ */
+export function applyModifiersToGearStats(
+  stats: GearStat[],
+  modifiers: GearModifier[]
+): GearStat[] {
+  return stats.map((stat) => ({
+    ...stat,
+    value: applyModifiersToStat(stat.value, modifiers, stat.name),
+  }));
+}
+
+/**
+ * Calculates total stat bonuses from all equipped gear modifiers.
+ *
+ * @param inventory - Player inventory containing equipped gear
+ * @returns Object with stat name as key and total bonus as value
+ */
+export function getEquippedGearModifierBonuses(inventory: PlayerInventory): { [statName: string]: number } {
+  const bonuses: { [statName: string]: number } = {};
+
+  // Get equipped gear items
+  const equippedGearIds = Object.values(inventory.equipped_gear).filter(
+    (id): id is string => id !== null
+  );
+
+  for (const gearId of equippedGearIds) {
+    const gear = inventory.gear.find((g) => g.id === gearId);
+    if (gear && gear.modifiers) {
+      for (const modifier of gear.modifiers) {
+        if (modifier.value_range && modifier.value_range[0]) {
+          bonuses[modifier.stat] = (bonuses[modifier.stat] || 0) + modifier.value_range[0];
+        }
+      }
+    }
+  }
+
+  return bonuses;
+}
+
+/**
+ * Applies equipped gear modifier bonuses to player stats.
+ * This should be called in combat calculations to account for gear modifiers.
+ *
+ * @param baseStats - Base player stats
+ * @param inventory - Player inventory with equipped gear
+ * @returns Modified stats with gear bonuses applied
+ */
+export function applyGearModifiersToPlayerStats(
+  baseStats: { attack: number; defense: number; dodge: number; crit_rate: number },
+  inventory: PlayerInventory
+): { attack: number; defense: number; dodge: number; crit_rate: number } {
+  const bonuses = getEquippedGearModifierBonuses(inventory);
+
+  return {
+    attack: baseStats.attack + (bonuses.attack || 0),
+    defense: baseStats.defense + (bonuses.defense || 0),
+    dodge: baseStats.dodge + (bonuses.dodge || 0),
+    crit_rate: baseStats.crit_rate + (bonuses.crit_rate || 0),
+  };
+}
+
 const GEAR_NAMES = {
   weapon: ['Iron Sword', 'Steel Blade', 'Ancient Bow', 'Staff of Elements', 'Battle Axe'],
   armor: ['Leather Vest', 'Chainmail', 'Plate Armor', 'Dragon Scale', 'Shadow Cloak'],
@@ -332,37 +443,6 @@ function generateGearStats(type: string, rarity: string, logger: Runtime.Logger)
 }
 
 /**
- * Applies modifiers to gear stats.
- *
- * @param stats - Array of gear stats
- * @param modifiers - Array of gear modifiers
- * @returns Modified gear stats with base_value preserved
- */
-function applyModifiersToGearStats(stats: GearStat[], modifiers: GearModifier[]): GearStat[] {
-  return stats.map((stat) => {
-    // Find all modifiers that affect this stat
-    const matchingModifiers = modifiers.filter((mod) => mod.stat === stat.name);
-
-    if (matchingModifiers.length === 0) {
-      return stat;
-    }
-
-    // Calculate total modifier value (sum of all modifier values)
-    const totalModifierValue = matchingModifiers.reduce((sum, mod) => {
-      // Use the actual rolled value from the modifier
-      const modifierValue = mod.value_range[0];
-      return sum + modifierValue;
-    }, 0);
-
-    // Apply modifier to the stat value
-    return {
-      ...stat,
-      value: stat.value + totalModifierValue,
-    };
-  });
-}
-
-/**
  * Generates gear modifiers based on rarity and unlocked pools.
  *
  * @param rarity - Rarity of the gear
@@ -410,14 +490,15 @@ function generateModifiers(
 }
 
 /**
- * Generates a complete gear item.
+ * Generates a gear item for stage completion rewards.
+ * Exported for use by stage_tracking module.
  *
  * @param stageId - ID of the stage where gear is being generated
  * @param unlockedPools - List of unlocked modifier pools
  * @param logger - Nakama logger instance
  * @returns Generated gear item
  */
-function generateGearItem(
+export function generateGearItem(
   stageId: string,
   unlockedPools: string[],
   logger: Runtime.Logger
@@ -427,21 +508,21 @@ function generateGearItem(
   const type = getRandomItem(definitions.gearTypes);
   const name = getGearName(type, rarity, logger);
 
-  // Generate modifiers first so they can be applied to stats
+  // Generate modifiers first (before applying to stats)
   const modifiers = generateModifiers(rarity, unlockedPools, logger);
 
   // Generate base stats
   const stats = generateGearStats(type, rarity, logger);
 
   // Apply modifiers to stats
-  const finalStats = applyModifiersToGearStats(stats, modifiers);
+  const modifiedStats = applyModifiersToGearStats(stats, modifiers);
 
   const gear: GearItem = {
     id: generateGearId(),
     name: name,
     rarity: rarity,
     type: type,
-    stats: finalStats,
+    stats: modifiedStats,
     modifiers: modifiers,
     level: 1,
     timestamp: Date.now(),
@@ -1026,6 +1107,262 @@ export function rpcUnlockModifierPool(
 
   return JSON.stringify({
     success: true,
+    unlocked_modifier_pools: inventory.unlocked_modifier_pools,
+  });
+}
+
+/**
+ * Request payload for stage completion with loot generation.
+ *
+ * @property stage_id - ID of the completed stage
+ * @property boss_defeated - Whether a boss was defeated
+ * @property difficulty - Difficulty level of the stage
+ * @property boss_id - ID of the boss defeated (if any)
+ */
+export interface StageCompleteRequest {
+  stage_id: string;
+  boss_defeated: boolean;
+  difficulty: 'easy' | 'medium' | 'hard' | 'nightmare';
+  boss_id?: string;
+}
+
+/**
+ * Result of loot generation.
+ *
+ * @property dropped - Whether loot was dropped
+ * @property gear - The generated gear item (if dropped)
+ */
+export interface LootResult {
+  dropped: boolean;
+  gear: GearItem | null;
+}
+
+/**
+ * Drop rate multipliers by difficulty.
+ */
+const DIFFICULTY_DROP_MULTIPLIERS: { [key: string]: number } = {
+  easy: 0.5,
+  medium: 1.0,
+  hard: 1.5,
+  nightmare: 2.0,
+};
+
+/**
+ * Boss drop rate bonus.
+ */
+const BOSS_DROP_BONUS = 0.25;
+
+/**
+ * Base drop rate for any stage completion.
+ */
+const BASE_DROP_RATE = 0.3;
+
+/**
+ * Calculates the drop rate based on stage difficulty and boss defeat.
+ *
+ * @param difficulty - Stage difficulty level
+ * @param bossDefeated - Whether a boss was defeated
+ * @returns Calculated drop rate between 0 and 1
+ */
+function calculateDropRate(difficulty: string, bossDefeated: boolean): number {
+  const multiplier = DIFFICULTY_DROP_MULTIPLIERS[difficulty] || 1.0;
+  let dropRate = BASE_DROP_RATE * multiplier;
+
+  if (bossDefeated) {
+    dropRate += BOSS_DROP_BONUS;
+  }
+
+  // Cap at 100%
+  return Math.min(dropRate, 1.0);
+}
+
+/**
+ * Registers the stage complete RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcStageComplete(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/stage_complete', rpcStageComplete);
+}
+
+/**
+ * Handles stage completion with server-side loot generation.
+ * This prevents client-side drop-rate hacking by rolling drops server-side.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string containing stage_id, boss_defeated, difficulty
+ * @returns JSON string with stage completion result and loot
+ *
+ * @example
+ * // Request payload
+ * { "stage_id": "stage_123", "boss_defeated": true, "difficulty": "hard" }
+ *
+ * // Response (with loot)
+ * {
+ *   "success": true,
+ *   "stage_id": "stage_123",
+ *   "loot": {
+ *     "dropped": true,
+ *     "gear": { ... }
+ *   }
+ * }
+ */
+export function rpcStageComplete(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Stage complete called for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.stage_complete, payload, 'stage_complete');
+  if (!validation.success) {
+    logAudit(
+      nk,
+      ctx.userId,
+      `ctx.ipAddress ?? null`,
+      'stage_complete',
+      'stage_progression',
+      { stage_id: 'unknown' },
+      'failure',
+      validation.error
+    );
+    return createValidationErrorResponse('stage_complete', validation.error);
+  }
+
+  const request = validation.data;
+
+  // Calculate drop rate server-side
+  const dropRate = calculateDropRate(request.difficulty, request.boss_defeated);
+  const roll = Math.random();
+
+  logger.info(
+    'Loot roll for user %s: roll=%f, dropRate=%f, difficulty=%s, bossDefeated=%s',
+    ctx.userId,
+    roll,
+    dropRate,
+    request.difficulty,
+    request.boss_defeated
+  );
+
+  const lootResult: LootResult = {
+    dropped: false,
+    gear: null,
+  };
+
+  // Read or create player inventory
+  const inventoryObjects = nk.storageRead([
+    {
+      collection: 'player_inventory',
+      key: ctx.userId,
+      userId: ctx.userId,
+    },
+  ]);
+
+  let inventory: PlayerInventory;
+
+  if (inventoryObjects.length === 0) {
+    inventory = {
+      user_id: ctx.userId,
+      gear: [],
+      equipped_gear: {},
+      unlocked_modifier_pools: [],
+    };
+  } else {
+    const value = inventoryObjects[0].value;
+    if (value) {
+      const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
+      if (!parseResult.success || !parseResult.data) {
+        logger.error('Failed to parse inventory data');
+        logAudit(
+          nk,
+          ctx.userId,
+          `ctx.ipAddress ?? null`,
+          'stage_complete',
+          'player_inventory',
+          { stage_id: request.stage_id },
+          'failure',
+          'Failed to parse inventory data'
+        );
+        return createErrorResponse('INVALID_DATA', 'Failed to parse data');
+      }
+      inventory = parseResult.data;
+    } else {
+      inventory = {
+        user_id: ctx.userId,
+        gear: [],
+        equipped_gear: {},
+        unlocked_modifier_pools: [],
+      };
+    }
+  }
+
+  // Unlock modifier pools when boss is defeated
+  if (request.boss_defeated && request.boss_id) {
+    const modifiersToUnlock = getModifiersUnlockedByBoss(request.boss_id);
+    for (const modifierId of modifiersToUnlock) {
+      if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
+        inventory.unlocked_modifier_pools.push(modifierId);
+        logger.info('Unlocked modifier pool %s for user %s after defeating boss %s', modifierId, ctx.userId, request.boss_id);
+      }
+    }
+  }
+
+  // Roll for loot
+  if (roll < dropRate) {
+    const gear = generateGearItem(request.stage_id, inventory.unlocked_modifier_pools, logger);
+    inventory.gear.push(gear);
+
+    lootResult.dropped = true;
+    lootResult.gear = gear;
+
+    logger.info(
+      'Loot dropped for user %s: %s (%s)',
+      ctx.userId,
+      gear.name,
+      gear.rarity
+    );
+  }
+
+  // Save inventory with new gear (if any)
+  nk.storageWrite([
+    {
+      collection: 'player_inventory',
+      key: ctx.userId,
+      userId: ctx.userId,
+      value: JSON.stringify(inventory),
+    },
+  ]);
+
+  // Audit the stage completion
+  logAudit(
+    nk,
+    ctx.userId,
+    `ctx.ipAddress ?? null`,
+    'stage_complete',
+    'stage_progression',
+    {
+      stage_id: request.stage_id,
+      difficulty: request.difficulty,
+      boss_defeated: request.boss_defeated,
+      boss_id: request.boss_id ?? null,
+      loot_dropped: lootResult.dropped,
+      loot_gear_id: lootResult.gear?.id ?? null,
+      loot_gear_rarity: lootResult.gear?.rarity ?? null,
+      unlocked_modifiers: request.boss_defeated ? getModifiersUnlockedByBoss(request.boss_id ?? '') : [],
+      drop_rate_used: dropRate,
+      roll_value: roll,
+    },
+    'success'
+  );
+
+  return JSON.stringify({
+    success: true,
+    stage_id: request.stage_id,
+    loot: lootResult,
+    drop_rate: dropRate,
     unlocked_modifier_pools: inventory.unlocked_modifier_pools,
   });
 }
