@@ -8,6 +8,9 @@ import {
   rpcStageComplete,
   PlayerInventory,
   GearItem,
+  getModifiersUnlockedByBoss,
+  getEquippedGearModifierBonuses,
+  applyGearModifiersToPlayerStats,
 } from '../gear_system';
 import { Runtime } from '../../types/nakama';
 
@@ -451,6 +454,214 @@ describe('gear_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('getModifiersUnlockedByBoss', () => {
+    it('should return modifier pools for boss_wind', () => {
+      const result = getModifiersUnlockedByBoss('boss_wind');
+      expect(result).toContain('piercing_arrow');
+      expect(result).toContain('wind_fury');
+    });
+
+    it('should return modifier pools for boss_basic', () => {
+      const result = getModifiersUnlockedByBoss('boss_basic');
+      expect(result).toContain('heavy_impact');
+    });
+
+    it('should return empty array for unknown boss', () => {
+      const result = getModifiersUnlockedByBoss('unknown_boss');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getEquippedGearModifierBonuses', () => {
+    it('should calculate bonuses from equipped gear', () => {
+      const inventory: PlayerInventory = {
+        user_id: 'test-user',
+        gear: [
+          {
+            id: 'gear-1',
+            name: 'Test Sword',
+            rarity: 'legendary',
+            type: 'weapon',
+            stats: [{ name: 'attack', base_value: 10, value: 15 }],
+            modifiers: [
+              { id: 'sharp_edge', stat: 'attack', value_range: [5, 10], rarity_weight: 1 },
+            ],
+            level: 1,
+            timestamp: Date.now(),
+          },
+        ],
+        equipped_gear: { weapon: 'gear-1', armor: null, accessory: null },
+        unlocked_modifier_pools: [],
+      };
+
+      const bonuses = getEquippedGearModifierBonuses(inventory);
+      expect(bonuses.attack).toBe(5);
+    });
+
+    it('should return empty object when no gear equipped', () => {
+      const inventory: PlayerInventory = {
+        user_id: 'test-user',
+        gear: [],
+        equipped_gear: { weapon: null, armor: null, accessory: null },
+        unlocked_modifier_pools: [],
+      };
+
+      const bonuses = getEquippedGearModifierBonuses(inventory);
+      expect(bonuses).toEqual({});
+    });
+
+    it('should sum bonuses from multiple equipped gear', () => {
+      const inventory: PlayerInventory = {
+        user_id: 'test-user',
+        gear: [
+          {
+            id: 'gear-1',
+            name: 'Test Sword',
+            rarity: 'legendary',
+            type: 'weapon',
+            stats: [{ name: 'attack', base_value: 10, value: 15 }],
+            modifiers: [
+              { id: 'sharp_edge', stat: 'attack', value_range: [5, 10], rarity_weight: 1 },
+            ],
+            level: 1,
+            timestamp: Date.now(),
+          },
+          {
+            id: 'gear-2',
+            name: 'Test Armor',
+            rarity: 'epic',
+            type: 'armor',
+            stats: [{ name: 'defense', base_value: 10, value: 12 }],
+            modifiers: [
+              { id: 'iron_skin', stat: 'defense', value_range: [3, 5], rarity_weight: 1 },
+            ],
+            level: 1,
+            timestamp: Date.now(),
+          },
+        ],
+        equipped_gear: { weapon: 'gear-1', armor: 'gear-2', accessory: null },
+        unlocked_modifier_pools: [],
+      };
+
+      const bonuses = getEquippedGearModifierBonuses(inventory);
+      expect(bonuses.attack).toBe(5);
+      expect(bonuses.defense).toBe(3);
+    });
+  });
+
+  describe('applyGearModifiersToPlayerStats', () => {
+    it('should apply gear bonuses to base stats', () => {
+      const baseStats = { attack: 10, defense: 5, dodge: 3, crit_rate: 0.1 };
+      const inventory: PlayerInventory = {
+        user_id: 'test-user',
+        gear: [
+          {
+            id: 'gear-1',
+            name: 'Test Sword',
+            rarity: 'legendary',
+            type: 'weapon',
+            stats: [{ name: 'attack', base_value: 10, value: 15 }],
+            modifiers: [
+              { id: 'sharp_edge', stat: 'attack', value_range: [5, 10], rarity_weight: 1 },
+            ],
+            level: 1,
+            timestamp: Date.now(),
+          },
+        ],
+        equipped_gear: { weapon: 'gear-1', armor: null, accessory: null },
+        unlocked_modifier_pools: [],
+      };
+
+      const result = applyGearModifiersToPlayerStats(baseStats, inventory);
+      expect(result.attack).toBe(15); // 10 + 5
+      expect(result.defense).toBe(5);
+      expect(result.dodge).toBe(3);
+      expect(result.crit_rate).toBe(0.1);
+    });
+
+    it('should return base stats when no gear equipped', () => {
+      const baseStats = { attack: 10, defense: 5, dodge: 3, crit_rate: 0.1 };
+      const inventory: PlayerInventory = {
+        user_id: 'test-user',
+        gear: [],
+        equipped_gear: { weapon: null, armor: null, accessory: null },
+        unlocked_modifier_pools: [],
+      };
+
+      const result = applyGearModifiersToPlayerStats(baseStats, inventory);
+      expect(result).toEqual(baseStats);
+    });
+  });
+
+  describe('rpcStageComplete with boss_id for modifier unlock', () => {
+    it('should unlock modifier pools when boss is defeated with boss_id', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.1);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_boss_1',
+        boss_defeated: true,
+        difficulty: 'medium',
+        boss_id: 'boss_wind',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.unlocked_modifier_pools).toContain('piercing_arrow');
+      expect(parsed.unlocked_modifier_pools).toContain('wind_fury');
+    });
+
+    it('should not unlock modifiers when boss_defeated is false', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.1);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_boss_1',
+        boss_defeated: false,
+        difficulty: 'medium',
+        boss_id: 'boss_wind',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.unlocked_modifier_pools).toEqual([]);
+    });
+
+    it('should not duplicate already unlocked modifiers', () => {
+      const existingInventory: PlayerInventory = {
+        user_id: 'test-user',
+        gear: [],
+        equipped_gear: {},
+        unlocked_modifier_pools: ['piercing_arrow'],
+      };
+
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: JSON.stringify(existingInventory),
+        },
+      ]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.1);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_boss_1',
+        boss_defeated: true,
+        difficulty: 'medium',
+        boss_id: 'boss_wind',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      // Should only have piercing_arrow once
+      const count = parsed.unlocked_modifier_pools.filter((m: string) => m === 'piercing_arrow').length;
+      expect(count).toBe(1);
     });
   });
 });
