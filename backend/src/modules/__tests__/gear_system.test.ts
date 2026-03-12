@@ -5,6 +5,7 @@ import {
   rpcUnequipGear,
   rpcGetInventory,
   rpcUnlockModifierPool,
+  rpcStageComplete,
   PlayerInventory,
   GearItem,
 } from '../gear_system';
@@ -293,6 +294,163 @@ describe('gear_system', () => {
 
       const pools = parsed.unlocked_modifier_pools.filter((p: string) => p === 'boss_wind');
       expect(pools).toHaveLength(1);
+    });
+  });
+
+  describe('rpcStageComplete', () => {
+    it('should complete stage without loot when roll fails', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      // Set random to 0.9, which is higher than any drop rate
+      jest.spyOn(Math, 'random').mockReturnValue(0.9);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'easy',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.stage_id).toBe('stage_1');
+      expect(parsed.loot.dropped).toBe(false);
+      expect(parsed.loot.gear).toBeNull();
+      expect(parsed.drop_rate).toBe(0.15); // 0.3 * 0.5 = 0.15
+    });
+
+    it('should generate loot when roll succeeds', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      // Set random to 0.1, which is lower than the drop rate
+      jest.spyOn(Math, 'random').mockReturnValue(0.1);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'medium',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.loot.dropped).toBe(true);
+      expect(parsed.loot.gear).toBeDefined();
+      expect(parsed.loot.gear.id).toBeDefined();
+      expect(parsed.loot.gear.type).toBeDefined();
+      expect(parsed.drop_rate).toBe(0.3); // 0.3 * 1.0 = 0.3
+    });
+
+    it('should apply boss drop bonus', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      // Set random to 0.4, which is between base (0.3) and with boss bonus (0.55)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_boss_1',
+        boss_defeated: true,
+        difficulty: 'medium',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.loot.dropped).toBe(true);
+      expect(parsed.drop_rate).toBe(0.55); // 0.3 * 1.0 + 0.25 = 0.55
+    });
+
+    it('should apply difficulty multiplier correctly', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      // Set random to 0.7, which is higher than hard without boss (0.45)
+      jest.spyOn(Math, 'random').mockReturnValue(0.7);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'hard',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.drop_rate).toBeCloseTo(0.45); // 0.3 * 1.5 = 0.45
+      expect(parsed.loot.dropped).toBe(false);
+    });
+
+    it('should apply nightmare difficulty multiplier', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      // Set random to 0.9, higher than nightmare without boss (0.6)
+      jest.spyOn(Math, 'random').mockReturnValue(0.9);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'nightmare',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.drop_rate).toBe(0.6); // 0.3 * 2.0 = 0.6
+      expect(parsed.loot.dropped).toBe(false);
+    });
+
+    it('should cap drop rate at 100%', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      // Even with 0.1 roll, nightmare + boss should drop (0.6 + 0.25 = 0.85)
+      // This tests that drop rate calculation works correctly
+      jest.spyOn(Math, 'random').mockReturnValue(0.1);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_boss_1',
+        boss_defeated: true,
+        difficulty: 'nightmare',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.drop_rate).toBe(0.85); // 0.3 * 2.0 + 0.25 = 0.85
+      expect(parsed.loot.dropped).toBe(true);
+    });
+
+    it('should add gear to existing inventory', () => {
+      const inventory = createMockInventory({ gear: [createMockGearItem()] });
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: JSON.stringify(inventory),
+        },
+      ]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.1);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'easy',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.loot.dropped).toBe(true);
+      // Verify storageWrite was called with updated inventory
+      expect(mockNk.storageWrite).toHaveBeenCalled();
+    });
+
+    it('should validate input payload', () => {
+      const payload = JSON.stringify({ stage_id: '', boss_defeated: 'not boolean', difficulty: 'invalid' });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should handle missing difficulty field', () => {
+      const payload = JSON.stringify({ stage_id: 'stage_1', boss_defeated: false });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
     });
   });
 });

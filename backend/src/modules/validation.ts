@@ -60,6 +60,13 @@ export const ValibotSchemas = {
     boss_defeated: boolean(),
   }),
 
+  // Stage completion with loot generation
+  stage_complete: object({
+    stage_id: pipe(string(), minLength(1), maxLength(100)),
+    boss_defeated: boolean(),
+    difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare']),
+  }),
+
   equip_gear: object({
     gear_id: pipe(string(), minLength(1), maxLength(100)),
     slot: createEnum(['weapon', 'armor', 'accessory']),
