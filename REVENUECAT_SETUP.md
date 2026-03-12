@@ -126,7 +126,65 @@ The Nakama backend (`backend/src/modules/store.ts`) handles receipt validation:
    - `armored_archer/get_currency` - Fetches current gem balance
    - `armored_archer/spend_gems` - Deducts gems for purchases
 
-## Step 6: Test Purchases (Sandbox)
+## Step 6: Configure Webhooks (Server-Side)
+
+RevenueCat webhooks allow the server to receive real-time purchase notifications when:
+- A new purchase is made
+- A subscription is renewed
+- A subscription is cancelled or expires
+- A refund is processed
+- Products are transferred between accounts
+
+### Setting Up Webhooks
+
+1. **Generate a Webhook Secret**
+   - In RevenueCat dashboard, go to your project settings
+   - Navigate to "Webhooks" or "API Keys"
+   - Generate a new webhook secret (or use your existing secret key)
+   - Note: This is different from your public API key
+
+2. **Configure Environment Variables**
+
+   Set the following environment variables in your Nakama configuration:
+
+   ```bash
+   # RevenueCat webhook secret for signature verification
+   REVENUECAT_WEBHOOK_SECRET=your_webhook_secret_here
+
+   # Optional: RevenueCat API key for server-side validation
+   REVENUECAT_API_KEY=your_api_key_here
+   ```
+
+3. **Configure Webhook URL in RevenueCat**
+
+   In your RevenueCat dashboard, configure the webhook URL:
+   - Navigate to your project → Settings → Webhooks
+   - Add webhook URL: `https://your-nakama-server.com/v2/rpc/armored_archer_revenuecat_webhook`
+   - Note: The path should match your registered RPC endpoint
+
+### Webhook Events Processed
+
+The backend handles the following RevenueCat webhook events:
+
+| Event Type | Description | Action |
+|------------|-------------|--------|
+| `initial_purchase` | New purchase | Award gems |
+| `non_renewing_purchase` | One-time purchase | Award gems |
+| `renewal` | Subscription renewal | Award gems (for consumables) |
+| `cancellation` | Subscription cancelled | Log event |
+| `expiration` | Subscription expired | Log event |
+| `product_change` | Account transfer | Award gems to new account |
+| `refund` | Refund processed | Deduct gems |
+| `subscription_rc_auto_refund` | Auto refund | Deduct gems |
+
+### Security
+
+- Webhook signature verification is enabled when `REVENUECAT_WEBHOOK_SECRET` is configured
+- The signature uses HMAC-SHA256 with the webhook secret
+- Requests with invalid signatures are rejected
+- Always keep your webhook secret secure!
+
+## Step 7: Test Purchases (Sandbox)
 
 ### iOS Testing
 1. Create Sandbox Testers in App Store Connect

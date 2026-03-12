@@ -29,6 +29,66 @@
           "boss": "boss_wind"
         }
       ]
+    },
+    {
+      "id": "chapter_2",
+      "name": "The Fortress",
+      "stages": [
+        {
+          "id": "2_1",
+          "name": "Outer Walls",
+          "waves": 4,
+          "boss": null
+        },
+        {
+          "id": "2_2",
+          "name": "The Courtyard",
+          "waves": 5,
+          "boss": null
+        },
+        {
+          "id": "2_3",
+          "name": "The Armory",
+          "waves": 5,
+          "boss": "boss_iron"
+        },
+        {
+          "id": "2_4",
+          "name": "Throne Room",
+          "waves": 6,
+          "boss": "boss_king"
+        }
+      ]
+    },
+    {
+      "id": "chapter_3",
+      "name": "The Dark Forest",
+      "stages": [
+        {
+          "id": "3_1",
+          "name": "Twisted Paths",
+          "waves": 4,
+          "boss": null
+        },
+        {
+          "id": "3_2",
+          "name": "The Hollow",
+          "waves": 5,
+          "boss": null
+        },
+        {
+          "id": "3_3",
+          "name": "Cursed Grove",
+          "waves": 5,
+          "boss": "boss_nightmare"
+        },
+        {
+          "id": "3_4",
+          "name": "Ancient Shrine",
+          "waves": 6,
+          "boss": "boss_shadow"
+        }
+      ]
     }
   ]
 }

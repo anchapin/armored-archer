@@ -35,6 +35,7 @@ import {
   registerRpcCheckRefunds,
   registerRpcCheckSubscriptions,
   registerRpcAppLaunchCheck,
+  registerRpcRevenueCatWebhook,
   rpcProcessPendingPurchases,
   rpcCheckRefunds,
   rpcCheckSubscriptions,
@@ -58,6 +59,10 @@ import { initializeTracing } from './config/tracing';
 import { logger, logSystemEvent } from './config/logger';
 import { createStructuredLogger, StructuredLogger } from './config/structuredLogger';
 import { registerErrorInsightRpcs, initializeErrorInsightsPipeline } from './modules/error_insight_pipeline';
+import {
+  registerRpcCompleteStage,
+  registerRpcGetCompletedStages,
+} from './modules/stage_tracking';
 
 // Global structured logger instance for use by all modules
 let globalStructuredLogger: StructuredLogger | null = null;
@@ -248,6 +253,12 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/revenuecat_webhook',
+      'revenuecat_webhook',
+      rpcRevenueCatWebhookWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/generate_gear',
       'generate_gear',
       rpcGenerateGearWrapper
@@ -312,6 +323,7 @@ const InitModule: InitModule = function (
     registerRpcCheckRefunds(initializer);
     registerRpcCheckSubscriptions(initializer);
     registerRpcAppLaunchCheck(initializer);
+    registerRpcRevenueCatWebhook(initializer);
     registerRpcGenerateGear(initializer);
     registerRpcEquipGear(initializer);
     registerRpcUnequipGear(initializer);
@@ -319,6 +331,8 @@ const InitModule: InitModule = function (
     registerRpcUnlockModifierPool(initializer);
     registerRpcReportPlayer(initializer);
     registerRpcGetPlayerReports(initializer);
+    registerRpcCompleteStage(initializer);
+    registerRpcGetCompletedStages(initializer);
   }
 
   logSystemEvent('info', 'Armored Archer server module initialized');
@@ -432,6 +446,16 @@ function rpcSpendGemsWrapper(
 ): string {
   const { rpcSpendGems } = require('./modules/store');
   return rpcSpendGems(ctx, logger, nk, payload);
+}
+
+function rpcRevenueCatWebhookWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcRevenueCatWebhook } = require('./modules/store');
+  return rpcRevenueCatWebhook(ctx, logger, nk, payload);
 }
 
 function rpcGenerateGearWrapper(
