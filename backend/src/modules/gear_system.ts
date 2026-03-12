@@ -989,3 +989,243 @@ export function rpcUnlockModifierPool(
     unlocked_modifier_pools: inventory.unlocked_modifier_pools,
   });
 }
+
+/**
+ * Request payload for stage completion with loot generation.
+ *
+ * @property stage_id - ID of the completed stage
+ * @property boss_defeated - Whether a boss was defeated
+ * @property difficulty - Difficulty level of the stage
+ */
+export interface StageCompleteRequest {
+  stage_id: string;
+  boss_defeated: boolean;
+  difficulty: 'easy' | 'medium' | 'hard' | 'nightmare';
+}
+
+/**
+ * Result of loot generation.
+ *
+ * @property dropped - Whether loot was dropped
+ * @property gear - The generated gear item (if dropped)
+ */
+export interface LootResult {
+  dropped: boolean;
+  gear: GearItem | null;
+}
+
+/**
+ * Drop rate multipliers by difficulty.
+ */
+const DIFFICULTY_DROP_MULTIPLIERS: { [key: string]: number } = {
+  easy: 0.5,
+  medium: 1.0,
+  hard: 1.5,
+  nightmare: 2.0,
+};
+
+/**
+ * Boss drop rate bonus.
+ */
+const BOSS_DROP_BONUS = 0.25;
+
+/**
+ * Base drop rate for any stage completion.
+ */
+const BASE_DROP_RATE = 0.3;
+
+/**
+ * Calculates the drop rate based on stage difficulty and boss defeat.
+ *
+ * @param difficulty - Stage difficulty level
+ * @param bossDefeated - Whether a boss was defeated
+ * @returns Calculated drop rate between 0 and 1
+ */
+function calculateDropRate(difficulty: string, bossDefeated: boolean): number {
+  const multiplier = DIFFICULTY_DROP_MULTIPLIERS[difficulty] || 1.0;
+  let dropRate = BASE_DROP_RATE * multiplier;
+
+  if (bossDefeated) {
+    dropRate += BOSS_DROP_BONUS;
+  }
+
+  // Cap at 100%
+  return Math.min(dropRate, 1.0);
+}
+
+/**
+ * Registers the stage complete RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcStageComplete(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/stage_complete', rpcStageComplete);
+}
+
+/**
+ * Handles stage completion with server-side loot generation.
+ * This prevents client-side drop-rate hacking by rolling drops server-side.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string containing stage_id, boss_defeated, difficulty
+ * @returns JSON string with stage completion result and loot
+ *
+ * @example
+ * // Request payload
+ * { "stage_id": "stage_123", "boss_defeated": true, "difficulty": "hard" }
+ *
+ * // Response (with loot)
+ * {
+ *   "success": true,
+ *   "stage_id": "stage_123",
+ *   "loot": {
+ *     "dropped": true,
+ *     "gear": { ... }
+ *   }
+ * }
+ */
+export function rpcStageComplete(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Stage complete called for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.stage_complete, payload, 'stage_complete');
+  if (!validation.success) {
+    logAudit(
+      nk,
+      ctx.userId,
+      `ctx.ipAddress ?? null`,
+      'stage_complete',
+      'stage_progression',
+      { stage_id: 'unknown' },
+      'failure',
+      validation.error
+    );
+    return createValidationErrorResponse('stage_complete', validation.error);
+  }
+
+  const request = validation.data;
+
+  // Calculate drop rate server-side
+  const dropRate = calculateDropRate(request.difficulty, request.boss_defeated);
+  const roll = Math.random();
+
+  logger.info(
+    'Loot roll for user %s: roll=%f, dropRate=%f, difficulty=%s, bossDefeated=%s',
+    ctx.userId,
+    roll,
+    dropRate,
+    request.difficulty,
+    request.boss_defeated
+  );
+
+  const lootResult: LootResult = {
+    dropped: false,
+    gear: null,
+  };
+
+  // Read or create player inventory
+  const inventoryObjects = nk.storageRead([
+    {
+      collection: 'player_inventory',
+      key: ctx.userId,
+      userId: ctx.userId,
+    },
+  ]);
+
+  let inventory: PlayerInventory;
+
+  if (inventoryObjects.length === 0) {
+    inventory = {
+      user_id: ctx.userId,
+      gear: [],
+      equipped_gear: {},
+      unlocked_modifier_pools: [],
+    };
+  } else {
+    const value = inventoryObjects[0].value;
+    if (value) {
+      const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
+      if (!parseResult.success || !parseResult.data) {
+        logger.error('Failed to parse inventory data');
+        logAudit(
+          nk,
+          ctx.userId,
+          `ctx.ipAddress ?? null`,
+          'stage_complete',
+          'player_inventory',
+          { stage_id: request.stage_id },
+          'failure',
+          'Failed to parse inventory data'
+        );
+        return createErrorResponse('INVALID_DATA', 'Failed to parse data');
+      }
+      inventory = parseResult.data;
+    } else {
+      inventory = {
+        user_id: ctx.userId,
+        gear: [],
+        equipped_gear: {},
+        unlocked_modifier_pools: [],
+      };
+    }
+  }
+
+  // Roll for loot
+  if (roll < dropRate) {
+    const gear = generateGearItem(request.stage_id, inventory.unlocked_modifier_pools, logger);
+    inventory.gear.push(gear);
+
+    lootResult.dropped = true;
+    lootResult.gear = gear;
+
+    logger.info(
+      'Loot dropped for user %s: %s (%s)',
+      ctx.userId,
+      gear.name,
+      gear.rarity
+    );
+  }
+
+  // Save inventory with new gear (if any)
+  nk.storageWrite([
+    {
+      collection: 'player_inventory',
+      key: ctx.userId,
+      userId: ctx.userId,
+      value: JSON.stringify(inventory),
+    },
+  ]);
+
+  // Audit the stage completion
+  logAudit(
+    nk,
+    ctx.userId,
+    `ctx.ipAddress ?? null`,
+    'stage_complete',
+    'stage_progression',
+    {
+      stage_id: request.stage_id,
+      difficulty: request.difficulty,
+      boss_defeated: request.boss_defeated,
+      loot_dropped: lootResult.dropped,
+      loot_gear_id: lootResult.gear?.id ?? null,
+      loot_gear_rarity: lootResult.gear?.rarity ?? null,
+      drop_rate_used: dropRate,
+      roll_value: roll,
+    },
+    'success'
+  );
+
+  return JSON.stringify({
+    success: true,
+    stage_id: request.stage_id,
+    loot: lootResult,
+    drop_rate: dropRate,
+  });
+}
