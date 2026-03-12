@@ -5,10 +5,16 @@
  */
 
 import { Runtime } from '../types/nakama';
+import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
+import {
+  generateGearItem,
+  calculateDropRate,
+  PlayerInventory,
+  GearItem,
+  getModifiersUnlockedByBoss,
+} from './gear_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { generateGearItem, calculateDropRate, PlayerInventory, GearItem, getModifiersUnlockedByBoss } from './gear_system';
-import { safeParse, createErrorResponse } from '../utils/safeParse';
 
 /**
  * Stage completion record stored in database.
@@ -349,7 +355,7 @@ export function rpcCompleteStage(
     ]);
 
     // Server-side loot generation (only if difficulty is provided)
-    let lootResult: LootResult = { dropped: false, gear: null };
+    const lootResult: LootResult = { dropped: false, gear: null };
     let dropRate = 0;
     let unlockedModifierPools: string[] = [];
 
@@ -416,7 +422,12 @@ export function rpcCompleteStage(
         for (const modifierId of modifiersToUnlock) {
           if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
             inventory.unlocked_modifier_pools.push(modifierId);
-            logger.info('Unlocked modifier pool %s for user %s after defeating boss %s', modifierId, ctx.userId, request.boss_id);
+            logger.info(
+              'Unlocked modifier pool %s for user %s after defeating boss %s',
+              modifierId,
+              ctx.userId,
+              request.boss_id
+            );
           }
         }
       }
@@ -431,12 +442,7 @@ export function rpcCompleteStage(
         lootResult.dropped = true;
         lootResult.gear = gear;
 
-        logger.info(
-          'Loot dropped for user %s: %s (%s)',
-          ctx.userId,
-          gear.name,
-          gear.rarity
-        );
+        logger.info('Loot dropped for user %s: %s (%s)', ctx.userId, gear.name, gear.rarity);
       }
 
       // Save inventory with new gear (if any)

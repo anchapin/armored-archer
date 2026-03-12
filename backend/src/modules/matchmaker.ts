@@ -5,10 +5,16 @@
 
 import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
+import { isPlayerFlagged, getFlagReason, recordMatchResult } from './anti_cheat';
 import { logAudit } from './audit';
+import {
+  getCurrentSeason,
+  applyEloUpdates,
+  getLeaderboardEntry,
+  recordPlayerActivity,
+  applyRankDecay,
+} from './season_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { getCurrentSeason, applyEloUpdates, getLeaderboardEntry, calculateRewards, recordPlayerActivity, applyRankDecay } from './season_system';
-import { isPlayerFlagged, getFlagReason, verifyRequestSignature, detectTimingAttack, recordMatchResult } from './anti_cheat';
 
 /**
  * PvP match data structure.
@@ -798,11 +804,21 @@ export function rpcCompleteMatch(
 
   // If decay was applied, update the ranks
   if (winnerDecayedRank !== winnerNewRank) {
-    logger.info('Rank decay applied for winner %s: %d -> %d', request.winner_id, winnerNewRank, winnerDecayedRank);
+    logger.info(
+      'Rank decay applied for winner %s: %d -> %d',
+      request.winner_id,
+      winnerNewRank,
+      winnerDecayedRank
+    );
     winnerNewRank = winnerDecayedRank;
   }
   if (loserDecayedRank !== loserNewRank) {
-    logger.info('Rank decay applied for loser %s: %d -> %d', request.loser_id, loserNewRank, loserDecayedRank);
+    logger.info(
+      'Rank decay applied for loser %s: %d -> %d',
+      request.loser_id,
+      loserNewRank,
+      loserDecayedRank
+    );
     loserNewRank = loserDecayedRank;
   }
 
@@ -855,13 +871,23 @@ export function rpcCompleteMatch(
     match: match,
     winner: {
       user_id: request.winner_id,
-      old_rank: match.match_type === 'ranked' ? (request.winner_id === match.creator_id ? match.creator_rank : match.opponent_rank) : 0,
+      old_rank:
+        match.match_type === 'ranked'
+          ? request.winner_id === match.creator_id
+            ? match.creator_rank
+            : match.opponent_rank
+          : 0,
       new_rank: winnerNewRank,
       rank_change: winnerRankChange,
     },
     loser: {
       user_id: request.loser_id,
-      old_rank: match.match_type === 'ranked' ? (request.loser_id === match.creator_id ? match.creator_rank : match.opponent_rank) : 0,
+      old_rank:
+        match.match_type === 'ranked'
+          ? request.loser_id === match.creator_id
+            ? match.creator_rank
+            : match.opponent_rank
+          : 0,
       new_rank: loserNewRank,
       rank_change: loserRankChange,
     },
