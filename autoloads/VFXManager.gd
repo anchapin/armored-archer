@@ -49,6 +49,15 @@ func _preload_scenes() -> void:
 	_charge_effect = load(CHARGE_EFFECT_PATH)
 	_damage_popup_scene = load(DAMAGE_POPUP_SCENE)
 	
+	# Preload screen shake (lazy initialization)
+	_screen_shake = null
+
+
+func _ensure_screen_shake() -> void:
+	"""Ensure screen shake is initialized."""
+	if _screen_shake != null:
+		return
+	
 	var screen_shake_scene := load(SCREEN_SHAKE_SCENE)
 	_screen_shake = screen_shake_scene.instantiate()
 	get_tree().current_scene.add_child(_screen_shake)
@@ -137,24 +146,28 @@ func show_damage_popup(
 
 func trigger_light_shake() -> void:
 	"""Light screen shake for minor impacts."""
+	_ensure_screen_shake()
 	if _screen_shake:
 		_screen_shake.shake_light()
 
 
 func trigger_medium_shake() -> void:
 	"""Medium screen shake for regular hits."""
+	_ensure_screen_shake()
 	if _screen_shake:
 		_screen_shake.shake_medium()
 
 
 func trigger_heavy_shake() -> void:
 	"""Heavy screen shake for critical hits."""
+	_ensure_screen_shake()
 	if _screen_shake:
 		_screen_shake.shake_heavy()
 
 
 func trigger_impact_shake() -> void:
 	"""Impact screen shake for boss hits/explosions."""
+	_ensure_screen_shake()
 	if _screen_shake:
 		_screen_shake.shake_impact()
 
