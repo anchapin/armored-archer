@@ -1160,13 +1160,54 @@ const BOSS_DROP_BONUS = 0.25;
 const BASE_DROP_RATE = 0.3;
 
 /**
+ * Gets player inventory from storage
+ */
+export function getPlayerInventory(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): PlayerInventory {
+  const inventoryObjects = nk.storageRead([
+    {
+      collection: 'player_inventory',
+      key: userId,
+      userId: userId,
+    },
+  ]);
+
+  if (inventoryObjects.length === 0) {
+    return {
+      user_id: userId,
+      gear: [],
+      equipped_gear: {},
+      unlocked_modifier_pools: [],
+    };
+  }
+
+  const value = inventoryObjects[0].value;
+  if (value) {
+    const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
+    if (parseResult.success && parseResult.data) {
+      return parseResult.data;
+    }
+  }
+
+  return {
+    user_id: userId,
+    gear: [],
+    equipped_gear: {},
+    unlocked_modifier_pools: [],
+  };
+}
+
+/**
  * Calculates the drop rate based on stage difficulty and boss defeat.
  *
  * @param difficulty - Stage difficulty level
  * @param bossDefeated - Whether a boss was defeated
  * @returns Calculated drop rate between 0 and 1
  */
-function calculateDropRate(difficulty: string, bossDefeated: boolean): number {
+export function calculateDropRate(difficulty: string, bossDefeated: boolean): number {
   const multiplier = DIFFICULTY_DROP_MULTIPLIERS[difficulty] || 1.0;
   let dropRate = BASE_DROP_RATE * multiplier;
 
@@ -1183,6 +1224,66 @@ function calculateDropRate(difficulty: string, bossDefeated: boolean): number {
  *
  * @param initializer - Nakama runtime initializer
  */
+
+/**
+ * Helper function to get or create player inventory
+ */
+function getOrCreateInventory(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  requestStageId: string
+): { inventory: PlayerInventory; error?: string } {
+  const inventoryObjects = nk.storageRead([
+    {
+      collection: 'player_inventory',
+      key: ctx.userId,
+      userId: ctx.userId,
+    },
+  ]);
+
+  if (inventoryObjects.length === 0) {
+    return {
+      inventory: {
+        user_id: ctx.userId,
+        gear: [],
+        equipped_gear: {},
+        unlocked_modifier_pools: [],
+      },
+    };
+  }
+
+  const value = inventoryObjects[0].value;
+  if (!value) {
+    return {
+      inventory: {
+        user_id: ctx.userId,
+        gear: [],
+        equipped_gear: {},
+        unlocked_modifier_pools: [],
+      },
+    };
+  }
+
+  const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
+  if (!parseResult.success || !parseResult.data) {
+    logger.error('Failed to parse inventory data');
+    logAudit(
+      nk,
+      ctx.userId,
+      `ctx.ipAddress ?? null`,
+      'stage_complete',
+      'player_inventory',
+      { stage_id: requestStageId },
+      'failure',
+      'Failed to parse inventory data'
+    );
+    return { inventory: {} as PlayerInventory, error: 'INVALID_DATA' };
+  }
+
+  return { inventory: parseResult.data };
+}
+
 export function registerRpcStageComplete(initializer: Runtime.Initializer): void {
   initializer.registerRpc('armored_archer/stage_complete', rpcStageComplete);
 }
@@ -1254,52 +1355,12 @@ export function rpcStageComplete(
     gear: null,
   };
 
-  // Read or create player inventory
-  const inventoryObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
-
-  let inventory: PlayerInventory;
-
-  if (inventoryObjects.length === 0) {
-    inventory = {
-      user_id: ctx.userId,
-      gear: [],
-      equipped_gear: {},
-      unlocked_modifier_pools: [],
-    };
-  } else {
-    const value = inventoryObjects[0].value;
-    if (value) {
-      const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
-      if (!parseResult.success || !parseResult.data) {
-        logger.error('Failed to parse inventory data');
-        logAudit(
-          nk,
-          ctx.userId,
-          `ctx.ipAddress ?? null`,
-          'stage_complete',
-          'player_inventory',
-          { stage_id: request.stage_id },
-          'failure',
-          'Failed to parse inventory data'
-        );
-        return createErrorResponse('INVALID_DATA', 'Failed to parse data');
-      }
-      inventory = parseResult.data;
-    } else {
-      inventory = {
-        user_id: ctx.userId,
-        gear: [],
-        equipped_gear: {},
-        unlocked_modifier_pools: [],
-      };
-    }
+  // Get or create player inventory
+  const inventoryResult = getOrCreateInventory(nk, ctx, logger, request.stage_id);
+  if (inventoryResult.error) {
+    return createErrorResponse(inventoryResult.error, 'Failed to parse data');
   }
+  const inventory = inventoryResult.inventory;
 
   // Unlock modifier pools when boss is defeated
   if (request.boss_defeated && request.boss_id) {
