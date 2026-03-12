@@ -4,10 +4,42 @@ import {
   rpcAcceptMatch,
   rpcListMatches,
   rpcGetPlayerRank,
+  rpcCompleteMatch,
   calculateRank,
   generateMatchId,
   PvPMatch,
 } from '../matchmaker';
+
+// Mock anti_cheat module
+jest.mock('../anti_cheat', () => ({
+  isPlayerFlagged: jest.fn(),
+  getFlagReason: jest.fn(),
+  recordMatchResult: jest.fn(),
+}));
+
+// Mock season_system module
+jest.mock('../season_system', () => ({
+  getCurrentSeason: jest.fn(),
+  applyEloUpdates: jest.fn(),
+  getLeaderboardEntry: jest.fn(),
+  recordPlayerActivity: jest.fn(),
+  applyRankDecay: jest.fn(),
+}));
+
+// Mock audit module
+jest.mock('../audit', () => ({
+  logAudit: jest.fn(),
+}));
+
+import { isPlayerFlagged, getFlagReason, recordMatchResult } from '../anti_cheat';
+import {
+  getCurrentSeason,
+  applyEloUpdates,
+  getLeaderboardEntry,
+  recordPlayerActivity,
+  applyRankDecay,
+} from '../season_system';
+import { logAudit } from '../audit';
 
 describe('matchmaker', () => {
   let mockLogger: any;
@@ -458,6 +490,10 @@ describe('matchmaker', () => {
   });
 
   describe('rpcGetPlayerRank', () => {
+    beforeEach(() => {
+      (applyRankDecay as jest.Mock).mockImplementation((_nk, _userId, rank) => rank);
+    });
+
     it('should return player rank, level, and xp', () => {
       const playerStats = {
         level: 7,
@@ -538,6 +574,396 @@ describe('matchmaker', () => {
       const parts = id.split('_');
       expect(parts.length).toBeGreaterThanOrEqual(2);
       expect(Number(parts[1])).toBeGreaterThan(0);
+    });
+  });
+
+  describe('rpcCompleteMatch', () => {
+    const createActiveMatch = (overrides = {}): PvPMatch => ({
+      match_id: 'match_completion_test',
+      creator_id: 'test-user-123',
+      opponent_id: 'opponent-user',
+      creator_rank: 1200,
+      opponent_rank: 1150,
+      match_type: 'ranked',
+      is_punch_up: false,
+      status: 'active',
+      created_at: Date.now() - 10000,
+      updated_at: Date.now() - 10000,
+      expires_at: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      last_turn_timestamp: Date.now() - 10000,
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
+      (getFlagReason as jest.Mock).mockReturnValue('No reason');
+      (getCurrentSeason as jest.Mock).mockReturnValue({ season_id: 'season_1', start_time: 0, end_time: Date.now() + 86400000 });
+      (getLeaderboardEntry as jest.Mock).mockReturnValue(null);
+      (applyEloUpdates as jest.Mock).mockReturnValue({ winnerNewElo: 1210, loserNewElo: 1140 });
+      (recordPlayerActivity as jest.Mock).mockImplementation();
+      (applyRankDecay as jest.Mock).mockImplementation((_nk, _userId, rank) => rank);
+      (logAudit as jest.Mock).mockImplementation();
+      (recordMatchResult as jest.Mock).mockImplementation();
+    });
+
+    it('should complete a ranked match successfully', () => {
+      const match = createActiveMatch();
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.match.status).toBe('completed');
+      expect(parsed.winner.user_id).toBe('test-user-123');
+      expect(parsed.loser.user_id).toBe('opponent-user');
+      expect(mockNk.storageWrite).toHaveBeenCalled();
+    });
+
+    it('should return error when winner is flagged', () => {
+      (isPlayerFlagged as jest.Mock).mockReturnValue(true);
+      (getFlagReason as jest.Mock).mockReturnValue('Suspicious activity');
+
+      const payload = JSON.stringify({
+        match_id: 'match_test',
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('PLAYER_FLAGGED');
+      expect(parsed.error).toContain('flagged for review');
+    });
+
+    it('should return error when loser is flagged', () => {
+      (isPlayerFlagged as jest.Mock)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true);
+      (getFlagReason as jest.Mock).mockReturnValue('Suspicious activity');
+
+      const payload = JSON.stringify({
+        match_id: 'match_test',
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('PLAYER_FLAGGED');
+      expect(parsed.error).toContain('Opponent is flagged');
+    });
+
+    it('should return error when match not found', () => {
+      mockNk.storageRead = jest.fn(() => []);
+
+      const payload = JSON.stringify({
+        match_id: 'non_existent_match',
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Match not found');
+    });
+
+    it('should return error when match is not active', () => {
+      const match = createActiveMatch({ status: 'pending' });
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Match is not active');
+    });
+
+    it('should return error when user is not authorized', () => {
+      const match = createActiveMatch();
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      // Create a context with a different user
+      const otherCtx = { ...mockCtx, userId: 'unauthorized-user' };
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      const result = rpcCompleteMatch(otherCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Not authorized to complete this match');
+    });
+
+    it('should return error when winner is not a participant', () => {
+      const match = createActiveMatch();
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'non-participant',
+        loser_id: 'opponent-user',
+      });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Winner and loser must be match participants');
+    });
+
+    it('should return error when loser is not a participant', () => {
+      const match = createActiveMatch();
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'non-participant',
+      });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Winner and loser must be match participants');
+    });
+
+    it('should return error when winner and loser are the same', () => {
+      const match = createActiveMatch();
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'test-user-123',
+      });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Winner and loser must be different');
+    });
+
+    it('should return validation error for invalid payload', () => {
+      const payload = JSON.stringify({ match_id: 123 });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should complete a casual match without rank changes', () => {
+      const match = createActiveMatch({ match_type: 'casual' });
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.match.status).toBe('completed');
+      // For casual matches, rank changes should be 0
+      expect(parsed.winner.rank_change).toBe(0);
+      expect(parsed.loser.rank_change).toBe(0);
+    });
+
+    it('should use existing leaderboard entry for ranked matches', () => {
+      const match = createActiveMatch();
+      (getLeaderboardEntry as jest.Mock).mockReturnValue({ score: 1250 });
+
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(getLeaderboardEntry).toHaveBeenCalled();
+      expect(parsed.success).toBe(true);
+    });
+
+    it('should use is_punch_up from request when provided', () => {
+      const match = createActiveMatch({ is_punch_up: false });
+      (applyEloUpdates as jest.Mock).mockReturnValue({ winnerNewElo: 1215, loserNewElo: 1135 });
+
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+        is_punch_up: true,
+      });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.is_punch_up).toBe(true);
+    });
+
+    it('should apply rank decay when applicable', () => {
+      const match = createActiveMatch();
+      (applyRankDecay as jest.Mock).mockImplementation((_nk, userId, rank) => {
+        // Simulate rank decay for inactive players
+        return rank > 1100 ? rank - 10 : rank;
+      });
+
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(applyRankDecay).toHaveBeenCalled();
+      expect(parsed.success).toBe(true);
+    });
+
+    it('should record player activity after match completion', () => {
+      const match = createActiveMatch();
+
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+
+      expect(recordPlayerActivity).toHaveBeenCalledWith(mockNk, 'test-user-123');
+      expect(recordPlayerActivity).toHaveBeenCalledWith(mockNk, 'opponent-user');
+    });
+
+    it('should record match result for anti-cheat analysis', () => {
+      const match = createActiveMatch();
+
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+
+      expect(recordMatchResult).toHaveBeenCalledTimes(2);
+    });
+
+    it('should log audit event on match completion', () => {
+      const match = createActiveMatch();
+
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'pvp_matches') {
+          return [{ collection: 'pvp_matches', key: match.match_id, value: JSON.stringify(match) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+
+      expect(logAudit).toHaveBeenCalled();
     });
   });
 });
