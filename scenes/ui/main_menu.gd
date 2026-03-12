@@ -8,6 +8,7 @@ extends Control
 @onready var buy_gems_button: Button = $CenterContainer/VBoxContainer/BuyGemsButton
 @onready var settings_button: Button = $CenterContainer/VBoxContainer/SettingsButton
 @onready var quit_button: Button = $CenterContainer/VBoxContainer/QuitButton
+@onready var loadout_button: Button = $CenterContainer/VBoxContainer/LoadoutButton
 
 # --- Manager References ---
 @onready var gem_manager: Node = get_node_or_null("/root/GemManager")
@@ -29,6 +30,7 @@ func _ready() -> void:
 	buy_gems_button.pressed.connect(_on_buy_gems_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
+	loadout_button.pressed.connect(_on_loadout_pressed)
 
 func _exit_tree() -> void:
 	# Clean up connected signals to prevent memory leaks
@@ -55,6 +57,11 @@ func _on_buy_gems_pressed() -> void:
 
 func _on_settings_pressed() -> void:
 	print("Settings not implemented yet")
+
+func _on_loadout_pressed() -> void:
+	var loadout_scene = preload("res://scenes/ui/loadout.tscn")
+	var loadout_instance = loadout_scene.instantiate()
+	get_tree().root.add_child(loadout_instance)
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()
