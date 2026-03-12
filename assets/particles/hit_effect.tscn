@@ -1,25 +1,29 @@
-[gd_scene load_steps=3 format=3 uid="uid://hit_effect_particle"]
+[gd_scene load_steps=4 format=3 uid="uid://hit_effect_particle"]
 
 [ext_resource type="Texture2D" path="res://icon.svg" id="1"]
 
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_1"]
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_hit"]
 emission_shape = 3
-emission_sphere_radius = 5.0
-gravity = Vector3(0, 0, 0)
-scale_min = 0.2
-scale_max = 0.5
-color = Color(1, 0.8, 0.2, 1)
+emission_sphere_radius = 15.0
+gravity = Vector3(0, -30, 0)
+direction = Vector3(1, 1, 0)
+spread = 50.0
+initial_velocity_min = 80.0
+initial_velocity_max = 150.0
+scale_min = 0.15
+scale_max = 0.4
+color = Color(1.0, 0.6, 0.2, 1.0)
 
-[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_1"]
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_hit"]
 blend_mode = 1
 
 [node name="HitEffect" type="GPUParticles2D"]
-amount = 20
-process_material = SubResource("ParticleProcessMaterial_1")
+amount = 25
+process_material = SubResource("ParticleProcessMaterial_hit")
 texture = ExtResource("1")
-lifetime = 0.5
+lifetime = 0.6
 one_shot = true
-explosiveness = 1.0
+explosiveness = 0.85
 local_coords = false
 draw_order = 0
-material = SubResource("CanvasItemMaterial_1")
+material = SubResource("CanvasItemMaterial_hit")

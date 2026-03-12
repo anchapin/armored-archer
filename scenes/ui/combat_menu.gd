@@ -141,10 +141,62 @@ func _update_combat_log() -> void:
 			if is_crit:
 				damage_text += " (CRIT!)"
 			log_text += "%s %s for %s\n" % [attacker_name, action, damage_text]
+			# Play combat VFX for hits
+			_play_combat_vfx(entry, is_my_action)
 		else:
 			log_text += "%s %s (missed)\n" % [attacker_name, action]
+			# Play miss VFX
+			_play_miss_vfx(entry, is_my_action)
 
 	combat_log.text = log_text
+
+
+func _play_combat_vfx(entry: Dictionary, is_my_action: bool) -> void:
+	"""Play visual effects for combat hits."""
+	if not VFXManager:
+		return
+
+	var damage: int = entry.get("damage", 0)
+	var is_crit: bool = entry.get("is_crit", false)
+	var effect_type: String = entry.get("effect_type", "hit")
+
+	# Determine target position (opponent if my action, self if opponent's action)
+	var target_pos: Vector2 = Vector2.ZERO
+	if is_my_action:
+		target_pos = opponent_health_bar.global_position
+	else:
+		target_pos = my_health_bar.global_position
+
+	# Determine effect type string
+	var vfx_type: String = "hit"
+	match effect_type:
+		"fire":
+			vfx_type = "fire"
+		"ice":
+			vfx_type = "ice"
+		"lightning":
+			vfx_type = "lightning"
+		"crit", "critical":
+			vfx_type = "crit"
+
+	# Play the VFX
+	VFXManager.play_combat_vfx(damage, target_pos, vfx_type, is_crit)
+
+
+func _play_miss_vfx(entry: Dictionary, is_my_action: bool) -> void:
+	"""Play visual effects for missed attacks."""
+	if not VFXManager:
+		return
+
+	# Determine target position
+	var target_pos: Vector2 = Vector2.ZERO
+	if is_my_action:
+		target_pos = opponent_health_bar.global_position
+	else:
+		target_pos = my_health_bar.global_position
+
+	VFXManager.play_miss_effect(target_pos)
+	VFXManager.show_damage_popup(0, target_pos, false, true)
 
 func _refresh_match_state() -> void:
 	if not combat_manager or match_id.is_empty():
