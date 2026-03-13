@@ -7,7 +7,7 @@ console:
   write_timeout: 10
 
 runtime:
-  env: development
+  env: []
   path: /nakama/data
 
 socket:
@@ -26,7 +26,7 @@ session:
   token_encryption_key: default-token-key
 
 database:
-  address: postgres:localdbpassword@postgres:5432/nakama
+  address: []
   conn_max_lifetime: 60
   max_open_conns: 25
   max_idle_conns: 10

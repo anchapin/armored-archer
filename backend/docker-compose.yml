@@ -103,7 +103,7 @@ services:
       - >
         echo "Starting Nakama with environment validation..." &&
         /nakama/nakama migrate up --database.address ${DATABASE_ADDRESS:-postgres:changeme@postgres:5432/nakama} &&
-        exec /nakama/nakama --config /nakama/data/nakama.yml
+        exec /nakama/nakama --config /nakama/data/nakama.yml --database.address ${DATABASE_ADDRESS:-postgres:changeme@postgres:5432/nakama}
     restart: always
     environment:
       - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-defaultkey}
