@@ -35,10 +35,10 @@ func _physics_process(delta: float) -> void:
 
 	if player_ref:
 		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
-		
+
 		# Update attack timer
 		attack_timer += delta
-		
+
 		if distance_to_player <= detection_range:
 			if distance_to_player <= retreat_range:
 				# Too close - retreat
@@ -52,7 +52,7 @@ func _physics_process(delta: float) -> void:
 		else:
 			# Move towards player if out of range
 			chase_player()
-	
+
 	move_and_slide()
 
 func find_player() -> void:
@@ -72,23 +72,23 @@ func chase_player() -> void:
 func maintain_distance(distance: float) -> void:
 	if not player_ref:
 		return
-	
+
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
-	
+
 	# If too far, approach; if too close, back away
 	var target_direction = direction
 	if distance > attack_range * 0.8:
 		velocity = target_direction * move_speed * 0.6
 	else:
 		velocity = -target_direction * move_speed * 0.5
-	
+
 	if sprite:
 		sprite.flip_h = direction.x < 0
 
 func retreat_from_player() -> void:
 	if not player_ref:
 		return
-	
+
 	is_retreating = true
 	var direction: Vector2 = (global_position - player_ref.global_position).normalized()
 	velocity = direction * move_speed * 1.2
@@ -97,27 +97,27 @@ func retreat_from_player() -> void:
 
 func stop_and_attack() -> void:
 	velocity = Vector2.ZERO
-	
+
 	if attack_timer >= attack_cooldown:
 		perform_ranged_attack()
 
 func perform_ranged_attack() -> void:
 	if not player_ref:
 		return
-	
+
 	attack_timer = 0.0
-	
+
 	if projectile_scene:
 		var projectile: Node = projectile_scene.instantiate()
 		var direction: Vector2 = (player_ref.global_position - global_position).normalized()
-		
+
 		projectile.global_position = global_position + direction * 30.0
 		projectile.rotation = direction.angle()
-		
+
 		# Set projectile damage
 		if projectile.has_method("set_damage"):
 			projectile.set_damage(int(damage * projectile_damage_multiplier))
-		
+
 		get_tree().root.add_child(projectile)
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:

@@ -211,7 +211,7 @@ func _exit_tree() -> void:
 	# Disconnect signals to prevent memory leaks
 	if store_manager and store_manager.currency_updated.is_connected(_on_currency_updated):
 		store_manager.currency_updated.disconnect(_on_currency_updated)
-	
+
 	if gem_manager:
 		if gem_manager.skin_purchased.is_connected(_on_skin_purchased):
 			gem_manager.skin_purchased.disconnect(_on_skin_purchased)

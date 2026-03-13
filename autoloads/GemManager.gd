@@ -76,7 +76,7 @@ func claim_achievement_reward(achievement_id: String) -> int:
 		return 0
 
 	var reward = ACHIEVEMENT_GEM_REWARDS[achievement_id]
-	
+
 	# Mark as completed and award gems
 	completed_achievements.append(achievement_id)
 	add_gems(reward, "achievement:" + achievement_id)
@@ -88,7 +88,7 @@ func claim_achievement_reward(achievement_id: String) -> int:
 			"gems_awarded": reward,
 			"reason": "achievement_reward"
 		})
-	
+
 	print("Achievement completed: %s, Awarded %d gems" % [achievement_id, reward])
 	return reward
 
@@ -149,10 +149,10 @@ func add_gems(amount: int, reason: String = "") -> void:
 		return
 
 	_local_gems += amount
-	
+
 	if store_manager:
 		store_manager.add_gems(amount)
-	
+
 	gems_updated.emit(_local_gems)
 	save_data()
 	print("Added %d gems. Reason: %s. New balance: %d" % [amount, reason, _local_gems])
@@ -173,10 +173,10 @@ func remove_gems(amount: int, reason: String = "") -> void:
 		return
 
 	_local_gems -= amount
-	
+
 	if store_manager:
 		store_manager.spend_gems(amount, reason)
-	
+
 	gems_updated.emit(_local_gems)
 	save_data()
 	print("Removed %d gems. Reason: %s. New balance: %d" % [amount, reason, _local_gems])

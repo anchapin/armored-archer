@@ -64,18 +64,18 @@ func _ready() -> void:
 	current_health = max_health
 	add_to_group("Boss")
 	super._ready()
-	
+
 	health_changed.emit(current_health, max_health)
 
 func _physics_process(delta: float) -> void:
 	if not player_ref:
 		find_player()
-	
+
 	update_timers(delta)
-	
+
 	if player_ref:
 		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
-		
+
 		if not is_earthquake_active:
 			if distance_to_player <= detection_range:
 				if distance_to_player > attack_range:
@@ -84,11 +84,11 @@ func _physics_process(delta: float) -> void:
 					handle_attacks()
 			else:
 				velocity = Vector2.ZERO
-	
+
 	# Phase 3 earthquake effect
 	if phase >= 3:
 		handle_earthquake()
-	
+
 	move_and_slide()
 
 func update_timers(_delta: float) -> void:
@@ -105,7 +105,7 @@ func find_player() -> void:
 func chase_player() -> void:
 	if not player_ref:
 		return
-	
+
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed
 	if sprite:
@@ -113,7 +113,7 @@ func chase_player() -> void:
 
 func handle_attacks() -> void:
 	velocity = Vector2.ZERO
-	
+
 	check_rock_projectile()
 	if phase >= 2:
 		check_seismic_slam()
@@ -126,29 +126,29 @@ func check_rock_projectile() -> void:
 func fire_rock_projectiles() -> void:
 	if not player_ref:
 		return
-	
+
 	var projectile_scene: PackedScene = preload("res://scenes/arrow.tscn")
-	
+
 	for i in range(rock_count):
 		if projectile_scene:
 			var rock: Node = projectile_scene.instantiate()
-			
+
 			# Add slight spread to rocks
 			var base_direction: Vector2 = (player_ref.global_position - global_position).normalized()
 			var spread_angle: float = randf_range(-0.3, 0.3)
 			var direction: Vector2 = base_direction.rotated(spread_angle)
-			
+
 			rock.global_position = global_position + direction * 30.0
 			rock.rotation = direction.angle()
 			rock.scale = Vector2(1.5, 1.5)
 			rock.modulate = Color(0.6, 0.5, 0.4, 1)
-			
+
 			if rock.has_method("set_damage"):
 				var dmg = rock_projectile_damage
 				if is_enraged:
 					dmg = int(dmg * 1.3)
 				rock.set_damage(dmg)
-			
+
 			get_tree().root.add_child(rock)
 
 func check_seismic_slam() -> void:
@@ -159,16 +159,16 @@ func check_seismic_slam() -> void:
 func perform_seismic_slam() -> void:
 	if not player_ref:
 		return
-	
+
 	# Visual feedback - shake
 	if sprite:
 		sprite.modulate = Color(0.7, 0.6, 0.5, 1)
-	
+
 	# Stop movement during slam
 	velocity = Vector2.ZERO
-	
+
 	await get_tree().create_timer(0.4).timeout
-	
+
 	# Check for players in range
 	if player_ref:
 		var distance: float = global_position.distance_to(player_ref.global_position)
@@ -177,12 +177,12 @@ func perform_seismic_slam() -> void:
 			if is_enraged:
 				slam_damage = int(slam_damage * 1.3)
 			player_ref.take_damage(slam_damage)
-			
+
 			# Knockback
 			if player_ref.has_method("apply_knockback"):
 				var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 				player_ref.apply_knockback(direction * 100.0)
-	
+
 	# Reset visual
 	if sprite:
 		sprite.modulate = Color(1, 1, 1, 1)
@@ -194,22 +194,22 @@ func handle_earthquake() -> void:
 func start_earthquake() -> void:
 	is_earthquake_active = true
 	earthquake_timer = 0.0
-	
+
 	# Visual feedback - intense shaking
 	if sprite:
 		sprite.modulate = Color(0.5, 0.4, 0.3, 1)
-	
+
 	# Stop movement
 	velocity = Vector2.ZERO
-	
+
 	# Continuous damage during earthquake
 	var earthquake_duration: float = 2.5
 	var elapsed: float = 0.0
-	
+
 	while elapsed < earthquake_duration:
 		await get_tree().create_timer(0.5).timeout
 		elapsed += 0.5
-		
+
 		if player_ref:
 			var distance: float = global_position.distance_to(player_ref.global_position)
 			if distance < 180:
@@ -217,7 +217,7 @@ func start_earthquake() -> void:
 				if is_enraged:
 					dmg = int(dmg * 1.2)
 				player_ref.take_damage(dmg)
-	
+
 	is_earthquake_active = false
 	if sprite:
 		sprite.modulate = Color(1, 1, 1, 1)
@@ -225,27 +225,27 @@ func start_earthquake() -> void:
 func take_damage(amount: int) -> void:
 	# Calculate damage reduction based on phase and abilities
 	var damage_reduction: float = stone_skin_damage_reduction
-	
+
 	if phase >= 2 and is_rock_armor_active:
 		damage_reduction = rock_armor_damage_reduction
-	
+
 	if is_enraged:
 		damage_reduction -= 0.1  # Takes more damage when enraged
-	
+
 	var actual_damage: int = int(float(amount) * (1.0 - damage_reduction))
 	actual_damage = max(1, actual_damage)  # Always deal at least 1 damage
-	
+
 	current_health -= actual_damage
 	health_changed.emit(current_health, max_health)
-	
+
 	var health_percentage = float(current_health) / float(max_health)
-	
+
 	# Phase transitions
 	if health_percentage <= 0.25 and phase == 2:
 		enter_phase_3()
 	elif health_percentage <= 0.5 and phase == 1:
 		enter_phase_2()
-	
+
 	if current_health <= 0:
 		die()
 
@@ -254,18 +254,18 @@ func enter_phase_2() -> void:
 	move_speed = phase2_speed
 	damage = 30
 	rock_projectile_damage = 22
-	
+
 	# Activate rock armor
 	is_rock_armor_active = true
 	max_health += rock_armor_health_bonus
 	current_health += rock_armor_health_bonus
-	
+
 	# Visual feedback
 	if sprite:
 		sprite.modulate = Color(0.6, 0.5, 0.4, 1)
 		await get_tree().create_timer(0.5).timeout
 		sprite.modulate = Color(1, 1, 1, 1)
-	
+
 	health_changed.emit(current_health, max_health)
 
 func enter_phase_3() -> void:
@@ -273,7 +273,7 @@ func enter_phase_3() -> void:
 	move_speed = phase3_speed
 	is_enraged = true
 	rock_armor_damage_reduction = 0.35
-	
+
 	# Visual feedback
 	if sprite:
 		sprite.modulate = Color(0.4, 0.3, 0.2, 1)

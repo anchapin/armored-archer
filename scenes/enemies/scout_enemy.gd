@@ -31,13 +31,13 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if not player_ref:
 		find_player()
-	
+
 	attack_timer += delta
 	hit_and_run_timer += delta
-	
+
 	if player_ref:
 		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
-		
+
 		if distance_to_player <= detection_range:
 			if is_retreating:
 				retreat_after_attack()
@@ -51,7 +51,7 @@ func _physics_process(delta: float) -> void:
 					velocity = Vector2.ZERO
 		else:
 			velocity = Vector2.ZERO
-	
+
 	move_and_slide()
 
 func find_player() -> void:
@@ -62,7 +62,7 @@ func find_player() -> void:
 func chase_player() -> void:
 	if not player_ref:
 		return
-	
+
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed
 	if sprite:
@@ -71,28 +71,28 @@ func chase_player() -> void:
 func perform_hit_and_run_attack() -> void:
 	is_attacking = true
 	attack_timer = 0.0
-	
+
 	# Deal damage
 	if player_ref and player_ref.has_method("take_damage"):
 		player_ref.take_damage(damage)
-	
+
 	# Brief pause before retreating
 	await get_tree().create_timer(attack_pause).timeout
-	
+
 	# Start retreat
 	is_retreating = true
 	hit_and_run_timer = 0.0
-	
+
 	# Retreat for a short time
 	await get_tree().create_timer(retreat_duration).timeout
-	
+
 	is_retreating = false
 	is_attacking = false
 
 func retreat_after_attack() -> void:
 	if not player_ref:
 		return
-	
+
 	# Move away from player
 	var direction: Vector2 = (global_position - player_ref.global_position).normalized()
 	velocity = direction * move_speed * 1.3

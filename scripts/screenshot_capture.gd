@@ -19,7 +19,7 @@ func _ready() -> void:
 	var dir = DirAccess.open(screenshot_path)
 	if dir == null:
 		DirAccess.make_dir_recursive_absolute(screenshot_path)
-	
+
 	# Find the next available screenshot number
 	if auto_number:
 		_find_next_screenshot_number()
@@ -48,16 +48,16 @@ func capture_screenshot() -> String:
 	# Get the viewport image
 	var viewport = get_viewport()
 	var image = viewport.get_texture().get_image()
-	
+
 	# Generate filename
 	var timestamp = Time.get_unix_time_from_system()
 	var file_name = file_prefix + str(_screenshot_count).pad_zeros(4) + ".png"
 	var full_path = screenshot_path + file_name
-	
+
 	# Save the image
 	image.save_png(full_path)
 	_screenshot_count += 1
-	
+
 	print("Screenshot saved: ", full_path)
 	return full_path
 

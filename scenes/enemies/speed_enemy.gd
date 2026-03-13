@@ -40,7 +40,7 @@ func _physics_process(delta: float) -> void:
 
 	if player_ref:
 		update_movement(delta)
-		
+
 		var distance_to_player = global_position.distance_to(player_ref.global_position)
 
 		if distance_to_player <= detection_range:
@@ -62,7 +62,7 @@ func find_player() -> void:
 func update_movement(delta: float) -> void:
 	dash_timer += delta
 	attack_timer += delta
-	
+
 	# Handle dash ability
 	if dash_timer >= dash_cooldown and player_ref:
 		var distance = global_position.distance_to(player_ref.global_position)
@@ -78,9 +78,9 @@ func chase_player() -> void:
 	if sprite:
 		sprite.flip_h = direction.x < 0
 
-func attack_player(delta: float) -> void:
+func attack_player(_delta: float) -> void:
 	velocity = Vector2.ZERO
-	
+
 	if attack_timer >= attack_cooldown:
 		attack_timer = 0.0
 		perform_attack()
@@ -94,14 +94,14 @@ func perform_dash() -> void:
 		return
 
 	is_dashing = true
-	
+
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed * dash_speed_mult
-	
+
 	# Face in dash direction
 	if sprite:
 		sprite.flip_h = direction.x < 0
-	
+
 	# Short dash duration
 	await get_tree().create_timer(0.2).timeout
 	is_dashing = false
@@ -110,11 +110,11 @@ func perform_dash() -> void:
 func wander(delta: float) -> void:
 	# Random movement when player not in range
 	direction_change_timer += delta
-	
+
 	if direction_change_timer >= 1.0:
 		direction_change_timer = 0.0
 		move_direction = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized()
-	
+
 	velocity = move_direction * move_speed * 0.5
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
