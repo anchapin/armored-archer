@@ -228,3 +228,13 @@ func show_comparison(gear1: Dictionary, gear2: Dictionary) -> void:
 
 func _on_comparison_closed() -> void:
 	pass
+
+func _exit_tree() -> void:
+	# Disconnect signals to prevent memory leaks
+	if gear_manager:
+		if gear_manager.inventory_updated.is_connected(_on_inventory_updated):
+			gear_manager.inventory_updated.disconnect(_on_inventory_updated)
+		if gear_manager.gear_equipped.is_connected(_on_gear_equipped):
+			gear_manager.gear_equipped.disconnect(_on_gear_equipped)
+		if gear_manager.gear_unequipped.is_connected(_on_gear_unequipped):
+			gear_manager.gear_unequipped.disconnect(_on_gear_unequipped)

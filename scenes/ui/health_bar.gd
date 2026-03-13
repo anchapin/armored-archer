@@ -27,3 +27,10 @@ func _update_display(health: int, max_health: int) -> void:
 	var health_percent: float = float(health) / float(max_health) * 100.0
 	health_bar.value = health_percent
 	health_label.text = "%d / %d" % [health, max_health]
+
+func _exit_tree() -> void:
+	# Disconnect signals to prevent memory leaks
+	if GameManager.health_changed.is_connected(_on_health_changed):
+		GameManager.health_changed.disconnect(_on_health_changed)
+	if SafeAreaManager.safe_area_changed.is_connected(_on_safe_area_changed):
+		SafeAreaManager.safe_area_changed.disconnect(_on_safe_area_changed)
