@@ -606,3 +606,17 @@ func set_offline_mode(offline: bool) -> void:
 		if offline:
 			is_connected = false
 		connection_status_changed.emit(not offline)
+
+# --- Cleanup ---
+func _exit_tree() -> void:
+	# Clean up HTTP request node
+	if http_request != null:
+		http_request.queue_free()
+		http_request = null
+	
+	# Clean up reconnection timer
+	if _reconnect_timer != null:
+		_reconnect_timer.queue_free()
+		_reconnect_timer = null
+	
+	print("[NetworkManager] Cleanup complete - all resources released")
