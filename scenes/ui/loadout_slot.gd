@@ -20,15 +20,15 @@ func _ready() -> void:
 	slot_button.drag_started.connect(_on_drag_started)
 	slot_button.drag_ended.connect(_on_drag_ended)
 	slot_button.drop_ended.connect(_on_drop_ended)
-	
+
 	# Enable drop on the slot button
 	slot_button.set_drag_forwarding(_get_drag_data, _can_drop_data, _drop_data)
-	
+
 	_update_display()
 
 func _update_display() -> void:
 	slot_label.text = slot_name
-	
+
 	if current_gear.is_empty():
 		gear_name_label.text = "Empty"
 		gear_name_label.modulate = Color(0.5, 0.5, 0.5)
@@ -36,7 +36,7 @@ func _update_display() -> void:
 	else:
 		var gear_name: String = current_gear.get("name", "Unknown")
 		gear_name_label.text = gear_name
-		
+
 		var rarity: String = current_gear.get("rarity", "common")
 		var rarity_colors: Dictionary = {
 			"common": Color.WHITE,
@@ -60,25 +60,25 @@ func _on_slot_button_pressed() -> void:
 func _get_drag_data(_at_position: Vector2) -> Variant:
 	if current_gear.is_empty():
 		return null
-	
+
 	var preview: Control = Control.new()
 	var label: Label = Label.new()
 	label.text = current_gear.get("name", "Gear")
 	preview.add_child(label)
 	preview.set_anchors_preset(Control.PRESET_CENTER)
-	
+
 	current_gear["_drag_source_slot"] = slot_type
-	
+
 	return current_gear
 
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 	if typeof(data) != TYPE_DICTIONARY:
 		return false
-	
+
 	var gear_data: Dictionary = data
 	var gear_slot_str: String = gear_data.get("type", "")
 	var target_slot_str: String = _get_slot_key(slot_type)
-	
+
 	return gear_slot_str == target_slot_str
 
 func _drop_data(_at_position: Vector2, data: Variant) -> void:

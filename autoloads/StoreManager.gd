@@ -157,7 +157,7 @@ func add_gems(amount: int, reason: String = "") -> void:
 	if amount <= 0:
 		push_error("Invalid gem amount to add")
 		return
-	
+
 	current_gems += amount
 	emit_signal("currency_updated", current_gems, current_gold)
 	print("Added %d gems. Reason: %s. New balance: %d" % [amount, reason, current_gems])
@@ -291,7 +291,7 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 		current_gems = result.get("new_balance", current_gems)
 		emit_signal("currency_updated", current_gems, current_gold)
 		emit_signal("purchase_succeeded", product_id, gems_awarded)
-		
+
 		# Track purchase completed in analytics for conversion
 		if has_node("/root/AnalyticsManager"):
 			var analytics: Node = get_node("/root/AnalyticsManager")
@@ -316,7 +316,7 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 				)
 	else:
 		emit_signal("purchase_failed", product_id, "Validation failed")
-		
+
 		# Track purchase failed in analytics
 		if has_node("/root/AnalyticsManager"):
 			var analytics: Node = get_node("/root/AnalyticsManager")

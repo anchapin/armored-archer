@@ -48,7 +48,7 @@ func _preload_scenes() -> void:
 	_lightning_effect = load(LIGHTNING_EFFECT_PATH)
 	_charge_effect = load(CHARGE_EFFECT_PATH)
 	_damage_popup_scene = load(DAMAGE_POPUP_SCENE)
-	
+
 	# Preload screen shake (lazy initialization)
 	_screen_shake = null
 
@@ -58,7 +58,7 @@ func _ensure_screen_shake() -> void:
 	# Check if existing screen shake is still valid (scene might have changed)
 	if _screen_shake != null and is_instance_valid(_screen_shake):
 		return
-	
+
 	var screen_shake_scene := load(SCREEN_SHAKE_SCENE)
 	_screen_shake = screen_shake_scene.instantiate()
 	get_tree().current_scene.add_child(_screen_shake)
@@ -111,11 +111,11 @@ func _spawn_particle(effect_scene: PackedScene, global_position: Vector2) -> voi
 	if not effect_scene:
 		push_warning("VFXManager: Effect scene not loaded")
 		return
-	
+
 	var effect: GPUParticles2D = effect_scene.instantiate()
 	get_tree().current_scene.add_child(effect)
 	effect.global_position = global_position
-	
+
 	# Auto-cleanup after effect completes
 	effect.emitting = true
 	effect.finished.connect(effect.queue_free)
@@ -134,10 +134,10 @@ func show_damage_popup(
 	if not _damage_popup_scene:
 		push_warning("VFXManager: Damage popup scene not loaded")
 		return
-	
+
 	var popup: Label = _damage_popup_scene.instantiate()
 	get_tree().current_scene.add_child(popup)
-	
+
 	# Offset slightly above the target
 	popup.global_position = global_position + Vector2(0, -30)
 	popup.setup_damage(damage, is_crit, is_miss, is_heal)
@@ -194,7 +194,7 @@ func play_combat_vfx(
 	is_heal: bool = false
 ) -> void:
 	"""Play full combat VFX: particles + damage popup + screen shake.
-	
+
 	Args:
 		damage: Damage amount to display
 		global_position: World position for effects
@@ -220,11 +220,11 @@ func play_combat_vfx(
 			pass
 		_:  # "hit" or default
 			play_hit_effect(global_position)
-	
+
 	# Show damage popup (skip for charge effect)
 	if effect_type != "charge":
 		show_damage_popup(damage, global_position, is_crit, is_miss, is_heal)
-	
+
 	# Trigger screen shake based on effect type
 	match effect_type:
 		"crit":
@@ -242,7 +242,7 @@ func _exit_tree() -> void:
 	if _screen_shake != null and is_instance_valid(_screen_shake):
 		_screen_shake.queue_free()
 		_screen_shake = null
-	
+
 	# Clear preloaded scenes to release memory
 	_hit_effect = null
 	_crit_effect = null
@@ -252,8 +252,8 @@ func _exit_tree() -> void:
 	_lightning_effect = null
 	_charge_effect = null
 	_damage_popup_scene = null
-	
+
 	# Clear singleton instance
 	instance = null
-	
+
 	print("[VFXManager] Cleanup complete - all resources released")

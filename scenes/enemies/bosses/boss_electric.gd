@@ -66,13 +66,13 @@ func _ready() -> void:
 	current_health = max_health
 	add_to_group("Boss")
 	super._ready()
-	
+
 	projectile_scene = preload("res://scenes/arrow.tscn")
 	health_changed.emit(current_health, max_health)
 
 func _physics_process(delta: float) -> void:
 	update_timers(delta)
-	
+
 	if not player_ref:
 		find_player()
 
@@ -155,32 +155,32 @@ func fire_electric_projectile() -> void:
 
 	var projectile: Node = projectile_scene.instantiate()
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
-	
+
 	projectile.global_position = global_position + direction * 50.0
 	projectile.rotation = direction.angle()
 	projectile.scale = Vector2(1.4, 1.4)
-	
+
 	get_tree().root.add_child(projectile)
 
 func fire_chain_lightning() -> void:
 	if not player_ref:
 		return
-	
+
 	# Chain lightning hits the player first, then chains to nearby enemies
 	# Deal damage to player
 	player_ref.take_damage(damage)
-	
+
 	# Get all enemies in range to chain to
 	var all_bodies = get_tree().get_nodes_in_group("Enemies")
 	var enemies_in_range: Array[Node] = []
-	
+
 	for body in all_bodies:
 		if body == self:
 			continue
 		var dist = global_position.distance_to(body.global_position)
 		if dist < chain_range:
 			enemies_in_range.append(body)
-	
+
 	# Chain to up to 2 enemies
 	var chains = min(2, enemies_in_range.size())
 	for i in range(chains):
@@ -191,42 +191,42 @@ func fire_chain_lightning() -> void:
 func fire_thunder_clap() -> void:
 	if not player_ref:
 		return
-	
+
 	# Deal damage in a wide area around boss
 	var distance = global_position.distance_to(player_ref.global_position)
 	if distance < detection_range * 0.6:
 		player_ref.take_damage(int(damage * 1.5))
-	
+
 	# Could add knockback effect here
 
 func start_storm() -> void:
 	storm_active = true
 	storm_timer = 0.0
-	
+
 	# Stop moving during storm
 	velocity = Vector2.ZERO
-	
+
 	# Fire rapid lightning bolts
 	var bolts = 8
 	for i in range(bolts):
 		await get_tree().create_timer(0.2).timeout
-		
+
 		if not player_ref:
 			continue
-			
+
 		var random_offset = Vector2(randf_range(-100, 100), randf_range(-100, 100))
 		var target_pos = player_ref.global_position + random_offset
-		
+
 		# Fire projectile toward random position near player
 		var projectile: Node = projectile_scene.instantiate()
 		var direction = (target_pos - global_position).normalized()
-		
+
 		projectile.global_position = global_position + direction * 30.0
 		projectile.rotation = direction.angle()
 		projectile.scale = Vector2(1.0, 1.0)
-		
+
 		get_tree().root.add_child(projectile)
-	
+
 	await get_tree().create_timer(storm_duration - bolts * 0.2).timeout
 	storm_active = false
 

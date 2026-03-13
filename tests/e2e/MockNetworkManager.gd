@@ -39,12 +39,12 @@ func set_mock_response(rpc_id: String, response: Dictionary) -> void:
 
 func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Dictionary:
 	request_queue.append({"rpc_id": rpc_id, "payload": payload})
-	
+
 	if mock_responses.has(rpc_id):
 		return mock_responses[rpc_id]
-	
+
 	await get_tree().create_timer(0.05).timeout
-	
+
 	return {"success": true, "data": {}}
 
 func get_session_token() -> String:

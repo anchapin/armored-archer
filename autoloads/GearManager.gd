@@ -178,7 +178,7 @@ func _process_payload(payload: Dictionary, _response_data: Dictionary) -> void:
 		unlocked_modifier_pools = payload.inventory.get("unlocked_modifier_pools", [])
 		gear_generated.emit(gear_data)
 		inventory_updated.emit(_get_full_inventory())
-		
+
 		# Track gear obtained in analytics
 		if analytics and analytics.has_method("log_gear_obtained"):
 			var gear_id: String = gear_data.get("id", "")
@@ -198,7 +198,7 @@ func _process_payload(payload: Dictionary, _response_data: Dictionary) -> void:
 				var gear_id: String = payload.gear.id
 				var gear_name: String = payload.gear.get("name", "")
 				gear_equipped.emit(slot, gear_id)
-				
+
 				# Track gear equipped in analytics
 				if analytics and analytics.has_method("log_gear_equipped"):
 					analytics.log_gear_equipped(gear_id, gear_name, payload.gear.type, slot)

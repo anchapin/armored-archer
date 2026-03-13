@@ -57,18 +57,18 @@ func _ready() -> void:
 	current_health = max_health
 	add_to_group("Boss")
 	super._ready()
-	
+
 	health_changed.emit(current_health, max_health)
 
 func _physics_process(delta: float) -> void:
 	if not player_ref:
 		find_player()
-	
+
 	update_timers(delta)
-	
+
 	if player_ref:
 		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
-		
+
 		if not is_using_flame_wave:
 			if distance_to_player <= detection_range:
 				if distance_to_player > attack_range:
@@ -77,7 +77,7 @@ func _physics_process(delta: float) -> void:
 					handle_attacks()
 			else:
 				velocity = Vector2.ZERO
-	
+
 	move_and_slide()
 
 func update_timers(_delta: float) -> void:
@@ -94,7 +94,7 @@ func find_player() -> void:
 func chase_player() -> void:
 	if not player_ref:
 		return
-	
+
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed
 	if sprite:
@@ -102,7 +102,7 @@ func chase_player() -> void:
 
 func handle_attacks() -> void:
 	velocity = Vector2.ZERO
-	
+
 	# Check which attacks to use based on cooldowns and phase
 	check_fireball_attack()
 	check_ground_fire()
@@ -115,7 +115,7 @@ func check_fireball_attack() -> void:
 		cooldown = phase2_fireball_cooldown
 	elif phase == 3:
 		cooldown = phase3_fireball_cooldown
-	
+
 	if fireball_timer >= cooldown and player_ref:
 		fire_fireball()
 		fireball_timer = 0.0
@@ -123,22 +123,22 @@ func check_fireball_attack() -> void:
 func fire_fireball() -> void:
 	if not player_ref:
 		return
-	
+
 	var projectile_scene: PackedScene = preload("res://scenes/arrow.tscn")
 	if projectile_scene:
 		var fireball: Node = projectile_scene.instantiate()
-		
+
 		var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 		fireball.global_position = global_position + direction * 40.0
 		fireball.rotation = direction.angle()
 		fireball.scale = Vector2(1.8, 1.8)
-		
+
 		if fireball.has_method("set_damage"):
 			var dmg = fireball_damage
 			if is_enraged:
 				dmg = int(dmg * enraged_damage_multiplier)
 			fireball.set_damage(dmg)
-		
+
 		get_tree().root.add_child(fireball)
 
 func check_ground_fire() -> void:
@@ -149,12 +149,12 @@ func check_ground_fire() -> void:
 func spawn_ground_fire() -> void:
 	if not player_ref:
 		return
-	
+
 	# Spawn ground fire at player's current position
 	# In a full implementation, this would create a damaging area
 	# For now, we'll use visual feedback and damage
 	var fire_position: Vector2 = player_ref.global_position
-	
+
 	# Create visual effect (simple implementation)
 	if sprite:
 		var flash_color = Color(1.0, 0.3, 0.0, 0.5)
@@ -170,14 +170,14 @@ func perform_flame_wave() -> void:
 	is_using_flame_wave = true
 	flame_wave_timer = 0.0
 	velocity = Vector2.ZERO
-	
+
 	# Visual feedback
 	if sprite:
 		sprite.modulate = Color(1.0, 0.5, 0.0, 1)
-	
+
 	# Hold position during flame wave
 	await get_tree().create_timer(0.5).timeout
-	
+
 	# Damage player if close
 	if player_ref:
 		var distance: float = global_position.distance_to(player_ref.global_position)
@@ -186,9 +186,9 @@ func perform_flame_wave() -> void:
 			if is_enraged:
 				wave_damage = int(wave_damage * enraged_damage_multiplier)
 			player_ref.take_damage(wave_damage)
-	
+
 	await get_tree().create_timer(0.5).timeout
-	
+
 	is_using_flame_wave = false
 	if sprite:
 		sprite.modulate = Color(1, 1, 1, 1)
@@ -197,18 +197,18 @@ func take_damage(amount: int) -> void:
 	var actual_damage = amount
 	if is_enraged:
 		actual_damage = int(amount * 1.2)  # Takes 20% more damage when enraged
-	
+
 	current_health -= actual_damage
 	health_changed.emit(current_health, max_health)
-	
+
 	var health_percentage = float(current_health) / float(max_health)
-	
+
 	# Phase transitions
 	if health_percentage <= 0.25 and phase == 2:
 		enter_phase_3()
 	elif health_percentage <= 0.5 and phase == 1:
 		enter_phase_2()
-	
+
 	if current_health <= 0:
 		die()
 
@@ -217,7 +217,7 @@ func enter_phase_2() -> void:
 	move_speed = phase2_speed
 	damage = 35
 	fireball_damage = 25
-	
+
 	# Visual feedback
 	if sprite:
 		sprite.modulate = Color(1.0, 0.6, 0.0, 1)
@@ -228,11 +228,11 @@ func enter_phase_3() -> void:
 	phase = 3
 	move_speed = phase3_speed
 	is_enraged = true
-	
+
 	# More aggressive cooldowns
 	flame_wave_cooldown = 4.0
 	ground_fire_cooldown = 3.5
-	
+
 	# Visual feedback - enraged state
 	if sprite:
 		sprite.modulate = Color(1.0, 0.2, 0.0, 1)
