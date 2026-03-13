@@ -618,5 +618,4 @@ func _exit_tree() -> void:
 	if _reconnect_timer != null:
 		_reconnect_timer.queue_free()
 		_reconnect_timer = null
-
 	print("[NetworkManager] Cleanup complete - all resources released")
