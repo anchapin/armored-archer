@@ -272,7 +272,8 @@ func save_progress() -> void:
 	var save_data = {
 		"unlocked_stages": unlocked_stages,
 		"completed_stages": completed_stages,
-		"unlocked_modifier_pools": unlocked_modifier_pools
+		"unlocked_modifier_pools": unlocked_modifier_pools,
+		"bosses_defeated": bosses_defeated
 	}
 	var file = FileAccess.open("user://campaign_progress.json", FileAccess.WRITE)
 	if file:
