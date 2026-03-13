@@ -1,4 +1,4 @@
-import { NakamaClient, NakamaTypes } from '@heroiclabs/nakama-js';
+import { Client, NakamaTypes } from '@heroiclabs/nakama-js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Test configuration
@@ -8,7 +8,7 @@ const TEST_DB_NAME = 'armored_archer_test';
 const TEST_ADMIN_KEY = process.env.NAKAMA_SERVER_KEY || 'defaultkey';
 
 export interface TestAccount {
-  client: NakamaClient;
+  client: Client;
   userId: string;
   username: string;
   sessionToken: string;
@@ -18,7 +18,7 @@ export interface TestAccount {
 
 export class IntegrationTestHelper {
   private static instance: IntegrationTestHelper | null = null;
-  private adminClient: NakamaClient | null = null;
+  private adminClient: Client | null = null;
   private testDbInitialized: boolean = false;
 
   private constructor() {}
@@ -61,7 +61,7 @@ export class IntegrationTestHelper {
     const password = 'TestPassword123!';
     const email = `${username}@test.local`;
 
-    const client = new NakamaClient({
+    const client = new Client({
       host: TEST_HOST,
       port: TEST_PORT,
       serverKey: TEST_ADMIN_KEY,
@@ -69,7 +69,7 @@ export class IntegrationTestHelper {
 
     try {
       // Authenticate (this will create the account if it doesn't exist)
-      const session = await client.authenticate(email, username, password, username);
+      const session = await client.authenticateEmail(email, password, username);
       
       // Verify the account was created
       const account = await client.getAccount();
@@ -91,20 +91,20 @@ export class IntegrationTestHelper {
   /**
    * Get a client authenticated as admin for administrative tasks.
    */
-  async getAdminClient(): Promise<NakamaClient> {
+  async getAdminClient(): Promise<Client> {
     if (this.adminClient && !this.adminClient.isConnected) {
       this.adminClient = null;
     }
 
     if (!this.adminClient) {
-      this.adminClient = new NakamaClient({
+      this.adminClient = new Client({
         host: TEST_HOST,
         port: TEST_PORT,
         serverKey: TEST_ADMIN_KEY,
       });
 
       // Authenticate admin account (should exist from docker-compose)
-      await this.adminClient.authenticate('admin@test.local', 'admin', 'admin123', 'admin');
+      await this.adminClient.authenticateEmail('admin@test.local', 'admin123', 'admin');
     }
 
     return this.adminClient;
@@ -172,7 +172,7 @@ export class IntegrationTestHelper {
    */
   async waitForNakamaReady(timeoutMs: number = 30000): Promise<boolean> {
     const startTime = Date.now();
-    const client = new NakamaClient({
+    const client = new Client({
       host: TEST_HOST,
       port: TEST_PORT,
       serverKey: TEST_ADMIN_KEY,
