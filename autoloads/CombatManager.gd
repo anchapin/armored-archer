@@ -45,13 +45,13 @@ func submit_combat_action(match_id: String, action_type: String, angle: float, p
 		"power": power
 	}
 
-	var json: JSON = JSON.new()
-	var response: Dictionary = await network_manager.send_rpc(RPC_SUBMIT_COMBAT_ACTION, json.stringify(payload))
+	var json_string: String = JSON.stringify(payload)
+	var response: Dictionary = await network_manager.send_rpc(RPC_SUBMIT_COMBAT_ACTION, json_string)
 
 	if response.has("error"):
 		push_error("Failed to submit combat action: %s" % response["error"])
-		if _profiling_block:
-			_profiling_block.end()
+		if profiling_block:
+			profiling_block.end()
 		return
 
 	if response.get("success", false):
@@ -86,21 +86,21 @@ func get_match_state(match_id: String) -> void:
 		"match_id": match_id
 	}
 
-	var json: JSON = JSON.new()
-	var response: Dictionary = await network_manager.send_rpc(RPC_GET_MATCH_STATE, json.stringify(payload))
+	var json_string: String = JSON.stringify(payload)
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_MATCH_STATE, json_string)
 
 	if response.has("error"):
 		push_error("Failed to get match state: %s" % response["error"])
-		if _profiling_block:
-			_profiling_block.end()
+		if profiling_block:
+			profiling_block.end()
 		return
 
 	current_match_state = response
 	match_state_updated.emit(current_match_state)
 	_update_from_match_state()
 
-	if _profiling_block:
-		_profiling_block.end()
+	if profiling_block:
+		profiling_block.end()
 
 # --- State Updates ---
 func _update_local_state(_result: Dictionary) -> void:

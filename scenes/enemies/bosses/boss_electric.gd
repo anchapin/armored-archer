@@ -90,9 +90,9 @@ func _physics_process(delta: float) -> void:
 
 		check_special_attacks()
 
-	move_and_slide()
+	var _err = move_and_slide()
 
-func update_timers(_delta: float) -> void:
+func update_timers(delta: float) -> void:
 	attack_timer += delta
 	chain_lightning_timer += delta
 	thunder_clap_timer += delta

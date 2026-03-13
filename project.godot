@@ -15,14 +15,6 @@ run/main_scene="res://scenes/ui/login_screen.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
 
-[debug]
-
-# Enable strict type hints for better code quality
-gdscript/warnings/untyped_variable=2
-gdscript/warnings/untyped_call=2
-gdscript/warnings/incompatible_type_match=2
-gdscript/warnings/return_value_discarded=2
-
 [autoload]
 
 NetworkManager="*res://autoloads/NetworkManager.gd"
@@ -45,6 +37,13 @@ UITransitionOptimizer="*res://autoloads/UITransitionOptimizer.gd"
 ObjectPool="*res://autoloads/ObjectPool.gd"
 VFXManager="*res://autoloads/VFXManager.gd"
 AnalyticsManager="*res://addons/analytics_manager/analytics_manager.gd"
+
+[debug]
+
+gdscript/warnings/return_value_discarded=2
+#Enablestricttypehintsforbettercodequalitygdscript/warnings/untyped_variable=2
+gdscript/warnings/untyped_call=2
+gdscript/warnings/incompatible_type_match=2
 
 [input]
 

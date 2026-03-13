@@ -13,10 +13,9 @@ var is_active: bool = false
 # --- Node References ---
 @onready var _collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _sprite: Sprite2D = $Sprite2D
-
 func _ready() -> void:
 	# Connect collision signal
-	body_entered.connect(_on_body_entered)
+	var _err = body_entered.connect(_on_body_entered)
 
 func _physics_process(delta: float) -> void:
 	if not is_active:

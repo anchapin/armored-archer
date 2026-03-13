@@ -14,10 +14,10 @@ signal login_complete(success: bool)
 
 # --- Initialization ---
 func _ready() -> void:
-	NetworkManager.session_created.connect(_on_session_created)
-	NetworkManager.connection_status_changed.connect(_on_connection_status_changed)
+	var _err1 = NetworkManager.session_created.connect(_on_session_created)
+	var _err2 = NetworkManager.connection_status_changed.connect(_on_connection_status_changed)
 
-	retry_button.pressed.connect(_on_retry_pressed)
+	var _err3 = retry_button.pressed.connect(_on_retry_pressed)
 	retry_button.hide()
 
 	_start_authentication()
@@ -29,8 +29,8 @@ func _start_authentication() -> void:
 	progress_bar.value = 0.0
 
 	var tween: Tween = create_tween()
-	tween.tween_property(progress_bar, "value", 50.0, 1.0)
-	tween.tween_interval(0.5)
+	var _t1 = tween.tween_property(progress_bar, "value", 50.0, 1.0)
+	var _t2 = tween.tween_interval(0.5)
 
 	NetworkManager.authenticate_device()
 
@@ -45,8 +45,8 @@ func _on_session_created(success: bool, error_message: String) -> void:
 		status_label.text = "Welcome back, %s!" % NetworkManager.username
 		progress_bar.value = 100.0
 
-		tween.tween_interval(0.5)
-		tween.tween_callback(_load_main_menu)
+		var _t1 = tween.tween_interval(0.5)
+		var _t2 = tween.tween_callback(_load_main_menu)
 
 		login_complete.emit(true)
 	else:
@@ -75,7 +75,7 @@ func _on_retry_pressed() -> void:
 
 # --- Navigation ---
 func _load_main_menu() -> void:
-	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+	var _err = get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 # --- Progress Bar Animation ---
 func _process(delta: float) -> void:

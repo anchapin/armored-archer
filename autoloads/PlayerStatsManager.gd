@@ -62,7 +62,7 @@ func get_player_stats() -> Dictionary:
 	player_stats = JSON.parse_string(response)
 	is_initialized = true
 
-	emit_signal("stats_updated", player_stats)
+	stats_updated.emit(player_stats)
 
 	return player_stats
 
@@ -95,28 +95,28 @@ func gain_xp(amount: int, source: String) -> void:
 	var result = JSON.parse_string(response)
 
 	if result.get("success", false):
-		var xp_gained: int = result.get("xp_gained", 0)
+		var amount_gained: int = result.get("xp_gained", 0)
 		var levels_gained: int = result.get("levels_gained", 0)
 		var previous_level: int = player_stats.get("level", 1)
 
-		emit_signal("xp_gained", xp_gained, player_stats.get("xp", 0))
+		xp_gained.emit(amount_gained, player_stats.get("xp", 0))
 
 		if levels_gained > 0:
 			var new_level: int = result.player_stats.level
 			var ability_points_gained: int = levels_gained
-			emit_signal("level_up", new_level, ability_points_gained)
+			level_up.emit(new_level, ability_points_gained)
 
 			# Track level up in analytics using dedicated method
 			if analytics and analytics.has_method("log_level_up"):
 				analytics.log_level_up(new_level, previous_level, source)
 
 		player_stats = result.player_stats
-		emit_signal("stats_updated", player_stats)
+		stats_updated.emit(player_stats)
 
 		# Track XP gain in analytics
 		if analytics and analytics.has_method("log_custom_event"):
 			analytics.log_custom_event("xp_gained", {
-				"amount": xp_gained,
+				"amount": amount_gained,
 				"total_xp": player_stats.get("xp", 0),
 				"level": player_stats.get("level", 1),
 				"source": source
@@ -151,9 +151,9 @@ func allocate_stat(stat_name: String, points: int) -> void:
 	var result = JSON.parse_string(response)
 
 	if result.get("success", false):
-		emit_signal("stat_allocated", stat_name, points)
+		stat_allocated.emit(stat_name, points)
 		player_stats = result.player_stats
-		emit_signal("stats_updated", player_stats)
+		stats_updated.emit(player_stats)
 
 		# Track stat allocation in analytics
 		if analytics and analytics.has_method("log_custom_event"):
