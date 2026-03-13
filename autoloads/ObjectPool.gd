@@ -300,3 +300,10 @@ func cleanup_all() -> void:
 func _exit_tree() -> void:
 	# Clean up all pooled objects when ObjectPool is freed
 	cleanup_all()
+	
+	# Clear scene references to release memory
+	_arrow_scene = null
+	_enemy_scene = null
+	_hit_effect_scene = null
+	
+	print("[ObjectPool] Cleanup complete - all resources released")

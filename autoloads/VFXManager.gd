@@ -235,3 +235,25 @@ func play_combat_vfx(
 			trigger_heavy_shake()
 		"hit" if not is_miss:
 			trigger_medium_shake()
+
+## Clean up resources when the node exits the tree
+func _exit_tree() -> void:
+	# Clean up screen shake instance if it exists
+	if _screen_shake != null and is_instance_valid(_screen_shake):
+		_screen_shake.queue_free()
+		_screen_shake = null
+	
+	# Clear preloaded scenes to release memory
+	_hit_effect = null
+	_crit_effect = null
+	_miss_effect = null
+	_fire_effect = null
+	_ice_effect = null
+	_lightning_effect = null
+	_charge_effect = null
+	_damage_popup_scene = null
+	
+	# Clear singleton instance
+	instance = null
+	
+	print("[VFXManager] Cleanup complete - all resources released")
