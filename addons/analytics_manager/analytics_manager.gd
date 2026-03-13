@@ -153,10 +153,10 @@ func _capture_crash_dump() -> void:
 		"app_version": app_version,
 		"engine_version": engine_version
 	}
-	
+
 	# Log to console for debugging
 	print("AnalyticsManager: CRASH DETECTED - ", JSON.stringify(crash_data))
-	
+
 	# Attempt to send to Firebase if available
 	if is_crashlytics_enabled:
 		_log_crashlytics_error("Application crash detected", "", crash_data)
@@ -275,25 +275,25 @@ func _setup_crashlytics() -> void:
 		_setup_android_crashlytics()
 	elif OS.has_feature("ios"):
 		_setup_ios_crashlytics()
-	
+
 	# Set up crash signal handlers for automatic crash capture
 	_setup_crash_signal_handlers()
 
 func _setup_crash_signal_handlers() -> void:
 	# Set up automatic crash reporting by connecting to engine crash handlers
 	# This enables capturing crashes that would otherwise be missed
-	
+
 	# Register with Godot's error handler for uncaught errors
 	# Note: Godot doesn't have a native crash signal handler API,
 	# but we can intercept common error patterns
-	
+
 	# Add breadcrumb for crashlytics initialization
 	add_breadcrumb("crashlytics_initialized", {
 		"platform": platform,
 		"crashlytics_enabled": is_crashlytics_enabled,
 		"session_id": current_session_id
 	})
-	
+
 	print("AnalyticsManager: Crash signal handlers configured")
 
 func _setup_android_crashlytics() -> void:
@@ -1063,14 +1063,14 @@ func record_custom_error(message: String, stack_trace: String = "", metadata: Di
 	params["message"] = message
 	if stack_trace != "":
 		params["stack_trace"] = stack_trace
-	
+
 	# Include recent breadcrumbs with crash report for debugging context
 	params["breadcrumbs"] = _get_breadcrumb_summary()
-	
+
 	# Include session context
 	params["session_id"] = current_session_id
 	params["session_duration"] = Time.get_unix_time_from_system() - session_start_time if session_start_time > 0 else 0
-	
+
 	# Include performance context
 	params["memory_mb"] = OS.get_static_memory_usage() / (1024.0 * 1024.0)
 	params["fps"] = Engine.get_frames_per_second()

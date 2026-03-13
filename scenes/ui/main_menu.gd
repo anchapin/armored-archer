@@ -39,7 +39,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	# Clean up connected signals to prevent memory leaks
 	_cleanup_signal_connection(StoreManager, "currency_updated", _currency_updated_connection)
-	
+
 	# Clean up instantiated scenes to prevent memory leaks
 	if _shop_instance and is_instance_valid(_shop_instance):
 		_shop_instance.queue_free()
@@ -61,7 +61,7 @@ func _on_shop_pressed() -> void:
 	# Clean up existing shop instance if it exists
 	if _shop_instance and is_instance_valid(_shop_instance):
 		_shop_instance.queue_free()
-	
+
 	var shop_scene = preload("res://scenes/ui/cosmetic_shop.tscn")
 	_shop_instance = shop_scene.instantiate()
 	get_tree().root.add_child(_shop_instance)
@@ -76,7 +76,7 @@ func _on_loadout_pressed() -> void:
 	# Clean up existing loadout instance if it exists
 	if _loadout_instance and is_instance_valid(_loadout_instance):
 		_loadout_instance.queue_free()
-	
+
 	var loadout_scene = preload("res://scenes/ui/loadout.tscn")
 	_loadout_instance = loadout_scene.instantiate()
 	get_tree().root.add_child(_loadout_instance)

@@ -504,22 +504,22 @@ func _log_rpc_latency(rpc_name: String, latency_ms: int) -> void:
 func attempt_reconnection() -> void:
 	if _is_reconnecting:
 		return
-	
+
 	if _retry_attempts >= MAX_RETRY_ATTEMPTS:
 		push_warning("Max reconnection attempts (%d) reached" % MAX_RETRY_ATTEMPTS)
 		reconnection_attempted.emit(false, _retry_attempts)
 		_reset_reconnection_state()
 		return
-	
+
 	_is_reconnecting = true
 	_retry_attempts += 1
-	
+
 	reconnection_attempted.emit(true, _retry_attempts)
-	
+
 	# Start retry timer
 	if _reconnect_timer:
 		_reconnect_timer.queue_free()
-	
+
 	_reconnect_timer = Timer.new()
 	_reconnect_timer.wait_time = RETRY_DELAY_SECONDS * _retry_attempts  # Exponential backoff
 	_reconnect_timer.one_shot = true
@@ -550,13 +550,13 @@ func _reset_reconnection_state() -> void:
 func handle_connection_lost(reason: String = "Network connection lost") -> void:
 	if is_offline:
 		return  # Already in offline mode
-	
+
 	_last_connection_loss_reason = reason
 	is_connected = false
 	is_offline = true
 	connection_lost.emit(reason)
 	connection_status_changed.emit(false)
-	
+
 	# Attempt automatic reconnection
 	attempt_reconnection()
 
@@ -566,7 +566,7 @@ func handle_reconnection() -> void:
 	is_connected = true
 	connection_status_changed.emit(true)
 	_reset_reconnection_state()
-	
+
 	# Refresh session after reconnection
 	if not refresh_token.is_empty():
 		_refresh_session()

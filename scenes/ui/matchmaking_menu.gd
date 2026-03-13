@@ -109,7 +109,7 @@ func _create_match_item(match_data: Dictionary) -> Control:
 
 	var opponent_rank: int = match_data.get("creator_rank", 0)
 	var player_rank_val: int = matchmaker_manager.get_player_rank_sync() if matchmaker_manager else 0
-	
+
 	var rank_label: Label = Label.new()
 	rank_label.text = "Opponent Rank: %d" % opponent_rank
 
@@ -218,12 +218,12 @@ func _update_punch_up_stats_display() -> void:
 	"""Updates the Punch Up statistics display in the UI."""
 	if not matchmaker_manager or punch_up_stats_label == null:
 		return
-	
+
 	var wins: int = matchmaker_manager.get_punch_up_wins()
 	var losses: int = matchmaker_manager.get_punch_up_losses()
 	var win_rate: float = matchmaker_manager.get_punch_up_win_rate()
 	var total: int = wins + losses
-	
+
 	if total == 0:
 		punch_up_stats_label.text = "Punch Up: No matches yet"
 	else:

@@ -18,11 +18,11 @@ const MAIN_SCENE = preload("res://scenes/main.tscn")
 func _ready() -> void:
 	# Get available chapters from CampaignManager
 	load_available_chapters()
-	
+
 	# Set initial chapter to first available
 	if not available_chapters.is_empty():
 		current_chapter = available_chapters[0]
-	
+
 	update_chapter_display()
 	build_stage_buttons()
 
@@ -33,7 +33,7 @@ func _ready() -> void:
 
 	# Connect back button
 	$BackButton.pressed.connect(_on_back_button_pressed)
-	
+
 	# Connect chapter navigation buttons
 	prev_chapter_button.pressed.connect(_on_prev_chapter_pressed)
 	next_chapter_button.pressed.connect(_on_next_chapter_pressed)
@@ -51,15 +51,15 @@ func update_chapter_display() -> void:
 	var chapter_data = get_campaign_data(current_chapter)
 	if chapter_data:
 		chapter_title.text = chapter_data.get("name", "Campaign")
-	
+
 	# Update chapter label with chapter number
 	var chapter_index = available_chapters.find(current_chapter)
 	if chapter_index >= 0:
 		chapter_label.text = "Chapter %d / %d" % [chapter_index + 1, available_chapters.size()]
-	
+
 	# Update progress display
 	update_progress_display()
-	
+
 	# Update navigation buttons
 	prev_chapter_button.disabled = chapter_index <= 0
 	next_chapter_button.disabled = chapter_index >= available_chapters.size() - 1
@@ -68,12 +68,12 @@ func update_progress_display() -> void:
 	"""Updates the progress label showing completed stages."""
 	var stages = get_campaign_stages(current_chapter)
 	var completed_count = 0
-	
+
 	for stage_data in stages:
 		var stage_id = stage_data.get("id")
 		if CampaignManager.is_stage_completed(stage_id):
 			completed_count += 1
-	
+
 	progress_label.text = "Progress: %d / %d stages completed" % [completed_count, stages.size()]
 
 func build_stage_buttons() -> void:
