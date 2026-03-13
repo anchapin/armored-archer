@@ -231,10 +231,11 @@ func play_combat_vfx(
 			trigger_heavy_shake()
 		"lightning":
 			trigger_medium_shake()
-		"hit" if is_crit:
-			trigger_heavy_shake()
-		"hit" if not is_miss:
-			trigger_medium_shake()
+		"hit":
+			if is_crit:
+				trigger_heavy_shake()
+			elif not is_miss:
+				trigger_medium_shake()
 
 ## Clean up resources when the node exits the tree
 func _exit_tree() -> void:

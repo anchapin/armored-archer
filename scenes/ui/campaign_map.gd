@@ -118,10 +118,10 @@ func _on_stage_pressed(stage_id: String) -> void:
 
 	get_tree().change_scene_to_packed(MAIN_SCENE)
 
-func _on_stage_unlocked(stage_id: String) -> void:
+func _on_stage_unlocked(_stage_id: String) -> void:
 	build_stage_buttons()
 
-func _on_stage_completed(stage_id: String) -> void:
+func _on_stage_completed(_stage_id: String) -> void:
 	build_stage_buttons()
 
 func _on_progress_updated(chapter_id: String, progress: float) -> void:

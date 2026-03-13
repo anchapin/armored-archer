@@ -9,7 +9,7 @@ var safe_margins: Dictionary = {"left": 0.0, "top": 0.0, "right": 0.0, "bottom":
 
 func _ready() -> void:
 	"""Sets up signal connections and calculates initial safe area."""
-	get_tree().root.size_changed.connect(_on_screen_size_changed)
+	var _err = get_tree().root.size_changed.connect(_on_screen_size_changed)
 	_update_safe_area()
 
 func _update_safe_area() -> void:

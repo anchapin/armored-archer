@@ -277,7 +277,7 @@ func save_progress() -> void:
 	}
 	var file = FileAccess.open("user://campaign_progress.json", FileAccess.WRITE)
 	if file:
-		var _discard = file.store_string(JSON.stringify(save_data))
+		file.store_string(JSON.stringify(save_data))
 		file.close()
 
 func load_progress() -> void:

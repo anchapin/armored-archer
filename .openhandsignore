@@ -10,3 +10,4 @@ __pycache__/
 android/
 backend/coverage/
 backend/tsconfig.tsbuildinfo
+backend/node_modules/

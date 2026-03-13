@@ -183,7 +183,7 @@ func _play_combat_vfx(entry: Dictionary, is_my_action: bool) -> void:
 	VFXManager.play_combat_vfx(damage, target_pos, vfx_type, is_crit)
 
 
-func _play_miss_vfx(entry: Dictionary, is_my_action: bool) -> void:
+func _play_miss_vfx(_entry: Dictionary, _is_my_action: bool) -> void:
 	"""Play visual effects for missed attacks."""
 	if not VFXManager:
 		return

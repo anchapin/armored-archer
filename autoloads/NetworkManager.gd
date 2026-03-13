@@ -186,7 +186,7 @@ func _ready() -> void:
 
 	http_request = HTTPRequest.new()
 	add_child(http_request)
-	http_request.request_completed.connect(_on_http_request_completed)
+	var _err = http_request.request_completed.connect(_on_http_request_completed)
 
 	_load_session_from_file()
 
@@ -224,7 +224,7 @@ func authenticate_device() -> void:
 	}
 
 	var json: JSON = JSON.new()
-	var json_string: String = json.stringify(body)
+	var json_string: String = JSON.stringify(body)
 
 	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
 	if error != OK:
@@ -254,9 +254,9 @@ func _refresh_session() -> void:
 	}
 
 	var json: JSON = JSON.new()
-	var json_string: String = json.stringify(body)
+	var json_string: String = JSON.stringify(body)
 
-	http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
+	var _err = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
 
 # --- HTTP Response Handling ---
 func _on_http_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
@@ -344,7 +344,7 @@ func _save_session_to_file() -> void:
 	var file: FileAccess = FileAccess.open(SESSION_FILE, FileAccess.WRITE)
 	if file:
 		var json: JSON = JSON.new()
-		file.store_string(json.stringify(session_data))
+		var _err = file.store_string(JSON.stringify(session_data))
 		file.close()
 
 func _load_session_from_file() -> void:
@@ -385,7 +385,7 @@ func logout() -> void:
 
 	var file: FileAccess = FileAccess.open(SESSION_FILE, FileAccess.WRITE)
 	if file:
-		file.store_string("{}")
+		var _err = file.store_string("{}")
 		file.close()
 
 	session_created.emit(false, "Logged out")
@@ -424,7 +424,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	var url: String = "%s/v2/rpc/%s" % [base_url, rpc_id]
 	var headers: PackedStringArray = get_auth_headers()
 
-	headers.append("Content-Type: application/json")
+	var _err = headers.append("Content-Type: application/json")
 
 	# Set up timeout handling
 	var timer: Timer = Timer.new()
@@ -443,8 +443,8 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 		request_result = result
 		timer.stop()
 
-	timer.timeout.connect(on_timeout, CONNECT_ONE_SHOT)
-	http_request.request_completed.connect(on_request_completed, CONNECT_ONE_SHOT)
+	var _err1 = timer.timeout.connect(on_timeout, CONNECT_ONE_SHOT)
+	var _err2 = http_request.request_completed.connect(on_request_completed, CONNECT_ONE_SHOT)
 
 	timer.start()
 
@@ -500,7 +500,7 @@ func send_rpc_async(rpc_id: String, payload: String, _timeout: float = 10.0) -> 
 
 	var url: String = "%s/v2/rpc/%s" % [base_url, rpc_id]
 	var headers: PackedStringArray = get_auth_headers()
-	headers.append("Content-Type: application/json")
+	var _err = headers.append("Content-Type: application/json")
 
 	# Fire request without waiting - we don't care about the response
 	var error_code: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, payload)
@@ -539,7 +539,7 @@ func attempt_reconnection() -> void:
 	_reconnect_timer = Timer.new()
 	_reconnect_timer.wait_time = RETRY_DELAY_SECONDS * _retry_attempts  # Exponential backoff
 	_reconnect_timer.one_shot = true
-	_reconnect_timer.timeout.connect(_on_reconnect_timer_timeout)
+	var _err = _reconnect_timer.timeout.connect(_on_reconnect_timer_timeout)
 	add_child(_reconnect_timer)
 	_reconnect_timer.start()
 
@@ -618,5 +618,4 @@ func _exit_tree() -> void:
 	if _reconnect_timer != null:
 		_reconnect_timer.queue_free()
 		_reconnect_timer = null
-
 	print("[NetworkManager] Cleanup complete - all resources released")

@@ -57,9 +57,6 @@ var _memory_profiling_enabled: bool = true
 ## Memory snapshots
 var _memory_snapshots: Array[Dictionary] = []
 
-## Last memory check time
-var _last_memory_check: int = 0
-
 # --- Signals ---
 ## Emitted when a slow marker is detected (>MIN_SIGNIFICANT_TIME_MS)
 signal slow_marker_detected(name: String, time_ms: float, call_count: int)
@@ -144,40 +141,40 @@ func set_frame_profiling_enabled(enabled: bool) -> void:
 
 ## Start timing a code section
 ## Returns a unique marker ID that should be passed to end_marker
-func start_marker(name: String) -> int:
+func start_marker(marker_name: String) -> int:
 	if not _profiling_enabled:
 		return -1
 
 	var marker_id = _get_tick_count()
-	_active_markers[name] = {
+	_active_markers[marker_name] = {
 		"start_time": marker_id,
-		"name": name,
+		"name": marker_name,
 		"call_stack": _get_call_stack()
 	}
 	return marker_id
 
 ## End timing a code section started with start_marker
-func end_marker(name: String, _marker_id: int = -1) -> float:
+func end_marker(marker_name: String, _marker_id: int = -1) -> float:
 	if not _profiling_enabled:
 		return 0.0
 
-	var marker = _active_markers.get(name)
+	var marker = _active_markers.get(marker_name)
 	if marker == null:
-		push_warning("[ProfilingInstrumentation] No active marker found: " + name)
+		push_warning("[ProfilingInstrumentation] No active marker found: " + marker_name)
 		return 0.0
 
 	var end_time = _get_tick_count()
 	var duration = (end_time - marker.start_time) as float
 
 	# Record the marker
-	_record_marker(name, duration)
+	_record_marker(marker_name, duration)
 
 	# Remove active marker
-	_active_markers.erase(name)
+	var _err = _active_markers.erase(marker_name)
 
 	# Emit warning for slow markers
 	if duration > MIN_SIGNIFICANT_TIME_MS:
-		slow_marker_detected.emit(name, duration, _marker_call_counts.get(name, 0))
+		slow_marker_detected.emit(marker_name, duration, _marker_call_counts.get(marker_name, 0))
 
 	return duration
 
@@ -202,7 +199,7 @@ func time_function(func_call: Callable) -> Variant:
 	return result
 
 ## Time a function with custom name
-func time_function_named(name: String, func_call: Callable) -> Variant:
+func time_function_named(marker_name: String, func_call: Callable) -> Variant:
 	if not _profiling_enabled:
 		return func_call.call()
 
@@ -211,10 +208,10 @@ func time_function_named(name: String, func_call: Callable) -> Variant:
 	var result = func_call.call()
 
 	var duration = (_get_tick_count() - start) as float
-	_record_marker(name, duration)
+	_record_marker(marker_name, duration)
 
 	if duration > MIN_SIGNIFICANT_TIME_MS:
-		slow_marker_detected.emit(name, duration, _marker_call_counts.get(name, 0))
+		slow_marker_detected.emit(marker_name, duration, _marker_call_counts.get(marker_name, 0))
 
 	return result
 
@@ -222,57 +219,56 @@ func time_function_named(name: String, func_call: Callable) -> Variant:
 ## Usage: var _block = ProfilingInstrumentation.create_profile_block("combat_calc")
 ##        # ... code to profile ...
 ##        _block = null  # This will trigger end_marker automatically
-class_name ProfileBlock
+class ProfileBlock:
+	var _profiler: Node
+	var _name: String
+	var _start_time: int
+	var _ended: bool = false
 
-var _profiler: Node
-var _name: String
-var _start_time: int
-var _ended: bool = false
+	func _init(profiler: Node, name: String):
+		_profiler = profiler
+		_name = name
+		_start_time = Time.get_ticks_msec()
 
-func _init(profiler: Node, name: String):
-	_profiler = profiler
-	_name = name
-	_start_time = Time.get_ticks_msec()
+	func _notification(what):
+		if what == NOTIFICATION_PREDELETE and not _ended:
+			_ended = true
+			if _profiler and _profiler.has_method("end_marker"):
+				_profiler.end_marker(_name)
 
-func _notification(what):
-	if what == NOTIFICATION_PREDELETE and not _ended:
+	## Manually end the profile block
+	func end() -> float:
+		if _ended:
+			return 0.0
 		_ended = true
 		if _profiler and _profiler.has_method("end_marker"):
-			_profiler.end_marker(_name)
-
-## Manually end the profile block
-func end() -> float:
-	if _ended:
+			return _profiler.end_marker(_name)
 		return 0.0
-	_ended = true
-	if _profiler and _profiler.has_method("end_marker"):
-		return _profiler.end_marker(_name)
-	return 0.0
 
 ## Create a scoped profile block (call with 'await' or use as variable)
 ## Usage: var _ = ProfilingInstrumentation.scoped_marker("combat_calc")
 func scoped_marker(name: String) -> void:
-	start_marker(name)
+	var _err = start_marker(name)
 
 ## Create a ProfileBlock instance for scoped profiling
 ## Usage: var _block = ProfilingInstrumentation.create_profile_block("combat_calc")
 ##        # ... code to profile ...
 ##        _block.end()  # or let it go out of scope
-func create_profile_block(name: String) -> ProfileBlock:
-	return ProfileBlock.new(self, name)
+func create_profile_block(marker_name: String) -> ProfileBlock:
+	return ProfileBlock.new(self, marker_name)
 
 ## End a scoped profile block
-func end_scoped_marker(name: String) -> float:
-	return end_marker(name)
+func end_scoped_marker(marker_name: String) -> float:
+	return end_marker(marker_name)
 
 ## Record a marker timing
-func _record_marker(name: String, duration_ms: float) -> void:
+func _record_marker(marker_name: String, duration_ms: float) -> void:
 	# Initialize if needed
-	if not _marker_history.has(name):
-		_marker_history[name] = []
-		_marker_call_counts[name] = 0
-		_marker_total_times[name] = 0.0
-		_marker_stats[name] = {
+	if not _marker_history.has(marker_name):
+		_marker_history[marker_name] = []
+		_marker_call_counts[marker_name] = 0
+		_marker_total_times[marker_name] = 0.0
+		_marker_stats[marker_name] = {
 			"min": duration_ms,
 			"max": duration_ms,
 			"avg": duration_ms,
@@ -280,20 +276,20 @@ func _record_marker(name: String, duration_ms: float) -> void:
 		}
 
 	# Record timing
-	_marker_history[name].append(duration_ms)
-	_marker_call_counts[name] += 1
-	_marker_total_times[name] += duration_ms
+	_marker_history[marker_name].append(duration_ms)
+	_marker_call_counts[marker_name] += 1
+	_marker_total_times[marker_name] += duration_ms
 
 	# Keep history limited
-	if _marker_history[name].size() > MAX_MARKER_HISTORY:
-		_marker_history[name].pop_front()
+	if _marker_history[marker_name].size() > MAX_MARKER_HISTORY:
+		_marker_history[marker_name].pop_front()
 
 	# Update statistics
-	var stats = _marker_stats[name]
+	var stats = _marker_stats[marker_name]
 	stats.min = min(stats.min, duration_ms)
 	stats.max = max(stats.max, duration_ms)
-	stats.count = _marker_call_counts[name]
-	stats.avg = _marker_total_times[name] / stats.count
+	stats.count = _marker_call_counts[marker_name]
+	stats.avg = _marker_total_times[marker_name] / stats.count
 
 ## Get callable name for profiling
 func _get_callable_name(callable: Callable) -> String:
@@ -315,28 +311,28 @@ func _get_call_stack() -> String:
 	return ""
 
 ## Get marker statistics
-func get_marker_stats(name: String) -> Dictionary:
-	if _marker_stats.has(name):
-		return _marker_stats[name].duplicate()
+func get_marker_stats(marker_name: String) -> Dictionary:
+	if _marker_stats.has(marker_name):
+		return _marker_stats[marker_name].duplicate()
 	return {}
 
 ## Get all marker statistics
 func get_all_marker_stats() -> Dictionary:
 	var result: Dictionary = {}
-	for name in _marker_stats:
-		result[name] = _marker_stats[name].duplicate()
+	for marker_name in _marker_stats:
+		result[marker_name] = _marker_stats[marker_name].duplicate()
 	return result
 
 ## Get profile report as dictionary
 func get_profile_report() -> Dictionary:
 	var markers: Array[Dictionary] = []
 
-	for name in _marker_stats:
-		var stats = _marker_stats[name]
+	for marker_name in _marker_stats:
+		var stats = _marker_stats[marker_name]
 		markers.append({
-			"name": name,
+			"name": marker_name,
 			"count": stats.count,
-			"total_ms": _marker_total_times[name],
+			"total_ms": _marker_total_times[marker_name],
 			"avg_ms": stats.avg,
 			"min_ms": stats.min,
 			"max_ms": stats.max
@@ -449,7 +445,7 @@ func get_max_frame_time_ms() -> float:
 ## Get current memory usage in MB (approximation)
 func get_memory_usage_mb() -> float:
 	# Use Godot's Performance monitor
-	var object_count = Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
+	var _object_count = Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 	var memory = Performance.get_monitor(Performance.MEMORY_STATIC)
 
 	# Rough estimation - actual memory usage varies by platform

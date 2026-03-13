@@ -31,6 +31,11 @@ func _ready() -> void:
 		"arrow": GearRegistry.GearSlot.SlotType.ARROW
 	}
 
+	if store_manager:
+		store_manager.currency_updated.connect(_on_currency_updated)
+
+	load_data()
+
 # --- Signals ---
 signal skin_purchased(skin_id: String)
 signal skin_equipped(skin_id: String, slot: String)
@@ -113,14 +118,6 @@ func is_achievement_completed(achievement_id: String) -> bool:
 		bool: True if the achievement reward has been claimed
 	"""
 	return achievement_id in completed_achievements
-
-# --- Initialization ---
-func _ready() -> void:
-	"""Sets up signal connections and loads saved cosmetic data."""
-	if store_manager:
-		store_manager.currency_updated.connect(_on_currency_updated)
-
-	load_data()
 
 # --- Gem Management (Delegates to StoreManager) ---
 signal gems_updated(new_balance: int)
@@ -319,7 +316,7 @@ func unequip_skin(slot_name: String) -> void:
 		slot_name: Equipment slot to unequip skin from
 	"""
 	if equipped_skins.has(slot_name):
-		equipped_skins.erase(slot_name)
+		var _err = equipped_skins.erase(slot_name)
 		skin_unequipped.emit(slot_name)
 		save_data()
 

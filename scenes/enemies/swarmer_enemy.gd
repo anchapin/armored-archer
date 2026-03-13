@@ -86,7 +86,7 @@ func change_direction() -> void:
 	var noise = Vector2(randf_range(-0.5, 0.5), randf_range(-0.5, 0.5))
 	current_direction = (to_player + noise).normalized()
 
-func zigzag_toward_player(delta: float) -> void:
+func zigzag_toward_player(_delta: float) -> void:
 	if not player_ref or is_dashing:
 		return
 
@@ -119,7 +119,7 @@ func perform_attack() -> void:
 	if player_ref and player_ref.has_method("take_damage"):
 		player_ref.take_damage(damage)
 
-func wander(delta: float) -> void:
+func wander(_delta: float) -> void:
 	velocity = current_direction * move_speed * 0.5
 
 func perform_dash() -> void:

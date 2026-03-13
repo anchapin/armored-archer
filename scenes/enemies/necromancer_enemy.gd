@@ -94,7 +94,7 @@ func chase_player() -> void:
 	if sprite:
 		sprite.flip_h = direction.x < 0
 
-func approach_player(distance: float) -> void:
+func approach_player(_distance: float) -> void:
 	if not player_ref:
 		return
 

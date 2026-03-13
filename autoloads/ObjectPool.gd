@@ -297,6 +297,60 @@ func cleanup_all() -> void:
 
 	print("[ObjectPool] All pools cleaned up")
 
+## Prepare pools for scene transition - returns all active objects to pools
+## Call this before changing scenes to prevent memory leaks
+func prepare_for_scene_change() -> void:
+	# Return all active arrows to pool
+	for arrow in _active_arrows:
+		if is_instance_valid(arrow):
+			_disconnect_node_signals(arrow)
+			arrow.set_process(false)
+			arrow.set_physics_process(false)
+			arrow.visible = false
+			if arrow.has_method("reset_pooled_state"):
+				arrow.reset_pooled_state()
+			_arrow_pool.append(arrow)
+	_active_arrows.clear()
+
+	# Return all active enemies to pool
+	for enemy in _active_enemies:
+		if is_instance_valid(enemy):
+			_disconnect_node_signals(enemy)
+			enemy.set_process(false)
+			enemy.set_physics_process(false)
+			enemy.visible = false
+			if enemy.has_method("reset_pooled_state"):
+				enemy.reset_pooled_state()
+			_enemy_pool.append(enemy)
+	_active_enemies.clear()
+
+	# Return all active hit effects to pool
+	for effect in _active_hit_effects:
+		if is_instance_valid(effect):
+			_disconnect_node_signals(effect)
+			effect.set_process(false)
+			effect.visible = false
+			if effect.has_method("reset_pooled_state"):
+				effect.reset_pooled_state()
+			_hit_effect_pool.append(effect)
+	_active_hit_effects.clear()
+
+	print("[ObjectPool] Prepared for scene change - all active objects returned to pools")
+
+## Disconnect all signals from a node to prevent memory leaks
+func _disconnect_node_signals(node: Node) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+
+	# Disconnect all connected signals
+	for connection in node.get_signal_connection_list(""):
+		# Skip built-in signals we want to keep
+		pass
+
+	# For child nodes, recursively disconnect
+	for child in node.get_children():
+		_disconnect_node_signals(child)
+
 func _exit_tree() -> void:
 	# Clean up all pooled objects when ObjectPool is freed
 	cleanup_all()

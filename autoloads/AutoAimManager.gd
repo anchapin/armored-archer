@@ -33,7 +33,7 @@ func unregister_enemy(enemy: Node2D) -> void:
 	if enemy == null:
 		return
 
-	registered_enemies.erase(enemy.get_instance_id())
+	var _err = registered_enemies.erase(enemy.get_instance_id())
 
 # --- Target Finding ---
 func get_best_target(player_pos: Vector2, aim_direction: Vector2) -> Node2D:
@@ -60,7 +60,7 @@ func get_best_target(player_pos: Vector2, aim_direction: Vector2) -> Node2D:
 
 		if enemy == null or not is_instance_valid(enemy):
 			# Clean up invalid weak reference
-			registered_enemies.erase(id)
+			var _err = registered_enemies.erase(id)
 			continue
 
 		var enemy_pos: Vector2 = enemy.global_position

@@ -22,12 +22,19 @@ select = [
     "C4",     # flake8-comprehensions
     "UP",     # pyupgrade
     "RUF",    # Ruff-specific rules
+    "C901",   # McCabe complexity
 ]
 ignore = [
     "E501",   # line too long (handled by formatter)
     "B008",   # do not perform function call in argument defaults
-    "C901",   # too complex
 ]
+
+# Maximum complexity before Ruff reports an error
+# See: https://docs.astral.sh/ruff/settings/#lint_mccabe
+max-complexity = 15
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["C901"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["backend"]

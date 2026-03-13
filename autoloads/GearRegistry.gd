@@ -5,16 +5,7 @@ extends Node
 
 # Note: Do NOT add class_name here as it conflicts with the autoload singleton
 
-# Inner class to expose GearSlot.SlotType for gear_data.gd and cosmetic_skin_data.gd
-# This allows scene scripts to reference GearSlot.SlotType without circular dependencies
-class GearSlot:
-	enum SlotType {
-		HELM,
-		ARMOR,
-		BOW,
-		ARROW,
-		AMULET
-	}
+
 
 var base_gear_db: Dictionary = {}
 var skin_db: Dictionary = {}
@@ -60,12 +51,12 @@ func _initialize_skins() -> void:
 	_register_skin("skin_amulet_crystal", "Crystal Amulet", GearSlot.SlotType.AMULET, "amulet_power", 600, false, "")
 	_register_skin("skin_amulet_legendary", "Legendary Amulet", GearSlot.SlotType.AMULET, "amulet_dragon", 1200, true, "")
 
-func _register_base_gear(gear_id: String, name: String, slot: GearSlot.SlotType, attack: int, defense: int, speed: int, health: int, rarity: String, _texture_path: String) -> void:
+func _register_base_gear(gear_id: String, gear_name: String, slot: GearSlot.SlotType, attack: int, defense: int, speed: int, health: int, rarity: String, _texture_path: String) -> void:
 	"""Registers a base gear item in the database (internal).
 
 	Parameters:
 		gear_id: Unique identifier
-		name: Display name
+		gear_name: Display name
 		slot: Equipment slot type
 		attack: Attack stat value
 		defense: Defense stat value
@@ -76,18 +67,18 @@ func _register_base_gear(gear_id: String, name: String, slot: GearSlot.SlotType,
 	"""
 	var gear_data = GearData.new()
 	gear_data.gear_id = gear_id
-	gear_data.gear_name = name
+	gear_data.gear_name = gear_name
 	gear_data.slot_type = slot
 	gear_data.stats = { "attack": attack, "defense": defense, "speed": speed, "health": health }
 	gear_data.rarity = rarity
 	base_gear_db[gear_id] = gear_data
 
-func _register_skin(skin_id: String, name: String, slot: GearSlot.SlotType, base_required: String, price: int, is_premium: bool, _texture_path: String) -> void:
+func _register_skin(skin_id: String, skin_name: String, slot: GearSlot.SlotType, base_required: String, price: int, is_premium: bool, _texture_path: String) -> void:
 	"""Registers a cosmetic skin in the database (internal).
 
 	Parameters:
 		skin_id: Unique identifier
-		name: Display name
+		skin_name: Display name
 		slot: Equipment slot type
 		base_required: Base gear ID required to use this skin
 		price: Gem cost to purchase
@@ -96,7 +87,7 @@ func _register_skin(skin_id: String, name: String, slot: GearSlot.SlotType, base
 	"""
 	var skin_data = CosmeticSkinData.new()
 	skin_data.skin_id = skin_id
-	skin_data.skin_name = name
+	skin_data.skin_name = skin_name
 	skin_data.slot_type = slot
 	skin_data.base_gear_required = base_required
 	skin_data.price = price

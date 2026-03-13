@@ -13,10 +13,9 @@ var is_active: bool = false
 # --- Node References ---
 @onready var _collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _sprite: Sprite2D = $Sprite2D
-
 func _ready() -> void:
 	# Connect collision signal
-	body_entered.connect(_on_body_entered)
+	var _err = body_entered.connect(_on_body_entered)
 
 func _physics_process(delta: float) -> void:
 	if not is_active:
@@ -61,3 +60,23 @@ func _return_to_pool() -> void:
 	"""Return this arrow to the object pool."""
 	is_active = false
 	ObjectPool.return_arrow(self)
+
+## Reset state when returning to pool - called by ObjectPool
+func reset_pooled_state() -> void:
+	is_active = false
+	_lifetime_timer = 0.0
+	direction = Vector2.RIGHT
+	speed = 800.0
+	damage = 25
+	lifetime = 5.0
+	position = Vector2.ZERO
+	rotation = 0.0
+
+	# Disable collision
+	if _collision_shape:
+		_collision_shape.set_deferred("disabled", true)
+
+func _exit_tree() -> void:
+	# Clean up any remaining references
+	is_active = false
+	# Note: Don't call ObjectPool here as it may already be freed

@@ -169,7 +169,7 @@ func _on_match_accepted_dialog_confirmed(match_data: Dictionary) -> void:
 	combat_ui.set_match_id(match_data.get("match_id", ""))
 	get_tree().current_scene.add_child(combat_ui)
 
-func _show_match_created_dialog(match_data: Dictionary) -> void:
+func _show_match_created_dialog(_match_data: Dictionary) -> void:
 	var dialog: AcceptDialog = AcceptDialog.new()
 	dialog.title = "Match Created"
 	dialog.dialog_text = "Your match has been created!\nWaiting for opponent..."
@@ -210,7 +210,7 @@ func _exit_tree() -> void:
 			matchmaker_manager.punch_up_stats_updated.disconnect(_on_punch_up_stats_updated)
 
 # --- Punch Up Statistics ---
-func _on_punch_up_stats_updated(wins: int, losses: int, win_rate: float) -> void:
+func _on_punch_up_stats_updated(_wins: int, _losses: int, _win_rate: float) -> void:
 	"""Handles Punch Up statistics updates from MatchmakerManager."""
 	_update_punch_up_stats_display()
 

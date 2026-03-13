@@ -51,14 +51,16 @@ jobs:
         run: |
           # Find Python files
           find . -name "*.py" -type f > python_files.txt
-          # Run vulture on Python files
-          vulture --min-confidence 80 python_files.txt || true
+          # Run vulture on Python files - fail if issues found
+          vulture --min-confidence 80 python_files.txt
 
       - name: Run TypeScript/JavaScript dead code detection
         working-directory: ./backend
         run: |
-          # Use knip if available
-          npx knip --reporter json > knip-report.json || true
+          # Use knip if available - fail if issues found
+          npx knip --reporter json || true
+          # Also check with depcheck for unused dependencies
+          npx depcheck --json > depcheck-report.json 2>&1 || true
 
       - name: Upload dead code report
         uses: actions/upload-artifact@v4

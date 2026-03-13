@@ -81,7 +81,7 @@ func chase_player() -> void:
 	if sprite:
 		sprite.flip_h = direction.x < 0
 
-func attack_player(delta: float) -> void:
+func attack_player(_delta: float) -> void:
 	velocity = Vector2.ZERO
 
 	if attack_timer >= attack_cooldown:

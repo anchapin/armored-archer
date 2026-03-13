@@ -15,7 +15,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as glob from 'glob';
+import { glob } from 'glob';
 
 interface FlagDefinition {
   name: string;
@@ -48,11 +48,14 @@ async function findFlagDefinitions(): Promise<FlagDefinition[]> {
     /feature.*flag.*['"]([a-zA-Z0-9_]+)['"]/gi,
   ];
 
+  // Use absolute path to backend directory
+  const backendDir = path.resolve(__dirname, '..');
+  
   // Find TypeScript/JavaScript files
-  const files = await glob('src/**/*.ts', { cwd: __dirname });
+  const files = glob.sync('src/**/*.ts', { cwd: backendDir });
   
   for (const file of files) {
-    const content = fs.readFileSync(path.join(__dirname, file), 'utf-8');
+    const content = fs.readFileSync(path.join(backendDir, file), 'utf-8');
     const lines = content.split('\n');
     
     for (let i = 0; i < lines.length; i++) {
@@ -87,10 +90,11 @@ async function findFlagDefinitions(): Promise<FlagDefinition[]> {
 async function countFlagUsage(flagName: string): Promise<number> {
   let count = 0;
   
-  const files = await glob('src/**/*.ts', { cwd: __dirname });
+  const backendDir = path.resolve(__dirname, '..');
+  const files = glob.sync('src/**/*.ts', { cwd: backendDir });
   
   for (const file of files) {
-    const content = fs.readFileSync(path.join(__dirname, file), 'utf-8');
+    const content = fs.readFileSync(path.join(backendDir, file), 'utf-8');
     
     // Count occurrences of isFeatureEnabled(flagName)
     const isEnabledRegex = new RegExp(`isFeatureEnabled\\s*\\(\\s*['"]${flagName}['"]`, 'g');
@@ -164,6 +168,8 @@ async function generateReport(): Promise<void> {
     }
   }
   
+  const CI_MODE = process.argv.includes('--ci-mode');
+  
   // Check threshold
   if (deadFlags.length > THRESHOLD) {
     console.log(`\n❌ FAIL: Found ${deadFlags.length} dead flags (threshold: ${THRESHOLD})`);
@@ -174,6 +180,7 @@ async function generateReport(): Promise<void> {
   }
   
   console.log(`\n✅ PASS: Found ${deadFlags.length} dead flags (threshold: ${THRESHOLD})`);
+  console.log('PASS'); // For script detection
   process.exit(0);
 }
 

@@ -1,7 +1,7 @@
 {
   "name": "armored-archer-backend",
   "version": "0.1.0",
-  "description": "Nakama backend server for Armored Archer game",
+  "description": "Nakama backend server for Armored Archer game - includes nplusone detection, tech debt tracking, and bundle analysis tools",
   "main": "build/index.js",
   "scripts": {
     "build": "tsc",
@@ -31,6 +31,8 @@
     "dep:count": "node -e \"const p = require('./package.json'); console.log('Total:', Object.keys(p.dependencies).length + Object.keys(p.devDependencies).length); console.log('Prod:', Object.keys(p.dependencies).length); console.log('Dev:', Object.keys(p.devDependencies).length);\"",
     "detect-n-plus-one": "ts-node --transpile-only ./scripts/detect-n-plus-one.ts",
     "detect-n-plus-one:ci": "ts-node --transpile-only ./scripts/detect-n-plus-one.ts --ci-mode",
+    "detect-dead-flags": "ts-node --transpile-only ./scripts/detect-dead-flags.ts",
+    "detect-dead-flags:ci": "ts-node --transpile-only ./scripts/detect-dead-flags.ts --ci-mode",
     "detect-duplicate": "jscpd --config .jscpd.json",
     "detect-duplicate:ci": "jscpd --config .jscpd.json --threshold 3",
     "tech-debt:report": "ts-node scripts/detect-tech-debt.ts",

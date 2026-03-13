@@ -54,6 +54,48 @@ jobs:
         working-directory: ./backend
         run: npm run complexity
 
+  backend-n-plus-one:
+    name: N+1 Query Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run N+1 query detection
+        working-directory: ./backend
+        run: npm run detect-n-plus-one:ci || true
+
+  backend-dead-flags:
+    name: Dead Feature Flag Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run dead feature flag detection
+        working-directory: ./backend
+        run: npm run detect-dead-flags:ci || true
+
   backend-typecheck:
     name: Backend Type Check
     runs-on: ubuntu-latest
