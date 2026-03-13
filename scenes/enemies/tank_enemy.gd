@@ -40,15 +40,15 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	shield_timer += delta
 	charge_timer += delta
-	
+
 	# Activate shield periodically
 	if shield_timer >= shield_cooldown and not shield_active:
 		activate_shield()
-	
+
 	# Deactivate shield after duration
 	if shield_active and shield_timer >= shield_duration:
 		deactivate_shield()
-	
+
 	if not player_ref:
 		find_player()
 
@@ -77,7 +77,7 @@ func chase_player() -> void:
 	velocity = direction * move_speed
 	if sprite:
 		sprite.flip_h = direction.x < 0
-	
+
 	# Check for charge opportunity
 	if can_charge and charge_timer >= charge_cooldown:
 		var distance = global_position.distance_to(player_ref.global_position)
@@ -103,10 +103,10 @@ func perform_charge() -> void:
 
 	is_charging = true
 	can_charge = false
-	
+
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	var charge_velocity = direction * move_speed * 3.0
-	
+
 	# Charge for a short duration
 	var charge_duration = 0.4
 	var timer = 0.0
@@ -115,10 +115,10 @@ func perform_charge() -> void:
 		velocity = charge_velocity
 		move_and_slide()
 		await get_tree().process_frame
-	
+
 	velocity = Vector2.ZERO
 	is_charging = false
-	
+
 	# Reset charge ability after cooldown
 	await get_tree().create_timer(charge_cooldown).timeout
 	can_charge = true
@@ -134,11 +134,11 @@ func deactivate_shield() -> void:
 
 func take_damage(amount: int) -> void:
 	var actual_damage = amount
-	
+
 	# Apply shield damage reduction
 	if shield_active:
 		actual_damage = int(amount * (1.0 - shield_damage_reduction))
-	
+
 	current_health -= actual_damage
 	if current_health <= 0:
 		die()

@@ -34,7 +34,7 @@ func _process(delta: float) -> void:
 		return
 
 	_shake_time += delta
-	
+
 	if _shake_time >= shake_duration:
 		_stop_shake()
 		return
@@ -42,12 +42,12 @@ func _process(delta: float) -> void:
 	# Calculate shake offset using perlin-like noise
 	var progress := _shake_time / shake_duration
 	var intensity := shake_intensity * (1.0 - progress)  # Decay over time
-	
+
 	var offset := Vector2(
 		_get_noise(_shake_time * shake_frequency) * intensity,
 		_get_noise(_shake_time * shake_frequency + 100.0) * intensity
 	)
-	
+
 	_camera.offset = offset
 
 
@@ -60,7 +60,7 @@ func start_shake(intensity: float = 10.0, duration: float = 0.3, frequency: floa
 	"""Start a screen shake with the given parameters."""
 	if _camera == null:
 		_get_camera()
-	
+
 	if _camera == null:
 		push_warning("ScreenShake: No camera found")
 		return
@@ -68,7 +68,7 @@ func start_shake(intensity: float = 10.0, duration: float = 0.3, frequency: floa
 	shake_intensity = intensity
 	shake_duration = duration
 	shake_frequency = frequency
-	
+
 	_is_shaking = true
 	_shake_time = 0.0
 	_original_offset = _camera.offset

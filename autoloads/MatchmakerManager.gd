@@ -110,7 +110,7 @@ func create_match(match_type: String, is_punch_up: bool = false, target_opponent
 	if response.get("success", false):
 		current_match = response.get("match", {})
 		match_created.emit(current_match)
-		
+
 		# Track PvP match started in analytics
 		if analytics and analytics.has_method("log_pvp_match_started"):
 			var match_id: String = current_match.get("match_id", "")
@@ -239,12 +239,12 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 			if has_node("/root/SeasonManager"):
 				var season_manager = get_node("/root/SeasonManager")
 				season_id = season_manager.get("current_season_id", 0)
-			
+
 			var result: String = "loss"
 			var my_score: int = 0
 			var opponent_score: int = 0
 			var rank_change: int = 0
-			
+
 			if my_user_id == winner_id:
 				result = "win"
 				my_score = response.get("winner", {}).get("score", 0)
@@ -255,12 +255,12 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 				my_score = response.get("loser", {}).get("score", 0)
 				opponent_score = response.get("winner", {}).get("score", 0)
 				rank_change = response.get("loser", {}).get("rank_change", 0)
-			
+
 			# Calculate match duration (assuming match_start_time is stored)
 			var match_duration: float = 0.0
 			if current_match.has("match_start_time"):
 				match_duration = (Time.get_unix_time_from_system() - current_match.match_start_time)
-			
+
 			analytics.log_pvp_match_completed(
 				match_id,
 				result,

@@ -23,15 +23,15 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_time_alive += delta
-	
+
 	# Float upward
 	position.y -= float_speed * delta
-	
+
 	# Fade out
 	if _time_alive >= fade_start:
 		var fade_progress := (_time_alive - fade_start) / (lifetime - fade_start)
 		modulate.a = lerp(1.0, 0.0, fade_progress)
-	
+
 	# Destroy when lifetime ends
 	if _time_alive >= lifetime:
 		queue_free()
@@ -71,9 +71,9 @@ static func create_damage_popup(
 	var popup := Label.new()
 	popup.position = global_pos
 	popup.setup_damage(damage, is_crit, is_miss, is_heal)
-	
+
 	# Add outline effect using label settings
 	popup.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	popup.add_theme_constant_override("outline_size", 3)
-	
+
 	return popup

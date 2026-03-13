@@ -42,12 +42,12 @@ func _physics_process(delta: float) -> void:
 	direction_timer += delta
 	zigzag_timer += delta
 	dash_timer += delta
-	
+
 	# Change direction periodically
 	if direction_timer >= 0.5:
 		direction_timer = 0.0
 		change_direction()
-	
+
 	# Check for dash ability
 	if dash_timer >= dash_cooldown and player_ref:
 		var distance = global_position.distance_to(player_ref.global_position)
@@ -80,30 +80,30 @@ func change_direction() -> void:
 	if not player_ref:
 		current_direction = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized()
 		return
-	
+
 	# General direction toward player with noise
 	var to_player = (player_ref.global_position - global_position).normalized()
 	var noise = Vector2(randf_range(-0.5, 0.5), randf_range(-0.5, 0.5))
 	current_direction = (to_player + noise).normalized()
 
-func zigzag_toward_player(delta: float) -> void:
+func zigzag_toward_player(_delta: float) -> void:
 	if not player_ref or is_dashing:
 		return
-	
+
 	# Get base direction to player
 	var to_player = (player_ref.global_position - global_position).normalized()
-	
+
 	# Add perpendicular zigzag motion
 	var perpendicular = Vector2(-to_player.y, to_player.x)
 	var zigzag = 0.0
-	
+
 	if zigzag_timer >= zigzag_interval:
 		zigzag_timer = 0.0
 		zigzag = randf_range(-1, 1)
-	
+
 	var final_direction = (to_player + perpendicular * zigzag * 0.8).normalized()
 	velocity = final_direction * move_speed
-	
+
 	if sprite:
 		sprite.flip_h = final_direction.x < 0
 
@@ -119,7 +119,7 @@ func perform_attack() -> void:
 	if player_ref and player_ref.has_method("take_damage"):
 		player_ref.take_damage(damage)
 
-func wander(delta: float) -> void:
+func wander(_delta: float) -> void:
 	velocity = current_direction * move_speed * 0.5
 
 func perform_dash() -> void:
@@ -127,13 +127,13 @@ func perform_dash() -> void:
 		return
 
 	is_dashing = true
-	
+
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed * 3.0
-	
+
 	if sprite:
 		sprite.flip_h = direction.x < 0
-	
+
 	await get_tree().create_timer(0.15).timeout
 	is_dashing = false
 	velocity = Vector2.ZERO

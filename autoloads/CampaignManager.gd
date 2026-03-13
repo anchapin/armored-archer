@@ -80,7 +80,7 @@ func complete_stage(stage_id: String) -> void:
 
 		var stage_data = get_stage_data(stage_id)
 		var boss_id: String = stage_data.get("boss", "")
-		
+
 		# Send stage completion to server with boss defeat info
 		_notify_server_stage_complete(stage_id, boss_id)
 
@@ -277,7 +277,7 @@ func save_progress() -> void:
 	}
 	var file = FileAccess.open("user://campaign_progress.json", FileAccess.WRITE)
 	if file:
-		var _discard = file.store_string(JSON.stringify(save_data))
+		file.store_string(JSON.stringify(save_data))
 		file.close()
 
 func load_progress() -> void:
@@ -301,7 +301,7 @@ func sync_modifiers_from_server() -> void:
 		return
 
 	var response = network_manager.send_rpc("armored_archer/get_unlocked_modifiers", "{}")
-	
+
 	if response.has("error"):
 		push_warning("Failed to sync modifiers from server: " + str(response.error))
 		return

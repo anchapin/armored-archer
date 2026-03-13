@@ -20,6 +20,13 @@ signal stage_completed(stage_id: String)
 # --- References ---
 @onready var analytics: Node = $"/root/AnalyticsManager" if has_node("/root/AnalyticsManager") else null
 
+# --- Boss Scenes ---
+const BOSS_BASIC_SCENE = preload("res://scenes/enemies/bosses/boss_basic.tscn")
+const BOSS_WIND_SCENE = preload("res://scenes/enemies/bosses/boss_wind.tscn")
+const BOSS_FIRE_SCENE = preload("res://scenes/enemies/bosses/boss_fire.tscn")
+const BOSS_ICE_SCENE = preload("res://scenes/enemies/bosses/boss_ice.tscn")
+const BOSS_ELECTRIC_SCENE = preload("res://scenes/enemies/bosses/boss_electric.tscn")
+
 # --- Game State ---
 var player_current_health: int = 100
 var player_max_health: int = 100
@@ -139,7 +146,7 @@ func end_game(won: bool) -> void:
 		if current_stage_id != "" and CampaignManager.has_method("complete_stage"):
 			CampaignManager.complete_stage(current_stage_id)
 			stage_completed.emit(current_stage_id)
-			
+
 			# Return to campaign map after completing a stage
 			get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
 	else:
@@ -189,27 +196,27 @@ func spawn_boss(boss_name: String) -> void:
 
 	match boss_name:
 		"boss_basic":
-			boss_scene = preload("res://scenes/enemies/bosses/boss_basic.tscn")
+			boss_scene = BOSS_BASIC_SCENE
 		"boss_wind":
-			boss_scene = preload("res://scenes/enemies/bosses/boss_wind.tscn")
+			boss_scene = BOSS_WIND_SCENE
 		"boss_fire":
-			boss_scene = preload("res://scenes/enemies/bosses/boss_fire.tscn")
+			boss_scene = BOSS_FIRE_SCENE
 		"boss_ice":
-			boss_scene = preload("res://scenes/enemies/bosses/boss_ice.tscn")
+			boss_scene = BOSS_ICE_SCENE
 		"boss_electric":
-			boss_scene = preload("res://scenes/enemies/bosses/boss_electric.tscn")
+			boss_scene = BOSS_ELECTRIC_SCENE
 		"boss_iron":
 			# boss_iron - Use boss_basic as placeholder
-			boss_scene = preload("res://scenes/enemies/bosses/boss_basic.tscn")
+			boss_scene = BOSS_BASIC_SCENE
 		"boss_king":
 			# boss_king - Use boss_wind as placeholder
-			boss_scene = preload("res://scenes/enemies/bosses/boss_wind.tscn")
+			boss_scene = BOSS_WIND_SCENE
 		"boss_nightmare":
 			# boss_nightmare - Use boss_basic as placeholder
-			boss_scene = preload("res://scenes/enemies/bosses/boss_basic.tscn")
+			boss_scene = BOSS_BASIC_SCENE
 		"boss_shadow":
 			# boss_shadow - Use boss_wind as placeholder
-			boss_scene = preload("res://scenes/enemies/bosses/boss_wind.tscn")
+			boss_scene = BOSS_WIND_SCENE
 
 	if boss_scene:
 		var boss_instance = boss_scene.instantiate() as CharacterBody2D
