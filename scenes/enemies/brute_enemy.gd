@@ -39,19 +39,19 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if not player_ref:
 		find_player()
-	
+
 	attack_timer += delta
 	charge_timer += delta
-	
+
 	# Recover from knockback
 	if knockback_recovery > 0:
 		knockback_recovery -= delta
 		if knockback_recovery <= 0:
 			knockback_recovery = 0
-	
+
 	if player_ref and knockback_recovery == 0:
 		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
-		
+
 		if is_charging:
 			perform_charge_movement(delta)
 		elif distance_to_player <= detection_range:
@@ -64,7 +64,7 @@ func _physics_process(delta: float) -> void:
 				attack_player(delta)
 		else:
 			velocity = Vector2.ZERO
-	
+
 	move_and_slide()
 
 func find_player() -> void:
@@ -75,49 +75,49 @@ func find_player() -> void:
 func chase_player() -> void:
 	if not player_ref:
 		return
-	
+
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed
 	if sprite:
 		sprite.flip_h = direction.x < 0
 
-func attack_player(delta: float) -> void:
+func attack_player(_delta: float) -> void:
 	velocity = Vector2.ZERO
-	
+
 	if attack_timer >= attack_cooldown:
 		perform_heavy_attack()
 
 func perform_heavy_attack() -> void:
 	attack_timer = 0.0
-	
+
 	if player_ref and player_ref.has_method("take_damage"):
 		# Apply knockback to player
 		var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 		if player_ref.has_method("apply_knockback"):
 			player_ref.apply_knockback(direction * knockback_force)
-		
+
 		player_ref.take_damage(damage)
 
 func start_charge() -> void:
 	if not player_ref:
 		return
-	
+
 	is_charging = true
 	can_charge = false
 	charge_timer = 0.0
 	charge_remaining = charge_duration
-	
+
 	# Lock direction at start of charge
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * charge_speed
-	
+
 	# Visual feedback
 	if sprite:
 		sprite.modulate = Color(1.0, 0.3, 0.3, 1)
 
 func perform_charge_movement(delta: float) -> void:
 	charge_remaining -= delta
-	
+
 	if charge_remaining <= 0:
 		# End charge
 		is_charging = false
@@ -144,7 +144,7 @@ func take_damage(amount: int) -> void:
 		effective_damage = max(1, amount - 5)  # -5 damage reduction for small attacks
 	elif amount < 30:
 		effective_damage = amount - 2  # -2 damage reduction for medium attacks
-	
+
 	current_health -= effective_damage
 	if current_health <= 0:
 		die()

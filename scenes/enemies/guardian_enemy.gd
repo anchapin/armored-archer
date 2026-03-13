@@ -43,24 +43,24 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if not player_ref:
 		find_player()
-	
+
 	attack_timer += delta
 	shield_regen_timer += delta
 	parry_timer += delta
-	
+
 	# Update parry state
 	if is_parrying:
 		parry_timer += delta
 		if parry_timer >= parry_window:
 			is_parrying = false
-	
+
 	# Regenerate shield if broken and cooldown passed
 	if shield_health <= 0 and shield_regen_timer >= shield_regen_cooldown:
 		regenerate_shield()
-	
+
 	if player_ref:
 		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
-		
+
 		if distance_to_player <= detection_range:
 			if distance_to_player > attack_range:
 				# Move towards player but slowly (defender)
@@ -71,7 +71,7 @@ func _physics_process(delta: float) -> void:
 					attempt_parry()
 		else:
 			velocity = Vector2.ZERO
-	
+
 	move_and_slide()
 
 func find_player() -> void:
@@ -82,7 +82,7 @@ func find_player() -> void:
 func chase_player() -> void:
 	if not player_ref:
 		return
-	
+
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed * 0.5  # Slow movement
 	if sprite:
@@ -94,20 +94,20 @@ func attempt_parry() -> void:
 		is_parrying = true
 		parry_timer = 0.0
 		can_parry = false
-		
+
 		# Visual feedback - flash shield color
 		if sprite:
 			sprite.modulate = Color(0.3, 0.3, 1.0, 1.0)
-		
+
 		# Check if player attacks during parry window
 		await get_tree().create_timer(parry_window).timeout
-		
+
 		# After parry window, attack if player is still close
 		if player_ref:
 			var distance: float = global_position.distance_to(player_ref.global_position)
 			if distance <= attack_range:
 				perform_shield_bash()
-		
+
 		# Reset parry cooldown
 		await get_tree().create_timer(parry_cooldown - parry_window).timeout
 		can_parry = true
@@ -120,28 +120,28 @@ func attempt_parry() -> void:
 func perform_shield_bash() -> void:
 	is_attacking = true
 	attack_timer = 0.0
-	
+
 	# Push player back slightly
 	if player_ref and player_ref.has_method("apply_knockback"):
 		var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 		player_ref.apply_knockback(direction * 40.0)
-	
+
 	if player_ref and player_ref.has_method("take_damage"):
 		player_ref.take_damage(damage)
-	
+
 	is_attacking = false
 
 func take_damage(amount: int) -> void:
 	var damage_to_health: int = amount
-	
+
 	# If shield is active, shield takes damage first
 	if is_shield_active and shield_health > 0:
 		var shield_damage: int = int(amount * shield_damage_reduction)
 		var remaining_damage: int = amount - shield_damage
-		
+
 		shield_health -= shield_damage
 		damage_to_health = remaining_damage
-		
+
 		# Shield broken
 		if shield_health <= 0:
 			shield_health = 0
@@ -150,9 +150,9 @@ func take_damage(amount: int) -> void:
 			# Visual feedback - shield broken
 			if sprite:
 				sprite.modulate = Color(0.7, 0.7, 0.7, 1.0)
-	
+
 	current_health -= damage_to_health
-	
+
 	if current_health <= 0:
 		die()
 

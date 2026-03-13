@@ -109,7 +109,7 @@ func _create_match_item(match_data: Dictionary) -> Control:
 
 	var opponent_rank: int = match_data.get("creator_rank", 0)
 	var player_rank_val: int = matchmaker_manager.get_player_rank_sync() if matchmaker_manager else 0
-	
+
 	var rank_label: Label = Label.new()
 	rank_label.text = "Opponent Rank: %d" % opponent_rank
 
@@ -169,7 +169,7 @@ func _on_match_accepted_dialog_confirmed(match_data: Dictionary) -> void:
 	combat_ui.set_match_id(match_data.get("match_id", ""))
 	get_tree().current_scene.add_child(combat_ui)
 
-func _show_match_created_dialog(match_data: Dictionary) -> void:
+func _show_match_created_dialog(_match_data: Dictionary) -> void:
 	var dialog: AcceptDialog = AcceptDialog.new()
 	dialog.title = "Match Created"
 	dialog.dialog_text = "Your match has been created!\nWaiting for opponent..."
@@ -210,7 +210,7 @@ func _exit_tree() -> void:
 			matchmaker_manager.punch_up_stats_updated.disconnect(_on_punch_up_stats_updated)
 
 # --- Punch Up Statistics ---
-func _on_punch_up_stats_updated(wins: int, losses: int, win_rate: float) -> void:
+func _on_punch_up_stats_updated(_wins: int, _losses: int, _win_rate: float) -> void:
 	"""Handles Punch Up statistics updates from MatchmakerManager."""
 	_update_punch_up_stats_display()
 
@@ -218,12 +218,12 @@ func _update_punch_up_stats_display() -> void:
 	"""Updates the Punch Up statistics display in the UI."""
 	if not matchmaker_manager or punch_up_stats_label == null:
 		return
-	
+
 	var wins: int = matchmaker_manager.get_punch_up_wins()
 	var losses: int = matchmaker_manager.get_punch_up_losses()
 	var win_rate: float = matchmaker_manager.get_punch_up_win_rate()
 	var total: int = wins + losses
-	
+
 	if total == 0:
 		punch_up_stats_label.text = "Punch Up: No matches yet"
 	else:

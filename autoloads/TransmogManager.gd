@@ -64,7 +64,7 @@ func equip_base_gear(slot: String, gear_id: String) -> bool:
 	if character_sprite:
 		character_sprite.equip_base_gear(slot, gear_id, gear_data.base_texture)
 	transmog_applied.emit(slot, gear_id, current_loadout.skins.get(slot, ""))
-	
+
 	# Track base gear equipped in analytics
 	if analytics and analytics.has_method("log_gear_equipped"):
 		analytics.log_gear_equipped(
@@ -72,7 +72,7 @@ func equip_base_gear(slot: String, gear_id: String) -> bool:
 			gear_data.get("name", gear_id),
 			slot
 		)
-	
+
 	return true
 
 func equip_skin(slot: String, skin_id: String) -> bool:
@@ -96,7 +96,7 @@ func equip_skin(slot: String, skin_id: String) -> bool:
 	if character_sprite:
 		character_sprite.equip_skin(slot, skin_id, skin_data.skin_texture)
 	transmog_applied.emit(slot, current_loadout.base_gear.get(slot, ""), skin_id)
-	
+
 	# Track transmog applied in analytics
 	if analytics and analytics.has_method("log_transmog_applied"):
 		analytics.log_transmog_applied(
@@ -104,7 +104,7 @@ func equip_skin(slot: String, skin_id: String) -> bool:
 			skin_data.get("name", skin_id),
 			slot
 		)
-	
+
 	return true
 
 func unequip_skin(slot: String) -> void:

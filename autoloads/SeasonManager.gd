@@ -66,7 +66,7 @@ func get_season_info() -> void:
 			"player_score": player_score,
 			"time_remaining": time_remaining
 		})
-		
+
 		# Track season start in analytics
 		if analytics and analytics.has_method("log_season_start") and current_season.has("id"):
 			analytics.log_season_start(
@@ -180,7 +180,7 @@ func claim_season_rewards() -> void:
 		season_rewards = response.get("rewards", {})
 		rewards_claimed = response.get("claimed", false)
 		rewards_claimed_signal.emit(season_rewards)
-		
+
 		# Track season end/rewards claimed in analytics
 		if analytics and analytics.has_method("log_season_end"):
 			analytics.log_season_end(

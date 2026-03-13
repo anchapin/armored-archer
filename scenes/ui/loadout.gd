@@ -111,24 +111,24 @@ func _update_stats_display() -> void:
 	var total_stats: Dictionary = {"attack": 0, "defense": 0, "speed": 0, "health": 0}
 	var inventory: Dictionary = gear_manager._get_full_inventory()
 	var equipped: Dictionary = inventory.get("equipped_gear", {})
-	
+
 	for slot_key in equipped.keys():
 		var gear_id: String = equipped[slot_key]
 		var gear_data: Dictionary = gear_manager.get_gear_by_id(gear_id)
-		
+
 		if not gear_data.is_empty():
 			# Get base gear ID from gear data
 			var base_gear_id: String = gear_data.get("base_gear_id", "")
 			if base_gear_id.is_empty():
 				# Fallback: try using type as base_gear_id lookup
 				base_gear_id = gear_data.get("type", "")
-			
+
 			var base_gear_data: Dictionary = gear_registry.get_base_gear(base_gear_id)
 			if not base_gear_data.is_empty():
 				var stats: Dictionary = base_gear_data.get("stats", {})
 				for stat_key in total_stats.keys():
 					total_stats[stat_key] += stats.get(stat_key, 0)
-			
+
 			# Also add any direct stats from the gear item
 			var direct_stats: Array = gear_data.get("stats", [])
 			for stat_entry in direct_stats:
@@ -161,7 +161,7 @@ func _on_gear_dropped(gear_data: Dictionary, target_slot: int) -> void:
 	# Get the gear type as string (e.g., "helm", "armor", "bow", "arrow", "amulet")
 	var gear_slot_str: String = _get_slot_key(target_slot)
 	var gear_type_str: String = gear_data.get("type", "")
-	
+
 	if gear_type_str != gear_slot_str:
 		return
 

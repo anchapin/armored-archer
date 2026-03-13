@@ -63,8 +63,8 @@ func list_matches(match_type: String = "", min_rank: int = 0, max_rank: int = 0,
 	if limit > 0:
 		payload["limit"] = limit
 
-	var json_string: String = JSON.stringify(payload)
-	var response: Dictionary = await network_manager.send_rpc(RPC_LIST_MATCHES, json_string)
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_LIST_MATCHES, json.stringify(payload))
 
 	if response.has("error"):
 		push_error("Failed to list matches: %s" % response.error)
@@ -100,8 +100,8 @@ func create_match(match_type: String, is_punch_up: bool = false, target_opponent
 	if not target_opponent_id.is_empty():
 		payload["target_opponent_id"] = target_opponent_id
 
-	var json_string: String = JSON.stringify(payload)
-	var response: Dictionary = await network_manager.send_rpc(RPC_CREATE_MATCH, json_string)
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_CREATE_MATCH, json.stringify(payload))
 
 	if response.has("error"):
 		push_error("Failed to create match: %s" % response.error)
@@ -110,7 +110,7 @@ func create_match(match_type: String, is_punch_up: bool = false, target_opponent
 	if response.get("success", false):
 		current_match = response.get("match", {})
 		match_created.emit(current_match)
-		
+
 		# Track PvP match started in analytics
 		if analytics and analytics.has_method("log_pvp_match_started"):
 			var match_id: String = current_match.get("match_id", "")
@@ -118,8 +118,7 @@ func create_match(match_type: String, is_punch_up: bool = false, target_opponent
 			var season_id: int = 0
 			if has_node("/root/SeasonManager"):
 				var season_manager = get_node("/root/SeasonManager")
-				var val = season_manager.get("current_season_id")
-				season_id = val if val != null else 0
+				season_id = season_manager.get("current_season_id", 0)
 			analytics.log_pvp_match_started(match_id, opponent_id, season_id, player_rank)
 
 # --- Match Acceptance ---
@@ -141,8 +140,8 @@ func accept_match(match_id: String) -> void:
 		"match_id": match_id
 	}
 
-	var json_string: String = JSON.stringify(payload)
-	var response: Dictionary = await network_manager.send_rpc(RPC_ACCEPT_MATCH, json_string)
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_ACCEPT_MATCH, json.stringify(payload))
 
 	if response.has("error"):
 		push_error("Failed to accept match: %s" % response.error)
@@ -159,8 +158,8 @@ func get_player_rank() -> void:
 		push_error("Not connected to server")
 		return
 
-	var json_string: String = JSON.stringify("{}")
-	var response: Dictionary = await network_manager.send_rpc(RPC_GET_PLAYER_RANK, json_string)
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_PLAYER_RANK, json.stringify("{}"))
 
 	if response.has("error"):
 		push_error("Failed to get player rank: %s" % response.error)
@@ -202,8 +201,8 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 		"is_punch_up": is_punch_up
 	}
 
-	var json_string: String = JSON.stringify(payload)
-	var response: Dictionary = await network_manager.send_rpc(RPC_COMPLETE_MATCH, json_string)
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_COMPLETE_MATCH, json.stringify(payload))
 
 	if response.has("error"):
 		push_error("Failed to complete match: %s" % response.error)
@@ -239,14 +238,13 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 			var season_id: int = 0
 			if has_node("/root/SeasonManager"):
 				var season_manager = get_node("/root/SeasonManager")
-				var val = season_manager.get("current_season_id")
-				season_id = val if val != null else 0
-			
+				season_id = season_manager.get("current_season_id", 0)
+
 			var result: String = "loss"
 			var my_score: int = 0
 			var opponent_score: int = 0
 			var rank_change: int = 0
-			
+
 			if my_user_id == winner_id:
 				result = "win"
 				my_score = response.get("winner", {}).get("score", 0)
@@ -257,12 +255,12 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 				my_score = response.get("loser", {}).get("score", 0)
 				opponent_score = response.get("winner", {}).get("score", 0)
 				rank_change = response.get("loser", {}).get("rank_change", 0)
-			
+
 			# Calculate match duration (assuming match_start_time is stored)
 			var match_duration: float = 0.0
 			if current_match.has("match_start_time"):
 				match_duration = (Time.get_unix_time_from_system() - current_match.match_start_time)
-			
+
 			analytics.log_pvp_match_completed(
 				match_id,
 				result,
