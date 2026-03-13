@@ -22,7 +22,10 @@ func _run_tests():
         "res://test/test_safe_area_manager.gd",
         "res://test/test_auto_aim_manager.gd",
         "res://test/test_ui_transition_optimizer.gd",
-        "res://test/test_object_pool.gd"
+        "res://test/test_object_pool.gd",
+        "res://test/test_performance_profiler.gd",
+        "res://test/test_profiling_instrumentation.gd",
+        "res://test/test_low_end_device_performance.gd"
     ]
 
     var test_root = Node.new()
