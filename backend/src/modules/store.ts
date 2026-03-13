@@ -1896,6 +1896,7 @@ export async function rpcRevenueCatWebhook(
   const eventType = (webhookData.event_type as string) ||
     (webhookData.eventType as string) ||
     (eventObj?.event_type as string) ||
+    (eventObj?.type as string) ||
     (webhookData.type as string) ||
     '';
 

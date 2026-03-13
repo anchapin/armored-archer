@@ -14,22 +14,22 @@ func _ready() -> void:
 func run_test(test_name: String, test_func: Callable) -> void:
 	test_started.emit(test_name)
 	test_start_time = Time.get_ticks_msec()
-	
+
 	var test_node = Node.new()
 	test_node.name = "TestContext"
 	get_tree().root.add_child(test_node)
-	
+
 	var error: String = ""
-	
+
 	try:
 		await test_func.call(test_node)
 	except Exception as e:
 		error = "Exception: %s" % str(e)
-	
+
 	var duration_ms = Time.get_ticks_msec() - test_start_time
-	
+
 	test_node.queue_free()
-	
+
 	if error.is_empty():
 		test_results.append({
 			"name": test_name,
@@ -51,13 +51,13 @@ func run_test(test_name: String, test_func: Callable) -> void:
 func run_all_tests() -> void:
 	test_results.clear()
 	print("\n=== Running E2E Test Suite ===\n")
-	
+
 	await get_tree().create_timer(0.1).timeout
-	
+
 	var total_duration = 0
 	for result in test_results:
 		total_duration += result.get("duration_ms", 0)
-	
+
 	all_tests_completed.emit(test_results, total_duration)
 	print("\n=== Test Suite Complete ===")
 	print("Total: %d tests, %d passed, %d failed" % [
@@ -73,14 +73,14 @@ func get_summary() -> Dictionary:
 	var passed = 0
 	var failed = 0
 	var total_duration = 0
-	
+
 	for result in test_results:
 		total_duration += result.get("duration_ms", 0)
 		if result.get("passed", false):
 			passed += 1
 		else:
 			failed += 1
-	
+
 	return {
 		"total": test_results.size(),
 		"passed": passed,
@@ -91,7 +91,7 @@ func get_summary() -> Dictionary:
 func simulate_input(input_name: String, pressed: bool = true) -> void:
 	var event = InputEventKey.new()
 	event.pressed = pressed
-	
+
 	match input_name:
 		"move_left":
 			event.physical_keycode = KEY_A
@@ -109,7 +109,7 @@ func simulate_input(input_name: String, pressed: bool = true) -> void:
 			event.physical_keycode = KEY_UP
 		"aim_down":
 			event.physical_keycode = KEY_DOWN
-	
+
 	Input.parse_input_event(event)
 
 func wait_seconds(seconds: float) -> void:
