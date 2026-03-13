@@ -61,11 +61,11 @@ func reset_pooled_state() -> void:
 	current_health = max_health
 	position = Vector2.ZERO
 	velocity = Vector2.ZERO
-	
+
 	# Disable collision
 	if collision_shape:
 		collision_shape.set_deferred("disabled", true)
-	
+
 	# Reset sprite
 	if sprite:
 		sprite.modulate = Color.WHITE

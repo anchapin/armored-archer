@@ -341,12 +341,12 @@ func prepare_for_scene_change() -> void:
 func _disconnect_node_signals(node: Node) -> void:
 	if node == null or not is_instance_valid(node):
 		return
-	
+
 	# Disconnect all connected signals
 	for connection in node.get_signal_connection_list(""):
 		# Skip built-in signals we want to keep
 		pass
-	
+
 	# For child nodes, recursively disconnect
 	for child in node.get_children():
 		_disconnect_node_signals(child)
@@ -354,10 +354,10 @@ func _disconnect_node_signals(node: Node) -> void:
 func _exit_tree() -> void:
 	# Clean up all pooled objects when ObjectPool is freed
 	cleanup_all()
-	
+
 	# Clear scene references to release memory
 	_arrow_scene = null
 	_enemy_scene = null
 	_hit_effect_scene = null
-	
+
 	print("[ObjectPool] Cleanup complete - all resources released")
