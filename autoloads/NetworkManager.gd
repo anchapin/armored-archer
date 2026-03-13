@@ -344,7 +344,7 @@ func _save_session_to_file() -> void:
 	var file: FileAccess = FileAccess.open(SESSION_FILE, FileAccess.WRITE)
 	if file:
 		var json: JSON = JSON.new()
-		var _discard = file.store_string(json.stringify(session_data))
+		file.store_string(json.stringify(session_data))
 		file.close()
 
 func _load_session_from_file() -> void:
@@ -385,7 +385,7 @@ func logout() -> void:
 
 	var file: FileAccess = FileAccess.open(SESSION_FILE, FileAccess.WRITE)
 	if file:
-		var _discard = file.store_string("{}")
+		file.store_string("{}")
 		file.close()
 
 	session_created.emit(false, "Logged out")
@@ -493,7 +493,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 
 ## Sends an RPC request without waiting for response (fire-and-forget).
 ## Used for notifications like stage completion where we don't need the result.
-func send_rpc_async(rpc_id: String, payload: String, timeout: float = 10.0) -> void:
+func send_rpc_async(rpc_id: String, payload: String, _timeout: float = 10.0) -> void:
 	if not is_session_valid():
 		push_warning("Cannot send RPC: not authenticated")
 		return
@@ -520,22 +520,22 @@ func _log_rpc_latency(rpc_name: String, latency_ms: int) -> void:
 func attempt_reconnection() -> void:
 	if _is_reconnecting:
 		return
-	
+
 	if _retry_attempts >= MAX_RETRY_ATTEMPTS:
 		push_warning("Max reconnection attempts (%d) reached" % MAX_RETRY_ATTEMPTS)
 		reconnection_attempted.emit(false, _retry_attempts)
 		_reset_reconnection_state()
 		return
-	
+
 	_is_reconnecting = true
 	_retry_attempts += 1
-	
+
 	reconnection_attempted.emit(true, _retry_attempts)
-	
+
 	# Start retry timer
 	if _reconnect_timer:
 		_reconnect_timer.queue_free()
-	
+
 	_reconnect_timer = Timer.new()
 	_reconnect_timer.wait_time = RETRY_DELAY_SECONDS * _retry_attempts  # Exponential backoff
 	_reconnect_timer.one_shot = true
@@ -566,13 +566,13 @@ func _reset_reconnection_state() -> void:
 func handle_connection_lost(reason: String = "Network connection lost") -> void:
 	if is_offline:
 		return  # Already in offline mode
-	
+
 	_last_connection_loss_reason = reason
 	is_connected = false
 	is_offline = true
 	connection_lost.emit(reason)
 	connection_status_changed.emit(false)
-	
+
 	# Attempt automatic reconnection
 	attempt_reconnection()
 
@@ -582,7 +582,7 @@ func handle_reconnection() -> void:
 	is_connected = true
 	connection_status_changed.emit(true)
 	_reset_reconnection_state()
-	
+
 	# Refresh session after reconnection
 	if not refresh_token.is_empty():
 		_refresh_session()
@@ -606,3 +606,17 @@ func set_offline_mode(offline: bool) -> void:
 		if offline:
 			is_connected = false
 		connection_status_changed.emit(not offline)
+
+# --- Cleanup ---
+func _exit_tree() -> void:
+	# Clean up HTTP request node
+	if http_request != null:
+		http_request.queue_free()
+		http_request = null
+
+	# Clean up reconnection timer
+	if _reconnect_timer != null:
+		_reconnect_timer.queue_free()
+		_reconnect_timer = null
+
+	print("[NetworkManager] Cleanup complete - all resources released")
