@@ -208,6 +208,19 @@ func _refresh_match_state() -> void:
 func _on_back_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
 
+
+func _exit_tree() -> void:
+	# Disconnect signals to prevent memory leaks
+	if combat_manager:
+		if combat_manager.combat_action_submitted.is_connected(_on_combat_action_submitted):
+			combat_manager.combat_action_submitted.disconnect(_on_combat_action_submitted)
+		if combat_manager.match_state_updated.is_connected(_on_match_state_updated):
+			combat_manager.match_state_updated.disconnect(_on_match_state_updated)
+		if combat_manager.turn_changed.is_connected(_on_turn_changed):
+			combat_manager.turn_changed.disconnect(_on_turn_changed)
+		if combat_manager.combat_ended.is_connected(_on_combat_ended):
+			combat_manager.combat_ended.disconnect(_on_combat_ended)
+
 # --- Set Match ID ---
 func set_match_id(new_match_id: String) -> void:
 	match_id = new_match_id

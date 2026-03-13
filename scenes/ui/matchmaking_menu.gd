@@ -196,6 +196,19 @@ func _show_match_accepted_dialog(match_data: Dictionary) -> void:
 func _on_back_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
 
+
+func _exit_tree() -> void:
+	# Disconnect signals to prevent memory leaks
+	if matchmaker_manager:
+		if matchmaker_manager.matches_loaded.is_connected(_on_matches_loaded):
+			matchmaker_manager.matches_loaded.disconnect(_on_matches_loaded)
+		if matchmaker_manager.match_created.is_connected(_on_match_created):
+			matchmaker_manager.match_created.disconnect(_on_match_created)
+		if matchmaker_manager.match_accepted.is_connected(_on_match_accepted):
+			matchmaker_manager.match_accepted.disconnect(_on_match_accepted)
+		if matchmaker_manager.punch_up_stats_updated.is_connected(_on_punch_up_stats_updated):
+			matchmaker_manager.punch_up_stats_updated.disconnect(_on_punch_up_stats_updated)
+
 # --- Punch Up Statistics ---
 func _on_punch_up_stats_updated(wins: int, losses: int, win_rate: float) -> void:
 	"""Handles Punch Up statistics updates from MatchmakerManager."""

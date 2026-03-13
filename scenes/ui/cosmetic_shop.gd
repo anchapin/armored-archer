@@ -205,3 +205,15 @@ func _on_skin_equipped(skin_id: String, slot: String) -> void:
 # --- Navigation ---
 func _on_back_pressed() -> void:
 	queue_free()
+
+
+func _exit_tree() -> void:
+	# Disconnect signals to prevent memory leaks
+	if store_manager and store_manager.currency_updated.is_connected(_on_currency_updated):
+		store_manager.currency_updated.disconnect(_on_currency_updated)
+	
+	if gem_manager:
+		if gem_manager.skin_purchased.is_connected(_on_skin_purchased):
+			gem_manager.skin_purchased.disconnect(_on_skin_purchased)
+		if gem_manager.skin_equipped.is_connected(_on_skin_equipped):
+			gem_manager.skin_equipped.disconnect(_on_skin_equipped)

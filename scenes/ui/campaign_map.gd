@@ -132,6 +132,17 @@ func _on_progress_updated(chapter_id: String, progress: float) -> void:
 func _on_back_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
+
+func _exit_tree() -> void:
+	# Disconnect signals to prevent memory leaks
+	if CampaignManager:
+		if CampaignManager.stage_unlocked.is_connected(_on_stage_unlocked):
+			CampaignManager.stage_unlocked.disconnect(_on_stage_unlocked)
+		if CampaignManager.stage_completed.is_connected(_on_stage_completed):
+			CampaignManager.stage_completed.disconnect(_on_stage_completed)
+		if CampaignManager.campaign_progress_updated.is_connected(_on_progress_updated):
+			CampaignManager.campaign_progress_updated.disconnect(_on_progress_updated)
+
 func _on_prev_chapter_pressed() -> void:
 	var chapter_index = available_chapters.find(current_chapter)
 	if chapter_index > 0:
