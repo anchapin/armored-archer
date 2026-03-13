@@ -15,6 +15,9 @@ var campaigns_data: Dictionary = {}
 var unlocked_stages: Array = []
 var completed_stages: Array = []
 
+# --- Modifier Pool Unlocks ---
+var unlocked_modifier_pools: Array = []
+
 # --- Analytics Reference ---
 @onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
 
@@ -22,6 +25,7 @@ var completed_stages: Array = []
 signal stage_unlocked(stage_id: String)
 signal stage_completed(stage_id: String)
 signal campaign_progress_updated(chapter_id: String, progress: float)
+signal modifier_pool_unlocked(modifier_id: String)
 
 func _ready() -> void:
 	"""Initializes campaign data and loads saved progress."""
@@ -145,6 +149,14 @@ func handle_boss_defeat(boss_id: String) -> void:
 	match boss_id:
 		"boss_wind":
 			unlock_modifier_pool("piercing_arrow")
+		"boss_fire":
+			unlock_modifier_pool("fire_arrow")
+		"boss_electric":
+			unlock_modifier_pool("lightning_damage")
+		"boss_ice":
+			unlock_modifier_pool("ice_arrow")
+		"boss_earth":
+			unlock_modifier_pool("earth_arrow")
 		"boss_iron":
 			unlock_modifier_pool("iron_forged")
 		"boss_king":
@@ -175,8 +187,39 @@ func unlock_modifier_pool(modifier_id: String) -> void:
 	Parameters:
 		modifier_id: Identifier of the modifier to unlock
 	"""
-	print("Unlocked modifier pool: %s" % modifier_id)
-	pass
+	if not modifier_id in unlocked_modifier_pools:
+		unlocked_modifier_pools.append(modifier_id)
+		modifier_pool_unlocked.emit(modifier_id)
+		
+		# Track modifier unlocked in analytics
+		if analytics and analytics.has_method("log_custom_event"):
+			analytics.log_custom_event("modifier_pool_unlocked", {
+				"modifier_id": modifier_id
+			})
+		
+		print("Unlocked modifier pool: %s" % modifier_id)
+		save_progress()
+	else:
+		print("Modifier pool already unlocked: %s" % modifier_id)
+
+func get_unlocked_modifier_pools() -> Array:
+	"""Returns the list of unlocked modifier pool IDs.
+
+	Returns:
+		Array: List of unlocked modifier pool IDs
+	"""
+	return unlocked_modifier_pools.duplicate()
+
+func is_modifier_pool_unlocked(modifier_id: String) -> bool:
+	"""Checks if a modifier pool is unlocked.
+
+	Parameters:
+		modifier_id: Identifier of the modifier to check
+
+	Returns:
+		bool: True if the modifier pool is unlocked
+	"""
+	return modifier_id in unlocked_modifier_pools
 
 func update_campaign_progress() -> void:
 	"""Calculates and emits progress for each campaign chapter."""
@@ -196,7 +239,8 @@ func save_progress() -> void:
 	"""Saves campaign progress to user://campaign_progress.json."""
 	var save_data = {
 		"unlocked_stages": unlocked_stages,
-		"completed_stages": completed_stages
+		"completed_stages": completed_stages,
+		"unlocked_modifier_pools": unlocked_modifier_pools
 	}
 	var file = FileAccess.open("user://campaign_progress.json", FileAccess.WRITE)
 	if file:
@@ -215,3 +259,4 @@ func load_progress() -> void:
 			var save_data = json.data
 			unlocked_stages = save_data.get("unlocked_stages", [])
 			completed_stages = save_data.get("completed_stages", [])
+			unlocked_modifier_pools = save_data.get("unlocked_modifier_pools", [])

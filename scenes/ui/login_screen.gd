@@ -86,7 +86,8 @@ func _process(delta: float) -> void:
 
 func _exit_tree() -> void:
 	# Disconnect signals to prevent memory leaks
-	if NetworkManager.session_created.is_connected(_on_session_created):
-		NetworkManager.session_created.disconnect(_on_session_created)
-	if NetworkManager.connection_status_changed.is_connected(_on_connection_status_changed):
-		NetworkManager.connection_status_changed.disconnect(_on_connection_status_changed)
+	if NetworkManager:
+		if NetworkManager.session_created.is_connected(_on_session_created):
+			NetworkManager.session_created.disconnect(_on_session_created)
+		if NetworkManager.connection_status_changed.is_connected(_on_connection_status_changed):
+			NetworkManager.connection_status_changed.disconnect(_on_connection_status_changed)
