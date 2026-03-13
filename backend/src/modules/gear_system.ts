@@ -1609,6 +1609,9 @@ export function rpcStageComplete(
   let bossDefeatResult: { defeat_count: number; newly_unlocked_modifiers: string[] } | undefined;
   if (request.boss_defeated && request.boss_id) {
     bossDefeatResult = recordBossDefeat(nk, ctx, logger, request.boss_id);
+    // Re-fetch inventory to get updated modifier pools from boss defeat
+    const updatedInventory = getPlayerInventory(nk, ctx.userId, logger);
+    inventory.unlocked_modifier_pools = updatedInventory.unlocked_modifier_pools;
   }
 
   // Unlock modifier pools when enemy is defeated (non-boss enemies)
