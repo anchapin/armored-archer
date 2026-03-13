@@ -32,8 +32,8 @@ jobs:
       - name: Determine PR number
         id: pr_num
         run: |
-          if [ -n "${{ github.inputs.pr_number }}" ]; then
-            echo "pr_number=${{ github.inputs.pr_number }}" >> $GITHUB_OUTPUT
+          if [ -n "${{ github.event.inputs.pr_number }}" ]; then
+            echo "pr_number=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
           else
             echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           fi
