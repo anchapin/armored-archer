@@ -31,7 +31,7 @@ func _ready() -> void:
 	"""Initializes campaign data and loads saved progress."""
 	load_campaigns_data()
 	load_progress()
-	
+
 	# If no saved progress, initialize with first stage unlocked
 	if unlocked_stages.is_empty():
 		unlocked_stages = ["1_1"]
@@ -121,7 +121,7 @@ func unlock_next_stage(stage_id: String) -> void:
 		if not next_stage_id in unlocked_stages:
 			unlocked_stages.append(next_stage_id)
 			stage_unlocked.emit(next_stage_id)
-			
+
 			# Track stage unlocked in analytics
 			if analytics and analytics.has_method("log_custom_event"):
 				analytics.log_custom_event("stage_unlocked", {
@@ -145,7 +145,7 @@ func handle_boss_defeat(boss_id: String) -> void:
 			stage_data.get("difficulty", "normal"),
 			1  # attempts - could track multiple attempts
 		)
-	
+
 	match boss_id:
 		"boss_wind":
 			unlock_modifier_pool("piercing_arrow")
@@ -168,10 +168,10 @@ func handle_boss_defeat(boss_id: String) -> void:
 
 func _get_stage_with_boss(boss_id: String) -> Dictionary:
 	"""Find the stage that contains a specific boss.
-	
+
 	Parameters:
 		boss_id: The boss identifier
-		
+
 	Returns:
 		Dictionary: Stage data or empty dict if not found
 	"""
@@ -190,13 +190,13 @@ func unlock_modifier_pool(modifier_id: String) -> void:
 	if not modifier_id in unlocked_modifier_pools:
 		unlocked_modifier_pools.append(modifier_id)
 		modifier_pool_unlocked.emit(modifier_id)
-		
+
 		# Track modifier unlocked in analytics
 		if analytics and analytics.has_method("log_custom_event"):
 			analytics.log_custom_event("modifier_pool_unlocked", {
 				"modifier_id": modifier_id
 			})
-		
+
 		print("Unlocked modifier pool: %s" % modifier_id)
 		save_progress()
 	else:
