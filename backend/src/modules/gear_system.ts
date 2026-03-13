@@ -1602,11 +1602,9 @@ export function rpcStageComplete(
     dropped: false,
     gear: null,
   };
-
   // Get player inventory
   const inventory = getPlayerInventory(nk, ctx.userId, logger);
 
-  // Track boss defeat and unlock modifier pools when boss is defeated
   let bossDefeatResult: { defeat_count: number; newly_unlocked_modifiers: string[] } | undefined;
   if (request.boss_defeated && request.boss_id) {
     bossDefeatResult = recordBossDefeat(nk, ctx, logger, request.boss_id);

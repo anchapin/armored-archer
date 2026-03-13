@@ -25,8 +25,11 @@ func _run_tests():
         "res://test/test_object_pool.gd",
         "res://test/test_performance_profiler.gd",
         "res://test/test_profiling_instrumentation.gd",
-        "res://test/test_low_end_device_performance.gd"
+        "res://test/test_low_end_device_performance.gd",
+        "res://test/test_performance_benchmarks.gd"
     ]
+    ]
+>>>>>>> 4f3129e (test: add low-end device performance tests (#479))
 
     var test_root = Node.new()
     test_root.name = "TestRoot"
