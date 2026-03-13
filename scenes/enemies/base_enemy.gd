@@ -55,3 +55,21 @@ func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):
 		if body.has_method("take_damage"):
 			body.take_damage(damage)
+
+## Reset state when returning to pool - called by ObjectPool
+func reset_pooled_state() -> void:
+	current_health = max_health
+	position = Vector2.ZERO
+	velocity = Vector2.ZERO
+	
+	# Disable collision
+	if collision_shape:
+		collision_shape.set_deferred("disabled", true)
+	
+	# Reset sprite
+	if sprite:
+		sprite.modulate = Color.WHITE
+
+## Cleanup when enemy is freed
+func _exit_tree() -> void:
+	AutoAimManager.unregister_enemy(self)
