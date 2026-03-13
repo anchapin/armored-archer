@@ -25,3 +25,12 @@ func _on_restart_button_pressed() -> void:
 	else:
 		GameManager.reset_stage()
 		get_tree().reload_current_scene()
+
+
+func _exit_tree() -> void:
+	# Disconnect signals to prevent memory leaks
+	if GameManager:
+		if GameManager.player_died.is_connected(_on_player_died):
+			GameManager.player_died.disconnect(_on_player_died)
+		if GameManager.game_won.is_connected(_on_game_won):
+			GameManager.game_won.disconnect(_on_game_won)

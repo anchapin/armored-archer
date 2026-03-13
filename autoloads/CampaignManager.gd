@@ -15,6 +15,9 @@ var campaigns_data: Dictionary = {}
 var unlocked_stages: Array = []
 var completed_stages: Array = []
 
+# --- Analytics Reference ---
+@onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
+
 # --- Signals ---
 signal stage_unlocked(stage_id: String)
 signal stage_completed(stage_id: String)
@@ -114,6 +117,14 @@ func unlock_next_stage(stage_id: String) -> void:
 		if not next_stage_id in unlocked_stages:
 			unlocked_stages.append(next_stage_id)
 			stage_unlocked.emit(next_stage_id)
+			
+			# Track stage unlocked in analytics
+			if analytics and analytics.has_method("log_custom_event"):
+				analytics.log_custom_event("stage_unlocked", {
+					"stage_id": next_stage_id,
+					"unlocked_from": stage_id,
+					"chapter": int(current_chapter)
+				})
 
 func handle_boss_defeat(boss_id: String) -> void:
 	"""Handles special rewards for defeating a boss.
@@ -121,6 +132,16 @@ func handle_boss_defeat(boss_id: String) -> void:
 	Parameters:
 		boss_id: Identifier of the defeated boss
 	"""
+	# Track boss defeated in analytics
+	if analytics and analytics.has_method("log_pve_boss_defeated"):
+		var stage_data = _get_stage_with_boss(boss_id)
+		analytics.log_pve_boss_defeated(
+			stage_data.get("id", ""),
+			boss_id,
+			stage_data.get("difficulty", "normal"),
+			1  # attempts - could track multiple attempts
+		)
+	
 	match boss_id:
 		"boss_wind":
 			unlock_modifier_pool("piercing_arrow")
@@ -132,6 +153,21 @@ func handle_boss_defeat(boss_id: String) -> void:
 			unlock_modifier_pool("nightmare_essence")
 		"boss_shadow":
 			unlock_modifier_pool("shadow_touched")
+
+func _get_stage_with_boss(boss_id: String) -> Dictionary:
+	"""Find the stage that contains a specific boss.
+	
+	Parameters:
+		boss_id: The boss identifier
+		
+	Returns:
+		Dictionary: Stage data or empty dict if not found
+	"""
+	for campaign in campaigns_data.get("campaigns", []):
+		for stage in campaign.get("stages", []):
+			if stage.get("boss") == boss_id:
+				return stage
+	return {}
 
 func unlock_modifier_pool(modifier_id: String) -> void:
 	"""Unlocks a modifier pool for gear generation.

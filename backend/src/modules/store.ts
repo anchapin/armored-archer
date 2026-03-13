@@ -1891,9 +1891,14 @@ export async function rpcRevenueCatWebhook(
     });
   }
 
-  // Extract event type (check top-level first for test payloads, then nested under "event")
+  // Extract event type (check nested "event" object first, then top-level)
   const eventObj = webhookData.event as Record<string, unknown> | undefined;
-  const eventType = (webhookData.event_type as string) ||  // Check top-level first (test payloads)
+  const eventType = (eventObj?.type as string) ||
+    (eventObj?.event_type as string) ||
+    (webhookData.event_type as string) ||
+    (webhookData.eventType as string) ||
+    (webhookData.type as string) ||
+    '';
 
   // Normalize event type to lowercase for case-insensitive matching
   const normalizedEventType = eventType.toLowerCase();

@@ -51,9 +51,22 @@ var base_url: String
 signal session_created(success: bool, error_message: String)
 signal session_refreshed(success: bool, error_message: String)
 signal connection_status_changed(is_online: bool)
+signal reconnection_attempted(success: bool, attempt_number: int)
+signal connection_lost(reason: String)
 
 # --- Constants ---
 const SESSION_FILE: String = "user://session_data.json"
+
+# --- Reconnection Configuration ---
+const MAX_RETRY_ATTEMPTS: int = 3
+const RETRY_DELAY_SECONDS: float = 2.0
+const RECONNECT_ON_FOCUS: bool = true
+
+# --- Reconnection State ---
+var _reconnect_timer: Timer = null
+var _retry_attempts: int = 0
+var _is_reconnecting: bool = false
+var _last_connection_loss_reason: String = ""
 
 # --- Environment Variables ---
 func _detect_environment() -> EnvironmentType:
@@ -484,3 +497,96 @@ func _log_rpc_latency(rpc_name: String, latency_ms: int) -> void:
 		var analytics: Node = get_node("/root/AnalyticsManager")
 		if analytics.has_method("log_rpc_latency"):
 			analytics.log_rpc_latency(rpc_name, latency_ms)
+
+# ==================== RECONNECTION HANDLING ====================
+
+## Initiates a reconnection attempt with exponential backoff
+func attempt_reconnection() -> void:
+	if _is_reconnecting:
+		return
+	
+	if _retry_attempts >= MAX_RETRY_ATTEMPTS:
+		push_warning("Max reconnection attempts (%d) reached" % MAX_RETRY_ATTEMPTS)
+		reconnection_attempted.emit(false, _retry_attempts)
+		_reset_reconnection_state()
+		return
+	
+	_is_reconnecting = true
+	_retry_attempts += 1
+	
+	reconnection_attempted.emit(true, _retry_attempts)
+	
+	# Start retry timer
+	if _reconnect_timer:
+		_reconnect_timer.queue_free()
+	
+	_reconnect_timer = Timer.new()
+	_reconnect_timer.wait_time = RETRY_DELAY_SECONDS * _retry_attempts  # Exponential backoff
+	_reconnect_timer.one_shot = true
+	_reconnect_timer.timeout.connect(_on_reconnect_timer_timeout)
+	add_child(_reconnect_timer)
+	_reconnect_timer.start()
+
+## Handles the reconnection timer timeout
+func _on_reconnect_timer_timeout() -> void:
+	if not session_token.is_empty():
+		_refresh_session()
+	elif not device_id.is_empty():
+		authenticate_device()
+	else:
+		# No credentials to reconnect with
+		_is_reconnecting = false
+		reconnection_attempted.emit(false, _retry_attempts)
+
+## Resets the reconnection state
+func _reset_reconnection_state() -> void:
+	_is_reconnecting = false
+	_retry_attempts = 0
+	if _reconnect_timer:
+		_reconnect_timer.queue_free()
+		_reconnect_timer = null
+
+## Handles connection loss - should be called when network is detected as down
+func handle_connection_lost(reason: String = "Network connection lost") -> void:
+	if is_offline:
+		return  # Already in offline mode
+	
+	_last_connection_loss_reason = reason
+	is_connected = false
+	is_offline = true
+	connection_lost.emit(reason)
+	connection_status_changed.emit(false)
+	
+	# Attempt automatic reconnection
+	attempt_reconnection()
+
+## Handles successful reconnection
+func handle_reconnection() -> void:
+	is_offline = false
+	is_connected = true
+	connection_status_changed.emit(true)
+	_reset_reconnection_state()
+	
+	# Refresh session after reconnection
+	if not refresh_token.is_empty():
+		_refresh_session()
+
+## Checks if we are currently in a reconnection attempt
+func is_reconnecting() -> bool:
+	return _is_reconnecting
+
+## Gets the number of retry attempts made
+func get_retry_attempts() -> int:
+	return _retry_attempts
+
+## Checks if offline mode is active
+func is_network_offline() -> bool:
+	return is_offline
+
+## Force sets the offline mode (for UI toggles or testing)
+func set_offline_mode(offline: bool) -> void:
+	if is_offline != offline:
+		is_offline = offline
+		if offline:
+			is_connected = false
+		connection_status_changed.emit(not offline)

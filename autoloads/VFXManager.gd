@@ -55,7 +55,8 @@ func _preload_scenes() -> void:
 
 func _ensure_screen_shake() -> void:
 	"""Ensure screen shake is initialized."""
-	if _screen_shake != null:
+	# Check if existing screen shake is still valid (scene might have changed)
+	if _screen_shake != null and is_instance_valid(_screen_shake):
 		return
 	
 	var screen_shake_scene := load(SCREEN_SHAKE_SCENE)

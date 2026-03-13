@@ -37,6 +37,9 @@ signal rewards_claimed_signal(rewards: Dictionary)
 # --- Network Reference ---
 @onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
 
+# --- Analytics Reference ---
+@onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
+
 # --- Get Season Info ---
 func get_season_info() -> void:
 	"""Retrieves current season information and player ranking."""
@@ -63,6 +66,13 @@ func get_season_info() -> void:
 			"player_score": player_score,
 			"time_remaining": time_remaining
 		})
+		
+		# Track season start in analytics
+		if analytics and analytics.has_method("log_season_start") and current_season.has("id"):
+			analytics.log_season_start(
+				current_season.get("id", 0),
+				current_season.get("name", "Season")
+			)
 
 # --- Get Leaderboard ---
 func get_leaderboard(limit: int = 50) -> void:
@@ -170,6 +180,14 @@ func claim_season_rewards() -> void:
 		season_rewards = response.get("rewards", {})
 		rewards_claimed = response.get("claimed", false)
 		rewards_claimed_signal.emit(season_rewards)
+		
+		# Track season end/rewards claimed in analytics
+		if analytics and analytics.has_method("log_season_end"):
+			analytics.log_season_end(
+				current_season.get("id", 0),
+				current_season.get("name", "Season"),
+				player_rank
+			)
 
 # --- Utility Methods ---
 func get_current_season() -> Dictionary:

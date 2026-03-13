@@ -703,11 +703,11 @@ func log_gear_equipped(gear_id: String, gear_name: String, gear_type: String, sl
 		"platform": platform
 	})
 
-func log_transmog_applied(cosmetic_id: String, cosmetic_name: String, gear_id: String) -> void:
+func log_transmog_applied(cosmetic_id: String, cosmetic_name: String, slot: String) -> void:
 	_log_event(EVENT_TRANSMOG_APPLIED, {
 		"cosmetic_id": cosmetic_id,
 		"cosmetic_name": cosmetic_name,
-		"gear_id": gear_id,
+		"slot": slot,
 		"platform": platform
 	})
 
