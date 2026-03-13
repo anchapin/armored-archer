@@ -8,6 +8,11 @@ import {
   calculateRank,
   generateMatchId,
   PvPMatch,
+  registerRpcListMatches,
+  registerRpcCreateMatch,
+  registerRpcAcceptMatch,
+  registerRpcGetPlayerRank,
+  registerRpcCompleteMatch,
 } from '../matchmaker';
 
 // Mock anti_cheat module
@@ -339,6 +344,13 @@ describe('matchmaker', () => {
       const result = rpcAcceptMatch(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
       expect(parsed.error).toBe('Player stats not found');
+    });
+
+    it('should return validation error for invalid payload', () => {
+      const payload = JSON.stringify({ match_id: 123 });
+      const result = rpcAcceptMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
     });
   });
 
@@ -964,6 +976,44 @@ describe('matchmaker', () => {
       rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
 
       expect(logAudit).toHaveBeenCalled();
+    });
+  });
+
+  describe('registerRpc functions', () => {
+    it('should register rpc handlers on initializer', () => {
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      };
+
+      registerRpcListMatches(mockInitializer as any);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/list_matches',
+        rpcListMatches
+      );
+
+      registerRpcCreateMatch(mockInitializer as any);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/create_match',
+        rpcCreateMatch
+      );
+
+      registerRpcAcceptMatch(mockInitializer as any);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/accept_match',
+        rpcAcceptMatch
+      );
+
+      registerRpcGetPlayerRank(mockInitializer as any);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_player_rank',
+        rpcGetPlayerRank
+      );
+
+      registerRpcCompleteMatch(mockInitializer as any);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/complete_match',
+        rpcCompleteMatch
+      );
     });
   });
 });
