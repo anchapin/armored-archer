@@ -382,7 +382,7 @@ jobs:
       - name: Run manual health check
         run: |
           echo "=== Manual Health Check ==="
-          echo "Environment: ${{ github.inputs.environment }}"
+          echo "Environment: ${{ github.event.inputs.environment }}"
           echo "Time: $(date)"
           
           # In production, perform actual health checks
@@ -391,7 +391,7 @@ jobs:
           # - External services: Check availability
           
           echo ""
-          echo "Running health checks for ${{ github.inputs.environment }}..."
+          echo "Running health checks for ${{ github.event.inputs.environment }}..."
           
           # Mock results
           echo "✅ API: Healthy"
@@ -407,10 +407,10 @@ jobs:
         run: |
           mkdir -p .deployment-metrics
           
-          cat > .deployment-metrics/health-check-${{ github.inputs.environment }}-$(date +%Y%m%d-%H%M%S).json << EOF
+          cat > .deployment-metrics/health-check-${{ github.event.inputs.environment }}-$(date +%Y%m%d-%H%M%S).json << EOF
           {
             "timestamp": "$(date -Iseconds)",
-            "environment": "${{ github.inputs.environment }}",
+            "environment": "${{ github.event.inputs.environment }}",
             "status": "healthy",
             "checks": {
               "api": "healthy",
