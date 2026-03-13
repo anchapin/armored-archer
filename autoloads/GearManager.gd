@@ -11,7 +11,6 @@ extends Node
 
 signal gear_generated(gear_data: Dictionary)
 signal gear_equipped(slot: String, gear_id: String)
-signal gear_unequipped(slot: String)
 signal inventory_updated(inventory: Dictionary)
 
 # Analytics reference
@@ -30,7 +29,7 @@ func _ready() -> void:
 
 	http_request = HTTPRequest.new()
 	add_child(http_request)
-	http_request.request_completed.connect(_on_http_request_completed)
+	var _err = http_request.request_completed.connect(_on_http_request_completed)
 
 	if network_manager and network_manager.is_session_valid():
 		_load_inventory()
@@ -54,8 +53,7 @@ func generate_gear(stage_id: String, boss_defeated: bool) -> void:
 		"boss_defeated": boss_defeated
 	}
 
-	var json: JSON = JSON.new()
-	var json_string: String = json.stringify(body)
+	var json_string: String = JSON.stringify(body)
 
 	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
 	if error != OK:
@@ -80,8 +78,7 @@ func equip_gear(gear_id: String, slot: String) -> void:
 		"slot": slot
 	}
 
-	var json: JSON = JSON.new()
-	var json_string: String = json.stringify(body)
+	var json_string: String = JSON.stringify(body)
 
 	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
 	if error != OK:
@@ -104,8 +101,7 @@ func unequip_gear(slot: String) -> void:
 		"slot": slot
 	}
 
-	var json: JSON = JSON.new()
-	var json_string: String = json.stringify(body)
+	var json_string: String = JSON.stringify(body)
 
 	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
 	if error != OK:
@@ -140,8 +136,7 @@ func unlock_modifier_pool(modifier_id: String) -> void:
 		"modifier_id": modifier_id
 	}
 
-	var json: JSON = JSON.new()
-	var json_string: String = json.stringify(body)
+	var json_string: String = JSON.stringify(body)
 
 	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
 	if error != OK:
@@ -320,10 +315,12 @@ func compare_gear(gear1: Dictionary, gear2: Dictionary) -> Dictionary:
 	var stats2: Dictionary = _get_stat_map(gear2.get("stats", []))
 
 	# Get all unique stat names
-	var all_stats: Array = []
-	all_stats.append_array(stats1.keys())
-	all_stats.append_array(stats2.keys())
-	all_stats = all_stats.unique()
+	var all_stats_dict: Dictionary = {}
+	for s in stats1.keys():
+		all_stats_dict[s] = true
+	for s in stats2.keys():
+		all_stats_dict[s] = true
+	var all_stats: Array = all_stats_dict.keys()
 
 	for stat_name in all_stats:
 		var val1: int = stats1.get(stat_name, 0)
@@ -351,9 +348,9 @@ func _get_stat_map(stats: Array) -> Dictionary:
 	"""
 	var result: Dictionary = {}
 	for stat in stats:
-		var name: String = stat.get("name", "")
+		var stat_name: String = stat.get("name", "")
 		var value: int = stat.get("value", 0)
-		result[name] = value
+		result[stat_name] = value
 	return result
 
 func _calculate_gear_score(gear_data: Dictionary) -> int:

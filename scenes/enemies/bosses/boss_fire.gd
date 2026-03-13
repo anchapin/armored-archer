@@ -78,9 +78,9 @@ func _physics_process(delta: float) -> void:
 			else:
 				velocity = Vector2.ZERO
 	
-	move_and_slide()
+	var _err = move_and_slide()
 
-func update_timers(_delta: float) -> void:
+func update_timers(delta: float) -> void:
 	attack_timer += delta
 	fireball_timer += delta
 	ground_fire_timer += delta

@@ -129,7 +129,7 @@ func load_currency() -> void:
 	current_gold = currency_data.get("gold", 0)
 	is_initialized = true
 
-	emit_signal("currency_updated", current_gems, current_gold)
+	var _err1 = emit_signal("currency_updated", current_gems, current_gold)
 
 func get_gems() -> int:
 	"""Returns current gem balance.
@@ -159,7 +159,7 @@ func add_gems(amount: int, reason: String = "") -> void:
 		return
 	
 	current_gems += amount
-	emit_signal("currency_updated", current_gems, current_gold)
+	var _err2 = emit_signal("currency_updated", current_gems, current_gold)
 	print("Added %d gems. Reason: %s. New balance: %d" % [amount, reason, current_gems])
 
 # --- Purchase Flow ---
@@ -171,12 +171,12 @@ func purchase_product(product_id: String) -> void:
 	"""
 	if not products.has(product_id):
 		push_error("Invalid product ID: %s" % product_id)
-		emit_signal("purchase_failed", product_id, "Invalid product ID")
+		var _err3 = emit_signal("purchase_failed", product_id, "Invalid product ID")
 		return
 
 	if is_purchase_pending:
 		push_error("Purchase already in progress")
-		emit_signal("purchase_failed", product_id, "Purchase already in progress")
+		var _err4 = emit_signal("purchase_failed", product_id, "Purchase already in progress")
 		return
 
 	is_purchase_pending = true
@@ -194,7 +194,7 @@ func purchase_product(product_id: String) -> void:
 	else:
 		# Purchases are only supported on mobile platforms (iOS/Android)
 		push_error("Purchases not supported on platform: %s" % platform)
-		emit_signal("purchase_failed", product_id, "Purchases not supported on this platform")
+		var _err5 = emit_signal("purchase_failed", product_id, "Purchases not supported on this platform")
 		is_purchase_pending = false
 
 func _initiate_revenuecat_purchase(product_id: String) -> void:
@@ -204,7 +204,7 @@ func _initiate_revenuecat_purchase(product_id: String) -> void:
 		revenuecat.purchaseProduct(product_id, _on_revenuecat_purchase_complete)
 	else:
 		push_error("RevenueCat plugin not found. Install RevenueCat plugin for %s" % platform)
-		emit_signal("purchase_failed", product_id, "RevenueCat plugin not installed")
+		var _err6 = emit_signal("purchase_failed", product_id, "RevenueCat plugin not installed")
 
 func _on_revenuecat_purchase_complete(result: Dictionary) -> void:
 	"""Handles RevenueCat purchase completion callback."""
@@ -216,13 +216,13 @@ func _on_revenuecat_purchase_complete(result: Dictionary) -> void:
 	if not success:
 		push_error("RevenueCat purchase failed: %s" % error)
 		is_purchase_pending = false
-		emit_signal("purchase_failed", product_id, error)
+		var _err7 = emit_signal("purchase_failed", product_id, error)
 		return
 
 	if transaction_receipt.is_empty():
 		push_error("No transaction receipt from RevenueCat")
 		is_purchase_pending = false
-		emit_signal("purchase_failed", product_id, "No transaction receipt")
+		var _err8 = emit_signal("purchase_failed", product_id, "No transaction receipt")
 		return
 
 	await _validate_purchase_with_server(product_id, transaction_receipt)
@@ -237,7 +237,7 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		is_purchase_pending = false
-		emit_signal("purchase_failed", product_id, "Not connected to server")
+		var _err9 = emit_signal("purchase_failed", product_id, "Not connected to server")
 		return
 
 	var payload = JSON.stringify({
@@ -271,17 +271,17 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 	# Handle network failure scenarios
 	if has_timed_out:
 		push_error("Purchase validation timed out for product: %s" % product_id)
-		emit_signal("purchase_failed", product_id, "Network timeout - please try again")
+		var _err10 = emit_signal("purchase_failed", product_id, "Network timeout - please try again")
 		return
 
 	if response == null:
 		push_error("Purchase validation failed - no response received for product: %s" % product_id)
-		emit_signal("purchase_failed", product_id, "Network error - please try again")
+		var _err11 = emit_signal("purchase_failed", product_id, "Network error - please try again")
 		return
 
 	if response.has("error"):
 		push_error("Purchase validation failed: %s" % response.error)
-		emit_signal("purchase_failed", product_id, response.error)
+		var _err12 = emit_signal("purchase_failed", product_id, response.error)
 		return
 
 	var result = JSON.parse_string(response)
@@ -289,8 +289,8 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 	if result.get("success", false):
 		var gems_awarded: int = result.get("gems_awarded", 0)
 		current_gems = result.get("new_balance", current_gems)
-		emit_signal("currency_updated", current_gems, current_gold)
-		emit_signal("purchase_succeeded", product_id, gems_awarded)
+		var _err13 = emit_signal("currency_updated", current_gems, current_gold)
+		var _err14 = emit_signal("purchase_succeeded", product_id, gems_awarded)
 		
 		# Track purchase completed in analytics for conversion
 		if has_node("/root/AnalyticsManager"):
@@ -315,7 +315,7 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 					result.get("offer_id", "")
 				)
 	else:
-		emit_signal("purchase_failed", product_id, "Validation failed")
+		var _err15 = emit_signal("purchase_failed", product_id, "Validation failed")
 		
 		# Track purchase failed in analytics
 		if has_node("/root/AnalyticsManager"):
@@ -363,7 +363,7 @@ func spend_gems(amount: int, reason: String = "") -> void:
 
 	if result.get("success", false):
 		current_gems = result.get("new_balance", current_gems)
-		emit_signal("currency_updated", current_gems, current_gold)
+		var _err16 = emit_signal("currency_updated", current_gems, current_gold)
 
 # --- Product Info ---
 func get_products() -> Dictionary:

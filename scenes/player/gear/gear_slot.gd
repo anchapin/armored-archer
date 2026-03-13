@@ -8,7 +8,8 @@ enum SlotType {
 	HELM,
 	ARMOR,
 	BOW,
-	ARROW
+	ARROW,
+	AMULET
 }
 
 @export var slot_type: SlotType = SlotType.HELM
@@ -26,7 +27,8 @@ var slot_type_strings: Dictionary = {
 	SlotType.HELM: "helm",
 	SlotType.ARMOR: "armor",
 	SlotType.BOW: "bow",
-	SlotType.ARROW: "arrow"
+	SlotType.ARROW: "arrow",
+	SlotType.AMULET: "amulet"
 }
 
 func _ready() -> void:
@@ -38,9 +40,9 @@ func _ready() -> void:
 
 	# Connect to gear manager signals if available
 	if gear_manager:
-		gear_manager.inventory_updated.connect(_on_inventory_updated)
-		gear_manager.gear_equipped.connect(_on_gear_equipped)
-		gear_manager.gear_unequipped.connect(_on_gear_unequipped)
+		var _err1 = gear_manager.inventory_updated.connect(_on_inventory_updated)
+		var _err2 = gear_manager.gear_equipped.connect(_on_gear_equipped)
+		var _err3 = gear_manager.gear_unequipped.connect(_on_gear_unequipped)
 
 		# Load initial equipped gear
 		_refresh_equipped_gear()
@@ -95,10 +97,16 @@ func _set_base_sprite_texture(texture: Texture2D) -> void:
 		base_sprite.texture = texture
 		base_sprite.visible = true
 
-func set_skin(skin_id: String, texture: Texture2D) -> void:
-	self.skin_id = skin_id
+func set_skin(p_skin_id: String, p_texture: Texture2D) -> void:
+	"""Updates the slot with a specific cosmetic skin.
+
+	Parameters:
+		p_skin_id: Identifier of the skin to apply
+		p_texture: Texture resource for the skin
+	"""
+	skin_id = p_skin_id
 	if skin_sprite:
-		skin_sprite.texture = texture
+		skin_sprite.texture = p_texture
 		skin_sprite.visible = true
 
 func clear_skin() -> void:

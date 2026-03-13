@@ -118,7 +118,7 @@ func _spawn_particle(effect_scene: PackedScene, global_position: Vector2) -> voi
 	
 	# Auto-cleanup after effect completes
 	effect.emitting = true
-	effect.finished.connect(effect.queue_free)
+	var _err = effect.finished.connect(effect.queue_free)
 
 
 # === Damage Popup Methods ===
@@ -231,9 +231,9 @@ func play_combat_vfx(
 			trigger_heavy_shake()
 		"lightning":
 			trigger_medium_shake()
-		"hit" if is_crit:
+		"hit" when is_crit:
 			trigger_heavy_shake()
-		"hit" if not is_miss:
+		"hit" when not is_miss:
 			trigger_medium_shake()
 
 ## Clean up resources when the node exits the tree

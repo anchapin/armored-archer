@@ -12,7 +12,6 @@ extends Node
 # --- Transition Settings ---
 var _transition_duration: float = 0.3  # Default transition duration in seconds
 var _fade_enabled: bool = true
-var _use_fast_transition_on_budget: bool = true
 
 # --- UI Optimization Settings ---
 var _ui_animation_enabled: bool = true
@@ -77,10 +76,10 @@ func transition_to_scene(scene_path: String) -> void:
 	if _fade_enabled and not PerformanceProfiler.is_budget_device():
 		# Use fade transition on better devices
 		# For now, just do immediate change
-		tree.change_scene_to_file(scene_path)
+		var _err = tree.change_scene_to_file(scene_path)
 	else:
 		# Direct change for budget devices
-		tree.change_scene_to_file(scene_path)
+		var _err = tree.change_scene_to_file(scene_path)
 
 ## Add a child with optimized animation
 func add_child_with_animation(child: Node, parent: Node) -> void:
@@ -90,15 +89,15 @@ func add_child_with_animation(child: Node, parent: Node) -> void:
 		# Simple scale-in animation for non-budget devices
 		child.scale = Vector2.ZERO
 		var tween = create_tween()
-		tween.tween_property(child, "scale", Vector2.ONE, _transition_duration).set_ease(Tween.EASE_OUT)
+		var _t = tween.tween_property(child, "scale", Vector2.ONE, _transition_duration).set_ease(Tween.EASE_OUT)
 
 ## Remove a child with optimized animation
 func remove_child_with_animation(child: Node) -> void:
 	if _ui_animation_enabled and not PerformanceProfiler.is_budget_device():
 		# Simple fade-out animation for non-budget devices
 		var tween = create_tween()
-		tween.tween_property(child, "modulate:a", 0.0, _transition_duration)
-		tween.tween_callback(child.queue_free)
+		var _t1 = tween.tween_property(child, "modulate:a", 0.0, _transition_duration)
+		var _t2 = tween.tween_callback(child.queue_free)
 	else:
 		# Immediate removal for budget devices
 		child.queue_free()
@@ -113,10 +112,4 @@ func refresh_optimizations() -> void:
 
 ## Clean up resources when the node exits the tree
 func _exit_tree() -> void:
-	# Kill any active tweens to prevent memory leaks during scene transitions
-	# This is especially important when scenes are changed while animations are running
-	for child in get_children():
-		if child is Tween:
-			child.kill()
-			child.queue_free()
-	print("[UITransitionOptimizer] Cleanup complete - tweens killed")
+	print("[UITransitionOptimizer] Cleanup complete")

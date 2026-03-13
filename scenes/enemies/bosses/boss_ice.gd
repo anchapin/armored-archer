@@ -89,9 +89,9 @@ func _physics_process(delta: float) -> void:
 	if phase >= 3:
 		handle_blizzard(delta)
 	
-	move_and_slide()
+	var _err = move_and_slide()
 
-func update_timers(_delta: float) -> void:
+func update_timers(delta: float) -> void:
 	attack_timer += delta
 	ice_projectile_timer += delta
 	ice_spikes_timer += delta
@@ -153,7 +153,7 @@ func fire_ice_projectile() -> void:
 			ice_projectile.set_damage(dmg)
 		
 		# Apply slow effect on hit
-		ice_projectile.tree_exiting.connect(func(): 
+		var _err = ice_projectile.tree_exiting.connect(func(): 
 			if player_ref and is_instance_valid(player_ref):
 				if player_ref.has_method("apply_slow"):
 					var dur = ice_slow_duration

@@ -31,7 +31,7 @@ func _ready() -> void:
 	current_health = max_health
 	add_to_group("Enemies")
 	if hurt_area:
-		hurt_area.body_entered.connect(_on_hurt_area_body_entered)
+		var _err = hurt_area.body_entered.connect(_on_hurt_area_body_entered)
 
 	AutoAimManager.register_enemy(self)
 
