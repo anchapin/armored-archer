@@ -627,7 +627,71 @@ describe('gear_system', () => {
 
   describe('rpcStageComplete with boss_id for modifier unlock', () => {
     it('should unlock modifier pools when boss is defeated with boss_id', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      // Initialize with empty inventory and boss defeat data to simulate new player
+      const initialInventory = {
+        gear: [],
+        loadout: { helm: null, armor: null, bow: null, arrow: null, amulet: null },
+        unlocked_modifier_pools: [],
+      };
+      const initialBossDefeatData = {
+        user_id: 'test-user',
+        defeats: {},
+        unlocked_modifiers: [],
+      };
+      
+      // Track calls to simulate storage state changes
+      let callCount = 0;
+      mockNk.storageRead = jest.fn((objects: { collection: string; key: string; userId?: string }[]) => {
+        callCount++;
+        if (callCount <= 2) {
+          // Initial reads for getPlayerInventory and getBossDefeatData
+          return objects.map((obj) => {
+            if (obj.collection === 'player_inventory') {
+              return {
+                collection: 'player_inventory',
+                key: 'test-user',
+                value: JSON.stringify(initialInventory),
+                version: '1',
+              };
+            } else if (obj.collection === 'boss_defeat_tracking') {
+              return {
+                collection: 'boss_defeat_tracking',
+                key: 'test-user',
+                value: JSON.stringify(initialBossDefeatData),
+                version: '1',
+              };
+            }
+            return { collection: obj.collection, key: obj.key, value: '' };
+          });
+        }
+        // Subsequent reads (after storageWrite) - return updated data
+        return objects.map((obj) => {
+          if (obj.collection === 'player_inventory') {
+            return {
+              collection: 'player_inventory',
+              key: 'test-user',
+              value: JSON.stringify({
+                ...initialInventory,
+                unlocked_modifier_pools: ['piercing_arrow', 'wind_fury'],
+              }),
+              version: '1',
+            };
+          } else if (obj.collection === 'boss_defeat_tracking') {
+            return {
+              collection: 'boss_defeat_tracking',
+              key: 'test-user',
+              value: JSON.stringify({
+                ...initialBossDefeatData,
+                defeats: { boss_wind: 1 },
+                unlocked_modifiers: ['piercing_arrow', 'wind_fury'],
+              }),
+              version: '1',
+            };
+          }
+          return { collection: obj.collection, key: obj.key, value: '' };
+        });
+      });
+      
       jest.spyOn(Math, 'random').mockReturnValue(0.1);
 
       const payload = JSON.stringify({
@@ -668,14 +732,57 @@ describe('gear_system', () => {
         equipped_gear: {},
         unlocked_modifier_pools: ['piercing_arrow'],
       };
+      const existingBossDefeatData = {
+        user_id: 'test-user',
+        defeats: { boss_wind: 1 }, // Already defeated once
+        unlocked_modifiers: ['piercing_arrow'],
+      };
 
-      mockNk.storageRead = jest.fn().mockReturnValue([
-        {
-          collection: 'player_inventory',
-          key: 'test-user',
-          value: JSON.stringify(existingInventory),
-        },
-      ]);
+      // Track calls to simulate storage state changes
+      let callCount = 0;
+      mockNk.storageRead = jest.fn((objects: { collection: string; key: string; userId?: string }[]) => {
+        callCount++;
+        if (callCount <= 2) {
+          // Initial reads for getPlayerInventory and getBossDefeatData
+          return objects.map((obj) => {
+            if (obj.collection === 'player_inventory') {
+              return {
+                collection: 'player_inventory',
+                key: 'test-user',
+                value: JSON.stringify(existingInventory),
+                version: '1',
+              };
+            } else if (obj.collection === 'boss_defeat_tracking') {
+              return {
+                collection: 'boss_defeat_tracking',
+                key: 'test-user',
+                value: JSON.stringify(existingBossDefeatData),
+                version: '1',
+              };
+            }
+            return { collection: obj.collection, key: obj.key, value: '' };
+          });
+        }
+        // Subsequent reads (after storageWrite) - return updated data
+        return objects.map((obj) => {
+          if (obj.collection === 'player_inventory') {
+            return {
+              collection: 'player_inventory',
+              key: 'test-user',
+              value: JSON.stringify(existingInventory),
+              version: '1',
+            };
+          } else if (obj.collection === 'boss_defeat_tracking') {
+            return {
+              collection: 'boss_defeat_tracking',
+              key: 'test-user',
+              value: JSON.stringify(existingBossDefeatData),
+              version: '1',
+            };
+          }
+          return { collection: obj.collection, key: obj.key, value: '' };
+        });
+      });
       jest.spyOn(Math, 'random').mockReturnValue(0.1);
 
       const payload = JSON.stringify({
