@@ -50,7 +50,7 @@ func _exit_tree() -> void:
 	# Disconnect signals to prevent memory leaks
 	if SafeAreaManager.safe_area_changed.is_connected(_on_safe_area_changed):
 		SafeAreaManager.safe_area_changed.disconnect(_on_safe_area_changed)
-	
+
 	# Disconnect from boss signals if boss exists
 	if boss_ref and is_instance_valid(boss_ref):
 		if boss_ref.has_signal("health_changed") and boss_ref.health_changed.is_connected(_on_boss_health_changed):
