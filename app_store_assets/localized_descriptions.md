@@ -9,19 +9,19 @@ For iOS App Store submission, create the following localization files:
 ### English (en)
 ```
 Title: Armored Archer
-Short Description: An epic mobile archery RPG with PvP battles
+Short Description: An epic archery RPG with bow combat & PvP battles
 Full Description: 
 Armored Archer is an action-packed mobile RPG where you play as a skilled archer 
-in a fantasy world. Build your character, collect powerful gear, and battle 
-players worldwide in real-time PvP combat.
+in a fantasy world. Master the bow, engage in epic combat, and battle players 
+worldwide in real-time PvP.
 
 FEATURES:
-- Intuitive touch controls for aiming and shooting
-- Stunning 3D graphics and smooth animations
-- Deep character customization with transmog system
-- Epic PvP battles with matchmaking
+- Master the bow with intuitive touch controls for aiming and shooting
+- Stunning 3D graphics and smooth archery animations
+- Deep character customization with armor and gear systems
+- Epic PvP battles with competitive matchmaking
 - Regular seasonal content and events
-- Leaderboards and rankings
+- Leaderboards and rankings to prove your skill
 - In-app purchases for cosmetics
 
 Download now and become the ultimate Armored Archer!
@@ -113,13 +113,13 @@ Armored Archer — это насыщенный экшеном мобильный
 For Android, add descriptions directly in Play Console during submission.
 
 ### English
-- Short Description (80 chars max): An epic archery RPG with PvP battles
+- Short Description (80 chars max): An epic archery RPG with bow combat & PvP battles
 - Full Description (4000 chars max): [Use iOS full description as template]
 
 ## Keywords
 
 iOS Keywords (100 chars limit total):
-archer,rpg,game,action,pvp,battle,multiplayer,fantasy,adventure,mobile
+archery,archer,bow,rpg,fantasy,pvp,battle,combat,multiplayer,leaderboard
 
 ## Notes
 
