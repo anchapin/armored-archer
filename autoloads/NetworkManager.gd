@@ -491,6 +491,22 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 
 	return response_data
 
+## Sends an RPC request without waiting for response (fire-and-forget).
+## Used for notifications like stage completion where we don't need the result.
+func send_rpc_async(rpc_id: String, payload: String, timeout: float = 10.0) -> void:
+	if not is_session_valid():
+		push_warning("Cannot send RPC: not authenticated")
+		return
+
+	var url: String = "%s/v2/rpc/%s" % [base_url, rpc_id]
+	var headers: PackedStringArray = get_auth_headers()
+	headers.append("Content-Type: application/json")
+
+	# Fire request without waiting - we don't care about the response
+	var error_code: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, payload)
+	if error_code != OK:
+		push_warning("Failed to send async RPC: %s" % rpc_id)
+
 func _log_rpc_latency(rpc_name: String, latency_ms: int) -> void:
 	# Use AnalyticsManager if available
 	if has_node("/root/AnalyticsManager"):
