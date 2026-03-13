@@ -186,6 +186,7 @@ declare namespace Runtime {
     ): StreamUserListResult[];
     streamCount(stream: Stream): number;
     storageDelete(objects: StorageRead[]): void;
+    dbQuery(query: string, params?: unknown[]): unknown[];
   }
 
   /**

@@ -291,8 +291,42 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 		current_gems = result.get("new_balance", current_gems)
 		emit_signal("currency_updated", current_gems, current_gold)
 		emit_signal("purchase_succeeded", product_id, gems_awarded)
+		
+		# Track purchase completed in analytics for conversion
+		if has_node("/root/AnalyticsManager"):
+			var analytics: Node = get_node("/root/AnalyticsManager")
+			var product_info: Dictionary = products.get(product_id, {})
+			if analytics.has_method("log_purchase_completed"):
+				analytics.log_purchase_completed(
+					product_id,
+					product_info.get("display_name", ""),
+					product_info.get("type", ""),
+					product_info.get("price_cents", 0),
+					"USD",
+					result.get("transaction_id", "")
+				)
+			# Also log gem purchase specifically
+			if analytics.has_method("log_gem_purchased"):
+				analytics.log_gem_purchased(
+					product_info.get("gem_amount", 0),
+					product_info.get("price_cents", 0),
+					"USD",
+					"iap",
+					result.get("offer_id", "")
+				)
 	else:
 		emit_signal("purchase_failed", product_id, "Validation failed")
+		
+		# Track purchase failed in analytics
+		if has_node("/root/AnalyticsManager"):
+			var analytics: Node = get_node("/root/AnalyticsManager")
+			var product_info: Dictionary = products.get(product_id, {})
+			if analytics.has_method("log_purchase_failed"):
+				analytics.log_purchase_failed(
+					product_id,
+					product_info.get("display_name", ""),
+					"Validation failed"
+				)
 
 # --- Spend Gems ---
 func spend_gems(amount: int, reason: String = "") -> void:

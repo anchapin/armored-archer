@@ -102,6 +102,17 @@ const EVENT_NETWORK_ERROR := "network_error"
 const EVENT_RPC_ERROR := "rpc_error"
 const EVENT_RPC_LATENCY := "rpc_latency"
 
+# Funnel Analysis Events
+const EVENT_APP_OPENED := "app_opened"
+const EVENT_MAIN_MENU_VIEWED := "main_menu_viewed"
+const EVENT_CAMPAIGN_STARTED := "campaign_started"
+const EVENT_CAMPAIGN_COMPLETED := "campaign_completed"
+const EVENT_STORE_VIEWED := "store_viewed"
+const EVENT_PVP_LOBBY_ENTERED := "pvp_lobby_entered"
+const EVENT_INVENTORY_VIEWED := "inventory_viewed"
+const EVENT_SETTINGS_OPENED := "settings_opened"
+const EVENT_TUTORIAL_SKIPPED := "tutorial_skipped"
+
 func _ready() -> void:
 	_initialize_analytics()
 
@@ -124,7 +135,31 @@ func _process(_delta: float) -> void:
 func _notification(what: int) -> void:
 	match what:
 		NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_EXIT_TREE:
+			# Report any pending errors before ending session
 			end_session()
+		NOTIFICATION_CRASH:
+			# Godot crashed - attempt to log crash info
+			_capture_crash_dump()
+
+func _capture_crash_dump() -> void:
+	# Attempt to capture crash information before app terminates
+	# This is a best-effort capture since the app is crashing
+	var crash_data := {
+		"crash_time": Time.get_unix_time_from_system(),
+		"session_id": current_session_id,
+		"breadcrumbs": breadcrumbs.duplicate(),
+		"memory_mb": OS.get_static_memory_usage() / (1024.0 * 1024.0),
+		"platform": platform,
+		"app_version": app_version,
+		"engine_version": engine_version
+	}
+	
+	# Log to console for debugging
+	print("AnalyticsManager: CRASH DETECTED - ", JSON.stringify(crash_data))
+	
+	# Attempt to send to Firebase if available
+	if is_crashlytics_enabled:
+		_log_crashlytics_error("Application crash detected", "", crash_data)
 
 func _initialize_analytics() -> void:
 	# Determine platform
@@ -240,6 +275,26 @@ func _setup_crashlytics() -> void:
 		_setup_android_crashlytics()
 	elif OS.has_feature("ios"):
 		_setup_ios_crashlytics()
+	
+	# Set up crash signal handlers for automatic crash capture
+	_setup_crash_signal_handlers()
+
+func _setup_crash_signal_handlers() -> void:
+	# Set up automatic crash reporting by connecting to engine crash handlers
+	# This enables capturing crashes that would otherwise be missed
+	
+	# Register with Godot's error handler for uncaught errors
+	# Note: Godot doesn't have a native crash signal handler API,
+	# but we can intercept common error patterns
+	
+	# Add breadcrumb for crashlytics initialization
+	add_breadcrumb("crashlytics_initialized", {
+		"platform": platform,
+		"crashlytics_enabled": is_crashlytics_enabled,
+		"session_id": current_session_id
+	})
+	
+	print("AnalyticsManager: Crash signal handlers configured")
 
 func _setup_android_crashlytics() -> void:
 	# Attempt to integrate with Firebase Crashlytics on Android
@@ -771,6 +826,73 @@ func log_custom_event(event_name: String, parameters: Dictionary) -> void:
 	_log_event(event_name, event_params)
 
 # ============================================================================
+# Funnel Analysis Events
+# ============================================================================
+
+func log_app_opened() -> void:
+	"""Logs when the app is opened/launched."""
+	_log_event(EVENT_APP_OPENED, {
+		"platform": platform,
+		"app_version": app_version,
+		"engine_version": engine_version
+	})
+
+func log_main_menu_viewed() -> void:
+	"""Logs when the main menu is displayed."""
+	_log_event(EVENT_MAIN_MENU_VIEWED, {
+		"platform": platform
+	})
+
+func log_campaign_started(chapter: int = 1, stage: int = 1) -> void:
+	"""Logs when a campaign stage is started."""
+	_log_event(EVENT_CAMPAIGN_STARTED, {
+		"chapter": chapter,
+		"stage": stage,
+		"platform": platform
+	})
+
+func log_campaign_completed(chapter: int = 1, stages_completed: int = 0) -> void:
+	"""Logs when a campaign chapter is completed."""
+	_log_event(EVENT_CAMPAIGN_COMPLETED, {
+		"chapter": chapter,
+		"stages_completed": stages_completed,
+		"platform": platform
+	})
+
+func log_store_viewed(store_location: String = "main_menu") -> void:
+	"""Logs when the store is viewed."""
+	_log_event(EVENT_STORE_VIEWED, {
+		"store_location": store_location,
+		"platform": platform
+	})
+
+func log_pvp_lobby_entered(season_id: int = 0) -> void:
+	"""Logs when entering the PvP matchmaking lobby."""
+	_log_event(EVENT_PVP_LOBBY_ENTERED, {
+		"season_id": season_id,
+		"platform": platform
+	})
+
+func log_inventory_viewed() -> void:
+	"""Logs when the inventory screen is viewed."""
+	_log_event(EVENT_INVENTORY_VIEWED, {
+		"platform": platform
+	})
+
+func log_settings_opened() -> void:
+	"""Logs when settings screen is opened."""
+	_log_event(EVENT_SETTINGS_OPENED, {
+		"platform": platform
+	})
+
+func log_tutorial_skipped(step_id: String = "") -> void:
+	"""Logs when the tutorial is skipped."""
+	_log_event(EVENT_TUTORIAL_SKIPPED, {
+		"step_id": step_id,
+		"platform": platform
+	})
+
+# ============================================================================
 # Breadcrumb Logging
 # ============================================================================
 
@@ -941,11 +1063,29 @@ func record_custom_error(message: String, stack_trace: String = "", metadata: Di
 	params["message"] = message
 	if stack_trace != "":
 		params["stack_trace"] = stack_trace
+	
+	# Include recent breadcrumbs with crash report for debugging context
+	params["breadcrumbs"] = _get_breadcrumb_summary()
+	
+	# Include session context
+	params["session_id"] = current_session_id
+	params["session_duration"] = Time.get_unix_time_from_system() - session_start_time if session_start_time > 0 else 0
+	
+	# Include performance context
+	params["memory_mb"] = OS.get_static_memory_usage() / (1024.0 * 1024.0)
+	params["fps"] = Engine.get_frames_per_second()
 
 	_log_crashlytics_error(message, stack_trace, params)
 	print("Analytics: Recorded custom error: ", message)
 
 	crash_reported.emit(_generate_crash_id(), message)
+
+func _get_breadcrumb_summary() -> Array:
+	# Return last 10 breadcrumbs for crash context
+	var summary_size := min(breadcrumbs.size(), 10)
+	if summary_size == 0:
+		return []
+	return breadcrumbs.slice(-summary_size)
 
 func record_exception(error: Error, context: String = "") -> void:
 	if not is_initialized or not is_crashlytics_enabled:

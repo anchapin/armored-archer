@@ -14,6 +14,9 @@ signal gear_equipped(slot: String, gear_id: String)
 signal gear_unequipped(slot: String)
 signal inventory_updated(inventory: Dictionary)
 
+# Analytics reference
+@onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
+
 var http_request: HTTPRequest
 var network_manager: NetworkManager
 
@@ -175,6 +178,17 @@ func _process_payload(payload: Dictionary, _response_data: Dictionary) -> void:
 		unlocked_modifier_pools = payload.inventory.get("unlocked_modifier_pools", [])
 		gear_generated.emit(gear_data)
 		inventory_updated.emit(_get_full_inventory())
+		
+		# Track gear obtained in analytics
+		if analytics and analytics.has_method("log_gear_obtained"):
+			var gear_id: String = gear_data.get("id", "")
+			var gear_name: String = gear_data.get("name", "")
+			var gear_type: String = gear_data.get("type", "")
+			var rarity: String = gear_data.get("rarity", "common")
+			var source: String = "stage_drop"
+			if payload.has("source"):
+				source = payload.source
+			analytics.log_gear_obtained(gear_id, gear_name, gear_type, rarity, source)
 
 	if payload.has("success") and payload.success:
 		if payload.has("equipped_gear"):
@@ -182,7 +196,12 @@ func _process_payload(payload: Dictionary, _response_data: Dictionary) -> void:
 			if payload.has("gear"):
 				var slot: String = payload.gear.type
 				var gear_id: String = payload.gear.id
+				var gear_name: String = payload.gear.get("name", "")
 				gear_equipped.emit(slot, gear_id)
+				
+				# Track gear equipped in analytics
+				if analytics and analytics.has_method("log_gear_equipped"):
+					analytics.log_gear_equipped(gear_id, gear_name, payload.gear.type, slot)
 			inventory_updated.emit(_get_full_inventory())
 
 		if payload.has("unlocked_modifier_pools"):

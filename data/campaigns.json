@@ -50,13 +50,13 @@
           "id": "2_3",
           "name": "The Armory",
           "waves": 5,
-          "boss": "boss_iron"
+          "boss": "boss_fire"
         },
         {
           "id": "2_4",
           "name": "Throne Room",
           "waves": 6,
-          "boss": "boss_king"
+          "boss": "boss_ice"
         }
       ]
     },
@@ -80,13 +80,13 @@
           "id": "3_3",
           "name": "Cursed Grove",
           "waves": 5,
-          "boss": "boss_nightmare"
+          "boss": "boss_electric"
         },
         {
           "id": "3_4",
           "name": "Ancient Shrine",
           "waves": 6,
-          "boss": "boss_shadow"
+          "boss": "boss_king"
         }
       ]
     }

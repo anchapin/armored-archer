@@ -192,6 +192,12 @@ func spawn_boss(boss_name: String) -> void:
 			boss_scene = preload("res://scenes/enemies/bosses/boss_basic.tscn")
 		"boss_wind":
 			boss_scene = preload("res://scenes/enemies/bosses/boss_wind.tscn")
+		"boss_fire":
+			boss_scene = preload("res://scenes/enemies/bosses/boss_fire.tscn")
+		"boss_ice":
+			boss_scene = preload("res://scenes/enemies/bosses/boss_ice.tscn")
+		"boss_electric":
+			boss_scene = preload("res://scenes/enemies/bosses/boss_electric.tscn")
 		"boss_iron":
 			# boss_iron - Use boss_basic as placeholder
 			boss_scene = preload("res://scenes/enemies/bosses/boss_basic.tscn")

@@ -73,6 +73,29 @@ The analytics system tracks user behavior across the game client and backend ser
 | `rpc_error` | RPC call fails | rpc_name, error_code |
 | `rpc_latency` | RPC call latency | rpc_name, latency_ms |
 
+### Funnel Analysis Events
+
+| Event Name | Description | Properties |
+|------------|-------------|------------|
+| `app_opened` | User launches the app | platform, app_version, engine_version |
+| `main_menu_viewed` | User sees main menu | platform |
+| `campaign_started` | User starts campaign stage | chapter, stage, platform |
+| `campaign_completed` | User completes campaign chapter | chapter, stages_completed, platform |
+| `store_viewed` | User opens store | store_location, platform |
+| `pvp_lobby_entered` | User enters PvP lobby | season_id, platform |
+| `inventory_viewed` | User opens inventory | platform |
+| `settings_opened` | User opens settings | platform |
+| `tutorial_skipped` | User skips tutorial | step_id, platform |
+
+### Custom Events
+
+| Event Name | Description | Properties |
+|------------|-------------|------------|
+| `xp_gained` | Player gains XP | amount, total_xp, level, source |
+| `game_started` | Game session starts | stage, stage_id, timestamp |
+| `game_won` | Player wins game | stage, stage_id, duration_seconds |
+| `game_lost` | Player loses game | stage, stage_id, duration_seconds, reason |
+
 ## Dashboard Setup
 
 ### Mixpanel Dashboard
@@ -234,3 +257,79 @@ ANALYTICS_CUSTOM_ENDPOINT=https://your-server.com/track
 1. Analytics events are queued and sent asynchronously
 2. In high-traffic scenarios, consider batching events
 3. Monitor server resource usage for external API calls
+
+## Firebase Analytics Setup
+
+### Configuration
+
+Firebase Analytics is automatically configured when running on mobile platforms (iOS/Android). The following configuration files are required:
+
+- **Android**: `res://firebase_config/google-services.json`
+- **iOS**: `res://firebase_config/GoogleService-Info.plist`
+
+### Firebase Console Dashboard
+
+View your analytics data in the Firebase Console:
+
+1. Go to [Firebase Console](https://console.firebase.google.com)
+2. Select your project
+3. Navigate to **Analytics** > **Dashboard**
+
+### Key Firebase Analytics Reports
+
+#### User Acquisition
+- New vs Returning Users
+- Traffic Sources
+- User Properties (platform, version, country)
+
+#### Engagement
+- Daily/Weekly Active Users
+- Session Duration
+- Screens Views
+
+#### Monetization (Conversion Tracking)
+- In-App Purchase Revenue
+- Conversion Rate
+- ARPPU
+
+#### Events
+- Event Count
+- Key Events (automatically tracked)
+- Custom Events
+
+### Recommended Funnels (Firebase)
+
+1. **App Open → Main Menu → Store → Purchase**
+   - Track store conversion rate
+
+2. **App Open → Tutorial Start → Tutorial Complete**
+   - Track tutorial completion
+
+3. **Campaign Start → Campaign Stage Complete**
+   - Track stage progression
+
+4. **PvP Lobby → Match Start → Match Complete**
+   - Track PvP engagement
+
+### Debugging Firebase Events
+
+Use Firebase DebugView to test events during development:
+
+```bash
+# Android
+adb shell setprop debug.firebase.analytics.app com.armoredarcher.game
+
+# iOS (via Xcode)
+- Enable "Debug" scheme
+- Set launch argument: -FIRDebugEnabled
+```
+
+### Converting Firebase Events to Custom Dashboard
+
+Firebase events are also forwarded to the backend for cross-platform analytics. Configure backend integration in:
+
+```
+# Backend environment
+ANALYTICS_ENABLED=true
+FIREBASE_ENABLED=true
+```
