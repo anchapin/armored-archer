@@ -1,106 +1,126 @@
 extends "res://scenes/enemies/base_enemy.gd"
 
-## Ranged enemy that attacks from a distance with projectiles.
+## Ranged enemy (Shooter) that attacks from a distance with projectiles.
 ##
 ## Behavior:
 ## - Maintains distance from player
-## - Shoots projectiles when in attack range
-## - Periodically fires even when player is far
+## - Fires arrows/projectiles when in range
+## - Retreats if player gets too close
+
+# --- Ranged Attack Settings ---
+var projectile_scene: PackedScene = preload("res://scenes/arrow.tscn")
+var attack_range: float = 250.0
+var detection_range: float = 450.0
+var retreat_range: float = 100.0
+var projectile_speed: float = 280.0
+var projectile_damage_multiplier: float = 0.8
 
 # --- AI State ---
 var player_ref: CharacterBody2D = null
-var detection_range: float = 500.0
-var attack_range: float = 250.0
 var is_attacking: bool = false
-var attack_cooldown: float = 2.0
+var attack_cooldown: float = 1.5
 var attack_timer: float = 0.0
-var retreat_range: float = 180.0
 var is_retreating: bool = false
-var retreat_timer: float = 0.0
-
-# --- Projectile Settings ---
-var projectile_cooldown: float = 2.5
-var projectile_timer: float = 0.0
-var projectile_speed: float = 250.0
-var projectile_scene: PackedScene
 
 func _ready() -> void:
 	max_health = 60
 	move_speed = 100.0
-	damage = 15
-	xp_reward = 35
+	damage = 12
+	xp_reward = 30
 	super._ready()
-	
-	# Try to load arrow scene for projectiles
-	projectile_scene = preload("res://scenes/arrow.tscn")
 
 func _physics_process(delta: float) -> void:
 	if not player_ref:
 		find_player()
 
 	if player_ref:
-		var distance_to_player = global_position.distance_to(player_ref.global_position)
-
+		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
+		
+		# Update attack timer
+		attack_timer += delta
+		
 		if distance_to_player <= detection_range:
-			if distance_to_player < retreat_range:
+			if distance_to_player <= retreat_range:
+				# Too close - retreat
 				retreat_from_player()
-			elif distance_to_player > attack_range:
-				approach_player()
+			elif distance_to_player <= attack_range and attack_timer >= attack_cooldown:
+				# In attack range
+				stop_and_attack()
 			else:
-				velocity = Vector2.ZERO
-				attack_timer += delta
-				projectile_timer += delta
-				if attack_timer >= attack_cooldown or projectile_timer >= projectile_cooldown:
-					perform_ranged_attack()
+				# Maintain distance
+				maintain_distance(distance_to_player)
 		else:
-			velocity = Vector2.ZERO
-
+			# Move towards player if out of range
+			chase_player()
+	
 	move_and_slide()
 
 func find_player() -> void:
-	var players = get_tree().get_nodes_in_group("Player")
+	var players: Array[Node] = get_tree().get_nodes_in_group("Player")
 	if players.size() > 0:
-		player_ref = players[0]
+		player_ref = players[0] as CharacterBody2D
 
-func approach_player() -> void:
+func chase_player() -> void:
 	if not player_ref:
 		return
+	is_retreating = false
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
-	velocity = direction * move_speed
+	velocity = direction * move_speed * 0.8
+	if sprite:
+		sprite.flip_h = direction.x < 0
+
+func maintain_distance(distance: float) -> void:
+	if not player_ref:
+		return
+	
+	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
+	
+	# If too far, approach; if too close, back away
+	var target_direction = direction
+	if distance > attack_range * 0.8:
+		velocity = target_direction * move_speed * 0.6
+	else:
+		velocity = -target_direction * move_speed * 0.5
+	
 	if sprite:
 		sprite.flip_h = direction.x < 0
 
 func retreat_from_player() -> void:
 	if not player_ref:
 		return
-	# Move away from player
+	
+	is_retreating = true
 	var direction: Vector2 = (global_position - player_ref.global_position).normalized()
-	velocity = direction * move_speed * 0.8
+	velocity = direction * move_speed * 1.2
 	if sprite:
 		sprite.flip_h = direction.x < 0
 
+func stop_and_attack() -> void:
+	velocity = Vector2.ZERO
+	
+	if attack_timer >= attack_cooldown:
+		perform_ranged_attack()
+
 func perform_ranged_attack() -> void:
-	attack_timer = 0.0
-	projectile_timer = 0.0
-	
-	if player_ref and player_ref.has_method("take_damage"):
-		player_ref.take_damage(damage)
-	
-	fire_projectile()
-
-func fire_projectile() -> void:
-	if not player_ref or not projectile_scene:
+	if not player_ref:
 		return
-
-	var projectile: Node = projectile_scene.instantiate()
-	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	
-	projectile.global_position = global_position + direction * 30.0
-	projectile.rotation = direction.angle()
-	projectile.scale = Vector2(0.8, 0.8)
+	attack_timer = 0.0
 	
-	get_tree().root.add_child(projectile)
+	if projectile_scene:
+		var projectile: Node = projectile_scene.instantiate()
+		var direction: Vector2 = (player_ref.global_position - global_position).normalized()
+		
+		projectile.global_position = global_position + direction * 30.0
+		projectile.rotation = direction.angle()
+		
+		# Set projectile damage
+		if projectile.has_method("set_damage"):
+			projectile.set_damage(int(damage * projectile_damage_multiplier))
+		
+		get_tree().root.add_child(projectile)
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
-	if body.is_in_group("Player"):
-		body.take_damage(damage)
+	if body and body.is_in_group("Player"):
+		if body.has_method("take_damage"):
+			body.take_damage(damage)

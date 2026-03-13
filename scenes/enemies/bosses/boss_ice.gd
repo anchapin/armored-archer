@@ -1,103 +1,101 @@
 extends "res://scenes/enemies/base_enemy.gd"
 
-## Ice Guardian boss with ice-based attacks and phases.
+## Ice boss (Frost) - cold-based boss with slow and freeze mechanics.
 ##
-## Phase 1: Ice projectile attacks and basic melee
-## Phase 2 (below 50% health): Ice Nova (slows) and faster movement
-## Phase 3 (below 25% health): Blizzard AOE and freeze mechanic
+## Phase 1: Ice projectiles and slow aura
+## Phase 2 (below 50% health): Ice spikes ground, freezing attacks
+## Phase 3 (below 25% health): Blizzard mode - faster, more freezing
 
 # --- Boss Stats ---
-@export var boss_name: String = "Ice Guardian"
+@export var boss_name: String = "Frost"
 
 # --- AI State ---
 var player_ref: CharacterBody2D = null
-var detection_range: float = 600.0
-var attack_range: float = 85.0
-var is_attacking: bool = false
-var attack_cooldown: float = 1.6
-var attack_timer: float = 0.0
+var detection_range: float = 550.0
+var attack_range: float = 120.0
 var phase: int = 1
 
-# --- Phase 1 Settings ---
-var phase1_speed: float = 120.0
-var phase1_damage: int = 20
+# --- Movement ---
+var base_move_speed: float = 110.0
+var phase2_speed: float = 140.0
+var phase3_speed: float = 170.0
 
-# --- Phase 2 Settings (below 50% health) ---
-var phase2_speed: float = 150.0
-var phase2_damage: int = 30
-var phase2_attack_cooldown: float = 1.1
-
-# --- Phase 3 Settings (below 25% health) ---
-var phase3_speed: float = 180.0
-var phase3_damage: int = 40
-var phase3_attack_cooldown: float = 0.7
+# --- Attack Settings ---
+var attack_cooldown: float = 1.8
+var attack_timer: float = 0.0
 
 # --- Ice Projectile Settings ---
-var ice_projectile_cooldown: float = 3.5
+var ice_projectile_cooldown: float = 3.0
 var ice_projectile_timer: float = 0.0
-var ice_projectile_speed: float = 260.0
+var ice_projectile_speed: float = 220.0
+var ice_projectile_damage: int = 15
+var ice_slow_duration: float = 2.0
 
-# --- Ice Nova Settings ---
-var ice_nova_cooldown: float = 8.0
-var ice_nova_timer: float = 0.0
+# --- Slow Aura Settings ---
+var slow_aura_radius: float = 100.0
+var slow_amount: float = 0.4  # Reduces player speed by 40%
 
-# --- Blizzard Settings ---
-var blizzard_cooldown: float = 12.0
+# --- Ice Spikes Settings (Phase 2+) ---
+var ice_spikes_cooldown: float = 5.0
+var ice_spikes_timer: float = 0.0
+var spike_count: int = 5
+
+# --- Blizzard Settings (Phase 3) ---
+var blizzard_damage: int = 8
+var blizzard_tick_rate: float = 0.5
 var blizzard_timer: float = 0.0
-var blizzard_active: bool = false
+var is_in_blizzard: bool = false
 
-# --- Freeze Mechanic ---
-var can_freeze: bool = true
-var freeze_duration: float = 1.5
-var freeze_cooldown: float = 10.0
-var freeze_timer: float = 0.0
-
-# --- Projectile Scene ---
-var projectile_scene: PackedScene
+# --- Enraged Settings (Phase 3) ---
+var is_enraged: bool = false
+var freeze_duration_boost: float = 1.5
 
 # --- Signals ---
 signal boss_defeated(boss_name: String)
 signal health_changed(current: int, max: int)
 
 func _ready() -> void:
-	max_health = 650
-	damage = phase1_damage
-	move_speed = phase1_speed
+	max_health = 700
+	damage = 20
+	move_speed = base_move_speed
 	current_health = max_health
 	add_to_group("Boss")
 	super._ready()
 	
-	projectile_scene = preload("res://scenes/arrow.tscn")
 	health_changed.emit(current_health, max_health)
 
 func _physics_process(delta: float) -> void:
-	update_timers(delta)
-	
 	if not player_ref:
 		find_player()
-
+	
+	update_timers(delta)
+	
+	# Apply slow aura to player if in range
+	apply_slow_aura()
+	
 	if player_ref:
 		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
-
-		if not blizzard_active:
+		
+		if not is_in_blizzard:
 			if distance_to_player <= detection_range:
 				if distance_to_player > attack_range:
 					chase_player()
 				else:
-					attack_player(delta)
+					handle_attacks()
 			else:
 				velocity = Vector2.ZERO
-
-		check_special_attacks()
-
+	
+	# Phase 3 blizzard effect
+	if phase >= 3:
+		handle_blizzard(delta)
+	
 	move_and_slide()
 
 func update_timers(_delta: float) -> void:
 	attack_timer += delta
 	ice_projectile_timer += delta
-	ice_nova_timer += delta
+	ice_spikes_timer += delta
 	blizzard_timer += delta
-	freeze_timer += delta
 
 func find_player() -> void:
 	var players: Array[Node] = get_tree().get_nodes_in_group("Player")
@@ -107,156 +105,191 @@ func find_player() -> void:
 func chase_player() -> void:
 	if not player_ref:
 		return
+	
 	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed
 	if sprite:
 		sprite.flip_h = direction.x < 0
 
-func attack_player(_delta: float) -> void:
+func apply_slow_aura() -> void:
+	if player_ref:
+		var distance: float = global_position.distance_to(player_ref.global_position)
+		if distance <= slow_aura_radius:
+			if player_ref.has_method("apply_slow"):
+				var slow_amt = slow_amount
+				if is_enraged:
+					slow_amt = min(0.7, slow_amount * 1.3)
+				player_ref.apply_slow(slow_amt, 0.1)  # Apply every 0.1 seconds
+
+func handle_attacks() -> void:
 	velocity = Vector2.ZERO
+	
+	check_ice_projectile()
+	check_ice_spikes()
 
-	if attack_timer >= attack_cooldown:
-		attack_timer = 0.0
-		perform_attack()
-
-func perform_attack() -> void:
-	if player_ref and player_ref.has_method("take_damage"):
-		player_ref.take_damage(damage)
-
-func check_special_attacks() -> void:
-	# Ice projectile attack
+func check_ice_projectile() -> void:
 	if ice_projectile_timer >= ice_projectile_cooldown and player_ref:
-		var distance: float = global_position.distance_to(player_ref.global_position)
-		if distance < detection_range:
-			fire_ice_projectile()
-			ice_projectile_timer = 0.0
-
-	# Ice Nova - Phase 2+
-	if phase >= 2 and ice_nova_timer >= ice_nova_cooldown and player_ref:
-		var distance: float = global_position.distance_to(player_ref.global_position)
-		if distance < detection_range * 0.9:
-			fire_ice_nova()
-			ice_nova_timer = 0.0
-
-	# Blizzard - Phase 3
-	if phase >= 3 and blizzard_timer >= blizzard_cooldown and player_ref:
-		start_blizzard()
-
-	# Freeze attack
-	if can_freeze and phase >= 2 and freeze_timer >= freeze_cooldown and player_ref:
-		var distance: float = global_position.distance_to(player_ref.global_position)
-		if distance < detection_range * 0.6:
-			attempt_freeze()
-			freeze_timer = 0.0
+		fire_ice_projectile()
+		ice_projectile_timer = 0.0
 
 func fire_ice_projectile() -> void:
-	if not player_ref or not projectile_scene:
-		return
-
-	var projectile: Node = projectile_scene.instantiate()
-	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
-	
-	projectile.global_position = global_position + direction * 50.0
-	projectile.rotation = direction.angle()
-	projectile.scale = Vector2(1.2, 1.2)
-	
-	get_tree().root.add_child(projectile)
-
-func fire_ice_nova() -> void:
-	# Fire ice projectiles in all directions
-	for i in range(6):
-		var angle = i * (TAU / 6)
-		var direction = Vector2(cos(angle), sin(angle))
-		
-		var projectile: Node = projectile_scene.instantiate()
-		projectile.global_position = global_position + direction * 30.0
-		projectile.rotation = direction.angle()
-		projectile.scale = Vector2(1.0, 1.0)
-		
-		get_tree().root.add_child(projectile)
-
-func start_blizzard() -> void:
-	blizzard_active = true
-	blizzard_timer = 0.0
-	
-	# Stop moving during blizzard
-	velocity = Vector2.ZERO
-	
-	# Fire multiple projectiles around
-	for i in range(10):
-		await get_tree().create_timer(0.15).timeout
-		
-		var angle = i * (TAU / 10)
-		var direction = Vector2(cos(angle), sin(angle))
-		
-		var projectile: Node = projectile_scene.instantiate()
-		projectile.global_position = global_position + direction * 40.0
-		projectile.rotation = direction.angle()
-		projectile.scale = Vector2(0.8, 0.8)
-		
-		get_tree().root.add_child(projectile)
-	
-	await get_tree().create_timer(0.5).timeout
-	blizzard_active = false
-
-func attempt_freeze() -> void:
 	if not player_ref:
 		return
 	
-	can_freeze = false
+	var projectile_scene: PackedScene = preload("res://scenes/arrow.tscn")
+	if projectile_scene:
+		var ice_projectile: Node = projectile_scene.instantiate()
+		
+		var direction: Vector2 = (player_ref.global_position - global_position).normalized()
+		ice_projectile.global_position = global_position + direction * 35.0
+		ice_projectile.rotation = direction.angle()
+		ice_projectile.scale = Vector2(1.3, 1.3)
+		ice_projectile.modulate = Color(0.6, 0.8, 1.0, 1)
+		
+		if ice_projectile.has_method("set_damage"):
+			var dmg = ice_projectile_damage
+			if is_enraged:
+				dmg = int(dmg * 1.3)
+			ice_projectile.set_damage(dmg)
+		
+		# Apply slow effect on hit
+		ice_projectile.tree_exiting.connect(func(): 
+			if player_ref and is_instance_valid(player_ref):
+				if player_ref.has_method("apply_slow"):
+					var dur = ice_slow_duration
+					if is_enraged:
+						dur += freeze_duration_boost
+					player_ref.apply_slow(0.5, dur)
+		)
+		
+		get_tree().root.add_child(ice_projectile)
+
+func check_ice_spikes() -> void:
+	if phase >= 2 and ice_spikes_timer >= ice_spikes_cooldown and player_ref:
+		spawn_ice_spikes()
+		ice_spikes_timer = 0.0
+
+func spawn_ice_spikes() -> void:
+	if not player_ref:
+		return
 	
-	# Apply freeze effect (stop player movement briefly)
-	if player_ref.has_method("apply_freeze"):
-		player_ref.apply_freeze(freeze_duration)
+	# Spawn ice spikes around the player
+	var player_pos: Vector2 = player_ref.global_position
 	
-	# Fire a direct ice projectile
-	var projectile: Node = projectile_scene.instantiate()
-	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
+	for i in range(spike_count):
+		var offset: Vector2 = Vector2(
+			randf_range(-80, 80),
+			randf_range(-80, 80)
+		)
+		var spike_pos: Vector2 = player_pos + offset
+		
+		# Visual feedback (flash sprite)
+		if sprite:
+			var flash_color = Color(0.5, 0.7, 1.0, 0.8)
+			sprite.modulate = flash_color
+		
+		# Check if spike hits player
+		if player_ref:
+			var distance: float = spike_pos.distance_to(player_ref.global_position)
+			if distance < 40:
+				var spike_damage = 25
+				if is_enraged:
+					spike_damage = int(spike_damage * 1.3)
+				player_ref.take_damage(spike_damage)
+				
+				# Apply freeze
+				if player_ref.has_method("apply_slow"):
+					var freeze_amt = 0.8
+					var dur = 1.5
+					if is_enraged:
+						dur += freeze_duration_boost
+					player_ref.apply_slow(freeze_amt, dur)
 	
-	projectile.global_position = global_position + direction * 30.0
-	projectile.rotation = direction.angle()
-	projectile.scale = Vector2(1.5, 1.5)
+	# Reset color
+	await get_tree().create_timer(0.2).timeout
+	if sprite:
+		sprite.modulate = Color(1, 1, 1, 1)
+
+func handle_blizzard(_delta: float) -> void:
+	if not is_in_blizzard and blizzard_timer >= 8.0:
+		start_blizzard()
 	
-	get_tree().root.add_child(projectile)
+	if is_in_blizzard:
+		# Continuous damage in blizzard
+		if player_ref:
+			var distance: float = global_position.distance_to(player_ref.global_position)
+			if distance < 150:
+				player_ref.take_damage(blizzard_damage)
+
+func start_blizzard() -> void:
+	is_in_blizzard = true
+	blizzard_timer = 0.0
 	
-	# Reset freeze ability
-	await get_tree().create_timer(freeze_cooldown).timeout
-	can_freeze = true
+	# Visual feedback
+	if sprite:
+		sprite.modulate = Color(0.4, 0.6, 1.0, 1)
+	
+	# Hold position during blizzard
+	await get_tree().create_timer(3.0).timeout
+	
+	is_in_blizzard = false
+	if sprite:
+		sprite.modulate = Color(1, 1, 1, 1)
 
 func take_damage(amount: int) -> void:
-	current_health -= amount
+	var actual_damage = amount
+	if is_enraged:
+		actual_damage = int(amount * 1.15)
+	
+	current_health -= actual_damage
 	health_changed.emit(current_health, max_health)
-
+	
 	var health_percentage = float(current_health) / float(max_health)
-
-	if health_percentage <= 0.5 and phase == 1:
-		enter_phase_2()
-	elif health_percentage <= 0.25 and phase == 2:
+	
+	# Phase transitions
+	if health_percentage <= 0.25 and phase == 2:
 		enter_phase_3()
-
+	elif health_percentage <= 0.5 and phase == 1:
+		enter_phase_2()
+	
 	if current_health <= 0:
 		die()
 
 func enter_phase_2() -> void:
 	phase = 2
 	move_speed = phase2_speed
-	damage = phase2_damage
-	attack_cooldown = phase2_attack_cooldown
-	ice_nova_cooldown = 6.0
+	damage = 28
+	ice_projectile_damage = 20
+	
+	# Visual feedback
+	if sprite:
+		sprite.modulate = Color(0.5, 0.8, 1.0, 1)
+		await get_tree().create_timer(0.5).timeout
+		sprite.modulate = Color(1, 1, 1, 1)
 
 func enter_phase_3() -> void:
 	phase = 3
 	move_speed = phase3_speed
-	damage = phase3_damage
-	attack_cooldown = phase3_attack_cooldown
-	ice_projectile_cooldown = 1.5
+	is_enraged = true
+	slow_aura_radius = 130.0
+	
+	# Visual feedback
+	if sprite:
+		sprite.modulate = Color(0.3, 0.5, 0.9, 1)
+		await get_tree().create_timer(0.5).timeout
+		sprite.modulate = Color(1, 1, 1, 1)
 
 func die() -> void:
 	boss_defeated.emit(boss_name)
-	CampaignManager.unlock_modifier_pool("ice_damage")
+	CampaignManager.unlock_modifier_pool("ice_arrow")
 	super.die()
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):
+		var dmg = damage
+		if is_enraged:
+			dmg = int(dmg * 1.3)
 		if body.has_method("take_damage"):
-			body.take_damage(damage)
+			body.take_damage(dmg)
+		if body.has_method("apply_slow"):
+			body.apply_slow(0.6, 1.0)
