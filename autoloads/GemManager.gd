@@ -12,6 +12,9 @@ extends Node
 @onready var store_manager: Node = get_node_or_null("/root/StoreManager")
 @onready var gear_registry: Node = get_node_or_null("/root/GearRegistry")
 
+# --- Analytics Reference ---
+@onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
+
 # --- Skin Ownership & Equipment ---
 var owned_skins: Array = []
 var equipped_skins: Dictionary = {}
@@ -77,6 +80,14 @@ func claim_achievement_reward(achievement_id: String) -> int:
 	# Mark as completed and award gems
 	completed_achievements.append(achievement_id)
 	add_gems(reward, "achievement:" + achievement_id)
+
+	# Track gem reward in analytics
+	if analytics and analytics.has_method("log_custom_event"):
+		analytics.log_custom_event("achievement_completed", {
+			"achievement_id": achievement_id,
+			"gems_awarded": reward,
+			"reason": "achievement_reward"
+		})
 	
 	print("Achievement completed: %s, Awarded %d gems" % [achievement_id, reward])
 	return reward
@@ -249,6 +260,17 @@ func purchase_skin(skin_id: String) -> bool:
 	skin_purchased.emit(skin_id)
 	save_data()
 
+	# Track cosmetic purchase in analytics
+	if analytics and analytics.has_method("log_cosmetic_purchased"):
+		analytics.log_cosmetic_purchased(
+			skin_id,
+			skin_info.get("name", skin_id),
+			"skin",
+			skin_info.get("rarity", "common"),
+			skin_info.price,
+			"gems"
+		)
+
 	return true
 
 # --- Skin Equipment ---
@@ -279,6 +301,14 @@ func equip_skin(slot_name: String, skin_id: String) -> bool:
 	equipped_skins[slot_name] = skin_id
 	skin_equipped.emit(skin_id, slot_name)
 	save_data()
+
+	# Track transmog applied in analytics
+	if analytics and analytics.has_method("log_transmog_applied"):
+		analytics.log_transmog_applied(
+			skin_id,
+			skin_info.get("name", skin_id) if skin_info else slot_name,
+			slot_name
+		)
 
 	return true
 
