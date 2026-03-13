@@ -138,3 +138,15 @@ func show_xp_gained_effect( _amount: int) -> void:
 
 func show_stat_allocated_effect( _stat_name: String, _amount: int) -> void:
 	pass
+
+func _exit_tree() -> void:
+	# Disconnect signals to prevent memory leaks
+	if player_stats_manager:
+		if player_stats_manager.stats_updated.is_connected(_on_stats_updated):
+			player_stats_manager.stats_updated.disconnect(_on_stats_updated)
+		if player_stats_manager.level_up.is_connected(_on_level_up):
+			player_stats_manager.level_up.disconnect(_on_level_up)
+		if player_stats_manager.xp_gained.is_connected(_on_xp_gained):
+			player_stats_manager.xp_gained.disconnect(_on_xp_gained)
+		if player_stats_manager.stat_allocated.is_connected(_on_stat_allocated):
+			player_stats_manager.stat_allocated.disconnect(_on_stat_allocated)

@@ -45,3 +45,15 @@ func _on_boss_health_changed(current: int, max_health: int) -> void:
 func _on_boss_defeated( _boss_name: String) -> void:
 	await get_tree().create_timer(1.0).timeout
 	hide()
+
+func _exit_tree() -> void:
+	# Disconnect signals to prevent memory leaks
+	if SafeAreaManager.safe_area_changed.is_connected(_on_safe_area_changed):
+		SafeAreaManager.safe_area_changed.disconnect(_on_safe_area_changed)
+
+	# Disconnect from boss signals if boss exists
+	if boss_ref and is_instance_valid(boss_ref):
+		if boss_ref.has_signal("health_changed") and boss_ref.health_changed.is_connected(_on_boss_health_changed):
+			boss_ref.health_changed.disconnect(_on_boss_health_changed)
+		if boss_ref.has_signal("boss_defeated") and boss_ref.boss_defeated.is_connected(_on_boss_defeated):
+			boss_ref.boss_defeated.disconnect(_on_boss_defeated)

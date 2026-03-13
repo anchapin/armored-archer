@@ -28,3 +28,8 @@ func _update_margins() -> void:
 	add_theme_constant_override("margin_top", int(safe_margins.top + _margin_top_offset))
 	add_theme_constant_override("margin_right", int(safe_margins.right + _margin_right_offset))
 	add_theme_constant_override("margin_bottom", int(safe_margins.bottom + _margin_bottom_offset))
+
+func _exit_tree() -> void:
+	# Disconnect signal to prevent memory leaks
+	if SafeAreaManager.safe_area_changed.is_connected(_on_safe_area_changed):
+		SafeAreaManager.safe_area_changed.disconnect(_on_safe_area_changed)
