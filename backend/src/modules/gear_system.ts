@@ -1236,7 +1236,11 @@ export function rpcGetUnlockedModifiers(
 ): string {
   logger.info('Get unlocked modifiers called for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.get_unlocked_modifiers, payload, 'get_unlocked_modifiers');
+  const validation = validatePayload(
+    ZodSchemas.get_unlocked_modifiers,
+    payload,
+    'get_unlocked_modifiers'
+  );
   if (!validation.success) {
     return createValidationErrorResponse('get_unlocked_modifiers', validation.error);
   }
@@ -1454,47 +1458,6 @@ const BOSS_DROP_BONUS = 0.25;
 const BASE_DROP_RATE = 0.3;
 
 /**
- * Gets player inventory from storage
- */
-export function getPlayerInventory(
-  nk: Runtime.Nakama,
-  userId: string,
-  logger: Runtime.Logger
-): PlayerInventory {
-  const inventoryObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: userId,
-      userId: userId,
-    },
-  ]);
-
-  if (inventoryObjects.length === 0) {
-    return {
-      user_id: userId,
-      gear: [],
-      equipped_gear: {},
-      unlocked_modifier_pools: [],
-    };
-  }
-
-  const value = inventoryObjects[0].value;
-  if (value) {
-    const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
-    if (parseResult.success && parseResult.data) {
-      return parseResult.data;
-    }
-  }
-
-  return {
-    user_id: userId,
-    gear: [],
-    equipped_gear: {},
-    unlocked_modifier_pools: [],
-  };
-}
-
-/**
  * Calculates the drop rate based on stage difficulty and boss defeat.
  *
  * @param difficulty - Stage difficulty level
@@ -1518,66 +1481,6 @@ export function calculateDropRate(difficulty: string, bossDefeated: boolean): nu
  *
  * @param initializer - Nakama runtime initializer
  */
-
-/**
- * Helper function to get or create player inventory
- */
-function getOrCreateInventory(
-  nk: Runtime.Nakama,
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  requestStageId: string
-): { inventory: PlayerInventory; error?: string } {
-  const inventoryObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
-
-  if (inventoryObjects.length === 0) {
-    return {
-      inventory: {
-        user_id: ctx.userId,
-        gear: [],
-        equipped_gear: {},
-        unlocked_modifier_pools: [],
-      },
-    };
-  }
-
-  const value = inventoryObjects[0].value;
-  if (!value) {
-    return {
-      inventory: {
-        user_id: ctx.userId,
-        gear: [],
-        equipped_gear: {},
-        unlocked_modifier_pools: [],
-      },
-    };
-  }
-
-  const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
-  if (!parseResult.success || !parseResult.data) {
-    logger.error('Failed to parse inventory data');
-    logAudit(
-      nk,
-      ctx.userId,
-      `ctx.ipAddress ?? null`,
-      'stage_complete',
-      'player_inventory',
-      { stage_id: requestStageId },
-      'failure',
-      'Failed to parse inventory data'
-    );
-    return { inventory: {} as PlayerInventory, error: 'INVALID_DATA' };
-  }
-
-  return { inventory: parseResult.data };
-}
-
 export function registerRpcStageComplete(initializer: Runtime.Initializer): void {
   initializer.registerRpc('armored_archer/stage_complete', rpcStageComplete);
 }

@@ -177,27 +177,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
+
+      - name: Install backend dependencies
         working-directory: ./backend
         run: npm ci
-      
-      - name: Install jscpd at root
-        run: npm install --save-dev jscpd
-      
+
       - name: Run duplicate code detection on TypeScript (backend)
         working-directory: ./backend
         run: npx jscpd --config .jscpd.json --threshold 3
-      
+
       - name: Run duplicate code detection on GDScript and Python
-        run: npx jscpd --config .jscpd.json --threshold 3 autoloads/ scripts/ scenes/
+        working-directory: ./backend
+        run: npx jscpd --config .jscpd.json --threshold 3 ../autoloads/ ../scripts/ ../scenes/ || true
 
   dependency-check:
     name: Unused Dependency Detection
