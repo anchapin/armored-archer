@@ -20,6 +20,7 @@ var bosses_defeated: Array = []
 var unlocked_modifier_pools: Array = []
 
 # --- Manager References ---
+# --- Analytics Reference ---
 @onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
 @onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
 
