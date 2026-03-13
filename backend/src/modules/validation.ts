@@ -126,6 +126,11 @@ export const ValibotSchemas = {
     match_id: pipe(string(), minLength(1), maxLength(100)),
   }),
 
+  player_disconnect: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    reason: optional(createEnum(['disconnect', 'voluntary', 'network_error'])),
+  }),
+
   get_season_info: object({}),
 
   get_leaderboard: optional(

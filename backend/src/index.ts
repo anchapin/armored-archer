@@ -19,7 +19,11 @@ import {
   registerRpcGetPlayerRank,
   registerRpcCompleteMatch,
 } from './modules/matchmaker';
-import { registerRpcSubmitCombatAction, registerRpcGetMatchState } from './modules/combat_system';
+import {
+  registerRpcSubmitCombatAction,
+  registerRpcGetMatchState,
+  registerRpcPlayerDisconnect,
+} from './modules/combat_system';
 import {
   registerRpcGetSeasonInfo,
   registerRpcGetLeaderboard,
@@ -330,6 +334,7 @@ const InitModule: InitModule = function (
     registerRpcCompleteMatch(initializer);
     registerRpcSubmitCombatAction(initializer);
     registerRpcGetMatchState(initializer);
+    registerRpcPlayerDisconnect(initializer);
     registerRpcGetSeasonInfo(initializer);
     registerRpcGetLeaderboard(initializer);
     registerRpcUpdateRank(initializer);
