@@ -35,8 +35,8 @@ func test_analytics_initialization() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
-	assert_true(analytics.is_initialized or not analytics.is_initialized, 
+
+	assert_true(analytics.is_initialized or not analytics.is_initialized,
 		"AnalyticsManager should have valid initialization state")
 
 
@@ -45,7 +45,7 @@ func test_set_user_id() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.set_user_id(TEST_USER_ID)
 	assert_eq(analytics.user_id, TEST_USER_ID)
 
@@ -55,7 +55,7 @@ func test_set_user_property() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.set_user_property("platform", "android")
 	assert_true(analytics.user_properties.has("platform"))
 	assert_eq(analytics.user_properties["platform"], "android")
@@ -66,14 +66,14 @@ func test_set_multiple_user_properties() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	var properties := {
 		"platform": "ios",
 		"level": 10,
 		"version": "1.0.0"
 	}
 	analytics.set_user_properties(properties)
-	
+
 	assert_true(analytics.user_properties.has("platform"))
 	assert_true(analytics.user_properties.has("level"))
 	assert_true(analytics.user_properties.has("version"))
@@ -84,16 +84,16 @@ func test_session_tracking() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	var initial_session_count := analytics.session_count
 	analytics.start_session()
 	assert_true(analytics.current_session_id != "")
 	assert_true(analytics.session_start_time > 0)
-	
+
 	# End session and verify duration tracking
 	await get_tree().create_timer(0.1).timeout
 	analytics.end_session()
-	
+
 	# Session should have been tracked
 	assert_true(analytics.session_count >= initial_session_count)
 
@@ -103,7 +103,7 @@ func test_log_tutorial_started() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_tutorial_started("tutorial_basic")
 	# Event should be logged without errors
 
@@ -113,7 +113,7 @@ func test_log_tutorial_completed() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_tutorial_completed("tutorial_basic", 120.5)
 	# Event should be logged without errors
 
@@ -123,7 +123,7 @@ func test_log_tutorial_failed() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_tutorial_failed("tutorial_basic", "step_3", "player_gave_up")
 	# Event should be logged without errors
 
@@ -133,7 +133,7 @@ func test_log_pve_stage_started() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_pve_stage_started("campaign_1", "Stage 1", "normal", 1)
 	# Event should be logged without errors
 
@@ -143,7 +143,7 @@ func test_log_pve_stage_completed() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_pve_stage_completed("campaign_1", "Stage 1", 180.5, 3, "normal", 1)
 	# Event should be logged without errors
 
@@ -153,7 +153,7 @@ func test_log_pve_stage_failed() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_pve_stage_failed("campaign_1", "Stage 1", 90.0, "player_died", "hard")
 	# Event should be logged without errors
 
@@ -163,7 +163,7 @@ func test_log_pve_boss_defeated() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_pve_boss_defeated("campaign_boss", "boss_fire", "normal", 3)
 	# Event should be logged without errors
 
@@ -173,7 +173,7 @@ func test_log_pvp_match_started() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_pvp_match_started("match_123", "opponent_456", 1, 1500)
 	# Event should be logged without errors
 
@@ -183,7 +183,7 @@ func test_log_pvp_match_completed() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_pvp_match_completed("match_123", "win", "opponent_456", 1, 300.0, 100, 50, 25)
 	# Event should be logged without errors
 
@@ -193,7 +193,7 @@ func test_log_pvp_match_abandoned() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_pvp_match_abandoned("match_123", "player_left", 1)
 	# Event should be logged without errors
 
@@ -203,7 +203,7 @@ func test_log_pvp_disconnect() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_pvp_disconnect("match_123", true)
 	# Event should be logged without errors
 
@@ -213,7 +213,7 @@ func test_log_store_opened() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_store_opened("main_menu")
 	analytics.log_store_opened("in_game")
 	# Events should be logged without errors
@@ -224,7 +224,7 @@ func test_log_purchase_initiated() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_purchase_initiated("com.armoredarcher.gems.small", "Small Gems", "gem_bundle", 99, "USD")
 	# Event should be logged without errors
 
@@ -234,7 +234,7 @@ func test_log_purchase_completed() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_purchase_completed("com.armoredarcher.gems.small", "Small Gems", "gem_bundle", 99, "USD", "tx_123")
 	# Event should be logged without errors
 
@@ -244,7 +244,7 @@ func test_log_purchase_failed() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_purchase_failed("com.armoredarcher.gems.small", "declined")
 	# Event should be logged without errors
 
@@ -254,7 +254,7 @@ func test_log_gem_purchased() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_gem_purchased(100, 99, "USD", "iap", "offer_123")
 	# Event should be logged without errors
 
@@ -264,7 +264,7 @@ func test_log_cosmetic_purchased() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_cosmetic_purchased("skin_001", "Dragon Armor", "armor", "legendary", 499, "USD")
 	# Event should be logged without errors
 
@@ -274,7 +274,7 @@ func test_log_subscription_started() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_subscription_started("premium_monthly", 999, "USD")
 	# Event should be logged without errors
 
@@ -284,7 +284,7 @@ func test_log_gear_obtained() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_gear_obtained("sword_001", "Flame Sword", "weapon", "rare", "pve_drop")
 	# Event should be logged without errors
 
@@ -294,7 +294,7 @@ func test_log_gear_equipped() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_gear_equipped("sword_001", "Flame Sword", "weapon", "main_hand")
 	# Event should be logged without errors
 
@@ -304,7 +304,7 @@ func test_log_transmog_applied() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_transmog_applied("skin_001", "Dragon Armor", "sword_001")
 	# Event should be logged without errors
 
@@ -314,7 +314,7 @@ func test_log_level_up() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_level_up(10, 9, "pve")
 	# Event should be logged without errors
 
@@ -324,7 +324,7 @@ func test_log_ability_unlocked() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_ability_unlocked("ability_001", "Fireball", 5)
 	# Event should be logged without errors
 
@@ -334,7 +334,7 @@ func test_log_season_start() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_season_start(1, "Season 1")
 	# Event should be logged without errors
 
@@ -344,7 +344,7 @@ func test_log_season_end() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_season_end(1, "Season 1", 1500)
 	# Event should be logged without errors
 
@@ -354,7 +354,7 @@ func test_log_first_session() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_first_session()
 	# Event should be logged without errors
 
@@ -364,7 +364,7 @@ func test_log_daily_login() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_daily_login(5)
 	# Event should be logged without errors
 
@@ -374,7 +374,7 @@ func test_log_returning_player() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_returning_player(30)
 	# Event should be logged without errors
 
@@ -384,7 +384,7 @@ func test_log_network_error() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_network_error("timeout", "/rpc/get_player_stats", 408)
 	# Event should be logged without errors
 
@@ -394,7 +394,7 @@ func test_log_rpc_error() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_rpc_error("get_player_stats", -1, "Server error")
 	# Event should be logged without errors
 
@@ -404,7 +404,7 @@ func test_log_rpc_latency() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.log_rpc_latency("get_player_stats", 150)
 	# Event should be logged without errors
 
@@ -414,7 +414,7 @@ func test_log_custom_event() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	var params := {
 		"level": 10,
 		"inventory_size": 50,
@@ -429,9 +429,9 @@ func test_breadcrumb_logging() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.add_breadcrumb("Test breadcrumb", {"key": "value"})
-	
+
 	var breadcrumbs = analytics.get_breadcrumbs()
 	assert_true(breadcrumbs.size() > 0, "Breadcrumbs should be recorded")
 
@@ -441,11 +441,11 @@ func test_clear_breadcrumbs() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.add_breadcrumb("Test breadcrumb 1")
 	analytics.add_breadcrumb("Test breadcrumb 2")
 	assert_true(analytics.get_breadcrumbs().size() > 0)
-	
+
 	analytics.clear_breadcrumbs()
 	assert_eq(analytics.get_breadcrumbs().size(), 0)
 
@@ -455,10 +455,10 @@ func test_session_summary() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.set_user_id(TEST_USER_ID)
 	analytics.start_session()
-	
+
 	var summary = analytics.get_session_summary()
 	assert_true(summary.has("session_id"))
 	assert_true(summary.has("session_count"))
@@ -471,10 +471,10 @@ func test_export_analytics_data() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.add_breadcrumb("Test breadcrumb")
 	analytics.log_custom_event("test_event", {"key": "value"})
-	
+
 	var data = analytics.export_analytics_data()
 	assert_true(data.has("session_summary"))
 	assert_true(data.has("breadcrumbs"))
@@ -485,10 +485,10 @@ func test_analytics_enabled_toggle() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.set_analytics_enabled(false)
 	assert_false(analytics.is_analytics_enabled)
-	
+
 	analytics.set_analytics_enabled(true)
 	assert_true(analytics.is_analytics_enabled)
 
@@ -498,10 +498,10 @@ func test_crashlytics_enabled_toggle() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.set_crashlytics_collection_enabled(false)
 	assert_false(analytics.is_crashlytics_enabled)
-	
+
 	analytics.set_crashlytics_collection_enabled(true)
 	assert_true(analytics.is_crashlytics_enabled)
 
@@ -511,10 +511,10 @@ func test_debug_mode_toggle() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	analytics.set_debug_mode(false)
 	assert_false(analytics.is_debug_mode)
-	
+
 	analytics.set_debug_mode(true)
 	assert_true(analytics.is_debug_mode)
 
@@ -524,33 +524,33 @@ func test_event_constants_defined() -> void:
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		skip("AnalyticsManager not available")
-	
+
 	# Session events
 	assert_true(analytics.has_method("log_first_session"))
 	assert_true(analytics.has_method("log_daily_login"))
-	
+
 	# Tutorial events
 	assert_true(analytics.has_method("log_tutorial_started"))
 	assert_true(analytics.has_method("log_tutorial_completed"))
 	assert_true(analytics.has_method("log_tutorial_failed"))
-	
+
 	# PVE events
 	assert_true(analytics.has_method("log_pve_stage_started"))
 	assert_true(analytics.has_method("log_pve_stage_completed"))
 	assert_true(analytics.has_method("log_pve_stage_failed"))
 	assert_true(analytics.has_method("log_pve_boss_defeated"))
-	
+
 	# PVP events
 	assert_true(analytics.has_method("log_pvp_match_started"))
 	assert_true(analytics.has_method("log_pvp_match_completed"))
 	assert_true(analytics.has_method("log_pvp_match_abandoned"))
 	assert_true(analytics.has_method("log_pvp_disconnect"))
-	
+
 	# Store events
 	assert_true(analytics.has_method("log_store_opened"))
 	assert_true(analytics.has_method("log_purchase_completed"))
 	assert_true(analytics.has_method("log_gem_purchased"))
-	
+
 	# Progression events
 	assert_true(analytics.has_method("log_level_up"))
 	assert_true(analytics.has_method("log_ability_unlocked"))

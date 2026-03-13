@@ -97,7 +97,7 @@ func test_currency_signals() -> void:
 	var sm = _create_store_manager()
 	var currency_updated_called = false
 
-	sm.currency_updated.connect(func(g, a): 
+	sm.currency_updated.connect(func(g, a):
 		currency_updated_called = true
 	)
 

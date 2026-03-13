@@ -115,7 +115,7 @@ func test_signal_emission() -> void:
 
 func test_update_local_state() -> void:
 	var cm = _create_combat_manager()
-	
+
 	# Create a mock NetworkManager to provide user_id
 	var nm = Node.new()
 	nm.set("user_id", "user_123")
@@ -161,7 +161,7 @@ func test_update_from_match_state_empty() -> void:
 	var cm = _create_combat_manager()
 	# Empty match state should not crash
 	cm._update_from_match_state()
-	
+
 	_pass("test_update_from_match_state_empty")
 	cm.queue_free()
 
@@ -172,7 +172,7 @@ func test_update_from_match_state_creator() -> void:
 	nm.set("user_id", "creator_user")
 	add_child(nm)
 	cm.network_manager = nm
-	
+
 	cm.current_match_state = {
 		"creator_id": "creator_user",
 		"opponent_id": "opponent_user",
@@ -181,14 +181,14 @@ func test_update_from_match_state_creator() -> void:
 		"current_turn_user_id": "creator_user",
 		"status": "active"
 	}
-	
+
 	cm._update_from_match_state()
-	
+
 	if cm.my_health == 85 and cm.opponent_health == 70 and cm.is_my_turn:
 		_pass("test_update_from_match_state_creator")
 	else:
 		_fail("test_update_from_match_state_creator", "Creator state incorrect")
-	
+
 	cm.queue_free()
 	nm.queue_free()
 
@@ -198,7 +198,7 @@ func test_update_from_match_state_opponent() -> void:
 	nm.set("user_id", "opponent_user")
 	add_child(nm)
 	cm.network_manager = nm
-	
+
 	cm.current_match_state = {
 		"creator_id": "creator_user",
 		"opponent_id": "opponent_user",
@@ -207,76 +207,76 @@ func test_update_from_match_state_opponent() -> void:
 		"current_turn_user_id": "creator_user",
 		"status": "active"
 	}
-	
+
 	cm._update_from_match_state()
-	
+
 	if cm.my_health == 60 and cm.opponent_health == 90 and not cm.is_my_turn:
 		_pass("test_update_from_match_state_opponent")
 	else:
 		_fail("test_update_from_match_state_opponent", "Opponent state incorrect")
-	
+
 	cm.queue_free()
 	nm.queue_free()
 
 func test_utility_methods() -> void:
 	var cm = _create_combat_manager()
-	
+
 	cm.current_match_state = {"log": ["action1", "action2"], "status": "active"}
-	
+
 	if cm.get_current_match_state() == cm.current_match_state:
 		_pass("test_get_current_match_state")
 	else:
 		_fail("test_get_current_match_state", "Match state mismatch")
-	
+
 	if cm.get_combat_log() == ["action1", "action2"]:
 		_pass("test_get_combat_log")
 	else:
 		_fail("test_get_combat_log", "Combat log incorrect")
-	
+
 	if cm.get_match_status() == "active":
 		_pass("test_get_match_status")
 	else:
 		_fail("test_get_match_status", "Status incorrect")
-	
+
 	if cm.is_combat_active():
 		_pass("test_is_combat_active")
 	else:
 		_fail("test_is_combat_active", "Should be active")
-	
+
 	cm.queue_free()
 
 func test_get_health_methods() -> void:
 	var cm = _create_combat_manager()
 	cm.my_health = 75
 	cm.opponent_health = 60
-	
+
 	if cm.get_my_health() == 75:
 		_pass("test_get_my_health")
 	else:
 		_fail("test_get_my_health", "My health incorrect")
-	
+
 	if cm.get_opponent_health() == 60:
 		_pass("test_get_opponent_health")
 	else:
 		_fail("test_get_opponent_health", "Opponent health incorrect")
-	
+
 	cm.queue_free()
 
 func test_is_my_turn_sync() -> void:
 	var cm = _create_combat_manager()
 	cm.is_my_turn = true
-	
+
 	if cm.is_my_turn_sync():
 		_pass("test_is_my_turn_sync_true")
 	else:
 		_fail("test_is_my_turn_sync_true", "Should be my turn")
-	
+
 	cm.is_my_turn = false
 	if not cm.is_my_turn_sync():
 		_pass("test_is_my_turn_sync_false")
 	else:
 		_fail("test_is_my_turn_sync_false", "Should not be my turn")
-	
+
 	cm.queue_free()
 
 func test_submit_combat_action_invalid_params() -> void:
@@ -285,7 +285,7 @@ func test_submit_combat_action_invalid_params() -> void:
 	cm.submit_combat_action("", "", 0.0)
 	cm.submit_combat_action("match123", "", 0.0)
 	cm.submit_combat_action("", "shoot", 0.5)
-	
+
 	_pass("test_submit_combat_action_invalid_params")
 	cm.queue_free()
 
@@ -293,7 +293,7 @@ func test_get_match_state_invalid_params() -> void:
 	var cm = _create_combat_manager()
 	# No network manager, should return early
 	cm.get_match_state("")
-	
+
 	_pass("test_get_match_state_invalid_params")
 	cm.queue_free()
 
@@ -301,39 +301,39 @@ func test_turn_changed_signal() -> void:
 	var cm = _create_combat_manager()
 	var turn_true_received = false
 	var turn_false_received = false
-	
-	cm.turn_changed.connect(func(is_turn): 
+
+	cm.turn_changed.connect(func(is_turn):
 		if is_turn:
 			turn_true_received = true
 		else:
 			turn_false_received = true
 	)
-	
+
 	cm.turn_changed.emit(true)
 	cm.turn_changed.emit(false)
-	
+
 	await get_tree().create_timer(0.1).timeout
-	
+
 	if turn_true_received and turn_false_received:
 		_pass("test_turn_changed_signal")
 	else:
 		_fail("test_turn_changed_signal", "Turn signals not received")
-	
+
 	cm.queue_free()
 
 func test_combat_ended_signal() -> void:
 	var cm = _create_combat_manager()
 	var winner_received = ""
-	
+
 	cm.combat_ended.connect(func(w): winner_received = w)
-	
+
 	cm.combat_ended.emit("player_1")
-	
+
 	await get_tree().create_timer(0.1).timeout
-	
+
 	if winner_received == "player_1":
 		_pass("test_combat_ended_signal")
 	else:
 		_fail("test_combat_ended_signal", "Winner not received")
-	
+
 	cm.queue_free()

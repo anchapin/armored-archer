@@ -32,7 +32,7 @@ func _run_tests():
 
     var test_root = Node.new()
     test_root.name = "TestRoot"
-    
+
     for test_file in test_files:
         var test_script = load(test_file)
         if test_script:
@@ -43,9 +43,9 @@ func _run_tests():
 
     # Quit the test runner after a short delay to allow tests to run
     await create_timer(5.0).timeout
-    
+
     # Clean up
     for child in test_root.get_children():
         child.free()
-    
+
     quit()
