@@ -110,3 +110,13 @@ func set_transition_speed(multiplier: float) -> void:
 ## Force UI optimization refresh
 func refresh_optimizations() -> void:
 	_apply_ui_optimizations()
+
+## Clean up resources when the node exits the tree
+func _exit_tree() -> void:
+	# Kill any active tweens to prevent memory leaks during scene transitions
+	# This is especially important when scenes are changed while animations are running
+	for child in get_children():
+		if child is Tween:
+			child.kill()
+			child.queue_free()
+	print("[UITransitionOptimizer] Cleanup complete - tweens killed")
