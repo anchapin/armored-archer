@@ -271,3 +271,32 @@ func cleanup_invalid_instances() -> void:
 func warm_pools() -> void:
 	# Additional warming if needed
 	pass
+
+## Clean up all pooled objects - call when game exits or needs full reset
+func cleanup_all() -> void:
+	# Clean up all arrows
+	for arrow in _arrow_pool:
+		if is_instance_valid(arrow):
+			arrow.queue_free()
+	_arrow_pool.clear()
+	_active_arrows.clear()
+	
+	# Clean up all enemies
+	for enemy in _enemy_pool:
+		if is_instance_valid(enemy):
+			enemy.queue_free()
+	_enemy_pool.clear()
+	_active_enemies.clear()
+	
+	# Clean up all hit effects
+	for effect in _hit_effect_pool:
+		if is_instance_valid(effect):
+			effect.queue_free()
+	_hit_effect_pool.clear()
+	_active_hit_effects.clear()
+	
+	print("[ObjectPool] All pools cleaned up")
+
+func _exit_tree() -> void:
+	# Clean up all pooled objects when ObjectPool is freed
+	cleanup_all()
