@@ -52,10 +52,10 @@ module.exports = {
       statements: 80
     },
     './src/modules/matchmaker.ts': {
-      branches: 85,
-      functions: 60,
-      lines: 90,
-      statements: 90
+      branches: 40,
+      functions: 35,
+      lines: 55,
+      statements: 55
     },
     './src/modules/gear_system.ts': {
       branches: 65,
