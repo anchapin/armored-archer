@@ -17,6 +17,7 @@ func run_tests() -> void:
 	test_complete_stage()
 	test_unlock_next_stage()
 	test_handle_boss_defeat()
+	test_modifier_pool_functions()
 	test_update_campaign_progress()
 	
 	print("\n=== CampaignManager Test Results ===")
@@ -197,9 +198,71 @@ func test_handle_boss_defeat() -> void:
 	campaign.handle_boss_defeat("boss_wind")
 	_pass("test_handle_boss_defeat_wind")
 	
+	# Verify boss is tracked in bosses_defeated
+	if "boss_wind" in campaign.bosses_defeated:
+		_pass("test_boss_defeated_tracked")
+	else:
+		_fail("test_boss_defeated_tracked", "Boss should be in bosses_defeated list")
+	
 	# Test unknown boss doesn't crash
 	campaign.handle_boss_defeat("unknown_boss")
 	_pass("test_handle_boss_defeat_unknown")
+	
+	# Test duplicate boss defeat doesn't add twice
+	campaign.handle_boss_defeat("boss_wind")
+	if campaign.bosses_defeated.size() == 1:
+		_pass("test_boss_defeat_duplicate_safe")
+	else:
+		_fail("test_boss_defeat_duplicate_safe", "Duplicate boss defeat should not add twice")
+	
+	# Test modifier pool unlocked
+	if "piercing_arrow" in campaign.unlocked_modifier_pools:
+		_pass("test_modifier_pool_unlocked_on_boss_defeat")
+	else:
+		_fail("test_modifier_pool_unlocked_on_boss_defeat", "Modifier pool should be unlocked")
+	
+	campaign.queue_free()
+
+func test_modifier_pool_functions() -> void:
+	var campaign = _create_campaign_manager()
+	campaign.unlocked_modifier_pools = ["piercing_arrow", "fire_arrow"]
+	
+	# Test get_unlocked_modifier_pools
+	var pools = campaign.get_unlocked_modifier_pools()
+	if pools.size() == 2:
+		_pass("test_get_unlocked_modifier_pools")
+	else:
+		_fail("test_get_unlocked_modifier_pools", "Should return unlocked pools")
+	
+	# Test is_modifier_pool_unlocked
+	if campaign.is_modifier_pool_unlocked("piercing_arrow"):
+		_pass("test_is_modifier_pool_unlocked_true")
+	else:
+		_fail("test_is_modifier_pool_unlocked_true", "Should return true for unlocked pool")
+	
+	if not campaign.is_modifier_pool_unlocked("ice_arrow"):
+		_pass("test_is_modifier_pool_unlocked_false")
+	else:
+		_fail("test_is_modifier_pool_unlocked_false", "Should return false for locked pool")
+	
+	# Test get_bosses_defeated
+	campaign.bosses_defeated = ["boss_wind", "boss_fire"]
+	var bosses = campaign.get_bosses_defeated()
+	if bosses.size() == 2:
+		_pass("test_get_bosses_defeated")
+	else:
+		_fail("test_get_bosses_defeated", "Should return defeated bosses")
+	
+	# Test has_defeated_boss
+	if campaign.has_defeated_boss("boss_wind"):
+		_pass("test_has_defeated_boss_true")
+	else:
+		_fail("test_has_defeated_boss_true", "Should return true for defeated boss")
+	
+	if not campaign.has_defeated_boss("boss_ice"):
+		_pass("test_has_defeated_boss_false")
+	else:
+		_fail("test_has_defeated_boss_false", "Should return false for undefeated boss")
 	
 	campaign.queue_free()
 

@@ -14,12 +14,15 @@ var campaigns_data: Dictionary = {}
 # --- Progress Tracking ---
 var unlocked_stages: Array = []
 var completed_stages: Array = []
+var bosses_defeated: Array = []
 
 # --- Modifier Pool Unlocks ---
 var unlocked_modifier_pools: Array = []
 
+# --- Manager References ---
 # --- Analytics Reference ---
 @onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
+@onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
 
 # --- Signals ---
 signal stage_unlocked(stage_id: String)
@@ -76,12 +79,37 @@ func complete_stage(stage_id: String) -> void:
 		stage_completed.emit(stage_id)
 
 		var stage_data = get_stage_data(stage_id)
-		if stage_data.get("boss"):
-			handle_boss_defeat(stage_data.get("boss"))
+		var boss_id: String = stage_data.get("boss", "")
+		
+		# Send stage completion to server with boss defeat info
+		_notify_server_stage_complete(stage_id, boss_id)
+
+		if boss_id:
+			handle_boss_defeat(boss_id)
 
 		unlock_next_stage(stage_id)
 		save_progress()
 		update_campaign_progress()
+
+func _notify_server_stage_complete(stage_id: String, boss_id: String) -> void:
+	"""Notifies the server about stage completion and unlocks modifier pools.
+
+	Parameters:
+		stage_id: ID of the completed stage
+		boss_id: ID of the boss defeated (empty string if no boss)
+	"""
+	if not network_manager or not network_manager.has_method("send_rpc"):
+		return
+
+	var payload: Dictionary = {
+		"stage_id": stage_id,
+		"boss_defeated": boss_id != "",
+		"boss_id": boss_id,
+		"difficulty": "normal"
+	}
+
+	# Send async RPC to server
+	network_manager.send_rpc_async("armored_archer/stage_complete", JSON.stringify(payload), 10.0)
 
 func is_stage_unlocked(stage_id: String) -> bool:
 	"""Checks if a stage is available to play.
@@ -136,6 +164,10 @@ func handle_boss_defeat(boss_id: String) -> void:
 	Parameters:
 		boss_id: Identifier of the defeated boss
 	"""
+	# Track boss defeated if not already tracked
+	if not boss_id in bosses_defeated:
+		bosses_defeated.append(boss_id)
+
 	# Track boss defeated in analytics
 	if analytics and analytics.has_method("log_pve_boss_defeated"):
 		var stage_data = _get_stage_with_boss(boss_id)
@@ -260,3 +292,53 @@ func load_progress() -> void:
 			unlocked_stages = save_data.get("unlocked_stages", [])
 			completed_stages = save_data.get("completed_stages", [])
 			unlocked_modifier_pools = save_data.get("unlocked_modifier_pools", [])
+			bosses_defeated = save_data.get("bosses_defeated", [])
+
+func sync_modifiers_from_server() -> void:
+	"""Fetches unlocked modifiers from the server and syncs local state."""
+	if not network_manager or not network_manager.has_method("send_rpc"):
+		return
+
+	var response = network_manager.send_rpc("armored_archer/get_unlocked_modifiers", "{}")
+	
+	if response.has("error"):
+		push_warning("Failed to sync modifiers from server: " + str(response.error))
+		return
+
+	if response.has("success") and response.success:
+		# Sync unlocked modifier pools
+		if response.has("unlocked_modifier_pools"):
+			var server_modifiers = response.unlocked_modifier_pools
+			for mod_id in server_modifiers:
+				if not mod_id in unlocked_modifier_pools:
+					unlocked_modifier_pools.append(mod_id)
+					modifier_pool_unlocked.emit(mod_id)
+
+		# Sync boss defeats
+		if response.has("boss_defeats"):
+			var server_bosses = response.boss_defeats
+			for boss_id in server_bosses:
+				if not boss_id in bosses_defeated:
+					bosses_defeated.append(boss_id)
+
+		# Save synced data
+		save_progress()
+
+func get_bosses_defeated() -> Array:
+	"""Returns the list of boss IDs that have been defeated.
+
+	Returns:
+		Array: List of defeated boss IDs
+	"""
+	return bosses_defeated.duplicate()
+
+func has_defeated_boss(boss_id: String) -> bool:
+	"""Checks if a specific boss has been defeated.
+
+	Parameters:
+		boss_id: The boss identifier to check
+
+	Returns:
+		bool: True if the boss has been defeated
+	"""
+	return boss_id in bosses_defeated
