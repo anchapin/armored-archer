@@ -43,6 +43,7 @@ PerformanceProfiler="*res://autoloads/PerformanceProfiler.gd"
 ProfilingInstrumentation="*res://autoloads/ProfilingInstrumentation.gd"
 UITransitionOptimizer="*res://autoloads/UITransitionOptimizer.gd"
 ObjectPool="*res://autoloads/ObjectPool.gd"
+VFXManager="*res://autoloads/VFXManager.gd"
 AnalyticsManager="*res://addons/analytics_manager/analytics_manager.gd"
 
 [input]

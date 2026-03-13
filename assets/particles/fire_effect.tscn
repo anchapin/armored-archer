@@ -1,0 +1,31 @@
+[gd_scene load_steps=4 format=3 uid="uid://fire_effect_particles"]
+
+[ext_resource type="Texture2D" path="res://icon.svg" id="1"]
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_fire"]
+emission_shape = 3
+emission_sphere_radius = 12.0
+gravity = Vector3(0, -80, 0)
+direction = Vector3(0, -1, 0)
+spread = 25.0
+initial_velocity_min = 40.0
+initial_velocity_max = 80.0
+scale_min = 0.15
+scale_max = 0.4
+color = Color(1.0, 0.4, 0.1, 0.9)
+turbulence_enabled = true
+turbulence_noise_strength = 3.0
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_fire"]
+blend_mode = 1
+
+[node name="FireEffect" type="GPUParticles2D"]
+amount = 25
+process_material = SubResource("ParticleProcessMaterial_fire")
+texture = ExtResource("1")
+lifetime = 0.7
+one_shot = true
+explosiveness = 0.8
+local_coords = false
+draw_order = 0
+material = SubResource("CanvasItemMaterial_fire")

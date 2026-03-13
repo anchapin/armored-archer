@@ -1,0 +1,29 @@
+[gd_scene load_steps=4 format=3 uid="uid://charge_effect_particle"]
+
+[ext_resource type="Texture2D" path="res://icon.svg" id="1"]
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_charge"]
+emission_shape = 3
+emission_sphere_radius = 8.0
+gravity = Vector3(0, 0, 0)
+direction = Vector3(1, 0, 0)
+spread = 30.0
+initial_velocity_min = 20.0
+initial_velocity_max = 50.0
+scale_min = 0.15
+scale_max = 0.35
+color = Color(0.3, 0.8, 1, 0.8)
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_charge"]
+blend_mode = 1
+
+[node name="ChargeEffect" type="GPUParticles2D"]
+amount = 12
+process_material = SubResource("ParticleProcessMaterial_charge")
+texture = ExtResource("1")
+lifetime = 0.8
+one_shot = false
+explosiveness = 0.0
+local_coords = false
+draw_order = 0
+material = SubResource("CanvasItemMaterial_charge")

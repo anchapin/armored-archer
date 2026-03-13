@@ -1,0 +1,29 @@
+[gd_scene load_steps=4 format=3 uid="uid://miss_effect_particles"]
+
+[ext_resource type="Texture2D" path="res://icon.svg" id="1"]
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_miss"]
+emission_shape = 3
+emission_sphere_radius = 10.0
+gravity = Vector3(0, 20, 0)
+direction = Vector3(0, -1, 0)
+spread = 45.0
+initial_velocity_min = 30.0
+initial_velocity_max = 60.0
+scale_min = 0.1
+scale_max = 0.25
+color = Color(0.5, 0.5, 0.5, 0.5)
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_miss"]
+blend_mode = 1
+
+[node name="MissEffect" type="GPUParticles2D"]
+amount = 15
+process_material = SubResource("ParticleProcessMaterial_miss")
+texture = ExtResource("1")
+lifetime = 0.5
+one_shot = true
+explosiveness = 0.7
+local_coords = false
+draw_order = 0
+material = SubResource("CanvasItemMaterial_miss")
