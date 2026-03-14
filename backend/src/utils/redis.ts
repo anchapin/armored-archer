@@ -7,7 +7,7 @@ let redisClient: Redis | null = null;
 /**
  * Gets or initializes the Redis client.
  * Returns null if Redis is not enabled or fails to connect.
- * 
+ *
  * @param logger - Optional Nakama logger
  * @returns Redis client or null
  */
