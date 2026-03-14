@@ -937,66 +937,6 @@ export function initializeProgressiveRollout(logger: Runtime.Logger): void {
         },
       ],
     },
-    {
-      name: 'new_matchmaking',
-      description: 'Improved matchmaking algorithm',
-      phases: [
-        {
-          phase: 'canary',
-          percentage: 10,
-          durationMinutes: 30,
-          minHealthPercent: 90,
-          maxErrorRatePercent: 5,
-          maxLatencyMs: 500,
-          sampleSize: 50,
-          autoPromote: false,
-          rollbackCriteria: {
-            errorRateThreshold: 10,
-            latencyThreshold: 1000,
-            healthCheckFails: 5,
-            customMetrics: {
-              matchWaitTime: 30, // seconds
-            },
-          },
-        },
-        {
-          phase: 'gradual',
-          percentage: 50,
-          durationMinutes: 60,
-          minHealthPercent: 95,
-          maxErrorRatePercent: 3,
-          maxLatencyMs: 300,
-          sampleSize: 200,
-          autoPromote: false,
-          rollbackCriteria: {
-            errorRateThreshold: 5,
-            latencyThreshold: 500,
-            healthCheckFails: 3,
-            customMetrics: {
-              matchWaitTime: 20,
-            },
-          },
-        },
-        {
-          phase: 'full',
-          percentage: 100,
-          durationMinutes: 0,
-          minHealthPercent: 98,
-          maxErrorRatePercent: 1,
-          maxLatencyMs: 200,
-          sampleSize: 0,
-          autoPromote: false,
-          rollbackCriteria: {
-            errorRateThreshold: 2,
-            latencyThreshold: 300,
-            healthCheckFails: 2,
-            customMetrics: {
-              matchWaitTime: 15,
-            },
-          },
-        },
-      ],
-    },
   ];
 
   for (const flagDef of defaultFlags) {
