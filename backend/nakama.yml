@@ -9,6 +9,7 @@ console:
 runtime:
   env: []
   path: /nakama/data
+  js_entrypoint: "modules/index.js"
 
 socket:
   server_key: defaultkey

@@ -57,6 +57,13 @@ export function getRedisClient(logger?: Runtime.Logger): Redis | null {
 }
 
 /**
+ * Legacy alias for getRedisClient.
+ */
+export function getRedis(logger?: Runtime.Logger): Redis | null {
+  return getRedisClient(logger);
+}
+
+/**
  * Close the Redis connection.
  */
 export async function closeRedisConnection(): Promise<void> {
@@ -64,4 +71,11 @@ export async function closeRedisConnection(): Promise<void> {
     await redisClient.quit();
     redisClient = null;
   }
+}
+
+/**
+ * Legacy alias for closeRedisConnection.
+ */
+export async function closeRedis(): Promise<void> {
+  await closeRedisConnection();
 }
