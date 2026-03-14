@@ -41,11 +41,40 @@ export class IntegrationTestHelper {
   }
 
   /**
+   * Check if Nakama server is available.
+   */
+  async isNakamaAvailable(): Promise<boolean> {
+    try {
+      const client = new Client(
+        'testkey',
+        TEST_HOST,
+        TEST_PORT,
+        false
+      );
+      // Try to get the session - this will fail if server is not available
+      // We'll use a quick timeout to check connectivity
+      const socket = client.createSocket(false);
+      await socket.connect();
+      await socket.disconnect();
+      return true;
+    } catch (error) {
+      console.log('Nakama server not available:', error instanceof Error ? error.message : String(error));
+      return false;
+    }
+  }
+
+  /**
    * Clean up after all tests are complete.
    */
   async cleanup(): Promise<void> {
     if (this.adminClient) {
-      await this.adminClient.disconnect();
+      try {
+        if (typeof this.adminClient.disconnect === 'function') {
+          await this.adminClient.disconnect();
+        }
+      } catch (e) {
+        // Ignore disconnect errors - connection may already be closed
+      }
     }
   }
 
