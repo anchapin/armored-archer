@@ -1,6 +1,7 @@
 extends Control
 
 class_name GearPreviewPanel
+const GearEnums = preload("res://scripts/gear_enums.gd")
 
 ## Panel for previewing gear and cosmetic skins.
 ## Allows users to browse gear, preview items, and equip them.
@@ -22,11 +23,13 @@ var show_skin: bool = false
 var gear_registry: GearRegistry
 
 # --- Signal connections for cleanup ---
-var _preview_mode_connection: Callable = Callable()
-var _slot_selector_connection: Callable = Callable()
-var _item_selector_connection: Callable = Callable()
-var _equip_button_connection: Callable = Callable()
-var _unequip_skin_connection: Callable = Callable()
+var _preview_mode_connection: int = -1
+var _slot_selector_connection: int = -1
+var _item_selector_connection: int = -1
+var _equip_button_connection: int = -1
+var _unequip_skin_connection: int = -1
+
+var _slot_handlers: Dictionary = {}
 
 enum PreviewMode {
 	BASE_GEAR,
@@ -42,16 +45,20 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	## Clean up all signal connections to prevent memory leaks
-	_cleanup_signal_connection(preview_mode, "item_selected", _preview_mode_connection)
-	_cleanup_signal_connection(slot_selector, "item_selected", _slot_selector_connection)
-	_cleanup_signal_connection(item_selector, "item_selected", _item_selector_connection)
-	_cleanup_signal_connection(equip_button, "pressed", _equip_button_connection)
-	_cleanup_signal_connection(unequip_skin_button, "pressed", _unequip_skin_connection)
+	_disconnect_signal(preview_mode, "item_selected")
+	_disconnect_signal(slot_selector, "item_selected")
+	_disconnect_signal(item_selector, "item_selected")
+	_disconnect_signal(equip_button, "pressed")
+	_disconnect_signal(unequip_skin_button, "pressed")
 
 ## Helper to safely disconnect signals
-func _cleanup_signal_connection(node: Node, signal_name: String, connection: Callable) -> void:
-	if node and connection.is_valid() and node.is_connected(signal_name, connection):
-		node.disconnect(signal_name, connection)
+func _disconnect_signal(node: Node, signal_name: String) -> void:
+	if node:
+		node.disconnect(signal_name, _on_preview_mode_changed)
+		node.disconnect(signal_name, _on_slot_changed)
+		node.disconnect(signal_name, _on_item_changed)
+		node.disconnect(signal_name, _on_equip_pressed)
+		node.disconnect(signal_name, _on_unequip_skin_pressed)
 
 func _setup_ui() -> void:
 	preview_mode.clear()
@@ -63,13 +70,21 @@ func _setup_ui() -> void:
 	slot_selector.add_item("Armor")
 	slot_selector.add_item("Bow")
 	slot_selector.add_item("Arrow")
+	slot_selector.add_item("Amulet")
 
-	## Connect signals with Callable references for proper cleanup
-	_preview_mode_connection = preview_mode.item_selected.connect(_on_preview_mode_changed)
-	_slot_selector_connection = slot_selector.item_selected.connect(_on_slot_changed)
-	_item_selector_connection = item_selector.item_selected.connect(_on_item_changed)
-	_equip_button_connection = equip_button.pressed.connect(_on_equip_pressed)
-	_unequip_skin_connection = unequip_skin_button.pressed.connect(_on_unequip_skin_pressed)
+	# Initialize slot handlers with Callable references
+	_slot_handlers[GearEnums.SlotType.HELM] = _on_helm_selected
+	_slot_handlers[GearEnums.SlotType.ARMOR] = _on_armor_selected
+	_slot_handlers[GearEnums.SlotType.BOW] = _on_bow_selected
+	_slot_handlers[GearEnums.SlotType.ARROW] = _on_arrow_selected
+	_slot_handlers[GearEnums.SlotType.AMULET] = _on_amulet_selected
+
+	# Connect signals - connect() returns int connection ID so we need to store it
+	var _preview_conn = preview_mode.item_selected.connect(_on_preview_mode_changed)
+	var _slot_conn = slot_selector.item_selected.connect(_on_slot_changed)
+	var _item_conn = item_selector.item_selected.connect(_on_item_changed)
+	var _equip_conn = equip_button.pressed.connect(_on_equip_pressed)
+	var _unequip_conn = unequip_skin_button.pressed.connect(_on_unequip_skin_pressed)
 
 	_on_preview_mode_changed(0)
 	_on_slot_changed(0)
@@ -82,11 +97,25 @@ func _on_preview_mode_changed(index: int) -> void:
 	_update_preview()
 
 func _on_slot_changed(index: int) -> void:
-	var slots: Array[String] = ["helm", "armor", "bow", "arrow"]
-	if index >= 0 and index < slots.size():
-		current_slot = slots[index]
-		_update_item_selector()
-		_update_preview()
+	match index:
+		0: current_slot = "helm"
+		1: current_slot = "armor"
+		2: current_slot = "bow"
+		3: current_slot = "arrow"
+		4: current_slot = "amulet"
+
+	var _st = _get_slot_type()
+	if _slot_handlers.has(_st):
+		_slot_handlers[_st].call()
+
+	_update_item_selector()
+	_update_preview()
+
+func _on_helm_selected() -> void: pass
+func _on_armor_selected() -> void: pass
+func _on_bow_selected() -> void: pass
+func _on_arrow_selected() -> void: pass
+func _on_amulet_selected() -> void: pass
 
 func _on_item_changed(index: int) -> void:
 	if index == 0:
@@ -97,9 +126,13 @@ func _on_item_changed(index: int) -> void:
 			current_item_id = items[index - 1]
 	_update_preview()
 
+func _on_slot_selected(_slot_type: GearEnums.SlotType) -> void:
+	if _slot_handlers.has(_slot_type):
+		_slot_handlers[_slot_type].call()
+
 func _get_available_items() -> Array:
 	var items: Array = []
-	var slot_type: GearSlot.SlotType = _get_slot_type()
+	var slot_type = _get_slot_type()
 
 	if show_skin:
 		if gear_registry and gear_registry.skin_db:
@@ -115,26 +148,14 @@ func _get_available_items() -> Array:
 	return items
 
 func _update_item_selector() -> void:
-	if not item_selector:
-		return
-
 	item_selector.clear()
 	item_selector.add_item("None")
 
 	var items: Array = _get_available_items()
-	for item_id in items:
-		var item_name: String = ""
-		if show_skin:
-			var skin_data = null
-			if gear_registry:
-				skin_data = gear_registry.get_skin(item_id)
-			item_name = skin_data.skin_name if skin_data else item_id
-		else:
-			var gear_data = null
-			if gear_registry:
-				gear_data = gear_registry.get_base_gear(item_id)
-			item_name = gear_data.gear_name if gear_data else item_id
-		item_selector.add_item(item_name)
+	for id in items:
+		var data = GearRegistry.get_gear_data(id) if not show_skin else GearRegistry.get_skin_data(id)
+		if data:
+			item_selector.add_item(data.gear_name)
 
 	item_selector.select(0)
 	current_item_id = ""
@@ -146,67 +167,65 @@ func _update_preview() -> void:
 	var slot_type = _get_slot_type()
 
 	if not show_skin:
-		var gear_data = gear_registry.get_base_gear(current_item_id)
+		var gear_data = GearRegistry.get_gear_data(current_item_id)
 		if gear_data:
-			character_sprite.equip_base_gear(current_slot, current_item_id, gear_data.base_texture)
-			_show_stats(gear_data.stats, gear_data.rarity)
+			character_sprite.equip_base_gear(current_slot, current_item_id, gear_data.base_texture if "base_texture" in gear_data else null)
+			_show_stats(gear_data.stats if "stats" in gear_data else {}, gear_data.rarity if "rarity" in gear_data else "")
 			title_label.text = gear_data.gear_name
 		else:
 			character_sprite.equip_base_gear(current_slot, "", null)
 			_show_stats({}, "")
 			title_label.text = "No Item Selected"
 	else:
-		var skin_data = gear_registry.get_skin(current_item_id)
+		var skin_data = GearRegistry.get_skin_data(current_item_id)
 		if skin_data:
-			var base_gear = gear_registry.get_base_gear(skin_data.base_gear_required)
-			if base_gear:
-				character_sprite.equip_base_gear(current_slot, skin_data.base_gear_required, base_gear.base_texture)
-			character_sprite.equip_skin(current_slot, current_item_id, skin_data.skin_texture)
+			character_sprite.equip_skin(current_slot, current_item_id, skin_data.skin_texture if "skin_texture" in skin_data else null)
 			_show_skin_info(skin_data)
 			title_label.text = skin_data.skin_name
 		else:
 			_clear_skin_preview()
 
 func _show_stats(stats: Dictionary, rarity: String) -> void:
-	if stats.is_empty():
-		stats_label.text = "No stats"
-	else:
-		var stats_text = "Stats:\n"
-		for stat in stats:
-			var value = stats[stat]
-			if value != 0:
-				stats_text += "%s: +%d\n" % [stat.capitalize(), value]
-		stats_text += "Rarity: %s" % rarity.capitalize()
-		stats_label.text = stats_text
+	var stats_text = ""
+	if not stats.is_empty():
+		stats_text += "Stats:\n"
+		for stat_name in stats.keys():
+			stats_text += "  %s: %s\n" % [stat_name.capitalize(), stats[stat_name]]
 
-func _show_skin_info(skin_data: CosmeticSkinData) -> void:
-	var base_gear = gear_registry.get_base_gear(skin_data.base_gear_required)
-	var info_text = "Cosmetic Skin (Purely Visual)\n"
-	info_text += "Requires: %s\n" % (base_gear.gear_name if base_gear else "Unknown")
-	info_text += "Price: %d gold" % skin_data.price
-	if skin_data.is_premium:
-		info_text += " (Premium)"
+	if not rarity.is_empty():
+		stats_text += "Rarity: %s\n" % rarity.capitalize()
+
+	stats_label.text = stats_text
+
+func _show_skin_info(skin_data: Dictionary) -> void:
+	var info_text = "Skin:\n"
+	info_text += "  Name: %s\n" % skin_data.skin_name
+	info_text += "  ID: %s\n" % skin_data.skin_id
 	stats_label.text = info_text
 
 func _clear_skin_preview() -> void:
 	character_sprite.unequip_skin(current_slot)
-	stats_label.text = "No skin selected"
-	title_label.text = "No Item Selected"
+	title_label.text = "No Skin Selected"
+	stats_label.text = ""
 
-func _get_slot_type() -> GearSlot.SlotType:
+func _get_slot_type() -> GearEnums.SlotType:
 	match current_slot:
-		"helm": return GearSlot.SlotType.HELM
-		"armor": return GearSlot.SlotType.ARMOR
-		"bow": return GearSlot.SlotType.BOW
-		"arrow": return GearSlot.SlotType.ARROW
-		_: return GearSlot.SlotType.HELM
+		"helm": return GearEnums.SlotType.HELM
+		"armor": return GearEnums.SlotType.ARMOR
+		"bow": return GearEnums.SlotType.BOW
+		"arrow": return GearEnums.SlotType.ARROW
+		"amulet": return GearEnums.SlotType.AMULET
+		_: return GearEnums.SlotType.HELM
 
 func _on_equip_pressed() -> void:
 	if current_item_id.is_empty():
 		return
 
-	var loadout = character_sprite.get_equipped_loadout()
+	# Logic to equip would go here
+	pass
 
 func _on_unequip_skin_pressed() -> void:
 	character_sprite.unequip_skin(current_slot)
+	current_item_id = ""
+	item_selector.select(0)
 	_update_preview()
