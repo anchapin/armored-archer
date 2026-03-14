@@ -6,6 +6,7 @@
 
 import { createHash } from 'crypto';
 import { Runtime } from '../types/nakama';
+import { getRedis } from '../utils/redis';
 import { getCacheManager } from '../utils/cache';
 import { withCircuitBreaker } from '../utils/circuitBreaker';
 import { safeParse } from '../utils/safeParse';
@@ -41,109 +42,72 @@ export enum RefundReason {
 }
 
 /**
- * In-memory store for validated receipts (use Redis in production for distributed systems).
- * Format: Set of receipt hashes keyed by user_id
- */
-const validatedReceipts: Map<string, Set<string>> = new Map();
-
-/**
- * Processed refunds storage for tracking.
- * Format: Map of user_id -> Set of refund transaction IDs
- */
-const processedRefunds: Map<string, Set<string>> = new Map();
-
-/**
- * Maximum age of receipts to keep in memory (24 hours in milliseconds).
- * In production with Redis, use TTL-based keys instead.
- */
-// const RECEIPT_EXPIRY_MS = 24 * 60 * 60 * 1000;
-
-/**
- * Cleanup old entries from the receipts store.
- */
-function cleanupOldReceipts(): void {
-  // const now = Date.now();
-  for (const receipts of validatedReceipts.values()) {
-    // In a real implementation, we'd track when each receipt was added
-    // For now, we just limit the total count per user
-    if (receipts.size > 1000) {
-      // Keep only the most recent 500
-      const arr = Array.from(receipts);
-      receipts.clear();
-      arr.slice(-500).forEach((r) => receipts.add(r));
-    }
-  }
-}
-
-// Run cleanup every hour
-setInterval(cleanupOldReceipts, 60 * 60 * 1000);
-
-/**
  * Check if a receipt has already been used.
+ * Uses Redis for persistence and distributed systems support.
  *
  * @param userId - The user who submitted the receipt
  * @param receiptHash - Hash of the transaction receipt
  * @returns true if the receipt was already validated
  */
-function isReceiptAlreadyUsed(userId: string, receiptHash: string): boolean {
-  const userReceipts = validatedReceipts.get(userId);
-  if (!userReceipts) {
-    return false;
-  }
-  return userReceipts.has(receiptHash);
+async function isReceiptAlreadyUsed(userId: string, receiptHash: string): Promise<boolean> {
+  const redis = getRedis();
+  const key = `user_receipts:${userId}`;
+  const isMember = await redis.sismember(key, receiptHash);
+  return isMember === 1;
 }
 
 /**
  * Mark a receipt as used.
+ * Uses Redis for persistence and distributed systems support.
  *
  * @param userId - The user who submitted the receipt
  * @param receiptHash - Hash of the transaction receipt
  */
-function markReceiptAsUsed(userId: string, receiptHash: string): void {
-  let userReceipts = validatedReceipts.get(userId);
-  if (!userReceipts) {
-    userReceipts = new Set();
-    validatedReceipts.set(userId, userReceipts);
-  }
-  userReceipts.add(receiptHash);
+async function markReceiptAsUsed(userId: string, receiptHash: string): Promise<void> {
+  const redis = getRedis();
+  const key = `user_receipts:${userId}`;
+  await redis.sadd(key, receiptHash);
+  // Optional: Set expiry to 1 year to prevent infinite growth while maintaining security
+  await redis.expire(key, 365 * 24 * 60 * 60);
 }
 
 /**
- * Cryptographic hash function for receipts using SHA-256.
+ * Cryptographic hash function for receipts using SHA-256 with salt.
  * This prevents collision attacks and replay attack manipulation.
  */
 function hashReceipt(receipt: string): string {
-  return createHash('sha256').update(receipt).digest('hex');
+  const salt = process.env.RECEIPT_HASH_SALT || 'armored_archer_secure_iap_salt_2024';
+  return createHash('sha256').update(receipt + salt).digest('hex');
 }
 
 /**
  * Check if a refund has already been processed.
+ * Uses Redis for persistence and distributed systems support.
  *
  * @param userId - The user who received the refund
  * @param refundTransactionId - Unique refund transaction identifier
  * @returns true if the refund was already processed
  */
-function isRefundAlreadyProcessed(userId: string, refundTransactionId: string): boolean {
-  const userRefunds = processedRefunds.get(userId);
-  if (!userRefunds) {
-    return false;
-  }
-  return userRefunds.has(refundTransactionId);
+async function isRefundAlreadyProcessed(userId: string, refundTransactionId: string): Promise<boolean> {
+  const redis = getRedis();
+  const key = `user_refunds:${userId}`;
+  const isMember = await redis.sismember(key, refundTransactionId);
+  return isMember === 1;
 }
 
 /**
  * Mark a refund as processed.
+ * Uses Redis for persistence and distributed systems support.
  *
  * @param userId - The user who received the refund
  * @param refundTransactionId - Unique refund transaction identifier
  */
-function markRefundAsProcessed(userId: string, refundTransactionId: string): void {
-  let userRefunds = processedRefunds.get(userId);
-  if (!userRefunds) {
-    userRefunds = new Set();
-    processedRefunds.set(userId, userRefunds);
-  }
-  userRefunds.add(refundTransactionId);
+async function markRefundAsProcessed(userId: string, refundTransactionId: string): Promise<void> {
+  const redis = getRedis();
+  const key = `user_refunds:${userId}`;
+  await redis.sadd(key, refundTransactionId);
+  // Optional: Set expiry to 1 year to prevent infinite growth
+  await redis.expire(key, 365 * 24 * 60 * 60);
 }
 
 /**
@@ -196,16 +160,16 @@ function wouldExceedMaxBalance(currentBalance: number, amountToAdd: number): boo
  * @param logger - Nakama logger instance
  * @returns Result object with success status and message
  */
-export function processRefund(
+export async function processRefund(
   nk: Runtime.Nakama,
   userId: string,
   refundAmount: number,
   refundTransactionId: string,
   reason: RefundReason,
   logger: Runtime.Logger
-): { success: boolean; message: string; new_balance?: number } {
+): Promise<{ success: boolean; message: string; new_balance?: number }> {
   // Check for duplicate refund
-  if (isRefundAlreadyProcessed(userId, refundTransactionId)) {
+  if (await isRefundAlreadyProcessed(userId, refundTransactionId)) {
     logger.warn(
       'Duplicate refund detected for user: %s, transaction: %s',
       userId,
@@ -246,7 +210,7 @@ export function processRefund(
   invalidateCurrencyCache(userId, logger);
 
   // Mark refund as processed
-  markRefundAsProcessed(userId, refundTransactionId);
+  await markRefundAsProcessed(userId, refundTransactionId);
 
   // Log the refund for audit
   const refundDetails = {
@@ -519,15 +483,15 @@ function validatePurchaseRequest(
 /**
  * Checks for duplicate receipts and validates platform
  */
-function validatePurchaseSecurity(
+async function validatePurchaseSecurity(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   request: { product_id: string; platform: string; transaction_receipt: string }
-): string | null {
+): Promise<string | null> {
   // Check for duplicate receipt to prevent replay attacks
   const receiptHash = hashReceipt(request.transaction_receipt);
-  if (isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
+  if (await isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
     logger.warn('Duplicate receipt detected');
     logAudit(
       nk,
@@ -650,17 +614,17 @@ function validatePurchaseLimits(
 /**
  * Awards gems to player after all validations pass
  */
-function awardGems(
+async function awardGems(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   request: { product_id: string; platform: string; transaction_receipt: string },
   gemBundle: { gem_amount: number }
-): { success: true; gems_awarded: number; new_balance: number } {
+): Promise<{ success: true; gems_awarded: number; new_balance: number }> {
   const receiptHash = hashReceipt(request.transaction_receipt);
 
   // Mark receipt as used BEFORE awarding gems to prevent replay attacks
-  markReceiptAsUsed(ctx.userId, receiptHash);
+  await markReceiptAsUsed(ctx.userId, receiptHash);
 
   const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
 
@@ -746,7 +710,7 @@ export async function rpcValidatePurchase(
   const request = requestValidation.request;
 
   // Step 2: Check for duplicates and platform
-  const securityError = validatePurchaseSecurity(ctx, logger, nk, request);
+  const securityError = await validatePurchaseSecurity(ctx, logger, nk, request);
   if (securityError) {
     return JSON.stringify({
       error: securityError,
@@ -769,7 +733,7 @@ export async function rpcValidatePurchase(
 
   // Step 5: Award gems
   try {
-    const result = awardGems(ctx, logger, nk, request, gemBundle);
+    const result = await awardGems(ctx, logger, nk, request, gemBundle);
     return JSON.stringify({
       gems_awarded: result.gems_awarded,
       new_balance: result.new_balance,
@@ -995,17 +959,14 @@ async function validateWithRevenueCat(
 ): Promise<RevenueCatValidationResult> {
   const apiKey = getRevenueCatApiKey();
   if (!apiKey) {
-    logger.warn('RevenueCat API key not configured - skipping server-side validation');
-    // Return valid for development without API key
-    return { valid: true };
+    logger.error('RevenueCat API key not configured - strictly enforcing validation');
+    return { valid: false, error: 'RevenueCat API key not configured' };
   }
 
   // RevenueCat endpoint for validating subscriptions
   const rcPlatform = platform === 'ios' ? 'apple' : 'google';
 
   // Wrap external API call with circuit breaker for resilience
-  // If RevenueCat is down, we fail open (allow purchase) to not block revenue
-  // The client-side validation and other checks still provide fraud protection
   const validationResult = await withCircuitBreaker(
     'revenuecat',
     async () => {
@@ -1077,10 +1038,10 @@ async function validateWithRevenueCat(
         product_id: verifiedProductId,
       };
     },
-    // Fallback: fail open to not block purchases if RevenueCat is unavailable
+    // Fallback: fail closed if RevenueCat is unavailable (strict enforcement)
     async () => {
-      logger.warn('RevenueCat circuit open - failing open for purchase validation');
-      return { valid: true };
+      logger.error('RevenueCat circuit open - failing closed for purchase validation');
+      return { valid: false, error: 'Validation service temporarily unavailable' };
     }
   );
 
@@ -1201,7 +1162,7 @@ export async function rpcProcessPendingPurchases(
     const receiptHash = hashReceipt(purchase.transaction_receipt);
 
     // Check for duplicate receipt
-    if (isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
+    if (await isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
       results.push({ product_id: purchase.product_id, success: true, error: 'Already processed' });
       continue;
     }
@@ -1221,7 +1182,7 @@ export async function rpcProcessPendingPurchases(
     }
 
     // Mark receipt and add gems
-    markReceiptAsUsed(ctx.userId, receiptHash);
+    await markReceiptAsUsed(ctx.userId, receiptHash);
     playerCurrency.gems += gemBundle.gem_amount;
 
     nk.storageWrite([
@@ -1389,7 +1350,7 @@ export async function rpcCheckRefunds(
       const productInfo = catalog[refund.product_id];
 
       if (productInfo) {
-        processRefund(
+        await processRefund(
           nk,
           validation.data.app_user_id,
           productInfo.gem_amount,
@@ -2005,7 +1966,7 @@ export async function rpcRevenueCatWebhook(
       const refundReason = (webhookData.refund_reason as string) ||
         (webhookData.refundReason as string) ||
         'CHARGEBACK';
-      const refundResult = processRefund(
+      const refundResult = await processRefund(
         nk,
         userId,
         getGemAmountForProduct(productId, logger) || 0,
