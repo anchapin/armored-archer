@@ -1,4 +1,9 @@
 import { InitModule, Runtime } from './types/nakama';
+
+// Polyfill for CommonJS compatibility in Nakama
+if (typeof (globalThis as any).exports === 'undefined') {
+  (globalThis as any).exports = {};
+}
 import './config';
 import { validateRequiredConfig, config } from './config';
 import { initializeCaches } from './utils/cache';
@@ -455,14 +460,14 @@ function rpcGetLeaderboardWrapper(
   return rpcGetLeaderboard(ctx, logger, nk, payload);
 }
 
-function rpcValidatePurchaseWrapper(
+async function rpcValidatePurchaseWrapper(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string {
+): Promise<string> {
   const { rpcValidatePurchase } = require('./modules/store');
-  return rpcValidatePurchase(ctx, logger, nk, payload);
+  return await rpcValidatePurchase(ctx, logger, nk, payload);
 }
 
 function rpcSpendGemsWrapper(
@@ -475,14 +480,14 @@ function rpcSpendGemsWrapper(
   return rpcSpendGems(ctx, logger, nk, payload);
 }
 
-function rpcRevenueCatWebhookWrapper(
+async function rpcRevenueCatWebhookWrapper(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string {
+): Promise<string> {
   const { rpcRevenueCatWebhook } = require('./modules/store');
-  return rpcRevenueCatWebhook(ctx, logger, nk, payload);
+  return await rpcRevenueCatWebhook(ctx, logger, nk, payload);
 }
 
 function rpcGenerateGearWrapper(
