@@ -511,34 +511,3 @@ export function captureCacheError(
     },
   });
 }
-
-/**
- * Legacy function for backward compatibility.
- * @deprecated Use captureException with ExtendedErrorContext instead
- */
-export function captureExceptionLegacy(
-  error: Error,
-  context: {
-    userId?: string;
-    rpc?: string;
-    extra?: Record<string, unknown>;
-  } = {}
-): void {
-  captureException(error, context);
-}
-
-/**
- * Legacy function for backward compatibility.
- * @deprecated Use captureMessage with ExtendedErrorContext instead
- */
-export function captureMessageLegacy(
-  message: string,
-  level: 'info' | 'warning' | 'error' = 'info',
-  context: {
-    userId?: string;
-    rpc?: string;
-    extra?: Record<string, unknown>;
-  } = {}
-): void {
-  captureMessage(message, level, context);
-}
