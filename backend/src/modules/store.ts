@@ -7,6 +7,7 @@
 import { createHash } from 'crypto';
 import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
+import { getRedisClient } from '../utils/redis';
 import { withCircuitBreaker } from '../utils/circuitBreaker';
 import { safeParse } from '../utils/safeParse';
 import { config } from '../config';
@@ -81,31 +82,99 @@ setInterval(cleanupOldReceipts, 60 * 60 * 1000);
 /**
  * Check if a receipt has already been used.
  *
+ * @param nk - Nakama server interface
  * @param userId - The user who submitted the receipt
  * @param receiptHash - Hash of the transaction receipt
+ * @param logger - Nakama logger
  * @returns true if the receipt was already validated
  */
-function isReceiptAlreadyUsed(userId: string, receiptHash: string): boolean {
+async function isReceiptAlreadyUsed(
+  nk: Runtime.Nakama,
+  userId: string,
+  receiptHash: string,
+  logger: Runtime.Logger
+): Promise<boolean> {
+  // 1. Try Redis first (distributed, high performance)
+  const redis = getRedisClient(logger);
+  if (redis) {
+    try {
+      const exists = await redis.exists(`receipt:${userId}:${receiptHash}`);
+      if (exists) return true;
+    } catch (e) {
+      logger.error('Redis error in isReceiptAlreadyUsed: %s', e);
+    }
+  }
+
+  // 2. Try in-memory cache
   const userReceipts = validatedReceipts.get(userId);
-  if (!userReceipts) {
+  if (userReceipts && userReceipts.has(receiptHash)) {
+    return true;
+  }
+
+  // 3. Fallback to Nakama storage (persistent, distributed)
+  try {
+    const storageId = `receipt_${receiptHash}`;
+    const objects = nk.storageRead([
+      {
+        collection: 'validated_receipts',
+        key: storageId,
+        userId: userId,
+      },
+    ]);
+    return objects.length > 0;
+  } catch (e) {
+    logger.error('Storage read error in isReceiptAlreadyUsed: %s', e);
     return false;
   }
-  return userReceipts.has(receiptHash);
 }
 
 /**
  * Mark a receipt as used.
  *
+ * @param nk - Nakama server interface
  * @param userId - The user who submitted the receipt
  * @param receiptHash - Hash of the transaction receipt
+ * @param logger - Nakama logger
  */
-function markReceiptAsUsed(userId: string, receiptHash: string): void {
+async function markReceiptAsUsed(
+  nk: Runtime.Nakama,
+  userId: string,
+  receiptHash: string,
+  logger: Runtime.Logger
+): Promise<void> {
+  // 1. Mark in Redis with 24h TTL
+  const redis = getRedisClient(logger);
+  if (redis) {
+    try {
+      await redis.setex(`receipt:${userId}:${receiptHash}`, 86400, '1');
+    } catch (e) {
+      logger.error('Redis error in markReceiptAsUsed: %s', e);
+    }
+  }
+
+  // 2. Mark in-memory
   let userReceipts = validatedReceipts.get(userId);
   if (!userReceipts) {
     userReceipts = new Set();
     validatedReceipts.set(userId, userReceipts);
   }
   userReceipts.add(receiptHash);
+
+  // 3. Persist in Nakama storage
+  try {
+    nk.storageWrite([
+      {
+        collection: 'validated_receipts',
+        key: `receipt_${receiptHash}`,
+        userId: userId,
+        value: JSON.stringify({ validated_at: Date.now(), receipt_hash: receiptHash }),
+        permissionRead: 0, // No public read
+        permissionWrite: 0, // No public write
+      },
+    ]);
+  } catch (e) {
+    logger.error('Storage write error in markReceiptAsUsed: %s', e);
+  }
 }
 
 /**
@@ -519,15 +588,15 @@ function validatePurchaseRequest(
 /**
  * Checks for duplicate receipts and validates platform
  */
-function validatePurchaseSecurity(
+async function validatePurchaseSecurity(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   request: { product_id: string; platform: string; transaction_receipt: string }
-): string | null {
+): Promise<string | null> {
   // Check for duplicate receipt to prevent replay attacks
   const receiptHash = hashReceipt(request.transaction_receipt);
-  if (isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
+  if (await isReceiptAlreadyUsed(nk, ctx.userId, receiptHash, logger)) {
     logger.warn('Duplicate receipt detected');
     logAudit(
       nk,
@@ -650,17 +719,17 @@ function validatePurchaseLimits(
 /**
  * Awards gems to player after all validations pass
  */
-function awardGems(
+async function awardGems(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   request: { product_id: string; platform: string; transaction_receipt: string },
   gemBundle: { gem_amount: number }
-): { success: true; gems_awarded: number; new_balance: number } {
+): Promise<{ success: true; gems_awarded: number; new_balance: number }> {
   const receiptHash = hashReceipt(request.transaction_receipt);
 
   // Mark receipt as used BEFORE awarding gems to prevent replay attacks
-  markReceiptAsUsed(ctx.userId, receiptHash);
+  await markReceiptAsUsed(nk, ctx.userId, receiptHash, logger);
 
   const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
 
@@ -746,7 +815,7 @@ export async function rpcValidatePurchase(
   const request = requestValidation.request;
 
   // Step 2: Check for duplicates and platform
-  const securityError = validatePurchaseSecurity(ctx, logger, nk, request);
+  const securityError = await validatePurchaseSecurity(ctx, logger, nk, request);
   if (securityError) {
     return JSON.stringify({
       error: securityError,
@@ -769,7 +838,7 @@ export async function rpcValidatePurchase(
 
   // Step 5: Award gems
   try {
-    const result = awardGems(ctx, logger, nk, request, gemBundle);
+    const result = await awardGems(ctx, logger, nk, request, gemBundle);
     return JSON.stringify({
       gems_awarded: result.gems_awarded,
       new_balance: result.new_balance,
@@ -1045,28 +1114,48 @@ async function validateWithRevenueCat(
         };
       }
 
-      // Extract product ID from RevenueCat response if available
+      // Extract and verify product ID from RevenueCat response
       const subscriber = data.subscriber as Record<string, unknown> | undefined;
-      let verifiedProductId: string | undefined;
+      let isVerified = false;
 
-      if (subscriber?.entitlements) {
-        const entitlements = subscriber.entitlements as Record<string, unknown>;
-        for (const entitlement of Object.values(entitlements)) {
-          const ent = entitlement as Record<string, unknown>;
-          if (ent.product_id) {
-            verifiedProductId = ent.product_id as string;
-            break;
+      if (subscriber) {
+        // 1. Check entitlements (for subscriptions/features)
+        if (subscriber.entitlements) {
+          const entitlements = subscriber.entitlements as Record<string, any>;
+          if (entitlements[productId]) {
+            isVerified = true;
+          } else {
+            for (const ent of Object.values(entitlements)) {
+              if (ent.product_id === productId) {
+                isVerified = true;
+                break;
+              }
+            }
+          }
+        }
+
+        // 2. Check non_subscriptions (for consumables like gems)
+        if (!isVerified && subscriber.non_subscriptions) {
+          const nonSubscriptions = subscriber.non_subscriptions as Record<string, any[]>;
+          if (nonSubscriptions[productId] && nonSubscriptions[productId].length > 0) {
+            isVerified = true;
+          }
+        }
+
+        // 3. Check active subscriptions
+        if (!isVerified && subscriber.subscriptions) {
+          const subscriptions = subscriber.subscriptions as Record<string, any>;
+          if (subscriptions[productId]) {
+            isVerified = true;
           }
         }
       }
 
-      // Verify product ID matches if we have one from the receipt
-      if (verifiedProductId && verifiedProductId !== productId) {
-        logger.warn('Product ID mismatch: claimed=%s, actual=%s', productId, verifiedProductId);
+      if (!isVerified) {
+        logger.warn('Product ID mismatch or not found: claimed=%s', productId);
         return {
           valid: false,
-          error: `Product ID mismatch: claimed ${productId}, receipt contains ${verifiedProductId}`,
-          product_id: verifiedProductId,
+          error: `Product ID verification failed: ${productId} not found in receipt`,
         };
       }
 
@@ -1074,7 +1163,7 @@ async function validateWithRevenueCat(
       return {
         valid: true,
         subscriber,
-        product_id: verifiedProductId,
+        product_id: productId,
       };
     },
     // Fallback: fail open to not block purchases if RevenueCat is unavailable
@@ -1201,7 +1290,7 @@ export async function rpcProcessPendingPurchases(
     const receiptHash = hashReceipt(purchase.transaction_receipt);
 
     // Check for duplicate receipt
-    if (isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
+    if (await isReceiptAlreadyUsed(nk, ctx.userId, receiptHash, logger)) {
       results.push({ product_id: purchase.product_id, success: true, error: 'Already processed' });
       continue;
     }
@@ -1221,7 +1310,7 @@ export async function rpcProcessPendingPurchases(
     }
 
     // Mark receipt and add gems
-    markReceiptAsUsed(ctx.userId, receiptHash);
+    await markReceiptAsUsed(nk, ctx.userId, receiptHash, logger);
     playerCurrency.gems += gemBundle.gem_amount;
 
     nk.storageWrite([

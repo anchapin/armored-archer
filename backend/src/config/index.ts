@@ -62,6 +62,14 @@ export interface RevenueCatConfig {
   webhookSecret: string;
 }
 
+export interface RedisConfig {
+  host: string;
+  port: number;
+  password?: string;
+  db?: number;
+  enabled: boolean;
+}
+
 export interface SessionConfig {
   encryptionKey: string;
   refreshEncryptionKey: string;
@@ -296,6 +304,7 @@ export interface AppConfig {
   server: ServerConfig;
   database: DatabaseConfig;
   revenuecat: RevenueCatConfig;
+  redis: RedisConfig;
   firebase: FirebaseConfig;
   session: SessionConfig;
   logger: LoggerConfig;
@@ -356,6 +365,14 @@ const config: AppConfig = {
     publicKey: process.env.REVENUECAT_PUBLIC_KEY || '',
     secretKey: process.env.REVENUECAT_SECRET_KEY || '',
     webhookSecret: process.env.REVENUECAT_WEBHOOK_SECRET || '',
+  },
+
+  redis: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    password: process.env.REDIS_PASSWORD,
+    db: process.env.REDIS_DB ? parseInt(process.env.REDIS_DB, 10) : 0,
+    enabled: process.env.REDIS_ENABLED === 'true',
   },
 
   firebase: {

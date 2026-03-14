@@ -124,7 +124,7 @@ export function rpcGainXP(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'gain_xp',
       'player_stats',
       { xp_amount: 'unknown' },
@@ -168,7 +168,7 @@ export function rpcGainXP(
         logAudit(
           nk,
           ctx.userId,
-          `ctx.ipAddress ?? null`,
+          ctx.ipAddress ?? null,
           'gain_xp',
           'player_stats',
           { xp_amount: request.xp_amount },
@@ -268,7 +268,7 @@ export function rpcAllocateStats(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'allocate_stats',
       'player_stats',
       { stat_name: 'unknown', points: 0 },
@@ -292,7 +292,7 @@ export function rpcAllocateStats(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'allocate_stats',
       'player_stats',
       { stat_name: request.stat_name, points: request.points },
@@ -315,7 +315,7 @@ export function rpcAllocateStats(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'allocate_stats',
       'player_stats',
       { stat_name: request.stat_name, points: request.points },
@@ -330,7 +330,7 @@ export function rpcAllocateStats(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'allocate_stats',
       'player_stats',
       {
