@@ -71,8 +71,8 @@ describe('Matchmaker Integration Tests', () => {
 
   // Helper to call RPC and parse JSON
   async function rpcCall(account: TestAccount, rpcId: string, payload: any): Promise<any> {
-    const response = await account.client.rpc(rpcId, JSON.stringify(payload));
-    return JSON.parse(response);
+    const response = await account.client.rpc(account.session, rpcId, payload);
+    return response.payload;
   }
 
   // Helper to create a match and track its ID for cleanup
@@ -331,6 +331,6 @@ async function createMatchForUser(prefix: string, targetOpponentId: string, over
   // Note: we need to track created match for cleanup; but we can't easily from here.
   // Since this is used in beforeAll, the main afterEach cleanup only tracks matches from playerA,B,C.
   // We'll rely on cleanAllTestData afterAll to wipe all storage, so these matches are fine.
-  const result = await user.client.rpc('armored_archer/create_match', JSON.stringify(payload));
-  return JSON.parse(result);
+  const response = await user.client.rpc(user.session, 'armored_archer/create_match', payload);
+  return response.payload;
 }

@@ -9,6 +9,7 @@ const TEST_ADMIN_KEY = process.env.NAKAMA_SERVER_KEY || 'defaultkey';
 
 export interface TestAccount {
   client: Client;
+  session: any;
   userId: string;
   username: string;
   sessionToken: string;
@@ -19,6 +20,7 @@ export interface TestAccount {
 export class IntegrationTestHelper {
   private static instance: IntegrationTestHelper | null = null;
   private adminClient: Client | null = null;
+  private adminSession: any = null;
   private testDbInitialized: boolean = false;
   private clients: Client[] = [];
 
@@ -87,26 +89,18 @@ export class IntegrationTestHelper {
     const password = 'TestPassword123!';
     const email = `${username}@test.local`;
 
-    const client = new Client({
-      host: TEST_HOST,
-      port: TEST_PORT,
-      serverKey: TEST_ADMIN_KEY,
-    });
+    const client = new Client(TEST_ADMIN_KEY, TEST_HOST, TEST_PORT.toString(), false, 10000, false);
 
     // Track the client for cleanup
     this.clients.push(client);
 
     try {
       // Authenticate (this will create the account if it doesn't exist)
-      const session = await client.authenticateEmail({
-        email,
-        password,
-        create: true,
-        username,
-      });
+      const session = await client.authenticateEmail(email, password, true, username);
       
       return {
         client,
+        session,
         userId: session.user_id || "",
         username: session.username || "",
         sessionToken: session.token,
@@ -124,28 +118,15 @@ export class IntegrationTestHelper {
   /**
    * Get a client authenticated as admin for administrative tasks.
    */
-  async getAdminClient(): Promise<Client> {
-    if (this.adminClient && !this.adminClient.isConnected) {
-      this.adminClient = null;
+  async getAdminClient(): Promise<{ client: Client, session: any }> {
+    if (!this.adminClient || !this.adminSession) {
+      this.adminClient = new Client(TEST_ADMIN_KEY, TEST_HOST, TEST_PORT.toString(), false, 10000, false);
+
+      // Fixed: Use individual arguments as expected by nakama-js v2.x
+      this.adminSession = await this.adminClient.authenticateEmail('admin@test.local', 'admin123', true, 'admin');
     }
 
-    if (!this.adminClient) {
-      this.adminClient = new Client({
-        host: TEST_HOST,
-        port: TEST_PORT,
-        serverKey: TEST_ADMIN_KEY,
-      });
-
-      // Fixed: Use object argument as expected by nakama-js v2.x
-      await this.adminClient.authenticateEmail({
-        email: 'admin@test.local',
-        password: 'admin123',
-        create: true,
-        username: 'admin'
-      });
-    }
-
-    return this.adminClient;
+    return { client: this.adminClient, session: this.adminSession };
   }
 
   /**
@@ -153,7 +134,7 @@ export class IntegrationTestHelper {
    * This should be called between test runs to ensure isolation.
    */
   async cleanAllTestData(): Promise<void> {
-    const admin = await this.getAdminClient();
+    const { client, session } = await this.getAdminClient();
 
     // List of collections used in tests (including potential matches)
     const collections = [
@@ -171,22 +152,22 @@ export class IntegrationTestHelper {
     // Clean storage objects with keys that start with 'test_' or are from test users
     for (const collection of collections) {
       try {
-        const listResult = await admin.storageList(
-          '', // userId empty to list all
+        const listResult = await client.listStorageObjects(
+          session,
           collection,
+          undefined, // userId undefined to list all
           1000, // limit
-          '', // cursor
-          'test_' // filter prefix
+          undefined // cursor
         );
 
-        if (listResult && listResult.length > 0) {
-          const objects = listResult.map(obj => ({
+        if (listResult && listResult.objects && listResult.objects.length > 0) {
+          const objects = listResult.objects.map(obj => ({
             collection: obj.collection,
             key: obj.key,
-            userId: obj.userId,
+            user_id: obj.user_id, // v2.x uses user_id
             version: obj.version,
           }));
-          await admin.storageDelete(objects);
+          await client.deleteStorageObjects(session, { objects });
         }
       } catch (error) {
         // Some collections may not exist or be empty, ignore errors
@@ -210,11 +191,7 @@ export class IntegrationTestHelper {
    */
   async waitForNakamaReady(timeoutMs: number = 30000): Promise<boolean> {
     const startTime = Date.now();
-    const client = new Client({
-      host: TEST_HOST,
-      port: TEST_PORT,
-      serverKey: TEST_ADMIN_KEY,
-    });
+    const client = new Client(TEST_ADMIN_KEY, TEST_HOST, TEST_PORT.toString(), false, 10000, false);
 
     while (Date.now() - startTime < timeoutMs) {
       try {
@@ -233,29 +210,33 @@ export class IntegrationTestHelper {
   /**
    * Delete a specific storage object.
    */
-  async deleteStorageObject(collection: string, key: string, userId: string): Promise<void> {
-    const admin = await this.getAdminClient();
-    await admin.storageDelete([{ collection, key, userId }]);
+  async deleteStorageObject(collection: string, key: string, user_id: string): Promise<void> {
+    const { client, session } = await this.getAdminClient();
+    await client.deleteStorageObjects(session, {
+      objects: [{ collection, key, user_id }]
+    });
   }
 
   /**
    * Get storage object directly.
    */
-  async getStorageObject(collection: string, key: string, userId: string): Promise<NakamaTypes.StorageObject | null> {
-    const admin = await this.getAdminClient();
-    const results = await admin.storageRead([{ collection, key, userId }]);
-    return results.length > 0 ? results[0] : null;
+  async getStorageObject(collection: string, key: string, user_id: string): Promise<NakamaTypes.StorageObject | null> {
+    const { client, session } = await this.getAdminClient();
+    const results = await client.readStorageObjects(session, {
+      object_ids: [{ collection, key, user_id }]
+    });
+    return results.objects && results.objects.length > 0 ? results.objects[0] : null;
   }
 
   /**
    * Write storage object directly (for test setup).
    */
-  async writeStorageObject(collection: string, key: string, userId: string, value: any): Promise<void> {
-    const admin = await this.getAdminClient();
-    await admin.storageWrite([{
+  async writeStorageObject(collection: string, key: string, user_id: string, value: any): Promise<void> {
+    const { client, session } = await this.getAdminClient();
+    await client.writeStorageObjects(session, [{
       collection,
       key,
-      userId,
+      user_id,
       value: typeof value === 'string' ? value : JSON.stringify(value),
     }]);
   }
