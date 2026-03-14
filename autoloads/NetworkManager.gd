@@ -151,17 +151,17 @@ func _log_environment_info() -> void:
 
 func _validate_required_config() -> void:
 	var missing_vars: Array[String] = []
-	var is_production: bool = current_environment == EnvironmentType.PRODUCTION
+	var _is_prod: bool = current_environment == EnvironmentType.PRODUCTION
 
 	# Production requires all config to be properly set via environment variables
-	if server_url.is_empty() or (is_production and server_url == DEFAULT_CONFIG[EnvironmentType.PRODUCTION]["server_url"]):
+	if server_url.is_empty() or (_is_prod and server_url == DEFAULT_CONFIG[EnvironmentType.PRODUCTION]["server_url"]):
 		missing_vars.append("NAKAMA_SERVER_URL")
 
-	if server_port == 0 or (is_production and server_port == DEFAULT_CONFIG[EnvironmentType.PRODUCTION]["server_port"]):
+	if server_port == 0 or (_is_prod and server_port == DEFAULT_CONFIG[EnvironmentType.PRODUCTION]["server_port"]):
 		missing_vars.append("NAKAMA_SERVER_PORT")
 
 	# Server key is critical in production - warn if using defaults
-	if is_production:
+	if _is_prod:
 		if server_key.is_empty() or server_key == "defaultkey":
 			missing_vars.append("NAKAMA_SERVER_KEY (CRITICAL: Using default key in production is insecure!)")
 	elif server_key.is_empty():
@@ -214,10 +214,17 @@ func authenticate_device() -> void:
 		return
 
 	var url: String = "%s/v2/account/authenticate/device" % base_url
+	
+	# Create Basic Auth header using server key (required by Nakama)
+	var auth_string: String = "%s:" % server_key
+	var auth_encoded: String = Marshalls.utf8_to_base64(auth_string)
+	
 	var headers: PackedStringArray = [
 		"Content-Type: application/json",
-		"Accept: application/json"
+		"Accept: application/json",
+		"Authorization: Basic %s" % auth_encoded
 	]
+	
 	var body: Dictionary = {
 		"id": device_id,
 		"create": true
@@ -433,14 +440,18 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	add_child(timer)
 
 	var timed_out: bool = false
+	var request_completed_flag: bool = false
 	var request_result: Array = []
 
 	var on_timeout: Callable = func():
 		timed_out = true
+		request_completed_flag = true
 		http_request.cancel_request()
 
-	var on_request_completed: Callable = func(result: Array):
-		request_result = result
+	# Note: HTTPRequest.request_completed signal sends (result, response_code, headers, body)
+	var on_request_completed: Callable = func(result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray):
+		request_result = [result, response_code, _headers, _body]
+		request_completed_flag = true
 		timer.stop()
 
 	var _err1 = timer.timeout.connect(on_timeout, CONNECT_ONE_SHOT)
@@ -454,7 +465,9 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 		timer.queue_free()
 		return {"error": "Failed to send RPC request"}
 
-	await http_request.request_completed
+	# Wait for completion using a flag instead of await
+	while not request_completed_flag and not timed_out:
+		await get_tree().process_frame
 
 	timer.queue_free()
 
@@ -465,7 +478,12 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	# Process the successful response
 	var response_data: Dictionary = {}
 	var result = request_result
-
+	
+	# Safety check: ensure we have a valid response
+	if result.size() < 4:
+		push_warning("Invalid HTTP response received")
+		return {"error": "Invalid HTTP response"}
+	
 	if result[1] >= 200 and result[1] < 300:
 		var json: JSON = JSON.new()
 		if json.parse(result[3].get_string_from_utf8()) == OK:
