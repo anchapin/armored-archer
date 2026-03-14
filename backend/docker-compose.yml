@@ -26,7 +26,7 @@ services:
   prometheus:
     image: prom/prometheus:v2.47.0
     container_name: armored_archer_prometheus
-    restart: unless_stopped
+    restart: unless-stopped
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - ./alerts.yml:/etc/prometheus/alerts.yml
@@ -45,7 +45,7 @@ services:
   grafana:
     image: grafana/grafana:10.1.0
     container_name: armored_archer_grafana
-    restart: unless_stopped
+    restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
@@ -63,7 +63,7 @@ services:
   alertmanager:
     image: prom/alertmanager:v0.26.0
     container_name: armored_archer_alertmanager
-    restart: unless_stopped
+    restart: unless-stopped
     volumes:
       - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
       - alertmanager_data:/alertmanager
@@ -80,7 +80,7 @@ services:
   node_exporter:
     image: prom/node-exporter:v1.6.1
     container_name: armored_archer_node_exporter
-    restart: unless_stopped
+    restart: unless-stopped
     command:
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
@@ -102,14 +102,14 @@ services:
       - "-ecx"
       - >
         echo "Starting Nakama with environment validation..." &&
-        /nakama/nakama migrate up --database.address ${DATABASE_ADDRESS:-postgres:changeme@postgres:5432/nakama} &&
-        exec /nakama/nakama --config /nakama/data/nakama.yml
+        /nakama/nakama migrate up --database.address ${DATABASE_ADDRESS:-postgres://postgres:changeme@postgres:5432/nakama} &&
+        exec /nakama/nakama --config /nakama/data/nakama.yml --database.address ${DATABASE_ADDRESS:-postgres://postgres:changeme@postgres:5432/nakama}
     restart: always
     environment:
       - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-defaultkey}
       - NAKAMA_SERVER_PORT=${NAKAMA_SERVER_PORT:-7350}
       - NAKAMA_CONSOLE_PORT=${NAKAMA_CONSOLE_PORT:-7351}
-      - DATABASE_ADDRESS=${DATABASE_ADDRESS:-postgres:changeme@postgres:5432/nakama}
+      - DATABASE_ADDRESS=${DATABASE_ADDRESS:-postgres://postgres:changeme@postgres:5432/nakama}
       - SESSION_ENCRYPTION_KEY=${SESSION_ENCRYPTION_KEY:-default-token-key}
       - REFRESH_ENCRYPTION_KEY=${REFRESH_ENCRYPTION_KEY:-default-refresh-key}
     links:
