@@ -37,17 +37,6 @@ const FEATURE_FLAGS: FeatureFlagConfig = {
       description: 'Use the improved combat calculation system',
       rolloutPercentage: 0,
     },
-    {
-      name: 'seasonal_events',
-      enabled: true,
-      description: 'Enable seasonal event content',
-    },
-    {
-      name: 'advanced_matchmaking',
-      enabled: false,
-      description: 'Use ML-based matchmaking algorithm',
-      rolloutPercentage: 10,
-    },
   ],
 };
 
