@@ -47,8 +47,8 @@ describe('Network Resilience Integration Tests', () => {
 
   // Helper to call RPC
   async function rpcCall(account: TestAccount, rpcId: string, payload: any): Promise<any> {
-    const response = await account.client.rpc(rpcId, JSON.stringify(payload));
-    return JSON.parse(response);
+    const response = await account.client.rpc(account.session, rpcId, payload);
+    return response.payload;
   }
 
   describe('Connection Handling', () => {
@@ -92,7 +92,7 @@ describe('Network Resilience Integration Tests', () => {
       // Write invalid token to simulate offline/invalid session
       // The RPC should still return a proper error response
       try {
-        const result = await expiredClient.client.rpc('armored_archer/get_player_rank', '{}');
+        const result = await expiredClient.client.rpc(expiredClient.session, 'armored_archer/get_player_rank', {});
         // If we get here without error, the response should indicate the issue
         expect(result).toBeDefined();
       } catch (error: any) {
@@ -278,7 +278,7 @@ describe('Network Resilience Integration Tests', () => {
   describe('Error Handling', () => {
     test('should handle malformed RPC payload', async () => {
       try {
-        await playerA.client.rpc('armored_archer/list_matches', 'invalid json');
+        await playerA.client.rpc(playerA.session, 'armored_archer/list_matches', 'invalid json');
         // If no error, check response
         const result = await rpcCall(playerA, 'armored_archer/list_matches', {});
         // Should handle gracefully
