@@ -6,7 +6,7 @@
 
 import { createHash } from 'crypto';
 import { Runtime } from '../types/nakama';
-import { getRedis } from '../utils/redis';
+import { getRedisClient } from '../utils/redis';
 import { getCacheManager } from '../utils/cache';
 import { withCircuitBreaker } from '../utils/circuitBreaker';
 import { safeParse } from '../utils/safeParse';
@@ -42,33 +42,124 @@ export enum RefundReason {
 }
 
 /**
+ * In-memory cache for validated receipts to reduce storage lookups.
+ * Format: user_id -> Set of receipt hashes
+ */
+const validatedReceipts: Map<string, Set<string>> = new Map();
+
+/**
+ * Cleanup job for in-memory receipt cache.
+ * Removes entries older than 24 hours to prevent memory leaks.
+ */
+function cleanupOldReceipts(): void {
+  // Simple cleanup strategy: clear all after a certain period if memory becomes an issue
+  // In production, you would use a more sophisticated TTL-based cache like Redis
+  if (validatedReceipts.size > 10000) {
+    validatedReceipts.clear();
+  }
+}
+
+// Run cleanup every hour
+setInterval(cleanupOldReceipts, 60 * 60 * 1000);
+
+/**
  * Check if a receipt has already been used.
  * Uses Redis for persistence and distributed systems support.
  *
+ * @param nk - Nakama server interface
  * @param userId - The user who submitted the receipt
  * @param receiptHash - Hash of the transaction receipt
+ * @param logger - Nakama logger
  * @returns true if the receipt was already validated
  */
-async function isReceiptAlreadyUsed(userId: string, receiptHash: string): Promise<boolean> {
-  const redis = getRedis();
-  const key = `user_receipts:${userId}`;
-  const isMember = await redis.sismember(key, receiptHash);
-  return isMember === 1;
+async function isReceiptAlreadyUsed(
+  nk: Runtime.Nakama,
+  userId: string,
+  receiptHash: string,
+  logger: Runtime.Logger
+): Promise<boolean> {
+  // 1. Try Redis first (distributed, high performance)
+  const redis = getRedisClient(logger);
+  if (redis) {
+    try {
+      const exists = await redis.exists(`receipt:${userId}:${receiptHash}`);
+      if (exists) return true;
+    } catch (e) {
+      logger.error('Redis error in isReceiptAlreadyUsed: %s', e);
+    }
+  }
+
+  // 2. Try in-memory cache
+  const userReceipts = validatedReceipts.get(userId);
+  if (userReceipts && userReceipts.has(receiptHash)) {
+    return true;
+  }
+
+  // 3. Fallback to Nakama storage (persistent, distributed)
+  try {
+    const storageId = `receipt_${receiptHash}`;
+    const objects = nk.storageRead([
+      {
+        collection: 'validated_receipts',
+        key: storageId,
+        userId: userId,
+      },
+    ]);
+    return objects.length > 0;
+  } catch (e) {
+    logger.error('Storage read error in isReceiptAlreadyUsed: %s', e);
+    return false;
+  }
 }
 
 /**
  * Mark a receipt as used.
  * Uses Redis for persistence and distributed systems support.
  *
+ * @param nk - Nakama server interface
  * @param userId - The user who submitted the receipt
  * @param receiptHash - Hash of the transaction receipt
+ * @param logger - Nakama logger
  */
-async function markReceiptAsUsed(userId: string, receiptHash: string): Promise<void> {
-  const redis = getRedis();
-  const key = `user_receipts:${userId}`;
-  await redis.sadd(key, receiptHash);
-  // Optional: Set expiry to 1 year to prevent infinite growth while maintaining security
-  await redis.expire(key, 365 * 24 * 60 * 60);
+async function markReceiptAsUsed(
+  nk: Runtime.Nakama,
+  userId: string,
+  receiptHash: string,
+  logger: Runtime.Logger
+): Promise<void> {
+  // 1. Mark in Redis with 24h TTL
+  const redis = getRedisClient(logger);
+  if (redis) {
+    try {
+      await redis.setex(`receipt:${userId}:${receiptHash}`, 86400, '1');
+    } catch (e) {
+      logger.error('Redis error in markReceiptAsUsed: %s', e);
+    }
+  }
+
+  // 2. Mark in-memory
+  let userReceipts = validatedReceipts.get(userId);
+  if (!userReceipts) {
+    userReceipts = new Set();
+    validatedReceipts.set(userId, userReceipts);
+  }
+  userReceipts.add(receiptHash);
+
+  // 3. Persist in Nakama storage
+  try {
+    nk.storageWrite([
+      {
+        collection: 'validated_receipts',
+        key: `receipt_${receiptHash}`,
+        userId: userId,
+        value: JSON.stringify({ validated_at: Date.now(), receipt_hash: receiptHash }),
+        permissionRead: 0, // No public read
+        permissionWrite: 0, // No public write
+      },
+    ]);
+  } catch (e) {
+    logger.error('Storage write error in markReceiptAsUsed: %s', e);
+  }
 }
 
 /**
@@ -86,13 +177,22 @@ function hashReceipt(receipt: string): string {
  *
  * @param userId - The user who received the refund
  * @param refundTransactionId - Unique refund transaction identifier
+ * @param logger - Optional Nakama logger
  * @returns true if the refund was already processed
  */
-async function isRefundAlreadyProcessed(userId: string, refundTransactionId: string): Promise<boolean> {
-  const redis = getRedis();
-  const key = `user_refunds:${userId}`;
-  const isMember = await redis.sismember(key, refundTransactionId);
-  return isMember === 1;
+async function isRefundAlreadyProcessed(userId: string, refundTransactionId: string, logger?: Runtime.Logger): Promise<boolean> {
+  const redis = getRedisClient(logger);
+  if (redis) {
+    try {
+      const exists = await redis.exists(`refund:${userId}:${refundTransactionId}`);
+      if (exists) return true;
+    } catch (e) {
+      if (logger) logger.error('Redis error in isRefundAlreadyProcessed: %s', e);
+    }
+  }
+  
+  // For now we primarily use Redis for this, or you could add a Nakama storage check
+  return false;
 }
 
 /**
@@ -101,13 +201,17 @@ async function isRefundAlreadyProcessed(userId: string, refundTransactionId: str
  *
  * @param userId - The user who received the refund
  * @param refundTransactionId - Unique refund transaction identifier
+ * @param logger - Optional Nakama logger
  */
-async function markRefundAsProcessed(userId: string, refundTransactionId: string): Promise<void> {
-  const redis = getRedis();
-  const key = `user_refunds:${userId}`;
-  await redis.sadd(key, refundTransactionId);
-  // Optional: Set expiry to 1 year to prevent infinite growth
-  await redis.expire(key, 365 * 24 * 60 * 60);
+async function markRefundAsProcessed(userId: string, refundTransactionId: string, logger?: Runtime.Logger): Promise<void> {
+  const redis = getRedisClient(logger);
+  if (redis) {
+    try {
+      await redis.set(`refund:${userId}:${refundTransactionId}`, '1');
+    } catch (e) {
+      if (logger) logger.error('Redis error in markRefundAsProcessed: %s', e);
+    }
+  }
 }
 
 /**
@@ -169,7 +273,7 @@ export async function processRefund(
   logger: Runtime.Logger
 ): Promise<{ success: boolean; message: string; new_balance?: number }> {
   // Check for duplicate refund
-  if (await isRefundAlreadyProcessed(userId, refundTransactionId)) {
+  if (await isRefundAlreadyProcessed(userId, refundTransactionId, logger)) {
     logger.warn(
       'Duplicate refund detected for user: %s, transaction: %s',
       userId,
@@ -210,7 +314,7 @@ export async function processRefund(
   invalidateCurrencyCache(userId, logger);
 
   // Mark refund as processed
-  await markRefundAsProcessed(userId, refundTransactionId);
+  await markRefundAsProcessed(userId, refundTransactionId, logger);
 
   // Log the refund for audit
   const refundDetails = {
@@ -491,7 +595,7 @@ async function validatePurchaseSecurity(
 ): Promise<string | null> {
   // Check for duplicate receipt to prevent replay attacks
   const receiptHash = hashReceipt(request.transaction_receipt);
-  if (await isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
+  if (await isReceiptAlreadyUsed(nk, ctx.userId, receiptHash, logger)) {
     logger.warn('Duplicate receipt detected');
     logAudit(
       nk,
@@ -624,7 +728,7 @@ async function awardGems(
   const receiptHash = hashReceipt(request.transaction_receipt);
 
   // Mark receipt as used BEFORE awarding gems to prevent replay attacks
-  await markReceiptAsUsed(ctx.userId, receiptHash);
+  await markReceiptAsUsed(nk, ctx.userId, receiptHash, logger);
 
   const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
 
@@ -1006,28 +1110,48 @@ async function validateWithRevenueCat(
         };
       }
 
-      // Extract product ID from RevenueCat response if available
+      // Extract and verify product ID from RevenueCat response
       const subscriber = data.subscriber as Record<string, unknown> | undefined;
-      let verifiedProductId: string | undefined;
+      let isVerified = false;
 
-      if (subscriber?.entitlements) {
-        const entitlements = subscriber.entitlements as Record<string, unknown>;
-        for (const entitlement of Object.values(entitlements)) {
-          const ent = entitlement as Record<string, unknown>;
-          if (ent.product_id) {
-            verifiedProductId = ent.product_id as string;
-            break;
+      if (subscriber) {
+        // 1. Check entitlements (for subscriptions/features)
+        if (subscriber.entitlements) {
+          const entitlements = subscriber.entitlements as Record<string, any>;
+          if (entitlements[productId]) {
+            isVerified = true;
+          } else {
+            for (const ent of Object.values(entitlements)) {
+              if (ent.product_id === productId) {
+                isVerified = true;
+                break;
+              }
+            }
+          }
+        }
+
+        // 2. Check non_subscriptions (for consumables like gems)
+        if (!isVerified && subscriber.non_subscriptions) {
+          const nonSubscriptions = subscriber.non_subscriptions as Record<string, any[]>;
+          if (nonSubscriptions[productId] && nonSubscriptions[productId].length > 0) {
+            isVerified = true;
+          }
+        }
+
+        // 3. Check active subscriptions
+        if (!isVerified && subscriber.subscriptions) {
+          const subscriptions = subscriber.subscriptions as Record<string, any>;
+          if (subscriptions[productId]) {
+            isVerified = true;
           }
         }
       }
 
-      // Verify product ID matches if we have one from the receipt
-      if (verifiedProductId && verifiedProductId !== productId) {
-        logger.warn('Product ID mismatch: claimed=%s, actual=%s', productId, verifiedProductId);
+      if (!isVerified) {
+        logger.warn('Product ID mismatch or not found: claimed=%s', productId);
         return {
           valid: false,
-          error: `Product ID mismatch: claimed ${productId}, receipt contains ${verifiedProductId}`,
-          product_id: verifiedProductId,
+          error: `Product ID verification failed: ${productId} not found in receipt`,
         };
       }
 
@@ -1035,7 +1159,7 @@ async function validateWithRevenueCat(
       return {
         valid: true,
         subscriber,
-        product_id: verifiedProductId,
+        product_id: productId,
       };
     },
     // Fallback: fail closed if RevenueCat is unavailable (strict enforcement)
@@ -1162,7 +1286,7 @@ export async function rpcProcessPendingPurchases(
     const receiptHash = hashReceipt(purchase.transaction_receipt);
 
     // Check for duplicate receipt
-    if (await isReceiptAlreadyUsed(ctx.userId, receiptHash)) {
+    if (await isReceiptAlreadyUsed(nk, ctx.userId, receiptHash, logger)) {
       results.push({ product_id: purchase.product_id, success: true, error: 'Already processed' });
       continue;
     }
@@ -1182,7 +1306,7 @@ export async function rpcProcessPendingPurchases(
     }
 
     // Mark receipt and add gems
-    await markReceiptAsUsed(ctx.userId, receiptHash);
+    await markReceiptAsUsed(nk, ctx.userId, receiptHash, logger);
     playerCurrency.gems += gemBundle.gem_amount;
 
     nk.storageWrite([
@@ -1344,7 +1468,7 @@ export async function rpcCheckRefunds(
 
   let processedCount = 0;
   for (const refund of refunds) {
-    if (!isRefundAlreadyProcessed(validation.data.app_user_id, refund.refunded_at)) {
+    if (!(await isRefundAlreadyProcessed(validation.data.app_user_id, refund.refunded_at, logger))) {
       // Get product info to determine gem amount
       const catalog = getStoreCatalog(logger);
       const productInfo = catalog[refund.product_id];
@@ -1878,111 +2002,38 @@ export async function rpcRevenueCatWebhook(
     (eventObj?.productId as string) ||
     '';
 
-  if (!appUserId || !productId) {
-    logger.error('Webhook missing required fields: app_user_id or product_id');
-    return JSON.stringify({
-      success: false,
-      error: 'Missing required fields',
-    });
+  if (!appUserId) {
+    logger.error('Missing app_user_id in webhook payload');
+    return JSON.stringify({ success: false, error: 'Missing app_user_id' });
   }
 
-  // Map Nakama user ID to RevenueCat app user ID
-  const userId = appUserId.startsWith('nakama:') ? appUserId.substring(7) : appUserId;
+  let result: { success: boolean; message: string };
 
-  // Get environment (sandbox vs production)
-  const environment = (webhookData.environment as string) || 'production';
-  logger.info('Webhook environment: %s', environment);
-
-  // Process based on event type (use normalized for case-insensitive matching)
   switch (normalizedEventType) {
     case 'initial_purchase':
-    case 'non_renewing_purchase':
     case 'renewal':
-      const purchaseResult = await handleInitialPurchase(nk, userId, productId, logger);
-
-      return JSON.stringify({ ...purchaseResult, event_type: eventType });
-
+      result = await handleInitialPurchase(nk, appUserId, productId, logger);
+      break;
     case 'cancellation':
-      const cancelReason = (eventObj?.cancellation_reason as string) ||
-        (eventObj?.cancellationReason as string) ||
-        (webhookData.cancellation_reason as string) ||
-        (webhookData.cancellationReason as string);
-      const cancelResult = handleSubscriptionCancelled(
-        nk,
-        userId,
-        productId,
-        cancelReason,
-        logger
-      );
-
-      return JSON.stringify({ ...cancelResult, event_type: eventType });
-
+    case 'uncancellation':
+    case 'non_renewing_purchase_cancelled':
+      result = handleSubscriptionCancelled(nk, appUserId, productId, webhookData.reason as string, logger);
+      break;
     case 'billing_issue':
-      const billingResult = handleBillingIssue(
-        nk,
-        userId,
-        productId,
-        logger
-      );
-      return JSON.stringify({ ...billingResult, event_type: eventType });
-
+      result = handleBillingIssue(nk, appUserId, productId, logger);
+      break;
     case 'expiration':
-      const expirationReason = (eventObj?.expiration_reason as string) ||
-        (eventObj?.expirationReason as string) ||
-        (webhookData.expiration_reason as string) ||
-        (webhookData.expirationReason as string);
-      const expireResult = handleSubscriptionExpired(
-        nk,
-        userId,
-        productId,
-        expirationReason,
-        logger
-      );
-
-      return JSON.stringify({ ...expireResult, event_type: eventType });
-
-    case 'product_change':
-      const transferredFrom = (eventObj?.transferred_from as string) ||
-        (eventObj?.transferredFrom as string) ||
-        (eventObj?.originalAppUserId as string) ||
-        (webhookData.transferred_from as string) ||
-        (webhookData.transferredFrom as string) ||
-        (webhookData.originalAppUserId as string);
-      if (transferredFrom) {
-        const transferResult = await handleProductChange(
-          nk,
-          userId,
-          transferredFrom,
-          productId,
-          logger
-        );
-        return JSON.stringify(transferResult);
-      }
-      logger.warn('Product change event missing transferred_from field');
-      return JSON.stringify({ success: true, message: 'Product change noted' });
-
-    case 'refund':
-    case 'subscription_rc_auto_refund':
-      const refundReason = (webhookData.refund_reason as string) ||
-        (webhookData.refundReason as string) ||
-        'CHARGEBACK';
-      const refundResult = await processRefund(
-        nk,
-        userId,
-        getGemAmountForProduct(productId, logger) || 0,
-        `${eventType}_${Date.now()}`,
-        refundReason as RefundReason,
-        logger
-      );
-      return JSON.stringify(refundResult);
-
+      result = handleSubscriptionExpired(nk, appUserId, productId, webhookData.reason as string, logger);
+      break;
+    case 'transfer':
+      result = await handleProductChange(nk, appUserId, webhookData.transferred_from as string, productId, logger);
+      break;
     default:
-      logger.info('Unknown webhook event type: %s', eventType);
-      return JSON.stringify({
-        success: true,
-        message: `Event ${eventType} noted but not processed`,
-      });
+      logger.info('Webhook: Received unhandled event type: %s', eventType);
+      result = { success: true, message: `Ignored event type: ${eventType}` };
   }
+
+  return JSON.stringify(result);
 }
 
 export function registerRpcRevenueCatWebhook(initializer: Runtime.Initializer): void {

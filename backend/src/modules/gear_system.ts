@@ -683,7 +683,7 @@ export function rpcGenerateGear(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'generate_gear',
       'player_inventory',
       { stage_id: 'unknown' },
@@ -721,7 +721,7 @@ export function rpcGenerateGear(
         logAudit(
           nk,
           ctx.userId,
-          `ctx.ipAddress ?? null`,
+          ctx.ipAddress ?? null,
           'generate_gear',
           'player_inventory',
           { stage_id: request.stage_id },
@@ -758,7 +758,7 @@ export function rpcGenerateGear(
   logAudit(
     nk,
     ctx.userId,
-    `ctx.ipAddress ?? null`,
+    ctx.ipAddress ?? null,
     'generate_gear',
     'player_inventory',
     {
@@ -866,7 +866,7 @@ export function rpcEquipGear(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'equip_gear',
       'player_inventory',
       { gear_id: request.gear_id, slot: request.slot, error: 'type_mismatch' },
@@ -892,7 +892,7 @@ export function rpcEquipGear(
   logAudit(
     nk,
     ctx.userId,
-    `ctx.ipAddress ?? null`,
+    ctx.ipAddress ?? null,
     'equip_gear',
     'player_inventory',
     {
@@ -987,7 +987,7 @@ export function rpcUnequipGear(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'unequip_gear',
       'player_inventory',
       { slot: request.slot, error: 'no_gear_equipped' },
@@ -1014,7 +1014,7 @@ export function rpcUnequipGear(
   logAudit(
     nk,
     ctx.userId,
-    `ctx.ipAddress ?? null`,
+    ctx.ipAddress ?? null,
     'unequip_gear',
     'player_inventory',
     { slot: slotToUnequip },
@@ -1189,7 +1189,7 @@ export function rpcUnlockModifierPool(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'unlock_modifier_pool',
       'modifiers',
       { modifier_id: 'unknown' },
@@ -1255,7 +1255,7 @@ export function rpcUnlockModifierPool(
   logAudit(
     nk,
     ctx.userId,
-    `ctx.ipAddress ?? null`,
+    ctx.ipAddress ?? null,
     'unlock_modifier_pool',
     'modifiers',
     { modifier_id: modifierId, unlocked_pools: inventory.unlocked_modifier_pools },
@@ -1658,7 +1658,7 @@ export function rpcStageComplete(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'stage_complete',
       'stage_progression',
       { stage_id: 'unknown' },
@@ -1739,7 +1739,7 @@ export function rpcStageComplete(
   logAudit(
     nk,
     ctx.userId,
-    `ctx.ipAddress ?? null`,
+    ctx.ipAddress ?? null,
     'stage_complete',
     'stage_progression',
     {

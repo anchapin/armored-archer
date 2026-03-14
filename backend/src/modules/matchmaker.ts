@@ -249,7 +249,7 @@ export function rpcCreateMatch(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'create_match',
       'pvp_matches',
       { match_type: 'unknown', is_punch_up: false, target_opponent_id: 'none' },
@@ -406,7 +406,7 @@ export function rpcAcceptMatch(
     logAudit(
       nk,
       ctx.userId,
-      `ctx.ipAddress ?? null`,
+      ctx.ipAddress ?? null,
       'accept_match',
       'pvp_matches',
       { match_id: 'unknown' },
@@ -483,7 +483,7 @@ export function rpcAcceptMatch(
   logAudit(
     nk,
     ctx.userId,
-    `ctx.ipAddress ?? null`,
+    ctx.ipAddress ?? null,
     'accept_match',
     'pvp_matches',
     {
