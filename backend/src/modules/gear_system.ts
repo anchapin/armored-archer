@@ -388,6 +388,11 @@ export function getEquippedGearModifierBonuses(inventory: PlayerInventory): {
 } {
   const bonuses: { [statName: string]: number } = {};
 
+  // Safety check: Ensure inventory and equipped_gear exist
+  if (!inventory || !inventory.equipped_gear) {
+    return bonuses;
+  }
+
   // Get equipped gear items
   const equippedGearIds = Object.values(inventory.equipped_gear).filter(
     (id): id is string => id !== null

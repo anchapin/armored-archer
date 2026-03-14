@@ -35,33 +35,28 @@ export const createMockNakama = (): Runtime.Nakama => {
 
   return {
     storageRead: jest.fn((objects: { collection: string; key: string; userId?: string }[]) => {
+      // console.log('storageRead called with:', JSON.stringify(objects));
       return objects.map((obj) => {
         const userId = obj.userId ?? 'test-user-123';
         const key = `${obj.collection}:${obj.key}`;
-        storageReadCalls.push({
-          collection: obj.collection,
-          key: obj.key,
-          userId: userId,
-          value: storage.get(key) ?? '',
-          version: '1',
-          permissionRead: 1,
-          permissionWrite: 1,
-          createTime: Date.now(),
-          updateTime: Date.now(),
-        });
+        const value = storage.get(key);
+        // console.log(`Reading key ${key}, found: ${value === undefined ? 'undefined' : 'value'}`);
+        if (value === undefined) return null;
+        
         return {
           collection: obj.collection,
           key: obj.key,
           userId: userId,
-          value: storage.get(key) ?? '',
+          value: value,
           version: '1',
           permissionRead: 1,
           permissionWrite: 1,
           createTime: Date.now(),
           updateTime: Date.now(),
         };
-      });
+      }).filter(Boolean);
     }),
+    notificationSend: jest.fn(),
     storageWrite: jest.fn(
       (objects: { collection: string; key: string; userId?: string; value: string }[]) => {
         objects.forEach((obj) => {
