@@ -4,6 +4,8 @@
  * automatic account flagging/suspension, and compliance reporting.
  */
 
+import { Runtime } from '../types/nakama';
+
 export interface AntiCheatViolation {
   userId: string;
   type: ViolationType;
@@ -57,8 +59,8 @@ const defaultConfig: AuditConfig = {
 };
 
 let config: AuditConfig = { ...defaultConfig };
-let nk: any;
-let logger: any;
+let nk: Runtime.Nakama;
+let logger: Runtime.Logger;
 
 // In-memory storage for user risk profiles
 const userRiskProfiles = new Map<string, UserRiskProfile>();
@@ -80,8 +82,8 @@ const VIOLATION_WEIGHTS: Record<ViolationType, number> = {
  */
 export function initializeAuditLogging(
   cfg: Partial<AuditConfig>,
-  nakama: any,
-  runtimeLogger: any
+  nakama: Runtime.Nakama,
+  runtimeLogger: Runtime.Logger
 ): void {
   config = { ...config, ...cfg };
   nk = nakama;
@@ -149,7 +151,8 @@ export function recordViolation(
         {
           collection: 'anti_cheat_violations',
           key: storageKey,
-          value: violation,
+          userId,
+          value: JSON.stringify(violation),
         },
       ]);
     } catch (err) {

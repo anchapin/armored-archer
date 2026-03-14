@@ -105,18 +105,20 @@ export async function notifyUsersAboutEvent(
   targetUserIds?: string[]
 ): Promise<void> {
   try {
-    let users: any[] = [];
+    let users: { id: string }[] = [];
 
     if (targetUserIds && targetUserIds.length > 0) {
       // Get specific users
-      users = await nk.dbQuery(`SELECT id FROM users WHERE id = ANY($1)`, [targetUserIds]);
+      users = (await nk.dbQuery(`SELECT id FROM users WHERE id = ANY($1)`, [targetUserIds])) as {
+        id: string;
+      }[];
     } else {
       // Get all users with events enabled
-      users = await nk.dbQuery(
+      users = (await nk.dbQuery(
         `SELECT u.id FROM users u
          JOIN notification_preferences np ON u.id = np.user_id
          WHERE np.events_enabled = true`
-      );
+      )) as { id: string }[];
     }
 
     logger.info('Sending event notifications', { eventId, userCount: users.length });
@@ -158,9 +160,10 @@ export function startNotificationScheduler(nk: Runtime.Nakama, intervalMs: numbe
   logger.info('Starting notification scheduler', { intervalMs });
 
   // Process pending notifications every minute
+  // Using unref() to allow Jest to exit properly in tests
   schedulerInterval = setInterval(() => {
     processPendingNotifications(nk);
-  }, intervalMs);
+  }, intervalMs).unref();
 
   // Initial processing
   processPendingNotifications(nk);
