@@ -20,6 +20,7 @@ export class IntegrationTestHelper {
   private static instance: IntegrationTestHelper | null = null;
   private adminClient: Client | null = null;
   private testDbInitialized: boolean = false;
+  private clients: Client[] = [];
 
   private constructor() {}
 
@@ -42,11 +43,36 @@ export class IntegrationTestHelper {
 
   /**
    * Clean up after all tests are complete.
+   * This now ensures all tracked clients are properly disconnected.
    */
   async cleanup(): Promise<void> {
+    // Disconnect admin client
     if (this.adminClient) {
-      await this.adminClient.disconnect();
+      try {
+        // Use a generic disconnect method if it exists, otherwise clear it
+        if (typeof (this.adminClient as any).disconnect === 'function') {
+          await (this.adminClient as any).disconnect();
+        }
+      } catch (error) {
+        console.warn('Error disconnecting admin client:', error);
+      }
+      this.adminClient = null;
     }
+
+    // Disconnect all tracked clients
+    const disconnectPromises = this.clients.map(async (client) => {
+      try {
+        if (typeof (client as any).disconnect === 'function') {
+          await (client as any).disconnect();
+        }
+      } catch (error) {
+        // Ignore errors during mass disconnect
+      }
+    });
+
+    await Promise.all(disconnectPromises);
+    this.clients = [];
+    this.testDbInitialized = false;
   }
 
   /**
@@ -67,23 +93,30 @@ export class IntegrationTestHelper {
       serverKey: TEST_ADMIN_KEY,
     });
 
+    // Track the client for cleanup
+    this.clients.push(client);
+
     try {
       // Authenticate (this will create the account if it doesn't exist)
-      const session = await client.authenticateEmail(email, password, username);
-      
-      // Verify the account was created
-      const account = await client.getAccount();
+      const session = await client.authenticateEmail({
+        email,
+        password,
+        create: true,
+        username,
+      });
       
       return {
         client,
-        userId: session.userId,
-        username: session.username,
+        userId: session.user_id || "",
+        username: session.username || "",
         sessionToken: session.token,
-        refreshToken: session.refreshToken,
-        expiresAt: session.expiresAt,
+        refreshToken: session.refresh_token || "",
+        expiresAt: session.expires_at || 0,
       };
     } catch (error) {
-      await client.disconnect();
+      if (typeof (client as any).disconnect === 'function') {
+        await (client as any).disconnect();
+      }
       throw error;
     }
   }
@@ -103,8 +136,13 @@ export class IntegrationTestHelper {
         serverKey: TEST_ADMIN_KEY,
       });
 
-      // Authenticate admin account (should exist from docker-compose)
-      await this.adminClient.authenticateEmail('admin@test.local', 'admin123', 'admin');
+      // Fixed: Use object argument as expected by nakama-js v2.x
+      await this.adminClient.authenticateEmail({
+        email: 'admin@test.local',
+        password: 'admin123',
+        create: true,
+        username: 'admin'
+      });
     }
 
     return this.adminClient;
