@@ -61,6 +61,18 @@ async function findFlagDefinitions(): Promise<FlagDefinition[]> {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       
+      // Skip metric definitions (Prometheus metrics start with armored_archer_)
+      if (line.includes("name: 'armored_archer_") || line.includes('name: "armored_archer_')) {
+        continue;
+      }
+      
+      // Skip gear rarity types and test-specific names
+      if (line.includes("name: 'Common'") || line.includes("name: 'Rare'") || 
+          line.includes("name: 'Legendary'") || line.includes("name: 'Fortification'") ||
+          line.includes("name: 'invalid_stat'") || line.includes("name: 'player1")) {
+        continue;
+      }
+      
       // Check for isFeatureEnabled calls (usage)
       const usageMatch = line.match(/isFeatureEnabled\s*\(\s*['"]([a-zA-Z0-9_]+)['"]/g);
       
