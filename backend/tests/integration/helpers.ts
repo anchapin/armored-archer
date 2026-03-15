@@ -97,7 +97,7 @@ export class IntegrationTestHelper {
     try {
       // Authenticate (this will create the account if it doesn't exist)
       const session = await client.authenticateEmail(email, password, true, username);
-      
+
       return {
         client,
         session,
