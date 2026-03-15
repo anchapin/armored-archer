@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
+    "build:full": "npm run build && npx webpack --mode=production && node scripts/transpile-bundle.js && node scripts/validate-nakama-bundle.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -27,6 +28,7 @@
     "bundle:analyze": "webpack --mode=production --config webpack.analyze.config.js --analyze",
     "bundle:analyze:dev": "webpack --mode=development --config webpack.analyze.config.js --analyze",
     "bundle:check": "node scripts/bundle-analysis.js",
+    "bundle:validate": "node scripts/validate-nakama-bundle.js",
     "depcheck": "depcheck",
     "dep:count": "node -e \"const p = require('./package.json'); console.log('Total:', Object.keys(p.dependencies).length + Object.keys(p.devDependencies).length); console.log('Prod:', Object.keys(p.dependencies).length); console.log('Dev:', Object.keys(p.devDependencies).length);\"",
     "detect-n-plus-one": "ts-node --transpile-only ./scripts/detect-n-plus-one.ts",
@@ -58,6 +60,10 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@babel/cli": "^7.28.6",
+    "@babel/core": "^7.29.0",
+    "@babel/plugin-transform-runtime": "^7.29.0",
+    "@babel/preset-env": "^7.29.0",
     "@heroiclabs/nakama-js": "2.8.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.3.5",
@@ -65,6 +71,7 @@
     "@types/pg": "^8.18.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
+    "babel-loader": "^9.2.1",
     "depcheck": "^1.4.7",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^10.1.8",
@@ -103,6 +110,7 @@
     "opossum": "^9.0.0",
     "pg": "^8.11.0",
     "prom-client": "^15.0.0",
+    "tslib": "^2.8.1",
     "uuid": "^9.0.0",
     "valibot": "^1.2.0",
     "winston": "^3.11.0"
