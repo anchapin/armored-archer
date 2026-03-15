@@ -1,3 +1,11 @@
+// Mock circuit breaker to avoid initialization issues in tests
+jest.mock('../../utils/circuitBreaker', () => ({
+  withCircuitBreaker: jest.fn((name, fn) => fn()), // Simply execute the function
+  createCircuitBreaker: jest.fn(),
+  getCircuitBreaker: jest.fn(),
+  resetAllCircuits: jest.fn(),
+}));
+
 import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
 import {
   rpcValidatePurchase,
@@ -6,19 +14,40 @@ import {
   rpcRevenueCatWebhook,
   PlayerCurrency,
   GEM_BUNDLES,
+  validatedReceipts,
 } from '../store';
 import { Runtime } from '../../types/nakama';
+
+// Mock RevenueCat API key for tests
+const originalEnv = process.env;
 
 describe('store', () => {
   let mockLogger: Runtime.Logger;
   let mockCtx: Runtime.Context;
   let mockNk: Runtime.Nakama;
+  let mockFetch: jest.Mock;
 
   beforeEach(() => {
+    // Restore env before each test
+    process.env = { ...originalEnv, REVENUECAT_API_KEY: 'test-api-key' };
+    
+    // Mock fetch for RevenueCat API calls
+    mockFetch = jest.fn();
+    // @ts-ignore - global.fetch
+    global.fetch = mockFetch;
+    
+    // Clear in-memory receipt cache to avoid false positive duplicate detection
+    validatedReceipts.clear();
+
     mockLogger = createMockLogger();
     mockCtx = createMockContext({ userId: 'test-user' });
     mockNk = createMockNakama();
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+    delete global.fetch;
   });
 
   const createMockCurrency = (overrides?: Partial<PlayerCurrency>): PlayerCurrency => ({
@@ -30,11 +59,26 @@ describe('store', () => {
 
   describe('rpcValidatePurchase', () => {
     it('should validate purchase and add gems', async () => {
+      // Mock RevenueCat API response for successful validation
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: 'active',
+          subscriber: {
+            non_subscriptions: {
+              'com.armoredarcher.gems.small': [{ product_id: 'com.armoredarcher.gems.small' }],
+            },
+          },
+        }),
+      });
+
       const currency = createMockCurrency();
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      // Pre-populate the mock storage with currency data
+      mockNk.storageWrite([
         {
           collection: 'player_currency',
           key: 'test-user',
+          userId: 'test-user',
           value: JSON.stringify(currency),
         },
       ]);
@@ -45,7 +89,12 @@ describe('store', () => {
         transaction_receipt: 'base64receipt',
       });
       const result = await rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
+      
+      // Debug: Log the raw result
+      console.log('Raw result:', result);
+      
       const parsed = JSON.parse(result);
+      console.log('Parsed result:', parsed);
 
       expect(parsed.success).toBe(true);
       expect(parsed.gems_awarded).toBe(100);
