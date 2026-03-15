@@ -30,14 +30,7 @@ export interface FeatureFlagConfig {
 // In production, these could be loaded from a database or external service
 const FEATURE_FLAGS: FeatureFlagConfig = {
   defaultEnabled: false,
-  flags: [
-    {
-      name: 'new_combat_system',
-      enabled: false,
-      description: 'Use the improved combat calculation system',
-      rolloutPercentage: 0,
-    },
-  ],
+  flags: [],
 };
 
 /**

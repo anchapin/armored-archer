@@ -75,20 +75,6 @@ const inMemoryFlags: Map<string, FeatureFlagConfig> = new Map();
 
 // Default feature flags
 const DEFAULT_FLAGS: FeatureFlagConfig[] = [
-  {
-    name: 'new_combat_system',
-    description: 'Enable the new combat system with improved damage calculations',
-    enabled: false,
-    rolloutPercentage: 0,
-    environment: 'production',
-  },
-  {
-    name: 'guild_system',
-    description: 'Player guilds and social features',
-    enabled: true,
-    rolloutPercentage: 10,
-    environment: 'production',
-  },
 ];
 
 /**

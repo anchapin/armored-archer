@@ -34,67 +34,7 @@ export interface FeatureFlagsConfig {
 // Current feature flags in production
 export const FEATURE_FLAGS: FeatureFlagsConfig = {
   version: "1.0.0",
-  flags: {
-    // Combat System
-    "new-combat-system": {
-      name: "new-combat-system",
-      enabled: true,
-      rolloutPercentage: 100
-    },
-    "improved-arrow-physics": {
-      name: "improved-arrow-physics",
-      enabled: true,
-      rolloutPercentage: 50
-    },
-    
-    // Matchmaking
-    "async-pvp": {
-      name: "async-pvp",
-      enabled: true,
-      rolloutPercentage: 100
-    },
-    "ranked-matchmaking": {
-      name: "ranked-matchmaking",
-      enabled: false,
-      rolloutPercentage: 0
-    },
-    
-    // Store & Economy
-    "seasonal-store": {
-      name: "seasonal-store",
-      enabled: true,
-      rolloutPercentage: 100
-    },
-    "gem-packs": {
-      name: "gem-packs",
-      enabled: true,
-      rolloutPercentage: 100
-    },
-    
-    // UI Features
-    "new-main-menu": {
-      name: "new-main-menu",
-      enabled: true,
-      rolloutPercentage: 100
-    },
-    "improved-loadout-ui": {
-      name: "improved-loadout-ui",
-      enabled: false,
-      rolloutPercentage: 0
-    },
-    
-    // Backend
-    "prometheus-metrics": {
-      name: "prometheus-metrics",
-      enabled: true,
-      rolloutPercentage: 100
-    },
-    "detailed-analytics": {
-      name: "detailed-analytics",
-      enabled: true,
-      rolloutPercentage: 100
-    }
-  }
+  flags: {}
 };
 
 /**
