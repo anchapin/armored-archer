@@ -46,18 +46,16 @@ describe('config/index branch coverage', () => {
   });
 
   it('parseDatabaseAddress with postgres://', () => {
-    // Note: The regex in parseDatabaseAddress has a bug - it doesn't account for the "://" properly
-    // It matches: user="postgres", password="//user:pass", host="localhost"
-    // This test documents the current behavior
+    // Fixed: The regex now properly handles postgres:// prefix
     process.env.DATABASE_ADDRESS = 'postgres://user:pass@localhost:5432/db';
     const { default: config } = require('../index');
     expect(config.database.host).toBe('localhost');
     expect(config.database.port).toBe(5432);
     expect(config.database.database).toBe('db');
     expect(config.database.address).toBe('postgres://user:pass@localhost:5432/db');
-    // Current behavior due to regex bug:
-    expect(config.database.user).toBe('postgres');
-    expect(config.database.password).toBe('//user:pass');
+    // Fixed: Now correctly parses user and password
+    expect(config.database.user).toBe('user');
+    expect(config.database.password).toBe('pass');
   });
 
   it('parseDatabaseAddress with invalid URL falls back to defaults', () => {
