@@ -42,10 +42,33 @@ export enum RefundReason {
 }
 
 /**
+ * Maps webhook reason string to valid RefundReason enum.
+ */
+function mapWebhookReasonToRefundReason(reason: string | undefined): RefundReason {
+  if (!reason) return RefundReason.OTHER;
+  
+  const normalizedReason = reason.toLowerCase().replace(/\s+/g, '_');
+  
+  switch (normalizedReason) {
+    case 'customer_support':
+      return RefundReason.CUSTOMER_SUPPORT;
+    case 'chargeback':
+      return RefundReason.CHARGEBACK;
+    case 'duplicate':
+      return RefundReason.DUPLICATE;
+    case 'fraud':
+      return RefundReason.FRAUD;
+    default:
+      return RefundReason.OTHER;
+  }
+}
+
+/**
  * In-memory cache for validated receipts to reduce storage lookups.
  * Format: user_id -> Set of receipt hashes
+ * Exported for testing purposes to allow clearing between tests.
  */
-const validatedReceipts: Map<string, Set<string>> = new Map();
+export const validatedReceipts: Map<string, Set<string>> = new Map();
 
 /**
  * Cleanup job for in-memory receipt cache.
@@ -1741,13 +1764,14 @@ async function handleInitialPurchase(
   nk: Runtime.Nakama,
   userId: string,
   productId: string,
-  logger: Runtime.Logger
-): Promise<{ success: boolean; message: string; gems_awarded?: number; new_balance?: number }> {
+  logger: Runtime.Logger,
+  eventType: string = 'initial_purchase'
+): Promise<{ success: boolean; message: string; gems_awarded?: number; new_balance?: number; event_type?: string }> {
   const gemAmount = getGemAmountForProduct(productId, logger);
 
   if (!gemAmount) {
     logger.error('Unknown product ID in webhook: %s', productId);
-    return { success: false, message: 'Unknown product ID' };
+    return { success: false, message: 'Unknown product ID', event_type: eventType };
   }
 
   // Get current player currency
@@ -1761,6 +1785,7 @@ async function handleInitialPurchase(
       message: 'Gem balance would exceed maximum',
       gems_awarded: 0,
       new_balance: playerCurrency.gems,
+      event_type: eventType,
     };
   }
 
@@ -1787,7 +1812,7 @@ async function handleInitialPurchase(
 
   logger.info('Webhook: Awarded %d gems to user %s for product %s', gemAmount, userId, productId);
 
-  return { success: true, message: 'Gems awarded', gems_awarded: gemAmount, new_balance: playerCurrency.gems };
+  return { success: true, message: 'Gems awarded', gems_awarded: gemAmount, new_balance: playerCurrency.gems, event_type: eventType };
 }
 
 /**
@@ -1798,8 +1823,9 @@ function handleSubscriptionCancelled(
   userId: string,
   productId: string,
   reason: string | undefined,
-  logger: Runtime.Logger
-): { success: boolean; message: string } {
+  logger: Runtime.Logger,
+  eventType: string = 'cancellation'
+): { success: boolean; message: string; event_type?: string } {
   logger.info(
     'Webhook: Subscription cancelled for user %s, product %s, reason: %s',
     userId,
@@ -1820,7 +1846,7 @@ function handleSubscriptionCancelled(
     // Handle empty or non-JSON values
     if (!value || typeof value !== 'string') {
       logger.warn('No valid subscription data found for user %s', userId);
-      return { success: true, message: 'Cancellation noted (no subscription found)' };
+      return { success: true, message: 'Cancellation noted (no subscription found)', event_type: eventType };
     }
     const subscription = JSON.parse(value);
     subscription.active = false;
@@ -1836,7 +1862,7 @@ function handleSubscriptionCancelled(
     }]);
   }
 
-  return { success: true, message: 'Cancellation noted' };
+  return { success: true, message: 'Cancellation noted', event_type: eventType };
 }
 
 /**
@@ -1846,8 +1872,9 @@ function handleBillingIssue(
   nk: Runtime.Nakama,
   userId: string,
   productId: string,
-  logger: Runtime.Logger
-): { success: boolean; message: string } {
+  logger: Runtime.Logger,
+  eventType: string = 'billing_issue'
+): { success: boolean; message: string; event_type?: string } {
   logger.info(
     'Webhook: Billing issue for user %s, product %s',
     userId,
@@ -1867,7 +1894,7 @@ function handleBillingIssue(
     // Handle empty or non-JSON values
     if (!value || typeof value !== 'string') {
       logger.warn('No valid subscription data found for user %s', userId);
-      return { success: true, message: 'Billing issue recorded (no subscription found)' };
+      return { success: true, message: 'Billing issue recorded (no subscription found)', event_type: eventType };
     }
     const subscription = JSON.parse(value);
     subscription.billing_issue = true;
@@ -1881,7 +1908,7 @@ function handleBillingIssue(
     }]);
   }
 
-  return { success: true, message: 'Billing issue recorded' };
+  return { success: true, message: 'Billing issue recorded', event_type: eventType };
 }
 
 /**
@@ -1892,8 +1919,9 @@ function handleSubscriptionExpired(
   userId: string,
   productId: string,
   reason: string | undefined,
-  logger: Runtime.Logger
-): { success: boolean; message: string } {
+  logger: Runtime.Logger,
+  eventType: string = 'expiration'
+): { success: boolean; message: string; event_type?: string } {
   logger.info(
     'Webhook: Subscription expired for user %s, product %s, reason: %s',
     userId,
@@ -1901,7 +1929,7 @@ function handleSubscriptionExpired(
     reason || 'not specified'
   );
 
-  return { success: true, message: 'Expiration noted' };
+  return { success: true, message: 'Expiration noted', event_type: eventType };
 }
 
 /**
@@ -1913,7 +1941,7 @@ async function handleProductChange(
   transferredFrom: string,
   productId: string,
   logger: Runtime.Logger
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; event_type?: string }> {
   logger.info(
     'Webhook: Product transferred from %s to %s for product %s',
     transferredFrom,
@@ -1921,8 +1949,9 @@ async function handleProductChange(
     productId
   );
 
-  const result = await handleInitialPurchase(nk, userId, productId, logger);
-  return result;
+  // For subscription product changes, just record the change without awarding gems
+  // (premium subscriptions don't award gems, only consumable gem packs do)
+  return { success: true, message: 'Product change noted', event_type: 'product_change' };
 }
 
 /**
@@ -2007,30 +2036,45 @@ export async function rpcRevenueCatWebhook(
     return JSON.stringify({ success: false, error: 'Missing app_user_id' });
   }
 
-  let result: { success: boolean; message: string };
+  let result: { success: boolean; message: string; event_type?: string; gems_awarded?: number; new_balance?: number };
 
   switch (normalizedEventType) {
     case 'initial_purchase':
     case 'renewal':
-      result = await handleInitialPurchase(nk, appUserId, productId, logger);
+      result = await handleInitialPurchase(nk, appUserId, productId, logger, normalizedEventType);
       break;
     case 'cancellation':
     case 'uncancellation':
     case 'non_renewing_purchase_cancelled':
-      result = handleSubscriptionCancelled(nk, appUserId, productId, webhookData.reason as string, logger);
+      result = handleSubscriptionCancelled(nk, appUserId, productId, webhookData.reason as string, logger, normalizedEventType);
       break;
     case 'billing_issue':
-      result = handleBillingIssue(nk, appUserId, productId, logger);
+      result = handleBillingIssue(nk, appUserId, productId, logger, normalizedEventType);
       break;
     case 'expiration':
-      result = handleSubscriptionExpired(nk, appUserId, productId, webhookData.reason as string, logger);
+      result = handleSubscriptionExpired(nk, appUserId, productId, webhookData.reason as string, logger, normalizedEventType);
       break;
     case 'transfer':
+    case 'product_change':
       result = await handleProductChange(nk, appUserId, webhookData.transferred_from as string, productId, logger);
+      break;
+    case 'refund':
+      const refundAmount = getGemAmountForProduct(productId, logger) || 0;
+      // Map webhook reason to valid RefundReason enum
+      const refundReason = mapWebhookReasonToRefundReason(webhookData.reason as string | undefined);
+      const refundResult = await processRefund(
+        nk,
+        appUserId,
+        refundAmount,
+        webhookData.transaction_id as string || webhookData.refund_transaction_id as string || '',
+        refundReason,
+        logger
+      );
+      result = refundResult;
       break;
     default:
       logger.info('Webhook: Received unhandled event type: %s', eventType);
-      result = { success: true, message: `Ignored event type: ${eventType}` };
+      result = { success: true, message: `Event ${eventType} noted but not processed`, event_type: normalizedEventType };
   }
 
   return JSON.stringify(result);
