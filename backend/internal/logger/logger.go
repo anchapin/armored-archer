@@ -2,9 +2,11 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/anchapin/armored-archer/backend/internal/tracecontext"
 	"github.com/heroiclabs/nakama-common/runtime"
 )
 
@@ -68,10 +70,21 @@ func (l *StructuredLogger) WithFields(fields LogContext) *StructuredLogger {
 	return l
 }
 
+// WithTraceContext adds trace context from OpenTelemetry span.
+func (l *StructuredLogger) WithTraceContext(ctx context.Context) *StructuredLogger {
+	tc := tracecontext.ExtractFromContext(ctx)
+	if tc.IsValid() {
+		l.defaultFields["trace_id"] = tc.TraceID
+		l.defaultFields["span_id"] = tc.SpanID
+		l.defaultFields["trace_sampled"] = tc.IsSampled
+	}
+	return l
+}
+
 // formatMessage formats a log message with context.
 func (l *StructuredLogger) formatMessage(level LogLevel, message string, ctx LogContext) string {
 	timestamp := time.Now().Format(time.RFC3339)
-	
+
 	// Merge default fields with context
 	fields := make(LogContext)
 	for k, v := range l.defaultFields {
@@ -90,8 +103,8 @@ func (l *StructuredLogger) formatMessage(level LogLevel, message string, ctx Log
 		}
 	}
 
-	return fmt.Sprintf("[%s] [%s] [%s] %s%s", 
-		timestamp, 
+	return fmt.Sprintf("[%s] [%s] [%s] %s%s",
+		timestamp,
 		level.String(),
 		l.service,
 		message,
@@ -130,9 +143,10 @@ func (l *StructuredLogger) Error(message string, ctx ...LogContext) {
 	}
 }
 
-// LogRpcEntry logs an RPC handler entry.
-func (l *StructuredLogger) LogRpcEntry(rpcName, userID string, payloadSize int) {
-	l.Debug("RPC entry", LogContext{
+// LogRpcEntry logs an RPC handler entry with trace context.
+func (l *StructuredLogger) LogRpcEntry(rpcName, userID string, payloadSize int, ctx context.Context) {
+	ctxWithTrace := l.WithTraceContext(ctx)
+	ctxWithTrace.Debug("RPC entry", LogContext{
 		"rpc_name":     rpcName,
 		"user_id":      userID,
 		"payload_size": payloadSize,
@@ -140,8 +154,9 @@ func (l *StructuredLogger) LogRpcEntry(rpcName, userID string, payloadSize int) 
 	})
 }
 
-// LogRpcExit logs an RPC handler exit.
-func (l *StructuredLogger) LogRpcExit(rpcName, userID string, durationMs int64, success bool) {
+// LogRpcExit logs an RPC handler exit with trace context.
+func (l *StructuredLogger) LogRpcExit(rpcName, userID string, durationMs int64, success bool, ctx context.Context) {
+	ctxWithTrace := l.WithTraceContext(ctx)
 	ctx := LogContext{
 		"rpc_name":   rpcName,
 		"user_id":    userID,
@@ -149,17 +164,18 @@ func (l *StructuredLogger) LogRpcExit(rpcName, userID string, durationMs int64, 
 		"operation":  "rpc_exit",
 		"success":    success,
 	}
-	
+
 	if success {
-		l.Debug("RPC exit", ctx)
+		ctxWithTrace.Debug("RPC exit", ctx)
 	} else {
-		l.Warn("RPC exit with error", ctx)
+		ctxWithTrace.Warn("RPC exit with error", ctx)
 	}
 }
 
-// LogRpcError logs an RPC handler error.
-func (l *StructuredLogger) LogRpcError(rpcName, userID string, err error, durationMs int64) {
-	l.Error("RPC error", LogContext{
+// LogRpcError logs an RPC handler error with trace context.
+func (l *StructuredLogger) LogRpcError(rpcName, userID string, err error, durationMs int64, ctx context.Context) {
+	ctxWithTrace := l.WithTraceContext(ctx)
+	ctxWithTrace.Error("RPC error", LogContext{
 		"rpc_name":    rpcName,
 		"user_id":     userID,
 		"error":       err.Error(),
@@ -168,9 +184,10 @@ func (l *StructuredLogger) LogRpcError(rpcName, userID string, err error, durati
 	})
 }
 
-// LogCacheOperation logs a cache operation.
-func (l *StructuredLogger) LogCacheOperation(operation, key string, hit bool, durationMs int64) {
-	l.Debug("Cache operation", LogContext{
+// LogCacheOperation logs a cache operation with trace context.
+func (l *StructuredLogger) LogCacheOperation(operation, key string, hit bool, durationMs int64, ctx context.Context) {
+	ctxWithTrace := l.WithTraceContext(ctx)
+	ctxWithTrace.Debug("Cache operation", LogContext{
 		"operation":   operation,
 		"key":         key,
 		"cache_hit":   hit,
@@ -178,30 +195,32 @@ func (l *StructuredLogger) LogCacheOperation(operation, key string, hit bool, du
 	})
 }
 
-// LogDatabaseOperation logs a database operation.
-func (l *StructuredLogger) LogDatabaseOperation(operation, query string, durationMs int64, err error) {
+// LogDatabaseOperation logs a database operation with trace context.
+func (l *StructuredLogger) LogDatabaseOperation(operation, query string, durationMs int64, err error, ctx context.Context) {
+	ctxWithTrace := l.WithTraceContext(ctx)
 	ctx := LogContext{
 		"operation":   operation,
 		"query":       query,
 		"duration_ms": durationMs,
 	}
-	
+
 	if err != nil {
 		ctx["error"] = err.Error()
-		l.Error("Database error", ctx)
+		ctxWithTrace.Error("Database error", ctx)
 	} else {
-		l.Debug("Database operation", ctx)
+		ctxWithTrace.Debug("Database operation", ctx)
 	}
 }
 
-// LogSystemEvent logs a system event.
-func (l *StructuredLogger) LogSystemEvent(event, status string, details LogContext) {
+// LogSystemEvent logs a system event with trace context.
+func (l *StructuredLogger) LogSystemEvent(event, status string, details LogContext, ctx context.Context) {
+	ctxWithTrace := l.WithTraceContext(ctx)
 	ctx := LogContext{
 		"event":  event,
 		"status": status,
 	}
 	mergeContextsInto(ctx, details)
-	l.Info("System event", ctx)
+	ctxWithTrace.Info("System event", ctx)
 }
 
 // mergeContexts merges multiple contexts into one.
@@ -230,16 +249,16 @@ func (l *StructuredLogger) CreateChildLogger(fields LogContext) *StructuredLogge
 		version: l.version,
 		defaultFields: make(LogContext),
 	}
-	
+
 	// Copy parent's default fields
 	for k, v := range l.defaultFields {
 		child.defaultFields[k] = v
 	}
-	
+
 	// Add child-specific fields
 	for k, v := range fields {
 		child.defaultFields[k] = v
 	}
-	
+
 	return child
 }

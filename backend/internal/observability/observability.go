@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/anchapin/armored-archer/backend/metrics"
 )
 
 // Health status constants
@@ -491,7 +493,7 @@ func ProfilingDataToJSON(data *ProfilingData) (string, error) {
 func GetSystemInfo() map[string]interface{} {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
-	
+
 	return map[string]interface{}{
 		"go_version":      runtime.Version(),
 		"go_os":           runtime.GOOS,
@@ -506,3 +508,135 @@ func GetSystemInfo() map[string]interface{} {
 		"timestamp":       time.Now().UnixMilli(),
 	}
 }
+
+// ============================================================================
+// Prometheus Metrics Integration
+// ============================================================================
+// Integration with backend/metrics/prometheus_metrics.go for Prometheus export
+
+// RecordRPCMetricsWithPrometheus records RPC metrics to both internal registry and Prometheus.
+// This function bridges the internal metrics system with Prometheus metrics.
+func RecordRPCMetricsWithPrometheus(rpcName string, durationMs int64, success bool, errorCode string) {
+	// Record to internal registry (existing behavior)
+	RecordRPCMetrics(rpcName, durationMs, success, errorCode)
+
+	// Record to Prometheus metrics
+	if success {
+		metrics.RecordRPCRequest(rpcName, "rpc")
+	} else {
+		metrics.RecordRPCError(rpcName, errorCode)
+	}
+	metrics.RecordRPCDuration(rpcName, time.Duration(durationMs)*time.Millisecond)
+}
+
+// RecordMatchMetricsWithPrometheus records match metrics to both internal registry and Prometheus.
+func RecordMatchMetricsWithPrometheus(matchType string, event string, value float64) {
+	// Record to internal registry (existing behavior)
+	RecordMatchMetrics(matchType, event, value)
+
+	// Record to Prometheus metrics
+	switch event {
+	case "created":
+		metrics.RecordMatchCreated(matchType)
+	case "completed":
+		metrics.RecordMatchCompleted(matchType, "completed")
+	case "queue_size":
+		metrics.SetMatchmakingQueueSize(value, matchType)
+	}
+}
+
+// RecordCombatMetricsWithPrometheus records combat metrics to Prometheus.
+func RecordCombatMetricsWithPrometheus(actionType string, result string, damage float64) {
+	// Record to internal registry (existing behavior)
+	RecordCombatMetrics(actionType, result, damage)
+
+	// Record to Prometheus metrics
+	metrics.RecordCombatAction(actionType, result)
+}
+
+// RecordPurchaseMetricsWithPrometheus records purchase metrics to both internal registry and Prometheus.
+func RecordPurchaseMetricsWithPrometheus(productType string, status string, amount float64, currency string) {
+	// Record to internal registry (existing behavior)
+	RecordPurchaseMetrics(productType, status, amount, currency)
+
+	// Record to Prometheus metrics
+	metrics.RecordPurchase(status, currency)
+	if status == "success" && amount > 0 {
+		metrics.RecordRevenue(amount, currency)
+	}
+}
+
+// RecordCurrencyMetricsWithPrometheus records currency metrics to Prometheus.
+func RecordCurrencyMetricsWithPrometheus(currencyType string, operation string, amount float64, reason string) {
+	// Record to internal registry (existing behavior)
+	RecordCurrencyMetrics(currencyType, operation, amount, reason)
+
+	// Record to Prometheus metrics
+	switch operation {
+	case "spent":
+		metrics.RecordCurrencySpent(currencyType, reason, amount)
+	case "earned":
+		metrics.RecordCurrencyEarned(currencyType, reason, amount)
+	}
+}
+
+// UpdateSystemMetricsWithPrometheus updates system metrics in Prometheus.
+func UpdateSystemMetricsWithPrometheus() {
+	// Update Prometheus system metrics
+	metrics.UpdateSystemMetrics()
+}
+
+// SetActivePlayersWithPrometheus sets active player count in both internal registry and Prometheus.
+func SetActivePlayersWithPrometheus(count float64, region string) {
+	metrics.SetActivePlayers(count, region)
+}
+
+// RecordSessionMetricsWithPrometheus records session metrics to Prometheus.
+func RecordSessionMetricsWithPrometheus(method string, duration time.Duration) {
+	metrics.RecordSessionCreated(method)
+	metrics.RecordSessionDuration(duration)
+}
+
+// RecordDatabaseMetricsWithPrometheus records database metrics to Prometheus.
+func RecordDatabaseMetricsWithPrometheus(endpoint string, database string, duration time.Duration, success bool, errorCode string) {
+	metrics.RecordDBQueryDuration(endpoint, database, duration)
+	if !success {
+		metrics.RecordDBError(endpoint, errorCode)
+	}
+}
+
+// RecordCacheMetricsWithPrometheus records cache metrics to Prometheus.
+func RecordCacheMetricsWithPrometheus(cache string, hit bool, sizeBytes float64) {
+	if hit {
+		metrics.RecordCacheHit(cache)
+	} else {
+		metrics.RecordCacheMiss(cache)
+	}
+	metrics.SetCacheSize(sizeBytes, cache)
+}
+
+// RecordGearMetricsWithPrometheus records gear generation metrics to Prometheus.
+func RecordGearMetricsWithPrometheus(gearType string, rarity string) {
+	metrics.RecordGearGenerated(gearType, rarity)
+}
+
+// RecordXPMetricsWithPrometheus records XP gain metrics to Prometheus.
+func RecordXPMetricsWithPrometheus(actionType string, amount float64) {
+	metrics.RecordXPGained(actionType, amount)
+}
+
+// RecordLevelUpMetricsWithPrometheus records level up metrics to Prometheus.
+func RecordLevelUpMetricsWithPrometheus(season string) {
+	metrics.RecordLevelUp(season)
+}
+
+// GetPrometheusMetricsSummary returns a summary of Prometheus metrics.
+func GetPrometheusMetricsSummary() string {
+	return metrics.GetMetricsSummary()
+}
+
+// GetPrometheusCollector returns the Prometheus metrics collector.
+func GetPrometheusCollector() *metrics.MetricsCollector {
+	return metrics.GetCollector()
+}
+

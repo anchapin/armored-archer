@@ -1,0 +1,131 @@
+# Grafana Tempo Configuration for Armored Archer
+# This configuration sets up Tempo for distributed tracing storage and querying.
+
+# Server configuration
+server:
+  http_listen_port: 3200
+  grpc_listen_port: 9095
+  log_level: info
+
+# Multi-tenancy (disabled for single-tenant setup)
+multitenancy_enabled: false
+
+# Query configuration
+query_frontend:
+  search:
+    duration_slo: 5s
+    throughput_bytes_slo: 1.073741824e+09
+    metadata_slo:
+        duration_slo: 5s
+        throughput_bytes_slo: 1.073741824e+09
+  trace_by_id:
+    duration_slo: 5s
+
+# Distributor configuration
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+        grpc:
+          endpoint: 0.0.0.0:4317
+    jaeger:
+      protocols:
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+        grpc:
+          endpoint: 0.0.0.0:14250
+        thrift_compact:
+          endpoint: 0.0.0.0:6831
+    zipkin:
+      endpoint: 0.0.0.0:9411
+
+# Ingester configuration
+ingester:
+  max_block_duration: 5m
+  max_block_bytes: 1073741824
+  overwrite_existing: true
+  trace_idle_period: 10s
+  max_live_traces: 100000
+
+# Compactor configuration
+compactor:
+  compaction:
+    block_retention: 48h
+    compacted_block_retention: 12h
+    max_compaction_objects: 1000000
+    chunk_size_bytes: 1048576
+
+# Querier configuration
+querier:
+  max_concurrent_queries: 20
+  query_timeout: 30s
+
+# Storage configuration
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /tmp/tempo/wal
+      enabled: true
+      flush_to_storage: true
+    local:
+      path: /tmp/tempo/blocks
+    pool:
+      max_workers: 100
+      queue_depth: 20000
+
+# Metrics configuration
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+      cluster: armored-archer
+  storage:
+    path: /tmp/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
+  traces_storage:
+    path: /tmp/tempo/generator/traces
+  processor:
+    local_blocks:
+      filter_server_spans: true
+      flush_to_storage: true
+    span_metrics:
+      dimensions:
+        - service_name
+        - rpc_name
+        - user_id
+        - match_type
+        - combat_action
+        - gear_type
+        - error_code
+
+# Overrides for per-tenant limits
+overrides:
+  defaults:
+    ingestion:
+      rate_limit: 10000000
+      ingestion_burst_size: 20000000
+    max_bytes_per_trace: 1048576
+    max_traces_per_user: 100000
+    max_spans_per_trace: 10000
+    search:
+      tags_allow_list:
+        - service.name
+        - rpc.name
+        - user.id
+        - match.id
+        - match.type
+        - error.code
+    metrics_generator:
+      processors:
+        - service-graphs
+        - span-metrics
+      collection_interval: 10s
+
+# Usage reporting
+usage_report:
+  enabled: true

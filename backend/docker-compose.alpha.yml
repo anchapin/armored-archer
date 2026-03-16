@@ -71,9 +71,22 @@ services:
       - alpha_grafana_data:/var/lib/grafana
     restart: unless-stopped
 
+  loki:
+    container_name: armored_archer_alpha_loki
+    volumes:
+      - alpha_loki_data:/loki
+    restart: unless-stopped
+
+  promtail:
+    container_name: armored_archer_alpha_promtail
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-alpha}
+    restart: unless-stopped
+
 # Alpha-specific volumes
 volumes:
   alpha_postgres_data:
   alpha_redis_data:
   alpha_prometheus_data:
   alpha_grafana_data:
+  alpha_loki_data:

@@ -1,0 +1,266 @@
+# Prometheus Configuration for Armored Archer Backend
+# This configuration file defines scrape targets for collecting metrics
+# from the Go backend, Nakama server, and supporting infrastructure.
+#
+# Usage:
+#   - Development: Mount to Prometheus container at /etc/prometheus/prometheus.yml
+#   - Alpha: Use backend/prometheus.alpha.yml for alpha environment
+#   - Production: Customize with remote_write for Grafana Cloud/DataDog
+#
+# Related Files:
+#   - alerts.yml: Alerting rules
+#   - metrics/prometheus_metrics.go: Go metrics definitions
+#   - scripts/verify-metrics.sh: Metrics verification script
+
+global:
+  # How frequently to scrape targets
+  scrape_interval: 15s
+  
+  # How frequently to evaluate rules
+  evaluation_interval: 15s
+  
+  # Attach these labels to any time series or alerts when communicating with
+  # external systems (federation, remote storage, Alertmanager)
+  external_labels:
+    cluster: 'armored-archer'
+    environment: 'development'
+    monitor: 'armored-archer-monitor'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+      timeout: 10s
+      api_version: v2
+
+# Rule files to evaluate
+rule_files:
+  - '/etc/prometheus/alerts.yml'
+  # - '/etc/prometheus/recording_rules.yml'
+
+# Scrape configurations
+scrape_configs:
+  # ================================================================
+  # Prometheus Self-Monitoring
+  # ================================================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']
+        labels:
+          service: 'prometheus'
+          component: 'monitoring'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # ================================================================
+  # Node Exporter - System Metrics
+  # ================================================================
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['node_exporter:9100']
+        labels:
+          service: 'node-exporter'
+          component: 'infrastructure'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      # Drop unnecessary metrics to reduce cardinality
+      - source_labels: [__name__]
+        regex: 'node_(mountstats|time_zone|arp_entries|md_state)'
+        action: drop
+
+  # ================================================================
+  # Alertmanager Monitoring
+  # ================================================================
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+        labels:
+          service: 'alertmanager'
+          component: 'monitoring'
+    scrape_interval: 30s
+
+  # ================================================================
+  # Nakama Server - Core Game Server Metrics
+  # ================================================================
+  - job_name: 'nakama'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    static_configs:
+      - targets: ['nakama:7350']
+        labels:
+          service: 'nakama'
+          component: 'game-server'
+          environment: 'development'
+    # Relabel configs to add dynamic labels
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
+
+  # ================================================================
+  # Armored Archer - Custom Application Metrics (Go Module)
+  # ================================================================
+  # These metrics are exposed via the Nakama Go module RPC endpoint
+  - job_name: 'armored_archer_app'
+    metrics_path: '/api/nakama/rpc/armored_archer/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    static_configs:
+      - targets: ['nakama:7350']
+        labels:
+          service: 'armored-archer'
+          component: 'application'
+          environment: 'development'
+    # Add custom labels
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: nakama_instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
+    # Only keep armored_archer_ prefixed metrics
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'armored_archer_.*'
+        action: keep
+      # Add component label to all metrics
+      - target_label: component
+        replacement: 'go-backend'
+
+  # ================================================================
+  # Armored Archer - RPC Metrics
+  # ================================================================
+  - job_name: 'armored_archer_rpc'
+    metrics_path: '/api/nakama/rpc/armored_archer/rpc_metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['nakama:7350']
+        labels:
+          service: 'armored-archer'
+          component: 'rpc'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'rpc_.*'
+        action: keep
+
+  # ================================================================
+  # Armored Archer - Business Metrics
+  # ================================================================
+  - job_name: 'armored_archer_business'
+    metrics_path: '/api/nakama/rpc/armored_archer/business_metrics'
+    scrape_interval: 60s
+    scrape_timeout: 15s
+    static_configs:
+      - targets: ['nakama:7350']
+        labels:
+          service: 'armored-archer'
+          component: 'business'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: '(purchases|revenue|currency|gear|combat|xp|level).*'
+        action: keep
+
+  # ================================================================
+  # Armored Archer - System/Performance Metrics
+  # ================================================================
+  - job_name: 'armored_archer_system'
+    metrics_path: '/api/nakama/rpc/armored_archer/system_metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['nakama:7350']
+        labels:
+          service: 'armored-archer'
+          component: 'system'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: '(memory|cpu|goroutine|request_queue).*'
+        action: keep
+
+  # ================================================================
+  # PostgreSQL Database Metrics (via postgres_exporter)
+  # ================================================================
+  # Uncomment when postgres_exporter is added to docker-compose
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+  #       labels:
+  #         service: 'database'
+  #         component: 'postgres'
+  #   scrape_interval: 30s
+  #   metric_relabel_configs:
+  #     - source_labels: [__name__]
+  #       regex: 'pg_.*'
+  #       action: keep
+
+  # ================================================================
+  # Redis Metrics (via redis_exporter)
+  # ================================================================
+  # Uncomment when redis_exporter is added to docker-compose
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+  #       labels:
+  #         service: 'cache'
+  #         component: 'redis'
+  #   scrape_interval: 30s
+
+  # ================================================================
+  # Health Check Endpoint
+  # ================================================================
+  - job_name: 'armored_archer_health'
+    metrics_path: '/api/nakama/rpc/armored_archer/health'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['nakama:7350']
+        labels:
+          service: 'armored-archer'
+          component: 'health'
+
+  # ================================================================
+  # Deployment Metrics
+  # ================================================================
+  - job_name: 'armored_archer_deployment'
+    metrics_path: '/api/nakama/rpc/armored_archer/deployment_metrics'
+    scrape_interval: 60s
+    scrape_timeout: 15s
+    static_configs:
+      - targets: ['nakama:7350']
+        labels:
+          service: 'armored-archer'
+          component: 'deployment'
+
+# ================================================================
+# Remote Write Configuration (Optional - for Grafana Cloud/DataDog)
+# ================================================================
+# Uncomment and configure for production use
+# remote_write:
+#   - url: 'https://prometheus-prod-XX.grafana.net/api/prom/push'
+#     remote_timeout: 30s
+#     write_relabel_configs:
+#       - source_labels: [environment]
+#         regex: 'production'
+#         action: keep
+#     basic_auth:
+#       username: '<grafana_cloud_username>'
+#       password: '<grafana_cloud_token>'
+#     queue_config:
+#       max_samples_per_send: 1000
+#       batch_send_deadline: 5s
+#       capacity: 10000
+
+# ================================================================
+# Remote Read Configuration (Optional)
+# ================================================================
+# remote_read:
+#   - url: 'https://prometheus-prod-XX.grafana.net/api/prom/read'
+#     read_recent: true
+#     basic_auth:
+#       username: '<grafana_cloud_username>'
+#       password: '<grafana_cloud_token>'
