@@ -15,37 +15,37 @@ func _ready() -> void:
 	await _run_all_test_suites()
 
 func _run_all_test_suites() -> void:
-	framework.run_test("test_new_user_flow", _test_new_user_flow)
-	await framework.test_passed
-
-	framework.run_test("test_pve_gameplay", _test_pve_gameplay)
-	await framework.test_passed
-
-	framework.run_test("test_pvp_flow", _test_pvp_flow)
-	await framework.test_passed
-
-	framework.run_test("test_gear_progression", _test_gear_progression)
-	await framework.test_passed
-
-	framework.run_test("test_store_flow", _test_store_flow)
-	await framework.test_passed
-
-	framework.run_test("test_season_flow", _test_season_flow)
-	await framework.test_passed
-
-	framework.run_test("test_network_failure", _test_network_failure)
-	await framework.test_passed
-
-	framework.run_test("test_server_downtime", _test_server_downtime)
-	await framework.test_passed
-
-	framework.run_test("test_invalid_inputs", _test_invalid_inputs)
-	await framework.test_passed
-
-	framework.run_test("test_offline_mode", _test_offline_mode)
-	await framework.test_passed
-
-	framework.run_all_tests()
+	await framework.run_test("test_new_user_flow", _test_new_user_flow)
+	await get_tree().process_frame
+	
+	await framework.run_test("test_pve_gameplay", _test_pve_gameplay)
+	await get_tree().process_frame
+	
+	await framework.run_test("test_pvp_flow", _test_pvp_flow)
+	await get_tree().process_frame
+	
+	await framework.run_test("test_gear_progression", _test_gear_progression)
+	await get_tree().process_frame
+	
+	await framework.run_test("test_store_flow", _test_store_flow)
+	await get_tree().process_frame
+	
+	await framework.run_test("test_season_flow", _test_season_flow)
+	await get_tree().process_frame
+	
+	await framework.run_test("test_network_failure", _test_network_failure)
+	await get_tree().process_frame
+	
+	await framework.run_test("test_server_downtime", _test_server_downtime)
+	await get_tree().process_frame
+	
+	await framework.run_test("test_invalid_inputs", _test_invalid_inputs)
+	await get_tree().process_frame
+	
+	await framework.run_test("test_offline_mode", _test_offline_mode)
+	await get_tree().process_frame
+	
+	await framework.run_all_tests()
 
 func _test_new_user_flow(test_context: Node) -> void:
 	print("Testing: New User Registration → Tutorial → First Battle → First Level Up")

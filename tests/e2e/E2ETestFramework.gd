@@ -60,10 +60,18 @@ func run_all_tests() -> void:
 
 	all_tests_completed.emit(test_results, total_duration)
 	print("\n=== Test Suite Complete ===")
+	var passed_count = 0
+	var failed_count = 0
+	for result in test_results:
+		if result.get("passed", false):
+			passed_count += 1
+		else:
+			failed_count += 1
+	
 	print("Total: %d tests, %d passed, %d failed" % [
 		test_results.size(),
-		test_results.filter(func(r): return r.get("passed", false)).size(),
-		test_results.filter(func(r): return not r.get("passed", false)).size()
+		passed_count,
+		failed_count
 	])
 
 func get_test_results() -> Array:
