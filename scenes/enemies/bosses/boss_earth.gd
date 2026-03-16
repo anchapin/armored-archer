@@ -89,7 +89,7 @@ func _physics_process(delta: float) -> void:
 	if phase >= 3:
 		handle_earthquake()
 
-	move_and_slide()
+	var _moved = move_and_slide()
 
 func update_timers(_delta: float) -> void:
 	attack_timer += _delta

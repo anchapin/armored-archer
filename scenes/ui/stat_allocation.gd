@@ -128,13 +128,13 @@ func _on_back_pressed() -> void:
 
 func show_level_up_effect(new_level: int, ability_points_gained: int) -> void:
 	var tween = create_tween()
-	tween.tween_property(ability_points_label, "modulate", Color.YELLOW, 0.2)
-	tween.tween_property(ability_points_label, "modulate", Color.WHITE, 0.2)
+	var _t1 = tween.tween_property(ability_points_label, "modulate", Color.YELLOW, 0.2)
+	var _t2 = tween.tween_property(ability_points_label, "modulate", Color.WHITE, 0.2)
 
 func show_xp_gained_effect(amount: int) -> void:
 	var tween = create_tween()
-	tween.tween_property(xp_label, "modulate", Color.GREEN, 0.2)
-	tween.tween_property(xp_label, "modulate", Color.WHITE, 0.2)
+	var _t1 = tween.tween_property(xp_label, "modulate", Color.GREEN, 0.2)
+	var _t2 = tween.tween_property(xp_label, "modulate", Color.WHITE, 0.2)
 
 func show_stat_allocated_effect( _stat_name: String, _amount: int) -> void:
 	pass
