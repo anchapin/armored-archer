@@ -30,7 +30,6 @@
     "bundle:analyze": "webpack --mode=production --config webpack.analyze.config.js --analyze",
     "bundle:analyze:dev": "webpack --mode=development --config webpack.analyze.config.js --analyze",
     "bundle:check": "node scripts/bundle-analysis.js",
-    "bundle:validate": "node scripts/validate-nakama-bundle.js",
     "depcheck": "depcheck",
     "dep:count": "node -e \"const p = require('./package.json'); console.log('Total:', Object.keys(p.dependencies).length + Object.keys(p.devDependencies).length); console.log('Prod:', Object.keys(p.dependencies).length); console.log('Dev:', Object.keys(p.devDependencies).length);\"",
     "detect-n-plus-one": "ts-node --transpile-only ./scripts/detect-n-plus-one.ts",
@@ -119,6 +118,7 @@
     "pg": "^8.11.0",
     "process": "^0.11.10",
     "prom-client": "^15.0.0",
+    "tslib": "^2.8.1",
     "uuid": "^13.0.0",
     "valibot": "^1.2.0",
     "winston": "^3.11.0"
