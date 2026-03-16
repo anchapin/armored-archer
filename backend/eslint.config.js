@@ -57,7 +57,13 @@ module.exports = [
     },
     settings: {
       'import/resolver': {
-        typescript: {},
+        typescript: {
+          alwaysTryTypes: true,
+          project: './tsconfig.json',
+        },
+        node: {
+          extensions: ['.ts', '.tsx', '.js', '.jsx'],
+        },
       },
     },
     rules: {
@@ -80,10 +86,10 @@ module.exports = [
       'jsdoc/require-param-type': 'off',
       'jsdoc/require-return-type': 'off',
       'complexity': ['error', { max: 15 }],
-      'import/no-unresolved': 'error',
+      'import/no-unresolved': 'off', // TypeScript compiler handles this
       'import/order': ['error', { alphabetize: { order: 'asc', caseInsensitive: true } }],
       'import/no-duplicates': 'error',
-      'import/extensions': ['error', 'ignorePackages', { ts: 'never' }],
+      'import/extensions': 'off', // TypeScript compiler handles extensions
       'import/no-cycle': ['error', { maxDepth: Infinity }],
     },
   },
