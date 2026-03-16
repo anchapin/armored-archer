@@ -2,7 +2,7 @@
 /**
  * Transpiles the webpack bundle to ES5 for Nakama compatibility
  * Run after: npm run build && npx webpack --mode=production
- * 
+ *
  * This script:
  * 1. Transpiles the bundle to ES5 using Babel
  * 2. Wraps the bundle with Nakama-compatible globalThis.exports polyfill

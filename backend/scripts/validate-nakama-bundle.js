@@ -49,7 +49,7 @@ function validateBundle() {
 
     lines.forEach((line, index) => {
       const trimmedLine = line.trim();
-      
+
       // Track multiline comment state
       if (trimmedLine.startsWith('/*')) {
         inMultilineComment = true;
@@ -58,13 +58,13 @@ function validateBundle() {
         inMultilineComment = false;
         return;
       }
-      
+
       // Skip single-line comments
       if (trimmedLine.startsWith('//')) return;
-      
+
       // Skip multiline comments (JSDoc, etc.)
       if (inMultilineComment) return;
-      
+
       // Skip lines that are entirely inside /* */ comment blocks
       if (trimmedLine.startsWith('*') || trimmedLine.startsWith('/*')) return;
 

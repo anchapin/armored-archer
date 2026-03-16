@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "build:full": "npm run build && npm run bundle:nakama",
+    "build:full": "npm run build && npm run bundle:nakama && npm run bundle:validate",
     "bundle:nakama": "webpack --mode=production --config webpack.nakama.config.js && node scripts/transpile-bundle.js",
     "bundle:validate": "node scripts/validate-nakama-bundle.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
@@ -118,6 +118,7 @@
     "pg": "^8.11.0",
     "process": "^0.11.10",
     "prom-client": "^15.0.0",
+    "tslib": "^2.8.1",
     "uuid": "^13.0.0",
     "valibot": "^1.2.0",
     "winston": "^3.11.0"
