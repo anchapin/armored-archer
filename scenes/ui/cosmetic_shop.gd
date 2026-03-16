@@ -175,7 +175,7 @@ func _on_purchase_button_pressed() -> void:
 
 func _on_purchase_confirmed() -> void:
 	purchase_confirmation_dialog.hide()
-	
+
 	if selected_skin_id.is_empty():
 		return
 

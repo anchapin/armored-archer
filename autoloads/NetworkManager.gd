@@ -251,10 +251,10 @@ func authenticate_device() -> void:
 	# Cancel any pending request first
 	if http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
 		http_request.cancel_request()
-	
+
 	# Small delay to ensure HTTPRequest is ready (prevents race condition)
 	await get_tree().process_frame
-	
+
 	_request_counter += 1
 	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
 
@@ -277,7 +277,7 @@ func _refresh_session() -> void:
 		return
 
 	_is_refreshing = true  # Mark this as a refresh request
-	
+
 	var url: String = "%s/v2/session/refresh" % base_url
 	var headers: PackedStringArray = [
 		"Content-Type: application/json",
@@ -292,7 +292,7 @@ func _refresh_session() -> void:
 
 	_request_counter += 1
 	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
-	
+
 	if error != OK:
 		_is_refreshing = false
 		authenticate_device()
@@ -357,7 +357,7 @@ func _update_session_from_response(response_data: Dictionary) -> void:
 func _handle_authentication_error(response_code: int, response_text: String) -> void:
 	print("[NetworkManager] DEBUG: === Authentication Error Handler ===")
 	print("[NetworkManager] DEBUG: Response Code: %d" % response_code)
-	
+
 	if response_code == 0 or response_code == -1:
 		print("[NetworkManager] DEBUG: Network error detected - setting offline mode")
 		is_offline = true
