@@ -10,14 +10,14 @@ func _ready() -> void:
 	await run_tests()
 
 func run_tests() -> void:
-	test_initial_state()
-	test_constants()
-	test_get_gem_balance_no_store()
-	test_is_skin_owned()
-	test_skin_equipment_empty()
-	test_unequip_skin()
-	test_get_equipped_skin()
-	test_slot_type_mapping()
+	await test_initial_state()
+	await test_constants()
+	await test_get_gem_balance_no_store()
+	await test_is_skin_owned()
+	await test_skin_equipment_empty()
+	await test_unequip_skin()
+	await test_get_equipped_skin()
+	await test_slot_type_mapping()
 
 	print("\n=== GemManager Test Results ===")
 	print("Passed: %d" % _tests_passed)

@@ -10,14 +10,14 @@ func _ready() -> void:
 	await run_tests()
 
 func run_tests() -> void:
-	test_initial_databases()
-	test_get_base_gear()
-	test_get_skin()
-	test_get_gear_by_slot()
-	test_get_skins_by_slot()
-	test_calculate_total_stats()
-	test_get_nonexistent_gear()
-	test_get_nonexistent_skin()
+	await test_initial_databases()
+	await test_get_base_gear()
+	await test_get_skin()
+	await test_get_gear_by_slot()
+	await test_get_skins_by_slot()
+	await test_calculate_total_stats()
+	await test_get_nonexistent_gear()
+	await test_get_nonexistent_skin()
 
 	print("\n=== GearRegistry Test Results ===")
 	print("Passed: %d" % _tests_passed)

@@ -10,14 +10,14 @@ func _ready() -> void:
 	await run_tests()
 
 func run_tests() -> void:
-	test_initial_state()
-	test_get_transition_duration()
-	test_is_fade_enabled()
-	test_is_ui_animation_enabled()
-	test_is_particle_effects_enabled()
-	test_set_transition_speed()
-	test_refresh_optimizations()
-	test_transition_speed_boundaries()
+	await test_initial_state()
+	await test_get_transition_duration()
+	await test_is_fade_enabled()
+	await test_is_ui_animation_enabled()
+	await test_is_particle_effects_enabled()
+	await test_set_transition_speed()
+	await test_refresh_optimizations()
+	await test_transition_speed_boundaries()
 
 	print("\n=== UITransitionOptimizer Test Results ===")
 	print("Passed: %d" % _tests_passed)

@@ -25,25 +25,25 @@ func run_tests() -> void:
 	_create_profiler()
 
 	# Test budget device tier settings
-	test_budget_device_tier_constants()
-	test_budget_fps_targets()
-	test_budget_memory_thresholds()
-	test_budget_particle_limits()
-	test_budget_shadow_quality()
+	await test_budget_device_tier_constants()
+	await test_budget_fps_targets()
+	await test_budget_memory_thresholds()
+	await test_budget_particle_limits()
+	await test_budget_shadow_quality()
 
 	# Test performance under stress conditions
-	test_frame_time_under_budget_load()
-	test_memory_growth_detection()
-	test_fps_drop_detection()
+	await test_frame_time_under_budget_load()
+	await test_memory_growth_detection()
+	await test_fps_drop_detection()
 
 	# Test device simulation
-	test_simulate_budget_device()
-	test_simulate_mid_range_device()
-	test_simulate_flagship_device()
+	await test_simulate_budget_device()
+	await test_simulate_mid_range_device()
+	await test_simulate_flagship_device()
 
 	# Test performance optimization methods
-	test_apply_budget_optimization()
-	test_dynamic_performance_adjustment()
+	await test_apply_budget_optimization()
+	await test_dynamic_performance_adjustment()
 
 	# Cleanup
 	if _profiler:
