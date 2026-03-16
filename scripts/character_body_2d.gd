@@ -34,7 +34,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	# Get input direction
 	var input_direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	
+
 	# Apply movement
 	if input_direction != Vector2.ZERO:
 		velocity = velocity.move_toward(input_direction * move_speed, acceleration * delta)
@@ -42,7 +42,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity = velocity.move_toward(Vector2.ZERO, friction * delta)
 		is_moving = false
-	
+
 	# Handle aiming
 	if Input.is_action_pressed("aim"):
 		is_aiming = true
@@ -57,7 +57,7 @@ func _physics_process(delta: float) -> void:
 func _update_aim_direction() -> void:
 	# Get aim direction from right stick or mouse
 	var aim_input := Input.get_vector("aim_left", "aim_right", "aim_up", "aim_down")
-	
+
 	if aim_input != Vector2.ZERO:
 		aim_direction = aim_input.normalized()
 		_rotate_bow_toward_aim()

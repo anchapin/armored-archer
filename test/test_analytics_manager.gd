@@ -156,7 +156,7 @@ func test_session_tracking() -> void:
 
 	var initial_session_count := analytics.session_count
 	analytics.start_session()
-	
+
 	if analytics.current_session_id != "" and analytics.session_start_time > 0:
 		# End session and verify duration tracking
 		await get_tree().create_timer(0.1).timeout
@@ -549,7 +549,7 @@ func test_clear_breadcrumbs() -> void:
 
 	analytics.add_breadcrumb("Test breadcrumb 1")
 	analytics.add_breadcrumb("Test breadcrumb 2")
-	
+
 	if analytics.get_breadcrumbs().size() > 0:
 		analytics.clear_breadcrumbs()
 		if analytics.get_breadcrumbs().size() == 0:
