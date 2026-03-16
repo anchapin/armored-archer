@@ -98,13 +98,13 @@ func _get_xp_for_level(level: int) -> int:
 func _on_stats_updated( _stats: Dictionary) -> void:
 	refresh_ui()
 
-func _on_level_up( _new_level: int, _ability_points_gained: int) -> void:
+func _on_level_up(new_level: int, ability_points_gained: int) -> void:
 	show_level_up_effect(new_level, ability_points_gained)
 
 func _on_xp_gained(amount: int, _total_xp: int) -> void:
 	show_xp_gained_effect(amount)
 
-func _on_stat_allocated( _stat_name: String, _amount: int) -> void:
+func _on_stat_allocated(stat_name: String, amount: int) -> void:
 	show_stat_allocated_effect(stat_name, amount)
 
 func _on_attack_plus_pressed() -> void:
@@ -126,15 +126,15 @@ func _on_crit_rate_plus_pressed() -> void:
 func _on_back_pressed() -> void:
 	queue_free()
 
-func show_level_up_effect( _new_level: int, _ability_points_gained: int) -> void:
+func show_level_up_effect(new_level: int, ability_points_gained: int) -> void:
 	var tween = create_tween()
-	tween.tween_property(ability_points_label, "modulate", Color.YELLOW, 0.2)
-	tween.tween_property(ability_points_label, "modulate", Color.WHITE, 0.2)
+	var _t1 = tween.tween_property(ability_points_label, "modulate", Color.YELLOW, 0.2)
+	var _t2 = tween.tween_property(ability_points_label, "modulate", Color.WHITE, 0.2)
 
-func show_xp_gained_effect( _amount: int) -> void:
+func show_xp_gained_effect(amount: int) -> void:
 	var tween = create_tween()
-	tween.tween_property(xp_label, "modulate", Color.GREEN, 0.2)
-	tween.tween_property(xp_label, "modulate", Color.WHITE, 0.2)
+	var _t1 = tween.tween_property(xp_label, "modulate", Color.GREEN, 0.2)
+	var _t2 = tween.tween_property(xp_label, "modulate", Color.WHITE, 0.2)
 
 func show_stat_allocated_effect( _stat_name: String, _amount: int) -> void:
 	pass

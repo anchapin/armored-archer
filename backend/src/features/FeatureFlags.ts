@@ -74,78 +74,7 @@ const rolloutCache = new LRUCache<string, boolean>({
 const inMemoryFlags: Map<string, FeatureFlagConfig> = new Map();
 
 // Default feature flags
-const DEFAULT_FLAGS: FeatureFlagConfig[] = [
-  {
-    name: 'new_combat_system',
-    description: 'Enable the new combat system with improved damage calculations',
-    enabled: false,
-    rolloutPercentage: 0,
-    environment: 'production',
-  },
-  {
-    name: 'season_5_content',
-    description: 'Season 5 exclusive content and rewards',
-    enabled: true,
-    rolloutPercentage: 100,
-    environment: 'production',
-  },
-  {
-    name: 'pvp_leaderboard_v2',
-    description: 'New PvP leaderboard with seasonal rankings',
-    enabled: true,
-    rolloutPercentage: 50,
-    environment: 'production',
-  },
-  {
-    name: 'battle_pass_enhancements',
-    description: 'Enhanced battle pass with daily challenges',
-    enabled: true,
-    rolloutPercentage: 25,
-    variants: {
-      control: 50,
-      treatment_a: 25,
-      treatment_b: 25,
-    },
-    defaultVariant: 'control',
-    environment: 'production',
-  },
-  {
-    name: 'new_enemy_types',
-    description: 'New enemy types for campaign mode',
-    enabled: true,
-    rolloutPercentage: 100,
-    environment: 'all',
-  },
-  {
-    name: 'guild_wars',
-    description: 'Guild vs Guild warfare system',
-    enabled: false,
-    rolloutPercentage: 0,
-    environment: 'production',
-    dependencies: ['guild_system'],
-  },
-  {
-    name: 'guild_system',
-    description: 'Player guilds and social features',
-    enabled: true,
-    rolloutPercentage: 10,
-    environment: 'production',
-  },
-  {
-    name: 'experimental_matchmaking',
-    description: 'New matchmaking algorithm with skill-based teams',
-    enabled: true,
-    rolloutPercentage: 5,
-    environment: 'staging',
-  },
-  {
-    name: 'push_notifications',
-    description: 'Push notifications via Firebase Cloud Messaging',
-    enabled: true,
-    rolloutPercentage: 100,
-    environment: 'production',
-  },
-];
+const DEFAULT_FLAGS: FeatureFlagConfig[] = [];
 
 /**
  * Initialize the feature flag system
@@ -231,21 +160,41 @@ export async function isFeatureEnabled(
     return false;
   }
 
+  // Evaluate flag and cache result
+  const enabled = evaluateFeatureFlag(config, flagName, userId, userSegment, environment);
+  rolloutCache.set(cacheKey, enabled);
+  return enabled;
+}
+
+/**
+ * Evaluate feature flag configuration
+ *
+ * @param config - Feature flag configuration
+ * @param flagName - Name of the feature flag (for hashing)
+ * @param userId - Optional user ID
+ * @param userSegment - Optional user segment
+ * @param environment - Current environment
+ * @returns Whether feature is enabled
+ */
+function evaluateFeatureFlag(
+  config: FeatureFlagConfig,
+  flagName: string,
+  userId?: string,
+  userSegment?: string,
+  environment: string = 'production'
+): boolean {
   // Check environment
   if (config.environment !== 'all' && config.environment !== environment) {
-    rolloutCache.set(cacheKey, false);
     return false;
   }
 
   // Check if feature is globally enabled
   if (!config.enabled) {
-    rolloutCache.set(cacheKey, false);
     return false;
   }
 
   // Check if feature has expired
   if (config.expiresAt && config.expiresAt < new Date()) {
-    rolloutCache.set(cacheKey, false);
     return false;
   }
 
@@ -253,37 +202,28 @@ export async function isFeatureEnabled(
   const rolloutPercentage = config.rolloutPercentage || 100;
 
   if (rolloutPercentage >= 100) {
-    rolloutCache.set(cacheKey, true);
     return true;
   }
 
   if (rolloutPercentage <= 0) {
-    rolloutCache.set(cacheKey, false);
     return false;
   }
 
   // Check user segment
   if (userSegment && config.userSegments?.includes(userSegment)) {
-    rolloutCache.set(cacheKey, true);
     return true;
   }
 
   // Check user ID for deterministic rollout
   if (userId) {
-    // Use hash for deterministic assignment
     const hash = hashUserToFeature(userId, flagName);
     const threshold = rolloutPercentage / 100;
-
-    const enabled = hash < threshold;
-    rolloutCache.set(cacheKey, enabled);
-    return enabled;
+    return hash < threshold;
   }
 
   // No user ID, use random for anonymous users
   const randomValue = Math.random();
-  const enabled = randomValue < rolloutPercentage / 100;
-  rolloutCache.set(cacheKey, enabled);
-  return enabled;
+  return randomValue < rolloutPercentage / 100;
 }
 
 /**

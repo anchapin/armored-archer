@@ -397,19 +397,6 @@ export function logDatabaseOperation(
 }
 
 /**
- * Legacy function for backward compatibility.
- * @deprecated Use logRpcError instead
- */
-export function captureRpcError(
-  rpcName: string,
-  userId: string,
-  error: Error,
-  _payload?: string
-): void {
-  logRpcError(rpcName, userId, 'unknown', error, 0);
-}
-
-/**
  * Captures an RPC error with Sentry for error tracking.
  * This version supports extended context for better debugging.
  *

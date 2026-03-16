@@ -23,11 +23,7 @@ var show_skin: bool = false
 var gear_registry: GearRegistry
 
 # --- Signal connections for cleanup ---
-var _preview_mode_connection: int = -1
-var _slot_selector_connection: int = -1
-var _item_selector_connection: int = -1
-var _equip_button_connection: int = -1
-var _unequip_skin_connection: int = -1
+# Note: Godot 4.x connect() returns void, no need to store connection IDs
 
 var _slot_handlers: Dictionary = {}
 
@@ -79,12 +75,12 @@ func _setup_ui() -> void:
 	_slot_handlers[GearEnums.SlotType.ARROW] = _on_arrow_selected
 	_slot_handlers[GearEnums.SlotType.AMULET] = _on_amulet_selected
 
-	# Connect signals - connect() returns int connection ID so we need to store it
-	var _preview_conn = preview_mode.item_selected.connect(_on_preview_mode_changed)
-	var _slot_conn = slot_selector.item_selected.connect(_on_slot_changed)
-	var _item_conn = item_selector.item_selected.connect(_on_item_changed)
-	var _equip_conn = equip_button.pressed.connect(_on_equip_pressed)
-	var _unequip_conn = unequip_skin_button.pressed.connect(_on_unequip_skin_pressed)
+	# Connect signals - connect() returns void in Godot 4.x
+	preview_mode.item_selected.connect(_on_preview_mode_changed)
+	slot_selector.item_selected.connect(_on_slot_changed)
+	item_selector.item_selected.connect(_on_item_changed)
+	equip_button.pressed.connect(_on_equip_pressed)
+	unequip_skin_button.pressed.connect(_on_unequip_skin_pressed)
 
 	_on_preview_mode_changed(0)
 	_on_slot_changed(0)

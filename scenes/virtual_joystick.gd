@@ -27,7 +27,8 @@ func _ready() -> void:
 	# Connect to SafeAreaManager signal with proper cleanup
 	var safe_area_manager: Node = get_node_or_null("/root/SafeAreaManager")
 	if safe_area_manager:
-		_safe_area_changed_connection = safe_area_manager.safe_area_changed.connect(_on_safe_area_changed)
+		_safe_area_changed_connection = _on_safe_area_changed
+		safe_area_manager.safe_area_changed.connect(_safe_area_changed_connection)
 
 func _exit_tree() -> void:
 	# Clean up connected signals to prevent memory leaks

@@ -21,10 +21,10 @@ func run_test(test_name: String, test_func: Callable) -> void:
 
 	var error: String = ""
 
-	try:
-		await test_func.call(test_node)
-	except Exception as e:
-		error = "Exception: %s" % str(e)
+	# Execute and catch any errors
+	var test_result = await test_func.call(test_node)
+	if test_result == -1:
+		error = "Script error occurred"
 
 	var duration_ms = Time.get_ticks_msec() - test_start_time
 
@@ -60,10 +60,18 @@ func run_all_tests() -> void:
 
 	all_tests_completed.emit(test_results, total_duration)
 	print("\n=== Test Suite Complete ===")
+	var passed_count = 0
+	var failed_count = 0
+	for result in test_results:
+		if result.get("passed", false):
+			passed_count += 1
+		else:
+			failed_count += 1
+
 	print("Total: %d tests, %d passed, %d failed" % [
 		test_results.size(),
-		test_results.filter(func(r): return r.get("passed", false)).size(),
-		test_results.filter(func(r): return not r.get("passed", false)).size()
+		passed_count,
+		failed_count
 	])
 
 func get_test_results() -> Array:

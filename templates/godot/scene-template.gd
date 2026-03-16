@@ -1,4 +1,4 @@
-extends ${1:Node2D}
+extends Node2D
 
 # --- Configuration ---
 @export var base_speed: float = 300.0
@@ -10,8 +10,8 @@ var current_health: int = 100
 var max_health: int = 100
 
 # --- References ---
-@onready var ${2:sprite}: Sprite2D = $Sprite2D
-@onready var ${3:collision}: CollisionShape2D = $CollisionShape2D
+@onready var sprite: Sprite2D = $Sprite2D
+@onready var collision: CollisionShape2D = $CollisionShape2D
 
 # --- Signals ---
 signal health_changed(current: int, max: int)
@@ -20,7 +20,7 @@ signal activated()
 signal deactivated()
 
 # --- Constants ---
-const ${4:CONSTANT_NAME}: float = 1.0
+const CONSTANT_NAME: float = 1.0
 
 # --- Initialization ---
 func _ready() -> void:
@@ -70,6 +70,6 @@ func _die() -> void:
 	queue_free()
 
 # --- Signal Handlers ---
-func _on_${5:area}_body_entered(body: Node2D) -> void:
+func _on_area_body_entered(body: Node2D) -> void:
 	if body.has_method("take_damage"):
 		body.take_damage(damage)

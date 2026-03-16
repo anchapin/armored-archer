@@ -1,0 +1,74 @@
+# ============================================
+# Nakama Configuration - Alpha Environment
+# Armored Archer - Go Module Deployment
+# ============================================
+# This configuration is optimized for the alpha environment
+# with Go module support enabled.
+# ============================================
+
+name: nakama-alpha
+console:
+  port: 7351
+  username: admin
+  password: ${NAKAMA_CONSOLE_PASSWORD:-alpha_admin_secure_password}
+  read_timeout: 10
+  write_timeout: 10
+
+runtime:
+  env: []
+  path: /nakama/data
+  # Go module configuration
+  go_entrypoint: modules/server.so
+  # JavaScript module disabled - using Go backend
+  js_entrypoint: ""
+  # TypeScript disabled
+  ts_entrypoint: ""
+
+socket:
+  server_key: ${NAKAMA_SERVER_KEY:-alpha_server_key_change_in_production}
+  port: 7350
+  max_message_size_bytes: 4096
+  read_buffer_size_bytes: 4096
+  write_buffer_size_bytes: 4096
+  read_timeout_ms: 10000
+  write_timeout_ms: 10000
+  idle_timeout_ms: 60000
+
+session:
+  expiry_sec: 7200
+  refresh_encryption_key: ${REFRESH_ENCRYPTION_KEY:-alpha-refresh-key-change-me}
+  token_encryption_key: ${TOKEN_ENCRYPTION_KEY:-alpha-token-key-change-me}
+
+database:
+  address: []
+  conn_max_lifetime: 60
+  max_open_conns: 25
+  max_idle_conns: 10
+
+social:
+  enable_anonymous_auth: true
+  enable_device_auth: true
+
+leaderboard:
+  enable_rank_cache: true
+  rank_cache_size: 1000
+
+logger:
+  level: ${LOG_LEVEL:-INFO}
+  format: ${LOG_FORMAT:-json}
+  output: ${LOG_OUTPUT:-stdout}
+
+match:
+  allow_host_loopback: ${ALLOW_HOST_LOOPBACK:-false}
+
+metric:
+  namespace: ${METRICS_NAMESPACE:-nakama}
+  prefix: ${METRICS_PREFIX:-nakama}
+  reporter:
+    - type: prometheus
+      port: 9100
+
+# Alpha-specific settings
+# More verbose logging for debugging
+# Higher rate limits for testing
+# Debug endpoints enabled

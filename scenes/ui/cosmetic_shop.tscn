@@ -154,9 +154,31 @@ disabled = true
 
 [node name="PurchaseConfirmationDialog" type="ConfirmationDialog" parent="."]
 title = "Confirm Purchase"
+min_size = Vector2(300, 150)
 
 [node name="ConfirmationLabel" type="Label" parent="PurchaseConfirmationDialog"]
 layout_mode = 2
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 80.0
 text = "Are you sure you want to purchase this skin?"
 horizontal_alignment = 1
 autowrap_mode = 3
+
+[node name="ButtonContainer" type="HBoxContainer" parent="PurchaseConfirmationDialog"]
+layout_mode = 2
+offset_left = 10.0
+offset_top = 90.0
+offset_right = -10.0
+offset_bottom = 130.0
+
+[node name="YesButton" type="Button" parent="PurchaseConfirmationDialog/ButtonContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Yes"
+
+[node name="NoButton" type="Button" parent="PurchaseConfirmationDialog/ButtonContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "No"

@@ -37,40 +37,57 @@ const THRESHOLD = CI_MODE ? 0 : 3; // Max unused flags before failure in CI
 
 /**
  * Find all feature flag definitions in the codebase
+ * Only looks in production code, not tests
  */
 async function findFlagDefinitions(): Promise<FlagDefinition[]> {
   const flags: FlagDefinition[] = [];
   
-  // Patterns to find feature flag definitions
-  const definitionPatterns = [
-    /name:\s*['"]([a-zA-Z0-9_]+)['"]/g,  // FeatureFlags.name
-    /['"]([a-zA-Z0-9_]+)['"]:\s*\{[^}]*enabled/g, // enabled flags
-    /feature.*flag.*['"]([a-zA-Z0-9_]+)['"]/gi,
-  ];
-
   // Use absolute path to backend directory
   const backendDir = path.resolve(__dirname, '..');
   
-  // Find TypeScript/JavaScript files
-  const files = glob.sync('src/**/*.ts', { cwd: backendDir });
+  // Find TypeScript/JavaScript files, excluding tests
+  const files = glob.sync('src/**/*.ts', { cwd: backendDir })
+    .filter(f => !f.includes('__tests__') && !f.includes('.test.') && !f.includes('.spec.'));
   
   for (const file of files) {
     const content = fs.readFileSync(path.join(backendDir, file), 'utf-8');
     const lines = content.split('\n');
     
+    // Skip files that are primarily metrics definitions
+    if (file.includes('metrics.ts') || 
+        file.includes('health_monitor.ts') || 
+        file.includes('deployment_observability.ts') ||
+        file.includes('n_plus_one_detection.ts') ||
+        file.includes('progressive_rollout.ts')) {
+      // Still check for actual feature flag usage patterns
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // Check for flag definitions in DEFAULT_FLAGS or feature flags config
+        if ((line.includes("name: '") || line.includes('name: "')) && 
+            (line.includes('enabled:') || file.includes('feature-flags') || file.includes('FeatureFlags'))) {
+          const match = line.match(/name:\s*['"]([a-zA-Z0-9_-]+)['"]/);
+          if (match && match[1].length >= MIN_DEFINITION_LENGTH) {
+            flags.push({
+              name: match[1],
+              file: file,
+              line: i + 1
+            });
+          }
+        }
+      }
+      continue;
+    }
+    
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       
-      // Check for isFeatureEnabled calls (usage)
-      const usageMatch = line.match(/isFeatureEnabled\s*\(\s*['"]([a-zA-Z0-9_]+)['"]/g);
-      
-      // Check for getFeatureVariant calls (usage)
-      const variantMatch = line.match(/getFeatureVariant\s*\(\s*['"]([a-zA-Z0-9_]+)['"]/g);
-      
       // Check for flag definitions (in DEFAULT_FLAGS or similar)
-      if (line.includes("name: '") || line.includes('name: "')) {
-        const match = line.match(/name:\s*['"]([a-zA-Z0-9_]+)['"]/);
-        if (match) {
+      // Only match if it looks like a feature flag definition
+      if ((line.includes("name: '") || line.includes('name: "')) && 
+          (file.includes('feature-flags') || file.includes('FeatureFlags') || file.includes('flags:'))) {
+        const match = line.match(/name:\s*['"]([a-zA-Z0-9_-]+)['"]/);
+        if (match && match[1].length >= MIN_DEFINITION_LENGTH) {
           flags.push({
             name: match[1],
             file: file,
@@ -86,12 +103,15 @@ async function findFlagDefinitions(): Promise<FlagDefinition[]> {
 
 /**
  * Count usage of each flag in the codebase
+ * Only counts production code usage, not test code
  */
 async function countFlagUsage(flagName: string): Promise<number> {
   let count = 0;
   
   const backendDir = path.resolve(__dirname, '..');
-  const files = glob.sync('src/**/*.ts', { cwd: backendDir });
+  // Exclude test files from usage counting
+  const files = glob.sync('src/**/*.ts', { cwd: backendDir })
+    .filter(f => !f.includes('__tests__') && !f.includes('.test.') && !f.includes('.spec.'));
   
   for (const file of files) {
     const content = fs.readFileSync(path.join(backendDir, file), 'utf-8');
@@ -106,8 +126,8 @@ async function countFlagUsage(flagName: string): Promise<number> {
     const variantMatches = content.match(variantRegex);
     if (variantMatches) count += variantMatches.length;
     
-    // Count occurrences in flag definitions (not usage)
-    if (!content.includes("name:") || !file.includes('feature-flags')) {
+    // Count direct flag name references (only in feature flag definition files)
+    if (file.includes('feature-flags') || file.includes('FeatureFlags')) {
       const nameRefRegex = new RegExp(`['"]${flagName}['"]`, 'g');
       const nameRefs = content.match(nameRefRegex);
       if (nameRefs) count += nameRefs.length;

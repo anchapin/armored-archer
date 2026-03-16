@@ -4,6 +4,7 @@
  */
 
 import { Span } from '@opentelemetry/api';
+import { logger } from '../config/logger';
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { traceAsync, setTracingAttribute } from '../utils/tracing';
@@ -554,7 +555,12 @@ function getOrCreateMatchState(
   ]);
 
   if (stateObjects.length > 0) {
-    return JSON.parse(stateObjects[0].value);
+    // Handle case where value exists but is empty (corrupted data)
+    if (!stateObjects[0].value) {
+      // Fall through to create new state
+    } else {
+      return JSON.parse(stateObjects[0].value);
+    }
   }
 
   const creatorStats = getPlayerStats(nk, match.creator_id, logger);
@@ -870,7 +876,12 @@ function notifyOpponentOfForfeit(
     );
   } catch (error) {
     // Log error but don't fail the operation
-    console.error('Failed to send forfeit notification:', error);
+    logger.error('Failed to send forfeit notification', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      matchId: matchState.match_id,
+      opponentId,
+    });
   }
 }
 
@@ -937,6 +948,11 @@ export async function rpcPlayerDisconnect(
       ]);
 
       if (stateObjects.length === 0) {
+        return JSON.stringify({ error: 'Match state not found' });
+      }
+
+      // Handle case where value exists but is empty (corrupted data)
+      if (!stateObjects[0].value) {
         return JSON.stringify({ error: 'Match state not found' });
       }
 

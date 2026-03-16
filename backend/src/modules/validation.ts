@@ -398,10 +398,15 @@ export function validatePayload<T = any>(
     const result = safeParse(schema, parsed);
 
     if (!result.success) {
+      interface ValibotIssue {
+        path?: Array<{ key: string | number }> | undefined;
+        message: string;
+      }
+
       const errorMessages = result.issues
         .map(
-          (issue: any) =>
-            `${issue.path?.map((p: any) => p.key).join('.') || 'root'}: ${issue.message}`
+          (issue: ValibotIssue) =>
+            `${issue.path?.map((p: { key: string | number }) => p.key).join('.') || 'root'}: ${issue.message}`
         )
         .join(', ');
       return { success: false, error: `Validation failed for ${rpcName}: ${errorMessages}` };

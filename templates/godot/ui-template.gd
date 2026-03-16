@@ -8,9 +8,9 @@ var is_visible: bool = true
 var current_value: int = 0
 
 # --- References ---
-@onready var ${1:button}: Button = %Button
-@onready var ${2:label}: Label = %Label
-@onready var ${3:container}: VBoxContainer = %VBoxContainer
+@onready var button: Button = %Button
+@onready var label: Label = %Label
+@onready var container: VBoxContainer = %VBoxContainer
 
 # --- Signals ---
 signal button_pressed()
@@ -30,8 +30,8 @@ func _setup_ui() -> void:
 	pass
 
 func _connect_signals() -> void:
-	if ${1:button}:
-		${1:button}.pressed.connect(_on_button_pressed)
+	if button:
+		button.pressed.connect(_on_button_pressed)
 
 # --- Public Methods ---
 func show_ui() -> void:
@@ -53,13 +53,13 @@ func get_value() -> int:
 	return current_value
 
 func update_label(text: String) -> void:
-	if ${2:label}:
-		${2:label}.text = text
+	if label:
+		label.text = text
 
 # --- Private Methods ---
 func _update_ui() -> void:
-	if ${2:label}:
-		${2:label}.text = str(current_value)
+	if label:
+		label.text = str(current_value)
 
 func _animate_in() -> void:
 	pass

@@ -249,7 +249,7 @@ groups:
         expr: avg(armored_archer_session_duration_seconds)
 
       - record: armored_archer_avg_session_duration_offset_24h
-        expr: avg(armored_archer_session_duration_seconds) offset 24h
+        expr: avg(armored_archer_session_duration_seconds offset 24h)
 
       # Error rate (5m rate)
       - record: armored_archer_error_rate_5m

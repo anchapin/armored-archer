@@ -93,10 +93,10 @@ func test_signal_emission() -> void:
 	var turn_changed = false
 	var combat_ended = false
 
-	cm.combat_action_submitted.connect(func(_): action_submitted = true)
-	cm.match_state_updated.connect(func(_): state_updated = true)
-	cm.turn_changed.connect(func(_): turn_changed = true)
-	cm.combat_ended.connect(func(_): combat_ended = true)
+	cm.combat_action_submitted.connect(func(_result): action_submitted = true)
+	cm.match_state_updated.connect(func(_state): state_updated = true)
+	cm.turn_changed.connect(func(_is_my_turn): turn_changed = true)
+	cm.combat_ended.connect(func(_winner): combat_ended = true)
 
 	# Emit signals manually
 	cm.combat_action_submitted.emit({"test": true})

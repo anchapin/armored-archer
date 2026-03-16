@@ -4,6 +4,9 @@
 ##
 extends Control
 
+# Import gear enums for constant definitions
+const GearEnums = preload("res://scripts/gear_enums.gd")
+
 signal slot_clicked(slot_type: int)
 signal gear_dragged(gear_data: Dictionary, from_slot: int)
 
@@ -19,20 +22,21 @@ var slot_nodes: Dictionary = {}
 
 const SLOT_SCENE: PackedScene = preload("res://scenes/ui/loadout_slot.tscn")
 
+# Use GearEnums.GearType for compile-time constants
 const SLOT_ORDER: Array = [
-	GearRegistry.GearSlot.SlotType.HELM,
-	GearRegistry.GearSlot.SlotType.ARMOR,
-	GearRegistry.GearSlot.SlotType.BOW,
-	GearRegistry.GearSlot.SlotType.ARROW,
-	GearRegistry.GearSlot.SlotType.AMULET
+	GearEnums.GearType.HELM,
+	GearEnums.GearType.ARMOR,
+	GearEnums.GearType.BOW,
+	GearEnums.GearType.ARROW,
+	GearEnums.GearType.AMULET
 ]
 
 const SLOT_NAMES: Dictionary = {
-	GearRegistry.GearSlot.SlotType.HELM: "Helm",
-	GearRegistry.GearSlot.SlotType.ARMOR: "Armor",
-	GearRegistry.GearSlot.SlotType.BOW: "Bow",
-	GearRegistry.GearSlot.SlotType.ARROW: "Arrow",
-	GearRegistry.GearSlot.SlotType.AMULET: "Amulet"
+	GearEnums.GearType.HELM: "Helm",
+	GearEnums.GearType.ARMOR: "Armor",
+	GearEnums.GearType.BOW: "Bow",
+	GearEnums.GearType.ARROW: "Arrow",
+	GearEnums.GearType.AMULET: "Amulet"
 }
 
 var rarity_colors: Dictionary = {
@@ -90,15 +94,15 @@ func _refresh_loadout() -> void:
 
 func _get_slot_key(slot_type: int) -> String:
 	match slot_type:
-		GearRegistry.GearSlot.SlotType.HELM:
+		GearEnums.GearType.HELM:
 			return "helm"
-		GearRegistry.GearSlot.SlotType.ARMOR:
+		GearEnums.GearType.ARMOR:
 			return "armor"
-		GearRegistry.GearSlot.SlotType.BOW:
+		GearEnums.GearType.BOW:
 			return "bow"
-		GearRegistry.GearSlot.SlotType.ARROW:
+		GearEnums.GearType.ARROW:
 			return "arrow"
-		GearRegistry.GearSlot.SlotType.AMULET:
+		GearEnums.GearType.AMULET:
 			return "amulet"
 	return ""
 
@@ -123,9 +127,9 @@ func _update_stats_display() -> void:
 				# Fallback: try using type as base_gear_id lookup
 				base_gear_id = gear_data.get("type", "")
 
-			var base_gear_data: Dictionary = gear_registry.get_base_gear(base_gear_id)
-			if not base_gear_data.is_empty():
-				var stats: Dictionary = base_gear_data.get("stats", {})
+			var base_gear_data: GearData = gear_registry.get_base_gear(base_gear_id)
+			if base_gear_data:
+				var stats: Dictionary = base_gear_data.stats
 				for stat_key in total_stats.keys():
 					total_stats[stat_key] += stats.get(stat_key, 0)
 
@@ -170,11 +174,17 @@ func _on_gear_dropped(gear_data: Dictionary, target_slot: int) -> void:
 		gear_manager.equip_gear(gear_id, gear_slot_str)
 
 func _on_back_button_pressed() -> void:
+	# Show the main menu again
+	var main_menu = get_tree().root.get_node_or_null("MainMenu")
+	if main_menu:
+		main_menu.visible = true
 	queue_free()
 
 func _on_inventory_button_pressed() -> void:
-	var inventory: Control = preload("res://scenes/ui/gear_inventory.tscn").instantiate()
-	add_child(inventory)
+	var inventory_scene = load("res://scenes/ui/gear_inventory.tscn")
+	if inventory_scene:
+		var inventory: Control = inventory_scene.instantiate()
+		add_child(inventory)
 
 func _on_inventory_updated(_inventory: Dictionary) -> void:
 	_refresh_loadout()

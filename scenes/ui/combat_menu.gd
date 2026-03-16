@@ -17,6 +17,7 @@ extends Control
 var combat_manager: Node = null
 var match_id: String = ""
 var is_initialized: bool = false
+var current_match_state: Dictionary = {}
 
 # --- Initialization ---
 func _ready() -> void:
@@ -104,7 +105,7 @@ func _on_combat_ended(winner: String) -> void:
 	dialog.confirmed.connect(_on_dialog_confirmed)
 
 func _on_dialog_confirmed() -> void:
-	get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
+	var _ = get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
 
 # --- UI Updates ---
 func _update_health_bars() -> void:
@@ -183,7 +184,7 @@ func _play_combat_vfx(entry: Dictionary, is_my_action: bool) -> void:
 	VFXManager.play_combat_vfx(damage, target_pos, vfx_type, is_crit)
 
 
-func _play_miss_vfx(_entry: Dictionary, _is_my_action: bool) -> void:
+func _play_miss_vfx(_entry: Dictionary, is_my_action: bool) -> void:
 	"""Play visual effects for missed attacks."""
 	if not VFXManager:
 		return
@@ -206,7 +207,7 @@ func _refresh_match_state() -> void:
 
 # --- Navigation ---
 func _on_back_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
+	var _ = get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
 
 
 func _exit_tree() -> void:
@@ -224,5 +225,3 @@ func _exit_tree() -> void:
 # --- Set Match ID ---
 func set_match_id(new_match_id: String) -> void:
 	match_id = new_match_id
-
-var current_match_state: Dictionary = {}

@@ -11,7 +11,7 @@ import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentation
 import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { ZipkinExporter } from '@opentelemetry/exporter-zipkin';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import {
   SEMRESATTRS_DEPLOYMENT_ENVIRONMENT,
@@ -241,7 +241,7 @@ export function initializeTracing(): void {
 
   try {
     // Create resource with service information
-    const resource = new Resource({
+    const resource = resourceFromAttributes({
       [SEMRESATTRS_SERVICE_NAME]: tracingConfig.serviceName,
       [SEMRESATTRS_SERVICE_VERSION]: tracingConfig.serviceVersion,
       [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: config.environment,

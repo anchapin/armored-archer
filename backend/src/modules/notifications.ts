@@ -61,6 +61,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, { title: string; body: st
 };
 
 // Firebase Admin SDK instance
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let firebaseMessaging: any = null;
 let firebaseInitialized = false;
 
@@ -218,6 +219,7 @@ export async function sendBatchNotifications(
       successCount += response.successCount;
       failedCount += response.failureCount;
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       response.responses.forEach((resp: any, idx: number) => {
         if (!resp.success) {
           const errorMsg = resp.error?.message || 'Unknown error';
@@ -310,7 +312,13 @@ export async function getUserDeviceTokens(
       [userId]
     );
 
-    return result.map((row: any) => ({
+    interface DeviceTokenRow {
+      device_token: string;
+      platform: string;
+      fcm_token: string;
+    }
+
+    return (result as DeviceTokenRow[]).map((row) => ({
       deviceToken: row.device_token,
       platform: row.platform,
       fcmToken: row.fcm_token,
@@ -324,7 +332,10 @@ export async function getUserDeviceTokens(
 /**
  * Get user notification preferences
  */
-export async function getNotificationPreferences(nk: Runtime.Nakama, userId: string): Promise<any> {
+export async function getNotificationPreferences(
+  nk: Runtime.Nakama,
+  userId: string
+): Promise<{ user_id: string; [key: string]: unknown } | null> {
   try {
     const result = await nk.dbQuery(`SELECT * FROM notification_preferences WHERE user_id = $1`, [
       userId,
@@ -336,10 +347,10 @@ export async function getNotificationPreferences(nk: Runtime.Nakama, userId: str
         `INSERT INTO notification_preferences (user_id) VALUES ($1) RETURNING *`,
         [userId]
       );
-      return insertResult[0];
+      return insertResult[0] as { user_id: string; [key: string]: unknown };
     }
 
-    return result[0];
+    return result[0] as { user_id: string; [key: string]: unknown };
   } catch (error) {
     logger.error('Failed to get notification preferences', { error: String(error), userId });
     return null;
@@ -366,7 +377,7 @@ export async function updateNotificationPreferences(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | boolean | null)[] = [];
     let paramIndex = 1;
 
     if (preferences.dailyRewardsEnabled !== undefined) {
@@ -580,13 +591,13 @@ export async function shouldSendNotification(
     // Check type-specific preferences
     switch (notificationType) {
       case 'daily_reward':
-        return prefs.daily_rewards_enabled;
+        return !!(prefs as { daily_rewards_enabled?: boolean }).daily_rewards_enabled;
       case 'event':
-        return prefs.events_enabled;
+        return !!(prefs as { events_enabled?: boolean }).events_enabled;
       case 'pvp_challenge':
-        return prefs.pvp_challenges_enabled;
+        return !!(prefs as { pvp_challenges_enabled?: boolean }).pvp_challenges_enabled;
       case 'promotion':
-        return prefs.promotions_enabled;
+        return !!(prefs as { promotions_enabled?: boolean }).promotions_enabled;
       default:
         return true;
     }

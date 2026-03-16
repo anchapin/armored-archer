@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Form - Armored Archer (In-Game UI Reference)</title>
+    <style>
+        :root {
+            /* Game UI Color Palette */
+            --primary-gold: #fbbf24;
+            --primary-gold-hover: #f59e0b;
+            --dark-bg: #1f2937;
+            --darker-bg: #111827;
+            --card-bg: #374151;
+            --text-light: #f9fafb;
+            --text-muted: #9ca3af;
+            --border-color: #4b5563;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+            
+            /* Category colors */
+            --cat-bug: #ef4444;
+            --cat-suggestion: #3b82f6;
+            --cat-balance: #8b5cf6;
+            --cat-performance: #f97316;
+            --cat-ui-ux: #06b6d4;
+            --cat-audio: #14b8a6;
+            --cat-other: #6b7280;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        /* Main Container - Represents Godot Control Node */
+        .feedback-form-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 600px;
+            overflow: hidden;
+        }
+
+        /* Header - Game Styled */
+        .form-header {
+            background: linear-gradient(135deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
+            padding: 1.5rem 2rem;
+            border-bottom: 2px solid var(--primary-gold);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .form-title {
+            color: var(--text-light);
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .form-title-icon {
+            font-size: 1.75rem;
+        }
+
+        .close-button {
+            background: transparent;
+            border: 2px solid var(--border-color);
+            color: var(--text-muted);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.25rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-button:hover {
+            border-color: var(--error-color);
+            color: var(--error-color);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Form Body */
+        .form-body {
+            padding: 2rem;
+        }
+
+        /* Form Groups */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            color: var(--text-light);
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-label-required::after {
+            content: ' *';
+            color: var(--error-color);
+        }
+
+        /* Category Selection - Game Styled Buttons */
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .category-option {
+            position: relative;
+        }
+
+        .category-option input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .category-option label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: var(--dark-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .category-option label:hover {
+            border-color: var(--primary-gold);
+            background: rgba(251, 191, 36, 0.1);
+        }
+
+        .category-option input:checked + label {
+            border-color: var(--primary-gold);
+            background: rgba(251, 191, 36, 0.2);
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
+        }
+
+        .category-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .category-name {
+            color: var(--text-light);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* Text Inputs */
+        .text-input,
+        .text-area,
+        .select-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: var(--dark-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-light);
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .text-input:focus,
+        .text-area:focus,
+        .select-input:focus {
+            outline: none;
+            border-color: var(--primary-gold);
+            box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2);
+        }
+
+        .text-input::placeholder,
+        .text-area::placeholder {
+            color: var(--text-muted);
+        }
+
+        .text-area {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .select-input {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.25rem;
+            padding-right: 3rem;
+        }
+
+        .select-input option {
+            background: var(--dark-bg);
+            color: var(--text-light);
+        }
+
+        /* Character Counter */
+        .char-counter {
+            text-align: right;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .char-counter.warning {
+            color: var(--warning-color);
+        }
+
+        .char-counter.error {
+            color: var(--error-color);
+        }
+
+        /* Screenshot Upload */
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--dark-bg);
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-gold);
+            background: rgba(251, 191, 36, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--primary-gold);
+            background: rgba(251, 191, 36, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .upload-text {
+            color: var(--text-light);
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .upload-hint {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .upload-preview {
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .upload-preview.active {
+            display: block;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+        }
+
+        .preview-remove {
+            margin-top: 0.5rem;
+            background: var(--error-color);
+            color: white;
+            border: none;
+            padding: 0.375rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        /* Auto-Detected Info */
+        .auto-info {
+            background: var(--dark-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .auto-info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .auto-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .auto-info-label {
+            color: var(--text-muted);
+        }
+
+        .auto-info-value {
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        /* Form Actions */
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--border-color);
+        }
+
+        .btn {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-gold) 0%, var(--primary-gold-hover) 100%);
+            color: var(--darker-bg);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(251, 191, 36, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--dark-bg);
+            color: var(--text-light);
+            border: 2px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--text-muted);
+            background: var(--darker-bg);
+        }
+
+        /* Success Message */
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 3rem 2rem;
+        }
+
+        .success-message.active {
+            display: block;
+        }
+
+        .success-icon {
+            font-size: 4rem;
+            color: var(--success-color);
+            margin-bottom: 1rem;
+        }
+
+        .success-title {
+            color: var(--text-light);
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .success-description {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Error States */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error-color);
+            border-radius: 8px;
+            padding: 1rem;
+            color: var(--error-color);
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .input-error {
+            border-color: var(--error-color) !important;
+        }
+
+        /* Loading State */
+        .btn-loading {
+            position: relative;
+            color: transparent !important;
+            pointer-events: none;
+        }
+
+        .btn-loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0, 0, 0, 0.3);
+            border-top-color: var(--darker-bg);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .form-header {
+                padding: 1rem 1.5rem;
+            }
+
+            .form-title {
+                font-size: 1.25rem;
+            }
+
+            .form-body {
+                padding: 1.5rem;
+            }
+
+            .category-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+
+        /* Godot-specific notes */
+        .godot-notes {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--cat-suggestion);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .godot-notes h4 {
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .godot-notes code {
+            background: var(--dark-bg);
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: var(--primary-gold);
+        }
+    </style>
+</head>
+<body>
+    <!-- 
+    GODOT IMPLEMENTATION NOTES:
+    This HTML mockup represents the feedback form UI for the Godot game.
+    Implement using Godot's Control nodes:
+    
+    - Container: PanelContainer with custom theme
+    - Header: HBoxContainer with Label and Button
+    - Form Body: VBoxContainer with child controls
+    - Category Selection: GridContainer with Button nodes
+    - Inputs: LineEdit, TextEdit, OptionButton
+    - Upload: Custom control with file dialog
+    - Submit Button: Button with custom style
+    
+    Connect to backend via NetworkManager.gd using:
+    NetworkManager.send_rpc("submit_feedback", payload)
+    -->
+
+    <div class="feedback-form-container">
+        <!-- Header -->
+        <div class="form-header">
+            <h2 class="form-title">
+                <span class="form-title-icon">📝</span>
+                Submit Feedback
+            </h2>
+            <button class="close-button" onclick="closeForm()" title="Close">×</button>
+        </div>
+
+        <!-- Form Body -->
+        <div class="form-body" id="form-body">
+            <!-- Error Message -->
+            <div class="error-message" id="error-message">
+                ⚠️ Please fill in all required fields correctly.
+            </div>
+
+            <!-- Category Selection -->
+            <div class="form-group">
+                <label class="form-label form-label-required">Category</label>
+                <div class="category-grid">
+                    <div class="category-option">
+                        <input type="radio" name="category" id="cat-bug" value="bug" required>
+                        <label for="cat-bug">
+                            <span class="category-icon">🐛</span>
+                            <span class="category-name">Bug</span>
+                        </label>
+                    </div>
+                    <div class="category-option">
+                        <input type="radio" name="category" id="cat-suggestion" value="suggestion" required>
+                        <label for="cat-suggestion">
+                            <span class="category-icon">💡</span>
+                            <span class="category-name">Suggestion</span>
+                        </label>
+                    </div>
+                    <div class="category-option">
+                        <input type="radio" name="category" id="cat-balance" value="balance" required>
+                        <label for="cat-balance">
+                            <span class="category-icon">⚖️</span>
+                            <span class="category-name">Balance</span>
+                        </label>
+                    </div>
+                    <div class="category-option">
+                        <input type="radio" name="category" id="cat-performance" value="performance" required>
+                        <label for="cat-performance">
+                            <span class="category-icon">⚡</span>
+                            <span class="category-name">Performance</span>
+                        </label>
+                    </div>
+                    <div class="category-option">
+                        <input type="radio" name="category" id="cat-ui-ux" value="ui_ux" required>
+                        <label for="cat-ui-ux">
+                            <span class="category-icon">🎨</span>
+                            <span class="category-name">UI/UX</span>
+                        </label>
+                    </div>
+                    <div class="category-option">
+                        <input type="radio" name="category" id="cat-audio" value="audio" required>
+                        <label for="cat-audio">
+                            <span class="category-icon">🔊</span>
+                            <span class="category-name">Audio</span>
+                        </label>
+                    </div>
+                    <div class="category-option">
+                        <input type="radio" name="category" id="cat-other" value="other" required>
+                        <label for="cat-other">
+                            <span class="category-icon">📝</span>
+                            <span class="category-name">Other</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Title -->
+            <div class="form-group">
+                <label class="form-label form-label-required" for="feedback-title">Title</label>
+                <input 
+                    type="text" 
+                    id="feedback-title" 
+                    class="text-input" 
+                    placeholder="Brief summary of your feedback"
+                    maxlength="200"
+                    required
+                    oninput="updateCharCounter('title-counter', this.value.length, 200)"
+                >
+                <div class="char-counter" id="title-counter">0 / 200</div>
+            </div>
+
+            <!-- Description -->
+            <div class="form-group">
+                <label class="form-label form-label-required" for="feedback-description">Description</label>
+                <textarea 
+                    id="feedback-description" 
+                    class="text-area" 
+                    placeholder="Please provide as much detail as possible. For bugs, include steps to reproduce."
+                    maxlength="5000"
+                    required
+                    oninput="updateCharCounter('desc-counter', this.value.length, 5000)"
+                ></textarea>
+                <div class="char-counter" id="desc-counter">0 / 5000</div>
+            </div>
+
+            <!-- Platform (Auto-detected, but allow override) -->
+            <div class="form-group">
+                <label class="form-label" for="feedback-platform">Platform</label>
+                <select id="feedback-platform" class="select-input">
+                    <option value="android">Android</option>
+                    <option value="ios">iOS</option>
+                    <option value="pc">PC</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <!-- Screenshot Upload -->
+            <div class="form-group">
+                <label class="form-label">Screenshot (Optional)</label>
+                <div class="upload-area" id="upload-area" onclick="triggerFileUpload()">
+                    <div class="upload-icon">📷</div>
+                    <div class="upload-text">Click or drag to upload screenshot</div>
+                    <div class="upload-hint">PNG, JPG up to 5MB</div>
+                    <input type="file" id="screenshot-input" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                </div>
+                <div class="upload-preview" id="upload-preview">
+                    <img src="" alt="Preview" class="preview-image" id="preview-image">
+                    <button class="preview-remove" onclick="removeScreenshot()">Remove</button>
+                </div>
+            </div>
+
+            <!-- Auto-Detected Info -->
+            <div class="form-group">
+                <label class="form-label">Auto-Detected Information</label>
+                <div class="auto-info">
+                    <div class="auto-info-item">
+                        <span class="auto-info-label">Game Version:</span>
+                        <span class="auto-info-value" id="game-version">v2.1.0</span>
+                    </div>
+                    <div class="auto-info-item">
+                        <span class="auto-info-label">Device:</span>
+                        <span class="auto-info-value" id="device-info">Detecting...</span>
+                    </div>
+                    <div class="auto-info-item">
+                        <span class="auto-info-label">OS Version:</span>
+                        <span class="auto-info-value" id="os-version">Detecting...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeForm()">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" id="submit-btn" onclick="submitFeedback()">
+                    <span>📤</span>
+                    Submit Feedback
+                </button>
+            </div>
+        </div>
+
+        <!-- Success Message -->
+        <div class="success-message" id="success-message">
+            <div class="success-icon">✅</div>
+            <h3 class="success-title">Thank You!</h3>
+            <p class="success-description">
+                Your feedback has been submitted successfully. We appreciate your help in improving Armored Archer!
+            </p>
+            <button class="btn btn-primary" onclick="closeForm()">Close</button>
+        </div>
+    </div>
+
+    <!-- Godot Implementation Notes -->
+    <div class="godot-notes">
+        <h4>🎮 Godot Implementation Guide</h4>
+        <p><strong>Scene Structure:</strong></p>
+        <ul style="margin: 0.5rem 0 0.5rem 1.5rem; color: var(--text-muted);">
+            <li>FeedbackForm (PanelContainer) - Root container</li>
+            <li>├── Header (HBoxContainer) - Title and close button</li>
+            <li>├── FormBody (VBoxContainer) - Main form content</li>
+            <li>│   ├── CategoryGrid (GridContainer) - Category buttons</li>
+            <li>│   ├── TitleInput (LineEdit) - Title text field</li>
+            <li>│   ├── DescriptionInput (TextEdit) - Description area</li>
+            <li>│   ├── PlatformSelect (OptionButton) - Platform dropdown</li>
+            <li>│   ├── UploadArea (Control) - Screenshot upload</li>
+            <li>│   └── SubmitButton (Button) - Submit action</li>
+            <li>└── SuccessMessage (Control) - Success state (hidden by default)</li>
+        </ul>
+        <p style="margin-top: 0.75rem;"><strong>GDScript Integration:</strong></p>
+        <code style="display: block; margin-top: 0.5rem; padding: 0.5rem; background: var(--dark-bg); border-radius: 4px;">
+            # In feedback_form.gd<br>
+            func submit_feedback():<br>
+            &nbsp;&nbsp;var payload = {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;"category": selected_category,<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;"title": title_input.text,<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;"description": description_input.text,<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;"platform": OS.get_name(),<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;"device_info": get_device_info(),<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;"game_version": ProjectSettings.get_setting("application/config/version")<br>
+            &nbsp;&nbsp;}<br>
+            &nbsp;&nbsp;await NetworkManager.send_rpc("submit_feedback", payload)
+        </code>
+    </div>
+
+    <script>
+        // Auto-detect device info
+        function detectDeviceInfo() {
+            const userAgent = navigator.userAgent;
+            let platform = 'Unknown';
+            let osVersion = 'Unknown';
+
+            // Detect platform
+            if (/Android/i.test(userAgent)) {
+                platform = 'Android';
+                const match = userAgent.match(/Android\s([0-9.]+)/);
+                osVersion = match ? match[1] : 'Unknown';
+            } else if (/iPhone|iPad|iPod/i.test(userAgent)) {
+                platform = 'iOS';
+                const match = userAgent.match(/OS\s([0-9_]+)/);
+                osVersion = match ? match[1].replace(/_/g, '.') : 'Unknown';
+            } else if (/Windows/i.test(userAgent)) {
+                platform = 'Windows';
+                const match = userAgent.match(/Windows\sNT\s([0-9.]+)/);
+                osVersion = match ? match[1] : 'Unknown';
+            } else if (/Macintosh/i.test(userAgent)) {
+                platform = 'macOS';
+                const match = userAgent.match(/Mac\sOS\sX\s([0-9_]+)/);
+                osVersion = match ? match[1].replace(/_/g, '.') : 'Unknown';
+            }
+
+            document.getElementById('device-info').textContent = platform;
+            document.getElementById('os-version').textContent = osVersion;
+            
+            // Auto-select platform
+            const platformSelect = document.getElementById('feedback-platform');
+            if (/Android/i.test(userAgent)) {
+                platformSelect.value = 'android';
+            } else if (/iPhone|iPad|iPod/i.test(userAgent)) {
+                platformSelect.value = 'ios';
+            }
+        }
+
+        // Update character counter
+        function updateCharCounter(elementId, current, max) {
+            const counter = document.getElementById(elementId);
+            counter.textContent = `${current} / ${max}`;
+            
+            if (current > max * 0.9) {
+                counter.className = 'char-counter warning';
+            } else if (current >= max) {
+                counter.className = 'char-counter error';
+            } else {
+                counter.className = 'char-counter';
+            }
+        }
+
+        // Trigger file upload
+        function triggerFileUpload() {
+            document.getElementById('screenshot-input').click();
+        }
+
+        // Handle file selection
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                // Validate file
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select an image file');
+                    return;
+                }
+                
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('File size must be less than 5MB');
+                    return;
+                }
+
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('preview-image').src = e.target.result;
+                    document.getElementById('upload-preview').classList.add('active');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Remove screenshot
+        function removeScreenshot() {
+            document.getElementById('screenshot-input').value = '';
+            document.getElementById('upload-preview').classList.remove('active');
+        }
+
+        // Validate form
+        function validateForm() {
+            const category = document.querySelector('input[name="category"]:checked');
+            const title = document.getElementById('feedback-title').value.trim();
+            const description = document.getElementById('feedback-description').value.trim();
+
+            let isValid = true;
+
+            if (!category) {
+                isValid = false;
+            }
+
+            if (!title || title.length < 5) {
+                document.getElementById('feedback-title').classList.add('input-error');
+                isValid = false;
+            } else {
+                document.getElementById('feedback-title').classList.remove('input-error');
+            }
+
+            if (!description || description.length < 20) {
+                document.getElementById('feedback-description').classList.add('input-error');
+                isValid = false;
+            } else {
+                document.getElementById('feedback-description').classList.remove('input-error');
+            }
+
+            return isValid;
+        }
+
+        // Submit feedback
+        async function submitFeedback() {
+            if (!validateForm()) {
+                document.getElementById('error-message').classList.add('active');
+                return;
+            }
+
+            document.getElementById('error-message').classList.remove('active');
+
+            // Show loading state
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.classList.add('btn-loading');
+            submitBtn.disabled = true;
+
+            // Gather form data
+            const category = document.querySelector('input[name="category"]:checked').value;
+            const title = document.getElementById('feedback-title').value.trim();
+            const description = document.getElementById('feedback-description').value.trim();
+            const platform = document.getElementById('feedback-platform').value;
+            const deviceInfo = document.getElementById('device-info').textContent;
+            const osVersion = document.getElementById('os-version').textContent;
+            const gameVersion = document.getElementById('game-version').textContent;
+
+            // In Godot, this would call NetworkManager.send_rpc()
+            const payload = {
+                category: category,
+                title: title,
+                description: description,
+                platform: platform,
+                device_info: `${deviceInfo}, ${osVersion}`,
+                game_version: gameVersion
+            };
+
+            console.log('Submitting feedback:', payload);
+
+            // Simulate API call
+            setTimeout(() => {
+                submitBtn.classList.remove('btn-loading');
+                submitBtn.disabled = false;
+
+                // Show success message
+                document.getElementById('form-body').style.display = 'none';
+                document.getElementById('success-message').classList.add('active');
+            }, 1500);
+        }
+
+        // Close form
+        function closeForm() {
+            console.log('Closing feedback form');
+            // In Godot: get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+            // or: get_parent().queue_free()
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            detectDeviceInfo();
+        });
+    </script>
+</body>
+</html>

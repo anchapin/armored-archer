@@ -7,7 +7,8 @@
 [ext_resource type="PackedScene" uid="uid://game_over_scene" path="res://scenes/ui/game_over.tscn" id="5_game_over_scene"]
 [ext_resource type="PackedScene" uid="uid://enemy_spawner_scene" path="res://scenes/enemies/enemy_spawner.tscn" id="6_spawner_scene"]
 
-[node name="Main" parent="." instance=ExtResource("1_main_script")]
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main_script")
 
 [node name="Player" parent="." instance=ExtResource("2_player_scene")]
 

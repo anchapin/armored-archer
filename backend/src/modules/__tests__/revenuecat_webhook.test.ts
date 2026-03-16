@@ -84,7 +84,7 @@ describe('rpcRevenueCatWebhook', () => {
       );
 
       const parsed = JSON.parse(result);
-      expect(parsed.error).toBe('Missing required fields');
+      expect(parsed.error).toBe('Missing app_user_id');
     });
   });
 

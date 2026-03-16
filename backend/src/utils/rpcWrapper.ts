@@ -1,4 +1,5 @@
-import { logRpcEntry, logRpcExit, logRpcError, captureRpcError } from '../config/logger';
+import { captureRpcError } from '../config/errorTracking';
+import { logRpcEntry, logRpcExit, logRpcError } from '../config/logger';
 import { Runtime } from '../types/nakama';
 
 export type RpcHandler = (

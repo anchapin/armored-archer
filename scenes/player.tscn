@@ -1,6 +1,6 @@
 [gd_scene load_steps=8 format=3 uid="uid://player_scene"]
 
-[ext_resource type="Script" path="res://character_body_2d.gd" id="1_character_body"]
+[ext_resource type="Script" path="res://scripts/character_body_2d.gd" id="1_character_body"]
 [ext_resource type="PlaceholderTexture2D" uid="uid://character_body_sprite" path="res://assets/sprites/character_body.tres" id="2_body_sprite"]
 [ext_resource type="PlaceholderTexture2D" uid="uid://bow_sprite" path="res://assets/sprites/bow.tres" id="3_bow_sprite"]
 [ext_resource type="PackedScene" uid="uid://modular_character_sprite" path="res://scenes/player/gear/modular_character_sprite.tscn" id="4_modular_character"]
@@ -8,14 +8,8 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
 size = Vector2(32, 32)
 
-[sub_resource type="AnimationLibrary" id="AnimationLibrary_bow_animations"]
-_data = {
-"RESET": ExtResource("5_reset"),
-"draw": ExtResource("6_draw"),
-"release": ExtResource("7_release")
-}
-
 [sub_resource type="Animation" id="5_reset"]
+resource_name = "RESET"
 length = 0.001
 tracks/0/type = "value"
 tracks/0/imported = false
@@ -59,6 +53,13 @@ tracks/0/keys = {
 "times": PackedFloat32Array(0.0, 0.15),
 "transitions": PackedFloat32Array(1.0, 1.0),
 "values": [Vector2(1.3, 1.3), Vector2(1, 1)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_bow_animations"]
+_data = {
+"RESET": SubResource("5_reset"),
+"draw": SubResource("6_draw"),
+"release": SubResource("7_release")
 }
 
 [node name="Player" type="CharacterBody2D"]

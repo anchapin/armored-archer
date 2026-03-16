@@ -18,3 +18,88 @@ datasources:
     # basicAuthUser: admin
     # secureJsonData:
     #   basicAuthPassword: ${GRAFANA_ADMIN_PASSWORD}
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: false
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        # Parse trace ID from logs for distributed tracing integration
+        - name: TraceID
+          matcherRegex: "trace_id=([a-f0-9]+)"
+          url: "$${__value.raw}"
+          datasourceUid: tempo
+          # Transform the trace ID into a Tempo trace URL
+          urlDisplayLabel: "View in Tempo"
+        # Parse request ID for correlation
+        - name: RequestID
+          matcherRegex: "requestId=([\\w-]+)"
+          url: "$${__value.raw}"
+    # Basic auth for production
+    # basicAuth: false
+
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    isDefault: false
+    editable: false
+    uid: tempo
+    jsonData:
+      httpMethod: GET
+      tracesToLogs:
+        datasourceUid: loki
+        tags:
+          - service.name
+          - rpc.name
+          - user.id
+          - match.id
+        mappedTags:
+          - key: service.name
+            value: backend
+        spanStartTimeShift: -5m
+        spanEndTimeShift: 5m
+        filterByTraceID: true
+        filterBySpanID: false
+      tracesToMetrics:
+        datasourceUid: prometheus
+        tags:
+          - key: service.name
+            value: service_name
+          - key: rpc.name
+            value: rpc_name
+        queries:
+          - name: "Request Rate"
+            query: 'sum(rate(armored_archer_rpc_requests_total{rpc_name="$${__tags.service_name}"}[5m]))'
+          - name: "Error Rate"
+            query: 'sum(rate(armored_archer_rpc_errors_total{rpc_name="$${__tags.service_name}"}[5m]))'
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
+      lokiSearch:
+        datasourceUid: loki
+    # Basic auth for production
+    # basicAuth: false
+
+  - name: Jaeger (Legacy)
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    isDefault: false
+    editable: true
+    jsonData:
+      tracesToLogs:
+        datasourceUid: loki
+        tags:
+          - service.name
+          - rpc.name
+        mappedTags:
+          - key: service.name
+            value: backend
+    # Kept for backwards compatibility during migration
+    # Can be removed after full Tempo migration

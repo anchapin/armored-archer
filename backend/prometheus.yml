@@ -20,7 +20,7 @@ scrape_configs:
   # Prometheus self-monitoring
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['prometheus:9090']
 
   # Node Exporter for system metrics
   - job_name: 'node_exporter'
@@ -32,7 +32,7 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 30s
     static_configs:
-      - targets: ['host.docker.internal:7350']
+      - targets: ['nakama:7350']
         labels:
           service: 'nakama'
           component: 'game-server'
@@ -49,7 +49,7 @@ scrape_configs:
     metrics_path: '/api/nakama/rpc/armored_archer/metrics'
     scrape_interval: 30s
     static_configs:
-      - targets: ['host.docker.internal:7350']
+      - targets: ['nakama:7350']
         labels:
           service: 'armored-archer-backend'
           component: 'application'
@@ -63,7 +63,7 @@ scrape_configs:
     metrics_path: '/api/nakama/rpc/armored_archer/deployment_metrics'
     scrape_interval: 60s
     static_configs:
-      - targets: ['host.docker.internal:7350']
+      - targets: ['nakama:7350']
         labels:
           service: 'armored-archer-backend'
           component: 'deployment'
@@ -73,7 +73,7 @@ scrape_configs:
     metrics_path: '/api/nakama/rpc/armored_archer/health'
     scrape_interval: 30s
     static_configs:
-      - targets: ['host.docker.internal:7350']
+      - targets: ['nakama:7350']
         labels:
           service: 'armored-archer-backend'
           component: 'health'
@@ -83,7 +83,7 @@ scrape_configs:
     metrics_path: '/api/nakama/rpc/armored_archer/rollout_prometheus_metrics'
     scrape_interval: 30s
     static_configs:
-      - targets: ['host.docker.internal:7350']
+      - targets: ['nakama:7350']
         labels:
           service: 'armored-archer-backend'
           component: 'rollout'

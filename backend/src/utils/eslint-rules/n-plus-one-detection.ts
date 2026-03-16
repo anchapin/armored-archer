@@ -73,7 +73,7 @@ export const NPlusOneDetectionRule: RuleModule<'nPlusOneQuery' | 'nPlusOneIterat
       },
     ],
   },
-  create(context: any) {
+  create(context) {
     // Merge with defaults
     const options = context.options[0] || {};
     const customMethods = options.allowedMethods || [];

@@ -53,7 +53,7 @@ func _physics_process(delta: float) -> void:
 			# Move towards player if out of range
 			chase_player()
 
-	move_and_slide()
+	var _moved = move_and_slide()
 
 func find_player() -> void:
 	var players: Array[Node] = get_tree().get_nodes_in_group("Player")

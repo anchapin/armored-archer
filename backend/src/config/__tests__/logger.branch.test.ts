@@ -1,4 +1,5 @@
-import { logRpcEntry, logRpcExit, logRpcError, captureRpcError } from '../logger';
+import { logRpcEntry, logRpcExit, logRpcError } from '../logger';
+import { captureRpcError } from '../errorTracking';
 
 describe('logger branch coverage', () => {
   it('logRpcEntry executes without error', () => {
@@ -25,6 +26,6 @@ describe('logger branch coverage', () => {
 
   it('captureRpcError executes without error', () => {
     const error = new Error('test');
-    expect(() => captureRpcError('test_rpc', 'user-1', error, 100, '{}')).not.toThrow();
+    expect(() => captureRpcError('test_rpc', 'user-1', error, '{}')).not.toThrow();
   });
 });

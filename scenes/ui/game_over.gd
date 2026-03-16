@@ -21,7 +21,7 @@ func _on_game_won() -> void:
 func _on_restart_button_pressed() -> void:
 	# If playing campaign mode, return to campaign map
 	if GameManager.current_stage_id != "":
-		get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
+		var _ = get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
 	else:
 		GameManager.reset_stage()
 		get_tree().reload_current_scene()

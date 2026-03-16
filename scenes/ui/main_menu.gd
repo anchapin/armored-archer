@@ -1,14 +1,14 @@
 extends Control
 
 # --- UI References ---
-@onready var gem_label: Label = $CenterContainer/VBoxContainer/GemContainer/GemLabel
-@onready var play_button: Button = $CenterContainer/VBoxContainer/PlayButton
-@onready var pvp_button: Button = $CenterContainer/VBoxContainer/PvpButton
-@onready var shop_button: Button = $CenterContainer/VBoxContainer/ShopButton
-@onready var buy_gems_button: Button = $CenterContainer/VBoxContainer/BuyGemsButton
-@onready var settings_button: Button = $CenterContainer/VBoxContainer/SettingsButton
-@onready var quit_button: Button = $CenterContainer/VBoxContainer/QuitButton
-@onready var loadout_button: Button = $CenterContainer/VBoxContainer/LoadoutButton
+@onready var gem_label: Label = $SafeAreaContainer/CenterContainer/VBoxContainer/GemContainer/GemLabel
+@onready var play_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PlayButton
+@onready var pvp_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PvpButton
+@onready var shop_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/ShopButton
+@onready var buy_gems_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/BuyGemsButton
+@onready var settings_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/SettingsButton
+@onready var quit_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/QuitButton
+@onready var loadout_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/LoadoutButton
 
 # --- Manager References ---
 @onready var gem_manager: Node = get_node_or_null("/root/GemManager")
@@ -24,7 +24,8 @@ var _currency_updated_connection: Callable = Callable()
 # --- Initialization ---
 func _ready() -> void:
 	if store_manager:
-		_currency_updated_connection = store_manager.currency_updated.connect(_on_currency_updated)
+		_currency_updated_connection = _on_currency_updated
+		store_manager.currency_updated.connect(_currency_updated_connection)
 
 	_update_gem_display()
 
@@ -65,9 +66,10 @@ func _on_shop_pressed() -> void:
 	var shop_scene = preload("res://scenes/ui/cosmetic_shop.tscn")
 	_shop_instance = shop_scene.instantiate()
 	get_tree().root.add_child(_shop_instance)
+	visible = false
 
 func _on_buy_gems_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/ui/store_menu.tscn")
+	var _ = get_tree().change_scene_to_file("res://scenes/ui/store_menu.tscn")
 
 func _on_settings_pressed() -> void:
 	print("Settings not implemented yet")
@@ -80,6 +82,7 @@ func _on_loadout_pressed() -> void:
 	var loadout_scene = preload("res://scenes/ui/loadout.tscn")
 	_loadout_instance = loadout_scene.instantiate()
 	get_tree().root.add_child(_loadout_instance)
+	visible = false
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()

@@ -9,11 +9,10 @@ global:
   smtp_from: "alerts@armored-archer.example.com"
   smtp_smarthost: "smtp.example.com:587"
   smtp_auth_username: "alerts"
-  smtp_auth_password: "${SMTP_PASSWORD}"
+  smtp_auth_password: "password"
   
   # PagerDuty integration (optional)
-  pagerduty_url: "https://events.pagerduty.com/v2/enqueue"
-  pagerduty_resolve_timeout: "30m"
+  pagerduty_url: "http://localhost/pagerduty"
 
 # Define the notification receivers
 receivers:
@@ -42,19 +41,14 @@ receivers:
     
     # PagerDuty for critical alerts
     pagerduty_configs:
-      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+      - service_key: 'dummy-key'
         severity: critical
         component: '{{ .Labels.component }}'
         group: '{{ .Labels.team }}'
-        custom_details:
-          alertname: '{{ .GroupLabels.alertname }}'
-          description: '{{ .Annotations.description }}'
-          runbook: '{{ .Annotations.runbook_url }}'
-          environment: '{{ .Labels.environment }}'
     
     # Slack for critical alerts
     slack_configs:
-      - api_url: '${SLACK_WEBHOOK_URL}'
+      - api_url: 'http://localhost/slack'
         channel: '#armored-archer-critical'
         username: 'Armored Archer Alerts'
         icon_emoji: ':fire:'
@@ -75,8 +69,6 @@ receivers:
           - type: button
             text: '🔗 Acknowledge'
             url: 'https://your-pagerduty.com'
-        footnotes:
-          - text: 'Alert ID: {{ .Fingerprint }}'
 
   # ============================================
   # Warning Alerts - Email + Slack
@@ -97,7 +89,7 @@ receivers:
           <p>{{ .Annotations.description }}</p>
     
     slack_configs:
-      - api_url: '${SLACK_WEBHOOK_URL}'
+      - api_url: 'http://localhost/slack'
         channel: '#armored-archer-warnings'
         username: 'Armored Archer Alerts'
         icon_emoji: ':warning:'
@@ -118,7 +110,7 @@ receivers:
   
   - name: 'info-alerts'
     slack_configs:
-      - api_url: '${SLACK_WEBHOOK_URL}'
+      - api_url: 'http://localhost/slack'
         channel: '#armored-archer-info'
         username: 'Armored Archer Info'
         icon_emoji: ':information_source:'
@@ -138,7 +130,7 @@ receivers:
           subject: '[SECURITY] {{ .GroupLabels.alertname }} - Armored Archer'
     
     slack_configs:
-      - api_url: '${SLACK_WEBHOOK_URL}'
+      - api_url: 'http://localhost/slack'
         channel: '#armored-archer-security'
         username: 'Armored Archer Security'
         icon_emoji: ':rotating_light:'

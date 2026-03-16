@@ -11,6 +11,7 @@ extends Node
 
 signal gear_generated(gear_data: Dictionary)
 signal gear_equipped(slot: String, gear_id: String)
+signal gear_unequipped(slot: String)
 signal inventory_updated(inventory: Dictionary)
 
 # Analytics reference
@@ -31,8 +32,9 @@ func _ready() -> void:
 	add_child(http_request)
 	var _err = http_request.request_completed.connect(_on_http_request_completed)
 
-	if network_manager and network_manager.is_session_valid():
-		_load_inventory()
+	# Don't auto-load inventory - RPC not implemented in Go backend yet
+	# if network_manager and network_manager.is_session_valid():
+	# 	_load_inventory()
 
 func generate_gear(stage_id: String, boss_defeated: bool) -> void:
 	"""Requests gear generation from the server after stage completion.
@@ -187,6 +189,7 @@ func _process_payload(payload: Dictionary, _response_data: Dictionary) -> void:
 
 	if payload.has("success") and payload.success:
 		if payload.has("equipped_gear"):
+			var old_equipped_gear: Dictionary = equipped_gear.duplicate()
 			equipped_gear = payload.equipped_gear
 			if payload.has("gear"):
 				var slot: String = payload.gear.type
@@ -197,6 +200,11 @@ func _process_payload(payload: Dictionary, _response_data: Dictionary) -> void:
 				# Track gear equipped in analytics
 				if analytics and analytics.has_method("log_gear_equipped"):
 					analytics.log_gear_equipped(gear_id, gear_name, payload.gear.type, slot)
+			else:
+				# Check for unequipped gear (slot was cleared)
+				for slot in old_equipped_gear.keys():
+					if not equipped_gear.has(slot) or equipped_gear[slot].is_empty():
+						gear_unequipped.emit(slot)
 			inventory_updated.emit(_get_full_inventory())
 
 		if payload.has("unlocked_modifier_pools"):

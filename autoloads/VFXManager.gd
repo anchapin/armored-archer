@@ -118,7 +118,7 @@ func _spawn_particle(effect_scene: PackedScene, global_position: Vector2) -> voi
 
 	# Auto-cleanup after effect completes
 	effect.emitting = true
-	effect.finished.connect(effect.queue_free)
+	var _err = effect.finished.connect(effect.queue_free)
 
 
 # === Damage Popup Methods ===

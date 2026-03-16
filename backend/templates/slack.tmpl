@@ -1,0 +1,109 @@
+{{ define "slack.critical.title" }}
+🚨 CRITICAL ALERT: {{ .GroupLabels.alertname }}
+{{ end }}
+
+{{ define "slack.critical.text" }}
+*Alert:* {{ .GroupLabels.alertname }}
+*Severity:* {{ .CommonLabels.severity }}
+*Service:* {{ .CommonLabels.service }}
+*Component:* {{ .CommonLabels.component }}
+*Environment:* {{ .CommonLabels.environment }}
+
+*Description:*
+{{ .CommonAnnotations.description }}
+
+*Impact:*
+{{ .CommonAnnotations.impact }}
+
+*Started:* {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+*Ended:* {{ if .EndsAt }}{{ .EndsAt.Format "2006-01-02 15:04:05 UTC" }}{{ else }}_not yet resolved_{{ end }}
+
+{{ if .CommonAnnotations.runbook_url }}*Runbook:* {{ .CommonAnnotations.runbook_url }}{{ end }}
+{{ if .CommonAnnotations.dashboard_url }}*Dashboard:* {{ .CommonAnnotations.dashboard_url }}{{ end }}
+
+*Troubleshooting Steps:*
+{{ .CommonAnnotations.troubleshooting }}
+{{ end }}
+
+{{ define "slack.critical.actions" }}
+[
+  {
+    "type": "button",
+    "text": "📊 View Dashboard",
+    "url": "{{ .CommonAnnotations.dashboard_url }}"
+  },
+  {
+    "type": "button",
+    "text": "📋 View Runbook",
+    "url": "{{ .CommonAnnotations.runbook_url }}"
+  },
+  {
+    "type": "button",
+    "text": "🔗 Acknowledge",
+    "url": "https://your-pagerduty.com"
+  }
+]
+{{ end }}
+
+{{ define "slack.warning.title" }}
+⚠️ WARNING: {{ .GroupLabels.alertname }}
+{{ end }}
+
+{{ define "slack.warning.text" }}
+*Alert:* {{ .GroupLabels.alertname }}
+*Severity:* {{ .CommonLabels.severity }}
+*Service:* {{ .CommonLabels.service }}
+*Component:* {{ .CommonLabels.component }}
+
+*Description:*
+{{ .CommonAnnotations.description }}
+
+*Started:* {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+
+{{ if .CommonAnnotations.runbook_url }}*Runbook:* {{ .CommonAnnotations.runbook_url }}{{ end }}
+{{ if .CommonAnnotations.dashboard_url }}*Dashboard:* {{ .CommonAnnotations.dashboard_url }}{{ end }}
+{{ end }}
+
+{{ define "slack.warning.actions" }}
+[
+  {
+    "type": "button",
+    "text": "📊 View Dashboard",
+    "url": "{{ .CommonAnnotations.dashboard_url }}"
+  },
+  {
+    "type": "button",
+    "text": "📋 View Runbook",
+    "url": "{{ .CommonAnnotations.runbook_url }}"
+  }
+]
+{{ end }}
+
+{{ define "slack.info.title" }}
+ℹ️ INFO: {{ .GroupLabels.alertname }}
+{{ end }}
+
+{{ define "slack.info.text" }}
+{{ .CommonAnnotations.description }}
+
+*Started:* {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+{{ end }}
+
+{{ define "slack.security.title" }}
+🔒 SECURITY ALERT: {{ .GroupLabels.alertname }}
+{{ end }}
+
+{{ define "slack.security.text" }}
+*Alert:* {{ .GroupLabels.alertname }}
+*Severity:* {{ .CommonLabels.severity }}
+*Service:* {{ .CommonLabels.service }}
+
+*Description:*
+{{ .CommonAnnotations.description }}
+
+*Started:* {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+
+*Actions:*
+• 🔒 Security Dashboard: https://grafana:3000/d/security
+• 📋 Incident Response: https://your-incident-response-tool.com
+{{ end }}

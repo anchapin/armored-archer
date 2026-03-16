@@ -114,7 +114,9 @@ func _on_stage_pressed(stage_id: String) -> void:
 	var stage_data = CampaignManager.get_stage_data(stage_id)
 	GameManager.current_stage_id = stage_id
 	GameManager.current_waves = stage_data.get("waves", 3)
-	GameManager.boss_id = stage_data.get("boss", "")
+	# Handle null boss values from JSON - use empty string if boss is null or missing
+	var boss_value = stage_data.get("boss")
+	GameManager.boss_id = boss_value if boss_value != null else ""
 
 	get_tree().change_scene_to_packed(MAIN_SCENE)
 
@@ -130,7 +132,7 @@ func _on_progress_updated(chapter_id: String, progress: float) -> void:
 		print("Chapter %s progress: %d%%" % [chapter_id, percentage])
 
 func _on_back_button_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	var _ = get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 
 func _exit_tree() -> void:

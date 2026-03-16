@@ -1,0 +1,352 @@
+name: Issue Triage & Slack Notifications
+
+on:
+  issues:
+    types:
+      - opened
+      - labeled
+      - unlabeled
+  issue_comment:
+    types:
+      - created
+
+jobs:
+  # Job 1: Auto-triage new issues
+  auto-triage:
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install PyGithub requests
+      
+      - name: Run auto-triage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          cd backend/scripts
+          python auto-triage-issues.py \
+            --issue-number "$ISSUE_NUMBER" \
+            --title "$ISSUE_TITLE" \
+            --body "$ISSUE_BODY" \
+            --verbose
+      
+      - name: Apply labels from auto-triage
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const labelsToAdd = [];
+            
+            // Check for alpha bug reports
+            if (issue.labels.some(l => l.name === 'alpha') && 
+                issue.labels.some(l => l.name === 'bug')) {
+              
+              // Auto-triage will add these via script, but we add as backup
+              if (!issue.labels.some(l => l.name === 'needs-triage')) {
+                labelsToAdd.push('needs-triage');
+              }
+            }
+            
+            if (labelsToAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labelsToAdd
+              });
+            }
+
+  # Job 2: Send Slack notification for critical/high severity
+  slack-notification:
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    needs: auto-triage
+    
+    steps:
+      - name: Check severity and send Slack alert
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const labels = issue.labels.map(l => l.name);
+            
+            // Determine severity
+            let severity = 'medium';
+            let slackChannel = null;
+            let emoji = '📝';
+            
+            if (labels.includes('severity:critical')) {
+              severity = 'critical';
+              slackChannel = 'alpha-bugs-critical';
+              emoji = '🚨';
+            } else if (labels.includes('severity:high')) {
+              severity = 'high';
+              slackChannel = 'alpha-bugs-all';
+              emoji = '⚠️';
+            } else if (labels.includes('severity:low')) {
+              severity = 'low';
+            }
+            
+            // Only send Slack alert for critical/high
+            if (!slackChannel) {
+              console.log(`No Slack alert needed for severity: ${severity}`);
+              return;
+            }
+            
+            // Get category
+            const category = labels.find(l => l.startsWith('bug:'))?.replace('bug:', '') || 'unknown';
+            
+            // Build Slack message
+            const message = {
+              channel: `#${slackChannel}`,
+              username: 'Bug Triage Bot',
+              icon_emoji: ':bug:',
+              attachments: [{
+                color: severity === 'critical' ? 'danger' : 'warning',
+                title: `${emoji} ${severity.toUpperCase()} SEVERITY BUG REPORTED`,
+                fields: [
+                  { title: 'Issue', value: `#${issue.number}: ${issue.title}`, short: false },
+                  { title: 'Category', value: category, short: true },
+                  { title: 'Severity', value: severity.toUpperCase(), short: true },
+                  { title: 'Reporter', value: issue.user.login, short: true }
+                ],
+                actions: [
+                  {
+                    type: 'button',
+                    text: 'View Issue',
+                    url: issue.html_url
+                  },
+                  {
+                    type: 'button',
+                    text: 'Assign to Me',
+                    url: `${issue.html_url}/assign`
+                  }
+                ],
+                footer: 'Armored Archer Alpha Bug Triage',
+                ts: Math.floor(Date.now() / 1000)
+              }]
+            };
+            
+            // Send to Slack
+            const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
+            if (!slackWebhookUrl) {
+              console.error('SLACK_WEBHOOK_URL not configured');
+              return;
+            }
+            
+            const response = await fetch(slackWebhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(message)
+            });
+            
+            if (response.ok) {
+              console.log(`Slack alert sent for #${issue.number}`);
+            } else {
+              const error = await response.text();
+              console.error(`Slack API error: ${response.status} - ${error}`);
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Job 3: Add welcome comment for first-time contributors
+  welcome-first-time:
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    
+    steps:
+      - name: Check if first-time contributor
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const username = issue.user.login;
+            
+            // Check if user has contributed before
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: username,
+              state: 'all',
+              per_page: 2
+            });
+            
+            // If this is their first issue
+            if (issues.length === 1) {
+              const comment = `## 👋 Thanks for your first bug report!
+              
+              Welcome to the Armored Archer alpha program! We really appreciate you taking the time to report this issue.
+              
+              **What happens next?**
+              1. A developer will review your report (usually within 24 hours)
+              2. We'll try to reproduce the issue
+              3. You'll get updates as we work on a fix
+              4. Once fixed, we'll ask you to verify the resolution
+              
+              **Need to add more info?** Just comment below with any additional details.
+              
+              **Questions?** Join our [Discord](https://discord.gg/armoredarcher) or email alpha-support@armoredarcher.com
+              
+              Thanks again for helping us improve the game! 🏹`;
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: comment
+              });
+              
+              console.log(`Welcome comment added for first-time contributor: ${username}`);
+            }
+
+  # Job 4: Daily digest (scheduled)
+  daily-digest:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Generate daily digest
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const now = new Date();
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            // Get issues created in last 24 hours
+            const { data: newIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              since: yesterday.toISOString(),
+              labels: 'alpha,bug'
+            });
+            
+            // Get issues closed in last 24 hours
+            const { data: closedIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              since: yesterday.toISOString(),
+              labels: 'alpha,bug'
+            });
+            
+            // Build digest message
+            const newIssuesList = newIssues.map(i => `- #${i.number} [${i.labels.find(l => l.name.startsWith('severity:'))?.name.replace('severity:', '') || 'medium'}] ${i.title}`).join('\n');
+            const closedIssuesList = closedIssues.map(i => `- #${i.number} ${i.title}`).join('\n');
+            
+            const message = {
+              channel: '#alpha-status',
+              username: 'Bug Triage Bot',
+              icon_emoji: ':bar_chart:',
+              attachments: [{
+                color: 'good',
+                title: `📊 Daily Bug Report - ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+                fields: [
+                  { title: 'New Issues', value: newIssues.length.toString(), short: true },
+                  { title: 'Resolved', value: closedIssues.length.toString(), short: true },
+                  { title: 'Open Total', value: (newIssues.filter(i => i.state === 'open').length).toString(), short: true }
+                ]
+              }]
+            };
+            
+            if (newIssuesList) {
+              message.attachments[0].fields.push({
+                title: 'New Issues',
+                value: newIssuesList || 'None',
+                short: false
+              });
+            }
+            
+            if (closedIssuesList) {
+              message.attachments[0].fields.push({
+                title: 'Resolved',
+                value: closedIssuesList || 'None',
+                short: false
+              });
+            }
+            
+            // Send to Slack
+            const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
+            if (slackWebhookUrl && newIssues.length > 0) {
+              await fetch(slackWebhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(message)
+              });
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Job 5: Auto-assign issues based on category
+  auto-assign:
+    if: github.event_name == 'issues' && github.event.action == 'labeled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    
+    steps:
+      - name: Assign based on category
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const label = context.payload.label.name;
+            
+            // Only process bug category labels
+            const categoryAssignments = {
+              'bug:crash': 'lead-engineer',
+              'bug:blocker': 'game-lead',
+              'bug:combat': 'gameplay-dev',
+              'bug:performance': 'engine-dev',
+              'bug:ui': 'ui-dev',
+              'bug:audio': 'audio-engineer',
+              'bug:network': 'backend-dev',
+              'bug:visual': 'graphics-dev'
+            };
+            
+            const assignee = categoryAssignments[label];
+            
+            if (assignee && !issue.assignee) {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                assignees: [assignee]
+              });
+              
+              // Add comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `📋 Auto-assigned to @${assignee} based on category: ${label}`
+              });
+              
+              console.log(`Assigned #${issue.number} to @${assignee}`);
+            }

@@ -30,25 +30,7 @@ export interface FeatureFlagConfig {
 // In production, these could be loaded from a database or external service
 const FEATURE_FLAGS: FeatureFlagConfig = {
   defaultEnabled: false,
-  flags: [
-    {
-      name: 'new_combat_system',
-      enabled: false,
-      description: 'Use the improved combat calculation system',
-      rolloutPercentage: 0,
-    },
-    {
-      name: 'seasonal_events',
-      enabled: true,
-      description: 'Enable seasonal event content',
-    },
-    {
-      name: 'advanced_matchmaking',
-      enabled: false,
-      description: 'Use ML-based matchmaking algorithm',
-      rolloutPercentage: 10,
-    },
-  ],
+  flags: [],
 };
 
 /**

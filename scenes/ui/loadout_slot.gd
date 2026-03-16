@@ -6,6 +6,9 @@ extends Control
 signal slot_clicked(slot_type: int)
 signal gear_dropped(gear_data: Dictionary, target_slot: int)
 
+# Import gear enums for slot type
+const GearEnums = preload("res://scripts/gear_enums.gd")
+
 var slot_type: int = 0
 var slot_name: String = ""
 var current_gear: Dictionary = {}
@@ -17,12 +20,10 @@ var current_gear: Dictionary = {}
 
 func _ready() -> void:
 	slot_button.pressed.connect(_on_slot_button_pressed)
-	slot_button.drag_started.connect(_on_drag_started)
-	slot_button.drag_ended.connect(_on_drag_ended)
-	slot_button.drop_ended.connect(_on_drop_ended)
 
-	# Enable drop on the slot button
-	slot_button.set_drag_forwarding(_get_drag_data, _can_drop_data, _drop_data)
+	# Enable drag-and-drop on the slot button
+	# Note: Control nodes support drag-and-drop via set_drag_forwarding
+	set_drag_forwarding(_get_drag_data, _can_drop_data, _drop_data)
 
 	_update_display()
 
@@ -57,6 +58,8 @@ func clear_gear() -> void:
 func _on_slot_button_pressed() -> void:
 	slot_clicked.emit(slot_type)
 
+# --- Drag and Drop Handlers ---
+
 func _get_drag_data(_at_position: Vector2) -> Variant:
 	if current_gear.is_empty():
 		return null
@@ -84,25 +87,16 @@ func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 func _drop_data(_at_position: Vector2, data: Variant) -> void:
 	gear_dropped.emit(data, slot_type)
 
-func _on_drag_started() -> void:
-	pass
-
-func _on_drag_ended(_bool: bool) -> void:
-	pass
-
-func _on_drop_ended(_bool: bool) -> void:
-	pass
-
 func _get_slot_key(type_val: int) -> String:
 	match type_val:
-		GearRegistry.GearSlot.SlotType.HELM:
+		GearEnums.GearType.HELM:
 			return "helm"
-		GearRegistry.GearSlot.SlotType.ARMOR:
+		GearEnums.GearType.ARMOR:
 			return "armor"
-		GearRegistry.GearSlot.SlotType.BOW:
+		GearEnums.GearType.BOW:
 			return "bow"
-		GearRegistry.GearSlot.SlotType.ARROW:
+		GearEnums.GearType.ARROW:
 			return "arrow"
-		GearRegistry.GearSlot.SlotType.AMULET:
+		GearEnums.GearType.AMULET:
 			return "amulet"
 	return ""

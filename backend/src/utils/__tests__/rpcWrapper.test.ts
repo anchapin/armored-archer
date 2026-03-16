@@ -1,11 +1,15 @@
 import { wrapRpc, createErrorResponse, createSuccessResponse } from '../rpcWrapper';
-import { captureRpcError, logRpcEntry, logRpcError, logRpcExit } from '../../config/logger';
+import { logRpcEntry, logRpcError, logRpcExit } from '../../config/logger';
+import { captureRpcError } from '../../config/errorTracking';
 
 jest.mock('../../config/logger', () => ({
-  captureRpcError: jest.fn(),
   logRpcEntry: jest.fn(),
   logRpcError: jest.fn(),
   logRpcExit: jest.fn(),
+}));
+
+jest.mock('../../config/errorTracking', () => ({
+  captureRpcError: jest.fn(),
 }));
 
 describe('rpcWrapper', () => {

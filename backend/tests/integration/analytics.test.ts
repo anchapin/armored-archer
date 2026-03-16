@@ -17,8 +17,8 @@ describe('Analytics System Integration Tests', () => {
 
   // Helper to call RPC and parse JSON
   async function rpcCall(account: TestAccount, rpcId: string, payload: any): Promise<any> {
-    const response = await account.client.rpc(rpcId, JSON.stringify(payload));
-    return JSON.parse(response);
+    const response = await account.client.rpc(account.session, rpcId, payload);
+    return response.payload;
   }
 
   describe('rpcTrackEvent', () => {

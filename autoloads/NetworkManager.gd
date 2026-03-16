@@ -42,10 +42,12 @@ var username: String = ""
 var device_id: String = ""
 var is_connected: bool = false
 var is_offline: bool = false
+var _is_refreshing: bool = false  # Track if current request is a refresh
 
 # --- HTTP Requests ---
 var http_request: HTTPRequest
 var base_url: String
+var _request_counter: int = 0  # Track individual requests
 
 # --- Signals ---
 signal session_created(success: bool, error_message: String)
@@ -186,6 +188,12 @@ func _ready() -> void:
 
 	http_request = HTTPRequest.new()
 	add_child(http_request)
+
+	# Configure HTTPRequest for Godot 4.6
+	http_request.timeout = 30
+	http_request.use_threads = true  # Required for async requests
+	http_request.max_redirects = 0   # Don't follow redirects automatically
+
 	var _err = http_request.request_completed.connect(_on_http_request_completed)
 
 	_load_session_from_file()
@@ -207,16 +215,30 @@ func _generate_device_id() -> void:
 
 	_save_session_to_file()
 
+# --- State ---
+var is_authenticating: bool = false
+
 # --- Authentication ---
 func authenticate_device() -> void:
 	if is_offline:
 		session_created.emit(false, "Cannot authenticate while offline")
 		return
 
+	# Prevent duplicate authentication requests
+	if is_authenticating:
+		return
+
+	_is_refreshing = false  # This is NOT a refresh request
+	is_authenticating = true
+
 	var url: String = "%s/v2/account/authenticate/device" % base_url
+
+	# Use Basic auth with server key as both username and password (Nakama default)
+	var auth_string: String = Marshalls.utf8_to_base64("%s:" % server_key)
 	var headers: PackedStringArray = [
 		"Content-Type: application/json",
-		"Accept: application/json"
+		"Accept: application/json",
+		"Authorization: Basic %s" % auth_string
 	]
 	var body: Dictionary = {
 		"id": device_id,
@@ -226,9 +248,19 @@ func authenticate_device() -> void:
 	var json: JSON = JSON.new()
 	var json_string: String = JSON.stringify(body)
 
+	# Cancel any pending request first
+	if http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+		http_request.cancel_request()
+
+	# Small delay to ensure HTTPRequest is ready (prevents race condition)
+	await get_tree().process_frame
+
+	_request_counter += 1
 	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
+
 	if error != OK:
-		session_created.emit(false, "Failed to send authentication request")
+		is_authenticating = false
+		session_created.emit(false, "Failed to send authentication request (Error: %d)" % error)
 		is_offline = true
 		connection_status_changed.emit(false)
 
@@ -244,6 +276,8 @@ func _refresh_session() -> void:
 		authenticate_device()
 		return
 
+	_is_refreshing = true  # Mark this as a refresh request
+
 	var url: String = "%s/v2/session/refresh" % base_url
 	var headers: PackedStringArray = [
 		"Content-Type: application/json",
@@ -256,10 +290,18 @@ func _refresh_session() -> void:
 	var json: JSON = JSON.new()
 	var json_string: String = JSON.stringify(body)
 
-	var _err = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
+	_request_counter += 1
+	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
+
+	if error != OK:
+		_is_refreshing = false
+		authenticate_device()
 
 # --- HTTP Response Handling ---
-func _on_http_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+func _on_http_request_completed(_result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+	# Reset authentication flag
+	is_authenticating = false
+
 	var response_text: String = body.get_string_from_utf8()
 
 	if response_code >= 200 and response_code < 300:
@@ -270,9 +312,12 @@ func _on_http_request_completed(_result: int, response_code: int, _headers: Pack
 			var response_data: Dictionary = json.data
 
 			if "token" in response_data:
+				# Check connection state BEFORE updating session
+				var was_connected: bool = is_connected
+
 				_update_session_from_response(response_data)
 
-				if not is_connected:
+				if not was_connected:
 					is_connected = true
 					session_created.emit(true, "")
 					session_refreshed.emit(true, "")
@@ -281,8 +326,17 @@ func _on_http_request_completed(_result: int, response_code: int, _headers: Pack
 
 				is_offline = false
 				connection_status_changed.emit(true)
+			else:
+				session_created.emit(false, "Server response missing token")
+		else:
+			session_created.emit(false, "Failed to parse server response")
 	else:
-		_handle_authentication_error(response_code, response_text)
+		# If this was a refresh request, fall back to device authentication
+		if _is_refreshing:
+			_is_refreshing = false
+			authenticate_device()
+		else:
+			_handle_authentication_error(response_code, response_text)
 
 func _update_session_from_response(response_data: Dictionary) -> void:
 	if "token" in response_data:
@@ -301,7 +355,11 @@ func _update_session_from_response(response_data: Dictionary) -> void:
 	_save_session_to_file()
 
 func _handle_authentication_error(response_code: int, response_text: String) -> void:
+	print("[NetworkManager] DEBUG: === Authentication Error Handler ===")
+	print("[NetworkManager] DEBUG: Response Code: %d" % response_code)
+
 	if response_code == 0 or response_code == -1:
+		print("[NetworkManager] DEBUG: Network error detected - setting offline mode")
 		is_offline = true
 		connection_status_changed.emit(false)
 		session_created.emit(false, "No internet connection")
@@ -309,6 +367,7 @@ func _handle_authentication_error(response_code: int, response_text: String) -> 
 		# Log network error for analytics
 		_log_network_error("connection_failed", "/v2/account/authenticate/device", response_code)
 	else:
+		print("[NetworkManager] DEBUG: Authentication failed with code: %d" % response_code)
 		is_connected = false
 		var error_message: String = "Authentication failed (code: %d)" % response_code
 
@@ -317,6 +376,7 @@ func _handle_authentication_error(response_code: int, response_text: String) -> 
 			var response_data: Dictionary = json.data
 			if "message" in response_data:
 				error_message = response_data["message"]
+				print("[NetworkManager] DEBUG: Server error message: %s" % error_message)
 
 		session_created.emit(false, error_message)
 		session_refreshed.emit(false, error_message)
@@ -434,13 +494,15 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 
 	var timed_out: bool = false
 	var request_result: Array = []
+	var response_received: bool = false
 
 	var on_timeout: Callable = func():
 		timed_out = true
 		http_request.cancel_request()
 
-	var on_request_completed: Callable = func(result: Array):
-		request_result = result
+	var on_request_completed: Callable = func(_result: int, _response_code: int, _headers: PackedStringArray, body: PackedByteArray):
+		request_result = [_result, _response_code, _headers, body]
+		response_received = true
 		timer.stop()
 
 	var _err1 = timer.timeout.connect(on_timeout, CONNECT_ONE_SHOT)
@@ -454,7 +516,9 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 		timer.queue_free()
 		return {"error": "Failed to send RPC request"}
 
-	await http_request.request_completed
+	# Wait for response with timeout protection
+	while not response_received and not timed_out:
+		await get_tree().process_frame
 
 	timer.queue_free()
 
@@ -465,6 +529,11 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	# Process the successful response
 	var response_data: Dictionary = {}
 	var result = request_result
+
+	# Validate that request_result has enough elements (should have 4: result, code, headers, body)
+	if result.size() < 4:
+		push_error("Request result incomplete: got %d elements, expected 4. Response received: %s" % [result.size(), response_received])
+		return {"error": "Invalid response: request_result is incomplete"}
 
 	if result[1] >= 200 and result[1] < 300:
 		var json: JSON = JSON.new()
