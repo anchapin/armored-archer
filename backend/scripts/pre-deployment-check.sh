@@ -7,7 +7,7 @@
 # the system is ready for Go module deployment.
 # ============================================
 
-set -euo pipefail
+set -uo pipefail
 
 # Colors for output
 RED='\033[0;31m'
@@ -24,6 +24,11 @@ MIN_MEMORY_MB=512
 CHECKS_PASSED=0
 CHECKS_FAILED=0
 CHECKS_WARNING=0
+
+# Helper function to compare versions
+version_gt() {
+    test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"
+}
 
 # Parse arguments
 VERBOSE=false
@@ -119,8 +124,8 @@ log_step "Checking Go installation..."
 if command -v go &> /dev/null; then
     GO_VERSION=$(go version | awk '{print $3}')
     GO_VERSION_NUM=$(echo "$GO_VERSION" | sed 's/go//' | cut -d. -f1,2)
-    
-    if [[ "$GO_VERSION_NUM" >= "$GO_VERSION_REQUIRED" ]]; then
+
+    if version_gt "$GO_VERSION_NUM" "$GO_VERSION_REQUIRED" || [[ "$GO_VERSION_NUM" == "$GO_VERSION_REQUIRED" ]]; then
         log_check "PASS" "Go version: $GO_VERSION (required: $GO_VERSION_REQUIRED)"
     else
         log_check "FAIL" "Go version $GO_VERSION is below required $GO_VERSION_REQUIRED"
