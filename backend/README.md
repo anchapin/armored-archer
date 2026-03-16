@@ -156,6 +156,87 @@ cp .env.example .env
 npm run build
 ```
 
+## Build Process
+
+The TypeScript backend uses a multi-stage build process to ensure Nakama runtime compatibility:
+
+### Build Commands
+
+```bash
+# Build TypeScript to JavaScript
+npm run build
+
+# Bundle for Nakama runtime (ES5 transpilation)
+npm run bundle:nakama
+
+# Validate bundle for ES5 compatibility
+npm run bundle:validate
+
+# Full build pipeline (build + bundle + validate)
+npm run build:full
+```
+
+### Build Pipeline
+
+1. **TypeScript Compilation** (`npm run build`)
+   - Compiles TypeScript to ES6 JavaScript using `tsc`
+   - Output: `build/` directory
+
+2. **ES5 Transpilation** (`npm run bundle:nakama`)
+   - Uses Babel to transpile ES6+ to ES5 for Nakama's Duktape/QuickJS runtime
+   - Bundles code with webpack for optimal size
+   - Output: `data/modules/index.js`
+
+3. **Bundle Validation** (`npm run bundle:validate`)
+   - Validates bundle doesn't contain ES6+ syntax
+   - Checks for: `const`, `let`, `class`, `async`, `await`, arrow functions, template literals
+   - Ensures Nakama runtime compatibility
+
+### Build Configuration
+
+**Babel** (`babel.config.js`):
+- Targets ES5.1 for Nakama compatibility
+- Uses loose mode for smaller bundle size
+- Inlines helper functions (no external @babel/runtime dependency)
+
+**Webpack** (`webpack.nakama.config.js`):
+- Bundles for Node.js runtime
+- Disables code splitting and chunking
+- Provides fallbacks for Node.js built-in modules
+- Uses babel-loader for on-the-fly transpilation
+
+### Bundle Size
+
+Current bundle size: ~9.5 MB (ES5 transpiled)
+
+To analyze bundle composition:
+```bash
+npm run bundle:analyze
+```
+
+To check bundle size against limits:
+```bash
+npm run bundle:check
+```
+
+### Troubleshooting
+
+**Build fails with TypeScript errors:**
+```bash
+# Check for type errors without building
+npm run typecheck
+```
+
+**Bundle validation fails:**
+- Check for ES6+ syntax in source code
+- Ensure babel-loader is configured correctly
+- Verify webpack config has proper fallbacks
+
+**Large bundle size:**
+- Run `npm run depcheck` to find unused dependencies
+- Check for accidentally bundled Node.js modules
+- Consider lazy-loading for optional features
+
 ## Development
 
 - `npm run dev` - Start development server with auto-reload
