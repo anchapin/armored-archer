@@ -53,10 +53,10 @@ func _cleanup_signal_connection(node: Node, signal_name: String, connection: Cal
 
 # --- Button Handlers ---
 func _on_play_pressed() -> void:
-	var _ = get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
+	get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
 
 func _on_pvp_pressed() -> void:
-	var _ = get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
+	get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
 
 func _on_shop_pressed() -> void:
 	# Clean up existing shop instance if it exists
