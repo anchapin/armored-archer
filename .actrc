@@ -1,0 +1,16 @@
+# Godot Cache Directories
+--volume /home/runner/.local/share/godot:/root/.local/share/godot
+--volume /home/runner/.config/godot:/root/.config/godot
+
+# Godot Environment Variables
+--env GODOT_HEADLESS=true
+--env DISPLAY=:99
+
+# Container Architecture
+--container-architecture linux/amd64
+
+# Increase shared memory for Godot
+--shm-size=2gb
+
+# Use full Ubuntu image with more dependencies
+--container-ubuntu-full
