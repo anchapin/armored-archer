@@ -53,8 +53,8 @@ func _start_authentication() -> void:
 	progress_bar.value = 0.0
 
 	var tween: Tween = create_tween()
-	tween.tween_property(progress_bar, "value", 50.0, 1.0)
-	tween.tween_interval(0.5)
+	var _t1 = tween.tween_property(progress_bar, "value", 50.0, 1.0)
+	var _t2 = tween.tween_interval(0.5)
 
 	# NetworkManager auto-connects in _ready(), so we just wait for the signal
 

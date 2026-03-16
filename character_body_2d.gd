@@ -49,9 +49,9 @@ func _physics_process(delta: float) -> void:
 		_update_aim_direction()
 	else:
 		is_aiming = false
-	
+
 	# Move the character
-	move_and_slide()
+	var _moved = move_and_slide()
 
 
 func _update_aim_direction() -> void:

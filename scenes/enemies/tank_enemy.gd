@@ -63,7 +63,7 @@ func _physics_process(delta: float) -> void:
 		else:
 			velocity = Vector2.ZERO
 
-	move_and_slide()
+	var _moved = move_and_slide()
 
 func find_player() -> void:
 	var players = get_tree().get_nodes_in_group("Player")
@@ -113,7 +113,7 @@ func perform_charge() -> void:
 	while timer < charge_duration:
 		timer += get_process_delta_time()
 		velocity = charge_velocity
-		move_and_slide()
+		var _moved = move_and_slide()
 		await get_tree().process_frame
 
 	velocity = Vector2.ZERO
