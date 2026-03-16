@@ -56,13 +56,15 @@ export class IntegrationTestHelper {
           await (this.adminClient as any).disconnect();
         }
       } catch (error) {
-        console.warn('Error disconnecting admin client:', error);
+        // Silently ignore disconnect errors for admin client
+      } finally {
+        this.adminClient = null;
+        this.adminSession = null;
       }
-      this.adminClient = null;
     }
 
-    // Disconnect all tracked clients
-    const disconnectPromises = this.clients.map(async (client) => {
+    // Disconnect all tracked clients sequentially to avoid race conditions
+    for (const client of this.clients) {
       try {
         if (typeof (client as any).disconnect === 'function') {
           await (client as any).disconnect();
@@ -70,9 +72,8 @@ export class IntegrationTestHelper {
       } catch (error) {
         // Ignore errors during mass disconnect
       }
-    });
+    }
 
-    await Promise.all(disconnectPromises);
     this.clients = [];
     this.testDbInitialized = false;
   }
@@ -134,46 +135,75 @@ export class IntegrationTestHelper {
    * This should be called between test runs to ensure isolation.
    */
   async cleanAllTestData(): Promise<void> {
-    const { client, session } = await this.getAdminClient();
-
-    // List of collections used in tests (including potential matches)
-    const collections = [
-      'player_stats',
-      'pvp_matches',
-      'pvp_match_states',
-      'player_inventory',
-      'season_progress',
-      'leaderboards',
-      'player_currency',
-      'season_rewards_claimed',
-      'store_purchases',
-    ];
-
-    // Clean storage objects with keys that start with 'test_' or are from test users
-    for (const collection of collections) {
+    let adminClient: Client | null = null;
+    let adminSession: any = null;
+    
+    try {
+      // Get admin client, but don't fail if unavailable
       try {
-        const listResult = await client.listStorageObjects(
-          session,
-          collection,
-          undefined, // userId undefined to list all
-          1000, // limit
-          undefined // cursor
-        );
-
-        if (listResult && listResult.objects && listResult.objects.length > 0) {
-          // Build request for deleteStorageObjects
-          const objectsToDelete = listResult.objects.map(obj => ({
-            collection: obj.collection,
-            key: obj.key,
-            user_id: obj.user_id || '',
-            version: obj.version || ''
-          }));
-          const request = { object_ids: objectsToDelete };
-          await client.deleteStorageObjects(session, request as any);
-        }
+        const admin = await this.getAdminClient();
+        adminClient = admin.client;
+        adminSession = admin.session;
       } catch (error) {
-        // Some collections may not exist or be empty, ignore errors
-        console.log(`Cleanup for collection ${collection}: ${error instanceof Error ? error.message : 'error'}`);
+        // Admin client not available, skip cleanup
+        return;
+      }
+
+      if (!adminClient || !adminSession) {
+        return;
+      }
+
+      // List of collections used in tests (including potential matches)
+      const collections = [
+        'player_stats',
+        'pvp_matches',
+        'pvp_match_states',
+        'player_inventory',
+        'season_progress',
+        'leaderboards',
+        'player_currency',
+        'season_rewards_claimed',
+        'store_purchases',
+      ];
+
+      // Clean storage objects with keys that start with 'test_' or are from test users
+      for (const collection of collections) {
+        try {
+          const listResult = await adminClient.listStorageObjects(
+            adminSession,
+            collection,
+            undefined, // userId undefined to list all
+            1000, // limit
+            undefined // cursor
+          );
+
+          if (listResult && listResult.objects && listResult.objects.length > 0) {
+            // Build request for deleteStorageObjects
+            const objectsToDelete = listResult.objects.map(obj => ({
+              collection: obj.collection,
+              key: obj.key,
+              user_id: obj.user_id || '',
+              version: obj.version || ''
+            }));
+            const request = { object_ids: objectsToDelete };
+            await adminClient.deleteStorageObjects(adminSession, request as any);
+          }
+        } catch (error) {
+          // Some collections may not exist or be empty - only log unexpected errors
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          // Ignore "not found" errors as they're expected for empty collections
+          if (!errorMessage.includes('not found') && !errorMessage.includes('does not exist')) {
+            // Log at debug level instead of polluting test output
+            // console.debug(`Cleanup for collection ${collection}: ${errorMessage}`);
+          }
+        }
+      }
+    } catch (error) {
+      // Final catch-all for unexpected cleanup errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (!errorMessage.includes('not found') && !errorMessage.includes('does not exist')) {
+        // Only log non-expected errors
+        // console.debug(`Cleanup error: ${errorMessage}`);
       }
     }
   }

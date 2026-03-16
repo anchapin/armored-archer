@@ -6,10 +6,15 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js', 'json'],                                                
   collectCoverage: false,                                                                    
   coverageDirectory: 'coverage/integration',                                                 
-  testTimeout: 60000,                                                                        
-  verbose: true,                                                                             
-  forceExit: true,                                                                           
-  maxWorkers: 1,                                                                             
+  testTimeout: 60000,
+  verbose: true,
+  // Use detectOpenHandles to properly wait for async cleanup instead of forceExit
+  detectOpenHandles: true,
+  detectLeaks: false,
+  clearMocks: true,
+  resetModules: false,
+  restoreMocks: true,
+  maxWorkers: 1,
   // Fix for uuid ES module compatibility (Issue #615)                                       
   // Map uuid to Node.js built-in crypto.randomUUID                                          
   moduleNameMapper: {                                                                        
