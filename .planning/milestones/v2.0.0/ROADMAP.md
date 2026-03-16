@@ -1,59 +1,13 @@
 # Nakama Go Backend Migration - Roadmap
 
-## Milestone: v2.0.0 - Go Backend Complete ✅
+## Milestone: v1.0 - Go Backend Complete
 
-**Target Date**: 4 weeks from start  
-**Completion Date**: 2026-03-15  
-**Status**: ✅ **COMPLETE**
-
----
-
-## 🎉 Milestone v2.0.0 - COMPLETION SUMMARY
-
-**All 15 phases completed successfully!** The Nakama backend has been fully migrated from TypeScript to Go, delivering:
-
-- ✅ **68% faster** response times
-- ✅ **50% less** memory usage
-- ✅ **16% smaller** bundle size
-- ✅ **234 integration tests** with 95%+ pass rate
-- ✅ **0 critical vulnerabilities** in security review
-- ✅ **Alpha-ready** with monitoring and alerting configured
-
-**Archive**: `.planning/milestones/v2.0.0/`  
-**Completion Summary**: `.planning/milestones/v2.0.0/COMPLETION_SUMMARY.md`
+**Target Date**: 4 weeks from start
+**Status**: Not Started
 
 ---
 
-## 🚀 CURRENT MILESTONE: v2.1.0 - Alpha Launch & Stabilization
-
-**Start Date**: 2026-03-16  
-**Estimated Duration**: 2-3 weeks  
-**Status**: 🔄 **IN PROGRESS**
-
-### Phase Breakdown
-
-| Phase | Name | Duration | Status |
-|-------|------|----------|--------|
-| 1 | Alpha Deployment | Days 1-3 | 📋 Planned |
-| 2 | Monitoring & Observability | Days 4-7 | ⏳ Pending |
-| 3 | Alpha User Onboarding | Days 8-10 | ⏳ Pending |
-| 4 | Stability & Bug Fixes | Days 11-15 | ⏳ Pending |
-| 5 | Performance Optimization | Days 16-18 | ⏳ Pending |
-| 6 | Beta Readiness | Days 19-21 | ⏳ Pending |
-
-**Success Criteria**:
-- [ ] Alpha deployment successful with 0 critical incidents
-- [ ] 50+ active alpha users providing feedback
-- [ ] Error rate < 1% across all RPC endpoints
-- [ ] P95 latency < 100ms under normal load
-- [ ] 0 critical or high severity bugs
-- [ ] Stakeholder approval for beta launch
-
-**Phase Plans**: `.planning/phases/01-alpha-deployment/`
-
----
-
-## Historical Phase Breakdown (v2.0.0)
+## Phase Breakdown
 
 ### Phase 1: Foundation & Setup (Days 1-3)
 
