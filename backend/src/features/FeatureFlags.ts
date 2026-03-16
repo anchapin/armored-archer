@@ -74,8 +74,7 @@ const rolloutCache = new LRUCache<string, boolean>({
 const inMemoryFlags: Map<string, FeatureFlagConfig> = new Map();
 
 // Default feature flags
-const DEFAULT_FLAGS: FeatureFlagConfig[] = [
-];
+const DEFAULT_FLAGS: FeatureFlagConfig[] = [];
 
 /**
  * Initialize the feature flag system
@@ -161,21 +160,41 @@ export async function isFeatureEnabled(
     return false;
   }
 
+  // Evaluate flag and cache result
+  const enabled = evaluateFeatureFlag(config, flagName, userId, userSegment, environment);
+  rolloutCache.set(cacheKey, enabled);
+  return enabled;
+}
+
+/**
+ * Evaluate feature flag configuration
+ *
+ * @param config - Feature flag configuration
+ * @param flagName - Name of the feature flag (for hashing)
+ * @param userId - Optional user ID
+ * @param userSegment - Optional user segment
+ * @param environment - Current environment
+ * @returns Whether feature is enabled
+ */
+function evaluateFeatureFlag(
+  config: FeatureFlagConfig,
+  flagName: string,
+  userId?: string,
+  userSegment?: string,
+  environment: string = 'production'
+): boolean {
   // Check environment
   if (config.environment !== 'all' && config.environment !== environment) {
-    rolloutCache.set(cacheKey, false);
     return false;
   }
 
   // Check if feature is globally enabled
   if (!config.enabled) {
-    rolloutCache.set(cacheKey, false);
     return false;
   }
 
   // Check if feature has expired
   if (config.expiresAt && config.expiresAt < new Date()) {
-    rolloutCache.set(cacheKey, false);
     return false;
   }
 
@@ -183,37 +202,28 @@ export async function isFeatureEnabled(
   const rolloutPercentage = config.rolloutPercentage || 100;
 
   if (rolloutPercentage >= 100) {
-    rolloutCache.set(cacheKey, true);
     return true;
   }
 
   if (rolloutPercentage <= 0) {
-    rolloutCache.set(cacheKey, false);
     return false;
   }
 
   // Check user segment
   if (userSegment && config.userSegments?.includes(userSegment)) {
-    rolloutCache.set(cacheKey, true);
     return true;
   }
 
   // Check user ID for deterministic rollout
   if (userId) {
-    // Use hash for deterministic assignment
     const hash = hashUserToFeature(userId, flagName);
     const threshold = rolloutPercentage / 100;
-
-    const enabled = hash < threshold;
-    rolloutCache.set(cacheKey, enabled);
-    return enabled;
+    return hash < threshold;
   }
 
   // No user ID, use random for anonymous users
   const randomValue = Math.random();
-  const enabled = randomValue < rolloutPercentage / 100;
-  rolloutCache.set(cacheKey, enabled);
-  return enabled;
+  return randomValue < rolloutPercentage / 100;
 }
 
 /**
