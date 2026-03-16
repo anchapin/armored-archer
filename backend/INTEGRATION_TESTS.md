@@ -8,13 +8,27 @@ Integration tests verify that all backend game systems work correctly together u
 
 ### Test Suites
 
-- **health_check.test.ts**: Health check endpoint verification, version checking
-- **matchmaker.test.ts**: Match creation, acceptance, listing, and player ranking
+#### Core Game Systems
+
 - **combat_system.test.ts**: Combat action processing, turn management, damage calculation, match completion
-- **rpg_system.test.ts**: XP gain, level progression, and stat allocation
-- **gear_system.test.ts**: Gear generation, inventory management, equip/unequip operations
+- **gear_system.test.ts**: Gear generation, inventory management, equip/unequip operations, modifier pools
+- **matchmaker.test.ts**: Match creation, acceptance, listing, and player ranking
+- **rpg_system.test.ts**: XP gain, level progression, stat allocation, player stats
 - **season_system.test.ts**: Season info, leaderboard updates, rewards calculation and claiming
 - **store.test.ts**: Purchase validation, currency management, gem spending
+
+#### Quality & Performance
+
+- **authentication.test.ts**: User authentication, session management, token refresh, logout, security
+- **error_handling.test.ts**: Validation errors, authentication errors, database errors, edge cases, error response format
+- **network_resilience.test.ts**: Connection handling, offline mode, reconnection, data consistency
+- **performance_smoke.test.ts**: Response times, concurrent users, sustained load, memory usage
+- **low_end_device_performance.test.ts**: Budget device performance targets, frame time, memory leak detection
+
+#### Schema & Analytics
+
+- **schema.test.ts**: Database schema validation
+- **analytics.test.ts**: Analytics event tracking
 
 ## Prerequisites
 
@@ -101,6 +115,51 @@ npm run test:integration -- rpg_system.test.ts
 
 # Run with verbose output
 npm run test:integration -- --verbose
+```
+
+### Smoke Tests
+
+For comprehensive smoke testing of all RPC endpoints:
+
+```bash
+# Run all smoke tests
+./scripts/run-smoke-tests.sh --all
+
+# Run specific test suite
+./scripts/run-smoke-tests.sh --suite combat
+
+# Run with coverage
+./scripts/run-smoke-tests.sh --all --coverage
+
+# Run in quick mode (skip performance tests)
+./scripts/run-smoke-tests.sh --quick
+
+# Run with verbose output and JSON results
+./scripts/run-smoke-tests.sh --all --verbose --json
+```
+
+### Available Smoke Test Suites
+
+- `auth` or `authentication` - Authentication and session tests
+- `player` or `rpg` - Player system and RPG progression tests
+- `combat` - Combat system tests
+- `gear` or `inventory` - Gear and inventory tests
+- `matchmaking` or `matchmaker` - Matchmaking tests
+- `season` - Season system tests
+- `store` - Store and currency tests
+- `performance` - Performance smoke tests
+- `errors` or `error` - Error handling tests
+
+### Test Coverage Report
+
+Generate a test coverage report:
+
+```bash
+# Generate coverage report
+npx ts-node scripts/test-coverage-report.ts
+
+# View latest report
+cat reports/test-coverage-latest.md
 ```
 
 ### Test Timeouts

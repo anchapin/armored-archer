@@ -51,7 +51,11 @@
     "test:privacy": "jest src/modules/__tests__/privacy_compliance.test.ts",
     "validate:agents-md": "ts-node scripts/validate-agents-md.ts",
     "validate:agents-md:ci": "ts-node scripts/validate-agents-md.ts --ci-mode",
-    "validate:agents-md:json": "ts-node scripts/validate-agents-md.ts --json-output"
+    "validate:agents-md:json": "ts-node scripts/validate-agents-md.ts --json-output",
+    "test:smoke": "./scripts/run-smoke-tests.sh --all",
+    "test:smoke:quick": "./scripts/run-smoke-tests.sh --quick",
+    "test:smoke:coverage": "./scripts/run-smoke-tests.sh --all --coverage",
+    "test:coverage:report": "ts-node scripts/test-coverage-report.ts"
   },
   "keywords": [
     "nakama",

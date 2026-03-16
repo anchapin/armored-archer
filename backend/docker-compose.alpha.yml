@@ -1,0 +1,79 @@
+# ============================================
+# Docker Compose Override - Alpha Environment
+# Armored Archer - Go Module Deployment
+# ============================================
+# This override file configures Docker Compose for alpha deployment
+# with Go module support and production settings.
+# ============================================
+
+version: '3'
+
+services:
+  nakama:
+    container_name: armored_archer_alpha
+    environment:
+      - NODE_ENV=alpha
+      - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-alpha_server_key_change_in_production}
+      - NAKAMA_SERVER_PORT=${NAKAMA_SERVER_PORT:-7350}
+      - NAKAMA_CONSOLE_PORT=${NAKAMA_CONSOLE_PORT:-7351}
+      - NAKAMA_CONSOLE_PASSWORD=${NAKAMA_CONSOLE_PASSWORD:-alpha_admin_secure_password}
+      - DATABASE_ADDRESS=${DATABASE_ADDRESS:-postgres://postgres:alpha_db_password@postgres:5432/nakama}
+      - SESSION_ENCRYPTION_KEY=${SESSION_ENCRYPTION_KEY:-alpha-session-key-change-me}
+      - REFRESH_ENCRYPTION_KEY=${REFRESH_ENCRYPTION_KEY:-alpha-refresh-key-change-me}
+      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY:-alpha-token-key-change-me}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      - ALLOW_HOST_LOOPBACK=${ALLOW_HOST_LOOPBACK:-false}
+    volumes:
+      # Mount alpha-specific Nakama configuration
+      - ./data/nakama.alpha.yml:/nakama/data/nakama.yml
+      # Mount Go module
+      - ./build/server.so:/nakama/data/modules/server.so:ro
+      # Mount migrations
+      - ./data:/nakama/data/migrations
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/nakama/nakama", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  postgres:
+    container_name: armored_archer_alpha_db
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-nakama}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-alpha_db_password_change_me}
+    volumes:
+      - alpha_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    container_name: armored_archer_alpha_redis
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - alpha_redis_data:/data
+    restart: unless-stopped
+
+  prometheus:
+    container_name: armored_archer_alpha_prometheus
+    volumes:
+      - alpha_prometheus_data:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    container_name: armored_archer_alpha_grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin_alpha_change_me}
+    volumes:
+      - alpha_grafana_data:/var/lib/grafana
+    restart: unless-stopped
+
+# Alpha-specific volumes
+volumes:
+  alpha_postgres_data:
+  alpha_redis_data:
+  alpha_prometheus_data:
+  alpha_grafana_data:
