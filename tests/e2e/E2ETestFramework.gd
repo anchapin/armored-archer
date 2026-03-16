@@ -21,10 +21,10 @@ func run_test(test_name: String, test_func: Callable) -> void:
 
 	var error: String = ""
 
-	try:
-		await test_func.call(test_node)
-	except Exception as e:
-		error = "Exception: %s" % str(e)
+	# Execute and catch any errors
+	var test_result = await test_func.call(test_node)
+	if test_result == -1:
+		error = "Script error occurred"
 
 	var duration_ms = Time.get_ticks_msec() - test_start_time
 

@@ -4,10 +4,10 @@ extends Control
 @onready var aiming_joystick: Control = get_node_or_null("AimingJoystick")
 
 # --- Signal connections for cleanup ---
-var _movement_joystick_connection: Callable = Callable()
-var _aiming_joystick_moved_connection: Callable = Callable()
-var _aiming_joystick_released_connection: Callable = Callable()
-var _safe_area_changed_connection: Callable = Callable()
+var _movement_joystick_callable: Callable
+var _aiming_joystick_moved_callable: Callable
+var _aiming_joystick_released_callable: Callable
+var _safe_area_changed_callable: Callable
 
 var player: CharacterBody2D
 
@@ -21,30 +21,37 @@ func _ready() -> void:
 
 	_adjust_joysticks_for_safe_area()
 
+func set_player(new_player: CharacterBody2D) -> void:
+	player = new_player
+
 func _connect_signals() -> void:
 	if movement_joystick:
-		_movement_joystick_connection = movement_joystick.joystick_moved.connect(_on_movement_joystick_moved)
+		_movement_joystick_callable = _on_movement_joystick_moved
+		movement_joystick.joystick_moved.connect(_movement_joystick_callable)
 	if aiming_joystick:
-		_aiming_joystick_moved_connection = aiming_joystick.joystick_moved.connect(_on_aiming_joystick_moved)
-		_aiming_joystick_released_connection = aiming_joystick.joystick_released.connect(_on_aiming_joystick_released)
+		_aiming_joystick_moved_callable = _on_aiming_joystick_moved
+		_aiming_joystick_released_callable = _on_aiming_joystick_released
+		aiming_joystick.joystick_moved.connect(_aiming_joystick_moved_callable)
+		aiming_joystick.joystick_released.connect(_aiming_joystick_released_callable)
 
 func _connect_safe_area_manager() -> void:
 	var safe_area_manager: Node = get_node_or_null("/root/SafeAreaManager")
 	if safe_area_manager:
-		_safe_area_changed_connection = safe_area_manager.safe_area_changed.connect(_on_safe_area_changed)
+		_safe_area_changed_callable = _on_safe_area_changed
+		safe_area_manager.safe_area_changed.connect(_safe_area_changed_callable)
 
 func _exit_tree() -> void:
 	# Clean up connected signals to prevent memory leaks
-	_cleanup_signal_connection(movement_joystick, "joystick_moved", _movement_joystick_connection)
-	_cleanup_signal_connection(aiming_joystick, "joystick_moved", _aiming_joystick_moved_connection)
-	_cleanup_signal_connection(aiming_joystick, "joystick_released", _aiming_joystick_released_connection)
+	_cleanup_signal_connection(movement_joystick, "joystick_moved", _movement_joystick_callable)
+	_cleanup_signal_connection(aiming_joystick, "joystick_moved", _aiming_joystick_moved_callable)
+	_cleanup_signal_connection(aiming_joystick, "joystick_released", _aiming_joystick_released_callable)
 
 	var safe_area_manager: Node = get_node_or_null("/root/SafeAreaManager")
-	_cleanup_signal_connection(safe_area_manager, "safe_area_changed", _safe_area_changed_connection)
+	_cleanup_signal_connection(safe_area_manager, "safe_area_changed", _safe_area_changed_callable)
 
-func _cleanup_signal_connection(node: Node, signal_name: String, connection: Callable) -> void:
-	if node and connection.is_valid() and node.is_connected(signal_name, connection):
-		node.disconnect(signal_name, connection)
+func _cleanup_signal_connection(node: Node, signal_name: String, callable: Callable) -> void:
+	if node and callable.is_valid() and node.is_connected(signal_name, callable):
+		node.disconnect(signal_name, callable)
 
 func _on_safe_area_changed() -> void:
 	_adjust_joysticks_for_safe_area()

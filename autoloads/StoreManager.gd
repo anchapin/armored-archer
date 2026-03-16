@@ -62,6 +62,10 @@ signal products_loaded(products: Dictionary)
 # --- Platform Detection ---
 var platform: String = ""
 
+# --- Development/Test Mode ---
+# Enable test mode to simulate purchases on desktop platforms
+var test_mode: bool = false
+
 # --- PII Masking for Logs ---
 func _mask_sensitive_data(data: String, max_length: int = 20) -> String:
 	"""Masks sensitive data for logging purposes.
@@ -84,12 +88,18 @@ func _mask_sensitive_data(data: String, max_length: int = 20) -> String:
 func _ready() -> void:
 	"""Detects platform and sets up signal connections."""
 	_detect_platform()
+	# Enable test mode automatically on desktop platforms for development
+	if platform in ["linux", "windows", "macos"]:
+		test_mode = true
+		print("[StoreManager] Test mode enabled for development on %s" % platform)
 	if network_manager:
 		network_manager.connection_status_changed.connect(_on_connection_status_changed)
 
 func _on_connection_status_changed(is_online: bool) -> void:
 	if is_online:
-		await load_currency()
+		# Don't auto-load currency - RPC might not be ready yet
+		# await load_currency()
+		pass
 
 func _detect_platform() -> void:
 	"""Determines the current runtime platform."""
@@ -191,6 +201,9 @@ func purchase_product(product_id: String) -> void:
 
 	if platform == "ios" or platform == "android":
 		_initiate_revenuecat_purchase(product_id)
+	elif test_mode:
+		# Simulate purchase in test mode for desktop development
+		_simulate_test_purchase(product_id)
 	else:
 		# Purchases are only supported on mobile platforms (iOS/Android)
 		push_error("Purchases not supported on platform: %s" % platform)
@@ -205,6 +218,34 @@ func _initiate_revenuecat_purchase(product_id: String) -> void:
 	else:
 		push_error("RevenueCat plugin not found. Install RevenueCat plugin for %s" % platform)
 		emit_signal("purchase_failed", product_id, "RevenueCat plugin not installed")
+
+func _simulate_test_purchase(product_id: String) -> void:
+	"""Simulates a successful purchase for desktop development/testing.
+
+	Parameters:
+		product_id: Product identifier to simulate purchase for
+	"""
+	print("[StoreManager] TEST MODE: Simulating purchase of %s" % product_id)
+	
+	# Simulate network delay for realism
+	await get_tree().create_timer(1.0).timeout
+	
+	var product_info: Dictionary = products.get(product_id, {})
+	var gems_awarded: int = product_info.get("gem_amount", 0)
+	
+	if gems_awarded <= 0:
+		push_error("Invalid product: %s" % product_id)
+		is_purchase_pending = false
+		emit_signal("purchase_failed", product_id, "Invalid product")
+		return
+	
+	# Award gems directly in test mode
+	current_gems += gems_awarded
+	is_purchase_pending = false
+	
+	print("[StoreManager] TEST MODE: Purchase succeeded! Awarded %d gems" % gems_awarded)
+	emit_signal("purchase_succeeded", product_id, gems_awarded)
+	emit_signal("currency_updated", current_gems, current_gold)
 
 func _on_revenuecat_purchase_complete(result: Dictionary) -> void:
 	"""Handles RevenueCat purchase completion callback."""

@@ -1,4 +1,4 @@
-import { Client, NakamaTypes } from '@heroiclabs/nakama-js';
+import { Client } from '@heroiclabs/nakama-js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Test configuration
@@ -161,13 +161,15 @@ export class IntegrationTestHelper {
         );
 
         if (listResult && listResult.objects && listResult.objects.length > 0) {
-          const objects = listResult.objects.map(obj => ({
+          // Build request for deleteStorageObjects
+          const objectsToDelete = listResult.objects.map(obj => ({
             collection: obj.collection,
             key: obj.key,
-            user_id: obj.user_id, // v2.x uses user_id
-            version: obj.version,
+            user_id: obj.user_id || '',
+            version: obj.version || ''
           }));
-          await client.deleteStorageObjects(session, { objects });
+          const request = { object_ids: objectsToDelete };
+          await client.deleteStorageObjects(session, request as any);
         }
       } catch (error) {
         // Some collections may not exist or be empty, ignore errors
@@ -195,15 +197,14 @@ export class IntegrationTestHelper {
 
     while (Date.now() - startTime < timeoutMs) {
       try {
-        await client.authenticate('healthcheck@test.local', 'healthcheck', 'healthpass', 'healthcheck');
-        await client.disconnect();
-        return true;
+        // Use authenticateEmail for healthcheck
+        const session = await client.authenticateEmail('healthcheck@test.local', 'healthcheck', false, 'healthcheck');
+        return !!session;
       } catch (error) {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
-    await client.disconnect();
     return false;
   }
 
@@ -212,19 +213,17 @@ export class IntegrationTestHelper {
    */
   async deleteStorageObject(collection: string, key: string, user_id: string): Promise<void> {
     const { client, session } = await this.getAdminClient();
-    await client.deleteStorageObjects(session, {
-      objects: [{ collection, key, user_id }]
-    });
+    const request = { object_ids: [{ collection, key, user_id, version: '' }] };
+    await client.deleteStorageObjects(session, request as any);
   }
 
   /**
    * Get storage object directly.
    */
-  async getStorageObject(collection: string, key: string, user_id: string): Promise<NakamaTypes.StorageObject | null> {
+  async getStorageObject(collection: string, key: string, user_id: string): Promise<any | null> {
     const { client, session } = await this.getAdminClient();
-    const results = await client.readStorageObjects(session, {
-      object_ids: [{ collection, key, user_id }]
-    });
+    const request = { object_ids: [{ collection, key, user_id }] };
+    const results = await client.readStorageObjects(session, request as any);
     return results.objects && results.objects.length > 0 ? results.objects[0] : null;
   }
 
@@ -233,12 +232,10 @@ export class IntegrationTestHelper {
    */
   async writeStorageObject(collection: string, key: string, user_id: string, value: any): Promise<void> {
     const { client, session } = await this.getAdminClient();
-    await client.writeStorageObjects(session, [{
-      collection,
-      key,
-      user_id,
-      value: typeof value === 'string' ? value : JSON.stringify(value),
-    }]);
+    // nakama-js v2.x writeStorageObjects expects an array
+    const objectValue = typeof value === 'string' ? JSON.parse(value) : value;
+    const objects = [{ collection, key, value: objectValue, version: '', user_id }];
+    await client.writeStorageObjects(session, objects as any);
   }
 }
 

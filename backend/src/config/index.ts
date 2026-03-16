@@ -320,7 +320,10 @@ export interface AppConfig {
 }
 
 function parseDatabaseAddress(address: string): DatabaseConfig {
-  const dbRegex = /^(\w+):([^@]+)@([^:]+):(\d+)\/(\w+)$/;
+  // Support both formats:
+  // - postgres://user:password@host:port/database
+  // - user:password@host:port/database
+  const dbRegex = /^(?:postgres:\/\/)?(\w+):([^@]+)@([^:]+):(\d+)\/(\w+)$/;
   const match = address.match(dbRegex);
 
   if (!match) {

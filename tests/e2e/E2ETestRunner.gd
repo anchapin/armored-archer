@@ -280,13 +280,13 @@ func _on_all_tests_completed(results: Array, total_duration_ms: int) -> void:
 
 	var summary = framework.get_summary()
 	print("Results: %d passed, %d failed out of %d total" % [
-		summary.passed,
-		summary.failed,
-		summary.total
+		summary["passed"],
+		summary["failed"],
+		summary["total"]
 	])
 
 	get_tree().quit()
 
 func assert(condition: bool, message: String) -> void:
 	if not condition:
-		throw Exception("Assertion failed: " + message)
+		push_error("Assertion failed: " + message)

@@ -22,13 +22,17 @@ var equipped_skins: Dictionary = {}
 # --- Slot Type Mapping ---
 var slot_type_mapping: Dictionary = {}
 
+# Import gear enums for GearType enum
+const GearEnums = preload("res://scripts/gear_enums.gd")
+
 func _ready() -> void:
 	# Initialize slot_type_mapping after GearRegistry is ready
 	slot_type_mapping = {
-		"helm": GearRegistry.GearSlot.SlotType.HELM,
-		"armor": GearRegistry.GearSlot.SlotType.ARMOR,
-		"bow": GearRegistry.GearSlot.SlotType.BOW,
-		"arrow": GearRegistry.GearSlot.SlotType.ARROW
+		"helm": GearEnums.GearType.HELM,
+		"armor": GearEnums.GearType.ARMOR,
+		"bow": GearEnums.GearType.BOW,
+		"arrow": GearEnums.GearType.ARROW,
+		"amulet": GearEnums.GearType.AMULET
 	}
 
 	if store_manager:
@@ -261,9 +265,9 @@ func purchase_skin(skin_id: String) -> bool:
 	if analytics and analytics.has_method("log_cosmetic_purchased"):
 		analytics.log_cosmetic_purchased(
 			skin_id,
-			skin_info.get("name", skin_id),
+			skin_info.skin_name if skin_info.skin_name else skin_id,
 			"skin",
-			skin_info.get("rarity", "common"),
+			"common",  # CosmeticSkinData doesn't have rarity field
 			skin_info.price,
 			"gems"
 		)

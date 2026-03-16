@@ -12,7 +12,8 @@ module.exports = {
     filename: 'index.js',
     libraryTarget: 'commonjs2',
     // Disable chunking and code splitting
-    chunkLoadingGlobal: false,
+    chunkLoading: false,
+    chunkLoadingGlobal: undefined,
   },
   // Don't minimize to avoid introducing ES6 syntax
   optimization: {
@@ -63,6 +64,7 @@ module.exports = {
     'tls': 'commonjs tls',
     'child_process': 'commonjs child_process',
   },
+  // Use babel-loader to transpile to ES5 during bundling
   module: {
     rules: [
       {
@@ -72,12 +74,25 @@ module.exports = {
           loader: 'babel-loader',
           options: {
             cacheDirectory: true,
+            configFile: path.resolve(__dirname, 'babel.config.js'),
+          },
+        },
+      },
+      // Also transpile node_modules dependencies
+      {
+        test: /\.js$/,
+        include: /node_modules/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            cacheDirectory: true,
+            configFile: path.resolve(__dirname, 'babel.config.js'),
+            // Only transpile specific packages that use ES6+
             presets: [
               ['@babel/preset-env', {
                 targets: { esmodules: false },
-                modules: false, // Don't transform modules, webpack handles that
+                modules: 'commonjs',
                 loose: true,
-                forceAllTransforms: true,
               }],
             ],
           },

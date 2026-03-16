@@ -1,17 +1,17 @@
 extends Control
 
 # --- UI References ---
-@onready var rank_label: Label = $VBoxContainer/TopPanel/StatsContainer/RankLabel
-@onready var match_type_option: OptionButton = $VBoxContainer/FilterPanel/MatchTypeOption
-@onready var list_button: Button = $VBoxContainer/FilterPanel/ListButton
-@onready var matches_container: VBoxContainer = $VBoxContainer/ScrollContainer/MatchesContainer
-@onready var create_ranked_button: Button = $VBoxContainer/CreatePanel/CreateVBox/CreateRankedButton
-@onready var create_casual_button: Button = $VBoxContainer/CreatePanel/CreateVBox/CreateCasualButton
-@onready var punch_up_check: CheckBox = $VBoxContainer/CreatePanel/CreateVBox/PunchUpCheck
-@onready var leaderboard_button: Button = $VBoxContainer/BottomPanel/LeaderboardButton
-@onready var back_button: Button = $VBoxContainer/BottomPanel/BackButton
-@onready var loading_label: Label = $VBoxContainer/LoadingLabel
-@onready var punch_up_stats_label: Label = $VBoxContainer/TopPanel/StatsContainer/PunchUpStatsLabel
+@onready var rank_label: Label = $SafeAreaContainer/VBoxContainer/TopPanel/StatsContainer/RankLabel
+@onready var match_type_option: OptionButton = $SafeAreaContainer/VBoxContainer/FilterPanel/MatchTypeOption
+@onready var list_button: Button = $SafeAreaContainer/VBoxContainer/FilterPanel/ListButton
+@onready var matches_container: VBoxContainer = $SafeAreaContainer/VBoxContainer/ScrollContainer/MatchesContainer
+@onready var create_ranked_button: Button = $SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox/CreateRankedButton
+@onready var create_casual_button: Button = $SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox/CreateCasualButton
+@onready var punch_up_check: CheckBox = $SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox/PunchUpCheck
+@onready var leaderboard_button: Button = $SafeAreaContainer/VBoxContainer/BottomPanel/LeaderboardButton
+@onready var back_button: Button = $SafeAreaContainer/VBoxContainer/BottomPanel/BackButton
+@onready var loading_label: Label = $SafeAreaContainer/VBoxContainer/LoadingLabel
+@onready var punch_up_stats_label: Label = $SafeAreaContainer/VBoxContainer/TopPanel/StatsContainer/PunchUpStatsLabel
 
 # --- State ---
 var matchmaker_manager: Node = null

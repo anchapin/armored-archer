@@ -1,10 +1,17 @@
+# OpenTelemetry Collector Configuration for Armored Archer
+# This configuration collects traces and metrics from the Go backend and Nakama server,
+# then exports them to Grafana Tempo and Prometheus.
+
 receivers:
+  # OTLP receiver (primary protocol for Go backend)
   otlp:
     protocols:
       grpc:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
+  
+  # Jaeger receiver (for compatibility with existing Jaeger clients)
   jaeger:
     protocols:
       thrift_http:
@@ -13,33 +20,138 @@ receivers:
         endpoint: 0.0.0.0:14250
       thrift_compact:
         endpoint: 0.0.0.0:6831
+  
+  # Zipkin receiver (alternative tracing format)
+  zipkin:
+    endpoint: 0.0.0.0:9411
 
 processors:
+  # Batch processor for efficient export
   batch:
-    timeout: 10s
-    send_batch_size: 1000
+    timeout: 5s
+    send_batch_size: 512
+    send_batch_max_size: 1024
+  
+  # Memory limiter to prevent OOM
   memory_limiter:
     check_interval: 1s
     limit_mib: 512
+    spike_limit_mib: 128
+  
+  # Resource processor to add common attributes
+  resource:
+    attributes:
+      - key: service.namespace
+        value: armored-archer
+        action: upsert
+      - key: deployment.environment
+        value: ${ENVIRONMENT:development}
+        action: upsert
+  
+  # Span processor to add metadata
+  span:
+    name:
+      to_attributes:
+        rules:
+          - ^(?P<rpc.name>rpc/.*)$
+          - ^(?P<db.operation>db/.*)$
+          - ^(?P<cache.operation>cache/.*)$
+          - ^(?P<match.operation>match/.*)$
+          - ^(?P<combat.operation>combat/.*)$
+          - ^(?P<gear.operation>gear/.*)$
+          - ^(?P<season.operation>season/.*)$
+  
+  # Sampling processor for production (1% sampling)
+  # In development, use probability: 1.0 for full sampling
+  probabilistic_sampler:
+    sampling_percentage: 1.0
+    hash_seed: 42
+  
+  # Attributes processor for trace-log correlation
+  attributes:
+    actions:
+      - key: trace.trace_id
+        from_attribute: trace_id
+        action: upsert
+      - key: trace.span_id
+        from_attribute: span_id
+        action: upsert
 
 exporters:
+  # Tempo exporter for traces
+  otlphttp/tempo:
+    endpoint: http://tempo:4318
+    tls:
+      insecure: true
+  
+  # Prometheus exporter for metrics
   prometheus:
     endpoint: 0.0.0.0:8889
     namespace: otel
-  jaeger:
-    endpoint: jaeger:14250
-    tls:
-      insecure: true
+    resource_to_telemetry_conversion:
+      enabled: true
+  
+  # Debug exporter for development (verbose logging)
+  debug:
+    verbosity: detailed
+    sampling_initial: 1
+    sampling_thereafter: 100
+  
+  # Logging exporter for trace summary
+  logging:
+    loglevel: info
+
+extensions:
+  # Health check extension
+  health_check:
+    endpoint: 0.0.0.0:13133
+    path: /health
+  
+  # Prometheus metrics for the collector itself
+  prometheus:
+    endpoint: 0.0.0.0:8888
+  
+  # Z-pages for debugging
+  zpages:
+    endpoint: 0.0.0.0:55679
 
 service:
-  pipelines:
-    traces:
-      receivers: [otlp, jaeger]
-      processors: [memory_limiter, batch]
-      exporters: [jaeger, prometheus]
-    metrics:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [prometheus]
   extensions:
     - health_check
+    - prometheus
+    - zpages
+  
+  pipelines:
+    # Traces pipeline: OTLP/Jaeger/Zipkin -> Processors -> Tempo
+    traces:
+      receivers: [otlp, jaeger, zipkin]
+      processors:
+        - memory_limiter
+        - resource
+        - span
+        - probabilistic_sampler
+        - attributes
+        - batch
+      exporters:
+        - otlphttp/tempo
+        - logging
+        - debug
+    
+    # Metrics pipeline: OTLP -> Processors -> Prometheus
+    metrics:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - resource
+        - batch
+      exporters:
+        - prometheus
+        - logging
+
+# Telemetry for the collector itself
+telemetry:
+  metrics:
+    address: 0.0.0.0:8888
+  logs:
+    level: info
+    development: false

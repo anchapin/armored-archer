@@ -10,14 +10,19 @@ const path = require('path');
 const BUNDLE_PATH = path.resolve(__dirname, '../data/modules/index.js');
 
 // ES6+ patterns that Nakama's runtime cannot parse
+// Note: We check for actual code, not comments or string literals
 const es6Patterns = [
-  { pattern: /(?<!\/\/.*)\bconst\s+/g, name: 'const declaration' },
-  { pattern: /(?<!\/\/.*)\blet\s+/g, name: 'let declaration' },
-  { pattern: /(?<!\/\/.*)\bclass\s+/g, name: 'class declaration' },
-  { pattern: /(?<!\/\/.*)\basync\s+/g, name: 'async keyword' },
-  { pattern: /(?<!\/\/.*)\bawait\s+/g, name: 'await keyword' },
-  { pattern: /(?<!\/\/|[^=])=>/g, name: 'arrow function' },
-  { pattern: /(?<!\/\/.*)`\$\{/g, name: 'template literal' },
+  // Check for actual const/let/class declarations (not in strings or comments)
+  { pattern: /^\s*const\s+[a-zA-Z_$]/, name: 'const declaration', strict: true },
+  { pattern: /^\s*let\s+[a-zA-Z_$]/, name: 'let declaration', strict: true },
+  { pattern: /^\s*(export\s+)?class\s+[a-zA-Z_$]/, name: 'class declaration', strict: true },
+  { pattern: /^\s*async\s+[a-zA-Z_$\(\)]/, name: 'async keyword', strict: true },
+  { pattern: /^\s*await\s+/, name: 'await keyword', strict: true },
+  // Arrow functions: look for actual function patterns (param) => { or param =>
+  { pattern: /\([^)]*\)\s*=>\s*[\{\(]/, name: 'arrow function', strict: true },
+  { pattern: /[a-zA-Z_$]\s*=>\s*\{/, name: 'arrow function (single param)', strict: true },
+  // Template literals with actual interpolation (not in strings)
+  { pattern: /`[^`]*\$\{[^}]+\}[^`]*`/, name: 'template literal', strict: false },
 ];
 
 function validateBundle() {
@@ -37,21 +42,34 @@ function validateBundle() {
   console.log(`Bundle size: ${(bundle.length / 1024).toFixed(2)} KB`);
   console.log(`Total lines: ${lines.length}\n`);
 
-  es6Patterns.forEach(({ pattern, name }) => {
-    let match;
+  es6Patterns.forEach(({ pattern, name, strict }) => {
     let count = 0;
     const examples = [];
-
-    // Reset regex
-    pattern.lastIndex = 0;
+    let inMultilineComment = false;
 
     lines.forEach((line, index) => {
-      // Skip comments
-      if (line.trim().startsWith('//')) return;
+      const trimmedLine = line.trim();
+
+      // Track multiline comment state
+      if (trimmedLine.startsWith('/*')) {
+        inMultilineComment = true;
+      }
+      if (trimmedLine.includes('*/')) {
+        inMultilineComment = false;
+        return;
+      }
+
+      // Skip single-line comments
+      if (trimmedLine.startsWith('//')) return;
+
+      // Skip multiline comments (JSDoc, etc.)
+      if (inMultilineComment) return;
+
+      // Skip lines that are entirely inside /* */ comment blocks
+      if (trimmedLine.startsWith('*') || trimmedLine.startsWith('/*')) return;
 
       // Test the pattern
-      const testPattern = new RegExp(pattern.source, pattern.flags);
-      if (testPattern.test(line)) {
+      if (pattern.test(line)) {
         count++;
         if (examples.length < 3) {
           examples.push({

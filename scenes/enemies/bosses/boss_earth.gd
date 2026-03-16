@@ -92,10 +92,10 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 func update_timers(_delta: float) -> void:
-	attack_timer += delta
-	rock_projectile_timer += delta
-	seismic_slam_timer += delta
-	earthquake_timer += delta
+	attack_timer += _delta
+	rock_projectile_timer += _delta
+	seismic_slam_timer += _delta
+	earthquake_timer += _delta
 
 func find_player() -> void:
 	var players: Array[Node] = get_tree().get_nodes_in_group("Player")

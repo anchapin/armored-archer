@@ -1,12 +1,13 @@
 extends Control
 
 # --- UI References ---
-@onready var gems_label: Label = $CenterContainer/VBoxContainer/HeaderContainer/GemsContainer/GemsLabel
-@onready var gold_label: Label = $CenterContainer/VBoxContainer/HeaderContainer/GoldContainer/GoldLabel
+@onready var gems_label: Label = $SafeAreaContainer/CenterContainer/VBoxContainer/HeaderContainer/GemsContainer/GemsLabel
+@onready var gold_label: Label = $SafeAreaContainer/CenterContainer/VBoxContainer/HeaderContainer/GoldContainer/GoldLabel
 
-@onready var small_gems_button: Button = $CenterContainer/VBoxContainer/PurchaseContainer/SmallGemContainer/BuyButton
-@onready var medium_gems_button: Button = $CenterContainer/VBoxContainer/PurchaseContainer/MediumGemContainer/BuyButton
-@onready var large_gems_button: Button = $CenterContainer/VBoxContainer/PurchaseContainer/LargeGemContainer/BuyButton
+@onready var small_gems_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/SmallGemContainer/BuyButton
+@onready var medium_gems_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/MediumGemContainer/BuyButton
+@onready var large_gems_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/LargeGemContainer/BuyButton
+@onready var back_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/BackButton
 
 @onready var loading_indicator: Control = $LoadingIndicator
 @onready var error_dialog: AcceptDialog = $ErrorDialog
@@ -40,13 +41,17 @@ func _cleanup_signal_connection(node: Node, signal_name: String, connection: Cal
 
 func _connect_signals() -> void:
 	if store_manager:
-		_currency_updated_connection = store_manager.currency_updated.connect(_on_currency_updated)
-		_purchase_succeeded_connection = store_manager.purchase_succeeded.connect(_on_purchase_succeeded)
-		_purchase_failed_connection = store_manager.purchase_failed.connect(_on_purchase_failed)
+		store_manager.currency_updated.connect(_on_currency_updated)
+		store_manager.purchase_succeeded.connect(_on_purchase_succeeded)
+		store_manager.purchase_failed.connect(_on_purchase_failed)
+		_currency_updated_connection = _on_currency_updated
+		_purchase_succeeded_connection = _on_purchase_succeeded
+		_purchase_failed_connection = _on_purchase_failed
 
 	small_gems_button.pressed.connect(_on_small_gems_pressed)
 	medium_gems_button.pressed.connect(_on_medium_gems_pressed)
 	large_gems_button.pressed.connect(_on_large_gems_pressed)
+	back_button.pressed.connect(_on_back_pressed)
 
 func _update_currency_display() -> void:
 	if store_manager:
@@ -83,7 +88,7 @@ func _on_medium_gems_pressed() -> void:
 func _on_large_gems_pressed() -> void:
 	_initiate_purchase(store_manager.PRODUCT_LARGE_GEMS)
 
-func _initiate_purchase( _product_id: String) -> void:
+func _initiate_purchase(product_id: String) -> void:
 	if is_processing:
 		return
 
@@ -98,7 +103,7 @@ func _initiate_purchase( _product_id: String) -> void:
 	store_manager.purchase_product(product_id)
 
 # --- Callbacks ---
-func _on_currency_updated(_gems: int, _gold: int) -> void:
+func _on_currency_updated(gems: int, gold: int) -> void:
 	_update_currency_display()
 
 	if gem_manager:
@@ -117,7 +122,7 @@ func _on_purchase_succeeded(product_id: String, gems_awarded: int) -> void:
 
 	print("Purchase succeeded! Product: %s, Gems awarded: %d" % [product_id, gems_awarded])
 
-func _on_purchase_failed(_product_id: String, _error: String) -> void:
+func _on_purchase_failed(product_id: String, error: String) -> void:
 	is_processing = false
 	loading_indicator.visible = false
 	_set_buttons_enabled(true)
@@ -129,3 +134,6 @@ func _set_buttons_enabled(enabled: bool) -> void:
 	small_gems_button.disabled = not enabled
 	medium_gems_button.disabled = not enabled
 	large_gems_button.disabled = not enabled
+
+func _on_back_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")

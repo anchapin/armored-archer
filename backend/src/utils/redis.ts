@@ -37,7 +37,27 @@ export function getRedisClient(logger?: Runtime.Logger): Redis | null {
       if (logger) {
         logger.error('Redis error: %s', err.message);
       } else {
-        console.error('Redis error:', err);
+        // Fallback to basic logging when no logger provided
+        // In Nakama runtime, this will use the default logger
+        const defaultLogger = {
+          error: (msg: string, ...args: unknown[]) => {
+            // eslint-disable-next-line no-console
+            console.error(msg, ...args);
+          },
+          warn: (msg: string, ...args: unknown[]) => {
+            // eslint-disable-next-line no-console
+            console.warn(msg, ...args);
+          },
+          info: (msg: string, ...args: unknown[]) => {
+            // eslint-disable-next-line no-console
+            console.info(msg, ...args);
+          },
+          debug: (msg: string, ...args: unknown[]) => {
+            // eslint-disable-next-line no-console
+            console.debug(msg, ...args);
+          },
+        };
+        defaultLogger.error('Redis error: %s', err.message);
       }
     });
 

@@ -9,7 +9,9 @@ console:
 runtime:
   env: []
   path: /nakama/data
-  js_entrypoint: "modules/index.js"
+  # Go backend disabled - built with incompatible Go version
+  # go_entrypoint: "modules/server.so"
+  # js_entrypoint: "modules/index.js"
 
 socket:
   server_key: defaultkey

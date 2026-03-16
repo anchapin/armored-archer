@@ -1,6 +1,7 @@
 /**
  * Babel configuration for Nakama runtime compatibility
  * Transpiles ES6+ JavaScript to ES5 for Nakama's Duktape/QuickJS runtime
+ * Uses loose mode to inline helpers instead of requiring @babel/runtime
  */
 module.exports = {
   presets: [
@@ -12,15 +13,27 @@ module.exports = {
           esmodules: false,
         },
         modules: 'commonjs',
-        loose: true,
+        loose: true, // Use loose mode to inline helpers
         forceAllTransforms: true,
       },
     ],
   ],
-  plugins: [
-    // Transform runtime helpers for async/await support
-    '@babel/plugin-transform-runtime',
-  ],
-  // Only transpile source files, not node_modules
-  exclude: [/node_modules/],
+  // Don't use @babel/plugin-transform-runtime - it requires external @babel/runtime
+  // Loose mode will inline all helpers directly into the bundle
+  assumptions: {
+    // Loose mode assumptions for smaller output
+    noDocumentAll: true,
+    setPublicClassFields: true,
+    privateFieldsAsProperties: true,
+    objectRestNoSymbols: true,
+    constantReexports: true,
+    enumerableModuleMeta: true,
+    ignoreFunctionLength: true,
+    ignoreToPrimitiveHint: true,
+    mutableTemplateObject: true,
+    noClassCalls: true,
+    noNewArrows: true,
+    skipForOfIteratorClosing: true,
+    superIsCallableConstructor: true,
+  },
 };
