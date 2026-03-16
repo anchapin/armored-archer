@@ -1,6 +1,6 @@
 {
   "statistics": {
-    "detectionDate": "2026-03-16T19:02:22.694Z",
+    "detectionDate": "2026-03-16T19:29:58.689Z",
     "formats": {
       "typescript": {
         "sources": {
@@ -332,11 +332,11 @@
             "lines": 685,
             "tokens": 4084,
             "sources": 1,
-            "clones": 3,
-            "duplicatedLines": 99,
-            "duplicatedTokens": 564,
-            "percentage": 14.45,
-            "percentageTokens": 13.81,
+            "clones": 2,
+            "duplicatedLines": 18,
+            "duplicatedTokens": 172,
+            "percentage": 2.63,
+            "percentageTokens": 4.21,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -344,11 +344,11 @@
             "lines": 427,
             "tokens": 2339,
             "sources": 1,
-            "clones": 3,
-            "duplicatedLines": 95,
-            "duplicatedTokens": 331,
-            "percentage": 22.25,
-            "percentageTokens": 14.15,
+            "clones": 2,
+            "duplicatedLines": 58,
+            "duplicatedTokens": 199,
+            "percentage": 13.58,
+            "percentageTokens": 8.51,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -356,11 +356,11 @@
             "lines": 938,
             "tokens": 6606,
             "sources": 1,
-            "clones": 3,
-            "duplicatedLines": 71,
-            "duplicatedTokens": 604,
-            "percentage": 7.57,
-            "percentageTokens": 9.14,
+            "clones": 2,
+            "duplicatedLines": 16,
+            "duplicatedTokens": 211,
+            "percentage": 1.71,
+            "percentageTokens": 3.19,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -368,11 +368,11 @@
             "lines": 206,
             "tokens": 1813,
             "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 13,
-            "duplicatedTokens": 102,
-            "percentage": 6.31,
-            "percentageTokens": 5.63,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -392,11 +392,11 @@
             "lines": 688,
             "tokens": 4804,
             "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 83,
-            "duplicatedTokens": 414,
-            "percentage": 12.06,
-            "percentageTokens": 8.62,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -428,11 +428,11 @@
             "lines": 779,
             "tokens": 6252,
             "sources": 1,
-            "clones": 5,
-            "duplicatedLines": 50,
-            "duplicatedTokens": 546,
-            "percentage": 6.42,
-            "percentageTokens": 8.73,
+            "clones": 4,
+            "duplicatedLines": 38,
+            "duplicatedTokens": 430,
+            "percentage": 4.88,
+            "percentageTokens": 6.88,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -452,11 +452,11 @@
             "lines": 696,
             "tokens": 4961,
             "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 17,
-            "duplicatedTokens": 195,
-            "percentage": 2.44,
-            "percentageTokens": 3.93,
+            "clones": 1,
+            "duplicatedLines": 7,
+            "duplicatedTokens": 106,
+            "percentage": 1.01,
+            "percentageTokens": 2.14,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -476,11 +476,11 @@
             "lines": 944,
             "tokens": 5655,
             "sources": 1,
-            "clones": 10,
-            "duplicatedLines": 240,
-            "duplicatedTokens": 1245,
-            "percentage": 25.42,
-            "percentageTokens": 22.02,
+            "clones": 9,
+            "duplicatedLines": 150,
+            "duplicatedTokens": 956,
+            "percentage": 15.89,
+            "percentageTokens": 16.91,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -548,11 +548,11 @@
             "lines": 64,
             "tokens": 374,
             "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 27,
-            "duplicatedTokens": 100,
-            "percentage": 42.19,
-            "percentageTokens": 26.74,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -560,11 +560,11 @@
             "lines": 366,
             "tokens": 2609,
             "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 40,
-            "duplicatedTokens": 298,
-            "percentage": 10.93,
-            "percentageTokens": 11.42,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -572,11 +572,11 @@
             "lines": 739,
             "tokens": 5233,
             "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 47,
-            "duplicatedTokens": 240,
-            "percentage": 6.36,
-            "percentageTokens": 4.59,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -584,11 +584,11 @@
             "lines": 735,
             "tokens": 4552,
             "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 21,
-            "duplicatedTokens": 106,
-            "percentage": 2.86,
-            "percentageTokens": 2.33,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -605,14 +605,14 @@
             "newClones": 0
           },
           "/home/alex/armored-archer/backend/src/features/FeatureFlags.ts": {
-            "lines": 435,
-            "tokens": 3066,
+            "lines": 445,
+            "tokens": 3048,
             "sources": 1,
             "clones": 1,
             "duplicatedLines": 10,
             "duplicatedTokens": 111,
-            "percentage": 2.3,
-            "percentageTokens": 3.62,
+            "percentage": 2.25,
+            "percentageTokens": 3.64,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -697,330 +697,6 @@
             "duplicatedTokens": 414,
             "percentage": 21.85,
             "percentageTokens": 15.75,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/validation.d.ts": {
-            "lines": 533,
-            "tokens": 18224,
-            "sources": 1,
-            "clones": 4,
-            "duplicatedLines": 534,
-            "duplicatedTokens": 18326,
-            "percentage": 100.19,
-            "percentageTokens": 100.56,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/store.d.ts": {
-            "lines": 160,
-            "tokens": 798,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/stage_tracking.d.ts": {
-            "lines": 110,
-            "tokens": 544,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 81,
-            "duplicatedTokens": 392,
-            "percentage": 73.64,
-            "percentageTokens": 72.06,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/season_system.d.ts": {
-            "lines": 304,
-            "tokens": 1055,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/rpg_system.d.ts": {
-            "lines": 132,
-            "tokens": 359,
-            "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 70,
-            "duplicatedTokens": 223,
-            "percentage": 53.03,
-            "percentageTokens": 62.12,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/progressive_rollout.d.ts": {
-            "lines": 111,
-            "tokens": 780,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 55,
-            "duplicatedTokens": 393,
-            "percentage": 49.55,
-            "percentageTokens": 50.38,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/progression_validation.d.ts": {
-            "lines": 22,
-            "tokens": 327,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 13,
-            "duplicatedTokens": 102,
-            "percentage": 59.09,
-            "percentageTokens": 31.19,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/profiling.d.ts": {
-            "lines": 125,
-            "tokens": 794,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/privacy_compliance.d.ts": {
-            "lines": 207,
-            "tokens": 1188,
-            "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 83,
-            "duplicatedTokens": 414,
-            "percentage": 40.1,
-            "percentageTokens": 34.85,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/player_rpc.d.ts": {
-            "lines": 86,
-            "tokens": 275,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 33,
-            "duplicatedTokens": 91,
-            "percentage": 38.37,
-            "percentageTokens": 33.09,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/notifications_rpc.d.ts": {
-            "lines": 43,
-            "tokens": 187,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/notifications.d.ts": {
-            "lines": 136,
-            "tokens": 1163,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 12,
-            "duplicatedTokens": 116,
-            "percentage": 8.82,
-            "percentageTokens": 9.97,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/notification_scheduler.d.ts": {
-            "lines": 28,
-            "tokens": 201,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/n_plus_one_detection.d.ts": {
-            "lines": 148,
-            "tokens": 1144,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 10,
-            "duplicatedTokens": 89,
-            "percentage": 6.76,
-            "percentageTokens": 7.78,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/metrics.d.ts": {
-            "lines": 32,
-            "tokens": 757,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/matchmaker.d.ts": {
-            "lines": 234,
-            "tokens": 676,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 90,
-            "duplicatedTokens": 289,
-            "percentage": 38.46,
-            "percentageTokens": 42.75,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/health_monitor.d.ts": {
-            "lines": 29,
-            "tokens": 166,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/gear_system.d.ts": {
-            "lines": 424,
-            "tokens": 1351,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/error_insight_pipeline.d.ts": {
-            "lines": 75,
-            "tokens": 375,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/deployment_observability.d.ts": {
-            "lines": 35,
-            "tokens": 255,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/datadog_integration.d.ts": {
-            "lines": 86,
-            "tokens": 531,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/combat_system.d.ts": {
-            "lines": 151,
-            "tokens": 560,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/audit.d.ts": {
-            "lines": 27,
-            "tokens": 173,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 27,
-            "duplicatedTokens": 100,
-            "percentage": 100,
-            "percentageTokens": 57.8,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/anti_cheat_audit.d.ts": {
-            "lines": 80,
-            "tokens": 594,
-            "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 40,
-            "duplicatedTokens": 298,
-            "percentage": 50,
-            "percentageTokens": 50.17,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/anti_cheat.d.ts": {
-            "lines": 182,
-            "tokens": 1180,
-            "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 47,
-            "duplicatedTokens": 240,
-            "percentage": 25.82,
-            "percentageTokens": 20.34,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/analytics.d.ts": {
-            "lines": 174,
-            "tokens": 669,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 21,
-            "duplicatedTokens": 106,
-            "percentage": 12.07,
-            "percentageTokens": 15.84,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/alerting.d.ts": {
-            "lines": 48,
-            "tokens": 383,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -1194,14 +870,14 @@
           }
         },
         "total": {
-          "lines": 27319,
-          "tokens": 200827,
-          "sources": 99,
-          "clones": 54,
-          "duplicatedLines": 1380,
-          "duplicatedTokens": 16244,
-          "percentage": 5.05,
-          "percentageTokens": 8.09,
+          "lines": 23607,
+          "tokens": 166100,
+          "sources": 72,
+          "clones": 36,
+          "duplicatedLines": 564,
+          "duplicatedTokens": 4319,
+          "percentage": 2.39,
+          "percentageTokens": 2.6,
           "newDuplicatedLines": 0,
           "newClones": 0
         }
@@ -1217,162 +893,6 @@
             "duplicatedTokens": 0,
             "percentage": 0,
             "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/__tests__/test_matchmaker.js": {
-            "lines": 76,
-            "tokens": 714,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/934.index.js": {
-            "lines": 65,
-            "tokens": 457,
-            "sources": 1,
-            "clones": 4,
-            "duplicatedLines": 100,
-            "duplicatedTokens": 664,
-            "percentage": 153.85,
-            "percentageTokens": 145.3,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/86.index.js": {
-            "lines": 27,
-            "tokens": 149,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 21,
-            "duplicatedTokens": 113,
-            "percentage": 77.78,
-            "percentageTokens": 75.84,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/765.index.js": {
-            "lines": 39,
-            "tokens": 277,
-            "sources": 1,
-            "clones": 3,
-            "duplicatedLines": 49,
-            "duplicatedTokens": 425,
-            "percentage": 125.64,
-            "percentageTokens": 153.43,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/709.index.js": {
-            "lines": 67,
-            "tokens": 500,
-            "sources": 1,
-            "clones": 5,
-            "duplicatedLines": 108,
-            "duplicatedTokens": 771,
-            "percentage": 161.19,
-            "percentageTokens": 154.2,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/646.index.js": {
-            "lines": 66,
-            "tokens": 472,
-            "sources": 1,
-            "clones": 3,
-            "duplicatedLines": 63,
-            "duplicatedTokens": 443,
-            "percentage": 95.45,
-            "percentageTokens": 93.86,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/580.index.js": {
-            "lines": 66,
-            "tokens": 472,
-            "sources": 1,
-            "clones": 3,
-            "duplicatedLines": 63,
-            "duplicatedTokens": 449,
-            "percentage": 95.45,
-            "percentageTokens": 95.13,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/576.index.js": {
-            "lines": 27,
-            "tokens": 149,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 21,
-            "duplicatedTokens": 113,
-            "percentage": 77.78,
-            "percentageTokens": 75.84,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/511.index.js": {
-            "lines": 39,
-            "tokens": 277,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 33,
-            "duplicatedTokens": 241,
-            "percentage": 84.62,
-            "percentageTokens": 87,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/460.index.js": {
-            "lines": 450,
-            "tokens": 3582,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/323.index.js": {
-            "lines": 67,
-            "tokens": 500,
-            "sources": 1,
-            "clones": 3,
-            "duplicatedLines": 64,
-            "duplicatedTokens": 477,
-            "percentage": 95.52,
-            "percentageTokens": 95.4,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/288.index.js": {
-            "lines": 555,
-            "tokens": 5676,
-            "sources": 1,
-            "clones": 4,
-            "duplicatedLines": 104,
-            "duplicatedTokens": 1892,
-            "percentage": 18.74,
-            "percentageTokens": 33.33,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/modules/144.index.js": {
-            "lines": 65,
-            "tokens": 457,
-            "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 56,
-            "duplicatedTokens": 370,
-            "percentage": 86.15,
-            "percentageTokens": 80.96,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -1533,8 +1053,8 @@
             "newClones": 0
           },
           "/home/alex/armored-archer/backend/eslint.config.js": {
-            "lines": 120,
-            "tokens": 742,
+            "lines": 126,
+            "tokens": 775,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -1558,906 +1078,14 @@
           }
         },
         "total": {
-          "lines": 3561,
-          "tokens": 28705,
-          "sources": 29,
-          "clones": 17,
-          "duplicatedLines": 403,
-          "duplicatedTokens": 3453,
-          "percentage": 11.32,
-          "percentageTokens": 12.03,
-          "newDuplicatedLines": 0,
-          "newClones": 0
-        }
-      },
-      "yaml": {
-        "sources": {
-          "/home/alex/armored-archer/backend/grafana/provisioning/datasources/datasources.yml": {
-            "lines": 99,
-            "tokens": 541,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/grafana/provisioning/dashboards/dashboards.yml": {
-            "lines": 12,
-            "tokens": 67,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/nakama.alpha.yml": {
-            "lines": 60,
-            "tokens": 359,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/config/tempo.yml": {
-            "lines": 126,
-            "tokens": 580,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/config/promtail.yml": {
-            "lines": 232,
-            "tokens": 1080,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/config/prometheus.yml": {
-            "lines": 222,
-            "tokens": 1065,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/config/loki.yml": {
-            "lines": 115,
-            "tokens": 511,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/config/alertmanager.yml": {
-            "lines": 437,
-            "tokens": 1929,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/config/alert_rules.yml": {
-            "lines": 203,
-            "tokens": 1032,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/prometheus.yml": {
-            "lines": 85,
-            "tokens": 435,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/otel-collector-config.yaml": {
-            "lines": 152,
-            "tokens": 731,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/nakama.yml": {
-            "lines": 57,
-            "tokens": 274,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docker-compose.yml": {
-            "lines": 266,
-            "tokens": 1615,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docker-compose.alpha.yml": {
-            "lines": 83,
-            "tokens": 556,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/alerts.yml": {
-            "lines": 256,
-            "tokens": 1491,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/alertmanager.yml": {
-            "lines": 262,
-            "tokens": 1163,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          }
-        },
-        "total": {
-          "lines": 2667,
-          "tokens": 13429,
+          "lines": 1958,
+          "tokens": 15056,
           "sources": 16,
-          "clones": 0,
-          "duplicatedLines": 0,
-          "duplicatedTokens": 0,
-          "percentage": 0,
-          "percentageTokens": 0,
-          "newDuplicatedLines": 0,
-          "newClones": 0
-        }
-      },
-      "json": {
-        "sources": {
-          "/home/alex/armored-archer/backend/grafana/provisioning/dashboards/tempo-tracing-dashboard.json": {
-            "lines": 420,
-            "tokens": 2382,
-            "sources": 1,
-            "clones": 3,
-            "duplicatedLines": 58,
-            "duplicatedTokens": 310,
-            "percentage": 13.81,
-            "percentageTokens": 13.01,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/grafana/dashboards/01-overview.json": {
-            "lines": 874,
-            "tokens": 5017,
-            "sources": 1,
-            "clones": 27,
-            "duplicatedLines": 638,
-            "duplicatedTokens": 3638,
-            "percentage": 73,
-            "percentageTokens": 72.51,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/tsconfig.json": {
-            "lines": 30,
-            "tokens": 191,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/tech-debt-report.json": {
-            "lines": 69,
-            "tokens": 414,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/package.json": {
-            "lines": 125,
-            "tokens": 840,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/nx.json": {
-            "lines": 35,
-            "tokens": 217,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/bundle-size-limits.json": {
-            "lines": 61,
-            "tokens": 330,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/.lintstagedrc.json": {
-            "lines": 6,
-            "tokens": 22,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/.jscpd.json": {
-            "lines": 24,
-            "tokens": 137,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/.eslintrc.modules.json": {
-            "lines": 53,
-            "tokens": 248,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          }
-        },
-        "total": {
-          "lines": 1697,
-          "tokens": 9798,
-          "sources": 10,
-          "clones": 15,
-          "duplicatedLines": 348,
-          "duplicatedTokens": 1974,
-          "percentage": 20.51,
-          "percentageTokens": 20.15,
-          "newDuplicatedLines": 0,
-          "newClones": 0
-        }
-      },
-      "markup": {
-        "sources": {
-          "/home/alex/armored-archer/backend/templates/feedback/in-game-form.html": {
-            "lines": 910,
-            "tokens": 5994,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/templates/bug-report-form.html": {
-            "lines": 793,
-            "tokens": 5783,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          }
-        },
-        "total": {
-          "lines": 1703,
-          "tokens": 11777,
-          "sources": 2,
-          "clones": 0,
-          "duplicatedLines": 0,
-          "duplicatedTokens": 0,
-          "percentage": 0,
-          "percentageTokens": 0,
-          "newDuplicatedLines": 0,
-          "newClones": 0
-        }
-      },
-      "markdown": {
-        "sources": {
-          "/home/alex/armored-archer/backend/reports/smoke-tests/smoke-test-summary_20260316_084359.md": {
-            "lines": 23,
-            "tokens": 202,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 23,
-            "duplicatedTokens": 190,
-            "percentage": 100,
-            "percentageTokens": 94.06,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/reports/smoke-tests/smoke-test-summary_20260316_071253.md": {
-            "lines": 23,
-            "tokens": 202,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 23,
-            "duplicatedTokens": 190,
-            "percentage": 100,
-            "percentageTokens": 94.06,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/templates/weekly-update-template.md": {
-            "lines": 634,
-            "tokens": 4855,
-            "sources": 1,
-            "clones": 6,
-            "duplicatedLines": 90,
-            "duplicatedTokens": 734,
-            "percentage": 14.2,
-            "percentageTokens": 15.12,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/templates/alpha-user-agreement.md": {
-            "lines": 433,
-            "tokens": 3914,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/templates/alpha-invitation-email.md": {
-            "lines": 448,
-            "tokens": 3678,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/grafana/DASHBOARD_IMPORT.md": {
-            "lines": 373,
-            "tokens": 1888,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/tracing-guide.md": {
-            "lines": 661,
-            "tokens": 3189,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/log-queries.md": {
-            "lines": 447,
-            "tokens": 1662,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/N_PLUS_ONE_DETECTION.md": {
-            "lines": 314,
-            "tokens": 2092,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/ISSUE_TRIAGE.md": {
-            "lines": 649,
-            "tokens": 4523,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/ISSUE_REPORTING_QUICKREF.md": {
-            "lines": 255,
-            "tokens": 1520,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/FEEDBACK_GUIDE.md": {
-            "lines": 742,
-            "tokens": 5222,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/FEATURE_FLAGS.md": {
-            "lines": 226,
-            "tokens": 1609,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/DEPLOYMENT_READINESS.md": {
-            "lines": 339,
-            "tokens": 2170,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/DEPLOYMENT_GUIDE.md": {
-            "lines": 391,
-            "tokens": 1713,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/DEPLOYMENT.md": {
-            "lines": 827,
-            "tokens": 3730,
-            "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 96,
-            "duplicatedTokens": 314,
-            "percentage": 11.61,
-            "percentageTokens": 8.42,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/COMMUNICATION_SLA.md": {
-            "lines": 828,
-            "tokens": 7353,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/ALPHA_USER_GUIDE.md": {
-            "lines": 825,
-            "tokens": 6169,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/docs/ALPHA_ANALYTICS.md": {
-            "lines": 613,
-            "tokens": 4110,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/data/README.md": {
-            "lines": 133,
-            "tokens": 947,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/test-results.txt": {
-            "lines": 523,
-            "tokens": 1611,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/ROLLBACK_TESTING_PROCEDURE.md": {
-            "lines": 460,
-            "tokens": 2578,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/ROLLBACK_RUNBOOK.md": {
-            "lines": 556,
-            "tokens": 3381,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/ROLLBACK_COMMUNICATION_PLAN.md": {
-            "lines": 507,
-            "tokens": 3424,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/README_GO.md": {
-            "lines": 412,
-            "tokens": 1842,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 9,
-            "duplicatedTokens": 138,
-            "percentage": 2.18,
-            "percentageTokens": 7.49,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/README.md": {
-            "lines": 207,
-            "tokens": 1505,
-            "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 9,
-            "duplicatedTokens": 138,
-            "percentage": 4.35,
-            "percentageTokens": 9.17,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/RATE_LIMITING.md": {
-            "lines": 165,
-            "tokens": 1174,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/POST_ROLLBACK_VERIFICATION.md": {
-            "lines": 376,
-            "tokens": 2474,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/ONCALL_ESCALATION.md": {
-            "lines": 251,
-            "tokens": 1894,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/N_PLUS_ONE.md": {
-            "lines": 29,
-            "tokens": 286,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/MIGRATION_SUMMARY.md": {
-            "lines": 275,
-            "tokens": 2372,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/METRICS.md": {
-            "lines": 192,
-            "tokens": 1184,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/LOCAL_TESTING.md": {
-            "lines": 185,
-            "tokens": 921,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/INTEGRATION_TESTS.md": {
-            "lines": 261,
-            "tokens": 2040,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/ENVIRONMENTS.md": {
-            "lines": 185,
-            "tokens": 1434,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/DB_OPTIMIZATION.md": {
-            "lines": 191,
-            "tokens": 1650,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/DATABASE_SCHEMA.md": {
-            "lines": 335,
-            "tokens": 3223,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/CHANGELOG.md": {
-            "lines": 195,
-            "tokens": 1534,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/CACHE_STRATEGY.md": {
-            "lines": 227,
-            "tokens": 1866,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/ALPHA_READINESS.md": {
-            "lines": 555,
-            "tokens": 4368,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/ALERTING.md": {
-            "lines": 206,
-            "tokens": 1348,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          }
-        },
-        "total": {
-          "lines": 15477,
-          "tokens": 102857,
-          "sources": 41,
-          "clones": 6,
-          "duplicatedLines": 125,
-          "duplicatedTokens": 852,
-          "percentage": 0.81,
-          "percentageTokens": 0.83,
+          "clones": 2,
+          "duplicatedLines": 62,
+          "duplicatedTokens": 474,
+          "percentage": 3.17,
+          "percentageTokens": 3.15,
           "newDuplicatedLines": 0,
           "newClones": 0
         }
@@ -2569,18 +1197,6 @@
             "duplicatedTokens": 542,
             "percentage": 9.93,
             "percentageTokens": 10.27,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/home/alex/armored-archer/backend/internal/reports/reports.go": {
-            "lines": 184,
-            "tokens": 1332,
-            "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -2850,14 +1466,14 @@
           }
         },
         "total": {
-          "lines": 11039,
-          "tokens": 79974,
-          "sources": 32,
+          "lines": 10855,
+          "tokens": 78642,
+          "sources": 31,
           "clones": 11,
           "duplicatedLines": 190,
           "duplicatedTokens": 1633,
-          "percentage": 1.72,
-          "percentageTokens": 2.04,
+          "percentage": 1.75,
+          "percentageTokens": 2.08,
           "newDuplicatedLines": 0,
           "newClones": 0
         }
@@ -3437,17 +2053,749 @@
           "newDuplicatedLines": 0,
           "newClones": 0
         }
+      },
+      "markdown": {
+        "sources": {
+          "/home/alex/armored-archer/backend/docs/tracing-guide.md": {
+            "lines": 661,
+            "tokens": 3189,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/log-queries.md": {
+            "lines": 447,
+            "tokens": 1662,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/N_PLUS_ONE_DETECTION.md": {
+            "lines": 314,
+            "tokens": 2092,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/ISSUE_TRIAGE.md": {
+            "lines": 649,
+            "tokens": 4523,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/ISSUE_REPORTING_QUICKREF.md": {
+            "lines": 255,
+            "tokens": 1520,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/FEEDBACK_GUIDE.md": {
+            "lines": 742,
+            "tokens": 5222,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/FEATURE_FLAGS.md": {
+            "lines": 226,
+            "tokens": 1609,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/DEPLOYMENT_READINESS.md": {
+            "lines": 339,
+            "tokens": 2170,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/DEPLOYMENT_GUIDE.md": {
+            "lines": 391,
+            "tokens": 1713,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/DEPLOYMENT.md": {
+            "lines": 827,
+            "tokens": 3730,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 96,
+            "duplicatedTokens": 314,
+            "percentage": 11.61,
+            "percentageTokens": 8.42,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/COMMUNICATION_SLA.md": {
+            "lines": 828,
+            "tokens": 7353,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/ALPHA_USER_GUIDE.md": {
+            "lines": 825,
+            "tokens": 6169,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docs/ALPHA_ANALYTICS.md": {
+            "lines": 613,
+            "tokens": 4110,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/data/README.md": {
+            "lines": 133,
+            "tokens": 947,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/test-results.txt": {
+            "lines": 523,
+            "tokens": 1611,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/ROLLBACK_TESTING_PROCEDURE.md": {
+            "lines": 460,
+            "tokens": 2578,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/ROLLBACK_RUNBOOK.md": {
+            "lines": 556,
+            "tokens": 3381,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/ROLLBACK_COMMUNICATION_PLAN.md": {
+            "lines": 507,
+            "tokens": 3424,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/README_GO.md": {
+            "lines": 412,
+            "tokens": 1842,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 9,
+            "duplicatedTokens": 138,
+            "percentage": 2.18,
+            "percentageTokens": 7.49,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/README.md": {
+            "lines": 207,
+            "tokens": 1505,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 9,
+            "duplicatedTokens": 138,
+            "percentage": 4.35,
+            "percentageTokens": 9.17,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/RATE_LIMITING.md": {
+            "lines": 165,
+            "tokens": 1174,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/POST_ROLLBACK_VERIFICATION.md": {
+            "lines": 376,
+            "tokens": 2474,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/ONCALL_ESCALATION.md": {
+            "lines": 251,
+            "tokens": 1894,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/N_PLUS_ONE.md": {
+            "lines": 29,
+            "tokens": 286,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/MIGRATION_SUMMARY.md": {
+            "lines": 275,
+            "tokens": 2372,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/METRICS.md": {
+            "lines": 192,
+            "tokens": 1184,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/LOCAL_TESTING.md": {
+            "lines": 185,
+            "tokens": 921,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/INTEGRATION_TESTS.md": {
+            "lines": 261,
+            "tokens": 2040,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/ENVIRONMENTS.md": {
+            "lines": 185,
+            "tokens": 1434,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/DB_OPTIMIZATION.md": {
+            "lines": 191,
+            "tokens": 1650,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/DATABASE_SCHEMA.md": {
+            "lines": 335,
+            "tokens": 3223,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/CHANGELOG.md": {
+            "lines": 195,
+            "tokens": 1534,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/CACHE_STRATEGY.md": {
+            "lines": 227,
+            "tokens": 1866,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/ALPHA_READINESS.md": {
+            "lines": 555,
+            "tokens": 4368,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/ALERTING.md": {
+            "lines": 206,
+            "tokens": 1348,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 13543,
+          "tokens": 88118,
+          "sources": 35,
+          "clones": 2,
+          "duplicatedLines": 57,
+          "duplicatedTokens": 295,
+          "percentage": 0.42,
+          "percentageTokens": 0.33,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "yaml": {
+        "sources": {
+          "/home/alex/armored-archer/backend/data/nakama.alpha.yml": {
+            "lines": 60,
+            "tokens": 359,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/config/tempo.yml": {
+            "lines": 126,
+            "tokens": 580,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/config/promtail.yml": {
+            "lines": 232,
+            "tokens": 1080,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/config/prometheus.yml": {
+            "lines": 222,
+            "tokens": 1065,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/config/loki.yml": {
+            "lines": 115,
+            "tokens": 511,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/config/alertmanager.yml": {
+            "lines": 437,
+            "tokens": 1929,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/config/alert_rules.yml": {
+            "lines": 203,
+            "tokens": 1032,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/prometheus.yml": {
+            "lines": 85,
+            "tokens": 435,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/otel-collector-config.yaml": {
+            "lines": 152,
+            "tokens": 731,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/nakama.yml": {
+            "lines": 57,
+            "tokens": 274,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docker-compose.yml": {
+            "lines": 266,
+            "tokens": 1615,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/docker-compose.alpha.yml": {
+            "lines": 83,
+            "tokens": 556,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/alerts.yml": {
+            "lines": 256,
+            "tokens": 1491,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/alertmanager.yml": {
+            "lines": 262,
+            "tokens": 1163,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 2556,
+          "tokens": 12821,
+          "sources": 14,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "json": {
+        "sources": {
+          "/home/alex/armored-archer/backend/tsconfig.json": {
+            "lines": 30,
+            "tokens": 191,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/tech-debt-report.json": {
+            "lines": 69,
+            "tokens": 414,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/package.json": {
+            "lines": 125,
+            "tokens": 840,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/nx.json": {
+            "lines": 35,
+            "tokens": 217,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/bundle-size-limits.json": {
+            "lines": 61,
+            "tokens": 330,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/.lintstagedrc.json": {
+            "lines": 6,
+            "tokens": 22,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/.jscpd.json": {
+            "lines": 28,
+            "tokens": 153,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/home/alex/armored-archer/backend/.eslintrc.modules.json": {
+            "lines": 53,
+            "tokens": 248,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 407,
+          "tokens": 2415,
+          "sources": 8,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
       }
     },
     "total": {
-      "lines": 76244,
-      "tokens": 520992,
-      "sources": 273,
-      "clones": 112,
-      "duplicatedLines": 2614,
-      "duplicatedTokens": 25100,
-      "percentage": 3.43,
-      "percentageTokens": 4.82,
+      "lines": 65707,
+      "tokens": 436777,
+      "sources": 220,
+      "clones": 60,
+      "duplicatedLines": 1041,
+      "duplicatedTokens": 7665,
+      "percentage": 1.58,
+      "percentageTokens": 1.75,
       "newDuplicatedLines": 0,
       "newClones": 0
     }
@@ -3486,42 +2834,6 @@
           "line": 131,
           "column": 2,
           "position": 830
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 18,
-      "fragment": ",\n        \"refresh\": 2,\n        \"regex\": \"\",\n        \"skipUrlSync\": false,\n        \"sort\": 1,\n        \"type\": \"query\"\n      },\n      {\n        \"current\": {\n          \"selected\": false,\n          \"text\": \"All\",\n          \"value\": \"$__all\"\n        },\n        \"datasource\": {\n          \"type\": \"tempo\",\n          \"uid\": \"tempo\"\n        },\n        \"definition\": \"label_values(error_code)\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/provisioning/dashboards/tempo-tracing-dashboard.json",
-        "start": 365,
-        "end": 382,
-        "startLoc": {
-          "line": 365,
-          "column": 25,
-          "position": 2070
-        },
-        "endLoc": {
-          "line": 382,
-          "column": 27,
-          "position": 2170
-        }
-      },
-      "secondFile": {
-        "name": "grafana/provisioning/dashboards/tempo-tracing-dashboard.json",
-        "start": 341,
-        "end": 358,
-        "startLoc": {
-          "line": 341,
-          "column": 29,
-          "position": 1919
-        },
-        "endLoc": {
-          "line": 358,
-          "column": 25,
-          "position": 2019
         }
       }
     },
@@ -4108,17 +3420,17 @@
       "tokens": 0,
       "firstFile": {
         "name": "src/features/FeatureFlags.ts",
-        "start": 265,
-        "end": 275,
+        "start": 275,
+        "end": 285,
         "startLoc": {
-          "line": 265,
+          "line": 275,
           "column": 12,
-          "position": 1725
+          "position": 1707
         },
         "endLoc": {
-          "line": 275,
+          "line": 285,
           "column": 2,
-          "position": 1836
+          "position": 1818
         }
       },
       "secondFile": {
@@ -4386,42 +3698,6 @@
           "line": 575,
           "column": 13,
           "position": 5023
-        }
-      }
-    },
-    {
-      "format": "markdown",
-      "lines": 24,
-      "fragment": "Mon Mar 16 07:13:04 AM EDT 2026\n**Backend Directory:** /home/alex/armored-archer/backend\n\n## Results\n\n| Metric | Value |\n|--------|-------|\n| Total Suites | 1 |\n| Passed | 1 |\n| Failed | 0 |\n| Skipped | 0 |\n| Pass Rate | 100% |\n\n## Test Suites Executed\n\n- [x] Authentication Tests (network_resilience.test.ts)\n- [x] Player System Tests (rpg_system.test.ts)\n- [x] Combat System Tests (combat_system.test.ts)\n- [x] Gear & Inventory Tests (gear_system.test.ts)\n- [x] Matchmaking Tests (matchmaker.test.ts)\n- [x] Season System Tests (season_system.test.ts)\n- [x] Store System Tests (store.test.ts)\n- [x] Performance Tests (low_end_device_performance.test.ts)\n- ",
-      "tokens": 0,
-      "firstFile": {
-        "name": "reports/smoke-tests/smoke-test-summary_20260316_071253.md",
-        "start": 3,
-        "end": 26,
-        "startLoc": {
-          "line": 3,
-          "column": 2,
-          "position": 14
-        },
-        "endLoc": {
-          "line": 26,
-          "column": 29,
-          "position": 204
-        }
-      },
-      "secondFile": {
-        "name": "reports/smoke-tests/smoke-test-summary_20260316_084359.md",
-        "start": 3,
-        "end": 26,
-        "startLoc": {
-          "line": 3,
-          "column": 2,
-          "position": 14
-        },
-        "endLoc": {
-          "line": 26,
-          "column": 29,
-          "position": 204
         }
       }
     },
@@ -4818,1806 +4094,6 @@
           "line": 69,
           "column": 36,
           "position": 489
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 19,
-      "fragment": ",\n        \"graphMode\": \"none\",\n        \"justifyMode\": \"auto\",\n        \"orientation\": \"auto\",\n        \"reduceOptions\": {\n          \"calcs\": [\"lastNotNull\"],\n          \"fields\": \"\",\n          \"values\": false\n        },\n        \"textMode\": \"auto\"\n      },\n      \"pluginVersion\": \"10.1.0\",\n      \"targets\": [\n        {\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"time() - process_start_time_seconds{job=\\\"nakama\\\"}\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 171,
-        "end": 189,
-        "startLoc": {
-          "line": 171,
-          "column": 8,
-          "position": 974
-        },
-        "endLoc": {
-          "line": 189,
-          "column": 54,
-          "position": 1082
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 105,
-        "end": 123,
-        "startLoc": {
-          "line": 105,
-          "column": 13,
-          "position": 603
-        },
-        "endLoc": {
-          "line": 123,
-          "column": 54,
-          "position": 711
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 22,
-      "fragment": ",\n      \"type\": \"stat\"\n    },\n    {\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"color\": {\n            \"mode\": \"thresholds\"\n          },\n          \"mappings\": [],\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"green\",\n                \"value\": null\n              }\n            ]",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 194,
-        "end": 215,
-        "startLoc": {
-          "line": 194,
-          "column": 16,
-          "position": 1110
-        },
-        "endLoc": {
-          "line": 215,
-          "column": 2,
-          "position": 1223
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 128,
-        "end": 148,
-        "startLoc": {
-          "line": 128,
-          "column": 16,
-          "position": 739
-        },
-        "endLoc": {
-          "line": 148,
-          "column": 2,
-          "position": 850
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 18,
-      "fragment": ",\n        \"justifyMode\": \"auto\",\n        \"orientation\": \"auto\",\n        \"reduceOptions\": {\n          \"calcs\": [\"lastNotNull\"],\n          \"fields\": \"\",\n          \"values\": false\n        },\n        \"textMode\": \"auto\"\n      },\n      \"pluginVersion\": \"10.1.0\",\n      \"targets\": [\n        {\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"armored_archer_player_active_sessions\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 230,
-        "end": 247,
-        "startLoc": {
-          "line": 230,
-          "column": 7,
-          "position": 1312
-        },
-        "endLoc": {
-          "line": 247,
-          "column": 40,
-          "position": 1413
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 106,
-        "end": 123,
-        "startLoc": {
-          "line": 106,
-          "column": 7,
-          "position": 610
-        },
-        "endLoc": {
-          "line": 123,
-          "column": 54,
-          "position": 711
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 24,
-      "fragment": ",\n      \"type\": \"stat\"\n    },\n    {\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"color\": {\n            \"mode\": \"thresholds\"\n          },\n          \"mappings\": [],\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"green\",\n                \"value\": null\n              },\n              {\n                \"color\": \"yellow\",\n                \"value\": 50",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 252,
-        "end": 275,
-        "startLoc": {
-          "line": 252,
-          "column": 17,
-          "position": 1441
-        },
-        "endLoc": {
-          "line": 275,
-          "column": 3,
-          "position": 1568
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 128,
-        "end": 151,
-        "startLoc": {
-          "line": 128,
-          "column": 16,
-          "position": 739
-        },
-        "endLoc": {
-          "line": 151,
-          "column": 6,
-          "position": 866
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 21,
-      "fragment": ",\n      \"options\": {\n        \"colorMode\": \"value\",\n        \"graphMode\": \"area\",\n        \"justifyMode\": \"auto\",\n        \"orientation\": \"auto\",\n        \"reduceOptions\": {\n          \"calcs\": [\"lastNotNull\"],\n          \"fields\": \"\",\n          \"values\": false\n        },\n        \"textMode\": \"auto\"\n      },\n      \"pluginVersion\": \"10.1.0\",\n      \"targets\": [\n        {\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"rate(armored_archer_rpc_errors_total[5m]) / rate(armored_archer_rpc_calls_total[5m]) * 100\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 293,
-        "end": 313,
-        "startLoc": {
-          "line": 293,
-          "column": 2,
-          "position": 1663
-        },
-        "endLoc": {
-          "line": 313,
-          "column": 93,
-          "position": 1784
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 227,
-        "end": 123,
-        "startLoc": {
-          "line": 227,
-          "column": 2,
-          "position": 1292
-        },
-        "endLoc": {
-          "line": 123,
-          "column": 54,
-          "position": 711
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 52,
-      "fragment": "},\n    {\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"color\": {\n            \"mode\": \"palette-classic\"\n          },\n          \"custom\": {\n            \"axisCenteredZero\": false,\n            \"axisColorMode\": \"text\",\n            \"axisLabel\": \"\",\n            \"axisPlacement\": \"auto\",\n            \"barAlignment\": 0,\n            \"drawStyle\": \"line\",\n            \"fillOpacity\": 10,\n            \"gradientMode\": \"none\",\n            \"hideFrom\": {\n              \"legend\": false,\n              \"tooltip\": false,\n              \"viz\": false\n            },\n            \"lineInterpolation\": \"linear\",\n            \"lineWidth\": 2,\n            \"pointSize\": 5,\n            \"scaleDistribution\": {\n              \"type\": \"linear\"\n            },\n            \"showPoints\": \"never\",\n            \"spanNulls\": true,\n            \"stacking\": {\n              \"group\": \"A\",\n              \"mode\": \"none\"\n            },\n            \"thresholdsStyle\": {\n              \"mode\": \"off\"\n            }\n          },\n          \"mappings\": [],\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"green\",\n                \"value\": null\n              }\n            ]\n          },\n          \"unit\": \"reqps\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 439,
-        "end": 490,
-        "startLoc": {
-          "line": 439,
-          "column": 5,
-          "position": 2517
-        },
-        "endLoc": {
-          "line": 490,
-          "column": 8,
-          "position": 2816
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 333,
-        "end": 384,
-        "startLoc": {
-          "line": 333,
-          "column": 5,
-          "position": 1900
-        },
-        "endLoc": {
-          "line": 384,
-          "column": 4,
-          "position": 2199
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 18,
-      "fragment": "],\n          \"displayMode\": \"table\",\n          \"placement\": \"bottom\",\n          \"showLegend\": true\n        },\n        \"tooltip\": {\n          \"mode\": \"multi\",\n          \"sort\": \"desc\"\n        }\n      },\n      \"pluginVersion\": \"10.1.0\",\n      \"targets\": [\n        {\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"rate(armored_archer_rpc_calls_total[5m])\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 503,
-        "end": 520,
-        "startLoc": {
-          "line": 503,
-          "column": 6,
-          "position": 2898
-        },
-        "endLoc": {
-          "line": 520,
-          "column": 43,
-          "position": 2994
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 397,
-        "end": 414,
-        "startLoc": {
-          "line": 397,
-          "column": 6,
-          "position": 2284
-        },
-        "endLoc": {
-          "line": 414,
-          "column": 94,
-          "position": 2380
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 39,
-      "fragment": "},\n    {\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"color\": {\n            \"mode\": \"thresholds\"\n          },\n          \"mappings\": [],\n          \"max\": 100,\n          \"min\": 0,\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"green\",\n                \"value\": null\n              },\n              {\n                \"color\": \"yellow\",\n                \"value\": 70\n              },\n              {\n                \"color\": \"red\",\n                \"value\": 90\n              }\n            ]\n          },\n          \"unit\": \"percent\"\n        },\n        \"overrides\": []\n      },\n      \"gridPos\": {\n        \"h\": 6,\n        \"w\": 6,\n        \"x\": 6",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 606,
-        "end": 644,
-        "startLoc": {
-          "line": 606,
-          "column": 5,
-          "position": 3481
-        },
-        "endLoc": {
-          "line": 644,
-          "column": 2,
-          "position": 3690
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 540,
-        "end": 578,
-        "startLoc": {
-          "line": 540,
-          "column": 5,
-          "position": 3110
-        },
-        "endLoc": {
-          "line": 578,
-          "column": 2,
-          "position": 3319
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 19,
-      "fragment": ",\n      \"options\": {\n        \"orientation\": \"auto\",\n        \"reduceOptions\": {\n          \"calcs\": [\"lastNotNull\"],\n          \"fields\": \"\",\n          \"values\": false\n        },\n        \"showThresholdLabels\": false,\n        \"showThresholdMarkers\": true\n      },\n      \"pluginVersion\": \"10.1.0\",\n      \"targets\": [\n        {\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 647,
-        "end": 665,
-        "startLoc": {
-          "line": 647,
-          "column": 2,
-          "position": 3708
-        },
-        "endLoc": {
-          "line": 665,
-          "column": 76,
-          "position": 3815
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 581,
-        "end": 599,
-        "startLoc": {
-          "line": 581,
-          "column": 2,
-          "position": 3337
-        },
-        "endLoc": {
-          "line": 599,
-          "column": 70,
-          "position": 3444
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 22,
-      "fragment": "},\n    {\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"color\": {\n            \"mode\": \"thresholds\"\n          },\n          \"mappings\": [],\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"green\",\n                \"value\": null\n              },\n              {\n                \"color\": \"yellow\",\n                \"value\": 80",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 672,
-        "end": 693,
-        "startLoc": {
-          "line": 672,
-          "column": 5,
-          "position": 3852
-        },
-        "endLoc": {
-          "line": 693,
-          "column": 3,
-          "position": 3970
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 130,
-        "end": 151,
-        "startLoc": {
-          "line": 130,
-          "column": 5,
-          "position": 748
-        },
-        "endLoc": {
-          "line": 151,
-          "column": 6,
-          "position": 866
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 21,
-      "fragment": ",\n      \"options\": {\n        \"colorMode\": \"value\",\n        \"graphMode\": \"area\",\n        \"justifyMode\": \"auto\",\n        \"orientation\": \"auto\",\n        \"reduceOptions\": {\n          \"calcs\": [\"lastNotNull\"],\n          \"fields\": \"\",\n          \"values\": false\n        },\n        \"textMode\": \"auto\"\n      },\n      \"pluginVersion\": \"10.1.0\",\n      \"targets\": [\n        {\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"(node_filesystem_avail_bytes{mountpoint=\\\"/\\\"} / node_filesystem_size_bytes{mountpoint=\\\"/\\\"}) * 100\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 711,
-        "end": 731,
-        "startLoc": {
-          "line": 711,
-          "column": 2,
-          "position": 4065
-        },
-        "endLoc": {
-          "line": 731,
-          "column": 103,
-          "position": 4186
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 227,
-        "end": 123,
-        "startLoc": {
-          "line": 227,
-          "column": 2,
-          "position": 1292
-        },
-        "endLoc": {
-          "line": 123,
-          "column": 54,
-          "position": 711
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 24,
-      "fragment": ",\n      \"type\": \"stat\"\n    },\n    {\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"color\": {\n            \"mode\": \"thresholds\"\n          },\n          \"mappings\": [],\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"green\",\n                \"value\": null\n              }\n            ]\n          },\n          \"unit\": \"short\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 736,
-        "end": 759,
-        "startLoc": {
-          "line": 736,
-          "column": 17,
-          "position": 4214
-        },
-        "endLoc": {
-          "line": 759,
-          "column": 8,
-          "position": 4337
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 128,
-        "end": 217,
-        "startLoc": {
-          "line": 128,
-          "column": 16,
-          "position": 739
-        },
-        "endLoc": {
-          "line": 217,
-          "column": 7,
-          "position": 1233
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 21,
-      "fragment": ",\n      \"options\": {\n        \"colorMode\": \"value\",\n        \"graphMode\": \"area\",\n        \"justifyMode\": \"auto\",\n        \"orientation\": \"auto\",\n        \"reduceOptions\": {\n          \"calcs\": [\"lastNotNull\"],\n          \"fields\": \"\",\n          \"values\": false\n        },\n        \"textMode\": \"auto\"\n      },\n      \"pluginVersion\": \"10.1.0\",\n      \"targets\": [\n        {\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"nakama_database_connections_active\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 769,
-        "end": 789,
-        "startLoc": {
-          "line": 769,
-          "column": 3,
-          "position": 4396
-        },
-        "endLoc": {
-          "line": 789,
-          "column": 37,
-          "position": 4517
-        }
-      },
-      "secondFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 227,
-        "end": 123,
-        "startLoc": {
-          "line": 227,
-          "column": 2,
-          "position": 1292
-        },
-        "endLoc": {
-          "line": 123,
-          "column": 54,
-          "position": 711
-        }
-      }
-    },
-    {
-      "format": "json",
-      "lines": 25,
-      "fragment": ",\n        \"type\": \"query\"\n      }\n    ]\n  },\n  \"time\": {\n    \"from\": \"now-1h\",\n    \"to\": \"now\"\n  },\n  \"timepicker\": {\n    \"refresh_intervals\": [\n      \"5s\",\n      \"10s\",\n      \"30s\",\n      \"1m\",\n      \"5m\",\n      \"15m\",\n      \"30m\",\n      \"1h\",\n      \"2h\",\n      \"1d\"\n    ]\n  },\n  \"timezone\": \"browser\",\n  \"title\": \"Armored Archer - Overview\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "grafana/dashboards/01-overview.json",
-        "start": 847,
-        "end": 871,
-        "startLoc": {
-          "line": 847,
-          "column": 2,
-          "position": 4884
-        },
-        "endLoc": {
-          "line": 871,
-          "column": 28,
-          "position": 4994
-        }
-      },
-      "secondFile": {
-        "name": "grafana/provisioning/dashboards/tempo-tracing-dashboard.json",
-        "start": 393,
-        "end": 417,
-        "startLoc": {
-          "line": 393,
-          "column": 2,
-          "position": 2249
-        },
-        "endLoc": {
-          "line": 417,
-          "column": 30,
-          "position": 2359
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 7,
-      "fragment": "undefined>;\n        readonly requestId: import(\"valibot\").OptionalSchema<import(\"valibot\").StringSchema<undefined>, undefined>;\n        readonly timestamp: import(\"valibot\").OptionalSchema<import(\"valibot\").NumberSchema<undefined>, undefined>;\n        readonly signature: import(\"valibot\").OptionalSchema<import(\"valibot\").StringSchema<undefined>, undefined>;\n        readonly nonce: import(\"valibot\").OptionalSchema<import(\"valibot\").StringSchema<undefined>, undefined>;\n    }, undefined>;\n    readonly get_season_rewards",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/validation.d.ts",
-        "start": 104,
-        "end": 110,
-        "startLoc": {
-          "line": 104,
-          "column": 2,
-          "position": 3778
-        },
-        "endLoc": {
-          "line": 110,
-          "column": 19,
-          "position": 3905
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/validation.d.ts",
-        "start": 94,
-        "end": 100,
-        "startLoc": {
-          "line": 94,
-          "column": 2,
-          "position": 3426
-        },
-        "endLoc": {
-          "line": 100,
-          "column": 15,
-          "position": 3553
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 262,
-      "fragment": ": {\n    readonly health_check: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly get_player_stats: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly complete_stage: import(\"valibot\").ObjectSchema<{\n        readonly stage_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly stage_prefix: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 50, undefined>]>;\n        readonly stars_earned: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>, import(\"valibot\").MaxValueAction<number, 3, undefined>]>;\n        readonly score: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>;\n        readonly difficulty: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n        readonly boss_defeated: import(\"valibot\").OptionalSchema<import(\"valibot\").BooleanSchema<undefined>, undefined>;\n        readonly boss_id: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>, undefined>;\n    }, undefined>;\n    readonly get_stage_completion: import(\"valibot\").ObjectSchema<{\n        readonly stage_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n    }, undefined>;\n    readonly get_all_stage_completions: import(\"valibot\").ObjectSchema<{\n        readonly stage_prefix: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 50, undefined>]>, undefined>;\n    }, undefined>;\n    readonly gain_xp: import(\"valibot\").ObjectSchema<{\n        readonly xp_amount: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 1, undefined>, import(\"valibot\").MaxValueAction<number, 1000000, undefined>]>;\n        readonly source: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n    }, undefined>;\n    readonly allocate_stats: import(\"valibot\").ObjectSchema<{\n        readonly stat_name: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n        readonly points: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 1, undefined>, import(\"valibot\").MaxValueAction<number, 1000, undefined>]>;\n    }, undefined>;\n    readonly generate_gear: import(\"valibot\").ObjectSchema<{\n        readonly stage_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly boss_defeated: import(\"valibot\").BooleanSchema<undefined>;\n    }, undefined>;\n    readonly stage_complete: import(\"valibot\").ObjectSchema<{\n        readonly stage_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly boss_defeated: import(\"valibot\").BooleanSchema<undefined>;\n        readonly difficulty: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n        readonly boss_id: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>, undefined>;\n        readonly enemy_type: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>, undefined>;\n    }, undefined>;\n    readonly equip_gear: import(\"valibot\").ObjectSchema<{\n        readonly gear_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly slot: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n    }, undefined>;\n    readonly unequip_gear: import(\"valibot\").ObjectSchema<{\n        readonly slot: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n    }, undefined>;\n    readonly get_inventory: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly unlock_modifier_pool: import(\"valibot\").ObjectSchema<{\n        readonly modifier_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n    }, undefined>;\n    readonly get_unlocked_modifiers: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly list_matches: import(\"valibot\").OptionalSchema<import(\"valibot\").ObjectSchema<{\n        readonly match_type: import(\"valibot\").OptionalSchema<import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>, undefined>;\n        readonly min_rank: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 1, undefined>]>, undefined>;\n        readonly max_rank: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 1, undefined>]>, undefined>;\n        readonly limit: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 1, undefined>, import(\"valibot\").MaxValueAction<number, 100, undefined>]>, undefined>;\n    }, undefined>, undefined>;\n    readonly create_match: import(\"valibot\").ObjectSchema<{\n        readonly match_type: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n        readonly is_punch_up: import(\"valibot\").OptionalSchema<import(\"valibot\").BooleanSchema<undefined>, undefined>;\n        readonly target_opponent_id: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>, undefined>;\n    }, undefined>;\n    readonly accept_match: import(\"valibot\").ObjectSchema<{\n        readonly match_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n    }, undefined>;\n    readonly get_player_rank: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly submit_combat_action: import(\"valibot\").ObjectSchema<{\n        readonly match_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly action_type: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n        readonly angle: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>, import(\"valibot\").MaxValueAction<number, 6.28318530718, undefined>]>;\n        readonly power: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>, import(\"valibot\").MaxValueAction<number, 1, undefined>]>, undefined>;\n        readonly requestId: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 32, undefined>, import(\"valibot\").MaxLengthAction<string, 32, undefined>]>, undefined>;\n        readonly timestamp: import(\"valibot\").OptionalSchema<import(\"valibot\").NumberSchema<undefined>, undefined>;\n        readonly signature: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 64, undefined>, import(\"valibot\").MaxLengthAction<string, 64, undefined>]>, undefined>;\n        readonly nonce: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 32, undefined>, import(\"valibot\").MaxLengthAction<string, 32, undefined>]>, undefined>;\n    }, undefined>;\n    readonly get_match_state: import(\"valibot\").ObjectSchema<{\n        readonly match_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n    }, undefined>;\n    readonly player_disconnect: import(\"valibot\").ObjectSchema<{\n        readonly match_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly reason: import(\"valibot\").OptionalSchema<import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>, undefined>;\n    }, undefined>;\n    readonly get_season_info: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly get_leaderboard: import(\"valibot\").OptionalSchema<import(\"valibot\").ObjectSchema<{\n        readonly limit: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 1, undefined>, import(\"valibot\").MaxValueAction<number, 100, undefined>]>, undefined>;\n    }, undefined>, undefined>;\n    readonly update_rank: import(\"valibot\").ObjectSchema<{\n        readonly match_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly winner_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly loser_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly winner_old_rank: import(\"valibot\").NumberSchema<undefined>;\n        readonly loser_old_rank: import(\"valibot\").NumberSchema<undefined>;\n        readonly winner_new_rank: import(\"valibot\").NumberSchema<undefined>;\n        readonly loser_new_rank: import(\"valibot\").NumberSchema<undefined>;\n        readonly is_punch_up: import(\"valibot\").BooleanSchema<undefined>;\n        readonly requestId: import(\"valibot\").OptionalSchema<import(\"valibot\").StringSchema<undefined>, undefined>;\n        readonly timestamp: import(\"valibot\").OptionalSchema<import(\"valibot\").NumberSchema<undefined>, undefined>;\n        readonly signature: import(\"valibot\").OptionalSchema<import(\"valibot\").StringSchema<undefined>, undefined>;\n        readonly nonce: import(\"valibot\").OptionalSchema<import(\"valibot\").StringSchema<undefined>, undefined>;\n    }, undefined>;\n    readonly complete_match: import(\"valibot\").ObjectSchema<{\n        readonly match_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly winner_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly loser_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly is_punch_up: import(\"valibot\").OptionalSchema<import(\"valibot\").BooleanSchema<undefined>, undefined>;\n        readonly requestId: import(\"valibot\").OptionalSchema<import(\"valibot\").StringSchema<undefined>, undefined>;\n        readonly timestamp: import(\"valibot\").OptionalSchema<import(\"valibot\").NumberSchema<undefined>, undefined>;\n        readonly signature: import(\"valibot\").OptionalSchema<import(\"valibot\").StringSchema<undefined>, undefined>;\n        readonly nonce: import(\"valibot\").OptionalSchema<import(\"valibot\").StringSchema<undefined>, undefined>;\n    }, undefined>;\n    readonly get_season_rewards: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly report_player: import(\"valibot\").ObjectSchema<{\n        readonly reported_user_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly reason: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n        readonly match_id: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>, undefined>;\n        readonly additional_info: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MaxLengthAction<string, 500, undefined>]>, undefined>;\n    }, undefined>;\n    readonly get_player_reports: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly claim_season_rewards: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly end_season: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly validate_purchase: import(\"valibot\").ObjectSchema<{\n        readonly product_id: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n        readonly platform: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n        readonly transaction_receipt: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100000, undefined>]>;\n    }, undefined>;\n    readonly get_currency: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly spend_gems: import(\"valibot\").ObjectSchema<{\n        readonly amount: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 1, undefined>, import(\"valibot\").MaxValueAction<number, 1000000, undefined>]>;\n    }, undefined>;\n    readonly check_refunds: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly check_subscriptions: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly process_pending_purchases: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly app_launch_check: import(\"valibot\").ObjectSchema<{}, undefined>;\n    readonly deployment_record: import(\"valibot\").ObjectSchema<{\n        readonly environment: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n        readonly version: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 50, undefined>]>;\n        readonly status: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n        readonly metadata: import(\"valibot\").OptionalSchema<import(\"valibot\").RecordSchema<import(\"valibot\").StringSchema<undefined>, import(\"valibot\").StringSchema<undefined>, undefined>, undefined>;\n    }, undefined>;\n    readonly track_event: import(\"valibot\").ObjectSchema<{\n        readonly event_name: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly properties: import(\"valibot\").OptionalSchema<import(\"valibot\").RecordSchema<import(\"valibot\").StringSchema<undefined>, import(\"valibot\").UnknownSchema, undefined>, undefined>;\n        readonly platform: import(\"valibot\").OptionalSchema<import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>, undefined>;\n        readonly session_id: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>, undefined>;\n    }, undefined>;\n    readonly get_analytics_summary: import(\"valibot\").ObjectSchema<{\n        readonly start_date: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").RegexAction<string, undefined>]>;\n        readonly end_date: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").RegexAction<string, undefined>]>;\n        readonly event_names: import(\"valibot\").OptionalSchema<import(\"valibot\").ArraySchema<import(\"valibot\").StringSchema<undefined>, undefined>, undefined>;\n    }, undefined>;\n    readonly track_revenue: import(\"valibot\").ObjectSchema<{\n        readonly amount: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>;\n        readonly currency: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").LengthAction<string, 3, undefined>]>;\n        readonly product_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly transaction_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly platform: import(\"valibot\").OptionalSchema<import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>, undefined>;\n    }, undefined>;\n    readonly rollout_create_flag: import(\"valibot\").ObjectSchema<{\n        readonly name: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly description: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MaxLengthAction<string, 500, undefined>]>;\n        readonly phases: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").ArraySchema<import(\"valibot\").ObjectSchema<{\n            readonly phase: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n            readonly percentage: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>, import(\"valibot\").MaxValueAction<number, 100, undefined>]>;\n            readonly durationMinutes: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>;\n            readonly minHealthPercent: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>, import(\"valibot\").MaxValueAction<number, 100, undefined>]>;\n            readonly maxErrorRatePercent: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>, import(\"valibot\").MaxValueAction<number, 100, undefined>]>;\n            readonly maxLatencyMs: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>;\n            readonly sampleSize: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>;\n            readonly autoPromote: import(\"valibot\").BooleanSchema<undefined>;\n            readonly rollbackCriteria: import(\"valibot\").ObjectSchema<{\n                readonly errorRateThreshold: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>, import(\"valibot\").MaxValueAction<number, 100, undefined>]>;\n                readonly latencyThreshold: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>;\n                readonly healthCheckFails: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>;\n                readonly customMetrics: import(\"valibot\").OptionalSchema<import(\"valibot\").RecordSchema<import(\"valibot\").StringSchema<undefined>, import(\"valibot\").NumberSchema<undefined>, undefined>, undefined>;\n            }, undefined>;\n        }, undefined>, undefined>, import(\"valibot\").MinLengthAction<{\n            phase: import(\"valibot\").EnumValues<import(\"valibot\").Enum>;\n            percentage: number;\n            durationMinutes: number;\n            minHealthPercent: number;\n            maxErrorRatePercent: number;\n            maxLatencyMs: number;\n            sampleSize: number;\n            autoPromote: boolean;\n            rollbackCriteria: {\n                errorRateThreshold: number;\n                latencyThreshold: number;\n                healthCheckFails: number;\n                customMetrics?: {\n                    [x: string]: number;\n                } | undefined;\n            };\n        }[], 1, undefined>]>;\n    }, undefined>;\n    readonly rollout_update_flag: import(\"valibot\").ObjectSchema<{\n        readonly name: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly description: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MaxLengthAction<string, 500, undefined>]>, undefined>;\n        readonly enabled: import(\"valibot\").OptionalSchema<import(\"valibot\").BooleanSchema<undefined>, undefined>;\n        readonly rolloutPhase: import(\"valibot\").OptionalSchema<import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>, undefined>;\n        readonly rolloutPercentage: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>, import(\"valibot\").MaxValueAction<number, 100, undefined>]>, undefined>;\n        readonly canaryUserIds: import(\"valibot\").OptionalSchema<import(\"valibot\").ArraySchema<import(\"valibot\").StringSchema<undefined>, undefined>, undefined>;\n        readonly canaryVersionMin: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MaxLengthAction<string, 50, undefined>]>, undefined>;\n        readonly canaryVersionMax: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MaxLengthAction<string, 50, undefined>]>, undefined>;\n    }, undefined>;\n    readonly rollout_check: import(\"valibot\").ObjectSchema<{\n        readonly feature_name: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly user_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly game_version: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MaxLengthAction<string, 50, undefined>]>, undefined>;\n    }, undefined>;\n    readonly rollout_advance: import(\"valibot\").ObjectSchema<{\n        readonly feature_name: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n    }, undefined>;\n    readonly rollout_rollback: import(\"valibot\").ObjectSchema<{\n        readonly feature_name: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n    }, undefined>;\n    readonly rollout_get_metrics: import(\"valibot\").ObjectSchema<{\n        readonly feature_name: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n    }, undefined>;\n    readonly rollout_record_metrics: import(\"valibot\").ObjectSchema<{\n        readonly feature_name: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly total_users: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>, undefined>;\n        readonly active_users: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>, undefined>;\n        readonly error_count: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>, undefined>;\n        readonly error_rate: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>, undefined>;\n        readonly avg_latency_ms: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>, undefined>;\n        readonly p99_latency_ms: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>, undefined>;\n        readonly health_check_passes: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>, undefined>;\n        readonly health_check_fails: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 0, undefined>]>, undefined>;\n    }, undefined>;\n    readonly consent: import(\"valibot\").ObjectSchema<{\n        readonly analytics_consent: import(\"valibot\").BooleanSchema<undefined>;\n        readonly marketing_consent: import(\"valibot\").OptionalSchema<import(\"valibot\").BooleanSchema<undefined>, undefined>;\n        readonly timestamp: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 1, undefined>]>;\n        readonly version: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MaxLengthAction<string, 20, undefined>]>, undefined>;\n    }, undefined>;\n    readonly data_deletion: import(\"valibot\").ObjectSchema<{\n        readonly user_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly reason: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MaxLengthAction<string, 500, undefined>]>, undefined>;\n    }, undefined>;\n    readonly data_export: import(\"valibot\").ObjectSchema<{\n        readonly user_id: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100, undefined>]>;\n        readonly include_game_data: import(\"valibot\").OptionalSchema<import(\"valibot\").BooleanSchema<undefined>, undefined>;\n        readonly include_purchase_history: import(\"valibot\").OptionalSchema<import(\"valibot\").BooleanSchema<undefined>, undefined>;\n    }, undefined>;\n    readonly privacy_settings_update: import(\"valibot\").ObjectSchema<{\n        readonly analytics_enabled: import(\"valibot\").OptionalSchema<import(\"valibot\").BooleanSchema<undefined>, undefined>;\n        readonly marketing_enabled: import(\"valibot\").OptionalSchema<import(\"valibot\").BooleanSchema<undefined>, undefined>;\n        readonly data_retention_days: import(\"valibot\").OptionalSchema<import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").NumberSchema<undefined>, import(\"valibot\").IntegerAction<number, undefined>, import(\"valibot\").MinValueAction<number, 1, undefined>, import(\"valibot\").MaxValueAction<number, 730, undefined>]>, undefined>;\n    }, undefined>;\n    readonly privacy_check: import(\"valibot\").ObjectSchema<{\n        readonly data: import(\"valibot\").RecordSchema<import(\"valibot\").StringSchema<undefined>, import(\"valibot\").UnknownSchema, undefined>;\n        readonly operation: import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>;\n        readonly context: import(\"valibot\").OptionalSchema<import(\"valibot\").StringSchema<undefined>, undefined>;\n    }, undefined>;\n    readonly pii_scan: import(\"valibot\").ObjectSchema<{\n        readonly text: import(\"valibot\").SchemaWithPipe<readonly [import(\"valibot\").StringSchema<undefined>, import(\"valibot\").MinLengthAction<string, 1, undefined>, import(\"valibot\").MaxLengthAction<string, 100000, undefined>]>;\n        readonly types: import(\"valibot\").OptionalSchema<import(\"valibot\").ArraySchema<import(\"valibot\").EnumSchema<import(\"valibot\").Enum, import(\"valibot\").ErrorMessage<import(\"valibot\").EnumIssue> | undefined>, undefined>, undefined>;\n    }, undefined>;\n    readonly classify_data: import(\"valibot\").ObjectSchema<{\n        readonly data: import(\"valibot\").RecordSchema<import(\"valibot\").StringSchema<undefined>, import(\"valibot\").UnknownSchema, undefined>;\n    }, undefined>;\n};\nexport type",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/validation.d.ts",
-        "start": 262,
-        "end": 523,
-        "startLoc": {
-          "line": 262,
-          "column": 11,
-          "position": 9048
-        },
-        "endLoc": {
-          "line": 523,
-          "column": 5,
-          "position": 18084
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/validation.d.ts",
-        "start": 1,
-        "end": 262,
-        "startLoc": {
-          "line": 1,
-          "column": 15,
-          "position": 7
-        },
-        "endLoc": {
-          "line": 262,
-          "column": 8,
-          "position": 9043
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 82,
-      "fragment": ";\n/**\n * Stage completion record stored in database.\n */\nexport interface StageCompletion {\n    id: string;\n    user_id: string;\n    stage_id: string;\n    stage_prefix: string;\n    stars_earned: number;\n    score: number;\n    completed_at: string;\n    updated_at: string;\n}\n/**\n * Storage record for stage completions (stored per user).\n */\nexport interface StageCompletionStorage {\n    user_id: string;\n    completions: Record<string, {\n        stage_id: string;\n        stage_prefix: string;\n        stars_earned: number;\n        score: number;\n        completed_at: string;\n        updated_at: string;\n    }>;\n}\n/**\n * Request payload for completing a stage (with optional loot generation).\n */\nexport interface CompleteStageRequest {\n    stage_id: string;\n    stage_prefix: string;\n    stars_earned: number;\n    score: number;\n    difficulty?: 'easy' | 'medium' | 'hard' | 'nightmare';\n    boss_defeated?: boolean;\n    boss_id?: string;\n}\n/**\n * Loot result from stage completion.\n */\nexport interface LootResult {\n    dropped: boolean;\n    gear: GearItem | null;\n}\n/**\n * Request payload for getting completed stages.\n */\nexport interface GetStageCompletionRequest {\n    stage_id: string;\n}\n/**\n * Request payload for getting all stage completions.\n */\nexport interface GetAllStageCompletionsRequest {\n    stage_prefix?: string;\n}\n/**\n * Response for stage completion (with optional loot).\n */\nexport interface StageCompletionResponse {\n    success: boolean;\n    stage_id: string;\n    stars_earned: number;\n    score: number;\n    is_new_completion: boolean;\n    previous_best?: {\n        stars_earned: number;\n        score: number;\n    };\n    loot?: LootResult;\n    drop_rate?: number;\n    unlocked_modifier_pools?: string[];\n}\n/**\n * Registers the complete_stage RPC endpoint.\n *\n * @param initializer - Nakama runtime initializer\n */\nexport",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/stage_tracking.d.ts",
-        "start": 7,
-        "end": 88,
-        "startLoc": {
-          "line": 7,
-          "column": 16,
-          "position": 26
-        },
-        "endLoc": {
-          "line": 88,
-          "column": 7,
-          "position": 418
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/stage_tracking.ts",
-        "start": 16,
-        "end": 106,
-        "startLoc": {
-          "line": 16,
-          "column": 15,
-          "position": 77
-        },
-        "endLoc": {
-          "line": 106,
-          "column": 6,
-          "position": 482
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 38,
-      "fragment": "export interface PlayerStats {\n    user_id: string;\n    level: number;\n    xp: number;\n    ability_points: number;\n    stats: {\n        attack: number;\n        defense: number;\n        dodge: number;\n        crit_rate: number;\n    };\n}\n/**\n * Request payload for gaining XP.\n *\n * @property xp_amount - Amount of XP to gain\n * @property source - Source of XP gain (\"pve\" or \"pvp\")\n */\nexport interface XPGainRequest {\n    xp_amount: number;\n    source: string;\n}\n/**\n * Request payload for stat allocation.\n *\n * @property stat_name - Name of stat to increase\n * @property points - Number of points to allocate\n */\nexport interface StatAllocationRequest {\n    stat_name: string;\n    points: number;\n}\n/**\n * Registers the gain XP RPC endpoint.\n *\n * @param initializer - Nakama runtime initializer\n */\nexport declare",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/rpg_system.d.ts",
-        "start": 15,
-        "end": 52,
-        "startLoc": {
-          "line": 15,
-          "column": 1,
-          "position": 17
-        },
-        "endLoc": {
-          "line": 52,
-          "column": 8,
-          "position": 149
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/rpg_system.ts",
-        "start": 49,
-        "end": 89,
-        "startLoc": {
-          "line": 49,
-          "column": 1,
-          "position": 281
-        },
-        "endLoc": {
-          "line": 89,
-          "column": 9,
-          "position": 420
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 56,
-      "fragment": ";\nexport type RolloutPhase = 'disabled' | 'canary' | 'gradual' | 'full';\nexport type RolloutStatus = 'active' | 'paused' | 'rolled_back' | 'completed';\nexport interface FeatureFlag {\n    name: string;\n    description: string;\n    enabled: boolean;\n    rolloutPhase: RolloutPhase;\n    rolloutPercentage: number;\n    canaryUserIds: string[];\n    canaryVersionMin?: string;\n    canaryVersionMax?: string;\n    phases: RolloutPhaseConfig[];\n    currentPhaseIndex: number;\n    createdAt: number;\n    updatedAt: number;\n}\nexport interface RolloutPhaseConfig {\n    phase: RolloutPhase;\n    percentage: number;\n    durationMinutes: number;\n    minHealthPercent: number;\n    maxErrorRatePercent: number;\n    maxLatencyMs: number;\n    sampleSize: number;\n    autoPromote: boolean;\n    rollbackCriteria: {\n        errorRateThreshold: number;\n        latencyThreshold: number;\n        healthCheckFails: number;\n        customMetrics?: Record<string, number>;\n    };\n}\nexport interface RollbackCriteria {\n    errorRateThreshold: number;\n    latencyThreshold: number;\n    healthCheckFails: number;\n    customMetrics?: Record<string, number>;\n}\nexport interface RolloutMetrics {\n    featureName: string;\n    phase: RolloutPhase;\n    totalUsers: number;\n    activeUsers: number;\n    errorCount: number;\n    errorRate: number;\n    avgLatencyMs: number;\n    p99LatencyMs: number;\n    healthCheckPasses: number;\n    healthCheckFails: number;\n    lastUpdated: number;\n}\n/**\n * Get feature flag by name\n */\nexport",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/progressive_rollout.d.ts",
-        "start": 13,
-        "end": 68,
-        "startLoc": {
-          "line": 13,
-          "column": 18,
-          "position": 26
-        },
-        "endLoc": {
-          "line": 68,
-          "column": 7,
-          "position": 419
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/progressive_rollout.ts",
-        "start": 19,
-        "end": 85,
-        "startLoc": {
-          "line": 19,
-          "column": 2,
-          "position": 84
-        },
-        "endLoc": {
-          "line": 85,
-          "column": 6,
-          "position": 512
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": ";\nimport { PlayerInventory } from './gear_system';\nimport { PlayerStats } from './rpg_system';\nexport interface ValidationResult {\n    is_valid: boolean;\n    issues: ValidationIssue[];\n}\nexport interface ValidationIssue {\n    severity: 'critical' | 'warning';\n    category: string;\n    message: string;\n    details: Record<string, any>;\n}\nexport",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/progression_validation.d.ts",
-        "start": 1,
-        "end": 14,
-        "startLoc": {
-          "line": 1,
-          "column": 18,
-          "position": 11
-        },
-        "endLoc": {
-          "line": 14,
-          "column": 7,
-          "position": 113
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/progression_validation.ts",
-        "start": 2,
-        "end": 18,
-        "startLoc": {
-          "line": 2,
-          "column": 10,
-          "position": 24
-        },
-        "endLoc": {
-          "line": 18,
-          "column": 6,
-          "position": 129
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 56,
-      "fragment": "export interface DetectedPII {\n    type: PIIType;\n    value: string;\n    startIndex: number;\n    endIndex: number;\n    fieldName?: string;\n    context?: string;\n}\n/**\n * Privacy check result\n */\nexport interface PrivacyCheckResult {\n    compliant: boolean;\n    issues: PrivacyIssue[];\n    warnings: string[];\n    metadata: {\n        checkedAt: number;\n        dataTypes: PIIType[];\n        sensitivityLevels: SensitivityLevel[];\n    };\n}\n/**\n * Privacy issue details\n */\nexport interface PrivacyIssue {\n    severity: 'critical' | 'high' | 'medium' | 'low';\n    type: string;\n    description: string;\n    fieldName?: string;\n    suggestion?: string;\n}\n/**\n * Data classification result\n */\nexport interface DataClassification {\n    level: SensitivityLevel;\n    fields: Record<string, SensitivityLevel>;\n    piiFields: string[];\n    restrictedFields: string[];\n}\n/**\n * Anonymization options\n */\nexport interface AnonymizationOptions {\n    preserveFormat?: boolean;\n    salt?: string;\n    hashAlgorithm?: 'sha256' | 'sha512';\n}\n/**\n * Scan text for PII and return detected instances\n *\n * @param text - The text to scan\n * @param types - Optional array of PII types to scan for (defaults to all)\n * @returns Array of detected PII instances\n */\nexport declare",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/privacy_compliance.d.ts",
-        "start": 44,
-        "end": 99,
-        "startLoc": {
-          "line": 44,
-          "column": 1,
-          "position": 182
-        },
-        "endLoc": {
-          "line": 99,
-          "column": 8,
-          "position": 463
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/privacy_compliance.ts",
-        "start": 141,
-        "end": 201,
-        "startLoc": {
-          "line": 141,
-          "column": 1,
-          "position": 814
-        },
-        "endLoc": {
-          "line": 201,
-          "column": 9,
-          "position": 1100
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 29,
-      "fragment": ";\n/**\n * Type for privacy check request\n */\nexport type PrivacyCheckRequest = {\n    data: Record<string, unknown>;\n    operation: 'store' | 'persist' | 'log' | 'transmit' | 'send' | 'share' | 'export';\n    context?: string;\n};\n/**\n * Type for PII scan request\n */\nexport type PIIScanRequest = {\n    text: string;\n    types?: PIIType[];\n};\n/**\n * Type for data classification request\n */\nexport type ClassifyDataRequest = {\n    data: Record<string, unknown>;\n};\n/**\n * Check if a value contains PII (simple boolean check for any value)\n *\n * @param value - The value to check\n * @returns True if the value appears to contain PII\n */\nexport declare",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/privacy_compliance.d.ts",
-        "start": 187,
-        "end": 215,
-        "startLoc": {
-          "line": 187,
-          "column": 2,
-          "position": 1025
-        },
-        "endLoc": {
-          "line": 215,
-          "column": 8,
-          "position": 1158
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/privacy_compliance.ts",
-        "start": 647,
-        "end": 679,
-        "startLoc": {
-          "line": 647,
-          "column": 2,
-          "position": 4514
-        },
-        "endLoc": {
-          "line": 679,
-          "column": 9,
-          "position": 4651
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 34,
-      "fragment": ": Runtime.Nakama, payload: string): string;\n/**\n * Registers the get player stats RPC endpoint.\n *\n * @param initializer - Nakama runtime initializer\n */\nexport declare function registerRpcGetPlayerStats(initializer: Runtime.Initializer): void;\n/**\n * Retrieves player statistics with caching.\n *\n * @param ctx - Nakama runtime context\n * @param logger - Nakama logger instance\n * @param nk - Nakama server interface\n * @param payload - JSON string (unused, required for RPC format)\n * @returns JSON string with player stats or error\n *\n * @example\n * // Request payload\n * { }\n *\n * // Response\n * {\n *   \"level\": 5,\n *   \"xp\": 450,\n *   \"stats\": { ... }\n * }\n */\nexport declare function rpcGetPlayerStats(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string;\n/**\n * Registers the report player RPC endpoint.\n *\n * @param initializer - Nakama runtime initializer\n */\nexport declare function registerRpcReportPlayer",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/player_rpc.d.ts",
-        "start": 32,
-        "end": 65,
-        "startLoc": {
-          "line": 32,
-          "column": 4,
-          "position": 64
-        },
-        "endLoc": {
-          "line": 65,
-          "column": 24,
-          "position": 155
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/rpg_system.d.ts",
-        "start": 100,
-        "end": 137,
-        "startLoc": {
-          "line": 100,
-          "column": 3,
-          "position": 260
-        },
-        "endLoc": {
-          "line": 137,
-          "column": 15,
-          "position": 351
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": "function updateNotificationPreferences(nk: Runtime.Nakama, userId: string, preferences: {\n    dailyRewardsEnabled?: boolean;\n    eventsEnabled?: boolean;\n    pvpChallengesEnabled?: boolean;\n    promotionsEnabled?: boolean;\n    notificationsEnabled?: boolean;\n    quietHoursEnabled?: boolean;\n    quietHoursStart?: string;\n    quietHoursEnd?: string;\n    timezone?: string;\n}): Promise<{\n    success: boolean;\n    error?: string;",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/notifications.d.ts",
-        "start": 64,
-        "end": 76,
-        "startLoc": {
-          "line": 64,
-          "column": 2,
-          "position": 492
-        },
-        "endLoc": {
-          "line": 76,
-          "column": 2,
-          "position": 608
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/notifications.ts",
-        "start": 363,
-        "end": 377,
-        "startLoc": {
-          "line": 363,
-          "column": 2,
-          "position": 2812
-        },
-        "endLoc": {
-          "line": 377,
-          "column": 2,
-          "position": 2933
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "interface QueryRecord {\n    operation: string;\n    queryType: 'storage' | 'database' | 'leaderboard' | 'match' | 'notification' | 'http';\n    timestamp: number;\n    durationMs: number;\n    collection?: string;\n    key?: string;\n    userId?: string;\n    success: boolean;\n}\ninterface QueryStats",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/n_plus_one_detection.d.ts",
-        "start": 41,
-        "end": 51,
-        "startLoc": {
-          "line": 41,
-          "column": 1,
-          "position": 80
-        },
-        "endLoc": {
-          "line": 51,
-          "column": 11,
-          "position": 169
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/n_plus_one_detection.ts",
-        "start": 60,
-        "end": 71,
-        "startLoc": {
-          "line": 60,
-          "column": 1,
-          "position": 252
-        },
-        "endLoc": {
-          "line": 71,
-          "column": 17,
-          "position": 342
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 91,
-      "fragment": ";\n/**\n * PvP match data structure.\n *\n * @property match_id - Unique identifier for the match\n * @property creator_id - ID of the match creator\n * @property opponent_id - ID of the opponent\n * @property creator_rank - Rank of the creator\n * @property opponent_rank - Rank of the opponent\n * @property match_type - Type of match (\"ranked\" or \"casual\")\n * @property is_punch_up - Whether this is a punch-up match\n * @property status - Current match status\n * @property created_at - Timestamp when match was created\n * @property updated_at - Timestamp when match was last updated\n * @property creator_turn_data - Optional turn data for creator\n * @property opponent_turn_data - Optional turn data for opponent\n * @property winner - Optional winner if match completed\n * @property expires_at - Timestamp when match will be considered abandoned/expired\n * @property last_turn_timestamp - Timestamp of the last turn action\n */\nexport interface PvPMatch {\n    match_id: string;\n    creator_id: string;\n    opponent_id: string;\n    creator_rank: number;\n    opponent_rank: number;\n    match_type: 'ranked' | 'casual';\n    is_punch_up: boolean;\n    status: 'pending' | 'active' | 'completed' | 'expired';\n    created_at: number;\n    updated_at: number;\n    creator_turn_data?: TurnData;\n    opponent_turn_data?: TurnData;\n    winner?: string;\n    expires_at: number;\n    last_turn_timestamp: number;\n}\n/**\n * Request payload for creating a match.\n *\n * @property match_type - Type of match to create\n * @property is_punch_up - Whether to allow punch-up matches\n * @property target_opponent_id - Optional specific opponent to challenge\n */\nexport interface CreateMatchRequest {\n    match_type: 'ranked' | 'casual';\n    is_punch_up?: boolean;\n    target_opponent_id?: string;\n}\n/**\n * Request payload for accepting a match.\n *\n * @property match_id - ID of the match to accept\n */\nexport interface AcceptMatchRequest {\n    match_id: string;\n}\n/**\n * Request payload for listing matches.\n *\n * @property match_type - Optional filter by match type\n * @property min_rank - Optional minimum rank filter\n * @property max_rank - Optional maximum rank filter\n * @property limit - Maximum number of matches to return\n */\nexport interface ListMatchesRequest {\n    match_type?: 'ranked' | 'casual';\n    min_rank?: number;\n    max_rank?: number;\n    limit?: number;\n}\n/**\n * Request payload for completing a match.\n *\n * @property match_id - ID of the match to complete\n * @property winner_id - ID of the match winner\n * @property loser_id - ID of the match loser\n * @property is_punch_up - Whether this was a punch-up match\n */\nexport interface CompleteMatchRequest {\n    match_id: string;\n    winner_id: string;\n    loser_id: string;\n    is_punch_up?: boolean;\n}\n/**\n * Registers the list matches RPC endpoint.\n *\n * @param initializer - Nakama runtime initializer\n */\nexport declare",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/matchmaker.d.ts",
-        "start": 6,
-        "end": 96,
-        "startLoc": {
-          "line": 6,
-          "column": 18,
-          "position": 29
-        },
-        "endLoc": {
-          "line": 96,
-          "column": 8,
-          "position": 318
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/matchmaker.ts",
-        "start": 17,
-        "end": 113,
-        "startLoc": {
-          "line": 17,
-          "column": 15,
-          "position": 112
-        },
-        "endLoc": {
-          "line": 113,
-          "column": 9,
-          "position": 407
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 28,
-      "fragment": "import { Runtime } from '../types/nakama';\n/**\n * Audit log entry details.\n */\nexport interface AuditLogDetails {\n    timestamp: number;\n    user_id: string;\n    ip_address: string | null;\n    action: string;\n    resource: string;\n    details: Record<string, any>;\n    result: 'success' | 'failure';\n    error?: string;\n}\n/**\n * Logs an audit event to the audit_logs collection.\n * Logs are immutable once written and are used for security monitoring and compliance.\n *\n * @param nk - Nakama server interface\n * @param userId - User ID performing the action\n * @param ipAddress - IP address of the request (from ctx.ipAddress)\n * @param action - Action performed (e.g., 'gain_xp', 'equip_gear')\n * @param resource - Resource affected (e.g., 'player_stats', 'gear')\n * @param details - Additional context about the action\n * @param result - Outcome of the action\n * @param error - Optional error message if result is 'failure'\n */\nexport declare",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/audit.d.ts",
-        "start": 1,
-        "end": 28,
-        "startLoc": {
-          "line": 1,
-          "column": 1,
-          "position": 0
-        },
-        "endLoc": {
-          "line": 28,
-          "column": 8,
-          "position": 100
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/audit.ts",
-        "start": 2,
-        "end": 31,
-        "startLoc": {
-          "line": 2,
-          "column": 1,
-          "position": 13
-        },
-        "endLoc": {
-          "line": 31,
-          "column": 9,
-          "position": 115
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 28,
-      "fragment": "'replay_attack' | 'invalid_signature' | 'timing_attack' | 'out_of_turn' | 'clock_skew' | 'invalid_progression' | 'stat_manipulation' | 'inventory_tampering';\nexport interface UserRiskProfile {\n    userId: string;\n    violations: AntiCheatViolation[];\n    riskScore: number;\n    isSuspended: boolean;\n    firstViolation: number;\n    lastViolation: number;\n    violationCount: number;\n}\nexport interface AuditConfig {\n    enablePersistence: boolean;\n    highRiskThreshold: number;\n    suspensionThreshold: number;\n    violationRetentionDays: number;\n    replayWindowMs: number;\n}\nexport interface AuditStats {\n    totalViolations: number;\n    uniqueUsers: number;\n    suspendedUsers: number;\n    highRiskUsers: number;\n    violationsByType: Record<ViolationType, number>;\n}\n/**\n * Initialize the audit logging system.\n */\nexport",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/anti_cheat_audit.d.ts",
-        "start": 14,
-        "end": 41,
-        "startLoc": {
-          "line": 14,
-          "column": 2,
-          "position": 86
-        },
-        "endLoc": {
-          "line": 41,
-          "column": 7,
-          "position": 276
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/anti_cheat_audit.ts",
-        "start": 18,
-        "end": 53,
-        "startLoc": {
-          "line": 18,
-          "column": 2,
-          "position": 92
-        },
-        "endLoc": {
-          "line": 53,
-          "column": 6,
-          "position": 291
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": "function generateAuditReport(userId: string): {\n    userId: string;\n    profile: UserRiskProfile | null;\n    report: {\n        totalViolations: number;\n        criticalViolations: number;\n        highViolations: number;\n        mediumViolations: number;\n        lowViolations: number;\n        violationsByType: Record<ViolationType, number>;\n        riskLevel: string;\n        recommendedAction: string;\n    };\n} | null;",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/anti_cheat_audit.d.ts",
-        "start": 57,
-        "end": 70,
-        "startLoc": {
-          "line": 57,
-          "column": 2,
-          "position": 405
-        },
-        "endLoc": {
-          "line": 70,
-          "column": 2,
-          "position": 513
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/anti_cheat_audit.ts",
-        "start": 211,
-        "end": 224,
-        "startLoc": {
-          "line": 211,
-          "column": 2,
-          "position": 1415
-        },
-        "endLoc": {
-          "line": 224,
-          "column": 2,
-          "position": 1524
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 25,
-      "fragment": "import { Runtime } from '../types/nakama';\n/**\n * Configuration for anti-cheat detection.\n */\nexport interface AntiCheatConfig {\n    hmacSecret: string;\n    replayWindowMs: number;\n    maxClockSkewMs: number;\n    enableSignatureVerification: boolean;\n    enableReplayProtection: boolean;\n}\n/**\n * Request signature metadata for HMAC verification.\n */\nexport interface RequestSignature {\n    requestId: string;\n    timestamp: number;\n    signature: string;\n    nonce: string;\n}\n/**\n * Anti-cheat violation data for auditing.\n */\nexport interface AntiCheatViolation {\n    violationType: 'replay_attack'",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/anti_cheat.d.ts",
-        "start": 6,
-        "end": 30,
-        "startLoc": {
-          "line": 6,
-          "column": 1,
-          "position": 2
-        },
-        "endLoc": {
-          "line": 30,
-          "column": 16,
-          "position": 116
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/anti_cheat.ts",
-        "start": 9,
-        "end": 37,
-        "startLoc": {
-          "line": 9,
-          "column": 1,
-          "position": 32
-        },
-        "endLoc": {
-          "line": 37,
-          "column": 2,
-          "position": 150
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 24,
-      "fragment": "interface PlayerMatchHistory {\n    userId: string;\n    matches: MatchResult[];\n    abandonmentCount: number;\n    lastAbandonmentTime: number;\n    flagged: boolean;\n    flagReason?: string;\n}\n/**\n * Individual match result.\n */\ninterface MatchResult {\n    matchId: string;\n    opponentId: string;\n    result: 'win' | 'loss' | 'draw' | 'abandon';\n    timestamp: number;\n    wasRanked: boolean;\n    rankBefore: number;\n    rankAfter: number;\n}\n/**\n * Initialize leaderboard anti-cheat configuration.\n */\nexport",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/anti_cheat.d.ts",
-        "start": 103,
-        "end": 126,
-        "startLoc": {
-          "line": 103,
-          "column": 1,
-          "position": 561
-        },
-        "endLoc": {
-          "line": 126,
-          "column": 7,
-          "position": 687
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/anti_cheat.ts",
-        "start": 410,
-        "end": 433,
-        "startLoc": {
-          "line": 410,
-          "column": 1,
-          "position": 2763
-        },
-        "endLoc": {
-          "line": 433,
-          "column": 6,
-          "position": 2891
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 22,
-      "fragment": "}\ninterface AnalyticsEvent {\n    id: string;\n    userId: string;\n    eventName: string;\n    timestamp: number;\n    properties: Record<string, unknown>;\n    platform: string;\n    sessionId: string;\n}\ninterface DailyMetric {\n    date: string;\n    eventName: string;\n    count: number;\n    uniqueUsers: Set<string>;\n}\n/**\n * Registers the analytics RPC endpoints.\n *\n * @param initializer - Nakama runtime initializer\n */\nexport",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/analytics.d.ts",
-        "start": 41,
-        "end": 62,
-        "startLoc": {
-          "line": 41,
-          "column": 1,
-          "position": 296
-        },
-        "endLoc": {
-          "line": 62,
-          "column": 7,
-          "position": 402
-        }
-      },
-      "secondFile": {
-        "name": "src/modules/analytics.ts",
-        "start": 72,
-        "end": 94,
-        "startLoc": {
-          "line": 72,
-          "column": 1,
-          "position": 439
-        },
-        "endLoc": {
-          "line": 94,
-          "column": 6,
-          "position": 552
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 21,
-      "fragment": "(__unused_webpack_module, __webpack_exports__, __webpack_require__) {\n\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   q: () => (/* binding */ execAsync)\n/* harmony export */ });\n/* harmony import */ var child_process__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(13200);\n/* harmony import */ var child_process__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(child_process__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var util__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(92460);\n/* harmony import */ var util__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(util__WEBPACK_IMPORTED_MODULE_1__);\n/*\n * Copyright The OpenTelemetry Authors\n * SPDX-License-Identifier: Apache-2.0\n */\n\n\nconst execAsync = util__WEBPACK_IMPORTED_MODULE_1__.promisify(child_process__WEBPACK_IMPORTED_MODULE_0__.exec);\n//# sourceMappingURL=execAsync.js.map\n\n/***/ },\n\n/***/ 42709",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/709.index.js",
-        "start": 7,
-        "end": 27,
-        "startLoc": {
-          "line": 7,
-          "column": 1,
-          "position": 36
-        },
-        "endLoc": {
-          "line": 27,
-          "column": 6,
-          "position": 175
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/934.index.js",
-        "start": 7,
-        "end": 27,
-        "startLoc": {
-          "line": 7,
-          "column": 1,
-          "position": 36
-        },
-        "endLoc": {
-          "line": 27,
-          "column": 6,
-          "position": 175
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 25,
-      "fragment": "];\nexports.modules = {\n\n/***/ 22655\n(__unused_webpack_module, __webpack_exports__, __webpack_require__) {\n\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   q: () => (/* binding */ execAsync)\n/* harmony export */ });\n/* harmony import */ var child_process__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(13200);\n/* harmony import */ var child_process__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(child_process__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var util__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(92460);\n/* harmony import */ var util__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(util__WEBPACK_IMPORTED_MODULE_1__);\n/*\n * Copyright The OpenTelemetry Authors\n * SPDX-License-Identifier: Apache-2.0\n */\n\n\nconst execAsync = util__WEBPACK_IMPORTED_MODULE_1__.promisify(child_process__WEBPACK_IMPORTED_MODULE_0__.exec);\n//# sourceMappingURL=execAsync.js.map\n\n/***/ },\n\n/***/ 88646",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/646.index.js",
-        "start": 3,
-        "end": 27,
-        "startLoc": {
-          "line": 3,
-          "column": 4,
-          "position": 20
-        },
-        "endLoc": {
-          "line": 27,
-          "column": 6,
-          "position": 175
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/709.index.js",
-        "start": 3,
-        "end": 27,
-        "startLoc": {
-          "line": 3,
-          "column": 4,
-          "position": 20
-        },
-        "endLoc": {
-          "line": 27,
-          "column": 6,
-          "position": 175
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 9,
-      "fragment": "(__unused_webpack_module, __webpack_exports__, __webpack_require__) {\n\n__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   getMachineId: () => (/* binding */ getMachineId)\n/* harmony export */ });\n/* harmony import */ var fs__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(94383);\n/* harmony import */ var fs__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(fs__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _execAsync__WEBPACK_IMPORTED_MODULE_1__",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/646.index.js",
-        "start": 28,
-        "end": 36,
-        "startLoc": {
-          "line": 28,
-          "column": 1,
-          "position": 177
-        },
-        "endLoc": {
-          "line": 36,
-          "column": 40,
-          "position": 266
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/765.index.js",
-        "start": 7,
-        "end": 15,
-        "startLoc": {
-          "line": 7,
-          "column": 1,
-          "position": 36
-        },
-        "endLoc": {
-          "line": 15,
-          "column": 48,
-          "position": 125
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 25,
-      "fragment": "];\nexports.modules = {\n\n/***/ 39605\n(__unused_webpack_module, __webpack_exports__, __webpack_require__) {\n\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   q: () => (/* binding */ execAsync)\n/* harmony export */ });\n/* harmony import */ var child_process__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(13200);\n/* harmony import */ var child_process__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(child_process__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var util__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(92460);\n/* harmony import */ var util__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(util__WEBPACK_IMPORTED_MODULE_1__);\n/*\n * Copyright The OpenTelemetry Authors\n * SPDX-License-Identifier: Apache-2.0\n */\n\n\nconst execAsync = util__WEBPACK_IMPORTED_MODULE_1__.promisify(child_process__WEBPACK_IMPORTED_MODULE_0__.exec);\n//# sourceMappingURL=execAsync.js.map\n\n/***/ },\n\n/***/ 82580",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/580.index.js",
-        "start": 3,
-        "end": 27,
-        "startLoc": {
-          "line": 3,
-          "column": 4,
-          "position": 20
-        },
-        "endLoc": {
-          "line": 27,
-          "column": 6,
-          "position": 175
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/934.index.js",
-        "start": 3,
-        "end": 27,
-        "startLoc": {
-          "line": 3,
-          "column": 4,
-          "position": 20
-        },
-        "endLoc": {
-          "line": 27,
-          "column": 6,
-          "position": 175
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 9,
-      "fragment": "(__unused_webpack_module, __webpack_exports__, __webpack_require__) {\n\n__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   getMachineId: () => (/* binding */ getMachineId)\n/* harmony export */ });\n/* harmony import */ var fs__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(94383);\n/* harmony import */ var fs__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(fs__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _execAsync__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(39605",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/580.index.js",
-        "start": 28,
-        "end": 36,
-        "startLoc": {
-          "line": 28,
-          "column": 1,
-          "position": 177
-        },
-        "endLoc": {
-          "line": 36,
-          "column": 6,
-          "position": 272
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/765.index.js",
-        "start": 7,
-        "end": 36,
-        "startLoc": {
-          "line": 7,
-          "column": 1,
-          "position": 36
-        },
-        "endLoc": {
-          "line": 36,
-          "column": 6,
-          "position": 272
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 32,
-      "fragment": ");\n/* harmony import */ var _opentelemetry_api__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(78758);\n/*\n * Copyright The OpenTelemetry Authors\n * SPDX-License-Identifier: Apache-2.0\n */\n\n\n\nasync function getMachineId() {\n    try {\n        const result = await fs__WEBPACK_IMPORTED_MODULE_0__.promises.readFile('/etc/hostid', { encoding: 'utf8' });\n        return result.trim();\n    }\n    catch (e) {\n        _opentelemetry_api__WEBPACK_IMPORTED_MODULE_2__/* .diag */ .s.debug(`error reading machine id: ${e}`);\n    }\n    try {\n        const result = await (0,_execAsync__WEBPACK_IMPORTED_MODULE_1__/* .execAsync */ .q)('kenv -q smbios.system.uuid');\n        return result.stdout.trim();\n    }\n    catch (e) {\n        _opentelemetry_api__WEBPACK_IMPORTED_MODULE_2__/* .diag */ .s.debug(`error reading machine id: ${e}`);\n    }\n    return undefined;\n}\n//# sourceMappingURL=getMachineId-bsd.js.map\n\n/***/ }\n\n};\n;",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/580.index.js",
-        "start": 36,
-        "end": 67,
-        "startLoc": {
-          "line": 36,
-          "column": 6,
-          "position": 273
-        },
-        "endLoc": {
-          "line": 67,
-          "column": 2,
-          "position": 472
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/646.index.js",
-        "start": 36,
-        "end": 67,
-        "startLoc": {
-          "line": 36,
-          "column": 6,
-          "position": 273
-        },
-        "endLoc": {
-          "line": 67,
-          "column": 2,
-          "position": 472
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 22,
-      "fragment": "(__unused_webpack_module, __webpack_exports__, __webpack_require__) {\n\n__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   getMachineId: () => (/* binding */ getMachineId)\n/* harmony export */ });\n/* harmony import */ var _opentelemetry_api__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(78758);\n/*\n * Copyright The OpenTelemetry Authors\n * SPDX-License-Identifier: Apache-2.0\n */\n\nasync function getMachineId() {\n    _opentelemetry_api__WEBPACK_IMPORTED_MODULE_0__/* .diag */ .s.debug('could not read machine-id: unsupported platform');\n    return undefined;\n}\n//# sourceMappingURL=getMachineId-unsupported.js.map\n\n/***/ }\n\n};\n;",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/576.index.js",
-        "start": 7,
-        "end": 28,
-        "startLoc": {
-          "line": 7,
-          "column": 1,
-          "position": 36
-        },
-        "endLoc": {
-          "line": 28,
-          "column": 2,
-          "position": 149
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/86.index.js",
-        "start": 7,
-        "end": 28,
-        "startLoc": {
-          "line": 7,
-          "column": 1,
-          "position": 36
-        },
-        "endLoc": {
-          "line": 28,
-          "column": 2,
-          "position": 149
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 34,
-      "fragment": "(__unused_webpack_module, __webpack_exports__, __webpack_require__) {\n\n__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   getMachineId: () => (/* binding */ getMachineId)\n/* harmony export */ });\n/* harmony import */ var fs__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(94383);\n/* harmony import */ var fs__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(fs__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _opentelemetry_api__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(78758);\n/*\n * Copyright The OpenTelemetry Authors\n * SPDX-License-Identifier: Apache-2.0\n */\n\n\nasync function getMachineId() {\n    const paths = ['/etc/machine-id', '/var/lib/dbus/machine-id'];\n    for (const path of paths) {\n        try {\n            const result = await fs__WEBPACK_IMPORTED_MODULE_0__.promises.readFile(path, { encoding: 'utf8' });\n            return result.trim();\n        }\n        catch (e) {\n            _opentelemetry_api__WEBPACK_IMPORTED_MODULE_1__/* .diag */ .s.debug(`error reading machine id: ${e}`);\n        }\n    }\n    return undefined;\n}\n//# sourceMappingURL=getMachineId-linux.js.map\n\n/***/ }\n\n};\n;",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/511.index.js",
-        "start": 7,
-        "end": 40,
-        "startLoc": {
-          "line": 7,
-          "column": 1,
-          "position": 36
-        },
-        "endLoc": {
-          "line": 40,
-          "column": 2,
-          "position": 277
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/765.index.js",
-        "start": 7,
-        "end": 40,
-        "startLoc": {
-          "line": 7,
-          "column": 1,
-          "position": 36
-        },
-        "endLoc": {
-          "line": 40,
-          "column": 2,
-          "position": 277
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 25,
-      "fragment": "];\nexports.modules = {\n\n/***/ 39605\n(__unused_webpack_module, __webpack_exports__, __webpack_require__) {\n\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   q: () => (/* binding */ execAsync)\n/* harmony export */ });\n/* harmony import */ var child_process__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(13200);\n/* harmony import */ var child_process__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(child_process__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var util__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(92460);\n/* harmony import */ var util__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(util__WEBPACK_IMPORTED_MODULE_1__);\n/*\n * Copyright The OpenTelemetry Authors\n * SPDX-License-Identifier: Apache-2.0\n */\n\n\nconst execAsync = util__WEBPACK_IMPORTED_MODULE_1__.promisify(child_process__WEBPACK_IMPORTED_MODULE_0__.exec);\n//# sourceMappingURL=execAsync.js.map\n\n/***/ },\n\n/***/ 6323",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/323.index.js",
-        "start": 3,
-        "end": 27,
-        "startLoc": {
-          "line": 3,
-          "column": 4,
-          "position": 20
-        },
-        "endLoc": {
-          "line": 27,
-          "column": 5,
-          "position": 175
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/934.index.js",
-        "start": 3,
-        "end": 27,
-        "startLoc": {
-          "line": 3,
-          "column": 4,
-          "position": 20
-        },
-        "endLoc": {
-          "line": 27,
-          "column": 6,
-          "position": 175
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 9,
-      "fragment": "(__unused_webpack_module, __webpack_exports__, __webpack_require__) {\n\n__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   getMachineId: () => (/* binding */ getMachineId)\n/* harmony export */ });\n/* harmony import */ var process__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(85949);\n/* harmony import */ var process__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(process__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _execAsync__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(39605",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/323.index.js",
-        "start": 28,
-        "end": 36,
-        "startLoc": {
-          "line": 28,
-          "column": 1,
-          "position": 177
-        },
-        "endLoc": {
-          "line": 36,
-          "column": 6,
-          "position": 272
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/709.index.js",
-        "start": 28,
-        "end": 36,
-        "startLoc": {
-          "line": 28,
-          "column": 1,
-          "position": 177
-        },
-        "endLoc": {
-          "line": 36,
-          "column": 6,
-          "position": 272
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 33,
-      "fragment": ");\n/* harmony import */ var _opentelemetry_api__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(78758);\n/*\n * Copyright The OpenTelemetry Authors\n * SPDX-License-Identifier: Apache-2.0\n */\n\n\n\nasync function getMachineId() {\n    const args = 'QUERY HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Microsoft\\\\Cryptography /v MachineGuid';\n    let command = '%windir%\\\\System32\\\\REG.exe';\n    if (process__WEBPACK_IMPORTED_MODULE_0__.arch === 'ia32' && \"PROCESSOR_ARCHITEW6432\" in process__WEBPACK_IMPORTED_MODULE_0__.env) {\n        command = '%windir%\\\\sysnative\\\\cmd.exe /c ' + command;\n    }\n    try {\n        const result = await (0,_execAsync__WEBPACK_IMPORTED_MODULE_1__/* .execAsync */ .q)(`${command} ${args}`);\n        const parts = result.stdout.split('REG_SZ');\n        if (parts.length === 2) {\n            return parts[1].trim();\n        }\n    }\n    catch (e) {\n        _opentelemetry_api__WEBPACK_IMPORTED_MODULE_2__/* .diag */ .s.debug(`error reading machine id: ${e}`);\n    }\n    return undefined;\n}\n//# sourceMappingURL=getMachineId-win.js.map\n\n/***/ }\n\n};\n;",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/323.index.js",
-        "start": 36,
-        "end": 68,
-        "startLoc": {
-          "line": 36,
-          "column": 6,
-          "position": 273
-        },
-        "endLoc": {
-          "line": 68,
-          "column": 2,
-          "position": 500
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/709.index.js",
-        "start": 36,
-        "end": 68,
-        "startLoc": {
-          "line": 36,
-          "column": 6,
-          "position": 273
-        },
-        "endLoc": {
-          "line": 68,
-          "column": 2,
-          "position": 500
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 27,
-      "fragment": "(__unused_webpack_module, exports, __webpack_require__) {\n\n\nvar __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {\n    if (k2 === undefined) k2 = k;\n    var desc = Object.getOwnPropertyDescriptor(m, k);\n    if (!desc || (\"get\" in desc ? !m.__esModule : desc.writable || desc.configurable)) {\n      desc = { enumerable: true, get: function() { return m[k]; } };\n    }\n    Object.defineProperty(o, k2, desc);\n}) : (function(o, m, k, k2) {\n    if (k2 === undefined) k2 = k;\n    o[k2] = m[k];\n}));\nvar __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {\n    Object.defineProperty(o, \"default\", { enumerable: true, value: v });\n}) : function(o, v) {\n    o[\"default\"] = v;\n});\nvar __importStar = (this && this.__importStar) || function (mod) {\n    if (mod && mod.__esModule) return mod;\n    var result = {};\n    if (mod != null) for (var k in mod) if (k !== \"default\" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);\n    __setModuleDefault(result, mod);\n    return result;\n};\nvar",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/288.index.js",
-        "start": 79,
-        "end": 105,
-        "startLoc": {
-          "line": 79,
-          "column": 1,
-          "position": 975
-        },
-        "endLoc": {
-          "line": 105,
-          "column": 4,
-          "position": 1447
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/288.index.js",
-        "start": 7,
-        "end": 33,
-        "startLoc": {
-          "line": 7,
-          "column": 1,
-          "position": 36
-        },
-        "endLoc": {
-          "line": 33,
-          "column": 7,
-          "position": 508
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 27,
-      "fragment": "(__unused_webpack_module, exports, __webpack_require__) {\n\n\nvar __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {\n    if (k2 === undefined) k2 = k;\n    var desc = Object.getOwnPropertyDescriptor(m, k);\n    if (!desc || (\"get\" in desc ? !m.__esModule : desc.writable || desc.configurable)) {\n      desc = { enumerable: true, get: function() { return m[k]; } };\n    }\n    Object.defineProperty(o, k2, desc);\n}) : (function(o, m, k, k2) {\n    if (k2 === undefined) k2 = k;\n    o[k2] = m[k];\n}));\nvar __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {\n    Object.defineProperty(o, \"default\", { enumerable: true, value: v });\n}) : function(o, v) {\n    o[\"default\"] = v;\n});\nvar __importStar = (this && this.__importStar) || function (mod) {\n    if (mod && mod.__esModule) return mod;\n    var result = {};\n    if (mod != null) for (var k in mod) if (k !== \"default\" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);\n    __setModuleDefault(result, mod);\n    return result;\n};\nvar __importDefault",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/288.index.js",
-        "start": 263,
-        "end": 289,
-        "startLoc": {
-          "line": 263,
-          "column": 1,
-          "position": 2794
-        },
-        "endLoc": {
-          "line": 289,
-          "column": 16,
-          "position": 3268
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/288.index.js",
-        "start": 7,
-        "end": 105,
-        "startLoc": {
-          "line": 7,
-          "column": 1,
-          "position": 36
-        },
-        "endLoc": {
-          "line": 105,
-          "column": 13,
-          "position": 1449
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 25,
-      "fragment": "];\nexports.modules = {\n\n/***/ 22655\n(__unused_webpack_module, __webpack_exports__, __webpack_require__) {\n\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   q: () => (/* binding */ execAsync)\n/* harmony export */ });\n/* harmony import */ var child_process__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(13200);\n/* harmony import */ var child_process__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(child_process__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var util__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(92460);\n/* harmony import */ var util__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(util__WEBPACK_IMPORTED_MODULE_1__);\n/*\n * Copyright The OpenTelemetry Authors\n * SPDX-License-Identifier: Apache-2.0\n */\n\n\nconst execAsync = util__WEBPACK_IMPORTED_MODULE_1__.promisify(child_process__WEBPACK_IMPORTED_MODULE_0__.exec);\n//# sourceMappingURL=execAsync.js.map\n\n/***/ },\n\n/***/ 40144",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/144.index.js",
-        "start": 3,
-        "end": 27,
-        "startLoc": {
-          "line": 3,
-          "column": 4,
-          "position": 20
-        },
-        "endLoc": {
-          "line": 27,
-          "column": 6,
-          "position": 175
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/709.index.js",
-        "start": 3,
-        "end": 27,
-        "startLoc": {
-          "line": 3,
-          "column": 4,
-          "position": 20
-        },
-        "endLoc": {
-          "line": 27,
-          "column": 6,
-          "position": 175
-        }
-      }
-    },
-    {
-      "format": "javascript",
-      "lines": 33,
-      "fragment": ");\n/* harmony import */ var _opentelemetry_api__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(78758);\n/*\n * Copyright The OpenTelemetry Authors\n * SPDX-License-Identifier: Apache-2.0\n */\n\n\nasync function getMachineId() {\n    try {\n        const result = await (0,_execAsync__WEBPACK_IMPORTED_MODULE_0__/* .execAsync */ .q)('ioreg -rd1 -c \"IOPlatformExpertDevice\"');\n        const idLine = result.stdout\n            .split('\\n')\n            .find(line => line.includes('IOPlatformUUID'));\n        if (!idLine) {\n            return undefined;\n        }\n        const parts = idLine.split('\" = \"');\n        if (parts.length === 2) {\n            return parts[1].slice(0, -1);\n        }\n    }\n    catch (e) {\n        _opentelemetry_api__WEBPACK_IMPORTED_MODULE_1__/* .diag */ .s.debug(`error reading machine id: ${e}`);\n    }\n    return undefined;\n}\n//# sourceMappingURL=getMachineId-darwin.js.map\n\n/***/ }\n\n};\n;",
-      "tokens": 0,
-      "firstFile": {
-        "name": "data/modules/144.index.js",
-        "start": 34,
-        "end": 66,
-        "startLoc": {
-          "line": 34,
-          "column": 6,
-          "position": 242
-        },
-        "endLoc": {
-          "line": 66,
-          "column": 2,
-          "position": 457
-        }
-      },
-      "secondFile": {
-        "name": "data/modules/934.index.js",
-        "start": 34,
-        "end": 66,
-        "startLoc": {
-          "line": 34,
-          "column": 6,
-          "position": 242
-        },
-        "endLoc": {
-          "line": 66,
-          "column": 2,
-          "position": 457
-        }
-      }
-    },
-    {
-      "format": "markdown",
-      "lines": 20,
-      "fragment": "Category**: {{Performance/UX/Balance/Feature}}\n- **Submitted By**: {{@Username}}\n- **Summary**: {{2-3 sentence summary}}\n- **Votes/Support**: {{COUNT}} testers agree\n- **Status**: {{Under Review/Planned/In Progress/Implemented}}\n- **Action**: {{What we're doing about it}}\n- **ETA**: {{If applicable}}\n\n#### 2. {{Feedback Title}}\n- **Category**: {{Performance/UX/Balance/Feature}}\n- **Submitted By**: {{@Username}}\n- **Summary**: {{2-3 sentence summary}}\n- **Votes/Support**: {{COUNT}} testers agree\n- **Status**: {{Under Review/Planned/In Progress/Implemented}}\n- **Action**: {{What we're doing about it}}\n- **ETA**: ",
-      "tokens": 0,
-      "firstFile": {
-        "name": "templates/weekly-update-template.md",
-        "start": 99,
-        "end": 118,
-        "startLoc": {
-          "line": 99,
-          "column": 1,
-          "position": 914
-        },
-        "endLoc": {
-          "line": 118,
-          "column": 2,
-          "position": 1089
-        }
-      },
-      "secondFile": {
-        "name": "templates/weekly-update-template.md",
-        "start": 90,
-        "end": 99,
-        "startLoc": {
-          "line": 90,
-          "column": 1,
-          "position": 827
-        },
-        "endLoc": {
-          "line": 99,
-          "column": 2,
-          "position": 914
-        }
-      }
-    },
-    {
-      "format": "markdown",
-      "lines": 16,
-      "fragment": "around | ETA | Status |\n|-------|--------|------------|-----|--------|\n| {{Issue}} | {{Impact}} | {{Workaround}} | {{ETA}} | {{Status}} |\n| {{Issue}} | {{Impact}} | {{Workaround}} | {{ETA}} | {{Status}} |\n| {{Issue}} | {{Impact}} | {{Workaround}} | {{ETA}} | {{Status}} |\n\n### Monitoring & Alerts\n\n#### Alerts Triggered Th",
-      "tokens": 0,
-      "firstFile": {
-        "name": "templates/weekly-update-template.md",
-        "start": 240,
-        "end": 255,
-        "startLoc": {
-          "line": 240,
-          "column": 1,
-          "position": 2044
-        },
-        "endLoc": {
-          "line": 255,
-          "column": 2,
-          "position": 2149
-        }
-      },
-      "secondFile": {
-        "name": "templates/weekly-update-template.md",
-        "start": 233,
-        "end": 247,
-        "startLoc": {
-          "line": 233,
-          "column": 1,
-          "position": 1992
-        },
-        "endLoc": {
-          "line": 247,
-          "column": 3,
-          "position": 2096
-        }
-      }
-    },
-    {
-      "format": "markdown",
-      "lines": 12,
-      "fragment": " and why}}\n**What We Need**:\n- Test {{specific feature}}\n- Report any {{specific issue type}}\n- Focus on {{specific scenario}}\n\n#### Priority 2: {{Focus Area}}\n**Description**: {{What to test and why}}\n**What We Need**:\n- Test {{specific featu",
-      "tokens": 0,
-      "firstFile": {
-        "name": "templates/weekly-update-template.md",
-        "start": 268,
-        "end": 279,
-        "startLoc": {
-          "line": 268,
-          "column": 1,
-          "position": 2266
-        },
-        "endLoc": {
-          "line": 279,
-          "column": 3,
-          "position": 2353
-        }
-      },
-      "secondFile": {
-        "name": "templates/weekly-update-template.md",
-        "start": 263,
-        "end": 273,
-        "startLoc": {
-          "line": 263,
-          "column": 1,
-          "position": 2223
-        },
-        "endLoc": {
-          "line": 273,
-          "column": 2,
-          "position": 2309
         }
       }
     },
