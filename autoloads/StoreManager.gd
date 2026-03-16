@@ -331,7 +331,7 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 		var gems_awarded: int = result.get("gems_awarded", 0)
 		current_gems = result.get("new_balance", current_gems)
 		emit_signal("currency_updated", current_gems, current_gold)
-		var _2 = emit_signal("purchase_succeeded", product_id, gems_awarded)
+		emit_signal("purchase_succeeded", product_id, gems_awarded)
 
 		# Track purchase completed in analytics for conversion
 		if has_node("/root/AnalyticsManager"):
