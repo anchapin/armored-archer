@@ -164,7 +164,7 @@ func _show_rewards_dialog(rewards: Dictionary) -> void:
 
 # --- Navigation ---
 func _on_back_pressed() -> void:
-	var _ = get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
+	get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
 
 
 func _exit_tree() -> void:

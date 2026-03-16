@@ -67,7 +67,7 @@ func run_all_tests() -> void:
 			passed_count += 1
 		else:
 			failed_count += 1
-	
+
 	print("Total: %d tests, %d passed, %d failed" % [
 		test_results.size(),
 		passed_count,

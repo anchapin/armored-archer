@@ -226,13 +226,13 @@ func _simulate_test_purchase(product_id: String) -> void:
 		product_id: Product identifier to simulate purchase for
 	"""
 	print("[StoreManager] TEST MODE: Simulating purchase of %s" % product_id)
-	
+
 	# Simulate network delay for realism
 	await get_tree().create_timer(1.0).timeout
-	
+
 	var product_info: Dictionary = products.get(product_id, {})
 	var gems_awarded: int = product_info.get("gem_amount", 0)
-	
+
 	if gems_awarded <= 0:
 		push_error("Invalid product: %s" % product_id)
 		is_purchase_pending = false
