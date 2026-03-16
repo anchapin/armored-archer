@@ -17,6 +17,7 @@ extends Control
 var combat_manager: Node = null
 var match_id: String = ""
 var is_initialized: bool = false
+var current_match_state: Dictionary = {}
 
 # --- Initialization ---
 func _ready() -> void:
@@ -224,5 +225,3 @@ func _exit_tree() -> void:
 # --- Set Match ID ---
 func set_match_id(new_match_id: String) -> void:
 	match_id = new_match_id
-
-var current_match_state: Dictionary = {}
