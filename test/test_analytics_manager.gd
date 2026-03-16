@@ -1,4 +1,4 @@
-extends Node
+extends GDScriptTestCase
 
 ## Tests for the AnalyticsManager module
 ## Tests cover session tracking, event logging, user properties,
@@ -6,11 +6,6 @@ extends Node
 
 const TEST_USER_ID := "test_user_123"
 const TEST_SESSION_ID := "test_session_456"
-
-var _tests_passed: int = 0
-var _tests_failed: int = 0
-
-signal test_completed(test_name: String, passed: bool)
 
 func _ready() -> void:
 	print("=== Running AnalyticsManager Tests ===\n")
@@ -65,20 +60,22 @@ func run_tests() -> void:
 	test_event_constants_defined()
 
 	print("\n=== AnalyticsManager Test Results ===")
-	print("Passed: %d" % _tests_passed)
-	print("Failed: %d" % _tests_failed)
+	print("Passed: %d" % assertions_passed)
+	print("Failed: %d" % assertions_failed)
 	queue_free()
 
 func _get_analytics_manager() -> Node:
 	return get_node_or_null("/root/AnalyticsManager")
 
 func _pass(test_name: String) -> void:
-	_tests_passed += 1
+	test_name = test_name
+	assertions_passed += 1
 	test_completed.emit(test_name, true)
 	print("[PASS] " + test_name)
 
 func _fail(test_name: String, message: String) -> void:
-	_tests_failed += 1
+	test_name = test_name
+	assertions_failed += 1
 	test_completed.emit(test_name, false)
 	print("[FAIL] " + test_name + ": " + message)
 
