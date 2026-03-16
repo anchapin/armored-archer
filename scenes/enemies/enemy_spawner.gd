@@ -54,11 +54,9 @@ var _signal_connections: Array[Callable] = []
 func _ready() -> void:
 	start_next_wave()
 	if spawn_timer_node:
-		var spawn_connection: Callable = spawn_timer_node.timeout.connect(_on_spawn_timer_timeout)
-		_signal_connections.append(spawn_connection)
+		spawn_timer_node.timeout.connect(_on_spawn_timer_timeout)
 	if wave_timer_node:
-		var wave_connection: Callable = wave_timer_node.timeout.connect(_on_wave_timer_timeout)
-		_signal_connections.append(wave_connection)
+		wave_timer_node.timeout.connect(_on_wave_timer_timeout)
 
 func _exit_tree() -> void:
 	## Clean up all connected signals to prevent memory leaks
@@ -105,8 +103,9 @@ func spawn_enemy() -> void:
 
 	# Validate enemy instance before connecting signals
 	if enemy_instance and enemy_instance.has_signal("died"):
-		var died_connection: Callable = enemy_instance.died.connect(_on_enemy_died)
-		_signal_connections.append(died_connection)
+		var died_callable: Callable = _on_enemy_died
+		enemy_instance.died.connect(died_callable)
+		_signal_connections.append(died_callable)
 
 	enemy_instance.global_position = spawn_position
 

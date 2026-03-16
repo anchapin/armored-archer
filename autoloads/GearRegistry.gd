@@ -5,7 +5,8 @@ extends Node
 
 # Note: Do NOT add class_name here as it conflicts with the autoload singleton
 
-
+# Import gear enums for GearType enum
+const GearEnums = preload("res://scripts/gear_enums.gd")
 
 var base_gear_db: Dictionary = {}
 var skin_db: Dictionary = {}
@@ -17,41 +18,41 @@ func _ready() -> void:
 
 func _initialize_base_gear() -> void:
 	"""Populates the base gear database with all available gear items."""
-	_register_base_gear("helm_basic", "Basic Helm", GearSlot.SlotType.HELM, 0, 0, 0, 5, "common", "")
-	_register_base_gear("helm_iron", "Iron Helm", GearSlot.SlotType.HELM, 0, 5, 0, 10, "uncommon", "")
-	_register_base_gear("helm_dragon", "Dragon Helm", GearSlot.SlotType.HELM, 5, 10, 0, 20, "legendary", "")
-	_register_base_gear("armor_leather", "Leather Armor", GearSlot.SlotType.ARMOR, 0, 5, 0, 0, "common", "")
-	_register_base_gear("armor_chain", "Chain Mail", GearSlot.SlotType.ARMOR, 0, 15, 0, 10, "uncommon", "")
-	_register_base_gear("armor_plate", "Plate Armor", GearSlot.SlotType.ARMOR, 0, 30, 0, 25, "rare", "")
-	_register_base_gear("bow_wooden", "Wooden Bow", GearSlot.SlotType.BOW, 5, 0, 0, 0, "common", "")
-	_register_base_gear("bow_composite", "Composite Bow", GearSlot.SlotType.BOW, 15, 0, 0, 0, "uncommon", "")
-	_register_base_gear("bow_crossbow", "Crossbow", GearSlot.SlotType.BOW, 25, 0, 0, 0, "rare", "")
-	_register_base_gear("arrow_wooden", "Wooden Arrows", GearSlot.SlotType.ARROW, 0, 0, 5, 0, "common", "")
-	_register_base_gear("arrow_iron", "Iron Arrows", GearSlot.SlotType.ARROW, 5, 0, 0, 0, "uncommon", "")
-	_register_base_gear("arrow_dragon", "Dragon Arrows", GearSlot.SlotType.ARROW, 15, 0, 10, 0, "legendary", "")
-	_register_base_gear("amulet_protection", "Protection Amulet", GearSlot.SlotType.AMULET, 0, 10, 0, 10, "common", "")
-	_register_base_gear("amulet_power", "Power Amulet", GearSlot.SlotType.AMULET, 10, 0, 0, 5, "uncommon", "")
-	_register_base_gear("amulet_dragon", "Dragon Amulet", GearSlot.SlotType.AMULET, 15, 5, 5, 15, "legendary", "")
+	_register_base_gear("helm_basic", "Basic Helm", GearEnums.GearType.HELM, 0, 0, 0, 5, "common", "")
+	_register_base_gear("helm_iron", "Iron Helm", GearEnums.GearType.HELM, 0, 5, 0, 10, "uncommon", "")
+	_register_base_gear("helm_dragon", "Dragon Helm", GearEnums.GearType.HELM, 5, 10, 0, 20, "legendary", "")
+	_register_base_gear("armor_leather", "Leather Armor", GearEnums.GearType.ARMOR, 0, 5, 0, 0, "common", "")
+	_register_base_gear("armor_chain", "Chain Mail", GearEnums.GearType.ARMOR, 0, 15, 0, 10, "uncommon", "")
+	_register_base_gear("armor_plate", "Plate Armor", GearEnums.GearType.ARMOR, 0, 30, 0, 25, "rare", "")
+	_register_base_gear("bow_wooden", "Wooden Bow", GearEnums.GearType.BOW, 5, 0, 0, 0, "common", "")
+	_register_base_gear("bow_composite", "Composite Bow", GearEnums.GearType.BOW, 15, 0, 0, 0, "uncommon", "")
+	_register_base_gear("bow_crossbow", "Crossbow", GearEnums.GearType.BOW, 25, 0, 0, 0, "rare", "")
+	_register_base_gear("arrow_wooden", "Wooden Arrows", GearEnums.GearType.ARROW, 0, 0, 5, 0, "common", "")
+	_register_base_gear("arrow_iron", "Iron Arrows", GearEnums.GearType.ARROW, 5, 0, 0, 0, "uncommon", "")
+	_register_base_gear("arrow_dragon", "Dragon Arrows", GearEnums.GearType.ARROW, 15, 0, 10, 0, "legendary", "")
+	_register_base_gear("amulet_protection", "Protection Amulet", GearEnums.GearType.AMULET, 0, 10, 0, 10, "common", "")
+	_register_base_gear("amulet_power", "Power Amulet", GearEnums.GearType.AMULET, 10, 0, 0, 5, "uncommon", "")
+	_register_base_gear("amulet_dragon", "Dragon Amulet", GearEnums.GearType.AMULET, 15, 5, 5, 15, "legendary", "")
 
 func _initialize_skins() -> void:
 	"""Populates the skin database with all available cosmetic skins."""
-	_register_skin("skin_helm_golden", "Golden Helm", GearSlot.SlotType.HELM, "helm_basic", 500, true, "")
-	_register_skin("skin_helm_crimson", "Crimson Helm", GearSlot.SlotType.HELM, "helm_iron", 300, false, "")
-	_register_skin("skin_helm_shadow", "Shadow Helm", GearSlot.SlotType.HELM, "helm_dragon", 1000, true, "")
-	_register_skin("skin_armor_knight", "Knight Armor", GearSlot.SlotType.ARMOR, "armor_leather", 600, false, "")
-	_register_skin("skin_armor_royal", "Royal Armor", GearSlot.SlotType.ARMOR, "armor_plate", 1200, true, "")
-	_register_skin("skin_armor_shadow", "Shadow Armor", GearSlot.SlotType.ARMOR, "armor_chain", 800, false, "")
-	_register_skin("skin_bow_fire", "Fire Bow", GearSlot.SlotType.BOW, "bow_wooden", 400, false, "")
-	_register_skin("skin_bow_ice", "Ice Bow", GearSlot.SlotType.BOW, "bow_composite", 700, false, "")
-	_register_skin("skin_bow_lightning", "Lightning Bow", GearSlot.SlotType.BOW, "bow_crossbow", 1500, true, "")
-	_register_skin("skin_arrow_fire", "Fire Arrows", GearSlot.SlotType.ARROW, "arrow_wooden", 200, false, "")
-	_register_skin("skin_arrow_ice", "Ice Arrows", GearSlot.SlotType.ARROW, "arrow_iron", 350, false, "")
-	_register_skin("skin_arrow_lightning", "Lightning Arrows", GearSlot.SlotType.ARROW, "arrow_dragon", 900, true, "")
-	_register_skin("skin_amulet_golden", "Golden Amulet", GearSlot.SlotType.AMULET, "amulet_protection", 400, false, "")
-	_register_skin("skin_amulet_crystal", "Crystal Amulet", GearSlot.SlotType.AMULET, "amulet_power", 600, false, "")
-	_register_skin("skin_amulet_legendary", "Legendary Amulet", GearSlot.SlotType.AMULET, "amulet_dragon", 1200, true, "")
+	_register_skin("skin_helm_golden", "Golden Helm", GearEnums.GearType.HELM, "helm_basic", 500, true, "")
+	_register_skin("skin_helm_crimson", "Crimson Helm", GearEnums.GearType.HELM, "helm_iron", 300, false, "")
+	_register_skin("skin_helm_shadow", "Shadow Helm", GearEnums.GearType.HELM, "helm_dragon", 1000, true, "")
+	_register_skin("skin_armor_knight", "Knight Armor", GearEnums.GearType.ARMOR, "armor_leather", 600, false, "")
+	_register_skin("skin_armor_royal", "Royal Armor", GearEnums.GearType.ARMOR, "armor_plate", 1200, true, "")
+	_register_skin("skin_armor_shadow", "Shadow Armor", GearEnums.GearType.ARMOR, "armor_chain", 800, false, "")
+	_register_skin("skin_bow_fire", "Fire Bow", GearEnums.GearType.BOW, "bow_wooden", 400, false, "")
+	_register_skin("skin_bow_ice", "Ice Bow", GearEnums.GearType.BOW, "bow_composite", 700, false, "")
+	_register_skin("skin_bow_lightning", "Lightning Bow", GearEnums.GearType.BOW, "bow_crossbow", 1500, true, "")
+	_register_skin("skin_arrow_fire", "Fire Arrows", GearEnums.GearType.ARROW, "arrow_wooden", 200, false, "")
+	_register_skin("skin_arrow_ice", "Ice Arrows", GearEnums.GearType.ARROW, "arrow_iron", 350, false, "")
+	_register_skin("skin_arrow_lightning", "Lightning Arrows", GearEnums.GearType.ARROW, "arrow_dragon", 900, true, "")
+	_register_skin("skin_amulet_golden", "Golden Amulet", GearEnums.GearType.AMULET, "amulet_protection", 400, false, "")
+	_register_skin("skin_amulet_crystal", "Crystal Amulet", GearEnums.GearType.AMULET, "amulet_power", 600, false, "")
+	_register_skin("skin_amulet_legendary", "Legendary Amulet", GearEnums.GearType.AMULET, "amulet_dragon", 1200, true, "")
 
-func _register_base_gear(gear_id: String, gear_name: String, slot: GearSlot.SlotType, attack: int, defense: int, speed: int, health: int, rarity: String, _texture_path: String) -> void:
+func _register_base_gear(gear_id: String, gear_name: String, slot: GearEnums.GearType, attack: int, defense: int, speed: int, health: int, rarity: String, _texture_path: String) -> void:
 	"""Registers a base gear item in the database (internal).
 
 	Parameters:
@@ -73,7 +74,7 @@ func _register_base_gear(gear_id: String, gear_name: String, slot: GearSlot.Slot
 	gear_data.rarity = rarity
 	base_gear_db[gear_id] = gear_data
 
-func _register_skin(skin_id: String, skin_name: String, slot: GearSlot.SlotType, base_required: String, price: int, is_premium: bool, _texture_path: String) -> void:
+func _register_skin(skin_id: String, skin_name: String, slot: GearEnums.GearType, base_required: String, price: int, is_premium: bool, _texture_path: String) -> void:
 	"""Registers a cosmetic skin in the database (internal).
 
 	Parameters:
@@ -116,11 +117,11 @@ func get_skin(skin_id: String) -> CosmeticSkinData:
 	"""
 	return skin_db.get(skin_id, null)
 
-func get_gear_by_slot(slot_type: GearSlot.SlotType) -> Array:
+func get_gear_by_slot(slot_type: GearEnums.GearType) -> Array:
 	"""Gets all base gear items for a specific slot.
 
 	Parameters:
-		slot_type: GearSlot.SlotType to filter by
+		slot_type: GearEnums.GearType to filter by
 
 	Returns:
 		Array: List of GearData objects for the slot
@@ -131,11 +132,11 @@ func get_gear_by_slot(slot_type: GearSlot.SlotType) -> Array:
 			gear_list.append(gear_data)
 	return gear_list
 
-func get_skins_by_slot(slot_type: GearSlot.SlotType) -> Array:
+func get_skins_by_slot(slot_type: GearEnums.GearType) -> Array:
 	"""Gets all skins for a specific slot type.
 
 	Parameters:
-		slot_type: GearSlot.SlotType to filter by
+		slot_type: GearEnums.GearType to filter by
 
 	Returns:
 		Array: List of CosmeticSkinData objects for the slot

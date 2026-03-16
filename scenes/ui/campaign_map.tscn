@@ -12,7 +12,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_campaign_map_script")
 
-[node name="SafeAreaContainer" parent="." instance=ExtResource("2)]
+[node name="SafeAreaContainer" parent="." instance=ExtResource("2")]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

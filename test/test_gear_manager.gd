@@ -120,10 +120,10 @@ func test_signal_emission() -> void:
 	var unequipped = false
 	var inventory_updated = false
 
-	gm.gear_generated.connect(func(_): generated = true)
-	gm.gear_equipped.connect(func(_, __): equipped = true)
-	gm.gear_unequipped.connect(func(_): unequipped = true)
-	gm.inventory_updated.connect(func(_): inventory_updated = true)
+	gm.gear_generated.connect(func(_gear_data): generated = true)
+	gm.gear_equipped.connect(func(_slot, _item_id): equipped = true)
+	gm.gear_unequipped.connect(func(_slot): unequipped = true)
+	gm.inventory_updated.connect(func(_item_id): inventory_updated = true)
 
 	# Emit signals manually
 	gm.gear_generated.emit({"id": "test"})

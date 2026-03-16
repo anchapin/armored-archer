@@ -1,10 +1,13 @@
+# Login Screen - Handles Nakama authentication UI
+# Updated: 2026-03-15 - Fixed button null reference issue
 extends Control
 
 # --- UI References ---
-@onready var loading_label: Label = $VBoxContainer/LoadingLabel
-@onready var status_label: Label = $VBoxContainer/StatusLabel
-@onready var retry_button: Button = $VBoxContainer/RetryButton
-@onready var progress_bar: ProgressBar = $VBoxContainer/ProgressBar
+var loading_label: Label
+var status_label: Label
+var retry_button: Button
+var test_connection_button: Button
+var progress_bar: ProgressBar
 
 # --- State ---
 var is_connecting: bool = false
@@ -14,11 +17,32 @@ signal login_complete(success: bool)
 
 # --- Initialization ---
 func _ready() -> void:
+	# Get UI nodes manually with error checking
+	var vbox: VBoxContainer = $VBoxContainer
+	
+	loading_label = vbox.get_node_or_null("LoadingLabel") as Label
+	status_label = vbox.get_node_or_null("StatusLabel") as Label
+	retry_button = vbox.get_node_or_null("RetryButton") as Button
+	test_connection_button = vbox.get_node_or_null("TestConnectionButton") as Button
+	progress_bar = vbox.get_node_or_null("ProgressBar") as ProgressBar
+	
+	# Verify critical nodes
+	if not loading_label or not status_label or not progress_bar:
+		push_error("LoginScreen: Critical UI nodes not found!")
+		return
+	
+	# Connect NetworkManager signals
 	var _err1 = NetworkManager.session_created.connect(_on_session_created)
 	var _err2 = NetworkManager.connection_status_changed.connect(_on_connection_status_changed)
 
-	var _err3 = retry_button.pressed.connect(_on_retry_pressed)
-	retry_button.hide()
+	# Connect button signals
+	if retry_button:
+		var _err3 = retry_button.pressed.connect(_on_retry_pressed)
+		retry_button.hide()
+	
+	if test_connection_button:
+		var _err4 = test_connection_button.pressed.connect(_on_test_connection_pressed)
+		test_connection_button.hide()
 
 	_start_authentication()
 
@@ -29,10 +53,10 @@ func _start_authentication() -> void:
 	progress_bar.value = 0.0
 
 	var tween: Tween = create_tween()
-	var _t1 = tween.tween_property(progress_bar, "value", 50.0, 1.0)
-	var _t2 = tween.tween_interval(0.5)
+	tween.tween_property(progress_bar, "value", 50.0, 1.0)
+	tween.tween_interval(0.5)
 
-	NetworkManager.authenticate_device()
+	# NetworkManager auto-connects in _ready(), so we just wait for the signal
 
 # --- Signal Handlers ---
 func _on_session_created(success: bool, error_message: String) -> void:
@@ -54,7 +78,10 @@ func _on_session_created(success: bool, error_message: String) -> void:
 		status_label.text = error_message
 		progress_bar.value = 0.0
 
-		retry_button.show()
+		if retry_button:
+			retry_button.show()
+		if test_connection_button:
+			test_connection_button.show()  # Show debug button on failure
 
 func _on_connection_status_changed(is_online: bool) -> void:
 	if is_online:
@@ -67,15 +94,24 @@ func _on_connection_status_changed(is_online: bool) -> void:
 
 		if is_connecting:
 			is_connecting = false
-			retry_button.show()
+			if retry_button:
+				retry_button.show()
+			if test_connection_button:
+				test_connection_button.show()  # Show debug button on failure
 
 func _on_retry_pressed() -> void:
-	retry_button.hide()
+	if retry_button:
+		retry_button.hide()
 	_start_authentication()
+
+func _on_test_connection_pressed() -> void:
+	var err = get_tree().change_scene_to_file("res://scenes/ui/connection_test_scene.tscn")
+	if err != OK:
+		push_error("Failed to load connection test scene: %d" % err)
 
 # --- Navigation ---
 func _load_main_menu() -> void:
-	var _err = get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+	var _err = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
 
 # --- Progress Bar Animation ---
 func _process(delta: float) -> void:

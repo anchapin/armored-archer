@@ -10,9 +10,9 @@ signal compare_requested(gear_data1: Dictionary, gear_data2: Dictionary)
 @onready var gear_type_label: Label = $VBoxContainer/GearDetails/GearTypeLabel
 @onready var gear_stats_container: VBoxContainer = $VBoxContainer/GearDetails/GearStatsContainer
 @onready var gear_modifiers_container: VBoxContainer = $VBoxContainer/GearDetails/GearModifiersContainer
-@onready var equip_button: Button = $VBoxContainer/GearDetails/EquipButton
-@onready var unequip_button: Button = $VBoxContainer/GearDetails/UnequipButton
-@onready var compare_button: Button = $VBoxContainer/GearDetails/CompareButton
+@onready var equip_button: Button = $VBoxContainer/GearDetails/ButtonsContainer/EquipButton
+@onready var unequip_button: Button = $VBoxContainer/GearDetails/ButtonsContainer/UnequipButton
+@onready var compare_button: Button = $VBoxContainer/GearDetails/ButtonsContainer/CompareButton
 @onready var back_button: Button = $VBoxContainer/BackButton
 @onready var loadout_button: Button = $VBoxContainer/LoadoutButton
 @onready var filter_common: CheckBox = $VBoxContainer/FilterContainer/FilterCommon
@@ -194,9 +194,10 @@ func _on_back_button_pressed() -> void:
 	queue_free()
 
 func _on_loadout_button_pressed() -> void:
-	var loadout_scene = preload("res://scenes/ui/loadout.tscn")
-	var loadout_instance = loadout_scene.instantiate()
-	get_tree().root.add_child(loadout_instance)
+	var loadout_scene = load("res://scenes/ui/loadout.tscn")
+	if loadout_scene:
+		var loadout_instance = loadout_scene.instantiate()
+		get_tree().root.add_child(loadout_instance)
 
 func _on_inventory_updated( _inventory: Dictionary) -> void:
 	_refresh_gear_list()

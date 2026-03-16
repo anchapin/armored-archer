@@ -65,7 +65,7 @@ func _test_campaign_new_player_first_stage() -> void:
 	else:
 		# Complete the first stage
 		var stage_completed_emitted = false
-		campaign.stage_completed.connect(func(_): stage_completed_emitted = true)
+		campaign.stage_completed.connect(func(_stage_id): stage_completed_emitted = true)
 
 		campaign.complete_stage("1_1")
 
@@ -231,7 +231,8 @@ func _test_campaign_progress_tracking() -> void:
 
 	# Track progress updates
 	var progress_updates = 0
-	campaign.campaign_progress_updated.connect(func(_, _): progress_updates += 1)
+	var update_progress = func(_data): progress_updates += 1
+	campaign.campaign_progress_updated.connect(update_progress)
 
 	# Complete 2 out of 4 stages
 	campaign.complete_stage("1_1")

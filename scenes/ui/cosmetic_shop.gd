@@ -18,6 +18,8 @@ extends Control
 
 @onready var purchase_confirmation_dialog: ConfirmationDialog = $PurchaseConfirmationDialog
 @onready var confirmation_label: Label = $PurchaseConfirmationDialog/ConfirmationLabel
+@onready var yes_button: Button = $PurchaseConfirmationDialog/ButtonContainer/YesButton
+@onready var no_button: Button = $PurchaseConfirmationDialog/ButtonContainer/NoButton
 
 # --- GemManager Reference ---
 @onready var gem_manager: Node = get_node_or_null("/root/GemManager")
@@ -54,8 +56,8 @@ func _setup_button_connections() -> void:
 	purchase_button.pressed.connect(_on_purchase_button_pressed)
 	equip_button.pressed.connect(_on_equip_button_pressed)
 
-	purchase_confirmation_dialog.confirmed.connect(_on_purchase_confirmed)
-	purchase_confirmation_dialog.canceled.connect(_on_purchase_canceled)
+	yes_button.pressed.connect(_on_purchase_confirmed)
+	no_button.pressed.connect(_on_purchase_canceled)
 
 # --- Gem Display ---
 func _update_gem_display() -> void:
@@ -172,6 +174,8 @@ func _on_purchase_button_pressed() -> void:
 	purchase_confirmation_dialog.popup_centered()
 
 func _on_purchase_confirmed() -> void:
+	purchase_confirmation_dialog.hide()
+	
 	if selected_skin_id.is_empty():
 		return
 
@@ -182,7 +186,7 @@ func _on_purchase_confirmed() -> void:
 		push_error("Failed to purchase skin")
 
 func _on_purchase_canceled() -> void:
-	pass
+	purchase_confirmation_dialog.hide()
 
 func _on_skin_purchased(skin_id: String) -> void:
 	_show_skin_preview(skin_id)
@@ -204,6 +208,10 @@ func _on_skin_equipped(skin_id: String, slot: String) -> void:
 
 # --- Navigation ---
 func _on_back_pressed() -> void:
+	# Show the main menu again
+	var main_menu = get_tree().root.get_node_or_null("MainMenu")
+	if main_menu:
+		main_menu.visible = true
 	queue_free()
 
 

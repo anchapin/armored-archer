@@ -43,7 +43,7 @@ func _fail(test_name: String, message: String) -> void:
 	print("[FAIL] " + test_name + ": " + message)
 
 func test_initial_state() -> void:
-	var pool = _create_object_pool()
+	var pool = await _create_object_pool()
 
 	# Test pool arrays are initialized
 	if "_arrow_pool" in pool and "_enemy_pool" in pool and "_hit_effect_pool" in pool:
@@ -66,7 +66,7 @@ func test_initial_state() -> void:
 	pool.queue_free()
 
 func test_constants() -> void:
-	var pool = _create_object_pool()
+	var pool = await _create_object_pool()
 
 	if pool.ARROW_POOL_SIZE == 20:
 		_pass("test_arrow_pool_size_constant")
@@ -86,7 +86,7 @@ func test_constants() -> void:
 	pool.queue_free()
 
 func test_arrow_pool_acquire_release() -> void:
-	var pool = _create_object_pool()
+	var pool = await _create_object_pool()
 
 	# Acquire an arrow
 	var arrow = pool.get_arrow()
@@ -127,7 +127,7 @@ func test_arrow_pool_acquire_release() -> void:
 	pool.queue_free()
 
 func test_enemy_pool_acquire_release() -> void:
-	var pool = _create_object_pool()
+	var pool = await _create_object_pool()
 
 	# Acquire an enemy
 	var enemy = pool.get_enemy()
@@ -168,7 +168,7 @@ func test_enemy_pool_acquire_release() -> void:
 	pool.queue_free()
 
 func test_hit_effect_pool_acquire_release() -> void:
-	var pool = _create_object_pool()
+	var pool = await _create_object_pool()
 
 	# Acquire a hit effect
 	var effect = pool.get_hit_effect()
@@ -209,7 +209,7 @@ func test_hit_effect_pool_acquire_release() -> void:
 	pool.queue_free()
 
 func test_pool_reuse() -> void:
-	var pool = _create_object_pool()
+	var pool = await _create_object_pool()
 
 	# Get initial pool size
 	var initial_pool_size = pool._arrow_pool.size()
@@ -233,7 +233,7 @@ func test_pool_reuse() -> void:
 	pool.queue_free()
 
 func test_return_invalid_instance() -> void:
-	var pool = _create_object_pool()
+	var pool = await _create_object_pool()
 
 	# Create a fake invalid node reference
 	var fake_node: Node = null
@@ -259,7 +259,7 @@ func test_return_invalid_instance() -> void:
 	pool.queue_free()
 
 func test_statistics() -> void:
-	var pool = _create_object_pool()
+	var pool = await _create_object_pool()
 
 	# Get initial statistics
 	var stats = pool.get_statistics()
@@ -292,7 +292,7 @@ func test_statistics() -> void:
 	pool.queue_free()
 
 func test_cleanup_invalid_instances() -> void:
-	var pool = _create_object_pool()
+	var pool = await _create_object_pool()
 
 	# Acquire some arrows
 	var arrow1 = pool.get_arrow()

@@ -46,7 +46,7 @@ var breadcrumbs: Array = []
 var frame_times: Array = []
 var memory_usage_mb: float = 0.0
 var last_performance_check: int = 0
-var performance_check_interval: int = 30000  # 30 seconds
+var performance_check_interval: int = 300000  # 5 minutes
 
 # Network monitoring
 var network_quality: String = "unknown"  # "excellent", "good", "fair", "poor", "unknown"

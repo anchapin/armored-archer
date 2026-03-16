@@ -127,7 +127,7 @@ func test_complete_stage() -> void:
 	}
 
 	var stage_completed_emitted = false
-	campaign.stage_completed.connect(func(_): stage_completed_emitted = true)
+	campaign.stage_completed.connect(func(_stage_id): stage_completed_emitted = true)
 
 	campaign.complete_stage("1_1")
 
@@ -171,7 +171,7 @@ func test_unlock_next_stage() -> void:
 	}
 
 	var stage_unlocked_emitted = false
-	campaign.stage_unlocked.connect(func(_): stage_unlocked_emitted = true)
+	campaign.stage_unlocked.connect(func(_stage_id): stage_unlocked_emitted = true)
 
 	campaign.unlock_next_stage("1_1")
 
@@ -282,7 +282,8 @@ func test_update_campaign_progress() -> void:
 	}
 
 	var progress_updated = false
-	campaign.campaign_progress_updated.connect(func(_, _): progress_updated = true)
+	var update_progress = func(_data): progress_updated = true
+	campaign.campaign_progress_updated.connect(update_progress)
 
 	campaign.update_campaign_progress()
 

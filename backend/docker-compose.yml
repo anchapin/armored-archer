@@ -137,7 +137,7 @@ services:
         condition: service_healthy
     volumes:
       - ./nakama.yml:/nakama/data/nakama.yml
-      - ./build:/nakama/data/modules
+      - ./data/modules:/nakama/data/modules
       - ./data:/nakama/data/migrations
     expose:
       - "7349"

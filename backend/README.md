@@ -1,26 +1,68 @@
 # Armored Archer Backend
 
+> **⚠️ MIGRATION NOTICE (2026-03-15)**: This backend has been migrated from TypeScript to Go!
+> See [README_GO.md](README_GO.md) for the new Go-based documentation.
+> See [CHANGELOG.md](CHANGELOG.md) for migration details.
+> See [MIGRATION_SUMMARY.md](MIGRATION_SUMMARY.md) for the complete migration summary.
+
 Backend server for Armored Archer game built with Nakama and PostgreSQL.
+
+## 🚀 Quick Start (Go)
+
+```bash
+# Install Go dependencies
+go mod download
+
+# Build Go plugin
+CGO_ENABLED=1 go build -buildmode=plugin -o build/server.so ./cmd/server
+
+# Start services
+docker compose up -d
+
+# Run tests
+go test ./internal/... -v
+```
+
+For complete Go documentation, see [README_GO.md](README_GO.md).
+
+---
+
+## Legacy TypeScript Documentation
+
+The following documentation is for the original TypeScript implementation.
 
 ## Directory Structure
 
+### Go Backend (Current)
+
 ```
 backend/
-├── server/          # Nakama server configuration
-├── modules/         # Custom Nakama modules
-├── data/            # Server data and migrations
-├── src/             # TypeScript source files
-├── build/           # Compiled JavaScript output
-├── docker-compose.yml  # Docker Compose configuration
-├── nakama.yml       # Nakama server configuration
-├── package.json     # Node.js dependencies
-├── tsconfig.json    # TypeScript configuration
-├── .env.example     # Environment variables template
-├── .env.development # Development environment variables
-├── .env.staging     # Staging environment variables
-├── start.sh         # Startup script with validation
-└── validate-env.sh  # Environment variable validation
+├── cmd/
+│   └── server/
+│       └── main.go              # Nakama module entry point
+├── internal/                     # Internal Go packages
+│   ├── player/                  # Player stats & progression
+│   ├── combat/                  # Combat system logic
+│   ├── gear/                    # Gear generation & inventory
+│   ├── matchmaking/             # PvP matchmaking & rankings
+│   ├── rpg/                     # XP, levels, stat allocation
+│   ├── season/                  # Seasonal content & leaderboards
+│   ├── store/                   # IAP & currency management
+│   ├── notifications/           # Push notifications
+│   ├── observability/           # Metrics, health, monitoring
+│   └── ...                      # Other modules
+├── tests/                        # Integration tests
+│   ├── testhelpers/             # Test helper library
+│   └── ...                      # Module tests
+├── build/
+│   └── server.so                # Compiled Go plugin
+├── go.mod                        # Go module definition
+├── go.sum                        # Go dependency lockfile
+├── docker-compose.yml            # Docker Compose configuration
+└── nakama.yml                    # Nakama server configuration
 ```
+
+### TypeScript Backend (Legacy)
 
 ## Environment Configuration
 

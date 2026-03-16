@@ -14,6 +14,9 @@ extends Control
 var season_manager: Node = null
 var is_initialized: bool = false
 
+# Custom colors for leaderboard ranks
+const COLOR_BRONZE = Color(0.8, 0.5, 0.2)
+
 # --- Initialization ---
 func _ready() -> void:
 	season_manager = get_node_or_null("/root/SeasonManager")
@@ -92,7 +95,7 @@ func _create_leaderboard_entry(entry: Dictionary) -> Control:
 	elif rank_value <= 50:
 		rank_label.modulate = Color.SILVER
 	elif rank_value <= 100:
-		rank_label.modulate = Color.BRONZE
+		rank_label.modulate = COLOR_BRONZE
 
 	rank_container.add_child(rank_label)
 

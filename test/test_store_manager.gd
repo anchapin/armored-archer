@@ -122,9 +122,9 @@ func test_signal_emission() -> void:
 	var purchase_failed = false
 	var products_loaded = false
 
-	sm.purchase_succeeded.connect(func(_, __): purchase_succeeded = true)
-	sm.purchase_failed.connect(func(_, __): purchase_failed = true)
-	sm.products_loaded.connect(func(_): products_loaded = true)
+	sm.purchase_succeeded.connect(func(_product_id, _gems): purchase_succeeded = true)
+	sm.purchase_failed.connect(func(_product_id, _error): purchase_failed = true)
+	sm.products_loaded.connect(func(_products): products_loaded = true)
 
 	# Emit signals manually
 	sm.purchase_succeeded.emit(sm.PRODUCT_SMALL_GEMS, 100)

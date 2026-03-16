@@ -114,7 +114,9 @@ func _on_stage_pressed(stage_id: String) -> void:
 	var stage_data = CampaignManager.get_stage_data(stage_id)
 	GameManager.current_stage_id = stage_id
 	GameManager.current_waves = stage_data.get("waves", 3)
-	GameManager.boss_id = stage_data.get("boss", "")
+	# Handle null boss values from JSON - use empty string if boss is null or missing
+	var boss_value = stage_data.get("boss")
+	GameManager.boss_id = boss_value if boss_value != null else ""
 
 	get_tree().change_scene_to_packed(MAIN_SCENE)
 
