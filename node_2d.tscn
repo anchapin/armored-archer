@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://chil8widvgns7"]
 
-[ext_resource type="Script" uid="uid://dtebtgibkp6al" path="res://character_body_2d.gd" id="1_wtcfe"]
+[ext_resource type="Script" uid="uid://dtebtgibkp6al" path="res://scripts/character_body_2d.gd" id="1_wtcfe"]
 [ext_resource type="Script" uid="uid://cyg1mg3glbock" path="res://area_2d.gd" id="2_0e48y"]
 
 [node name="Node2D" type="Node2D" unique_id=1504523745]

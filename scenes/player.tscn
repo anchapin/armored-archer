@@ -1,6 +1,6 @@
 [gd_scene load_steps=8 format=3 uid="uid://player_scene"]
 
-[ext_resource type="Script" path="res://character_body_2d.gd" id="1_character_body"]
+[ext_resource type="Script" path="res://scripts/character_body_2d.gd" id="1_character_body"]
 [ext_resource type="PlaceholderTexture2D" uid="uid://character_body_sprite" path="res://assets/sprites/character_body.tres" id="2_body_sprite"]
 [ext_resource type="PlaceholderTexture2D" uid="uid://bow_sprite" path="res://assets/sprites/bow.tres" id="3_bow_sprite"]
 [ext_resource type="PackedScene" uid="uid://modular_character_sprite" path="res://scenes/player/gear/modular_character_sprite.tscn" id="4_modular_character"]
