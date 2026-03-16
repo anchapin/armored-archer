@@ -91,8 +91,15 @@ module.exports = {
         esModuleInterop: true,
         allowSyntheticDefaultImports: true
       }
-    }]
+    }],
+    // Transform JS files with Babel for ES module support
+    '^.+\\.js$': 'babel-jest'
   },
+  // Fix for uuid ES module compatibility (Issue #615)
+  // Transform uuid package which uses ES module syntax
+  transformIgnorePatterns: [
+    '/node_modules/(?!(uuid)/)'
+  ],
   testTimeout: 10000,
   verbose: true,
   passWithNoTests: true,
