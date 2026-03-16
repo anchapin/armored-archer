@@ -149,6 +149,26 @@ func registerRPCs(logger runtime.Logger, initializer runtime.Initializer) error 
 		return err
 	}
 
+	// Feedback System RPCs
+	if err := initializer.RegisterRpc("submit_feedback", rpc.SubmitFeedback); err != nil {
+		return err
+	}
+	if err := initializer.RegisterRpc("get_feedback", rpc.GetFeedback); err != nil {
+		return err
+	}
+	if err := initializer.RegisterRpc("list_feedback", rpc.ListFeedback); err != nil {
+		return err
+	}
+	if err := initializer.RegisterRpc("vote_feedback", rpc.VoteFeedback); err != nil {
+		return err
+	}
+	if err := initializer.RegisterRpc("add_feedback_response", rpc.AddFeedbackResponse); err != nil {
+		return err
+	}
+	if err := initializer.RegisterRpc("get_feedback_statistics", rpc.GetFeedbackStatistics); err != nil {
+		return err
+	}
+
 	return nil
 }
 

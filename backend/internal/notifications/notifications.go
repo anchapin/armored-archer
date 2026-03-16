@@ -151,6 +151,27 @@ var NotificationTemplates = map[string]NotificationTemplate{
 		Title: "Special Offer",
 		Body:  "Check out our latest promotion!",
 	},
+	// Feedback notification templates
+	"feedback_status_change": {
+		Type:  "feedback_status_change",
+		Title: "Feedback Status Update",
+		Body:  "Your feedback has been updated: {{status}}",
+	},
+	"feedback_developer_response": {
+		Type:  "feedback_developer_response",
+		Title: "Developer Response",
+		Body:  "A developer has responded to your feedback",
+	},
+	"feedback_resolved": {
+		Type:  "feedback_resolved",
+		Title: "Feedback Resolved",
+		Body:  "Great news! Your feedback has been resolved",
+	},
+	"feedback_assigned": {
+		Type:  "feedback_assigned",
+		Title: "Feedback Assigned",
+		Body:  "You have been assigned to review feedback",
+	},
 }
 
 // NewNotificationPreferences creates a new notification preferences with defaults.
