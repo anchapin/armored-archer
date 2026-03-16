@@ -35,6 +35,61 @@ This file contains conventions and commands for agents working on the Armored Ar
 - **Export Project:** Project → Export → select platform → Export Project
 - **GDScript Tests:** Open Godot editor, run `res://test/run_all_tests.gd` scene
 
+### Local Godot Testing (When GitHub Actions/act is unavailable)
+
+When GitHub Actions has billing issues or the `act` CLI tool fails, use the local testing script:
+
+```bash
+# Run all Godot checks (lint, syntax, tests)
+./scripts/local-godot-tests.sh
+
+# Quick validation (no Godot binary required)
+./scripts/local-godot-tests.sh --quick
+
+# Run linting only
+./scripts/local-godot-tests.sh --lint
+
+# Run syntax validation only
+./scripts/local-godot-tests.sh --syntax
+
+# Run full test suite only
+./scripts/local-godot-tests.sh --tests
+```
+
+**Requirements:**
+- Godot 4.6+ installed and in PATH (or set `GODOT_BINARY` environment variable)
+- For linting: `pip install gdtoolkit`
+
+**Alternative Manual Commands:**
+```bash
+# Validate Godot project structure
+godot4 --headless --quit-after 5
+
+# Run GDScript linting
+gdlint autoloads/*.gd scenes/**/*.gd scripts/*.gd test/*.gd
+
+# Run Godot test suite directly
+godot4 --headless --script res://test/run_all_tests.gd
+
+# Check for common syntax errors
+grep -r "var _ =" autoloads/ scenes/ scripts/ test/ || echo "No syntax errors found"
+```
+
+**Using act CLI (if available):**
+```bash
+# Configure act with Godot support
+cat > .actrc << EOF
+--env GODOT_HEADLESS=true
+--shm-size=2gb
+--container-architecture linux/amd64
+EOF
+
+# Run Godot tests workflow
+act -W .github/workflows/test.yml --container-architecture linux/amd64
+```
+
+**Note:** The `act` CLI may still fail due to display server requirements in containerized environments. Use the local testing script as the primary workaround.
+
 ### Backend (TypeScript - Nakama)
 ```bash
 # Start backend with Docker Compose
