@@ -19,15 +19,15 @@ func _ready() -> void:
 
 func run_benchmarks() -> void:
 	# Run benchmark tests
-	benchmark_fps_tracking_accuracy()
-	benchmark_frame_time_calculation()
-	benchmark_fps_history_management()
-	benchmark_memory_leak_detection_threshold()
-	benchmark_memory_growth_rate_calculation()
-	benchmark_device_tier_performance_settings()
-	benchmark_snapshot_generation()
-	benchmark_fps_warning_threshold()
-	benchmark_memory_warning_threshold()
+	await benchmark_fps_tracking_accuracy()
+	await benchmark_frame_time_calculation()
+	await benchmark_fps_history_management()
+	await benchmark_memory_leak_detection_threshold()
+	await benchmark_memory_growth_rate_calculation()
+	await benchmark_device_tier_performance_settings()
+	await benchmark_snapshot_generation()
+	await benchmark_fps_warning_threshold()
+	await benchmark_memory_warning_threshold()
 
 	print("\n=== Performance Benchmark Results ===")
 	print("Passed: %d" % _tests_passed)

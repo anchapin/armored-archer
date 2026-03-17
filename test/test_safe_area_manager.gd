@@ -10,10 +10,10 @@ func _ready() -> void:
 	await run_tests()
 
 func run_tests() -> void:
-	test_initial_state()
-	test_get_safe_margins()
-	test_apply_to_control()
-	test_signal_exists()
+	await test_initial_state()
+	await test_get_safe_margins()
+	await test_apply_to_control()
+	await test_signal_exists()
 
 	print("\n=== SafeAreaManager Test Results ===")
 	print("Passed: %d" % _tests_passed)

@@ -15,35 +15,35 @@ func _ready() -> void:
 
 func run_tests() -> void:
 	# Offline mode tests
-	test_offline_mode_detection()
-	test_offline_authentication_blocked()
-	test_offline_rpc_blocked()
-	test_offline_state_persists()
-	test_offline_indicator_signal()
+	await test_offline_mode_detection()
+	await test_offline_authentication_blocked()
+	await test_offline_rpc_blocked()
+	await test_offline_state_persists()
+	await test_offline_indicator_signal()
 
 	# Reconnection tests
-	test_reconnection_after_network_loss()
-	test_reconnection_during_match()
-	test_reconnection_during_matchmaking()
-	test_session_refresh_after_reconnection()
-	test_auto_reconnect_on_app_focus()
+	await test_reconnection_after_network_loss()
+	await test_reconnection_during_match()
+	await test_reconnection_during_matchmaking()
+	await test_session_refresh_after_reconnection()
+	await test_auto_reconnect_on_app_focus()
 
 	# Error handling tests
-	test_timeout_handling()
-	test_connection_timeout_during_auth()
-	test_connection_timeout_during_rpc()
-	test_http_error_handling()
-	test_invalid_response_handling()
+	await test_timeout_handling()
+	await test_connection_timeout_during_auth()
+	await test_connection_timeout_during_rpc()
+	await test_http_error_handling()
+	await test_invalid_response_handling()
 
 	# Retry mechanism tests
-	test_rpc_retry_on_failure()
-	test_auth_retry_on_failure()
-	test_max_retry_exceeded()
+	await test_rpc_retry_on_failure()
+	await test_auth_retry_on_failure()
+	await test_max_retry_exceeded()
 
 	# State management tests
-	test_connection_state_transitions()
-	test_match_state_on_disconnect()
-	test_matchmaking_state_on_disconnect()
+	await test_connection_state_transitions()
+	await test_match_state_on_disconnect()
+	await test_matchmaking_state_on_disconnect()
 
 	print("\n=== Network Resilience Test Results ===")
 	print("Passed: %d" % _tests_passed)

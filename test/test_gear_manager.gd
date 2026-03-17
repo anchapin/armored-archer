@@ -10,12 +10,12 @@ func _ready() -> void:
 	await run_tests()
 
 func run_tests() -> void:
-	test_initial_state()
-	test_get_gear_stats_summary()
-	test_compare_gear()
-	test_calculate_gear_score()
-	test_signal_emission()
-	test_inventory_sync()
+	await test_initial_state()
+	await test_get_gear_stats_summary()
+	await test_compare_gear()
+	await test_calculate_gear_score()
+	await test_signal_emission()
+	await test_inventory_sync()
 
 	print("\n=== GearManager Test Results ===")
 	print("Passed: %d" % _tests_passed)

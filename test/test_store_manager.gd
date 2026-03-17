@@ -10,12 +10,12 @@ func _ready() -> void:
 	await run_tests()
 
 func run_tests() -> void:
-	test_initial_state()
-	test_constants()
-	test_get_products()
-	test_get_product_info()
-	test_currency_signals()
-	test_signal_emission()
+	await test_initial_state()
+	await test_constants()
+	await test_get_products()
+	await test_get_product_info()
+	await test_currency_signals()
+	await test_signal_emission()
 
 	print("\n=== StoreManager Test Results ===")
 	print("Passed: %d" % _tests_passed)
