@@ -1792,7 +1792,6 @@ function processStageCompletion(
     dropRate,
     bossDefeatResult,
     allUnlockedModifiers,
-    roll,
   };
 }
 

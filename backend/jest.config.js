@@ -103,5 +103,14 @@ module.exports = {
   testTimeout: 10000,
   verbose: true,
   passWithNoTests: true,
-  forceExit: true
+  // Use detectOpenHandles instead of forceExit to properly wait for async cleanup
+  detectOpenHandles: true,
+  // Detect leaks to find unclosed resources
+  detectLeaks: false,
+  // Clear mocks between tests to prevent interference
+  clearMocks: true,
+  // Reset modules between tests
+  resetModules: false,
+  // Restore mocks after each test
+  restoreMocks: true,
 };

@@ -1,37 +1,69 @@
-import * as fs from 'fs';
-import * as path from 'path';
+// Dynamic import for Node.js-specific modules
+// These modules don't exist in Nakama's runtime (Duktape/QuickJS)
+let fs: any;
+let path: any;
 
 function loadEnvironment(): void {
+  // Skip environment loading in Nakama runtime
+  // Nakama provides environment variables directly
+  // Check for Nakama-specific global or environment
+  if (typeof (globalThis as any).nakama !== 'undefined' || 
+      process.env.NAKAMA_RUNNER || 
+      process.env.RUNTIME_PROVIDER === 'nakama') {
+    return;
+  }
+
+  // Try to load Node.js modules dynamically
+  // This will fail in Nakama's runtime, which is expected
+  try {
+    // Use require for dynamic loading to avoid webpack bundling issues
+    fs = (typeof require !== 'undefined' ? require('fs') : undefined);
+    path = (typeof require !== 'undefined' ? require('path') : undefined);
+  } catch (e) {
+    // Not in Node.js environment, skip environment loading
+    return;
+  }
+
+  // Skip if fs module is not available (Nakama's Duktape/QuickJS runtime)
+  if (!fs || typeof fs.existsSync !== 'function') {
+    return;
+  }
+
   const nodeEnv = process.env.NODE_ENV || 'development';
   const envFiles = [`.env.${nodeEnv}`, '.env', `.env.${nodeEnv}.local`];
 
   for (const file of envFiles) {
-    const envPath = path.join(process.cwd(), file);
-    if (fs.existsSync(envPath)) {
-      const envContent = fs.readFileSync(envPath, 'utf-8');
+    try {
+      const envPath = path.join(process.cwd(), file);
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf-8');
 
-      for (const line of envContent.split('\n')) {
-        const trimmedLine = line.trim();
+        for (const line of envContent.split('\n')) {
+          const trimmedLine = line.trim();
 
-        if (trimmedLine && !trimmedLine.startsWith('#')) {
-          const equalsIndex = trimmedLine.indexOf('=');
+          if (trimmedLine && !trimmedLine.startsWith('#')) {
+            const equalsIndex = trimmedLine.indexOf('=');
 
-          if (equalsIndex > 0) {
-            const key = trimmedLine.substring(0, equalsIndex).trim();
-            let value = trimmedLine.substring(equalsIndex + 1).trim();
+            if (equalsIndex > 0) {
+              const key = trimmedLine.substring(0, equalsIndex).trim();
+              let value = trimmedLine.substring(equalsIndex + 1).trim();
 
-            if (value.startsWith('"') && value.endsWith('"')) {
-              value = value.slice(1, -1);
-            } else if (value.startsWith("'") && value.endsWith("'")) {
-              value = value.slice(1, -1);
-            }
+              if (value.startsWith('"') && value.endsWith('"')) {
+                value = value.slice(1, -1);
+              } else if (value.startsWith("'") && value.endsWith("'")) {
+                value = value.slice(1, -1);
+              }
 
-            if (!process.env[key]) {
-              process.env[key] = value;
+              if (!process.env[key]) {
+                process.env[key] = value;
+              }
             }
           }
         }
       }
+    } catch (error) {
+      // Silently ignore errors in non-Node environments
+      // This is expected when running in Nakama runtime
     }
   }
 }
