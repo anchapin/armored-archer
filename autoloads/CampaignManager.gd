@@ -300,7 +300,7 @@ func sync_modifiers_from_server() -> void:
 	if not network_manager or not network_manager.has_method("send_rpc"):
 		return
 
-	var response = network_manager.send_rpc("armored_archer/get_unlocked_modifiers", "{}")
+	var response = network_manager.send_rpc("armored_archer/get_unlocked_modifiers", JSON.stringify({}))
 
 	if response.has("error"):
 		push_warning("Failed to sync modifiers from server: " + str(response.error))

@@ -295,10 +295,14 @@ func _refresh_session() -> void:
 
 	_is_refreshing = true  # Mark this as a refresh request
 
-	var url: String = "%s/v2/session/refresh" % base_url
+	var url: String = "%s/v2/account/session/refresh" % base_url
+	
+	# Use Basic auth with server key for session refresh (required by Nakama)
+	var auth_string: String = Marshalls.utf8_to_base64("%s:" % server_key)
 	var headers: PackedStringArray = [
 		"Content-Type: application/json",
-		"Accept: application/json"
+		"Accept: application/json",
+		"Authorization: Basic %s" % auth_string
 	]
 	var body: Dictionary = {
 		"token": refresh_token
@@ -321,7 +325,7 @@ func _on_http_request_completed(_result: int, response_code: int, headers: Packe
 
 	var response_text: String = body.get_string_from_utf8()
 	print("[NetworkManager] DEBUG: Response received - Code: %d, Body: %s" % [response_code, response_text.left(200)])
-	print("[NetworkManager] DEBUG: Request ID that completed: %d (current: %d)" % [_current_request_id, _current_request_id]])
+	print("[NetworkManager] DEBUG: Request ID that completed: %d (current: %d)" % [_current_request_id, _current_request_id])
 
 	if response_code >= 200 and response_code < 300:
 		var json: JSON = JSON.new()

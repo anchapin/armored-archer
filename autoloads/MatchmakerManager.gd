@@ -159,7 +159,7 @@ func get_player_rank() -> void:
 		return
 
 	var json: JSON = JSON.new()
-	var response: Dictionary = await network_manager.send_rpc(RPC_GET_PLAYER_RANK, json.stringify("{}"))
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_PLAYER_RANK, json.stringify({}))
 
 	if response.has("error"):
 		push_error("Failed to get player rank: %s" % response.error)
