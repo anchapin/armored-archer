@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/anchapin/armored-archer/backend/internal/config"
 	"github.com/anchapin/armored-archer/backend/internal/rpc"
@@ -39,9 +40,26 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	globalConfig = cfg
 	logger.Info("Configuration loaded successfully")
 
-	// Initialize cache manager
+	// Initialize cache manager with optimized settings
 	globalCache = utils.NewCacheManager(logger)
-	logger.Info("Cache manager initialized")
+	
+	// Initialize caches with appropriate sizes and TTLs for performance
+	// Player stats cache - frequently accessed, changes occasionally
+	globalCache.CreateCache("player_stats", 500, 60*time.Second)
+	
+	// Leaderboard cache - frequently read, changes on match completion
+	globalCache.CreateCache("leaderboards", 100, 60*time.Second)
+	
+	// Season info cache - rarely changes
+	globalCache.CreateCache("season_info", 100, 5*time.Minute)
+	
+	// Store catalog cache - static data, very rarely changes
+	globalCache.CreateCache("store_catalog", 100, 30*time.Minute)
+	
+	// Gear definitions cache - static game config
+	globalCache.CreateCache("gear_definitions", 100, 30*time.Minute)
+	
+	logger.Info("Cache manager initialized with optimized settings")
 
 	// Register RPC handlers
 	if err := registerRPCs(logger, initializer); err != nil {
@@ -170,6 +188,16 @@ func registerRPCs(logger runtime.Logger, initializer runtime.Initializer) error 
 	}
 
 	return nil
+}
+
+// GetGlobalCache returns the global cache manager.
+func GetGlobalCache() *utils.CacheManager {
+	return globalCache
+}
+
+// GetGlobalConfig returns the global configuration.
+func GetGlobalConfig() *config.Config {
+	return globalConfig
 }
 
 

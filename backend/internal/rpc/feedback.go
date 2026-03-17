@@ -15,6 +15,12 @@ import (
 	"github.com/lib/pq"
 )
 
+// Cache key constants for feedback
+const (
+	cacheKeyFeedbackStats = "feedback:stats"
+	cacheTTLFeedbackStats = 60 * time.Second // Short TTL for stats - changes frequently
+)
+
 // SubmitFeedback handles user feedback submission.
 // RPC: submit_feedback
 func SubmitFeedback(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {

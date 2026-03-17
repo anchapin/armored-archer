@@ -58,7 +58,7 @@ func ConnectDatabase(ctx context.Context, cfg *config.Config, logger runtime.Log
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Configure connection pool
+	// Configure connection pool with optimized settings
 	db.SetConnMaxLifetime(time.Duration(cfg.Database.ConnMaxLifetime) * time.Second)
 	db.SetMaxOpenConns(cfg.Database.MaxOpenConns)
 	db.SetMaxIdleConns(cfg.Database.MaxIdleConns)
@@ -69,8 +69,37 @@ func ConnectDatabase(ctx context.Context, cfg *config.Config, logger runtime.Log
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	logger.Info("Database connection established successfully")
+	logger.Info("Database connection established successfully (max_open: %d, max_idle: %d, conn_lifetime: %ds)",
+		cfg.Database.MaxOpenConns, cfg.Database.MaxIdleConns, cfg.Database.ConnMaxLifetime)
 	return db, nil
+}
+
+// QueryWithTimeout executes a query with a custom timeout.
+// This helps prevent long-running queries from blocking the system.
+func (w *DBWrapper) QueryWithTimeout(ctx context.Context, timeout time.Duration, query string, args ...interface{}) (*sql.Rows, error) {
+	// Create a context with timeout
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	return w.db.QueryContext(ctx, query, args...)
+}
+
+// QueryRowWithTimeout executes a single-row query with a custom timeout.
+func (w *DBWrapper) QueryRowWithTimeout(ctx context.Context, timeout time.Duration, query string, args ...interface{}) *sql.Row {
+	// Create a context with timeout
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	return w.db.QueryRowContext(ctx, query, args...)
+}
+
+// ExecWithTimeout executes a statement with a custom timeout.
+func (w *DBWrapper) ExecWithTimeout(ctx context.Context, timeout time.Duration, query string, args ...interface{}) (sql.Result, error) {
+	// Create a context with timeout
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	return w.db.ExecContext(ctx, query, args...)
 }
 
 // QueryWithRetry executes a query with retry logic.
