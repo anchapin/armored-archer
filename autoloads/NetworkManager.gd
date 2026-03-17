@@ -48,6 +48,7 @@ var _is_refreshing: bool = false  # Track if current request is a refresh
 var http_request: HTTPRequest
 var base_url: String
 var _request_counter: int = 0  # Track individual requests
+var _current_request_id: int = 0  # Track current request for debugging
 
 # --- Signals ---
 signal session_created(success: bool, error_message: String)
@@ -200,6 +201,14 @@ func _ready() -> void:
 
 	if device_id.is_empty():
 		_generate_device_id()
+	
+	# If session exists but without refresh token, clear it to force fresh authentication
+	# This prevents trying to refresh with an invalid/expired session
+	if not session_token.is_empty() and refresh_token.is_empty():
+		print("[NetworkManager] DEBUG: Session without refresh token found, clearing for fresh authentication")
+		session_token = ""
+		user_id = ""
+		username = ""
 
 	_try_auto_connect()
 
@@ -232,9 +241,11 @@ func authenticate_device() -> void:
 	is_authenticating = true
 
 	var url: String = "%s/v2/account/authenticate/device" % base_url
-
+	print("[NetworkManager] DEBUG: Authenticating to URL: %s" % url)
+	
 	# Use Basic auth with server key as both username and password (Nakama default)
 	var auth_string: String = Marshalls.utf8_to_base64("%s:" % server_key)
+	print("[NetworkManager] DEBUG: Using auth string: %s" % auth_string)
 	var headers: PackedStringArray = [
 		"Content-Type: application/json",
 		"Accept: application/json",
@@ -247,9 +258,15 @@ func authenticate_device() -> void:
 
 	var json: JSON = JSON.new()
 	var json_string: String = JSON.stringify(body)
+	
+	# Track this request for debugging
+	_current_request_id += 1
+	var this_request_id: int = _current_request_id
+	print("[NetworkManager] DEBUG: Starting authentication request #%d" % this_request_id)
 
 	# Cancel any pending request first
 	if http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+		print("[NetworkManager] DEBUG: Cancelling pending request before request #%d" % this_request_id)
 		http_request.cancel_request()
 
 	# Small delay to ensure HTTPRequest is ready (prevents race condition)
@@ -303,6 +320,7 @@ func _on_http_request_completed(_result: int, response_code: int, headers: Packe
 	is_authenticating = false
 
 	var response_text: String = body.get_string_from_utf8()
+	print("[NetworkManager] DEBUG: Response received - Code: %d, Body: %s" % [response_code, response_text.left(200)])
 
 	if response_code >= 200 and response_code < 300:
 		var json: JSON = JSON.new()
@@ -357,6 +375,8 @@ func _update_session_from_response(response_data: Dictionary) -> void:
 func _handle_authentication_error(response_code: int, response_text: String) -> void:
 	print("[NetworkManager] DEBUG: === Authentication Error Handler ===")
 	print("[NetworkManager] DEBUG: Response Code: %d" % response_code)
+	print("[NetworkManager] DEBUG: Response Text: %s" % response_text)
+	print("[NetworkManager] DEBUG: Request URL was: %s/v2/account/authenticate/device" % base_url)
 
 	if response_code == 0 or response_code == -1:
 		print("[NetworkManager] DEBUG: Network error detected - setting offline mode")
