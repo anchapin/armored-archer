@@ -648,44 +648,29 @@ func test_debug_mode_toggle() -> void:
 		_fail(test_name, "Debug mode should be disabled")
 
 func test_event_constants_defined() -> void:
+	## Test that all event constants are defined
 	var test_name = "test_event_constants_defined"
-	"""Test that all event constants are defined"""
 	var analytics = _get_analytics_manager()
+	var error_msg = ""
+	
 	if not analytics:
-		_fail(test_name, "AnalyticsManager not available")
-		return
-
-	# Session events
-	if not analytics.has_method("log_first_session"):
-		_fail(test_name, "Missing log_first_session")
-		return
-	if not analytics.has_method("log_daily_login"):
-		_fail(test_name, "Missing log_daily_login")
-		return
-
-	# Tutorial events
-	if not analytics.has_method("log_tutorial_started") or not analytics.has_method("log_tutorial_completed") or not analytics.has_method("log_tutorial_failed"):
-		_fail(test_name, "Missing tutorial methods")
-		return
-
-	# PVE events
-	if not analytics.has_method("log_pve_stage_started") or not analytics.has_method("log_pve_stage_completed") or not analytics.has_method("log_pve_stage_failed") or not analytics.has_method("log_pve_boss_defeated"):
-		_fail(test_name, "Missing PVE methods")
-		return
-
-	# PVP events
-	if not analytics.has_method("log_pvp_match_started") or not analytics.has_method("log_pvp_match_completed") or not analytics.has_method("log_pvp_match_abandoned") or not analytics.has_method("log_pvp_disconnect"):
-		_fail(test_name, "Missing PVP methods")
-		return
-
-	# Store events
-	if not analytics.has_method("log_store_opened") or not analytics.has_method("log_purchase_completed") or not analytics.has_method("log_gem_purchased"):
-		_fail(test_name, "Missing store methods")
-		return
-
-	# Progression events
-	if not analytics.has_method("log_level_up") or not analytics.has_method("log_ability_unlocked") or not analytics.has_method("log_gear_obtained") or not analytics.has_method("log_gear_equipped") or not analytics.has_method("log_transmog_applied"):
-		_fail(test_name, "Missing progression methods")
-		return
-
-	_pass(test_name)
+		error_msg = "AnalyticsManager not available"
+	elif not analytics.has_method("log_first_session"):
+		error_msg = "Missing log_first_session"
+	elif not analytics.has_method("log_daily_login"):
+		error_msg = "Missing log_daily_login"
+	elif not (analytics.has_method("log_tutorial_started") and analytics.has_method("log_tutorial_completed") and analytics.has_method("log_tutorial_failed")):
+		error_msg = "Missing tutorial methods"
+	elif not (analytics.has_method("log_pve_stage_started") and analytics.has_method("log_pve_stage_completed") and analytics.has_method("log_pve_stage_failed") and analytics.has_method("log_pve_boss_defeated")):
+		error_msg = "Missing PVE methods"
+	elif not (analytics.has_method("log_pvp_match_started") and analytics.has_method("log_pvp_match_completed") and analytics.has_method("log_pvp_match_abandoned") and analytics.has_method("log_pvp_disconnect")):
+		error_msg = "Missing PVP methods"
+	elif not (analytics.has_method("log_store_opened") and analytics.has_method("log_purchase_completed") and analytics.has_method("log_gem_purchased")):
+		error_msg = "Missing store methods"
+	elif not (analytics.has_method("log_level_up") and analytics.has_method("log_ability_unlocked") and analytics.has_method("log_gear_obtained") and analytics.has_method("log_gear_equipped") and analytics.has_method("log_transmog_applied")):
+		error_msg = "Missing progression methods"
+	
+	if error_msg:
+		_fail(test_name, error_msg)
+	else:
+		_pass(test_name)

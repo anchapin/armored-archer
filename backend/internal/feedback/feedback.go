@@ -2,7 +2,6 @@
 package feedback
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
