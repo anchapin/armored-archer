@@ -321,6 +321,7 @@ func _on_http_request_completed(_result: int, response_code: int, headers: Packe
 
 	var response_text: String = body.get_string_from_utf8()
 	print("[NetworkManager] DEBUG: Response received - Code: %d, Body: %s" % [response_code, response_text.left(200)])
+	print("[NetworkManager] DEBUG: Request ID that completed: %d (current: %d)" % [_current_request_id, _current_request_id]])
 
 	if response_code >= 200 and response_code < 300:
 		var json: JSON = JSON.new()
