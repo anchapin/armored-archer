@@ -91,6 +91,30 @@ function completeMatch(ctx, logger, nk, payload) {
     return JSON.stringify({ success: true });
 }
 
+function getCurrency(ctx, logger, nk, payload) {
+    return JSON.stringify({ gems: 100, gold: 1000 });
+}
+
+function getSeasonInfo(ctx, logger, nk, payload) {
+    return JSON.stringify({ season_id: 1, name: "Season 1", active: true });
+}
+
+function getSeasonRewards(ctx, logger, nk, payload) {
+    return JSON.stringify({ rewards: [] });
+}
+
+function getUnlockedModifiers(ctx, logger, nk, payload) {
+    return JSON.stringify({ modifiers: [] });
+}
+
+function updateRank(ctx, logger, nk, payload) {
+    return JSON.stringify({ success: true });
+}
+
+function claimSeasonRewards(ctx, logger, nk, payload) {
+    return JSON.stringify({ success: true, rewards: [] });
+}
+
 // InitModule - register all RPCs
 function InitModule(ctx, logger, nk, initializer) {
     logger.info('Initializing minimal RPC handlers');
@@ -113,6 +137,12 @@ function InitModule(ctx, logger, nk, initializer) {
     initializer.registerRpc('armored_archer/list_matches', listMatches);
     initializer.registerRpc('armored_archer/get_player_rank', getPlayerRank);
     initializer.registerRpc('armored_archer/complete_match', completeMatch);
+    initializer.registerRpc('armored_archer/get_currency', getCurrency);
+    initializer.registerRpc('armored_archer/get_season_info', getSeasonInfo);
+    initializer.registerRpc('armored_archer/get_season_rewards', getSeasonRewards);
+    initializer.registerRpc('armored_archer/get_unlocked_modifiers', getUnlockedModifiers);
+    initializer.registerRpc('armored_archer/update_rank', updateRank);
+    initializer.registerRpc('armored_archer/claim_season_rewards', claimSeasonRewards);
     
     logger.info('Minimal RPC handlers registered successfully');
 }

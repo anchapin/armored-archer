@@ -652,7 +652,7 @@ func test_event_constants_defined() -> void:
 	var test_name = "test_event_constants_defined"
 	var analytics = _get_analytics_manager()
 	var error_msg = ""
-	
+
 	if not analytics:
 		error_msg = "AnalyticsManager not available"
 	elif not analytics.has_method("log_first_session"):
@@ -669,7 +669,7 @@ func test_event_constants_defined() -> void:
 		error_msg = "Missing store methods"
 	elif not (analytics.has_method("log_level_up") and analytics.has_method("log_ability_unlocked") and analytics.has_method("log_gear_obtained") and analytics.has_method("log_gear_equipped") and analytics.has_method("log_transmog_applied")):
 		error_msg = "Missing progression methods"
-	
+
 	if error_msg:
 		_fail(test_name, error_msg)
 	else:

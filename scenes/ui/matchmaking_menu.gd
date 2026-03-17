@@ -153,7 +153,7 @@ func _on_accept_match(match_id: String) -> void:
 	matchmaker_manager.accept_match(match_id)
 
 func _on_leaderboard_pressed() -> void:
-	var _ = get_tree().change_scene_to_file("res://scenes/ui/leaderboard_menu.tscn")
+	var result = get_tree().change_scene_to_file("res://scenes/ui/leaderboard_menu.tscn")
 
 func _on_match_created(match_data: Dictionary) -> void:
 	print("Match created: %s" % match_data.get("match_id", ""))
@@ -194,7 +194,7 @@ func _show_match_accepted_dialog(match_data: Dictionary) -> void:
 
 # --- Navigation ---
 func _on_back_pressed() -> void:
-	var _ = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	var result = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
 
 
 func _exit_tree() -> void:

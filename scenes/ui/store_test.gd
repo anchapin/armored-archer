@@ -78,7 +78,7 @@ func _on_refresh() -> void:
 	_update_display()
 
 func _on_back() -> void:
-	var _ = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	var result = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
 
 # --- Callbacks ---
 func _on_currency_updated(gems: int, gold: int) -> void:

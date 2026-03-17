@@ -14,7 +14,7 @@ services:
       - "8080"
       - "5432"
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - backend-network
     healthcheck:
@@ -28,7 +28,7 @@ services:
     container_name: armored_archer_redis
     command: redis-server --save 60 1 --loglevel warning
     ports:
-      - "6379:6379"
+      - "6380:6379"
     expose:
       - "6379"
     networks:

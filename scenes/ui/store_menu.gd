@@ -136,4 +136,4 @@ func _set_buttons_enabled(enabled: bool) -> void:
 	large_gems_button.disabled = not enabled
 
 func _on_back_pressed() -> void:
-	var _ = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	var result = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")

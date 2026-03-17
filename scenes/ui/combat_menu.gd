@@ -105,7 +105,7 @@ func _on_combat_ended(winner: String) -> void:
 	dialog.confirmed.connect(_on_dialog_confirmed)
 
 func _on_dialog_confirmed() -> void:
-	var _ = get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
+	var result = get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
 
 # --- UI Updates ---
 func _update_health_bars() -> void:
@@ -207,7 +207,7 @@ func _refresh_match_state() -> void:
 
 # --- Navigation ---
 func _on_back_pressed() -> void:
-	var _ = get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
+	var result = get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
 
 
 func _exit_tree() -> void:

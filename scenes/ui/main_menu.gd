@@ -69,7 +69,7 @@ func _on_shop_pressed() -> void:
 	visible = false
 
 func _on_buy_gems_pressed() -> void:
-	var _ = get_tree().change_scene_to_file("res://scenes/ui/store_menu.tscn")
+	get_tree().change_scene_to_file("res://scenes/ui/store_menu.tscn")
 
 func _on_settings_pressed() -> void:
 	print("Settings not implemented yet")
