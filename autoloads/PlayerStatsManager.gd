@@ -59,9 +59,12 @@ func get_player_stats() -> Dictionary:
 
 	if response.has("error"):
 		push_error("Failed to get player stats: %s" % response.error)
+		# Check if this is an auth error - if so, we may need to reconnect
+		if response.get("is_auth_error", false):
+			push_error("Authentication error - session may be invalid")
 		return {}
 
-	player_stats = JSON.parse_string(response)
+	player_stats = response  # Response is already a Dictionary from send_rpc
 	is_initialized = true
 
 	stats_updated.emit(player_stats)
@@ -94,7 +97,7 @@ func gain_xp(amount: int, source: String) -> void:
 		push_error("Failed to gain XP: %s" % response.error)
 		return
 
-	var result = JSON.parse_string(response)
+	var result = response  # Response is already a Dictionary from send_rpc
 
 	if result.get("success", false):
 		var amount_gained: int = result.get("xp_gained", 0)
@@ -150,7 +153,7 @@ func allocate_stat(stat_name: String, points: int) -> void:
 		push_error("Failed to allocate stat: %s" % response.error)
 		return
 
-	var result = JSON.parse_string(response)
+	var result = response  # Response is already a Dictionary from send_rpc
 
 	if result.get("success", false):
 		stat_allocated.emit(stat_name, points)

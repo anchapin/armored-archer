@@ -501,10 +501,18 @@ func is_staging() -> bool:
 	return current_environment == EnvironmentType.STAGING
 
 # --- RPC Communication ---
+# Track RPC request ID separately from auth request ID
+var _rpc_request_id: int = 0
+var _pending_rpc_callbacks: Dictionary = {}  # Map request_id to callback info
+
 func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Dictionary:
 	if not is_session_valid():
-		return {"error": "Not authenticated"}
+		return {"error": "Not authenticated", "is_auth_error": false}
 
+	# Increment RPC request ID
+	_rpc_request_id += 1
+	var this_rpc_id: int = _rpc_request_id
+	
 	var start_time: int = Time.get_ticks_msec()
 	var url: String = "%s/v2/rpc/%s" % [base_url, rpc_id]
 	var headers: PackedStringArray = get_auth_headers()
@@ -526,7 +534,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 		http_request.cancel_request()
 
 	var on_request_completed: Callable = func(_result: int, _response_code: int, _headers: PackedStringArray, body: PackedByteArray):
-		request_result = [_result, _response_code, _headers, body]
+		request_result = [_result, _response_code, _headers, body, this_rpc_id]
 		response_received = true
 		timer.stop()
 
@@ -555,29 +563,38 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	var response_data: Dictionary = {}
 	var result = request_result
 
-	# Validate that request_result has enough elements (should have 4: result, code, headers, body)
+	# Validate that request_result has enough elements (should have 5: result, code, headers, body, rpc_id)
 	if result.size() < 4:
-		push_error("Request result incomplete: got %d elements, expected 4. Response received: %s" % [result.size(), response_received])
-		return {"error": "Invalid response: request_result is incomplete"}
+		push_error("Request result incomplete: got %d elements, expected 5. Response received: %s" % [result.size(), response_received])
+		return {"error": "Invalid response: request_result is incomplete", "is_auth_error": false}
+
+	var rpc_id_completed: int = -1
+	if result.size() >= 5:
+		rpc_id_completed = result[4]
+	
+	print("[NetworkManager] DEBUG: RPC response received - Code: %d, RPC_ID: %d (current: %d)" % [result[1], rpc_id_completed, _rpc_request_id])
 
 	if result[1] >= 200 and result[1] < 300:
 		var json: JSON = JSON.new()
 		if json.parse(result[3].get_string_from_utf8()) == OK:
 			response_data = json.data
 		else:
-			response_data = {"error": "Failed to parse response"}
+			response_data = {"error": "Failed to parse response", "is_auth_error": false}
 	else:
+		# Check if this is an authentication error (401, 403) vs a server error (400, 500, etc.)
+		var is_auth_error: bool = (result[1] == 401 or result[1] == 403)
+		
 		var json: JSON = JSON.new()
 		if json.parse(result[3].get_string_from_utf8()) == OK:
 			var parsed: Dictionary = json.data
 			if parsed.has("error"):
-				response_data = {"error": parsed.error}
+				response_data = {"error": parsed.error, "is_auth_error": is_auth_error}
 			elif parsed.has("message"):
-				response_data = {"error": parsed.message}
+				response_data = {"error": parsed.message, "is_auth_error": is_auth_error}
 			else:
-				response_data = {"error": "Unknown error"}
+				response_data = {"error": "HTTP error: %d" % result[1], "is_auth_error": is_auth_error}
 		else:
-			response_data = {"error": "HTTP error: %d" % result[1]}
+			response_data = {"error": "HTTP error: %d" % result[1], "is_auth_error": is_auth_error}
 
 	# Log RPC latency for analytics
 	var latency_ms: int = Time.get_ticks_msec() - start_time

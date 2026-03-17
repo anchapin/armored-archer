@@ -134,7 +134,7 @@ func load_currency() -> void:
 		push_error("Failed to load currency: %s" % response.error)
 		return
 
-	var currency_data = JSON.parse_string(response)
+	var currency_data = response  # Response is already a Dictionary from send_rpc
 	current_gems = currency_data.get("gems", 0)
 	current_gold = currency_data.get("gold", 0)
 	is_initialized = true
@@ -325,7 +325,7 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 		emit_signal("purchase_failed", product_id, response.error)
 		return
 
-	var result = JSON.parse_string(response)
+	var result = response  # Response is already a Dictionary from send_rpc
 
 	if result.get("success", false):
 		var gems_awarded: int = result.get("gems_awarded", 0)
@@ -400,7 +400,7 @@ func spend_gems(amount: int, reason: String = "") -> void:
 		push_error("Failed to spend gems: %s" % response.error)
 		return
 
-	var result = JSON.parse_string(response)
+	var result = response  # Response is already a Dictionary from send_rpc
 
 	if result.get("success", false):
 		current_gems = result.get("new_balance", current_gems)
