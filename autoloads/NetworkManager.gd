@@ -519,6 +519,11 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 
 	var _err = headers.append("Content-Type: application/json")
 
+	# Wrap payload in JSON object as expected by Nakama HTTP API
+	# Nakama expects: {"payload": "<json_string>"} for POST requests
+	var body: Dictionary = {"payload": payload}
+	var json_body: String = JSON.stringify(body)
+
 	# Set up timeout handling
 	var timer: Timer = Timer.new()
 	timer.wait_time = timeout
@@ -543,7 +548,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 
 	timer.start()
 
-	var error_code: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, payload)
+	var error_code: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_body)
 
 	if error_code != OK:
 		timer.queue_free()
@@ -613,8 +618,12 @@ func send_rpc_async(rpc_id: String, payload: String, _timeout: float = 10.0) -> 
 	var headers: PackedStringArray = get_auth_headers()
 	var _err = headers.append("Content-Type: application/json")
 
+	# Wrap payload in JSON object as expected by Nakama HTTP API
+	var body: Dictionary = {"payload": payload}
+	var json_body: String = JSON.stringify(body)
+
 	# Fire request without waiting - we don't care about the response
-	var error_code: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, payload)
+	var error_code: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_body)
 	if error_code != OK:
 		push_warning("Failed to send async RPC: %s" % rpc_id)
 
