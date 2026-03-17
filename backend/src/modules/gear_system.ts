@@ -1729,6 +1729,7 @@ function processStageCompletion(
   dropRate: number;
   bossDefeatResult?: { defeat_count: number; newly_unlocked_modifiers: string[] };
   allUnlockedModifiers: string[];
+  roll: number;
 } {
   // Calculate drop rate and roll for loot
   const dropRate = calculateDropRate(request.difficulty, request.boss_defeated);
