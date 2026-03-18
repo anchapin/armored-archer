@@ -16,6 +16,7 @@ extends Control
 
 @onready var xp_progress_bar: ProgressBar = $VBoxContainer/XPProgressBar
 @onready var back_button: Button = $VBoxContainer/BackButton
+@onready var loading_indicator: Control = $LoadingIndicator
 
 # --- PlayerStatsManager Reference ---
 @onready var player_stats_manager: Node = get_node_or_null("/root/PlayerStatsManager")
@@ -27,6 +28,10 @@ var current_ability_points: int = 0
 var current_stats: Dictionary = {}
 
 func _ready() -> void:
+	# Show loading indicator while waiting for player stats
+	if loading_indicator:
+		loading_indicator.visible = true
+	
 	if player_stats_manager:
 		player_stats_manager.stats_updated.connect(_on_stats_updated)
 		player_stats_manager.level_up.connect(_on_level_up)
@@ -37,6 +42,12 @@ func _ready() -> void:
 			refresh_ui()
 		else:
 			await player_stats_manager.get_player_stats()
+			# Data loaded, refresh UI to hide loading indicator
+			refresh_ui()
+	else:
+		# No player stats manager, hide loading
+		if loading_indicator:
+			loading_indicator.visible = false
 
 	_setup_button_connections()
 
@@ -51,6 +62,10 @@ func refresh_ui() -> void:
 	if not player_stats_manager:
 		return
 
+	# Hide loading indicator once data is loaded
+	if loading_indicator:
+		loading_indicator.visible = false
+	
 	current_level = player_stats_manager.get_level()
 	current_xp = player_stats_manager.get_xp()
 	current_ability_points = player_stats_manager.get_ability_points()

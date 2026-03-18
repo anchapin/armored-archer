@@ -13,17 +13,27 @@ extends Control
 # --- Theme Manager Reference ---
 var theme_manager: Node
 
+# --- Design Tokens Reference ---
+var design_tokens: Node
+
 # --- State ---
 var season_manager: Node = null
 var is_initialized: bool = false
 
-# Custom colors for leaderboard ranks
-const COLOR_BRONZE = Color(0.8, 0.5, 0.2)
+# --- Rank Colors ---
+const RANK_COLORS = {
+	1: Color("#FFD700"),   # Gold for 1st
+	2: Color("#C0C0C0"),   # Silver for 2nd
+	3: Color("#CD7F32"),   # Bronze for 3rd
+}
 
 # --- Initialization ---
 func _ready() -> void:
 	# Get ThemeManager reference
 	theme_manager = get_node_or_null("/root/ThemeManager")
+	
+	# Get DesignTokens reference
+	design_tokens = get_node_or_null("/root/DesignTokens")
 	
 	# Apply theme if available
 	if theme_manager:
@@ -101,22 +111,33 @@ func _create_leaderboard_entry(entry: Dictionary) -> Control:
 	rank_label.text = "#%d" % rank_value
 	rank_label.custom_minimum_size = Vector2(80, 0)
 
-	if rank_value <= 10:
-		rank_label.modulate = Color.GOLD
+	# Use DesignTokens for rank colors
+	if rank_value <= 3:
+		rank_label.modulate = RANK_COLORS.get(rank_value, Color.WHITE)
+	elif rank_value <= 10:
+		rank_label.modulate = DesignTokens.COLOR_GOLD if design_tokens else Color.GOLD
 	elif rank_value <= 50:
 		rank_label.modulate = Color.SILVER
 	elif rank_value <= 100:
-		rank_label.modulate = COLOR_BRONZE
+		rank_label.modulate = Color("#CD7F32")  # Bronze
 
 	rank_container.add_child(rank_label)
 
 	var username_label: Label = Label.new()
 	username_label.text = entry.get("username", "Unknown")
 	username_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	# Apply theme text color
+	if theme_manager:
+		username_label.modulate = theme_manager.get_text_primary_color()
 
 	var score_label: Label = Label.new()
 	score_label.text = str(entry.get("score", 0))
 	score_label.custom_minimum_size = Vector2(100, 0)
+	
+	# Apply theme text color
+	if theme_manager:
+		score_label.modulate = theme_manager.get_text_primary_color()
 
 	var meta: Dictionary = entry.get("meta", {})
 	var wins: int = meta.get("wins", 0)
@@ -126,6 +147,10 @@ func _create_leaderboard_entry(entry: Dictionary) -> Control:
 	var stats_label: Label = Label.new()
 	stats_label.text = "%dW-%dL (%.1f%%)" % [wins, losses, win_rate * 100]
 	stats_label.custom_minimum_size = Vector2(120, 0)
+	
+	# Apply theme secondary text color
+	if theme_manager:
+		stats_label.modulate = theme_manager.get_text_secondary_color()
 
 	item.add_child(rank_container)
 	item.add_child(username_label)
@@ -201,6 +226,22 @@ func _apply_theme() -> void:
 	
 	# Apply background color
 	modulate = colors["background"]
+	
+	# Apply colors to labels
+	if season_label:
+		season_label.modulate = colors["text_primary"]
+	if time_label:
+		time_label.modulate = colors["text_secondary"]
+	if your_rank_label:
+		your_rank_label.modulate = colors["text_primary"]
+	if your_tier_label:
+		your_tier_label.modulate = colors["text_secondary"]
+	if loading_label:
+		loading_label.modulate = colors["text_secondary"]
+	
+	# Refresh leaderboard to apply theme to entries
+	if is_initialized:
+		refresh_leaderboard()
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()

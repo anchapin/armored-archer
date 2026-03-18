@@ -15,13 +15,32 @@ signal comparison_closed()
 @onready var result_label: Label = $VBoxContainer/ResultLabel
 @onready var close_button: Button = $VBoxContainer/CloseButton
 
+# --- Theme Manager Reference ---
+var theme_manager: Node
+
+# --- Design Tokens Reference ---
+var design_tokens: Node
+
+# --- Rarity Colors (using DesignTokens) ---
 var rarity_colors: Dictionary = {
-	"common": Color.WHITE,
-	"rare": Color(0, 0.49, 0.87),
-	"legendary": Color(1, 0.5, 0)
+	"common": Color("#9CA3AF"),    # DesignTokens.COLOR_RARITY_COMMON
+	"rare": Color("#3B82F6"),       # DesignTokens.COLOR_RARITY_RARE
+	"epic": Color("#8B5CF6"),      # DesignTokens.COLOR_RARITY_EPIC
+	"legendary": Color("#F59E0B")  # DesignTokens.COLOR_RARITY_LEGENDARY
 }
 
 func _ready() -> void:
+	# Get ThemeManager reference
+	theme_manager = get_node_or_null("/root/ThemeManager")
+	
+	# Get DesignTokens reference
+	design_tokens = get_node_or_null("/root/DesignTokens")
+	
+	# Apply theme if available
+	if theme_manager:
+		_apply_theme()
+		theme_manager.theme_changed.connect(_on_theme_changed)
+	
 	close_button.pressed.connect(_on_close_button_pressed)
 
 func set_gear_comparison(gear1: Dictionary, gear2: Dictionary, comparison: Dictionary) -> void:
@@ -69,21 +88,30 @@ func _clear_container(container: VBoxContainer) -> void:
 func _display_comparison_result(comparison: Dictionary) -> void:
 	var better: String = comparison.get("better", "equal")
 
+	# Get DesignTokens colors
+	var success_color = DesignTokens.COLOR_SUCCESS if design_tokens else Color.GREEN
+	var error_color = DesignTokens.COLOR_ERROR if design_tokens else Color.RED
+	var warning_color = DesignTokens.COLOR_WARNING if design_tokens else Color.YELLOW
+	var text_color = Color.WHITE
+	
+	if theme_manager:
+		text_color = theme_manager.get_text_primary_color()
+
 	# Build result text with stat differences
 	var result_text: String = ""
 	var differences: Array = comparison.get("differences", [])
 
 	match better:
 		"gear1":
-			result_text = "[color=green]Left gear is better[/color]\n"
+			result_text = "[color=#22C55E]Left gear is better[/color]\n"  # Green
 		"gear2":
-			result_text = "[color=green]Right gear is better[/color]\n"
+			result_text = "[color=#22C55E]Right gear is better[/color]\n"  # Green
 		"equal":
-			result_text = "[color=yellow]Both gear are equal[/color]\n"
+			result_text = "[color=#F59E0B]Both gear are equal[/color]\n"  # Yellow
 
 	# Add stat differences to the result
 	if differences.size() > 0:
-		result_text += "\n[color=white]Stat Differences:[/color]\n"
+		result_text += "\n[color=#FFFFFF]Stat Differences:[/color]\n"  # White
 		for diff in differences:
 			var stat: String = diff.get("stat", "")
 			var gear1_val: int = diff.get("gear1_value", 0)
@@ -93,9 +121,9 @@ func _display_comparison_result(comparison: Dictionary) -> void:
 
 			var diff_text: String = "%s: %d vs %d" % [stat, gear1_val, gear2_val]
 			if diff_better == "gear1":
-				diff_text += " [color=green](+%d)[/color]" % diff_val
+				diff_text += " [color=#22C55E](+%d)[/color]" % diff_val  # Green
 			elif diff_better == "gear2":
-				diff_text += " [color=red](%d)[/color]" % diff_val
+				diff_text += " [color=#EF4444](%d)[/color]" % diff_val  # Red
 
 			result_text += diff_text + "\n"
 
@@ -104,3 +132,24 @@ func _display_comparison_result(comparison: Dictionary) -> void:
 func _on_close_button_pressed() -> void:
 	comparison_closed.emit()
 	queue_free()
+
+# --- Theme Support ---
+func _apply_theme() -> void:
+	if not theme_manager:
+		return
+	
+	var colors = theme_manager.get_theme_colors()
+	
+	# Apply background color
+	modulate = colors["background"]
+	
+	# Apply colors to labels
+	if gear1_name:
+		gear1_name.modulate = colors["text_primary"]
+	if gear2_name:
+		gear2_name.modulate = colors["text_primary"]
+	if result_label:
+		result_label.modulate = colors["text_primary"]
+
+func _on_theme_changed(is_dark: bool) -> void:
+	_apply_theme()

@@ -7,6 +7,9 @@ var available_chapters: Array = []
 # --- Theme Manager Reference ---
 var theme_manager: Node
 
+# --- Design Tokens Reference ---
+var design_tokens: Node
+
 # --- Node References ---
 @onready var chapter_title: Label = $ChapterTitle
 @onready var stages_container: VBoxContainer = $StagesContainer
@@ -18,9 +21,19 @@ var theme_manager: Node
 # --- Scene Constants ---
 const MAIN_SCENE = preload("res://scenes/main.tscn")
 
+# --- Rank Colors ---
+const RANK_COLORS = {
+	1: Color("#FFD700"),  # Gold for 1st
+	2: Color("#C0C0C0"),  # Silver for 2nd
+	3: Color("#CD7F32"),  # Bronze for 3rd
+}
+
 func _ready() -> void:
 	# Get ThemeManager reference
 	theme_manager = get_node_or_null("/root/ThemeManager")
+	
+	# Get DesignTokens reference
+	design_tokens = get_node_or_null("/root/DesignTokens")
 	
 	# Apply theme if available
 	if theme_manager:
@@ -101,7 +114,16 @@ func create_stage_button(stage_data: Dictionary) -> Button:
 	var button = Button.new()
 	button.text = "%s: %s (%d waves)" % [stage_data.get("id"), stage_data.get("name"), stage_data.get("waves")]
 	button.custom_minimum_size = Vector2(400, 60)
-
+	
+	# Get colors from DesignTokens if available
+	var primary_color = DesignTokens.COLOR_PRIMARY if design_tokens else Color("#4A90D9")
+	var success_color = DesignTokens.COLOR_SUCCESS if design_tokens else Color("#22C55E")
+	var warning_color = DesignTokens.COLOR_WARNING if design_tokens else Color("#F59E0B")
+	var text_color = Color.WHITE
+	
+	if theme_manager:
+		text_color = theme_manager.get_text_primary_color()
+	
 	var stage_id = stage_data.get("id")
 	var is_unlocked = CampaignManager.is_stage_unlocked(stage_id)
 	var is_completed = CampaignManager.is_stage_completed(stage_id)
@@ -109,12 +131,16 @@ func create_stage_button(stage_data: Dictionary) -> Button:
 	if not is_unlocked:
 		button.disabled = true
 		button.text += " [LOCKED]"
+		# Use disabled color
+		if theme_manager:
+			button.modulate = theme_manager.get_text_disabled_color()
 	elif is_completed:
 		button.text += " [DONE]"
+		button.modulate = success_color  # Completed = green
 
 	if stage_data.get("boss"):
 		button.text += " [BOSS]"
-		button.modulate = Color(1.0, 0.8, 0.2)
+		button.modulate = warning_color  # Boss = orange/gold
 
 	if is_unlocked:
 		button.pressed.connect(_on_stage_pressed.bind(stage_id))
@@ -166,9 +192,21 @@ func _apply_theme() -> void:
 		return
 	
 	var colors = theme_manager.get_theme_colors()
+	var is_dark = theme_manager.is_dark_theme()
 	
 	# Apply background color
 	modulate = colors["background"]
+	
+	# Apply colors to labels if they exist
+	if chapter_title:
+		chapter_title.modulate = colors["text_primary"]
+	if chapter_label:
+		chapter_label.modulate = colors["text_secondary"]
+	if progress_label:
+		progress_label.modulate = colors["text_secondary"]
+	
+	# Rebuild stage buttons to apply new theme colors
+	build_stage_buttons()
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()

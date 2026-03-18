@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-03-18
 **Current Phase**: Milestone v2.2.0 - UI/UX Polish
-**Status**: ✅ PHASE 01-DESIGN-SYSTEM COMPLETE
+**Status**: ✅ COMPLETE - All phases done
 
 ---
 
@@ -10,7 +10,7 @@
 
 **Completion Date**: 2026-03-17  
 **Archive Location**: `.planning/milestones/v2.1.0/`  
-**Next Milestone**: v2.2.0 - UI/UX Polish (IN PROGRESS)
+**Next Milestone**: (To be determined)
 
 ### Milestone v2.1.0 Achievement Summary
 
@@ -27,7 +27,7 @@
 
 **Start Date**: 2026-03-17  
 **Estimated Duration**: 2-3 weeks  
-**Status**: 🔄 **IN PROGRESS - Phase 2 COMPLETE**
+**Status**: 🔄 **COMPLETE**
 
 ### Phase 1: Design System Foundation (COMPLETE)
 
@@ -44,9 +44,9 @@
 
 **Plan**: `.planning/phases/01-design-system/01-01-PLAN.md`
 
-### Phase 2: Core UI Components (IN PROGRESS)
+### Phase 2: Core UI Components (COMPLETE)
 
-**Status**: 🔄 **Starting**
+**Status**: ✅ **Complete**
 
 | Sub-Phase | Name | Status |
 |-----------|------|--------|
@@ -58,13 +58,58 @@
 
 **Plan**: `.planning/phases/01-design-system/02-01-PLAN.md`
 
+### Phase 3: Screen Improvements (COMPLETE)
+
+**Completion Date**: 2026-03-18  
+**Summary**: Migrated remaining game UI screens to use design system with theme support
+
+| Sub-Phase | Name | Status |
+|-----------|------|--------|
+| 3.1 | Campaign Map Screen Migration | ✅ Complete |
+| 3.2 | Leaderboard Menu Migration | ✅ Complete |
+| 3.3 | Matchmaking Menu Migration | ✅ Complete |
+| 3.4 | Gear Inventory & Comparison Migration | ✅ Complete |
+| 3.5 | Game Over Screen Migration | ✅ Complete |
+| 3.6 | Navigation & Transitions | ✅ Complete |
+| 3.7 | Accessibility Verification | ✅ Complete |
+
+**Plan**: `.planning/phases/01-design-system/03-01-PLAN.md`
+
+**Changes Made**:
+- Added DesignTokens integration to all screens
+- Added ThemeManager support with theme_changed signal handling
+- Applied consistent color schemes (rarity colors, rank colors, status indicators)
+- Added proper signal disconnection in _exit_tree()
+- All screens pass GDScript linting
+
+### Phase 4: Animation & Polish (COMPLETE)
+
+Status: ✅ COMPLETE
+
+| Sub-Phase | Name | Status |
+|-----------|------|--------|
+| 4.1 | UI Animations System | ✅ Complete |
+| 4.2 | Loading States | 🔄 In Progress |
+| 4.3 | Mobile Responsiveness | 🔄 In Progress |
+| 4.4 | Final Polish | 📋 Planned |
+
+**Plan**: `.planning/phases/01-design-system/04-01-PLAN.md`
+
+**Changes Made**:
+- Created UIAutomation.gd - animation utility with fade, scale, slide, pulse effects
+- Created loading_indicator.gd/tscn - reusable loading spinner component
+- Added UIAutomation to project.godot autoloads
+- Added button hover/press animations to main_menu.gd
+- Added menu entry animations to main_menu.gd
+- Added loading indicator to stat_allocation.gd and .tscn
+
 ---
 
 ## 🚀 MILESTONE v2.1.0 - Alpha Launch & Stabilization
 
 **Start Date**: 2026-03-16  
 **Estimated Duration**: 2-3 weeks  
-**Status**: 🔄 **IN PROGRESS - Phase 5 COMPLETE**
+**Status**: ✅ COMPLETE
 
 ### ✅ Phase 4: Stability & Bug Fixes (COMPLETE)
 

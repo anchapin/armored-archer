@@ -19,14 +19,22 @@ signal compare_requested(gear_data1: Dictionary, gear_data2: Dictionary)
 @onready var filter_rare: CheckBox = $VBoxContainer/FilterContainer/FilterRare
 @onready var filter_legendary: CheckBox = $VBoxContainer/FilterContainer/FilterLegendary
 
+# --- Theme Manager Reference ---
+var theme_manager: Node
+
+# --- Design Tokens Reference ---
+var design_tokens: Node
+
 var gear_manager: GearManager
 var current_gear: Dictionary = {}
 var selected_gear_id: String = ""
 
+# --- Rarity Colors (using DesignTokens) ---
 var rarity_colors: Dictionary = {
-	"common": Color.WHITE,
-	"rare": Color(0, 0.49, 0.87),
-	"legendary": Color(1, 0.5, 0)
+	"common": Color("#9CA3AF"),    # DesignTokens.COLOR_RARITY_COMMON
+	"rare": Color("#3B82F6"),       # DesignTokens.COLOR_RARITY_RARE
+	"epic": Color("#8B5CF6"),      # DesignTokens.COLOR_RARITY_EPIC
+	"legendary": Color("#F59E0B")  # DesignTokens.COLOR_RARITY_LEGENDARY
 }
 
 var gear_types: Dictionary = {
@@ -38,6 +46,17 @@ var gear_types: Dictionary = {
 }
 
 func _ready() -> void:
+	# Get ThemeManager reference
+	theme_manager = get_node_or_null("/root/ThemeManager")
+	
+	# Get DesignTokens reference
+	design_tokens = get_node_or_null("/root/DesignTokens")
+	
+	# Apply theme if available
+	if theme_manager:
+		_apply_theme()
+		theme_manager.theme_changed.connect(_on_theme_changed)
+	
 	gear_manager = get_node_or_null("/root/GearManager")
 
 	if gear_manager:
@@ -239,3 +258,32 @@ func _exit_tree() -> void:
 			gear_manager.gear_equipped.disconnect(_on_gear_equipped)
 		if gear_manager.gear_unequipped.is_connected(_on_gear_unequipped):
 			gear_manager.gear_unequipped.disconnect(_on_gear_unequipped)
+	
+	# Disconnect theme manager
+	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
+		theme_manager.theme_changed.disconnect(_on_theme_changed)
+
+# --- Theme Support ---
+func _apply_theme() -> void:
+	if not theme_manager:
+		return
+	
+	var colors = theme_manager.get_theme_colors()
+	
+	# Apply background color
+	modulate = colors["background"]
+	
+	# Apply colors to labels
+	if gear_name_label:
+		gear_name_label.modulate = colors["text_primary"]
+	if gear_rarity_label:
+		gear_rarity_label.modulate = colors["text_secondary"]
+	if gear_type_label:
+		gear_type_label.modulate = colors["text_secondary"]
+	
+	# Refresh gear details to apply theme
+	if not current_gear.is_empty():
+		_display_gear_details(current_gear)
+
+func _on_theme_changed(is_dark: bool) -> void:
+	_apply_theme()
