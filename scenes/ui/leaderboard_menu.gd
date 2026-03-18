@@ -10,6 +10,9 @@ extends Control
 @onready var back_button: Button = $VBoxContainer/BottomPanel/BackButton
 @onready var loading_label: Label = $VBoxContainer/LoadingLabel
 
+# --- Theme Manager Reference ---
+var theme_manager: Node
+
 # --- State ---
 var season_manager: Node = null
 var is_initialized: bool = false
@@ -19,6 +22,14 @@ const COLOR_BRONZE = Color(0.8, 0.5, 0.2)
 
 # --- Initialization ---
 func _ready() -> void:
+	# Get ThemeManager reference
+	theme_manager = get_node_or_null("/root/ThemeManager")
+	
+	# Apply theme if available
+	if theme_manager:
+		_apply_theme()
+		theme_manager.theme_changed.connect(_on_theme_changed)
+	
 	season_manager = get_node_or_null("/root/SeasonManager")
 
 	rewards_button.pressed.connect(_on_rewards_pressed)
@@ -176,3 +187,20 @@ func _exit_tree() -> void:
 			season_manager.leaderboard_loaded.disconnect(_on_leaderboard_loaded)
 		if season_manager.rewards_claimed.is_connected(_on_rewards_claimed):
 			season_manager.rewards_claimed.disconnect(_on_rewards_claimed)
+	
+	# Disconnect theme manager
+	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
+		theme_manager.theme_changed.disconnect(_on_theme_changed)
+
+# --- Theme Support ---
+func _apply_theme() -> void:
+	if not theme_manager:
+		return
+	
+	var colors = theme_manager.get_theme_colors()
+	
+	# Apply background color
+	modulate = colors["background"]
+
+func _on_theme_changed(is_dark: bool) -> void:
+	_apply_theme()
