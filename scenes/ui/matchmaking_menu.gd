@@ -13,12 +13,23 @@ extends Control
 @onready var loading_label: Label = $SafeAreaContainer/VBoxContainer/LoadingLabel
 @onready var punch_up_stats_label: Label = $SafeAreaContainer/VBoxContainer/TopPanel/StatsContainer/PunchUpStatsLabel
 
+# --- Theme Manager Reference ---
+var theme_manager: Node
+
 # --- State ---
 var matchmaker_manager: Node = null
 var current_matches: Array = []
 
 # --- Initialization ---
 func _ready() -> void:
+	# Get ThemeManager reference
+	theme_manager = get_node_or_null("/root/ThemeManager")
+	
+	# Apply theme if available
+	if theme_manager:
+		_apply_theme()
+		theme_manager.theme_changed.connect(_on_theme_changed)
+	
 	matchmaker_manager = get_node_or_null("/root/MatchmakerManager")
 
 	match_type_option.add_item("All", 0)
@@ -208,6 +219,23 @@ func _exit_tree() -> void:
 			matchmaker_manager.match_accepted.disconnect(_on_match_accepted)
 		if matchmaker_manager.punch_up_stats_updated.is_connected(_on_punch_up_stats_updated):
 			matchmaker_manager.punch_up_stats_updated.disconnect(_on_punch_up_stats_updated)
+	
+	# Disconnect theme manager
+	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
+		theme_manager.theme_changed.disconnect(_on_theme_changed)
+
+# --- Theme Support ---
+func _apply_theme() -> void:
+	if not theme_manager:
+		return
+	
+	var colors = theme_manager.get_theme_colors()
+	
+	# Apply background color
+	modulate = colors["background"]
+
+func _on_theme_changed(is_dark: bool) -> void:
+	_apply_theme()
 
 # --- Punch Up Statistics ---
 func _on_punch_up_stats_updated(_wins: int, _losses: int, _win_rate: float) -> void:

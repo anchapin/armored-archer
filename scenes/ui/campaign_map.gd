@@ -4,6 +4,9 @@ extends Control
 var current_chapter: String = "chapter_1"
 var available_chapters: Array = []
 
+# --- Theme Manager Reference ---
+var theme_manager: Node
+
 # --- Node References ---
 @onready var chapter_title: Label = $ChapterTitle
 @onready var stages_container: VBoxContainer = $StagesContainer
@@ -16,6 +19,14 @@ var available_chapters: Array = []
 const MAIN_SCENE = preload("res://scenes/main.tscn")
 
 func _ready() -> void:
+	# Get ThemeManager reference
+	theme_manager = get_node_or_null("/root/ThemeManager")
+	
+	# Apply theme if available
+	if theme_manager:
+		_apply_theme()
+		theme_manager.theme_changed.connect(_on_theme_changed)
+	
 	# Get available chapters from CampaignManager
 	load_available_chapters()
 
@@ -144,6 +155,23 @@ func _exit_tree() -> void:
 			CampaignManager.stage_completed.disconnect(_on_stage_completed)
 		if CampaignManager.campaign_progress_updated.is_connected(_on_progress_updated):
 			CampaignManager.campaign_progress_updated.disconnect(_on_progress_updated)
+	
+	# Disconnect theme manager
+	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
+		theme_manager.theme_changed.disconnect(_on_theme_changed)
+
+# --- Theme Support ---
+func _apply_theme() -> void:
+	if not theme_manager:
+		return
+	
+	var colors = theme_manager.get_theme_colors()
+	
+	# Apply background color
+	modulate = colors["background"]
+
+func _on_theme_changed(is_dark: bool) -> void:
+	_apply_theme()
 
 func _on_prev_chapter_pressed() -> void:
 	var chapter_index = available_chapters.find(current_chapter)
