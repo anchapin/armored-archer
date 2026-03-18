@@ -24,6 +24,7 @@ disable:
   - no-elif-return
   - no-else-return
   - max-public-methods
+  - max-returns
   - unnecessary-pass
   - function-preload-variable-name
   - mixed-tabs-and-spaces
