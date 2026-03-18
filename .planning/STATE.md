@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-03-17
 **Current Phase**: Milestone v2.2.0 - UI/UX Polish
-**Status**: 🚀 PHASE 01: DESIGN SYSTEM FOUNDATION
+**Status**: 🚀 PHASE 02: CORE UI COMPONENTS
 
 ---
 
@@ -29,17 +29,34 @@
 **Estimated Duration**: 2-3 weeks  
 **Status**: 🔄 **IN PROGRESS - Phase 1 STARTING**
 
-### Phase 1: Design System Foundation (STARTING)
+### Phase 1: Design System Foundation (COMPLETE)
+
+**Completion Date**: 2026-03-17  
+**Summary**: Design system foundation established
 
 | Sub-Phase | Name | Status |
 |-----------|------|--------|
-| 1.1 | Design Tokens Definition | 📋 Planned |
-| 1.2 | Base UI Components | 📋 Planned |
-| 1.3 | Theme Manager | 📋 Planned |
-| 1.4 | Accessibility Foundation | 📋 Planned |
-| 1.5 | Migrate Main Menu (Pilot) | 📋 Planned |
+| 1.1 | Design Tokens Definition | ✅ Complete |
+| 1.2 | Base UI Components | ✅ Complete |
+| 1.3 | Theme Manager | ✅ Complete |
+| 1.4 | Accessibility Foundation | ✅ Complete |
+| 1.5 | Migrate Main Menu (Pilot) | ✅ Complete |
 
 **Plan**: `.planning/phases/01-design-system/01-01-PLAN.md`
+
+### Phase 2: Core UI Components (IN PROGRESS)
+
+**Status**: 🔄 **Starting**
+
+| Sub-Phase | Name | Status |
+|-----------|------|--------|
+| 2.1 | Login Screen Migration | ✅ Complete |
+| 2.2 | Combat Menu Migration | ✅ Complete |
+| 2.3 | Store Menu Migration | ✅ Complete |
+| 2.4 | Loadout Screen Migration | ✅ Complete |
+| 2.5 | Theme Toggle Component | ✅ Complete |
+
+**Plan**: `.planning/phases/01-design-system/02-01-PLAN.md`
 
 ---
 

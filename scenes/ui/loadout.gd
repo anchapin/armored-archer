@@ -15,6 +15,9 @@ signal gear_dragged(gear_data: Dictionary, from_slot: int)
 @onready var back_button: Button = $VBoxContainer/BackButton
 @onready var inventory_button: Button = $VBoxContainer/InventoryButton
 
+# --- Theme Manager Reference ---
+var theme_manager: Node
+
 var gear_manager: GearManager
 var gear_registry: GearRegistry
 var equipped_slots: Dictionary = {}
@@ -47,6 +50,14 @@ var rarity_colors: Dictionary = {
 }
 
 func _ready() -> void:
+	# Get ThemeManager reference
+	theme_manager = get_node_or_null("/root/ThemeManager")
+	
+	# Apply theme if available
+	if theme_manager:
+		_apply_theme()
+		theme_manager.theme_changed.connect(_on_theme_changed)
+	
 	gear_manager = get_node_or_null("/root/GearManager")
 	gear_registry = get_node_or_null("/root/GearRegistry")
 
@@ -205,3 +216,24 @@ func _exit_tree() -> void:
 			gear_manager.gear_equipped.disconnect(_on_gear_equipped)
 		if gear_manager.gear_unequipped.is_connected(_on_gear_unequipped):
 			gear_manager.gear_unequipped.disconnect(_on_gear_unequipped)
+	
+	# Disconnect theme manager
+	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
+		theme_manager.theme_changed.disconnect(_on_theme_changed)
+
+# --- Theme Support ---
+func _apply_theme() -> void:
+	if not theme_manager:
+		return
+	
+	var colors = theme_manager.get_theme_colors()
+	
+	# Apply background color
+	modulate = colors["background"]
+	
+	# Apply to stats container
+	if stats_container:
+		stats_container.modulate = colors["surface"]
+
+func _on_theme_changed(is_dark: bool) -> void:
+	_apply_theme()

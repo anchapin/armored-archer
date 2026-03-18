@@ -1,5 +1,6 @@
 # Login Screen - Handles Nakama authentication UI
 # Updated: 2026-03-15 - Fixed button null reference issue
+# Updated: 2026-03-17 - Added design system support
 extends Control
 
 # --- UI References ---
@@ -9,6 +10,9 @@ var retry_button: Button
 var test_connection_button: Button
 var progress_bar: ProgressBar
 
+# --- Theme Manager Reference ---
+var theme_manager: Node
+
 # --- State ---
 var is_connecting: bool = false
 
@@ -17,6 +21,14 @@ signal login_complete(success: bool)
 
 # --- Initialization ---
 func _ready() -> void:
+	# Get ThemeManager reference
+	theme_manager = get_node_or_null("/root/ThemeManager")
+	
+	# Apply theme if available
+	if theme_manager:
+		_apply_theme()
+		theme_manager.theme_changed.connect(_on_theme_changed)
+	
 	# Get UI nodes manually with error checking
 	var vbox: VBoxContainer = $VBoxContainer
 
@@ -127,3 +139,20 @@ func _exit_tree() -> void:
 			NetworkManager.session_created.disconnect(_on_session_created)
 		if NetworkManager.connection_status_changed.is_connected(_on_connection_status_changed):
 			NetworkManager.connection_status_changed.disconnect(_on_connection_status_changed)
+	
+	# Disconnect theme manager
+	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
+		theme_manager.theme_changed.disconnect(_on_theme_changed)
+
+# --- Theme Support ---
+func _apply_theme() -> void:
+	if not theme_manager:
+		return
+	
+	var colors = theme_manager.get_theme_colors()
+	
+	# Apply background color
+	modulate = colors["background"]
+
+func _on_theme_changed(is_dark: bool) -> void:
+	_apply_theme()

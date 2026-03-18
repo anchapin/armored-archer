@@ -12,6 +12,10 @@ extends Control
 @onready var angle_value_label: Label = $VBoxContainer/ActionPanel/AngleValueLabel
 @onready var back_button: Button = $VBoxContainer/BottomPanel/BackButton
 @onready var loading_label: Label = $VBoxContainer/LoadingLabel
+@onready var stats_panel: Control = $VBoxContainer/StatsPanel
+
+# --- Theme Manager Reference ---
+var theme_manager: Node
 
 # --- State ---
 var combat_manager: Node = null
@@ -21,6 +25,14 @@ var current_match_state: Dictionary = {}
 
 # --- Initialization ---
 func _ready() -> void:
+	# Get ThemeManager reference
+	theme_manager = get_node_or_null("/root/ThemeManager")
+	
+	# Apply theme if available
+	if theme_manager:
+		_apply_theme()
+		theme_manager.theme_changed.connect(_on_theme_changed)
+	
 	combat_manager = get_node_or_null("/root/CombatManager")
 
 	if not match_id.is_empty():
@@ -221,7 +233,28 @@ func _exit_tree() -> void:
 			combat_manager.turn_changed.disconnect(_on_turn_changed)
 		if combat_manager.combat_ended.is_connected(_on_combat_ended):
 			combat_manager.combat_ended.disconnect(_on_combat_ended)
+	
+	# Disconnect theme manager
+	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
+		theme_manager.theme_changed.disconnect(_on_theme_changed)
 
 # --- Set Match ID ---
 func set_match_id(new_match_id: String) -> void:
 	match_id = new_match_id
+
+# --- Theme Support ---
+func _apply_theme() -> void:
+	if not theme_manager:
+		return
+	
+	var colors = theme_manager.get_theme_colors()
+	
+	# Apply background color
+	modulate = colors["background"]
+	
+	# Apply to stats panel
+	if stats_panel:
+		stats_panel.modulate = colors["surface"]
+
+func _on_theme_changed(is_dark: bool) -> void:
+	_apply_theme()

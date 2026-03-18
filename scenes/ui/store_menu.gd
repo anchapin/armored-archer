@@ -3,6 +3,7 @@ extends Control
 # --- UI References ---
 @onready var gems_label: Label = $SafeAreaContainer/CenterContainer/VBoxContainer/HeaderContainer/GemsContainer/GemsLabel
 @onready var gold_label: Label = $SafeAreaContainer/CenterContainer/VBoxContainer/HeaderContainer/GoldContainer/GoldLabel
+@onready var purchase_container: Control = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer
 
 @onready var small_gems_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/SmallGemContainer/BuyButton
 @onready var medium_gems_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/MediumGemContainer/BuyButton
@@ -16,6 +17,9 @@ extends Control
 @onready var store_manager: Node = get_node_or_null("/root/StoreManager")
 @onready var gem_manager: Node = get_node_or_null("/root/GemManager")
 
+# --- Theme Manager Reference ---
+var theme_manager: Node
+
 # --- Signal connections for cleanup ---
 var _currency_updated_connection: Callable = Callable()
 var _purchase_succeeded_connection: Callable = Callable()
@@ -25,15 +29,28 @@ var _purchase_failed_connection: Callable = Callable()
 var is_processing: bool = false
 
 func _ready() -> void:
+	# Get ThemeManager reference
+	theme_manager = get_node_or_null("/root/ThemeManager")
+	
+	# Apply theme if available
+	if theme_manager:
+		_apply_theme()
+		theme_manager.theme_changed.connect(_on_theme_changed)
+	
 	_connect_signals()
 	_update_currency_display()
 	_update_product_buttons()
+	_apply_design_tokens()
 
 func _exit_tree() -> void:
 	# Clean up connected signals to prevent memory leaks
 	_cleanup_signal_connection(StoreManager, "currency_updated", _currency_updated_connection)
 	_cleanup_signal_connection(StoreManager, "purchase_succeeded", _purchase_succeeded_connection)
 	_cleanup_signal_connection(StoreManager, "purchase_failed", _purchase_failed_connection)
+	
+	# Disconnect theme manager
+	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
+		theme_manager.theme_changed.disconnect(_on_theme_changed)
 
 func _cleanup_signal_connection(node: Node, signal_name: String, connection: Callable) -> void:
 	if node and connection.is_valid() and node.is_connected(signal_name, connection):
@@ -137,3 +154,29 @@ func _set_buttons_enabled(enabled: bool) -> void:
 
 func _on_back_pressed() -> void:
 	var result = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+
+# --- Theme Support ---
+func _apply_theme() -> void:
+	if not theme_manager:
+		return
+	
+	var colors = theme_manager.get_theme_colors()
+	
+	# Apply background color
+	modulate = colors["background"]
+	
+	# Apply to purchase container
+	if purchase_container:
+		purchase_container.modulate = colors["surface"]
+
+func _apply_design_tokens() -> void:
+	# Apply design tokens to currency labels
+	if gold_label and DesignTokens:
+		gold_label.modulate = DesignTokens.COLOR_GOLD
+	
+	if gems_label and DesignTokens:
+		gems_label.modulate = DesignTokens.COLOR_GEMS
+
+func _on_theme_changed(is_dark: bool) -> void:
+	_apply_theme()
+	_apply_design_tokens()
