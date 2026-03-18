@@ -36,6 +36,9 @@ ProfilingInstrumentation="*res://autoloads/ProfilingInstrumentation.gd"
 UITransitionOptimizer="*res://autoloads/UITransitionOptimizer.gd"
 ObjectPool="*res://autoloads/ObjectPool.gd"
 VFXManager="*res://autoloads/VFXManager.gd"
+DesignTokens="*res://autoloads/design_tokens.gd"
+ThemeManager="*res://autoloads/ThemeManager.gd"
+AccessibilityManager="*res://autoloads/AccessibilityManager.gd"
 AnalyticsManager="*res://addons/analytics_manager/analytics_manager.gd"
 
 [debug]

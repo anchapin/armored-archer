@@ -9,10 +9,14 @@ extends Control
 @onready var settings_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/SettingsButton
 @onready var quit_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/QuitButton
 @onready var loadout_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/LoadoutButton
+@onready var menu_container: Control = $SafeAreaContainer/CenterContainer/VBoxContainer
 
 # --- Manager References ---
 @onready var gem_manager: Node = get_node_or_null("/root/GemManager")
 @onready var store_manager: Node = get_node_or_null("/root/StoreManager")
+
+# --- Theme Manager Reference ---
+@onready var theme_manager: Node = get_node_or_null("/root/ThemeManager")
 
 # --- Scene Instances for cleanup ---
 var _shop_instance: Node = null
@@ -36,6 +40,11 @@ func _ready() -> void:
 	settings_button.pressed.connect(_on_settings_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	loadout_button.pressed.connect(_on_loadout_pressed)
+	
+	# Apply theme if ThemeManager is available
+	if theme_manager:
+		_apply_theme()
+		theme_manager.theme_changed.connect(_on_theme_changed)
 
 func _exit_tree() -> void:
 	# Clean up connected signals to prevent memory leaks
@@ -94,3 +103,20 @@ func _update_gem_display() -> void:
 
 func _on_currency_updated( _gems: int, _gold: int) -> void:
 	_update_gem_display()
+
+# --- Theme Support ---
+func _apply_theme() -> void:
+	if not theme_manager:
+		return
+	
+	var colors = theme_manager.get_theme_colors()
+	
+	# Apply background color
+	modulate = colors["background"]
+	
+	# Apply to menu container if available
+	if menu_container:
+		menu_container.modulate = colors["surface"]
+
+func _on_theme_changed(is_dark: bool) -> void:
+	_apply_theme()
