@@ -1,552 +1,131 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: milestone
-status: completed
-last_updated: "2026-03-19T23:02:32.249Z"
+milestone: v2.3.0
+milestone_name: Testing & QA Infrastructure
+status: in_progress
+last_updated: "2026-03-19T00:00:00.000Z"
 progress:
-  total_phases: 15
-  completed_phases: 5
-  total_plans: 13
-  completed_plans: 24
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Armored Archer - Project State
 
-**Last Updated**: 2026-03-18
-**Current Phase**: Milestone v2.2.0 - UI/UX Polish
-**Status**: ✅ COMPLETE - All phases done
+**Last Updated**: 2026-03-19
+**Current Phase**: Milestone v2.3.0 - Testing & QA Infrastructure
+**Status**: 🔄 **STARTING - Defining requirements**
 
 ---
 
-## 🎉 MILESTONE v2.1.0 COMPLETED
+## Current Position
 
-**Completion Date**: 2026-03-17  
-**Archive Location**: `.planning/milestones/v2.1.0/`  
-**Next Milestone**: (To be determined)
-
-### Milestone v2.1.0 Achievement Summary
-
-✅ **Alpha Launch Ready**: All systems operational  
-✅ **Monitoring**: Prometheus, Grafana, Loki, Tempo configured  
-✅ **User Onboarding**: Feedback system, analytics events  
-✅ **Stability**: 0 critical/high bugs  
-✅ **Performance**: Caching, DB optimizations in place  
-✅ **Beta Readiness**: Deployment ready, error monitoring active  
+**Phase**: Not started (defining requirements)
+**Plan**: —
+**Status**: Defining requirements
+**Last activity**: 2026-03-19 — Milestone v2.3.0 started
 
 ---
 
-## 🚀 MILESTONE v2.2.0 - UI/UX Polish
+## Accumulated Context
 
-**Start Date**: 2026-03-17  
-**Estimated Duration**: 2-3 weeks  
-**Status**: 🔄 **COMPLETE**
+### Previous Milestones
 
-### Phase 1: Design System Foundation (COMPLETE)
+**v2.2.0 - UI/UX Polish** (Shipped: 2026-03-19)
+- Design system with DesignTokens (50+ tokens)
+- 8 base UI components
+- All 11 major UI screens migrated
+- UIAutomation animation system
+- AccessibilityManager with font scaling, high contrast
+- Light/dark theme switching
 
-**Completion Date**: 2026-03-17  
-**Summary**: Design system foundation established
+**v2.1.0 - Alpha Launch & Stabilization** (Shipped: 2026-03-17)
+- Monitoring and observability (Prometheus, Grafana)
+- User onboarding and feedback systems
+- Stability fixes (0 critical/high bugs)
+- Performance optimization
+- Beta readiness
 
-| Sub-Phase | Name | Status |
-|-----------|------|--------|
-| 1.1 | Design Tokens Definition | ✅ Complete |
-| 1.2 | Base UI Components | ✅ Complete |
-| 1.3 | Theme Manager | ✅ Complete |
-| 1.4 | Accessibility Foundation | ✅ Complete |
-| 1.5 | Migrate Main Menu (Pilot) | ✅ Complete |
+**v2.0.0 - Go Backend Migration** (Shipped: 2026-03-15)
+- Complete TypeScript to Go migration
+- 234 integration tests
+- 68% performance improvement
+- 50% memory reduction
+- Security review passed
 
-**Plan**: `.planning/phases/01-design-system/01-01-PLAN.md`
+### Technical Stack
 
-### Phase 2: Core UI Components (COMPLETE)
+**Client**: Godot 4.x (GDScript)
+**Backend**: Go 1.21+ with Nakama
+**Database**: PostgreSQL
+**CI/CD**: GitHub Actions
 
-**Status**: ✅ **Complete**
+### Current Test Infrastructure
 
-| Sub-Phase | Name | Status |
-|-----------|------|--------|
-| 2.1 | Login Screen Migration | ✅ Complete |
-| 2.2 | Combat Menu Migration | ✅ Complete |
-| 2.3 | Store Menu Migration | ✅ Complete |
-| 2.4 | Loadout Screen Migration | ✅ Complete |
-| 2.5 | Theme Toggle Component | ✅ Complete |
+**Backend Tests**:
+- Location: `backend/src/**/__tests__/`
+- Framework: Jest
+- Coverage: Partial (some RPC handlers tested)
+- Count: ~234 integration tests from v2.0.0 migration
 
-**Plan**: `.planning/phases/01-design-system/02-01-PLAN.md`
+**Frontend Tests**:
+- Location: `test/test_*.gd`
+- Framework: Godot test framework
+- Coverage: Minimal
+- Status: Basic structure exists
 
-### Phase 3: Screen Improvements (COMPLETE)
-
-**Completion Date**: 2026-03-18  
-**Summary**: Migrated remaining game UI screens to use design system with theme support
-
-| Sub-Phase | Name | Status |
-|-----------|------|--------|
-| 3.1 | Campaign Map Screen Migration | ✅ Complete |
-| 3.2 | Leaderboard Menu Migration | ✅ Complete |
-| 3.3 | Matchmaking Menu Migration | ✅ Complete |
-| 3.4 | Gear Inventory & Comparison Migration | ✅ Complete |
-| 3.5 | Game Over Screen Migration | ✅ Complete |
-| 3.6 | Navigation & Transitions | ✅ Complete |
-| 3.7 | Accessibility Verification | ✅ Complete |
-
-**Plan**: `.planning/phases/01-design-system/03-01-PLAN.md`
-
-**Changes Made**:
-- Added DesignTokens integration to all screens
-- Added ThemeManager support with theme_changed signal handling
-- Applied consistent color schemes (rarity colors, rank colors, status indicators)
-- Added proper signal disconnection in _exit_tree()
-- All screens pass GDScript linting
-
-### Phase 4: Animation & Polish (COMPLETE)
-
-Status: ✅ COMPLETE
-
-| Sub-Phase | Name | Status |
-|-----------|------|--------|
-| 4.1 | UI Animations System | ✅ Complete |
-| 4.2 | Loading States | 🔄 In Progress |
-| 4.3 | Mobile Responsiveness | 🔄 In Progress |
-| 4.4 | Final Polish | 📋 Planned |
-
-**Plan**: `.planning/phases/01-design-system/04-01-PLAN.md`
-
-**Changes Made**:
-- Created UIAutomation.gd - animation utility with fade, scale, slide, pulse effects
-- Created loading_indicator.gd/tscn - reusable loading spinner component
-- Added UIAutomation to project.godot autoloads
-- Added button hover/press animations to main_menu.gd
-- Added menu entry animations to main_menu.gd
-- Added loading indicator to stat_allocation.gd and .tscn
+**CI/CD**:
+- Platform: GitHub Actions
+- Current: Basic linting and build checks
+- Missing: Comprehensive test automation, coverage gates
 
 ---
 
-## 🚀 MILESTONE v2.1.0 - Alpha Launch & Stabilization
+## Milestone v2.3.0 - Testing & QA Infrastructure
 
-**Start Date**: 2026-03-16  
-**Estimated Duration**: 2-3 weeks  
-**Status**: ✅ COMPLETE
+**Goal**: Build comprehensive test infrastructure and QA processes
 
-### ✅ Phase 4: Stability & Bug Fixes (COMPLETE)
+**Scope**:
+- Comprehensive test coverage (backend, frontend, integration)
+- Automated CI/CD quality gates
+- Load testing and performance benchmarks
+- QA workflow automation and bug tracking
 
-**Completion Date**: 2026-03-17  
-**Summary**: All bugs fixed, 0 critical/high severity issues
-
-| Sub-Phase | Name | Status | Deliverables |
-|-----------|------|--------|--------------|
-| 4.1 | Alpha Feedback Analysis | ✅ Complete | Feedback summary document |
-| 4.2 | Bug Prioritization | ✅ Complete | PRIORITIZED_BUGS.md |
-| 4.3 | Critical Bug Fixes | ✅ Complete | All critical bugs fixed |
-| 4.4 | High Severity Bug Fixes | ✅ Complete | All high severity bugs fixed |
-| 4.5 | Medium Severity Fixes | ✅ Complete | All medium bugs addressed |
-| 4.6 | Stability Verification | ✅ Complete | Tests pass, metrics verified |
-| 4.7 | Known Issues Documentation | ✅ Complete | KNOWN_ISSUES.md |
-
-**Status**: ✅ **COMPLETE** - 0 critical, 0 high bugs
-
-### ✅ Phase 5: Performance Optimization (COMPLETE)
-
-**Completion Date**: 2026-03-17  
-**Summary**: Performance infrastructure in place
-
-| Sub-Phase | Name | Status | Deliverables |
-|-----------|------|--------|--------------|
-| 5.1 | Cache Infrastructure | ✅ Complete | Multi-tier caching system |
-| 5.2 | Database Optimizations | ✅ Complete | Query timeouts, connection pool |
-| 5.3 | RPC Layer Optimizations | ✅ Complete | Cache constants, optimization ready |
-
-**Status**: ✅ **COMPLETE** - Ready for beta scale
-
-### ✅ Phase 2: Monitoring & Observability (COMPLETE)
-
-**Completion Date**: 2026-03-16  
-**Summary**: `.planning/phases/02-monitoring/PHASE-2-SUMMARY.md`
-
-| Sub-Phase | Name | Status | Deliverables |
-|-----------|------|--------|--------------|
-| 2.1 | Prometheus Metrics Validation | ✅ Complete | 30 metrics, config, verification |
-| 2.2 | Grafana Dashboard Setup | ✅ Complete | 4 dashboards, 57 panels |
-| 2.3 | Alert Configuration & Testing | ✅ Complete | 6 alerts, templates, runbooks |
-| 2.4 | Log Aggregation (Loki) | ✅ Complete | Loki, Promtail, LogQL queries |
-| 2.5 | Distributed Tracing | ✅ Complete | Tempo, OTel, trace correlation |
-
-**Phase 2 Totals**: 25+ files, 30 metrics, 4 dashboards, 6 alerts, full tracing
-
-**Status**: ✅ **VERIFIED BY AI** - All configs validated
-
-### ✅ Phase 3: Alpha User Onboarding (COMPLETE)
-
-**Completion Date**: 2026-03-16  
-**Summary**: `.planning/phases/03-user-onboarding/PHASE-3-SUMMARY.md`
-
-| Sub-Phase | Name | Status | Deliverables |
-|-----------|------|--------|--------------|
-| 3.1 | Alpha User Selection | ✅ Complete | 8 files, selection framework |
-| 3.2 | Feedback Collection System | ✅ Complete | 11 files, full-stack system |
-| 3.3 | Issue Reporting Pipeline | ✅ Complete | 7 files, GitHub integration |
-| 3.4 | User Communication Channels | ✅ Complete | 6 files, Discord + Status |
-| 3.5 | Analytics Event Validation | ✅ Complete | 6 files, 60+ events |
-
-**Phase 3 Totals**: 38 files, 60+ analytics events, full feedback system
-
-**Status**: 🛑 **Ready for Human Verification**
-
-**Verification Required**:
-- [ ] Legal counsel review of Alpha User Agreement
-- [ ] Discord server setup per guide
-- [ ] Slack webhook configured in GitHub Secrets
-- [ ] Status page platform selected and configured
-- [ ] Access keys generated and imported to DB
-- [ ] On-call rotation schedule created
-
-**Resume Signal**: "Phase 3 verified, proceed to Phase 4"
-
-### ✅ Phase 6: Beta Readiness (COMPLETE)
-
-**Completion Date**: 2026-03-17  
-**Summary**: `.planning/phases/06-beta-readiness/SUMMARY.md`
-
-| Sub-Phase | Name | Status | Deliverables |
-|-----------|------|--------|--------------|
-| 6.1 | Beta Environment Setup | ✅ Complete | deploy-beta.sh, nakama.beta.yml |
-| 6.2 | Beta Test Planning | ✅ Complete | BETA_TEST_PLAN.md, BETA_FEEDBACK_SYSTEM.md |
-| 6.3 | Beta Deployment Execution | ✅ Complete | server.so (19M), health checks |
-| 6.4 | Beta User Onboarding | ✅ Complete | BETA_USER_ONBOARDING.md, 100+ capacity |
-| 6.5 | Error Rate Monitoring | ✅ Complete | alerts.beta.yml (0.5%), BETA_ERROR_MONITORING.md |
-| 6.6 | Latency Validation | ✅ Complete | P95 < 80ms, BETA_PERFORMANCE_RESULTS.md |
-| 6.7 | Bug Fixes & Stabilization | ✅ Complete | BETA_BUG_TRACKING.md, 0 critical/high |
-| 6.8 | Stakeholder Demo & Approval | ✅ Complete | BETA_STAKEHOLDER_APPROVAL.md |
-
-**Phase 6 Totals**: 8 tasks completed, 10+ artifacts created
-
-**Status**: ✅ **READY FOR PRODUCTION** - Awaiting stakeholder approval
-
----
-
-## 🚀 MILESTONE v2.2.0 - UI/UX Polish
-
-**Start Date**: 2026-03-17  
-**Estimated Duration**: 2-3 weeks  
-**Status**: 🔄 **STARTING - Planning Phase**
-
-### About This Milestone
-
-**Goal**: Make the app visually appealing and the flow intuitive and easy to use
-
-### Scope
-
-- Visual design system (colors, typography, spacing)
-- UI component library (buttons, panels, menus)
-- Main menu improvements
-- Combat UI improvements
-- Inventory & gear management UI
-- Navigation & transitions
-- Loading states & feedback
-- Accessibility improvements
-- Mobile responsiveness
-- Onboarding flow improvements
-
-### Upcoming Phases
-
-- **Phase 1**: Design System & Foundation
-- **Phase 2**: Core UI Components
-- **Phase 3**: Screen Improvements
-- **Phase 4**: Polish & Testing
-
----
-
-## 📊 PROJECT COMPLETION SUMMARY
-
-### All 15 Phases Complete!
-
-| Phase | Name | Status |
-|-------|------|--------|
-| 1 | Foundation & Setup | ✅ Complete |
-| 2 | Database & Storage Layer | ✅ Complete |
-| 3 | Core RPC Infrastructure | ✅ Complete |
-| 4 | Player Systems | ✅ Complete |
-| 5 | Combat System | ✅ Complete |
-| 6 | Matchmaking System | ✅ Complete |
-| 7 | Gear & Inventory System | ✅ Complete |
-| 8 | RPG & Progression System | ✅ Complete |
-| 9 | Season & Leaderboard System | ✅ Complete |
-| 10 | Store & IAP System | ✅ Complete |
-| 11 | Notifications & Scheduling | ✅ Complete |
-| 12 | Observability & Health | ✅ Complete |
-| 13 | Integration Testing | ✅ Complete |
-| 14 | Cleanup & Documentation | ✅ Complete |
-| 15 | Alpha Readiness | ✅ Complete |
-
-**Completion Rate**: 15/15 (100%)
-
-### Phase 15 Summary
-
-#### Performance Benchmarking ✅
-- Build time: 67% faster (15s → 5s)
-- Bundle size: 16% smaller (11.2MB → 9.4MB)
-- Cold start: 90% faster (~500ms → ~50ms)
-- Memory usage: 50% less (~200MB → ~100MB)
-- RPC response times: 68% faster on average
-
-#### Load Testing ✅
-- 500 concurrent users: 99.9% success rate
-- 1000 concurrent users: 99.5% success rate
-- 2000 concurrent users: 97.2% success rate (degraded but functional)
-- Spike test (0→1500): 98.5% success rate, auto-recovered
-
-#### Security Review ✅
-- 27 security checks performed
-- 0 critical vulnerabilities
-- 0 high vulnerabilities
-- All authentication, input validation, and data protection checks passed
-
-#### Alpha Deployment ✅
-- Build pipeline configured
-- Deployment steps documented
-- Rollback plan ready
-- Environment configuration complete
-
-#### Monitoring Setup ✅
-- Prometheus metrics: 10+ custom metrics
-- Grafana dashboards: 4 dashboards configured
-- Alerting rules: 6 rules (2 critical, 4 warning)
-- Log aggregation: Loki configured
-
-### Final Documentation
-
-1. **ALPHA_READINESS.md** - Complete alpha readiness report
-2. **MIGRATION_SUMMARY.md** - Migration statistics and summary
-3. **README_GO.md** - Go backend documentation
-4. **CHANGELOG.md** - v2.0.0 release notes
-5. **README.md** - Updated with migration notice
-
-### Project Statistics
-
-| Metric | Value |
-|--------|-------|
-| Go Modules Created | 18 |
-| Lines of Go Code | ~6,440 |
-| Integration Tests | 234 |
-| Test Pass Rate | 95%+ |
-| Documentation Pages | 5 |
-| Performance Improvement | 68% faster |
-| Memory Reduction | 50% less |
-| Bundle Size Reduction | 16% smaller |
-
-### Success Criteria - ALL MET ✅
-
-- [x] All 15 phases completed
-- [x] All core game systems migrated to Go
-- [x] 200+ integration tests created
-- [x] Performance targets exceeded (68% faster vs 30% target)
-- [x] Load testing passed for 1000+ concurrent users
-- [x] Security review passed with 0 critical vulnerabilities
-- [x] Documentation complete (5 documents)
-- [x] Monitoring and alerting configured
-- [x] Alpha deployment ready
-
----
-
-## 🚀 READY FOR ALPHA LAUNCH
-
-**Recommendation**: **APPROVE FOR ALPHA DEPLOYMENT**
-
-**Next Steps**:
-1. Deploy to alpha environment
-2. Monitor performance metrics
-3. Collect user feedback
-4. Address any issues
-5. Plan for beta release
-
----
-
-**Migration Date**: 2026-03-15
-**Migration Team**: AI Coding Agents
-**Project Status**: ✅ **COMPLETE**
-**Alpha Status**: ✅ **READY FOR LAUNCH**
-
----
-
-*Thank you for participating in the Nakama Go Backend Migration!*
+**Status**: 🔄 **DEFINING REQUIREMENTS**
 
 ---
 
 ## Project Memory
 
-### Why This Migration?
-
-1. **ES5 Compatibility Battles**: TypeScript bundle fails in Nakama's JS runtime (Duktape/QuickJS)
-2. **Polyfill Debt**: Would need ongoing maintenance, bundle size growth, runtime testing
-3. **Nakama First-Class Go**: Go is Nakama's primary language, full API support
-4. **AI Levels Playing Field**: AI writes Go as well as TypeScript
-5. **Right Timing**: Pre-alpha, no users, manageable codebase (25K lines)
-
-### Key Decisions Made
+### Key Technical Decisions
 
 | Decision | Date | Rationale |
 |----------|------|-----------|
 | Migrate to Go | 2026-03-15 | Eliminate ES5 battles, long-term maintainability |
-| Preserve patterns | 2026-03-15 | Minimize risk, validate migration before refactoring |
-| AI writes 70% | 2026-03-15 | Leverage AI for boilerplate, human reviews logic |
-| 4-week timeline | 2026-03-15 | Aggressive but achievable with AI assistance |
+| Focus on UI/UX | 2026-03-17 | Improve player experience before launch |
+| Build test infrastructure | 2026-03-19 | Quality foundation before scaling |
 
-### Architecture Notes
+### Known Patterns
 
-**Current TypeScript Structure**:
-```
-backend/src/
-├── config/          # Configuration, environment, logging
-├── modules/         # Game logic (combat, gear, matchmaking, etc.)
-├── utils/           # Helpers (cache, circuit breaker, tracing)
-└── index.ts         # Entry point, RPC registration
-```
+**Backend Testing**:
+- Use Jest for unit/integration tests
+- Mock Nakama dependencies where appropriate
+- Test all RPC handlers
+- Validate database queries
 
-**Target Go Structure**:
-```
-backend/
-├── cmd/
-│   └── server/      # Nakama module entry point
-├── internal/
-│   ├── config/      # Configuration
-│   ├── database/    # Database helpers
-│   ├── rpc/         # RPC handlers
-│   ├── modules/     # Game logic modules
-│   └── utils/       # Utilities
-├── pkg/
-│   └── nakama/      # Nakama SDK wrappers (if needed)
-└── tests/
-    └── integration/ # Integration tests
-```
-
-### Migration Patterns
-
-**TypeScript → Go Mapping**:
-| TypeScript | Go |
-|------------|-----|
-| `interface` | `type` struct |
-| `async/await` | Goroutines + channels OR synchronous |
-| `Promise.all` | `errgroup` or `waitgroup` |
-| `export const` | Package-level vars |
-| `export function` | Package functions |
-| `class` | `type` + methods |
-| `import` | `import` (Go packages) |
-| `jest` | `testing` package |
-| `npm` | `go mod` |
-
-**Nakama API Mapping**:
-| TypeScript | Go |
-|------------|-----|
-| `nk.storageRead` | `client.StorageObjectsRead` |
-| `nk.storageWrite` | `client.StorageObjectsWrite` |
-| `nk.rpcSend` | `client.RpcFunc` |
-| `logger.info` | `logger.Info` |
-| `config.serverKey` | `config.ServerKey` |
-
-### Known Challenges
-
-| Challenge | Status | Plan |
-|-----------|--------|------|
-| Nakama Go SDK differences | Unknown | Discover during Phase 1 |
-| npm module → Go package mapping | Unknown | Audit during Phase 2 |
-| async/await → goroutine patterns | Unknown | Use synchronous where possible |
-| Test parity | Unknown | Side-by-side comparison |
-
----
-
-## Current Session Context
-
-### What Was Done This Session
-
-1. **GSD Project Setup** ✓
-   - Created PROJECT.md, ROADMAP.md, STATE.md, MILESTONES.md
-   - Created 15-phase migration plan
-   - Created Phase 1 detailed plan
-
-2. **Phase 1.1: Go Project Initialization** ✓
-   - Created directory structure (cmd/, internal/, pkg/, tests/)
-   - Created go.mod with dependencies
-   - Created Makefile targets for Go commands
-
-3. **Phase 1.2: Nakama Go Module Configuration** ✓
-   - Created cmd/server/main.go with InitModule entry point
-   - Registered all RPC handlers (stubs)
-   - Registered matchmakers and hooks (stubs)
-   - Created build-go.sh build script
-
-4. **Phase 1.3: Configuration Migration** ✓
-   - Created internal/config/config.go with full config loading
-   - Migrated all environment variable handling
-   - Implemented config validation
-   - Created config_test.go with unit tests
-   - Created internal/utils/cache.go with LRU cache
-   - Created internal/rpc/rpc.go with RPC handler stubs
-   - Created internal/modules/modules.go with module stubs
-
-### Files Created
-
-```
-backend/
-├── go.mod                          # Go module definition
-├── build-go.sh                     # Build script for Nakama plugin
-├── cmd/server/main.go              # Nakama module entry point
-├── internal/
-│   ├── config/
-│   │   ├── config.go              # Configuration loading
-│   │   └── config_test.go         # Config unit tests
-│   ├── database/                   # (empty - Phase 2)
-│   ├── rpc/
-│   │   └── rpc.go                 # RPC handler stubs
-│   ├── modules/
-│   │   └── modules.go             # Game logic module stubs
-│   └── utils/
-│       └── cache.go               # LRU cache implementation
-└── tests/integration/              # (empty - Phase 13)
-```
-
-### What's Next
-
-1. **User to install Go 1.21+** (manual step)
-2. **Run `go mod tidy`** to download dependencies
-3. **Run `go build`** to verify compilation
-4. **Run `go test ./internal/config/...`** to verify config tests pass
-5. **Build Nakama plugin** with `./build-go.sh`
-6. **Test Nakama loads Go module**
+**Frontend Testing**:
+- Use Godot's test framework
+- Test autoload systems (GameManager, CombatManager, etc.)
+- Test UI components
+- Integration tests for game flows
 
 ### Open Questions
 
-- [ ] Go SDK version compatibility with Nakama 3.21.1
-- [ ] Plugin build mode support in Nakama 3.21.1
-
-### Open Questions
-
-- [ ] Go version preference (1.21+ for Nakama 3.21 compatibility)?
-- [ ] Go module name (github.com/anchapin/armored-archer/backend)?
-- [ ] Testing framework preference (standard testing or testify)?
-- [ ] Linting tools (golangci-lint defaults)?
-
----
-
-## Progress Tracker
-
-### Completed
-
-- [x] Decision to migrate to Go
-- [x] Project vision documented
-- [x] Roadmap created with 15 phases
-- [x] Success criteria defined
-
-### In Progress
-
-- [ ] Phase 1: Foundation & Setup
-
-### Blocked
-
-- (none yet)
-
-### Risks
-
-| Risk | Status | Mitigation |
-|------|--------|------------|
-| Nakama Go API differences | Unknown | Test early, test often |
-| Timeline creep | Medium | Strict phase gates |
-| Lost business logic | Low | Side-by-side testing |
+- Target test coverage percentage? (80%? 90%?)
+- Load testing targets? (concurrent users, request rates)
+- QA workflow tooling? (GitHub Issues? Jira? Custom?)
+- Performance benchmark baselines?
 
 ---
 
@@ -555,69 +134,32 @@ backend/
 ### Commands
 
 ```bash
-# Initialize Go module
-cd backend && go mod init github.com/anchapin/armored-archer/backend
+# Backend tests
+cd backend && npm test
 
-# Build Go module
-go build -o build/server ./cmd/server
+# Godot tests
+godot4 --headless --script res://test/run_all_tests.gd
 
-# Run tests
-go test ./tests/integration/...
+# Local testing script
+./scripts/local-godot-tests.sh
 
-# Lint
-golangci-lint run
-
-# Format
-go fmt ./...
+# Linting
+make backend-lint
+gdlint autoloads/ scenes/ scripts/ test/
 ```
 
-### Nakama Go Module Structure
+### Key Files
 
-```go
-// Entry point for Nakama
-func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, initializer runtime.Initializer) error {
-    // Register RPC handlers
-    // Register matchmakers
-    // Register hooks
-    return nil
-}
-```
-
-### Key Packages
-
-| Purpose | Package |
-|---------|---------|
-| Nakama SDK | `github.com/heroiclabs/nakama-sdk-go` |
-| Database | `database/sql` + `github.com/lib/pq` |
-| Testing | `testing` + `github.com/stretchr/testify` |
-| Logging | Nakama runtime logger |
-| Config | `github.com/kelseyhightower/envconfig` |
+| File | Purpose |
+|------|---------|
+| `.planning/PROJECT.md` | Vision and requirements |
+| `.planning/REQUIREMENTS.md` | Detailed requirements (to be created) |
+| `.planning/ROADMAP.md` | Phase breakdown (to be created) |
+| `.planning/STATE.md` | Project memory (this file) |
+| `backend/src/**/__tests__/` | Backend tests |
+| `test/test_*.gd` | Frontend tests |
+| `.github/workflows/` | CI/CD pipelines |
 
 ---
 
-## Session Handoff
-
-### If Resuming Mid-Phase
-
-1. Read `STATE.md` for current context
-2. Check phase PLAN.md for current tasks
-3. Review git log for recent commits
-4. Run tests to verify current state
-
-### If Resuming After Gate
-
-1. Review gate criteria in ROADMAP.md
-2. Verify all success criteria met
-3. Update STATE.md with lessons learned
-4. Plan next phase
-
----
-
-## Contact & Resources
-
-- **Project Root**: `/home/alex/armored-archer`
-- **Backend Dir**: `/home/alex/armored-archer/backend`
-- **TypeScript Source**: `/home/alex/armored-archer/backend/src`
-- **Go Target**: `/home/alex/armored-archer/backend/cmd/server`
-- **Tests**: `/home/alex/armored-archer/backend/tests/integration`
-- **Nakama Docs**: https://heroiclabs.com/docs/nakama/server-framework/go/
+**Next Steps**: Define requirements for v2.3.0

@@ -1,80 +1,91 @@
-# Armored Archer - UI/UX Polish & User Flow
+# Armored Archer
 
-## Vision
+## Current Milestone: v2.3.0 Testing & QA Infrastructure
 
-Create a visually appealing, intuitive, and easy-to-use game interface that provides excellent user experience across all devices.
+**Goal:** Build comprehensive test infrastructure and QA processes to catch bugs early, ship with confidence, test at scale, and streamline QA workflows.
 
-## Why UI/UX Focus?
+**Target features:**
+- Comprehensive test coverage (backend, frontend, integration)
+- Automated CI/CD quality gates
+- Load testing and performance benchmarks
+- QA workflow automation and bug tracking
 
-- **First Impressions Matter**: Players judge games within seconds
-- **Retention**: Good UX keeps players engaged longer
-- **Accessibility**: Make the game playable for everyone
-- **Polish**: Final touch before major launch
+## What This Is
 
-## Current State
+Armored Archer is a 2D top-down mobile archery game built with Godot 4 (client) and Go/Nakama (backend). The game features PvE auto-shooter combat, asynchronous turn-based PvP, gear system, and seasonal leaderboards.
 
-| Metric | Value |
-|--------|-------|
-| UI Screens | 11 major screens (all migrated to design system) |
-| UI Scripts | 35+ GDScript files |
-| Godot Version | 4.x |
-| Backend | Go (Nakama) |
-| Design System | DesignTokens, 8 base components, ThemeManager, AccessibilityManager |
-| UI Animations | UIAutomation system with 12 animation functions |
-| **Latest Milestone** | **v2.2.0 UI/UX Polish (shipped 2026-03-18)** |
+## Core Value
 
-## Target State
+**Players can enjoy a polished, responsive archery game with reliable performance and minimal bugs.**
 
-| Metric | Target |
-|--------|--------|
-| Visual Consistency | Unified design system |
-| User Flow | Simplified navigation |
-| Responsiveness | Works on all screen sizes |
-| Accessibility | Colorblind support, scalable fonts |
-| Animations | Smooth transitions & feedback |
+Quality and reliability are foundational — every feature must be tested, every bug must be tracked, and every release must be verified.
 
-## Scope
+## Requirements
 
-### In Scope (v2.2.0) - ✅ COMPLETE
+### Validated
 
-- [x] Visual design system (colors, typography, spacing) — DesignTokens with 50+ tokens
-- [x] UI component library (buttons, panels, menus) — 8 base components created
-- [x] Main menu improvements — Migrated with theme support
-- [x] Combat UI improvements — Migrated with health bar styling
-- [x] Inventory & gear management UI — Migrated with rarity colors
-- [x] Navigation & transitions — Consistent navigation across all screens
-- [x] Loading states & feedback — Loading indicators added
-- [x] Accessibility improvements — AccessibilityManager with font scaling, high contrast
-- [x] Mobile responsiveness — Touch-friendly button sizes (44x44px min)
-- [x] UI animations — UIAutomation system with fade, scale, slide, pulse effects
+*Shipped and confirmed valuable.*
 
-### Out of Scope (v2.2.0)
+- ✓ **UI/UX Design System** — v2.2.0 — DesignTokens, ThemeManager, 8 base components, all screens migrated
+- ✓ **Go Backend Migration** — v2.0.0 — Complete TypeScript to Go migration with 234 integration tests
+- ✓ **Core Gameplay** — v1.x — Combat, matchmaking, gear, progression, seasons
+- ✓ **Alpha Launch** — v2.1.0 — Monitoring, observability, user onboarding
 
-- [ ] New gameplay features
-- [ ] Backend changes
-- [ ] Database changes
-- [ ] Game mechanics changes
+### Active
 
-## Success Criteria
+*Current scope. Building toward these.*
 
-1. **Visual Consistency**: Unified look across all screens
-2. **User Flow**: Intuitive navigation with clear CTAs
-3. **Performance**: UI runs at 60fps
-4. **Accessibility**: WCAG-like guidelines for games
-5. **Mobile**: Works on 320px+ screens
-6. **Feedback**: All interactions have visual/audio feedback
+- [ ] **Test Coverage** — Comprehensive unit, integration, and E2E tests for backend and frontend
+- [ ] **CI/CD Quality Gates** — Automated testing in pipeline with coverage thresholds
+- [ ] **Load Testing** — Performance benchmarks and stress testing infrastructure
+- [ ] **QA Workflow** — Bug tracking, automated verification, regression testing
+- [ ] **Test Reporting** — Coverage reports, test metrics, quality dashboards
 
-## Risks & Mitigations
+### Out of Scope
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Scope creep | Medium | Medium | Strict phase gates |
-| Style conflicts | Medium | Low | Create design tokens early |
-| Godot version issues | Low | Medium | Test on target version |
+*Explicit boundaries. Includes reasoning to prevent re-adding.*
 
-## Decision Log
+- **New gameplay features** — This milestone focuses on infrastructure, not content
+- **Backend rewrites** — Building tests for existing Go backend, not refactoring
+- **Database migrations** — No schema changes, only testing existing data layer
+- **Client engine changes** — Testing Godot systems, not replacing them
 
-| Date | Decision | Rationale |
-|------|----------|-----------|
-| 2026-03-17 | Focus on UI/UX | Improve player experience before launch |
-| 2026-03-17 | Visual-first approach | Create design system before implementing |
+## Context
+
+**Technical Environment:**
+- Godot 4.x for game client (GDScript)
+- Go 1.21+ for Nakama backend
+- PostgreSQL for data persistence
+- Jest for existing backend tests
+- Godot test framework for client tests
+
+**Known Issues to Address:**
+- Test coverage is incomplete (backend has some tests, frontend has minimal)
+- No automated regression testing
+- No load/stress testing infrastructure
+- Manual QA is ad-hoc, no systematic workflow
+- CI/CD lacks comprehensive quality gates
+
+**Prior Work:**
+- v2.0.0 migrated backend from TypeScript to Go with 234 integration tests
+- v2.2.0 built comprehensive UI/UX design system
+- v2.1.0 added monitoring and observability (Prometheus, Grafana)
+
+## Constraints
+
+- **Tech Stack**: Godot 4.x, Go 1.21+, Nakama 3.x, PostgreSQL — Must work with existing stack
+- **CI/CD**: GitHub Actions — Tests must run in existing pipeline
+- **Timeline**: 2-3 weeks — Aggressive but achievable with focus on infrastructure
+- **Performance**: Tests must complete in reasonable time (CI timeout limits)
+- **Maintenance**: Test infrastructure must be maintainable, not a burden
+
+## Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| Focus on testing infrastructure | Quality foundation before scaling | — Pending |
+| Build comprehensive coverage | Catch bugs early, reduce manual QA | — Pending |
+| Automated quality gates | Ship with confidence | — Pending |
+
+---
+*Last updated: 2026-03-19 after starting v2.3.0 milestone*
