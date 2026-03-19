@@ -1,463 +1,328 @@
-# Nakama Go Backend Migration - Roadmap
+# Roadmap: Armored Archer
 
-## Milestone: v2.0.0 - Go Backend Complete ✅
-
-**Target Date**: 4 weeks from start  
-**Completion Date**: 2026-03-15  
-**Status**: ✅ **COMPLETE**
+**Current Milestone:** v2.3.0 - Testing & QA Infrastructure
+**Last Updated:** 2026-03-19
 
 ---
 
-## 🎉 Milestone v2.0.0 - COMPLETION SUMMARY
+## Milestones
 
-**All 15 phases completed successfully!** The Nakama backend has been fully migrated from TypeScript to Go, delivering:
-
-- ✅ **68% faster** response times
-- ✅ **50% less** memory usage
-- ✅ **16% smaller** bundle size
-- ✅ **234 integration tests** with 95%+ pass rate
-- ✅ **0 critical vulnerabilities** in security review
-- ✅ **Alpha-ready** with monitoring and alerting configured
-
-**Archive**: `.planning/milestones/v2.0.0/`  
-**Completion Summary**: `.planning/milestones/v2.0.0/COMPLETION_SUMMARY.md`
+- ✅ **v2.0.0 Go Backend Migration** - Phases 1-15 (shipped 2026-03-15)
+- ✅ **v2.1.0 Alpha Launch & Stabilization** - Phases 1-6 (shipped 2026-03-17)
+- ✅ **v2.2.0 UI/UX Polish** - Phases 1-4 (shipped 2026-03-18)
+- 🚧 **v2.3.0 Testing & QA Infrastructure** - Phases 1-5 (in progress)
 
 ---
 
-## Milestone: v2.1.0 - Alpha Launch & Stabilization ✅
+<details>
+<summary>✅ v2.0.0 Go Backend Migration (Phases 1-15) - SHIPPED 2026-03-15</summary>
 
-**Start Date**: 2026-03-16
-**Completion Date**: 2026-03-17
-**Estimated Duration**: 2-3 weeks
-**Status**: ✅ **COMPLETE**
-
-### Phase Breakdown
-
-| Phase | Name | Duration | Status |
-|-------|------|----------|--------|
-| 1 | Alpha Deployment | Days 1-3 | ✅ Complete |
-| 2 | Monitoring & Observability | Days 4-7 | ✅ Complete |
-| 3 | Alpha User Onboarding | Days 8-10 | ✅ Complete |
-| 4 | Stability & Bug Fixes | Days 11-15 | ✅ Complete |
-| 5 | Performance Optimization | Days 16-18 | ✅ Complete |
-| 6 | Beta Readiness | Days 19-21 | ✅ Complete |
-
-**Success Criteria**:
-- [x] Alpha deployment successful with 0 critical incidents
-- [x] 50+ active alpha users providing feedback
-- [x] Error rate < 1% across all RPC endpoints
-- [x] P95 latency < 100ms under normal load
-- [x] 0 critical or high severity bugs
-- [x] Stakeholder approval for beta launch
-
-### Beta Success Criteria (v2.1.0)
-
-- [x] Beta deployment successful with 0 critical incidents
-- [x] 100+ active beta users (onboarding ready)
-- [x] Error rate < 0.5% across all RPC endpoints
-- [x] P95 latency < 80ms under normal load
-- [x] 0 critical or high severity bugs
-- [ ] Stakeholder approval for production launch ✅ READY
-
-**Phase Plans**: `.planning/phases/01-alpha-deployment/`
-
----
-
-## 🎉 Milestone v2.1.0 - COMPLETION SUMMARY
-
-**All phases completed successfully!** The Alpha Launch & Stabilization milestone delivered:
-
-- ✅ **Alpha deployment** successful with 0 critical incidents
-- ✅ **50+ active alpha users** providing feedback
-- ✅ **Error rate < 0.5%** across all RPC endpoints
-- ✅ **P95 latency < 80ms** under normal load
-- ✅ **0 critical/high** severity bugs
-- ✅ **Beta-ready** with full deployment pipeline
-
-**Archive**: `.planning/milestones/v2.1.0/`
-**Completion Date**: 2026-03-17
-
----
-
-## ✅ MILESTONE v2.2.0 - UI/UX Polish (SHIPPED 2026-03-18)
-
-**Archive**: [milestones/v2.2.0-ROADMAP.md](.planning/milestones/v2.2.0-ROADMAP.md)
-
-**Summary**: All 11 major UI screens migrated to unified design system with theme switching, animations, and accessibility features. DesignTokens, 8 base components, ThemeManager, AccessibilityManager, and UIAutomation systems implemented.
-
-**Phases**: 4 phases completed (Design System Foundation, Core UI Components, Screen Improvements, Animation & Polish)
-
----
-
-## Historical Phase Breakdown (v2.0.0)
-
-### Phase 1: Foundation & Setup (Days 1-3)
-
+### Phase 1: Foundation & Setup
 **Goal**: Go project structure, build pipeline, and basic modules working in Nakama
 
-**Plans**:
-- [1.1] Go Project Initialization
-- [1.2] Nakama Go Module Configuration
-- [1.3] Configuration & Environment Migration
-
-**Success Criteria**:
-- [ ] Go module compiles without errors
-- [ ] Nakama loads Go module successfully
-- [ ] Config loading works identically to TypeScript
-- [ ] Logging outputs match TypeScript format
-
-**Checkpoint**: Human verify Nakama starts with Go module
-
----
-
-### Phase 2: Database & Storage Layer (Days 4-7)
-
+### Phase 2: Database & Storage Layer
 **Goal**: All database operations, storage helpers, and caching migrated
 
-**Plans**:
-- [2.1] Database Connection & Helpers
-- [2.2] Storage Object Helpers (Nakama storage API)
-- [2.3] Cache Management Layer
-- [2.4] Circuit Breaker Implementation
-
-**Success Criteria**:
-- [ ] All database queries work identically
-- [ ] Storage read/write operations pass tests
-- [ ] Cache hit/miss metrics work
-- [ ] Circuit breaker trips correctly
-
-**Checkpoint**: Human verify database integration tests pass
-
----
-
-### Phase 3: Core RPC Infrastructure (Days 8-12)
-
+### Phase 3: Core RPC Infrastructure
 **Goal**: RPC handler infrastructure and common utilities migrated
 
-**Plans**:
-- [3.1] RPC Handler Registration System
-- [3.2] Session Validation & Authentication
-- [3.3] Error Handling & Logging Utilities
-- [3.4] Structured Logger Migration
-- [3.5] Analytics Event Tracking
-
-**Success Criteria**:
-- [ ] RPC registration pattern works
-- [ ] Session validation passes/fails correctly
-- [ ] Error responses match TypeScript format
-- [ ] Analytics events fire correctly
-
-**Checkpoint**: Human verify RPC calls return correct responses
-
----
-
-### Phase 4: Player Systems (Days 13-16)
-
+### Phase 4: Player Systems
 **Goal**: Player-related RPC handlers and logic migrated
 
-**Plans**:
-- [4.1] Player Stats Management
-- [4.2] Player Progression (XP, Level)
-- [4.3] Player Reports System
-- [4.4] Match History & Rankings
-
-**Success Criteria**:
-- [ ] Player stats CRUD operations work
-- [ ] XP/level calculations match TypeScript
-- [ ] Report submission/retrieval works
-- [ ] Match history queries return correct data
-
-**Checkpoint**: Human verify player RPC integration tests pass
-
----
-
-### Phase 5: Combat System (Days 17-21)
-
+### Phase 5: Combat System
 **Goal**: Combat logic, match state, and disconnect handling migrated
 
-**Plans**:
-- [5.1] Combat Action Processing
-- [5.2] Match State Management
-- [5.3] Player Disconnect Handling
-- [5.4] Combat Result Calculation
-- [5.5] Anti-Cheat Validation
-
-**Success Criteria**:
-- [ ] Combat actions process correctly
-- [ ] Match state persists and restores
-- [ ] Disconnect timeouts work
-- [ ] Damage calculations match TypeScript
-- [ ] Anti-cheat triggers on invalid data
-
-**Checkpoint**: Human verify combat integration tests pass
-
----
-
-### Phase 6: Matchmaking System (Days 22-25)
-
+### Phase 6: Matchmaking System
 **Goal**: Match creation, listing, and completion migrated
 
-**Plans**:
-- [6.1] Match Listing & Filtering
-- [6.2] Match Creation Logic
-- [6.3] Match Acceptance Flow
-- [6.4] Match Completion & Rewards
-- [6.5] Player Rank Calculation
-
-**Success Criteria**:
-- [ ] Match queries return correct results
-- [ ] New matches create successfully
-- [ ] Acceptance flow works end-to-end
-- [ ] Completion rewards distribute correctly
-- [ ] Ranks calculate identically
-
-**Checkpoint**: Human verify matchmaking integration tests pass
-
----
-
-### Phase 7: Gear & Inventory System (Days 26-30)
-
+### Phase 7: Gear & Inventory System
 **Goal**: Gear generation, inventory management, and loadout migrated
 
-**Plans**:
-- [7.1] Gear Generation Logic
-- [7.2] Inventory CRUD Operations
-- [7.3] Loadout Management (5 slots)
-- [7.4] Gear Modifiers Application
-- [7.5] Item Validation
-
-**Success Criteria**:
-- [ ] Generated gear has correct stats
-- [ ] Inventory operations work correctly
-- [ ] Loadout equip/unequip works
-- [ ] Modifiers apply to gear stats
-- [ ] Invalid items rejected
-
-**Checkpoint**: Human verify gear system integration tests pass
-
----
-
-### Phase 8: RPG & Progression System (Days 31-33)
-
+### Phase 8: RPG & Progression System
 **Goal**: XP, level, stat allocation migrated
 
-**Plans**:
-- [8.1] XP Gain Processing
-- [8.2] Level-Up Logic
-- [8.3] Stat Point Allocation
-- [8.4] Progression Validation
-
-**Success Criteria**:
-- [ ] XP awards correctly
-- [ ] Level thresholds match TypeScript
-- [ ] Stat allocation works within limits
-- [ ] Invalid allocations rejected
-
-**Checkpoint**: Human verify RPG integration tests pass
-
----
-
-### Phase 9: Season & Leaderboard System (Days 34-37)
-
+### Phase 9: Season & Leaderboard System
 **Goal**: Seasonal content, leaderboards, and rewards migrated
 
-**Plans**:
-- [9.1] Season Info Retrieval
-- [9.2] Leaderboard Queries
-- [9.3] Season Reward Calculation
-- [9.4] Reward Claiming Logic
-- [9.5] Season End Processing
-
-**Success Criteria**:
-- [ ] Season info returns correct data
-- [ ] Leaderboard queries work
-- [ ] Rewards calculate correctly
-- [ ] Claiming prevents double-claims
-- [ ] Season end processes correctly
-
-**Checkpoint**: Human verify season system integration tests pass
-
----
-
-### Phase 10: Store & IAP System (Days 38-40)
-
+### Phase 10: Store & IAP System
 **Goal**: In-app purchase validation and processing migrated
 
-**Plans**:
-- [10.1] Receipt Validation (RevenueCat)
-- [10.2] Currency Management
-- [10.3] Gem Spending Logic
-- [10.4] Refund Processing
-- [10.5] Subscription Checks
-
-**Success Criteria**:
-- [ ] Receipt validation works
-- [ ] Currency balances update correctly
-- [ ] Gem purchases process
-- [ ] Refunds handled correctly
-- [ ] Subscription status checks work
-
-**Checkpoint**: Human verify store integration tests pass
-
----
-
-### Phase 11: Notifications & Scheduling (Days 41-43)
-
+### Phase 11: Notifications & Scheduling
 **Goal**: Push notifications and scheduled tasks migrated
 
-**Plans**:
-- [11.1] Notification RPC Handlers
-- [11.2] Notification Scheduling
-- [11.3] Firebase Integration
-- [11.4] Player Preferences
-
-**Success Criteria**:
-- [ ] Notifications send correctly
-- [ ] Scheduled tasks fire on time
-- [ ] Firebase integration works
-- [ ] Player preferences persist
-
-**Checkpoint**: Human verify notifications work
-
----
-
-### Phase 12: Observability & Health (Days 44-46)
-
+### Phase 12: Observability & Health
 **Goal**: Metrics, health checks, alerting migrated
 
-**Plans**:
-- [12.1] Metrics Collection
-- [12.2] Health Check Endpoints
-- [12.3] Alerting Integration
-- [12.4] Profiling & Tracing
-- [12.5] Error Insight Pipeline
-
-**Success Criteria**:
-- [ ] Metrics export to Prometheus
-- [ ] Health checks return correct status
-- [ ] Alerts fire correctly
-- [ ] Traces appear in Jaeger/Zipkin
-- [ ] Error insights categorize correctly
-
-**Checkpoint**: Human verify observability dashboards show data
-
----
-
-### Phase 13: Integration Testing (Days 47-50)
-
+### Phase 13: Integration Testing
 **Goal**: All integration tests converted and passing
 
-**Plans**:
-- [13.1] Test Framework Setup (Go testing)
-- [13.2] Schema Tests
-- [13.3] Combat System Tests
-- [13.4] Gear System Tests
-- [13.5] Matchmaking Tests
-- [13.6] Season System Tests
-- [13.7] RPG System Tests
-- [13.8] Analytics Tests
-- [13.9] Network Resilience Tests
-- [13.10] Low-End Performance Tests
-
-**Success Criteria**:
-- [ ] All 10 test suites pass
-- [ ] Test coverage matches TypeScript
-- [ ] Tests run in CI pipeline
-- [ ] No flaky tests
-
-**Checkpoint**: Human verify all tests pass in CI
-
----
-
-### Phase 14: Cleanup & Documentation (Days 51-55)
-
+### Phase 14: Cleanup & Documentation
 **Goal**: TypeScript removed, docs updated, ready for alpha
 
-**Plans**:
-- [14.1] TypeScript Code Removal
-- [14.2] README Updates
-- [14.3] API Documentation
-- [14.4] Deployment Guide Updates
-- [14.5] Local Dev Guide Updates
-- [14.6] CHANGELOG Entry
-
-**Success Criteria**:
-- [ ] No TypeScript backend code remains
-- [ ] All docs reference Go
-- [ ] Build commands updated
-- [ ] Deployment scripts work
-- [ ] Local dev setup documented
-
-**Checkpoint**: Human verify docs are accurate
-
----
-
-### Phase 15: Alpha Readiness (Days 56-60)
-
+### Phase 15: Alpha Readiness
 **Goal**: Final validation, performance check, alpha deployment
 
-**Plans**:
-- [15.1] Performance Benchmarking
-- [15.2] Load Testing
-- [15.3] Security Review
-- [15.4] Alpha Deployment
-- [15.5] Monitoring Setup
+**Completion Summary**: 68% faster response times, 50% less memory usage, 234 integration tests, 0 critical vulnerabilities
+</details>
 
-**Success Criteria**:
-- [ ] Response times ≤ TypeScript baseline
-- [ ] Handles expected concurrent users
-- [ ] No security vulnerabilities
-- [ ] Deployed to alpha environment
-- [ ] Alerts configured
+<details>
+<summary>✅ v2.1.0 Alpha Launch & Stabilization (Phases 1-6) - SHIPPED 2026-03-17</summary>
 
-**Checkpoint**: Human approve for alpha launch
+### Phase 1: Alpha Deployment
+**Goal**: Deploy alpha version with monitoring
+
+### Phase 2: Monitoring & Observability
+**Goal**: Comprehensive metrics, logging, and alerting
+
+### Phase 3: Alpha User Onboarding
+**Goal**: User feedback systems and onboarding flow
+
+### Phase 4: Stability & Bug Fixes
+**Goal**: Resolve critical and high-severity bugs
+
+### Phase 5: Performance Optimization
+**Goal**: Optimize response times and resource usage
+
+### Phase 6: Beta Readiness
+**Goal**: Prepare for beta launch with stable platform
+
+**Completion Summary**: 50+ active alpha users, error rate < 0.5%, P95 latency < 80ms, 0 critical/high bugs
+</details>
+
+<details>
+<summary>✅ v2.2.0 UI/UX Polish (Phases 1-4) - SHIPPED 2026-03-18</summary>
+
+### Phase 1: Design System Foundation
+**Goal**: DesignTokens and ThemeManager implementation
+
+### Phase 2: Core UI Components
+**Goal**: 8 base UI components with design tokens
+
+### Phase 3: Screen Improvements
+**Goal**: Migrate all major UI screens to design system
+
+### Phase 4: Animation & Polish
+**Goal**: UI animations and accessibility features
+
+**Completion Summary**: DesignTokens (50+ tokens), 8 base components, all 11 UI screens migrated, UIAutomation system, AccessibilityManager, light/dark themes
+</details>
 
 ---
 
-## Phase Dependencies
+## 🚧 v2.3.0 Testing & QA Infrastructure (In Progress)
 
-```
-Phase 1 (Foundation)
-    ↓
-Phase 2 (Database)
-    ↓
-Phase 3 (RPC Infra)
-    ↓
-Phase 4 (Player) → Phase 5 (Combat) → Phase 6 (Matchmaking)
-    ↓              ↓                   ↓
-Phase 7 (Gear)  ←  Phase 8 (RPG)  ←  Phase 9 (Season)
-    ↓
-Phase 10 (Store)
-    ↓
-Phase 11 (Notifications)
-    ↓
-Phase 12 (Observability)
-    ↓
-Phase 13 (Integration Tests) ← All previous phases
-    ↓
-Phase 14 (Cleanup)
-    ↓
-Phase 15 (Alpha Readiness)
-```
+**Milestone Goal:** Build comprehensive test infrastructure and QA processes to catch bugs early, ship with confidence, test at scale, and streamline QA workflows
+
+**Created:** 2026-03-19
+**Granularity:** Standard (5-8 phases)
+**Coverage:** 40/40 requirements mapped
+
+### Phase 1: Test Infrastructure Foundation
+
+**Goal:** Establish robust test frameworks and foundational testing patterns for both Go backend and Godot client
+
+**Depends on:** Nothing (first phase)
+
+**Requirements:** FND-01, FND-02, FND-03, FND-04, FND-05, FND-06
+
+**Success Criteria** (what must be TRUE):
+1. Developer can run `go test ./...` and all tests execute with testify assertions and test suite structure
+2. Developer can run Godot tests with enhanced GUT framework and see unified test reporting
+3. Test runner executes both backend and frontend tests in single command with consolidated results
+4. Test pyramid enforcement prevents PR merge if ratio falls outside 70/20/10 (unit/integration/E2E)
+5. Go race detector runs in CI and fails build on race conditions in concurrent code
+6. Tests are isolated — running test suite in random order produces identical results
+
+**Plans:** TBD
 
 ---
 
-## Risk Gates
+### Phase 2: Fixtures & Mocks Layer
 
-| Gate | Phase | Criteria to Proceed |
-|------|-------|---------------------|
-| Gate 1 | After Phase 1 | Nakama loads Go module without errors |
-| Gate 2 | After Phase 5 | Combat tests pass (core game logic works) |
-| Gate 3 | After Phase 10 | All game systems functional |
-| Gate 4 | After Phase 13 | All integration tests pass |
-| Gate 5 | After Phase 15 | Alpha approval |
+**Goal:** Build reusable test data factories and mock infrastructure for fast, isolated unit and integration tests
+
+**Depends on:** Phase 1 (test infrastructure and helpers)
+
+**Requirements:** ISO-01, ISO-02, ISO-03, ISO-05, FIX-01, FIX-02, FIX-03, FIX-04, FIX-05, MOCK-01, MOCK-02, MOCK-04, MOCK-05
+
+**Success Criteria** (what must be TRUE):
+1. Database tests use testcontainers-go to spawn isolated PostgreSQL instances per test suite
+2. Developer can create test players, gear, and matches using factory functions with sensible defaults
+3. Builder pattern allows flexible test data creation (e.g., `NewPlayer().WithLevel(10).WithGear(epicBow).Build()`)
+4. Test data is automatically cleaned up after each test suite via teardown hooks
+5. Nakama runtime and database layer are mocked using interface-based approach for fast unit tests
+6. Mocks are generated from interfaces using uber/mock and validated against real implementations
+7. Integration tests have proper setup/teardown lifecycle with before/after hooks
+8. Test data fixtures are shared between Go and Godot tests via JSON format
+
+**Plans:** TBD
+
+---
+
+### Phase 3: Godot Test Framework Enhancement
+
+**Goal:** Enhance Godot testing capabilities with autoload mocking, signal testing, and improved isolation
+
+**Depends on:** Phase 1 (test infrastructure)
+
+**Requirements:** ISO-04, MOCK-03
+
+**Success Criteria** (what must be TRUE):
+1. Godot autoload tests use fresh instances per test to prevent state leakage between tests
+2. Autoloads are mockable via dependency injection pattern for isolated unit testing
+3. Signal-based tests can verify Godot signal emissions and payload data
+4. Developer can run Godot tests in CI with consistent results across different platforms
+
+**Plans:** TBD
+
+---
+
+### Phase 4: Load Testing Infrastructure
+
+**Goal:** Implement performance benchmarks and load testing to validate system can handle 100+ concurrent players
+
+**Depends on:** Phase 2 (stable fixtures and test data)
+
+**Requirements:** PERF-01, PERF-02, PERF-03, PERF-04, PERF-05
+
+**Success Criteria** (what must be TRUE):
+1. Go benchmarks exist for critical RPC endpoints (combat, matchmaking, gear operations)
+2. Godot performance tests validate 60 FPS target for core gameplay loops
+3. k6 load test scripts simulate 100+ concurrent players with realistic traffic patterns
+4. Load tests run in CI on schedule and generate performance reports
+5. Performance baselines are established and PRs that regress beyond threshold are blocked
+
+**Plans:** TBD
+
+---
+
+### Phase 5: Coverage, Reporting & Quality Gates
+
+**Goal:** Establish comprehensive coverage reporting, flaky test detection, and automated quality gates in CI
+
+**Depends on:** Phase 1, 2, 3, 4 (comprehensive test suite required)
+
+**Requirements:** COV-01, COV-02, COV-03, COV-04, COV-05, FLK-01, FLK-02, FLK-03, FLK-04, VIS-01, VIS-02, VIS-03, PBT-01, PBT-02, PBT-03
+
+**Success Criteria** (what must be TRUE):
+1. Code coverage is measured for both Go backend and Godot frontend with unified reports
+2. CI enforces coverage thresholds (80% for critical paths, 60% overall) and blocks failing PRs
+3. Coverage reports are generated as CI artifacts and viewable in dashboard
+4. Coverage metrics are tracked over time to identify trends and regression
+5. CI automatically detects flaky tests via repeated test runs (3x retry logic)
+6. Flaky tests are quarantined and don't block PR merges while being tracked for fixes
+7. Flaky test dashboard shows test reliability metrics and notifies developers of flagged tests
+8. Design system components have visual regression tests that validate UI consistency
+9. UI screens are validated for layout consistency across themes and screen sizes
+10. Visual regression tests run in CI for theme changes and block layout-breaking changes
+11. Critical combat calculations use property-based tests (rapid) to find edge cases
+12. RNG systems have property-based tests to validate statistical properties
+13. Property-based tests run in CI alongside unit tests with clear reporting
+
+**Plans:** TBD
+
+---
+
+## Progress
+
+**Execution Order:** Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Test Infrastructure Foundation | v2.3.0 | 0/6 | Not started | - |
+| 2. Fixtures & Mocks Layer | v2.3.0 | 0/13 | Not started | - |
+| 3. Godot Test Framework Enhancement | v2.3.0 | 0/2 | Not started | - |
+| 4. Load Testing Infrastructure | v2.3.0 | 0/5 | Not started | - |
+| 5. Coverage, Reporting & Quality Gates | v2.3.0 | 0/14 | Not started | - |
+
+**Overall Progress:** 0/5 phases complete (0%)
+
+---
+
+## v2.3.0 Dependencies
+
+```mermaid
+graph TD
+    A[Phase 1: Test Infrastructure Foundation] --> B[Phase 2: Fixtures & Mocks Layer]
+    A --> C[Phase 3: Godot Test Framework Enhancement]
+    B --> D[Phase 4: Load Testing Infrastructure]
+    B --> E[Phase 5: Coverage, Reporting & Quality Gates]
+    C --> E
+    D --> E
+```
+
+**Critical Path:** Phase 1 → Phase 2 → Phase 5 (core testing infrastructure)
+
+**Parallel Opportunities:**
+- Phase 2 (Go fixtures/mocks) and Phase 3 (Godot framework) can run in parallel after Phase 1
+- Phase 4 (load testing) can run in parallel with Phase 5 once Phase 2 is complete
+
+---
+
+## v2.3.0 Risk Gates
+
+| Gate | After Phase | Go/No-Go Criteria |
+|------|-------------|-------------------|
+| Gate 1 | Phase 1 | Test runner executes all tests with unified reporting; race detector runs in CI |
+| Gate 2 | Phase 2 | Database tests use testcontainers; factory functions create test data; mocks work for unit tests |
+| Gate 3 | Phase 4 | Load tests can simulate 100+ concurrent players; performance baselines established |
+| Gate 4 | Phase 5 | Coverage thresholds enforced in CI; flaky test detection operational; quality gates block failing PRs |
+
+**If any gate fails:** Pause, assess, decide: continue with mitigations, pivot approach, or defer remaining work to v2.4.0
+
+---
+
+## v2.3.0 Quality Metrics
+
+**Test Pyramid Health:**
+- Target: 70% unit / 20% integration / 10% E2E
+- Measured via automated test classification
+
+**Coverage Targets:**
+- Critical paths (combat, matchmaking, progression): 80%
+- Overall codebase: 60%
+- Tracked over time to identify trends
+
+**Test Reliability:**
+- Flaky test rate: < 2% of total tests
+- Measured via CI flaky test detection
+
+**Performance Baselines:**
+- Backend RPC p95 latency: < 200ms
+- Frontend frame rate: 60 FPS during core gameplay
+- Validated via load tests and benchmarks
+
+---
+
+## v2.3.0 Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| 5-phase structure | Research suggests natural delivery boundaries; matches requirement categories | Foundation → Fixtures → Godot → Load → Coverage |
+| Standard granularity | 40 requirements across 9 categories; 5 phases provides balanced grouping | Each phase delivers 2-14 requirements |
+| Phase 1 before Phase 2/3 | Test infrastructure must exist before fixtures/mocks can be built | Prevents brittle tests |
+| Phase 2 before Phase 4 | Load testing requires stable fixtures and test data | Ensures realistic load scenarios |
+| Phase 5 last | Coverage reporting requires comprehensive test suite | Meaningful metrics only after tests exist |
+| Parallel Phase 2/3 | Go and Godot testing are independent codebases | Reduces timeline by ~1 week |
 
 ---
 
 ## Notes
 
-- **AI Writes ~70%** of code, human reviews ~30%
-- **Atomic commits** per task for easy rollback
-- **Side-by-side testing** with TypeScript during migration
-- **No refactoring** until all tests pass (preserve patterns first)
-- **Go-idiomatic refactoring** is Phase 15+ work
+**Phase Numbering:**
+- Independent phase numbering per milestone (starts at 1 for v2.3.0)
+- Previous milestones (v2.0.0, v2.1.0, v2.2.0) used independent numbering
+- Decimal phases (1.1, 1.2) reserved for urgent insertions via `/gsd:insert-phase`
+
+**Research Alignment:**
+- Phase structure matches research recommendations (5 phases)
+- Research flags identified Phase 3 (Godot autoload mocking) and Phase 4 (Nakama load testing) as areas needing deeper planning
+
+**Coverage Validation:**
+- All 40 v1 requirements mapped to exactly one phase
+- No orphaned requirements
+- No duplicate mappings
+
+---
+*Roadmap updated: 2026-03-19*
+*Next review: After Phase 1 completion*
