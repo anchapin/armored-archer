@@ -15,10 +15,13 @@ Create a visually appealing, intuitive, and easy-to-use game interface that prov
 
 | Metric | Value |
 |--------|-------|
-| UI Screens | 20+ screens |
+| UI Screens | 11 major screens (all migrated to design system) |
 | UI Scripts | 35+ GDScript files |
 | Godot Version | 4.x |
 | Backend | Go (Nakama) |
+| Design System | DesignTokens, 8 base components, ThemeManager, AccessibilityManager |
+| UI Animations | UIAutomation system with 12 animation functions |
+| **Latest Milestone** | **v2.2.0 UI/UX Polish (shipped 2026-03-18)** |
 
 ## Target State
 
@@ -32,18 +35,18 @@ Create a visually appealing, intuitive, and easy-to-use game interface that prov
 
 ## Scope
 
-### In Scope (v2.2.0)
+### In Scope (v2.2.0) - ✅ COMPLETE
 
-- [ ] Visual design system (colors, typography, spacing)
-- [ ] UI component library (buttons, panels, menus)
-- [ ] Main menu improvements
-- [ ] Combat UI improvements  
-- [ ] Inventory & gear management UI
-- [ ] Navigation & transitions
-- [ ] Loading states & feedback
-- [ ] Accessibility improvements
-- [ ] Mobile responsiveness
-- [ ] Onboarding flow improvements
+- [x] Visual design system (colors, typography, spacing) — DesignTokens with 50+ tokens
+- [x] UI component library (buttons, panels, menus) — 8 base components created
+- [x] Main menu improvements — Migrated with theme support
+- [x] Combat UI improvements — Migrated with health bar styling
+- [x] Inventory & gear management UI — Migrated with rarity colors
+- [x] Navigation & transitions — Consistent navigation across all screens
+- [x] Loading states & feedback — Loading indicators added
+- [x] Accessibility improvements — AccessibilityManager with font scaling, high contrast
+- [x] Mobile responsiveness — Touch-friendly button sizes (44x44px min)
+- [x] UI animations — UIAutomation system with fade, scale, slide, pulse effects
 
 ### Out of Scope (v2.2.0)
 

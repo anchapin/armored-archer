@@ -1,5 +1,25 @@
 # Armored Archer - Milestones Summary
 
+## v2.2.0 UI/UX Polish (Shipped: 2026-03-19)
+
+**Phases completed:** 4 phases (Design System Foundation, Core UI Components, Screen Improvements, Animation & Polish)
+
+**Plans completed:** 4 plans
+**Tasks completed:** 22 tasks
+**Files modified:** 32 files
+**Lines added:** 3,058 insertions
+
+**Key accomplishments:**
+- Created DesignTokens (50+ tokens) and ThemeManager for consistent theming across all screens
+- Built 8 base UI components (button, panel, container, label, progress bar, icon, loading indicator, theme toggle)
+- Migrated all 11 major UI screens to design system (main menu, login, combat, store, loadout, campaign, leaderboard, matchmaking, gear inventory/comparison, game over)
+- Implemented UIAutomation animation system (365 lines) with fade, scale, slide, and pulse effects
+- Added AccessibilityManager with font scaling, high contrast mode, and reduced motion support
+- Light/dark theme switching works seamlessly across entire application
+- All screens support mobile-friendly touch targets (44x44px minimum)
+
+---
+
 **Project**: Armored Archer
 **Focus**: UI/UX Polish & User Flow
 **Timeline**: 2-3 weeks
