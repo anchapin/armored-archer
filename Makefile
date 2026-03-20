@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema backend-load-test benchmark benchmark-compare benchmark-update clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci generate-mocks beta-start beta-stop beta-restart beta-status beta-health beta-logs beta-validate beta-clean beta-migrate beta-test
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema backend-load-test benchmark benchmark-compare benchmark-update clean release-notes test-flaky-backend test-flaky-godot test-flaky-report check-test-pyramid build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci generate-mocks beta-start beta-stop beta-restart beta-status beta-health beta-logs beta-validate beta-clean beta-migrate beta-test
 
 # Default target
 all: help
@@ -41,6 +41,9 @@ help:
 	@echo "  make test-flaky-backend Run flaky test detection for backend"
 	@echo "  make test-flaky-godot   Run flaky test detection for Godot"
 	@echo "  make test-flaky-report  Generate flaky test report"
+	@echo ""
+	@echo "$(GREEN)Test Pyramid Validation$(RESET)"
+	@echo "  make check-test-pyramid Validate test pyramid (70/20/10 ratio)"
 	@echo ""
 	@echo ""
 	@echo "$(GREEN)Build Performance$(RESET)"
@@ -273,6 +276,10 @@ test-flaky-godot:
 test-flaky-report:
 	@echo "$(BLUE)Generating flaky test report...$(RESET)"
 	cd $(BACKEND_DIR) && npm run test:report
+
+check-test-pyramid:
+	@echo "$(BLUE)Validating test pyramid ratios...$(RESET)"
+	@./scripts/check-test-pyramid.sh
 
 ## Build Performance Tracking
 build-perf-track:
