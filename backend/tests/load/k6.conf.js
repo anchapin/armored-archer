@@ -12,7 +12,9 @@ const errorRate = new Rate('errors');
 const rpcLatency = new Trend('rpc_latency');
 
 // Nakama configuration
-const BASE_URL = __ENV.NAKAMA_URL || 'http://localhost:7350';
+const BASE_URL = __ENV.NAKAMA_URL || (() => {
+    throw new Error('NAKAMA_URL environment variable is required. Set it via: --env NAKAMA_URL=http://host:port');
+})();
 const TEST_DURATION = __ENV.TEST_DURATION || '10m';
 
 // Scenario configuration for running all load tests
