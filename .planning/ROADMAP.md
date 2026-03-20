@@ -156,6 +156,13 @@
 8. Test data fixtures are shared between Go and Godot tests via JSON format
 
 **Plans:** TBD
+**Plans:** 4 plans
+
+**Plan List:**
+- [ ] 02-01-PLAN.md — Testcontainers setup & database isolation with snapshot/restore
+- [ ] 02-02-PLAN.md — Builder pattern fixtures with JSON serialization for cross-platform sharing
+- [ ] 02-03-PLAN.md — Interface extraction & mock generation using uber-go/mock
+- [ ] 02-04-PLAN.md — Mock validation tests & integration test suite lifecycle
 
 ---
 
