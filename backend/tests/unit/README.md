@@ -22,6 +22,21 @@ func TestCalculateDamage(t *testing.T) {
 }
 ```
 
+## Test Isolation
+
+All unit tests must be isolated and should not depend on:
+- Shared state between tests
+- Execution order
+- External services (database, network, file system)
+
+Tests are run with `-shuffle=on` flag to verify isolation. If a test passes individually but fails in the suite, it has an isolation bug.
+
+### Best Practices
+- Use fresh instances for each test (don't share state)
+- Clean up resources in after_each/teardown
+- Don't rely on global variables or singletons
+- Use test fixtures with factory functions for test data
+
 ## Guidelines
 
 - No database connections
