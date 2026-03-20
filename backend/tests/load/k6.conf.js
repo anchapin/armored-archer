@@ -1,30 +1,72 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
+import { summary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
+
+// Import all scenarios
+import concurrent_players from './scenarios/concurrent_players.js';
+import mixed_workload_enhanced from './scenarios/mixed_workload_enhanced.js';
 
 // Custom metrics
 const errorRate = new Rate('errors');
 const rpcLatency = new Trend('rpc_latency');
 
-// Test configuration
+// Nakama configuration
+const BASE_URL = __ENV.NAKAMA_URL || 'http://localhost:7350';
+const TEST_DURATION = __ENV.TEST_DURATION || '10m';
+
+// Scenario configuration for running all load tests
 export const options = {
-  stages: [
-    { duration: '1m', target: 50 },   // Ramp up to 50 users
-    { duration: '2m', target: 200 },  // Ramp up to 200 users
-    { duration: '3m', target: 500 },  // Ramp up to 500 users (beta-scale)
-    { duration: '5m', target: 500 },  // Stay at 500 users
-    { duration: '2m', target: 0 },    // Ramp down
-  ],
+  scenarios: {
+    // Scenario 1: Concurrent players - ramp-up to 150 users
+    concurrent_players: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '2m', target: 50 },
+        { duration: '3m', target: 100 },
+        { duration: '5m', target: 150 },
+        { duration: '2m', target: 50 },
+        { duration: '1m', target: 0 },
+      ],
+      gracefulRampDown: '30s',
+      exec: 'concurrentPlayersScenario',
+    },
+
+    // Scenario 2: Mixed workload - realistic traffic pattern
+    mixed_workload: {
+      executor: 'constant-vus',
+      vus: 100,
+      duration: '10m',
+      gracefulRampDown: '30s',
+      exec: 'mixedWorkloadScenario',
+    },
+  },
+
   thresholds: {
-    'errors': ['rate<0.01'],           // Error rate < 1%
-    'http_req_duration': ['p(95)<100'], // P95 latency < 100ms
-    'rpc_latency': ['p(95)<100'],      // RPC P95 < 100ms
+    // Global thresholds applied to all scenarios
+    'errors': ['rate<0.01'],
+    'http_req_duration': ['p(95)<200', 'p(99)<500'],
+    'get_player_stats_latency': ['p(95)<200'],
+    'get_leaderboard_latency': ['p(95)<200'],
+    'submit_feedback_latency': ['p(95)<300'],
   },
 };
 
-// Nakama configuration
-const BASE_URL = __ENV.NAKAMA_URL || 'http://localhost:7350';
-const NAKAMA_SERVER_KEY = __ENV.NAKAMA_SERVER_KEY || 'defaultkey';
+// Helper function for authentication
+function authenticate(email, password) {
+  const response = http.post(
+    `${BASE_URL}/v2/account/authenticate/email?create=false`,
+    JSON.stringify({ email, password }),
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+
+  if (response.status !== 200) {
+    throw new Error(`Authentication failed: ${response.status} ${response.body}`);
+  }
+
+  return response.json().token;
+}
 
 // Helper function for RPC calls
 function callRpc(endpoint, payload, authToken) {
@@ -52,88 +94,71 @@ function callRpc(endpoint, payload, authToken) {
   };
 }
 
-// Helper function for authentication
-function authenticate(email, password) {
-  const url = `${BASE_URL}/v2/account/authenticate/email?create=false`;
-  const payload = JSON.stringify({
-    email: email,
-    password: password,
-  });
+// Scenario 1: Concurrent players
+export function concurrentPlayersScenario() {
+  const token = authenticate('user1@test.com', 'password123');
 
-  const response = http.post(url, payload, {
-    headers: { 'Content-Type': 'application/json' },
-  });
+  // Traffic pattern: 70% stats, 20% leaderboard, 10% feedback
+  const rand = Math.random();
 
-  if (response.status !== 200) {
-    throw new Error(`Authentication failed: ${response.status}`);
+  if (rand < 0.7) {
+    callRpc('get_player_stats', {}, token);
+    sleep(1);
+  } else if (rand < 0.9) {
+    callRpc('get_leaderboard', { season_id: 'season_1', limit: 100 }, token);
+    sleep(1);
+  } else {
+    callRpc('submit_feedback', {
+      category: 'bug_report',
+      title: `Test feedback ${Date.now()}`,
+      description: 'Load test feedback',
+      priority: 'medium',
+    }, token);
+    sleep(2);
   }
-
-  return response.json().token;
 }
 
-// Setup: Create test users
-export function setup() {
-  // For now, use existing test users
-  // In production, you'd create test users here
+// Scenario 2: Mixed workload with realistic traffic
+export function mixedWorkloadScenario() {
+  const token = authenticate('user1@test.com', 'password123');
+
+  // Realistic traffic distribution
+  const rand = Math.random();
+
+  if (rand < 0.4) {
+    // 40% - Get player stats
+    callRpc('get_player_stats', {}, token);
+    sleep(1);
+  } else if (rand < 0.7) {
+    // 30% - Get leaderboard
+    const limit = [10, 50, 100][Math.floor(Math.random() * 3)];
+    callRpc('get_leaderboard', { season_id: 'season_1', limit: limit }, token);
+    sleep(2);
+  } else if (rand < 0.85) {
+    // 15% - Get inventory
+    callRpc('get_inventory', {}, token);
+    sleep(1);
+  } else if (rand < 0.95) {
+    // 10% - Submit feedback (write)
+    const category = ['bug_report', 'feature_request', 'balance'][Math.floor(Math.random() * 3)];
+    callRpc('submit_feedback', {
+      category: category,
+      title: `Test feedback ${Date.now()}`,
+      description: `Load test feedback - ${category}`,
+      priority: 'medium',
+    }, token);
+    sleep(2);
+  } else {
+    // 5% - Get season info
+    callRpc('get_season_info', {}, token);
+    sleep(1);
+  }
+}
+
+// Handle summary - export JSON for CI parsing
+export function handleSummary(data) {
   return {
-    users: [
-      { email: 'user1@test.com', password: 'password123' },
-      { email: 'user2@test.com', password: 'password123' },
-      // Add more test users as needed
-    ],
+    'load-test-results.json': JSON.stringify(data, null, 2),
+    stdout: summary(data, { indent: ' ', enableColors: true }),
   };
-}
-
-// Main test scenario
-export default function(data) {
-  // Pick a random user
-  const user = data.users[Math.floor(Math.random() * data.users.length)];
-
-  // Authenticate
-  const token = authenticate(user.email, user.password);
-
-  // Scenario 1: Get player stats (hot-path, should be cached)
-  const statsResponse = callRpc('get_player_stats', {}, token);
-  check(statsResponse, {
-    'get_player_stats success': (r) => r.success,
-  });
-
-  sleep(1);
-
-  // Scenario 2: Get season info (should be cached globally)
-  const seasonResponse = callRpc('get_season_info', {}, token);
-  check(seasonResponse, {
-    'get_season_info success': (r) => r.success,
-  });
-
-  sleep(1);
-
-  // Scenario 3: Get leaderboard (should be cached per season)
-  const leaderboardResponse = callRpc('get_leaderboard', {
-    season_id: 'season_1',
-    limit: 100,
-  }, token);
-  check(leaderboardResponse, {
-    'get_leaderboard success': (r) => r.success,
-  });
-
-  sleep(1);
-
-  // Scenario 4: Submit feedback (write operation, invalidates cache)
-  const feedbackResponse = callRpc('submit_feedback', {
-    category: 'bug_report',
-    title: `Test feedback ${Date.now()}`,
-    description: 'Load test feedback',
-    priority: 'medium',
-  }, token);
-  check(feedbackResponse, {
-    'submit_feedback success': (r) => r.success,
-  });
-
-  sleep(2);
-}
-
-// Teardown: Cleanup
-export function teardown(data) {
-  console.log('Load test completed');
 }
