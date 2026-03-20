@@ -1,23 +1,232 @@
-# Visual Regression Tests
-# Implemented in: 06-03-PLAN.md Task 4
 name: Visual Regression Tests
+
 on:
   pull_request:
     paths:
       - 'scenes/ui/**'
       - 'autoloads/design_tokens.gd'
+      - 'test/suites/visual/**'
+      - '.github/workflows/visual-regression.yml'
   push:
     branches: [main, develop]
+  workflow_dispatch:
+
 jobs:
   visual-regression:
+    name: Visual Regression Tests
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Visual regression stub
-        run: echo "Visual regression workflow stub: implemented in 06-03-PLAN.md"
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Godot
+        uses: notifiarr/godot-action@v0.2.2
+        with:
+          version: '4.6'
+          # Use headless mode for CI
+          headless: true
+
+      - name: Install ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+
+      - name: Verify ImageMagick installation
+        run: |
+          compare -version
+          echo "ImageMagick installed successfully"
+
+      - name: Create baseline directory
+        run: |
+          mkdir -p test/screenshots/baseline
+          mkdir -p user://test/screenshots/current
+
+      - name: Run visual regression tests
+        run: |
+          godot4 --headless --script res://test/suites/visual/test_visual_regression.gd
+        continue-on-error: true
+
+      - name: Upload current screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-regression-screenshots
+          path: |
+            test/screenshots/current/
+            ~/.local/share/godot/project_manager/
+          retention-days: 30
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-regression-results
+          path: |
+            test/results/
+            ./*.log
+          retention-days: 30
+
+      - name: Check critical component failures
+        if: always()
+        run: |
+          # Check if GUT results XML exists
+          if [ ! -f "test/results/gut-results.xml" ]; then
+            echo "WARNING: GUT results XML not found. Tests may have failed to run."
+            exit 1
+          fi
+
+          # Parse GUT results for critical component failures
+          python3 -c "
+          import xml.etree.ElementTree as ET
+          import sys
+
+          tree = ET.parse('test/results/gut-results.xml')
+          root = tree.getroot()
+
+          critical_failures = []
+          nice_to_have_failures = []
+
+          # Critical components that block PR
+          critical_components = ['button', 'panel', 'progress_bar', 'theme_toggle']
+
+          # Nice-to-have components that warn only
+          nice_to_have_components = ['label', 'icon', 'container', 'loading_indicator']
+
+          for testcase in root.findall('.//testcase'):
+              name = testcase.get('name', '')
+              failure = testcase.find('failure')
+
+              if failure:
+                  # Check if this is a critical component
+                  is_critical = any(c in name for c in critical_components)
+                  is_nice_to_have = any(c in name for c in nice_to_have_components)
+
+                  if is_critical:
+                      critical_failures.append(name)
+                  elif is_nice_to_have:
+                      nice_to_have_failures.append(name)
+
+          # Report results
+          if critical_failures:
+              print(f'CRITICAL: {len(critical_failures)} critical component visual tests failed:')
+              for f in critical_failures:
+                  print(f'  ❌ {f}')
+              print('')
+              sys.exit(1)
+
+          if nice_to_have_failures:
+              print(f'WARNING: {len(nice_to_have_failures)} nice-to-have component visual tests failed:')
+              for f in nice_to_have_failures:
+                  print(f'  ⚠️  {f}')
+              print('')
+              print('These failures do not block PR merge, but should be reviewed.')
+
+          if not critical_failures and not nice_to_have_failures:
+              print('✅ All visual regression tests passed!')
+              sys.exit(0)
+          "
+
+      - name: Add PR comment with results
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '## 🎨 Visual Regression Test Results\n\n';
+
+            try {
+              const results = fs.readFileSync('test/results/gut-results.xml', 'utf8');
+              // Parse results and add to comment
+              comment += 'Tests completed. Check the "visual-regression-screenshots" artifact for details.\n';
+            } catch (e) {
+              comment += '⚠️ Test results not found. Check the workflow logs.\n';
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
   theme-consistency:
+    name: Theme Consistency Tests
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Theme consistency stub
-        run: echo "Theme consistency workflow stub: implemented in 06-03-PLAN.md"
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Godot
+        uses: notifiarr/godot-action@v0.2.2
+        with:
+          version: '4.6'
+          headless: true
+
+      - name: Run theme consistency tests
+        run: |
+          godot4 --headless --script res://test/suites/visual/test_theme_consistency.gd
+
+      - name: Upload theme consistency results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: theme-consistency-results
+          path: |
+            test/results/
+            ./*.log
+          retention-days: 30
+
+      - name: Check contrast ratio compliance
+        if: always()
+        run: |
+          # Parse GUT results for contrast ratio test failures
+          python3 -c "
+          import xml.etree.ElementTree as ET
+          import sys
+
+          tree = ET.parse('test/results/gut-results.xml')
+          root = tree.getroot()
+
+          contrast_failures = []
+
+          for testcase in root.findall('.//testcase'):
+              name = testcase.get('name', '')
+              failure = testcase.find('failure')
+
+              if failure and 'contrast' in name.lower():
+                  contrast_failures.append(name)
+
+          if contrast_failures:
+              print(f'CRITICAL: {len(contrast_failures)} contrast ratio tests failed:')
+              for f in contrast_failures:
+                  print(f'  ❌ {f}')
+              print('')
+              print('These failures indicate WCAG AA accessibility violations.')
+              sys.exit(1)
+          else:
+              print('✅ All contrast ratio tests passed!')
+              sys.exit(0)
+          "
+
+  summary:
+    name: Visual Test Summary
+    runs-on: ubuntu-latest
+    needs: [visual-regression, theme-consistency]
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.visual-regression.result }}" == "failure" ]; then
+            echo "❌ Visual regression tests failed"
+            exit 1
+          fi
+
+          if [ "${{ needs.theme-consistency.result }}" == "failure" ]; then
+            echo "❌ Theme consistency tests failed"
+            exit 1
+          fi
+
+          echo "✅ All visual tests passed!"
