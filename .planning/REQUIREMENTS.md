@@ -10,12 +10,12 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 
 ### Test Foundation (FND)
 
-- [ ] **FND-01**: Go backend uses testify framework for assertions and test suites
-- [ ] **FND-02**: Godot client uses enhanced GUT framework with autoload testing support
-- [ ] **FND-03**: Test runner executes all backend and frontend tests with unified reporting
-- [ ] **FND-04**: Test pyramid is enforced (70% unit, 20% integration, 10% E2E) via automated checks
-- [ ] **FND-05**: Go race detector runs in CI for all concurrent code
-- [ ] **FND-06**: Tests are isolated and don't depend on shared state
+- [x] **FND-01**: Go backend uses testify framework for assertions and test suites
+- [x] **FND-02**: Godot client uses enhanced GUT framework with autoload testing support
+- [x] **FND-03**: Test runner executes all backend and frontend tests with unified reporting
+- [x] **FND-04**: Test pyramid is enforced (70% unit, 20% integration, 10% E2E) via automated checks
+- [x] **FND-05**: Go race detector runs in CI for all concurrent code
+- [x] **FND-06**: Tests are isolated and don't depend on shared state
 
 ### Test Isolation & Fixtures (ISO)
 
@@ -109,12 +109,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FND-01 | Phase 1 | Pending |
-| FND-02 | Phase 1 | Pending |
-| FND-03 | Phase 1 | Pending |
-| FND-04 | Phase 1 | Pending |
-| FND-05 | Phase 1 | Pending |
-| FND-06 | Phase 1 | Pending |
+| FND-01 | Phase 1 | Complete |
+| FND-02 | Phase 1 | Complete |
+| FND-03 | Phase 1 | Complete |
+| FND-04 | Phase 1 | Complete |
+| FND-05 | Phase 1 | Complete |
+| FND-06 | Phase 1 | Complete |
 | ISO-01 | Phase 2 | Complete |
 | ISO-02 | Phase 2 | Complete |
 | ISO-03 | Phase 2 | Complete |
