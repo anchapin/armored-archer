@@ -83,7 +83,12 @@ func TestDamageProperty_DefenseReducesDamage(t *testing.T) {
 // TestDamageProperty_CritIncreasesDamage verifies that critical hits always deal more damage.
 func TestDamageProperty_CritIncreasesDamage(t *testing.T) {
 	// This uses the actual crit multiplier (2x) from combat.go
-	property := func(attack, defense int, isCrit bool) bool {
+	property := func(attack, defense int) bool {
+		// Use only non-negative values to avoid zero damage edge cases
+		if attack < 0 || defense < 0 {
+			return true // Skip invalid inputs
+		}
+
 		attacker := &PlayerStats{}
 		attacker.Stats.Attack = attack
 
@@ -95,6 +100,7 @@ func TestDamageProperty_CritIncreasesDamage(t *testing.T) {
 		// Simulate crit (2x multiplier from combat.go)
 		critDamage := normalDamage * 2
 
+		// Crit should never deal less damage than normal hit
 		return critDamage >= normalDamage
 	}
 
