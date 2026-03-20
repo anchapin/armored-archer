@@ -1,4 +1,4 @@
-class_name AccessibilityManager
+class_name ArcherAccessibilityManager
 extends Node
 
 # =============================================================================
@@ -9,6 +9,9 @@ extends Node
 # =============================================================================
 
 signal settings_changed()
+
+# --- Dependency Injection ---
+var _config_file: ConfigFile = null
 
 # --- Accessibility State ---
 var _font_scale: float = 1.0
@@ -23,6 +26,10 @@ const FONT_SCALE_DEFAULT := 1.0
 
 # --- Persistence ---
 const ACCESSIBILITY_CONFIG_PATH := "user://accessibility.cfg"
+
+# --- Constructor with Dependency Injection ---
+func _init(config_file: ConfigFile = null):
+	_config_file = config_file
 
 # --- High Contrast Colors ---
 var _high_contrast_colors: Dictionary = {
@@ -46,6 +53,9 @@ var _high_contrast_colors: Dictionary = {
 
 # --- Lifecycle ---
 func _ready() -> void:
+	# Initialize ConfigFile if not injected (for production autoload usage)
+	if _config_file == null:
+		_config_file = ConfigFile.new()
 	_load_settings()
 
 # =============================================================================
@@ -134,14 +144,13 @@ func apply_settings(settings: Dictionary) -> void:
 # =============================================================================
 
 func _load_settings() -> void:
-	var config = ConfigFile.new()
-	var err = config.load(ACCESSIBILITY_CONFIG_PATH)
-	
+	var err = _config_file.load(ACCESSIBILITY_CONFIG_PATH)
+
 	if err == OK:
-		_font_scale = config.get_value("accessibility", "font_scale", FONT_SCALE_DEFAULT)
-		_high_contrast = config.get_value("accessibility", "high_contrast", false)
-		_reduced_motion = config.get_value("accessibility", "reduced_motion", false)
-		_screen_reader_enabled = config.get_value("accessibility", "screen_reader", false)
+		_font_scale = _config_file.get_value("accessibility", "font_scale", FONT_SCALE_DEFAULT)
+		_high_contrast = _config_file.get_value("accessibility", "high_contrast", false)
+		_reduced_motion = _config_file.get_value("accessibility", "reduced_motion", false)
+		_screen_reader_enabled = _config_file.get_value("accessibility", "screen_reader", false)
 	else:
 		# Use defaults
 		_font_scale = FONT_SCALE_DEFAULT
@@ -150,13 +159,12 @@ func _load_settings() -> void:
 		_screen_reader_enabled = false
 
 func _save_settings() -> void:
-	var config = ConfigFile.new()
-	config.set_value("accessibility", "font_scale", _font_scale)
-	config.set_value("accessibility", "high_contrast", _high_contrast)
-	config.set_value("accessibility", "reduced_motion", _reduced_motion)
-	config.set_value("accessibility", "screen_reader", _screen_reader_enabled)
-	
-	var err = config.save(ACCESSIBILITY_CONFIG_PATH)
+	_config_file.set_value("accessibility", "font_scale", _font_scale)
+	_config_file.set_value("accessibility", "high_contrast", _high_contrast)
+	_config_file.set_value("accessibility", "reduced_motion", _reduced_motion)
+	_config_file.set_value("accessibility", "screen_reader", _screen_reader_enabled)
+
+	var err = _config_file.save(ACCESSIBILITY_CONFIG_PATH)
 	if err != OK:
 		push_warning("AccessibilityManager: Failed to save settings")
 
