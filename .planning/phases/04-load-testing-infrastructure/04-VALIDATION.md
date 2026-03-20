@@ -2,8 +2,8 @@
 phase: 04
 slug: load-testing-infrastructure
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-20
 ---
 
@@ -38,13 +38,17 @@ created: 2026-03-20
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 04-01-01 | 01 | 1 | PERF-01 | benchmark | `cd backend && go test -bench=BenchmarkRPCGetPlayerStats -run=^$ ./src/...` | ❌ W0 | ⬜ pending |
-| 04-01-02 | 01 | 1 | PERF-01 | benchmark | `cd backend && go test -bench=BenchmarkRPCGetLeaderboard -run=^$ ./src/...` | ❌ W0 | ⬜ pending |
-| 04-01-03 | 01 | 1 | PERF-01 | benchmark | `cd backend && go test -bench=BenchmarkRPCGetInventory -run=^$ ./src/...` | ❌ W0 | ⬜ pending |
-| 04-02-01 | 02 | 2 | PERF-02 | performance | `godot4 --headless --script test/test_performance_60fps.gd` | ❌ W0 | ⬜ pending |
+| 04-00-01 | 00 | 0 | PERF-01 | stub creation | `cd backend && go test -bench=. -run=^$ ./internal/rpc/... 2>&1 \| grep SKIP` | ✅ W0 | ⬜ pending |
+| 04-00-02 | 00 | 0 | PERF-01 | stub creation | `cd backend && go test -bench=. -run=^$ ./internal/rpc/... 2>&1 \| grep SKIP` | ✅ W0 | ⬜ pending |
+| 04-00-03 | 00 | 0 | PERF-02 | stub creation | `godot4 --headless --script test/suites/performance/test_60fps_gameplay_loops.gd 2>&1 \| grep -i skip` | ✅ W0 | ⬜ pending |
+| 04-00-04 | 00 | 0 | PERF-05 | stub creation | `cat .github/workflows/benchmark-regression.yml \| grep -E "(name:\|on:\|jobs:)"` | ✅ W0 | ⬜ pending |
+| 04-01-01 | 01 | 2 | PERF-01 | benchmark | `cd backend && go test -bench=BenchmarkGetPlayerStats -run=^$ ./internal/rpc/...` | ✅ W0 | ⬜ pending |
+| 04-01-02 | 01 | 2 | PERF-01 | benchmark | `cd backend && go test -bench=BenchmarkGetLeaderboard -run=^$ ./internal/rpc/...` | ✅ W0 | ⬜ pending |
+| 04-01-03 | 01 | 2 | PERF-01 | benchmark | `cd backend && go test -bench=BenchmarkGetInventory -run=^$ ./internal/rpc/...` | ✅ W0 | ⬜ pending |
+| 04-02-01 | 02 | 2 | PERF-02 | performance | `godot4 --headless --script test/suites/performance/test_60fps_gameplay_loops.gd` | ✅ W0 | ⬜ pending |
 | 04-03-01 | 03 | 3 | PERF-03 | load test | `k6 run --vus 100 --duration 30s load-test/scenarios/player_stats.js` | ✅ existing | ⬜ pending |
 | 04-03-02 | 03 | 3 | PERF-04 | load test | `k6 run --vus 100 --duration 30s load-test/scenarios/mixed_workload.js` | ✅ existing | ⬜ pending |
-| 04-04-01 | 04 | 4 | PERF-05 | regression | `cd backend && benchstat old.txt new.txt` | ❌ W0 | ⬜ pending |
+| 04-04-01 | 04 | 4 | PERF-05 | regression | `cd backend && benchstat old.txt new.txt` | ✅ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -52,13 +56,14 @@ created: 2026-03-20
 
 ## Wave 0 Requirements
 
-- [ ] `backend/src/**/*_test.go` — stubs for Go benchmarks (PERF-01)
-- [ ] `test/test_performance_60fps.gd` — Godot 60 FPS validation test (PERF-02)
-- [ ] `load-test/scenarios/` — k6 scripts (already exist for PERF-03, PERF-04)
-- [ ] `.github/workflows/benchmark-regression.yml` — CI workflow for benchmark regression detection (PERF-05)
-- [ ] `Makefile` — add `test-performance` target
+- [x] `backend/internal/rpc/rpc_bench_test.go` — stubs for Go benchmarks (PERF-01)
+- [x] `backend/internal/rpc/feedback_bench_test.go` — stubs for Go feedback benchmarks (PERF-01)
+- [x] `test/suites/performance/test_60fps_gameplay_loops.gd` — Godot 60 FPS validation test stubs (PERF-02)
+- [x] `load-test/scenarios/` — k6 scripts (already exist for PERF-03, PERF-04)
+- [x] `.github/workflows/benchmark-regression.yml` — CI workflow stub for benchmark regression detection (PERF-05)
+- [ ] `Makefile` — add `test-performance` target (added in Plan 04-04)
 
-*Note: k6 scripts and GitHub Actions load test workflow already exist from previous work.*
+*Note: k6 scripts and GitHub Actions load test workflow already exist from previous work. Wave 0 stubs created in Plan 04-00.*
 
 ---
 
@@ -74,11 +79,12 @@ created: 2026-03-20
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (Plan 04-00 creates all stubs)
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
+- [x] `wave_0_complete: true` set in frontmatter
 
 **Approval:** pending
