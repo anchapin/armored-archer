@@ -30,6 +30,7 @@ Quality and reliability are foundational — every feature must be tested, every
 - ✓ **Go Backend Migration** — v2.0.0 — Complete TypeScript to Go migration with 234 integration tests
 - ✓ **Core Gameplay** — v1.x — Combat, matchmaking, gear, progression, seasons
 - ✓ **Alpha Launch** — v2.1.0 — Monitoring, observability, user onboarding
+- ✓ **Beta Readiness** — v2.1.0 Phase 06 — Beta deployment infrastructure, Docker Compose configuration, automated health checks (19 tests), all 6 services healthy (postgres, redis, nakama, prometheus, grafana)
 - ✓ **Test Infrastructure Foundation** — v2.3.0 — Phase 01 — testify for Go, GUT 9.6.0 for Godot, test helpers, domain-specific assertions, organized test suite structure (15 subsystems)
 - ✓ **Fixtures & Mocks Layer** — v2.3.0 — Phase 02 — Testcontainers for PostgreSQL isolation, builder pattern fixtures (292 lines), JSON serialization for cross-platform sharing, interface extraction, mock generation (uber-go/mock), mock validation tests
 - ✓ **Godot Test Framework Enhancement** — v2.3.0 — Phase 03 — Autoload test isolation with ConfigFile dependency injection pattern, GUT signal testing capabilities (watch_signals, wait_for_signal), 13 comprehensive tests for AccessibilityManager and ThemeManager, fresh instance isolation pattern (ISO-04, MOCK-03)
@@ -40,7 +41,7 @@ Quality and reliability are foundational — every feature must be tested, every
 
 *Current scope. Building toward these.*
 
-- [ ] **Beta Readiness** — Beta deployment, production monitoring, user support workflows, documentation
+- [ ] **Coverage, Reporting & Quality Gates** — v2.3.0 — Phase 06 — Code coverage tracking, test reports, CI quality gates, coverage enforcement
 
 ### Out of Scope
 
