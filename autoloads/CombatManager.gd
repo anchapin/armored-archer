@@ -153,3 +153,41 @@ func get_match_status() -> String:
 
 func is_combat_active() -> bool:
 	return get_match_status() == "active"
+
+# --- Combat Calculations ---
+func calculate_damage(base_damage: int, attacker_stats: Dictionary, defender_stats: Dictionary, crit_multiplier: float) -> int:
+	"""Calculates damage based on attacker and defender stats.
+
+	Parameters:
+		base_damage: Base damage before modifiers
+		attacker_stats: Dictionary containing attacker stats (attack, crit_rate)
+		defender_stats: Dictionary containing defender stats (defense, dodge)
+		crit_multiplier: Multiplier for critical hits
+
+	Returns:
+		Calculated damage value
+	"""
+	var attack = attacker_stats.get("attack", 0)
+	var defense = defender_stats.get("defense", 0)
+	var crit_rate = attacker_stats.get("crit_rate", 0)
+	var dodge = defender_stats.get("dodge", 0)
+
+	# Check for dodge
+	var dodge_roll = randf() * 100.0
+	if dodge_roll < dodge:
+		return 0  # Dodged
+
+	# Check for critical hit
+	var is_crit = false
+	var crit_roll = randf() * 100.0
+	if crit_roll < crit_rate:
+		is_crit = true
+
+	# Calculate damage
+	var damage = base_damage + attack - defense
+	damage = max(1, damage)  # Minimum 1 damage
+
+	if is_crit:
+		damage = int(damage * crit_multiplier)
+
+	return damage
