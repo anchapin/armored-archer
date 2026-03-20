@@ -42,11 +42,11 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 
 ### Performance Testing (PERF)
 
-- [ ] **PERF-01**: Backend has Go benchmarks for critical RPC endpoints
-- [ ] **PERF-02**: Frontend has performance tests for 60 FPS target validation
+- [x] **PERF-01**: Backend has Go benchmarks for critical RPC endpoints
+- [x] **PERF-02**: Frontend has performance tests for 60 FPS target validation
 - [ ] **PERF-03**: Load tests validate backend can handle 100+ concurrent players
 - [ ] **PERF-04**: Load test scripts use k6 for realistic traffic simulation
-- [ ] **PERF-05**: Performance baselines are established and regressions are detected
+- [x] **PERF-05**: Performance baselines are established and regressions are detected
 
 ### Visual Regression Testing (VIS)
 
@@ -129,11 +129,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FLK-02 | Phase 5 | Pending |
 | FLK-03 | Phase 5 | Pending |
 | FLK-04 | Phase 5 | Pending |
-| PERF-01 | Phase 4 | Pending |
-| PERF-02 | Phase 4 | Pending |
+| PERF-01 | Phase 4 | Complete |
+| PERF-02 | Phase 4 | Complete |
 | PERF-03 | Phase 4 | Pending |
 | PERF-04 | Phase 4 | Pending |
-| PERF-05 | Phase 4 | Pending |
+| PERF-05 | Phase 4 | Complete |
 | VIS-01 | Phase 5 | Pending |
 | VIS-02 | Phase 5 | Pending |
 | VIS-03 | Phase 5 | Pending |
