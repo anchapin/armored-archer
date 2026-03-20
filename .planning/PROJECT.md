@@ -30,6 +30,7 @@ Quality and reliability are foundational — every feature must be tested, every
 - ✓ **Go Backend Migration** — v2.0.0 — Complete TypeScript to Go migration with 234 integration tests
 - ✓ **Core Gameplay** — v1.x — Combat, matchmaking, gear, progression, seasons
 - ✓ **Alpha Launch** — v2.1.0 — Monitoring, observability, user onboarding
+- ✓ **Load Testing** — v2.3.0 — Phase 04 — Go RPC benchmarks, Godot 60 FPS tests, k6 load tests (100+ concurrent users), CI regression detection with benchstat
 
 ### Active
 
@@ -37,9 +38,9 @@ Quality and reliability are foundational — every feature must be tested, every
 
 - [ ] **Test Coverage** — Comprehensive unit, integration, and E2E tests for backend and frontend
 - [ ] **CI/CD Quality Gates** — Automated testing in pipeline with coverage thresholds
-- [ ] **Load Testing** — Performance benchmarks and stress testing infrastructure
 - [ ] **QA Workflow** — Bug tracking, automated verification, regression testing
 - [ ] **Test Reporting** — Coverage reports, test metrics, quality dashboards
+- [ ] **Performance Optimization** — Database query optimization, caching strategies, resource cleanup
 
 ### Out of Scope
 
@@ -88,4 +89,4 @@ Quality and reliability are foundational — every feature must be tested, every
 | Automated quality gates | Ship with confidence | — Pending |
 
 ---
-*Last updated: 2026-03-19 after starting v2.3.0 milestone*
+*Last updated: 2026-03-20 after Phase 04 (Load Testing Infrastructure) completion*
