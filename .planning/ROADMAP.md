@@ -254,6 +254,14 @@
 
 **Plans:** TBD
 
+**Plan List:**
+- [ ] 05-00-PLAN.md — Wave 0: Test Infrastructure Stubs
+- [ ] 05-01-PLAN.md — Unified Test Runner (FND-03)
+- [ ] 05-02-PLAN.md — Test Pyramid Validation (FND-04)
+- [ ] 05-03-PLAN.md — Race Detector in CI (FND-05)
+- [ ] 05-04-PLAN.md — Test Shuffle Flag (FND-06)
+- [ ] 05-05-PLAN.md — Final Integration and Verification
+
 ---
 
 ### Phase 6: Coverage, Reporting & Quality Gates
