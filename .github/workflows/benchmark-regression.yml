@@ -1,0 +1,32 @@
+# Benchmark Regression Detection CI Workflow
+# TODO: Implement full workflow in Plan 04-04
+# - Run benchmarks with go test -bench
+# - Fetch baseline from git history
+# - Compare with benchstat
+# - Fail on >10% regression
+# - Update baseline on main branch
+
+name: Benchmark Regression
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main ]
+
+# TODO: Add permissions for contents:write
+
+jobs:
+  # TODO: Implement benchmark job with steps:
+  # - Checkout code
+  # - Setup Go
+  # - Run benchmarks
+  # - Fetch baseline
+  # - Compare results
+  # - Fail on regression
+  # - Update baseline on main
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder
+        run: echo "Benchmark regression workflow to be implemented in Plan 04-04"
