@@ -24,3 +24,7 @@ Thumbs.db
 .env.*.local
 backend/coverage
 backend/tsconfig.tsbuildinfo
+
+# Test results
+test/results/*.xml
+test/results/*.html

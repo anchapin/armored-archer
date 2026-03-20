@@ -28,27 +28,40 @@ jobs:
       
       - name: Run Godot Tests
         run: |
-          # Run headless tests using the test runner scene
-          # Note: This requires a test scene or headless mode
-          # Capture output and check for test failures
+          # Run GUT tests with JUnit output
           TEST_OUTPUT=$(./godot4 --headless --script test/run_all_tests.gd 2>&1)
           echo "$TEST_OUTPUT"
-          
-          # Check for test failures in output
-          if echo "$TEST_OUTPUT" | grep -q "Failed: [1-9]"; then
+
+          # Check exit code for test failures
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
             echo "❌ Godot tests failed!"
             exit 1
           fi
           echo "✅ All Godot tests passed"
-          
+
+      - name: Upload GUT test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-test-results
+          path: test/results/gut-results.xml
+          retention-days: 30
+
+      - name: Publish GUT test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: test/results/gut-results.xml
+          check_name: Godot Test Results
+
       - name: Check test coverage
         run: |
-          # Count test files and estimate coverage
+          # Count test files in suites
           echo "=== Test Coverage Summary ==="
-          echo "Test files: $(ls -1 test/test_*.gd | wc -l)"
-          echo "NetworkManager tests: $(grep -c 'func test_' test/test_network_manager.gd)"
-          echo "CombatManager tests: $(grep -c 'func test_' test/test_combat_manager.gd)"
-          echo "PlayerStatsManager tests: $(grep -c 'func test_' test/test_player_stats_manager.gd)"
+          echo "Test files: $(find test/suites -name 'test_*.gd' | wc -l)"
+          echo "Player tests: $(find test/suites/player -name 'test_*.gd' | wc -l)"
+          echo "Combat tests: $(find test/suites/combat -name 'test_*.gd' | wc -l)"
+          echo "Gear tests: $(find test/suites/gear -name 'test_*.gd' | wc -l)"
 
   godot-coverage-gate:
     name: Coverage Gate (80% Target)
@@ -63,31 +76,31 @@ jobs:
         run: |
           # Calculate test coverage for critical systems
           # This is a simplified coverage calculation based on function coverage
-          
+
           echo "=== Coverage Analysis for Critical Systems ==="
-          
-          # Count test functions for each manager
-          NETWORK_TESTS=$(grep -c 'func test_' test/test_network_manager.gd 2>/dev/null || echo "0")
-          COMBAT_TESTS=$(grep -c 'func test_' test/test_combat_manager.gd 2>/dev/null || echo "0")
-          PLAYER_STATS_TESTS=$(grep -c 'func test_' test/test_player_stats_manager.gd 2>/dev/null || echo "0")
-          
+
+          # Count test functions for each manager (in suites)
+          NETWORK_TESTS=$(grep -c 'func test_' test/suites/network/test_network_manager.gd 2>/dev/null || echo "0")
+          COMBAT_TESTS=$(grep -c 'func test_' test/suites/combat/test_combat_manager.gd 2>/dev/null || echo "0")
+          PLAYER_STATS_TESTS=$(grep -c 'func test_' test/suites/player/test_player_stats_manager.gd 2>/dev/null || echo "0")
+
           echo "NetworkManager tests: $NETWORK_TESTS"
           echo "CombatManager tests: $COMBAT_TESTS"
           echo "PlayerStatsManager tests: $PLAYER_STATS_TESTS"
-          
+
           # Calculate total test count for critical systems
           TOTAL_CRITICAL_TESTS=$((NETWORK_TESTS + COMBAT_TESTS + PLAYER_STATS_TESTS))
           echo "Total critical system tests: $TOTAL_CRITICAL_TESTS"
-          
+
           # Estimate coverage based on number of test functions vs. source code functions
           # This is a rough estimate - actual line coverage would require instrumentation
           NETWORK_SOURCE_FUNCTIONS=$(grep -c 'func ' autoloads/NetworkManager.gd 2>/dev/null || echo "0")
           COMBAT_SOURCE_FUNCTIONS=$(grep -c 'func ' autoloads/CombatManager.gd 2>/dev/null || echo "0")
           PLAYER_STATS_SOURCE_FUNCTIONS=$(grep -c 'func ' autoloads/PlayerStatsManager.gd 2>/dev/null || echo "0")
-          
+
           TOTAL_SOURCE_FUNCTIONS=$((NETWORK_SOURCE_FUNCTIONS + COMBAT_SOURCE_FUNCTIONS + PLAYER_STATS_SOURCE_FUNCTIONS))
           echo "Total source functions in critical systems: $TOTAL_SOURCE_FUNCTIONS"
-          
+
           # Calculate estimated function coverage
           if [ "$TOTAL_SOURCE_FUNCTIONS" -gt "0" ]; then
             COVERAGE_PERCENT=$((TOTAL_CRITICAL_TESTS * 100 / TOTAL_SOURCE_FUNCTIONS))

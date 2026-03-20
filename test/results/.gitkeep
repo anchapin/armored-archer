@@ -1,0 +1,2 @@
+# This file ensures the test/results directory is tracked by git
+# The actual test results (gut-results.xml) are gitignored
