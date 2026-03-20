@@ -184,10 +184,10 @@
 **Plans:** 4 plans
 
 **Plan List:**
-- [ ] 02-01-PLAN.md — Testcontainers setup & database isolation with snapshot/restore
-- [ ] 02-02-PLAN.md — Builder pattern fixtures with JSON serialization for cross-platform sharing
-- [ ] 02-03-PLAN.md — Interface extraction & mock generation using uber-go/mock
-- [ ] 02-04-PLAN.md — Mock validation tests & integration test suite lifecycle
+- [x] 02-01-PLAN.md — Testcontainers setup & database isolation with snapshot/restore
+- [x] 02-02-PLAN.md — Builder pattern fixtures with JSON serialization for cross-platform sharing
+- [x] 02-03-PLAN.md — Interface extraction & mock generation using uber-go/mock
+- [x] 02-04-PLAN.md — Mock validation tests & integration test suite lifecycle
 
 ---
 
@@ -208,7 +208,7 @@
 **Plans:** 2/2 plans complete
 
 **Plan List:**
-- [ ] 03-01-PLAN.md — Autoload test isolation with dependency injection and signal testing
+- [x] 03-01-PLAN.md — Autoload test isolation with dependency injection and signal testing
 
 ---
 
@@ -230,10 +230,10 @@
 **Plans:** 4
 
 **Plan List:**
-- [ ] 04-01-PLAN.md — Go RPC Benchmarks for Critical Handlers
-- [ ] 04-02-PLAN.md — Godot 60 FPS Performance Tests
-- [ ] 04-03-PLAN.md — k6 Load Tests for 100+ Concurrent Players
-- [ ] 04-04-PLAN.md — Performance Baselines and CI Regression Detection
+- [x] 04-01-PLAN.md — Go RPC Benchmarks for Critical Handlers
+- [x] 04-02-PLAN.md — Godot 60 FPS Performance Tests
+- [x] 04-03-PLAN.md — k6 Load Tests for 100+ Concurrent Players
+- [x] 04-04-PLAN.md — Performance Baselines and CI Regression Detection
 
 ---
 
@@ -324,7 +324,14 @@
 3. Load tests can run in isolation without manual service startup
 4. Test data is consistent across benchmarks and integration tests
 
-**Plans:** TBD
+**Plans:** 2/2
+
+**Plan List:**
+- [ ] 07-01-PLAN.md — Refactor Go Benchmarks to Use Factory Functions (PERF-01)
+- [ ] 07-02-PLAN.md — Refactor Load Tests to Use Testcontainers (PERF-03)
+
+**Wave Structure:**
+- Wave 1: 07-01 (Benchmarks), 07-02 (Load Tests) — Can run in parallel (independent concerns)
 
 ---
 
