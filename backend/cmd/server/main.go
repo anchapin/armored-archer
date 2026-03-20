@@ -4,17 +4,49 @@ package main
 import (
 	"context"
 	"database/sql"
+	"net/http"
 	"time"
 
 	"github.com/anchapin/armored-archer/backend/internal/cache"
 	"github.com/anchapin/armored-archer/backend/internal/config"
 	"github.com/anchapin/armored-archer/backend/internal/rpc"
-	"github.com/anchapin/armored-archer/backend/internal/utils"
 	"github.com/heroiclabs/nakama-common/runtime"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // globalConfig holds the loaded configuration accessible to all modules.
 var globalConfig *config.Config
+
+// Prometheus metrics collectors
+var (
+	// rpcLatency tracks RPC call latency in seconds
+	rpcLatency = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "nakama_rpc_latency_seconds",
+			Help:    "RPC call latency in seconds",
+			Buckets: []float64{0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		},
+		[]string{"rpc_method", "status"},
+	)
+
+	// rpcErrors tracks total number of RPC errors
+	rpcErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "nakama_rpc_errors_total",
+			Help: "Total number of RPC errors",
+		},
+		[]string{"rpc_method", "error_type"},
+	)
+
+	// activeConnections tracks number of active database connections
+	activeConnections = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "nakama_active_connections",
+			Help: "Number of active database connections",
+		},
+	)
+)
 
 // InitModule is the entry point for the Nakama Go module.
 // This function is called by Nakama when the module loads.
@@ -60,6 +92,22 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	globalCache.CreateCache("gear_definitions", 100, 30*time.Minute)
 
 	logger.Info("Cache manager initialized with optimized settings")
+
+	// Register Prometheus metrics
+	prometheus.MustRegister(rpcLatency)
+	prometheus.MustRegister(rpcErrors)
+	prometheus.MustRegister(activeConnections)
+	logger.Info("Prometheus metrics registered")
+
+	// Start Prometheus metrics server in goroutine
+	go func() {
+		metricsPort := ":9090"
+		http.Handle("/metrics", promhttp.Handler())
+		logger.Info("Prometheus metrics server listening on %s", metricsPort)
+		if err := http.ListenAndServe(metricsPort, nil); err != nil {
+			logger.Error("Metrics server error: %v", err)
+		}
+	}()
 
 	// Register RPC handlers
 	if err := registerRPCs(logger, initializer); err != nil {
@@ -193,6 +241,16 @@ func registerRPCs(logger runtime.Logger, initializer runtime.Initializer) error 
 // GetGlobalConfig returns the global configuration.
 func GetGlobalConfig() *config.Config {
 	return globalConfig
+}
+
+// RecordRPCLatency records RPC call latency with method and status labels.
+func RecordRPCLatency(method string, status string, duration time.Duration) {
+	rpcLatency.WithLabelValues(method, status).Observe(duration.Seconds())
+}
+
+// RecordRPCError records an RPC error with method and error type labels.
+func RecordRPCError(method string, errorType string) {
+	rpcErrors.WithLabelValues(method, errorType).Inc()
 }
 
 

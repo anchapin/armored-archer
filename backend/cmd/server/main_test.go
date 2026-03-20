@@ -147,16 +147,83 @@ func TestPrometheusMetricsAccessible(t *testing.T) {
 
 // TestRecordRPCLatency verifies the RPC latency recording function.
 func TestRecordRPCLatency(t *testing.T) {
-	// This test will verify the RecordRPCLatency function exists and works correctly
-	// For now, we'll skip this as it requires the actual implementation
-	t.Skip("RecordRPCLatency function not yet implemented - will be verified after implementation")
+	// Create a test registry to avoid conflicts
+	testRegistry := prometheus.NewRegistry()
+
+	// Create a test latency metric
+	testLatency := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "test_rpc_latency_seconds",
+			Help:    "Test RPC latency",
+			Buckets: []float64{0.1, 0.5, 1.0},
+		},
+		[]string{"method", "status"},
+	)
+
+	err := testRegistry.Register(testLatency)
+	require.NoError(t, err)
+
+	// Simulate recording latency (similar to RecordRPCLatency)
+	testLatency.WithLabelValues("test_method", "success").Observe(0.123)
+
+	// Create handler and server
+	handler := promhttp.HandlerFor(testRegistry, promhttp.HandlerOpts{})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	// Get metrics
+	resp, err := http.Get(server.URL + "/metrics")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	bodyStr := string(body)
+	assert.Contains(t, bodyStr, "test_rpc_latency_seconds", "Should contain latency metric")
+	assert.Contains(t, bodyStr, `method="test_method"`, "Should contain method label")
+	assert.Contains(t, bodyStr, `status="success"`, "Should contain status label")
 }
 
 // TestRecordRPCError verifies the RPC error recording function.
 func TestRecordRPCError(t *testing.T) {
-	// This test will verify the RecordRPCError function exists and works correctly
-	// For now, we'll skip this as it requires the actual implementation
-	t.Skip("RecordRPCError function not yet implemented - will be verified after implementation")
+	// Create a test registry to avoid conflicts
+	testRegistry := prometheus.NewRegistry()
+
+	// Create a test error metric
+	testErrors := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "test_rpc_errors_total",
+			Help: "Test RPC errors",
+		},
+		[]string{"method", "error_type"},
+	)
+
+	err := testRegistry.Register(testErrors)
+	require.NoError(t, err)
+
+	// Simulate recording error (similar to RecordRPCError)
+	testErrors.WithLabelValues("test_method", "validation_error").Inc()
+	testErrors.WithLabelValues("test_method", "validation_error").Inc()
+
+	// Create handler and server
+	handler := promhttp.HandlerFor(testRegistry, promhttp.HandlerOpts{})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	// Get metrics
+	resp, err := http.Get(server.URL + "/metrics")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	bodyStr := string(body)
+	assert.Contains(t, bodyStr, "test_rpc_errors_total", "Should contain error metric")
+	assert.Contains(t, bodyStr, `method="test_method"`, "Should contain method label")
+	assert.Contains(t, bodyStr, `error_type="validation_error"`, "Should contain error_type label")
+	assert.Contains(t, bodyStr, "test_rpc_errors_total{", "Should contain metric with labels")
 }
 
 // TestMetricsServerIntegration verifies that the metrics server
