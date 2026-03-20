@@ -6,96 +6,110 @@
 # with Go module support and production-ready settings.
 # ============================================
 
-version: '3'
-
 services:
-  nakama:
-    container_name: armored_archer_beta
-    environment:
-      - NODE_ENV=beta
-      - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-beta_server_key_production_ready}
-      - NAKAMA_SERVER_PORT=${NAKAMA_SERVER_PORT:-7350}
-      - NAKAMA_CONSOLE_PORT=${NAKAMA_CONSOLE_PORT:-7351}
-      - NAKAMA_CONSOLE_PASSWORD=${NAKAMA_CONSOLE_PASSWORD:-beta_admin_secure_password}
-      - DATABASE_ADDRESS=${DATABASE_ADDRESS:-postgres://postgres:beta_db_password@postgres:5432/nakama_beta}
-      - SESSION_ENCRYPTION_KEY=${SESSION_ENCRYPTION_KEY:-beta-session-key-change-me}
-      - REFRESH_ENCRYPTION_KEY=${REFRESH_ENCRYPTION_KEY:-beta-refresh-key-change-me}
-      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY:-beta-token-key-change-me}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - LOG_FORMAT=${LOG_FORMAT:-json}
-      - ALLOW_HOST_LOOPBACK=${ALLOW_HOST_LOOPBACK:-false}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - OTEL_SERVICE_NAME=armored-archer-beta
-    volumes:
-      # Mount beta-specific Nakama configuration
-      - ./data/nakama.beta.yml:/nakama/data/nakama.yml
-      # Mount Go module
-      - ./build/server.so:/nakama/data/modules/server.so:ro
-      # Mount migrations
-      - ./data:/nakama/data/migrations
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "/nakama/nakama", "healthcheck"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    ports:
-      - "7350:7350"
-      - "7351:7351"
-    depends_on:
-      - postgres
-      - redis
-
   postgres:
+    image: postgres:14-alpine
     container_name: armored_archer_beta_db
+    env_file:
+      - .env.beta
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-nakama_beta}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-beta_db_password_change_me}
     volumes:
       - beta_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-postgres}", "-d", "${POSTGRES_DB:-nakama_beta}"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
   redis:
+    image: redis:7-alpine
     container_name: armored_archer_beta_redis
     command: redis-server --save 60 1 --loglevel warning
     volumes:
       - beta_redis_data:/data
+    ports:
+      - "6381:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
+
+  nakama:
+    image: heroiclabs/nakama:3.21.1
+    container_name: armored_archer_beta
+    env_file:
+      - .env.beta
+    entrypoint:
+      - "/bin/sh"
+      - "-ecx"
+      - >
+        echo "Starting Nakama Beta Environment..." &&
+        /nakama/nakama migrate up --database.address ${DATABASE_ADDRESS:-postgres://postgres:beta_db_password_change_me@postgres:5432/nakama_beta} &&
+        exec /nakama/nakama --config /nakama/data/nakama.yml --database.address ${DATABASE_ADDRESS:-postgres://postgres:beta_db_password_change_me@postgres:5432/nakama_beta}
+    environment:
+      - NODE_ENV=beta
+      - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-beta_server_key_production_ready}
+      - NAKAMA_SERVER_PORT=${NAKAMA_SERVER_PORT:-7350}
+      - NAKAMA_CONSOLE_PORT=${NAKAMA_CONSOLE_PORT:-7351}
+      - DATABASE_ADDRESS=${DATABASE_ADDRESS:-postgres://postgres:beta_db_password_change_me@postgres:5432/nakama_beta}
+      - SESSION_ENCRYPTION_KEY=${SESSION_ENCRYPTION_KEY:-beta-session-key-change-me}
+      - REFRESH_ENCRYPTION_KEY=${REFRESH_ENCRYPTION_KEY:-beta-refresh-key-change-me}
+      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY:-beta-token-key-change-me}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      - ALLOW_HOST_LOOPBACK=${ALLOW_HOST_LOOPBACK:-false}
+      - OTEL_SERVICE_NAME=armored-archer-beta
+    volumes:
+      - ./nakama.beta.yml:/nakama/data/nakama.yml
+      - ./data:/nakama/data/migrations
+    ports:
+      - "7350:7350"
+      - "7351:7351"
+    healthcheck:
+      test: ["CMD", "/nakama/nakama", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   prometheus:
     container_name: armored_archer_beta_prometheus
+    image: prom/prometheus:latest
     volumes:
       - beta_prometheus_data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
     restart: unless-stopped
 
   grafana:
     container_name: armored_archer_beta_grafana
+    image: grafana/grafana:latest
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin_beta_change_me}
+      - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - beta_grafana_data:/var/lib/grafana
-    restart: unless-stopped
-
-  loki:
-    container_name: armored_archer_beta_loki
-    volumes:
-      - beta_loki_data:/loki
-    restart: unless-stopped
-
-  promtail:
-    container_name: armored_archer_beta_promtail
-    environment:
-      - ENVIRONMENT=${ENVIRONMENT:-beta}
-    restart: unless-stopped
-
-  otel-collector:
-    container_name: armored_archer_beta_otel
-    image: otel/opentelemetry-collector-contrib:latest
-    volumes:
-      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - "3000:3000"
     restart: unless-stopped
 
 # Beta-specific volumes
@@ -104,4 +118,3 @@ volumes:
   beta_redis_data:
   beta_prometheus_data:
   beta_grafana_data:
-  beta_loki_data:
