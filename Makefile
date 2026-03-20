@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema backend-load-test benchmark benchmark-compare benchmark-update clean release-notes test-flaky-backend test-flaky-godot test-flaky-report check-test-pyramid build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci generate-mocks beta-start beta-stop beta-restart beta-status beta-health beta-logs beta-validate beta-clean beta-migrate beta-test test-all test
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema backend-load-test benchmark benchmark-compare benchmark-update clean release-notes test-flaky-backend test-flaky-godot test-flaky-report check-test-pyramid build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci generate-mocks beta-start beta-stop beta-restart beta-status beta-health beta-logs beta-validate beta-clean beta-migrate beta-test test-all test coverage coverage-backend coverage-frontend coverage-html test-property test-property-combat test-property-rng
 
 # Default target
 all: help
@@ -50,6 +50,11 @@ make test-property       Run property-based tests (all)
 	@echo "$(GREEN)Test Pyramid Validation$(RESET)"
 	@echo "  make check-test-pyramid Validate test pyramid (70/20/10 ratio)"
 	@echo ""
+	@echo "$(GREEN)Coverage Reporting$(RESET)"
+	@echo "  make coverage            Generate coverage reports (backend + frontend)"
+	@echo "  make coverage-backend    Generate Go backend coverage with HTML report"
+	@echo "  make coverage-frontend   Generate Godot frontend coverage (pass rate proxy)"
+	@echo "  make coverage-html       Open HTML coverage report in browser"
 	@echo ""
 	@echo "$(GREEN)Build Performance$(RESET)"
 	@echo "  make build-perf-track   View build performance metrics"
@@ -583,3 +588,24 @@ test-property-combat:
 test-property-rng:
 	@echo "$(BLUE)Running RNG property tests...$(RESET)"
 	cd $(BACKEND_DIR) && go test -v -run "Property" ./internal/rng/
+
+## Coverage Reporting
+coverage-frontend:
+	@echo "$(BLUE)Running Godot tests for coverage...$(RESET)"
+	@echo "Note: Godot lacks line coverage tooling, using test pass rate as proxy"
+	./godot4 --headless --script test/run_all_tests.gd
+	@python3 scripts/calculate_godot_coverage.py test/results/gut-results.xml
+
+coverage-backend:
+	@echo "$(BLUE)Generating Go coverage report...$(RESET)"
+	cd $(BACKEND_DIR) && bash scripts/generate-coverage-report.sh
+
+coverage: coverage-backend coverage-frontend
+	@echo ""
+	@echo "$(GREEN)✓ Coverage reports generated$(RESET)"
+	@echo "  - Backend HTML: backend/coverage/html/index.html"
+	@echo "  - Frontend: Test pass rate (Godot limitation)"
+
+coverage-html:
+	@echo "$(BLUE)Opening coverage HTML report...$(RESET)"
+	@xdg-open backend/coverage/html/index.html 2>/dev/null || open backend/coverage/html/index.html 2>/dev/null || echo "Open backend/coverage/html/index.html manually"
