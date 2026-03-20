@@ -89,11 +89,12 @@ func AssertNoError(t TestingT, err error, message string) {
 	}
 }
 
-// TestingT is a minimal interface compatible with testing.T.
+// TestingT is a minimal interface compatible with testing.T and testify.
 type TestingT interface {
 	Helper()
 	Errorf(format string, args ...interface{})
 	Fatalf(format string, args ...interface{})
+	FailNow()
 }
 
 // MockTimer provides a mock timer for testing.
