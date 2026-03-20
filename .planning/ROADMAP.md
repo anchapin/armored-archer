@@ -293,12 +293,12 @@
 12. RNG systems have property-based tests to validate statistical properties
 13. Property-based tests run in CI alongside unit tests with clear reporting
 
-**Plans:** 3/2 plans complete
+**Plans:** 3/4 plans complete
 
 **Plan List:**
-- [ ] 06-01-PLAN.md — Coverage Measurement & CI Enforcement (COV-01, COV-02, COV-03, COV-04)
-- [ ] 06-02-PLAN.md — Flaky Test Detection & Quarantine (FLK-01, FLK-02, FLK-03, FLK-04)
-- [ ] 06-03-PLAN.md — Visual Regression Testing (VIS-01, VIS-02, VIS-03)
+- [x] 06-01-PLAN.md — Coverage Measurement & CI Enforcement (COV-01, COV-02, COV-03, COV-04)
+- [x] 06-02-PLAN.md — Flaky Test Detection & Quarantine (FLK-01, FLK-02, FLK-03, FLK-04)
+- [x] 06-03-PLAN.md — Visual Regression Testing (VIS-01, VIS-02, VIS-03)
 - [ ] 06-04-PLAN.md — Property-Based Testing (PBT-01, PBT-02, PBT-03)
 
 **Wave Structure:**
