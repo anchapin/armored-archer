@@ -111,6 +111,10 @@ mid_range_memory_threshold=512
 
 3d/physics_engine="Jolt Physics"
 
+[plugin]
+
+Gut/settings/config_file="res://.gutconfig.json"
+
 [rendering]
 
 rendering_device/driver.windows="d3d12"
