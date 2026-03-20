@@ -19,11 +19,11 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 
 ### Test Isolation & Fixtures (ISO)
 
-- [ ] **ISO-01**: Database tests use testcontainers-go for isolated PostgreSQL instances
+- [x] **ISO-01**: Database tests use testcontainers-go for isolated PostgreSQL instances
 - [x] **ISO-02**: Test fixtures use factory pattern for consistent test data generation
-- [ ] **ISO-03**: Test data cleanup runs automatically after each test suite
+- [x] **ISO-03**: Test data cleanup runs automatically after each test suite
 - [ ] **ISO-04**: Godot autoload tests use fresh instances per test to prevent state leakage
-- [ ] **ISO-05**: Integration tests have proper setup/teardown lifecycle management
+- [x] **ISO-05**: Integration tests have proper setup/teardown lifecycle management
 
 ### Coverage & Quality Gates (COV)
 
@@ -115,11 +115,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FND-04 | Phase 1 | Pending |
 | FND-05 | Phase 1 | Pending |
 | FND-06 | Phase 1 | Pending |
-| ISO-01 | Phase 2 | Pending |
+| ISO-01 | Phase 2 | Complete |
 | ISO-02 | Phase 2 | Complete |
-| ISO-03 | Phase 2 | Pending |
+| ISO-03 | Phase 2 | Complete |
 | ISO-04 | Phase 3 | Pending |
-| ISO-05 | Phase 2 | Pending |
+| ISO-05 | Phase 2 | Complete |
 | COV-01 | Phase 5 | Pending |
 | COV-02 | Phase 5 | Pending |
 | COV-03 | Phase 5 | Pending |
