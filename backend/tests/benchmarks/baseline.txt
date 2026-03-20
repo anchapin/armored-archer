@@ -1,0 +1,33 @@
+# Armored Archer Backend RPC Performance Baseline
+# Generated: 2026-03-20 15:37:19 UTC
+# Go Version: go1.25.0
+# Commit: d3afa6f9370234ef56a8156d885331aa6819d731
+# Machine: x86_64 Linux
+#
+# This file contains baseline performance metrics for RPC handlers.
+# Use this file to detect performance regressions by comparing future runs.
+#
+# Format: BenchmarkName-CPUs ns/op B/op allocs/op
+#
+# Metrics:
+# - ns/op: nanoseconds per operation (lower is better)
+# - B/op: bytes allocated per operation (lower is better)
+# - allocs/op: number of allocations per operation (lower is better)
+#
+# To compare against this baseline:
+#   go test -bench=. -benchmem ./internal/rpc/... > current.txt
+#   benchstat baseline.txt current.txt
+#
+goos: linux
+goarch: amd64
+pkg: github.com/anchapin/armored-archer/backend/internal/rpc
+cpu: AMD Ryzen 5 5600G with Radeon Graphics         
+BenchmarkSubmitFeedback-12                 	    3668	    315270 ns/op	    4144 B/op	      76 allocs/op
+BenchmarkGetFeedbackStatistics-12          	 1044912	      1074 ns/op	     720 B/op	      12 allocs/op
+BenchmarkGetFeedbackStatisticsCached-12    	  995385	      1063 ns/op	     720 B/op	      12 allocs/op
+BenchmarkGetPlayerStats-12                 	 1071470	      1662 ns/op	     624 B/op	      12 allocs/op
+BenchmarkGetLeaderboard-12                 	    1316	    855974 ns/op	  110555 B/op	    2481 allocs/op
+BenchmarkGetInventory-12                   	 1164171	       937.8 ns/op	     624 B/op	      12 allocs/op
+BenchmarkGetPlayerStatsParallel-12         	 4061952	       271.2 ns/op	     624 B/op	      12 allocs/op
+PASS
+ok  	github.com/anchapin/armored-archer/backend/internal/rpc	114.361s

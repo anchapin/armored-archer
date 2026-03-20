@@ -9,6 +9,7 @@ import (
 
 	"github.com/anchapin/armored-archer/backend/internal/cache"
 	"github.com/anchapin/armored-archer/backend/internal/feedback"
+	"github.com/anchapin/armored-archer/backend/internal/utils"
 	"github.com/anchapin/armored-archer/backend/tests/testhelpers"
 )
 
@@ -53,7 +54,10 @@ func BenchmarkSubmitFeedback(b *testing.B) {
 	// Initialize global cache for cache invalidation testing
 	globalCache := cache.GetGlobalCache()
 	if globalCache == nil {
-		b.Skip("Cache not initialized - skipping cache invalidation test")
+		// Create cache for benchmark if not already initialized
+		logger := &mockLogger{}
+		globalCache = utils.NewCacheManager(logger)
+		cache.SetTestCache(globalCache)
 	}
 
 	// Prepare payload
@@ -267,7 +271,10 @@ func BenchmarkGetFeedbackStatisticsCached(b *testing.B) {
 	// Initialize cache and populate it with first call
 	globalCache := cache.GetGlobalCache()
 	if globalCache == nil {
-		b.Skip("Cache not initialized - skipping cached benchmark")
+		// Create cache for benchmark if not already initialized
+		logger := &mockLogger{}
+		globalCache = utils.NewCacheManager(logger)
+		cache.SetTestCache(globalCache)
 	}
 
 	payload := `{"days": 30}`
