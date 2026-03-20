@@ -37,12 +37,13 @@ Quality and reliability are foundational — every feature must be tested, every
 - ✓ **Load Testing** — v2.3.0 — Phase 04 — Go RPC benchmarks, Godot 60 FPS tests, k6 load tests (100+ concurrent users), CI regression detection with benchstat
 - ✓ **Performance Optimization** — v2.3.0 — Phase 05 — Redis caching (5 named caches), database query optimization (22 indexes), connection pool tuning, LRU cache eviction, Prometheus metrics for cache/latency/error rate
 - ✓ **Coverage, Reporting & Quality Gates** — v2.3.0 — Phase 06 — Go coverage reporting (17%), Godot coverage proxy (pass rate), CI thresholds (60%/80%), flaky test detection (3x retry), visual regression tests (8 UI components), property-based tests (13 tests), automated quality gates
+- ✓ **Test Infrastructure Integration** — v2.3.0 — Phase 07 — Benchmarks use factory functions (15 lines raw SQL removed), load tests use testcontainers for automated Nakama provisioning, fail-fast NAKAMA_URL validation
 
 ### Active
 
 *Current scope. Building toward these.*
 
-- [ ] **Test Infrastructure Integration** — v2.3.0 — Phase 07 — Cross-phase integration fixes between benchmarks and fixtures
+*All v2.3.0 requirements complete. Ready for next milestone.*
 
 ### Out of Scope
 
@@ -100,4 +101,4 @@ Quality and reliability are foundational — every feature must be tested, every
 | Automated quality gates | Ship with confidence | — Pending |
 
 ---
-*Last updated: 2026-03-20 after Phase 05 (Complete Test Infrastructure Foundation) completion*
+*Last updated: 2026-03-20 after Phase 07 (Test Infrastructure Integration) completion — v2.3.0 milestone complete*
