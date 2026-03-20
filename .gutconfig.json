@@ -2,9 +2,23 @@
   "config_version": 2,
   "directories": {
     "test": [
-      "res://test/suites"
+      "res://test/suites/player",
+      "res://test/suites/combat",
+      "res://test/suites/gear",
+      "res://test/suites/network",
+      "res://test/suites/campaign",
+      "res://test/suites/season",
+      "res://test/suites/store",
+      "res://test/suites/transmog",
+      "res://test/suites/gem",
+      "res://test/suites/safe_area",
+      "res://test/suites/auto_aim",
+      "res://test/suites/ui",
+      "res://test/suites/object_pool",
+      "res://test/suites/performance",
+      "res://test/suites/analytics"
     ],
-    "include_subdirectories": true
+    "include_subdirectories": false
   },
   "disable_colors": false,
   "double_strategy": "INCLUDE_INTERNAL",
