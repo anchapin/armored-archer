@@ -9,7 +9,9 @@ const leaderboardLatency = new Trend('get_leaderboard_latency');
 const feedbackLatency = new Trend('submit_feedback_latency');
 
 // Nakama configuration
-const BASE_URL = __ENV.NAKAMA_URL || 'http://localhost:7350';
+const BASE_URL = __ENV.NAKAMA_URL || (() => {
+    throw new Error('NAKAMA_URL environment variable is required. Set it via: --env NAKAMA_URL=http://host:port');
+})();
 
 // Stages configuration - 5 stages for gradual ramp-up and sustained load
 export const options = {
