@@ -3,6 +3,7 @@
 package testhelpers
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -19,6 +20,54 @@ type TestPlayer struct {
 	CreatedAt time.Time
 }
 
+// toJSON serializes the player to a JSON string.
+func (p *TestPlayer) toJSON() string {
+	bytes, err := json.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	return string(bytes)
+}
+
+// fromJSON deserializes a JSON string into the player.
+func (p *TestPlayer) fromJSON(jsonStr string) error {
+	return json.Unmarshal([]byte(jsonStr), p)
+}
+
+// MarshalJSON implements json.Marshaler interface for TestPlayer.
+func (p TestPlayer) MarshalJSON() ([]byte, error) {
+	type Alias TestPlayer
+	return json.Marshal(&struct {
+		*Alias
+		CreatedAt string `json:"created_at"`
+	}{
+		Alias:     (*Alias)(&p),
+		CreatedAt: p.CreatedAt.Format(time.RFC3339),
+	})
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface for TestPlayer.
+func (p *TestPlayer) UnmarshalJSON(data []byte) error {
+	type Alias TestPlayer
+	aux := &struct {
+		*Alias
+		CreatedAt string `json:"created_at"`
+	}{
+		Alias: (*Alias)(p),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	if aux.CreatedAt != "" {
+		t, err := time.Parse(time.RFC3339, aux.CreatedAt)
+		if err != nil {
+			return err
+		}
+		p.CreatedAt = t
+	}
+	return nil
+}
+
 // TestGear represents a test gear item.
 type TestGear struct {
 	ID          string
@@ -31,6 +80,44 @@ type TestGear struct {
 	DisplayName string
 }
 
+// toJSON serializes the gear to a JSON string.
+func (g *TestGear) toJSON() string {
+	bytes, err := json.Marshal(g)
+	if err != nil {
+		panic(err)
+	}
+	return string(bytes)
+}
+
+// fromJSON deserializes a JSON string into the gear.
+func (g *TestGear) fromJSON(jsonStr string) error {
+	return json.Unmarshal([]byte(jsonStr), g)
+}
+
+// MarshalJSON implements json.Marshaler interface for TestGear.
+func (g TestGear) MarshalJSON() ([]byte, error) {
+	type Alias TestGear
+	return json.Marshal(&struct {
+		*Alias
+	}{
+		Alias: (*Alias)(&g),
+	})
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface for TestGear.
+func (g *TestGear) UnmarshalJSON(data []byte) error {
+	type Alias TestGear
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(g),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	return nil
+}
+
 // TestMatch represents a test match state.
 type TestMatch struct {
 	MatchID        string
@@ -41,6 +128,54 @@ type TestMatch struct {
 	OpponentHealth int
 	Turn           int
 	CreatedAt      time.Time
+}
+
+// toJSON serializes the match to a JSON string.
+func (m *TestMatch) toJSON() string {
+	bytes, err := json.Marshal(m)
+	if err != nil {
+		panic(err)
+	}
+	return string(bytes)
+}
+
+// fromJSON deserializes a JSON string into the match.
+func (m *TestMatch) fromJSON(jsonStr string) error {
+	return json.Unmarshal([]byte(jsonStr), m)
+}
+
+// MarshalJSON implements json.Marshaler interface for TestMatch.
+func (m TestMatch) MarshalJSON() ([]byte, error) {
+	type Alias TestMatch
+	return json.Marshal(&struct {
+		*Alias
+		CreatedAt string `json:"created_at"`
+	}{
+		Alias:     (*Alias)(&m),
+		CreatedAt: m.CreatedAt.Format(time.RFC3339),
+	})
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface for TestMatch.
+func (m *TestMatch) UnmarshalJSON(data []byte) error {
+	type Alias TestMatch
+	aux := &struct {
+		*Alias
+		CreatedAt string `json:"created_at"`
+	}{
+		Alias: (*Alias)(m),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	if aux.CreatedAt != "" {
+		t, err := time.Parse(time.RFC3339, aux.CreatedAt)
+		if err != nil {
+			return err
+		}
+		m.CreatedAt = t
+	}
+	return nil
 }
 
 // NewTestPlayer creates a new test player with sensible defaults.
@@ -227,24 +362,5 @@ func NewTestMatchWithStatus(status string) *TestMatch {
 	}
 }
 
-// SetupTestDB is a placeholder for future database test setup.
-// In Phase 2, this will use testcontainers-go to spawn isolated PostgreSQL instances.
-//
-// Example:
-//
-//	db := testhelpers.SetupTestDB()
-//	defer testhelpers.TeardownTestDB(db)
-func SetupTestDB() interface{} {
-	// Phase 2: Implement testcontainers-go PostgreSQL setup
-	return nil
-}
-
-// TeardownTestDB is a placeholder for future database test cleanup.
-// In Phase 2, this will handle cleanup of testcontainers PostgreSQL instances.
-//
-// Example:
-//
-//	defer testhelpers.TeardownTestDB(db)
-func TeardownTestDB(db interface{}) {
-	// Phase 2: Implement testcontainers-go cleanup
-}
+// SetupTestDB and TeardownTestDB are now implemented in db_testcontainers.go
+// using testcontainers-go for isolated PostgreSQL instances.
