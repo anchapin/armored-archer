@@ -4,7 +4,9 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anchapin/armored-archer/backend/internal/config"
@@ -200,4 +202,135 @@ func (w *DBWrapper) Close() error {
 		return w.db.Close()
 	}
 	return nil
+}
+
+// QueryPerformanceResult holds EXPLAIN ANALYZE results.
+type QueryPerformanceResult struct {
+	ExecutionTime  float64               // milliseconds
+	PlanningTime   float64               // milliseconds
+	Plan           map[string]interface{} // EXPLAIN output
+	UsesIndex      bool
+	MissingIndexes []string
+}
+
+// ValidateQueryPerformance runs EXPLAIN ANALYZE and validates performance.
+func (w *DBWrapper) ValidateQueryPerformance(ctx context.Context, query string, args ...interface{}) (*QueryPerformanceResult, error) {
+	explainQuery := fmt.Sprintf("EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) %s", query)
+
+	var resultJSON []byte
+	err := w.db.QueryRowContext(ctx, explainQuery, args...).Scan(&resultJSON)
+	if err != nil {
+		return nil, fmt.Errorf("EXPLAIN ANALYZE failed: %w", err)
+	}
+
+	var plan []map[string]interface{}
+	if err := json.Unmarshal(resultJSON, &plan); err != nil {
+		return nil, fmt.Errorf("failed to parse EXPLAIN output: %w", err)
+	}
+
+	result := &QueryPerformanceResult{
+		Plan: plan[0],
+	}
+
+	// Extract execution time from plan
+	if executionTime, ok := plan[0]["Execution Time"].(float64); ok {
+		result.ExecutionTime = executionTime
+	}
+
+	if planningTime, ok := plan[0]["Planning Time"].(float64); ok {
+		result.PlanningTime = planningTime
+	}
+
+	// Check if index is used
+	result.UsesIndex = w.checkIndexUsage(plan)
+
+	// Identify potential missing indexes
+	result.MissingIndexes = w.identifyMissingIndexes(plan)
+
+	return result, nil
+}
+
+// checkIndexUsage recursively checks if any node uses an index.
+func (w *DBWrapper) checkIndexUsage(plan []map[string]interface{}) bool {
+	for _, node := range plan {
+		if scanType, ok := node["Node Type"].(string); ok {
+			if strings.Contains(scanType, "Index") || strings.Contains(scanType, "Index Scan") || strings.Contains(scanType, "Index Only Scan") {
+				return true
+			}
+		}
+		if children, ok := node["Plans"].([]map[string]interface{}); ok {
+			// Convert to slice of map[string]interface{} for recursion
+			childPlans := make([]map[string]interface{}, len(children))
+			for i, child := range children {
+				childPlans[i] = child
+			}
+			if w.checkIndexUsage(childPlans) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// identifyMissingIndexes suggests indexes for Seq Scan nodes.
+func (w *DBWrapper) identifyMissingIndexes(plan []map[string]interface{}) []string {
+	var suggestions []string
+
+	for _, node := range plan {
+		if relationName, ok := node["Relation Name"].(string); ok {
+			if scanType, ok := node["Node Type"].(string); ok && scanType == "Seq Scan" {
+				// Check if this is a large table scan
+				if actualRows, ok := node["Actual Rows"].(float64); ok && actualRows > 1000 {
+					suggestions = append(suggestions, fmt.Sprintf("Consider adding index on %s", relationName))
+				}
+			}
+		}
+
+		if condition, ok := node["Filter"].(string); ok {
+			// Extract column name from filter condition
+			// This is simplified - real implementation would parse SQL
+			if strings.Contains(condition, "WHERE") {
+				suggestions = append(suggestions, fmt.Sprintf("Filter: %s", condition))
+			}
+		}
+
+		// Recurse into child plans
+		if children, ok := node["Plans"].([]map[string]interface{}); ok {
+			childPlans := make([]map[string]interface{}, len(children))
+			for i, child := range children {
+				childPlans[i] = child
+			}
+			suggestions = append(suggestions, w.identifyMissingIndexes(childPlans)...)
+		}
+	}
+
+	return suggestions
+}
+
+// LogQueryPerformance validates and logs query performance with warnings.
+func (w *DBWrapper) LogQueryPerformance(ctx context.Context, query string, args ...interface{}) {
+	result, err := w.ValidateQueryPerformance(ctx, query, args...)
+	if err != nil {
+		w.logger.Warn("Failed to validate query performance: %v", err)
+		return
+	}
+
+	// Log performance metrics
+	w.logger.Debug("Query performance: %.2fms execution, %.2fms planning",
+		result.ExecutionTime, result.PlanningTime)
+
+	// Warn if exceeds P95 target
+	if result.ExecutionTime > 50 {
+		w.logger.Warn("Query exceeds P95 target (%.2fms > 50ms)", result.ExecutionTime)
+	}
+
+	// Warn if not using index
+	if !result.UsesIndex {
+		w.logger.Warn("Query not using index - consider adding index for better performance")
+	}
+
+	// Log missing index suggestions
+	for _, suggestion := range result.MissingIndexes {
+		w.logger.Info("Index suggestion: %s", suggestion)
+	}
 }
