@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema backend-load-test clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci generate-mocks
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema backend-load-test clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci generate-mocks beta-start beta-stop beta-restart beta-status beta-health beta-logs beta-validate beta-clean beta-migrate
 
 # Default target
 all: help
@@ -90,9 +90,21 @@ help:
 	@echo "  make agents-md-check     Validate AGENTS.md format and structure"
 	@echo "  make agents-md-check-ci Validate AGENTS.md in CI mode"
 	@echo ""
+	@echo "$(GREEN)Beta Environment$(RESET)"
+	@echo "  make beta-start         Start beta environment (Nakama + PostgreSQL + monitoring)"
+	@echo "  make beta-stop          Stop beta environment"
+	@echo "  make beta-restart       Restart beta environment"
+	@echo "  make beta-status        Show beta service status"
+	@echo "  make beta-health        Check beta service health"
+	@echo "  make beta-logs          View beta service logs"
+	@echo "  make beta-validate      Validate beta environment setup"
+	@echo "  make beta-clean         Stop and remove beta services + volumes"
+	@echo "  make beta-migrate       Run database migrations on beta"
+	@echo ""
 	@echo "$(GREEN)Notes$(RESET)"
 	@echo "  - Godot: Open project in Godot 4.x Editor and press F5 to run"
 	@echo "  - Nakama Console: http://localhost:7351 (admin:password)"
+	@echo "  - Beta Console: http://localhost:7351 (admin:beta_admin_secure_password)"
 	@echo ""
 
 setup: backend-install
@@ -426,3 +438,83 @@ agents-md-check:
 agents-md-check-ci:
 	@echo "$(BLUE)Running AGENTS.md validation (CI mode)...$(RESET)"
 	cd $(BACKEND_DIR) && npm run validate:agents-md:ci
+
+## Beta Environment Management
+beta-start:
+	@echo "$(BLUE)Starting beta environment...$(RESET)"
+	cd $(BACKEND_DIR) && docker-compose -f docker-compose.beta.yml up -d
+	@echo "$(GREEN)✓ Beta environment started$(RESET)"
+	@echo "  - Nakama API:     http://localhost:7350"
+	@echo "  - Nakama Console: http://localhost:7351 (admin:beta_admin_secure_password)"
+	@echo "  - Prometheus:     http://localhost:9090"
+	@echo "  - Grafana:        http://localhost:3000 (admin:admin_beta_change_me)"
+	@echo ""
+	@echo "Run 'make beta-health' to verify services are healthy."
+
+beta-stop:
+	@echo "$(BLUE)Stopping beta environment...$(RESET)"
+	cd $(BACKEND_DIR) && docker-compose -f docker-compose.beta.yml down
+	@echo "$(GREEN)✓ Beta environment stopped$(RESET)"
+
+beta-restart:
+	@echo "$(BLUE)Restarting beta environment...$(RESET)"
+	cd $(BACKEND_DIR) && docker-compose -f docker-compose.beta.yml restart
+	@echo "$(GREEN)✓ Beta environment restarted$(RESET)"
+
+beta-status:
+	@echo "$(BLUE)Beta Environment Status:$(RESET)"
+	cd $(BACKEND_DIR) && docker-compose -f docker-compose.beta.yml ps
+
+beta-health:
+	@echo "$(BLUE)Running beta health checks...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Container Status:$(RESET)"
+	@docker ps --filter "name=beta" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null || true
+	@echo ""
+	@echo -n "$(BLUE)Checking Nakama API: $(RESET)"
+	@curl -s --max-time 5 http://localhost:7350/ > /dev/null 2>&1 && echo "$(GREEN)Healthy$(RESET)" || echo "$(YELLOW)Not responding$(RESET)"
+	@echo -n "$(BLUE)Checking PostgreSQL: $(RESET)"
+	@docker exec armored_archer_beta_db pg_isready -U postgres > /dev/null 2>&1 && echo "$(GREEN)Healthy$(RESET)" || echo "$(YELLOW)Not responding$(RESET)"
+	@echo -n "$(BLUE)Checking Redis: $(RESET)"
+	@docker exec armored_archer_beta_redis redis-cli ping > /dev/null 2>&1 && echo "$(GREEN)Healthy$(RESET)" || echo "$(YELLOW)Not responding$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Checking Beta Endpoints:$(RESET)"
+	@echo -n "  - Beta API URL: "
+	@curl -s --max-time 5 http://localhost:7350/ > /dev/null 2>&1 && echo "$(GREEN)Accessible$(RESET)" || echo "$(YELLOW)Not accessible$(RESET)"
+	@echo -n "  - Beta Console: "
+	@curl -s --max-time 5 http://localhost:7351/ > /dev/null 2>&1 && echo "$(GREEN)Accessible$(RESET)" || echo "$(YELLOW)Not accessible$(RESET)"
+
+beta-logs:
+	@echo "$(BLUE)Viewing beta logs (Ctrl+C to exit)...$(RESET)"
+	cd $(BACKEND_DIR) && docker-compose -f docker-compose.beta.yml logs -f
+
+beta-validate:
+	@echo "$(BLUE)Validating beta environment setup...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Checking prerequisites...$(RESET)"
+	@command -v docker >/dev/null 2>&1 && echo "$(GREEN)✓ Docker installed$(RESET)" || echo "$(YELLOW)✗ Docker not found$(RESET)"
+	@command -v docker-compose >/dev/null 2>&1 && echo "$(GREEN)✓ Docker Compose installed$(RESET)" || echo "$(YELLOW)✗ Docker Compose not found$(RESET)"
+	@docker ps >/dev/null 2>&1 && echo "$(GREEN)✓ Docker daemon running$(RESET)" || echo "$(YELLOW)✗ Docker daemon not running$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Checking beta environment file...$(RESET)"
+	@if [ -f $(BACKEND_DIR)/.env.beta ]; then \
+		echo "$(GREEN)✓ .env.beta file exists$(RESET)"; \
+	else \
+		echo "$(YELLOW)✗ .env.beta file not found - run: cp $(BACKEND_DIR)/.env.beta.example $(BACKEND_DIR)/.env.beta$(RESET)"; \
+	fi
+	@echo ""
+	@echo "$(BLUE)Checking beta docker-compose file...$(RESET)"
+	@if [ -f $(BACKEND_DIR)/docker-compose.beta.yml ]; then \
+		echo "$(GREEN)✓ docker-compose.beta.yml exists$(RESET)"; \
+	else \
+		echo "$(YELLOW)✗ docker-compose.beta.yml not found$(RESET)"; \
+	fi
+
+beta-clean:
+	@echo "$(BLUE)Stopping and removing beta environment...$(RESET)"
+	cd $(BACKEND_DIR) && docker-compose -f docker-compose.beta.yml down -v
+	@echo "$(GREEN)✓ Beta environment and volumes removed$(RESET)"
+
+beta-migrate:
+	@echo "$(BLUE)Running database migrations on beta...$(RESET)"
+	@docker exec armored_archer_beta nakama migrate up --database.address postgres://postgres:beta_db_secure_password_change_me@postgres:5432/nakama_beta || echo "$(YELLOW)Make sure beta environment is running: make beta-start$(RESET)"
