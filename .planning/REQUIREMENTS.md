@@ -45,7 +45,7 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 
 - [x] **PERF-01**: Backend has Go benchmarks for critical RPC endpoints
 - [x] **PERF-02**: Frontend has performance tests for 60 FPS target validation
-- [ ] **PERF-03**: Load tests validate backend can handle 100+ concurrent players
+- [x] **PERF-03**: Load tests validate backend can handle 100+ concurrent players
 - [ ] **PERF-04**: Load test scripts use k6 for realistic traffic simulation
 - [x] **PERF-05**: Performance baselines are established and regressions are detected
 
@@ -133,7 +133,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FLK-04 | Phase 6 | Complete |
 | PERF-01 | Phase 4 | Complete |
 | PERF-02 | Phase 4 | Complete |
-| PERF-03 | Phase 4 | Pending |
+| PERF-03 | Phase 4 | Complete |
 | PERF-04 | Phase 4 | Pending |
 | PERF-05 | Phase 4 | Complete |
 | VIS-01 | Phase 6 | Complete |
