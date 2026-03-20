@@ -40,10 +40,16 @@ Quality and reliability are foundational — every feature must be tested, every
 
 *Current scope. Building toward these.*
 
-- [ ] **Test Coverage** — Comprehensive unit, integration, and E2E tests for backend and frontend
-- [ ] **CI/CD Quality Gates** — Automated testing in pipeline with coverage thresholds
-- [ ] **QA Workflow** — Bug tracking, automated verification, regression testing
-- [ ] **Test Reporting** — Coverage reports, test metrics, quality dashboards
+- [ ] **Beta Readiness** — Beta deployment, production monitoring, user support workflows, documentation
+
+### Out of Scope
+
+*Explicit boundaries. Includes reasoning to prevent re-adding.*
+
+- **New gameplay features** — This milestone focuses on infrastructure, not content
+- **Backend rewrites** — Building tests for existing Go backend, not refactoring
+- **Database migrations** — No schema changes, only testing existing data layer
+- **Client engine changes** — Testing Godot systems, not replacing them
 
 ### Out of Scope
 
@@ -92,4 +98,4 @@ Quality and reliability are foundational — every feature must be tested, every
 | Automated quality gates | Ship with confidence | — Pending |
 
 ---
-*Last updated: 2026-03-20 after Phase 05 (Performance Optimization) completion*
+*Last updated: 2026-03-20 after Phase 05 (Complete Test Infrastructure Foundation) completion*
