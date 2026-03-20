@@ -93,6 +93,12 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 
 	logger.Info("Cache manager initialized with optimized settings")
 
+	// Register cache metrics with Prometheus
+	prometheus.MustRegister(globalCache.CacheHits())
+	prometheus.MustRegister(globalCache.CacheMisses())
+	prometheus.MustRegister(globalCache.CacheHitRate())
+	logger.Info("Cache metrics registered with Prometheus")
+
 	// Register Prometheus metrics
 	prometheus.MustRegister(rpcLatency)
 	prometheus.MustRegister(rpcErrors)

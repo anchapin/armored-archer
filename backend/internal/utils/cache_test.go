@@ -231,7 +231,7 @@ func TestCacheHitsMissesCounted(t *testing.T) {
 
 	// Another hit
 	val, ok = cache.Get("key2")
-	require(t, ok, "key2 should exist")
+	require.True(t, ok, "key2 should exist")
 	assert.Equal(t, "value2", val, "key2 should have correct value")
 
 	// Update metrics to calculate hit rate
@@ -290,11 +290,11 @@ func TestCacheHitRateCalculated(t *testing.T) {
 	cacheManager.UpdateMetrics()
 
 	// Verify hit rate is 0.75 (3 hits / 4 total)
-	stats := cache.Stats()
-	total := stats.Hits + stats.Misses
+	hits, misses, _, _ := cache.Stats()
+	total := hits + misses
 	assert.Equal(t, int64(4), total, "Total operations should be 4")
-	assert.Equal(t, int64(3), stats.Hits, "Hits should be 3")
-	assert.Equal(t, int64(1), stats.Misses, "Misses should be 1")
+	assert.Equal(t, int64(3), hits, "Hits should be 3")
+	assert.Equal(t, int64(1), misses, "Misses should be 1")
 
 	// Create metrics handler and server
 	handler := promhttp.HandlerFor(testRegistry, promhttp.HandlerOpts{})
@@ -372,10 +372,13 @@ func (m *mockLogger) Debug(format string, v ...interface{}) {}
 func (m *mockLogger) Info(format string, v ...interface{})  {}
 func (m *mockLogger) Warn(format string, v ...interface{})  {}
 func (m *mockLogger) Error(format string, v ...interface{}) {}
-func (m *mockLogger) Fields(fields map[string]interface{}) runtime.Logger {
+func (m *mockLogger) WithFields(fields map[string]interface{}) runtime.Logger {
 	return m
 }
 func (m *mockLogger) WithField(name string, value interface{}) runtime.Logger {
 	return m
+}
+func (m *mockLogger) Fields() map[string]interface{} {
+	return nil
 }
 
