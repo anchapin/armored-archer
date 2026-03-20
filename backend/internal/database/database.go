@@ -12,12 +12,25 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// Database defines the interface for database operations.
+// This interface enables mocking for unit tests.
+type Database interface {
+	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+	Close() error
+}
+
 // DBWrapper provides a wrapped database connection with tracing and metrics.
 type DBWrapper struct {
 	db     *sql.DB
 	config *config.DatabaseConfig
 	logger runtime.Logger
 }
+
+// Ensure DBWrapper implements Database interface
+var _ Database = (*DBWrapper)(nil)
 
 // NewDBWrapper creates a new database wrapper with the provided connection.
 func NewDBWrapper(db *sql.DB, cfg *config.DatabaseConfig, logger runtime.Logger) *DBWrapper {
@@ -31,6 +44,26 @@ func NewDBWrapper(db *sql.DB, cfg *config.DatabaseConfig, logger runtime.Logger)
 // GetDB returns the underlying database connection.
 func (w *DBWrapper) GetDB() *sql.DB {
 	return w.db
+}
+
+// QueryContext executes a query that returns rows.
+func (w *DBWrapper) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	return w.db.QueryContext(ctx, query, args...)
+}
+
+// QueryRowContext executes a query that returns a single row.
+func (w *DBWrapper) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	return w.db.QueryRowContext(ctx, query, args...)
+}
+
+// ExecContext executes a query that doesn't return rows.
+func (w *DBWrapper) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	return w.db.ExecContext(ctx, query, args...)
+}
+
+// BeginTx begins a transaction.
+func (w *DBWrapper) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	return w.db.BeginTx(ctx, opts)
 }
 
 // ConnectDatabase establishes a connection to the PostgreSQL database.
