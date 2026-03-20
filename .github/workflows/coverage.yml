@@ -1,0 +1,21 @@
+# Coverage & Quality Gates
+# Implemented in: 06-01-PLAN.md Task 3
+name: Coverage & Quality Gates
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+jobs:
+  backend-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Coverage stub
+        run: echo "Coverage workflow stub: implemented in 06-01-PLAN.md"
+  godot-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Coverage stub
+        run: echo "Godot coverage workflow stub: implemented in 06-01-PLAN.md"

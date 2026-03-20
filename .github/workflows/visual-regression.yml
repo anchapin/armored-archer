@@ -1,0 +1,23 @@
+# Visual Regression Tests
+# Implemented in: 06-03-PLAN.md Task 4
+name: Visual Regression Tests
+on:
+  pull_request:
+    paths:
+      - 'scenes/ui/**'
+      - 'autoloads/design_tokens.gd'
+  push:
+    branches: [main, develop]
+jobs:
+  visual-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Visual regression stub
+        run: echo "Visual regression workflow stub: implemented in 06-03-PLAN.md"
+  theme-consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Theme consistency stub
+        run: echo "Theme consistency workflow stub: implemented in 06-03-PLAN.md"
