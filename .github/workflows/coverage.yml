@@ -62,6 +62,10 @@ jobs:
           path: backend/coverage/html/
           retention-days: 30
 
+      - name: Track coverage history
+        run: |
+          bash scripts/track-coverage-history.sh
+
   godot-coverage:
     name: Frontend Coverage (Godot)
     runs-on: ubuntu-latest
