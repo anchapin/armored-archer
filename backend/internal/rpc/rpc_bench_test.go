@@ -197,22 +197,29 @@ func BenchmarkGetLeaderboard(b *testing.B) {
 		b.Fatalf("Failed to create player_stats table: %v", err)
 	}
 
-	// Insert 100 test players with varying XP
+	// Insert 100 test players with varying XP using factory functions
 	for i := 1; i <= 100; i++ {
-		userID := fmt.Sprintf("user-%d", i)
+		player := testhelpers.NewPlayerBuilder().
+			WithID(fmt.Sprintf("user-%d", i)).
+			WithLevel(i).  // Creates realistic leaderboard distribution (levels 1-100)
+			WithXP(i * 1000).
+			Build()
+
 		username := fmt.Sprintf("Player%d", i)
 
+		// Insert user
 		_, err = tdb.DB.Exec(`
 			INSERT INTO users (id, username) VALUES ($1, $2)
-		`, userID, username)
+		`, player.UserID, username)
 		if err != nil {
 			b.Fatalf("Failed to insert user: %v", err)
 		}
 
+		// Insert player stats using factory-produced data
 		_, err = tdb.DB.Exec(`
 			INSERT INTO player_stats (user_id, level, experience, ability_points, stats)
 			VALUES ($1, $2, $3, $4, $5)
-		`, userID, i, int64(i*1000), i*5, `{}`)
+		`, player.UserID, player.Level, player.XP, i*5, `{}`)
 		if err != nil {
 			b.Fatalf("Failed to insert player stats: %v", err)
 		}
