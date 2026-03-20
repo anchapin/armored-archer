@@ -31,6 +31,7 @@ Quality and reliability are foundational — every feature must be tested, every
 - ✓ **Core Gameplay** — v1.x — Combat, matchmaking, gear, progression, seasons
 - ✓ **Alpha Launch** — v2.1.0 — Monitoring, observability, user onboarding
 - ✓ **Load Testing** — v2.3.0 — Phase 04 — Go RPC benchmarks, Godot 60 FPS tests, k6 load tests (100+ concurrent users), CI regression detection with benchstat
+- ✓ **Performance Optimization** — v2.3.0 — Phase 05 — Redis caching (5 named caches), database query optimization (22 indexes), connection pool tuning, LRU cache eviction, Prometheus metrics for cache/latency/error rate
 
 ### Active
 
@@ -40,7 +41,6 @@ Quality and reliability are foundational — every feature must be tested, every
 - [ ] **CI/CD Quality Gates** — Automated testing in pipeline with coverage thresholds
 - [ ] **QA Workflow** — Bug tracking, automated verification, regression testing
 - [ ] **Test Reporting** — Coverage reports, test metrics, quality dashboards
-- [ ] **Performance Optimization** — Database query optimization, caching strategies, resource cleanup
 
 ### Out of Scope
 
@@ -89,4 +89,4 @@ Quality and reliability are foundational — every feature must be tested, every
 | Automated quality gates | Ship with confidence | — Pending |
 
 ---
-*Last updated: 2026-03-20 after Phase 04 (Load Testing Infrastructure) completion*
+*Last updated: 2026-03-20 after Phase 05 (Performance Optimization) completion*
