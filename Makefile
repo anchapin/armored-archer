@@ -43,6 +43,9 @@ help:
 	@echo "  make test-flaky-backend Run flaky test detection for backend"
 	@echo "  make test-flaky-godot   Run flaky test detection for Godot"
 	@echo "  make test-flaky-report  Generate flaky test report"
+make test-property       Run property-based tests (all)
+  make test-property-combat Run combat property tests
+  make test-property-rng   Run RNG property tests
 	@echo ""
 	@echo "$(GREEN)Test Pyramid Validation$(RESET)"
 	@echo "  make check-test-pyramid Validate test pyramid (70/20/10 ratio)"
@@ -567,3 +570,16 @@ beta-test:
 	@echo "  - Beta environment must be running: make beta-start"
 	@echo ""
 	cd $(BACKEND_DIR) && npm run test:integration -- tests/integration/beta_health.test.ts
+
+## Property-Based Testing
+test-property:
+	@echo "$(BLUE)Running property-based tests...$(RESET)"
+	cd $(BACKEND_DIR) && go test -v -run "Property" ./...
+
+test-property-combat:
+	@echo "$(BLUE)Running combat property tests...$(RESET)"
+	cd $(BACKEND_DIR) && go test -v -run "Property" ./internal/combat/
+
+test-property-rng:
+	@echo "$(BLUE)Running RNG property tests...$(RESET)"
+	cd $(BACKEND_DIR) && go test -v -run "Property" ./internal/rng/
