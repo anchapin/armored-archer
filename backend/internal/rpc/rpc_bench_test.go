@@ -283,22 +283,31 @@ func BenchmarkGetInventory(b *testing.B) {
 		b.Fatalf("Failed to create inventory table: %v", err)
 	}
 
-	// Insert test catalog entries
+	// Insert test catalog entries using factory functions
 	for i := 1; i <= 20; i++ {
-		baseStats := map[string]int{
-			"attack":  i * 5,
-			"defense": i * 3,
-			"speed":   i * 2,
-		}
-		statsJSON, _ := json.Marshal(baseStats)
+		gear := testhelpers.NewGearBuilder().
+			WithID(fmt.Sprintf("gear-%d", i)).
+			WithType("bow").
+			WithRarity("rare").
+			WithStats(i*5, i*3, i*2, 0).  // Attack, Defense, Dodge, CritRate
+			WithDisplayName(fmt.Sprintf("Bow%d", i)).
+			Build()
 
-		gearID := fmt.Sprintf("gear-%d", i)
-		name := fmt.Sprintf("Bow%d", i)
+		// Convert gear stats to JSON for database storage
+		baseStats := map[string]int{
+			"attack":  gear.Attack,
+			"defense": gear.Defense,
+			"speed":   gear.Dodge,
+		}
+		statsJSON, err := json.Marshal(baseStats)
+		if err != nil {
+			b.Fatalf("Failed to marshal gear stats: %v", err)
+		}
 
 		_, err = tdb.DB.Exec(`
 			INSERT INTO catalog (gear_id, gear_type, name, rarity, base_stats, modifiers)
 			VALUES ($1, $2, $3, $4, $5, $6)
-		`, gearID, "bow", name, "rare", statsJSON, `[]`)
+		`, gear.ID, gear.Type, gear.DisplayName, gear.Rarity, statsJSON, `[]`)
 		if err != nil {
 			b.Fatalf("Failed to insert catalog entry: %v", err)
 		}
