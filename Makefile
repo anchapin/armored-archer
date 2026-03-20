@@ -43,9 +43,9 @@ help:
 	@echo "  make test-flaky-backend Run flaky test detection for backend"
 	@echo "  make test-flaky-godot   Run flaky test detection for Godot"
 	@echo "  make test-flaky-report  Generate flaky test report"
-make test-property       Run property-based tests (all)
-  make test-property-combat Run combat property tests
-  make test-property-rng   Run RNG property tests
+	@echo "  make test-property       Run property-based tests (all)"
+	@echo "  make test-property-combat Run combat property tests"
+	@echo "  make test-property-rng   Run RNG property tests"
 	@echo ""
 	@echo "$(GREEN)Test Pyramid Validation$(RESET)"
 	@echo "  make check-test-pyramid Validate test pyramid (70/20/10 ratio)"
