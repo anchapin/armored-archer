@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema backend-load-test clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci generate-mocks beta-start beta-stop beta-restart beta-status beta-health beta-logs beta-validate beta-clean beta-migrate beta-test
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema backend-load-test benchmark benchmark-compare benchmark-update clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci generate-mocks beta-start beta-stop beta-restart beta-status beta-health beta-logs beta-validate beta-clean beta-migrate beta-test
 
 # Default target
 all: help
@@ -56,6 +56,11 @@ help:
 	@echo ""
 	@echo "$(GREEN)Load Testing$(RESET)"
 	@echo "  make backend-load-test  Run full load test (500 users)"
+	@echo ""
+	@echo "$(GREEN)Performance Benchmarking$(RESET)"
+	@echo "  make benchmark          Run Go benchmarks"
+	@echo "  make benchmark-compare  Run benchmarks and compare to baseline"
+	@echo "  make benchmark-update   Update performance baseline"
 	@echo ""
 	@echo "$(GREEN)Local Services$(RESET)"
 	@echo "  make services-start     Start Nakama + PostgreSQL containers"
@@ -230,6 +235,26 @@ backend-load-test:
 		sudo mv k6-v0.49.0-linux-amd64/k6 /usr/local/bin/; \
 	}
 	cd backend/tests/load && k6 run k6.conf.js
+
+## Performance Benchmarking
+benchmark:
+	@echo "$(BLUE)Running Go benchmarks...$(RESET)"
+	cd $(BACKEND_DIR) && go test -bench=. -benchmem -run=^$$ ./internal/rpc/...
+
+benchmark-compare:
+	@echo "$(BLUE)Running benchmarks and comparing to baseline...$(RESET)"
+	@command -v benchstat >/dev/null 2>&1 || { \
+		echo "$(YELLOW)benchstat not found. Installing...$(RESET)"; \
+		go install golang.org/x/perf/cmd/benchstat@latest; \
+	}
+	cd $(BACKEND_DIR) && go test -bench=. -benchmem -run=^$$ ./internal/rpc/... > tests/benchmarks/new.txt
+	@export PATH=$$PATH:$$HOME/go/bin && cd $(BACKEND_DIR)/tests/benchmarks && chmod +x compare.sh && ./compare.sh baseline.txt new.txt
+
+benchmark-update:
+	@echo "$(BLUE)Updating performance baseline...$(RESET)"
+	cd $(BACKEND_DIR) && go test -bench=. -benchmem -run=^$$ ./internal/rpc/... > tests/benchmarks/baseline.txt
+	@echo "$(GREEN)✓ Baseline updated$(RESET)"
+	@echo "New baseline saved to: backend/tests/benchmarks/baseline.txt"
 
 ## Release Notes
 release-notes:
