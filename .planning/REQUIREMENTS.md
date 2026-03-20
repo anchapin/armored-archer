@@ -68,7 +68,7 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 - [x] **MOCK-02**: Database layer is mocked using interface-based approach
 - [ ] **MOCK-03**: Godot autoloads are mockable via dependency injection
 - [x] **MOCK-04**: Mock generation uses uber/mock for Go interfaces
-- [ ] **MOCK-05**: Mocks are validated against real implementations periodically
+- [x] **MOCK-05**: Mocks are validated against real implementations periodically
 
 ### Property-Based Testing (PBT)
 
@@ -146,7 +146,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MOCK-02 | Phase 2 | Complete |
 | MOCK-03 | Phase 3 | Pending |
 | MOCK-04 | Phase 2 | Complete |
-| MOCK-05 | Phase 2 | Pending |
+| MOCK-05 | Phase 2 | Complete |
 | PBT-01 | Phase 5 | Pending |
 | PBT-02 | Phase 5 | Pending |
 | PBT-03 | Phase 5 | Pending |
