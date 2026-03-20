@@ -211,8 +211,8 @@ jobs:
           TEST_DB_NAME: nakama
         run: npm run test:coverage
 
-      # FND-05: Race detector for data race detection in concurrent code
-      - name: Run Go tests with race detector
+      # FND-05, FND-06: Race detector and shuffle for test isolation
+      - name: Run Go tests with race detector and shuffle
         working-directory: ./backend
         env:
           TEST_DB_HOST: localhost
@@ -223,8 +223,8 @@ jobs:
           GOMAXPROCS: 2
           TZ: UTC
         run: |
-          echo "Running Go tests with race detector..."
-          go test -v -race -timeout=60s ./...
+          echo "Running Go tests with race detector and shuffle..."
+          go test -v -race -shuffle=on -timeout=60s ./...
 
       - name: Upload coverage to Codecov
         if: success()
