@@ -1,0 +1,162 @@
+[
+  {
+    "UserID": "player_level_1_default",
+    "Level": 1,
+    "XP": 0,
+    "Attack": 10,
+    "Defense": 10,
+    "Dodge": 10,
+    "CritRate": 5,
+    "Gear": [],
+    "CreatedAt": "2024-01-15T10:00:00Z"
+  },
+  {
+    "UserID": "player_level_10_scaled",
+    "Level": 10,
+    "XP": 0,
+    "Attack": 20,
+    "Defense": 20,
+    "Dodge": 15,
+    "CritRate": 7,
+    "Gear": [],
+    "CreatedAt": "2024-01-15T11:00:00Z"
+  },
+  {
+    "UserID": "player_level_50_high",
+    "Level": 50,
+    "XP": 0,
+    "Attack": 60,
+    "Defense": 60,
+    "Dodge": 35,
+    "CritRate": 15,
+    "Gear": [],
+    "CreatedAt": "2024-01-15T12:00:00Z"
+  },
+  {
+    "UserID": "player_with_legendary_gear",
+    "Level": 25,
+    "XP": 15000,
+    "Attack": 35,
+    "Defense": 35,
+    "Dodge": 22,
+    "CritRate": 10,
+    "Gear": [
+      {
+        "ID": "legendary_bow_001",
+        "Type": "bow",
+        "Rarity": "legendary",
+        "Attack": 20,
+        "Defense": 0,
+        "Dodge": 0,
+        "CritRate": 0,
+        "DisplayName": "Legendary Dragon Bow"
+      },
+      {
+        "ID": "legendary_armor_001",
+        "Type": "armor",
+        "Rarity": "legendary",
+        "Attack": 0,
+        "Defense": 20,
+        "Dodge": 0,
+        "CritRate": 0,
+        "DisplayName": "Legendary Dragon Armor"
+      }
+    ],
+    "CreatedAt": "2024-01-15T13:00:00Z"
+  },
+  {
+    "UserID": "player_with_custom_stats",
+    "Level": 15,
+    "XP": 5000,
+    "Attack": 45,
+    "Defense": 30,
+    "Dodge": 25,
+    "CritRate": 12,
+    "Gear": [
+      {
+        "ID": "epic_helm_001",
+        "Type": "helm",
+        "Rarity": "epic",
+        "Attack": 0,
+        "Defense": 7,
+        "Dodge": 8,
+        "CritRate": 0,
+        "DisplayName": "Epic Helm of Swiftness"
+      }
+    ],
+    "CreatedAt": "2024-01-15T14:00:00Z"
+  },
+  {
+    "UserID": "player_full_loadout",
+    "Level": 30,
+    "XP": 25000,
+    "Attack": 50,
+    "Defense": 45,
+    "Dodge": 28,
+    "CritRate": 14,
+    "Gear": [
+      {
+        "ID": "rare_helm_001",
+        "Type": "helm",
+        "Rarity": "rare",
+        "Attack": 0,
+        "Defense": 5,
+        "Dodge": 5,
+        "CritRate": 0,
+        "DisplayName": "Rare Steel Helm"
+      },
+      {
+        "ID": "epic_armor_001",
+        "Type": "armor",
+        "Rarity": "epic",
+        "Attack": 0,
+        "Defense": 15,
+        "Dodge": 0,
+        "CritRate": 0,
+        "DisplayName": "Epic Plate Armor"
+      },
+      {
+        "ID": "legendary_bow_002",
+        "Type": "bow",
+        "Rarity": "legendary",
+        "Attack": 20,
+        "Defense": 0,
+        "Dodge": 0,
+        "CritRate": 0,
+        "DisplayName": "Legendary Phoenix Bow"
+      },
+      {
+        "ID": "rare_arrow_001",
+        "Type": "arrow",
+        "Rarity": "rare",
+        "Attack": 5,
+        "Defense": 0,
+        "Dodge": 0,
+        "CritRate": 5,
+        "DisplayName": "Rare Steel Arrows"
+      },
+      {
+        "ID": "epic_amulet_001",
+        "Type": "amulet",
+        "Rarity": "epic",
+        "Attack": 0,
+        "Defense": 0,
+        "Dodge": 0,
+        "CritRate": 15,
+        "DisplayName": "Epic Amulet of Precision"
+      }
+    ],
+    "CreatedAt": "2024-01-15T15:00:00Z"
+  },
+  {
+    "UserID": "player_max_level",
+    "Level": 100,
+    "XP": 100000,
+    "Attack": 110,
+    "Defense": 110,
+    "Dodge": 60,
+    "CritRate": 25,
+    "Gear": [],
+    "CreatedAt": "2024-01-15T16:00:00Z"
+  }
+]

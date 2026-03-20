@@ -1,0 +1,122 @@
+[
+  {
+    "MatchID": "match_active_full_health",
+    "CreatorID": "player1",
+    "OpponentID": "player2",
+    "Status": "active",
+    "CreatorHealth": 100,
+    "OpponentHealth": 100,
+    "Turn": 1,
+    "CreatedAt": "2024-01-15T10:00:00Z"
+  },
+  {
+    "MatchID": "match_completed_winner",
+    "CreatorID": "player1",
+    "OpponentID": "player2",
+    "Status": "completed",
+    "CreatorHealth": 100,
+    "OpponentHealth": 0,
+    "Turn": 8,
+    "CreatedAt": "2024-01-15T11:00:00Z"
+  },
+  {
+    "MatchID": "match_completed_close_match",
+    "CreatorID": "player3",
+    "OpponentID": "player4",
+    "Status": "completed",
+    "CreatorHealth": 15,
+    "OpponentHealth": 5,
+    "Turn": 12,
+    "CreatedAt": "2024-01-15T12:00:00Z"
+  },
+  {
+    "MatchID": "match_active_low_health",
+    "CreatorID": "player5",
+    "OpponentID": "player6",
+    "Status": "active",
+    "CreatorHealth": 25,
+    "OpponentHealth": 30,
+    "Turn": 7,
+    "CreatedAt": "2024-01-15T13:00:00Z"
+  },
+  {
+    "MatchID": "match_active_turn_5",
+    "CreatorID": "player7",
+    "OpponentID": "player8",
+    "Status": "active",
+    "CreatorHealth": 80,
+    "OpponentHealth": 75,
+    "Turn": 5,
+    "CreatedAt": "2024-01-15T14:00:00Z"
+  },
+  {
+    "MatchID": "match_forfeited_creator",
+    "CreatorID": "player9",
+    "OpponentID": "player10",
+    "Status": "forfeited",
+    "CreatorHealth": 50,
+    "OpponentHealth": 100,
+    "Turn": 3,
+    "CreatedAt": "2024-01-15T15:00:00Z"
+  },
+  {
+    "MatchID": "match_forfeited_opponent",
+    "CreatorID": "player11",
+    "OpponentID": "player12",
+    "Status": "forfeited",
+    "CreatorHealth": 100,
+    "OpponentHealth": 20,
+    "Turn": 4,
+    "CreatedAt": "2024-01-15T16:00:00Z"
+  },
+  {
+    "MatchID": "match_active_creator_winning",
+    "CreatorID": "player13",
+    "OpponentID": "player14",
+    "Status": "active",
+    "CreatorHealth": 90,
+    "OpponentHealth": 40,
+    "Turn": 6,
+    "CreatedAt": "2024-01-15T17:00:00Z"
+  },
+  {
+    "MatchID": "match_completed_opponent_winner",
+    "CreatorID": "player15",
+    "OpponentID": "player16",
+    "Status": "completed",
+    "CreatorHealth": 0,
+    "OpponentHealth": 80,
+    "Turn": 10,
+    "CreatedAt": "2024-01-15T18:00:00Z"
+  },
+  {
+    "MatchID": "match_active_early_turn",
+    "CreatorID": "player17",
+    "OpponentID": "player18",
+    "Status": "active",
+    "CreatorHealth": 95,
+    "OpponentHealth": 98,
+    "Turn": 2,
+    "CreatedAt": "2024-01-15T19:00:00Z"
+  },
+  {
+    "MatchID": "match_completed_double_ko",
+    "CreatorID": "player19",
+    "OpponentID": "player20",
+    "Status": "completed",
+    "CreatorHealth": 0,
+    "OpponentHealth": 0,
+    "Turn": 15,
+    "CreatedAt": "2024-01-15T20:00:00Z"
+  },
+  {
+    "MatchID": "match_active_mid_game",
+    "CreatorID": "player21",
+    "OpponentID": "player22",
+    "Status": "active",
+    "CreatorHealth": 60,
+    "OpponentHealth": 65,
+    "Turn": 8,
+    "CreatedAt": "2024-01-15T21:00:00Z"
+  }
+]

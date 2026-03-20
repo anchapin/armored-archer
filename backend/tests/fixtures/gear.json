@@ -1,0 +1,182 @@
+[
+  {
+    "ID": "common_bow_001",
+    "Type": "bow",
+    "Rarity": "common",
+    "Attack": 5,
+    "Defense": 0,
+    "Dodge": 0,
+    "CritRate": 0,
+    "DisplayName": "Common Wooden Bow"
+  },
+  {
+    "ID": "common_helm_001",
+    "Type": "helm",
+    "Rarity": "common",
+    "Attack": 0,
+    "Defense": 2,
+    "Dodge": 3,
+    "CritRate": 0,
+    "DisplayName": "Common Leather Helm"
+  },
+  {
+    "ID": "common_armor_001",
+    "Type": "armor",
+    "Rarity": "common",
+    "Attack": 0,
+    "Defense": 5,
+    "Dodge": 0,
+    "CritRate": 0,
+    "DisplayName": "Common Leather Armor"
+  },
+  {
+    "ID": "common_arrow_001",
+    "Type": "arrow",
+    "Rarity": "common",
+    "Attack": 2,
+    "Defense": 0,
+    "Dodge": 0,
+    "CritRate": 3,
+    "DisplayName": "Common Wooden Arrows"
+  },
+  {
+    "ID": "common_amulet_001",
+    "Type": "amulet",
+    "Rarity": "common",
+    "Attack": 0,
+    "Defense": 0,
+    "Dodge": 0,
+    "CritRate": 5,
+    "DisplayName": "Common Copper Amulet"
+  },
+  {
+    "ID": "rare_bow_001",
+    "Type": "bow",
+    "Rarity": "rare",
+    "Attack": 10,
+    "Defense": 0,
+    "Dodge": 0,
+    "CritRate": 0,
+    "DisplayName": "Rare Steel Bow"
+  },
+  {
+    "ID": "rare_helm_001",
+    "Type": "helm",
+    "Rarity": "rare",
+    "Attack": 0,
+    "Defense": 5,
+    "Dodge": 5,
+    "CritRate": 0,
+    "DisplayName": "Rare Steel Helm"
+  },
+  {
+    "ID": "rare_armor_001",
+    "Type": "armor",
+    "Rarity": "rare",
+    "Attack": 0,
+    "Defense": 10,
+    "Dodge": 0,
+    "CritRate": 0,
+    "DisplayName": "Rare Steel Armor"
+  },
+  {
+    "ID": "rare_arrow_001",
+    "Type": "arrow",
+    "Rarity": "rare",
+    "Attack": 5,
+    "Defense": 0,
+    "Dodge": 0,
+    "CritRate": 5,
+    "DisplayName": "Rare Steel Arrows"
+  },
+  {
+    "ID": "rare_amulet_001",
+    "Type": "amulet",
+    "Rarity": "rare",
+    "Attack": 0,
+    "Defense": 0,
+    "Dodge": 0,
+    "CritRate": 10,
+    "DisplayName": "Rare Silver Amulet"
+  },
+  {
+    "ID": "epic_bow_001",
+    "Type": "bow",
+    "Rarity": "epic",
+    "Attack": 15,
+    "Defense": 0,
+    "Dodge": 0,
+    "CritRate": 0,
+    "DisplayName": "Epic Mithril Bow"
+  },
+  {
+    "ID": "epic_bow_high_attack",
+    "Type": "bow",
+    "Rarity": "epic",
+    "Attack": 25,
+    "Defense": 0,
+    "Dodge": 0,
+    "CritRate": 0,
+    "DisplayName": "Epic Bow of Power"
+  },
+  {
+    "ID": "epic_armor_001",
+    "Type": "armor",
+    "Rarity": "epic",
+    "Attack": 0,
+    "Defense": 15,
+    "Dodge": 0,
+    "CritRate": 0,
+    "DisplayName": "Epic Mithril Armor"
+  },
+  {
+    "ID": "legendary_armor_001",
+    "Type": "armor",
+    "Rarity": "legendary",
+    "Attack": 0,
+    "Defense": 20,
+    "Dodge": 0,
+    "CritRate": 0,
+    "DisplayName": "Legendary Dragon Armor"
+  },
+  {
+    "ID": "legendary_bow_001",
+    "Type": "bow",
+    "Rarity": "legendary",
+    "Attack": 20,
+    "Defense": 0,
+    "Dodge": 0,
+    "CritRate": 0,
+    "DisplayName": "Legendary Dragon Bow"
+  },
+  {
+    "ID": "balanced_helm_001",
+    "Type": "helm",
+    "Rarity": "epic",
+    "Attack": 0,
+    "Defense": 7,
+    "Dodge": 8,
+    "CritRate": 0,
+    "DisplayName": "Epic Helm of Balance"
+  },
+  {
+    "ID": "attack_arrow_001",
+    "Type": "arrow",
+    "Rarity": "legendary",
+    "Attack": 15,
+    "Defense": 0,
+    "Dodge": 0,
+    "CritRate": 5,
+    "DisplayName": "Legendary Arrows of Might"
+  },
+  {
+    "ID": "defense_amulet_001",
+    "Type": "amulet",
+    "Rarity": "epic",
+    "Attack": 0,
+    "Defense": 8,
+    "Dodge": 7,
+    "CritRate": 0,
+    "DisplayName": "Epic Amulet of Protection"
+  }
+]
