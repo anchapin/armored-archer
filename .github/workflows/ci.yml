@@ -210,7 +210,22 @@ jobs:
           TEST_DB_PASSWORD: changeme
           TEST_DB_NAME: nakama
         run: npm run test:coverage
-      
+
+      # FND-05: Race detector for data race detection in concurrent code
+      - name: Run Go tests with race detector
+        working-directory: ./backend
+        env:
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5432
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: changeme
+          TEST_DB_NAME: nakama
+          GOMAXPROCS: 2
+          TZ: UTC
+        run: |
+          echo "Running Go tests with race detector..."
+          go test -v -race -timeout=60s ./...
+
       - name: Upload coverage to Codecov
         if: success()
         continue-on-error: true
