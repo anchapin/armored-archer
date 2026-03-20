@@ -3,6 +3,7 @@ package load_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anchapin/armored-archer/backend/tests/testhelpers"
 )
 
 // TestK6ConfigurationValid verifies that k6 configuration files are syntactically valid
@@ -307,4 +310,72 @@ func BenchmarkK6Startup(b *testing.B) {
 			b.Fatalf("k6 dry-run failed: %v", err)
 		}
 	}
+}
+
+// TestK6LoadTestsWithTestcontainers verifies that load tests can run with
+// testcontainers-provided database and Nakama server (no manual service startup).
+//
+// This test validates PERF-03 requirement: load tests use testcontainers for
+// automated database provisioning instead of manual backend startup.
+func TestK6LoadTestsWithTestcontainers(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping load test in short mode")
+	}
+
+	// Check if k6 is installed
+	if _, err := exec.LookPath("k6"); err != nil {
+		t.Skip("k6 not installed, skipping load test execution")
+	}
+
+	ctx := context.Background()
+
+	// Step 1: Setup testcontainers PostgreSQL instance
+	tdb := testhelpers.SetupTestDB(ctx, t)
+	defer testhelpers.TeardownTestDB(ctx, tdb)
+
+	// Step 2: Run database migrations to create schema
+	migrationFiles, err := filepath.Glob("../../../data/migrations/*.sql")
+	require.NoError(t, err, "Failed to find migration files")
+
+	for _, file := range migrationFiles {
+		migrationSQL, err := os.ReadFile(file)
+		require.NoError(t, err, "Failed to read migration: %s", file)
+
+		_, err = tdb.DB.ExecContext(ctx, string(migrationSQL))
+		require.NoError(t, err, "Failed to run migration: %s", file)
+	}
+
+	// Step 3: Start Nakama server with testcontainers database
+	nakama, err := testhelpers.SetupNakamaServer(ctx, tdb.ConnStr)
+	require.NoError(t, err, "Failed to setup Nakama server")
+	defer testhelpers.TeardownNakamaServer(ctx, nakama)
+
+	t.Logf("Nakama server started at: %s", nakama.GetEndpoint())
+
+	// Step 4: Verify Nakama server is responding
+	nakamaURL := nakama.GetEndpoint()
+	cmd := exec.CommandContext(ctx, "curl", "-f", fmt.Sprintf("%s/", nakamaURL))
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Nakama server health check failed: %v", err)
+	}
+
+	// Step 5: Run k6 smoke test with testcontainers backend
+	absPath, err := filepath.Abs("scenarios/smoke.js")
+	require.NoError(t, err)
+
+	// Set NAKAMA_URL environment variable for k6
+	env := append(os.Environ(), fmt.Sprintf("NAKAMA_URL=%s", nakamaURL))
+	cmd = exec.Command("k6", "run", "--no-summary", absPath)
+	cmd.Env = env
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("k6 smoke test failed:\n%s\nError: %v", string(output), err)
+	}
+
+	// Step 6: Verify k6 output contains success indicator
+	outputStr := string(output)
+	assert.Contains(t, outputStr, "server is running", "smoke test should verify server is running")
+
+	t.Log("✓ Load test ran successfully with testcontainers backend")
 }
