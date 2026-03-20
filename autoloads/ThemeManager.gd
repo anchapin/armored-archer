@@ -1,4 +1,4 @@
-class_name ThemeManager
+class_name ArcherThemeManager
 extends Node
 
 # =============================================================================
@@ -10,6 +10,9 @@ extends Node
 
 signal theme_changed(is_dark: bool)
 
+# --- Dependency Injection ---
+var _config_file: ConfigFile = null
+
 # --- Theme State ---
 var _current_theme: StringName = &"dark"
 var _is_dark: bool = true
@@ -17,6 +20,10 @@ var _is_dark: bool = true
 # --- Persistence ---
 const THEME_CONFIG_PATH := "user://theme.cfg"
 const THEME_KEY := "theme"
+
+# --- Constructor with Dependency Injection ---
+func _init(config_file: ConfigFile = null):
+	_config_file = config_file
 
 # --- Theme Data ---
 var _themes: Dictionary = {
@@ -44,6 +51,9 @@ var _themes: Dictionary = {
 
 # --- Lifecycle ---
 func _ready() -> void:
+	# Initialize ConfigFile if not injected (for production autoload usage)
+	if _config_file == null:
+		_config_file = ConfigFile.new()
 	_load_theme()
 
 # =============================================================================
@@ -122,21 +132,19 @@ func get_text_disabled_color() -> Color:
 # =============================================================================
 
 func _load_theme() -> void:
-	var config = ConfigFile.new()
-	var err = config.load(THEME_CONFIG_PATH)
-	
+	var err = _config_file.load(THEME_CONFIG_PATH)
+
 	if err == OK:
-		var saved_theme = config.get_value("settings", THEME_KEY, "dark")
+		var saved_theme = _config_file.get_value("settings", THEME_KEY, "dark")
 		set_theme(saved_theme)
 	else:
 		# Default to dark theme
 		set_theme("dark")
 
 func _save_theme() -> void:
-	var config = ConfigFile.new()
-	config.set_value("settings", THEME_KEY, _current_theme)
-	
-	var err = config.save(THEME_CONFIG_PATH)
+	_config_file.set_value("settings", THEME_KEY, _current_theme)
+
+	var err = _config_file.save(THEME_CONFIG_PATH)
 	if err != OK:
 		push_warning("ThemeManager: Failed to save theme preference")
 
