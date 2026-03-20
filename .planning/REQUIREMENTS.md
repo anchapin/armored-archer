@@ -28,6 +28,7 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 ### Coverage & Quality Gates (COV)
 
 - [ ] **COV-01**: Code coverage is measured for backend (Go) and frontend (Godot)
+  - **Note**: Godot/GDScript lacks line coverage instrumentation. Test pass rate from GUT JUnit XML is used as a coverage proxy. This is an acceptable trade-off documented in Phase 6 plans.
 - [ ] **COV-02**: Coverage thresholds are enforced in CI (80% for critical paths, 60% overall)
 - [ ] **COV-03**: Pull requests that fail coverage tests are automatically blocked from merging
 - [ ] **COV-04**: Coverage reports are generated and viewable in CI artifacts
@@ -102,6 +103,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | New Gameplay Features | This milestone focuses on testing infrastructure, not content. |
 | Backend Rewrites | Building tests for existing Go backend, not refactoring. |
 | Database Migrations | No schema changes; only testing existing data layer. |
+| Godot Line Coverage Tooling | GDScript lacks built-in coverage instrumentation. Building custom tooling is cost-prohibitive. Using test pass rate as proxy is acceptable. |
 
 ## Traceability
 
@@ -167,4 +169,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after roadmap creation*
+*Last updated: 2026-03-20 (added COV-01 Godot coverage proxy note, added Godot line coverage to Out of Scope)*
