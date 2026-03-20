@@ -2,10 +2,17 @@
 package utils
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/heroiclabs/nakama-common/runtime"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestLRUCache_BasicOperations tests basic cache get/set/delete operations
@@ -183,3 +190,192 @@ func TestCacheManager_CreateCache_Multiple(t *testing.T) {
 	// Skip this test - the cache manager requires a real logger
 	t.Skip("CacheManager requires real logger for full testing")
 }
+
+// TestCacheMetricsInitialized verifies that cache metrics are initialized.
+func TestCacheMetricsInitialized(t *testing.T) {
+	logger := &mockLogger{}
+	cacheManager := NewCacheManager(logger)
+
+	// Verify that the cache manager has metrics collectors
+	assert.NotNil(t, cacheManager.CacheHits(), "CacheHits collector should not be nil")
+	assert.NotNil(t, cacheManager.CacheMisses(), "CacheMisses collector should not be nil")
+	assert.NotNil(t, cacheManager.CacheHitRate(), "CacheHitRate gauge should not be nil")
+}
+
+// TestCacheHitsMissesCounted verifies that cache hits and misses are counted.
+func TestCacheHitsMissesCounted(t *testing.T) {
+	logger := &mockLogger{}
+	cacheManager := NewCacheManager(logger)
+
+	// Create a test cache
+	cache := cacheManager.CreateCache("test_cache", 10, 5*time.Minute)
+
+	// Register metrics to a test registry
+	testRegistry := prometheus.NewRegistry()
+	testRegistry.MustRegister(cacheManager.CacheHits())
+	testRegistry.MustRegister(cacheManager.CacheMisses())
+	testRegistry.MustRegister(cacheManager.CacheHitRate())
+
+	// Perform cache operations
+	cache.Set("key1", "value1", 1*time.Minute)
+	cache.Set("key2", "value2", 1*time.Minute)
+
+	// Hit - should increment hits
+	val, ok := cache.Get("key1")
+	require.True(t, ok, "key1 should exist")
+	assert.Equal(t, "value1", val, "key1 should have correct value")
+
+	// Miss - should increment misses
+	_, ok = cache.Get("nonexistent")
+	assert.False(t, ok, "nonexistent key should not exist")
+
+	// Another hit
+	val, ok = cache.Get("key2")
+	require(t, ok, "key2 should exist")
+	assert.Equal(t, "value2", val, "key2 should have correct value")
+
+	// Update metrics to calculate hit rate
+	cacheManager.UpdateMetrics()
+
+	// Create metrics handler and server
+	handler := promhttp.HandlerFor(testRegistry, promhttp.HandlerOpts{})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	// Get metrics
+	resp, err := http.Get(server.URL + "/metrics")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	bodyStr := string(body)
+
+	// Verify metrics are present
+	assert.Contains(t, bodyStr, "cache_hits_total", "Should contain cache hits metric")
+	assert.Contains(t, bodyStr, "cache_misses_total", "Should contain cache misses metric")
+	assert.Contains(t, bodyStr, "cache_hit_rate", "Should contain cache hit rate metric")
+	assert.Contains(t, bodyStr, `cache_name="test_cache"`, "Should contain cache_name label")
+}
+
+// TestCacheHitRateCalculated verifies that cache hit rate is calculated correctly.
+func TestCacheHitRateCalculated(t *testing.T) {
+	logger := &mockLogger{}
+	cacheManager := NewCacheManager(logger)
+
+	// Create a test cache
+	cache := cacheManager.CreateCache("rate_test_cache", 10, 5*time.Minute)
+
+	// Register metrics to a test registry
+	testRegistry := prometheus.NewRegistry()
+	testRegistry.MustRegister(cacheManager.CacheHits())
+	testRegistry.MustRegister(cacheManager.CacheMisses())
+	testRegistry.MustRegister(cacheManager.CacheHitRate())
+
+	// Perform operations: 3 hits, 1 miss
+	cache.Set("key1", "value1", 1*time.Minute)
+	cache.Set("key2", "value2", 1*time.Minute)
+	cache.Set("key3", "value3", 1*time.Minute)
+
+	// 3 hits
+	cache.Get("key1")
+	cache.Get("key2")
+	cache.Get("key3")
+
+	// 1 miss
+	cache.Get("nonexistent")
+
+	// Update metrics to calculate hit rate
+	cacheManager.UpdateMetrics()
+
+	// Verify hit rate is 0.75 (3 hits / 4 total)
+	stats := cache.Stats()
+	total := stats.Hits + stats.Misses
+	assert.Equal(t, int64(4), total, "Total operations should be 4")
+	assert.Equal(t, int64(3), stats.Hits, "Hits should be 3")
+	assert.Equal(t, int64(1), stats.Misses, "Misses should be 1")
+
+	// Create metrics handler and server
+	handler := promhttp.HandlerFor(testRegistry, promhttp.HandlerOpts{})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	// Get metrics
+	resp, err := http.Get(server.URL + "/metrics")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	bodyStr := string(body)
+
+	// Verify hit rate metric exists
+	assert.Contains(t, bodyStr, "cache_hit_rate", "Should contain cache hit rate metric")
+	assert.Contains(t, bodyStr, `cache_name="rate_test_cache"`, "Should contain cache_name label")
+}
+
+// TestMultipleCacheMetrics verifies metrics are tracked per cache name.
+func TestMultipleCacheMetrics(t *testing.T) {
+	logger := &mockLogger{}
+	cacheManager := NewCacheManager(logger)
+
+	// Create multiple caches
+	cache1 := cacheManager.CreateCache("cache1", 10, 5*time.Minute)
+	cache2 := cacheManager.CreateCache("cache2", 10, 5*time.Minute)
+
+	// Register metrics to a test registry
+	testRegistry := prometheus.NewRegistry()
+	testRegistry.MustRegister(cacheManager.CacheHits())
+	testRegistry.MustRegister(cacheManager.CacheMisses())
+	testRegistry.MustRegister(cacheManager.CacheHitRate())
+
+	// Perform operations on cache1
+	cache1.Set("key1", "value1", 1*time.Minute)
+	cache1.Get("key1") // hit
+	cache1.Get("miss") // miss
+
+	// Perform operations on cache2
+	cache2.Set("key2", "value2", 1*time.Minute)
+	cache2.Get("key2") // hit
+	cache2.Get("key2") // hit
+	cache2.Get("miss") // miss
+
+	// Update metrics
+	cacheManager.UpdateMetrics()
+
+	// Create metrics handler and server
+	handler := promhttp.HandlerFor(testRegistry, promhttp.HandlerOpts{})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	// Get metrics
+	resp, err := http.Get(server.URL + "/metrics")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	bodyStr := string(body)
+
+	// Verify metrics for both caches
+	assert.Contains(t, bodyStr, `cache_name="cache1"`, "Should contain cache1 metrics")
+	assert.Contains(t, bodyStr, `cache_name="cache2"`, "Should contain cache2 metrics")
+}
+
+// mockLogger is a simple mock logger for testing.
+type mockLogger struct{}
+
+func (m *mockLogger) Debug(format string, v ...interface{}) {}
+func (m *mockLogger) Info(format string, v ...interface{})  {}
+func (m *mockLogger) Warn(format string, v ...interface{})  {}
+func (m *mockLogger) Error(format string, v ...interface{}) {}
+func (m *mockLogger) Fields(fields map[string]interface{}) runtime.Logger {
+	return m
+}
+func (m *mockLogger) WithField(name string, value interface{}) runtime.Logger {
+	return m
+}
+
