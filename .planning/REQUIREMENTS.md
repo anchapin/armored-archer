@@ -22,7 +22,7 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 - [x] **ISO-01**: Database tests use testcontainers-go for isolated PostgreSQL instances
 - [x] **ISO-02**: Test fixtures use factory pattern for consistent test data generation
 - [x] **ISO-03**: Test data cleanup runs automatically after each test suite
-- [ ] **ISO-04**: Godot autoload tests use fresh instances per test to prevent state leakage
+- [x] **ISO-04**: Godot autoload tests use fresh instances per test to prevent state leakage
 - [x] **ISO-05**: Integration tests have proper setup/teardown lifecycle management
 
 ### Coverage & Quality Gates (COV)
@@ -66,7 +66,7 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 
 - [x] **MOCK-01**: Nakama runtime is mocked for unit testing RPC handlers
 - [x] **MOCK-02**: Database layer is mocked using interface-based approach
-- [ ] **MOCK-03**: Godot autoloads are mockable via dependency injection
+- [x] **MOCK-03**: Godot autoloads are mockable via dependency injection
 - [x] **MOCK-04**: Mock generation uses uber/mock for Go interfaces
 - [x] **MOCK-05**: Mocks are validated against real implementations periodically
 
@@ -118,7 +118,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ISO-01 | Phase 2 | Complete |
 | ISO-02 | Phase 2 | Complete |
 | ISO-03 | Phase 2 | Complete |
-| ISO-04 | Phase 3 | Pending |
+| ISO-04 | Phase 3 | Complete |
 | ISO-05 | Phase 2 | Complete |
 | COV-01 | Phase 5 | Pending |
 | COV-02 | Phase 5 | Pending |
@@ -144,7 +144,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FIX-05 | Phase 2 | Complete |
 | MOCK-01 | Phase 2 | Complete |
 | MOCK-02 | Phase 2 | Complete |
-| MOCK-03 | Phase 3 | Pending |
+| MOCK-03 | Phase 3 | Complete |
 | MOCK-04 | Phase 2 | Complete |
 | MOCK-05 | Phase 2 | Complete |
 | PBT-01 | Phase 5 | Pending |
