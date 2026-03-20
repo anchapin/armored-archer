@@ -179,7 +179,6 @@
 7. Integration tests have proper setup/teardown lifecycle with before/after hooks
 8. Test data fixtures are shared between Go and Godot tests via JSON format
 
-**Plans:** TBD
 **Plans:** 4 plans
 
 **Plan List:**
@@ -204,7 +203,10 @@
 3. Signal-based tests can verify Godot signal emissions and payload data
 4. Developer can run Godot tests in CI with consistent results across different platforms
 
-**Plans:** TBD
+**Plans:** 1 plan
+
+**Plan List:**
+- [ ] 03-01-PLAN.md — Autoload test isolation with dependency injection and signal testing
 
 ---
 
@@ -261,10 +263,10 @@
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1. Test Infrastructure Foundation | v2.3.0 | 1/6 | In progress | 2026-03-19 |
-| 2. Fixtures & Mocks Layer | v2.3.0 | 0/13 | Not started | - |
-| 3. Godot Test Framework Enhancement | v2.3.0 | Complete    | 2026-03-20 | - |
+| 2. Fixtures & Mocks Layer | v2.3.0 | 0/4 | Not started | - |
+| 3. Godot Test Framework Enhancement | v2.3.0 | 0/1 | Not started | - |
 | 4. Load Testing Infrastructure | v2.3.0 | 0/5 | Not started | - |
-| 5. Coverage, Reporting & Quality Gates | 6/5 | Complete   | 2026-03-20 | - |
+| 5. Coverage, Reporting & Quality Gates | v2.3.0 | 0/14 | Not started | - |
 
 **Overall Progress:** 0/5 phases complete (0%)
 
