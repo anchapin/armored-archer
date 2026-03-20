@@ -20,7 +20,7 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 ### Test Isolation & Fixtures (ISO)
 
 - [ ] **ISO-01**: Database tests use testcontainers-go for isolated PostgreSQL instances
-- [ ] **ISO-02**: Test fixtures use factory pattern for consistent test data generation
+- [x] **ISO-02**: Test fixtures use factory pattern for consistent test data generation
 - [ ] **ISO-03**: Test data cleanup runs automatically after each test suite
 - [ ] **ISO-04**: Godot autoload tests use fresh instances per test to prevent state leakage
 - [ ] **ISO-05**: Integration tests have proper setup/teardown lifecycle management
@@ -56,11 +56,11 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 
 ### Test Fixtures Layer (FIX)
 
-- [ ] **FIX-01**: Factory functions create test players with sensible defaults
-- [ ] **FIX-02**: Factory functions create test gear items with configurable properties
-- [ ] **FIX-03**: Factory functions create test matches with realistic game state
-- [ ] **FIX-04**: Fixtures support builder pattern for flexible test data creation
-- [ ] **FIX-05**: Test data is shared between Go and Godot tests via common format (JSON)
+- [x] **FIX-01**: Factory functions create test players with sensible defaults
+- [x] **FIX-02**: Factory functions create test gear items with configurable properties
+- [x] **FIX-03**: Factory functions create test matches with realistic game state
+- [x] **FIX-04**: Fixtures support builder pattern for flexible test data creation
+- [x] **FIX-05**: Test data is shared between Go and Godot tests via common format (JSON)
 
 ### Mock Infrastructure (MOCK)
 
@@ -116,7 +116,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FND-05 | Phase 1 | Pending |
 | FND-06 | Phase 1 | Pending |
 | ISO-01 | Phase 2 | Pending |
-| ISO-02 | Phase 2 | Pending |
+| ISO-02 | Phase 2 | Complete |
 | ISO-03 | Phase 2 | Pending |
 | ISO-04 | Phase 3 | Pending |
 | ISO-05 | Phase 2 | Pending |
@@ -137,11 +137,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VIS-01 | Phase 5 | Pending |
 | VIS-02 | Phase 5 | Pending |
 | VIS-03 | Phase 5 | Pending |
-| FIX-01 | Phase 2 | Pending |
-| FIX-02 | Phase 2 | Pending |
-| FIX-03 | Phase 2 | Pending |
-| FIX-04 | Phase 2 | Pending |
-| FIX-05 | Phase 2 | Pending |
+| FIX-01 | Phase 2 | Complete |
+| FIX-02 | Phase 2 | Complete |
+| FIX-03 | Phase 2 | Complete |
+| FIX-04 | Phase 2 | Complete |
+| FIX-05 | Phase 2 | Complete |
 | MOCK-01 | Phase 2 | Complete |
 | MOCK-02 | Phase 2 | Complete |
 | MOCK-03 | Phase 3 | Pending |
