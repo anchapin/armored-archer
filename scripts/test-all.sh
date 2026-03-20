@@ -2,6 +2,30 @@
 set -e
 set -o pipefail
 
+# Armored Archer Unified Test Runner
+#
+# This script runs both Go backend and Godot frontend tests with:
+# - Race detector (-race flag) to detect data races in concurrent Go code
+# - Shuffle (-shuffle=on flag) to verify test isolation and catch shared state bugs
+#
+# Race Detector Notes:
+# - Slows tests ~10x but catches critical concurrency bugs
+# - GOMAXPROCS=2 recommended for better performance
+# - Any data race will cause the test to fail with detailed report
+#
+# Shuffle Flag Notes:
+# - Randomizes test execution order to detect shared state dependencies
+# - Tests that pass individually but fail in suite have isolation issues
+# - Each run uses different random seed for comprehensive coverage
+#
+# Usage:
+#   ./scripts/test-all.sh              # Run all tests
+#   make test-all                       # Run all tests via Makefile
+#
+# Exit codes:
+#   0 - All tests passed
+#   1 - One or more test suites failed
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
