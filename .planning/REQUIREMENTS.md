@@ -27,19 +27,19 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 
 ### Coverage & Quality Gates (COV)
 
-- [ ] **COV-01**: Code coverage is measured for backend (Go) and frontend (Godot)
+- [x] **COV-01**: Code coverage is measured for backend (Go) and frontend (Godot)
   - **Note**: Godot/GDScript lacks line coverage instrumentation. Test pass rate from GUT JUnit XML is used as a coverage proxy. This is an acceptable trade-off documented in Phase 6 plans.
-- [ ] **COV-02**: Coverage thresholds are enforced in CI (80% for critical paths, 60% overall)
-- [ ] **COV-03**: Pull requests that fail coverage tests are automatically blocked from merging
-- [ ] **COV-04**: Coverage reports are generated and viewable in CI artifacts
-- [ ] **COV-05**: Coverage metrics are tracked over time to identify trends
+- [x] **COV-02**: Coverage thresholds are enforced in CI (80% for critical paths, 60% overall)
+- [x] **COV-03**: Pull requests that fail coverage tests are automatically blocked from merging
+- [x] **COV-04**: Coverage reports are generated and viewable in CI artifacts
+- [x] **COV-05**: Coverage metrics are tracked over time to identify trends
 
 ### Flaky Test Detection (FLK)
 
-- [ ] **FLK-01**: CI automatically detects flaky tests via repeated test runs
-- [ ] **FLK-02**: Flaky tests are quarantined and don't block PR merges
-- [ ] **FLK-03**: Flaky test dashboard shows test reliability metrics
-- [ ] **FLK-04**: Developers are notified when their tests are flagged as flaky
+- [x] **FLK-01**: CI automatically detects flaky tests via repeated test runs
+- [x] **FLK-02**: Flaky tests are quarantined and don't block PR merges
+- [x] **FLK-03**: Flaky test dashboard shows test reliability metrics
+- [x] **FLK-04**: Developers are notified when their tests are flagged as flaky
 
 ### Performance Testing (PERF)
 
@@ -51,9 +51,9 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 
 ### Visual Regression Testing (VIS)
 
-- [ ] **VIS-01**: Design system components have visual regression tests
-- [ ] **VIS-02**: UI screens are validated for layout consistency
-- [ ] **VIS-03**: Visual regression tests run in CI for theme changes
+- [x] **VIS-01**: Design system components have visual regression tests
+- [x] **VIS-02**: UI screens are validated for layout consistency
+- [x] **VIS-03**: Visual regression tests run in CI for theme changes
 
 ### Test Fixtures Layer (FIX)
 
@@ -73,9 +73,9 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 
 ### Property-Based Testing (PBT)
 
-- [ ] **PBT-01**: Critical combat calculations use property-based tests (rapid)
-- [ ] **PBT-02**: RNG systems have property-based tests for edge case detection
-- [ ] **PBT-03**: Property-based tests run in CI alongside unit tests
+- [x] **PBT-01**: Critical combat calculations use property-based tests (rapid)
+- [x] **PBT-02**: RNG systems have property-based tests for edge case detection
+- [x] **PBT-03**: Property-based tests run in CI alongside unit tests
 
 ## v2 Requirements
 
@@ -122,23 +122,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ISO-03 | Phase 2 | Complete |
 | ISO-04 | Phase 3 | Complete |
 | ISO-05 | Phase 2 | Complete |
-| COV-01 | Phase 6 | Pending |
-| COV-02 | Phase 6 | Pending |
-| COV-03 | Phase 6 | Pending |
-| COV-04 | Phase 6 | Pending |
-| COV-05 | Phase 6 | Pending |
-| FLK-01 | Phase 6 | Pending |
-| FLK-02 | Phase 6 | Pending |
-| FLK-03 | Phase 6 | Pending |
-| FLK-04 | Phase 6 | Pending |
+| COV-01 | Phase 6 | Complete |
+| COV-02 | Phase 6 | Complete |
+| COV-03 | Phase 6 | Complete |
+| COV-04 | Phase 6 | Complete |
+| COV-05 | Phase 6 | Complete |
+| FLK-01 | Phase 6 | Complete |
+| FLK-02 | Phase 6 | Complete |
+| FLK-03 | Phase 6 | Complete |
+| FLK-04 | Phase 6 | Complete |
 | PERF-01 | Phase 4 | Complete |
 | PERF-02 | Phase 4 | Complete |
 | PERF-03 | Phase 4 | Pending |
 | PERF-04 | Phase 4 | Pending |
 | PERF-05 | Phase 4 | Complete |
-| VIS-01 | Phase 6 | Pending |
-| VIS-02 | Phase 6 | Pending |
-| VIS-03 | Phase 6 | Pending |
+| VIS-01 | Phase 6 | Complete |
+| VIS-02 | Phase 6 | Complete |
+| VIS-03 | Phase 6 | Complete |
 | FIX-01 | Phase 2 | Complete |
 | FIX-02 | Phase 2 | Complete |
 | FIX-03 | Phase 2 | Complete |
@@ -149,9 +149,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MOCK-03 | Phase 3 | Complete |
 | MOCK-04 | Phase 2 | Complete |
 | MOCK-05 | Phase 2 | Complete |
-| PBT-01 | Phase 6 | Pending |
-| PBT-02 | Phase 6 | Pending |
-| PBT-03 | Phase 6 | Pending |
+| PBT-01 | Phase 6 | Complete |
+| PBT-02 | Phase 6 | Complete |
+| PBT-03 | Phase 6 | Complete |
 
 **Coverage:**
 - v1 requirements: 40 total
