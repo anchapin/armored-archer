@@ -226,6 +226,12 @@ jobs:
           echo "Running Go tests with race detector and shuffle..."
           go test -v -race -shuffle=on -timeout=60s ./...
 
+      # FND-04: Validate test pyramid ratios (70/20/10 with ±10% tolerance)
+      - name: Validate test pyramid ratios
+        run: |
+          echo "Validating test pyramid (70% unit, 20% integration, 10% E2E)..."
+          ./scripts/check-test-pyramid.sh
+
       - name: Upload coverage to Codecov
         if: success()
         continue-on-error: true
