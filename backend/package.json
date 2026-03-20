@@ -16,6 +16,7 @@
     "test:ci": "jest --ci --coverage",
     "test:integration": "jest -c jest.integration.config.js --detectOpenHandles",
     "test:schema": "jest tests/integration/schema.test.ts",
+    "test:beta": "jest tests/integration/beta_health.test.ts",
     "test:flaky": "ts-node scripts/detect-flaky-tests.ts",
     "test:flaky:ci": "ts-node scripts/detect-flaky-tests.ts --ci-mode",
     "test:report": "ts-node scripts/flaky-test-report.ts",

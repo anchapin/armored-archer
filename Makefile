@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema backend-load-test clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci generate-mocks beta-start beta-stop beta-restart beta-status beta-health beta-logs beta-validate beta-clean beta-migrate
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema backend-load-test clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci generate-mocks beta-start beta-stop beta-restart beta-status beta-health beta-logs beta-validate beta-clean beta-migrate beta-test
 
 # Default target
 all: help
@@ -96,6 +96,7 @@ help:
 	@echo "  make beta-restart       Restart beta environment"
 	@echo "  make beta-status        Show beta service status"
 	@echo "  make beta-health        Check beta service health"
+	@echo "  make beta-test          Run automated beta health tests"
 	@echo "  make beta-logs          View beta service logs"
 	@echo "  make beta-validate      Validate beta environment setup"
 	@echo "  make beta-clean         Stop and remove beta services + volumes"
@@ -518,3 +519,11 @@ beta-clean:
 beta-migrate:
 	@echo "$(BLUE)Running database migrations on beta...$(RESET)"
 	@docker exec armored_archer_beta nakama migrate up --database.address postgres://postgres:beta_db_secure_password_change_me@postgres:5432/nakama_beta || echo "$(YELLOW)Make sure beta environment is running: make beta-start$(RESET)"
+
+beta-test:
+	@echo "$(BLUE)Running automated beta health tests...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Prerequisites:$(RESET)"
+	@echo "  - Beta environment must be running: make beta-start"
+	@echo ""
+	cd $(BACKEND_DIR) && npm run test:integration -- tests/integration/beta_health.test.ts
