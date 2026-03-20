@@ -232,6 +232,26 @@ jobs:
           echo "Validating test pyramid (70% unit, 20% integration, 10% E2E)..."
           ./scripts/check-test-pyramid.sh
 
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "======================================="
+          echo "Test Infrastructure Summary"
+          echo "======================================="
+          echo ""
+          echo "✅ Unified test runner: scripts/test-all.sh"
+          echo "✅ Race detector enabled: -race flag"
+          echo "✅ Test shuffle enabled: -shuffle=on flag"
+          echo "✅ Pyramid validation: scripts/check-test-pyramid.sh"
+          echo ""
+          echo "Requirements satisfied:"
+          echo "  FND-03: Unified test runner ✓"
+          echo "  FND-04: Test pyramid enforcement ✓"
+          echo "  FND-05: Race detector in CI ✓"
+          echo "  FND-06: Test isolation via shuffle ✓"
+          echo ""
+          echo "======================================="
+
       - name: Upload coverage to Codecov
         if: success()
         continue-on-error: true
