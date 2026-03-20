@@ -1,7 +1,7 @@
 # Roadmap: Armored Archer
 
 **Current Milestone:** v2.3.0 - Testing & QA Infrastructure
-**Last Updated:** 2026-03-19
+**Last Updated:** 2026-03-20
 
 ---
 
@@ -82,14 +82,17 @@
 
 ### Phase 5: Performance Optimization
 **Goal**: Optimize response times and resource usage
-**Completed**: 2026-03-17
+**Status**: 🔄 Gap Closure in Progress (3/7 must-haves verified)
+**Initial Completion**: 2026-03-17
 **Details**:
-- Multi-tier caching with 5 named caches (player_stats, leaderboards, season_info, store_catalog, gear_definitions)
-- Query timeout guards (5s default) to prevent runaway queries
-- Connection pool tuning for beta-scale (500+ concurrent users)
-- LRU cache eviction for memory efficiency
-- Target: P95 latency < 100ms, error rate < 1%
-**Commit**: 16c92dbb
+- **Plan 05-01** (Completed): Multi-tier caching infrastructure with 5 named caches, query timeout guards, connection pool tuning
+- **Plan 05-02** (In Progress): Wire cache in hot-path RPC handlers
+- **Plan 05-03** (Pending): Add performance metrics to Prometheus
+- **Plan 05-04** (Pending): Add database indexes and query optimization
+- **Plan 05-05** (Pending): Load testing and capacity validation
+**Target**: P95 latency < 100ms, error rate < 1%, cache hit rate > 80%
+**Commit**: 16c92dbb (Plan 05-01)
+**Gap Closure**: 4 additional plans to address verification failures (cache not used, no metrics, no load testing, no indexes)
 
 ### Phase 6: Beta Readiness
 **Goal**: Prepare for beta launch with stable platform
@@ -339,5 +342,5 @@ graph TD
 - No duplicate mappings
 
 ---
-*Roadmap updated: 2026-03-19*
+*Roadmap updated: 2026-03-20*
 *Next review: After Phase 1 completion*
