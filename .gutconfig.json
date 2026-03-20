@@ -16,7 +16,9 @@
       "res://test/suites/ui",
       "res://test/suites/object_pool",
       "res://test/suites/performance",
-      "res://test/suites/analytics"
+      "res://test/suites/analytics",
+      "res://test/suites/autoloads",
+      "res://test/suites/signals"
     ],
     "include_subdirectories": false
   },
