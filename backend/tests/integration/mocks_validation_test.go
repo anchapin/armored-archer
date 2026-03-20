@@ -263,3 +263,180 @@ func TestDatabaseMockValidation_CallOrderVerification(t *testing.T) {
 	// If we executed in wrong order, the test would fail
 	t.Log("Call order verification passed")
 }
+
+// TestNakamaRuntimeMockValidation verifies that Nakama logger mocks work correctly.
+// This test ensures all logger interface methods (Info, Debug, Warn, Error) can be mocked.
+func TestNakamaRuntimeMockValidation(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockLogger := mocks.NewMockLogger(ctrl)
+
+	t.Run("InfoLogging", func(t *testing.T) {
+		// Setup expectation for Info call
+		mockLogger.EXPECT().
+			Info(gomock.Eq("Player created: %s"), gomock.Any()).
+			Times(1)
+
+		// Execute
+		mockLogger.Info("Player created: %s", "player123")
+
+		// Expectation verified by ctrl.Finish()
+	})
+
+	t.Run("DebugLogging", func(t *testing.T) {
+		// Setup expectation for Debug call
+		mockLogger.EXPECT().
+			Debug(gomock.Eq("Processing request: %s"), gomock.Any()).
+			Times(1)
+
+		// Execute
+		mockLogger.Debug("Processing request: %s", "GET /players")
+
+		// Expectation verified by ctrl.Finish()
+	})
+
+	t.Run("WarnLogging", func(t *testing.T) {
+		// Setup expectation for Warn call
+		mockLogger.EXPECT().
+			Warn(gomock.Eq("High latency: %dms"), gomock.Any()).
+			Times(1)
+
+		// Execute
+		mockLogger.Warn("High latency: %dms", 250)
+
+		// Expectation verified by ctrl.Finish()
+	})
+
+	t.Run("ErrorLogging", func(t *testing.T) {
+		// Setup expectation for Error call
+		mockLogger.EXPECT().
+			Error(gomock.Eq("Database error: %v"), gomock.Any()).
+			Times(1)
+
+		// Execute
+		mockLogger.Error("Database error: %v", "connection failed")
+
+		// Expectation verified by ctrl.Finish()
+	})
+
+	t.Run("AllLogLevels", func(t *testing.T) {
+		// Setup expectations for all log levels
+		mockLogger.EXPECT().Info(gomock.Any()).Times(1)
+		mockLogger.EXPECT().Debug(gomock.Any()).Times(1)
+		mockLogger.EXPECT().Warn(gomock.Any()).Times(1)
+		mockLogger.EXPECT().Error(gomock.Any()).Times(1)
+
+		// Execute all log levels
+		mockLogger.Info("Info message")
+		mockLogger.Debug("Debug message")
+		mockLogger.Warn("Warn message")
+		mockLogger.Error("Error message")
+
+		// Expectation verified by ctrl.Finish()
+	})
+
+	t.Run("AnyTimesForDebug", func(t *testing.T) {
+		// Setup expectation with AnyTimes for debug logs
+		mockLogger.EXPECT().
+			Debug(gomock.Any()).
+			AnyTimes() // Allow any number of debug calls
+
+		// Execute multiple debug calls
+		mockLogger.Debug("Debug 1")
+		mockLogger.Debug("Debug 2")
+		mockLogger.Debug("Debug 3")
+
+		// Expectation verified by ctrl.Finish()
+	})
+
+	t.Run("NoArgsLogging", func(t *testing.T) {
+		// Setup expectation for log calls with no arguments
+		mockLogger.EXPECT().
+			Info(gomock.Eq("Simple message")).
+			Times(1)
+
+		// Execute
+		mockLogger.Info("Simple message")
+
+		// Expectation verified by ctrl.Finish()
+	})
+
+	t.Run("MultipleArgsLogging", func(t *testing.T) {
+		// Setup expectation for log calls with multiple arguments
+		mockLogger.EXPECT().
+			Info(gomock.Eq("Player %s at level %d has %d XP"), gomock.Any(), gomock.Any(), gomock.Any()).
+			Times(1)
+
+		// Execute
+		mockLogger.Info("Player %s at level %d has %d XP", "player123", 10, 5000)
+
+		// Expectation verified by ctrl.Finish()
+	})
+}
+
+// TestNakamaRuntimeMockValidation_ParameterMatching verifies parameter matching for logger mocks.
+func TestNakamaRuntimeMockValidation_ParameterMatching(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockLogger := mocks.NewMockLogger(ctrl)
+
+	t.Run("ExactFormatMatch", func(t *testing.T) {
+		// Setup expectation with exact format string
+		mockLogger.EXPECT().
+			Info(gomock.Eq("Player created: %s"), gomock.Any()).
+			Times(1)
+
+		// Execute with matching format
+		mockLogger.Info("Player created: %s", "player123")
+
+		// Expectation verified by ctrl.Finish()
+	})
+
+	t.Run("AnyFormatMatch", func(t *testing.T) {
+		// Setup expectation with any format string
+		mockLogger.EXPECT().
+			Error(gomock.Any(), gomock.Any()).
+			Times(1)
+
+		// Execute with any format
+		mockLogger.Error("Error: %v", "something went wrong")
+
+		// Expectation verified by ctrl.Finish()
+	})
+
+	t.Run("MultipleCallsSameFormat", func(t *testing.T) {
+		// Setup expectation for multiple calls with same format
+		mockLogger.EXPECT().
+			Debug(gomock.Eq("Processing: %s"), gomock.Any()).
+			Times(3)
+
+		// Execute multiple times
+		mockLogger.Debug("Processing: %s", "request1")
+		mockLogger.Debug("Processing: %s", "request2")
+		mockLogger.Debug("Processing: %s", "request3")
+
+		// Expectation verified by ctrl.Finish()
+	})
+}
+
+// TestNakamaRuntimeMockValidation_NoPanics verifies that logger mocks don't panic.
+func TestNakamaRuntimeMockValidation_NoPanics(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockLogger := mocks.NewMockLogger(ctrl)
+
+	// Setup expectations for all log levels
+	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
+
+	// Execute all log levels - should not panic
+	assert.NotPanics(t, func() {
+		mockLogger.Info("Info")
+		mockLogger.Debug("Debug")
+		mockLogger.Warn("Warn")
+		mockLogger.Error("Error")
+	}, "Logger mocks should not panic")
+}
+
