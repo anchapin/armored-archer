@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci generate-mocks
 
 # Default target
 all: help
@@ -35,6 +35,7 @@ help:
 	@echo "  make backend-lint-go    Lint Go backend code"
 	@echo "  make backend-fmt-go     Format Go code"
 	@echo "  make backend-check      Run TypeScript linting and type checking"
+	@echo "  make generate-mocks     Generate mocks from interfaces"
 	@echo ""
 	@echo "$(GREEN)Flaky Test Detection$(RESET)"
 	@echo "  make test-flaky-backend Run flaky test detection for backend"
@@ -149,6 +150,21 @@ backend-fmt-go:
 backend-check:
 	@echo "$(BLUE)Running linting and type checking...$(RESET)"
 	cd $(BACKEND_DIR) && npm run lint && npm run typecheck
+
+generate-mocks:
+	@echo "$(BLUE)Generating mocks from interfaces...$(RESET)"
+	@command -v mockgen >/dev/null 2>&1 || { \
+		echo "$(YELLOW)mockgen not found. Installing...$(RESET)"; \
+		go install go.uber.org/mock/mockgen@latest; \
+	}
+	@export PATH=$$PATH:$$HOME/go/bin && \
+	mockgen -source=$(BACKEND_DIR)/internal/database/database.go \
+		-destination=$(BACKEND_DIR)/tests/testhelpers/mocks/database_mock.go \
+		-package=mocks && \
+	mockgen -source=$(BACKEND_DIR)/internal/runtime/nakama.go \
+		-destination=$(BACKEND_DIR)/tests/testhelpers/mocks/logger_mock.go \
+		-package=mocks
+	@echo "$(GREEN)✓ Mocks generated successfully$(RESET)"
 
 dev: backend-dev
 
