@@ -293,13 +293,14 @@
 12. RNG systems have property-based tests to validate statistical properties
 13. Property-based tests run in CI alongside unit tests with clear reporting
 
-**Plans:** 3/4 plans complete
+**Plans:** 5/5 plans complete
 
 **Plan List:**
-- [x] 06-01-PLAN.md — Coverage Measurement & CI Enforcement (COV-01, COV-02, COV-03, COV-04)
+- [x] 06-00-PLAN.md — Infrastructure Setup (Wave 0 - test stubs)
+- [x] 06-01-PLAN.md — Coverage Measurement & CI Enforcement (COV-01, COV-02, COV-03, COV-04, COV-05)
 - [x] 06-02-PLAN.md — Flaky Test Detection & Quarantine (FLK-01, FLK-02, FLK-03, FLK-04)
 - [x] 06-03-PLAN.md — Visual Regression Testing (VIS-01, VIS-02, VIS-03)
-- [ ] 06-04-PLAN.md — Property-Based Testing (PBT-01, PBT-02, PBT-03)
+- [x] 06-04-PLAN.md — Property-Based Testing (PBT-01, PBT-02, PBT-03)
 
 **Wave Structure:**
 - Wave 1: 06-01 (Coverage), 06-03 (Visual), 06-04 (Property-Based) — Can run in parallel
@@ -337,11 +338,11 @@
 | 2. Fixtures & Mocks Layer | v2.3.0 | 4/4 | Complete | 2026-03-20 |
 | 3. Godot Test Framework Enhancement | v2.3.0 | 2/2 | Complete | 2026-03-20 |
 | 4. Load Testing Infrastructure | v2.3.0 | 4/4 | Complete | 2026-03-20 |
-| 5. Complete Test Infrastructure Foundation | v2.3.0 | 0/4 | Not started | - |
-| 6. Coverage, Reporting & Quality Gates | 3/2 | Complete   | 2026-03-20 | - |
+| 5. Complete Test Infrastructure Foundation | v2.3.0 | 6/6 | Complete | 2026-03-20 |
+| 6. Coverage, Reporting & Quality Gates | v2.3.0 | 5/5 | Complete | 2026-03-20 |
 | 7. Test Infrastructure Integration | v2.3.0 | 0/2 | Not started | - |
 
-**Overall Progress:** 3/7 phases complete (43%)
+**Overall Progress:** 6/7 phases complete (86%)
 
 ---
 

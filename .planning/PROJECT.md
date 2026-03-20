@@ -36,12 +36,13 @@ Quality and reliability are foundational — every feature must be tested, every
 - ✓ **Godot Test Framework Enhancement** — v2.3.0 — Phase 03 — Autoload test isolation with ConfigFile dependency injection pattern, GUT signal testing capabilities (watch_signals, wait_for_signal), 13 comprehensive tests for AccessibilityManager and ThemeManager, fresh instance isolation pattern (ISO-04, MOCK-03)
 - ✓ **Load Testing** — v2.3.0 — Phase 04 — Go RPC benchmarks, Godot 60 FPS tests, k6 load tests (100+ concurrent users), CI regression detection with benchstat
 - ✓ **Performance Optimization** — v2.3.0 — Phase 05 — Redis caching (5 named caches), database query optimization (22 indexes), connection pool tuning, LRU cache eviction, Prometheus metrics for cache/latency/error rate
+- ✓ **Coverage, Reporting & Quality Gates** — v2.3.0 — Phase 06 — Go coverage reporting (17%), Godot coverage proxy (pass rate), CI thresholds (60%/80%), flaky test detection (3x retry), visual regression tests (8 UI components), property-based tests (13 tests), automated quality gates
 
 ### Active
 
 *Current scope. Building toward these.*
 
-- [ ] **Coverage, Reporting & Quality Gates** — v2.3.0 — Phase 06 — Code coverage tracking, test reports, CI quality gates, coverage enforcement
+- [ ] **Test Infrastructure Integration** — v2.3.0 — Phase 07 — Cross-phase integration fixes between benchmarks and fixtures
 
 ### Out of Scope
 
