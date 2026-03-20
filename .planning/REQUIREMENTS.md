@@ -64,10 +64,10 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 
 ### Mock Infrastructure (MOCK)
 
-- [ ] **MOCK-01**: Nakama runtime is mocked for unit testing RPC handlers
-- [ ] **MOCK-02**: Database layer is mocked using interface-based approach
+- [x] **MOCK-01**: Nakama runtime is mocked for unit testing RPC handlers
+- [x] **MOCK-02**: Database layer is mocked using interface-based approach
 - [ ] **MOCK-03**: Godot autoloads are mockable via dependency injection
-- [ ] **MOCK-04**: Mock generation uses uber/mock for Go interfaces
+- [x] **MOCK-04**: Mock generation uses uber/mock for Go interfaces
 - [ ] **MOCK-05**: Mocks are validated against real implementations periodically
 
 ### Property-Based Testing (PBT)
@@ -142,10 +142,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FIX-03 | Phase 2 | Pending |
 | FIX-04 | Phase 2 | Pending |
 | FIX-05 | Phase 2 | Pending |
-| MOCK-01 | Phase 2 | Pending |
-| MOCK-02 | Phase 2 | Pending |
+| MOCK-01 | Phase 2 | Complete |
+| MOCK-02 | Phase 2 | Complete |
 | MOCK-03 | Phase 3 | Pending |
-| MOCK-04 | Phase 2 | Pending |
+| MOCK-04 | Phase 2 | Complete |
 | MOCK-05 | Phase 2 | Pending |
 | PBT-01 | Phase 5 | Pending |
 | PBT-02 | Phase 5 | Pending |
