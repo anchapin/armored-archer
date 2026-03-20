@@ -123,11 +123,22 @@ func BenchmarkGetPlayerStats(b *testing.B) {
 		b.Fatalf("Failed to create player_stats table: %v", err)
 	}
 
-	// Insert test player stats
+	// Insert test player stats using factory function
+	player := testhelpers.NewPlayerBuilder().
+		WithID("test-user-id").
+		WithLevel(10).
+		WithXP(5000).
+		Build()
+
+	// Convert player stats to JSON for database storage
+	statsJSON, err := json.Marshal(player)
+	if err != nil {
+		b.Fatalf("Failed to marshal player stats: %v", err)
+	}
 	_, err = tdb.DB.Exec(`
 		INSERT INTO player_stats (user_id, level, experience, ability_points, stats)
 		VALUES ($1, $2, $3, $4, $5)
-	`, "test-user-id", 10, 5000, 5, `{"strength": 50, "agility": 45, "intelligence": 30}`)
+	`, player.UserID, player.Level, player.XP, 5, statsJSON)
 	if err != nil {
 		b.Fatalf("Failed to insert test player stats: %v", err)
 	}
@@ -343,11 +354,22 @@ func BenchmarkGetPlayerStatsParallel(b *testing.B) {
 		b.Fatalf("Failed to create player_stats table: %v", err)
 	}
 
-	// Insert test player stats
+	// Insert test player stats using factory function
+	player := testhelpers.NewPlayerBuilder().
+		WithID("test-user-id").
+		WithLevel(10).
+		WithXP(5000).
+		Build()
+
+	// Convert player stats to JSON for database storage
+	statsJSON, err := json.Marshal(player)
+	if err != nil {
+		b.Fatalf("Failed to marshal player stats: %v", err)
+	}
 	_, err = tdb.DB.Exec(`
 		INSERT INTO player_stats (user_id, level, experience, ability_points, stats)
 		VALUES ($1, $2, $3, $4, $5)
-	`, "test-user-id", 10, 5000, 5, `{"strength": 50, "agility": 45, "intelligence": 30}`)
+	`, player.UserID, player.Level, player.XP, 5, statsJSON)
 	if err != nil {
 		b.Fatalf("Failed to insert test player stats: %v", err)
 	}
