@@ -1,4 +1,4 @@
-name: armored_archer_v2
+name: armoredarcher
 console:
   port: 7351
   username: admin
@@ -9,8 +9,6 @@ console:
 runtime:
   env: []
   path: /nakama/data
-  # Use JavaScript module for beta (Go module has compatibility issues)
-  js_entrypoint: "modules/index.js"
 
 socket:
   server_key: beta_server_key_production_ready
