@@ -30,6 +30,17 @@ func DefaultPlayerStats(userID string) *PlayerStats {
 		XP:             0,
 		AbilityPoints:  0,
 		BossesDefeated: 0,
+		Stats: struct {
+			Attack   int `json:"attack"`
+			Defense  int `json:"defense"`
+			Dodge    int `json:"dodge"`
+			CritRate int `json:"crit_rate"`
+		}{
+			Attack:   10,
+			Defense:  10,
+			Dodge:    10,
+			CritRate: 5,
+		},
 	}
 }
 
@@ -115,7 +126,7 @@ func (p *PlayerStats) ToMap() map[string]interface{} {
 		"xp":               p.XP,
 		"ability_points":   p.AbilityPoints,
 		"bosses_defeated":  p.BossesDefeated,
-		"stats": map[string]int{
+		"stats": map[string]interface{}{
 			"attack":    p.Stats.Attack,
 			"defense":   p.Stats.Defense,
 			"dodge":     p.Stats.Dodge,
@@ -132,33 +143,53 @@ func FromMap(data map[string]interface{}) (*PlayerStats, error) {
 		stats.UserID = userID
 	}
 
-	if level, ok := data["level"].(float64); ok {
+	// Handle both int and float64 for numeric fields
+	if level, ok := data["level"].(int); ok {
+		stats.Level = level
+	} else if level, ok := data["level"].(float64); ok {
 		stats.Level = int(level)
 	}
 
-	if xp, ok := data["xp"].(float64); ok {
+	if xp, ok := data["xp"].(int); ok {
+		stats.XP = xp
+	} else if xp, ok := data["xp"].(float64); ok {
 		stats.XP = int(xp)
 	}
 
-	if abilityPoints, ok := data["ability_points"].(float64); ok {
+	if abilityPoints, ok := data["ability_points"].(int); ok {
+		stats.AbilityPoints = abilityPoints
+	} else if abilityPoints, ok := data["ability_points"].(float64); ok {
 		stats.AbilityPoints = int(abilityPoints)
 	}
 
-	if bossesDefeated, ok := data["bosses_defeated"].(float64); ok {
+	if bossesDefeated, ok := data["bosses_defeated"].(int); ok {
+		stats.BossesDefeated = bossesDefeated
+	} else if bossesDefeated, ok := data["bosses_defeated"].(float64); ok {
 		stats.BossesDefeated = int(bossesDefeated)
 	}
 
 	if statsData, ok := data["stats"].(map[string]interface{}); ok {
-		if attack, ok := statsData["attack"].(float64); ok {
+		if attack, ok := statsData["attack"].(int); ok {
+			stats.Stats.Attack = attack
+		} else if attack, ok := statsData["attack"].(float64); ok {
 			stats.Stats.Attack = int(attack)
 		}
-		if defense, ok := statsData["defense"].(float64); ok {
+
+		if defense, ok := statsData["defense"].(int); ok {
+			stats.Stats.Defense = defense
+		} else if defense, ok := statsData["defense"].(float64); ok {
 			stats.Stats.Defense = int(defense)
 		}
-		if dodge, ok := statsData["dodge"].(float64); ok {
+
+		if dodge, ok := statsData["dodge"].(int); ok {
+			stats.Stats.Dodge = dodge
+		} else if dodge, ok := statsData["dodge"].(float64); ok {
 			stats.Stats.Dodge = int(dodge)
 		}
-		if critRate, ok := statsData["crit_rate"].(float64); ok {
+
+		if critRate, ok := statsData["crit_rate"].(int); ok {
+			stats.Stats.CritRate = critRate
+		} else if critRate, ok := statsData["crit_rate"].(float64); ok {
 			stats.Stats.CritRate = int(critRate)
 		}
 	}

@@ -5,31 +5,36 @@ import (
 	"time"
 
 	"github.com/anchapin/armored-archer/backend/internal/combat"
-	"github.com/anchapin/armored-archer/backend/tests/testhelpers"
+	"github.com/stretchr/testify/assert"
 )
 
+// TestCalculateHitChance verifies hit chance calculation with different dodge values.
+// Uses testify assertions for range-based assertions.
 func TestCalculateHitChance(t *testing.T) {
-	// Test base hit chance with no dodge
-	hitChance := combat.CalculateHitChance(3.14159, 0)
-	testhelpers.AssertTrue(t, hitChance >= 0.6 && hitChance <= 0.8,
-		"Base hit chance should be around 70%")
+	tests := []struct {
+		name           string
+		pi             float64
+		dodge          int
+		minHitChance   float64
+		maxHitChance   float64
+	}{
+		{"base_hit_chance", 3.14159, 0, 0.6, 0.8},
+		{"high_dodge", 3.14159, 100, 0.1, 0.3},
+		{"minimum_hit_chance", 0, 1000, 0.1, 0.95},
+	}
 
-	// Test hit chance with high dodge
-	hitChance = combat.CalculateHitChance(3.14159, 100)
-	testhelpers.AssertTrue(t, hitChance >= 0.1 && hitChance <= 0.3,
-		"Hit chance with high dodge should be reduced")
-
-	// Test minimum hit chance
-	hitChance = combat.CalculateHitChance(0, 1000)
-	testhelpers.AssertTrue(t, hitChance >= 0.1, "Hit chance should have minimum 10%")
-
-	// Test maximum hit chance
-	hitChance = combat.CalculateHitChance(3.14159, 0)
-	testhelpers.AssertTrue(t, hitChance <= 0.95, "Hit chance should have maximum 95%")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hitChance := combat.CalculateHitChance(tt.pi, tt.dodge)
+			assert.True(t, hitChance >= tt.minHitChance && hitChance <= tt.maxHitChance,
+				"Hit chance should be within range [%f, %f], got %f", tt.minHitChance, tt.maxHitChance, hitChance)
+		})
+	}
 }
 
+// TestIsHit verifies hit calculation over multiple runs.
+// Uses testify assertions for statistical validation.
 func TestIsHit(t *testing.T) {
-	// Run multiple times to account for randomness
 	hits := 0
 	runs := 1000
 
@@ -40,33 +45,50 @@ func TestIsHit(t *testing.T) {
 	}
 
 	hitRate := float64(hits) / float64(runs)
-	testhelpers.AssertTrue(t, hitRate >= 0.6 && hitRate <= 0.8,
-		"Hit rate should be around 70%")
+	assert.True(t, hitRate >= 0.6 && hitRate <= 0.8,
+		"Hit rate should be around 70%%, got %f", hitRate)
 }
 
+// TestCalculateDamage verifies damage calculation with different attack/defense values.
+// Uses testify assertions for clearer error messages.
 func TestCalculateDamage(t *testing.T) {
-	attacker := &combat.PlayerStats{}
-	attacker.Stats.Attack = 20
+	tests := []struct {
+		name            string
+		attack          int
+		defense         int
+		minDamage       int
+		expectZeroDamage bool
+	}{
+		{"high_attack_low_defense", 20, 10, 1, false},
+		{"equal_stats", 10, 10, 1, false},
+		{"nil_attacker", 0, 10, 0, true},
+	}
 
-	defender := &combat.PlayerStats{}
-	defender.Stats.Defense = 10
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var attacker *combat.PlayerStats
+			if !tt.expectZeroDamage {
+				attacker = &combat.PlayerStats{}
+				attacker.Stats.Attack = tt.attack
+			}
 
-	damage := combat.CalculateDamage(attacker, defender)
-	testhelpers.AssertTrue(t, damage >= 1, "Damage should be at least 1")
+			defender := &combat.PlayerStats{}
+			defender.Stats.Defense = tt.defense
 
-	// Test with equal attack and defense
-	attacker.Stats.Attack = 10
-	defender.Stats.Defense = 10
-	damage = combat.CalculateDamage(attacker, defender)
-	testhelpers.AssertTrue(t, damage >= 1, "Damage should be at least 1 even with equal stats")
+			damage := combat.CalculateDamage(attacker, defender)
 
-	// Test with nil stats
-	damage = combat.CalculateDamage(nil, defender)
-	testhelpers.AssertEqual(t, 0, damage, "Damage should be 0 with nil attacker")
+			if tt.expectZeroDamage {
+				assert.Equal(t, 0, damage, "Damage should be 0 with nil attacker")
+			} else {
+				assert.True(t, damage >= tt.minDamage, "Damage should be at least %d", tt.minDamage)
+			}
+		})
+	}
 }
 
+// TestCalculateCrit verifies critical hit calculation over multiple runs.
+// Uses testify assertions for statistical validation.
 func TestCalculateCrit(t *testing.T) {
-	// Run multiple times to account for randomness
 	crits := 0
 	runs := 1000
 	critRate := 25 // 25% crit rate
@@ -78,98 +100,161 @@ func TestCalculateCrit(t *testing.T) {
 	}
 
 	critRateActual := float64(crits) / float64(runs) * 100
-	testhelpers.AssertTrue(t, critRateActual >= 20 && critRateActual <= 30,
-		"Crit rate should be around 25%")
+	assert.True(t, critRateActual >= 20 && critRateActual <= 30,
+		"Crit rate should be around 25%%, got %f", critRateActual)
 }
 
+// TestCombatActionValidate uses table-driven test pattern for action validation.
+// Each test case validates a different combat action scenario.
 func TestCombatActionValidate(t *testing.T) {
-	// Valid action
-	action := &combat.CombatAction{
-		MatchID:    "match123",
-		ActionType: combat.ActionShoot,
-		Angle:      3.14159,
-		Power:      0.5,
+	tests := []struct {
+		name        string
+		setupAction func() *combat.CombatAction
+		isValid     bool
+	}{
+		{
+			name: "valid_action",
+			setupAction: func() *combat.CombatAction {
+				return &combat.CombatAction{
+					MatchID:    "match123",
+					ActionType: combat.ActionShoot,
+					Angle:      3.14159,
+					Power:      0.5,
+				}
+			},
+			isValid: true,
+		},
+		{
+			name: "empty_match_id",
+			setupAction: func() *combat.CombatAction {
+				action := &combat.CombatAction{
+					MatchID:    "",
+					ActionType: combat.ActionShoot,
+					Angle:      3.14159,
+					Power:      0.5,
+				}
+				return action
+			},
+			isValid: false,
+		},
+		{
+			name: "invalid_action_type",
+			setupAction: func() *combat.CombatAction {
+				action := &combat.CombatAction{
+					MatchID:    "match123",
+					ActionType: "invalid",
+					Angle:      3.14159,
+					Power:      0.5,
+				}
+				return action
+			},
+			isValid: false,
+		},
+		{
+			name: "angle_out_of_range",
+			setupAction: func() *combat.CombatAction {
+				action := &combat.CombatAction{
+					MatchID:    "match123",
+					ActionType: combat.ActionShoot,
+					Angle:      10.0,
+					Power:      0.5,
+				}
+				return action
+			},
+			isValid: false,
+		},
+		{
+			name: "power_out_of_range",
+			setupAction: func() *combat.CombatAction {
+				action := &combat.CombatAction{
+					MatchID:    "match123",
+					ActionType: combat.ActionShoot,
+					Angle:      3.14159,
+					Power:      1.5,
+				}
+				return action
+			},
+			isValid: false,
+		},
 	}
-	err := action.Validate()
-	testhelpers.AssertNoError(t, err, "Valid action should pass validation")
 
-	// Invalid: empty match ID
-	action.MatchID = ""
-	err = action.Validate()
-	testhelpers.AssertError(t, err, "Should fail with empty match ID")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			action := tt.setupAction()
+			err := action.Validate()
 
-	// Invalid: wrong action type
-	action.MatchID = "match123"
-	action.ActionType = "invalid"
-	err = action.Validate()
-	testhelpers.AssertError(t, err, "Should fail with invalid action type")
-
-	// Invalid: angle out of range
-	action.ActionType = combat.ActionShoot
-	action.Angle = 10.0
-	err = action.Validate()
-	testhelpers.AssertError(t, err, "Should fail with angle out of range")
-
-	// Invalid: power out of range
-	action.Angle = 3.14159
-	action.Power = 1.5
-	err = action.Validate()
-	testhelpers.AssertError(t, err, "Should fail with power out of range")
+			if tt.isValid {
+				assert.NoError(t, err, "Valid action should pass validation")
+			} else {
+				assert.Error(t, err, "Should fail validation")
+			}
+		})
+	}
 }
 
+// TestNewMatchState verifies match state initialization.
+// Uses testify assertions for multiple field validation.
 func TestNewMatchState(t *testing.T) {
 	creatorStats := &combat.PlayerStats{}
 	opponentStats := &combat.PlayerStats{}
 
 	matchState := combat.NewMatchState("match123", "creator1", "opponent1", creatorStats, opponentStats)
 
-	testhelpers.AssertEqual(t, "match123", matchState.MatchID, "MatchID should match")
-	testhelpers.AssertEqual(t, "creator1", matchState.CreatorID, "CreatorID should match")
-	testhelpers.AssertEqual(t, "opponent1", matchState.OpponentID, "OpponentID should match")
-	testhelpers.AssertEqual(t, combat.MatchStatusActive, matchState.Status, "Status should be active")
-	testhelpers.AssertEqual(t, 100, matchState.CreatorHealth, "Creator health should be 100")
-	testhelpers.AssertEqual(t, 100, matchState.OpponentHealth, "Opponent health should be 100")
-	testhelpers.AssertEqual(t, 1, matchState.Turn, "Turn should be 1")
+	assert.Equal(t, "match123", matchState.MatchID, "MatchID should match")
+	assert.Equal(t, "creator1", matchState.CreatorID, "CreatorID should match")
+	assert.Equal(t, "opponent1", matchState.OpponentID, "OpponentID should match")
+	assert.Equal(t, combat.MatchStatusActive, matchState.Status, "Status should be active")
+	assert.Equal(t, 100, matchState.CreatorHealth, "Creator health should be 100")
+	assert.Equal(t, 100, matchState.OpponentHealth, "Opponent health should be 100")
+	assert.Equal(t, 1, matchState.Turn, "Turn should be 1")
 }
 
+// TestMatchStateIsTurnTimeout verifies turn timeout detection.
+// Uses testify assertions for time-based validation.
 func TestMatchStateIsTurnTimeout(t *testing.T) {
 	matchState := combat.NewMatchState("match123", "creator1", "opponent1",
 		&combat.PlayerStats{}, &combat.PlayerStats{})
 
 	// Should not timeout immediately
-	testhelpers.AssertFalse(t, matchState.IsTurnTimeout(), "Should not timeout immediately")
+	assert.False(t, matchState.IsTurnTimeout(), "Should not timeout immediately")
 
 	// Simulate timeout by setting old timestamp
 	matchState.LastTurnTimestamp = time.Now().UnixMilli() - 120000 // 2 minutes ago
-	testhelpers.AssertTrue(t, matchState.IsTurnTimeout(), "Should timeout after 2 minutes")
+	assert.True(t, matchState.IsTurnTimeout(), "Should timeout after 2 minutes")
 }
 
+// TestMatchStateHandleTurnTimeout verifies turn timeout handling.
+// Uses testify assertions for state transition validation.
 func TestMatchStateHandleTurnTimeout(t *testing.T) {
 	matchState := combat.NewMatchState("match123", "creator1", "opponent1",
 		&combat.PlayerStats{}, &combat.PlayerStats{})
 
 	// First timeout should not forfeit
 	forfeited := matchState.HandleTurnTimeout()
-	testhelpers.AssertFalse(t, forfeited, "Should not forfeit on first timeout")
-	testhelpers.AssertEqual(t, 1, matchState.ConsecutiveTimeouts, "Should have 1 consecutive timeout")
+	assert.False(t, forfeited, "Should not forfeit on first timeout")
+	assert.Equal(t, 1, matchState.ConsecutiveTimeouts, "Should have 1 consecutive timeout")
 
 	// Second timeout should forfeit
 	forfeited = matchState.HandleTurnTimeout()
-	testhelpers.AssertTrue(t, forfeited, "Should forfeit on second timeout")
-	testhelpers.AssertEqual(t, combat.MatchStatusCompleted, matchState.Status, "Status should be completed")
+	assert.True(t, forfeited, "Should forfeit on second timeout")
+	assert.Equal(t, combat.MatchStatusCompleted, matchState.Status, "Status should be completed")
 }
 
+// TestMatchStateGetActivePlayer verifies active player detection.
+// Uses testify assertions for turn-based validation.
 func TestMatchStateGetActivePlayer(t *testing.T) {
 	matchState := combat.NewMatchState("match123", "creator1", "opponent1",
 		&combat.PlayerStats{}, &combat.PlayerStats{})
 
-	testhelpers.AssertEqual(t, "creator1", matchState.GetActivePlayer(), "Creator should be active first")
+	assert.Equal(t, "creator1", matchState.GetActivePlayer(), "Creator should be active first")
 
 	// Simulate turn switch
 	matchState.CurrentTurnUserID = "opponent1"
-	testhelpers.AssertEqual(t, "opponent1", matchState.GetActivePlayer(), "Opponent should be active after switch")
+	assert.Equal(t, "opponent1", matchState.GetActivePlayer(), "Opponent should be active after switch")
 }
 
+// TestMatchStateGetHealth verifies health retrieval for players.
+// Uses testify assertions for player-specific health validation.
 func TestMatchStateGetHealth(t *testing.T) {
 	matchState := combat.NewMatchState("match123", "creator1", "opponent1",
 		&combat.PlayerStats{}, &combat.PlayerStats{})
@@ -177,10 +262,12 @@ func TestMatchStateGetHealth(t *testing.T) {
 	matchState.CreatorHealth = 80
 	matchState.OpponentHealth = 60
 
-	testhelpers.AssertEqual(t, 80, matchState.GetHealth("creator1"), "Creator health should be 80")
-	testhelpers.AssertEqual(t, 60, matchState.GetHealth("opponent1"), "Opponent health should be 60")
+	assert.Equal(t, 80, matchState.GetHealth("creator1"), "Creator health should be 80")
+	assert.Equal(t, 60, matchState.GetHealth("opponent1"), "Opponent health should be 60")
 }
 
+// TestCombatResult verifies combat result JSON serialization.
+// Uses testify assertions for JSON validation.
 func TestCombatResult(t *testing.T) {
 	result := &combat.CombatResult{
 		Success:     true,
@@ -191,10 +278,12 @@ func TestCombatResult(t *testing.T) {
 	}
 
 	jsonStr, err := result.ToJSON()
-	testhelpers.AssertNoError(t, err, "Should marshal to JSON")
-	testhelpers.AssertTrue(t, len(jsonStr) > 0, "JSON should not be empty")
+	assert.NoError(t, err, "Should marshal to JSON")
+	assert.True(t, len(jsonStr) > 0, "JSON should not be empty")
 }
 
+// TestProcessCombatAction verifies combat action processing.
+// Uses testify assertions for combat result validation.
 func TestProcessCombatAction(t *testing.T) {
 	matchState := combat.NewMatchState("match123", "creator1", "opponent1",
 		&combat.PlayerStats{}, &combat.PlayerStats{})
@@ -211,8 +300,8 @@ func TestProcessCombatAction(t *testing.T) {
 	result, err := combat.ProcessCombatAction(matchState, action,
 		matchState.CreatorStats, matchState.OpponentStats)
 
-	testhelpers.AssertNoError(t, err, "Should process combat action")
-	testhelpers.AssertTrue(t, result.Success, "Result should be successful")
-	testhelpers.AssertTrue(t, result.MatchStatus == combat.MatchStatusActive ||
+	assert.NoError(t, err, "Should process combat action")
+	assert.True(t, result.Success, "Result should be successful")
+	assert.True(t, result.MatchStatus == combat.MatchStatusActive ||
 		result.MatchStatus == combat.MatchStatusCompleted, "Match should be active or completed")
 }
