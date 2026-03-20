@@ -12,10 +12,10 @@ Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 
 - [x] **FND-01**: Go backend uses testify framework for assertions and test suites
 - [x] **FND-02**: Godot client uses enhanced GUT framework with autoload testing support
-- [x] **FND-03**: Test runner executes all backend and frontend tests with unified reporting
-- [x] **FND-04**: Test pyramid is enforced (70% unit, 20% integration, 10% E2E) via automated checks
-- [x] **FND-05**: Go race detector runs in CI for all concurrent code
-- [x] **FND-06**: Tests are isolated and don't depend on shared state
+- [ ] **FND-03**: Test runner executes all backend and frontend tests with unified reporting
+- [ ] **FND-04**: Test pyramid is enforced (70% unit, 20% integration, 10% E2E) via automated checks
+- [ ] **FND-05**: Go race detector runs in CI for all concurrent code
+- [ ] **FND-06**: Tests are isolated and don't depend on shared state
 
 ### Test Isolation & Fixtures (ISO)
 
@@ -111,32 +111,32 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | FND-01 | Phase 1 | Complete |
 | FND-02 | Phase 1 | Complete |
-| FND-03 | Phase 1 | Complete |
-| FND-04 | Phase 1 | Complete |
-| FND-05 | Phase 1 | Complete |
-| FND-06 | Phase 1 | Complete |
+| FND-03 | Phase 5 | Pending |
+| FND-04 | Phase 5 | Pending |
+| FND-05 | Phase 5 | Pending |
+| FND-06 | Phase 5 | Pending |
 | ISO-01 | Phase 2 | Complete |
 | ISO-02 | Phase 2 | Complete |
 | ISO-03 | Phase 2 | Complete |
 | ISO-04 | Phase 3 | Complete |
 | ISO-05 | Phase 2 | Complete |
-| COV-01 | Phase 5 | Pending |
-| COV-02 | Phase 5 | Pending |
-| COV-03 | Phase 5 | Pending |
-| COV-04 | Phase 5 | Pending |
-| COV-05 | Phase 5 | Pending |
-| FLK-01 | Phase 5 | Pending |
-| FLK-02 | Phase 5 | Pending |
-| FLK-03 | Phase 5 | Pending |
-| FLK-04 | Phase 5 | Pending |
+| COV-01 | Phase 6 | Pending |
+| COV-02 | Phase 6 | Pending |
+| COV-03 | Phase 6 | Pending |
+| COV-04 | Phase 6 | Pending |
+| COV-05 | Phase 6 | Pending |
+| FLK-01 | Phase 6 | Pending |
+| FLK-02 | Phase 6 | Pending |
+| FLK-03 | Phase 6 | Pending |
+| FLK-04 | Phase 6 | Pending |
 | PERF-01 | Phase 4 | Complete |
 | PERF-02 | Phase 4 | Complete |
 | PERF-03 | Phase 4 | Pending |
 | PERF-04 | Phase 4 | Pending |
 | PERF-05 | Phase 4 | Complete |
-| VIS-01 | Phase 5 | Pending |
-| VIS-02 | Phase 5 | Pending |
-| VIS-03 | Phase 5 | Pending |
+| VIS-01 | Phase 6 | Pending |
+| VIS-02 | Phase 6 | Pending |
+| VIS-03 | Phase 6 | Pending |
 | FIX-01 | Phase 2 | Complete |
 | FIX-02 | Phase 2 | Complete |
 | FIX-03 | Phase 2 | Complete |
@@ -147,9 +147,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MOCK-03 | Phase 3 | Complete |
 | MOCK-04 | Phase 2 | Complete |
 | MOCK-05 | Phase 2 | Complete |
-| PBT-01 | Phase 5 | Pending |
-| PBT-02 | Phase 5 | Pending |
-| PBT-03 | Phase 5 | Pending |
+| PBT-01 | Phase 6 | Pending |
+| PBT-02 | Phase 6 | Pending |
+| PBT-03 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 40 total
@@ -157,11 +157,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Unmapped: 0 ✓
 
 **Phase Distribution:**
-- Phase 1 (Test Infrastructure Foundation): 6 requirements
+- Phase 1 (Test Infrastructure Foundation): 2 requirements (FND-01, FND-02)
 - Phase 2 (Fixtures & Mocks Layer): 13 requirements
 - Phase 3 (Godot Test Framework Enhancement): 2 requirements
 - Phase 4 (Load Testing Infrastructure): 5 requirements
-- Phase 5 (Coverage, Reporting & Quality Gates): 14 requirements
+- Phase 5 (Complete Test Infrastructure Foundation): 4 requirements (FND-03, FND-04, FND-05, FND-06)
+- Phase 6 (Coverage, Reporting & Quality Gates): 14 requirements (COV, FLK, VIS, PBT)
+- Phase 7 (Test Infrastructure Integration): 2 integration fixes (PERF-01 integration, PERF-03 integration)
 
 ---
 *Requirements defined: 2026-03-19*

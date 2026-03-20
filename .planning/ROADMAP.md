@@ -10,7 +10,7 @@
 - ✅ **v2.0.0 Go Backend Migration** - Phases 1-15 (shipped 2026-03-15)
 - ✅ **v2.1.0 Alpha Launch & Stabilization** - Phases 1-6 (shipped 2026-03-17)
 - ✅ **v2.2.0 UI/UX Polish** - Phases 1-4 (shipped 2026-03-18)
-- 🚧 **v2.3.0 Testing & QA Infrastructure** - Phases 1-5 (in progress)
+- 🚧 **v2.3.0 Testing & QA Infrastructure** - Phases 1-7 (in progress)
 
 ---
 
@@ -235,11 +235,34 @@
 
 ---
 
-### Phase 5: Coverage, Reporting & Quality Gates
+### Phase 5: Complete Test Infrastructure Foundation (Gap Closure)
+
+**Goal:** Implement orphaned Phase 1 requirements - unified test runner, race detector, and test isolation
+
+**Depends on:** Phase 1 (infrastructure exists but incomplete)
+
+**Gap Closure:** Closes gaps identified in audit for FND-03, FND-04, FND-05, FND-06
+
+**Requirements:** FND-03, FND-04, FND-05, FND-06
+
+**Success Criteria** (what must be TRUE):
+1. Developer can run single command (`./scripts/test-all.sh` or `make test-all`) that executes both Go and Godot tests
+2. Test runner generates unified report with pass/fail status for both test suites
+3. CI enforces test pyramid ratio (70% unit, 20% integration, 10% E2E) and fails PRs outside threshold
+4. Go race detector runs in CI with `-race` flag and fails build on data races
+5. Tests run with `-shuffle=on` flag in CI to verify isolation and detect shared state dependencies
+
+**Plans:** TBD
+
+---
+
+### Phase 6: Coverage, Reporting & Quality Gates
 
 **Goal:** Establish comprehensive coverage reporting, flaky test detection, and automated quality gates in CI
 
-**Depends on:** Phase 1, 2, 3, 4 (comprehensive test suite required)
+**Depends on:** Phase 1, 2, 3, 4, 5 (comprehensive test suite required)
+
+**Gap Closure:** Original Phase 5 content - was never created
 
 **Requirements:** COV-01, COV-02, COV-03, COV-04, COV-05, FLK-01, FLK-02, FLK-03, FLK-04, VIS-01, VIS-02, VIS-03, PBT-01, PBT-02, PBT-03
 
@@ -262,19 +285,41 @@
 
 ---
 
+### Phase 7: Test Infrastructure Integration (Gap Closure)
+
+**Goal:** Fix cross-phase integration gaps between Phase 04 benchmarks/load tests and Phase 02 fixtures/testcontainers
+
+**Depends on:** Phase 2 (fixtures), Phase 4 (benchmarks/load tests)
+
+**Gap Closure:** Closes integration gaps identified in audit
+
+**Requirements:** PERF-01 (integration), PERF-03 (integration)
+
+**Success Criteria** (what must be TRUE):
+1. Go benchmarks use Phase 02 factory functions (`NewTestPlayer()`, builder pattern) instead of raw SQL INSERT
+2. Load tests use Phase 02 testcontainers for automated database provisioning instead of manual backend startup
+3. Load tests can run in isolation without manual service startup
+4. Test data is consistent across benchmarks and integration tests
+
+**Plans:** TBD
+
+---
+
 ## Progress
 
-**Execution Order:** Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+**Execution Order:** Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1. Test Infrastructure Foundation | v2.3.0 | 1/6 | In progress | 2026-03-19 |
-| 2. Fixtures & Mocks Layer | v2.3.0 | 0/4 | Not started | - |
-| 3. Godot Test Framework Enhancement | v2.3.0 | Complete    | 2026-03-20 | - |
-| 4. Load Testing Infrastructure | v2.3.0 | 0/4 | Not started | - |
-| 5. Coverage, Reporting & Quality Gates | v2.3.0 | 0/14 | Not started | - |
+| 2. Fixtures & Mocks Layer | v2.3.0 | 4/4 | Complete | 2026-03-20 |
+| 3. Godot Test Framework Enhancement | v2.3.0 | 2/2 | Complete | 2026-03-20 |
+| 4. Load Testing Infrastructure | v2.3.0 | 4/4 | Complete | 2026-03-20 |
+| 5. Complete Test Infrastructure Foundation | v2.3.0 | 0/4 | Not started | - |
+| 6. Coverage, Reporting & Quality Gates | v2.3.0 | 0/14 | Not started | - |
+| 7. Test Infrastructure Integration | v2.3.0 | 0/2 | Not started | - |
 
-**Overall Progress:** 0/5 phases complete (0%)
+**Overall Progress:** 3/7 phases complete (43%)
 
 ---
 
@@ -285,16 +330,21 @@ graph TD
     A[Phase 1: Test Infrastructure Foundation] --> B[Phase 2: Fixtures & Mocks Layer]
     A --> C[Phase 3: Godot Test Framework Enhancement]
     B --> D[Phase 4: Load Testing Infrastructure]
-    B --> E[Phase 5: Coverage, Reporting & Quality Gates]
-    C --> E
-    D --> E
+    A --> E[Phase 5: Complete Test Infrastructure Foundation]
+    E --> F[Phase 6: Coverage, Reporting & Quality Gates]
+    B --> F
+    C --> F
+    D --> F
+    B --> G[Phase 7: Test Infrastructure Integration]
+    D --> G
 ```
 
-**Critical Path:** Phase 1 → Phase 2 → Phase 5 (core testing infrastructure)
+**Critical Path:** Phase 1 → Phase 5 → Phase 6 (core testing infrastructure)
 
 **Parallel Opportunities:**
 - Phase 2 (Go fixtures/mocks) and Phase 3 (Godot framework) can run in parallel after Phase 1
 - Phase 4 (load testing) can run in parallel with Phase 5 once Phase 2 is complete
+- Phase 7 (integration fixes) can run after Phase 2 and Phase 4 are complete
 
 ---
 
@@ -305,7 +355,9 @@ graph TD
 | Gate 1 | Phase 1 | Test runner executes all tests with unified reporting; race detector runs in CI |
 | Gate 2 | Phase 2 | Database tests use testcontainers; factory functions create test data; mocks work for unit tests |
 | Gate 3 | Phase 4 | Load tests can simulate 100+ concurrent players; performance baselines established |
-| Gate 4 | Phase 5 | Coverage thresholds enforced in CI; flaky test detection operational; quality gates block failing PRs |
+| Gate 4 | Phase 5 | Unified test runner works; test pyramid enforced; race detector enabled; tests isolated |
+| Gate 5 | Phase 6 | Coverage thresholds enforced in CI; flaky test detection operational; quality gates block failing PRs |
+| Gate 6 | Phase 7 | Benchmarks use fixtures; load tests use testcontainers; integration gaps closed |
 
 **If any gate fails:** Pause, assess, decide: continue with mitigations, pivot approach, or defer remaining work to v2.4.0
 
