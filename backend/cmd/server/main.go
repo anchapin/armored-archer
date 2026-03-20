@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/anchapin/armored-archer/backend/internal/cache"
 	"github.com/anchapin/armored-archer/backend/internal/config"
 	"github.com/anchapin/armored-archer/backend/internal/rpc"
 	"github.com/anchapin/armored-archer/backend/internal/utils"
@@ -14,9 +15,6 @@ import (
 
 // globalConfig holds the loaded configuration accessible to all modules.
 var globalConfig *config.Config
-
-// globalCache holds the cache manager accessible to all modules.
-var globalCache *utils.CacheManager
 
 // InitModule is the entry point for the Nakama Go module.
 // This function is called by Nakama when the module loads.
@@ -41,24 +39,26 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	logger.Info("Configuration loaded successfully")
 
 	// Initialize cache manager with optimized settings
-	globalCache = utils.NewCacheManager(logger)
-	
-	// Initialize caches with appropriate sizes and TTLs for performance
+	cache.InitGlobalCache(logger)
+
+	// Get the cache manager and create named caches with appropriate sizes and TTLs for performance
+	globalCache := cache.GetGlobalCache()
+
 	// Player stats cache - frequently accessed, changes occasionally
 	globalCache.CreateCache("player_stats", 500, 60*time.Second)
-	
+
 	// Leaderboard cache - frequently read, changes on match completion
 	globalCache.CreateCache("leaderboards", 100, 60*time.Second)
-	
+
 	// Season info cache - rarely changes
 	globalCache.CreateCache("season_info", 100, 5*time.Minute)
-	
+
 	// Store catalog cache - static data, very rarely changes
 	globalCache.CreateCache("store_catalog", 100, 30*time.Minute)
-	
+
 	// Gear definitions cache - static game config
 	globalCache.CreateCache("gear_definitions", 100, 30*time.Minute)
-	
+
 	logger.Info("Cache manager initialized with optimized settings")
 
 	// Register RPC handlers
@@ -188,11 +188,6 @@ func registerRPCs(logger runtime.Logger, initializer runtime.Initializer) error 
 	}
 
 	return nil
-}
-
-// GetGlobalCache returns the global cache manager.
-func GetGlobalCache() *utils.CacheManager {
-	return globalCache
 }
 
 // GetGlobalConfig returns the global configuration.

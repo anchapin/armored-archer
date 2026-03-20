@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anchapin/armored-archer/backend/internal/cache"
 	"github.com/anchapin/armored-archer/backend/internal/feedback"
 	"github.com/heroiclabs/nakama-common/runtime"
 	"github.com/lib/pq"
@@ -92,6 +93,15 @@ func SubmitFeedback(ctx context.Context, logger runtime.Logger, db *sql.DB, nk r
 	}
 
 	fb.FeedbackID = feedbackID
+
+	// Invalidate feedback statistics cache since new feedback was submitted
+	globalCache := cache.GetGlobalCache()
+	if globalCache != nil {
+		if feedbackCache := globalCache.GetCache("player_stats"); feedbackCache != nil {
+			feedbackCache.Delete(cacheKeyFeedbackStats)
+			logger.Debug("Invalidated feedback statistics cache after new submission")
+		}
+	}
 
 	// Log feedback submission
 	logger.Info("Feedback submitted: %s by user %s (category: %s)", feedbackID, userID, fb.Category)
@@ -589,6 +599,19 @@ func GetFeedbackStatistics(ctx context.Context, logger runtime.Logger, db *sql.D
 		req.Days = 30
 	}
 
+	// Check cache before querying database
+	globalCache := cache.GetGlobalCache()
+	if globalCache != nil {
+		feedbackCache := globalCache.GetCache("player_stats")
+		if feedbackCache != nil {
+			if cachedData, found := feedbackCache.Get(cacheKeyFeedbackStats); found {
+				logger.Debug("Cache hit for feedback statistics")
+				return string(cachedData.([]byte)), nil
+			}
+			logger.Debug("Cache miss for feedback statistics, querying database")
+		}
+	}
+
 	// Query statistics
 	query := `
 		SELECT
@@ -621,8 +644,8 @@ func GetFeedbackStatistics(ctx context.Context, logger runtime.Logger, db *sql.D
 
 	// Get breakdowns by category
 	categoryQuery := `
-		SELECT category::TEXT, COUNT(*) 
-		FROM feedback_submissions 
+		SELECT category::TEXT, COUNT(*)
+		FROM feedback_submissions
 		WHERE submitted_at >= NOW() - ($1 || ' days')::INTERVAL
 		GROUP BY category
 	`
@@ -644,8 +667,8 @@ func GetFeedbackStatistics(ctx context.Context, logger runtime.Logger, db *sql.D
 
 	// Get breakdowns by status
 	statusQuery := `
-		SELECT status::TEXT, COUNT(*) 
-		FROM feedback_submissions 
+		SELECT status::TEXT, COUNT(*)
+		FROM feedback_submissions
 		WHERE submitted_at >= NOW() - ($1 || ' days')::INTERVAL
 		GROUP BY status
 	`
@@ -667,8 +690,8 @@ func GetFeedbackStatistics(ctx context.Context, logger runtime.Logger, db *sql.D
 
 	// Get breakdowns by priority
 	priorityQuery := `
-		SELECT priority::TEXT, COUNT(*) 
-		FROM feedback_submissions 
+		SELECT priority::TEXT, COUNT(*)
+		FROM feedback_submissions
 		WHERE submitted_at >= NOW() - ($1 || ' days')::INTERVAL
 		GROUP BY priority
 	`
@@ -693,7 +716,22 @@ func GetFeedbackStatistics(ctx context.Context, logger runtime.Logger, db *sql.D
 		Statistics: &stats,
 	}
 
-	return jsonResponse(response)
+	// Marshal response to JSON
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		logger.Error("Failed to marshal response: %v", err)
+		return errorResponse(false, "Failed to encode response", err)
+	}
+
+	// Store in cache for future requests
+	if globalCache != nil {
+		if feedbackCache := globalCache.GetCache("player_stats"); feedbackCache != nil {
+			feedbackCache.Set(cacheKeyFeedbackStats, responseBytes, cacheTTLFeedbackStats)
+			logger.Debug("Cached feedback statistics with TTL: %v", cacheTTLFeedbackStats)
+		}
+	}
+
+	return string(responseBytes), nil
 }
 
 // Helper functions
