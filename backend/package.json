@@ -111,7 +111,7 @@
     "@sentry/node": "^10.40.0",
     "@types/ioredis": "^5.0.0",
     "buffer": "^6.0.3",
-    "ioredis": "^5.10.0",
+    "ioredis": "^5.10.1",
     "js-yaml": "^4.1.1",
     "lru-cache": "^11.2.6",
     "opossum": "^9.0.0",
