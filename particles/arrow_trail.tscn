@@ -1,0 +1,35 @@
+[gd_scene load_steps=3 format=3 uid="uid://arrow_trail_particles"]
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_arrow_trail"]
+resource_name = "arrow_trail"
+emission_shape = 4
+emission_ring_radius = 8.0
+emission_ring_height = 2.0
+direction = Vector3(0, 0, -1)
+spread = 0.0
+gravity = Vector3(0, 0, 0)
+initial_velocity_min = 50.0
+initial_velocity_max = 80.0
+scale_min = 0.3
+scale_max = 0.8
+color = Color(1, 0.843, 0, 0.6)
+explosiveness = 0.0
+amount = 16
+lifetime = 0.4
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_arrow_trail"]
+blend_mode = 1
+
+[sub_resource type="Gradient" id="Gradient_arrow_trail"]
+colors = PackedColorArray(1, 0.843, 0, 0.6, 1, 0.843, 0, 0)
+interpolation_mode = 1
+
+[node name="ArrowTrail" type="GPUParticles2D"]
+amount = 16
+process_material = SubResource("ParticleProcessMaterial_arrow_trail")
+lifetime = 0.4
+explosiveness = 0.0
+one_shot = false
+local_coords = false
+draw_order = 0
+material = SubResource("CanvasItemMaterial_arrow_trail")

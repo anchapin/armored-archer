@@ -1,0 +1,22 @@
+{
+  "mode": "interactive",
+  "granularity": "standard",
+  "parallelization": true,
+  "workflow": {
+    "research": true,
+    "plan_check": true,
+    "verifier": true,
+    "_auto_chain_active": false
+  },
+  "checkpoints": {
+    "human_verify": true,
+    "human_decision": true,
+    "human_action": true
+  },
+  "commit_style": {
+    "conventional_commits": true,
+    "sign_off": false
+  },
+  "ai_writes_percentage": 70,
+  "human_reviews_percentage": 30
+}

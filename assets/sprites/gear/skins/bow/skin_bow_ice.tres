@@ -1,0 +1,5 @@
+[gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://skin_bow_ice"]
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
+size = Vector2(32, 32)
+[resource]
+size = Vector2(32, 32)

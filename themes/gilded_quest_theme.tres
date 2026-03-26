@@ -1,0 +1,58 @@
+[gd_resource type="Theme" load_steps=10 format=3]
+
+[ext_resource type="LabelSettings" path="res://themes/label_settings/display_large.tres" id="1"]
+[ext_resource type="LabelSettings" path="res://themes/label_settings/headline.tres" id="2"]
+[ext_resource type="LabelSettings" path="res://themes/label_settings/title.tres" id="3"]
+[ext_resource type="LabelSettings" path="res://themes/label_settings/body.tres" id="4"]
+[ext_resource type="StyleBoxFlat" path="res://themes/styleboxes/button_normal.tres" id="5"]
+[ext_resource type="StyleBoxFlat" path="res://themes/styleboxes/button_hover.tres" id="6"]
+[ext_resource type="StyleBoxFlat" path="res://themes/styleboxes/button_pressed.tres" id="7"]
+[ext_resource type="StyleBoxFlat" path="res://themes/styleboxes/panel_surface.tres" id="8"]
+[ext_resource type="StyleBoxFlat" path="res://themes/styleboxes/panel_card.tres" id="9"]
+[ext_resource type="StyleBoxFlat" path="res://themes/styleboxes/panel_modal.tres" id="10"]
+
+[resource]
+default_font = null
+default_font_size = 16
+
+# Color tokens - Gilded Quest Palette
+colors/theme_override = false
+colors/surface = Color(0.992, 1.0, 0.855, 1)  # #fdffda warm parchment
+colors/surface_container = Color(0.965, 0.953, 0.922, 1)  # #f6f3eb
+colors/surface_container_low = Color(0.988, 0.976, 0.945, 1)  # #fcf9f1
+colors/surface_container_lowest = Color(1, 1, 1, 1)  # #ffffff
+colors/surface_container_high = Color(0.941, 0.933, 0.898, 1)  # #f0eee5
+colors/primary = Color(0, 0.376, 0.808, 1)  # #0060ce Royal Blue
+colors/primary_container = Color(0.431, 0.624, 1, 1)  # #6e9fff
+colors/on_surface = Color(0.22, 0.22, 0.2, 1)  # #383833
+colors/outline_variant = Color(0.733, 0.725, 0.702, 1)  # #bbb9b3
+colors/secondary = Color(1, 0.843, 0, 1)  # #ffd700 Gold
+colors/tertiary = Color(0.314, 0.784, 0.471, 1)  # #50c878 Emerald
+
+# Label settings - will use custom fonts when imported
+Label/colors/font_color = Color(0.22, 0.22, 0.2, 1)
+Label/label_settings = null
+LabelSettings/display_large = ExtResource("1")
+LabelSettings/headline = ExtResource("2")
+LabelSettings/title = ExtResource("3")
+LabelSettings/body = ExtResource("4")
+
+# Button styles - bubbly tactile appearance with shadows
+Button/styles/normal = ExtResource("5")
+Button/styles/hover = ExtResource("6")
+Button/styles/pressed = ExtResource("7")
+Button/styles/disabled = null
+Button/styles/focus = ExtResource("5")
+
+# Panel styles
+PanelContainer/styles/panel = ExtResource("8")
+PanelContainer/styles/card = ExtResource("9")
+PanelContainer/styles/modal = ExtResource("10")
+
+# Default corner radius constants
+constants/default_corner_radius = 16
+constants/default_corner_radius_small = 8
+constants/default_corner_radius_large = 24
+
+# XL corner radius for modals (from design spec)
+constants/xl_corner_radius = 48

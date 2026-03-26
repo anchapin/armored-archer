@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "last_updated": "2026-03-22T00:00:00Z",
+    "commit": "main",
+    "version": "1.0"
+  },
+  "packages": {
+    "github.com/anchapin/armored-archer/backend/internal/config": 90.5,
+    "github.com/anchapin/armored-archer/backend/internal/utils": 89.5,
+    "github.com/anchapin/armored-archer/backend/internal/circuitbreaker": 77.0,
+    "github.com/anchapin/armored-archer/backend/internal/rng": 69.1,
+    "github.com/anchapin/armored-archer/backend/internal/combat": 15.1,
+    "github.com/anchapin/armored-archer/backend/internal/matchmaking": 0.0,
+    "github.com/anchapin/armored-archer/backend/internal/rpg": 0.0,
+    "github.com/anchapin/armored-archer/backend/tests/quality": 84.5,
+    "github.com/anchapin/armored-archer/backend/tests/testhelpers": 55.4,
+    "github.com/anchapin/armored-archer/backend/internal/database": 9.6,
+    "github.com/anchapin/armored-archer/backend/cmd/server": 0.0,
+    "github.com/anchapin/armored-archer/backend/internal/rpc": 0.0
+  }
+}

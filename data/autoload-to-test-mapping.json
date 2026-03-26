@@ -1,0 +1,81 @@
+{
+    "autoloads": {
+        "NetworkManager": {
+            "test_file": "test/suites/autoloads/test_network_manager.gd",
+            "critical": true,
+            "description": "Manages Nakama server connection and RPC calls"
+        },
+        "CombatManager": {
+            "test_file": "test/suites/autoloads/test_combat_manager.gd",
+            "critical": true,
+            "description": "Handles combat calculations and match state"
+        },
+        "GameManager": {
+            "test_file": "test/suites/autoloads/test_game_manager.gd",
+            "critical": true,
+            "description": "Manages game state, health, and progression"
+        },
+        "ThemeManager": {
+            "test_file": "test/suites/autoloads/test_theme_manager.gd",
+            "critical": false,
+            "description": "Manages UI theme (light/dark mode)"
+        },
+        "AccessibilityManager": {
+            "test_file": "test/suites/autoloads/test_accessibility_manager.gd",
+            "critical": false,
+            "description": "Manages accessibility settings (font scale, screen reader)"
+        },
+        "PlayerStatsManager": {
+            "test_file": "test/suites/player/test_player_stats_manager.gd",
+            "critical": true,
+            "description": "Manages player level, XP, and stat allocation"
+        },
+        "MatchmakerManager": {
+            "test_file": "test/suites/network/test_matchmaker_manager.gd",
+            "critical": true,
+            "description": "Handles asynchronous PvP matchmaking"
+        },
+        "GearManager": {
+            "test_file": "test/suites/gear/test_gear_manager.gd",
+            "critical": true,
+            "description": "Manages player inventory and equipment"
+        },
+        "StoreManager": {
+            "test_file": "test/suites/store/test_store_manager.gd",
+            "critical": true,
+            "description": "Handles in-app purchases via RevenueCat"
+        },
+        "SeasonManager": {
+            "test_file": "test/suites/season/test_season_manager.gd",
+            "critical": true,
+            "description": "Manages seasonal content and leaderboards"
+        },
+        "CampaignManager": {
+            "test_file": "test/suites/campaign/test_campaign_manager.gd",
+            "critical": true,
+            "description": "Manages campaign stage progression"
+        },
+        "GemManager": {
+            "test_file": "test/suites/gem/test_gem_manager.gd",
+            "critical": false,
+            "description": "Manages gem socketing system"
+        },
+        "TransmogManager": {
+            "test_file": "test/suites/transmog/test_transmog_manager.gd",
+            "critical": false,
+            "description": "Manages cosmetic skin system"
+        },
+        "AutoAimManager": {
+            "test_file": "test/suites/auto_aim/test_auto_aim_manager.gd",
+            "critical": false,
+            "description": "Provides auto-aim assistance"
+        },
+        "ObjectPool": {
+            "test_file": "test/suites/object_pool/test_object_pool.gd",
+            "critical": false,
+            "description": "Manages object pooling for performance"
+        }
+    },
+    "version": "1.0.0",
+    "last_updated": "2026-03-21T22:52:00Z"
+}

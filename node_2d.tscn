@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://chil8widvgns7"]
+
+[ext_resource type="Script" uid="uid://dtebtgibkp6al" path="res://scripts/character_body_2d.gd" id="1_wtcfe"]
+[ext_resource type="Script" uid="uid://cyg1mg3glbock" path="res://area_2d.gd" id="2_0e48y"]
+
+[node name="Node2D" type="Node2D" unique_id=1504523745]
+
+[node name="CharacterBody2D" type="CharacterBody2D" parent="." unique_id=510825149]
+script = ExtResource("1_wtcfe")
+base_speed = null
+base_attack = null
+
+[node name="Area2D" type="Area2D" parent="." unique_id=505280545]
+script = ExtResource("2_0e48y")

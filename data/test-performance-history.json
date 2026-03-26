@@ -1,0 +1,28 @@
+{
+  "history": [
+    {
+      "timestamp": "2026-03-22T04:50:34Z",
+      "total_benchmarks": 7,
+      "slow_benchmarks": 0,
+      "avg_time_ms": 0.16,
+      "threshold_ms": 100,
+      "elapsed_s": 0
+    },
+    {
+      "timestamp": "2026-03-22T04:50:36Z",
+      "total_benchmarks": 7,
+      "slow_benchmarks": 0,
+      "avg_time_ms": 0.16,
+      "threshold_ms": 100,
+      "elapsed_s": 0
+    },
+    {
+      "timestamp": "2026-03-22T04:50:41Z",
+      "total_benchmarks": 7,
+      "slow_benchmarks": 0,
+      "avg_time_ms": 0.16,
+      "threshold_ms": 100,
+      "elapsed_s": 0
+    }
+  ]
+}

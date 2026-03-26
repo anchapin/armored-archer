@@ -1,0 +1,127 @@
+[gd_scene load_steps=3 format=3 uid="uid://d1f3e2a1d2c4f7"]
+
+[ext_resource type="Script" path="res://scenes/ui/gear_comparison.gd" id="1_comp"]
+[ext_resource type="PackedScene" uid="uid://safe_area_container" path="res://scenes/ui/safe_area_container.tscn" id="2"]
+
+[node name="GearComparison" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_comp")
+
+[node name="SafeAreaContainer" parent="." instance=ExtResource("2")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SafeAreaContainer"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -350.0
+offset_top = -300.0
+offset_right = 350.0
+offset_bottom = 300.0
+
+[node name="ResultLabel" type="Label" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+text = "Gear Comparison"
+horizontal_alignment = 1
+
+[node name="Container" type="HBoxContainer" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Gear1Container" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer/Container"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Gear1Label" type="Label" parent="SafeAreaContainer/VBoxContainer/Container/Gear1Container"]
+layout_mode = 2
+text = "Current Selection"
+horizontal_alignment = 1
+
+[node name="Gear1Name" type="Label" parent="SafeAreaContainer/VBoxContainer/Container/Gear1Container"]
+layout_mode = 2
+text = "Unknown"
+horizontal_alignment = 1
+
+[node name="Gear1Rarity" type="Label" parent="SafeAreaContainer/VBoxContainer/Container/Gear1Container"]
+layout_mode = 2
+text = "Common"
+horizontal_alignment = 1
+
+[node name="Separator1" type="HSeparator" parent="SafeAreaContainer/VBoxContainer/Container/Gear1Container"]
+layout_mode = 2
+
+[node name="StatsLabel1" type="Label" parent="SafeAreaContainer/VBoxContainer/Container/Gear1Container"]
+layout_mode = 2
+text = "Stats:"
+
+[node name="Gear1Stats" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer/Container/Gear1Container"]
+layout_mode = 2
+
+[node name="Separator2" type="HSeparator" parent="SafeAreaContainer/VBoxContainer/Container/Gear1Container"]
+layout_mode = 2
+
+[node name="ModifiersLabel1" type="Label" parent="SafeAreaContainer/VBoxContainer/Container/Gear1Container"]
+layout_mode = 2
+text = "Modifiers:"
+
+[node name="Gear1Modifiers" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer/Container/Gear1Container"]
+layout_mode = 2
+
+[node name="VSeparator" type="VSeparator" parent="SafeAreaContainer/VBoxContainer/Container"]
+layout_mode = 2
+
+[node name="Gear2Container" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer/Container"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Gear2Label" type="Label" parent="SafeAreaContainer/VBoxContainer/Container/Gear2Container"]
+layout_mode = 2
+text = "Equipped"
+horizontal_alignment = 1
+
+[node name="Gear2Name" type="Label" parent="SafeAreaContainer/VBoxContainer/Container/Gear2Container"]
+layout_mode = 2
+text = "Unknown"
+horizontal_alignment = 1
+
+[node name="Gear2Rarity" type="Label" parent="SafeAreaContainer/VBoxContainer/Container/Gear2Container"]
+layout_mode = 2
+text = "Common"
+horizontal_alignment = 1
+
+[node name="Separator3" type="HSeparator" parent="SafeAreaContainer/VBoxContainer/Container/Gear2Container"]
+layout_mode = 2
+
+[node name="StatsLabel2" type="Label" parent="SafeAreaContainer/VBoxContainer/Container/Gear2Container"]
+layout_mode = 2
+text = "Stats:"
+
+[node name="Gear2Stats" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer/Container/Gear2Container"]
+layout_mode = 2
+
+[node name="Separator4" type="HSeparator" parent="SafeAreaContainer/VBoxContainer/Container/Gear2Container"]
+layout_mode = 2
+
+[node name="ModifiersLabel2" type="Label" parent="SafeAreaContainer/VBoxContainer/Container/Gear2Container"]
+layout_mode = 2
+text = "Modifiers:"
+
+[node name="Gear2Modifiers" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer/Container/Gear2Container"]
+layout_mode = 2
+
+[node name="CloseButton" type="Button" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+text = "Close"

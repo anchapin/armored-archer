@@ -1,0 +1,223 @@
+[gd_resource type="SpriteFrames" load_steps=170 format=3 uid="uid://player_sprites"]
+
+[ext_resource type="Texture2D" uid="uid://player_idle_down_0" path="res://assets/sprites/player/idle_down_0.png" id="1"]
+[ext_resource type="Texture2D" uid="uid://player_idle_down_1" path="res://assets/sprites/player/idle_down_1.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://player_idle_down_2" path="res://assets/sprites/player/idle_down_2.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://player_idle_down_3" path="res://assets/sprites/player/idle_down_3.png" id="4"]
+[ext_resource type="Texture2D" uid="uid://player_idle_down_4" path="res://assets/sprites/player/idle_down_4.png" id="5"]
+[ext_resource type="Texture2D" uid="uid://player_idle_down_5" path="res://assets/sprites/player/idle_down_5.png" id="6"]
+[ext_resource type="Texture2D" uid="uid://player_idle_up_0" path="res://assets/sprites/player/idle_up_0.png" id="7"]
+[ext_resource type="Texture2D" uid="uid://player_idle_up_1" path="res://assets/sprites/player/idle_up_1.png" id="8"]
+[ext_resource type="Texture2D" uid="uid://player_idle_up_2" path="res://assets/sprites/player/idle_up_2.png" id="9"]
+[ext_resource type="Texture2D" uid="uid://player_idle_up_3" path="res://assets/sprites/player/idle_up_3.png" id="10"]
+[ext_resource type="Texture2D" uid="uid://player_idle_up_4" path="res://assets/sprites/player/idle_up_4.png" id="11"]
+[ext_resource type="Texture2D" uid="uid://player_idle_up_5" path="res://assets/sprites/player/idle_up_5.png" id="12"]
+[ext_resource type="Texture2D" uid="uid://player_idle_left_0" path="res://assets/sprites/player/idle_left_0.png" id="13"]
+[ext_resource type="Texture2D" uid="uid://player_idle_left_1" path="res://assets/sprites/player/idle_left_1.png" id="14"]
+[ext_resource type="Texture2D" uid="uid://player_idle_left_2" path="res://assets/sprites/player/idle_left_2.png" id="15"]
+[ext_resource type="Texture2D" uid="uid://player_idle_left_3" path="res://assets/sprites/player/idle_left_3.png" id="16"]
+[ext_resource type="Texture2D" uid="uid://player_idle_left_4" path="res://assets/sprites/player/idle_left_4.png" id="17"]
+[ext_resource type="Texture2D" uid="uid://player_idle_left_5" path="res://assets/sprites/player/idle_left_5.png" id="18"]
+[ext_resource type="Texture2D" uid="uid://player_idle_right_0" path="res://assets/sprites/player/idle_right_0.png" id="19"]
+[ext_resource type="Texture2D" uid="uid://player_idle_right_1" path="res://assets/sprites/player/idle_right_1.png" id="20"]
+[ext_resource type="Texture2D" uid="uid://player_idle_right_2" path="res://assets/sprites/player/idle_right_2.png" id="21"]
+[ext_resource type="Texture2D" uid="uid://player_idle_right_3" path="res://assets/sprites/player/idle_right_3.png" id="22"]
+[ext_resource type="Texture2D" uid="uid://player_idle_right_4" path="res://assets/sprites/player/idle_right_4.png" id="23"]
+[ext_resource type="Texture2D" uid="uid://player_idle_right_5" path="res://assets/sprites/player/idle_right_5.png" id="24"]
+[ext_resource type="Texture2D" uid="uid://player_walk_down_0" path="res://assets/sprites/player/walk_down_0.png" id="25"]
+[ext_resource type="Texture2D" uid="uid://player_walk_down_1" path="res://assets/sprites/player/walk_down_1.png" id="26"]
+[ext_resource type="Texture2D" uid="uid://player_walk_down_2" path="res://assets/sprites/player/walk_down_2.png" id="27"]
+[ext_resource type="Texture2D" uid="uid://player_walk_down_3" path="res://assets/sprites/player/walk_down_3.png" id="28"]
+[ext_resource type="Texture2D" uid="uid://player_walk_down_4" path="res://assets/sprites/player/walk_down_4.png" id="29"]
+[ext_resource type="Texture2D" uid="uid://player_walk_down_5" path="res://assets/sprites/player/walk_down_5.png" id="30"]
+[ext_resource type="Texture2D" uid="uid://player_walk_up_0" path="res://assets/sprites/player/walk_up_0.png" id="31"]
+[ext_resource type="Texture2D" uid="uid://player_walk_up_1" path="res://assets/sprites/player/walk_up_1.png" id="32"]
+[ext_resource type="Texture2D" uid="uid://player_walk_up_2" path="res://assets/sprites/player/walk_up_2.png" id="33"]
+[ext_resource type="Texture2D" uid="uid://player_walk_up_3" path="res://assets/sprites/player/walk_up_3.png" id="34"]
+[ext_resource type="Texture2D" uid="uid://player_walk_up_4" path="res://assets/sprites/player/walk_up_4.png" id="35"]
+[ext_resource type="Texture2D" uid="uid://player_walk_up_5" path="res://assets/sprites/player/walk_up_5.png" id="36"]
+[ext_resource type="Texture2D" uid="uid://player_walk_left_0" path="res://assets/sprites/player/walk_left_0.png" id="37"]
+[ext_resource type="Texture2D" uid="uid://player_walk_left_1" path="res://assets/sprites/player/walk_left_1.png" id="38"]
+[ext_resource type="Texture2D" uid="uid://player_walk_left_2" path="res://assets/sprites/player/walk_left_2.png" id="39"]
+[ext_resource type="Texture2D" uid="uid://player_walk_left_3" path="res://assets/sprites/player/walk_left_3.png" id="40"]
+[ext_resource type="Texture2D" uid="uid://player_walk_left_4" path="res://assets/sprites/player/walk_left_4.png" id="41"]
+[ext_resource type="Texture2D" uid="uid://player_walk_left_5" path="res://assets/sprites/player/walk_left_5.png" id="42"]
+[ext_resource type="Texture2D" uid="uid://player_walk_right_0" path="res://assets/sprites/player/walk_right_0.png" id="43"]
+[ext_resource type="Texture2D" uid="uid://player_walk_right_1" path="res://assets/sprites/player/walk_right_1.png" id="44"]
+[ext_resource type="Texture2D" uid="uid://player_walk_right_2" path="res://assets/sprites/player/walk_right_2.png" id="45"]
+[ext_resource type="Texture2D" uid="uid://player_walk_right_3" path="res://assets/sprites/player/walk_right_3.png" id="46"]
+[ext_resource type="Texture2D" uid="uid://player_walk_right_4" path="res://assets/sprites/player/walk_right_4.png" id="47"]
+[ext_resource type="Texture2D" uid="uid://player_walk_right_5" path="res://assets/sprites/player/walk_right_5.png" id="48"]
+[ext_resource type="Texture2D" uid="uid://player_attack_down_0" path="res://assets/sprites/player/attack_down_0.png" id="49"]
+[ext_resource type="Texture2D" uid="uid://player_attack_down_1" path="res://assets/sprites/player/attack_down_1.png" id="50"]
+[ext_resource type="Texture2D" uid="uid://player_attack_down_2" path="res://assets/sprites/player/attack_down_2.png" id="51"]
+[ext_resource type="Texture2D" uid="uid://player_attack_down_3" path="res://assets/sprites/player/attack_down_3.png" id="52"]
+[ext_resource type="Texture2D" uid="uid://player_attack_down_4" path="res://assets/sprites/player/attack_down_4.png" id="53"]
+[ext_resource type="Texture2D" uid="uid://player_attack_down_5" path="res://assets/sprites/player/attack_down_5.png" id="54"]
+[ext_resource type="Texture2D" uid="uid://player_attack_down_6" path="res://assets/sprites/player/attack_down_6.png" id="55"]
+[ext_resource type="Texture2D" uid="uid://player_attack_up_0" path="res://assets/sprites/player/attack_up_0.png" id="56"]
+[ext_resource type="Texture2D" uid="uid://player_attack_up_1" path="res://assets/sprites/player/attack_up_1.png" id="57"]
+[ext_resource type="Texture2D" uid="uid://player_attack_up_2" path="res://assets/sprites/player/attack_up_2.png" id="58"]
+[ext_resource type="Texture2D" uid="uid://player_attack_up_3" path="res://assets/sprites/player/attack_up_3.png" id="59"]
+[ext_resource type="Texture2D" uid="uid://player_attack_up_4" path="res://assets/sprites/player/attack_up_4.png" id="60"]
+[ext_resource type="Texture2D" uid="uid://player_attack_up_5" path="res://assets/sprites/player/attack_up_5.png" id="61"]
+[ext_resource type="Texture2D" uid="uid://player_attack_up_6" path="res://assets/sprites/player/attack_up_6.png" id="62"]
+[ext_resource type="Texture2D" uid="uid://player_attack_left_0" path="res://assets/sprites/player/attack_left_0.png" id="63"]
+[ext_resource type="Texture2D" uid="uid://player_attack_left_1" path="res://assets/sprites/player/attack_left_1.png" id="64"]
+[ext_resource type="Texture2D" uid="uid://player_attack_left_2" path="res://assets/sprites/player/attack_left_2.png" id="65"]
+[ext_resource type="Texture2D" uid="uid://player_attack_left_3" path="res://assets/sprites/player/attack_left_3.png" id="66"]
+[ext_resource type="Texture2D" uid="uid://player_attack_left_4" path="res://assets/sprites/player/attack_left_4.png" id="67"]
+[ext_resource type="Texture2D" uid="uid://player_attack_left_5" path="res://assets/sprites/player/attack_left_5.png" id="68"]
+[ext_resource type="Texture2D" uid="uid://player_attack_left_6" path="res://assets/sprites/player/attack_left_6.png" id="69"]
+[ext_resource type="Texture2D" uid="uid://player_attack_right_0" path="res://assets/sprites/player/attack_right_0.png" id="70"]
+[ext_resource type="Texture2D" uid="uid://player_attack_right_1" path="res://assets/sprites/player/attack_right_1.png" id="71"]
+[ext_resource type="Texture2D" uid="uid://player_attack_right_2" path="res://assets/sprites/player/attack_right_2.png" id="72"]
+[ext_resource type="Texture2D" uid="uid://player_attack_right_3" path="res://assets/sprites/player/attack_right_3.png" id="73"]
+[ext_resource type="Texture2D" uid="uid://player_attack_right_4" path="res://assets/sprites/player/attack_right_4.png" id="74"]
+[ext_resource type="Texture2D" uid="uid://player_attack_right_5" path="res://assets/sprites/player/attack_right_5.png" id="75"]
+[ext_resource type="Texture2D" uid="uid://player_attack_right_6" path="res://assets/sprites/player/attack_right_6.png" id="76"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_down_0" path="res://assets/sprites/player/bow_draw_down_0.png" id="77"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_down_1" path="res://assets/sprites/player/bow_draw_down_1.png" id="78"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_down_2" path="res://assets/sprites/player/bow_draw_down_2.png" id="79"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_down_3" path="res://assets/sprites/player/bow_draw_down_3.png" id="80"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_down_4" path="res://assets/sprites/player/bow_draw_down_4.png" id="81"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_down_5" path="res://assets/sprites/player/bow_draw_down_5.png" id="82"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_down_6" path="res://assets/sprites/player/bow_draw_down_6.png" id="83"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_up_0" path="res://assets/sprites/player/bow_draw_up_0.png" id="84"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_up_1" path="res://assets/sprites/player/bow_draw_up_1.png" id="85"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_up_2" path="res://assets/sprites/player/bow_draw_up_2.png" id="86"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_up_3" path="res://assets/sprites/player/bow_draw_up_3.png" id="87"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_up_4" path="res://assets/sprites/player/bow_draw_up_4.png" id="88"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_up_5" path="res://assets/sprites/player/bow_draw_up_5.png" id="89"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_up_6" path="res://assets/sprites/player/bow_draw_up_6.png" id="90"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_left_0" path="res://assets/sprites/player/bow_draw_left_0.png" id="91"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_left_1" path="res://assets/sprites/player/bow_draw_left_1.png" id="92"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_left_2" path="res://assets/sprites/player/bow_draw_left_2.png" id="93"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_left_3" path="res://assets/sprites/player/bow_draw_left_3.png" id="94"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_left_4" path="res://assets/sprites/player/bow_draw_left_4.png" id="95"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_left_5" path="res://assets/sprites/player/bow_draw_left_5.png" id="96"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_left_6" path="res://assets/sprites/player/bow_draw_left_6.png" id="97"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_right_0" path="res://assets/sprites/player/bow_draw_right_0.png" id="98"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_right_1" path="res://assets/sprites/player/bow_draw_right_1.png" id="99"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_right_2" path="res://assets/sprites/player/bow_draw_right_2.png" id="100"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_right_3" path="res://assets/sprites/player/bow_draw_right_3.png" id="101"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_right_4" path="res://assets/sprites/player/bow_draw_right_4.png" id="102"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_right_5" path="res://assets/sprites/player/bow_draw_right_5.png" id="103"]
+[ext_resource type="Texture2D" uid="uid://player_bow_draw_right_6" path="res://assets/sprites/player/bow_draw_right_6.png" id="104"]
+[ext_resource type="Texture2D" uid="uid://player_hit_down_0" path="res://assets/sprites/player/hit_down_0.png" id="105"]
+[ext_resource type="Texture2D" uid="uid://player_hit_down_1" path="res://assets/sprites/player/hit_down_1.png" id="106"]
+[ext_resource type="Texture2D" uid="uid://player_hit_down_2" path="res://assets/sprites/player/hit_down_2.png" id="107"]
+[ext_resource type="Texture2D" uid="uid://player_hit_up_0" path="res://assets/sprites/player/hit_up_0.png" id="108"]
+[ext_resource type="Texture2D" uid="uid://player_hit_up_1" path="res://assets/sprites/player/hit_up_1.png" id="109"]
+[ext_resource type="Texture2D" uid="uid://player_hit_up_2" path="res://assets/sprites/player/hit_up_2.png" id="110"]
+[ext_resource type="Texture2D" uid="uid://player_hit_left_0" path="res://assets/sprites/player/hit_left_0.png" id="111"]
+[ext_resource type="Texture2D" uid="uid://player_hit_left_1" path="res://assets/sprites/player/hit_left_1.png" id="112"]
+[ext_resource type="Texture2D" uid="uid://player_hit_left_2" path="res://assets/sprites/player/hit_left_2.png" id="113"]
+[ext_resource type="Texture2D" uid="uid://player_hit_right_0" path="res://assets/sprites/player/hit_right_0.png" id="114"]
+[ext_resource type="Texture2D" uid="uid://player_hit_right_1" path="res://assets/sprites/player/hit_right_1.png" id="115"]
+[ext_resource type="Texture2D" uid="uid://player_hit_right_2" path="res://assets/sprites/player/hit_right_2.png" id="116"]
+[ext_resource type="Texture2D" uid="uid://player_death_down_0" path="res://assets/sprites/player/death_down_0.png" id="117"]
+[ext_resource type="Texture2D" uid="uid://player_death_down_1" path="res://assets/sprites/player/death_down_1.png" id="118"]
+[ext_resource type="Texture2D" uid="uid://player_death_down_2" path="res://assets/sprites/player/death_down_2.png" id="119"]
+[ext_resource type="Texture2D" uid="uid://player_death_down_3" path="res://assets/sprites/player/death_down_3.png" id="120"]
+[ext_resource type="Texture2D" uid="uid://player_death_down_4" path="res://assets/sprites/player/death_down_4.png" id="121"]
+[ext_resource type="Texture2D" uid="uid://player_death_down_5" path="res://assets/sprites/player/death_down_5.png" id="122"]
+[ext_resource type="Texture2D" uid="uid://player_death_down_6" path="res://assets/sprites/player/death_down_6.png" id="123"]
+[ext_resource type="Texture2D" uid="uid://player_death_up_0" path="res://assets/sprites/player/death_up_0.png" id="124"]
+[ext_resource type="Texture2D" uid="uid://player_death_up_1" path="res://assets/sprites/player/death_up_1.png" id="125"]
+[ext_resource type="Texture2D" uid="uid://player_death_up_2" path="res://assets/sprites/player/death_up_2.png" id="126"]
+[ext_resource type="Texture2D" uid="uid://player_death_up_3" path="res://assets/sprites/player/death_up_3.png" id="127"]
+[ext_resource type="Texture2D" uid="uid://player_death_up_4" path="res://assets/sprites/player/death_up_4.png" id="128"]
+[ext_resource type="Texture2D" uid="uid://player_death_up_5" path="res://assets/sprites/player/death_up_5.png" id="129"]
+[ext_resource type="Texture2D" uid="uid://player_death_up_6" path="res://assets/sprites/player/death_up_6.png" id="130"]
+[ext_resource type="Texture2D" uid="uid://player_death_left_0" path="res://assets/sprites/player/death_left_0.png" id="131"]
+[ext_resource type="Texture2D" uid="uid://player_death_left_1" path="res://assets/sprites/player/death_left_1.png" id="132"]
+[ext_resource type="Texture2D" uid="uid://player_death_left_2" path="res://assets/sprites/player/death_left_2.png" id="133"]
+[ext_resource type="Texture2D" uid="uid://player_death_left_3" path="res://assets/sprites/player/death_left_3.png" id="134"]
+[ext_resource type="Texture2D" uid="uid://player_death_left_4" path="res://assets/sprites/player/death_left_4.png" id="135"]
+[ext_resource type="Texture2D" uid="uid://player_death_left_5" path="res://assets/sprites/player/death_left_5.png" id="136"]
+[ext_resource type="Texture2D" uid="uid://player_death_left_6" path="res://assets/sprites/player/death_left_6.png" id="137"]
+[ext_resource type="Texture2D" uid="uid://player_death_right_0" path="res://assets/sprites/player/death_right_0.png" id="138"]
+[ext_resource type="Texture2D" uid="uid://player_death_right_1" path="res://assets/sprites/player/death_right_1.png" id="139"]
+[ext_resource type="Texture2D" uid="uid://player_death_right_2" path="res://assets/sprites/player/death_right_2.png" id="140"]
+[ext_resource type="Texture2D" uid="uid://player_death_right_3" path="res://assets/sprites/player/death_right_3.png" id="141"]
+[ext_resource type="Texture2D" uid="uid://player_death_right_4" path="res://assets/sprites/player/death_right_4.png" id="142"]
+[ext_resource type="Texture2D" uid="uid://player_death_right_5" path="res://assets/sprites/player/death_right_5.png" id="143"]
+[ext_resource type="Texture2D" uid="uid://player_death_right_6" path="res://assets/sprites/player/death_right_6.png" id="144"]
+
+[resource]
+resource_name = "PlayerSprites"
+animations = {
+"attack_down": PackedStringArray("res://assets/sprites/player/attack_down_0.png", "res://assets/sprites/player/attack_down_1.png", "res://assets/sprites/player/attack_down_2.png", "res://assets/sprites/player/attack_down_3.png", "res://assets/sprites/player/attack_down_4.png", "res://assets/sprites/player/attack_down_5.png", "res://assets/sprites/player/attack_down_6.png"),
+"attack_left": PackedStringArray("res://assets/sprites/player/attack_left_0.png", "res://assets/sprites/player/attack_left_1.png", "res://assets/sprites/player/attack_left_2.png", "res://assets/sprites/player/attack_left_3.png", "res://assets/sprites/player/attack_left_4.png", "res://assets/sprites/player/attack_left_5.png", "res://assets/sprites/player/attack_left_6.png"),
+"attack_right": PackedStringArray("res://assets/sprites/player/attack_right_0.png", "res://assets/sprites/player/attack_right_1.png", "res://assets/sprites/player/attack_right_2.png", "res://assets/sprites/player/attack_right_3.png", "res://assets/sprites/player/attack_right_4.png", "res://assets/sprites/player/attack_right_5.png", "res://assets/sprites/player/attack_right_6.png"),
+"attack_up": PackedStringArray("res://assets/sprites/player/attack_up_0.png", "res://assets/sprites/player/attack_up_1.png", "res://assets/sprites/player/attack_up_2.png", "res://assets/sprites/player/attack_up_3.png", "res://assets/sprites/player/attack_up_4.png", "res://assets/sprites/player/attack_up_5.png", "res://assets/sprites/player/attack_up_6.png"),
+"bow_draw_down": PackedStringArray("res://assets/sprites/player/bow_draw_down_0.png", "res://assets/sprites/player/bow_draw_down_1.png", "res://assets/sprites/player/bow_draw_down_2.png", "res://assets/sprites/player/bow_draw_down_3.png", "res://assets/sprites/player/bow_draw_down_4.png", "res://assets/sprites/player/bow_draw_down_5.png", "res://assets/sprites/player/bow_draw_down_6.png"),
+"bow_draw_left": PackedStringArray("res://assets/sprites/player/bow_draw_left_0.png", "res://assets/sprites/player/bow_draw_left_1.png", "res://assets/sprites/player/bow_draw_left_2.png", "res://assets/sprites/player/bow_draw_left_3.png", "res://assets/sprites/player/bow_draw_left_4.png", "res://assets/sprites/player/bow_draw_left_5.png", "res://assets/sprites/player/bow_draw_left_6.png"),
+"bow_draw_right": PackedStringArray("res://assets/sprites/player/bow_draw_right_0.png", "res://assets/sprites/player/bow_draw_right_1.png", "res://assets/sprites/player/bow_draw_right_2.png", "res://assets/sprites/player/bow_draw_right_3.png", "res://assets/sprites/player/bow_draw_right_4.png", "res://assets/sprites/player/bow_draw_right_5.png", "res://assets/sprites/player/bow_draw_right_6.png"),
+"bow_draw_up": PackedStringArray("res://assets/sprites/player/bow_draw_up_0.png", "res://assets/sprites/player/bow_draw_up_1.png", "res://assets/sprites/player/bow_draw_up_2.png", "res://assets/sprites/player/bow_draw_up_3.png", "res://assets/sprites/player/bow_draw_up_4.png", "res://assets/sprites/player/bow_draw_up_5.png", "res://assets/sprites/player/bow_draw_up_6.png"),
+"death_down": PackedStringArray("res://assets/sprites/player/death_down_0.png", "res://assets/sprites/player/death_down_1.png", "res://assets/sprites/player/death_down_2.png", "res://assets/sprites/player/death_down_3.png", "res://assets/sprites/player/death_down_4.png", "res://assets/sprites/player/death_down_5.png", "res://assets/sprites/player/death_down_6.png"),
+"death_left": PackedStringArray("res://assets/sprites/player/death_left_0.png", "res://assets/sprites/player/death_left_1.png", "res://assets/sprites/player/death_left_2.png", "res://assets/sprites/player/death_left_3.png", "res://assets/sprites/player/death_left_4.png", "res://assets/sprites/player/death_left_5.png", "res://assets/sprites/player/death_left_6.png"),
+"death_right": PackedStringArray("res://assets/sprites/player/death_right_0.png", "res://assets/sprites/player/death_right_1.png", "res://assets/sprites/player/death_right_2.png", "res://assets/sprites/player/death_right_3.png", "res://assets/sprites/player/death_right_4.png", "res://assets/sprites/player/death_right_5.png", "res://assets/sprites/player/death_right_6.png"),
+"death_up": PackedStringArray("res://assets/sprites/player/death_up_0.png", "res://assets/sprites/player/death_up_1.png", "res://assets/sprites/player/death_up_2.png", "res://assets/sprites/player/death_up_3.png", "res://assets/sprites/player/death_up_4.png", "res://assets/sprites/player/death_up_5.png", "res://assets/sprites/player/death_up_6.png"),
+"hit_down": PackedStringArray("res://assets/sprites/player/hit_down_0.png", "res://assets/sprites/player/hit_down_1.png", "res://assets/sprites/player/hit_down_2.png"),
+"hit_left": PackedStringArray("res://assets/sprites/player/hit_left_0.png", "res://assets/sprites/player/hit_left_1.png", "res://assets/sprites/player/hit_left_2.png"),
+"hit_right": PackedStringArray("res://assets/sprites/player/hit_right_0.png", "res://assets/sprites/player/hit_right_1.png", "res://assets/sprites/player/hit_right_2.png"),
+"hit_up": PackedStringArray("res://assets/sprites/player/hit_up_0.png", "res://assets/sprites/player/hit_up_1.png", "res://assets/sprites/player/hit_up_2.png"),
+"idle_down": PackedStringArray("res://assets/sprites/player/idle_down_0.png", "res://assets/sprites/player/idle_down_1.png", "res://assets/sprites/player/idle_down_2.png", "res://assets/sprites/player/idle_down_3.png", "res://assets/sprites/player/idle_down_4.png", "res://assets/sprites/player/idle_down_5.png"),
+"idle_left": PackedStringArray("res://assets/sprites/player/idle_left_0.png", "res://assets/sprites/player/idle_left_1.png", "res://assets/sprites/player/idle_left_2.png", "res://assets/sprites/player/idle_left_3.png", "res://assets/sprites/player/idle_left_4.png", "res://assets/sprites/player/idle_left_5.png"),
+"idle_right": PackedStringArray("res://assets/sprites/player/idle_right_0.png", "res://assets/sprites/player/idle_right_1.png", "res://assets/sprites/player/idle_right_2.png", "res://assets/sprites/player/idle_right_3.png", "res://assets/sprites/player/idle_right_4.png", "res://assets/sprites/player/idle_right_5.png"),
+"idle_up": PackedStringArray("res://assets/sprites/player/idle_up_0.png", "res://assets/sprites/player/idle_up_1.png", "res://assets/sprites/player/idle_up_2.png", "res://assets/sprites/player/idle_up_3.png", "res://assets/sprites/player/idle_up_4.png", "res://assets/sprites/player/idle_up_5.png"),
+"walk_down": PackedStringArray("res://assets/sprites/player/walk_down_0.png", "res://assets/sprites/player/walk_down_1.png", "res://assets/sprites/player/walk_down_2.png", "res://assets/sprites/player/walk_down_3.png", "res://assets/sprites/player/walk_down_4.png", "res://assets/sprites/player/walk_down_5.png"),
+"walk_left": PackedStringArray("res://assets/sprites/player/walk_left_0.png", "res://assets/sprites/player/walk_left_1.png", "res://assets/sprites/player/walk_left_2.png", "res://assets/sprites/player/walk_left_3.png", "res://assets/sprites/player/walk_left_4.png", "res://assets/sprites/player/walk_left_5.png"),
+"walk_right": PackedStringArray("res://assets/sprites/player/walk_right_0.png", "res://assets/sprites/player/walk_right_1.png", "res://assets/sprites/player/walk_right_2.png", "res://assets/sprites/player/walk_right_3.png", "res://assets/sprites/player/walk_right_4.png", "res://assets/sprites/player/walk_right_5.png"),
+"walk_up": PackedStringArray("res://assets/sprites/player/walk_up_0.png", "res://assets/sprites/player/walk_up_1.png", "res://assets/sprites/player/walk_up_2.png", "res://assets/sprites/player/walk_up_3.png", "res://assets/sprites/player/walk_up_4.png", "res://assets/sprites/player/walk_up_5.png")
+}
+fps/attack_down = 10.0
+fps/attack_left = 10.0
+fps/attack_right = 10.0
+fps/attack_up = 10.0
+fps/bow_draw_down = 8.0
+fps/bow_draw_left = 8.0
+fps/bow_draw_right = 8.0
+fps/bow_draw_up = 8.0
+fps/death_down = 8.0
+fps/death_left = 8.0
+fps/death_right = 8.0
+fps/death_up = 8.0
+fps/hit_down = 10.0
+fps/hit_left = 10.0
+fps/hit_right = 10.0
+fps/hit_up = 10.0
+fps/idle_down = 8.0
+fps/idle_left = 8.0
+fps/idle_right = 8.0
+fps/idle_up = 8.0
+fps/walk_down = 12.0
+fps/walk_left = 12.0
+fps/walk_right = 12.0
+fps/walk_up = 12.0
+loop/attack_down = false
+loop/attack_left = false
+loop/attack_right = false
+loop/attack_up = false
+loop/bow_draw_down = true
+loop/bow_draw_left = true
+loop/bow_draw_right = true
+loop/bow_draw_up = true
+loop/death_down = false
+loop/death_left = false
+loop/death_right = false
+loop/death_up = false
+loop/hit_down = false
+loop/hit_left = false
+loop/hit_right = false
+loop/hit_up = false
+loop/idle_down = true
+loop/idle_left = true
+loop/idle_right = true
+loop/idle_up = true
+loop/walk_down = true
+loop/walk_left = true
+loop/walk_right = true
+loop/walk_up = true

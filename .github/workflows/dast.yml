@@ -1,0 +1,123 @@
+name: DAST
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  zap-scan:
+    name: OWASP ZAP Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          echo "NAMESPACE=armored-archer" >> .env
+          echo "TARGET=backend" >> .env
+          echo "LOG_LEVEL=debug" >> .env
+          echo "ENABLE_DEBUG=true" >> .env
+          echo "API_RATE_LIMIT=1000" >> .env
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create Nakama config
+        working-directory: ./backend
+        run: |
+          # Copy example env file if it exists
+          if [ -f .env.example ]; then
+            cp .env.example .env
+            # Replace placeholder passwords with test values
+            sed -i 's/your_nakama_server_key_here/test_nakama_key/' .env
+            sed -i 's/your_console_password_here/testconsolepass/' .env
+            sed -i 's/your_postgres_password_here/testpass/' .env
+            sed -i 's/your_session_encryption_key_min_32_chars/test_encryption_key_32_chars_min/' .env
+            sed -i 's/your_refresh_encryption_key_min_32_chars/test_refresh_key_32_chars_min/' .env
+            sed -i 's/your_token_encryption_key_min_32_chars/test_token_key_32_chars_min/' .env
+          fi
+          # Ensure minimum required config exists
+          if [ ! -f .env ]; then
+            echo "Creating minimal .env file"
+            echo "NAKAMA_SERVER_KEY=test_nakama_key" > .env
+            echo "NAKAMA_CONSOLE_PASSWORD=testconsolepass" >> .env
+            echo "POSTGRES_PASSWORD=testpass" >> .env
+            echo "DATABASE_ADDRESS=postgres:testpass@postgres:5432/nakama" >> .env
+            echo "SESSION_ENCRYPTION_KEY=test_encryption_key_32_chars_min" >> .env
+            echo "REFRESH_ENCRYPTION_KEY=test_refresh_key_32_chars_min" >> .env
+          fi
+          # Ensure nakama.yml exists (required by docker-compose)
+          if [ ! -f nakama.yml ]; then
+            echo "ERROR: nakama.yml not found" && exit 1
+          fi
+          echo "Config files ready"
+          cat .env | grep -E "^(NAKAMA|POSTGRES|DATABASE|SESSION|REFRESH)" | head -10
+
+      - name: Start Nakama and PostgreSQL
+        working-directory: ./backend
+        run: |
+          docker compose up -d postgres
+          
+      - name: Wait for PostgreSQL
+        working-directory: ./backend
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U postgres -d nakama 2>/dev/null; then
+              echo "PostgreSQL is ready!"
+              exit 0
+            fi
+            echo "PostgreSQL is not ready yet (attempt $i/30)..."
+            sleep 2
+          done
+          echo "PostgreSQL failed to start, showing logs:"
+          docker compose logs postgres
+          exit 1
+
+      - name: Build TypeScript
+        working-directory: ./backend
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+
+      - name: Start Nakama server
+        working-directory: ./backend
+        run: |
+          docker compose up -d nakama
+          
+      - name: Wait for Nakama
+        run: |
+          echo "Waiting for Nakama to be ready..."
+          for i in {1..60}; do
+            if curl -s http://localhost:7350 > /dev/null 2>&1; then
+              echo "Nakama is ready!"
+              exit 0
+            fi
+            echo "Nakama is not ready yet (attempt $i/60)..."
+            sleep 2
+          done
+          echo "Nakama failed to start, showing logs:"
+          docker compose logs nakama
+          exit 1
+
+      - name: OWASP ZAP Scan
+        uses: zaproxy/action-baseline@v0.9.0
+        with:
+          target: 'http://localhost:7350'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: OWASP ZAP Full Scan
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        uses: zaproxy/action-full-scan@v0.9.0
+        with:
+          target: 'http://localhost:7350'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Stop services
+        if: always()
+        working-directory: ./backend
+        run: docker compose down

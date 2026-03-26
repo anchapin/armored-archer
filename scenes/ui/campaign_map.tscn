@@ -1,0 +1,126 @@
+[gd_scene load_steps=3 format=3 uid="uid://campaign_map_scene"]
+
+[ext_resource type="Script" path="res://scenes/ui/campaign_map.gd" id="1_campaign_map_script"]
+[ext_resource type="PackedScene" uid="uid://safe_area_container" path="res://scenes/ui/safe_area_container.tscn" id="2"]
+
+[node name="CampaignMap" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_campaign_map_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.1, 0.15, 0.25, 1)
+
+[node name="SafeAreaContainer" parent="." instance=ExtResource("2")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ChapterTitle" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_top = 50.0
+offset_right = 150.0
+offset_bottom = 100.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 32
+text = "The Awakening"
+horizontal_alignment = 1
+
+[node name="ChapterLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -80.0
+offset_top = 100.0
+offset_right = 80.0
+offset_bottom = 130.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 18
+text = "Chapter 1 / 3"
+horizontal_alignment = 1
+
+[node name="ProgressLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -120.0
+offset_top = 130.0
+offset_right = 120.0
+offset_bottom = 160.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 16
+text = "Progress: 0 / 4 stages completed"
+horizontal_alignment = 1
+
+[node name="ChapterNav" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -260.0
+offset_right = 200.0
+offset_bottom = -230.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="PrevChapterButton" type="Button" parent="ChapterNav"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "< Previous"
+
+[node name="Spacer" type="Control" parent="ChapterNav"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NextChapterButton" type="Button" parent="ChapterNav"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Next >"
+
+[node name="StagesContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -180.0
+offset_right = 200.0
+offset_bottom = 180.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BackButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 50.0
+offset_top = -60.0
+offset_right = 150.0
+offset_bottom = -20.0
+grow_vertical = 0
+text = "Back"

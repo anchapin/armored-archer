@@ -1,0 +1,487 @@
+[gd_resource type="SpriteFrames" load_steps=161 format=3 uid="uid://enemy_sprites"]
+
+[resource]
+animations = {
+"goblin_idle_down": PackedStringArray("res://assets/sprites/enemies/goblin_idle_down_0.tres", "res://assets/sprites/enemies/goblin_idle_down_1.tres", "res://assets/sprites/enemies/goblin_idle_down_2.tres", "res://assets/sprites/enemies/goblin_idle_down_3.tres", "res://assets/sprites/enemies/goblin_idle_down_4.tres", "res://assets/sprites/enemies/goblin_idle_down_5.tres"),
+"goblin_idle_up": PackedStringArray("res://assets/sprites/enemies/goblin_idle_up_0.tres", "res://assets/sprites/enemies/goblin_idle_up_1.tres", "res://assets/sprites/enemies/goblin_idle_up_2.tres", "res://assets/sprites/enemies/goblin_idle_up_3.tres", "res://assets/sprites/enemies/goblin_idle_up_4.tres", "res://assets/sprites/enemies/goblin_idle_up_5.tres"),
+"goblin_idle_left": PackedStringArray("res://assets/sprites/enemies/goblin_idle_left_0.tres", "res://assets/sprites/enemies/goblin_idle_left_1.tres", "res://assets/sprites/enemies/goblin_idle_left_2.tres", "res://assets/sprites/enemies/goblin_idle_left_3.tres", "res://assets/sprites/enemies/goblin_idle_left_4.tres", "res://assets/sprites/enemies/goblin_idle_left_5.tres"),
+"goblin_idle_right": PackedStringArray("res://assets/sprites/enemies/goblin_idle_right_0.tres", "res://assets/sprites/enemies/goblin_idle_right_1.tres", "res://assets/sprites/enemies/goblin_idle_right_2.tres", "res://assets/sprites/enemies/goblin_idle_right_3.tres", "res://assets/sprites/enemies/goblin_idle_right_4.tres", "res://assets/sprites/enemies/goblin_idle_right_5.tres"),
+"goblin_walk_down": PackedStringArray("res://assets/sprites/enemies/goblin_walk_down_0.tres", "res://assets/sprites/enemies/goblin_walk_down_1.tres", "res://assets/sprites/enemies/goblin_walk_down_2.tres", "res://assets/sprites/enemies/goblin_walk_down_3.tres", "res://assets/sprites/enemies/goblin_walk_down_4.tres", "res://assets/sprites/enemies/goblin_walk_down_5.tres"),
+"goblin_walk_up": PackedStringArray("res://assets/sprites/enemies/goblin_walk_up_0.tres", "res://assets/sprites/enemies/goblin_walk_up_1.tres", "res://assets/sprites/enemies/goblin_walk_up_2.tres", "res://assets/sprites/enemies/goblin_walk_up_3.tres", "res://assets/sprites/enemies/goblin_walk_up_4.tres", "res://assets/sprites/enemies/goblin_walk_up_5.tres"),
+"goblin_walk_left": PackedStringArray("res://assets/sprites/enemies/goblin_walk_left_0.tres", "res://assets/sprites/enemies/goblin_walk_left_1.tres", "res://assets/sprites/enemies/goblin_walk_left_2.tres", "res://assets/sprites/enemies/goblin_walk_left_3.tres", "res://assets/sprites/enemies/goblin_walk_left_4.tres", "res://assets/sprites/enemies/goblin_walk_left_5.tres"),
+"goblin_walk_right": PackedStringArray("res://assets/sprites/enemies/goblin_walk_right_0.tres", "res://assets/sprites/enemies/goblin_walk_right_1.tres", "res://assets/sprites/enemies/goblin_walk_right_2.tres", "res://assets/sprites/enemies/goblin_walk_right_3.tres", "res://assets/sprites/enemies/goblin_walk_right_4.tres", "res://assets/sprites/enemies/goblin_walk_right_5.tres"),
+"goblin_attack_down": PackedStringArray("res://assets/sprites/enemies/goblin_attack_down_0.tres", "res://assets/sprites/enemies/goblin_attack_down_1.tres", "res://assets/sprites/enemies/goblin_attack_down_2.tres", "res://assets/sprites/enemies/goblin_attack_down_3.tres", "res://assets/sprites/enemies/goblin_attack_down_4.tres", "res://assets/sprites/enemies/goblin_attack_down_5.tres", "res://assets/sprites/enemies/goblin_attack_down_6.tres"),
+"goblin_attack_up": PackedStringArray("res://assets/sprites/enemies/goblin_attack_up_0.tres", "res://assets/sprites/enemies/goblin_attack_up_1.tres", "res://assets/sprites/enemies/goblin_attack_up_2.tres", "res://assets/sprites/enemies/goblin_attack_up_3.tres", "res://assets/sprites/enemies/goblin_attack_up_4.tres", "res://assets/sprites/enemies/goblin_attack_up_5.tres", "res://assets/sprites/enemies/goblin_attack_up_6.tres"),
+"goblin_attack_left": PackedStringArray("res://assets/sprites/enemies/goblin_attack_left_0.tres", "res://assets/sprites/enemies/goblin_attack_left_1.tres", "res://assets/sprites/enemies/goblin_attack_left_2.tres", "res://assets/sprites/enemies/goblin_attack_left_3.tres", "res://assets/sprites/enemies/goblin_attack_left_4.tres", "res://assets/sprites/enemies/goblin_attack_left_5.tres", "res://assets/sprites/enemies/goblin_attack_left_6.tres"),
+"goblin_attack_right": PackedStringArray("res://assets/sprites/enemies/goblin_attack_right_0.tres", "res://assets/sprites/enemies/goblin_attack_right_1.tres", "res://assets/sprites/enemies/goblin_attack_right_2.tres", "res://assets/sprites/enemies/goblin_attack_right_3.tres", "res://assets/sprites/enemies/goblin_attack_right_4.tres", "res://assets/sprites/enemies/goblin_attack_right_5.tres", "res://assets/sprites/enemies/goblin_attack_right_6.tres"),
+"goblin_hit_down": PackedStringArray("res://assets/sprites/enemies/goblin_hit_down_0.tres", "res://assets/sprites/enemies/goblin_hit_down_1.tres", "res://assets/sprites/enemies/goblin_hit_down_2.tres"),
+"goblin_hit_up": PackedStringArray("res://assets/sprites/enemies/goblin_hit_up_0.tres", "res://assets/sprites/enemies/goblin_hit_up_1.tres", "res://assets/sprites/enemies/goblin_hit_up_2.tres"),
+"goblin_hit_left": PackedStringArray("res://assets/sprites/enemies/goblin_hit_left_0.tres", "res://assets/sprites/enemies/goblin_hit_left_1.tres", "res://assets/sprites/enemies/goblin_hit_left_2.tres"),
+"goblin_hit_right": PackedStringArray("res://assets/sprites/enemies/goblin_hit_right_0.tres", "res://assets/sprites/enemies/goblin_hit_right_1.tres", "res://assets/sprites/enemies/goblin_hit_right_2.tres"),
+"goblin_death_down": PackedStringArray("res://assets/sprites/enemies/goblin_death_down_0.tres", "res://assets/sprites/enemies/goblin_death_down_1.tres", "res://assets/sprites/enemies/goblin_death_down_2.tres", "res://assets/sprites/enemies/goblin_death_down_3.tres", "res://assets/sprites/enemies/goblin_death_down_4.tres", "res://assets/sprites/enemies/goblin_death_down_5.tres", "res://assets/sprites/enemies/goblin_death_down_6.tres"),
+"goblin_death_up": PackedStringArray("res://assets/sprites/enemies/goblin_death_up_0.tres", "res://assets/sprites/enemies/goblin_death_up_1.tres", "res://assets/sprites/enemies/goblin_death_up_2.tres", "res://assets/sprites/enemies/goblin_death_up_3.tres", "res://assets/sprites/enemies/goblin_death_up_4.tres", "res://assets/sprites/enemies/goblin_death_up_5.tres", "res://assets/sprites/enemies/goblin_death_up_6.tres"),
+"goblin_death_left": PackedStringArray("res://assets/sprites/enemies/goblin_death_left_0.tres", "res://assets/sprites/enemies/goblin_death_left_1.tres", "res://assets/sprites/enemies/goblin_death_left_2.tres", "res://assets/sprites/enemies/goblin_death_left_3.tres", "res://assets/sprites/enemies/goblin_death_left_4.tres", "res://assets/sprites/enemies/goblin_death_left_5.tres", "res://assets/sprites/enemies/goblin_death_left_6.tres"),
+"goblin_death_right": PackedStringArray("res://assets/sprites/enemies/goblin_death_right_0.tres", "res://assets/sprites/enemies/goblin_death_right_1.tres", "res://assets/sprites/enemies/goblin_death_right_2.tres", "res://assets/sprites/enemies/goblin_death_right_3.tres", "res://assets/sprites/enemies/goblin_death_right_4.tres", "res://assets/sprites/enemies/goblin_death_right_5.tres", "res://assets/sprites/enemies/goblin_death_right_6.tres"),
+"skeleton_idle_down": PackedStringArray("res://assets/sprites/enemies/skeleton_idle_down_0.tres", "res://assets/sprites/enemies/skeleton_idle_down_1.tres", "res://assets/sprites/enemies/skeleton_idle_down_2.tres", "res://assets/sprites/enemies/skeleton_idle_down_3.tres", "res://assets/sprites/enemies/skeleton_idle_down_4.tres", "res://assets/sprites/enemies/skeleton_idle_down_5.tres"),
+"skeleton_idle_up": PackedStringArray("res://assets/sprites/enemies/skeleton_idle_up_0.tres", "res://assets/sprites/enemies/skeleton_idle_up_1.tres", "res://assets/sprites/enemies/skeleton_idle_up_2.tres", "res://assets/sprites/enemies/skeleton_idle_up_3.tres", "res://assets/sprites/enemies/skeleton_idle_up_4.tres", "res://assets/sprites/enemies/skeleton_idle_up_5.tres"),
+"skeleton_idle_left": PackedStringArray("res://assets/sprites/enemies/skeleton_idle_left_0.tres", "res://assets/sprites/enemies/skeleton_idle_left_1.tres", "res://assets/sprites/enemies/skeleton_idle_left_2.tres", "res://assets/sprites/enemies/skeleton_idle_left_3.tres", "res://assets/sprites/enemies/skeleton_idle_left_4.tres", "res://assets/sprites/enemies/skeleton_idle_left_5.tres"),
+"skeleton_idle_right": PackedStringArray("res://assets/sprites/enemies/skeleton_idle_right_0.tres", "res://assets/sprites/enemies/skeleton_idle_right_1.tres", "res://assets/sprites/enemies/skeleton_idle_right_2.tres", "res://assets/sprites/enemies/skeleton_idle_right_3.tres", "res://assets/sprites/enemies/skeleton_idle_right_4.tres", "res://assets/sprites/enemies/skeleton_idle_right_5.tres"),
+"skeleton_walk_down": PackedStringArray("res://assets/sprites/enemies/skeleton_walk_down_0.tres", "res://assets/sprites/enemies/skeleton_walk_down_1.tres", "res://assets/sprites/enemies/skeleton_walk_down_2.tres", "res://assets/sprites/enemies/skeleton_walk_down_3.tres", "res://assets/sprites/enemies/skeleton_walk_down_4.tres", "res://assets/sprites/enemies/skeleton_walk_down_5.tres"),
+"skeleton_walk_up": PackedStringArray("res://assets/sprites/enemies/skeleton_walk_up_0.tres", "res://assets/sprites/enemies/skeleton_walk_up_1.tres", "res://assets/sprites/enemies/skeleton_walk_up_2.tres", "res://assets/sprites/enemies/skeleton_walk_up_3.tres", "res://assets/sprites/enemies/skeleton_walk_up_4.tres", "res://assets/sprites/enemies/skeleton_walk_up_5.tres"),
+"skeleton_walk_left": PackedStringArray("res://assets/sprites/enemies/skeleton_walk_left_0.tres", "res://assets/sprites/enemies/skeleton_walk_left_1.tres", "res://assets/sprites/enemies/skeleton_walk_left_2.tres", "res://assets/sprites/enemies/skeleton_walk_left_3.tres", "res://assets/sprites/enemies/skeleton_walk_left_4.tres", "res://assets/sprites/enemies/skeleton_walk_left_5.tres"),
+"skeleton_walk_right": PackedStringArray("res://assets/sprites/enemies/skeleton_walk_right_0.tres", "res://assets/sprites/enemies/skeleton_walk_right_1.tres", "res://assets/sprites/enemies/skeleton_walk_right_2.tres", "res://assets/sprites/enemies/skeleton_walk_right_3.tres", "res://assets/sprites/enemies/skeleton_walk_right_4.tres", "res://assets/sprites/enemies/skeleton_walk_right_5.tres"),
+"skeleton_attack_down": PackedStringArray("res://assets/sprites/enemies/skeleton_attack_down_0.tres", "res://assets/sprites/enemies/skeleton_attack_down_1.tres", "res://assets/sprites/enemies/skeleton_attack_down_2.tres", "res://assets/sprites/enemies/skeleton_attack_down_3.tres", "res://assets/sprites/enemies/skeleton_attack_down_4.tres", "res://assets/sprites/enemies/skeleton_attack_down_5.tres", "res://assets/sprites/enemies/skeleton_attack_down_6.tres"),
+"skeleton_attack_up": PackedStringArray("res://assets/sprites/enemies/skeleton_attack_up_0.tres", "res://assets/sprites/enemies/skeleton_attack_up_1.tres", "res://assets/sprites/enemies/skeleton_attack_up_2.tres", "res://assets/sprites/enemies/skeleton_attack_up_3.tres", "res://assets/sprites/enemies/skeleton_attack_up_4.tres", "res://assets/sprites/enemies/skeleton_attack_up_5.tres", "res://assets/sprites/enemies/skeleton_attack_up_6.tres"),
+"skeleton_attack_left": PackedStringArray("res://assets/sprites/enemies/skeleton_attack_left_0.tres", "res://assets/sprites/enemies/skeleton_attack_left_1.tres", "res://assets/sprites/enemies/skeleton_attack_left_2.tres", "res://assets/sprites/enemies/skeleton_attack_left_3.tres", "res://assets/sprites/enemies/skeleton_attack_left_4.tres", "res://assets/sprites/enemies/skeleton_attack_left_5.tres", "res://assets/sprites/enemies/skeleton_attack_left_6.tres"),
+"skeleton_attack_right": PackedStringArray("res://assets/sprites/enemies/skeleton_attack_right_0.tres", "res://assets/sprites/enemies/skeleton_attack_right_1.tres", "res://assets/sprites/enemies/skeleton_attack_right_2.tres", "res://assets/sprites/enemies/skeleton_attack_right_3.tres", "res://assets/sprites/enemies/skeleton_attack_right_4.tres", "res://assets/sprites/enemies/skeleton_attack_right_5.tres", "res://assets/sprites/enemies/skeleton_attack_right_6.tres"),
+"skeleton_hit_down": PackedStringArray("res://assets/sprites/enemies/skeleton_hit_down_0.tres", "res://assets/sprites/enemies/skeleton_hit_down_1.tres", "res://assets/sprites/enemies/skeleton_hit_down_2.tres"),
+"skeleton_hit_up": PackedStringArray("res://assets/sprites/enemies/skeleton_hit_up_0.tres", "res://assets/sprites/enemies/skeleton_hit_up_1.tres", "res://assets/sprites/enemies/skeleton_hit_up_2.tres"),
+"skeleton_hit_left": PackedStringArray("res://assets/sprites/enemies/skeleton_hit_left_0.tres", "res://assets/sprites/enemies/skeleton_hit_left_1.tres", "res://assets/sprites/enemies/skeleton_hit_left_2.tres"),
+"skeleton_hit_right": PackedStringArray("res://assets/sprites/enemies/skeleton_hit_right_0.tres", "res://assets/sprites/enemies/skeleton_hit_right_1.tres", "res://assets/sprites/enemies/skeleton_hit_right_2.tres"),
+"skeleton_death_down": PackedStringArray("res://assets/sprites/enemies/skeleton_death_down_0.tres", "res://assets/sprites/enemies/skeleton_death_down_1.tres", "res://assets/sprites/enemies/skeleton_death_down_2.tres", "res://assets/sprites/enemies/skeleton_death_down_3.tres", "res://assets/sprites/enemies/skeleton_death_down_4.tres", "res://assets/sprites/enemies/skeleton_death_down_5.tres", "res://assets/sprites/enemies/skeleton_death_down_6.tres"),
+"skeleton_death_up": PackedStringArray("res://assets/sprites/enemies/skeleton_death_up_0.tres", "res://assets/sprites/enemies/skeleton_death_up_1.tres", "res://assets/sprites/enemies/skeleton_death_up_2.tres", "res://assets/sprites/enemies/skeleton_death_up_3.tres", "res://assets/sprites/enemies/skeleton_death_up_4.tres", "res://assets/sprites/enemies/skeleton_death_up_5.tres", "res://assets/sprites/enemies/skeleton_death_up_6.tres"),
+"skeleton_death_left": PackedStringArray("res://assets/sprites/enemies/skeleton_death_left_0.tres", "res://assets/sprites/enemies/skeleton_death_left_1.tres", "res://assets/sprites/enemies/skeleton_death_left_2.tres", "res://assets/sprites/enemies/skeleton_death_left_3.tres", "res://assets/sprites/enemies/skeleton_death_left_4.tres", "res://assets/sprites/enemies/skeleton_death_left_5.tres", "res://assets/sprites/enemies/skeleton_death_left_6.tres"),
+"skeleton_death_right": PackedStringArray("res://assets/sprites/enemies/skeleton_death_right_0.tres", "res://assets/sprites/enemies/skeleton_death_right_1.tres", "res://assets/sprites/enemies/skeleton_death_right_2.tres", "res://assets/sprites/enemies/skeleton_death_right_3.tres", "res://assets/sprites/enemies/skeleton_death_right_4.tres", "res://assets/sprites/enemies/skeleton_death_right_5.tres", "res://assets/sprites/enemies/skeleton_death_right_6.tres"),
+"shadow_runner_idle_down": PackedStringArray("res://assets/sprites/enemies/shadow_runner_idle_down_0.tres", "res://assets/sprites/enemies/shadow_runner_idle_down_1.tres", "res://assets/sprites/enemies/shadow_runner_idle_down_2.tres", "res://assets/sprites/enemies/shadow_runner_idle_down_3.tres", "res://assets/sprites/enemies/shadow_runner_idle_down_4.tres", "res://assets/sprites/enemies/shadow_runner_idle_down_5.tres"),
+"shadow_runner_idle_up": PackedStringArray("res://assets/sprites/enemies/shadow_runner_idle_up_0.tres", "res://assets/sprites/enemies/shadow_runner_idle_up_1.tres", "res://assets/sprites/enemies/shadow_runner_idle_up_2.tres", "res://assets/sprites/enemies/shadow_runner_idle_up_3.tres", "res://assets/sprites/enemies/shadow_runner_idle_up_4.tres", "res://assets/sprites/enemies/shadow_runner_idle_up_5.tres"),
+"shadow_runner_idle_left": PackedStringArray("res://assets/sprites/enemies/shadow_runner_idle_left_0.tres", "res://assets/sprites/enemies/shadow_runner_idle_left_1.tres", "res://assets/sprites/enemies/shadow_runner_idle_left_2.tres", "res://assets/sprites/enemies/shadow_runner_idle_left_3.tres", "res://assets/sprites/enemies/shadow_runner_idle_left_4.tres", "res://assets/sprites/enemies/shadow_runner_idle_left_5.tres"),
+"shadow_runner_idle_right": PackedStringArray("res://assets/sprites/enemies/shadow_runner_idle_right_0.tres", "res://assets/sprites/enemies/shadow_runner_idle_right_1.tres", "res://assets/sprites/enemies/shadow_runner_idle_right_2.tres", "res://assets/sprites/enemies/shadow_runner_idle_right_3.tres", "res://assets/sprites/enemies/shadow_runner_idle_right_4.tres", "res://assets/sprites/enemies/shadow_runner_idle_right_5.tres"),
+"shadow_runner_walk_down": PackedStringArray("res://assets/sprites/enemies/shadow_runner_walk_down_0.tres", "res://assets/sprites/enemies/shadow_runner_walk_down_1.tres", "res://assets/sprites/enemies/shadow_runner_walk_down_2.tres", "res://assets/sprites/enemies/shadow_runner_walk_down_3.tres", "res://assets/sprites/enemies/shadow_runner_walk_down_4.tres", "res://assets/sprites/enemies/shadow_runner_walk_down_5.tres"),
+"shadow_runner_walk_up": PackedStringArray("res://assets/sprites/enemies/shadow_runner_walk_up_0.tres", "res://assets/sprites/enemies/shadow_runner_walk_up_1.tres", "res://assets/sprites/enemies/shadow_runner_walk_up_2.tres", "res://assets/sprites/enemies/shadow_runner_walk_up_3.tres", "res://assets/sprites/enemies/shadow_runner_walk_up_4.tres", "res://assets/sprites/enemies/shadow_runner_walk_up_5.tres"),
+"shadow_runner_walk_left": PackedStringArray("res://assets/sprites/enemies/shadow_runner_walk_left_0.tres", "res://assets/sprites/enemies/shadow_runner_walk_left_1.tres", "res://assets/sprites/enemies/shadow_runner_walk_left_2.tres", "res://assets/sprites/enemies/shadow_runner_walk_left_3.tres", "res://assets/sprites/enemies/shadow_runner_walk_left_4.tres", "res://assets/sprites/enemies/shadow_runner_walk_left_5.tres"),
+"shadow_runner_walk_right": PackedStringArray("res://assets/sprites/enemies/shadow_runner_walk_right_0.tres", "res://assets/sprites/enemies/shadow_runner_walk_right_1.tres", "res://assets/sprites/enemies/shadow_runner_walk_right_2.tres", "res://assets/sprites/enemies/shadow_runner_walk_right_3.tres", "res://assets/sprites/enemies/shadow_runner_walk_right_4.tres", "res://assets/sprites/enemies/shadow_runner_walk_right_5.tres"),
+"shadow_runner_attack_down": PackedStringArray("res://assets/sprites/enemies/shadow_runner_attack_down_0.tres", "res://assets/sprites/enemies/shadow_runner_attack_down_1.tres", "res://assets/sprites/enemies/shadow_runner_attack_down_2.tres", "res://assets/sprites/enemies/shadow_runner_attack_down_3.tres", "res://assets/sprites/enemies/shadow_runner_attack_down_4.tres", "res://assets/sprites/enemies/shadow_runner_attack_down_5.tres", "res://assets/sprites/enemies/shadow_runner_attack_down_6.tres"),
+"shadow_runner_attack_up": PackedStringArray("res://assets/sprites/enemies/shadow_runner_attack_up_0.tres", "res://assets/sprites/enemies/shadow_runner_attack_up_1.tres", "res://assets/sprites/enemies/shadow_runner_attack_up_2.tres", "res://assets/sprites/enemies/shadow_runner_attack_up_3.tres", "res://assets/sprites/enemies/shadow_runner_attack_up_4.tres", "res://assets/sprites/enemies/shadow_runner_attack_up_5.tres", "res://assets/sprites/enemies/shadow_runner_attack_up_6.tres"),
+"shadow_runner_attack_left": PackedStringArray("res://assets/sprites/enemies/shadow_runner_attack_left_0.tres", "res://assets/sprites/enemies/shadow_runner_attack_left_1.tres", "res://assets/sprites/enemies/shadow_runner_attack_left_2.tres", "res://assets/sprites/enemies/shadow_runner_attack_left_3.tres", "res://assets/sprites/enemies/shadow_runner_attack_left_4.tres", "res://assets/sprites/enemies/shadow_runner_attack_left_5.tres", "res://assets/sprites/enemies/shadow_runner_attack_left_6.tres"),
+"shadow_runner_attack_right": PackedStringArray("res://assets/sprites/enemies/shadow_runner_attack_right_0.tres", "res://assets/sprites/enemies/shadow_runner_attack_right_1.tres", "res://assets/sprites/enemies/shadow_runner_attack_right_2.tres", "res://assets/sprites/enemies/shadow_runner_attack_right_3.tres", "res://assets/sprites/enemies/shadow_runner_attack_right_4.tres", "res://assets/sprites/enemies/shadow_runner_attack_right_5.tres", "res://assets/sprites/enemies/shadow_runner_attack_right_6.tres"),
+"shadow_runner_hit_down": PackedStringArray("res://assets/sprites/enemies/shadow_runner_hit_down_0.tres", "res://assets/sprites/enemies/shadow_runner_hit_down_1.tres", "res://assets/sprites/enemies/shadow_runner_hit_down_2.tres"),
+"shadow_runner_hit_up": PackedStringArray("res://assets/sprites/enemies/shadow_runner_hit_up_0.tres", "res://assets/sprites/enemies/shadow_runner_hit_up_1.tres", "res://assets/sprites/enemies/shadow_runner_hit_up_2.tres"),
+"shadow_runner_hit_left": PackedStringArray("res://assets/sprites/enemies/shadow_runner_hit_left_0.tres", "res://assets/sprites/enemies/shadow_runner_hit_left_1.tres", "res://assets/sprites/enemies/shadow_runner_hit_left_2.tres"),
+"shadow_runner_hit_right": PackedStringArray("res://assets/sprites/enemies/shadow_runner_hit_right_0.tres", "res://assets/sprites/enemies/shadow_runner_hit_right_1.tres", "res://assets/sprites/enemies/shadow_runner_hit_right_2.tres"),
+"shadow_runner_death_down": PackedStringArray("res://assets/sprites/enemies/shadow_runner_death_down_0.tres", "res://assets/sprites/enemies/shadow_runner_death_down_1.tres", "res://assets/sprites/enemies/shadow_runner_death_down_2.tres", "res://assets/sprites/enemies/shadow_runner_death_down_3.tres", "res://assets/sprites/enemies/shadow_runner_death_down_4.tres", "res://assets/sprites/enemies/shadow_runner_death_down_5.tres", "res://assets/sprites/enemies/shadow_runner_death_down_6.tres"),
+"shadow_runner_death_up": PackedStringArray("res://assets/sprites/enemies/shadow_runner_death_up_0.tres", "res://assets/sprites/enemies/shadow_runner_death_up_1.tres", "res://assets/sprites/enemies/shadow_runner_death_up_2.tres", "res://assets/sprites/enemies/shadow_runner_death_up_3.tres", "res://assets/sprites/enemies/shadow_runner_death_up_4.tres", "res://assets/sprites/enemies/shadow_runner_death_up_5.tres", "res://assets/sprites/enemies/shadow_runner_death_up_6.tres"),
+"shadow_runner_death_left": PackedStringArray("res://assets/sprites/enemies/shadow_runner_death_left_0.tres", "res://assets/sprites/enemies/shadow_runner_death_left_1.tres", "res://assets/sprites/enemies/shadow_runner_death_left_2.tres", "res://assets/sprites/enemies/shadow_runner_death_left_3.tres", "res://assets/sprites/enemies/shadow_runner_death_left_4.tres", "res://assets/sprites/enemies/shadow_runner_death_left_5.tres", "res://assets/sprites/enemies/shadow_runner_death_left_6.tres"),
+"shadow_runner_death_right": PackedStringArray("res://assets/sprites/enemies/shadow_runner_death_right_0.tres", "res://assets/sprites/enemies/shadow_runner_death_right_1.tres", "res://assets/sprites/enemies/shadow_runner_death_right_2.tres", "res://assets/sprites/enemies/shadow_runner_death_right_3.tres", "res://assets/sprites/enemies/shadow_runner_death_right_4.tres", "res://assets/sprites/enemies/shadow_runner_death_right_5.tres", "res://assets/sprites/enemies/shadow_runner_death_right_6.tres"),
+"rat_idle_down": PackedStringArray("res://assets/sprites/enemies/rat_idle_down_0.tres", "res://assets/sprites/enemies/rat_idle_down_1.tres", "res://assets/sprites/enemies/rat_idle_down_2.tres", "res://assets/sprites/enemies/rat_idle_down_3.tres", "res://assets/sprites/enemies/rat_idle_down_4.tres", "res://assets/sprites/enemies/rat_idle_down_5.tres"),
+"rat_idle_up": PackedStringArray("res://assets/sprites/enemies/rat_idle_up_0.tres", "res://assets/sprites/enemies/rat_idle_up_1.tres", "res://assets/sprites/enemies/rat_idle_up_2.tres", "res://assets/sprites/enemies/rat_idle_up_3.tres", "res://assets/sprites/enemies/rat_idle_up_4.tres", "res://assets/sprites/enemies/rat_idle_up_5.tres"),
+"rat_idle_left": PackedStringArray("res://assets/sprites/enemies/rat_idle_left_0.tres", "res://assets/sprites/enemies/rat_idle_left_1.tres", "res://assets/sprites/enemies/rat_idle_left_2.tres", "res://assets/sprites/enemies/rat_idle_left_3.tres", "res://assets/sprites/enemies/rat_idle_left_4.tres", "res://assets/sprites/enemies/rat_idle_left_5.tres"),
+"rat_idle_right": PackedStringArray("res://assets/sprites/enemies/rat_idle_right_0.tres", "res://assets/sprites/enemies/rat_idle_right_1.tres", "res://assets/sprites/enemies/rat_idle_right_2.tres", "res://assets/sprites/enemies/rat_idle_right_3.tres", "res://assets/sprites/enemies/rat_idle_right_4.tres", "res://assets/sprites/enemies/rat_idle_right_5.tres"),
+"rat_walk_down": PackedStringArray("res://assets/sprites/enemies/rat_walk_down_0.tres", "res://assets/sprites/enemies/rat_walk_down_1.tres", "res://assets/sprites/enemies/rat_walk_down_2.tres", "res://assets/sprites/enemies/rat_walk_down_3.tres", "res://assets/sprites/enemies/rat_walk_down_4.tres", "res://assets/sprites/enemies/rat_walk_down_5.tres"),
+"rat_walk_up": PackedStringArray("res://assets/sprites/enemies/rat_walk_up_0.tres", "res://assets/sprites/enemies/rat_walk_up_1.tres", "res://assets/sprites/enemies/rat_walk_up_2.tres", "res://assets/sprites/enemies/rat_walk_up_3.tres", "res://assets/sprites/enemies/rat_walk_up_4.tres", "res://assets/sprites/enemies/rat_walk_up_5.tres"),
+"rat_walk_left": PackedStringArray("res://assets/sprites/enemies/rat_walk_left_0.tres", "res://assets/sprites/enemies/rat_walk_left_1.tres", "res://assets/sprites/enemies/rat_walk_left_2.tres", "res://assets/sprites/enemies/rat_walk_left_3.tres", "res://assets/sprites/enemies/rat_walk_left_4.tres", "res://assets/sprites/enemies/rat_walk_left_5.tres"),
+"rat_walk_right": PackedStringArray("res://assets/sprites/enemies/rat_walk_right_0.tres", "res://assets/sprites/enemies/rat_walk_right_1.tres", "res://assets/sprites/enemies/rat_walk_right_2.tres", "res://assets/sprites/enemies/rat_walk_right_3.tres", "res://assets/sprites/enemies/rat_walk_right_4.tres", "res://assets/sprites/enemies/rat_walk_right_5.tres"),
+"rat_attack_down": PackedStringArray("res://assets/sprites/enemies/rat_attack_down_0.tres", "res://assets/sprites/enemies/rat_attack_down_1.tres", "res://assets/sprites/enemies/rat_attack_down_2.tres", "res://assets/sprites/enemies/rat_attack_down_3.tres", "res://assets/sprites/enemies/rat_attack_down_4.tres", "res://assets/sprites/enemies/rat_attack_down_5.tres", "res://assets/sprites/enemies/rat_attack_down_6.tres"),
+"rat_attack_up": PackedStringArray("res://assets/sprites/enemies/rat_attack_up_0.tres", "res://assets/sprites/enemies/rat_attack_up_1.tres", "res://assets/sprites/enemies/rat_attack_up_2.tres", "res://assets/sprites/enemies/rat_attack_up_3.tres", "res://assets/sprites/enemies/rat_attack_up_4.tres", "res://assets/sprites/enemies/rat_attack_up_5.tres", "res://assets/sprites/enemies/rat_attack_up_6.tres"),
+"rat_attack_left": PackedStringArray("res://assets/sprites/enemies/rat_attack_left_0.tres", "res://assets/sprites/enemies/rat_attack_left_1.tres", "res://assets/sprites/enemies/rat_attack_left_2.tres", "res://assets/sprites/enemies/rat_attack_left_3.tres", "res://assets/sprites/enemies/rat_attack_left_4.tres", "res://assets/sprites/enemies/rat_attack_left_5.tres", "res://assets/sprites/enemies/rat_attack_left_6.tres"),
+"rat_attack_right": PackedStringArray("res://assets/sprites/enemies/rat_attack_right_0.tres", "res://assets/sprites/enemies/rat_attack_right_1.tres", "res://assets/sprites/enemies/rat_attack_right_2.tres", "res://assets/sprites/enemies/rat_attack_right_3.tres", "res://assets/sprites/enemies/rat_attack_right_4.tres", "res://assets/sprites/enemies/rat_attack_right_5.tres", "res://assets/sprites/enemies/rat_attack_right_6.tres"),
+"rat_hit_down": PackedStringArray("res://assets/sprites/enemies/rat_hit_down_0.tres", "res://assets/sprites/enemies/rat_hit_down_1.tres", "res://assets/sprites/enemies/rat_hit_down_2.tres"),
+"rat_hit_up": PackedStringArray("res://assets/sprites/enemies/rat_hit_up_0.tres", "res://assets/sprites/enemies/rat_hit_up_1.tres", "res://assets/sprites/enemies/rat_hit_up_2.tres"),
+"rat_hit_left": PackedStringArray("res://assets/sprites/enemies/rat_hit_left_0.tres", "res://assets/sprites/enemies/rat_hit_left_1.tres", "res://assets/sprites/enemies/rat_hit_left_2.tres"),
+"rat_hit_right": PackedStringArray("res://assets/sprites/enemies/rat_hit_right_0.tres", "res://assets/sprites/enemies/rat_hit_right_1.tres", "res://assets/sprites/enemies/rat_hit_right_2.tres"),
+"rat_death_down": PackedStringArray("res://assets/sprites/enemies/rat_death_down_0.tres", "res://assets/sprites/enemies/rat_death_down_1.tres", "res://assets/sprites/enemies/rat_death_down_2.tres", "res://assets/sprites/enemies/rat_death_down_3.tres", "res://assets/sprites/enemies/rat_death_down_4.tres", "res://assets/sprites/enemies/rat_death_down_5.tres", "res://assets/sprites/enemies/rat_death_down_6.tres"),
+"rat_death_up": PackedStringArray("res://assets/sprites/enemies/rat_death_up_0.tres", "res://assets/sprites/enemies/rat_death_up_1.tres", "res://assets/sprites/enemies/rat_death_up_2.tres", "res://assets/sprites/enemies/rat_death_up_3.tres", "res://assets/sprites/enemies/rat_death_up_4.tres", "res://assets/sprites/enemies/rat_death_up_5.tres", "res://assets/sprites/enemies/rat_death_up_6.tres"),
+"rat_death_left": PackedStringArray("res://assets/sprites/enemies/rat_death_left_0.tres", "res://assets/sprites/enemies/rat_death_left_1.tres", "res://assets/sprites/enemies/rat_death_left_2.tres", "res://assets/sprites/enemies/rat_death_left_3.tres", "res://assets/sprites/enemies/rat_death_left_4.tres", "res://assets/sprites/enemies/rat_death_left_5.tres", "res://assets/sprites/enemies/rat_death_left_6.tres"),
+"rat_death_right": PackedStringArray("res://assets/sprites/enemies/rat_death_right_0.tres", "res://assets/sprites/enemies/rat_death_right_1.tres", "res://assets/sprites/enemies/rat_death_right_2.tres", "res://assets/sprites/enemies/rat_death_right_3.tres", "res://assets/sprites/enemies/rat_death_right_4.tres", "res://assets/sprites/enemies/rat_death_right_5.tres", "res://assets/sprites/enemies/rat_death_right_6.tres"),
+"orc_idle_down": PackedStringArray("res://assets/sprites/enemies/orc_idle_down_0.tres", "res://assets/sprites/enemies/orc_idle_down_1.tres", "res://assets/sprites/enemies/orc_idle_down_2.tres", "res://assets/sprites/enemies/orc_idle_down_3.tres", "res://assets/sprites/enemies/orc_idle_down_4.tres", "res://assets/sprites/enemies/orc_idle_down_5.tres"),
+"orc_idle_up": PackedStringArray("res://assets/sprites/enemies/orc_idle_up_0.tres", "res://assets/sprites/enemies/orc_idle_up_1.tres", "res://assets/sprites/enemies/orc_idle_up_2.tres", "res://assets/sprites/enemies/orc_idle_up_3.tres", "res://assets/sprites/enemies/orc_idle_up_4.tres", "res://assets/sprites/enemies/orc_idle_up_5.tres"),
+"orc_idle_left": PackedStringArray("res://assets/sprites/enemies/orc_idle_left_0.tres", "res://assets/sprites/enemies/orc_idle_left_1.tres", "res://assets/sprites/enemies/orc_idle_left_2.tres", "res://assets/sprites/enemies/orc_idle_left_3.tres", "res://assets/sprites/enemies/orc_idle_left_4.tres", "res://assets/sprites/enemies/orc_idle_left_5.tres"),
+"orc_idle_right": PackedStringArray("res://assets/sprites/enemies/orc_idle_right_0.tres", "res://assets/sprites/enemies/orc_idle_right_1.tres", "res://assets/sprites/enemies/orc_idle_right_2.tres", "res://assets/sprites/enemies/orc_idle_right_3.tres", "res://assets/sprites/enemies/orc_idle_right_4.tres", "res://assets/sprites/enemies/orc_idle_right_5.tres"),
+"orc_walk_down": PackedStringArray("res://assets/sprites/enemies/orc_walk_down_0.tres", "res://assets/sprites/enemies/orc_walk_down_1.tres", "res://assets/sprites/enemies/orc_walk_down_2.tres", "res://assets/sprites/enemies/orc_walk_down_3.tres", "res://assets/sprites/enemies/orc_walk_down_4.tres", "res://assets/sprites/enemies/orc_walk_down_5.tres"),
+"orc_walk_up": PackedStringArray("res://assets/sprites/enemies/orc_walk_up_0.tres", "res://assets/sprites/enemies/orc_walk_up_1.tres", "res://assets/sprites/enemies/orc_walk_up_2.tres", "res://assets/sprites/enemies/orc_walk_up_3.tres", "res://assets/sprites/enemies/orc_walk_up_4.tres", "res://assets/sprites/enemies/orc_walk_up_5.tres"),
+"orc_walk_left": PackedStringArray("res://assets/sprites/enemies/orc_walk_left_0.tres", "res://assets/sprites/enemies/orc_walk_left_1.tres", "res://assets/sprites/enemies/orc_walk_left_2.tres", "res://assets/sprites/enemies/orc_walk_left_3.tres", "res://assets/sprites/enemies/orc_walk_left_4.tres", "res://assets/sprites/enemies/orc_walk_left_5.tres"),
+"orc_walk_right": PackedStringArray("res://assets/sprites/enemies/orc_walk_right_0.tres", "res://assets/sprites/enemies/orc_walk_right_1.tres", "res://assets/sprites/enemies/orc_walk_right_2.tres", "res://assets/sprites/enemies/orc_walk_right_3.tres", "res://assets/sprites/enemies/orc_walk_right_4.tres", "res://assets/sprites/enemies/orc_walk_right_5.tres"),
+"orc_attack_down": PackedStringArray("res://assets/sprites/enemies/orc_attack_down_0.tres", "res://assets/sprites/enemies/orc_attack_down_1.tres", "res://assets/sprites/enemies/orc_attack_down_2.tres", "res://assets/sprites/enemies/orc_attack_down_3.tres", "res://assets/sprites/enemies/orc_attack_down_4.tres", "res://assets/sprites/enemies/orc_attack_down_5.tres", "res://assets/sprites/enemies/orc_attack_down_6.tres"),
+"orc_attack_up": PackedStringArray("res://assets/sprites/enemies/orc_attack_up_0.tres", "res://assets/sprites/enemies/orc_attack_up_1.tres", "res://assets/sprites/enemies/orc_attack_up_2.tres", "res://assets/sprites/enemies/orc_attack_up_3.tres", "res://assets/sprites/enemies/orc_attack_up_4.tres", "res://assets/sprites/enemies/orc_attack_up_5.tres", "res://assets/sprites/enemies/orc_attack_up_6.tres"),
+"orc_attack_left": PackedStringArray("res://assets/sprites/enemies/orc_attack_left_0.tres", "res://assets/sprites/enemies/orc_attack_left_1.tres", "res://assets/sprites/enemies/orc_attack_left_2.tres", "res://assets/sprites/enemies/orc_attack_left_3.tres", "res://assets/sprites/enemies/orc_attack_left_4.tres", "res://assets/sprites/enemies/orc_attack_left_5.tres", "res://assets/sprites/enemies/orc_attack_left_6.tres"),
+"orc_attack_right": PackedStringArray("res://assets/sprites/enemies/orc_attack_right_0.tres", "res://assets/sprites/enemies/orc_attack_right_1.tres", "res://assets/sprites/enemies/orc_attack_right_2.tres", "res://assets/sprites/enemies/orc_attack_right_3.tres", "res://assets/sprites/enemies/orc_attack_right_4.tres", "res://assets/sprites/enemies/orc_attack_right_5.tres", "res://assets/sprites/enemies/orc_attack_right_6.tres"),
+"orc_hit_down": PackedStringArray("res://assets/sprites/enemies/orc_hit_down_0.tres", "res://assets/sprites/enemies/orc_hit_down_1.tres", "res://assets/sprites/enemies/orc_hit_down_2.tres"),
+"orc_hit_up": PackedStringArray("res://assets/sprites/enemies/orc_hit_up_0.tres", "res://assets/sprites/enemies/orc_hit_up_1.tres", "res://assets/sprites/enemies/orc_hit_up_2.tres"),
+"orc_hit_left": PackedStringArray("res://assets/sprites/enemies/orc_hit_left_0.tres", "res://assets/sprites/enemies/orc_hit_left_1.tres", "res://assets/sprites/enemies/orc_hit_left_2.tres"),
+"orc_hit_right": PackedStringArray("res://assets/sprites/enemies/orc_hit_right_0.tres", "res://assets/sprites/enemies/orc_hit_right_1.tres", "res://assets/sprites/enemies/orc_hit_right_2.tres"),
+"orc_death_down": PackedStringArray("res://assets/sprites/enemies/orc_death_down_0.tres", "res://assets/sprites/enemies/orc_death_down_1.tres", "res://assets/sprites/enemies/orc_death_down_2.tres", "res://assets/sprites/enemies/orc_death_down_3.tres", "res://assets/sprites/enemies/orc_death_down_4.tres", "res://assets/sprites/enemies/orc_death_down_5.tres", "res://assets/sprites/enemies/orc_death_down_6.tres"),
+"orc_death_up": PackedStringArray("res://assets/sprites/enemies/orc_death_up_0.tres", "res://assets/sprites/enemies/orc_death_up_1.tres", "res://assets/sprites/enemies/orc_death_up_2.tres", "res://assets/sprites/enemies/orc_death_up_3.tres", "res://assets/sprites/enemies/orc_death_up_4.tres", "res://assets/sprites/enemies/orc_death_up_5.tres", "res://assets/sprites/enemies/orc_death_up_6.tres"),
+"orc_death_left": PackedStringArray("res://assets/sprites/enemies/orc_death_left_0.tres", "res://assets/sprites/enemies/orc_death_left_1.tres", "res://assets/sprites/enemies/orc_death_left_2.tres", "res://assets/sprites/enemies/orc_death_left_3.tres", "res://assets/sprites/enemies/orc_death_left_4.tres", "res://assets/sprites/enemies/orc_death_left_5.tres", "res://assets/sprites/enemies/orc_death_left_6.tres"),
+"orc_death_right": PackedStringArray("res://assets/sprites/enemies/orc_death_right_0.tres", "res://assets/sprites/enemies/orc_death_right_1.tres", "res://assets/sprites/enemies/orc_death_right_2.tres", "res://assets/sprites/enemies/orc_death_right_3.tres", "res://assets/sprites/enemies/orc_death_right_4.tres", "res://assets/sprites/enemies/orc_death_right_5.tres", "res://assets/sprites/enemies/orc_death_right_6.tres"),
+"scout_idle_down": PackedStringArray("res://assets/sprites/enemies/scout_idle_down_0.tres", "res://assets/sprites/enemies/scout_idle_down_1.tres", "res://assets/sprites/enemies/scout_idle_down_2.tres", "res://assets/sprites/enemies/scout_idle_down_3.tres", "res://assets/sprites/enemies/scout_idle_down_4.tres", "res://assets/sprites/enemies/scout_idle_down_5.tres"),
+"scout_idle_up": PackedStringArray("res://assets/sprites/enemies/scout_idle_up_0.tres", "res://assets/sprites/enemies/scout_idle_up_1.tres", "res://assets/sprites/enemies/scout_idle_up_2.tres", "res://assets/sprites/enemies/scout_idle_up_3.tres", "res://assets/sprites/enemies/scout_idle_up_4.tres", "res://assets/sprites/enemies/scout_idle_up_5.tres"),
+"scout_idle_left": PackedStringArray("res://assets/sprites/enemies/scout_idle_left_0.tres", "res://assets/sprites/enemies/scout_idle_left_1.tres", "res://assets/sprites/enemies/scout_idle_left_2.tres", "res://assets/sprites/enemies/scout_idle_left_3.tres", "res://assets/sprites/enemies/scout_idle_left_4.tres", "res://assets/sprites/enemies/scout_idle_left_5.tres"),
+"scout_idle_right": PackedStringArray("res://assets/sprites/enemies/scout_idle_right_0.tres", "res://assets/sprites/enemies/scout_idle_right_1.tres", "res://assets/sprites/enemies/scout_idle_right_2.tres", "res://assets/sprites/enemies/scout_idle_right_3.tres", "res://assets/sprites/enemies/scout_idle_right_4.tres", "res://assets/sprites/enemies/scout_idle_right_5.tres"),
+"scout_walk_down": PackedStringArray("res://assets/sprites/enemies/scout_walk_down_0.tres", "res://assets/sprites/enemies/scout_walk_down_1.tres", "res://assets/sprites/enemies/scout_walk_down_2.tres", "res://assets/sprites/enemies/scout_walk_down_3.tres", "res://assets/sprites/enemies/scout_walk_down_4.tres", "res://assets/sprites/enemies/scout_walk_down_5.tres"),
+"scout_walk_up": PackedStringArray("res://assets/sprites/enemies/scout_walk_up_0.tres", "res://assets/sprites/enemies/scout_walk_up_1.tres", "res://assets/sprites/enemies/scout_walk_up_2.tres", "res://assets/sprites/enemies/scout_walk_up_3.tres", "res://assets/sprites/enemies/scout_walk_up_4.tres", "res://assets/sprites/enemies/scout_walk_up_5.tres"),
+"scout_walk_left": PackedStringArray("res://assets/sprites/enemies/scout_walk_left_0.tres", "res://assets/sprites/enemies/scout_walk_left_1.tres", "res://assets/sprites/enemies/scout_walk_left_2.tres", "res://assets/sprites/enemies/scout_walk_left_3.tres", "res://assets/sprites/enemies/scout_walk_left_4.tres", "res://assets/sprites/enemies/scout_walk_left_5.tres"),
+"scout_walk_right": PackedStringArray("res://assets/sprites/enemies/scout_walk_right_0.tres", "res://assets/sprites/enemies/scout_walk_right_1.tres", "res://assets/sprites/enemies/scout_walk_right_2.tres", "res://assets/sprites/enemies/scout_walk_right_3.tres", "res://assets/sprites/enemies/scout_walk_right_4.tres", "res://assets/sprites/enemies/scout_walk_right_5.tres"),
+"scout_attack_down": PackedStringArray("res://assets/sprites/enemies/scout_attack_down_0.tres", "res://assets/sprites/enemies/scout_attack_down_1.tres", "res://assets/sprites/enemies/scout_attack_down_2.tres", "res://assets/sprites/enemies/scout_attack_down_3.tres", "res://assets/sprites/enemies/scout_attack_down_4.tres", "res://assets/sprites/enemies/scout_attack_down_5.tres", "res://assets/sprites/enemies/scout_attack_down_6.tres"),
+"scout_attack_up": PackedStringArray("res://assets/sprites/enemies/scout_attack_up_0.tres", "res://assets/sprites/enemies/scout_attack_up_1.tres", "res://assets/sprites/enemies/scout_attack_up_2.tres", "res://assets/sprites/enemies/scout_attack_up_3.tres", "res://assets/sprites/enemies/scout_attack_up_4.tres", "res://assets/sprites/enemies/scout_attack_up_5.tres", "res://assets/sprites/enemies/scout_attack_up_6.tres"),
+"scout_attack_left": PackedStringArray("res://assets/sprites/enemies/scout_attack_left_0.tres", "res://assets/sprites/enemies/scout_attack_left_1.tres", "res://assets/sprites/enemies/scout_attack_left_2.tres", "res://assets/sprites/enemies/scout_attack_left_3.tres", "res://assets/sprites/enemies/scout_attack_left_4.tres", "res://assets/sprites/enemies/scout_attack_left_5.tres", "res://assets/sprites/enemies/scout_attack_left_6.tres"),
+"scout_attack_right": PackedStringArray("res://assets/sprites/enemies/scout_attack_right_0.tres", "res://assets/sprites/enemies/scout_attack_right_1.tres", "res://assets/sprites/enemies/scout_attack_right_2.tres", "res://assets/sprites/enemies/scout_attack_right_3.tres", "res://assets/sprites/enemies/scout_attack_right_4.tres", "res://assets/sprites/enemies/scout_attack_right_5.tres", "res://assets/sprites/enemies/scout_attack_right_6.tres"),
+"scout_hit_down": PackedStringArray("res://assets/sprites/enemies/scout_hit_down_0.tres", "res://assets/sprites/enemies/scout_hit_down_1.tres", "res://assets/sprites/enemies/scout_hit_down_2.tres"),
+"scout_hit_up": PackedStringArray("res://assets/sprites/enemies/scout_hit_up_0.tres", "res://assets/sprites/enemies/scout_hit_up_1.tres", "res://assets/sprites/enemies/scout_hit_up_2.tres"),
+"scout_hit_left": PackedStringArray("res://assets/sprites/enemies/scout_hit_left_0.tres", "res://assets/sprites/enemies/scout_hit_left_1.tres", "res://assets/sprites/enemies/scout_hit_left_2.tres"),
+"scout_hit_right": PackedStringArray("res://assets/sprites/enemies/scout_hit_right_0.tres", "res://assets/sprites/enemies/scout_hit_right_1.tres", "res://assets/sprites/enemies/scout_hit_right_2.tres"),
+"scout_death_down": PackedStringArray("res://assets/sprites/enemies/scout_death_down_0.tres", "res://assets/sprites/enemies/scout_death_down_1.tres", "res://assets/sprites/enemies/scout_death_down_2.tres", "res://assets/sprites/enemies/scout_death_down_3.tres", "res://assets/sprites/enemies/scout_death_down_4.tres", "res://assets/sprites/enemies/scout_death_down_5.tres", "res://assets/sprites/enemies/scout_death_down_6.tres"),
+"scout_death_up": PackedStringArray("res://assets/sprites/enemies/scout_death_up_0.tres", "res://assets/sprites/enemies/scout_death_up_1.tres", "res://assets/sprites/enemies/scout_death_up_2.tres", "res://assets/sprites/enemies/scout_death_up_3.tres", "res://assets/sprites/enemies/scout_death_up_4.tres", "res://assets/sprites/enemies/scout_death_up_5.tres", "res://assets/sprites/enemies/scout_death_up_6.tres"),
+"scout_death_left": PackedStringArray("res://assets/sprites/enemies/scout_death_left_0.tres", "res://assets/sprites/enemies/scout_death_left_1.tres", "res://assets/sprites/enemies/scout_death_left_2.tres", "res://assets/sprites/enemies/scout_death_left_3.tres", "res://assets/sprites/enemies/scout_death_left_4.tres", "res://assets/sprites/enemies/scout_death_left_5.tres", "res://assets/sprites/enemies/scout_death_left_6.tres"),
+"scout_death_right": PackedStringArray("res://assets/sprites/enemies/scout_death_right_0.tres", "res://assets/sprites/enemies/scout_death_right_1.tres", "res://assets/sprites/enemies/scout_death_right_2.tres", "res://assets/sprites/enemies/scout_death_right_3.tres", "res://assets/sprites/enemies/scout_death_right_4.tres", "res://assets/sprites/enemies/scout_death_right_5.tres", "res://assets/sprites/enemies/scout_death_right_6.tres"),
+"mushroom_idle_down": PackedStringArray("res://assets/sprites/enemies/mushroom_idle_down_0.tres", "res://assets/sprites/enemies/mushroom_idle_down_1.tres", "res://assets/sprites/enemies/mushroom_idle_down_2.tres", "res://assets/sprites/enemies/mushroom_idle_down_3.tres", "res://assets/sprites/enemies/mushroom_idle_down_4.tres", "res://assets/sprites/enemies/mushroom_idle_down_5.tres"),
+"mushroom_idle_up": PackedStringArray("res://assets/sprites/enemies/mushroom_idle_up_0.tres", "res://assets/sprites/enemies/mushroom_idle_up_1.tres", "res://assets/sprites/enemies/mushroom_idle_up_2.tres", "res://assets/sprites/enemies/mushroom_idle_up_3.tres", "res://assets/sprites/enemies/mushroom_idle_up_4.tres", "res://assets/sprites/enemies/mushroom_idle_up_5.tres"),
+"mushroom_idle_left": PackedStringArray("res://assets/sprites/enemies/mushroom_idle_left_0.tres", "res://assets/sprites/enemies/mushroom_idle_left_1.tres", "res://assets/sprites/enemies/mushroom_idle_left_2.tres", "res://assets/sprites/enemies/mushroom_idle_left_3.tres", "res://assets/sprites/enemies/mushroom_idle_left_4.tres", "res://assets/sprites/enemies/mushroom_idle_left_5.tres"),
+"mushroom_idle_right": PackedStringArray("res://assets/sprites/enemies/mushroom_idle_right_0.tres", "res://assets/sprites/enemies/mushroom_idle_right_1.tres", "res://assets/sprites/enemies/mushroom_idle_right_2.tres", "res://assets/sprites/enemies/mushroom_idle_right_3.tres", "res://assets/sprites/enemies/mushroom_idle_right_4.tres", "res://assets/sprites/enemies/mushroom_idle_right_5.tres"),
+"mushroom_walk_down": PackedStringArray("res://assets/sprites/enemies/mushroom_walk_down_0.tres", "res://assets/sprites/enemies/mushroom_walk_down_1.tres", "res://assets/sprites/enemies/mushroom_walk_down_2.tres", "res://assets/sprites/enemies/mushroom_walk_down_3.tres", "res://assets/sprites/enemies/mushroom_walk_down_4.tres", "res://assets/sprites/enemies/mushroom_walk_down_5.tres"),
+"mushroom_walk_up": PackedStringArray("res://assets/sprites/enemies/mushroom_walk_up_0.tres", "res://assets/sprites/enemies/mushroom_walk_up_1.tres", "res://assets/sprites/enemies/mushroom_walk_up_2.tres", "res://assets/sprites/enemies/mushroom_walk_up_3.tres", "res://assets/sprites/enemies/mushroom_walk_up_4.tres", "res://assets/sprites/enemies/mushroom_walk_up_5.tres"),
+"mushroom_walk_left": PackedStringArray("res://assets/sprites/enemies/mushroom_walk_left_0.tres", "res://assets/sprites/enemies/mushroom_walk_left_1.tres", "res://assets/sprites/enemies/mushroom_walk_left_2.tres", "res://assets/sprites/enemies/mushroom_walk_left_3.tres", "res://assets/sprites/enemies/mushroom_walk_left_4.tres", "res://assets/sprites/enemies/mushroom_walk_left_5.tres"),
+"mushroom_walk_right": PackedStringArray("res://assets/sprites/enemies/mushroom_walk_right_0.tres", "res://assets/sprites/enemies/mushroom_walk_right_1.tres", "res://assets/sprites/enemies/mushroom_walk_right_2.tres", "res://assets/sprites/enemies/mushroom_walk_right_3.tres", "res://assets/sprites/enemies/mushroom_walk_right_4.tres", "res://assets/sprites/enemies/mushroom_walk_right_5.tres"),
+"mushroom_attack_down": PackedStringArray("res://assets/sprites/enemies/mushroom_attack_down_0.tres", "res://assets/sprites/enemies/mushroom_attack_down_1.tres", "res://assets/sprites/enemies/mushroom_attack_down_2.tres", "res://assets/sprites/enemies/mushroom_attack_down_3.tres", "res://assets/sprites/enemies/mushroom_attack_down_4.tres", "res://assets/sprites/enemies/mushroom_attack_down_5.tres", "res://assets/sprites/enemies/mushroom_attack_down_6.tres"),
+"mushroom_attack_up": PackedStringArray("res://assets/sprites/enemies/mushroom_attack_up_0.tres", "res://assets/sprites/enemies/mushroom_attack_up_1.tres", "res://assets/sprites/enemies/mushroom_attack_up_2.tres", "res://assets/sprites/enemies/mushroom_attack_up_3.tres", "res://assets/sprites/enemies/mushroom_attack_up_4.tres", "res://assets/sprites/enemies/mushroom_attack_up_5.tres", "res://assets/sprites/enemies/mushroom_attack_up_6.tres"),
+"mushroom_attack_left": PackedStringArray("res://assets/sprites/enemies/mushroom_attack_left_0.tres", "res://assets/sprites/enemies/mushroom_attack_left_1.tres", "res://assets/sprites/enemies/mushroom_attack_left_2.tres", "res://assets/sprites/enemies/mushroom_attack_left_3.tres", "res://assets/sprites/enemies/mushroom_attack_left_4.tres", "res://assets/sprites/enemies/mushroom_attack_left_5.tres", "res://assets/sprites/enemies/mushroom_attack_left_6.tres"),
+"mushroom_attack_right": PackedStringArray("res://assets/sprites/enemies/mushroom_attack_right_0.tres", "res://assets/sprites/enemies/mushroom_attack_right_1.tres", "res://assets/sprites/enemies/mushroom_attack_right_2.tres", "res://assets/sprites/enemies/mushroom_attack_right_3.tres", "res://assets/sprites/enemies/mushroom_attack_right_4.tres", "res://assets/sprites/enemies/mushroom_attack_right_5.tres", "res://assets/sprites/enemies/mushroom_attack_right_6.tres"),
+"mushroom_hit_down": PackedStringArray("res://assets/sprites/enemies/mushroom_hit_down_0.tres", "res://assets/sprites/enemies/mushroom_hit_down_1.tres", "res://assets/sprites/enemies/mushroom_hit_down_2.tres"),
+"mushroom_hit_up": PackedStringArray("res://assets/sprites/enemies/mushroom_hit_up_0.tres", "res://assets/sprites/enemies/mushroom_hit_up_1.tres", "res://assets/sprites/enemies/mushroom_hit_up_2.tres"),
+"mushroom_hit_left": PackedStringArray("res://assets/sprites/enemies/mushroom_hit_left_0.tres", "res://assets/sprites/enemies/mushroom_hit_left_1.tres", "res://assets/sprites/enemies/mushroom_hit_left_2.tres"),
+"mushroom_hit_right": PackedStringArray("res://assets/sprites/enemies/mushroom_hit_right_0.tres", "res://assets/sprites/enemies/mushroom_hit_right_1.tres", "res://assets/sprites/enemies/mushroom_hit_right_2.tres"),
+"mushroom_death_down": PackedStringArray("res://assets/sprites/enemies/mushroom_death_down_0.tres", "res://assets/sprites/enemies/mushroom_death_down_1.tres", "res://assets/sprites/enemies/mushroom_death_down_2.tres", "res://assets/sprites/enemies/mushroom_death_down_3.tres", "res://assets/sprites/enemies/mushroom_death_down_4.tres", "res://assets/sprites/enemies/mushroom_death_down_5.tres", "res://assets/sprites/enemies/mushroom_death_down_6.tres"),
+"mushroom_death_up": PackedStringArray("res://assets/sprites/enemies/mushroom_death_up_0.tres", "res://assets/sprites/enemies/mushroom_death_up_1.tres", "res://assets/sprites/enemies/mushroom_death_up_2.tres", "res://assets/sprites/enemies/mushroom_death_up_3.tres", "res://assets/sprites/enemies/mushroom_death_up_4.tres", "res://assets/sprites/enemies/mushroom_death_up_5.tres", "res://assets/sprites/enemies/mushroom_death_up_6.tres"),
+"mushroom_death_left": PackedStringArray("res://assets/sprites/enemies/mushroom_death_left_0.tres", "res://assets/sprites/enemies/mushroom_death_left_1.tres", "res://assets/sprites/enemies/mushroom_death_left_2.tres", "res://assets/sprites/enemies/mushroom_death_left_3.tres", "res://assets/sprites/enemies/mushroom_death_left_4.tres", "res://assets/sprites/enemies/mushroom_death_left_5.tres", "res://assets/sprites/enemies/mushroom_death_left_6.tres"),
+"mushroom_death_right": PackedStringArray("res://assets/sprites/enemies/mushroom_death_right_0.tres", "res://assets/sprites/enemies/mushroom_death_right_1.tres", "res://assets/sprites/enemies/mushroom_death_right_2.tres", "res://assets/sprites/enemies/mushroom_death_right_3.tres", "res://assets/sprites/enemies/mushroom_death_right_4.tres", "res://assets/sprites/enemies/mushroom_death_right_5.tres", "res://assets/sprites/enemies/mushroom_death_right_6.tres"),
+"slime_idle_down": PackedStringArray("res://assets/sprites/enemies/slime_idle_down_0.tres", "res://assets/sprites/enemies/slime_idle_down_1.tres", "res://assets/sprites/enemies/slime_idle_down_2.tres", "res://assets/sprites/enemies/slime_idle_down_3.tres", "res://assets/sprites/enemies/slime_idle_down_4.tres", "res://assets/sprites/enemies/slime_idle_down_5.tres"),
+"slime_idle_up": PackedStringArray("res://assets/sprites/enemies/slime_idle_up_0.tres", "res://assets/sprites/enemies/slime_idle_up_1.tres", "res://assets/sprites/enemies/slime_idle_up_2.tres", "res://assets/sprites/enemies/slime_idle_up_3.tres", "res://assets/sprites/enemies/slime_idle_up_4.tres", "res://assets/sprites/enemies/slime_idle_up_5.tres"),
+"slime_idle_left": PackedStringArray("res://assets/sprites/enemies/slime_idle_left_0.tres", "res://assets/sprites/enemies/slime_idle_left_1.tres", "res://assets/sprites/enemies/slime_idle_left_2.tres", "res://assets/sprites/enemies/slime_idle_left_3.tres", "res://assets/sprites/enemies/slime_idle_left_4.tres", "res://assets/sprites/enemies/slime_idle_left_5.tres"),
+"slime_idle_right": PackedStringArray("res://assets/sprites/enemies/slime_idle_right_0.tres", "res://assets/sprites/enemies/slime_idle_right_1.tres", "res://assets/sprites/enemies/slime_idle_right_2.tres", "res://assets/sprites/enemies/slime_idle_right_3.tres", "res://assets/sprites/enemies/slime_idle_right_4.tres", "res://assets/sprites/enemies/slime_idle_right_5.tres"),
+"slime_walk_down": PackedStringArray("res://assets/sprites/enemies/slime_walk_down_0.tres", "res://assets/sprites/enemies/slime_walk_down_1.tres", "res://assets/sprites/enemies/slime_walk_down_2.tres", "res://assets/sprites/enemies/slime_walk_down_3.tres", "res://assets/sprites/enemies/slime_walk_down_4.tres", "res://assets/sprites/enemies/slime_walk_down_5.tres"),
+"slime_walk_up": PackedStringArray("res://assets/sprites/enemies/slime_walk_up_0.tres", "res://assets/sprites/enemies/slime_walk_up_1.tres", "res://assets/sprites/enemies/slime_walk_up_2.tres", "res://assets/sprites/enemies/slime_walk_up_3.tres", "res://assets/sprites/enemies/slime_walk_up_4.tres", "res://assets/sprites/enemies/slime_walk_up_5.tres"),
+"slime_walk_left": PackedStringArray("res://assets/sprites/enemies/slime_walk_left_0.tres", "res://assets/sprites/enemies/slime_walk_left_1.tres", "res://assets/sprites/enemies/slime_walk_left_2.tres", "res://assets/sprites/enemies/slime_walk_left_3.tres", "res://assets/sprites/enemies/slime_walk_left_4.tres", "res://assets/sprites/enemies/slime_walk_left_5.tres"),
+"slime_walk_right": PackedStringArray("res://assets/sprites/enemies/slime_walk_right_0.tres", "res://assets/sprites/enemies/slime_walk_right_1.tres", "res://assets/sprites/enemies/slime_walk_right_2.tres", "res://assets/sprites/enemies/slime_walk_right_3.tres", "res://assets/sprites/enemies/slime_walk_right_4.tres", "res://assets/sprites/enemies/slime_walk_right_5.tres"),
+"slime_attack_down": PackedStringArray("res://assets/sprites/enemies/slime_attack_down_0.tres", "res://assets/sprites/enemies/slime_attack_down_1.tres", "res://assets/sprites/enemies/slime_attack_down_2.tres", "res://assets/sprites/enemies/slime_attack_down_3.tres", "res://assets/sprites/enemies/slime_attack_down_4.tres", "res://assets/sprites/enemies/slime_attack_down_5.tres", "res://assets/sprites/enemies/slime_attack_down_6.tres"),
+"slime_attack_up": PackedStringArray("res://assets/sprites/enemies/slime_attack_up_0.tres", "res://assets/sprites/enemies/slime_attack_up_1.tres", "res://assets/sprites/enemies/slime_attack_up_2.tres", "res://assets/sprites/enemies/slime_attack_up_3.tres", "res://assets/sprites/enemies/slime_attack_up_4.tres", "res://assets/sprites/enemies/slime_attack_up_5.tres", "res://assets/sprites/enemies/slime_attack_up_6.tres"),
+"slime_attack_left": PackedStringArray("res://assets/sprites/enemies/slime_attack_left_0.tres", "res://assets/sprites/enemies/slime_attack_left_1.tres", "res://assets/sprites/enemies/slime_attack_left_2.tres", "res://assets/sprites/enemies/slime_attack_left_3.tres", "res://assets/sprites/enemies/slime_attack_left_4.tres", "res://assets/sprites/enemies/slime_attack_left_5.tres", "res://assets/sprites/enemies/slime_attack_left_6.tres"),
+"slime_attack_right": PackedStringArray("res://assets/sprites/enemies/slime_attack_right_0.tres", "res://assets/sprites/enemies/slime_attack_right_1.tres", "res://assets/sprites/enemies/slime_attack_right_2.tres", "res://assets/sprites/enemies/slime_attack_right_3.tres", "res://assets/sprites/enemies/slime_attack_right_4.tres", "res://assets/sprites/enemies/slime_attack_right_5.tres", "res://assets/sprites/enemies/slime_attack_right_6.tres"),
+"slime_hit_down": PackedStringArray("res://assets/sprites/enemies/slime_hit_down_0.tres", "res://assets/sprites/enemies/slime_hit_down_1.tres", "res://assets/sprites/enemies/slime_hit_down_2.tres"),
+"slime_hit_up": PackedStringArray("res://assets/sprites/enemies/slime_hit_up_0.tres", "res://assets/sprites/enemies/slime_hit_up_1.tres", "res://assets/sprites/enemies/slime_hit_up_2.tres"),
+"slime_hit_left": PackedStringArray("res://assets/sprites/enemies/slime_hit_left_0.tres", "res://assets/sprites/enemies/slime_hit_left_1.tres", "res://assets/sprites/enemies/slime_hit_left_2.tres"),
+"slime_hit_right": PackedStringArray("res://assets/sprites/enemies/slime_hit_right_0.tres", "res://assets/sprites/enemies/slime_hit_right_1.tres", "res://assets/sprites/enemies/slime_hit_right_2.tres"),
+"slime_death_down": PackedStringArray("res://assets/sprites/enemies/slime_death_down_0.tres", "res://assets/sprites/enemies/slime_death_down_1.tres", "res://assets/sprites/enemies/slime_death_down_2.tres", "res://assets/sprites/enemies/slime_death_down_3.tres", "res://assets/sprites/enemies/slime_death_down_4.tres", "res://assets/sprites/enemies/slime_death_down_5.tres", "res://assets/sprites/enemies/slime_death_down_6.tres"),
+"slime_death_up": PackedStringArray("res://assets/sprites/enemies/slime_death_up_0.tres", "res://assets/sprites/enemies/slime_death_up_1.tres", "res://assets/sprites/enemies/slime_death_up_2.tres", "res://assets/sprites/enemies/slime_death_up_3.tres", "res://assets/sprites/enemies/slime_death_up_4.tres", "res://assets/sprites/enemies/slime_death_up_5.tres", "res://assets/sprites/enemies/slime_death_up_6.tres"),
+"slime_death_left": PackedStringArray("res://assets/sprites/enemies/slime_death_left_0.tres", "res://assets/sprites/enemies/slime_death_left_1.tres", "res://assets/sprites/enemies/slime_death_left_2.tres", "res://assets/sprites/enemies/slime_death_left_3.tres", "res://assets/sprites/enemies/slime_death_left_4.tres", "res://assets/sprites/enemies/slime_death_left_5.tres", "res://assets/sprites/enemies/slime_death_left_6.tres"),
+"slime_death_right": PackedStringArray("res://assets/sprites/enemies/slime_death_right_0.tres", "res://assets/sprites/enemies/slime_death_right_1.tres", "res://assets/sprites/enemies/slime_death_right_2.tres", "res://assets/sprites/enemies/slime_death_right_3.tres", "res://assets/sprites/enemies/slime_death_right_4.tres", "res://assets/sprites/enemies/slime_death_right_5.tres", "res://assets/sprites/enemies/slime_death_right_6.tres")
+}
+
+fps/goblin_idle_down = 8.0
+fps/goblin_idle_up = 8.0
+fps/goblin_idle_left = 8.0
+fps/goblin_idle_right = 8.0
+fps/goblin_walk_down = 12.0
+fps/goblin_walk_up = 12.0
+fps/goblin_walk_left = 12.0
+fps/goblin_walk_right = 12.0
+fps/goblin_attack_down = 10.0
+fps/goblin_attack_up = 10.0
+fps/goblin_attack_left = 10.0
+fps/goblin_attack_right = 10.0
+fps/goblin_hit_down = 10.0
+fps/goblin_hit_up = 10.0
+fps/goblin_hit_left = 10.0
+fps/goblin_hit_right = 10.0
+fps/goblin_death_down = 8.0
+fps/goblin_death_up = 8.0
+fps/goblin_death_left = 8.0
+fps/goblin_death_right = 8.0
+fps/skeleton_idle_down = 8.0
+fps/skeleton_idle_up = 8.0
+fps/skeleton_idle_left = 8.0
+fps/skeleton_idle_right = 8.0
+fps/skeleton_walk_down = 12.0
+fps/skeleton_walk_up = 12.0
+fps/skeleton_walk_left = 12.0
+fps/skeleton_walk_right = 12.0
+fps/skeleton_attack_down = 10.0
+fps/skeleton_attack_up = 10.0
+fps/skeleton_attack_left = 10.0
+fps/skeleton_attack_right = 10.0
+fps/skeleton_hit_down = 10.0
+fps/skeleton_hit_up = 10.0
+fps/skeleton_hit_left = 10.0
+fps/skeleton_hit_right = 10.0
+fps/skeleton_death_down = 8.0
+fps/skeleton_death_up = 8.0
+fps/skeleton_death_left = 8.0
+fps/skeleton_death_right = 8.0
+fps/shadow_runner_idle_down = 8.0
+fps/shadow_runner_idle_up = 8.0
+fps/shadow_runner_idle_left = 8.0
+fps/shadow_runner_idle_right = 8.0
+fps/shadow_runner_walk_down = 12.0
+fps/shadow_runner_walk_up = 12.0
+fps/shadow_runner_walk_left = 12.0
+fps/shadow_runner_walk_right = 12.0
+fps/shadow_runner_attack_down = 10.0
+fps/shadow_runner_attack_up = 10.0
+fps/shadow_runner_attack_left = 10.0
+fps/shadow_runner_attack_right = 10.0
+fps/shadow_runner_hit_down = 10.0
+fps/shadow_runner_hit_up = 10.0
+fps/shadow_runner_hit_left = 10.0
+fps/shadow_runner_hit_right = 10.0
+fps/shadow_runner_death_down = 8.0
+fps/shadow_runner_death_up = 8.0
+fps/shadow_runner_death_left = 8.0
+fps/shadow_runner_death_right = 8.0
+fps/rat_idle_down = 8.0
+fps/rat_idle_up = 8.0
+fps/rat_idle_left = 8.0
+fps/rat_idle_right = 8.0
+fps/rat_walk_down = 12.0
+fps/rat_walk_up = 12.0
+fps/rat_walk_left = 12.0
+fps/rat_walk_right = 12.0
+fps/rat_attack_down = 10.0
+fps/rat_attack_up = 10.0
+fps/rat_attack_left = 10.0
+fps/rat_attack_right = 10.0
+fps/rat_hit_down = 10.0
+fps/rat_hit_up = 10.0
+fps/rat_hit_left = 10.0
+fps/rat_hit_right = 10.0
+fps/rat_death_down = 8.0
+fps/rat_death_up = 8.0
+fps/rat_death_left = 8.0
+fps/rat_death_right = 8.0
+fps/orc_idle_down = 8.0
+fps/orc_idle_up = 8.0
+fps/orc_idle_left = 8.0
+fps/orc_idle_right = 8.0
+fps/orc_walk_down = 12.0
+fps/orc_walk_up = 12.0
+fps/orc_walk_left = 12.0
+fps/orc_walk_right = 12.0
+fps/orc_attack_down = 10.0
+fps/orc_attack_up = 10.0
+fps/orc_attack_left = 10.0
+fps/orc_attack_right = 10.0
+fps/orc_hit_down = 10.0
+fps/orc_hit_up = 10.0
+fps/orc_hit_left = 10.0
+fps/orc_hit_right = 10.0
+fps/orc_death_down = 8.0
+fps/orc_death_up = 8.0
+fps/orc_death_left = 8.0
+fps/orc_death_right = 8.0
+fps/scout_idle_down = 8.0
+fps/scout_idle_up = 8.0
+fps/scout_idle_left = 8.0
+fps/scout_idle_right = 8.0
+fps/scout_walk_down = 12.0
+fps/scout_walk_up = 12.0
+fps/scout_walk_left = 12.0
+fps/scout_walk_right = 12.0
+fps/scout_attack_down = 10.0
+fps/scout_attack_up = 10.0
+fps/scout_attack_left = 10.0
+fps/scout_attack_right = 10.0
+fps/scout_hit_down = 10.0
+fps/scout_hit_up = 10.0
+fps/scout_hit_left = 10.0
+fps/scout_hit_right = 10.0
+fps/scout_death_down = 8.0
+fps/scout_death_up = 8.0
+fps/scout_death_left = 8.0
+fps/scout_death_right = 8.0
+fps/mushroom_idle_down = 8.0
+fps/mushroom_idle_up = 8.0
+fps/mushroom_idle_left = 8.0
+fps/mushroom_idle_right = 8.0
+fps/mushroom_walk_down = 12.0
+fps/mushroom_walk_up = 12.0
+fps/mushroom_walk_left = 12.0
+fps/mushroom_walk_right = 12.0
+fps/mushroom_attack_down = 10.0
+fps/mushroom_attack_up = 10.0
+fps/mushroom_attack_left = 10.0
+fps/mushroom_attack_right = 10.0
+fps/mushroom_hit_down = 10.0
+fps/mushroom_hit_up = 10.0
+fps/mushroom_hit_left = 10.0
+fps/mushroom_hit_right = 10.0
+fps/mushroom_death_down = 8.0
+fps/mushroom_death_up = 8.0
+fps/mushroom_death_left = 8.0
+fps/mushroom_death_right = 8.0
+fps/slime_idle_down = 8.0
+fps/slime_idle_up = 8.0
+fps/slime_idle_left = 8.0
+fps/slime_idle_right = 8.0
+fps/slime_walk_down = 12.0
+fps/slime_walk_up = 12.0
+fps/slime_walk_left = 12.0
+fps/slime_walk_right = 12.0
+fps/slime_attack_down = 10.0
+fps/slime_attack_up = 10.0
+fps/slime_attack_left = 10.0
+fps/slime_attack_right = 10.0
+fps/slime_hit_down = 10.0
+fps/slime_hit_up = 10.0
+fps/slime_hit_left = 10.0
+fps/slime_hit_right = 10.0
+fps/slime_death_down = 8.0
+fps/slime_death_up = 8.0
+fps/slime_death_left = 8.0
+fps/slime_death_right = 8.0
+
+loop/goblin_idle_down = true
+loop/goblin_idle_up = true
+loop/goblin_idle_left = true
+loop/goblin_idle_right = true
+loop/goblin_walk_down = true
+loop/goblin_walk_up = true
+loop/goblin_walk_left = true
+loop/goblin_walk_right = true
+loop/goblin_attack_down = false
+loop/goblin_attack_up = false
+loop/goblin_attack_left = false
+loop/goblin_attack_right = false
+loop/goblin_hit_down = false
+loop/goblin_hit_up = false
+loop/goblin_hit_left = false
+loop/goblin_hit_right = false
+loop/goblin_death_down = false
+loop/goblin_death_up = false
+loop/goblin_death_left = false
+loop/goblin_death_right = false
+loop/skeleton_idle_down = true
+loop/skeleton_idle_up = true
+loop/skeleton_idle_left = true
+loop/skeleton_idle_right = true
+loop/skeleton_walk_down = true
+loop/skeleton_walk_up = true
+loop/skeleton_walk_left = true
+loop/skeleton_walk_right = true
+loop/skeleton_attack_down = false
+loop/skeleton_attack_up = false
+loop/skeleton_attack_left = false
+loop/skeleton_attack_right = false
+loop/skeleton_hit_down = false
+loop/skeleton_hit_up = false
+loop/skeleton_hit_left = false
+loop/skeleton_hit_right = false
+loop/skeleton_death_down = false
+loop/skeleton_death_up = false
+loop/skeleton_death_left = false
+loop/skeleton_death_right = false
+loop/shadow_runner_idle_down = true
+loop/shadow_runner_idle_up = true
+loop/shadow_runner_idle_left = true
+loop/shadow_runner_idle_right = true
+loop/shadow_runner_walk_down = true
+loop/shadow_runner_walk_up = true
+loop/shadow_runner_walk_left = true
+loop/shadow_runner_walk_right = true
+loop/shadow_runner_attack_down = false
+loop/shadow_runner_attack_up = false
+loop/shadow_runner_attack_left = false
+loop/shadow_runner_attack_right = false
+loop/shadow_runner_hit_down = false
+loop/shadow_runner_hit_up = false
+loop/shadow_runner_hit_left = false
+loop/shadow_runner_hit_right = false
+loop/shadow_runner_death_down = false
+loop/shadow_runner_death_up = false
+loop/shadow_runner_death_left = false
+loop/shadow_runner_death_right = false
+loop/rat_idle_down = true
+loop/rat_idle_up = true
+loop/rat_idle_left = true
+loop/rat_idle_right = true
+loop/rat_walk_down = true
+loop/rat_walk_up = true
+loop/rat_walk_left = true
+loop/rat_walk_right = true
+loop/rat_attack_down = false
+loop/rat_attack_up = false
+loop/rat_attack_left = false
+loop/rat_attack_right = false
+loop/rat_hit_down = false
+loop/rat_hit_up = false
+loop/rat_hit_left = false
+loop/rat_hit_right = false
+loop/rat_death_down = false
+loop/rat_death_up = false
+loop/rat_death_left = false
+loop/rat_death_right = false
+loop/orc_idle_down = true
+loop/orc_idle_up = true
+loop/orc_idle_left = true
+loop/orc_idle_right = true
+loop/orc_walk_down = true
+loop/orc_walk_up = true
+loop/orc_walk_left = true
+loop/orc_walk_right = true
+loop/orc_attack_down = false
+loop/orc_attack_up = false
+loop/orc_attack_left = false
+loop/orc_attack_right = false
+loop/orc_hit_down = false
+loop/orc_hit_up = false
+loop/orc_hit_left = false
+loop/orc_hit_right = false
+loop/orc_death_down = false
+loop/orc_death_up = false
+loop/orc_death_left = false
+loop/orc_death_right = false
+loop/scout_idle_down = true
+loop/scout_idle_up = true
+loop/scout_idle_left = true
+loop/scout_idle_right = true
+loop/scout_walk_down = true
+loop/scout_walk_up = true
+loop/scout_walk_left = true
+loop/scout_walk_right = true
+loop/scout_attack_down = false
+loop/scout_attack_up = false
+loop/scout_attack_left = false
+loop/scout_attack_right = false
+loop/scout_hit_down = false
+loop/scout_hit_up = false
+loop/scout_hit_left = false
+loop/scout_hit_right = false
+loop/scout_death_down = false
+loop/scout_death_up = false
+loop/scout_death_left = false
+loop/scout_death_right = false
+loop/mushroom_idle_down = true
+loop/mushroom_idle_up = true
+loop/mushroom_idle_left = true
+loop/mushroom_idle_right = true
+loop/mushroom_walk_down = true
+loop/mushroom_walk_up = true
+loop/mushroom_walk_left = true
+loop/mushroom_walk_right = true
+loop/mushroom_attack_down = false
+loop/mushroom_attack_up = false
+loop/mushroom_attack_left = false
+loop/mushroom_attack_right = false
+loop/mushroom_hit_down = false
+loop/mushroom_hit_up = false
+loop/mushroom_hit_left = false
+loop/mushroom_hit_right = false
+loop/mushroom_death_down = false
+loop/mushroom_death_up = false
+loop/mushroom_death_left = false
+loop/mushroom_death_right = false
+loop/slime_idle_down = true
+loop/slime_idle_up = true
+loop/slime_idle_left = true
+loop/slime_idle_right = true
+loop/slime_walk_down = true
+loop/slime_walk_up = true
+loop/slime_walk_left = true
+loop/slime_walk_right = true
+loop/slime_attack_down = false
+loop/slime_attack_up = false
+loop/slime_attack_left = false
+loop/slime_attack_right = false
+loop/slime_hit_down = false
+loop/slime_hit_up = false
+loop/slime_hit_left = false
+loop/slime_hit_right = false
+loop/slime_death_down = false
+loop/slime_death_up = false
+loop/slime_death_left = false
+loop/slime_death_right = false

@@ -1,0 +1,24 @@
+# Pixel Art Import Guide
+
+## For each new sprite/PNG imported:
+
+### Method 1: Use 2D Pixel Preset (Recommended)
+1. Select the PNG file(s) in FileSystem
+2. Go to Import tab
+3. Select "2D Pixel" preset from dropdown
+4. Click "Import" or "Import All"
+
+### Method 2: Manual Configuration
+If preset not available, configure manually:
+- Filter: Nearest (NOT Linear)
+- Compression: Lossless (VRAM Compression: disabled)
+- Mipmaps: Disabled
+- Repeat: Disabled (or enabled only for tiled textures)
+
+### Verification
+After import, select the imported .tres file and check Inspector:
+- Filter should show "Nearest"
+- Compression should show "Lossless"
+- Mipmaps should show "Disabled"
+
+This ensures sprites don't have blur, compression artifacts, or mipmap shimmering.

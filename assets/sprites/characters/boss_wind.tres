@@ -1,0 +1,10 @@
+[gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://boss_wind_sprite_gilded"]
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
+# Wind Boss sprite - Gilded Quest palette
+# Palette: Royal Blue (#0060ce), Gold (#ffd700), Emerald (#50c878) on Parchment (#fdffda)
+# Design: Tactile Heroism - wind element uses emerald accents
+size = Vector2(96, 96)
+
+[resource]
+SubResource = SubResource("PlaceholderTexture2D_1")

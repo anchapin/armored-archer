@@ -1,0 +1,90 @@
+name: Tech Debt Tracking
+# TODO: Add SonarQube integration for advanced tech debt tracking
+# FIXME: Consider adding automated debt prioritization
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # Weekly on Sunday
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '**.py'
+      - '**.ts'
+      - '**.js'
+
+# Prevent concurrent runs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  track-tech-debt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          pip install vulture ruff
+          cd backend && npm ci --ignore-scripts || npm install --ignore-scripts
+
+      - name: Detect TODO/FIXME/HACK comments
+        run: |
+          # Find TODO, FIXME, HACK in code
+          grep -rn "TODO\|FIXME\|HACK\|XXX" --include="*.py" --include="*.ts" --include="*.js" . > tech-debt-todos.txt || true
+          echo "TODO/FIXME count: $(wc -l < tech-debt-todos.txt || echo 0)"
+
+      - name: Detect deprecated API usage
+        run: |
+          # Check for @deprecated markers
+          grep -rn "@deprecated" --include="*.py" --include="*.ts" --include="*.js" . > deprecated-apis.txt || true
+
+      - name: Run Python code quality check
+        run: |
+          # Check for common issues using ruff
+          ruff check . --output-format=json > ruff-report.json || true
+
+      - name: Generate tech debt report
+        run: |
+          echo "# Tech Debt Report" > TECH_DEBT.md
+          echo "" >> TECH_DEBT.md
+          echo "Generated: $(date)" >> TECH_DEBT.md
+          echo "" >> TECH_DEBT.md
+          echo "## TODO/FIXME Items" >> TECH_DEBT.md
+          if [ -f tech-debt-todos.txt ]; then
+            cat tech-debt-todos.txt >> TECH_DEBT.md
+          else
+            echo "No TODO/FIXME items found." >> TECH_DEBT.md
+          fi
+          echo "" >> TECH_DEBT.md
+          echo "## Deprecated APIs" >> TECH_DEBT.md
+          if [ -f deprecated-apis.txt ]; then
+            cat deprecated-apis.txt >> TECH_DEBT.md
+          else
+            echo "No deprecated APIs found." >> TECH_DEBT.md
+          fi
+
+      - name: Upload tech debt report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tech-debt-report
+          path: |
+            TECH_DEBT.md
+            tech-debt-todos.txt
+            deprecated-apis.txt
+          retention-days: 30

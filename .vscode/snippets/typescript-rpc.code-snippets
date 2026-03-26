@@ -1,0 +1,25 @@
+{
+  "RPC Handler": {
+    "prefix": "rpc",
+    "description": "Create a new RPC handler",
+    "body": [
+      "import { Runtime } from \"../types/nakama-runtime\";",
+      "",
+      "export function registerRpc${1:RequestName}(initializer: Runtime.Initializer): void {",
+      "\tinitializer.registerRpc(\"armored_archer/${2:rpc_name}\", rpc${1:RequestName});",
+      "}",
+      "",
+      "function rpc${1:RequestName}(ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string): string {",
+      "\tlogger.info(\"${2:rpc_name} called for user: %s\", ctx.userId);",
+      "\t",
+      "\tconst request = JSON.parse(payload);",
+      "\t",
+      "\t// Process request...",
+      "\t",
+      "\treturn JSON.stringify({",
+      "\t\tsuccess: true",
+      "\t});",
+      "}"
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+[gd_scene load_steps=5 format=3 uid="uid://base_enemy_scene"]
+
+[ext_resource type="Script" path="res://scenes/enemies/base_enemy.gd" id="1_base_enemy_script"]
+[ext_resource type="PlaceholderTexture2D" uid="uid://enemy_sprite" path="res://assets/sprites/enemy.tres" id="2_enemy_sprite"]
+[ext_resource type="SpriteFrames" uid="uid://enemy_sprites" path="res://assets/sprites/enemies/enemy_sprites.tres" id="3_enemy_sprites"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_enemy"]
+size = Vector2(32, 32)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hurt"]
+radius = 24.0
+
+[node name="BaseEnemy" type="CharacterBody2D"]
+script = ExtResource("1_base_enemy_script")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("3_enemy_sprites")
+animation = &"goblin_idle_down"
+centered = false
+flip_h = false
+flip_v = false
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+visible = false
+texture = ExtResource("2_enemy_sprite")
+offset = Vector2(16, 16)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_enemy")
+
+[node name="HurtArea" type="Area2D" parent="."]
+
+[node name="HurtCollision" type="CollisionShape2D" parent="HurtArea"]
+shape = SubResource("CircleShape2D_hurt")

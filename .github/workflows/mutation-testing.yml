@@ -1,0 +1,244 @@
+# Mutation Testing - Nightly Execution
+# Runs mutation testing on Go backend to validate test quality
+name: Mutation Testing
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC (avoid overlap with flaky tests at 3 AM)
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: 'Optional package filter (comma-separated, e.g., "internal/combat,internal/matchmaking")'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  mutation-testing:
+    name: Mutation Testing (Go)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # 3 hours for full mutation testing
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for tracking
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Install dependencies
+        run: |
+          echo "=== Installing go-mutesting ==="
+          go install github.com/zimmski/go-mutesting/cmd/go-mutesting@latest
+
+          echo "=== Adding GOPATH/bin to PATH ==="
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+          echo "=== Installing jq for JSON parsing ==="
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+          echo "=== Verifying installation ==="
+          go-mutesting --version || echo "go-mutesting version check skipped"
+
+      - name: Start testcontainers environment
+        run: |
+          echo "=== Starting database services ==="
+          cd backend
+          docker-compose up -d postgres
+          echo "=== Waiting for services to be healthy ==="
+          timeout 60 bash -c 'until docker-compose ps | grep -q "Up"; do sleep 2; done'
+          docker-compose ps
+
+      - name: Run mutation testing
+        id: mutation
+        run: |
+          echo "=== Running mutation testing ==="
+
+          # Get package filter from workflow input
+          if [ -n "${{ inputs.packages }}" ]; then
+            PACKAGES="${{ inputs.packages }}"
+            echo "Running mutation testing on packages: $PACKAGES"
+          else
+            PACKAGES=""
+            echo "Running mutation testing on all default packages"
+          fi
+
+          # Run mutation tests
+          if bash scripts/run-mutation-tests.sh $PACKAGES; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+            echo "✅ All mutation tests passed"
+          else
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "❌ Some mutation tests failed"
+            exit 1
+          fi
+
+      - name: Track mutation history
+        if: always()
+        run: |
+          echo "=== Tracking mutation history ==="
+          bash scripts/track-mutation-history.sh
+
+      - name: Commit mutation history changes
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "=== Committing mutation history ==="
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/coverage-history.json
+          git diff --staged --quiet || git commit -m "chore: update mutation score history
+
+Mutation testing workflow updated coverage-history.json with latest mutation scores."
+          git push
+
+      - name: Upload mutation results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-results
+          path: data/coverage-history.json
+          retention-days: 30
+
+      - name: Generate mutation report
+        if: always()
+        run: |
+          echo "=== Generating mutation report ==="
+          cat > mutation-report.md << 'EOF'
+          # Mutation Testing Report
+
+          Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          Commit: $(git rev-parse --short HEAD)
+
+          ## Summary
+
+          - Status: ${{ steps.mutation.outputs.status }}
+          - Overall Mutation Score: $(jq -r '.history[-1].mutation_score.overall // "N/A"' data/coverage-history.json 2>/dev/null || echo "N/A")
+
+          ## Package Scores
+
+          EOF
+
+          # Append package scores if available
+          if [ -f data/coverage-history.json ]; then
+            jq -r '.history[-1].mutation_score | to_entries[] | "- \(.key): \(.value)%"' data/coverage-history.json 2>/dev/null >> mutation-report.md || echo "No mutation scores available" >> mutation-report.md
+          fi
+
+          cat >> mutation-report.md << 'EOF'
+
+          ## Thresholds
+
+          - internal/combat: 85%
+          - internal/matchmaking: 80%
+          - internal/rpg: 75%
+          - internal/store: 75%
+          - internal/season: 75%
+          - internal/notifications: 75%
+
+          ## Next Steps
+
+          - Review packages below threshold
+          - Add test assertions to kill surviving mutants
+          - Run mutation testing again after improvements
+
+          ---
+          _Generated by mutation testing workflow_
+          EOF
+
+          cat mutation-report.md
+
+      - name: Upload mutation report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: mutation-report.md
+          retention-days: 30
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '## 🧬 Mutation Testing Results\n\n';
+
+            const status = '${{ steps.mutation.outputs.status }}';
+            if (status === 'pass') {
+              body += '✅ All mutation tests passed!\n\n';
+            } else {
+              body += '❌ Some mutation tests failed.\n\n';
+            }
+
+            // Try to read mutation scores
+            try {
+              const history = JSON.parse(fs.readFileSync('data/coverage-history.json', 'utf8'));
+              const latest = history.history[history.history.length - 1];
+              const mutationScores = latest.mutation_score || {};
+
+              if (mutationScores.overall) {
+                body += '### Overall Mutation Score\n';
+                body += `\`${mutationScores.overall}%\`\n\n`;
+              }
+
+              body += '### Package Scores\n\n';
+              const thresholds = {
+                'combat': 85,
+                'matchmaking': 80,
+                'rpg': 75,
+                'store': 75,
+                'season': 75,
+                'notifications': 75
+              };
+
+              const packages = ['combat', 'matchmaking', 'rpg', 'store', 'season', 'notifications'];
+              let hasFailures = false;
+
+              packages.forEach(pkg => {
+                const score = mutationScores[pkg];
+                const threshold = thresholds[pkg];
+                if (score !== undefined) {
+                  const meetsThreshold = score >= threshold;
+                  const icon = meetsThreshold ? '✅' : '⚠️';
+                  body += `${icon} **${pkg}**: ${score}% (threshold: ${threshold}%)\n`;
+                  if (!meetsThreshold) hasFailures = true;
+                }
+              });
+
+              body += '\n';
+
+              if (hasFailures) {
+                body += '### ⚠️ Action Required\n\n';
+                body += 'Some packages are below their mutation score thresholds.\n';
+                body += 'Please add test assertions to kill surviving mutants.\n\n';
+              }
+            } catch(e) {
+              body += 'Mutation scores not available in this run.\n\n';
+            }
+
+            body += '---\n\n';
+            body += '### Mutation Testing Details\n\n';
+            body += 'Mutation testing verifies test quality by introducing small code changes (mutants).\n';
+            body += 'High mutation scores indicate tests effectively catch bugs.\n\n';
+            body += 'View detailed mutation results in the workflow artifacts.\n\n';
+            body += '_This comment was automatically generated by the mutation testing workflow._';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Stop testcontainers environment
+        if: always()
+        run: |
+          echo "=== Stopping database services ==="
+          cd backend
+          docker-compose down || true

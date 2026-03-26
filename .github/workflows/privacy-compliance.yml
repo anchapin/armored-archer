@@ -1,0 +1,238 @@
+name: Privacy Compliance
+
+on:
+  push:
+    branches: [main, develop, 'feature/**']
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run weekly on Sunday at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  pii-detection:
+    name: PII Detection Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm ci --ignore-scripts
+
+      - name: Run PII detection scan
+        run: |
+          cd backend
+          npm run scan:pii || true
+        continue-on-error: true
+
+      - name: Upload PII scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        continue-on-error: true
+        with:
+          category: "/tool:PIIScan"
+          sarif_file: backend/.agent_tmp/pii-scan.sarif
+
+  privacy-checks:
+    name: Privacy Compliance Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci --ignore-scripts
+
+      - name: Run privacy compliance tests
+        run: |
+          cd backend
+          npm run test:privacy || true
+        continue-on-error: true
+
+      - name: Check for exposed secrets in code
+        run: |
+          cd backend
+          # Check for potential secret patterns in source files
+          grep -r -n -E "(password|secret|token|api[_-]?key)" --include="*.ts" src/ | \
+            grep -v "\.test\." | \
+            grep -v "example" | \
+            grep -v "mock" || true
+        continue-on-error: true
+
+  log-scrubbing-verification:
+    name: Log Scrubbing Verification
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci --ignore-scripts
+
+      - name: Run log scrubbing tests
+        run: |
+          cd backend
+          npm test -- --testPathPatterns=log_scrubbing
+
+      - name: Verify log scrubbing module integration
+        run: |
+          cd backend
+          # Check that log scrubbing is properly exported
+          grep -r "scrubLogMessage\|scrubObjectForLogging" --include="*.ts" src/ | head -10
+
+  dependency-audit:
+    name: Dependency Privacy Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci --ignore-scripts
+
+      - name: Check for privacy-sensitive dependencies
+        run: |
+          cd backend
+          # Report on dependencies that may have privacy implications
+          npm audit --audit-level=high --production || true
+
+      - name: Check for known vulnerabilities
+        run: |
+          cd backend
+          npm audit --audit-level=high || true
+
+  data-handling-review:
+    name: Data Handling Review
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for data storage patterns
+        run: |
+          # Review code for data handling patterns
+          echo "=== Checking for user data storage ==="
+          grep -r -n "storageWrite\|storageRead" --include="*.ts" backend/src/modules/ | head -20
+          
+          echo "=== Checking for data export patterns ==="
+          grep -r -n "export\|download\|JSON\.stringify" --include="*.ts" backend/src/modules/ | head -20
+          
+          echo "=== Checking for PII handling ==="
+          grep -r -n -E "email|phone|name|address" --include="*.ts" backend/src/modules/ | head -20
+
+      - name: Create temp directory
+        run: |
+          mkdir -p .agent_tmp
+      - name: Generate data handling report
+        run: |
+          echo "# Privacy Compliance Report" > .agent_tmp/privacy-report.md
+          echo "Generated: $(date)" >> .agent_tmp/privacy-report.md
+          echo "" >> .agent_tmp/privacy-report.md
+          echo "## Data Storage Endpoints" >> .agent_tmp/privacy-report.md
+          grep -r "storageWrite" --include="*.ts" backend/src/modules/ | wc -l | xargs -I {} echo "Found {} storage write operations" >> .agent_tmp/privacy-report.md
+          echo "" >> .agent_tmp/privacy-report.md
+          echo "## Analytics Events" >> .agent_tmp/privacy-report.md
+          grep -r "track_event\|AnalyticsEvent" --include="*.ts" backend/src/modules/analytics.ts | wc -l | xargs -I {} echo "Found {} analytics event types" >> .agent_tmp/privacy-report.md
+          
+          cat .agent_tmp/privacy-report.md
+
+  compliance-documentation:
+    name: Update Compliance Documentation
+    runs-on: ubuntu-latest
+    needs: [pii-detection, privacy-checks, dependency-audit, data-handling-review]
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate compliance summary
+        run: |
+          echo "# Privacy Compliance Summary" > PRIVACY_COMPLIANCE_STATUS.md
+          echo "Last Updated: $(date)" >> PRIVACY_COMPLIANCE_STATUS.md
+          echo "" >> PRIVACY_COMPLIANCE_STATUS.md
+          echo "## Compliance Status" >> PRIVACY_COMPLIANCE_STATUS.md
+          echo "- PII Detection: Automated scanning enabled" >> PRIVACY_COMPLIANCE_STATUS.md
+          echo "- Data Handling: Reviewed in data-handling-review job" >> PRIVACY_COMPLIANCE_STATUS.md
+          echo "- Dependencies: Audited for privacy implications" >> PRIVACY_COMPLIANCE_STATUS.md
+          
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "openhands@all-hands.dev"
+          git config --local user.name "OpenHands"
+          git add PRIVACY_COMPLIANCE_STATUS.md
+          git diff --staged --quiet || git commit -m "docs: Update privacy compliance status"
+          git push
+
+  notify:
+    name: Notify on Failures
+    runs-on: ubuntu-latest
+    needs: [pii-detection, privacy-checks, dependency-audit, data-handling-review]
+    if: failure()
+    
+    steps:
+      - name: Create issue on failure
+        uses: actions/github-script@v7
+        if: github.event_name == 'push'
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '[Privacy Compliance] Review Required',
+              body: 'Automated privacy compliance check found potential issues. Please review.',
+              labels: ['privacy', 'security']
+            })

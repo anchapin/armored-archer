@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-22T04:44:53Z",
+  "total_tests": 19,
+  "unit_tests": 15,
+  "unit_pct": 78,
+  "integration_tests": 4,
+  "integration_pct": 21,
+  "e2e_tests": 0,
+  "e2e_pct": 0,
+  "valid": true,
+  "violations": []
+}

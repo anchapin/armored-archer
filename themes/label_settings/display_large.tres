@@ -1,0 +1,13 @@
+[gd_resource type="LabelSettings" format=3 uid="uid://dfmwi5lrc4f4r"]
+
+[ext_resource type="FontFile" uid="uid://2km13y1lfj84" path="res://fonts/Plus_Jakarta_Sans.ttf" id="1_kyys7"]
+
+[resource]
+line_spacing = 8.0
+font = ExtResource("1_kyys7")
+font_size = 56
+font_color = Color(0.22, 0.22, 0.2, 1)
+outline_size = 2
+outline_color = Color(0, 0.376, 0.808, 1)
+shadow_size = 0
+shadow_offset = Vector2(2, 2)

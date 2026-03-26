@@ -1,0 +1,7 @@
+[gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://boss_wind_sprite"]
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_boss_wind"]
+size = Vector2(64, 64)
+
+[resource]
+SubResource = SubResource("PlaceholderTexture2D_boss_wind")

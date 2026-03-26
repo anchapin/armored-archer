@@ -1,0 +1,232 @@
+name: Coverage Threshold Enforcement
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage-check:
+    name: Coverage Threshold Check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: nakama
+          POSTGRES_PASSWORD: changeme
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Run tests with coverage
+        working-directory: ./backend
+        run: |
+          go test -coverprofile=coverage.out -covermode=atomic -coverpkg=./internal/... ./... -v
+
+      - name: Extract coverage metrics
+        id: coverage
+        working-directory: ./backend
+        run: |
+          OVERALL=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          CRITICAL=$(go tool cover -func=coverage.out | grep -E "(combat|matchmaking|rpg)" | awk '{gsub(/%/, "", $3); sum+=$3; n++} END {printf "%.1f", n>0 ? sum/n : "0"}')
+
+          echo "overall=$OVERALL" >> $GITHUB_OUTPUT
+          echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
+
+          # Extract package coverage
+          PACKAGE_COVERAGE=$(go tool cover -func=coverage.out | grep -v "^total:" | awk '{
+              split($1, parts, ":")
+              pkg = parts[1]
+              gsub(/\/[^\/]+$/, "", pkg)
+              coverage = $3
+              gsub(/%/, "", coverage)
+              pkg_count[pkg]++
+              pkg_total[pkg] += coverage
+          } END {
+              for (p in pkg_count) {
+                  avg = pkg_total[p] / pkg_count[p]
+                  printf "%s|%.1f\n", p, avg
+              }
+          }' | sort -t'|' -k2 -rn | head -20)
+
+          echo "package_coverage<<EOF" >> $GITHUB_OUTPUT
+          echo "$PACKAGE_COVERAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Update coverage history
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          make coverage-history
+
+      - name: Check coverage thresholds
+        working-directory: ./backend/tests/quality
+        run: |
+          COVERAGE_GATE_STAGE=${{ steps.coverage.outputs.overall }}
+          if (( $(echo "$COVERAGE_GATE_STAGE >= 30" | bc -l 2>/dev/null || echo 0) )); then
+            export COVERAGE_GATE_STAGE=2
+          fi
+          if (( $(echo "$COVERAGE_GATE_STAGE >= 45" | bc -l 2>/dev/null || echo 0) )); then
+            export COVERAGE_GATE_STAGE=3
+          fi
+          ./coverage_gates.sh
+
+      - name: Check for regressions
+        run: |
+          scripts/check-coverage-regression.sh
+
+      - name: Generate coverage dashboard
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          make coverage-dashboard
+
+      - name: Upload dashboard artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-dashboard
+          path: docs/coverage-dashboard.html
+          retention-days: 30
+
+      - name: Comment PR with coverage summary
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const overall = '${{ steps.coverage.outputs.overall }}';
+            const critical = '${{ steps.coverage.outputs.critical }}';
+            const packageCoverage = `${{ steps.coverage.outputs.package_coverage }}`;
+
+            // Determine status
+            const overallStatus = parseFloat(overall) >= 30 ? '✅' : '❌';
+            const criticalStatus = parseFloat(critical) >= 80 ? '✅' : '❌';
+
+            // Build package list
+            const packages = packageCoverage.split('\n')
+              .filter(line => line.trim())
+              .map(line => {
+                const [pkg, cov] = line.split('|');
+                const status = parseFloat(cov) >= 80 ? '✅' : parseFloat(cov) >= 50 ? '⚠️' : '❌';
+                return `${status} \`${pkg.split('/').pop()}\`: ${cov}%`;
+              })
+              .join('\n');
+
+            const comment = `
+            ## 📊 Coverage Report
+
+            ### Summary
+            | Metric | Coverage | Threshold | Status |
+            |---------|-----------|------------|--------|
+            | Overall | **${overall}%** | 30% → 45% → 60% | ${overallStatus} |
+            | Critical Path | **${critical}%** | 80% | ${criticalStatus} |
+
+            ### Top Packages (Coverage)
+            ${packages}
+
+            ### Next Steps
+            ${overallStatus === '✅' ? '✅ Coverage thresholds passed' : '❌ Coverage thresholds failed - add tests to improve coverage'}
+
+            <details>
+            <summary>📖 How to improve coverage</summary>
+
+            1. Run gap analysis: \`make coverage-gap-analysis\`
+            2. Add tests for uncovered functions
+            3. Run tests: \`make backend-test-go\`
+            4. Check thresholds: \`make coverage-threshold-check\`
+            </details>
+            `;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('📊 Coverage Report')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+
+      - name: Fail if thresholds not met
+        if: failure()
+        run: |
+          echo "::error::Coverage thresholds not met. Please add tests to improve coverage."
+          exit 1
+
+  regression-check:
+    name: Package Regression Check
+    runs-on: ubuntu-latest
+    needs: coverage-check
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Checkout baseline
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: baseline
+
+      - name: Compare coverage
+        run: |
+          echo "Checking for coverage regressions..."
+
+          # Extract baseline package coverage
+          cd baseline/backend
+          go test -coverprofile=coverage.baseline -covermode=atomic -coverpkg=./internal/... ./... > /dev/null 2>&1 || true
+
+          # Extract current package coverage
+          cd ../../backend
+          go test -coverprofile=coverage.current -covermode=atomic -coverpkg=./internal/... ./... > /dev/null 2>&1 || true
+
+          # Compare
+          if [ -f coverage.baseline ] && [ -f coverage.current ]; then
+            bash ../scripts/check-coverage-regression.sh || true
+          fi

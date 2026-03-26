@@ -1,0 +1,70 @@
+[gd_scene load_steps=3 format=3 uid="uid://gear_system_demo"]
+
+[ext_resource type="Script" path="res://scenes/ui/gear_preview/gear_system_demo.gd" id="1_demo_script"]
+[ext_resource type="PackedScene" uid="uid://modular_character_sprite" path="res://scenes/player/gear/modular_character_sprite.tscn" id="2_character_sprite"]
+
+[node name="GearSystemDemo" type="Control"]
+offset_right = 800.0
+offset_bottom = 600.0
+script = ExtResource("1_demo_script")
+
+[node name="InfoLabel" type="Label" parent="."]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 380.0
+offset_bottom = 200.0
+text = "Gear System Demo"
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+offset_left = 20.0
+offset_top = 220.0
+offset_right = 380.0
+offset_bottom = 520.0
+
+[node name="CharacterSprite" parent="CenterContainer" instance=ExtResource("2_character_sprite")]
+
+[node name="SlotButtons" type="HBoxContainer" parent="."]
+offset_left = 420.0
+offset_top = 20.0
+offset_right = 780.0
+offset_bottom = 60.0
+
+[node name="SlotLabel" type="Label" parent="."]
+offset_left = 420.0
+offset_top = 70.0
+offset_right = 780.0
+offset_bottom = 90.0
+text = "Select Slot:"
+
+[node name="GearLabel" type="Label" parent="."]
+offset_left = 420.0
+offset_top = 100.0
+offset_right = 780.0
+offset_bottom = 120.0
+text = "Base Gear:"
+
+[node name="GearButtons" type="HBoxContainer" parent="."]
+offset_left = 420.0
+offset_top = 130.0
+offset_right = 780.0
+offset_bottom = 170.0
+
+[node name="SkinLabel" type="Label" parent="."]
+offset_left = 420.0
+offset_top = 180.0
+offset_right = 780.0
+offset_bottom = 200.0
+text = "Cosmetic Skins:"
+
+[node name="SkinButtons" type="HBoxContainer" parent="."]
+offset_left = 420.0
+offset_top = 210.0
+offset_right = 780.0
+offset_bottom = 250.0
+
+[node name="StatsLabel" type="Label" parent="."]
+offset_left = 420.0
+offset_top = 260.0
+offset_right = 780.0
+offset_bottom = 580.0
+text = "Total stats will appear here"

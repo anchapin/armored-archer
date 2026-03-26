@@ -1,0 +1,183 @@
+{
+  "version": "1.0.0",
+  "description": "App icon specification for iOS and Android app stores",
+  "ios": {
+    "master_icon": {
+      "size": 1024,
+      "path": "assets/icons/icon_ios_1024.png",
+      "format": "png",
+      "required": true,
+      "usage": "App Store Connect - all sizes generated from this"
+    },
+    "device_icons": [
+      {
+        "size": 180,
+        "scale": "@3x",
+        "filename": "icon_ios_180.png",
+        "usage": "iPhone App Icon"
+      },
+      {
+        "size": 120,
+        "scale": "@2x",
+        "filename": "icon_ios_120.png",
+        "usage": "iPhone App Icon"
+      },
+      {
+        "size": 167,
+        "scale": "@2x",
+        "filename": "icon_ios_167.png",
+        "usage": "iPad Pro App Icon"
+      },
+      {
+        "size": 152,
+        "scale": "@2x",
+        "filename": "icon_ios_152.png",
+        "usage": "iPad App Icon"
+      },
+      {
+        "size": 76,
+        "scale": "@1x",
+        "filename": "icon_ios_76.png",
+        "usage": "iPad App Icon"
+      },
+      {
+        "size": 80,
+        "scale": "@2x",
+        "filename": "icon_ios_spotlight_80.png",
+        "usage": "Spotlight Search"
+      },
+      {
+        "size": 58,
+        "scale": "@2x",
+        "filename": "icon_ios_settings_58.png",
+        "usage": "Settings"
+      },
+      {
+        "size": 40,
+        "scale": "@1x",
+        "filename": "icon_ios_spotlight_40.png",
+        "usage": "Spotlight Search"
+      },
+      {
+        "size": 29,
+        "scale": "@1x",
+        "filename": "icon_ios_settings_29.png",
+        "usage": "Settings"
+      }
+    ],
+    "app_store_assets": [
+      {
+        "size": 1024,
+        "width": 1024,
+        "height": 1024,
+        "path": "app_store_assets/ios/icon_1024x1024.png",
+        "usage": "iOS App Store listing"
+      },
+      {
+        "size": 1200,
+        "width": 1200,
+        "height": 600,
+        "path": "app_store_assets/ios/feature_graphic_1200x600.png",
+        "usage": "Desktop featuring on App Store"
+      }
+    ]
+  },
+  "android": {
+    "master_icons": [
+      {
+        "size": 1024,
+        "path": "assets/icons/icon_android_1024.png",
+        "format": "png",
+        "required": true,
+        "usage": "Play Store high-resolution listing"
+      },
+      {
+        "size": 512,
+        "path": "assets/icons/icon_android_512.png",
+        "format": "png",
+        "required": true,
+        "usage": "Google Play Store"
+      }
+    ],
+    "launcher_icons": [
+      {
+        "size": 192,
+        "density": "xxxhdpi",
+        "filename": "icon_android_192.png",
+        "usage": "Adaptive Icon foreground"
+      },
+      {
+        "size": 144,
+        "density": "xxxhdpi",
+        "filename": "icon_android_144.png",
+        "usage": "Legacy launcher icon"
+      },
+      {
+        "size": 96,
+        "density": "xxhdpi",
+        "filename": "icon_android_96.png",
+        "usage": "Legacy launcher icon"
+      },
+      {
+        "size": 72,
+        "density": "xhdpi",
+        "filename": "icon_android_72.png",
+        "usage": "Legacy launcher icon"
+      },
+      {
+        "size": 48,
+        "density": "mdpi",
+        "filename": "icon_android_48.png",
+        "usage": "Legacy launcher icon"
+      }
+    ],
+    "adaptive_icon": {
+      "foreground": {
+        "size": 432,
+        "path": "assets/icons/icon_android_adaptive_foreground.png",
+        "usage": "Adaptive icon foreground layer"
+      },
+      "background": {
+        "size": 432,
+        "path": "assets/icons/icon_android_adaptive_background.png",
+        "usage": "Adaptive icon background layer",
+        "note": "Can be a solid color or image"
+      },
+      "minimum_size": 108,
+      "maximum_size": 432
+    },
+    "app_store_assets": [
+      {
+        "size": 512,
+        "width": 512,
+        "height": 512,
+        "path": "app_store_assets/android/icon_512x512.png",
+        "usage": "Google Play Store"
+      },
+      {
+        "size": 1024,
+        "width": 1024,
+        "height": 1024,
+        "path": "app_store_assets/android/icon_1024x1024.png",
+        "usage": "Play Store high-res listing"
+      },
+      {
+        "size": 1024,
+        "width": 1024,
+        "height": 500,
+        "path": "app_store_assets/android/feature_graphic_1024x500.png",
+        "usage": "Play Store feature graphic"
+      }
+    ]
+  },
+  "source_files": {
+    "master_svg": "assets/icons/icon_ios_1024.svg",
+    "fallback_svg": "icon.svg",
+    "note": "SVG files can be converted to any required size"
+  },
+  "tools": {
+    "imagemagick": "convert input.png -resize WxH output.png",
+    "inkscape": "inkscape --export-width=W --export-height=H input.svg --export-png=output.png",
+    "godot": "Use Export menu with export_presets.cfg"
+  }
+}

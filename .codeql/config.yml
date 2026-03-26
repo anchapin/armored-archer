@@ -1,0 +1,4 @@
+name: "Armored Archer CodeQL Configuration"
+paths-ignore:
+  - templates
+  - '**/templates/**'

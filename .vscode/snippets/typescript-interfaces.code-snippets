@@ -1,0 +1,44 @@
+{
+  "TypeScript Interface": {
+    "prefix": "interface",
+    "description": "Create a TypeScript interface",
+    "body": [
+      "export interface ${1:InterfaceName} {",
+      "\t${2:// properties}",
+      "}"
+    ]
+  },
+  "Gear Item Interface": {
+    "prefix": "gear-interface",
+    "description": "Create a gear item interface",
+    "body": [
+      "export interface ${1:GearItem} {",
+      "\tid: string;",
+      "\tname: string;",
+      "\trarity: string;",
+      "\ttype: string;",
+      "\t${2:// additional fields}",
+      "}"
+    ]
+  },
+  "Request Interface": {
+    "prefix": "req-interface",
+    "description": "Create a request interface",
+    "body": [
+      "export interface ${1:RequestName}Request {",
+      "\t${2:// request fields}",
+      "}"
+    ]
+  },
+  "Response Interface": {
+    "prefix": "res-interface",
+    "description": "Create a response interface",
+    "body": [
+      "export interface ${1:ResponseName}Response {",
+      "\tsuccess: boolean;",
+      "\terror?: string;",
+      "\t${2:// response fields}",
+      "}"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+[gd_resource type="SpriteFrames" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" id="1" path="res://assets/sprites/equipment/bow/wooden_bow.tres"]
+
+[resource]
+animations = [{
+"frames": [
+
+"res://assets/sprites/equipment/bow/wooden_bow.tres",
+"res://assets/sprites/equipment/bow/composite_bow.tres",
+"res://assets/sprites/equipment/bow/elven_bow.tres",
+"res://assets/sprites/equipment/bow/dragon_bow.tres"
+
+],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]

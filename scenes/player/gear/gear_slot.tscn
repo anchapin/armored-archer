@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3 uid="uid://gear_slot_scene"]
+
+[ext_resource type="Script" path="res://scenes/player/gear/gear_slot.gd" id="1_gear_slot_script"]
+
+[node name="GearSlot" type="Node2D"]
+script = ExtResource("1_gear_slot_script")
+
+[node name="BaseSprite" type="Sprite2D" parent="."]
+z_index = 0
+
+[node name="SkinSprite" type="Sprite2D" parent="."]
+z_index = 1
+modulate = Color(1, 1, 1, 0.8)

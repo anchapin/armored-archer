@@ -1,0 +1,18 @@
+[gd_resource type="SpriteFrames" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" id="1" path="res://assets/sprites/equipment/armor/leather_armor.tres"]
+
+[resource]
+animations = [{
+"frames": [
+
+"res://assets/sprites/equipment/armor/leather_armor.tres",
+"res://assets/sprites/equipment/armor/chain_armor.tres",
+"res://assets/sprites/equipment/armor/plate_armor.tres",
+"res://assets/sprites/equipment/armor/dragon_armor.tres"
+
+],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]

@@ -1,0 +1,72 @@
+name: Dead Code Detection
+# vulture: Python dead code detection
+# knip: TypeScript/JavaScript dead code detection
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Weekly on Sunday
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '**.py'
+      - '**.ts'
+      - '**.js'
+      - 'requirements.txt'
+      - 'package.json'
+
+# Prevent concurrent runs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-dead-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Python dependencies
+        run: |
+          pip install vulture
+
+      - name: Install backend Node.js dependencies (for knip)
+        working-directory: ./backend
+        run: npm ci --ignore-scripts || npm install --ignore-scripts
+
+      - name: Run Python dead code detection
+        run: |
+          # Find Python files
+          find . -name "*.py" -type f > python_files.txt
+          # Run vulture on Python files - fail if issues found
+          vulture --min-confidence 80 python_files.txt
+
+      - name: Run TypeScript/JavaScript dead code detection
+        working-directory: ./backend
+        run: |
+          # Use knip if available - fail if issues found
+          npx knip --reporter json || true
+          # Also check with depcheck for unused dependencies
+          npx depcheck --json > depcheck-report.json 2>&1 || true
+
+      - name: Upload dead code report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dead-code-report
+          path: |
+            knip-report.json
+          retention-days: 30

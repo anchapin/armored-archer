@@ -1,0 +1,25 @@
+{
+  "name": "armored-archer",
+  "version": "1.0.0",
+  "description": "Armored Archer Game",
+  "scripts": {
+    "detect-duplicate": "jscpd --config .jscpd.json",
+    "detect-duplicate:ci": "jscpd --config .jscpd.json --threshold 3"
+  },
+  "devDependencies": {
+    "jscpd": "^4.0.8",
+    "unleash-client": "^6.10.1"
+  },
+  "dependencies": {
+    "pino": "^9.0.0",
+    "winston": "^3.11.0",
+    "opossum": "^9.0.0",
+    "@sentry/node": "^10.40.0",
+    "prom-client": "^15.0.0",
+    "@opentelemetry/exporter-jaeger": "^2.6.0",
+    "@opentelemetry/exporter-zipkin": "^1.28.0",
+    "@opentelemetry/sdk-node": "^0.57.0",
+    "webpack-bundle-analyzer": "^4.10.0",
+    "posthog-node": "^4.0.0"
+  }
+}

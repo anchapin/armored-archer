@@ -1,0 +1,92 @@
+{
+  "history": [
+    {
+      "commit": "test",
+      "date": "2026-03-22T00:00:00Z",
+      "overall": 50.0,
+      "critical": 40.0,
+      "godot_pass_rate": 95.0,
+      "godot_total_tests": 100,
+      "summary": {
+        "total_functions": 100,
+        "covered_functions": 50,
+        "uncovered_functions": 50
+      }
+    },
+    {
+      "commit": "test",
+      "date": "2026-03-22T00:00:00Z",
+      "overall": 50.0,
+      "critical": 40.0,
+      "godot_pass_rate": 95.0,
+      "godot_total_tests": 100,
+      "summary": {
+        "total_functions": 100,
+        "covered_functions": 50,
+        "uncovered_functions": 50
+      },
+      "timestamp": "2026-03-22T15:23:30Z",
+      "godot_line_coverage": 0.0
+    },
+    {
+      "commit": "test",
+      "date": "2026-03-22T00:00:00Z",
+      "overall": 50.0,
+      "critical": 40.0,
+      "godot_pass_rate": 95.0,
+      "godot_total_tests": 100,
+      "summary": {
+        "total_functions": 100,
+        "covered_functions": 50,
+        "uncovered_functions": 50
+      },
+      "timestamp": "2026-03-22T15:24:31Z",
+      "godot_line_coverage": 0.0
+    },
+    {
+      "commit": "test",
+      "date": "2026-03-22T00:00:00Z",
+      "overall": 50.0,
+      "critical": 40.0,
+      "godot_pass_rate": 95.0,
+      "godot_total_tests": 100,
+      "summary": {
+        "total_functions": 100,
+        "covered_functions": 50,
+        "uncovered_functions": 50
+      },
+      "timestamp": "2026-03-22T15:24:33Z",
+      "godot_line_coverage": 0.0
+    },
+    {
+      "commit": "e4084755",
+      "branch": "test/phase12-cicd-verification",
+      "date": "2026-03-23T15:54:38Z",
+      "mutation_score": {
+        "combat": 94.74,
+        "matchmaking": 0.0,
+        "rpg": 75.26,
+        "store": 85.96,
+        "season": 86.76,
+        "notifications": 94.62,
+        "overall": 61.29
+      }
+    },
+    {
+      "commit": "e4084755",
+      "branch": "test/phase12-cicd-verification",
+      "date": "2026-03-23T15:54:38Z",
+      "mutation_score": {
+        "combat": 94.74,
+        "matchmaking": 0.0,
+        "rpg": 75.26,
+        "store": 85.96,
+        "season": 86.76,
+        "notifications": 94.62,
+        "overall": 61.29
+      },
+      "timestamp": "2026-03-23T16:30:16Z",
+      "godot_line_coverage": 0.0
+    }
+  ]
+}

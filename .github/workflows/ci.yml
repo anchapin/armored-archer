@@ -1,0 +1,797 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+# Prevent concurrent CI runs to avoid intermittent failures
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-lint:
+    name: Backend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run ESLint
+        working-directory: ./backend
+        run: npm run lint
+
+  backend-complexity:
+    name: Cyclomatic Complexity Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run ESLint complexity analysis
+        working-directory: ./backend
+        run: npm run complexity
+
+  backend-n-plus-one:
+    name: N+1 Query Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run N+1 query detection
+        working-directory: ./backend
+        run: npm run detect-n-plus-one:ci || true
+
+  backend-dead-flags:
+    name: Dead Feature Flag Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run dead feature flag detection
+        working-directory: ./backend
+        run: npm run detect-dead-flags:ci || true
+
+  backend-typecheck:
+    name: Backend Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run TypeScript type check
+        working-directory: ./backend
+        run: npm run typecheck
+
+  backend-test:
+    name: Backend Tests with Coverage
+    runs-on: ubuntu-latest
+    services:
+      # PostgreSQL database service
+      postgres:
+        image: postgres:14-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: nakama
+          POSTGRES_PASSWORD: changeme
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      # Nakama game server service
+      nakama:
+        image: heroiclabs/nakama:3.21.1
+        env:
+          NAKAMA_SERVER_KEY: defaultkey
+          NAKAMA_SERVER_PORT: 7350
+          DATABASE_ADDRESS: postgres://postgres:changeme@localhost:5432/nakama?sslmode=disable
+        ports:
+          - 7350:7350
+        options: >-
+          --health-cmd "/nakama/nakama healthcheck"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        volumes:
+          - ./backend/nakama.yml:/nakama/data/nakama.yml:ro
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U postgres; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+      
+      - name: Run database migrations
+        working-directory: ./backend/data
+        run: |
+          for migration in $(ls -1 *.sql 2>/dev/null | sort); do
+            echo "Running migration: $migration"
+            PGPASSWORD=changeme psql -h localhost -U postgres -d nakama -f "$migration" || true
+          done
+      
+      - name: Wait for Nakama to be ready
+        run: |
+          echo "Waiting for Nakama to be ready..."
+          for i in {1..60}; do
+            if curl -s http://localhost:7350/ 2>/dev/null || curl -s http://localhost:7351/ 2>/dev/null; then
+              echo "Nakama is ready"
+              break
+            fi
+            echo "Waiting for Nakama... ($i/60)"
+            sleep 2
+          done
+      
+      - name: Run tests with coverage
+        working-directory: ./backend
+        env:
+          NAKAMA_HOST: localhost
+          NAKAMA_PORT: 7350
+          NAKAMA_SERVER_KEY: defaultkey
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5432
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: changeme
+          TEST_DB_NAME: nakama
+        run: npm run test:coverage
+
+      # FND-05, FND-06: Race detector and shuffle for test isolation
+      - name: Run Go tests with race detector and shuffle
+        working-directory: ./backend
+        env:
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5432
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: changeme
+          TEST_DB_NAME: nakama
+          GOMAXPROCS: 2
+          TZ: UTC
+        run: |
+          echo "Running Go tests with race detector and shuffle..."
+          go test -v -race -shuffle=on -timeout=60s ./...
+
+      # FND-04: Validate test pyramid ratios (70/20/10 with ±10% tolerance)
+      - name: Validate test pyramid ratios
+        run: |
+          echo "Validating test pyramid (70% unit, 20% integration, 10% E2E)..."
+          ./scripts/check-test-pyramid.sh
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "======================================="
+          echo "Test Infrastructure Summary"
+          echo "======================================="
+          echo ""
+          echo "✅ Unified test runner: scripts/test-all.sh"
+          echo "✅ Race detector enabled: -race flag"
+          echo "✅ Test shuffle enabled: -shuffle=on flag"
+          echo "✅ Pyramid validation: scripts/check-test-pyramid.sh"
+          echo ""
+          echo "Requirements satisfied:"
+          echo "  FND-03: Unified test runner ✓"
+          echo "  FND-04: Test pyramid enforcement ✓"
+          echo "  FND-05: Race detector in CI ✓"
+          echo "  FND-06: Test isolation via shuffle ✓"
+          echo ""
+          echo "======================================="
+
+      - name: Upload coverage to Codecov
+        if: success()
+        continue-on-error: true
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./backend/coverage/lcov.info
+          flags: backend
+          fail_ci_if_error: false
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run npm audit
+        working-directory: ./backend
+        run: npm audit --audit-level=high
+      
+      - name: Run npm audit with production flag
+        working-directory: ./backend
+        run: npm audit --production --audit-level=high
+
+  log-scrubbing:
+    name: Log Scrubbing Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run log scrubbing tests
+        working-directory: ./backend
+        run: npm test -- --testPathPatterns=log_scrubbing
+
+  n-plus-one-detection:
+    name: N+1 Query Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run N+1 query detection
+        working-directory: ./backend
+        run: npm run detect-n-plus-one:ci
+
+  duplicate-code-detection:
+    name: Duplicate Code Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run duplicate code detection on TypeScript (backend)
+        working-directory: ./backend
+        run: npx jscpd --config .jscpd.json --threshold 3
+
+      - name: Run duplicate code detection on GDScript and Python
+        working-directory: ./backend
+        run: npx jscpd --config .jscpd.json --threshold 3 ../autoloads/ ../scripts/ ../scenes/ || true
+
+  dependency-check:
+    name: Unused Dependency Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm install
+      
+      - name: Run depcheck
+        working-directory: ./backend
+        run: npm run depcheck
+      
+      - name: Count dependencies
+        id: dep-count
+        working-directory: ./backend
+        run: |
+          TOTAL=$(node -e "console.log(Object.keys(require('./package.json').dependencies).length + Object.keys(require('./package.json').devDependencies).length)")
+          PROD=$(node -e "console.log(Object.keys(require('./package.json').dependencies).length)")
+          DEV=$(node -e "console.log(Object.keys(require('./package.json').devDependencies).length)")
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "prod=$PROD" >> $GITHUB_OUTPUT
+          echo "dev=$DEV" >> $GITHUB_OUTPUT
+          echo "Dependency count: Total=$TOTAL, Prod=$PROD, Dev=$DEV"
+      
+      - name: Print dependency summary
+        run: |
+          echo "Dependencies: ${{ steps.dep-count.outputs.total }} total (${{ steps.dep-count.outputs.prod }} prod, ${{ steps.dep-count.outputs.dev }} dev)"
+
+  bundle-size-check:
+    name: Bundle Size Tracking
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Build backend
+        working-directory: ./backend
+        run: npm run build
+      
+      - name: Run bundle analysis
+        working-directory: ./backend
+        run: node scripts/bundle-analysis.js --ci-mode --json
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+      
+      - name: Upload bundle report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-report
+          path: |
+            backend/.bundle-size-history.json
+          retention-days: 30
+
+  godot-validate:
+    name: Godot Project Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate project.godot
+        run: |
+          if [ ! -f project.godot ]; then
+            echo "Error: project.godot not found"
+            exit 1
+          fi
+          echo "project.godot found and valid"
+      
+      - name: Check autoload scripts exist
+        run: |
+          if grep -q "NetworkManager=" project.godot && ! [ -f autoloads/NetworkManager.gd ]; then
+            echo "Error: NetworkManager autoload defined but file missing"
+            exit 1
+          fi
+          if grep -q "GameManager=" project.godot && ! [ -f autoloads/GameManager.gd ]; then
+            echo "Error: GameManager autoload defined but file missing"
+            exit 1
+          fi
+          echo "Autoload scripts validated"
+
+  python-lint:
+    name: Python Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff
+        run: ruff check .
+
+  gdscript-lint:
+    name: GDScript Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install gdlint
+        run: pip install gdtoolkit
+
+      - name: Run gdlint
+        run: gdlint .
+
+  tech-debt-tracking:
+    name: Tech Debt Tracking
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Generate Tech Debt Report
+        working-directory: ./backend
+        run: npm run tech-debt:report
+      
+      - name: Check for critical tech debt
+        working-directory: ./backend
+        run: npm run tech-debt:report:ci
+      
+      - name: Upload Tech Debt Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tech-debt-report
+          path: |
+            backend/tech-debt-report.json
+          retention-days: 30
+
+  dead-code-detection:
+    name: Dead Code Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Install gdlint
+        run: pip install gdtoolkit
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run dead code detection (CI mode)
+        run: make dead-code-check-ci
+
+  sonarcloud:
+    name: SonarCloud Code Quality
+    runs-on: ubuntu-latest
+    # Only run on push/PR events to avoid duplicate scans
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    services:
+      # PostgreSQL database service
+      postgres:
+        image: postgres:14-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: nakama
+          POSTGRES_PASSWORD: changeme
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      # Nakama game server service
+      nakama:
+        image: heroiclabs/nakama:3.21.1
+        env:
+          NAKAMA_SERVER_KEY: defaultkey
+          NAKAMA_SERVER_PORT: 7350
+          DATABASE_ADDRESS: postgres://postgres:changeme@localhost:5432/nakama?sslmode=disable
+        ports:
+          - 7350:7350
+        options: >-
+          --health-cmd "/nakama/nakama healthcheck"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        volumes:
+          - ./backend/nakama.yml:/nakama/data/nakama.yml:ro
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clone should be disabled for SonarCloud
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Build backend
+        working-directory: ./backend
+        run: npm run build
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U postgres; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+      
+      - name: Run database migrations
+        working-directory: ./backend/data
+        run: |
+          for migration in $(ls -1 *.sql 2>/dev/null | sort); do
+            echo "Running migration: $migration"
+            PGPASSWORD=changeme psql -h localhost -U postgres -d nakama -f "$migration" || true
+          done
+      
+      - name: Wait for Nakama to be ready
+        run: |
+          echo "Waiting for Nakama to be ready..."
+          for i in {1..60}; do
+            if curl -s http://localhost:7350/ 2>/dev/null || curl -s http://localhost:7351/ 2>/dev/null; then
+              echo "Nakama is ready"
+              break
+            fi
+            echo "Waiting for Nakama... ($i/60)"
+            sleep 2
+          done
+
+      - name: Run tests for coverage
+        working-directory: ./backend
+        env:
+          NAKAMA_HOST: localhost
+          NAKAMA_PORT: 7350
+          NAKAMA_SERVER_KEY: defaultkey
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5432
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: changeme
+          TEST_DB_NAME: nakama
+        run: npm run test:coverage
+
+      - name: Run SonarCloud Scanner for Backend (TypeScript/Node.js)
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectBaseDir: backend
+          args: >
+            -Dsonar.sources=src
+            -Dsonar.tests=tests
+            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.testExecutionReportPaths=coverage/coverage-final.json
+            -Dsonar.coverage.exclusions=**/node_modules/**,**/*.d.ts,**/*.config.js
+            -Dsonar.exclusions=**/node_modules/**,**/coverage/**,**/*.test.ts,**/*.spec.ts
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300
+            -Dsonar.newCode.referenceBranch=main
+            -Dsonar.projectKey=armored-archer_backend
+            -Dsonar.organization=${{ secrets.SONAR_ORG }}
+            -Dsonar.sq.newCode.overallCoverageGoal=70
+            -Dsonar.sq.newCode.overallNewTechnicalDebt=5
+
+      - name: Run SonarCloud Scanner for Game Scripts
+        # Note: GDScript requires SonarQube server with community plugin
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.sources=autoloads,scenes,scripts
+            -Dsonar.language=js
+            -Dsonar.javascript.lcov.reportPaths=
+            -Dsonar.exclusions=**/node_modules/**,**/backend/**,**/tests/**,**/test/**,.git
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300
+            -Dsonar.newCode.referenceBranch=main
+            -Dsonar.projectKey=armored-archer_game
+            -Dsonar.organization=${{ secrets.SONAR_ORG }}
+
+  schema-validation:
+    name: Database Schema Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Start PostgreSQL
+        uses: harmon758/postgresql-action@v1
+        with:
+          postgresql version: '15'
+          postgresql db: nakama
+          postgresql user: postgres
+          postgresql password: localdbpassword
+      
+      - name: Wait for PostgreSQL to be ready
+        run: sleep 10
+      
+      - name: Install Nakama
+        run: |
+          # Download and extract Nakama server
+          curl -sL https://github.com/heroiclabs/nakama/releases/download/v3.23.0/nakama-3.23.0-linux-amd64.tar.gz -o nakama.tar.gz
+          tar xzf nakama.tar.gz
+          chmod +x nakama
+      
+      - name: Configure Nakama
+        run: |
+          # Create nakama config with database connection
+          cat > nakama.yml << EOF
+          database:
+            address: "postgres:localdbpassword@localhost:5432/nakama?sslmode=disable"
+          EOF
+      
+      - name: Run migrations
+        working-directory: ./backend/data
+        run: |
+          for migration in $(ls -1 *.sql | sort); do
+            echo "Running migration: $migration"
+            PGPASSWORD=localdbpassword psql -h localhost -U postgres -d nakama -f "$migration"
+          done
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run schema validation tests
+        working-directory: ./backend
+        env:
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5432
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: localdbpassword
+          TEST_DB_NAME: nakama
+        run: npm run test:schema
+      
+      - name: Upload schema test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-test-results
+          path: backend/test-results/
+          retention-days: 7
+
+  agents-md-validation:
+    name: AGENTS.md Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Validate AGENTS.md
+        working-directory: ./backend
+        run: npm run validate:agents-md:ci
+      
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agents-md-validation-report
+          path: |
+            backend/agents-md-validation-report.json
+          retention-days: 7

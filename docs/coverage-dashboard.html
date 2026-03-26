@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coverage Dashboard - Armored Archer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .meta {
+            font-size: 14px;
+            color: #bdc3c7;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .summary-card h3 {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+
+        .summary-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .summary-value.good {
+            color: #27ae60;
+        }
+
+        .summary-value.warning {
+            color: #f39c12;
+        }
+
+        .summary-value.bad {
+            color: #e74c3c;
+        }
+
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #27ae60;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .progress-fill.warning {
+            background: #f39c12;
+        }
+
+        .progress-fill.bad {
+            background: #e74c3c;
+        }
+
+        .threshold-marker {
+            position: absolute;
+            height: 30px;
+            width: 2px;
+            background: #2c3e50;
+            z-index: 10;
+        }
+
+        .threshold-label {
+            position: absolute;
+            font-size: 12px;
+            color: #2c3e50;
+            top: 32px;
+            transform: translateX(-50%);
+        }
+
+        .package-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .package-card {
+            border: 1px solid #ecf0f1;
+            border-radius: 6px;
+            padding: 15px;
+        }
+
+        .package-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+
+        .package-coverage {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .trend-chart {
+            height: 200px;
+            margin-top: 20px;
+        }
+
+        .trend-line {
+            fill: none;
+            stroke: #3498db;
+            stroke-width: 2;
+        }
+
+        .trend-axis text {
+            font-size: 12px;
+            fill: #7f8c8d;
+        }
+
+        .trend-grid line {
+            stroke: #ecf0f1;
+            stroke-width: 1;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .badge.good {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge.bad {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Coverage Dashboard</h1>
+            <div class="meta">
+                <span>Generated: 2026-03-23T16:30:16Z</span> |
+                <span>Last Update: 2026-03-23T15:54:38Z</span> |
+                <span>Commit: e4084755</span>
+            </div>
+        </header>
+
+        <div class="summary">
+            <div class="summary-card">
+                <h3>Overall Coverage</h3>
+                <div class="summary-value bad">null%</div>
+                <div>Threshold: 60.0%</div>
+            </div>
+            <div class="summary-card">
+                <h3>Critical Path</h3>
+                <div class="summary-value bad">null%</div>
+                <div>Threshold: 80.0%</div>
+            </div>
+            <div class="summary-card">
+                <h3>Godot Pass Rate</h3>
+                <div class="summary-value bad">0%</div>
+                <div>Threshold: 95.0%</div>
+            </div>
+            <div class="summary-card">
+                <h3>Godot Line Coverage</h3>
+                <div class="summary-value bad">0.0%</div>
+                <div>Threshold: 50.0%</div>
+            </div>
+            <div class="summary-card">
+                <h3>Functions</h3>
+                <div class="summary-value">0/0</div>
+                <div>Uncovered: 0</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Overall Coverage Progress</h2>
+            <div style="position: relative; margin-bottom: 30px;">
+                <div class="progress-bar">
+                    <div class="progress-fill bad" style="width: null%">null%</div>
+                </div>
+                <div class="threshold-marker" style="left: 60.0%"></div>
+                <div class="threshold-label" style="left: 60.0%">Target: 60.0%</div>
+            </div>
+            <div id="trendChart" class="trend-chart"></div>
+        </div>
+
+        <div class="section">
+            <h2>Godot Line Coverage</h2>
+            <div style="position: relative; margin-bottom: 30px;">
+                <div class="progress-bar">
+                    <div class="progress-fill bad" style="width: 0.0%">0.0%</div>
+                </div>
+                <div class="threshold-marker" style="left: 50.0%"></div>
+                <div class="threshold-label" style="left: 50.0%">Target: 50.0%</div>
+            </div>
+            <div id="godotTrendChart" class="trend-chart"></div>
+        </div>
+
+        <div class="section">
+            <h2>Package Coverage</h2>
+            <div class="package-grid" id="packageGrid">
+                <!-- Packages will be inserted here by JavaScript -->
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Generated by generate-coverage-dashboard.sh</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration data from JSON
+        const historyData = {
+  "history": [
+    {
+      "commit": "test",
+      "date": "2026-03-22T00:00:00Z",
+      "overall": 50.0,
+      "critical": 40.0,
+      "godot_pass_rate": 95.0,
+      "godot_total_tests": 100,
+      "summary": {
+        "total_functions": 100,
+        "covered_functions": 50,
+        "uncovered_functions": 50
+      }
+    },
+    {
+      "commit": "test",
+      "date": "2026-03-22T00:00:00Z",
+      "overall": 50.0,
+      "critical": 40.0,
+      "godot_pass_rate": 95.0,
+      "godot_total_tests": 100,
+      "summary": {
+        "total_functions": 100,
+        "covered_functions": 50,
+        "uncovered_functions": 50
+      },
+      "timestamp": "2026-03-22T15:23:30Z",
+      "godot_line_coverage": 0.0
+    },
+    {
+      "commit": "test",
+      "date": "2026-03-22T00:00:00Z",
+      "overall": 50.0,
+      "critical": 40.0,
+      "godot_pass_rate": 95.0,
+      "godot_total_tests": 100,
+      "summary": {
+        "total_functions": 100,
+        "covered_functions": 50,
+        "uncovered_functions": 50
+      },
+      "timestamp": "2026-03-22T15:24:31Z",
+      "godot_line_coverage": 0.0
+    },
+    {
+      "commit": "test",
+      "date": "2026-03-22T00:00:00Z",
+      "overall": 50.0,
+      "critical": 40.0,
+      "godot_pass_rate": 95.0,
+      "godot_total_tests": 100,
+      "summary": {
+        "total_functions": 100,
+        "covered_functions": 50,
+        "uncovered_functions": 50
+      },
+      "timestamp": "2026-03-22T15:24:33Z",
+      "godot_line_coverage": 0.0
+    },
+    {
+      "commit": "e4084755",
+      "branch": "test/phase12-cicd-verification",
+      "date": "2026-03-23T15:54:38Z",
+      "mutation_score": {
+        "combat": 94.74,
+        "matchmaking": 0.0,
+        "rpg": 75.26,
+        "store": 85.96,
+        "season": 86.76,
+        "notifications": 94.62,
+        "overall": 61.29
+      }
+    },
+    {
+      "commit": "e4084755",
+      "branch": "test/phase12-cicd-verification",
+      "date": "2026-03-23T15:54:38Z",
+      "mutation_score": {
+        "combat": 94.74,
+        "matchmaking": 0.0,
+        "rpg": 75.26,
+        "store": 85.96,
+        "season": 86.76,
+        "notifications": 94.62,
+        "overall": 61.29
+      },
+      "timestamp": "2026-03-23T16:30:16Z",
+      "godot_line_coverage": 0.0
+    }
+  ]
+};
+        const thresholdsData = {
+  "overall": 60.0,
+  "critical": 80.0,
+  "critical_packages": ["combat", "matchmaking", "rpg"],
+  "stages": {
+    "1": 45.0,
+    "2": 52.5,
+    "3": 60.0
+  },
+  "current_stage": 3,
+  "regression_warning": 5.0,
+  "regression_failure": 10.0,
+  "godot_pass_rate_threshold": 95.0,
+  "godot_line_coverage_threshold": 50.0,
+  "package_thresholds": {
+    "rpg": 75.0,
+    "matchmaking": 80.0,
+    "store": 55.0,
+    "season": 50.0,
+    "notifications": 50.0,
+    "rpc": 60.0,
+    "analytics": 80.0
+  }
+};
+        const latestData = {
+  "commit": "e4084755",
+  "branch": "test/phase12-cicd-verification",
+  "date": "2026-03-23T15:54:38Z",
+  "mutation_score": {
+    "combat": 94.74,
+    "matchmaking": 0.0,
+    "rpg": 75.26,
+    "store": 85.96,
+    "season": 86.76,
+    "notifications": 94.62,
+    "overall": 61.29
+  },
+  "timestamp": "2026-03-23T16:30:16Z",
+  "godot_line_coverage": 0.0
+};
+
+        // Helper functions
+        function getStatusClass(coverage, threshold) {
+            if (coverage >= threshold) return 'good';
+            if (coverage >= threshold * 0.8) return 'warning';
+            return 'bad';
+        }
+
+        function getStatusText(coverage, threshold) {
+            if (coverage >= threshold) return 'PASS';
+            if (coverage >= threshold * 0.8) return 'WARNING';
+            return 'FAIL';
+        }
+
+        function createProgressBar(coverage, threshold) {
+            const status = getStatusClass(coverage, threshold);
+            return `
+                <div class="progress-bar">
+                    <div class="progress-fill ${status}" style="width: ${coverage}%">${coverage}%</div>
+                </div>
+            `;
+        }
+
+        // Render package grid
+        function renderPackages() {
+            const grid = document.getElementById('packageGrid');
+            const packages = latestData.packages || {};
+
+            Object.entries(packages)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([pkg, coverage]) => {
+                    const pkgName = pkg.split('/').pop();
+                    const status = getStatusClass(coverage, thresholdsData.overall);
+
+                    const card = document.createElement('div');
+                    card.className = 'package-card';
+                    card.innerHTML = `
+                        <div class="package-name">${pkgName}</div>
+                        <div class="package-coverage ${status}">${coverage}%</div>
+                        ${createProgressBar(coverage, thresholdsData.overall)}
+                        <span class="badge ${status}">${getStatusText(coverage, thresholdsData.overall)}</span>
+                    `;
+                    grid.appendChild(card);
+                });
+        }
+
+        // Render trend chart
+        function renderTrendChart() {
+            const container = document.getElementById('trendChart');
+            const history = historyData.history || [];
+
+            if (history.length < 2) {
+                container.innerHTML = '<p style="text-align: center; color: #7f8c8d; padding: 80px 0;">Insufficient data for trend chart</p>';
+                return;
+            }
+
+            // Get last 10 entries
+            const recent = history.slice(-10);
+
+            // Calculate scales
+            const minCoverage = Math.min(...recent.map(h => h.overall)) - 5;
+            const maxCoverage = Math.max(...recent.map(h => h.overall)) + 5;
+            const width = container.offsetWidth;
+            const height = 200;
+            const padding = 30;
+
+            // Generate SVG
+            let svg = `<svg width="${width}" height="${height}">`;
+
+            // Grid lines
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + (height - 2 * padding) * i / 4;
+                const value = maxCoverage - (maxCoverage - minCoverage) * i / 4;
+                svg += `<line class="trend-grid" x1="${padding}" y1="${y}" x2="${width - padding}" y2="${y}"/>`;
+                svg += `<text class="trend-axis" x="5" y="${y + 4}">${value.toFixed(0)}%</text>`;
+            }
+
+            // Trend line
+            let points = '';
+            recent.forEach((entry, i) => {
+                const x = padding + (width - 2 * padding) * i / (recent.length - 1);
+                const y = padding + (height - 2 * padding) * (1 - (entry.overall - minCoverage) / (maxCoverage - minCoverage));
+                points += `${x},${y} `;
+
+                // Date labels
+                const date = new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                svg += `<text class="trend-axis" x="${x}" y="${height - 5}">${date}</text>`;
+            });
+
+            svg += `<polyline class="trend-line" points="${points.trim()}"/>`;
+            svg += '</svg>';
+
+            container.innerHTML = svg;
+        }
+
+        // Render Godot trend chart
+        function renderGodotTrendChart() {
+            const container = document.getElementById('godotTrendChart');
+            const history = historyData.history || [];
+
+            if (history.length < 2) {
+                container.innerHTML = '<p style="text-align: center; color: #7f8c8d; padding: 80px 0;">Insufficient data for trend chart</p>';
+                return;
+            }
+
+            // Get last 10 entries
+            const recent = history.slice(-10);
+
+            // Filter entries with godot_line_coverage
+            const godotHistory = recent.filter(h => h.godot_line_coverage !== undefined && h.godot_line_coverage !== null);
+
+            if (godotHistory.length < 2) {
+                container.innerHTML = '<p style="text-align: center; color: #7f8c8d; padding: 80px 0;">Insufficient Godot coverage data for trend chart</p>';
+                return;
+            }
+
+            // Calculate scales
+            const minCoverage = Math.min(...godotHistory.map(h => h.godot_line_coverage)) - 5;
+            const maxCoverage = Math.max(...godotHistory.map(h => h.godot_line_coverage)) + 5;
+            const width = container.offsetWidth;
+            const height = 200;
+            const padding = 30;
+
+            // Generate SVG
+            let svg = `<svg width="${width}" height="${height}">`;
+
+            // Grid lines
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + (height - 2 * padding) * i / 4;
+                const value = maxCoverage - (maxCoverage - minCoverage) * i / 4;
+                svg += `<line class="trend-grid" x1="${padding}" y1="${y}" x2="${width - padding}" y2="${y}"/>`;
+                svg += `<text class="trend-axis" x="5" y="${y + 4}">${value.toFixed(0)}%</text>`;
+            }
+
+            // Trend line
+            let points = '';
+            godotHistory.forEach((entry, i) => {
+                const x = padding + (width - 2 * padding) * i / (godotHistory.length - 1);
+                const y = padding + (height - 2 * padding) * (1 - (entry.godot_line_coverage - minCoverage) / (maxCoverage - minCoverage));
+                points += `${x},${y} `;
+
+                // Date labels
+                const date = new Date(entry.timestamp || entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                svg += `<text class="trend-axis" x="${x}" y="${height - 5}">${date}</text>`;
+            });
+
+            svg += `<polyline class="trend-line" points="${points.trim()}"/>`;
+            svg += '</svg>';
+
+            container.innerHTML = svg;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderPackages();
+            renderTrendChart();
+            renderGodotTrendChart();
+        });
+    </script>
+</body>
+</html>

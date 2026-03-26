@@ -1,0 +1,92 @@
+name: Release Notes
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      from_tag:
+        description: 'From tag (optional)'
+        required: false
+        type: string
+      to_tag:
+        description: 'To tag (optional, defaults to latest release)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  generate-release-notes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install packaging
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          if [ -n "${{ github.event.inputs.from_tag }}" ]; then
+            FROM_TAG="${{ github.event.inputs.from_tag }}"
+          else
+            # Get previous tag
+            FROM_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          fi
+          
+          if [ -n "${{ github.event.inputs.to_tag }}" ]; then
+            TO_TAG="${{ github.event.inputs.to_tag }}"
+          elif [ "${{ github.event_name }}" == "release" ]; then
+            TO_TAG="${{ github.event.release.tag_name }}"
+          else
+            TO_TAG="HEAD"
+          fi
+          
+          VERSION="${TO_TAG:-Unreleased}"
+          
+          python scripts/generate_release_notes.py "$VERSION" "$FROM_TAG" "$TO_TAG" > release_notes.md
+          
+          cat release_notes.md
+          
+          # Set output for use in other steps
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "from_tag=$FROM_TAG" >> $GITHUB_OUTPUT
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release_notes.md
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.event_name == 'release'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          release_name: Release ${{ github.event.release.tag_name }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ github.event.release.prerelease }}
+
+      - name: Comment on latest release PR
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "Release notes generated successfully!"
+          echo "Version: ${{ steps.notes.outputs.version }}"
+          echo "From tag: ${{ steps.notes.outputs.from_tag }}"

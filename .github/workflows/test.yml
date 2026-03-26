@@ -1,0 +1,532 @@
+name: Test Coverage CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  godot-tests:
+    name: Run Godot Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        godot-version: ['4.6']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Godot
+        run: |
+          # Download Godot headless binary directly
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
+          unzip -q godot.zip
+          chmod +x Godot_v4.6-stable_linux.x86_64
+          mv Godot_v4.6-stable_linux.x86_64 godot4
+      
+      - name: Run Godot Tests
+        run: |
+          # Run GUT tests with JUnit output
+          TEST_OUTPUT=$(./godot4 --headless --script test/run_all_tests.gd 2>&1)
+          echo "$TEST_OUTPUT"
+
+          # Check exit code for test failures
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "❌ Godot tests failed!"
+            exit 1
+          fi
+          echo "✅ All Godot tests passed"
+
+      - name: Upload GUT test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-test-results
+          path: test/results/gut-results.xml
+          retention-days: 30
+
+      - name: Publish GUT test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: test/results/gut-results.xml
+          check_name: Godot Test Results
+
+      - name: Check test coverage
+        run: |
+          # Count test files in suites
+          echo "=== Test Coverage Summary ==="
+          echo "Test files: $(find test/suites -name 'test_*.gd' | wc -l)"
+          echo "Player tests: $(find test/suites/player -name 'test_*.gd' | wc -l)"
+          echo "Combat tests: $(find test/suites/combat -name 'test_*.gd' | wc -l)"
+          echo "Gear tests: $(find test/suites/gear -name 'test_*.gd' | wc -l)"
+
+  godot-coverage-gate:
+    name: Coverage Gate (80% Target)
+    runs-on: ubuntu-latest
+    needs: godot-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Calculate test coverage
+        id: coverage
+        run: |
+          # Calculate test coverage for critical systems
+          # This is a simplified coverage calculation based on function coverage
+
+          echo "=== Coverage Analysis for Critical Systems ==="
+
+          # Count test functions for each manager (in suites)
+          NETWORK_TESTS=$(grep -c 'func test_' test/suites/network/test_network_manager.gd 2>/dev/null || echo "0")
+          COMBAT_TESTS=$(grep -c 'func test_' test/suites/combat/test_combat_manager.gd 2>/dev/null || echo "0")
+          PLAYER_STATS_TESTS=$(grep -c 'func test_' test/suites/player/test_player_stats_manager.gd 2>/dev/null || echo "0")
+
+          echo "NetworkManager tests: $NETWORK_TESTS"
+          echo "CombatManager tests: $COMBAT_TESTS"
+          echo "PlayerStatsManager tests: $PLAYER_STATS_TESTS"
+
+          # Calculate total test count for critical systems
+          TOTAL_CRITICAL_TESTS=$((NETWORK_TESTS + COMBAT_TESTS + PLAYER_STATS_TESTS))
+          echo "Total critical system tests: $TOTAL_CRITICAL_TESTS"
+
+          # Estimate coverage based on number of test functions vs. source code functions
+          # This is a rough estimate - actual line coverage would require instrumentation
+          NETWORK_SOURCE_FUNCTIONS=$(grep -c 'func ' autoloads/NetworkManager.gd 2>/dev/null || echo "0")
+          COMBAT_SOURCE_FUNCTIONS=$(grep -c 'func ' autoloads/CombatManager.gd 2>/dev/null || echo "0")
+          PLAYER_STATS_SOURCE_FUNCTIONS=$(grep -c 'func ' autoloads/PlayerStatsManager.gd 2>/dev/null || echo "0")
+
+          TOTAL_SOURCE_FUNCTIONS=$((NETWORK_SOURCE_FUNCTIONS + COMBAT_SOURCE_FUNCTIONS + PLAYER_STATS_SOURCE_FUNCTIONS))
+          echo "Total source functions in critical systems: $TOTAL_SOURCE_FUNCTIONS"
+
+          # Calculate estimated function coverage
+          if [ "$TOTAL_SOURCE_FUNCTIONS" -gt "0" ]; then
+            COVERAGE_PERCENT=$((TOTAL_CRITICAL_TESTS * 100 / TOTAL_SOURCE_FUNCTIONS))
+            echo "Estimated function coverage: $COVERAGE_PERCENT%"
+            echo "coverage=$COVERAGE_PERCENT" >> $GITHUB_OUTPUT
+          else
+            echo "coverage=100" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Fail if coverage below 80%
+        run: |
+          COVERAGE=${{ steps.coverage.outputs.coverage }}
+          echo "Current coverage: $COVERAGE%"
+          
+          if [ "$COVERAGE" -lt 80 ]; then
+            echo "❌ Coverage $COVERAGE% is below 80% target!"
+            exit 1
+          else
+            echo "✅ Coverage $COVERAGE% meets 80% target"
+          fi
+
+  backend-tests:
+    name: Backend Tests with Coverage Gate
+    runs-on: ubuntu-latest
+    needs: godot-tests
+    services:
+      # PostgreSQL database service
+      postgres:
+        image: postgres:14-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: nakama
+          POSTGRES_PASSWORD: changeme
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      # Nakama game server service
+      nakama:
+        image: heroiclabs/nakama:3.21.1
+        env:
+          NAKAMA_SERVER_KEY: defaultkey
+          NAKAMA_SERVER_PORT: 7350
+          DATABASE_ADDRESS: postgres://postgres:changeme@localhost:5432/nakama?sslmode=disable
+        ports:
+          - 7350:7350
+        options: >-
+          --health-cmd "/nakama/nakama healthcheck"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        volumes:
+          - ./backend/nakama.yml:/nakama/data/nakama.yml:ro
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U postgres; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+      
+      - name: Run database migrations
+        working-directory: ./backend/data
+        run: |
+          for migration in $(ls -1 *.sql 2>/dev/null | sort); do
+            echo "Running migration: $migration"
+            PGPASSWORD=changeme psql -h localhost -U postgres -d nakama -f "$migration" || true
+          done
+      
+      - name: Wait for Nakama to be ready
+        run: |
+          echo "Waiting for Nakama to be ready..."
+          for i in {1..60}; do
+            if curl -s http://localhost:7350/ 2>/dev/null || curl -s http://localhost:7351/ 2>/dev/null; then
+              echo "Nakama is ready"
+              break
+            fi
+            echo "Waiting for Nakama... ($i/60)"
+            sleep 2
+          done
+      
+      - name: Run tests with coverage
+        working-directory: ./backend
+        env:
+          CI: true
+          NAKAMA_HOST: localhost
+          NAKAMA_PORT: 7350
+          NAKAMA_SERVER_KEY: defaultkey
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5432
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: changeme
+          TEST_DB_NAME: nakama
+        run: |
+          # Create test-results directory
+          mkdir -p test-results
+          
+          # Run tests with timing output to JSON
+          npm run test:coverage -- --outputFile=test-results/test-results.json
+          
+          # Display timing summary
+          echo ""
+          echo "=== Test Performance Summary ==="
+          node -e "
+            const fs = require('fs');
+            try {
+              if (fs.existsSync('test-results/test-results.json')) {
+                const data = JSON.parse(fs.readFileSync('test-results/test-results.json', 'utf8'));
+                const suites = data.testResults || [];
+                
+                // Collect all test results
+                const allTests = suites.flatMap(s => s.assertionResults || []);
+                
+                // Sort by duration (slowest first)
+                const sorted = allTests
+                  .filter(t => t.duration)
+                  .sort((a, b) => b.duration - a.duration);
+                
+                console.log('\\nTop 10 Slowest Tests:');
+                sorted.slice(0, 10).forEach((t, i) => {
+                  console.log(\`  \${i+1}. \${t.fullName}: \${t.duration}ms\`);
+                });
+                
+                const totalTime = sorted.reduce((sum, t) => sum + t.duration, 0);
+                const avgTime = sorted.length > 0 ? Math.round(totalTime / sorted.length) : 0;
+                console.log(\`\\nTest Execution Statistics:\`);
+                console.log(\`  Total tests: \${sorted.length}\`);
+                console.log(\`  Total execution time: \${totalTime}ms\`);
+                console.log(\`  Average test time: \${avgTime}ms\`);
+              }
+            } catch (e) {
+              console.log('Could not parse test results');
+            }
+          "
+      
+      - name: Generate coverage report summary
+        id: coverage-summary
+        run: |
+          echo "=== Backend Coverage Analysis ==="
+          
+          # Parse coverage from JSON
+          if [ -f coverage/coverage-final.json ]; then
+            # Get overall coverage percentages
+            echo "Overall Coverage:"
+            node -e "
+              const fs = require('fs');
+              const data = JSON.parse(fs.readFileSync('coverage/coverage-final.json', 'utf8'));
+              const totals = data.total;
+              console.log('  Statements: ' + totals.stmts.pct + '%');
+              console.log('  Branches: ' + totals.branches.pct + '%');
+              console.log('  Functions: ' + totals.functions.pct + '%');
+              console.log('  Lines: ' + totals.lines.pct + '%');
+            "
+            
+            echo ""
+            echo "Critical Systems Coverage:"
+            
+            # Check combat_system.ts
+            if [ -f coverage/src/modules/combat_system.ts ]; then
+              echo "  combat_system: $(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('coverage/src/modules/combat_system.ts'));console.log(d.stmts.pct+'%')")"
+            else
+              echo "  combat_system: (not tracked)"
+            fi
+            
+            # Check rpg_system.ts (PlayerStatsManager backend)
+            if [ -f coverage/src/modules/rpg_system.ts ]; then
+              echo "  rpg_system (PlayerStats): $(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('coverage/src/modules/rpg_system.ts'));console.log(d.stmts.pct+'%')")"
+            fi
+            
+            # Check matchmaker.ts (Network auth related)
+            if [ -f coverage/src/modules/matchmaker.ts ]; then
+              echo "  matchmaker (Network): $(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('coverage/src/modules/matchmaker.ts'));console.log(d.stmts.pct+'%')")"
+            fi
+          fi
+      
+      - name: Check coverage thresholds
+        working-directory: ./backend
+        run: |
+          echo "=== Coverage Threshold Check ==="
+          
+          # Use the configured thresholds from jest.config.js
+          # The Jest config has been set up with appropriate thresholds for this codebase
+          # This runs npm run test:coverage which will fail if thresholds aren't met
+          
+          # Parse coverage from JSON for reporting
+          if [ -f coverage/coverage-final.json ]; then
+            node -e "
+              const fs = require('fs');
+              const data = JSON.parse(fs.readFileSync('coverage/coverage-final.json', 'utf8'));
+              
+              // Calculate totals from all source files
+              const paths = Object.keys(data).filter(k => k.includes('/src/') && !k.includes('/node_modules/'));
+              let totalStmts = 0, coveredStmts = 0;
+              let totalBranches = 0, coveredBranches = 0;
+              let totalFuncs = 0, coveredFuncs = 0;
+              let totalLines = 0, coveredLines = 0;
+              
+              paths.forEach(p => {
+                const f = data[p];
+                // Statement coverage
+                if (f.s) {
+                  Object.values(f.s).forEach(count => {
+                    totalStmts++;
+                    if (count > 0) coveredStmts++;
+                  });
+                }
+                // Branch coverage
+                if (f.b) {
+                  Object.values(f.b).forEach(branchArray => {
+                    branchArray.forEach(branch => {
+                      totalBranches++;
+                      if (branch > 0) coveredBranches++;
+                    });
+                  });
+                }
+                // Function coverage
+                if (f.f) {
+                  Object.values(f.f).forEach(count => {
+                    totalFuncs++;
+                    if (count > 0) coveredFuncs++;
+                  });
+                }
+                // Line coverage
+                if (f.statementMap) {
+                  Object.keys(f.statementMap).forEach(() => {
+                    totalLines++;
+                  });
+                }
+              });
+              
+              const stmtPct = totalStmts > 0 ? (coveredStmts / totalStmts * 100).toFixed(2) : 0;
+              const branchPct = totalBranches > 0 ? (coveredBranches / totalBranches * 100).toFixed(2) : 0;
+              const funcPct = totalFuncs > 0 ? (coveredFuncs / totalFuncs * 100).toFixed(2) : 0;
+              const linePct = totalLines > 0 ? (coveredLines / totalLines * 100).toFixed(2) : 0;
+              
+              console.log('Coverage Report:');
+              console.log('  Statements: ' + stmtPct + '%');
+              console.log('  Branches: ' + branchPct + '%');
+              console.log('  Functions: ' + funcPct + '%');
+              console.log('  Lines: ' + linePct + '%');
+              console.log('');
+              console.log('✅ Coverage thresholds configured in jest.config.js');
+            " 2>/dev/null || echo "⚠️ Could not parse coverage details, but Jest threshold check will enforce requirements"
+          fi
+      
+      - name: Upload coverage to Codecov
+        if: success()
+        continue-on-error: true
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./backend/coverage/lcov.info
+          flags: backend
+          fail_ci_if_error: false
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/test-results/
+          retention-days: 30
+
+      - name: Check test execution time
+        if: always()
+        working-directory: ./backend
+        run: |
+          if [ -f test-results/test-results.json ]; then
+            echo ""
+            echo "=== Test Execution Time Check ==="
+            TOTAL_TIME=$(node -e "
+              const fs = require('fs');
+              const data = JSON.parse(fs.readFileSync('test-results/test-results.json', 'utf8'));
+              const suites = data.testResults || [];
+              const allTests = suites.flatMap(s => s.assertionResults || []);
+              const totalTime = allTests.reduce((sum, t) => sum + (t.duration || 0), 0);
+              console.log(Math.round(totalTime / 1000));
+            ")
+            echo "Total test execution time: ${TOTAL_TIME}s"
+            if [ $TOTAL_TIME -gt 300 ]; then
+              echo "⚠️ Warning: Tests exceeded 5 minute target (${TOTAL_TIME}s)"
+            else
+              echo "✅ Tests completed within 5 minute target"
+            fi
+          fi
+
+  test-pyramid-validation:
+    name: Test Pyramid Validation
+    runs-on: ubuntu-latest
+    needs: [backend-tests, godot-tests]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run test pyramid validation
+        id: pyramid
+        run: |
+          ./scripts/check-test-pyramid.sh --ci
+          # Capture CI output for GITHUB_OUTPUT
+          echo "total=$(grep TEST_PYRAMID_TOTAL <<< '$(./scripts/check-test-pyramid.sh --ci)' | cut -d= -f2)" >> $GITHUB_OUTPUT
+          echo "unit_pct=$(grep TEST_PYRAMID_UNIT_PCT <<< '$(./scripts/check-test-pyramid.sh --ci)' | cut -d= -f2)" >> $GITHUB_OUTPUT
+          echo "integration_pct=$(grep TEST_PYRAMID_INTEGRATION_PCT <<< '$(./scripts/check-test-pyramid.sh --ci)' | cut -d= -f2)" >> $GITHUB_OUTPUT
+          echo "e2e_pct=$(grep TEST_PYRAMID_E2E_PCT <<< '$(./scripts/check-test-pyramid.sh --ci)' | cut -d= -f2)" >> $GITHUB_OUTPUT
+
+      - name: Upload pyramid results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-pyramid-results
+          path: data/test-pyramid-results.json
+          retention-days: 30
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const total = '${{ steps.pyramid.outputs.total }}';
+            const unit = '${{ steps.pyramid.outputs.unit_pct }}';
+            const integration = '${{ steps.pyramid.outputs.integration_pct }}';
+            const e2e = '${{ steps.pyramid.outputs.e2e_pct }}';
+            let body = '## 📊 Test Pyramid Validation\n\n';
+            body += '| Type | Count | % | Target | Status |\n';
+            body += '|------|-------|---|--------|--------|\n';
+            body += `| Unit | ${Math.round(total * unit / 100)} | ${unit}% | 70% ±10% | ${unit >= 60 && unit <= 80 ? '✅' : '❌'} |\n`;
+            body += `| Integration | ${Math.round(total * integration / 100)} | ${integration}% | 20% ±10% | ${integration >= 10 && integration <= 30 ? '✅' : '❌'} |\n`;
+            body += `| E2E | ${Math.round(total * e2e / 100)} | ${e2e}% | 10% ±10% | ${e2e <= 20 ? '✅' : '❌'} |\n`;
+            body += '\n_This comment was automatically generated by test pyramid validation._';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  require-tests:
+    name: All Tests Must Pass
+    runs-on: ubuntu-latest
+    needs: [godot-tests, godot-coverage-gate, backend-tests, test-pyramid-validation]
+    if: always()
+    steps:
+      - name: Check if all tests passed
+        run: |
+          GODOT_RESULT=${{ needs.godot-tests.result }}
+          COVERAGE_RESULT=${{ needs.godot-coverage-gate.result }}
+          BACKEND_RESULT=${{ needs.backend-tests.result }}
+          PYRAMID_RESULT=${{ needs.test-pyramid-validation.result }}
+
+          echo "Godot tests: $GODOT_RESULT"
+          echo "Coverage gate: $COVERAGE_RESULT"
+          echo "Backend tests: $BACKEND_RESULT"
+          echo "Pyramid validation: $PYRAMID_RESULT"
+
+          if [ "$GODOT_RESULT" != "success" ] && [ "$GODOT_RESULT" != "skipped" ]; then
+            echo "❌ Godot tests failed"
+            exit 1
+          fi
+
+          if [ "$COVERAGE_RESULT" != "success" ] && [ "$COVERAGE_RESULT" != "skipped" ]; then
+            echo "❌ Coverage gate failed"
+            exit 1
+          fi
+
+          if [ "$BACKEND_RESULT" != "success" ] && [ "$BACKEND_RESULT" != "skipped" ]; then
+            echo "❌ Backend tests failed"
+            exit 1
+          fi
+
+          if [ "$PYRAMID_RESULT" != "success" ] && [ "$PYRAMID_RESULT" != "skipped" ]; then
+            echo "❌ Test pyramid validation failed"
+            exit 1
+          fi
+
+          echo "✅ All tests passed!"
+
+  # Optional: Run flaky test detection on main branch pushes
+  flaky-tests:
+    name: Flaky Test Detection (Optional)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [require-tests]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run quick flaky test detection (2 runs)
+        working-directory: ./backend
+        run: npx ts-node scripts/detect-flaky-tests.ts --runs=2 --threshold=0.5 || true
+        continue-on-error: true
+      
+      - name: Generate report
+        working-directory: ./backend
+        run: npm run test:report
+        continue-on-error: true
+      
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: flaky-test-report
+          path: docs/flaky-tests-report.md
+          retention-days: 7

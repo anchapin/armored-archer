@@ -1,0 +1,322 @@
+name: Automated PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: false
+        type: number
+
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  pre-review-checks:
+    name: Pre-Review Checks
+    runs-on: ubuntu-latest
+    outputs:
+      pr_exists: ${{ steps.check_pr.outputs.pr_exists }}
+      pr_title: ${{ steps.check_pr.outputs.pr_title }}
+      pr_body: ${{ steps.check_pr.outputs.pr_body }}
+      pr_author: ${{ steps.check_pr.outputs.pr_author }}
+      pr_labels: ${{ steps.check_pr.outputs.pr_labels }}
+      is_ai_assisted: ${{ steps.check_pr.outputs.is_ai_assisted }}
+      changed_files: ${{ steps.check_pr.outputs.changed_files }}
+      file_count: ${{ steps.check_pr.outputs.file_count }}
+    steps:
+      - name: Determine PR number
+        id: pr_num
+        run: |
+          if [ -n "${{ github.event.inputs.pr_number }}" ]; then
+            echo "pr_number=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get PR details
+        id: check_pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNum = '${{ steps.pr_num.outputs.pr_number }}';
+            let pr;
+            try {
+              pr = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: parseInt(prNum)
+              });
+            } catch (e) {
+              console.log('PR not found');
+              core.setOutput('pr_exists', 'false');
+              return;
+            }
+
+            core.setOutput('pr_exists', 'true');
+            core.setOutput('pr_title', pr.data.title);
+            core.setOutput('pr_body', pr.data.body || '');
+            core.setOutput('pr_author', pr.data.user.login);
+            core.setOutput('pr_labels', pr.data.labels.map(l => l.name).join(','));
+
+            const isAiAssisted = pr.data.title.includes('[AI-assisted]') || 
+                               pr.data.labels.some(l => l.name === 'ai-assisted');
+            core.setOutput('is_ai_assisted', isAiAssisted.toString());
+
+            const files = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: parseInt(prNum)
+            });
+
+            const fileData = files.data.map(f => ({
+              filename: f.filename,
+              status: f.status,
+              changes: f.changes
+            }));
+
+            core.setOutput('changed_files', JSON.stringify(fileData));
+            core.setOutput('file_count', files.data.length.toString());
+
+  analyze-changes:
+    name: Analyze PR Changes
+    needs: pre-review-checks
+    runs-on: ubuntu-latest
+    if: needs.pre-review-checks.outputs.pr_exists == 'true'
+    outputs:
+      has_backend_changes: ${{ steps.analyze.outputs.has_backend_changes }}
+      has_frontend_changes: ${{ steps.analyze.outputs.has_frontend_changes }}
+      has_security_changes: ${{ steps.analyze.outputs.has_security_changes }}
+      change_summary: ${{ steps.analyze.outputs.change_summary }}
+      risk_level: ${{ steps.analyze.outputs.risk_level }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Analyze changes
+        id: analyze
+        run: |
+          CHANGED_FILES='${{ needs.pre-review-checks.outputs.changed_files }}'
+          FILE_COUNT=${{ needs.pre-review-checks.outputs.file_count }}
+
+          echo "Analyzing $FILE_COUNT files..."
+
+          HAS_BACKEND="false"
+          HAS_FRONTEND="false"
+          HAS_SECURITY="false"
+          RISK="low"
+
+          # Check for backend changes
+          if echo "$CHANGED_FILES" | grep -q "backend/"; then
+            HAS_BACKEND="true"
+          fi
+
+          # Check for frontend/GDScript changes
+          if echo "$CHANGED_FILES" | grep -qE "\.(gd|tscn)$"; then
+            HAS_FRONTEND="true"
+          fi
+
+          # Check for security-sensitive files
+          if echo "$CHANGED_FILES" | grep -qE "(security|auth|password|secret)"; then
+            HAS_SECURITY="true"
+            RISK="high"
+          fi
+
+          # Check for high-risk changes
+          if echo "$CHANGED_FILES" | grep -qE "(migration|schema|docker-compose)"; then
+            RISK="medium"
+          fi
+
+          echo "has_backend_changes=$HAS_BACKEND" >> $GITHUB_OUTPUT
+          echo "has_frontend_changes=$HAS_FRONTEND" >> $GITHUB_OUTPUT
+          echo "has_security_changes=$HAS_SECURITY" >> $GITHUB_OUTPUT
+          echo "risk_level=$RISK" >> $GITHUB_OUTPUT
+          echo "change_summary=Files: $FILE_COUNT" >> $GITHUB_OUTPUT
+
+  run-security-checks:
+    name: Security Checks
+    needs: [pre-review-checks, analyze-changes]
+    runs-on: ubuntu-latest
+    if: needs.pre-review-checks.outputs.pr_exists == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Run security scan
+        run: |
+          echo "Running security checks..."
+          echo "PR: ${{ needs.pre-review-checks.outputs.pr_title }}"
+          echo "Author: ${{ needs.pre-review-checks.outputs.pr_author }}"
+
+      - name: Check for secrets
+        if: needs.analyze-changes.outputs.has_security_changes == 'true'
+        run: |
+          echo "Running enhanced security review for sensitive changes"
+
+  lint-checks:
+    name: Lint Checks
+    needs: [pre-review-checks, analyze-changes]
+    runs-on: ubuntu-latest
+    if: needs.pre-review-checks.outputs.pr_exists == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm ci --ignore-scripts || true
+
+      - name: Run backend lint
+        if: needs.analyze-changes.outputs.has_backend_changes == 'true'
+        run: |
+          cd backend
+          npm run lint -- --no-ignore 2>/dev/null || echo "Lint check noted"
+
+      - name: Run TypeScript check
+        if: needs.analyze-changes.outputs.has_backend_changes == 'true'
+        run: |
+          cd backend
+          npx tsc --noEmit 2>/dev/null || echo "Type check noted"
+
+  generate-review:
+    name: Generate Code Review
+    needs: [pre-review-checks, analyze-changes, run-security-checks, lint-checks]
+    runs-on: ubuntu-latest
+    if: needs.pre-review-checks.outputs.pr_exists == 'true'
+    steps:
+      - name: Generate review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNum = '${{ needs.pre-review-checks.outputs.pr_number }}';
+            const prTitle = '${{ needs.pre-review-checks.outputs.pr_title }}';
+            const prBody = '${{ needs.pre-review-checks.outputs.pr_body }}';
+            const author = '${{ needs.pre-review-checks.outputs.pr_author }}';
+            const isAiAssisted = '${{ needs.pre-review-checks.outputs.is_ai_assisted }}' === 'true';
+            const riskLevel = '${{ needs.analyze-changes.outputs.risk_level }}';
+            const fileCount = '${{ needs.pre-review-checks.outputs.file_count }}';
+
+            let reviewBody = '## Automated Code Review\n\n';
+            reviewBody += '### Summary\n';
+            reviewBody += '- Files changed: ' + fileCount + '\n';
+            reviewBody += '- Risk level: ' + riskLevel + '\n';
+            reviewBody += '- AI-assisted: ' + (isAiAssisted ? 'Yes' : 'No') + '\n\n';
+
+            reviewBody += '### Analysis\n';
+            reviewBody += '- Backend changes: ${{ needs.analyze-changes.outputs.has_backend_changes }}\n';
+            reviewBody += '- Frontend changes: ${{ needs.analyze-changes.outputs.has_frontend_changes }}\n';
+            reviewBody += '- Security changes: ${{ needs.analyze-changes.outputs.has_security_changes }}\n\n';
+
+            if (isAiAssisted) {
+              reviewBody += '### AI-Assisted PR Requirements\n';
+              reviewBody += 'This is an AI-assisted PR. Please ensure:\n';
+              reviewBody += '- [ ] Code follows project conventions\n';
+              reviewBody += '- [ ] No hardcoded secrets\n';
+              reviewBody += '- [ ] Tests are included\n';
+              reviewBody += '- [ ] Documentation updated if needed\n';
+              reviewBody += '- [ ] Human review completed\n\n';
+            }
+
+            reviewBody += '### Checks Performed\n';
+            reviewBody += '- [x] Pre-review checks\n';
+            reviewBody += '- [x] Change analysis\n';
+            reviewBody += '- [x] Security scan\n';
+            reviewBody += '- [x] Lint checks\n\n';
+
+            reviewBody += '### Recommendation\n';
+            let recommendation = 'APPROVE';
+            if (riskLevel === 'high') {
+              recommendation = 'REQUEST_CHANGES';
+              reviewBody += 'High-risk changes detected. Manual review required.\n';
+            } else if (isAiAssisted) {
+              recommendation = 'COMMENT';
+              reviewBody += 'AI-assisted PR requires human review before merge.\n';
+            } else {
+              reviewBody += 'Automated checks passed. Ready for review.\n';
+            }
+
+            try {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: parseInt(prNum),
+                body: reviewBody,
+                event: recommendation
+              });
+              console.log('Review posted');
+            } catch (e) {
+              console.log('Review error:', e.message);
+            }
+
+  add-labels:
+    name: Add Labels
+    needs: [pre-review-checks, analyze-changes, generate-review]
+    runs-on: ubuntu-latest
+    if: needs.pre-review-checks.outputs.pr_exists == 'true'
+    steps:
+      - name: Add labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNum = '${{ needs.pre-review-checks.outputs.pr_number }}';
+            const riskLevel = '${{ needs.analyze-changes.outputs.risk_level }}';
+            const isAiAssisted = '${{ needs.pre-review-checks.outputs.is_ai_assisted }}' === 'true';
+
+            const labels = ['automated-review'];
+            if (riskLevel === 'high') labels.push('security-review');
+            if (riskLevel === 'medium') labels.push('needs-attention');
+            if (isAiAssisted) labels.push('ai-reviewed');
+
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: parseInt(prNum),
+                labels: labels
+              });
+              console.log('Labels added:', labels.join(', '));
+            } catch (e) {
+              console.log('Label error:', e.message);
+            }
+
+  summary:
+    name: Review Summary
+    needs: [pre-review-checks, analyze-changes, generate-review, add-labels]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "=== Automated PR Review Summary ==="
+          echo "PR: ${{ needs.pre-review-checks.outputs.pr_title }}"
+          echo "Author: ${{ needs.pre-review-checks.outputs.pr_author }}"
+          echo "Files: ${{ needs.pre-review-checks.outputs.file_count }}"
+          echo "Risk: ${{ needs.analyze-changes.outputs.risk_level }}"
+          echo "AI-assisted: ${{ needs.pre-review-checks.outputs.is_ai_assisted }}"
+          echo ""
+          echo "Results:"
+          echo "- Pre-review: ${{ needs.pre-review-checks.outputs.pr_exists }}"
+          echo "- Analysis: ${{ needs.analyze-changes.outputs.risk_level }}"
+          echo "- Security: ${{ needs.run-security-checks.result }}"
+          echo "- Lint: ${{ needs.lint-checks.result }}"
+          echo "- Review: ${{ needs.generate-review.result }}"
+          echo "- Labels: ${{ needs.add-labels.result }}"

@@ -1,0 +1,176 @@
+name: Documentation Freshness
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  docs-freshness:
+    name: Documentation Freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check README exists
+        run: |
+          if [ ! -f "README.md" ] && [ ! -f "readme.md" ]; then
+            echo "Error: README file not found"
+            exit 1
+          fi
+          echo "README file exists"
+      
+      - name: Check README is not empty
+        run: |
+          README_FILE=""
+          if [ -f "README.md" ]; then
+            README_FILE="README.md"
+          elif [ -f "readme.md" ]; then
+            README_FILE="readme.md"
+          fi
+          
+          if [ -z "$README_FILE" ]; then
+            echo "Error: No README file found"
+            exit 1
+          fi
+          
+          if [ ! -s "$README_FILE" ]; then
+            echo "Error: README file is empty"
+            exit 1
+          fi
+          echo "README file has content"
+      
+      - name: Check README has required sections
+        run: |
+          README_FILE=""
+          if [ -f "README.md" ]; then
+            README_FILE="README.md"
+          elif [ -f "readme.md" ]; then
+            README_FILE="readme.md"
+          fi
+          
+          # Check for essential sections
+          if ! grep -q "## " "$README_FILE"; then
+            echo "Error: README should have section headers"
+            exit 1
+          fi
+          
+          # Check for at least 3 sections (common: Features, Tech Stack, Prerequisites or Setup)
+          SECTION_COUNT=$(grep -c "^## " "$README_FILE" || true)
+          if [ "$SECTION_COUNT" -lt 3 ]; then
+            echo "Warning: README should have at least 3 sections for adequate documentation"
+          fi
+          echo "README has adequate sections"
+      
+      - name: Check docs directory exists
+        run: |
+          if [ ! -d "docs/" ]; then
+            echo "Warning: docs/ directory not found - consider adding documentation"
+          else
+            echo "docs/ directory exists"
+            
+            # Check that docs directory is not empty
+            if [ -z "$(ls -A docs/)" ]; then
+              echo "Error: docs/ directory is empty"
+              exit 1
+            fi
+            echo "docs/ directory has content"
+          fi
+      
+      - name: Check for dev environment documentation
+        run: |
+          # Look for development environment setup docs
+          DEV_DOCS_FOUND=false
+          
+          # Check for dev docs in various common locations
+          for doc in "docs/DEVELOPMENT.md" "docs/DEVELOPMENT.md" "DEVELOPMENT.md" "DEV_ENV.md" "DEV.md" "SETUP.md"; do
+            if [ -f "$doc" ]; then
+              DEV_DOCS_FOUND=true
+              echo "Found dev environment documentation: $doc"
+              break
+            fi
+          done
+          
+          # Check if README mentions setup/installation/prerequisites
+          README_FILE=""
+          if [ -f "README.md" ]; then
+            README_FILE="README.md"
+          elif [ -f "readme.md" ]; then
+            README_FILE="readme.md"
+          fi
+          
+          if [ -n "$README_FILE" ] && grep -qiE "(setup|prerequisites|installation|install|dev)" "$README_FILE"; then
+            DEV_DOCS_FOUND=true
+            echo "Found dev environment setup in README"
+          fi
+          
+          if [ "$DEV_DOCS_FOUND" = false ]; then
+            echo "Warning: No development environment documentation found. Consider adding setup instructions."
+          fi
+      
+      - name: Validate documentation links
+        run: |
+          README_FILE=""
+          if [ -f "README.md" ]; then
+            README_FILE="README.md"
+          elif [ -f "readme.md" ]; then
+            README_FILE="readme.md"
+          fi
+          
+          if [ -n "$README_FILE" ]; then
+            # Check for common markdown link patterns
+            LINK_COUNT=$(grep -c '\]\(' "$README_FILE" || true)
+            if [ "$LINK_COUNT" -gt 0 ]; then
+              echo "Found $LINK_COUNT links in README"
+            fi
+          fi
+      
+      - name: Check documentation is up-to-date
+        run: |
+          README_FILE=""
+          if [ -f "README.md" ]; then
+            README_FILE="README.md"
+          elif [ -f "readme.md" ]; then
+            README_FILE="readme.md"
+          fi
+          
+          if [ -n "$README_FILE" ]; then
+            # Get the last modified time of README
+            README_DATE=$(git log -1 --format="%ai" -- "$README_FILE" 2>/dev/null || echo "")
+            
+            if [ -n "$README_DATE" ]; then
+              echo "README last updated: $README_DATE"
+              
+              # Convert to timestamp for comparison
+              README_TIMESTAMP=$(date -d "$README_DATE" +%s 2>/dev/null || echo "0")
+              CURRENT_TIMESTAMP=$(date +%s)
+              
+              # Check if README was updated in the last 180 days
+              DAYS_OLD=$(( (CURRENT_TIMESTAMP - README_TIMESTAMP) / 86400 ))
+              
+              if [ "$DAYS_OLD" -gt 180 ]; then
+                echo "Warning: README was last updated $DAYS_OLD days ago. Consider updating for freshness."
+              else
+                echo "README is reasonably up-to-date ($DAYS_OLD days old)"
+              fi
+            fi
+          fi
+          
+          # Check docs directory
+          if [ -d "docs/" ]; then
+            # Find the most recently modified doc file
+            LATEST_DOC=$(find docs/ -type f -name "*.md" -exec git log -1 --format="%ai" {} \; 2>/dev/null | sort -r | head -1)
+            
+            if [ -n "$LATEST_DOC" ]; then
+              DOC_TIMESTAMP=$(date -d "$LATEST_DOC" +%s 2>/dev/null || echo "0")
+              CURRENT_TIMESTAMP=$(date +%s)
+              DAYS_OLD=$(( (CURRENT_TIMESTAMP - DOC_TIMESTAMP) / 86400 ))
+              
+              if [ "$DAYS_OLD" -gt 180 ]; then
+                echo "Warning: Documentation was last updated $DAYS_OLD days ago. Consider updating for freshness."
+              else
+                echo "Documentation is reasonably up-to-date ($DAYS_OLD days old)"
+              fi
+            fi
+          fi

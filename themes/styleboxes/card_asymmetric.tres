@@ -1,0 +1,13 @@
+[gd_resource type="StyleBoxFlat" format=3]
+
+[resource]
+bg_color = Color(1, 1, 1, 1)  # surface_container_lowest #ffffff
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+# Subtle shadow for card elevation
+shadow_color = Color(0.22, 0.22, 0.2, 0.04)
+shadow_size = 8
+shadow_offset = Vector2(0, 1)

@@ -1,0 +1,10 @@
+[gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://hero_sprite_gilded"]
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
+# Hero character sprite - Gilded Quest palette
+# Palette: Royal Blue (#0060ce), Gold (#ffd700), Emerald (#50c878) on Parchment (#fdffda)
+# Design: Tactile Heroism - warm, editorial, celebratory
+size = Vector2(64, 64)
+
+[resource]
+SubResource = SubResource("PlaceholderTexture2D_1")

@@ -1,0 +1,13 @@
+[gd_resource type="StyleBoxFlat" format=3]
+
+[resource]
+bg_color = Color(1, 1, 1, 1)  # surface_container_lowest #ffffff
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+# Shadow - on_surface at 6%
+shadow_color = Color(0.22, 0.22, 0.2, 0.06)
+shadow_size = 12
+shadow_offset = Vector2(0, 2)

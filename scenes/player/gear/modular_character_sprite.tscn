@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3 uid="uid://modular_character_sprite"]
+
+[ext_resource type="Script" path="res://scenes/player/gear/modular_character_sprite.gd" id="1_modular_character_script"]
+[ext_resource type="PackedScene" uid="uid://gear_slot_scene" path="res://scenes/player/gear/gear_slot.tscn" id="2_gear_slot"]
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_body"]
+size = Vector2(32, 32)
+
+[node name="ModularCharacterSprite" type="Node2D"]
+script = ExtResource("1_modular_character_script")
+
+[node name="BodySprite" type="Sprite2D" parent="."]
+texture = SubResource("PlaceholderTexture2D_body")
+z_index = -1
+
+[node name="HelmSlot" parent="." instance=ExtResource("2_gear_slot")]
+position = Vector2(0, -16)
+
+[node name="ArmorSlot" parent="." instance=ExtResource("2_gear_slot")]
+position = Vector2(0, 0)
+
+[node name="BowSlot" parent="." instance=ExtResource("2_gear_slot")]
+position = Vector2(0, 8)
+
+[node name="ArrowSlot" parent="." instance=ExtResource("2_gear_slot")]
+position = Vector2(24, 8)

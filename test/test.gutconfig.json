@@ -1,0 +1,29 @@
+{
+  "config_version": 2,
+  "directories": {
+    "test": [
+      "res://test/suites/autoloads"
+    ],
+    "include_subdirectories": false
+  },
+  "disable_colors": false,
+  "double_strategy": "INCLUDE_INTERNAL",
+  "should_exit": true,
+  "should_exit_on_success": true,
+  "log_level": 1,
+  "output_format": "junit_xml",
+  "junit_xml_output": "res://test/results/gut-results.xml",
+  "compact_mode": false,
+  "paint_after": 0,
+  "inner_class": null,
+  "unit_test_name": "test_gut_simple",
+  "parameter_handler": null,
+  "pre_run_script": null,
+  "post_run_script": null,
+  "warnings_are_errors": false,
+  "ignore_pause": false,
+  "hook_script": null,
+  "yield_strategy": "yield_before_test",
+  "scripts": [],
+  "unit_tests": []
+}

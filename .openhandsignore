@@ -1,0 +1,13 @@
+# OpenHands ignore file to prevent directory listing overflows
+node_modules/
+**/node_modules/
+build/
+dist/
+.git/
+__pycache__/
+**/__pycache__/
+.godot/
+android/
+backend/coverage/
+backend/tsconfig.tsbuildinfo
+backend/node_modules/

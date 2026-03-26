@@ -1,0 +1,37 @@
+# --- Gem Bundle Product Configuration ---
+# This file defines all purchasable gem bundles in the game
+# Product IDs must match exactly with App Store Connect and Google Play Console
+
+{
+	"products": {
+		"com.armoredarcher.gems.small": {
+			"product_id": "com.armoredarcher.gems.small",
+			"gem_amount": 100,
+			"localized_title": "Small Gem Pack",
+			"localized_description": "100 Gems to spend on cosmetics",
+			"price_usd": 0.99,
+			"tier": 1
+		},
+		"com.armoredarcher.gems.medium": {
+			"product_id": "com.armoredarcher.gems.medium",
+			"gem_amount": 550,
+			"localized_title": "Medium Gem Pack",
+			"localized_description": "550 Gems - Best value!",
+			"price_usd": 4.99,
+			"tier": 2
+		},
+		"com.armoredarcher.gems.large": {
+			"product_id": "com.armoredarcher.gems.large",
+			"gem_amount": 1200,
+			"localized_title": "Large Gem Pack",
+			"localized_description": "1200 Gems - Ultimate value!",
+			"price_usd": 9.99,
+			"tier": 3
+		}
+	},
+	"metadata": {
+		"version": "1.0.0",
+		"last_updated": "2024-02-28",
+		"currency": "USD"
+	}
+}

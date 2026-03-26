@@ -1,0 +1,12 @@
+[gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://bg_gameplay_arena_gilded"]
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
+# Gameplay Arena Background - Gilded Quest aesthetic
+# Neutral with warm lighting
+# Surface hierarchy: surface, surface_container, surface_container_low
+# Design: Tactile Heroism - warm, editorial, celebratory
+# Supports parallax scrolling
+size = Vector2(1920, 1080)
+
+[resource]
+SubResource = SubResource("PlaceholderTexture2D_1")

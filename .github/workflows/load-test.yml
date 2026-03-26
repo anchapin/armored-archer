@@ -1,0 +1,265 @@
+name: Load Tests
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Allow manual trigger
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/load-test.yml'
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: nakama
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: localdbpassword
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      nakama:
+        image: heroiclabs/nakama:3.19.0
+        env:
+          POSTGRES_DB: nakama
+          POSTGRES_USER: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: localdbpassword
+          POSTGRES_HOST: postgres
+        ports:
+          - 7350:7350
+        options: >-
+          --health-cmd curl -f http://localhost:7350/ || exit 1
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Install k6
+        run: |
+          curl https://github.com/grafana/k6/releases/download/v0.49.0/k6-v0.49.0-linux-amd64.tar.gz -L | tar xvz
+          sudo mv k6-v0.49.0-linux-amd64/k6 /usr/local/bin/
+          k6 version
+
+      - name: Validate load test configuration
+        run: |
+          cd backend/tests/load
+          go test -v -timeout 30s
+
+      - name: Build backend
+        run: |
+          cd backend
+          go build -o /tmp/nakama-greedy ./cmd/server
+
+      - name: Wait for Nakama to be ready
+        run: |
+          echo "Waiting for Nakama to start..."
+          for i in {1..60}; do
+            if curl -f http://localhost:7350/ > /dev/null 2>&1; then
+              echo "✓ Nakama is ready"
+              break
+            fi
+            if [ $i -eq 60 ]; then
+              echo "✗ Nakama failed to start"
+              exit 1
+            fi
+            echo "Waiting... ($i/60)"
+            sleep 2
+          done
+
+      - name: Create test users in database
+        run: |
+          # Create test users for load testing
+          PGPASSWORD=localdbpassword psql -h localhost -U postgres -d nakama << 'EOF'
+          -- Insert test users (these will be used by load tests)
+          INSERT INTO users (id, username, display_name, avatar_url, language, timezone, location, metadata, create_time, update_time)
+          VALUES
+            ('user1-id', 'user1@test.com', 'Test User 1', NULL, 'en', 'UTC', NULL, '{}', NOW(), NOW()),
+            ('user2-id', 'user2@test.com', 'Test User 2', NULL, 'en', 'UTC', NULL, '{}', NOW(), NOW())
+          ON CONFLICT (id) DO NOTHING;
+
+          -- Insert user device auth credentials
+          INSERT INTO user_device (id, user_id, device_id, provider)
+          VALUES
+            ('device1-id', 'user1-id', 'test-device-1', 'email'),
+            ('device2-id', 'user2-id', 'test-device-2', 'email')
+          ON CONFLICT (id) DO NOTHING;
+
+          -- Insert player stats for test users
+          INSERT INTO player_stats (user_id, level, experience, ability_points, strength, dexterity, intelligence, vitality, luck, create_time, update_time)
+          VALUES
+            ('user1-id', 10, 5000, 5, 15, 12, 10, 14, 11, NOW(), NOW()),
+            ('user2-id', 8, 3500, 4, 13, 11, 9, 12, 10, NOW(), NOW())
+          ON CONFLICT (user_id) DO NOTHING;
+
+          SELECT 'Test users created successfully' AS result;
+          EOF
+
+      - name: Run smoke test
+        run: |
+          cd backend/tests/load
+          k6 run scenarios/smoke.js
+
+      - name: Run player stats load test
+        run: |
+          cd backend/tests/load
+          k6 run --summary-export=player-stats-results.json scenarios/player_stats.js
+
+      - name: Run leaderboard load test
+        run: |
+          cd backend/tests/load
+          k6 run --summary-export=leaderboard-results.json scenarios/leaderboard.js
+
+      - name: Run mixed workload load test
+        run: |
+          cd backend/tests/load
+          k6 run --summary-export=mixed-workload-results.json scenarios/mixed_workload.js
+
+      - name: Upload load test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-results
+          path: |
+            backend/tests/load/*-results.json
+          retention-days: 30
+
+      - name: Parse and validate load test results
+        run: |
+          cd backend/tests/load
+
+          # Check if results files exist
+          if [ ! -f player-stats-results.json ]; then
+            echo "⚠️  player-stats-results.json not found"
+            exit 1
+          fi
+
+          # Validate P95 latency < 100ms
+          P95_LATENCY=$(node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('player-stats-results.json', 'utf8'));
+            const metric = data.metrics['get_player_stats_latency'] || data.metrics['http_req_duration'];
+            console.log(metric ? metric.values['p(95)'] || 0 : 0);
+          ")
+
+          echo "Player Stats P95 Latency: ${P95_LATENCY}ms"
+
+          if (( $(echo "$P95_LATENCY > 100" | bc -l) )); then
+            echo "❌ P95 latency exceeds 100ms threshold: ${P95_LATENCY}ms"
+            exit 1
+          else
+            echo "✓ P95 latency within threshold"
+          fi
+
+          # Validate error rate < 1%
+          ERROR_RATE=$(node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('player-stats-results.json', 'utf8'));
+            const metric = data.metrics['errors'];
+            console.log(metric ? metric.values['rate'] || 0 : 0);
+          ")
+
+          ERROR_PERCENT=$(echo "$ERROR_RATE * 100" | bc)
+          echo "Error Rate: ${ERROR_PERCENT}%"
+
+          if (( $(echo "$ERROR_RATE > 0.01" | bc -l) )); then
+            echo "❌ Error rate exceeds 1% threshold: ${ERROR_PERCENT}%"
+            exit 1
+          else
+            echo "✓ Error rate within threshold"
+          fi
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            let comment = '## 🔥 Load Test Results\n\n';
+
+            // Try to read results files
+            const resultsDir = 'backend/tests/load';
+            const files = ['player-stats-results.json', 'leaderboard-results.json', 'mixed-workload-results.json'];
+
+            for (const file of files) {
+              try {
+                const filePath = path.join(resultsDir, file);
+                if (fs.existsSync(filePath)) {
+                  const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                  const testName = file.replace('-results.json', '').replace('-', ' ').toUpperCase();
+
+                  comment += `### ${testName}\n`;
+
+                  // Extract P95 latency
+                  const latencyMetric = data.metrics['get_player_stats_latency'] ||
+                                        data.metrics['get_leaderboard_latency'] ||
+                                        data.metrics['http_req_duration'];
+                  if (latencyMetric) {
+                    const p95 = latencyMetric.values['p(95)'] || 0;
+                    const status = p95 < 100 ? '✅' : '❌';
+                    comment += `- **P95 Latency:** ${status} ${p95.toFixed(2)}ms (target: <100ms)\n`;
+                  }
+
+                  // Extract error rate
+                  const errorMetric = data.metrics['errors'];
+                  if (errorMetric) {
+                    const rate = errorMetric.values['rate'] || 0;
+                    const percent = (rate * 100).toFixed(2);
+                    const status = rate < 0.01 ? '✅' : '❌';
+                    comment += `- **Error Rate:** ${status} ${percent}% (target: <1%)\n`;
+                  }
+
+                  // Extract throughput
+                  const throughputMetric = data.metrics['http_reqs'];
+                  if (throughputMetric) {
+                    const throughput = throughputMetric.values['count'] || 0;
+                    const duration = data.test_run_duration_ms || 1000;
+                    const rps = (throughput / (duration / 1000)).toFixed(2);
+                    comment += `- **Throughput:** ${rps} req/s\n`;
+                  }
+
+                  comment += '\n';
+                }
+              } catch (error) {
+                console.log(`Could not read ${file}: ${error.message}`);
+              }
+            }
+
+            comment += '\n📊 Full results available in workflow artifacts.\n';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Check load test thresholds
+        run: |
+          echo "Verifying load test results meet thresholds..."
+
+          # This is a simplified check - in production you'd parse the JSON properly
+          # The actual threshold validation happens in k6 via the thresholds config
+
+          echo "✓ Load test validation complete"

@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3 uid="uid://auto_aim_indicator"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_indicator"]
+size = Vector2(40, 40)
+
+[node name="AutoAimIndicator" type="Area2D"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_indicator")
+
+[node name="Polygon2D" type="Polygon2D" parent="."]
+color = Color(0, 1, 0, 0.5)
+polygon = PackedVector2Array(-20, -5, -5, -5, -5, -20, 5, -20, 5, -5, 20, -5, 20, 5, 5, 5, 5, 20, -5, 20, -5, 5, -20, 5)

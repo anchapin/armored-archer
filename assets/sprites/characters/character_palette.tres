@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="GildedSpritePalette" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/sprite_palette.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+royal_blue = Color(0, 0.376, 0.808, 1)
+gold = Color(1, 0.843, 0, 1)
+emerald = Color(0.314, 0.784, 0.471, 1)
+parchment = Color(0.992, 1, 0.855, 1)
+hero_tint = Color(1, 0.902, 0.702, 1)
+enemy_tint = Color(0.702, 0.8, 0.941, 1)
+boss_tint = Color(1, 0.851, 0.6, 1)

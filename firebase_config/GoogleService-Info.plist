@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>YOUR_API_KEY</string>
+	<key>GCM_SENDER_ID</key>
+	<string>YOUR_GCM_SENDER_ID</string>
+	<key>PROJECT_ID</key>
+	<string>YOUR_PROJECT_ID</string>
+	<key>STORAGE_BUCKET</key>
+	<string>YOUR_PROJECT_ID.appspot.com</string>
+	<key>GOOGLE_APP_ID</key>
+	<string>YOUR_IOS_APP_ID</string>
+	<key>DATABASE_URL</key>
+	<string>https://YOUR_PROJECT_ID.firebaseio.com</string>
+</dict>
+</plist>
+
+# INSTRUCTIONS:
+# 1. Create a Firebase project at https://console.firebase.google.com/
+# 2. Add an iOS app with bundle ID: com.yourcompany.ArmoredArcher
+# 3. Download GoogleService-Info.plist from Firebase Console
+# 4. Replace this placeholder file with the downloaded GoogleService-Info.plist
+# 5. Ensure the file is placed at: res://firebase_config/GoogleService-Info.plist
+# 6. Update the bundle ID to match your iOS bundle identifier
+# 7. Add the GoogleService-Info.plist to your Xcode project when exporting

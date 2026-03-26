@@ -1,0 +1,72 @@
+[gd_scene load_steps=4 format=3 uid="uid://gear_preview_panel"]
+
+[ext_resource type="Script" path="res://scenes/ui/gear_preview/gear_preview_panel.gd" id="1_gear_preview_script"]
+[ext_resource type="PackedScene" uid="uid://modular_character_sprite" path="res://scenes/player/gear/modular_character_sprite.tscn" id="2_character_preview"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.1, 0.1, 0.1, 0.9)
+
+[node name="GearPreviewPanel" type="Control"]
+offset_right = 600.0
+offset_bottom = 600.0
+script = ExtResource("1_gear_preview_script")
+
+[node name="Panel" type="Panel" parent="."]
+offset_right = 600.0
+offset_bottom = 600.0
+
+[node name="TitleLabel" type="Label" parent="."]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 580.0
+offset_bottom = 50.0
+text = "Gear Preview"
+horizontal_alignment = 1
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+offset_left = 20.0
+offset_top = 60.0
+offset_right = 350.0
+offset_bottom = 350.0
+
+[node name="CharacterPreview" parent="CenterContainer" instance=ExtResource("2_character_preview")]
+
+[node name="StatsLabel" type="Label" parent="."]
+offset_left = 380.0
+offset_top = 60.0
+offset_right = 580.0
+offset_bottom = 200.0
+text = "Stats"
+
+[node name="PreviewModeButton" type="OptionButton" parent="."]
+offset_left = 20.0
+offset_top = 370.0
+offset_right = 170.0
+offset_bottom = 400.0
+
+[node name="SlotSelector" type="OptionButton" parent="."]
+offset_left = 190.0
+offset_top = 370.0
+offset_right = 340.0
+offset_bottom = 400.0
+
+[node name="ItemSelector" type="OptionButton" parent="."]
+offset_left = 20.0
+offset_top = 420.0
+offset_right = 580.0
+offset_bottom = 450.0
+
+[node name="EquipButton" type="Button" parent="."]
+offset_left = 20.0
+offset_top = 500.0
+offset_right = 180.0
+offset_bottom = 540.0
+text = "Equip"
+
+[node name="UnequipSkinButton" type="Button" parent="."]
+offset_left = 200.0
+offset_top = 500.0
+offset_right = 360.0
+offset_bottom = 540.0
+text = "Unequip Skin"
+visible = false
