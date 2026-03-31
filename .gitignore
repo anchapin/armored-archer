@@ -24,3 +24,7 @@ Thumbs.db
 .env.*.local
 backend/coverage
 backend/tsconfig.tsbuildinfo
+
+# Node cache
+node-compile-cache/
+jest_rs/
