@@ -73,20 +73,30 @@ global.fetch = jest.fn((url, options) => {
   return Promise.reject(new Error(`Fetch not mocked for URL: ${urlString}`));
 }) ;
 
-// Global Circuit Breaker mock
-jest.mock('./src/utils/circuitBreaker', () => ({
-  withCircuitBreaker: jest.fn((serviceName, fn, fallback) => {
-    if (serviceName === 'revenuecat') {
-      // For RevenueCat validation in tests, we want it to succeed by default
-      // but we need to return the expected structure
-      return fn().catch(err => {
-        if (fallback) return fallback();
-        throw err;
-      });
+// Global Circuit Breaker mock - mock the opossum dependency to avoid ESM issues
+jest.mock('opossum', () => {
+  const MockCircuitBreaker = function(fn, options) {
+    this.fn = fn;
+    this.options = options;
+    this.opened = false;
+    this.halfOpen = false;
+  };
+  MockCircuitBreaker.prototype.fire = jest.fn().mockImplementation(async function(fn) {
+    if (this.opened) {
+      throw new Error('Circuit is open');
     }
     return fn();
-  }),
-}), { virtual: true });
+  });
+  MockCircuitBreaker.prototype.on = jest.fn();
+  MockCircuitBreaker.prototype.open = jest.fn(function() {
+    this.opened = true;
+  });
+  MockCircuitBreaker.prototype.close = jest.fn(function() {
+    this.opened = false;
+    this.halfOpen = false;
+  });
+  return MockCircuitBreaker;
+});
 jest.mock('./src/utils/redis', () => ({
   getRedis: jest.fn(() => ({
     sismember: jest.fn().mockResolvedValue(0),

@@ -1,6 +1,28 @@
 /**
- * Health Monitor Module Tests
+ * Health Monitor Module Tests - Integration-style tests
+ * Uses real prom-client registry and real config/alerting
+ * Only mocks external alerting triggers to avoid side effects
  */
+
+process.env.ALERTING_ENABLED = 'true';
+process.env.ALERTING_MIN_ENV_LEVEL = 'development';
+process.env.NODE_ENV = 'development';
+process.env.ALERT_CPU_WARNING_PERCENT = '0';
+process.env.ALERT_CPU_CRITICAL_PERCENT = '0';
+process.env.ALERT_MEMORY_WARNING_PERCENT = '0';
+process.env.ALERT_MEMORY_CRITICAL_PERCENT = '0';
+process.env.ALERT_DISK_WARNING_PERCENT = '0';
+process.env.ALERT_DISK_CRITICAL_PERCENT = '0';
+process.env.ALERT_DB_CONNECTIONS_WARNING_PERCENT = '0';
+process.env.ALERT_DB_CONNECTIONS_CRITICAL_PERCENT = '0';
+process.env.ALERT_RESPONSE_TIME_WARNING_MS = '0';
+process.env.ALERT_RESPONSE_TIME_CRITICAL_MS = '0';
+process.env.ALERT_ERROR_RATE_WARNING_PERCENT = '0';
+process.env.ALERT_ERROR_RATE_CRITICAL_PERCENT = '0';
+process.env.ALERT_ACTIVE_CONNECTIONS_WARNING = '0';
+process.env.ALERT_ACTIVE_CONNECTIONS_CRITICAL = '0';
+process.env.ALERT_MATCH_QUEUE_WARNING = '0';
+process.env.ALERT_MATCH_QUEUE_CRITICAL = '0';
 
 import {
   getHealthRegistry,
@@ -10,79 +32,20 @@ import {
   getHealthStatus,
   initializeHealthMonitoring,
 } from '../health_monitor';
+import { triggerHealthAlert, triggerMetricAlert } from '../alerting';
 
-// Mock dependencies
-jest.mock('../../config', () => ({
-  config: {
-    alerting: {
-      enabled: true,
-      defaultProvider: 'slack',
-      cooldownMinutes: 5,
-    },
-    logger: {
-      scrubLogs: false,
-      additionalSensitiveFields: [],
-      maxScrubDepth: 10,
-    },
-  },
-}));
-
-jest.mock('../../config/alerting', () => ({
-  alertingConfig: {
-    enabled: true,
-    healthAlerts: {
-      cpuWarningPercent: 70,
-      cpuCriticalPercent: 90,
-      memoryWarningPercent: 75,
-      memoryCriticalPercent: 90,
-      diskWarningPercent: 80,
-      diskCriticalPercent: 95,
-      dbConnectionsWarningPercent: 70,
-      dbConnectionsCriticalPercent: 90,
-    },
-    metricAlerts: {
-      activeConnectionsWarning: 1000,
-      activeConnectionsCritical: 2000,
-      matchQueueWarning: 50,
-      matchQueueCritical: 100,
-      matchWaitTimeWarning: 30,
-      matchWaitTimeCritical: 60,
-      dbQueryTimeWarning: 1000,
-      dbQueryTimeCritical: 5000,
-      failedLoginsWarning: 10,
-      failedLoginsCritical: 50,
-      purchaseFailuresWarning: 5,
-      purchaseFailuresCritical: 20,
-    },
-  },
-  isAlertingEnabled: jest.fn().mockReturnValue(true),
+jest.mock('../alerting', () => ({
   triggerHealthAlert: jest.fn(),
   triggerMetricAlert: jest.fn(),
 }));
 
-jest.mock('prom-client', () => ({
-  Registry: jest.fn().mockImplementation(() => ({
-    metrics: jest.fn().mockResolvedValue('mock metrics'),
-    contentType: 'text/plain',
-    register: jest.fn(),
-  })),
-  Gauge: jest.fn().mockImplementation(() => ({
-    set: jest.fn(),
-    inc: jest.fn(),
-    dec: jest.fn(),
-  })),
-  Counter: jest.fn().mockImplementation(() => ({
-    inc: jest.fn(),
-  })),
-  Histogram: jest.fn().mockImplementation(() => ({
-    startTimer: jest.fn().mockReturnValue(jest.fn()),
-  })),
-}));
-
 describe('health_monitor', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
     stopHealthMonitoring();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   describe('getHealthRegistry', () => {
@@ -104,18 +67,65 @@ describe('health_monitor', () => {
       const healthMetrics = performHealthCheck();
       
       expect(healthMetrics).toHaveProperty('cpuUsage');
+      expect(typeof healthMetrics.cpuUsage).toBe('number');
     });
 
     it('should include memory usage in health metrics', () => {
       const healthMetrics = performHealthCheck();
       
       expect(healthMetrics).toHaveProperty('memoryUsage');
+      expect(typeof healthMetrics.memoryUsage).toBe('number');
     });
 
     it('should include disk usage in health metrics', () => {
       const healthMetrics = performHealthCheck();
       
       expect(healthMetrics).toHaveProperty('diskUsage');
+      expect(typeof healthMetrics.diskUsage).toBe('number');
+    });
+
+    it('should include database connections in health metrics', () => {
+      const healthMetrics = performHealthCheck();
+      
+      expect(healthMetrics).toHaveProperty('dbConnections');
+    });
+
+    it('should include active connections in health metrics', () => {
+      const healthMetrics = performHealthCheck();
+      
+      expect(healthMetrics).toHaveProperty('activeConnections');
+    });
+
+    it('should include match queue in health metrics', () => {
+      const healthMetrics = performHealthCheck();
+      
+      expect(healthMetrics).toHaveProperty('matchQueue');
+    });
+
+    it('should include response time in health metrics', () => {
+      const healthMetrics = performHealthCheck();
+      
+      expect(healthMetrics).toHaveProperty('responseTime');
+    });
+
+    it('should include error rate in health metrics', () => {
+      const healthMetrics = performHealthCheck();
+      
+      expect(healthMetrics).toHaveProperty('errorRate');
+    });
+
+    it('should return CPU usage between 0 and 100', () => {
+      const healthMetrics = performHealthCheck();
+      
+      expect(healthMetrics.cpuUsage).toBeGreaterThanOrEqual(0);
+      expect(healthMetrics.cpuUsage).toBeLessThanOrEqual(100);
+    });
+
+    it('should return memory usage between 0 and 100', () => {
+      const healthMetrics = performHealthCheck();
+      
+      expect(healthMetrics.memoryUsage).toBeGreaterThanOrEqual(0);
+      expect(healthMetrics.memoryUsage).toBeLessThanOrEqual(100);
     });
   });
 
@@ -152,6 +162,28 @@ describe('health_monitor', () => {
       const status = getHealthStatus();
       
       expect(status).toHaveProperty('healthy');
+      expect(typeof status.healthy).toBe('boolean');
+    });
+
+    it('should include metrics field', () => {
+      const status = getHealthStatus();
+      
+      expect(status).toHaveProperty('metrics');
+      expect(typeof status.metrics).toBe('object');
+    });
+
+    it('should include isMonitoring field', () => {
+      const status = getHealthStatus();
+      
+      expect(status).toHaveProperty('isMonitoring');
+      expect(typeof status.isMonitoring).toBe('boolean');
+    });
+
+    it('should report health status correctly based on thresholds', () => {
+      const status = getHealthStatus();
+      
+      expect(status).toHaveProperty('healthy');
+      expect(typeof status.healthy).toBe('boolean');
     });
   });
 
@@ -165,6 +197,57 @@ describe('health_monitor', () => {
       };
 
       expect(() => initializeHealthMonitoring(mockLogger as any)).not.toThrow();
+    });
+
+    it('should log initialization message', () => {
+      const mockLogger = {
+        info: jest.fn(),
+        error: jest.fn(),
+        warn: jest.fn(),
+        debug: jest.fn(),
+      };
+
+      initializeHealthMonitoring(mockLogger as any);
+
+      expect(mockLogger.info).toHaveBeenCalledWith('[HealthMonitor] Initialized health monitoring');
+    });
+  });
+
+  describe('threshold alert triggering', () => {
+    it('should trigger health alerts when monitoring starts (real system metrics)', () => {
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerHealthAlert as jest.Mock;
+      expect(mockedTrigger).toHaveBeenCalled();
+    });
+
+    it('should trigger metric alerts when monitoring starts (real system metrics)', () => {
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerMetricAlert as jest.Mock;
+      expect(mockedTrigger).toHaveBeenCalled();
+    });
+
+    it('should call triggerHealthAlert with correct metric names', () => {
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerHealthAlert as jest.Mock;
+      const calls = mockedTrigger.mock.calls;
+      
+      const metricNames = calls.map((call: any[]) => call[0]);
+      expect(metricNames).toContain('cpuCriticalPercent');
+      expect(metricNames).toContain('memoryCriticalPercent');
+    });
+
+    it('should call triggerMetricAlert with correct metric names', () => {
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerMetricAlert as jest.Mock;
+      const calls = mockedTrigger.mock.calls;
+      
+      const metricNames = calls.map((call: any[]) => call[0]);
+      expect(metricNames).toContain('activeConnections');
+      expect(metricNames).toContain('matchQueue');
     });
   });
 });

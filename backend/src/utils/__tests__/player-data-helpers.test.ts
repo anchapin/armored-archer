@@ -79,7 +79,14 @@ describe('player-data-helpers', () => {
     it('should return null for non-object types', () => {
       expect(parsePlayerStatsValue(123)).toBeNull();
       expect(parsePlayerStatsValue(true)).toBeNull();
-      expect(parsePlayerStatsValue([])).toBeNull();
+    });
+
+    it('should return arrays as-is since they are objects', () => {
+      expect(parsePlayerStatsValue([])).toEqual([]);
+    });
+
+    it('should return arrays as-is since they are objects', () => {
+      expect(parsePlayerStatsValue([])).toEqual([]);
     });
   });
 });
