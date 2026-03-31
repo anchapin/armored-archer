@@ -124,13 +124,7 @@ run_quick_validation() {
     log_info "Found $TEST_COUNT test files"
     
     # Count test functions
-    TOTAL_TESTS=0
-    for test_file in "$TEST_DIR"/test_*.gd; do
-        if [ -f "$test_file" ]; then
-            COUNT=$(grep -c "func test_" "$test_file" 2>/dev/null || echo "0")
-            TOTAL_TESTS=$((TOTAL_TESTS + COUNT))
-        fi
-    done
+    TOTAL_TESTS=$(find "$TEST_DIR" -maxdepth 1 -name "test_*.gd" -exec grep -h "func test_" {} \; 2>/dev/null | wc -l)
     log_info "Found $TOTAL_TESTS test functions"
     
     # Check for syntax errors in critical files
