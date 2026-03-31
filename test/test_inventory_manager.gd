@@ -15,6 +15,7 @@ func run_tests() -> void:
 	await test_get_total_stats_empty()
 	await test_get_total_stats_with_gear()
 	await test_get_gear_info()
+	await test_get_gear_info_not_found()
 	await test_get_equipped_gear_id()
 	await test_get_all_equipped_gear()
 	await test_get_inventory_size()
@@ -23,6 +24,12 @@ func run_tests() -> void:
 	await test_equip_gear_not_loaded()
 	await test_unequip_gear_not_loaded()
 	await test_unequip_empty_slot()
+	await test_equip_gear_invalid_slot()
+	await test_equip_gear_not_in_inventory()
+	await test_unequip_gear_invalid_slot()
+	await test_get_total_stats_with_missing_gear()
+	await test_stats_updated_signal()
+	await test_equipped_gear_isolation()
 
 	print("\n=== InventoryManager Test Results ===")
 	print("Passed: %d" % _tests_passed)
@@ -211,5 +218,119 @@ func test_unequip_empty_slot() -> void:
 		_pass("test_unequip_empty_slot")
 	else:
 		_fail("test_unequip_empty_slot", "Should succeed when unequipping empty slot")
+
+	im.queue_free()
+
+func test_get_gear_info_not_found() -> void:
+	var im = _create_inventory_manager()
+
+	var info = im.get_gear_info("nonexistent_gear")
+
+	if info.is_empty():
+		_pass("test_get_gear_info_not_found")
+	else:
+		_fail("test_get_gear_info_not_found", "Should return empty dict for nonexistent gear")
+
+	im.queue_free()
+
+func test_equip_gear_invalid_slot() -> void:
+	var im = _create_inventory_manager()
+	im._loaded = true
+	im.inventory = {"gear_01": {}}
+
+	var result = im.equip_gear("gear_01", 99)
+
+	if not result:
+		_pass("test_equip_gear_invalid_slot")
+	else:
+		_fail("test_equip_gear_invalid_slot", "Should fail with invalid slot")
+
+	im.queue_free()
+
+func test_equip_gear_not_in_inventory() -> void:
+	var im = _create_inventory_manager()
+	im._loaded = true
+
+	var result = im.equip_gear("nonexistent_gear", 0)
+
+	if not result:
+		_pass("test_equip_gear_not_in_inventory")
+	else:
+		_fail("test_equip_gear_not_in_inventory", "Should fail when gear not in inventory")
+
+	im.queue_free()
+
+func test_unequip_gear_invalid_slot() -> void:
+	var im = _create_inventory_manager()
+	im._loaded = true
+
+	var result = im.unequip_gear(-1)
+
+	if not result:
+		_pass("test_unequip_gear_invalid_slot")
+	else:
+		_fail("test_unequip_gear_invalid_slot", "Should fail with invalid slot")
+
+	im.queue_free()
+
+func test_get_total_stats_with_missing_gear() -> void:
+	var im = _create_inventory_manager()
+	im._loaded = true
+	im.equipped_gear = ["nonexistent_gear", "", "", "", ""]
+
+	var stats = im.get_total_stats()
+
+	if stats.attack == 0 and stats.defense == 0:
+		_pass("test_get_total_stats_with_missing_gear")
+	else:
+		_fail("test_get_total_stats_with_missing_gear", "Missing gear should not contribute stats")
+
+	im.queue_free()
+
+func test_stats_updated_signal() -> void:
+	var im = _create_inventory_manager()
+	im._loaded = true
+	im.inventory = {
+		"gear_01": {
+			"name": "Test Gear",
+			"stats": {"attack": 10, "defense": 5, "health": 20, "speed": 3, "critical_chance": 0.1, "armor_penetration": 0.05}
+		}
+	}
+	im.equipped_gear = ["gear_01", "", "", "", ""]
+
+	var signal_emitted = false
+	var emitted_stats = {}
+
+	im.stats_updated.connect(func(stats: Dictionary):
+		signal_emitted = true
+		emitted_stats = stats
+	)
+
+	im._update_total_stats()
+
+	if signal_emitted:
+		_pass("test_stats_updated_signal_emitted")
+	else:
+		_fail("test_stats_updated_signal_emitted", "stats_updated signal should emit")
+
+	if emitted_stats.has("attack") and emitted_stats.attack == 10:
+		_pass("test_stats_updated_signal_contains_stats")
+	else:
+		_fail("test_stats_updated_signal_contains_stats", "Signal should contain calculated stats")
+
+	im.queue_free()
+
+func test_equipped_gear_isolation() -> void:
+	var im = _create_inventory_manager()
+	im._loaded = true
+	im.equipped_gear = ["a", "b", "c", "d", "e"]
+
+	var copy = im.get_all_equipped_gear()
+	copy[0] = "modified"
+
+	if im.get_equipped_gear_id(0) == "a":
+		_pass("test_equipped_gear_isolation")
+	else:
+		_fail("test_equipped_gear_isolation", "get_all_equipped_gear should return a copy")
 
 	im.queue_free()

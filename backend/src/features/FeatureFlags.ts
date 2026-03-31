@@ -199,7 +199,7 @@ function evaluateFeatureFlag(
   }
 
   // Check rollout percentage
-  const rolloutPercentage = config.rolloutPercentage || 100;
+  const rolloutPercentage = config.rolloutPercentage !== undefined ? config.rolloutPercentage : 100;
 
   if (rolloutPercentage >= 100) {
     return true;
@@ -445,6 +445,15 @@ export function clearFeatureFlagCache(): void {
   flagCache.clear();
   rolloutCache.clear();
   logger.info('Feature flag caches cleared');
+}
+
+/**
+ * Reset all feature flags (for testing)
+ */
+export function __resetForTesting(): void {
+  inMemoryFlags.clear();
+  flagCache.clear();
+  rolloutCache.clear();
 }
 
 // Export FeatureFlags class for convenience

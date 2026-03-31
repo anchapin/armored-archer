@@ -8,6 +8,10 @@
 
 config_version=5
 
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
 [application]
 
 config/name="Armored Archer"
@@ -34,16 +38,20 @@ SafeAreaManager="*res://autoloads/SafeAreaManager.gd"
 PerformanceProfiler="*res://autoloads/PerformanceProfiler.gd"
 ProfilingInstrumentation="*res://autoloads/ProfilingInstrumentation.gd"
 UITransitionOptimizer="*res://autoloads/UITransitionOptimizer.gd"
+ArcherDesignTokens="*res://autoloads/ArcherDesignTokens.gd"
 UIAutomation="*res://autoloads/UIAutomation.gd"
 ObjectPool="*res://autoloads/ObjectPool.gd"
-VFXManager="*res://autoloads/VFXManager.gd"
-DesignTokens="*res://autoloads/design_tokens.gd"
-EncounterData="*res://autoloads/EncounterData.gd"
 ShootingManager="*res://autoloads/ShootingManager.gd"
-CombatSyncManager="*res://autoloads/CombatSyncManager.gd"
-InventoryManager="*res://autoloads/InventoryManager.gd"
+VFXManager="*res://autoloads/VFXManager.gd"
+AudioManager="*res://autoloads/AudioManager.gd"
+AnimationUtils="*res://autoloads/AnimationUtils.gd"
 ThemeManager="*res://autoloads/ThemeManager.gd"
 AccessibilityManager="*res://autoloads/AccessibilityManager.gd"
+GutCoverageTracker="*res://addons/gut/coverage/coverage_tracker.gd"
+DesignTokens="*res://autoloads/design_tokens.gd"
+EncounterData="*res://autoloads/EncounterData.gd"
+CombatSyncManager="*res://autoloads/CombatSyncManager.gd"
+InventoryManager="*res://autoloads/InventoryManager.gd"
 AnalyticsManager="*res://addons/analytics_manager/analytics_manager.gd"
 
 [debug]
@@ -52,6 +60,21 @@ gdscript/warnings/return_value_discarded=1
 #Enablestricttypehintsforbettercodequalitygdscript/warnings/untyped_variable=1
 gdscript/warnings/untyped_call=1
 gdscript/warnings/incompatible_type_match=1
+
+[display]
+
+window/size/viewport_width=640
+window/size/viewport_height=360
+window/size/resizable=false
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/stretch/scale_mode="integer"
+window/vsync/use_vsync=false
+#Disabledglobalthemeduetostyleboxerrors-themesappliedper-scene#window/theme/theme="res://themes/gilded_quest_theme.tres"
+
+[editor_plugins]
+
+enabled=["res://addons/godot_mcp/plugin.cfg"]
 
 [input]
 
@@ -103,6 +126,17 @@ aim={
 , Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194322,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
 ]
 }
+shoot={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":32,"key_label":0,"unicode":32,"location":0,"echo":false,"script":null)
+, Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194310,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+]
+}
+pause={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194315,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+]
+}
 
 [performance]
 
@@ -117,9 +151,11 @@ mid_range_memory_threshold=512
 
 [plugin]
 
+Gut/enabled="true"
 Gut/settings/config_file="res://.gutconfig.json"
 
 [rendering]
 
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="mobile"
+textures/default_texture_filter=1

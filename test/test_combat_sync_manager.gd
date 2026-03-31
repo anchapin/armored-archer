@@ -22,6 +22,20 @@ func run_tests() -> void:
 	await test_apply_player_damage()
 	await test_combat_log_recording()
 	await test_polling_timer_cleanup()
+	await test_health_changed_signal()
+	await test_polling_timer_starts_on_combat()
+	await test_update_opponent_state_no_damage()
+	await test_update_opponent_state_empty()
+	await test_end_combat_lethal_opponent()
+	await test_end_combat_lethal_player()
+	await test_combat_log_cleared_on_restart()
+	await test_health_changed_signal()
+	await test_polling_timer_starts_on_combat()
+	await test_update_opponent_state_no_damage()
+	await test_update_opponent_state_empty()
+	await test_end_combat_lethal_opponent()
+	await test_end_combat_lethal_player()
+	await test_combat_log_cleared_on_restart()
 
 	print("\n=== CombatSyncManager Test Results ===")
 	print("Passed: %d" % _tests_passed)
@@ -341,5 +355,152 @@ func test_polling_timer_cleanup() -> void:
 		_pass("test_polling_timer_cleanup")
 	else:
 		_fail("test_polling_timer_cleanup", "Polling timer should be null after cleanup")
+
+	csm.queue_free()
+
+func test_health_changed_signal() -> void:
+	var csm = await _create_combat_sync_manager()
+	csm.start_combat("test_match")
+
+	var health_changed_emitted = false
+	var emitted_player_health = 0
+	var emitted_opponent_health = 0
+
+	csm.health_changed.connect(func(ph: int, oh: int):
+		health_changed_emitted = true
+		emitted_player_health = ph
+		emitted_opponent_health = oh
+	)
+
+	csm.apply_opponent_damage(25)
+
+	if health_changed_emitted:
+		_pass("test_health_changed_signal_emitted")
+	else:
+		_fail("test_health_changed_signal_emitted", "health_changed signal should emit")
+
+	if emitted_player_health == 100 and emitted_opponent_health == 75:
+		_pass("test_health_changed_signal_values")
+	else:
+		_fail("test_health_changed_signal_values", "Signal should contain correct health values")
+
+	csm.queue_free()
+
+func test_polling_timer_starts_on_combat() -> void:
+	var csm = await _create_combat_sync_manager()
+
+	if csm._polling_timer == null:
+		_pass("test_polling_timer_initially_null")
+	else:
+		_fail("test_polling_timer_initially_null", "Timer should be null before combat")
+
+	csm.start_combat("test_match")
+
+	if csm._polling_timer != null:
+		_pass("test_polling_timer_created_on_combat_start")
+	else:
+		_fail("test_polling_timer_created_on_combat_start", "Timer should be created on start_combat")
+
+	csm.queue_free()
+
+func test_update_opponent_state_no_damage() -> void:
+	var csm = await _create_combat_sync_manager()
+	csm.start_combat("test_match")
+	csm.send_move(45.0, 80.0)
+
+	var move_data = {
+		"angle": 30.0,
+		"power": 60.0
+	}
+
+	var health_before = csm.player_health
+	csm.update_opponent_state(move_data)
+
+	if csm.player_health == health_before:
+		_pass("test_update_opponent_state_no_damage")
+	else:
+		_fail("test_update_opponent_state_no_damage", "Health should not change without damage")
+
+	csm.queue_free()
+
+func test_update_opponent_state_empty() -> void:
+	var csm = await _create_combat_sync_manager()
+	csm.start_combat("test_match")
+
+	var initial_log_size = csm.combat_log.size()
+	csm.update_opponent_state({})
+
+	if csm.combat_log.size() == initial_log_size:
+		_pass("test_update_opponent_state_empty_ignored")
+	else:
+		_fail("test_update_opponent_state_empty_ignored", "Empty opponent state should be ignored")
+
+	csm.queue_free()
+
+func test_end_combat_lethal_opponent() -> void:
+	var csm = await _create_combat_sync_manager()
+	csm.start_combat("test_match")
+
+	var combat_ended_emitted = false
+	var winner = ""
+
+	csm.combat_ended.connect(func(w: String):
+		combat_ended_emitted = true
+		winner = w
+	)
+
+	csm.apply_opponent_damage(100)
+
+	if csm.opponent_health == 0:
+		_pass("test_end_combat_lethal_opponent_health")
+	else:
+		_fail("test_end_combat_lethal_opponent_health", "Opponent health should be 0")
+
+	if combat_ended_emitted and winner == "player":
+		_pass("test_end_combat_lethal_opponent_ends_combat")
+	else:
+		_fail("test_end_combat_lethal_opponent_ends_combat", "Combat should end with player winner")
+
+	csm.queue_free()
+
+func test_end_combat_lethal_player() -> void:
+	var csm = await _create_combat_sync_manager()
+	csm.start_combat("test_match")
+
+	var combat_ended_emitted = false
+	var winner = ""
+
+	csm.combat_ended.connect(func(w: String):
+		combat_ended_emitted = true
+		winner = w
+	)
+
+	csm.apply_player_damage(100)
+
+	if csm.player_health == 0:
+		_pass("test_end_combat_lethal_player_health")
+	else:
+		_fail("test_end_combat_lethal_player_health", "Player health should be 0")
+
+	if combat_ended_emitted and winner == "opponent":
+		_pass("test_end_combat_lethal_player_ends_combat")
+	else:
+		_fail("test_end_combat_lethal_player_ends_combat", "Combat should end with opponent winner")
+
+	csm.queue_free()
+
+func test_combat_log_cleared_on_restart() -> void:
+	var csm = await _create_combat_sync_manager()
+	csm.start_combat("test_match_1")
+	csm.send_move(45.0, 80.0)
+
+	var log_size_before = csm.combat_log.size()
+
+	csm.start_combat("test_match_2")
+
+	if csm.combat_log.size() < log_size_before:
+		_pass("test_combat_log_cleared_on_restart")
+	else:
+		_fail("test_combat_log_cleared_on_restart", "Combat log should be cleared on restart")
 
 	csm.queue_free()
