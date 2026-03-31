@@ -1,4 +1,6 @@
-class_name ThemeManager
+## ThemeManager - Manages light/dark theme switching with persistence.
+## Use DesignTokens for colors, this manager for theme state.
+## Available as global singleton via autoload.
 extends Node
 
 # =============================================================================

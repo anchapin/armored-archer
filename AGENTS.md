@@ -7,13 +7,16 @@ This file contains conventions and commands for agents working on the Armored Ar
 ```text
 /                          # Godot project root
 ├── autoloads/            # Singletons (NetworkManager, GameManager, etc.)
+│   └── const.gd          # Centralized constants (used 3+ files)
 ├── scenes/               # .tscn files organized by feature
 │   ├── player/           # Player-related scenes
+│   │   └── Player/       # Per-scene directory (scene + script)
 │   ├── enemies/          # Enemy scenes
 │   └── ui/               # UI scenes
-├── scripts/              # .gd scripts
+├── scripts/              # Shared scripts (not tied to specific scene)
 ├── assets/               # Sprites, sounds, music
 ├── test/                # GDScript test runner and framework
+├── script_templates/    # Custom script templates
 ├── docs/                 # Documentation
 └── res://                # Godot resource path prefix
 
@@ -211,6 +214,90 @@ The project uses Godot autoloads for game managers. Key autoloads include:
 - Input handling: `Input.get_vector("left", "right", "up", "down")` handles diagonal normalization
 - Deadzone for joysticks: check `length() > 0.1` to detect actual input
 - Store aim state: `var is_aiming: bool = false` to track thumb release
+
+## Godot Best Practices
+
+### Project Organization
+Follow the [official Godot project organization guidelines](https://docs.godotengine.org/en/stable/tutorials/best_practices/project_organization.html):
+
+- **Per-scene directories**: Create a directory for each scene and co-locate its script(s)
+- Example: `scenes/player/Player/Player.tscn` + `scenes/player/Player/Player.gd`
+- **Shared scripts** go in `scripts/` or `autoloads/` (for singletons)
+- **Assets** go in `assets/` organized by type (sprites/, audio/, fonts/)
+- **UI themes** go in `themes/`
+
+### Code Order
+Follow the [official GDScript style guide code order](https://docs.godotengine.org/en/latest/tutorials/scripting/gdscript/gdscript_styleguide.html#code-order):
+
+1. `class_name` (optional)
+2. `extends` (if applicable)
+3. **Docstring** (`## description`)
+4. `tool` keyword (if applicable)
+5. **Signals**
+6. **Enums** (const groups)
+7. **Constants** (`const`)
+8. **@export** variables
+9. **@export_group** / @export_subgroup
+10. **@onready** variables
+11. Built-in variables (`var`)
+12. `func _ready()` and `func _init()`
+13. Other `func` methods
+14. Inner classes
+
+### Centralized Constants
+Use `autoloads/const.gd` for constants shared across 3+ files:
+```gdscript
+const DEFAULT_PLAYER_HEALTH: int = 100
+const CRITICAL_HIT_CHANCE: float = 0.15
+```
+
+### Script Templates
+Use custom script templates for consistency. Templates are in `script_templates/`:
+- `node.gd` - Standard Node-based scene script
+- `autoload.gd` - Autoload singleton script
+
+### File Naming
+- **Scripts**: PascalCase (e.g., `PlayerController.gd`)
+- **Scenes**: PascalCase (e.g., `Player.tscn`)
+- **Autoloads**: PascalCase with "Manager" suffix (e.g., `GameManager.gd`)
+
+### Scene Organization
+```
+scenes/
+├── player/
+│   ├── Player/
+│   │   ├── Player.tscn
+│   │   └── Player.gd
+│   └── Player.tscn (entry point)
+├── enemies/
+│   ├── Enemy/
+│   │   ├── Enemy.tscn
+│   │   └── Enemy.gd
+│   └── bosses/
+└── ui/
+    ├── Menu/
+    │   ├── Menu.tscn
+    │   └── Menu.gd
+    └── HUD/
+```
+
+### Type Hints
+- Use static typing throughout: `var speed: float = 300.0`
+- Function signatures: `func _physics_process(delta: float) -> void:`
+- Return types: `func get_damage() -> int:`
+- Avoid untyped variables in production code
+
+### Error Handling
+- Use `push_error()` for critical failures
+- Use `push_warning()` for non-critical issues
+- Use `get_node_or_null()` instead of hardcoded paths when node may not exist
+- Use `has_method()` before calling methods on unknown nodes
+
+### Performance Tips
+- Use `const` for scene preloads (loaded at compile time)
+- Use `@onready` for child node caching
+- Use object pooling for frequently created/destroyed objects
+- Use signals for decoupled communication instead of direct node calls
 
 ## TypeScript Code Style (Nakama Backend)
 

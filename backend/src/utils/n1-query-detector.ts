@@ -8,17 +8,14 @@
  * Usage:
  *   import { N1QueryDetector } from './utils/n1-query-detector';
  *
- *   // Wrap database operations
+ *   // Track database operations
  *   const result = await N1QueryDetector.track(async () => {
- *     const players = await getAllPlayers();
- *     for (const player of players) {
- *       // Each iteration triggers a separate query - N+1 pattern
- *       const stats = await getPlayerStats(player.id);
- *     }
+ *     // ... database operations
  *   });
  *
  *   if (result.n1Queries.length > 0) {
- *     console.warn('N+1 queries detected:', result.n1Queries);
+ *     // Handle N+1 queries - log or report them
+ *     // Do not use console.warn in production - use proper logger
  *   }
  */
 

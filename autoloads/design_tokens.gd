@@ -1,4 +1,5 @@
-class_name DesignTokens
+## DesignTokens - Centralized design constants for consistent UI.
+## Available as global singleton via autoload - access as DesignTokens.
 extends Node
 
 # =============================================================================

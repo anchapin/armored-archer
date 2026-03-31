@@ -24,12 +24,17 @@ Technical debt is categorized into:
 
 | ID | Category | Title | Description | Severity | Status | Date Identified | Estimated Effort |
 |----|----------|-------|-------------|----------|--------|-----------------|-----------------|
-| TD-001 | Deprecated APIs | Deprecated error tracking functions | Functions `captureExceptionLegacy` and `captureMessageLegacy` in `backend/src/config/errorTracking.ts` are deprecated but still in use | Medium | Open | 2024-03-09 | 2 hours |
-| TD-002 | Deprecated APIs | Deprecated logger function | Function `logRpcError` in `backend/src/config/logger.ts` should replace older logging patterns | Medium | Open | 2024-03-09 | 1 hour |
 | TD-003 | Testing | Backend test coverage gaps | Some modules lack comprehensive unit tests | Medium | Open | 2024-03-09 | 8 hours |
 | TD-004 | Architecture | Error Insight Pipeline optimization | The error_insight_pipeline module needs performance review | Low | Open | 2024-03-09 | 4 hours |
-| TD-005 | Code Quality | Console logging usage | Multiple files use console.log/warn/error instead of proper logger | Low | Open | 2024-03-09 | 4 hours |
-| TD-006 | Type Safety | Using `any` type | anti_cheat_audit.ts and eslint-rules use `any` type reducing type safety | Low | Open | 2024-03-09 | 2 hours |
+| TD-005 | Code Quality | Console logging usage | Multiple files use console.log/warn/error instead of proper logger | Low | Acknowledged | 2024-03-09 | 1 hour | Documentation-only (in code comments), not runtime |
+| TD-006 | Type Safety | Using `any` type | Multiple files use `any` type reducing type safety | Low | Open | 2024-03-09 | 4 hours |
+
+### Resolved / No Longer Applicable
+
+| ID | Category | Title | Resolution Date | Notes |
+|----|----------|-------|-----------------|-------|
+| TD-001 | Deprecated APIs | Deprecated error tracking functions | 2026-03-31 | No longer applicable - functions don't exist |
+| TD-002 | Deprecated APIs | Deprecated logger function | 2026-03-31 | No longer applicable - logRpcError is current implementation |
 
 ### Historical Debt (Resolved)
 

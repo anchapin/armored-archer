@@ -4,6 +4,8 @@ import { Runtime } from '../types/nakama';
 
 // Firebase Admin SDK types
 interface FirebaseMessagingPayload {
+  token?: string;
+  tokens?: string[];
   notification?: {
     title: string;
     body: string;
@@ -61,9 +63,19 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, { title: string; body: st
 };
 
 // Firebase Admin SDK instance
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let firebaseMessaging: any = null;
+// Using unknown type - Firebase is optional and loaded dynamically via require
+let firebaseMessaging: FirebaseMessaging | null = null;
 let firebaseInitialized = false;
+
+// Firebase Messaging type (loaded dynamically when firebase-admin is available)
+interface FirebaseMessaging {
+  send(message: FirebaseMessagingPayload): Promise<string>;
+  sendEachForMulticast(message: FirebaseMessagingPayload): Promise<{
+    successCount: number;
+    failureCount: number;
+    responses: Array<{ success: boolean; error?: { message: string } }>;
+  }>;
+}
 
 /**
  * Initialize Firebase Admin SDK for Cloud Messaging
@@ -219,13 +231,14 @@ export async function sendBatchNotifications(
       successCount += response.successCount;
       failedCount += response.failureCount;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      response.responses.forEach((resp: any, idx: number) => {
-        if (!resp.success) {
-          const errorMsg = resp.error?.message || 'Unknown error';
-          errors.push(`Token ${batch[idx]}: ${errorMsg}`);
+      response.responses.forEach(
+        (resp: { success: boolean; error?: { message: string } }, idx: number) => {
+          if (!resp.success) {
+            const errorMsg = resp.error?.message || 'Unknown error';
+            errors.push(`Token ${batch[idx]}: ${errorMsg}`);
+          }
         }
-      });
+      );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       errors.push(`Batch error: ${errorMessage}`);

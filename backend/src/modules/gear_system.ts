@@ -1722,7 +1722,7 @@ function processStageCompletion(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  request: any
+  request: StageCompleteRequest
 ): {
   inventory: PlayerInventory;
   lootResult: LootResult;
@@ -1799,7 +1799,17 @@ function processStageCompletion(
 /**
  * Build audit data object
  */
-function buildAuditData(request: any, result: any): any {
+function buildAuditData(
+  request: StageCompleteRequest,
+  result: {
+    inventory: PlayerInventory;
+    lootResult: LootResult;
+    dropRate: number;
+    allUnlockedModifiers: string[];
+    roll: number;
+    bossDefeatResult?: { defeat_count: number; newly_unlocked_modifiers: string[] };
+  }
+): Record<string, unknown> {
   return {
     stage_id: request.stage_id,
     difficulty: request.difficulty,

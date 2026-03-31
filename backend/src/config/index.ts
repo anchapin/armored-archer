@@ -1,7 +1,13 @@
 // Dynamic import for Node.js-specific modules
 // These modules don't exist in Nakama's runtime (Duktape/QuickJS)
-let fs: any;
-let path: any;
+import type * as fsType from 'fs';
+import type * as pathType from 'path';
+
+type NodeFSModule = typeof fsType | undefined;
+type NodePathModule = typeof pathType | undefined;
+
+let fs: NodeFSModule;
+let path: NodePathModule;
 
 function loadEnvironment(): void {
   // Skip environment loading in Nakama runtime
@@ -34,29 +40,30 @@ function loadEnvironment(): void {
 
   for (const file of envFiles) {
     try {
-      const envPath = path.join(process.cwd(), file);
-      if (fs.existsSync(envPath)) {
-        const envContent = fs.readFileSync(envPath, 'utf-8');
+      const envPath = path?.join(process.cwd(), file);
+      if (!envPath || !fs?.existsSync(envPath)) {
+        continue;
+      }
+      const envContent = fs.readFileSync(envPath, 'utf-8');
 
-        for (const line of envContent.split('\n')) {
-          const trimmedLine = line.trim();
+      for (const line of envContent.split('\n')) {
+        const trimmedLine = line.trim();
 
-          if (trimmedLine && !trimmedLine.startsWith('#')) {
-            const equalsIndex = trimmedLine.indexOf('=');
+        if (trimmedLine && !trimmedLine.startsWith('#')) {
+          const equalsIndex = trimmedLine.indexOf('=');
 
-            if (equalsIndex > 0) {
-              const key = trimmedLine.substring(0, equalsIndex).trim();
-              let value = trimmedLine.substring(equalsIndex + 1).trim();
+          if (equalsIndex > 0) {
+            const key = trimmedLine.substring(0, equalsIndex).trim();
+            let value = trimmedLine.substring(equalsIndex + 1).trim();
 
-              if (value.startsWith('"') && value.endsWith('"')) {
-                value = value.slice(1, -1);
-              } else if (value.startsWith("'") && value.endsWith("'")) {
-                value = value.slice(1, -1);
-              }
+            if (value.startsWith('"') && value.endsWith('"')) {
+              value = value.slice(1, -1);
+            } else if (value.startsWith("'") && value.endsWith("'")) {
+              value = value.slice(1, -1);
+            }
 
-              if (!process.env[key]) {
-                process.env[key] = value;
-              }
+            if (!process.env[key]) {
+              process.env[key] = value;
             }
           }
         }

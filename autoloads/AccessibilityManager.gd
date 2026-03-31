@@ -1,4 +1,6 @@
-class_name AccessibilityManager
+## AccessibilityManager - Manages accessibility settings including font scaling.
+## Ensures WCAG AA compliance and provides accessible UI experience.
+## Available as global singleton via autoload.
 extends Node
 
 # =============================================================================

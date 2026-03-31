@@ -11,7 +11,8 @@
  *   // Analyze all feature flags
  *   const unused = await DeadFlagDetector.findUnusedFlags();
  *   if (unused.length > 0) {
- *     console.warn('Unused feature flags:', unused);
+ *     // Handle unused flags - log or report them
+ *     // Do not use console.warn in production - use proper logger
  *   }
  *
  *   // Get a report of all flags

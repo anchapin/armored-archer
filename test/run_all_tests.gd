@@ -27,7 +27,13 @@ func _run_tests():
         "res://test/test_profiling_instrumentation.gd",
         "res://test/test_low_end_device_performance.gd",
         "res://test/test_performance_benchmarks.gd",
-        "res://test/test_network_resilience.gd"
+        "res://test/test_network_resilience.gd",
+        "res://test/test_inventory_manager.gd",
+        "res://test/test_shooting_manager.gd",
+        "res://test/test_arrow.gd",
+        "res://test/test_screen_shake.gd",
+        "res://test/test_damage_popup.gd",
+        "res://test/test_gear_enums.gd"
     ]
 
     var test_root = Node.new()

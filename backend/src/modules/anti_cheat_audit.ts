@@ -371,3 +371,14 @@ export function getAuditStats(): AuditStats {
     violationsByType,
   };
 }
+
+/**
+ * Reset module state (for testing)
+ */
+export function resetAuditState(): void {
+  userRiskProfiles.clear();
+  config = { ...defaultConfig };
+  nk = undefined as any;
+  logger = undefined as any;
+}
+

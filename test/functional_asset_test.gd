@@ -3,6 +3,12 @@
 
 extends GutTest
 
+# Cached resources to avoid duplicated-load warnings
+var _player_scene: PackedScene
+var _base_enemy_scene: PackedScene
+var _player_sprites: SpriteFrames
+var _enemy_sprites: SpriteFrames
+
 var test_results: Dictionary = {
 	"scene_load_tests": [],
 	"animation_system_tests": [],
@@ -18,17 +24,20 @@ var test_results: Dictionary = {
 }
 
 func _ready() -> void:
+	# Preload resources once to avoid duplicated-load warnings
+	_player_scene = load("res://scenes/player.tscn")
+	_base_enemy_scene = load("res://scenes/enemies/base_enemy.tscn")
+	_player_sprites = load("res://assets/sprites/player/player_sprites.tres")
+	_enemy_sprites = load("res://assets/sprites/enemies/enemy_sprites.tres")
 	pass
 
 ## Test 1: Scene Load Test
 func test_player_scene_loads() -> void:
-	var scene = load("res://scenes/player.tscn")
-	assert_not_null(scene, "Player scene should load without errors")
+	assert_not_null(_player_scene, "Player scene should load without errors")
 	test_results["scene_load_tests"].append({"test": "player_scene_loads", "status": "PASS", "file": "res://scenes/player.tscn"})
 
 func test_player_scene_instantiate() -> void:
-	var scene = load("res://scenes/player.tscn")
-	var instance = scene.instantiate()
+	var instance = _player_scene.instantiate()
 	assert_not_null(instance, "Player scene should instantiate")
 	# Check AnimatedSprite2D node
 	var animated_sprite = instance.get_node_or_null("AnimatedSprite2D")
@@ -36,13 +45,11 @@ func test_player_scene_instantiate() -> void:
 	test_results["scene_load_tests"].append({"test": "player_scene_instantiate", "status": "PASS"})
 
 func test_base_enemy_scene_loads() -> void:
-	var scene = load("res://scenes/enemies/base_enemy.tscn")
-	assert_not_null(scene, "Enemy scene should load without errors")
+	assert_not_null(_base_enemy_scene, "Enemy scene should load without errors")
 	test_results["scene_load_tests"].append({"test": "base_enemy_scene_loads", "status": "PASS", "file": "res://scenes/enemies/base_enemy.tscn"})
 
 func test_base_enemy_scene_instantiate() -> void:
-	var scene = load("res://scenes/enemies/base_enemy.tscn")
-	var instance = scene.instantiate()
+	var instance = _base_enemy_scene.instantiate()
 	assert_not_null(instance, "Enemy scene should instantiate")
 	var animated_sprite = instance.get_node_or_null("AnimatedSprite2D")
 	assert_not_null(animated_sprite, "Enemy should have AnimatedSprite2D node")
@@ -50,9 +57,7 @@ func test_base_enemy_scene_instantiate() -> void:
 
 ## Test 2: Animation System Test
 func test_player_sprites_animation_count() -> void:
-	var player_sprites = load("res://assets/sprites/player/player_sprites.tres") as SpriteFrames
-	assert_not_null(player_sprites, "player_sprites.tres should load")
-	var animations = player_sprites.get_animation_names()
+	var animations = _player_sprites.get_animation_names()
 	var animation_count = animations.size()
 	# Expected: 24 animations (4 directions × 6 base animations)
 	# idle(4), walk(4), attack(4), bow_draw(4), hit(4), death(4) = 24
@@ -60,48 +65,43 @@ func test_player_sprites_animation_count() -> void:
 	test_results["animation_system_tests"].append({"test": "player_sprites_animation_count", "status": "PASS", "count": animation_count, "expected": ">=24"})
 
 func test_enemy_sprites_animation_count() -> void:
-	var enemy_sprites = load("res://assets/sprites/enemies/enemy_sprites.tres") as SpriteFrames
-	assert_not_null(enemy_sprites, "enemy_sprites.tres should load")
-	var animations = enemy_sprites.get_animation_names()
+	var animations = _enemy_sprites.get_animation_names()
 	var animation_count = animations.size()
 	# Expected: multiple enemies × animations each
 	assert_greater_than(animation_count, 0, "Should have enemy animations")
 	test_results["animation_system_tests"].append({"test": "enemy_sprites_animation_count", "status": "PASS", "count": animation_count})
 
 func test_player_animation_fps_settings() -> void:
-	var player_sprites = load("res://assets/sprites/player/player_sprites.tres") as SpriteFrames
 	var test_animations = ["idle_down", "walk_down", "attack_down", "bow_draw_down"]
 	var expected_fps = {"idle_down": 8.0, "walk_down": 12.0, "attack_down": 10.0, "bow_draw_down": 8.0}
 	
 	for anim_name in test_animations:
-		var fps = player_sprites.get_animation_speed(anim_name)
+		var fps = _player_sprites.get_animation_speed(anim_name)
 		var expected = expected_fps.get(anim_name, 0.0)
 		assert_eq(fps, expected, "Animation %s should have FPS %f, got %f" % [anim_name, expected, fps])
 	
 	test_results["animation_system_tests"].append({"test": "player_animation_fps_settings", "status": "PASS", "animations_checked": test_animations.size()})
 
 func test_player_animation_loop_settings() -> void:
-	var player_sprites = load("res://assets/sprites/player/player_sprites.tres") as SpriteFrames
 	var loop_animations = {"idle_down": true, "walk_down": true, "attack_down": false, "bow_draw_down": true}
 	
 	for anim_name in loop_animations.keys():
 		var should_loop = loop_animations[anim_name]
-		var is_looping = player_sprites.get_animation_loop(anim_name)
+		var is_looping = _player_sprites.get_animation_loop(anim_name)
 		assert_eq(is_looping, should_loop, "Animation %s loop should be %s, got %s" % [anim_name, should_loop, is_looping])
 	
 	test_results["animation_system_tests"].append({"test": "player_animation_loop_settings", "status": "PASS", "animations_checked": loop_animations.size()})
 
 ## Test 3: Asset Reference Test
 func test_player_png_files_exist() -> void:
-	var player_sprites = load("res://assets/sprites/player/player_sprites.tres") as SpriteFrames
-	var animations = player_sprites.get_animation_names()
+	var animations = _player_sprites.get_animation_names()
 	var missing_files = []
 	var loaded_count = 0
 	
 	for anim_name in animations:
-		var frame_count = player_sprites.get_frame_count(anim_name)
+		var frame_count = _player_sprites.get_frame_count(anim_name)
 		for frame_idx in range(frame_count):
-			var texture = player_sprites.get_frame_texture(anim_name, frame_idx)
+			var texture = _player_sprites.get_frame_texture(anim_name, frame_idx)
 			if texture == null:
 				missing_files.append(anim_name + "[" + str(frame_idx) + "]")
 			else:
@@ -111,15 +111,14 @@ func test_player_png_files_exist() -> void:
 	test_results["asset_reference_tests"].append({"test": "player_png_files_exist", "status": "PASS", "loaded_textures": loaded_count})
 
 func test_enemy_tres_files_exist() -> void:
-	var enemy_sprites = load("res://assets/sprites/enemies/enemy_sprites.tres") as SpriteFrames
-	var animations = enemy_sprites.get_animation_names()
+	var animations = _enemy_sprites.get_animation_names()
 	var missing_files = []
 	var loaded_count = 0
 	
 	for anim_name in animations:
-		var frame_count = enemy_sprites.get_frame_count(anim_name)
+		var frame_count = _enemy_sprites.get_frame_count(anim_name)
 		for frame_idx in range(frame_count):
-			var texture = enemy_sprites.get_frame_texture(anim_name, frame_idx)
+			var texture = _enemy_sprites.get_frame_texture(anim_name, frame_idx)
 			if texture == null:
 				missing_files.append(anim_name + "[" + str(frame_idx) + "]")
 			else:
