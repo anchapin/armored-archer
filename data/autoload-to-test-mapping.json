@@ -125,6 +125,16 @@
             "critical": false,
             "description": "Manages visual effects and particles"
         },
+        "UIAutomation": {
+            "test_file": "test/suites/autoloads/test_ui_automation.gd",
+            "critical": false,
+            "description": "Provides common UI animations and transitions"
+        },
+        "AnimationUtils": {
+            "test_file": "test/suites/autoloads/test_animation_utils.gd",
+            "critical": false,
+            "description": "Reusable tween utility functions for UI animations"
+        },
         "LootManager": {
             "test_file": "test/suites/loot/test_loot_manager.gd",
             "critical": false,
