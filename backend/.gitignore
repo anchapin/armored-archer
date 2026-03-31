@@ -1,5 +1,9 @@
 node_modules/
 build/
+data/modules/*.js
+data/modules/*.d.ts
+data/modules/*.js.map
+data/modules/*.d.ts.map
 *.log
 .env
 .env.local

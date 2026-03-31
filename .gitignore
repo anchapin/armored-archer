@@ -27,4 +27,5 @@ backend/tsconfig.tsbuildinfo
 
 # Node cache
 node-compile-cache/
+v8-compile-cache-*/
 jest_rs/
