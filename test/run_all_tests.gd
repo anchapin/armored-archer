@@ -73,7 +73,26 @@ func _run_tests():
         # Analytics and visual tests
         "res://test/test_analytics_manager.gd",
         "res://test/test_gilded_backgrounds.gd",
-        "res://test/test_gilded_character_sprites.gd"
+        "res://test/test_gilded_character_sprites.gd",
+
+        # Scene scripts (enemies)
+        "res://test/test_base_enemy.gd",
+        "res://test/test_enemy_spawner.gd",
+
+        # Scene scripts (player/gear)
+        "res://test/test_gear_data.gd",
+        "res://test/test_gear_slot.gd",
+        "res://test/test_cosmetic_skin_data.gd",
+        "res://test/test_modular_character_sprite.gd",
+
+        # UI components
+        "res://test/test_ui_components.gd",
+
+        # UI scenes
+        "res://test/test_loadout.gd",
+
+        # Extended coverage
+        "res://test/test_gear_enums_coverage.gd"
     ]
 
     var test_root = Node.new()
