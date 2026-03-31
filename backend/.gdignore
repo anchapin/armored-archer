@@ -1,0 +1,2 @@
+This file tells Godot to ignore this directory when scanning for resources.
+This prevents duplicate UID warnings for files like coverage reports.

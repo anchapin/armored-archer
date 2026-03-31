@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://lightning_effect_particles"]
 
-
+[ext_resource type="Texture2D" path="res://icon.svg" id="1"]
 
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_lightning"]
 emission_shape = 3
@@ -22,7 +22,7 @@ blend_mode = 1
 [node name="LightningEffect" type="GPUParticles2D"]
 amount = 18
 process_material = SubResource("ParticleProcessMaterial_lightning")
-
+texture = ExtResource("1")
 lifetime = 0.4
 one_shot = true
 explosiveness = 0.95

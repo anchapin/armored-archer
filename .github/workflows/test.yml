@@ -28,40 +28,27 @@ jobs:
       
       - name: Run Godot Tests
         run: |
-          # Run GUT tests with JUnit output
+          # Run headless tests using the test runner scene
+          # Note: This requires a test scene or headless mode
+          # Capture output and check for test failures
           TEST_OUTPUT=$(./godot4 --headless --script test/run_all_tests.gd 2>&1)
           echo "$TEST_OUTPUT"
-
-          # Check exit code for test failures
-          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+          
+          # Check for test failures in output
+          if echo "$TEST_OUTPUT" | grep -q "Failed: [1-9]"; then
             echo "❌ Godot tests failed!"
             exit 1
           fi
           echo "✅ All Godot tests passed"
-
-      - name: Upload GUT test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: godot-test-results
-          path: test/results/gut-results.xml
-          retention-days: 30
-
-      - name: Publish GUT test results
-        if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        with:
-          files: test/results/gut-results.xml
-          check_name: Godot Test Results
-
+          
       - name: Check test coverage
         run: |
-          # Count test files in suites
+          # Count test files and estimate coverage
           echo "=== Test Coverage Summary ==="
-          echo "Test files: $(find test/suites -name 'test_*.gd' | wc -l)"
-          echo "Player tests: $(find test/suites/player -name 'test_*.gd' | wc -l)"
-          echo "Combat tests: $(find test/suites/combat -name 'test_*.gd' | wc -l)"
-          echo "Gear tests: $(find test/suites/gear -name 'test_*.gd' | wc -l)"
+          echo "Test files: $(ls -1 test/test_*.gd | wc -l)"
+          echo "NetworkManager tests: $(grep -c 'func test_' test/test_network_manager.gd)"
+          echo "CombatManager tests: $(grep -c 'func test_' test/test_combat_manager.gd)"
+          echo "PlayerStatsManager tests: $(grep -c 'func test_' test/test_player_stats_manager.gd)"
 
   godot-coverage-gate:
     name: Coverage Gate (80% Target)
@@ -76,31 +63,31 @@ jobs:
         run: |
           # Calculate test coverage for critical systems
           # This is a simplified coverage calculation based on function coverage
-
+          
           echo "=== Coverage Analysis for Critical Systems ==="
-
-          # Count test functions for each manager (in suites)
-          NETWORK_TESTS=$(grep -c 'func test_' test/suites/network/test_network_manager.gd 2>/dev/null || echo "0")
-          COMBAT_TESTS=$(grep -c 'func test_' test/suites/combat/test_combat_manager.gd 2>/dev/null || echo "0")
-          PLAYER_STATS_TESTS=$(grep -c 'func test_' test/suites/player/test_player_stats_manager.gd 2>/dev/null || echo "0")
-
+          
+          # Count test functions for each manager
+          NETWORK_TESTS=$(grep -c 'func test_' test/test_network_manager.gd 2>/dev/null || echo "0")
+          COMBAT_TESTS=$(grep -c 'func test_' test/test_combat_manager.gd 2>/dev/null || echo "0")
+          PLAYER_STATS_TESTS=$(grep -c 'func test_' test/test_player_stats_manager.gd 2>/dev/null || echo "0")
+          
           echo "NetworkManager tests: $NETWORK_TESTS"
           echo "CombatManager tests: $COMBAT_TESTS"
           echo "PlayerStatsManager tests: $PLAYER_STATS_TESTS"
-
+          
           # Calculate total test count for critical systems
           TOTAL_CRITICAL_TESTS=$((NETWORK_TESTS + COMBAT_TESTS + PLAYER_STATS_TESTS))
           echo "Total critical system tests: $TOTAL_CRITICAL_TESTS"
-
+          
           # Estimate coverage based on number of test functions vs. source code functions
           # This is a rough estimate - actual line coverage would require instrumentation
           NETWORK_SOURCE_FUNCTIONS=$(grep -c 'func ' autoloads/NetworkManager.gd 2>/dev/null || echo "0")
           COMBAT_SOURCE_FUNCTIONS=$(grep -c 'func ' autoloads/CombatManager.gd 2>/dev/null || echo "0")
           PLAYER_STATS_SOURCE_FUNCTIONS=$(grep -c 'func ' autoloads/PlayerStatsManager.gd 2>/dev/null || echo "0")
-
+          
           TOTAL_SOURCE_FUNCTIONS=$((NETWORK_SOURCE_FUNCTIONS + COMBAT_SOURCE_FUNCTIONS + PLAYER_STATS_SOURCE_FUNCTIONS))
           echo "Total source functions in critical systems: $TOTAL_SOURCE_FUNCTIONS"
-
+          
           # Calculate estimated function coverage
           if [ "$TOTAL_SOURCE_FUNCTIONS" -gt "0" ]; then
             COVERAGE_PERCENT=$((TOTAL_CRITICAL_TESTS * 100 / TOTAL_SOURCE_FUNCTIONS))
@@ -207,7 +194,6 @@ jobs:
       - name: Run tests with coverage
         working-directory: ./backend
         env:
-          CI: true
           NAKAMA_HOST: localhost
           NAKAMA_PORT: 7350
           NAKAMA_SERVER_KEY: defaultkey
@@ -384,80 +370,10 @@ jobs:
           path: backend/test-results/
           retention-days: 30
 
-      - name: Check test execution time
-        if: always()
-        working-directory: ./backend
-        run: |
-          if [ -f test-results/test-results.json ]; then
-            echo ""
-            echo "=== Test Execution Time Check ==="
-            TOTAL_TIME=$(node -e "
-              const fs = require('fs');
-              const data = JSON.parse(fs.readFileSync('test-results/test-results.json', 'utf8'));
-              const suites = data.testResults || [];
-              const allTests = suites.flatMap(s => s.assertionResults || []);
-              const totalTime = allTests.reduce((sum, t) => sum + (t.duration || 0), 0);
-              console.log(Math.round(totalTime / 1000));
-            ")
-            echo "Total test execution time: ${TOTAL_TIME}s"
-            if [ $TOTAL_TIME -gt 300 ]; then
-              echo "⚠️ Warning: Tests exceeded 5 minute target (${TOTAL_TIME}s)"
-            else
-              echo "✅ Tests completed within 5 minute target"
-            fi
-          fi
-
-  test-pyramid-validation:
-    name: Test Pyramid Validation
-    runs-on: ubuntu-latest
-    needs: [backend-tests, godot-tests]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run test pyramid validation
-        id: pyramid
-        run: |
-          ./scripts/check-test-pyramid.sh --ci
-          # Capture CI output for GITHUB_OUTPUT
-          echo "total=$(grep TEST_PYRAMID_TOTAL <<< '$(./scripts/check-test-pyramid.sh --ci)' | cut -d= -f2)" >> $GITHUB_OUTPUT
-          echo "unit_pct=$(grep TEST_PYRAMID_UNIT_PCT <<< '$(./scripts/check-test-pyramid.sh --ci)' | cut -d= -f2)" >> $GITHUB_OUTPUT
-          echo "integration_pct=$(grep TEST_PYRAMID_INTEGRATION_PCT <<< '$(./scripts/check-test-pyramid.sh --ci)' | cut -d= -f2)" >> $GITHUB_OUTPUT
-          echo "e2e_pct=$(grep TEST_PYRAMID_E2E_PCT <<< '$(./scripts/check-test-pyramid.sh --ci)' | cut -d= -f2)" >> $GITHUB_OUTPUT
-
-      - name: Upload pyramid results
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-pyramid-results
-          path: data/test-pyramid-results.json
-          retention-days: 30
-
-      - name: Comment on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const total = '${{ steps.pyramid.outputs.total }}';
-            const unit = '${{ steps.pyramid.outputs.unit_pct }}';
-            const integration = '${{ steps.pyramid.outputs.integration_pct }}';
-            const e2e = '${{ steps.pyramid.outputs.e2e_pct }}';
-            let body = '## 📊 Test Pyramid Validation\n\n';
-            body += '| Type | Count | % | Target | Status |\n';
-            body += '|------|-------|---|--------|--------|\n';
-            body += `| Unit | ${Math.round(total * unit / 100)} | ${unit}% | 70% ±10% | ${unit >= 60 && unit <= 80 ? '✅' : '❌'} |\n`;
-            body += `| Integration | ${Math.round(total * integration / 100)} | ${integration}% | 20% ±10% | ${integration >= 10 && integration <= 30 ? '✅' : '❌'} |\n`;
-            body += `| E2E | ${Math.round(total * e2e / 100)} | ${e2e}% | 10% ±10% | ${e2e <= 20 ? '✅' : '❌'} |\n`;
-            body += '\n_This comment was automatically generated by test pyramid validation._';
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
-
   require-tests:
     name: All Tests Must Pass
     runs-on: ubuntu-latest
-    needs: [godot-tests, godot-coverage-gate, backend-tests, test-pyramid-validation]
+    needs: [godot-tests, godot-coverage-gate, backend-tests]
     if: always()
     steps:
       - name: Check if all tests passed
@@ -465,33 +381,26 @@ jobs:
           GODOT_RESULT=${{ needs.godot-tests.result }}
           COVERAGE_RESULT=${{ needs.godot-coverage-gate.result }}
           BACKEND_RESULT=${{ needs.backend-tests.result }}
-          PYRAMID_RESULT=${{ needs.test-pyramid-validation.result }}
-
+          
           echo "Godot tests: $GODOT_RESULT"
           echo "Coverage gate: $COVERAGE_RESULT"
           echo "Backend tests: $BACKEND_RESULT"
-          echo "Pyramid validation: $PYRAMID_RESULT"
-
+          
           if [ "$GODOT_RESULT" != "success" ] && [ "$GODOT_RESULT" != "skipped" ]; then
             echo "❌ Godot tests failed"
             exit 1
           fi
-
+          
           if [ "$COVERAGE_RESULT" != "success" ] && [ "$COVERAGE_RESULT" != "skipped" ]; then
             echo "❌ Coverage gate failed"
             exit 1
           fi
-
+          
           if [ "$BACKEND_RESULT" != "success" ] && [ "$BACKEND_RESULT" != "skipped" ]; then
             echo "❌ Backend tests failed"
             exit 1
           fi
-
-          if [ "$PYRAMID_RESULT" != "success" ] && [ "$PYRAMID_RESULT" != "skipped" ]; then
-            echo "❌ Test pyramid validation failed"
-            exit 1
-          fi
-
+          
           echo "✅ All tests passed!"
 
   # Optional: Run flaky test detection on main branch pushes

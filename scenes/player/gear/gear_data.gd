@@ -3,7 +3,7 @@ class_name GearData
 
 @export var gear_id: String
 @export var gear_name: String
-@export var slot_type: int # GearEnums.SlotType
+@export var slot_type: GearSlot.SlotType
 @export var base_texture: Texture2D
 @export var stats: Dictionary = {
 	"attack": 0,

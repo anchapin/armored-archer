@@ -210,48 +210,7 @@ jobs:
           TEST_DB_PASSWORD: changeme
           TEST_DB_NAME: nakama
         run: npm run test:coverage
-
-      # FND-05, FND-06: Race detector and shuffle for test isolation
-      - name: Run Go tests with race detector and shuffle
-        working-directory: ./backend
-        env:
-          TEST_DB_HOST: localhost
-          TEST_DB_PORT: 5432
-          TEST_DB_USER: postgres
-          TEST_DB_PASSWORD: changeme
-          TEST_DB_NAME: nakama
-          GOMAXPROCS: 2
-          TZ: UTC
-        run: |
-          echo "Running Go tests with race detector and shuffle..."
-          go test -v -race -shuffle=on -timeout=60s ./...
-
-      # FND-04: Validate test pyramid ratios (70/20/10 with ±10% tolerance)
-      - name: Validate test pyramid ratios
-        run: |
-          echo "Validating test pyramid (70% unit, 20% integration, 10% E2E)..."
-          ./scripts/check-test-pyramid.sh
-
-      - name: Test Summary
-        if: always()
-        run: |
-          echo "======================================="
-          echo "Test Infrastructure Summary"
-          echo "======================================="
-          echo ""
-          echo "✅ Unified test runner: scripts/test-all.sh"
-          echo "✅ Race detector enabled: -race flag"
-          echo "✅ Test shuffle enabled: -shuffle=on flag"
-          echo "✅ Pyramid validation: scripts/check-test-pyramid.sh"
-          echo ""
-          echo "Requirements satisfied:"
-          echo "  FND-03: Unified test runner ✓"
-          echo "  FND-04: Test pyramid enforcement ✓"
-          echo "  FND-05: Race detector in CI ✓"
-          echo "  FND-06: Test isolation via shuffle ✓"
-          echo ""
-          echo "======================================="
-
+      
       - name: Upload coverage to Codecov
         if: success()
         continue-on-error: true

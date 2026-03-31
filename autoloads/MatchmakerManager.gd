@@ -9,8 +9,6 @@
 ##
 extends Node
 
-const CoverageTracker = preload("res://addons/gut/coverage/coverage_tracker.gd")
-
 # --- RPC IDs ---
 const RPC_LIST_MATCHES = "armored_archer/list_matches"
 const RPC_CREATE_MATCH = "armored_archer/create_match"
@@ -51,7 +49,7 @@ func list_matches(match_type: String = "", min_rank: int = 0, max_rank: int = 0,
 		max_rank: Maximum player rank to include (0 for no maximum)
 		limit: Maximum number of matches to return
 	"""
-	if not network_manager or not network_manager.is_server_connected:
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
 
@@ -65,14 +63,14 @@ func list_matches(match_type: String = "", min_rank: int = 0, max_rank: int = 0,
 	if limit > 0:
 		payload["limit"] = limit
 
-	var response: Dictionary = await network_manager.send_rpc(RPC_LIST_MATCHES, JSON.stringify(payload))
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_LIST_MATCHES, json.stringify(payload))
 
 	if response.has("error"):
 		push_error("Failed to list matches: %s" % response.error)
 		return
 
 	if response.get("success", false):
-		CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 70)
 		available_matches = response.get("matches", [])
 		player_rank = response.get("player_rank", 0)
 		matches_loaded.emit(available_matches, player_rank)
@@ -86,7 +84,7 @@ func create_match(match_type: String, is_punch_up: bool = false, target_opponent
 		is_punch_up: True if this is a punch-up match (fighting higher rank)
 		target_opponent_id: Optional specific opponent user ID
 	"""
-	if not network_manager or not network_manager.is_server_connected:
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
 
@@ -102,14 +100,14 @@ func create_match(match_type: String, is_punch_up: bool = false, target_opponent
 	if not target_opponent_id.is_empty():
 		payload["target_opponent_id"] = target_opponent_id
 
-	var response: Dictionary = await network_manager.send_rpc(RPC_CREATE_MATCH, JSON.stringify(payload))
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_CREATE_MATCH, json.stringify(payload))
 
 	if response.has("error"):
 		push_error("Failed to create match: %s" % response.error)
 		return
 
 	if response.get("success", false):
-		CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 100)
 		current_match = response.get("match", {})
 		match_created.emit(current_match)
 
@@ -130,7 +128,7 @@ func accept_match(match_id: String) -> void:
 	Parameters:
 		match_id: ID of the match to join
 	"""
-	if not network_manager or not network_manager.is_server_connected:
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
 
@@ -142,32 +140,32 @@ func accept_match(match_id: String) -> void:
 		"match_id": match_id
 	}
 
-	var response: Dictionary = await network_manager.send_rpc(RPC_ACCEPT_MATCH, JSON.stringify(payload))
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_ACCEPT_MATCH, json.stringify(payload))
 
 	if response.has("error"):
 		push_error("Failed to accept match: %s" % response.error)
 		return
 
 	if response.get("success", false):
-		CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 150)
 		current_match = response.get("match", {})
 		match_accepted.emit(current_match)
 
 # --- Rank Management ---
 func get_player_rank() -> void:
 	"""Retrieves the player's current PvP rank."""
-	if not network_manager or not network_manager.is_server_connected:
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
 
-	var response: Dictionary = await network_manager.send_rpc(RPC_GET_PLAYER_RANK, JSON.stringify({}))
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_PLAYER_RANK, json.stringify({}))
 
 	if response.has("error"):
 		push_error("Failed to get player rank: %s" % response.error)
 		return
 
 	if response.get("success", false):
-		CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 170)
 		player_rank = response.get("rank", 0)
 		rank_retrieved.emit(player_rank)
 
@@ -180,7 +178,7 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 		loser_id: User ID of the match loser
 		is_punch_up: True if winner fought a higher-ranked opponent
 	"""
-	if not network_manager or not network_manager.is_server_connected:
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
 
@@ -203,14 +201,14 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 		"is_punch_up": is_punch_up
 	}
 
-	var response: Dictionary = await network_manager.send_rpc(RPC_COMPLETE_MATCH, JSON.stringify(payload))
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_COMPLETE_MATCH, json.stringify(payload))
 
 	if response.has("error"):
 		push_error("Failed to complete match: %s" % response.error)
 		return
 
 	if response.get("success", false):
-		CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 215)
 		var match_result: Dictionary = {
 			"match": response.get("match", {}),
 			"winner": response.get("winner", {}),
@@ -219,7 +217,7 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 		}
 
 		# Update cached player rank
-		var my_user_id: String = network_manager.user_id
+		var my_user_id: String = NetworkManager.user_id
 		if my_user_id == winner_id:
 			player_rank = response.get("winner", {}).get("new_rank", player_rank)
 		elif my_user_id == loser_id:
@@ -227,7 +225,6 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 
 		# Update Punch Up statistics
 		if is_punch_up:
-			CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 233)
 			if my_user_id == winner_id:
 				punch_up_wins += 1
 			elif my_user_id == loser_id:
@@ -316,7 +313,6 @@ func is_in_match() -> bool:
 # --- Punch Up Statistics ---
 func _emit_punch_up_stats_updated() -> void:
 	"""Emits punch_up_stats_updated signal with current statistics."""
-	CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 295)
 	var win_rate: float = 0.0
 	var total: int = punch_up_wins + punch_up_losses
 	if total > 0:

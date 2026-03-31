@@ -1,4 +1,4 @@
-class_name ArcherThemeManager
+class_name ThemeManager
 extends Node
 
 # =============================================================================
@@ -9,26 +9,14 @@ extends Node
 # =============================================================================
 
 signal theme_changed(is_dark: bool)
-signal font_changed(font: Font)
-
-# --- Dependency Injection ---
-var _config_file: ConfigFile = null
 
 # --- Theme State ---
-var _current_theme: StringName = &"gilded_dark"
-var _is_dark: bool = false
-var _default_font_path: String = "res://fonts/Plus_Jakarta_Sans.ttf"
-var _current_font_path: String = "res://fonts/Plus_Jakarta_Sans.ttf"
-var _cached_font: Font = null
+var _current_theme: StringName = &"dark"
+var _is_dark: bool = true
 
 # --- Persistence ---
 const THEME_CONFIG_PATH := "user://theme.cfg"
 const THEME_KEY := "theme"
-const FONT_KEY := "font"
-
-# --- Constructor with Dependency Injection ---
-func _init(config_file: ConfigFile = null):
-	_config_file = config_file
 
 # --- Theme Data ---
 var _themes: Dictionary = {
@@ -41,34 +29,6 @@ var _themes: Dictionary = {
 		"text_primary": Color("#F8FAFC"),
 		"text_secondary": Color("#94A3B8"),
 		"text_disabled": Color("#64748B"),
-	},
-	"gilded": {
-		"name": "Gilded Quest",
-		"background": Color("#0e0e0e"),
-		"surface": Color("#0e0e0e"),
-		"surface_variant": Color("#262626"),
-		"surface_container": Color("#191a1a"),
-		"surface_container_low": Color("#131313"),
-		"surface_container_lowest": Color("#000000"),
-		"surface_container_high": Color("#1f2020"),
-		"surface_bright": Color("#2c2c2c"),
-		"surface_dim": Color("#0e0e0e"),
-		"surface_tint": Color("#ffac54"),
-		"border": Color("#484848"),
-		"outline_variant": Color("#484848"),
-		"text_primary": Color("#ffffff"),
-		"text_secondary": Color("#adaaaa"),
-		"text_disabled": Color("#767575"),
-		"on_surface": Color("#ffffff"),
-		"primary": Color("#ffac54"),
-		"primary_container": Color("#ff9800"),
-		"primary_dim": Color("#ec8c00"),
-		"primary_fixed": Color("#ff9800"),
-		"primary_tint": Color("#ffac54"),
-		"secondary": Color("#efe0d1"),
-		"tertiary": Color("#7ef839"),
-		"gradient_primary_start": Color("#ffac54"),
-		"gradient_primary_end": Color("#ec8c00"),
 	},
 	"light": {
 		"name": "Light",
@@ -84,20 +44,7 @@ var _themes: Dictionary = {
 
 # --- Lifecycle ---
 func _ready() -> void:
-	# Initialize ConfigFile if not injected (for production autoload usage)
-	if _config_file == null:
-		_config_file = ConfigFile.new()
 	_load_theme()
-	_load_font()
-
-# --- Private Methods ---
-func _load_font() -> void:
-	if _current_font_path.is_empty():
-		return
-	var font_res = load(_current_font_path)
-	if font_res != null and font_res is Font:
-		_cached_font = font_res
-		font_changed.emit(_cached_font)
 
 # =============================================================================
 # PUBLIC API
@@ -121,9 +68,9 @@ func toggle_theme() -> void:
 
 ## Set theme by name
 func set_theme(theme_name: String) -> void:
-	if not _themes.has(theme_name):
-		push_warning("ThemeManager: Unknown theme '%s', defaulting to gilded quest" % theme_name)
-		theme_name = "gilded"
+	if theme_name != "dark" and theme_name != "light":
+		push_warning("ThemeManager: Unknown theme '%s', defaulting to dark" % theme_name)
+		theme_name = "dark"
 	
 	_current_theme = StringName(theme_name)
 	_is_dark = (theme_name == "dark")
@@ -175,19 +122,21 @@ func get_text_disabled_color() -> Color:
 # =============================================================================
 
 func _load_theme() -> void:
-	var err = _config_file.load(THEME_CONFIG_PATH)
-
+	var config = ConfigFile.new()
+	var err = config.load(THEME_CONFIG_PATH)
+	
 	if err == OK:
-		var saved_theme = _config_file.get_value("settings", THEME_KEY, "gilded")
+		var saved_theme = config.get_value("settings", THEME_KEY, "dark")
 		set_theme(saved_theme)
 	else:
-		# Default to gilded quest palette
-		set_theme("gilded")
+		# Default to dark theme
+		set_theme("dark")
 
 func _save_theme() -> void:
-	_config_file.set_value("settings", THEME_KEY, _current_theme)
-
-	var err = _config_file.save(THEME_CONFIG_PATH)
+	var config = ConfigFile.new()
+	config.set_value("settings", THEME_KEY, _current_theme)
+	
+	var err = config.save(THEME_CONFIG_PATH)
 	if err != OK:
 		push_warning("ThemeManager: Failed to save theme preference")
 

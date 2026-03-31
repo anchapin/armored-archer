@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://crit_effect_particles"]
 
-
+[ext_resource type="Texture2D" path="res://icon.svg" id="1"]
 
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_crit"]
 emission_shape = 3
@@ -22,7 +22,7 @@ blend_mode = 1
 [node name="CritEffect" type="GPUParticles2D"]
 amount = 30
 process_material = SubResource("ParticleProcessMaterial_crit")
-
+texture = ExtResource("1")
 lifetime = 0.8
 one_shot = true
 explosiveness = 0.9

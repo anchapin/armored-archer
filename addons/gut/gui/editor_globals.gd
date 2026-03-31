@@ -1,7 +1,7 @@
 @tool
 
 static var GutUserPreferences = load("res://addons/gut/gui/gut_user_preferences.gd")
-static var temp_directory = 'user://gut_temp_directory'
+static var temp_directory = 'user://gut_temp_directory/'
 
 static var editor_run_gut_config_path = 'gut_editor_config.json':
 	# This avoids having to use path_join wherever we want to reference this
@@ -44,8 +44,7 @@ static var user_prefs = _user_prefs :
 		if(_user_prefs == null and Engine.is_editor_hint()):
 			# This is sometimes used when not in the editor.  Avoid parser error
 			# for EditorInterface.
-			var ei_loader = load("res://addons/gut/get_editor_interface.gd").new()
-			_user_prefs = GutUserPreferences.new(ei_loader.get_it().get_editor_settings())
+			_user_prefs = GutUserPreferences.new(GutUtils.get_editor_interface().get_editor_settings())
 		return _user_prefs
 static var gut_plugin = null
 

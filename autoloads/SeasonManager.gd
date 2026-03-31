@@ -9,11 +9,6 @@
 ## - rewards_claimed(rewards: Dictionary): Emitted when rewards are claimed
 ##
 extends Node
-# --- Coverage Helper ---
-func _track_coverage(_script_path: String, _line: int) -> void:
-	"""Helper to track coverage."""
-	# Coverage tracking disabled for now to resolve build errors
-	pass
 
 # --- RPC IDs ---
 const RPC_GET_SEASON_INFO = "armored_archer/get_season_info"
@@ -48,31 +43,23 @@ signal rewards_claimed_signal(rewards: Dictionary)
 # --- Get Season Info ---
 func get_season_info() -> void:
 	"""Retrieves current season information and player ranking."""
-	# Track function entry
-	_track_coverage("res://autoloads/SeasonManager.gd", 44)
-
-	if not network_manager or not network_manager.is_server_connected:
-		# Track network check branch
-		_track_coverage("res://autoloads/SeasonManager.gd", 46)
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
 
-	var response: Dictionary = await network_manager.send_rpc(RPC_GET_SEASON_INFO, JSON.stringify({}))
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_SEASON_INFO, json.stringify({}))
 
 	if response.has("error"):
 		push_error("Failed to get season info: %s" % response.error)
 		return
 
 	if response.get("success", false):
-		# Track season info data assignment
-		_track_coverage("res://autoloads/SeasonManager.gd", 58)
 		current_season = response.get("season", {})
 		player_rank = response.get("player_rank", 0)
 		player_score = response.get("player_score", 0)
 		time_remaining = response.get("time_remaining", 0)
 
-		# Track season_info_loaded signal emit
-		_track_coverage("res://autoloads/SeasonManager.gd", 63)
 		season_info_loaded.emit({
 			"season": current_season,
 			"player_rank": player_rank,
@@ -82,8 +69,6 @@ func get_season_info() -> void:
 
 		# Track season start in analytics
 		if analytics and analytics.has_method("log_season_start") and current_season.has("id"):
-			# Track analytics call
-			_track_coverage("res://autoloads/SeasonManager.gd", 71)
 			analytics.log_season_start(
 				current_season.get("id", 0),
 				current_season.get("name", "Season")
@@ -96,10 +81,7 @@ func get_leaderboard(limit: int = 50) -> void:
 	Parameters:
 		limit: Maximum number of entries to retrieve (default 50)
 	"""
-	# Track function entry
-	_track_coverage("res://autoloads/SeasonManager.gd", 78)
-
-	if not network_manager or not network_manager.is_server_connected:
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
 
@@ -107,18 +89,15 @@ func get_leaderboard(limit: int = 50) -> void:
 		"limit": limit
 	}
 
-	var response: Dictionary = await network_manager.send_rpc(RPC_GET_LEADERBOARD, JSON.stringify(payload))
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_LEADERBOARD, json.stringify(payload))
 
 	if response.has("error"):
 		push_error("Failed to get leaderboard: %s" % response.error)
 		return
 
 	if response.get("success", false):
-		# Track leaderboard data assignment
-		_track_coverage("res://autoloads/SeasonManager.gd", 100)
 		leaderboard = response.get("leaderboard", [])
-		# Track leaderboard_loaded signal emit
-		_track_coverage("res://autoloads/SeasonManager.gd", 102)
 		leaderboard_loaded.emit(leaderboard)
 
 # --- Update Rank ---
@@ -130,10 +109,7 @@ func update_rank(winner_id: String, loser_id: String, is_punch_up: bool = false)
 		loser_id: User ID of the match loser
 		is_punch_up: True if winner fought a higher-ranked opponent
 	"""
-	# Track function entry
-	_track_coverage("res://autoloads/SeasonManager.gd", 104)
-
-	if not network_manager or not network_manager.is_server_connected:
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
 
@@ -147,15 +123,14 @@ func update_rank(winner_id: String, loser_id: String, is_punch_up: bool = false)
 		"is_punch_up": is_punch_up
 	}
 
-	var response: Dictionary = await network_manager.send_rpc(RPC_UPDATE_RANK, JSON.stringify(payload))
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_UPDATE_RANK, json.stringify(payload))
 
 	if response.has("error"):
 		push_error("Failed to update rank: %s" % response.error)
 		return
 
 	if response.get("success", false):
-		# Track rank_updated signal emit
-		_track_coverage("res://autoloads/SeasonManager.gd", 145)
 		var rank_change: Dictionary = {
 			"winner": response.get("winner", {}),
 			"loser": response.get("loser", {}),
@@ -172,14 +147,12 @@ func update_rank(winner_id: String, loser_id: String, is_punch_up: bool = false)
 # --- Get Season Rewards ---
 func get_season_rewards() -> void:
 	"""Retrieves available season rewards based on player rank."""
-	# Track function entry
-	_track_coverage("res://autoloads/SeasonManager.gd", 148)
-
-	if not network_manager or not network_manager.is_server_connected:
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
 
-	var response: Dictionary = await network_manager.send_rpc(RPC_GET_SEASON_REWARDS, JSON.stringify({}))
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_SEASON_REWARDS, json.stringify({}))
 
 	if response.has("error"):
 		push_error("Failed to get season rewards: %s" % response.error)
@@ -187,21 +160,17 @@ func get_season_rewards() -> void:
 
 	if response.get("success", false):
 		season_rewards = response.get("rewards", {})
-		# Track rewards_loaded signal emit
-		_track_coverage("res://autoloads/SeasonManager.gd", 163)
 		rewards_loaded.emit(season_rewards)
 
 # --- Claim Season Rewards ---
 func claim_season_rewards() -> void:
 	"""Claims the current season's rewards."""
-	# Track function entry
-	_track_coverage("res://autoloads/SeasonManager.gd", 166)
-
-	if not network_manager or not network_manager.is_server_connected:
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
 
-	var response: Dictionary = await network_manager.send_rpc(RPC_CLAIM_SEASON_REWARDS, JSON.stringify({}))
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_CLAIM_SEASON_REWARDS, json.stringify({}))
 
 	if response.has("error"):
 		push_error("Failed to claim rewards: %s" % response.error)
@@ -210,14 +179,10 @@ func claim_season_rewards() -> void:
 	if response.get("success", false):
 		season_rewards = response.get("rewards", {})
 		rewards_claimed = response.get("claimed", false)
-		# Track rewards_claimed_signal emit
-		_track_coverage("res://autoloads/SeasonManager.gd", 182)
 		rewards_claimed_signal.emit(season_rewards)
 
 		# Track season end/rewards claimed in analytics
 		if analytics and analytics.has_method("log_season_end"):
-			# Track analytics call
-			_track_coverage("res://autoloads/SeasonManager.gd", 185)
 			analytics.log_season_end(
 				current_season.get("id", 0),
 				current_season.get("name", "Season"),
@@ -287,10 +252,10 @@ func format_time_remaining() -> String:
 	Returns:
 		String: Formatted time like "2d 5h" or "3h 30m" or "45m"
 	"""
-	var seconds: int = int(float(time_remaining) / 1000.0)
-	var days: int = int(float(seconds) / 86400.0)
-	var hours: int = int(float(seconds % 86400) / 3600.0)
-	var minutes: int = int(float(seconds % 3600) / 60.0)
+	var seconds: int = time_remaining / 1000
+	var days: int = seconds / 86400
+	var hours: int = (seconds % 86400) / 3600
+	var minutes: int = (seconds % 3600) / 60
 
 	if days > 0:
 		return "%dd %dh" % [days, hours]

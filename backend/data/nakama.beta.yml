@@ -1,0 +1,82 @@
+# ============================================
+# Nakama Configuration - Beta Environment
+# Armored Archer - Go Module Deployment
+# ============================================
+
+# Server
+server:
+  bind_host: "0.0.0.0"
+  port: 7350
+  grpc_port: 7351
+  max_message_size_bytes: 65536
+
+# Console
+console:
+  enabled: true
+  port: 7351
+  username: "admin"
+  password: "beta_admin_password_change_me"
+
+# Database
+database:
+  address: "postgres:5432"
+  max_open_conns: 100
+  max_idle_conns: 10
+  conn_max_lifetime_ms: 30000
+
+# Cache
+cache:
+  enabled: true
+  max_size_bytes: 52428800
+
+# Session
+session:
+  encryption_key: "beta_session_key_change_me"
+  refresh_encryption_key: "beta_refresh_key_change_me"
+  token_expiry_sec: 7200
+  refresh_token_expiry_sec: 2592000
+
+# Logging
+logging:
+  level: "info"
+  format: "json"
+  stdout: true
+
+# Runtime
+runtime:
+  path: "/nakama/data/modules"
+  env_key: "nakama"
+
+# Metrics
+metrics:
+  enabled: true
+  namespace: "nakama"
+  subsystem: "beta"
+  port: 9100
+
+# Matchmaker
+matchmaker:
+  max_ticket_size: 100
+  max_nodes: 1000
+  max_match_size: 8
+
+# Social
+social:
+  auto_join_chat_channels: false
+
+# Leaderboard
+leaderboard:
+  max_size: 10000
+  max_fetch: 100
+
+# Party
+party:
+  max_party_size: 8
+
+# Notifications
+notifications:
+  max_queue_size: 100
+
+# CockroachDB (disabled - using PostgreSQL)
+cockroachdb:
+  enabled: false

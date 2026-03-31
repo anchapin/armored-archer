@@ -1,24 +1,260 @@
-
 # Prometheus Alerting Rules for Armored Archer
+# Critical alerts for game server monitoring
 
 groups:
   - name: armoured_archer_critical
     interval: 30s
     rules:
+      # ============================================
+      # CRITICAL - Immediate Action Required
+      # ============================================
+
+      # Game Server Down
       - alert: GameServerDown
         expr: up{job="nakama"} == 0
         for: 1m
         labels:
           severity: critical
+          team: backend
+          component: game-server
         annotations:
           summary: "Game server (Nakama) is down"
-          description: "Nakama server has been unavailable for more than 1 minute."
+          description: "Nakama server has been unavailable for more than 1 minute. Players cannot connect or play."
+          runbook_url: "https://github.com/heroiclabs/nakama#troubleshooting"
 
+      # Database Down
       - alert: DatabaseDown
         expr: up{job="postgres"} == 0
         for: 1m
         labels:
           severity: critical
+          team: backend
+          component: database
         annotations:
-          summary: "Database is down"
-          description: "PostgreSQL database is not responding."
+          summary: "PostgreSQL database is down"
+          description: "Database has been unavailable for more than 1 minute. All game operations are affected."
+          runbook_url: "https://www.postgresql.org/docs/current/static/app-pg-isready.html"
+
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: rate(armored_archer_rpc_errors_total[5m]) / rate(armored_archer_rpc_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+          component: api
+        annotations:
+          summary: "High error rate on game API"
+          description: "Error rate is above 5% for the past 5 minutes. Current: {{ $value | printf \"%.2f\" }}%"
+
+      # Database Connection Pool Exhausted
+      - alert: DatabaseConnectionPoolExhausted
+        expr: nakama_database_connections_active / nakama_database_connections_max > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+          component: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Database connection usage is above 90%. Current: {{ $value | printf \"%.1f\" }}%"
+
+      # Payment Processing Failure
+      - alert: PaymentProcessingFailures
+        expr: rate(armored_archer_payment_failures_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+          component: payments
+        annotations:
+          summary: "Payment processing failures detected"
+          description: "Payment failures occurring. This directly impacts revenue. Check payment gateway status."
+
+  - name: armored_archer_warning
+    interval: 30s
+    rules:
+      # ============================================
+      # WARNING - Attention Required
+      # ============================================
+
+      # High Latency
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(armored_archer_rpc_request_duration_seconds_bucket[5m])) > 2
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+          component: api
+        annotations:
+          summary: "High API latency detected"
+          description: "95th percentile latency is above 2 seconds. Current: {{ $value | printf \"%.2f\" }}s"
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          component: infrastructure
+        annotations:
+          summary: "High memory usage on game server"
+          description: "Memory usage is above 85%. Current: {{ $value | printf \"%.1f\" }}%"
+
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          component: infrastructure
+        annotations:
+          summary: "High CPU usage on game server"
+          description: "CPU usage is above 80%. Current: {{ $value | printf \"%.1f\" }}%"
+
+      # Disk Space Low
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.15
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          component: infrastructure
+        annotations:
+          summary: "Low disk space on game server"
+          description: "Available disk space is below 15%. Current: {{ $value | printf \"%.1f\" }}%"
+
+      # Active Users Spike/Drop
+      - alert: ActiveUsersAnomaly
+        expr: abs(armored_archer_active_users - armored_archer_active_users_offset_1h) / armored_archer_active_users_offset_1h > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+          component: analytics
+        annotations:
+          summary: "Unusual active users pattern"
+          description: "Active users deviation is above 50% from 1 hour ago. Possible login issues or bot attack."
+
+      # Matchmaking Queue Building
+      - alert: MatchmakingQueueBuilding
+        expr: armored_archer_matchmaking_queue_size > 100
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          component: matchmaking
+        annotations:
+          summary: "Matchmaking queue is building up"
+          description: "There are {{ $value }} players waiting in matchmaking queue for more than 5 minutes."
+
+      # Session Duration Anomaly
+      - alert: SessionDurationAnomaly
+        expr: abs(armored_archer_avg_session_duration - armored_archer_avg_session_duration_offset_24h) / armored_archer_avg_session_duration_offset_24h > 0.3
+        for: 30m
+        labels:
+          severity: warning
+          team: backend
+          component: analytics
+        annotations:
+          summary: "Unusual session duration pattern"
+          description: "Average session duration deviation is above 30% from 24 hours ago. Possible game issues."
+
+  - name: armored_archer_info
+    interval: 60s
+    rules:
+      # ============================================
+      # INFO - For Awareness
+      # ============================================
+
+      # Low Revenue
+      - alert: LowRevenue
+        expr: rate(armored_archer_revenue_cents_total[24h]) < 100
+        for: 1h
+        labels:
+          severity: info
+          team: product
+          component: analytics
+        annotations:
+          summary: "Revenue below expected threshold"
+          description: "24-hour revenue rate is below $1/hour. Check for payment issues or player engagement."
+
+      # Version Mismatch Warning
+      - alert: ClientVersionMismatch
+        expr: count by (client_version) (armored_archer_active_users) > 10
+        for: 10m
+        labels:
+          severity: info
+          team: frontend
+          component: client
+        annotations:
+          summary: "Multiple client versions in use"
+          description: "Version {{ $labels.client_version }} has {{ $value }} active users. Consider forcing updates."
+
+  - name: armored_archer_security
+    interval: 30s
+    rules:
+      # ============================================
+      # SECURITY - Critical Security Alerts
+      # ============================================
+
+      # Suspicious Login Activity
+      - alert: SuspiciousLoginActivity
+        expr: rate(armored_archer_failed_logins_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: critical
+          team: security
+          component: authentication
+        annotations:
+          summary: "Suspicious login activity detected"
+          description: "More than 10 failed login attempts per minute. Possible brute force attack."
+
+      # Unusual API Call Pattern
+      - alert: UnusualAPICallPattern
+        expr: rate(armored_archer_rpc_requests_total[1m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+          component: api
+        annotations:
+          summary: "Unusually high API call rate"
+          description: "API request rate is very high ({{ $value }} req/min). Possible bot activity or DDoS."
+
+      # Anti-Cheat Violation Spike
+      - alert: AntiCheatViolationSpike
+        expr: rate(armored_archer_anticheat_violations_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+          component: anti-cheat
+        annotations:
+          summary: "Unusual anti-cheat violation spike"
+          description: "High rate of anti-cheat violations detected ({{ $value }}/min). Review for new exploit."
+
+# Recording Rules - Pre-computed metrics for faster queries
+  - name: armored_archer_recording
+    interval: 60s
+    rules:
+      # Active users offset for anomaly detection
+      - record: armored_archer_active_users_offset_1h
+        expr: armored_archer_active_users offset 1h
+
+      # Session duration offset for anomaly detection
+      - record: armored_archer_avg_session_duration
+        expr: avg(armored_archer_session_duration_seconds)
+
+      - record: armored_archer_avg_session_duration_offset_24h
+        expr: avg(armored_archer_session_duration_seconds offset 24h)
+
+      # Error rate (5m rate)
+      - record: armored_archer_error_rate_5m
+        expr: rate(armored_archer_rpc_errors_total[5m]) / rate(armored_archer_rpc_requests_total[5m])
+
+      # Request rate per second
+      - record: armored_archer_request_rate
+        expr: rate(armored_archer_rpc_requests_total[1m])

@@ -1,0 +1,70 @@
+{
+  "timestamp": "2026-03-15T15:35:12.628Z",
+  "summary": {
+    "total": 6,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 6,
+    "byCategory": {
+      "type-safety": 2,
+      "logging": 4
+    }
+  },
+  "issues": [
+    {
+      "file": "src/modules/notifications.ts",
+      "line": 65,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "let firebaseMessaging: any = null;",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/notifications.ts",
+      "line": 223,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "response.responses.forEach((resp: any, idx: number) => {",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/utils/dead-flag-detector.ts",
+      "line": 14,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "*     console.warn('Unused feature flags:', unused);",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/utils/n1-query-detector.ts",
+      "line": 21,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "*     console.warn('N+1 queries detected:', result.n1Queries);",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/utils/redis.ts",
+      "line": 45,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error(msg, ...args);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/utils/redis.ts",
+      "line": 49,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.warn(msg, ...args);",
+      "details": "console.warn used"
+    }
+  ]
+}

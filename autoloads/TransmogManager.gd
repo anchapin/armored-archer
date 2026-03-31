@@ -27,7 +27,7 @@ var current_loadout: Dictionary = {
 }
 
 var gear_registry_instance: Node
-var character_sprite: Node
+var character_sprite: ModularCharacterSprite
 
 # --- Analytics Reference ---
 @onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
@@ -38,7 +38,7 @@ func _ready() -> void:
 	# Get reference to the singleton via get_node
 	gear_registry_instance = get_node("/root/GearRegistry")
 
-func set_character_sprite(sprite: Node) -> void:
+func set_character_sprite(sprite: ModularCharacterSprite) -> void:
 	"""Sets the character sprite to apply transmog visuals to.
 
 	Parameters:

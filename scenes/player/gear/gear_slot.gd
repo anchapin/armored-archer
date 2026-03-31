@@ -16,8 +16,8 @@ enum SlotType {
 @onready var base_sprite: Sprite2D = $BaseSprite
 @onready var skin_sprite: Sprite2D = $SkinSprite
 
-var gear_manager: Node
-var gear_registry: Node
+var gear_manager: GearManager
+var gear_registry: GearRegistry
 
 var base_gear_id: String = ""
 var skin_id: String = ""

@@ -8,11 +8,9 @@
 ## - stat_allocated(stat_name: String, amount: int): Emitted when stats are allocated
 ##
 extends Node
-const CoverageTracker = preload("res://addons/gut/coverage/coverage_tracker.gd")
 
 # --- References ---
 @onready var analytics: Node = $"/root/AnalyticsManager" if has_node("/root/AnalyticsManager") else null
-# Use the global CoverageTracker Autoload
 
 # --- RPC IDs ---
 const RPC_GAIN_XP = "armored_archer/gain_xp"
@@ -20,10 +18,7 @@ const RPC_ALLOCATE_STATS = "armored_archer/allocate_stats"
 const RPC_GET_PLAYER_STATS = "armored_archer/get_player_stats"
 
 # --- Player Stats ---
-var player_stats: Dictionary = {}:
-	set(value):
-		player_stats = value
-		stats_updated.emit(player_stats)
+var player_stats: Dictionary = {}
 var is_initialized: bool = false
 
 # --- Signals ---
@@ -55,8 +50,7 @@ func get_player_stats() -> Dictionary:
 	Returns:
 		Dictionary: Player stats data or empty dict on failure
 	"""
-	CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 47)
-	if not network_manager or not network_manager.is_server_connected:
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return {}
 
@@ -73,7 +67,7 @@ func get_player_stats() -> Dictionary:
 	player_stats = response  # Response is already a Dictionary from send_rpc
 	is_initialized = true
 
-	CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 70)
+	stats_updated.emit(player_stats)
 
 	return player_stats
 
@@ -84,14 +78,11 @@ func gain_xp(amount: int, source: String) -> void:
 		amount: Amount of XP to gain (must be positive)
 		source: Source of XP gain ("pve" or "pvp")
 	"""
-	CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 74)
-	if not network_manager or not network_manager.is_server_connected:
-		CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 81)
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
 
 	if amount <= 0:
-		CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 85)
 		push_error("Invalid XP amount")
 		return
 
@@ -113,14 +104,11 @@ func gain_xp(amount: int, source: String) -> void:
 		var levels_gained: int = result.get("levels_gained", 0)
 		var previous_level: int = player_stats.get("level", 1)
 
-		CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 107)
 		xp_gained.emit(amount_gained, player_stats.get("xp", 0))
 
 		if levels_gained > 0:
-			CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 109)
 			var new_level: int = result.player_stats.level
 			var ability_points_gained: int = levels_gained
-			CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 112)
 			level_up.emit(new_level, ability_points_gained)
 
 			# Track level up in analytics using dedicated method
@@ -128,6 +116,7 @@ func gain_xp(amount: int, source: String) -> void:
 				analytics.log_level_up(new_level, previous_level, source)
 
 		player_stats = result.player_stats
+		stats_updated.emit(player_stats)
 
 		# Track XP gain in analytics
 		if analytics and analytics.has_method("log_custom_event"):
@@ -145,13 +134,11 @@ func allocate_stat(stat_name: String, points: int) -> void:
 		stat_name: Name of the stat to allocate points to
 		points: Number of points to allocate (must be positive)
 	"""
-	CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 130)
-	if not network_manager or not network_manager.is_server_connected:
+	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
 
 	if points <= 0:
-		CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 150)
 		push_error("Invalid points amount")
 		return
 
@@ -169,10 +156,9 @@ func allocate_stat(stat_name: String, points: int) -> void:
 	var result = response  # Response is already a Dictionary from send_rpc
 
 	if result.get("success", false):
-		CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 159)
 		stat_allocated.emit(stat_name, points)
 		player_stats = result.player_stats
-		CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 70)
+		stats_updated.emit(player_stats)
 
 		# Track stat allocation in analytics
 		if analytics and analytics.has_method("log_custom_event"):

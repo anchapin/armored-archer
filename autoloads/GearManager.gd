@@ -18,7 +18,7 @@ signal inventory_updated(inventory: Dictionary)
 @onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
 
 var http_request: HTTPRequest
-var network_manager
+var network_manager: NetworkManager
 
 var player_inventory: Dictionary = {}
 var equipped_gear: Dictionary = {}

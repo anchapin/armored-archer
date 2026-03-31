@@ -2,25 +2,9 @@
   "config_version": 2,
   "directories": {
     "test": [
-      "res://test/suites/player",
-      "res://test/suites/combat",
-      "res://test/suites/gear",
-      "res://test/suites/network",
-      "res://test/suites/campaign",
-      "res://test/suites/season",
-      "res://test/suites/store",
-      "res://test/suites/transmog",
-      "res://test/suites/gem",
-      "res://test/suites/safe_area",
-      "res://test/suites/auto_aim",
-      "res://test/suites/ui",
-      "res://test/suites/object_pool",
-      "res://test/suites/performance",
-      "res://test/suites/analytics",
-      "res://test/suites/autoloads",
-      "res://test/suites/signals"
+      "res://test/suites"
     ],
-    "include_subdirectories": false
+    "include_subdirectories": true
   },
   "disable_colors": false,
   "double_strategy": "INCLUDE_INTERNAL",
@@ -34,8 +18,8 @@
   "inner_class": null,
   "unit_test_name": null,
   "parameter_handler": null,
-  "pre_run_script": "res://addons/gut/coverage/coverage_pre_run.gd",
-  "post_run_script": "res://addons/gut/coverage/coverage_post_run.gd",
+  "pre_run_script": null,
+  "post_run_script": null,
   "warnings_are_errors": false,
   "ignore_pause": false,
   "hook_script": null,

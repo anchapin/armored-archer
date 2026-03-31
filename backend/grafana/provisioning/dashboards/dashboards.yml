@@ -1,0 +1,16 @@
+# Grafana dashboard providers configuration
+# Auto-provisioned dashboards for Armored Archer
+
+apiVersion: 1
+
+providers:
+  - name: 'Armored Archer Dashboards'
+    orgId: 1
+    folder: 'Armored Archer'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: true

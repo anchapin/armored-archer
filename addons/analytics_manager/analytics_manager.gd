@@ -965,7 +965,7 @@ func _check_network_quality() -> void:
 	var new_quality := "unknown"
 
 	# This is a placeholder - in production, you'd implement actual network testing
-	if NetworkManager and NetworkManager.is_server_connected:
+	if NetworkManager and NetworkManager.is_connected:
 		new_quality = "good"  # Assume good if connected
 
 	network_quality = new_quality

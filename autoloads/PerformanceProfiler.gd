@@ -40,8 +40,8 @@ var _texture_compression: bool = true
 var _fps_history: Array[float] = []
 var _fps_sample_count: int = 60  # Average over 60 frames
 var _current_fps: float = 60.0
-# var _frame_time_history: Array[float] = [] # Unused
-# var _average_frame_time: float = 16.67  # ms (Unused)
+var _frame_time_history: Array[float] = []
+var _average_frame_time: float = 16.67  # ms
 
 # --- Memory Tracking ---
 var _startup_memory_mb: float = 0.0
@@ -55,8 +55,8 @@ var _leak_suspect_count: int = 0  # Consecutive samples above threshold
 var _session_start_time: int = 0
 
 # --- Device Tier ---
-enum DeviceTier { FLAGSHIP, MID_RANGE, BUDGET }
-var _device_tier: DeviceTier = DeviceTier.FLAGSHIP
+enum DeviceTier { FLAGSHP, MID_RANGE, BUDGET }
+var _device_tier: DeviceTier = DeviceTier.FLAGSHP
 
 # --- Signals ---
 ## Emitted when FPS drops below target
@@ -69,14 +69,6 @@ signal device_tier_detected(tier: DeviceTier)
 signal memory_leak_detected(current_mb: float, growth_mb: float, rate_mb_per_min: float)
 
 func _ready() -> void:
-	# Check if running in headless/test mode
-	var is_headless = DisplayServer.get_name() == "headless"
-
-	if is_headless:
-		# Skip profiler initialization in headless mode
-		print("[PerformanceProfiler] Headless mode detected - skipping initialization")
-		return
-
 	_initialize_profiler()
 
 func _initialize_profiler() -> void:
@@ -85,7 +77,7 @@ func _initialize_profiler() -> void:
 	_peak_memory_mb = _startup_memory_mb
 
 	# Initialize session start time for leak detection
-	_session_start_time = int(Time.get_unix_time_from_system())
+	_session_start_time = Time.get_unix_time_from_system()
 
 	# Detect device tier
 	_detect_device_tier()
@@ -144,7 +136,7 @@ func _check_performance_warnings() -> void:
 
 func _sample_memory_for_leak_detection(current_memory: float) -> void:
 	_memory_samples.append(current_memory)
-	_memory_sample_times.append(int(Time.get_unix_time_from_system()))
+	_memory_sample_times.append(Time.get_unix_time_from_system())
 
 	# Keep only recent samples
 	if _memory_samples.size() > MEMORY_LEAK_SAMPLE_COUNT + 10:
@@ -198,7 +190,7 @@ func _get_memory_threshold() -> int:
 func _detect_device_tier() -> void:
 	# Check for budget device indicators
 	var is_mobile = OS.has_feature("mobile")
-	var _is_web = OS.has_feature("web")
+	var is_web = OS.has_feature("web")
 
 	# Get available RAM (if available)
 	var available_ram_mb: float = 0.0
@@ -214,10 +206,10 @@ func _detect_device_tier() -> void:
 		elif processor_count <= 4 or available_ram_mb < 1024:
 			_device_tier = DeviceTier.MID_RANGE
 		else:
-			_device_tier = DeviceTier.FLAGSHIP
+			_device_tier = DeviceTier.FLAGSHP
 	else:
 		# Desktop or other - assume flagship
-		_device_tier = DeviceTier.FLAGSHIP
+		_device_tier = DeviceTier.FLAGSHP
 
 	device_tier_detected.emit(_device_tier)
 
@@ -235,7 +227,7 @@ func _apply_performance_settings() -> void:
 			_shadow_quality = 1
 			_texture_compression = true
 			Engine.max_fps = 45
-		DeviceTier.FLAGSHIP:
+		DeviceTier.FLAGSHP:
 			_target_fps = FLAGSHIP_TARGET_FPS
 			_max_particles = 100
 			_shadow_quality = 2
@@ -417,7 +409,7 @@ func reset_memory_leak_detection() -> void:
 	_memory_samples.clear()
 	_memory_sample_times.clear()
 	_leak_suspect_count = 0
-	_session_start_time = int(Time.get_unix_time_from_system())
+	_session_start_time = Time.get_unix_time_from_system()
 	# Reset startup memory to current to avoid false positives after scene transition
 	_startup_memory_mb = _get_memory_usage_mb()
 	print("[PerformanceProfiler] Memory leak detection reset")

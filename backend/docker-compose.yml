@@ -1,3 +1,5 @@
+version: '3'
+
 services:
   postgres:
     image: postgres:14-alpine
@@ -115,6 +117,7 @@ services:
     container_name: armored_archer_loki
     restart: unless-stopped
     volumes:
+      - ./config/loki.yml:/etc/loki/local-config.yaml
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
     ports:
@@ -129,54 +132,83 @@ services:
       timeout: 5s
       retries: 5
 
-  # promtail:
-  #   image: grafana/promtail:2.9.3
-  #   container_name: armored_archer_promtail
-  #   restart: unless-stopped
-  #   volumes:
-  #     - /var/log:/var/log:ro
-  #     - /var/run/docker.sock:/var/run/docker.sock:ro
-  #   command: -config.file=/etc/promtail/config.yml
-  #   networks:
-  #     - backend-network
-  #   depends_on:
-  #     - loki
-  #   environment:
-  #     - ENVIRONMENT=${ENVIRONMENT:-development}
+  promtail:
+    image: grafana/promtail:2.9.3
+    container_name: armored_archer_promtail
+    restart: unless-stopped
+    volumes:
+      - ./config/promtail.yml:/etc/promtail/config.yml
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./logs:/var/log/armored_archer
+      - ./data/logs:/nakama/data/logs
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - backend-network
+    depends_on:
+      - loki
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-development}
 
-  # otel-collector:
-  #   image: otel/opentelemetry-collector-contrib:0.92.0
-  #   container_name: armored_archer_otel_collector
-  #   restart: unless-stopped
-  #   ports:
-  #     - "4317:4317"
-  #     - "4318:4318"
-  #     - "8888:8888"
-  #   networks:
-  #     - backend-network
-  #   depends_on:
-  #     - tempo
-  #     - prometheus
-  #   healthcheck:
-  #     test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:13133/health"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  # OpenTelemetry Collector for trace and metric collection
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.92.0
+    container_name: armored_archer_otel_collector
+    restart: unless-stopped
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector/config.yaml
+    command:
+      - "--config=/etc/otel-collector/config.yaml"
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "14268:14268" # Jaeger thrift HTTP receiver
+      - "14250:14250" # Jaeger gRPC receiver
+      - "6831:6831"   # Jaeger thrift compact receiver
+      - "9411:9411"   # Zipkin receiver
+      - "8888:8888"   # Prometheus metrics (collector itself)
+      - "8889:8889"   # Prometheus metrics exporter
+      - "13133:13133" # Health check endpoint
+      - "55679:55679" # Z-pages for debugging
+    networks:
+      - backend-network
+    depends_on:
+      - tempo
+      - prometheus
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:13133/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # tempo:
-  #   image: grafana/tempo:2.3.1
-  #   container_name: armored_archer_tempo
-  #   restart: unless-stopped
-  #   volumes:
-  #     - tempo_data:/tmp/tempo
-  #   command:
-  #     - "-config.file=/etc/tempo/config.yml"
-  #   ports:
-  #     - "3200:3200"
-  #   networks:
-  #     - backend-network
-  #   depends_on:
-  #     - prometheus
+  # Grafana Tempo for distributed tracing storage
+  tempo:
+    image: grafana/tempo:2.3.1
+    container_name: armored_archer_tempo
+    restart: unless-stopped
+    volumes:
+      - ./config/tempo.yml:/etc/tempo/config.yml
+      - tempo_data:/tmp/tempo
+    command:
+      - "-config.file=/etc/tempo/config.yml"
+    ports:
+      - "3200:3200"   # Tempo HTTP API
+      - "9095:9095"   # Tempo gRPC
+      - "4317:4318"   # OTLP HTTP (direct, bypass collector)
+      - "4318:4319"   # OTLP gRPC (direct, bypass collector)
+      - "14268:14269" # Jaeger thrift HTTP (direct)
+      - "9411:9412"   # Zipkin (direct)
+    networks:
+      - backend-network
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3200/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   nakama:
     image: heroiclabs/nakama:3.21.1
@@ -185,8 +217,9 @@ services:
       - "/bin/sh"
       - "-ecx"
       - >
+        echo "Starting Nakama with environment validation..." &&
         /nakama/nakama migrate up --database.address ${DATABASE_ADDRESS:-postgres://postgres:changeme@postgres:5432/nakama} &&
-        exec /nakama/nakama --database.address ${DATABASE_ADDRESS:-postgres://postgres:changeme@postgres:5432/nakama}
+        exec /nakama/nakama --config /nakama/data/nakama.yml --database.address ${DATABASE_ADDRESS:-postgres://postgres:changeme@postgres:5432/nakama}
     restart: always
     environment:
       - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-defaultkey}
@@ -201,7 +234,9 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - /home/alex/armored-archer/backend/data:/nakama/data
+      - ./nakama.yml:/nakama/data/nakama.yml
+      - ./data/modules:/nakama/data/modules
+      - ./data:/nakama/data/migrations
     expose:
       - "7349"
       - "7350"
@@ -225,7 +260,7 @@ volumes:
   grafana_data:
   alertmanager_data:
   loki_data:
-  nakama_data:
+  tempo_data:
 
 networks:
   backend-network:

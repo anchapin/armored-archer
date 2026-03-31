@@ -1,0 +1,62 @@
+{
+  "maxBundleSize": 2097152,
+  "maxDependencySize": 1073741824,
+  "maxFileSize": 512000,
+  "warnings": {
+    "bundleSizeGrowthPercent": 10,
+    "heavyDependencySize": 5242880
+  },
+  "excludedDependencies": ["@opentelemetry/*", "@sentry/*"],
+  "trackedDependencies": [
+    "@sentry/*",
+    "winston",
+    "prom-client",
+    "zod",
+    "@heroiclabs/*"
+  ],
+  "heavyDependencyDetection": {
+    "enabled": true,
+    "patterns": [
+      {
+        "pattern": "@sentry/*",
+        "reason": "Sentry is large",
+        "suggested": "Use selective imports or @sentry/lite"
+      },
+      {
+        "pattern": "winston",
+        "reason": "Logging library is heavy",
+        "suggested": "Consider pino or abstract logging"
+      },
+      {
+        "pattern": "prom-client",
+        "reason": "Prometheus client",
+        "suggested": "Verify needed metrics only"
+      },
+      {
+        "pattern": "zod",
+        "reason": "Validation library is large",
+        "suggested": "Consider lighter alternatives like zod-to-json-schema or use class-validator"
+      },
+      {
+        "pattern": "@heroiclabs/*",
+        "reason": "Nakama client",
+        "suggested": "Verify only needed modules are imported"
+      },
+      {
+        "pattern": "pg",
+        "reason": "PostgreSQL client can be large",
+        "suggested": "Use pg-query-stream for bulk operations"
+      },
+      {
+        "pattern": "opentelemetry",
+        "reason": "OpenTelemetry can be large",
+        "suggested": "Use selective instrumentations"
+      }
+    ],
+    "thresholds": {
+      "warning": 1048576,
+      "error": 5242880
+    }
+  },
+  "description": "Bundle size limits and configuration for armored-archer backend"
+}

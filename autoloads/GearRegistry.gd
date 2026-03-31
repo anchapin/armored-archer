@@ -7,8 +7,6 @@ extends Node
 
 # Import gear enums for GearType enum
 const GearEnums = preload("res://scripts/gear_enums.gd")
-const GearDataClass = preload("res://scenes/player/gear/gear_data.gd")
-const CosmeticSkinDataClass = preload("res://scenes/player/gear/cosmetic_skin_data.gd")
 
 var base_gear_db: Dictionary = {}
 var skin_db: Dictionary = {}
@@ -20,26 +18,21 @@ func _ready() -> void:
 
 func _initialize_base_gear() -> void:
 	"""Populates the base gear database with all available gear items."""
-	# Helmets
-	_register_base_gear("helm_basic", "Basic Helm", GearEnums.GearType.HELM, 0, 0, 0, 5, "common", "res://assets/sprites/equipment/helm/leather_helm.tres")
-	_register_base_gear("helm_iron", "Iron Helm", GearEnums.GearType.HELM, 0, 5, 0, 10, "uncommon", "res://assets/sprites/equipment/helm/chain_helm.tres")
-	_register_base_gear("helm_dragon", "Dragon Helm", GearEnums.GearType.HELM, 5, 10, 0, 20, "legendary", "res://assets/sprites/equipment/helm/dragon_helm.tres")
-	# Armor
-	_register_base_gear("armor_leather", "Leather Armor", GearEnums.GearType.ARMOR, 0, 5, 0, 0, "common", "res://assets/sprites/equipment/armor/leather_armor.tres")
-	_register_base_gear("armor_chain", "Chain Mail", GearEnums.GearType.ARMOR, 0, 15, 0, 10, "uncommon", "res://assets/sprites/equipment/armor/chain_armor.tres")
-	_register_base_gear("armor_plate", "Plate Armor", GearEnums.GearType.ARMOR, 0, 30, 0, 25, "rare", "res://assets/sprites/equipment/armor/plate_armor.tres")
-	# Bows
-	_register_base_gear("bow_wooden", "Wooden Bow", GearEnums.GearType.BOW, 5, 0, 0, 0, "common", "res://assets/sprites/equipment/bow/wooden_bow.tres")
-	_register_base_gear("bow_composite", "Composite Bow", GearEnums.GearType.BOW, 15, 0, 0, 0, "uncommon", "res://assets/sprites/equipment/bow/composite_bow.tres")
-	_register_base_gear("bow_crossbow", "Crossbow", GearEnums.GearType.BOW, 25, 0, 0, 0, "rare", "res://assets/sprites/equipment/bow/elven_bow.tres")
-	# Arrows
-	_register_base_gear("arrow_wooden", "Wooden Arrows", GearEnums.GearType.ARROW, 0, 0, 5, 0, "common", "res://assets/sprites/equipment/arrow/wooden_arrow.tres")
-	_register_base_gear("arrow_iron", "Iron Arrows", GearEnums.GearType.ARROW, 5, 0, 0, 0, "uncommon", "res://assets/sprites/equipment/arrow/iron_arrow.tres")
-	_register_base_gear("arrow_dragon", "Dragon Arrows", GearEnums.GearType.ARROW, 15, 0, 10, 0, "legendary", "res://assets/sprites/equipment/arrow/silver_arrow.tres")
-	# Amulets
-	_register_base_gear("amulet_protection", "Protection Amulet", GearEnums.GearType.AMULET, 0, 10, 0, 10, "common", "res://assets/sprites/equipment/amulet/health_amulet.tres")
-	_register_base_gear("amulet_power", "Power Amulet", GearEnums.GearType.AMULET, 10, 0, 0, 5, "uncommon", "res://assets/sprites/equipment/amulet/strength_amulet.tres")
-	_register_base_gear("amulet_dragon", "Dragon Amulet", GearEnums.GearType.AMULET, 15, 5, 5, 15, "legendary", "res://assets/sprites/equipment/amulet/mana_amulet.tres")
+	_register_base_gear("helm_basic", "Basic Helm", GearEnums.GearType.HELM, 0, 0, 0, 5, "common", "")
+	_register_base_gear("helm_iron", "Iron Helm", GearEnums.GearType.HELM, 0, 5, 0, 10, "uncommon", "")
+	_register_base_gear("helm_dragon", "Dragon Helm", GearEnums.GearType.HELM, 5, 10, 0, 20, "legendary", "")
+	_register_base_gear("armor_leather", "Leather Armor", GearEnums.GearType.ARMOR, 0, 5, 0, 0, "common", "")
+	_register_base_gear("armor_chain", "Chain Mail", GearEnums.GearType.ARMOR, 0, 15, 0, 10, "uncommon", "")
+	_register_base_gear("armor_plate", "Plate Armor", GearEnums.GearType.ARMOR, 0, 30, 0, 25, "rare", "")
+	_register_base_gear("bow_wooden", "Wooden Bow", GearEnums.GearType.BOW, 5, 0, 0, 0, "common", "")
+	_register_base_gear("bow_composite", "Composite Bow", GearEnums.GearType.BOW, 15, 0, 0, 0, "uncommon", "")
+	_register_base_gear("bow_crossbow", "Crossbow", GearEnums.GearType.BOW, 25, 0, 0, 0, "rare", "")
+	_register_base_gear("arrow_wooden", "Wooden Arrows", GearEnums.GearType.ARROW, 0, 0, 5, 0, "common", "")
+	_register_base_gear("arrow_iron", "Iron Arrows", GearEnums.GearType.ARROW, 5, 0, 0, 0, "uncommon", "")
+	_register_base_gear("arrow_dragon", "Dragon Arrows", GearEnums.GearType.ARROW, 15, 0, 10, 0, "legendary", "")
+	_register_base_gear("amulet_protection", "Protection Amulet", GearEnums.GearType.AMULET, 0, 10, 0, 10, "common", "")
+	_register_base_gear("amulet_power", "Power Amulet", GearEnums.GearType.AMULET, 10, 0, 0, 5, "uncommon", "")
+	_register_base_gear("amulet_dragon", "Dragon Amulet", GearEnums.GearType.AMULET, 15, 5, 5, 15, "legendary", "")
 
 func _initialize_skins() -> void:
 	"""Populates the skin database with all available cosmetic skins."""
@@ -59,7 +52,7 @@ func _initialize_skins() -> void:
 	_register_skin("skin_amulet_crystal", "Crystal Amulet", GearEnums.GearType.AMULET, "amulet_power", 600, false, "")
 	_register_skin("skin_amulet_legendary", "Legendary Amulet", GearEnums.GearType.AMULET, "amulet_dragon", 1200, true, "")
 
-func _register_base_gear(gear_id: String, gear_name: String, slot: GearEnums.GearType, attack: int, defense: int, speed: int, health: int, rarity: String, texture_path: String) -> void:
+func _register_base_gear(gear_id: String, gear_name: String, slot: GearEnums.GearType, attack: int, defense: int, speed: int, health: int, rarity: String, _texture_path: String) -> void:
 	"""Registers a base gear item in the database (internal).
 
 	Parameters:
@@ -71,17 +64,14 @@ func _register_base_gear(gear_id: String, gear_name: String, slot: GearEnums.Gea
 		speed: Speed stat value
 		health: Health stat bonus
 		rarity: Rarity tier (common, uncommon, rare, legendary)
-		texture_path: Path to texture resource for equipment display
+		texture_path: Path to texture resource (currently unused)
 	"""
-	var gear_data = GearDataClass.new()
+	var gear_data = GearData.new()
 	gear_data.gear_id = gear_id
 	gear_data.gear_name = gear_name
 	gear_data.slot_type = slot
 	gear_data.stats = { "attack": attack, "defense": defense, "speed": speed, "health": health }
 	gear_data.rarity = rarity
-	# Load and set the equipment sprite texture
-	if texture_path != "":
-		gear_data.base_texture = load(texture_path)
 	base_gear_db[gear_id] = gear_data
 
 func _register_skin(skin_id: String, skin_name: String, slot: GearEnums.GearType, base_required: String, price: int, is_premium: bool, _texture_path: String) -> void:
@@ -96,7 +86,7 @@ func _register_skin(skin_id: String, skin_name: String, slot: GearEnums.GearType
 		is_premium: True if this is a premium (paid) skin
 		texture_path: Path to texture resource (currently unused)
 	"""
-	var skin_data = CosmeticSkinDataClass.new()
+	var skin_data = CosmeticSkinData.new()
 	skin_data.skin_id = skin_id
 	skin_data.skin_name = skin_name
 	skin_data.slot_type = slot
@@ -105,7 +95,7 @@ func _register_skin(skin_id: String, skin_name: String, slot: GearEnums.GearType
 	skin_data.is_premium = is_premium
 	skin_db[skin_id] = skin_data
 
-func get_base_gear(gear_id: String) -> Resource:
+func get_base_gear(gear_id: String) -> GearData:
 	"""Retrieves base gear data by ID.
 
 	Parameters:
@@ -116,7 +106,7 @@ func get_base_gear(gear_id: String) -> Resource:
 	"""
 	return base_gear_db.get(gear_id, null)
 
-func get_skin(skin_id: String) -> Resource:
+func get_skin(skin_id: String) -> CosmeticSkinData:
 	"""Retrieves skin data by ID.
 
 	Parameters:

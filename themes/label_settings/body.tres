@@ -1,0 +1,11 @@
+[gd_resource type="LabelSettings" format=3 uid="uid://b8xyz123abc1"]
+
+[ext_resource type="FontFile" uid="uid://b6q2bbv55wpvw" path="res://fonts/Be_Vietnam_Pro.ttf" id="1_wv6ak"]
+
+[resource]
+line_spacing = 4.0
+font = ExtResource("1_wv6ak")
+font_color = Color(0.22, 0.22, 0.2, 1)
+outline_color = Color(0, 0, 0, 1)
+shadow_size = 0
+shadow_offset = Vector2(0, 0)

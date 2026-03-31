@@ -1,90 +1,92 @@
-# Requirements: Armored Archer Pixel Art
+# Requirements: Armored Archer v2.3.0
 
-**Defined:** 2026-03-24
-**Core Value:** Players can enjoy a polished, responsive archery game with reliable performance and minimal bugs.
+**Defined:** 2026-03-19
+**Core Value:** Players can enjoy a polished, responsive archery game with reliable performance and minimal bugs
+**Milestone:** v2.3.0 - Testing & QA Infrastructure
 
 ## v1 Requirements
 
-Requirements for initial release. Each maps to roadmap phases.
+Requirements for v2.3.0 milestone. Each maps to roadmap phases.
 
-### Project Configuration
+### Test Foundation (FND)
 
-- [x] **PROJ-01**: Configure project.godot with Nearest texture filter (not Linear)
-- [x] **PROJ-02**: Set viewport stretch mode to canvas_items with integer scaling
-- [x] **PROJ-03**: Create import presets for pixel art (Lossless compression, no mipmaps)
-- [x] **PROJ-04**: Set up folder structure for sprites (characters/, enemies/, equipment/, ui/, backgrounds/)
+- [ ] **FND-01**: Go backend uses testify framework for assertions and test suites
+- [ ] **FND-02**: Godot client uses enhanced GUT framework with autoload testing support
+- [ ] **FND-03**: Test runner executes all backend and frontend tests with unified reporting
+- [ ] **FND-04**: Test pyramid is enforced (70% unit, 20% integration, 10% E2E) via automated checks
+- [ ] **FND-05**: Go race detector runs in CI for all concurrent code
+- [ ] **FND-06**: Tests are isolated and don't depend on shared state
 
-### Player Character
+### Test Isolation & Fixtures (ISO)
 
-- [ ] **PLAY-01**: Create player idle animation (4-8 frames)
-- [ ] **PLAY-02**: Create player walk animation (4-8 frames, 4-directional)
-- [ ] **PLAY-03**: Create player attack animation (6-8 frames)
-- [ ] **PLAY-04**: Create bow draw animation (6-8 frames)
-- [ ] **PLAY-05**: Create player hit/damage animation (2-4 frames)
-- [ ] **PLAY-06**: Create player death animation (6-8 frames)
-- [ ] **PLAY-07**: Implement AnimatedSprite2D with SpriteFrames for player
-- [ ] **PLAY-08**: Connect animation state machine to GameManager signals
+- [ ] **ISO-01**: Database tests use testcontainers-go for isolated PostgreSQL instances
+- [ ] **ISO-02**: Test fixtures use factory pattern for consistent test data generation
+- [ ] **ISO-03**: Test data cleanup runs automatically after each test suite
+- [ ] **ISO-04**: Godot autoload tests use fresh instances per test to prevent state leakage
+- [ ] **ISO-05**: Integration tests have proper setup/teardown lifecycle management
 
-### Weapons & Equipment
+### Coverage & Quality Gates (COV)
 
-- [ ] **WEAP-01**: Create bow sprites (wooden, composite, crossbow variants)
-- [ ] **WEAP-02**: Create arrow sprites (wooden, iron, dragon variants)
-- [ ] **WEAP-03**: Create armor sprites (leather, chain, plate variants)
-- [ ] **WEAP-04**: Create helm sprites (basic, iron, dragon variants)
-- [ ] **WEAP-05**: Extend GearSlot to support AnimatedSprite2D for equipment
+- [ ] **COV-01**: Code coverage is measured for backend (Go) and frontend (Godot)
+- [ ] **COV-02**: Coverage thresholds are enforced in CI (80% for critical paths, 60% overall)
+- [ ] **COV-03**: Pull requests that fail coverage tests are automatically blocked from merging
+- [ ] **COV-04**: Coverage reports are generated and viewable in CI artifacts
+- [ ] **COV-05**: Coverage metrics are tracked over time to identify trends
 
-### Enemies
+### Flaky Test Detection (FLK)
 
-- [ ] **ENEM-01**: Create melee enemy sprites (idle, walk, attack, hit, death)
-- [ ] **ENEM-02**: Create ranged enemy sprites (idle, walk, attack, hit, death)
-- [ ] **ENEM-03**: Create speed enemy sprites (idle, walk, attack, hit, death)
-- [ ] **ENEM-04**: Create swarmer enemy sprites (idle, walk, attack, hit, death)
-- [ ] **ENEM-05**: Create brute enemy sprites (idle, walk, attack, hit, death)
-- [ ] **ENEM-06**: Create scout enemy sprites (idle, walk, attack, hit, death)
-- [ ] **ENEM-07**: Create guardian enemy sprites (idle, walk, attack, hit, death)
-- [ ] **ENEM-08**: Create necromancer enemy sprites (idle, walk, attack, hit, death)
-- [ ] **ENEM-09**: Create boss enemy sprites (fire, ice, earth, wind, electric variants)
-- [ ] **ENEM-10**: Implement EnemyAnimationMixin for shared animation logic
+- [ ] **FLK-01**: CI automatically detects flaky tests via repeated test runs
+- [ ] **FLK-02**: Flaky tests are quarantined and don't block PR merges
+- [ ] **FLK-03**: Flaky test dashboard shows test reliability metrics
+- [ ] **FLK-04**: Developers are notified when their tests are flagged as flaky
 
-### UI & HUD
+### Performance Testing (PERF)
 
-- [ ] **UI-01**: Create main menu button icons
-- [ ] **UI-02**: Create HUD icons (health, arrows, ability cooldowns)
-- [ ] **UI-03**: Create inventory slot icons
-- [ ] **UI-04**: Create equipment slot icons (helm, armor, bow, arrow, amulet)
-- [ ] **UI-05**: Create store/cosmetic shop icons
+- [ ] **PERF-01**: Backend has Go benchmarks for critical RPC endpoints
+- [ ] **PERF-02**: Frontend has performance tests for 60 FPS target validation
+- [ ] **PERF-03**: Load tests validate backend can handle 100+ concurrent players
+- [ ] **PERF-04**: Load test scripts use k6 for realistic traffic simulation
+- [ ] **PERF-05**: Performance baselines are established and regressions are detected
 
-### Backgrounds & Environment
+### Visual Regression Testing (VIS)
 
-- [ ] **BG-01**: Create main menu background tiles
-- [ ] **BG-02**: Create gameplay arena background tiles
-- [ ] **BG-03**: Create forest background tiles
-- [ ] **BG-04**: Create environment props (trees, rocks, obstacles)
+- [ ] **VIS-01**: Design system components have visual regression tests
+- [ ] **VIS-02**: UI screens are validated for layout consistency
+- [ ] **VIS-03**: Visual regression tests run in CI for theme changes
+
+### Test Fixtures Layer (FIX)
+
+- [ ] **FIX-01**: Factory functions create test players with sensible defaults
+- [ ] **FIX-02**: Factory functions create test gear items with configurable properties
+- [ ] **FIX-03**: Factory functions create test matches with realistic game state
+- [ ] **FIX-04**: Fixtures support builder pattern for flexible test data creation
+- [ ] **FIX-05**: Test data is shared between Go and Godot tests via common format (JSON)
+
+### Mock Infrastructure (MOCK)
+
+- [ ] **MOCK-01**: Nakama runtime is mocked for unit testing RPC handlers
+- [ ] **MOCK-02**: Database layer is mocked using interface-based approach
+- [ ] **MOCK-03**: Godot autoloads are mockable via dependency injection
+- [ ] **MOCK-04**: Mock generation uses uber/mock for Go interfaces
+- [ ] **MOCK-05**: Mocks are validated against real implementations periodically
+
+### Property-Based Testing (PBT)
+
+- [ ] **PBT-01**: Critical combat calculations use property-based tests (rapid)
+- [ ] **PBT-02**: RNG systems have property-based tests for edge case detection
+- [ ] **PBT-03**: Property-based tests run in CI alongside unit tests
 
 ## v2 Requirements
 
-Deferred to future release. Tracked but not in current roadmap.
+Deferred to future milestone. Not in current roadmap.
 
-### Advanced Animation
+### Future Enhancements
 
-- **ANIM-01**: 8-directional player animations (4 cardinal + 4 diagonal)
-- **ANIM-02**: Animation blending/transitions between states
-- **ANIM-03**: Bow charge level animations (partial draw states)
-
-### Optimization
-
-- **OPT-01**: Sprite atlas optimization for reduced draw calls
-- **OPT-02**: Mobile performance testing and optimization
-
-### Skins & Transmog
-
-- **SKIN-01**: Fire bow skin animation
-- **SKIN-02**: Ice arrow skin animation
-- **SKIN-03**: Lightning bow skin animation
-- **SKIN-04**: Golden helm skin
-- **SKIN-05**: Shadow armor skin
-- **SKIN-06**: Royal armor skin
-- **SKIN-07**: Crimson helm skin
+- **Mutation Testing** — Evaluate test quality by introducing code mutations (high setup cost)
+- **Contract Testing** — Validate API contracts between client and server (API still evolving)
+- **Chaos Engineering** — Test system resilience under failure conditions
+- **Test Parallelization** — Run tests concurrently to reduce CI time (optimization)
+- **Fuzzing** — Automate finding security vulnerabilities (overkill for current complexity)
 
 ## Out of Scope
 
@@ -92,10 +94,14 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| Full cutscene animations | High complexity, defer to v2+ |
-| Complex particle effects | Already implemented in v3.0.0 |
-| Dynamic lighting on sprites | Not core to pixel art aesthetic |
-| Shader-based effects | Already have glassmorphism/hero moment |
+| 100% Code Coverage | Diminishing returns; tests trivial code; wastes time. Focus on critical paths. |
+| E2E Tests for Everything | Extremely slow; flaky; expensive. Use test pyramid instead. |
+| Manual QA as Primary | Not scalable; inconsistent; slow. Use for exploratory testing only. |
+| Testing Private Methods | Couples tests to implementation; breaks on refactoring. Test public interfaces. |
+| Mock Everything | Tests become brittle; may not catch real integration issues. Mock only slow/unstable deps. |
+| New Gameplay Features | This milestone focuses on testing infrastructure, not content. |
+| Backend Rewrites | Building tests for existing Go backend, not refactoring. |
+| Database Migrations | No schema changes; only testing existing data layer. |
 
 ## Traceability
 
@@ -103,48 +109,60 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROJ-01 | Phase 05 | Complete |
-| PROJ-02 | Phase 05 | Complete |
-| PROJ-03 | Phase 05 | Complete |
-| PROJ-04 | Phase 05 | Complete |
-| PLAY-01 | Phase 06 | Pending |
-| PLAY-02 | Phase 06 | Pending |
-| PLAY-03 | Phase 06 | Pending |
-| PLAY-04 | Phase 06 | Pending |
-| PLAY-05 | Phase 06 | Pending |
-| PLAY-06 | Phase 06 | Pending |
-| PLAY-07 | Phase 06 | Pending |
-| PLAY-08 | Phase 06 | Pending |
-| ENEM-01 | Phase 07 | Pending |
-| ENEM-02 | Phase 07 | Pending |
-| ENEM-03 | Phase 07 | Pending |
-| ENEM-04 | Phase 07 | Pending |
-| ENEM-05 | Phase 07 | Pending |
-| ENEM-06 | Phase 07 | Pending |
-| ENEM-07 | Phase 07 | Pending |
-| ENEM-08 | Phase 07 | Pending |
-| ENEM-09 | Phase 07 | Pending |
-| ENEM-10 | Phase 07 | Pending |
-| WEAP-01 | Phase 08 | Pending |
-| WEAP-02 | Phase 08 | Pending |
-| WEAP-03 | Phase 08 | Pending |
-| WEAP-04 | Phase 08 | Pending |
-| WEAP-05 | Phase 08 | Pending |
-| UI-01 | Phase 08 | Pending |
-| UI-02 | Phase 08 | Pending |
-| UI-03 | Phase 08 | Pending |
-| UI-04 | Phase 08 | Pending |
-| UI-05 | Phase 08 | Pending |
-| BG-01 | Phase 08 | Pending |
-| BG-02 | Phase 08 | Pending |
-| BG-03 | Phase 08 | Pending |
-| BG-04 | Phase 08 | Pending |
+| FND-01 | Phase 1 | Pending |
+| FND-02 | Phase 1 | Pending |
+| FND-03 | Phase 1 | Pending |
+| FND-04 | Phase 1 | Pending |
+| FND-05 | Phase 1 | Pending |
+| FND-06 | Phase 1 | Pending |
+| ISO-01 | Phase 2 | Pending |
+| ISO-02 | Phase 2 | Pending |
+| ISO-03 | Phase 2 | Pending |
+| ISO-04 | Phase 3 | Pending |
+| ISO-05 | Phase 2 | Pending |
+| COV-01 | Phase 5 | Pending |
+| COV-02 | Phase 5 | Pending |
+| COV-03 | Phase 5 | Pending |
+| COV-04 | Phase 5 | Pending |
+| COV-05 | Phase 5 | Pending |
+| FLK-01 | Phase 5 | Pending |
+| FLK-02 | Phase 5 | Pending |
+| FLK-03 | Phase 5 | Pending |
+| FLK-04 | Phase 5 | Pending |
+| PERF-01 | Phase 4 | Pending |
+| PERF-02 | Phase 4 | Pending |
+| PERF-03 | Phase 4 | Pending |
+| PERF-04 | Phase 4 | Pending |
+| PERF-05 | Phase 4 | Pending |
+| VIS-01 | Phase 5 | Pending |
+| VIS-02 | Phase 5 | Pending |
+| VIS-03 | Phase 5 | Pending |
+| FIX-01 | Phase 2 | Pending |
+| FIX-02 | Phase 2 | Pending |
+| FIX-03 | Phase 2 | Pending |
+| FIX-04 | Phase 2 | Pending |
+| FIX-05 | Phase 2 | Pending |
+| MOCK-01 | Phase 2 | Pending |
+| MOCK-02 | Phase 2 | Pending |
+| MOCK-03 | Phase 3 | Pending |
+| MOCK-04 | Phase 2 | Pending |
+| MOCK-05 | Phase 2 | Pending |
+| PBT-01 | Phase 5 | Pending |
+| PBT-02 | Phase 5 | Pending |
+| PBT-03 | Phase 5 | Pending |
 
 **Coverage:**
-- v1 requirements: 41 total
-- Mapped to phases: 41
+- v1 requirements: 40 total
+- Mapped to phases: 40 (100%)
 - Unmapped: 0 ✓
 
+**Phase Distribution:**
+- Phase 1 (Test Infrastructure Foundation): 6 requirements
+- Phase 2 (Fixtures & Mocks Layer): 13 requirements
+- Phase 3 (Godot Test Framework Enhancement): 2 requirements
+- Phase 4 (Load Testing Infrastructure): 5 requirements
+- Phase 5 (Coverage, Reporting & Quality Gates): 14 requirements
+
 ---
-*Requirements defined: 2026-03-24*
-*Last updated: 2026-03-24 after research synthesis*
+*Requirements defined: 2026-03-19*
+*Last updated: 2026-03-19 after roadmap creation*

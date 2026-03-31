@@ -40,7 +40,7 @@ var refresh_token: String = ""
 var user_id: String = ""
 var username: String = ""
 var device_id: String = ""
-var is_server_connected: bool = false
+var is_connected: bool = false
 var is_offline: bool = false
 var _is_refreshing: bool = false  # Track if current request is a refresh
 
@@ -154,17 +154,17 @@ func _log_environment_info() -> void:
 
 func _validate_required_config() -> void:
 	var missing_vars: Array[String] = []
-	var is_in_production: bool = current_environment == EnvironmentType.PRODUCTION
+	var is_production: bool = current_environment == EnvironmentType.PRODUCTION
 
 	# Production requires all config to be properly set via environment variables
-	if server_url.is_empty() or (is_in_production and server_url == DEFAULT_CONFIG[EnvironmentType.PRODUCTION]["server_url"]):
+	if server_url.is_empty() or (is_production and server_url == DEFAULT_CONFIG[EnvironmentType.PRODUCTION]["server_url"]):
 		missing_vars.append("NAKAMA_SERVER_URL")
 
-	if server_port == 0 or (is_in_production and server_port == DEFAULT_CONFIG[EnvironmentType.PRODUCTION]["server_port"]):
+	if server_port == 0 or (is_production and server_port == DEFAULT_CONFIG[EnvironmentType.PRODUCTION]["server_port"]):
 		missing_vars.append("NAKAMA_SERVER_PORT")
 
 	# Server key is critical in production - warn if using defaults
-	if is_in_production:
+	if is_production:
 		if server_key.is_empty() or server_key == "defaultkey":
 			missing_vars.append("NAKAMA_SERVER_KEY (CRITICAL: Using default key in production is insecure!)")
 	elif server_key.is_empty():
@@ -175,16 +175,13 @@ func _validate_required_config() -> void:
 			EnvironmentType.keys()[current_environment],
 			", ".join(missing_vars)
 		]
-		if is_in_production:
+		if is_production:
 			push_error("PRODUCTION SECURITY ERROR: %s" % warning_msg)
 			# In production, we could also disable network operations if critical config is missing
 		else:
 			push_warning(warning_msg)
 
 # --- Initialization ---
-# --- Auto-connect Configuration ---
-var auto_connect_on_ready: bool = false  # Set to true to auto-authenticate on startup
-
 func _ready() -> void:
 	_load_environment_variables()
 	_log_environment_info()
@@ -213,9 +210,7 @@ func _ready() -> void:
 		user_id = ""
 		username = ""
 
-	# Only auto-connect if explicitly enabled - otherwise let scenes trigger authentication
-	if auto_connect_on_ready:
-		_try_auto_connect()
+	_try_auto_connect()
 
 # --- Device ID Management ---
 func _generate_device_id() -> void:
@@ -261,7 +256,7 @@ func authenticate_device() -> void:
 		"create": true
 	}
 
-	var _json: JSON = JSON.new()
+	var json: JSON = JSON.new()
 	var json_string: String = JSON.stringify(body)
 	
 	# Track this request for debugging
@@ -313,7 +308,7 @@ func _refresh_session() -> void:
 		"token": refresh_token
 	}
 
-	var _json: JSON = JSON.new()
+	var json: JSON = JSON.new()
 	var json_string: String = JSON.stringify(body)
 
 	_request_counter += 1
@@ -324,7 +319,7 @@ func _refresh_session() -> void:
 		authenticate_device()
 
 # --- HTTP Response Handling ---
-func _on_http_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+func _on_http_request_completed(_result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
 	# Reset authentication flag
 	is_authenticating = false
 
@@ -333,20 +328,20 @@ func _on_http_request_completed(_result: int, response_code: int, _headers: Pack
 	print("[NetworkManager] DEBUG: Request ID that completed: %d (current: %d)" % [_current_request_id, _current_request_id])
 
 	if response_code >= 200 and response_code < 300:
-		var _json: JSON = JSON.new()
-		var _parse_result: Error = _json.parse(response_text)
+		var json: JSON = JSON.new()
+		var parse_result: Error = json.parse(response_text)
 
-		if _parse_result == OK:
-			var response_data: Dictionary = _json.data
+		if parse_result == OK:
+			var response_data: Dictionary = json.data
 
 			if "token" in response_data:
 				# Check connection state BEFORE updating session
-				var was_connected: bool = is_server_connected
+				var was_connected: bool = is_connected
 
 				_update_session_from_response(response_data)
 
 				if not was_connected:
-					is_server_connected = true
+					is_connected = true
 					session_created.emit(true, "")
 					session_refreshed.emit(true, "")
 				else:
@@ -379,7 +374,7 @@ func _update_session_from_response(response_data: Dictionary) -> void:
 	if "username" in response_data:
 		username = response_data["username"]
 
-	is_server_connected = true
+	is_connected = true
 	_save_session_to_file()
 
 func _handle_authentication_error(response_code: int, response_text: String) -> void:
@@ -398,12 +393,12 @@ func _handle_authentication_error(response_code: int, response_text: String) -> 
 		_log_network_error("connection_failed", "/v2/account/authenticate/device", response_code)
 	else:
 		print("[NetworkManager] DEBUG: Authentication failed with code: %d" % response_code)
-		is_server_connected = false
+		is_connected = false
 		var error_message: String = "Authentication failed (code: %d)" % response_code
 
-		var json_parser: JSON = JSON.new()
-		if json_parser.parse(response_text) == OK:
-			var response_data: Dictionary = json_parser.data
+		var json: JSON = JSON.new()
+		if json.parse(response_text) == OK:
+			var response_data: Dictionary = json.data
 			if "message" in response_data:
 				error_message = response_data["message"]
 				print("[NetworkManager] DEBUG: Server error message: %s" % error_message)
@@ -433,8 +428,8 @@ func _save_session_to_file() -> void:
 
 	var file: FileAccess = FileAccess.open(SESSION_FILE, FileAccess.WRITE)
 	if file:
-		@warning_ignore("return_value_discarded")
-		file.store_string(JSON.stringify(session_data))
+		var json: JSON = JSON.new()
+		var _err = file.store_string(JSON.stringify(session_data))
 		file.close()
 
 func _load_session_from_file() -> void:
@@ -446,9 +441,9 @@ func _load_session_from_file() -> void:
 		var json_string: String = file.get_as_text()
 		file.close()
 
-		var _json: JSON = JSON.new()
-		if _json.parse(json_string) == OK:
-			var session_data: Dictionary = _json.data
+		var json: JSON = JSON.new()
+		if json.parse(json_string) == OK:
+			var session_data: Dictionary = json.data
 
 			if "session_token" in session_data:
 				session_token = session_data["session_token"]
@@ -471,12 +466,11 @@ func logout() -> void:
 	refresh_token = ""
 	user_id = ""
 	username = ""
-	is_server_connected = false
+	is_connected = false
 
 	var file: FileAccess = FileAccess.open(SESSION_FILE, FileAccess.WRITE)
 	if file:
-		@warning_ignore("return_value_discarded")
-		file.store_string("{}")
+		var _err = file.store_string("{}")
 		file.close()
 
 	session_created.emit(false, "Logged out")
@@ -488,7 +482,7 @@ func get_auth_headers() -> PackedStringArray:
 	return ["Authorization: Bearer %s" % session_token]
 
 func is_session_valid() -> bool:
-	return not session_token.is_empty() and is_server_connected
+	return not session_token.is_empty() and is_connected
 
 # --- Environment Info ---
 func get_environment() -> EnvironmentType:
@@ -509,9 +503,9 @@ func is_staging() -> bool:
 # --- RPC Communication ---
 # Track RPC request ID separately from auth request ID
 var _rpc_request_id: int = 0
-# var _pending_rpc_callbacks: Dictionary = {}  # Map request_id to callback info (Unused)
+var _pending_rpc_callbacks: Dictionary = {}  # Map request_id to callback info
 
-func send_rpc(p_rpc_id: String, payload: String, timeout: float = 30.0) -> Dictionary:
+func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Dictionary:
 	if not is_session_valid():
 		return {"error": "Not authenticated", "is_auth_error": false}
 
@@ -520,11 +514,10 @@ func send_rpc(p_rpc_id: String, payload: String, timeout: float = 30.0) -> Dicti
 	var this_rpc_id: int = _rpc_request_id
 	
 	var start_time: int = Time.get_ticks_msec()
-	var url: String = "%s/v2/rpc/%s" % [base_url, p_rpc_id]
+	var url: String = "%s/v2/rpc/%s" % [base_url, rpc_id]
 	var headers: PackedStringArray = get_auth_headers()
 
-	@warning_ignore("return_value_discarded")
-	headers.append("Content-Type: application/json")
+	var _err = headers.append("Content-Type: application/json")
 
 	# Wrap payload in JSON object as expected by Nakama HTTP API
 	# Nakama expects: {"payload": "<json_string>"} for POST requests
@@ -537,15 +530,17 @@ func send_rpc(p_rpc_id: String, payload: String, timeout: float = 30.0) -> Dicti
 	timer.one_shot = true
 	add_child(timer)
 
-	var status = {"timed_out": false, "response_received": false, "request_result": []}
-	
+	var timed_out: bool = false
+	var request_result: Array = []
+	var response_received: bool = false
+
 	var on_timeout: Callable = func():
-		status.timed_out = true
+		timed_out = true
 		http_request.cancel_request()
 
-	var on_request_completed: Callable = func(_result: int, _response_code: int, _headers: PackedStringArray, response_body: PackedByteArray):
-		status.request_result = [_result, _response_code, _headers, response_body, this_rpc_id]
-		status.response_received = true
+	var on_request_completed: Callable = func(_result: int, _response_code: int, _headers: PackedStringArray, body: PackedByteArray):
+		request_result = [_result, _response_code, _headers, body, this_rpc_id]
+		response_received = true
 		timer.stop()
 
 	var _err1 = timer.timeout.connect(on_timeout, CONNECT_ONE_SHOT)
@@ -560,22 +555,22 @@ func send_rpc(p_rpc_id: String, payload: String, timeout: float = 30.0) -> Dicti
 		return {"error": "Failed to send RPC request"}
 
 	# Wait for response with timeout protection
-	while not status.response_received and not status.timed_out:
+	while not response_received and not timed_out:
 		await get_tree().process_frame
 
 	timer.queue_free()
 
 	# Check if request timed out
-	if status.timed_out:
+	if timed_out:
 		return {"error": "Request timed out after %.1f seconds" % timeout}
 
 	# Process the successful response
 	var response_data: Dictionary = {}
-	var result = status.request_result
+	var result = request_result
 
 	# Validate that request_result has enough elements (should have 5: result, code, headers, body, rpc_id)
 	if result.size() < 4:
-		push_error("Request result incomplete: got %d elements, expected 5. Response received: %s" % [result.size(), status.response_received])
+		push_error("Request result incomplete: got %d elements, expected 5. Response received: %s" % [result.size(), response_received])
 		return {"error": "Invalid response: request_result is incomplete", "is_auth_error": false}
 
 	var rpc_id_completed: int = -1
@@ -585,18 +580,18 @@ func send_rpc(p_rpc_id: String, payload: String, timeout: float = 30.0) -> Dicti
 	print("[NetworkManager] DEBUG: RPC response received - Code: %d, RPC_ID: %d (current: %d)" % [result[1], rpc_id_completed, _rpc_request_id])
 
 	if result[1] >= 200 and result[1] < 300:
-		var _json: JSON = JSON.new()
-		if _json.parse(result[3].get_string_from_utf8()) == OK:
-			response_data = _json.data
+		var json: JSON = JSON.new()
+		if json.parse(result[3].get_string_from_utf8()) == OK:
+			response_data = json.data
 		else:
 			response_data = {"error": "Failed to parse response", "is_auth_error": false}
 	else:
 		# Check if this is an authentication error (401, 403) vs a server error (400, 500, etc.)
 		var is_auth_error: bool = (result[1] == 401 or result[1] == 403)
 		
-		var _json: JSON = JSON.new()
-		if _json.parse(result[3].get_string_from_utf8()) == OK:
-			var parsed: Dictionary = _json.data
+		var json: JSON = JSON.new()
+		if json.parse(result[3].get_string_from_utf8()) == OK:
+			var parsed: Dictionary = json.data
 			if parsed.has("error"):
 				response_data = {"error": parsed.error, "is_auth_error": is_auth_error}
 			elif parsed.has("message"):
@@ -608,21 +603,20 @@ func send_rpc(p_rpc_id: String, payload: String, timeout: float = 30.0) -> Dicti
 
 	# Log RPC latency for analytics
 	var latency_ms: int = Time.get_ticks_msec() - start_time
-	_log_rpc_latency(p_rpc_id, latency_ms)
+	_log_rpc_latency(rpc_id, latency_ms)
 
 	return response_data
 
 ## Sends an RPC request without waiting for response (fire-and-forget).
 ## Used for notifications like stage completion where we don't need the result.
-func send_rpc_async(p_rpc_id: String, payload: String, _timeout: float = 10.0) -> void:
+func send_rpc_async(rpc_id: String, payload: String, _timeout: float = 10.0) -> void:
 	if not is_session_valid():
 		push_warning("Cannot send RPC: not authenticated")
 		return
 
-	var url: String = "%s/v2/rpc/%s" % [base_url, p_rpc_id]
+	var url: String = "%s/v2/rpc/%s" % [base_url, rpc_id]
 	var headers: PackedStringArray = get_auth_headers()
-	@warning_ignore("return_value_discarded")
-	headers.append("Content-Type: application/json")
+	var _err = headers.append("Content-Type: application/json")
 
 	# Wrap payload in JSON object as expected by Nakama HTTP API
 	var body: Dictionary = {"payload": payload}
@@ -631,7 +625,7 @@ func send_rpc_async(p_rpc_id: String, payload: String, _timeout: float = 10.0) -
 	# Fire request without waiting - we don't care about the response
 	var error_code: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_body)
 	if error_code != OK:
-		push_warning("Failed to send async RPC: %s" % p_rpc_id)
+		push_warning("Failed to send async RPC: %s" % rpc_id)
 
 func _log_rpc_latency(rpc_name: String, latency_ms: int) -> void:
 	# Use AnalyticsManager if available
@@ -694,7 +688,7 @@ func handle_connection_lost(reason: String = "Network connection lost") -> void:
 		return  # Already in offline mode
 
 	_last_connection_loss_reason = reason
-	is_server_connected = false
+	is_connected = false
 	is_offline = true
 	connection_lost.emit(reason)
 	connection_status_changed.emit(false)
@@ -705,7 +699,7 @@ func handle_connection_lost(reason: String = "Network connection lost") -> void:
 ## Handles successful reconnection
 func handle_reconnection() -> void:
 	is_offline = false
-	is_server_connected = true
+	is_connected = true
 	connection_status_changed.emit(true)
 	_reset_reconnection_state()
 
@@ -730,7 +724,7 @@ func set_offline_mode(offline: bool) -> void:
 	if is_offline != offline:
 		is_offline = offline
 		if offline:
-			is_server_connected = false
+			is_connected = false
 		connection_status_changed.emit(not offline)
 
 # --- Cleanup ---

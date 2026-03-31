@@ -1,0 +1,29 @@
+{
+  "threshold": 3.5,
+  "min-lines": 5,
+  "min-tokens": 30,
+  "reporters": ["console", "json"],
+  "output": "./.jscpd-report",
+  "ignore": [
+    "**/node_modules/**",
+    "**/build/**",
+    "**/dist/**",
+    "**/.git/**",
+    "**/coverage/**",
+    "**/__mocks__/**",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/test/**",
+    "**/tests/**",
+    "**/*.test.js",
+    "**/*.test.gd",
+    "**/__pycache__/**",
+    "**/*.pyc",
+    "**/data/modules/**",
+    "**/grafana/**",
+    "**/templates/**",
+    "**/reports/**"
+  ],
+  "extensions": ["ts", "tsx", "js", "jsx", "gd", "py"],
+  "mode": "weak"
+}

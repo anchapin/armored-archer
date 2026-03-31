@@ -38,14 +38,16 @@ INTEGRATION_MIN=10
 INTEGRATION_MAX=30
 E2E_MAX=20
 
-# Count Go tests by directory
-if [ "$OUTPUT_MODE" = "human" ]; then
-    echo "======================================="
-    echo "📊 Test Pyramid Validation"
-    echo "======================================="
-    echo ""
-    echo "Counting Go backend tests..."
+# Count TypeScript/Jest tests (backend/src/__tests__ or backend/tests/)
+TS_UNIT=$(find backend/src -name "*.test.ts" 2>/dev/null | wc -l)
+if [ $TS_UNIT -eq 0 ]; then
+    TS_UNIT=$(find backend/tests -name "*.test.ts" 2>/dev/null | wc -l)
 fi
+
+# TypeScript integration tests (if they exist)
+TS_INTEGRATION=$(find backend/tests -path "*/integration/*" -name "*.test.ts" 2>/dev/null | wc -l)
+
+# Count Go tests by directory (legacy support)
 GO_UNIT=$(find backend/tests/unit -name "*_test.go" 2>/dev/null | wc -l)
 GO_INTEGRATION=$(find backend/tests/integration -name "*_test.go" 2>/dev/null | wc -l)
 GO_E2E=$(find backend/tests/e2e -name "*_test.go" 2>/dev/null | wc -l)
@@ -58,9 +60,9 @@ GODOT_UNIT=$(find test/suites/player test/suites/combat test/suites/gear test/su
 GODOT_INTEGRATION=$(find test/suites/integration -name "test_*.gd" 2>/dev/null | wc -l)
 GODOT_E2E=$(find test/suites/e2e -name "test_*.gd" 2>/dev/null | wc -l)
 
-# Calculate totals
-TOTAL_UNIT=$((GO_UNIT + GODOT_UNIT))
-TOTAL_INTEGRATION=$((GO_INTEGRATION + GODOT_INTEGRATION))
+# Calculate totals (TypeScript + Go + Godot)
+TOTAL_UNIT=$((TS_UNIT + GO_UNIT + GODOT_UNIT))
+TOTAL_INTEGRATION=$((TS_INTEGRATION + GO_INTEGRATION + GODOT_INTEGRATION))
 TOTAL_E2E=$((GO_E2E + GODOT_E2E))
 TOTAL_TESTS=$((TOTAL_UNIT + TOTAL_INTEGRATION + TOTAL_E2E))
 
@@ -90,16 +92,26 @@ if [ $INTEGRATION_PCT -lt $INTEGRATION_MIN ] || [ $INTEGRATION_PCT -gt $INTEGRAT
     PYRAMID_VALID=0
 fi
 
-if [ $E2E_PCT -gt $E2E_MAX ]; then
+if [ $E2E_PCT -gt $E2E_MAX ] && [ $TOTAL_E2E -gt 0 ]; then
     VIOLATIONS+=("E2E tests $E2E_PCT% (target: 10% ±10%)")
     PYRAMID_VALID=0
+fi
+
+# Display breakdown in human-readable mode
+if [ "$OUTPUT_MODE" = "human" ]; then
+    echo "Test Distribution:"
+    echo "  Backend (TypeScript): $TS_UNIT unit, $TS_INTEGRATION integration"
+    echo "  Backend (Go): $GO_UNIT unit, $GO_INTEGRATION integration"
+    echo "  Godot (GDScript): $GODOT_UNIT unit, $GODOT_INTEGRATION integration, $GODOT_E2E e2e"
+    echo ""
+    echo "  Total: Unit $TOTAL_UNIT, Integration $TOTAL_INTEGRATION, E2E $TOTAL_E2E"
+    echo ""
 fi
 
 # Output based on mode
 if [ "$OUTPUT_MODE" = "json" ]; then
     # Create data directory if not exists
     mkdir -p data
-
     # Build JSON violations array
     VIOLATIONS_JSON=""
     if [ ${#VIOLATIONS[@]} -gt 0 ]; then

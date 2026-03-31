@@ -28,16 +28,16 @@ func _ready() -> void:
 
 func _connect_signals() -> void:
 	if StoreManager:
-		var _err1 = StoreManager.currency_updated.connect(_on_currency_updated)
-		var _err2 = StoreManager.purchase_succeeded.connect(_on_purchase_succeeded)
-		var _err3 = StoreManager.purchase_failed.connect(_on_purchase_failed)
+		StoreManager.currency_updated.connect(_on_currency_updated)
+		StoreManager.purchase_succeeded.connect(_on_purchase_succeeded)
+		StoreManager.purchase_failed.connect(_on_purchase_failed)
 
-	var _err4 = test_small_button.pressed.connect(_on_test_small)
-	var _err5 = test_medium_button.pressed.connect(_on_test_medium)
-	var _err6 = test_large_button.pressed.connect(_on_test_large)
-	var _err7 = test_spend_button.pressed.connect(_on_test_spend)
-	var _err8 = refresh_button.pressed.connect(_on_refresh)
-	var _err9 = back_button.pressed.connect(_on_back)
+	test_small_button.pressed.connect(_on_test_small)
+	test_medium_button.pressed.connect(_on_test_medium)
+	test_large_button.pressed.connect(_on_test_large)
+	test_spend_button.pressed.connect(_on_test_spend)
+	refresh_button.pressed.connect(_on_refresh)
+	back_button.pressed.connect(_on_back)
 
 func _update_display() -> void:
 	if StoreManager:
@@ -49,7 +49,7 @@ func _update_display() -> void:
 		platform_info += " (Detected: %s)" % StoreManager.platform
 	platform_label.text = platform_info
 
-	if NetworkManager and NetworkManager.is_server_connected:
+	if NetworkManager and NetworkManager.is_connected:
 		connection_status_label.text = "Status: Connected"
 		connection_status_label.modulate = Color.GREEN
 	else:
@@ -78,7 +78,7 @@ func _on_refresh() -> void:
 	_update_display()
 
 func _on_back() -> void:
-	var _err = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	var result = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
 
 # --- Callbacks ---
 func _on_currency_updated(gems: int, gold: int) -> void:

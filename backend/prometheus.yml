@@ -27,7 +27,7 @@ scrape_configs:
     static_configs:
       - targets: ['node_exporter:9100']
 
-  # Nakama server metrics
+  # Nakama server metrics - expose via RPC endpoint
   - job_name: 'nakama'
     metrics_path: '/metrics'
     scrape_interval: 30s
@@ -36,3 +36,61 @@ scrape_configs:
         labels:
           service: 'nakama'
           component: 'game-server'
+
+  # PostgreSQL database metrics (if postgres_exporter is added)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'database'
+
+  # Custom application metrics from Nakama RPC endpoint
+  - job_name: 'armored_archer_metrics'
+    metrics_path: '/api/nakama/rpc/armored_archer/metrics'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['nakama:7350']
+        labels:
+          service: 'armored-archer-backend'
+          component: 'application'
+    # Basic auth for metrics endpoint (configure in production)
+    # basic_auth:
+    #   username: metrics_user
+    #   password: metrics_password
+
+  # Deployment metrics
+  - job_name: 'armored_archer_deployment'
+    metrics_path: '/api/nakama/rpc/armored_archer/deployment_metrics'
+    scrape_interval: 60s
+    static_configs:
+      - targets: ['nakama:7350']
+        labels:
+          service: 'armored-archer-backend'
+          component: 'deployment'
+
+  # Health metrics
+  - job_name: 'armored_archer_health'
+    metrics_path: '/api/nakama/rpc/armored_archer/health'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['nakama:7350']
+        labels:
+          service: 'armored-archer-backend'
+          component: 'health'
+
+  # Progressive rollout metrics
+  - job_name: 'armored_archer_rollout'
+    metrics_path: '/api/nakama/rpc/armored_archer/rollout_prometheus_metrics'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['nakama:7350']
+        labels:
+          service: 'armored-archer-backend'
+          component: 'rollout'
+
+# Remote write configuration for pushing to remote storage (optional)
+# remote_write:
+#   - url: https://prometheus-prod-xxx.grafana.net/api/prom/push
+#     basic_auth:
+#       username: <username>
+#       password: <password>

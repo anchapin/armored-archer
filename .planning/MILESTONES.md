@@ -1,170 +1,5 @@
 # Armored Archer - Milestones Summary
 
-## v3.3.0 Polish & Juice (Shipped: 2026-03-27)
-
-**Phases completed:** 3 phases, 9 plans (100%)
-
-**Key accomplishments:**
-
-- **Phase 01 - Particle Effects Foundation:** Created EffectsManager autoload as central orchestrator for all visual effects. Implemented object pool for GPUParticles2D nodes with mobile optimization. Integrated hit particles and death explosions triggered from CombatManager. Added arrow trail particles to Arrow scene.
-- **Phase 02 - Post-Processing & Screen Effects:** Configured global WorldEnvironment with glow, vignette, and mobile-optimized settings. Implemented CameraController with screen shake on damage/heavy impacts. Added red vignette overlay on low HP. Created hero moment shader with gold glow post-processing for critical hits.
-- **Phase 03 - UI Polish & Micro-interactions:** Created AnimationUtils autoload with 7 reusable tween functions (fade_in, fade_out, scale_bounce, slide_in, pulse, scale_down, scale_up). Enhanced base_button.gd with press/hover animations and animation guards. Implemented device-tier adapted screen transitions in UITransitionOptimizer. Added loading states to buttons with embedded indicators. Enhanced loading_indicator with SPINNER, PULSE, DOTS animation styles.
-
-**Files Modified:** 6 files (EffectsManager.gd, AnimationUtils.gd, base_button.gd, loading_indicator.gd, main_menu.gd, UITransitionOptimizer.gd)
-
-**Performance:** Mobile 60 FPS maintained with particle effects, no GC pressure from object pooling, device-tier adapted UI animations
-
----
-
-## v3.2.0 v3.2.0 (Shipped: 2026-03-27)
-
-**Phases completed:** 8 phases, 37 plans, 95 tasks
-
-**Key accomplishments:**
-
-- Viewport stretch configured for pixel-perfect rendering with 640x360 resolution and integer scaling
-- Pixel art import guide documenting correct settings (Nearest filter, Lossless compression, no mipmaps) for team use
-- Created organized sprite folder structure for enemies, UI, and equipment with type-based categorization
-- Phase
-- Verified Nakama beta container configuration and automated health checks for all 6 beta services with integration test suite
-- Phase
-- Created 20+ test stub files and CI workflow skeletons to enable Nyquist-compliant test infrastructure development for coverage reporting, flaky test detection, visual regression testing, and property-based testing.
-- One-liner:
-- Automated flaky test detection with 3x retry logic, build tag quarantine mechanism, PR notifications, and reliability dashboard
-- One-liner:
-- Status:
-- Status:
-- Status:
-- Status:
-- Status:
-- Status:
-- One-liner:
-- Nakama testcontainers helper with automated service provisioning, fail-fast NAKAMA_URL validation, and load test integration test
-- Status:
-- Status:
-- Fixed all 7 compilation errors in notifications package, enabling accurate baseline coverage measurement for INF-02
-- Baseline coverage measurement across all 27 Go packages with package-level tracking, enabling per-module visibility and trend analysis for future quality improvements
-- Assertion quality gate tool with support for testify, testhelpers, and standard Go testing patterns
-- Coverage gap analysis script with package-grouped zero-coverage function identification and JSON export for test prioritization
-- Coverage gates enforcement script with 60% overall and 80% critical path thresholds, CI workflow integration with assertion checking, gap analysis, and mutation testing configuration placeholder
-- Completed Tasks:
-- Fixed OpenTelemetry tracing API migration from deprecated trace.StatusCode to codes.Code in metrics package
-- Updated coverage generation script to fail immediately on compilation errors, enforcing that all packages must compile before baseline coverage measurement.
-- Fixed variable shadowing error in season_test.go to enable compilation and validate coverage measurement infrastructure
-- Fixed undefined testhelpers.TestError references by using locally defined createTestError function, enabling observability package compilation for baseline coverage measurement
-- Fixed matchmaking test compilation by replacing undefined NewPlayerRanking and MatchRecord with direct struct initialization and test removal
-- RPC feedback cache test mock interfaces fixed with interface embedding pattern, enabling compilation of tests/rpc package
-- Added fmt import to store_test.go, enabling compilation of store test package and completing all 27 Go package compilation
-- Fixed TestAddXP and TestGetProgressToNextLevel incorrect assertions to match actual RPG system behavior
-- Fixed AssertNil test helper to handle typed nil pointers, enabling TestGetPreviousSeason to pass and season test package to complete successfully
-- Root Cause:
-- Corrected test expectations to match actual matchmaking logic - TestFilterMatches now expects 2 matches (not 1) and TestGetRankFromElo expects rank 5 (not 10) for ELO 1000, all 18 matchmaking tests pass
-- Status:
-
----
-
-## v3.0.0 Visual Improvements (Shipped: 2026-03-24)
-
-**Phases completed:** 4 phases (gilded-quest-01 through gilded-quest-04)
-**Plans completed:** 4 plans
-**Files modified:** 35 files, 1,148 insertions(+), 26 deletions(-)
-
-**Key accomplishments:**
-
-- Established Gilded Quest design system with centralized Theme resource
-- Implemented typography scale with 5 LabelSettings (56px to 14px)
-- Created bubbly tactile button components with 3 states
-- Built no-line layout system with tonal color shifts
-- Implemented glassmorphism shader for frosted glass modals
-- Created GPU-accelerated combat particle effects (hit, trail, death)
-- Created hero moment post-processing shader with gold glow
-- Established character sprite and background infrastructure with palette management
-
-**Design System:** Gilded Quest ("Tactile Heroism")
-
-- Palette: Royal Blue (#0060ce), Gold, Emerald on warm parchment (#fdffda)
-- Fonts: Plus Jakarta Sans (display) + Be Vietnam Pro (body)
-- Key rules: No 1px borders, tonal layering, glassmorphism, bubbly buttons
-
----
-
-## v2.5.0 Advanced Testing Frameworks (Shipped: 2026-03-23)
-
-**Phases completed:** 7 phases, 22 plans, 35 tasks
-
-**Key accomplishments:**
-
-- (none recorded)
-
----
-
-## v2.6.0 Integration & Handler Coverage (Shipped: 2026-03-22)
-
-**Phases completed:** 4 phases (Phase 18-21)
-
-**Key accomplishments:**
-
-- RPC handler coverage reached 62.7% with mock Nakama runtime interfaces
-- Analytics & Event Infrastructure coverage at 97.9%
-- System E2E testing framework established (73.5% total Go coverage)
-- k6 load testing infrastructure for 100+ concurrent players
-- Critical analytics bugs fixed
-
----
-
-## v2.5.0 Advanced Testing Frameworks (Shipped: 2026-03-23)
-
-**Phases completed:** 7 phases (Phase 13-17, 22-27)
-
-**Key accomplishments:**
-
-- Built custom Godot line coverage instrumentation for GDScript with HTML reporting
-- Integrated mutation testing (go-mutesting) with package-specific thresholds (61.29% baseline)
-- Implemented 36+ property-based tests across progression, matchmaking, and inventory systems
-- Increased Go backend coverage to 73.3% (exceeding 60% target by 13.3 percentage points)
-- Achieved 90%+ critical path coverage (Combat: 92.3%, Matchmaking: 95.8%, RPG: 94.4%)
-- Stage 3 CI/CD coverage gates enforced at 60% threshold
-- Resolved multiple build and runtime blockers in testing infrastructure
-
----
-
-## v2.4.0 Test Coverage Improvement (Shipped: 2026-03-22)
-
-**Phases completed:** 5 phases, 40 plans, 23 tasks
-
-**Key accomplishments:**
-
-- Fixed TestAddXP and TestGetProgressToNextLevel incorrect assertions to match actual RPG system behavior
-
----
-
-## v2.3.0 Testing & QA Infrastructure (Shipped: 2026-03-20)
-
-**Phases completed:** 7 phases (Test Infrastructure Foundation, Fixtures & Mocks Layer, Godot Test Framework Enhancement, Load Testing Infrastructure, Complete Test Infrastructure Foundation, Coverage & Quality Gates, Test Infrastructure Integration)
-
-**Plans completed:** 26 plans
-**Tasks completed:** 57 tasks
-**Commits:** 208 total (81 feat commits)
-**Timeline:** 2 days (2026-03-19 → 2026-03-20)
-
-**Key accomplishments:**
-
-- Unified test runner with race detector, test pyramid enforcement (70/20/10), and shuffle isolation for test verification
-- testcontainers-go integration with factory pattern fixtures for fast, isolated database tests
-- Interface-based mocking with gomock, mock validation tests, and drift detection strategy
-- Godot autoload test isolation with dependency injection and signal testing framework
-- Go benchmarks for critical RPC handlers, Godot 60 FPS performance tests, and k6 load tests for 100+ concurrent players
-- Code coverage measurement (Go: 17%, Godot: pass rate proxy), CI threshold enforcement (60% overall, 80% critical), and flaky test detection
-- Visual regression testing for design system components and theme consistency validation
-- Property-based testing for combat calculations and RNG systems using rapid
-- Load tests automated with testcontainers, eliminating manual service startup dependency
-
-**Known Gaps:**
-
-- PERF-04: Load test scripts use k6 for realistic traffic simulation (marked complete but not fully verified)
-
----
-
 ## v2.2.0 UI/UX Polish (Shipped: 2026-03-19)
 
 **Phases completed:** 4 phases (Design System Foundation, Core UI Components, Screen Improvements, Animation & Polish)
@@ -175,7 +10,6 @@
 **Lines added:** 3,058 insertions
 
 **Key accomplishments:**
-
 - Created DesignTokens (50+ tokens) and ThemeManager for consistent theming across all screens
 - Built 8 base UI components (button, panel, container, label, progress bar, icon, loading indicator, theme toggle)
 - Migrated all 11 major UI screens to design system (main menu, login, combat, store, loadout, campaign, leaderboard, matchmaking, gear inventory/comparison, game over)
@@ -199,20 +33,17 @@
 **Status**: ✅ Complete
 
 ### Phases Completed
-
 | Phase | Name | Plans | Status |
 |-------|------|-------|--------|
 | 01-design-system | Design System Foundation | 4 | ✅ Complete |
 
 ### Key Accomplishments
-
 - Created DesignTokens and ThemeManager for consistent theming
 - Migrated all core UI screens (Login, Combat, Store, Loadout)
 - Added screen improvements (Campaign Map, Leaderboard, Matchmaking, Gear, Game Over)
 - Implemented UI animations and mobile responsiveness
 
 ### Notes
-
 - All 20+ UI screens now use design system
 - Light/dark themes work on all screens
 - Accessibility features integrated
@@ -222,7 +53,6 @@
 ## 🎯 Ultimate Goal
 
 **Ship with polished UI/UX that:**
-
 1. Has consistent visual design across all screens
 2. Provides intuitive, easy-to-use navigation
 3. Works well on all screen sizes (320px+)
@@ -252,7 +82,6 @@ Week 10:   ███████████████████████
 **Goal**: Go project structure, config, database layer working
 
 **Deliverables**:
-
 - [ ] Go module compiles
 - [ ] Nakama loads Go module
 - [ ] Config loading works
@@ -269,7 +98,6 @@ Week 10:   ███████████████████████
 **Goal**: RPC infrastructure and player systems working
 
 **Deliverables**:
-
 - [ ] RPC registration system works
 - [ ] Session validation functional
 - [ ] Error handling matches TypeScript
@@ -286,7 +114,6 @@ Week 10:   ███████████████████████
 **Goal**: All core game systems migrated
 
 **Deliverables**:
-
 - [ ] Combat system functional
 - [ ] Matchmaking works
 - [ ] Gear/inventory works
@@ -303,7 +130,6 @@ Week 10:   ███████████████████████
 **Goal**: Store, notifications, monetization working
 
 **Deliverables**:
-
 - [ ] IAP validation works
 - [ ] RevenueCat webhooks process
 - [ ] Notifications send
@@ -319,7 +145,6 @@ Week 10:   ███████████████████████
 **Goal**: Monitoring, metrics, alerting functional
 
 **Deliverables**:
-
 - [ ] Metrics export to Prometheus
 - [ ] Health checks work
 - [ ] Alerts fire correctly
@@ -335,7 +160,6 @@ Week 10:   ███████████████████████
 **Goal**: 100% test parity with TypeScript
 
 **Deliverables**:
-
 - [ ] All 10 integration test suites pass
 - [ ] Test coverage matches TypeScript
 - [ ] CI pipeline runs tests
@@ -351,7 +175,6 @@ Week 10:   ███████████████████████
 **Goal**: All TypeScript code removed, docs updated
 
 **Deliverables**:
-
 - [ ] TypeScript backend deleted
 - [ ] README updated for Go
 - [ ] Build scripts updated
@@ -368,7 +191,6 @@ Week 10:   ███████████████████████
 **Goal**: Production-ready for alpha testing
 
 **Deliverables**:
-
 - [ ] Performance benchmarks meet targets
 - [ ] Load testing passes
 - [ ] Security review complete
@@ -448,25 +270,18 @@ Progress: 0% ██████████████████████�
 ### Commands
 
 ```bash
-
 # Start migration
-
 /gsd:execute-phase 1
 
 # Check progress
-
 /gsd:progress
 
 # View current phase
-
 cat .planning/phases/*/PLAN.md | head -50
 
 # Update state after phase
-
 cat >> .planning/STATE.md << 'EOF'
-
 ## Phase X Completed
-
 Date: $(date)
 Summary: ...
 Lessons: ...

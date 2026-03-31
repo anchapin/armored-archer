@@ -13,14 +13,9 @@ var is_active: bool = false
 # --- Node References ---
 @onready var _collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _sprite: Sprite2D = $Sprite2D
-@onready var _arrow_trail: GPUParticles2D = $ArrowTrail
-
 func _ready() -> void:
 	# Connect collision signal
 	var _err = body_entered.connect(_on_body_entered)
-	# Initialize trail to not emit until arrow is active
-	if _arrow_trail:
-		_arrow_trail.emitting = false
 
 func _physics_process(delta: float) -> void:
 	if not is_active:
@@ -46,10 +41,6 @@ func setup(start_pos: Vector2, dir: Vector2, dmg: int, spd: float = 800.0) -> vo
 	# Rotate sprite to face direction
 	if direction.length() > 0.1:
 		rotation = direction.angle()
-	
-	# Enable trail particles when arrow is active
-	if _arrow_trail:
-		_arrow_trail.emitting = true
 
 func _on_body_entered(body: Node) -> void:
 	"""Handle collision with body."""
@@ -68,9 +59,6 @@ func _on_body_entered(body: Node) -> void:
 func _return_to_pool() -> void:
 	"""Return this arrow to the object pool."""
 	is_active = false
-	# Disable trail particles
-	if _arrow_trail:
-		_arrow_trail.emitting = false
 	ObjectPool.return_arrow(self)
 
 ## Reset state when returning to pool - called by ObjectPool
@@ -83,9 +71,6 @@ func reset_pooled_state() -> void:
 	lifetime = 5.0
 	position = Vector2.ZERO
 	rotation = 0.0
-	# Disable trail particles
-	if _arrow_trail:
-		_arrow_trail.emitting = false
 
 	# Disable collision
 	if _collision_shape:

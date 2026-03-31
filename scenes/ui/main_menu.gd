@@ -2,13 +2,13 @@ extends Control
 
 # --- UI References ---
 @onready var gem_label: Label = $SafeAreaContainer/CenterContainer/VBoxContainer/GemContainer/GemLabel
-@onready var _play_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PlayButton
-@onready var _pvp_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PvpButton
-@onready var _shop_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/ShopButton
-@onready var _buy_gems_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/BuyGemsButton
-@onready var _settings_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/SettingsButton
-@onready var _quit_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/QuitButton
-@onready var _loadout_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/LoadoutButton
+@onready var play_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PlayButton
+@onready var pvp_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PvpButton
+@onready var shop_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/ShopButton
+@onready var buy_gems_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/BuyGemsButton
+@onready var settings_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/SettingsButton
+@onready var quit_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/QuitButton
+@onready var loadout_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/LoadoutButton
 @onready var menu_container: Control = $SafeAreaContainer/CenterContainer/VBoxContainer
 
 # --- Manager References ---
@@ -36,16 +36,13 @@ func _ready() -> void:
 
 	_update_gem_display()
 
-	_play_button.pressed.connect(_on_play_pressed)
-	_pvp_button.pressed.connect(_on_pvp_pressed)
-	_shop_button.pressed.connect(_on_shop_pressed)
-	_buy_gems_button.pressed.connect(_on_buy_gems_pressed)
-	_settings_button.pressed.connect(_on_settings_pressed)
-	_quit_button.pressed.connect(_on_quit_pressed)
-	_loadout_button.pressed.connect(_on_loadout_pressed)
-	
-	# Apply basic colors first
-	_apply_basic_colors()
+	play_button.pressed.connect(_on_play_pressed)
+	pvp_button.pressed.connect(_on_pvp_pressed)
+	shop_button.pressed.connect(_on_shop_pressed)
+	buy_gems_button.pressed.connect(_on_buy_gems_pressed)
+	settings_button.pressed.connect(_on_settings_pressed)
+	quit_button.pressed.connect(_on_quit_pressed)
+	loadout_button.pressed.connect(_on_loadout_pressed)
 	
 	# Apply theme if ThemeManager is available
 	if theme_manager:
@@ -74,32 +71,10 @@ func _cleanup_signal_connection(node: Node, signal_name: String, connection: Cal
 
 # --- Button Handlers ---
 func _on_play_pressed() -> void:
-	# Show loading state while transitioning
-	_play_button.set_loading(true)
-	
-	# Small delay for visual feedback, then transition
-	await get_tree().create_timer(0.15).timeout
-	
-	if has_node("/root/UITransitionOptimizer"):
-		$"/root/UITransitionOptimizer".transition_to_scene("res://scenes/ui/campaign_map.tscn")
-	else:
-		get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
-	
-	# Clear loading state after transition starts
-	_play_button.set_loading(false)
+	get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
 
 func _on_pvp_pressed() -> void:
-	# Show loading state while transitioning
-	_pvp_button.set_loading(true)
-	
-	await get_tree().create_timer(0.15).timeout
-	
-	if has_node("/root/UITransitionOptimizer"):
-		$"/root/UITransitionOptimizer".transition_to_scene("res://scenes/ui/matchmaking_menu.tscn")
-	else:
-		get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
-	
-	_pvp_button.set_loading(false)
+	get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
 
 func _on_shop_pressed() -> void:
 	# Clean up existing shop instance if it exists
@@ -112,17 +87,7 @@ func _on_shop_pressed() -> void:
 	visible = false
 
 func _on_buy_gems_pressed() -> void:
-	# Show loading state while transitioning
-	_buy_gems_button.set_loading(true)
-	
-	await get_tree().create_timer(0.15).timeout
-	
-	if has_node("/root/UITransitionOptimizer"):
-		$"/root/UITransitionOptimizer".transition_to_scene("res://scenes/ui/store_menu.tscn")
-	else:
-		get_tree().change_scene_to_file("res://scenes/ui/store_menu.tscn")
-	
-	_buy_gems_button.set_loading(false)
+	get_tree().change_scene_to_file("res://scenes/ui/store_menu.tscn")
 
 func _on_settings_pressed() -> void:
 	print("Settings not implemented yet")
@@ -148,25 +113,6 @@ func _update_gem_display() -> void:
 func _on_currency_updated( _gems: int, _gold: int) -> void:
 	_update_gem_display()
 
-# --- Basic Colors ---
-func _apply_basic_colors() -> void:
-	# Set button colors to a nice blue
-	var button_color = Color(0.0, 0.376, 0.808, 1.0)  # Royal Blue
-	if _play_button:
-		_play_button.modulate = button_color
-	if _pvp_button:
-		_pvp_button.modulate = button_color
-	if _shop_button:
-		_shop_button.modulate = button_color
-	if _buy_gems_button:
-		_buy_gems_button.modulate = button_color
-	if _settings_button:
-		_settings_button.modulate = button_color
-	if _quit_button:
-		_quit_button.modulate = button_color
-	if _loadout_button:
-		_loadout_button.modulate = button_color
-
 # --- Theme Support ---
 func _apply_theme() -> void:
 	if not theme_manager:
@@ -174,12 +120,12 @@ func _apply_theme() -> void:
 	
 	var colors = theme_manager.get_theme_colors()
 	
-	# BUG FIX: Don't set modulate on root node - this washes out all colors
-	# modulate = colors["background"]  # Removed - was causing grayscale
+	# Apply background color
+	modulate = colors["background"]
 	
 	# Apply to menu container if available
-	# FIX: Don't override modulate - let children keep their own colors
-	# menu_container.modulate = colors["surface"]  # Removed
+	if menu_container:
+		menu_container.modulate = colors["surface"]
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()
@@ -190,34 +136,33 @@ func _add_button_animations() -> void:
 		return
 	
 	# Add hover animations to each button
-	var _err: Error
-	_err = _play_button.mouse_entered.connect(func(): _on_button_hover(_play_button))
-	_err = _play_button.mouse_exited.connect(func(): _on_button_hover_exit(_play_button))
-	_err = _play_button.button_down.connect(func(): _on_button_press(_play_button))
+	_play_button.mouse_entered.connect(func(): _on_button_hover(play_button))
+	_play_button.mouse_exited.connect(func(): _on_button_hover_exit(play_button))
+	_play_button.button_down.connect(func(): _on_button_press(play_button))
 	
-	_err = _pvp_button.mouse_entered.connect(func(): _on_button_hover(_pvp_button))
-	_err = _pvp_button.mouse_exited.connect(func(): _on_button_hover_exit(_pvp_button))
-	_err = _pvp_button.button_down.connect(func(): _on_button_press(_pvp_button))
+	_pvp_button.mouse_entered.connect(func(): _on_button_hover(pvp_button))
+	_pvp_button.mouse_exited.connect(func(): _on_button_hover_exit(pvp_button))
+	_pvp_button.button_down.connect(func(): _on_button_press(pvp_button))
 	
-	_err = _shop_button.mouse_entered.connect(func(): _on_button_hover(_shop_button))
-	_err = _shop_button.mouse_exited.connect(func(): _on_button_hover_exit(_shop_button))
-	_err = _shop_button.button_down.connect(func(): _on_button_press(_shop_button))
+	_shop_button.mouse_entered.connect(func(): _on_button_hover(shop_button))
+	_shop_button.mouse_exited.connect(func(): _on_button_hover_exit(shop_button))
+	_shop_button.button_down.connect(func(): _on_button_press(shop_button))
 	
-	_err = _buy_gems_button.mouse_entered.connect(func(): _on_button_hover(_buy_gems_button))
-	_err = _buy_gems_button.mouse_exited.connect(func(): _on_button_hover_exit(_buy_gems_button))
-	_err = _buy_gems_button.button_down.connect(func(): _on_button_press(_buy_gems_button))
+	_buy_gems_button.mouse_entered.connect(func(): _on_button_hover(buy_gems_button))
+	_buy_gems_button.mouse_exited.connect(func(): _on_button_hover_exit(buy_gems_button))
+	_buy_gems_button.button_down.connect(func(): _on_button_press(buy_gems_button))
 	
-	_err = _settings_button.mouse_entered.connect(func(): _on_button_hover(_settings_button))
-	_err = _settings_button.mouse_exited.connect(func(): _on_button_hover_exit(_settings_button))
-	_err = _settings_button.button_down.connect(func(): _on_button_press(_settings_button))
+	_settings_button.mouse_entered.connect(func(): _on_button_hover(settings_button))
+	_settings_button.mouse_exited.connect(func(): _on_button_hover_exit(settings_button))
+	_settings_button.button_down.connect(func(): _on_button_press(settings_button))
 	
-	_err = _quit_button.mouse_entered.connect(func(): _on_button_hover(_quit_button))
-	_err = _quit_button.mouse_exited.connect(func(): _on_button_hover_exit(_quit_button))
-	_err = _quit_button.button_down.connect(func(): _on_button_press(_quit_button))
+	_quit_button.mouse_entered.connect(func(): _on_button_hover(quit_button))
+	_quit_button.mouse_exited.connect(func(): _on_button_hover_exit(quit_button))
+	_quit_button.button_down.connect(func(): _on_button_press(quit_button))
 	
-	_err = _loadout_button.mouse_entered.connect(func(): _on_button_hover(_loadout_button))
-	_err = _loadout_button.mouse_exited.connect(func(): _on_button_hover_exit(_loadout_button))
-	_err = _loadout_button.button_down.connect(func(): _on_button_press(_loadout_button))
+	_loadout_button.mouse_entered.connect(func(): _on_button_hover(loadout_button))
+	_loadout_button.mouse_exited.connect(func(): _on_button_hover_exit(loadout_button))
+	_loadout_button.button_down.connect(func(): _on_button_press(loadout_button))
 
 func _on_button_hover(button: Button) -> void:
 	if ui_automation and ui_automation.has_method("button_hover_in") and is_instance_valid(button):
@@ -245,5 +190,5 @@ func _animate_menu_entry() -> void:
 	
 	# Animate entry
 	var tween = create_tween()
-	var _tp1 = tween.tween_property(menu_container, "modulate:a", 1.0, 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
-	var _tp2 = tween.parallel().tween_property(menu_container, "scale", Vector2.ONE, 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+	tween.tween_property(menu_container, "modulate:a", 1.0, 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tween.parallel().tween_property(menu_container, "scale", Vector2.ONE, 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)

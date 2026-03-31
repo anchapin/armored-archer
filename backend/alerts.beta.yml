@@ -1,0 +1,185 @@
+# ============================================
+# Beta Environment Alerts
+# Armored Archer - Beta Testing Monitoring
+# ============================================
+# This file contains alerting rules specific to beta environment
+# with stricter thresholds for beta testing validation.
+# ============================================
+
+groups:
+  - name: armored_archer_beta_critical
+    interval: 30s
+    rules:
+      # ============================================
+      # BETA CRITICAL - Immediate Action Required
+      # ============================================
+
+      # High Error Rate (Beta threshold: 0.5%)
+      - alert: BetaHighErrorRate
+        expr: |
+          (
+            sum(rate(armored_archer_rpc_errors_total{service="beta"}[5m])) by (rpc_method)
+            /
+            sum(rate(armored_archer_rpc_requests_total{service="beta"}[5m])) by (rpc_method)
+          ) > 0.005
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+          component: api
+          environment: beta
+        annotations:
+          summary: "Beta: High error rate on RPC {{ $labels.rpc_method }}"
+          description: "Error rate is above 0.5% for RPC {{ $labels.rpc_method }}. Current: {{ $value | printf \"%.2f\" }}%"
+          runbook_url: "https://docs.armored-archer.internal/runbooks/high-error-rate"
+
+      # Overall Error Rate (Beta threshold: 0.5%)
+      - alert: BetaOverallErrorRate
+        expr: |
+          sum(rate(armored_archer_rpc_errors_total{service="beta"}[5m]))
+          /
+          sum(rate(armored_archer_rpc_requests_total{service="beta"}[5m])) > 0.005
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+          component: api
+          environment: beta
+        annotations:
+          summary: "Beta: Overall error rate exceeds 0.5%"
+          description: "Total error rate is {{ $value | printf \"%.2f\" }}%, exceeding beta threshold of 0.5%"
+          runbook_url: "https://docs.armored-archer.internal/runbooks/high-error-rate"
+
+      # Beta Service Down
+      - alert: BetaServiceDown
+        expr: up{job="nakama",service="beta"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+          component: game-server
+          environment: beta
+        annotations:
+          summary: "Beta game server is down"
+          description: "Beta Nakama server has been unavailable for more than 1 minute. Beta users cannot connect."
+
+      # Beta User Registration Failure
+      - alert: BetaRegistrationFailures
+        expr: |
+          sum(rate(armored_archer_beta_registration_failures_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+          component: onboarding
+          environment: beta
+        annotations:
+          summary: "Beta user registration failures detected"
+          description: "Beta user registrations are failing. Users cannot join beta testing."
+
+  - name: armored_archer_beta_warning
+    interval: 30s
+    rules:
+      # ============================================
+      # BETA WARNING - Attention Required
+      # ============================================
+
+      # Elevated Error Rate (Beta threshold: 0.3%)
+      - alert: BetaElevatedErrorRate
+        expr: |
+          (
+            sum(rate(armored_archer_rpc_errors_total{service="beta"}[5m])) by (rpc_method)
+            /
+            sum(rate(armored_archer_rpc_requests_total{service="beta"}[5m])) by (rpc_method)
+          ) > 0.003
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          component: api
+          environment: beta
+        annotations:
+          summary: "Beta: Elevated error rate on RPC {{ $labels.rpc_method }}"
+          description: "Error rate is above 0.3% for RPC {{ $labels.rpc_method }}. Current: {{ $value | printf \"%.2f\" }}%"
+
+      # High Latency (Beta threshold: 80ms P95)
+      - alert: BetaHighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(armored_archer_rpc_duration_seconds_bucket{service="beta"}[5m])) by (le, rpc_method)
+          ) > 0.080
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          component: api
+          environment: beta
+        annotations:
+          summary: "Beta: P95 latency exceeds 80ms for {{ $labels.rpc_method }}"
+          description: "P95 latency is {{ $value | printf \"%.0f\" }}ms, exceeding beta threshold of 80ms"
+
+      # Beta User Count Warning
+      - alert: BetaNearCapacity
+        expr: armored_archer_beta_active_users / 500 > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+          component: onboarding
+          environment: beta
+        annotations:
+          summary: "Beta: Approaching user capacity"
+          description: "Beta has {{ $value | printf "%.0f" }}% of maximum 500 users"
+
+      # Feedback Volume Warning
+      - alert: BetaHighFeedbackVolume
+        expr: |
+          sum(rate(armored_archer_beta_feedback_total[1h])) > 10
+        for: 10m
+        labels:
+          severity: warning
+          team: product
+          component: feedback
+          environment: beta
+        annotations:
+          summary: "Beta: High volume of user feedback"
+          description: "Receiving more than 10 feedback submissions per hour"
+
+  - name: armored_archer_beta_performance
+    interval: 60s
+    rules:
+      # ============================================
+      # BETA PERFORMANCE - Tracking Metrics
+      # ============================================
+
+      # P50 Latency Tracking
+      - alert: BetaP50Latency
+        expr: |
+          histogram_quantile(0.50, 
+            sum(rate(armored_archer_rpc_duration_seconds_bucket{service="beta"}[5m])) by (le, rpc_method)
+          ) > 0.040
+        for: 10m
+        labels:
+          severity: info
+          team: backend
+          component: api
+          environment: beta
+        annotations:
+          summary: "Beta: P50 latency above 40ms"
+          description: "P50 latency is {{ $value | printf \"%.0f\" }}ms for {{ $labels.rpc_method }}"
+
+      # P99 Latency Tracking  
+      - alert: BetaP99Latency
+        expr: |
+          histogram_quantile(0.99, 
+            sum(rate(armored_archer_rpc_duration_seconds_bucket{service="beta"}[5m])) by (le, rpc_method)
+          ) > 0.200
+        for: 10m
+        labels:
+          severity: info
+          team: backend
+          component: api
+          environment: beta
+        annotations:
+          summary: "Beta: P99 latency above 200ms"
+          description: "P99 latency is {{ $value | printf \"%.0f\" }}ms for {{ $labels.rpc_method }}"

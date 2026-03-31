@@ -71,7 +71,7 @@ func get_best_target(player_pos: Vector2, aim_direction: Vector2) -> Node2D:
 			continue
 
 		var angle_to_enemy: float = to_enemy.angle()
-		var angle_diff: float = absf(_angle_difference(aim_angle, angle_to_enemy))
+		var angle_diff: float = absf(angle_difference(aim_angle, angle_to_enemy))
 
 		if angle_diff > MAX_AIM_ANGLE:
 			continue
@@ -110,7 +110,3 @@ func is_target_locked(player_pos: Vector2, aim_direction: Vector2) -> bool:
 		bool: True if a target is locked
 	"""
 	return get_best_target(player_pos, aim_direction) != null
-
-func _angle_difference(from: float, to: float) -> float:
-	"""Polyfill for angle_difference for Godot versions < 4.1."""
-	return fposmod(to - from + PI, PI * 2.0) - PI

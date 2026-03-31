@@ -1,19 +1,266 @@
 # Alertmanager Configuration for Armored Archer
+# Routing and notification channel configuration
 
 global:
+  # Resolve timeout for alerts
   resolve_timeout: 5m
-  smtp_smarthost: 'localhost:25'
-  smtp_from: 'alertmanager@armored-archer.example.com'
+  
+  # SMTP configuration for email notifications (optional)
+  smtp_from: "alerts@armored-archer.example.com"
+  smtp_smarthost: "smtp.example.com:587"
+  smtp_auth_username: "alerts"
+  smtp_auth_password: "password"
+  
+  # PagerDuty integration (optional)
+  pagerduty_url: "http://localhost/pagerduty"
 
+# Define the notification receivers
 receivers:
+  # ============================================
+  # Critical Alerts - All channels
+  # ============================================
+  
+  - name: 'critical-alerts'
+    # Email for critical alerts
+    email_configs:
+      - to: 'on-call-critical@armored-archer.example.com'
+        send_resolved: true
+        headers:
+          subject: '[CRITICAL] {{ .GroupLabels.alertname }} - Armored Archer'
+        html: |
+          <h2>🚨 Critical Alert: {{ .GroupLabels.alertname }}</h2>
+          <p><strong>Environment:</strong> {{ .Labels.environment }}</p>
+          <p><strong>Service:</strong> {{ .Labels.service }}</p>
+          <p><strong>Component:</strong> {{ .Labels.component }}</p>
+          <hr>
+          <h3>Alert Details</h3>
+          <p>{{ .Annotations.description }}</p>
+          <p><strong>Started:</strong> {{ .StartsAt }}</p>
+          <p><strong>Labels:</strong></p>
+          <pre>{{ .Labels | toYAML }}</pre>
+    
+    # PagerDuty for critical alerts
+    pagerduty_configs:
+      - service_key: 'dummy-key'
+        severity: critical
+        component: '{{ .Labels.component }}'
+        group: '{{ .Labels.team }}'
+    
+    # Slack for critical alerts
+    slack_configs:
+      - api_url: 'http://localhost/slack'
+        channel: '#armored-archer-critical'
+        username: 'Armored Archer Alerts'
+        icon_emoji: ':fire:'
+        title: '🚨 Critical Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          *Environment:* {{ .Labels.environment }}
+          *Service:* {{ .Labels.service }}
+          *Component:* {{ .Labels.component }}
+          
+          {{ .Annotations.description }}
+        actions:
+          - type: button
+            text: '📊 View Dashboard'
+            url: 'http://grafana:3000/dashboard/db/armored-archer'
+          - type: button
+            text: '📋 Runbook'
+            url: '{{ .Annotations.runbook_url }}'
+          - type: button
+            text: '🔗 Acknowledge'
+            url: 'https://your-pagerduty.com'
+
+  # ============================================
+  # Warning Alerts - Email + Slack
+  # ============================================
+  
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'on-call@armored-archer.example.com'
+        send_resolved: true
+        headers:
+          subject: '[WARNING] {{ .GroupLabels.alertname }} - Armored Archer'
+        html: |
+          <h2>⚠️ Warning Alert: {{ .GroupLabels.alertname }}</h2>
+          <p><strong>Environment:</strong> {{ .Labels.environment }}</p>
+          <p><strong>Service:</strong> {{ .Labels.service }}</p>
+          <hr>
+          <h3>Alert Details</h3>
+          <p>{{ .Annotations.description }}</p>
+    
+    slack_configs:
+      - api_url: 'http://localhost/slack'
+        channel: '#armored-archer-warnings'
+        username: 'Armored Archer Alerts'
+        icon_emoji: ':warning:'
+        title: '⚠️ Warning: {{ .GroupLabels.alertname }}'
+        text: |
+          *Environment:* {{ .Labels.environment }}
+          *Service:* {{ .Labels.service }}
+          
+          {{ .Annotations.description }}
+        actions:
+          - type: button
+            text: '📊 View Dashboard'
+            url: 'http://grafana:3000/dashboard/db/armored-archer'
+
+  # ============================================
+  # Info Alerts - Slack only
+  # ============================================
+  
+  - name: 'info-alerts'
+    slack_configs:
+      - api_url: 'http://localhost/slack'
+        channel: '#armored-archer-info'
+        username: 'Armored Archer Info'
+        icon_emoji: ':information_source:'
+        title: 'ℹ️ Info: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ .Annotations.description }}
+
+  # ============================================
+  # Security Alerts - Dedicated channel
+  # ============================================
+  
+  - name: 'security-alerts'
+    email_configs:
+      - to: 'security-team@armored-archer.example.com'
+        send_resolved: true
+        headers:
+          subject: '[SECURITY] {{ .GroupLabels.alertname }} - Armored Archer'
+    
+    slack_configs:
+      - api_url: 'http://localhost/slack'
+        channel: '#armored-archer-security'
+        username: 'Armored Archer Security'
+        icon_emoji: ':rotating_light:'
+        title: '🔒 Security Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          *Environment:* {{ .Labels.environment }}
+          *Service:* {{ .Labels.service }}
+          
+          {{ .Annotations.description }}
+        actions:
+          - type: button
+            text: '🔒 Security Dashboard'
+            url: 'http://grafana:3000/d/armored-archer-security'
+          - type: button
+            text: '📋 Incident Response'
+            url: 'https://your-incident-response-tool.com'
+
+  # ============================================
+  # Default/catch-all receiver
+  # ============================================
+  
   - name: 'default'
-    webhook_configs:
-      - url: 'http://localhost:5001/webhook'
+    email_configs:
+      - to: 'alerts@armored-archer.example.com'
         send_resolved: true
 
+# ============================================
+# Alert Routing Tree
+# ============================================
+# Routes define which receiver handles which alerts
+# Matching proceeds top-to-bottom, first match wins
+
 route:
+  # Default receiver for unmatched alerts
   receiver: 'default'
-  group_by: ['alertname', 'severity']
-  group_wait: 10s
-  group_interval: 10s
-  repeat_interval: 12h
+  
+  # Group alerts by these labels for aggregation
+  group_by: ['alertname', 'environment', 'service', 'component']
+  
+  # How long to wait before sending a notification
+  # if a new alert arrives while group is pending
+  group_wait: 30s
+  
+  # How long to wait before sending notification
+  # about new alerts that were added to a group
+  group_interval: 5m
+  
+  # How long to wait before re-sending notification
+  # if alert is still firing and no new alerts
+  repeat_interval: 4h
+  
+  # Enable routing tree
+  routes:
+    # Critical severity alerts
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 1h
+    
+    # Security alerts
+    - match:
+        team: security
+      receiver: 'security-alerts'
+      group_wait: 10s
+      repeat_interval: 2h
+    
+    # Warning severity alerts
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      repeat_interval: 4h
+    
+    # Info severity alerts (batched, less frequent)
+    - match:
+        severity: info
+      receiver: 'info-alerts'
+      group_interval: 30m
+      repeat_interval: 24h
+
+# ============================================
+# Inhibit Rules - Suppress related alerts
+# ============================================
+inhibit_rules:
+  # Suppress warning/error alerts when critical is firing
+  - source_match:
+      severity: 'critical'
+    target_match_re:
+      severity: 'warning|info'
+    equal: ['alertname', 'environment', 'service']
+  
+  # Suppress component-specific alerts when service is down
+  - source_match:
+      alertname: 'GameServerDown'
+    target_match_re:
+      alertname: 'HighLatency|HighMemoryUsage|HighCPUUsage'
+    equal: ['environment', 'service']
+  
+  # Suppress component-specific alerts when database is down
+  - source_match:
+      alertname: 'DatabaseDown'
+    target_match_re:
+      alertname: 'DatabaseConnectionPoolExhausted'
+    equal: ['environment', 'service']
+  
+  # Suppress general alerts during maintenance window
+  - source_match:
+      alertname: 'MaintenanceWindow'
+    target_match_re:
+      alertname: '.+'
+    equal: ['environment']
+
+# ============================================
+# Time intervals for scheduled routing
+# ============================================
+time_intervals:
+  # Maintenance window - reduce alert noise
+  - name: 'maintenance'
+    time_intervals:
+      # Every Sunday 2-4 AM UTC (optional example)
+      - weekdays: ['sunday']
+        times:
+          - start_time: '02:00'
+            end_time: '04:00'
+  
+  # Business hours only - for non-critical alerts
+  - name: 'business-hours'
+    time_intervals:
+      - weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+        times:
+          - start_time: '09:00'
+            end_time: '17:00'
+        location: 'UTC'
