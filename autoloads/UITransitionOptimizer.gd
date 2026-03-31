@@ -72,14 +72,79 @@ func is_particle_effects_enabled() -> bool:
 ## Change scene with optimized transition
 func transition_to_scene(scene_path: String) -> void:
 	var tree = get_tree()
+	var current_scene = tree.current_scene
 
 	if _fade_enabled and not PerformanceProfiler.is_budget_device():
-		# Use fade transition on better devices
-		# For now, just do immediate change
-		var _err = tree.change_scene_to_file(scene_path)
+		# Use tween-based fade transition on better devices
+		_perform_fade_transition(current_scene, scene_path)
 	else:
 		# Direct change for budget devices
 		var _err = tree.change_scene_to_file(scene_path)
+
+## Perform tween-based fade transition between scenes
+func _perform_fade_transition(from_scene: Node, to_scene_path: String) -> void:
+	var tree = get_tree()
+	var duration = get_transition_duration()
+	
+	# Fade out current scene
+	if from_scene and is_instance_valid(from_scene):
+		from_scene.modulate = Color(1, 1, 1, 1)
+		var fade_out_tween = create_tween()
+		fade_out_tween.tween_property(from_scene, "modulate:a", 0.0, duration)
+		await fade_out_tween.finished
+	
+	# Change scene while screen is black
+	var _err = tree.change_scene_to_file(to_scene_path)
+	await tree.process_frame
+	
+	# Fade in new scene
+	var new_scene = tree.current_scene
+	if new_scene and is_instance_valid(new_scene):
+		new_scene.modulate = Color(1, 1, 1, 0)
+		var fade_in_tween = create_tween()
+		fade_in_tween.tween_property(new_scene, "modulate:a", 1.0, duration)
+
+## Perform slide transition for menu-to-menu navigation
+func slide_transition_to(direction: String, new_scene_path: String) -> void:
+	var tree = get_tree()
+	var duration = get_transition_duration()
+	var current_scene = tree.current_scene
+	
+	if current_scene and is_instance_valid(current_scene) and not PerformanceProfiler.is_budget_device():
+		# Slide out current scene
+		var slide_out_tween = create_tween()
+		var slide_dir = 1.0 if direction == "left" else -1.0
+		slide_out_tween.tween_property(current_scene, "position:x", slide_dir * 100, duration)
+		slide_out_tween.tween_property(current_scene, "modulate:a", 0.0, duration)
+		await slide_out_tween.finished
+	
+	# Change scene
+	var _err = tree.change_scene_to_file(new_scene_path)
+	await tree.process_frame
+	
+	# Slide in new scene
+	var new_scene = tree.current_scene
+	if new_scene and is_instance_valid(new_scene) and not PerformanceProfiler.is_budget_device():
+		var slide_dir = -1.0 if direction == "left" else 1.0
+		new_scene.position.x = slide_dir * 100
+		new_scene.modulate.a = 0
+		
+		var slide_in_tween = create_tween()
+		slide_in_tween.tween_property(new_scene, "position:x", 0.0, duration)
+		slide_in_tween.parallel().tween_property(new_scene, "modulate:a", 1.0, duration)
+	else:
+		# Budget device - immediate change
+		var _err2 = tree.change_scene_to_file(new_scene_path)
+
+## Show dialog with optimized animation
+func show_dialog(dialog: Control) -> void:
+	if _ui_animation_enabled and is_instance_valid(dialog):
+		dialog.modulate.a = 0.0
+		dialog.scale = Vector2(0.8, 0.8)
+		
+		var tween = create_tween()
+		tween.tween_property(dialog, "modulate:a", 1.0, _transition_duration * 0.5)
+		tween.parallel().tween_property(dialog, "scale", Vector2.ONE, _transition_duration * 0.5).set_ease(Tween.EASE_OUT)
 
 ## Add a child with optimized animation
 func add_child_with_animation(child: Node, parent: Node) -> void:

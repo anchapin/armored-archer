@@ -1,10 +1,26 @@
 extends GutTest
 
-var _player: PlayerStatsManager
+var PlayerStatsManagerClass = load("res://autoloads/PlayerStatsManager.gd")
+var _player
+
+# Mock NetworkManager for testing RPCs
+class MockNetwork:
+	extends Node
+	var is_server_connected: bool = true
+	var mock_responses: Dictionary = {}
+	var last_rpc_id: String = ""
+	var last_payload: String = ""
+	
+	func send_rpc(rpc_id: String, payload: String) -> Dictionary:
+		last_rpc_id = rpc_id
+		last_payload = payload
+		if mock_responses.has(rpc_id):
+			return mock_responses[rpc_id]
+		return {"success": true}
 
 # Called before each test
 func before_each():
-	_player = PlayerStatsManager.new()
+	_player = PlayerStatsManagerClass.new()
 	add_child_autofree(_player)
 
 # Called after each test
@@ -88,46 +104,52 @@ func test_get_dodge_with_stats():
 
 # Test: get_crit_rate calculates total crit rate
 func test_get_crit_rate_default():
-	assert_eq(_player.get_crit_rate(), 0.0, "Default crit rate should be 0.0")
+	assert_eq(_player.get_crit_rate(), 0, "Default crit rate should be 0")
 
 # Test: get_crit_rate includes base + stat bonus
 func test_get_crit_rate_with_stats():
-	_player.player_stats = {"stats": {"crit_rate": 0.15}}
-	assert_eq(_player.get_crit_rate(), 0.15, "Crit rate should include stat bonus")
+	_player.player_stats = {"stats": {"crit_rate": 15}}
+	assert_eq(_player.get_crit_rate(), 15, "Crit rate should include stat bonus")
 
-# Test: gain_xp with invalid amount (<= 0) returns error
+# Test: gain_xp with invalid amount (<= 0)
 func test_gain_xp_invalid_amount():
-	var result = await _player.gain_xp(0, "test")
-	assert_false(result.ok, "gain_xp with 0 should fail")
+	var mock_net = MockNetwork.new()
+	_player.network_manager = mock_net
+	
+	_player.gain_xp(0, "test")
+	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC for 0 XP")
 
-	result = await _player.gain_xp(-100, "test")
-	assert_false(result.ok, "gain_xp with negative amount should fail")
+	_player.gain_xp(-100, "test")
+	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC for negative XP")
 
 # Test: gain_xp requires network connection
 func test_gain_xp_no_network():
-	# NetworkManager is not available in test environment
-	var result = await _player.gain_xp(100, "test")
-	assert_false(result.ok, "gain_xp without network should fail")
+	_player.network_manager = null
+	_player.gain_xp(100, "test")
+	assert_true(true, "Should handle null network manager gracefully")
 
-# Test: allocate_stat with invalid points (<= 0) returns error
+# Test: allocate_stat with invalid points (<= 0)
 func test_allocate_stat_invalid_points():
-	var result = await _player.allocate_stat("attack", 0)
-	assert_false(result.ok, "allocate_stat with 0 points should fail")
+	var mock_net = MockNetwork.new()
+	_player.network_manager = mock_net
+	
+	_player.allocate_stat("attack", 0)
+	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC for 0 points")
 
-	result = await _player.allocate_stat("attack", -1)
-	assert_false(result.ok, "allocate_stat with negative points should fail")
+	_player.allocate_stat("attack", -1)
+	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC for negative points")
 
 # Test: allocate_stat requires network connection
 func test_allocate_stat_no_network():
-	# NetworkManager is not available in test environment
-	var result = await _player.allocate_stat("attack", 1)
-	assert_false(result.ok, "allocate_stat without network should fail")
+	_player.network_manager = null
+	_player.allocate_stat("attack", 1)
+	assert_true(true, "Should handle null network manager gracefully")
 
 # Test: get_player_stats requires network connection
 func test_get_player_stats_no_network():
-	# NetworkManager is not available in test environment
+	_player.network_manager = null
 	var result = await _player.get_player_stats()
-	assert_false(result.ok, "get_player_stats without network should fail")
+	assert_true(result.is_empty(), "Should return empty dict when no network")
 
 # Test: stats_updated signal is emitted when stats change
 func test_stats_updated_signal():
@@ -137,24 +159,94 @@ func test_stats_updated_signal():
 
 # Test: xp_gained signal is emitted when XP is gained
 func test_xp_gained_signal():
+	var mock_net = MockNetwork.new()
+	_player.network_manager = mock_net
+	mock_net.mock_responses[_player.RPC_GAIN_XP] = {
+		"success": true,
+		"xp_gained": 100,
+		"player_stats": {"level": 1, "xp": 100}
+	}
+	
 	watch_signals(_player)
-	# This would require mocking NetworkManager
-	# For now, just test signal can be watched
-	assert_true(true, "Signal watching setup verified")
+	await _player.gain_xp(100, "test")
+	assert_signal_emitted(_player, "xp_gained", "xp_gained signal should be emitted")
+	assert_eq(_player.get_xp(), 100, "XP should be updated")
 
 # Test: level_up signal is emitted when level increases
 func test_level_up_signal():
+	var mock_net = MockNetwork.new()
+	_player.network_manager = mock_net
+	mock_net.mock_responses[_player.RPC_GAIN_XP] = {
+		"success": true,
+		"xp_gained": 1000,
+		"levels_gained": 1,
+		"player_stats": {"level": 2, "xp": 1000}
+	}
+	
 	watch_signals(_player)
-	_player.player_stats = {"level": 2}
+	await _player.gain_xp(1000, "test")
 	assert_signal_emitted(_player, "level_up", "level_up signal should be emitted")
+	assert_eq(_player.get_level(), 2, "Level should be 2")
 
 # Test: stat_allocated signal is emitted when stat is allocated
 func test_stat_allocated_signal():
+	var mock_net = MockNetwork.new()
+	_player.network_manager = mock_net
+	mock_net.mock_responses[_player.RPC_ALLOCATE_STATS] = {
+		"success": true,
+		"player_stats": {"level": 1, "stats": {"attack": 5}}
+	}
+	
 	watch_signals(_player)
-	# This would require mocking NetworkManager
-	# For now, just test signal can be watched
-	assert_true(true, "Signal watching setup verified")
+	await _player.allocate_stat("attack", 5)
+	assert_signal_emitted(_player, "stat_allocated", "stat_allocated signal should be emitted")
+	assert_eq(_player.get_attack(), 5, "Attack should be updated")
 
 # Test: is_initialized defaults to false
 func test_is_initialized_default():
 	assert_false(_player.is_initialized, "is_initialized should default to false")
+
+# Test: get_player_stats success
+func test_get_player_stats_success():
+	var mock_net = MockNetwork.new()
+	_player.network_manager = mock_net
+	var test_stats = {"level": 5, "xp": 500, "stats": {"attack": 10}}
+	mock_net.mock_responses[_player.RPC_GET_PLAYER_STATS] = test_stats
+	
+	watch_signals(_player)
+	var result = await _player.get_player_stats()
+	
+	assert_eq(result, test_stats, "Should return stats from RPC")
+	assert_eq(_player.player_stats, test_stats, "Internal stats should be updated")
+	assert_true(_player.is_initialized, "Should be initialized")
+	assert_signal_emitted(_player, "stats_updated")
+
+# Test: get_player_stats error
+func test_get_player_stats_error():
+	var mock_net = MockNetwork.new()
+	_player.network_manager = mock_net
+	mock_net.mock_responses[_player.RPC_GET_PLAYER_STATS] = {"error": "Internal error"}
+	
+	var result = await _player.get_player_stats()
+	assert_true(result.is_empty(), "Should return empty on RPC error")
+	assert_false(_player.is_initialized, "Should not be initialized on error")
+
+# Test: gain_xp error response
+func test_gain_xp_error():
+	var mock_net = MockNetwork.new()
+	_player.network_manager = mock_net
+	mock_net.mock_responses[_player.RPC_GAIN_XP] = {"error": "Server error"}
+	
+	watch_signals(_player)
+	await _player.gain_xp(100, "pve")
+	assert_signal_emit_count(_player, "xp_gained", 0)
+
+# Test: allocate_stat error response
+func test_allocate_stat_error():
+	var mock_net = MockNetwork.new()
+	_player.network_manager = mock_net
+	mock_net.mock_responses[_player.RPC_ALLOCATE_STATS] = {"error": "No points"}
+	
+	watch_signals(_player)
+	await _player.allocate_stat("attack", 1)
+	assert_signal_emit_count(_player, "stat_allocated", 0)

@@ -1,16 +1,22 @@
 # Armored Archer
 
-## Current Milestone: v3.2.0 Pixel Art
+## Current Milestone: v3.3.0 Polish & Juice
+
+**Goal:** Expand visual effects with particles, post-processing, and UI animations
+
+**Target features:**
+- Particle effects foundation (hit particles, death explosions, arrow trails)
+- Post-processing (glow, vignette, damage overlay)
+- Screen effects (camera shake, slow-mo on critical)
+- UI animations (transitions, button feedback, loading states)
+
+---
+
+## Previous: v3.2.0 Pixel Art — SHIPPED 2026-03-27
 
 **Goal:** Create all needed pixel art sprites to replace Godot placeholder textures
 
-**Target features:**
-- Player character sprite with animations (idle, walk, attack, bow draw)
-- Enemy sprites (all types: melee, ranged, boss variants)
-- Weapon sprites (bows, arrows)
-- Armor/helm sprites
-- UI icons (buttons, inventory, HUD elements)
-- Background tiles and scenes
+**Status:** ✅ COMPLETE — Player, enemies, weapons, armor, UI icons delivered
 
 ---
 

@@ -6,7 +6,7 @@
             "description": "Manages Nakama server connection and RPC calls"
         },
         "CombatManager": {
-            "test_file": "test/suites/autoloads/test_combat_manager.gd",
+            "test_file": "test/suites/combat/test_combat_manager.gd",
             "critical": true,
             "description": "Handles combat calculations and match state"
         },
@@ -36,7 +36,7 @@
             "description": "Handles asynchronous PvP matchmaking"
         },
         "GearManager": {
-            "test_file": "test/suites/gear/test_gear_manager.gd",
+            "test_file": "test/suites/autoloads/test_gear_manager.gd",
             "critical": true,
             "description": "Manages player inventory and equipment"
         },
@@ -51,7 +51,7 @@
             "description": "Manages seasonal content and leaderboards"
         },
         "CampaignManager": {
-            "test_file": "test/suites/campaign/test_campaign_manager.gd",
+            "test_file": "test/suites/autoloads/test_campaign_manager.gd",
             "critical": true,
             "description": "Manages campaign stage progression"
         },
@@ -70,12 +70,67 @@
             "critical": false,
             "description": "Provides auto-aim assistance"
         },
+        "ProfilingInstrumentation": {
+            "test_file": "test/suites/autoloads/test_profiling_instrumentation.gd",
+            "critical": false,
+            "description": "Provides runtime performance profiling and code timing"
+        },
+        "PerformanceProfiler": {
+            "test_file": "test/suites/autoloads/test_performance_profiler.gd",
+            "critical": false,
+            "description": "Tracks FPS, memory usage, and device capability detection"
+        },
         "ObjectPool": {
             "test_file": "test/suites/object_pool/test_object_pool.gd",
             "critical": false,
             "description": "Manages object pooling for performance"
+        },
+        "ShootingManager": {
+            "test_file": "test/suites/shooting/test_shooting_manager.gd",
+            "critical": false,
+            "description": "Manages shooting mechanics, ammo, and cooldown"
+        },
+        "UITransitionOptimizer": {
+            "test_file": "test/suites/ui/test_ui_transition_optimizer.gd",
+            "critical": false,
+            "description": "Optimizes UI transitions for performance"
+        },
+        "SafeAreaManager": {
+            "test_file": "test/suites/safe_area/test_safe_area_manager.gd",
+            "critical": false,
+            "description": "Handles safe area insets for mobile devices"
+        },
+        "GearRegistry": {
+            "test_file": "test/suites/gear/test_gear_registry.gd",
+            "critical": true,
+            "description": "Central registry for gear and skin definitions"
+        },
+        "InventoryManager": {
+            "test_file": "test/suites/gear/test_inventory_manager.gd",
+            "critical": false,
+            "description": "Manages gear loading, equipping, and stat calculation"
+        },
+        "CombatSyncManager": {
+            "test_file": "test/suites/autoloads/test_combat_sync_manager.gd",
+            "critical": true,
+            "description": "Synchronizes combat state between client and server"
+        },
+        "AudioManager": {
+            "test_file": "test/suites/autoloads/test_audio_manager.gd",
+            "critical": false,
+            "description": "Manages audio playback and sound effects"
+        },
+        "VFXManager": {
+            "test_file": "test/suites/autoloads/test_vfx_manager.gd",
+            "critical": false,
+            "description": "Manages visual effects and particles"
+        },
+        "LootManager": {
+            "test_file": "test/suites/loot/test_loot_manager.gd",
+            "critical": false,
+            "description": "Handles loot drops and rewards"
         }
     },
-    "version": "1.0.0",
-    "last_updated": "2026-03-21T22:52:00Z"
+    "version": "1.1.0",
+    "last_updated": "2026-03-30T00:00:00Z"
 }

@@ -2,6 +2,8 @@
 
 **Last Updated:** February 28, 2025
 
+> **Note for Developers:** Technical implementation details for privacy compliance (PII detection, data handling, GDPR/CCPA/COPPA requirements) are documented in `PRIVACY_COMPLIANCE.md`.
+
 ## Introduction
 
 Welcome to Armored Archer ("the Game"). This Privacy Policy explains how we collect, use, and protect your personal information when you use our mobile game. We are committed to protecting your privacy and being transparent about our data practices.

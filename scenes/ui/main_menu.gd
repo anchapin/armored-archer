@@ -74,10 +74,32 @@ func _cleanup_signal_connection(node: Node, signal_name: String, connection: Cal
 
 # --- Button Handlers ---
 func _on_play_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
+	# Show loading state while transitioning
+	_play_button.set_loading(true)
+	
+	# Small delay for visual feedback, then transition
+	await get_tree().create_timer(0.15).timeout
+	
+	if has_node("/root/UITransitionOptimizer"):
+		$"/root/UITransitionOptimizer".transition_to_scene("res://scenes/ui/campaign_map.tscn")
+	else:
+		get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
+	
+	# Clear loading state after transition starts
+	_play_button.set_loading(false)
 
 func _on_pvp_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
+	# Show loading state while transitioning
+	_pvp_button.set_loading(true)
+	
+	await get_tree().create_timer(0.15).timeout
+	
+	if has_node("/root/UITransitionOptimizer"):
+		$"/root/UITransitionOptimizer".transition_to_scene("res://scenes/ui/matchmaking_menu.tscn")
+	else:
+		get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
+	
+	_pvp_button.set_loading(false)
 
 func _on_shop_pressed() -> void:
 	# Clean up existing shop instance if it exists
@@ -90,7 +112,17 @@ func _on_shop_pressed() -> void:
 	visible = false
 
 func _on_buy_gems_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/ui/store_menu.tscn")
+	# Show loading state while transitioning
+	_buy_gems_button.set_loading(true)
+	
+	await get_tree().create_timer(0.15).timeout
+	
+	if has_node("/root/UITransitionOptimizer"):
+		$"/root/UITransitionOptimizer".transition_to_scene("res://scenes/ui/store_menu.tscn")
+	else:
+		get_tree().change_scene_to_file("res://scenes/ui/store_menu.tscn")
+	
+	_buy_gems_button.set_loading(false)
 
 func _on_settings_pressed() -> void:
 	print("Settings not implemented yet")

@@ -22,9 +22,15 @@ enum ButtonState {
 @export var button_type: String = "primary"
 @export var is_toggle: bool = false
 @export var toggle_group: String = ""
+@export var enable_animations: bool = true
 
 var _current_state: ButtonState = ButtonState.NORMAL
 var _is_toggled: bool = false
+var _is_animating: bool = false
+var _is_loading: bool = false
+var _hover_tween: Tween = null
+var _loading_tween: Tween = null
+var _loading_indicator: Control = null
 
 # --- Lifecycle ---
 func _ready() -> void:
@@ -45,19 +51,25 @@ func _connect_signals() -> void:
 
 # --- State Management ---
 func _on_mouse_entered() -> void:
-	if not disabled:
+	if not disabled and not _is_loading:
 		_set_state(ButtonState.HOVER)
+		if enable_animations:
+			_play_hover_anim(true)
 
 func _on_mouse_exited() -> void:
-	if not disabled:
+	if not disabled and not _is_loading:
 		_set_state(ButtonState.NORMAL)
+		if enable_animations:
+			_play_hover_anim(false)
 
 func _on_button_down() -> void:
-	if not disabled:
+	if not disabled and not _is_loading:
 		_set_state(ButtonState.PRESSED)
+		if enable_animations:
+			_play_press_anim(true)
 
 func _on_button_up() -> void:
-	if not disabled:
+	if not disabled and not _is_loading:
 		if is_hovered():
 			_set_state(ButtonState.HOVER)
 		else:
@@ -214,8 +226,127 @@ func set_button_disabled(disabled: bool) -> void:
 	else:
 		_set_state(ButtonState.NORMAL)
 
+func set_loading(loading: bool) -> void:
+	_is_loading = loading
+	if loading:
+		_show_loading()
+	else:
+		_hide_loading()
+
+func _show_loading() -> void:
+	# Disable button during loading to prevent double-tap
+	disabled = true
+	
+	# Create loading indicator if not already created
+	if not _loading_indicator:
+		_loading_indicator = _create_loading_indicator()
+	
+	if _loading_indicator:
+		_loading_indicator.visible = true
+		# Use AnimationUtils.pulse if available, otherwise basic tween
+		if has_node("/root/AnimationUtils"):
+			"/root/AnimationUtils".pulse(_loading_indicator, 0.15, 3.0)
+		else:
+			_start_loading_pulse()
+
+func _hide_loading() -> void:
+	# Re-enable button
+	disabled = false
+	_set_state(ButtonState.NORMAL)
+	
+	# Hide and clean up loading indicator
+	if _loading_indicator:
+		_loading_indicator.visible = false
+	
+	if _loading_tween:
+		_loading_tween.kill()
+		_loading_tween = null
+
+func _create_loading_indicator() -> Control:
+	# Create a simple loading indicator
+	var container := CenterContainer.new()
+	container.name = "LoadingIndicator"
+	container.set_anchors_preset(Control.PRESET_FULL_RECT)
+	
+	# Create spinner
+	var spinner := ProgressBar.new()
+	spinner.name = "Spinner"
+	spinner.custom_minimum_size = Vector2(24, 24)
+	spinner.show_percentage = false
+	
+	# Style the spinner
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1, 1, 1, 0.3)
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_left = 12
+	style.corner_radius_bottom_right = 12
+	spinner.add_theme_stylebox_override("background", style)
+	
+	var fill_style := StyleBoxFlat.new()
+	fill_style.bg_color = Color.WHITE
+	spinner.add_theme_stylebox_override("fill", fill_style)
+	
+	spinner.min_value = 0
+	spinner.max_value = 100
+	spinner.value = 25
+	
+	container.add_child(spinner)
+	add_child(container)
+	container.visible = false
+	
+	return container
+
+func _start_loading_pulse() -> void:
+	if _loading_tween:
+		_loading_tween.kill()
+	
+	var spinner = _loading_indicator.get_node_or_null("Spinner") if _loading_indicator else null
+	if not spinner:
+		return
+	
+	_loading_tween = create_tween().set_loops()
+	_loading_tween.tween_property(spinner, "scale", Vector2(1.2, 1.2), 0.3)
+	_loading_tween.tween_property(spinner, "scale", Vector2.ONE, 0.3)
+
+func is_loading() -> bool:
+	return _is_loading
+
 func get_current_state() -> ButtonState:
 	return _current_state
 
 func is_toggled_on() -> bool:
 	return _is_toggled
+
+# --- Animation Functions ---
+func _play_hover_anim(is_hovering: bool) -> void:
+	if _is_animating:
+		return
+	
+	if _hover_tween and _hover_tween.is_valid():
+		_hover_tween.kill()
+	
+	if is_hovering:
+		_hover_tween = create_tween()
+		_hover_tween.tween_property(self, "scale", Vector2.ONE * 1.05, 
+			ArcherDesignTokens.ANIM_DURATION_FAST).set_ease(Tween.EASE_OUT)
+	else:
+		_hover_tween = create_tween()
+		_hover_tween.tween_property(self, "scale", Vector2.ONE, 
+			ArcherDesignTokens.ANIM_DURATION_FAST).set_ease(Tween.EASE_OUT)
+
+func _play_press_anim(is_pressing: bool) -> void:
+	if _is_animating:
+		return
+	
+	_is_animating = true
+	
+	var tween := create_tween()
+	if is_pressing:
+		tween.tween_property(self, "scale", Vector2.ONE * 0.95, 
+			ArcherDesignTokens.ANIM_DURATION_INSTANT).set_ease(Tween.EASE_OUT)
+		# Auto-release animation when button comes up
+		tween.tween_property(self, "scale", Vector2.ONE, 
+			ArcherDesignTokens.ANIM_DURATION_NORMAL).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	
+	tween.tween_callback(func(): _is_animating = false)

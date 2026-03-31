@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3 uid="uid://arrow_scene"]
+[gd_scene load_steps=5 format=3 uid="uid://arrow_scene"]
 
 [ext_resource type="Script" path="res://scripts/arrow.gd" id="1_arrow_script"]
 [ext_resource type="PlaceholderTexture2D" uid="uid://arrow_sprite" path="res://assets/sprites/arrow.tres" id="2_arrow_sprite"]
+[ext_resource type="PackedScene" uid="uid://arrow_trail_particle" path="res://assets/particles/arrow_trail.tscn" id="3_arrow_trail"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_arrow"]
 size = Vector2(32, 8)
@@ -18,3 +19,5 @@ shape = SubResource("RectangleShape2D_arrow")
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_arrow_sprite")
 offset = Vector2(16, 4)
+
+[node name="ArrowTrail" parent="." instance=ExtResource("3_arrow_trail")]

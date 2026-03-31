@@ -1,10 +1,27 @@
 extends GutTest
 
-var _combat: CombatManager
+var CombatManagerClass = load("res://autoloads/CombatManager.gd")
+var _combat
+
+# Mock NetworkManager for testing RPCs and user_id
+class MockNetwork:
+	extends Node
+	var is_server_connected: bool = true
+	var user_id: String = ""
+	var mock_responses: Dictionary = {}
+	var last_rpc_id: String = ""
+	var last_payload: String = ""
+	
+	func send_rpc(rpc_id: String, payload: String) -> Dictionary:
+		last_rpc_id = rpc_id
+		last_payload = payload
+		if mock_responses.has(rpc_id):
+			return mock_responses[rpc_id]
+		return {"success": true}
 
 # Called before each test
 func before_each():
-	_combat = CombatManager.new()
+	_combat = CombatManagerClass.new()
 	add_child_autofree(_combat)
 
 # Called after each test
@@ -23,129 +40,190 @@ func test_rpc_constants():
 	assert_eq(_combat.RPC_SUBMIT_COMBAT_ACTION, "armored_archer/submit_combat_action", "RPC_SUBMIT_COMBAT_ACTION should match")
 	assert_eq(_combat.RPC_GET_MATCH_STATE, "armored_archer/get_match_state", "RPC_GET_MATCH_STATE should match")
 
-# Test: submit_combat_action without network returns gracefully
-func test_submit_combat_action_no_network():
-	# NetworkManager is not available in test environment
-	# Method should return without error
-	_combat.submit_combat_action("match123", "shoot", 0.5)
-	assert_true(true, "submit_combat_action should handle null network manager")
-
-# Test: get_match_state without network returns gracefully
-func test_get_match_state_no_network():
-	# NetworkManager is not available in test environment
-	_combat.get_match_state("match123")
-	assert_true(true, "get_match_state should handle null network manager")
-
-# Test: Signals can be connected and watched
-func test_signal_connections():
-	watch_signals(_combat)
-
-	# Connect signal handlers
-	_combat.combat_action_submitted.connect(func(_result): pass)
-	_combat.match_state_updated.connect(func(_state): pass)
-	_combat.turn_changed.connect(func(_is_my_turn): pass)
-	_combat.combat_ended.connect(func(_winner): pass)
-
-	assert_true(true, "All signals can be connected")
-
-# Test: update_local_state updates match state
-func test_update_local_state():
-	var test_state = {
-		"match_id": "match123",
-		"turn": 1,
-		"creator_health": 100,
-		"opponent_health": 80
-	}
-
-	_combat.update_local_state(test_state)
-	assert_eq(_combat.current_match_state, test_state, "Match state should be updated")
-
-# Test: update_from_match_state with empty state
-func test_update_from_match_state_empty():
-	_combat.update_from_match_state({})
-	assert_true(_combat.current_match_state.is_empty(), "Empty state should remain empty")
-
-# Test: update_from_match_state for creator (first player)
+# Test: update_from_match_state - creator perspective
 func test_update_from_match_state_creator():
+	var mock_net = MockNetwork.new()
+	mock_net.user_id = "player1"
+	_combat.network_manager = mock_net
+	
 	var test_state = {
 		"match_id": "match123",
 		"creator_id": "player1",
 		"opponent_id": "player2",
-		"turn": 1
+		"creator_health": 100,
+		"opponent_health": 80,
+		"current_turn_user_id": "player1"
 	}
+	
+	_combat.current_match_state = test_state
+	_combat._update_from_match_state()
+	
+	assert_eq(_combat.my_health, 100, "Creator should see their health as my_health")
+	assert_eq(_combat.opponent_health, 80, "Creator should see opponent health as opponent_health")
+	assert_true(_combat.is_my_turn, "It should be my turn as creator")
 
-	# Simulate being the creator
-	_combat.player_id = "player1"
-	_combat.update_from_match_state(test_state)
-
-	assert_eq(_combat.my_health, test_state.get("creator_health", 0), "Creator health should be set")
-	assert_eq(_combat.opponent_health, test_state.get("opponent_health", 0), "Opponent health should be set")
-
-# Test: update_from_match_state for opponent (second player)
+# Test: update_from_match_state - opponent perspective
 func test_update_from_match_state_opponent():
+	var mock_net = MockNetwork.new()
+	mock_net.user_id = "player2"
+	_combat.network_manager = mock_net
+	
 	var test_state = {
 		"match_id": "match123",
 		"creator_id": "player1",
 		"opponent_id": "player2",
-		"turn": 1
+		"creator_health": 100,
+		"opponent_health": 75,
+		"current_turn_user_id": "player1"
 	}
+	
+	_combat.current_match_state = test_state
+	_combat._update_from_match_state()
+	
+	assert_eq(_combat.my_health, 75, "Opponent should see their health as my_health")
+	assert_eq(_combat.opponent_health, 100, "Opponent should see creator health as opponent_health")
+	assert_false(_combat.is_my_turn, "It should not be my turn as opponent")
 
-	# Simulate being the opponent
-	_combat.player_id = "player2"
-	_combat.update_from_match_state(test_state)
+# Test: calculate_damage basic
+func test_calculate_damage_basic():
+	var attacker_stats = {"attack": 10, "crit_rate": 0}
+	var defender_stats = {"defense": 5, "dodge": 0}
+	# base 20 + attack 10 - defense 5 = 25
+	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 1.5)
+	assert_eq(damage, 25, "Basic damage calculation should be 25")
 
-	assert_eq(_combat.my_health, test_state.get("opponent_health", 0), "Opponent health should be set as my health")
-	assert_eq(_combat.opponent_health, test_state.get("creator_health", 0), "Creator health should be set as opponent health")
+# Test: calculate_damage minimum 1
+func test_calculate_damage_min():
+	var attacker_stats = {"attack": 0, "crit_rate": 0}
+	var defender_stats = {"defense": 100, "dodge": 0}
+	# base 10 + attack 0 - defense 100 = -90 -> clamped to 1
+	var damage = _combat.calculate_damage(10, attacker_stats, defender_stats, 1.5)
+	assert_eq(damage, 1, "Minimum damage should be 1")
 
-# Test: Utility methods return correct values
-func test_utility_methods():
-	_combat.current_match_state = {"turn": 5}
-	assert_eq(_combat.get_turn(), 5, "get_turn should return current turn")
+# Test: calculate_damage critical hit
+func test_calculate_damage_crit():
+	seed(42) # Ensure predictable randf()
+	# With seed 42, randf() first values are ~0.46, ~0.02
+	# Let's set crit_rate to 100 to force it
+	var attacker_stats = {"attack": 10, "crit_rate": 100}
+	var defender_stats = {"defense": 0, "dodge": 0}
+	# base 20 + attack 10 = 30. 30 * 2.0 = 60
+	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 2.0)
+	assert_eq(damage, 60, "Critical hit should double damage")
 
-	_combat.is_my_turn = true
-	assert_true(_combat.get_is_my_turn(), "get_is_my_turn should return true")
+# Test: calculate_damage dodge
+func test_calculate_damage_dodge():
+	var attacker_stats = {"attack": 10, "crit_rate": 0}
+	var defender_stats = {"defense": 0, "dodge": 100}
+	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 1.5)
+	assert_eq(damage, 0, "Dodged attack should deal 0 damage")
 
-# Test: get_health methods return correct values
-func test_get_health_methods():
-	_combat.my_health = 75
-	_combat.opponent_health = 50
-
-	assert_eq(_combat.get_my_health(), 75, "get_my_health should return 75")
-	assert_eq(_combat.get_opponent_health(), 50, "get_opponent_health should return 50")
-
-# Test: is_my_turn syncs with match state
-func test_is_my_turn_sync():
-	var test_state = {"turn": 1, "current_player": "player1"}
-	_combat.player_id = "player1"
-
-	_combat.update_from_match_state(test_state)
-	assert_true(_combat.is_my_turn, "is_my_turn should be true when it's my turn")
-
-# Test: submit_combat_action with invalid parameters
-func test_submit_combat_action_invalid_params():
-	# Empty match_id
-	_combat.submit_combat_action("", "shoot", 0.5)
-	assert_true(true, "Empty match_id should be handled")
-
-	# Empty action_type
-	_combat.submit_combat_action("match123", "", 0.5)
-	assert_true(true, "Empty action_type should be handled")
-
-# Test: get_match_state with invalid parameters
-func test_get_match_state_invalid_params():
-	# Empty match_id
-	_combat.get_match_state("")
-	assert_true(true, "Empty match_id should be handled")
-
-# Test: turn_changed signal is emitted
-func test_turn_changed_signal():
+# Test: submit_combat_action success
+func test_submit_combat_action_success():
+	var mock_net = MockNetwork.new()
+	mock_net.user_id = "player1"
+	_combat.network_manager = mock_net
+	
+	_combat.current_match_state = {
+		"match_id": "match123",
+		"creator_id": "player1",
+		"opponent_id": "player2",
+		"creator_health": 100,
+		"opponent_health": 100
+	}
+	
+	var result_data = {
+		"success": true,
+		"result": {
+			"damage": 25,
+			"creator_id": "player1",
+			"creator_health": 100,
+			"opponent_health": 75
+		}
+	}
+	mock_net.mock_responses[_combat.RPC_SUBMIT_COMBAT_ACTION] = result_data
+	
 	watch_signals(_combat)
-	_combat.is_my_turn = true
-	_combat.turn_changed.emit(true)
-	assert_signal_emitted(_combat, "turn_changed", "turn_changed signal should be emitted")
+	await _combat.submit_combat_action("match123", "shoot", 45.0, 1.0)
+	
+	assert_signal_emitted(_combat, "combat_action_submitted")
+	assert_eq(_combat.opponent_health, 75, "Opponent health should be updated")
 
-# Test: combat_ended signal is emitted
+# Test: get_match_state success
+func test_get_match_state_success():
+	var mock_net = MockNetwork.new()
+	mock_net.user_id = "player1"
+	_combat.network_manager = mock_net
+	
+	var state_data = {
+		"match_id": "match123",
+		"creator_id": "player1",
+		"opponent_id": "player2",
+		"creator_health": 100,
+		"opponent_health": 100,
+		"current_turn_user_id": "player1",
+		"status": "active"
+	}
+	mock_net.mock_responses[_combat.RPC_GET_MATCH_STATE] = state_data
+	
+	watch_signals(_combat)
+	await _combat.get_match_state("match123")
+	
+	assert_signal_emitted(_combat, "match_state_updated")
+	assert_eq(_combat.get_match_status(), "active", "Match status should be active")
+	assert_true(_combat.is_my_turn, "Should be my turn")
+
+# Test: submit_combat_action with winner
 func test_combat_ended_signal():
+	var mock_net = MockNetwork.new()
+	mock_net.user_id = "player1"
+	_combat.network_manager = mock_net
+	
+	var result_data = {
+		"success": true,
+		"result": {
+			"damage": 100,
+			"creator_health": 100,
+			"opponent_health": 0,
+			"winner": "player1"
+		}
+	}
+	mock_net.mock_responses[_combat.RPC_SUBMIT_COMBAT_ACTION] = result_data
+	
 	watch_signals(_combat)
-	_combat.combat_ended.emit("player1")
-	assert_signal_emitted(_combat, "combat_ended", "combat_ended signal should be emitted")
+	await _combat.submit_combat_action("match123", "shoot", 45.0, 1.0)
+	
+	assert_signal_emitted_with_parameters(_combat, "combat_ended", ["player1"])
+
+# Test: Utility methods
+func test_utility_getters():
+	_combat.my_health = 50
+	_combat.opponent_health = 30
+	_combat.is_my_turn = true
+	_combat.current_match_state = {"status": "active", "log": ["action1"]}
+	
+	assert_eq(_combat.get_my_health(), 50)
+	assert_eq(_combat.get_opponent_health(), 30)
+	assert_true(_combat.is_my_turn_sync())
+	assert_eq(_combat.get_match_status(), "active")
+	assert_true(_combat.is_combat_active())
+	assert_eq(_combat.get_combat_log().size(), 1)
+
+# Test: No network handling
+func test_no_network_graceful():
+	_combat.network_manager = null
+	# Should not crash
+	await _combat.submit_combat_action("m", "a", 0)
+	await _combat.get_match_state("m")
+	assert_true(true, "Should handle null network manager")
+
+# Test: Invalid params handling
+func test_invalid_params():
+	var mock_net = MockNetwork.new()
+	_combat.network_manager = mock_net
+	
+	await _combat.submit_combat_action("", "", 0)
+	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC with empty params")
+	
+	await _combat.get_match_state("")
+	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC with empty match_id")

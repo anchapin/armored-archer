@@ -1,0 +1,237 @@
+## Encounter data definition for the 8-encounter campaign system.
+## Difficulty 1 (Forest): goblin, scout, alpha boss
+## Difficulty 2 (Cavern): golem, elemental, warlord boss
+## Difficulty 3 (Sky): drake, frost_giant, ancient_guardian boss
+##
+extends Node
+
+## All 8 encounters organized by difficulty tier
+var encounters: Dictionary = {
+	# --- DIFFICULTY 1: FOREST ---
+	"forest_goblin": {
+		"id": "forest_goblin",
+		"name": "Forest Goblin",
+		"biome": "forest",
+		"difficulty": 1,
+		"enemy": {
+			"type": "goblin",
+			"health": 15,
+			"attack": 3,
+			"defense": 1,
+			"speed": 2
+		},
+		"loot": {
+			"xp": 50,
+			"gold": 25
+		}
+	},
+	"forest_scout": {
+		"id": "forest_scout",
+		"name": "Forest Scout",
+		"biome": "forest",
+		"difficulty": 1,
+		"enemy": {
+			"type": "scout",
+			"health": 20,
+			"attack": 4,
+			"defense": 2,
+			"speed": 3
+		},
+		"loot": {
+			"xp": 75,
+			"gold": 40
+		}
+	},
+	"forest_alpha": {
+		"id": "forest_alpha",
+		"name": "Forest Alpha (Boss)",
+		"biome": "forest",
+		"difficulty": 1,
+		"is_boss": true,
+		"enemy": {
+			"type": "alpha_wolf",
+			"health": 50,
+			"attack": 6,
+			"defense": 3,
+			"speed": 4
+		},
+		"loot": {
+			"xp": 150,
+			"gold": 100
+		}
+	},
+	# --- DIFFICULTY 2: CAVERN ---
+	"cavern_golem": {
+		"id": "cavern_golem",
+		"name": "Cavern Golem",
+		"biome": "cavern",
+		"difficulty": 2,
+		"enemy": {
+			"type": "golem",
+			"health": 40,
+			"attack": 5,
+			"defense": 4,
+			"speed": 1
+		},
+		"loot": {
+			"xp": 100,
+			"gold": 60
+		}
+	},
+	"cavern_elemental": {
+		"id": "cavern_elemental",
+		"name": "Cavern Elemental",
+		"biome": "cavern",
+		"difficulty": 2,
+		"enemy": {
+			"type": "elemental",
+			"health": 35,
+			"attack": 7,
+			"defense": 2,
+			"speed": 3
+		},
+		"loot": {
+			"xp": 125,
+			"gold": 75
+		}
+	},
+	"cavern_warlord": {
+		"id": "cavern_warlord",
+		"name": "Cavern Warlord (Boss)",
+		"biome": "cavern",
+		"difficulty": 2,
+		"is_boss": true,
+		"enemy": {
+			"type": "warlord",
+			"health": 80,
+			"attack": 9,
+			"defense": 5,
+			"speed": 2
+		},
+		"loot": {
+			"xp": 250,
+			"gold": 150
+		}
+	},
+	# --- DIFFICULTY 3: SKY ---
+	"sky_drake": {
+		"id": "sky_drake",
+		"name": "Sky Drake",
+		"biome": "sky",
+		"difficulty": 3,
+		"enemy": {
+			"type": "drake",
+			"health": 60,
+			"attack": 8,
+			"defense": 3,
+			"speed": 5
+		},
+		"loot": {
+			"xp": 150,
+			"gold": 90
+		}
+	},
+	"frost_giant": {
+		"id": "frost_giant",
+		"name": "Frost Giant",
+		"biome": "sky",
+		"difficulty": 3,
+		"enemy": {
+			"type": "giant",
+			"health": 70,
+			"attack": 10,
+			"defense": 6,
+			"speed": 2
+		},
+		"loot": {
+			"xp": 175,
+			"gold": 110
+		}
+	},
+	"ancient_guardian": {
+		"id": "ancient_guardian",
+		"name": "Ancient Guardian (Boss)",
+		"biome": "sky",
+		"difficulty": 3,
+		"is_boss": true,
+		"enemy": {
+			"type": "guardian",
+			"health": 120,
+			"attack": 12,
+			"defense": 8,
+			"speed": 3
+		},
+		"loot": {
+			"xp": 400,
+			"gold": 250
+		}
+	}
+}
+
+func _ready() -> void:
+	"""Initialize encounter data."""
+	print("[EncounterData] Initialized with %d encounters" % encounters.size())
+
+func get_encounter(encounter_id: String) -> Dictionary:
+	"""Returns encounter data for a given encounter ID.
+	
+	Parameters:
+		encounter_id: ID of the encounter to retrieve
+		
+	Returns:
+		Dictionary: Encounter data or empty dict if not found
+	"""
+	if encounter_id in encounters:
+		return encounters[encounter_id].duplicate(true)
+	push_warning("[EncounterData] Encounter not found: %s" % encounter_id)
+	return {}
+
+func get_all_encounters() -> Array:
+	"""Returns array of all encounter IDs.
+	
+	Returns:
+		Array: List of all encounter IDs
+	"""
+	return encounters.keys()
+
+func get_encounters_by_difficulty(difficulty: int) -> Array:
+	"""Returns all encounters for a given difficulty tier.
+	
+	Parameters:
+		difficulty: Difficulty tier (1, 2, or 3)
+		
+	Returns:
+		Array: List of encounter IDs at that difficulty
+	"""
+	var result: Array = []
+	for encounter_id in encounters.keys():
+		if encounters[encounter_id].get("difficulty") == difficulty:
+			result.append(encounter_id)
+	return result
+
+func get_encounters_by_biome(biome: String) -> Array:
+	"""Returns all encounters in a given biome.
+	
+	Parameters:
+		biome: Biome name (forest, cavern, sky)
+		
+	Returns:
+		Array: List of encounter IDs in that biome
+	"""
+	var result: Array = []
+	for encounter_id in encounters.keys():
+		if encounters[encounter_id].get("biome") == biome:
+			result.append(encounter_id)
+	return result
+
+func is_boss_encounter(encounter_id: String) -> bool:
+	"""Checks if an encounter is a boss encounter.
+	
+	Parameters:
+		encounter_id: ID of the encounter
+		
+	Returns:
+		bool: True if the encounter is a boss fight
+	"""
+	var encounter = get_encounter(encounter_id)
+	return encounter.get("is_boss", false)

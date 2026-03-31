@@ -172,3 +172,35 @@ make services-logs     # View service logs
 - `AGENTS.md` - Detailed agent development guidelines
 - `CONTRIBUTING.md` - Contribution guidelines
 - `backend/DATABASE_SCHEMA.md` - Database schema reference
+- `GODOGEN_SETUP.md` - AI game generation system setup guide
+
+## Godogen AI Game Generation
+
+This project includes **godogen** - an AI-powered system for generating Godot 4 games and features. See `GODOGEN_SETUP.md` for full documentation.
+
+### Quick Start with Godogen
+
+1. Set API keys (required):
+   ```bash
+   export GOOGLE_API_KEY="your-key"  # Get from https://makersuite.google.com/app/apikey
+   ```
+
+2. Use in Claude Code:
+   ```
+   /godogen Create a new enemy type: a flying gargoyle that throws stones
+   /godogen Add a fishing mini-game with catch mechanics
+   ```
+
+### What Godogen Does
+- Generates complete game features from natural language
+- Creates 2D/3D assets using AI (Gemini, Tripo3D)
+- Writes production-ready GDScript following project conventions
+- Performs visual QA by capturing and analyzing screenshots
+- Integrates with existing autoloads and systems
+
+### Generated Files
+- `PLAN.md` - Development plan with tasks
+- `STRUCTURE.md` - Architecture documentation
+- `MEMORY.md` - Learnings and workarounds
+- `ASSETS.md` - Asset catalog
+- `screenshots/` - Visual evidence from tests

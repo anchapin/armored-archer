@@ -1,9 +1,9 @@
 [gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://arrow_sprite_gilded"]
 
 [sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
-# Arrow projectile sprite - Gilded Quest palette
-# Palette: Royal Blue (#0060ce), Gold (#ffd700), Emerald (#50c878) on Parchment (#fdffda)
-# Design: Tactile Heroism - arrow has gold trail potential
+// Arrow projectile sprite - Gilded Quest palette
+// Palette: Royal Blue (#0060ce), Gold (#ffd700), Emerald (#50c878) on Parchment (#fdffda)
+// Design: Tactile Heroism - arrow has gold trail potential
 size = Vector2(16, 8)
 
 [resource]

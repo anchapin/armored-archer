@@ -1,0 +1,17 @@
+[gd_scene load_steps=2 format=3 uid="uid://damage_overlay"]
+
+[ext_resource type="Shader" path="res://shaders/damage_vignette.gdshader" id="1"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vignette"]
+shader = ExtResource("1")
+shader_parameter/intensity = 0.0
+shader_parameter/vignette_color = Color(0.8, 0, 0, 1)
+shader_parameter/radius = 0.8
+shader_parameter/softness = 0.5
+
+[node name="DamageOverlay" type="ColorRect"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.8, 0, 0, 0)
+material = SubResource("ShaderMaterial_vignette")

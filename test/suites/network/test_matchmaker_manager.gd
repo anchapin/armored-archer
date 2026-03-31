@@ -1,230 +1,233 @@
-extends Node
+extends GutTest
 
-var _tests_passed: int = 0
-var _tests_failed: int = 0
+var MatchmakerManagerClass = load("res://autoloads/MatchmakerManager.gd")
+var _mm
 
-signal test_completed(test_name: String, passed: bool)
+# Mock NetworkManager for testing RPCs and user_id
+class MockNetwork:
+	extends Node
+	var is_server_connected: bool = true
+	var user_id: String = "test_user"
+	var mock_responses: Dictionary = {}
+	var last_rpc_id: String = ""
+	var last_payload: String = ""
+	
+	func send_rpc(rpc_id: String, payload: String) -> Dictionary:
+		last_rpc_id = rpc_id
+		last_payload = payload
+		if mock_responses.has(rpc_id):
+			return mock_responses[rpc_id]
+		return {"success": true}
 
-func _ready() -> void:
-	print("=== Running MatchmakerManager Tests ===\n")
-	await run_tests()
+# Called before each test
+func before_each():
+	_mm = MatchmakerManagerClass.new()
+	add_child_autofree(_mm)
 
-func run_tests() -> void:
-	await test_initial_state()
-	await test_constants()
-	await test_available_matches()
-	await test_player_rank()
-	await test_current_match()
-	await test_get_available_matches()
-	await test_get_current_match()
-	await test_get_player_rank_sync()
-	await test_is_in_match()
-	await test_signal_emission()
-	await test_punch_up_stats_initial()
-	await test_punch_up_win_rate_calculation()
-	await test_punch_up_total_matches()
+# Called after each test
+func after_each():
+	_mm = null
 
-	print("\n=== MatchmakerManager Test Results ===")
-	print("Passed: %d" % _tests_passed)
-	print("Failed: %d" % _tests_failed)
-	queue_free()
+# Test: Initial state
+func test_initial_state():
+	assert_true(_mm.available_matches.is_empty(), "Initial available_matches should be empty")
+	assert_eq(_mm.player_rank, 0, "Initial player_rank should be 0")
+	assert_true(_mm.current_match.is_empty(), "Initial current_match should be empty")
+	assert_eq(_mm.punch_up_wins, 0, "Initial punch_up_wins should be 0")
+	assert_eq(_mm.punch_up_losses, 0, "Initial punch_up_losses should be 0")
 
-func _create_matchmaker_manager() -> Node:
-	var mm = load("res://autoloads/MatchmakerManager.gd").new()
-	add_child(mm)
-	return mm
+# Test: RPC constants
+func test_rpc_constants():
+	assert_eq(_mm.RPC_LIST_MATCHES, "armored_archer/list_matches")
+	assert_eq(_mm.RPC_CREATE_MATCH, "armored_archer/create_match")
+	assert_eq(_mm.RPC_ACCEPT_MATCH, "armored_archer/accept_match")
+	assert_eq(_mm.RPC_GET_PLAYER_RANK, "armored_archer/get_player_rank")
+	assert_eq(_mm.RPC_COMPLETE_MATCH, "armored_archer/complete_match")
 
-func _pass(test_name: String) -> void:
-	_tests_passed += 1
-	test_completed.emit(test_name, true)
-	print("[PASS] " + test_name)
+# Test: list_matches success
+func test_list_matches_success():
+	var mock_net = MockNetwork.new()
+	_mm.network_manager = mock_net
+	
+	var matches = [{"match_id": "m1"}, {"match_id": "m2"}]
+	mock_net.mock_responses[_mm.RPC_LIST_MATCHES] = {
+		"success": true,
+		"matches": matches,
+		"player_rank": 1500
+	}
+	
+	watch_signals(_mm)
+	await _mm.list_matches("ranked", 1000, 2000, 10)
+	
+	assert_signal_emitted(_mm, "matches_loaded")
+	assert_eq(_mm.available_matches.size(), 2)
+	assert_eq(_mm.player_rank, 1500)
+	
+	var payload = JSON.parse_string(mock_net.last_payload)
+	assert_eq(payload["match_type"], "ranked")
+	assert_eq(payload["min_rank"], 1000)
+	assert_eq(payload["max_rank"], 2000)
+	assert_eq(payload["limit"], 10)
 
-func _fail(test_name: String, message: String) -> void:
-	_tests_failed += 1
-	test_completed.emit(test_name, false)
-	print("[FAIL] " + test_name + ": " + message)
+# Test: create_match success
+func test_create_match_success():
+	var mock_net = MockNetwork.new()
+	_mm.network_manager = mock_net
+	
+	var match_data = {"match_id": "new_match", "match_type": "ranked"}
+	mock_net.mock_responses[_mm.RPC_CREATE_MATCH] = {
+		"success": true,
+		"match": match_data
+	}
+	
+	watch_signals(_mm)
+	await _mm.create_match("ranked", true, "opponent1")
+	
+	assert_signal_emitted(_mm, "match_created")
+	assert_eq(_mm.current_match["match_id"], "new_match")
+	
+	var payload = JSON.parse_string(mock_net.last_payload)
+	assert_eq(payload["match_type"], "ranked")
+	assert_true(payload["is_punch_up"])
+	assert_eq(payload["target_opponent_id"], "opponent1")
 
-func test_initial_state() -> void:
-	var mm = _create_matchmaker_manager()
+# Test: accept_match success
+func test_accept_match_success():
+	var mock_net = MockNetwork.new()
+	_mm.network_manager = mock_net
+	
+	var match_data = {"match_id": "joined_match"}
+	mock_net.mock_responses[_mm.RPC_ACCEPT_MATCH] = {
+		"success": true,
+		"match": match_data
+	}
+	
+	watch_signals(_mm)
+	await _mm.accept_match("m123")
+	
+	assert_signal_emitted(_mm, "match_accepted")
+	assert_eq(_mm.current_match["match_id"], "joined_match")
+	
+	var payload = JSON.parse_string(mock_net.last_payload)
+	assert_eq(payload["match_id"], "m123")
 
-	if mm.available_matches.is_empty() and mm.player_rank == 0 and mm.current_match.is_empty():
-		_pass("test_initial_state")
-	else:
-		_fail("test_initial_state", "Initial state should be empty")
+# Test: get_player_rank success
+func test_get_player_rank_success():
+	var mock_net = MockNetwork.new()
+	_mm.network_manager = mock_net
+	
+	mock_net.mock_responses[_mm.RPC_GET_PLAYER_RANK] = {
+		"success": true,
+		"rank": 1200
+	}
+	
+	watch_signals(_mm)
+	await _mm.get_player_rank()
+	
+	assert_signal_emitted(_mm, "rank_retrieved")
+	assert_eq(_mm.player_rank, 1200)
 
-	mm.queue_free()
+# Test: complete_match success (win)
+func test_complete_match_win():
+	var mock_net = MockNetwork.new()
+	mock_net.user_id = "me"
+	_mm.network_manager = mock_net
+	_mm.current_match = {"match_id": "m1"}
+	
+	mock_net.mock_responses[_mm.RPC_COMPLETE_MATCH] = {
+		"success": true,
+		"winner": {"user_id": "me", "new_rank": 1100},
+		"is_punch_up": true
+	}
+	
+	watch_signals(_mm)
+	await _mm.complete_match("me", "opponent", true)
+	
+	assert_signal_emitted(_mm, "match_completed")
+	assert_signal_emitted(_mm, "punch_up_stats_updated")
+	assert_eq(_mm.player_rank, 1100)
+	assert_eq(_mm.punch_up_wins, 1)
+	assert_true(_mm.current_match.is_empty(), "Current match should be cleared")
 
-func test_constants() -> void:
-	var mm = _create_matchmaker_manager()
+# Test: complete_match success (loss)
+func test_complete_match_loss():
+	var mock_net = MockNetwork.new()
+	mock_net.user_id = "me"
+	_mm.network_manager = mock_net
+	_mm.current_match = {"match_id": "m1"}
+	
+	mock_net.mock_responses[_mm.RPC_COMPLETE_MATCH] = {
+		"success": true,
+		"loser": {"user_id": "me", "new_rank": 950},
+		"is_punch_up": true
+	}
+	
+	watch_signals(_mm)
+	await _mm.complete_match("opponent", "me", true)
+	
+	assert_signal_emitted(_mm, "match_completed")
+	assert_signal_emitted(_mm, "punch_up_stats_updated")
+	assert_eq(_mm.player_rank, 950)
+	assert_eq(_mm.punch_up_losses, 1)
 
-	if mm.RPC_LIST_MATCHES == "armored_archer/list_matches":
-		_pass("test_constants_rpc_list_matches")
-	else:
-		_fail("test_constants_rpc_list_matches", "RPC_LIST_MATCHES should match")
+# Test: Utility methods
+func test_utilities():
+	_mm.available_matches = [{"id": 1}]
+	_mm.current_match = {"id": 2, "status": "active"}
+	_mm.player_rank = 1000
+	
+	assert_eq(_mm.get_available_matches().size(), 1)
+	assert_eq(_mm.get_current_match()["id"], 2)
+	assert_eq(_mm.get_player_rank_sync(), 1000)
+	assert_true(_mm.is_in_match())
+	
+	_mm.current_match = {"status": "completed"}
+	assert_false(_mm.is_in_match())
 
-	if mm.RPC_CREATE_MATCH == "armored_archer/create_match":
-		_pass("test_constants_rpc_create_match")
-	else:
-		_fail("test_constants_rpc_create_match", "RPC_CREATE_MATCH should match")
+# Test: Punch Up stats calculation
+func test_punch_up_stats_calc():
+	_mm.punch_up_wins = 3
+	_mm.punch_up_losses = 1
+	
+	assert_eq(_mm.get_punch_up_wins(), 3)
+	assert_eq(_mm.get_punch_up_losses(), 1)
+	assert_eq(_mm.get_punch_up_total_matches(), 4)
+	assert_almost_eq(_mm.get_punch_up_win_rate(), 0.75, 0.01)
+	
+	_mm.punch_up_wins = 0
+	_mm.punch_up_losses = 0
+	assert_eq(_mm.get_punch_up_win_rate(), 0.0)
 
-	if mm.RPC_ACCEPT_MATCH == "armored_archer/accept_match":
-		_pass("test_constants_rpc_accept_match")
-	else:
-		_fail("test_constants_rpc_accept_match", "RPC_ACCEPT_MATCH should match")
+# Test: Error cases
+func test_error_cases():
+	var mock_net = MockNetwork.new()
+	_mm.network_manager = mock_net
+	
+	# Invalid create_match type
+	await _mm.create_match("invalid")
+	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC for invalid match type")
+	
+	# Empty accept_match id
+	await _mm.accept_match("")
+	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC for empty match id")
+	
+	# No active match for complete_match
+	_mm.current_match = {}
+	await _mm.complete_match("w", "l")
+	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC when no active match")
+	
+	# Same winner/loser
+	_mm.current_match = {"id": "m"}
+	await _mm.complete_match("p1", "p1")
+	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC for same winner/loser")
 
-	mm.queue_free()
-
-func test_available_matches() -> void:
-	var mm = _create_matchmaker_manager()
-	mm.available_matches = [{"id": "match1"}, {"id": "match2"}]
-
-	if mm.available_matches.size() == 2:
-		_pass("test_available_matches")
-	else:
-		_fail("test_available_matches", "Should have 2 matches")
-
-	mm.queue_free()
-
-func test_player_rank() -> void:
-	var mm = _create_matchmaker_manager()
-	mm.player_rank = 1500
-
-	if mm.player_rank == 1500:
-		_pass("test_player_rank")
-	else:
-		_fail("test_player_rank", "Player rank should be 1500")
-
-	mm.queue_free()
-
-func test_current_match() -> void:
-	var mm = _create_matchmaker_manager()
-	mm.current_match = {"id": "match_123", "status": "active"}
-
-	if mm.current_match.has("id"):
-		_pass("test_current_match")
-	else:
-		_fail("test_current_match", "Current match should have id")
-
-	mm.queue_free()
-
-func test_get_available_matches() -> void:
-	var mm = _create_matchmaker_manager()
-	mm.available_matches = [{"id": "test"}]
-
-	if mm.get_available_matches().size() == 1:
-		_pass("test_get_available_matches")
-	else:
-		_fail("test_get_available_matches", "Should return matches")
-
-	mm.queue_free()
-
-func test_get_current_match() -> void:
-	var mm = _create_matchmaker_manager()
-	mm.current_match = {"id": "current"}
-
-	if mm.get_current_match().has("id"):
-		_pass("test_get_current_match")
-	else:
-		_fail("test_get_current_match", "Should return current match")
-
-	mm.queue_free()
-
-func test_get_player_rank_sync() -> void:
-	var mm = _create_matchmaker_manager()
-	mm.player_rank = 2000
-
-	if mm.get_player_rank_sync() == 2000:
-		_pass("test_get_player_rank_sync")
-	else:
-		_fail("test_get_player_rank_sync", "Should return player rank")
-
-	mm.queue_free()
-
-func test_is_in_match() -> void:
-	var mm = _create_matchmaker_manager()
-
-	if not mm.is_in_match():
-		_pass("test_is_in_match_empty")
-	else:
-		_fail("test_is_in_match_empty", "Should not be in match when empty")
-
-	mm.current_match = {"status": "completed"}
-	if not mm.is_in_match():
-		_pass("test_is_in_match_completed")
-	else:
-		_fail("test_is_in_match_completed", "Should not be in match when completed")
-
-	mm.current_match = {"status": "active"}
-	if mm.is_in_match():
-		_pass("test_is_in_match_active")
-	else:
-		_fail("test_is_in_match_active", "Should be in match when active")
-
-	mm.queue_free()
-
-func test_signal_emission() -> void:
-	var mm = _create_matchmaker_manager()
-	var matches_loaded = false
-	var match_created = false
-	var match_accepted = false
-	var rank_retrieved = false
-	var punch_up_stats_updated = false
-
-	mm.matches_loaded.connect(func(m, r): matches_loaded = true)
-	mm.match_created.connect(func(m): match_created = true)
-	mm.match_accepted.connect(func(m): match_accepted = true)
-	mm.rank_retrieved.connect(func(r): rank_retrieved = true)
-	mm.punch_up_stats_updated.connect(func(w, l, wr): punch_up_stats_updated = true)
-
-	mm.matches_loaded.emit([], 100)
-	mm.match_created.emit({})
-	mm.match_accepted.emit({})
-	mm.rank_retrieved.emit(1500)
-	mm.punch_up_stats_updated.emit(5, 3, 0.625)
-
-	await get_tree().create_timer(0.1).timeout
-
-	if matches_loaded and match_created and match_accepted and rank_retrieved and punch_up_stats_updated:
-		_pass("test_signal_emission")
-	else:
-		_fail("test_signal_emission", "All signals should be emitted")
-
-	mm.queue_free()
-
-# --- Punch Up Tests ---
-func test_punch_up_stats_initial() -> void:
-	var mm = _create_matchmaker_manager()
-
-	if mm.get_punch_up_wins() == 0 and mm.get_punch_up_losses() == 0 and mm.get_punch_up_win_rate() == 0.0:
-		_pass("test_punch_up_stats_initial")
-	else:
-		_fail("test_punch_up_stats_initial", "Initial punch up stats should be zero")
-
-	mm.queue_free()
-
-func test_punch_up_win_rate_calculation() -> void:
-	var mm = _create_matchmaker_manager()
-
-	mm.punch_up_wins = 3
-	mm.punch_up_losses = 1
-
-	var win_rate = mm.get_punch_up_win_rate()
-	if win_rate == 0.75:
-		_pass("test_punch_up_win_rate_calculation")
-	else:
-		_fail("test_punch_up_win_rate_calculation", "Win rate should be 0.75, got: %f" % win_rate)
-
-	mm.queue_free()
-
-func test_punch_up_total_matches() -> void:
-	var mm = _create_matchmaker_manager()
-
-	mm.punch_up_wins = 10
-	mm.punch_up_losses = 5
-
-	if mm.get_punch_up_total_matches() == 15:
-		_pass("test_punch_up_total_matches")
-	else:
-		_fail("test_punch_up_total_matches", "Total should be 15")
-
-	mm.queue_free()
+# Test: No network
+func test_no_network():
+	_mm.network_manager = null
+	# Should not crash
+	await _mm.list_matches()
+	await _mm.create_match("ranked")
+	await _mm.accept_match("m")
+	await _mm.get_player_rank()
+	await _mm.complete_match("w", "l")
+	assert_true(true, "Should handle null network manager")

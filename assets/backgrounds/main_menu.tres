@@ -1,10 +1,10 @@
 [gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://bg_main_menu_gilded"]
 
 [sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
-# Main Menu Background - Gilded Quest aesthetic
-# Warm parchment base (#fdffda) with layered depth
-# Surface hierarchy: main surface with decorative border elements
-# Design: Tactile Heroism - warm, editorial, celebratory
+// Main Menu Background - Gilded Quest aesthetic
+// Warm parchment base (#fdffda) with layered depth
+// Surface hierarchy: main surface with decorative border elements
+// Design: Tactile Heroism - warm, editorial, celebratory
 size = Vector2(1920, 1080)
 
 [resource]

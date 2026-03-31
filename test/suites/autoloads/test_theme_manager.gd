@@ -1,23 +1,24 @@
 extends GutTest
 
-var test_manager: ThemeManager
+var ThemeManagerClass = load("res://autoloads/ThemeManager.gd")
+var test_manager
 var mock_config: ConfigFile
 
 func before_each():
 	mock_config = ConfigFile.new()
-	test_manager = ThemeManager.new(mock_config)
+	test_manager = ThemeManagerClass.new(mock_config)
+	add_child_autofree(test_manager)
 
 func after_each():
-	if test_manager:
-		test_manager.queue_free()
+	test_manager = null
 
 # Test fresh instance isolation (ISO-04)
 func test_fresh_instance_per_test():
 	assert_eq(test_manager.get_theme_name(), "gilded", "Should start with gilded quest theme")
 
 func test_multiple_instances_have_independent_state():
-	var manager1 = ThemeManager.new(ConfigFile.new())
-	var manager2 = ThemeManager.new(ConfigFile.new())
+	var manager1 = ThemeManagerClass.new(ConfigFile.new())
+	var manager2 = ThemeManagerClass.new(ConfigFile.new())
 
 	manager1.set_theme("light")
 	manager2.set_theme("dark")
@@ -36,6 +37,7 @@ func test_set_theme_emits_signal_with_parameters():
 
 # Test async signal with wait_for_signal (ISO-04)
 func test_async_theme_change():
+	watch_signals(test_manager)
 	test_manager.set_theme("light")
 	await wait_for_signal(test_manager.theme_changed, 1.0)
 	assert_signal_emitted(test_manager, "theme_changed")

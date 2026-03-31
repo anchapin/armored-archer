@@ -1,8 +1,13 @@
 [gd_resource type="StyleBoxFlat" format=3]
 
 [resource]
-bg_color = Color(1, 1, 1, 0.8)  # surface_container_lowest at 80% opacity
-corner_radius_top_left = 48
-corner_radius_top_right = 48
-corner_radius_bottom_right = 48
-corner_radius_bottom_left = 48
+// Modal style - "Smoky Glass" effect per Stitch spec
+// 60% opaque surface_container_lowest with atmospheric blur
+bg_color = Color(0, 0, 0, 0.6)  // 60% opaque black for glass effect
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+// Subtle glow around modal edges
+shadow_color = Color(1, 0.675, 0.329, 0.08)  // Golden glow at 8%

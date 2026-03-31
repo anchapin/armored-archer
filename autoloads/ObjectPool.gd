@@ -16,21 +16,25 @@ extends Node
 const ARROW_POOL_SIZE: int = 20
 const ENEMY_POOL_SIZE: int = 15
 const HIT_EFFECT_POOL_SIZE: int = 10
+const DEATH_EFFECT_POOL_SIZE: int = 8
 
 # Preloaded scenes
 var _arrow_scene: PackedScene
 var _enemy_scene: PackedScene
 var _hit_effect_scene: PackedScene
+var _death_effect_scene: PackedScene
 
 # Object pools - Array of available (inactive) objects
 var _arrow_pool: Array[Node] = []
 var _enemy_pool: Array[Node] = []
 var _hit_effect_pool: Array[Node] = []
+var _death_effect_pool: Array[Node] = []
 
 # Active objects tracking (for debugging/memory management)
 var _active_arrows: Array[Node] = []
 var _active_enemies: Array[Node] = []
 var _active_hit_effects: Array[Node] = []
+var _active_death_effects: Array[Node] = []
 
 # Statistics
 var _arrows_created: int = 0
@@ -39,6 +43,8 @@ var _enemies_created: int = 0
 var _enemies_reused: int = 0
 var _hit_effects_created: int = 0
 var _hit_effects_reused: int = 0
+var _death_effects_created: int = 0
+var _death_effects_reused: int = 0
 
 func _ready() -> void:
 	_initialize_pools()
@@ -48,6 +54,7 @@ func _initialize_pools() -> void:
 	_arrow_scene = preload("res://scenes/arrow.tscn")
 	_enemy_scene = preload("res://scenes/enemies/melee_enemy.tscn")
 	_hit_effect_scene = preload("res://assets/particles/hit_effect.tscn")
+	_death_effect_scene = preload("res://assets/particles/death_effect.tscn")
 
 	# Adjust pool sizes based on device tier
 	var pool_size_multiplier: float = 1.0
@@ -59,6 +66,7 @@ func _initialize_pools() -> void:
 	var adjusted_arrow_pool = int(ARROW_POOL_SIZE * pool_size_multiplier)
 	var adjusted_enemy_pool = int(ENEMY_POOL_SIZE * pool_size_multiplier)
 	var adjusted_hit_pool = int(HIT_EFFECT_POOL_SIZE * pool_size_multiplier)
+	var adjusted_death_pool = int(DEATH_EFFECT_POOL_SIZE * pool_size_multiplier)
 
 	# Create initial pools
 	for i in range(max(adjusted_arrow_pool, 5)):
@@ -84,8 +92,15 @@ func _initialize_pools() -> void:
 		_hit_effect_pool.append(effect)
 		add_child(effect)
 
-	print("[ObjectPool] Initialized - Arrows: %d, Enemies: %d, HitEffects: %d" %
-		[adjusted_arrow_pool, adjusted_enemy_pool, adjusted_hit_pool])
+	for i in range(max(adjusted_death_pool, 2)):
+		var effect = _death_effect_scene.instantiate()
+		effect.set_process(false)
+		effect.visible = false
+		_death_effect_pool.append(effect)
+		add_child(effect)
+
+	print("[ObjectPool] Initialized - Arrows: %d, Enemies: %d, HitEffects: %d, DeathEffects: %d" %
+		[adjusted_arrow_pool, adjusted_enemy_pool, adjusted_hit_pool, adjusted_death_pool])
 
 # --- Arrow Pool ---
 
@@ -196,6 +211,41 @@ func return_hit_effect(effect: Node) -> void:
 	_hit_effect_pool.append(effect)
 	_active_hit_effects.erase(effect)
 
+# --- Death Effect Pool ---
+
+## Get a death effect from the pool, or create a new one if pool is empty
+func get_death_effect() -> Node:
+	var effect: Node
+
+	if _death_effect_pool.size() > 0:
+		effect = _death_effect_pool.pop_back()
+		_death_effects_reused += 1
+	else:
+		effect = _death_effect_scene.instantiate()
+		_death_effects_created += 1
+		add_child(effect)
+
+	effect.set_process(true)
+	effect.visible = true
+	_active_death_effects.append(effect)
+
+	return effect
+
+## Return a death effect to the pool
+func return_death_effect(effect: Node) -> void:
+	if not is_instance_valid(effect):
+		return
+
+	effect.set_process(false)
+	effect.visible = false
+
+	# Reset effect state if it has a reset method
+	if effect.has_method("reset_pooled_state"):
+		effect.reset_pooled_state()
+
+	_death_effect_pool.append(effect)
+	_active_death_effects.erase(effect)
+
 # --- Statistics ---
 
 ## Get pool statistics
@@ -221,6 +271,13 @@ func get_statistics() -> Dictionary:
 			"created": _hit_effects_created,
 			"reused": _hit_effects_reused,
 			"reuse_rate": _get_reuse_rate(_hit_effects_created, _hit_effects_reused)
+		},
+		"death_effects": {
+			"active": _active_death_effects.size(),
+			"available": _death_effect_pool.size(),
+			"created": _death_effects_created,
+			"reused": _death_effects_reused,
+			"reuse_rate": _get_reuse_rate(_death_effects_created, _death_effects_reused)
 		}
 	}
 
@@ -240,6 +297,8 @@ func log_statistics() -> void:
 		[stats.enemies.active, stats.enemies.available, stats.enemies.created, stats.enemies.reused, stats.enemies.reuse_rate])
 	print("  HitEffects: %d active, %d available, %d created, %d reused (%.1f%% reuse rate)" %
 		[stats.hit_effects.active, stats.hit_effects.available, stats.hit_effects.created, stats.hit_effects.reused, stats.hit_effects.reuse_rate])
+	print("  DeathEffects: %d active, %d available, %d created, %d reused (%.1f%% reuse rate)" %
+		[stats.death_effects.active, stats.death_effects.available, stats.death_effects.created, stats.death_effects.reused, stats.death_effects.reuse_rate])
 
 ## Clean up invalid instances from active tracking arrays
 func cleanup_invalid_instances() -> void:
@@ -266,6 +325,14 @@ func cleanup_invalid_instances() -> void:
 			invalid_effects.append(effect)
 	for effect in invalid_effects:
 		_active_hit_effects.erase(effect)
+
+	# Clean up death effects
+	var invalid_death_effects: Array[Node] = []
+	for effect in _active_death_effects:
+		if not is_instance_valid(effect):
+			invalid_death_effects.append(effect)
+	for effect in invalid_death_effects:
+		_active_death_effects.erase(effect)
 
 ## Pre-warm pools (call during loading screen)
 func warm_pools() -> void:
@@ -294,6 +361,13 @@ func cleanup_all() -> void:
 			effect.queue_free()
 	_hit_effect_pool.clear()
 	_active_hit_effects.clear()
+
+	# Clean up all death effects
+	for effect in _death_effect_pool:
+		if is_instance_valid(effect):
+			effect.queue_free()
+	_death_effect_pool.clear()
+	_active_death_effects.clear()
 
 	print("[ObjectPool] All pools cleaned up")
 
@@ -335,6 +409,17 @@ func prepare_for_scene_change() -> void:
 			_hit_effect_pool.append(effect)
 	_active_hit_effects.clear()
 
+	# Return all active death effects to pool
+	for effect in _active_death_effects:
+		if is_instance_valid(effect):
+			_disconnect_node_signals(effect)
+			effect.set_process(false)
+			effect.visible = false
+			if effect.has_method("reset_pooled_state"):
+				effect.reset_pooled_state()
+			_death_effect_pool.append(effect)
+	_active_death_effects.clear()
+
 	print("[ObjectPool] Prepared for scene change - all active objects returned to pools")
 
 ## Disconnect all signals from a node to prevent memory leaks
@@ -359,5 +444,6 @@ func _exit_tree() -> void:
 	_arrow_scene = null
 	_enemy_scene = null
 	_hit_effect_scene = null
+	_death_effect_scene = null
 
 	print("[ObjectPool] Cleanup complete - all resources released")

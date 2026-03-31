@@ -87,7 +87,7 @@ func _run_tests():
 
 	# Set directories to scan (from .gutconfig.json if possible, or defaults)
 	# For simplicity in this environment, we'll pointed it to the suites
-	_gut_scene.add_script_dir("res://test/suites")
+	_gut_scene.add_directory("res://test/suites")
 	
 	# Run tests
 	print("Starting GUT test run...")

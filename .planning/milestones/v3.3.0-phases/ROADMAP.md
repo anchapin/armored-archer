@@ -1,0 +1,68 @@
+# Roadmap: v3.3.0 Polish & Juice
+
+## Goal
+Expand visual effects with particles, post-processing, and UI animations
+
+## Phase Structure
+
+### Phase 01: Particle Effects Foundation
+**Goal:** Core particle system setup with object pooling
+
+**Depends on:** Nothing (first phase)
+
+**Plans:** 3 plans expected
+- 01-01: EffectsManager autoload + particle spawning
+- 01-02: Particle pool implementation
+- 01-03: Hit particles + death explosions
+
+**Deliverables:**
+- EffectsManager singleton for orchestrating all effects
+- Object pool for particle nodes (pre-instantiated)
+- Hit particles on enemy damage
+- Death explosion particles on enemy defeat
+
+---
+
+### Phase 02: Post-Processing & Screen Effects
+**Goal:** WorldEnvironment setup, camera shake, screen effects
+
+**Depends on:** Phase 01
+
+**Plans:** 2-3 plans expected
+- 02-01: WorldEnvironment configuration (glow, vignette)
+- 02-02: CameraController with screen shake
+- 02-03: Damage overlay + slow-mo effects
+
+**Deliverables:**
+- Global WorldEnvironment with mobile-optimized settings
+- Camera shake on damage/heavy impacts
+- Red vignette overlay on low HP
+- Slow-motion on critical hits
+
+---
+
+### Phase 03: UI Polish & Micro-interactions
+**Goal:** Tween-based animations for UI elements
+
+**Depends on:** Phase 02
+
+**Plans:** 2-3 plans expected
+- 03-01: UI animation utilities ✅ COMPLETE
+- 03-02: Screen transitions ✅ COMPLETE
+- 03-03: Button feedback + loading states ✅ COMPLETE
+
+**Deliverables:**
+- Tween utilities for reusable animations ✅
+- Smooth screen transitions ✅
+- Button press feedback animations ✅
+- Loading indicator animations ✅
+
+---
+
+## Success Criteria
+
+- [ ] All particle effects work on mobile (60 FPS target)
+- [ ] No GC pressure from particle spawning
+- [ ] Screen shake limited to meaningful impacts
+- [ ] UI animations smooth (no frame drops)
+- [ ] WorldEnvironment performs well on low-end devices

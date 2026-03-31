@@ -1,6 +1,8 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+Godot_*.x86_64
+Godot_*.app/
 
 # Python caches
 __pycache__/

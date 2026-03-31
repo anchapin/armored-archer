@@ -1,0 +1,25 @@
+[gd_scene load_steps=3 format=3 uid="uid://world_environment"]
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 4
+background_color = Color(0.05, 0.05, 0.08, 1)
+glow_enabled = true
+glow_intensity = 0.5
+glow_bloom = 0.3
+glow_blend_mode = 0
+glow_hdr_threshold = 0.8
+vignette_enabled = true
+vignette_intensity = 0.4
+vignette_radius = 0.8
+
+[sub_resource type="Environment" id="Environment_low_quality"]
+background_mode = 4
+background_color = Color(0.05, 0.05, 0.08, 1)
+glow_enabled = true
+glow_intensity = 0.3
+glow_bloom = 0.2
+glow_blend_mode = 0
+vignette_enabled = false
+
+[node name="WorldEnvironment" type="WorldEnvironment"]
+environment = SubResource("Environment_main")

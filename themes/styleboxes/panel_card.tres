@@ -1,13 +1,19 @@
 [gd_resource type="StyleBoxFlat" format=3]
 
 [resource]
-bg_color = Color(1, 1, 1, 1)  # surface_container_lowest #ffffff
-corner_radius_top_left = 16
-corner_radius_top_right = 16
-corner_radius_bottom_right = 16
-corner_radius_bottom_left = 16
+// Card style - Highest surface level per Stitch spec
+bg_color = Color(0.149, 0.149, 0.149, 1)  // #262626 surface_container_highest
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
-# Shadow - on_surface at 6%
-shadow_color = Color(0.22, 0.22, 0.2, 0.06)
-shadow_size = 12
-shadow_offset = Vector2(0, 2)
+// Ghost border - 15% opacity for "etched metal" look
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.282, 0.282, 0.282, 0.15)  // #484848 at 15%
+
+// Ambient glow effect (no black shadows)
+shadow_color = Color(0, 0, 0, 0)

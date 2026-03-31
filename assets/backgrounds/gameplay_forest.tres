@@ -1,11 +1,11 @@
 [gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://bg_gameplay_forest_gilded"]
 
 [sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
-# Gameplay Forest Background - Gilded Quest aesthetic
-# Surface hierarchy: surface, surface_container, surface_container_low
-# Green/tan earth tones with depth layers
-# Design: Tactile Heroism - warm, editorial, celebratory
-# Supports parallax scrolling
+// Gameplay Forest Background - Gilded Quest aesthetic
+// Surface hierarchy: surface, surface_container, surface_container_low
+// Green/tan earth tones with depth layers
+// Design: Tactile Heroism - warm, editorial, celebratory
+// Supports parallax scrolling
 size = Vector2(1920, 1080)
 
 [resource]

@@ -1,19 +1,22 @@
 [gd_resource type="StyleBoxFlat" format=3]
 
 [resource]
-bg_color = Color(0, 0.376, 0.808, 1)  # #0060ce Primary Royal Blue
+// Primary button - Golden "Loot Glow" per Stitch spec
+bg_color = Color(1, 0.675, 0.329, 1)  // #ffac54 Golden Primary
 border_width_left = 0
 border_width_top = 0
 border_width_right = 0
 border_width_bottom = 0
 border_color = Color(0, 0, 0, 1)
-corner_radius_top_left = 24
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 24
-shadow_color = Color(0.22, 0.22, 0.2, 0.06)  # on_surface at 6%
-shadow_size = 20
-shadow_offset = Vector2(0, 4)
+// 4px corner radius for "machined part" look
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+// Ambient glow instead of shadow
+shadow_color = Color(1, 0.675, 0.329, 0.12)  // Primary at 12% for "Loot Glow" effect
+shadow_size = 24
+shadow_offset = Vector2(0, 0)
 content_margin_left = 16.0
 content_margin_top = 12.0
 content_margin_right = 16.0

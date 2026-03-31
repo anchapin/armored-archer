@@ -77,6 +77,9 @@ func take_damage(amount: int) -> void:
 	# Play hit animation
 	if current_health > 0:
 		_play_hit_animation()
+		# Trigger hit VFX
+		if VFXManager:
+			VFXManager.play_hit_effect(global_position)
 
 	if current_health <= 0:
 		die()
@@ -92,6 +95,10 @@ func _play_hit_animation() -> void:
 		current_state = AnimationState.IDLE
 
 func die() -> void:
+	# Trigger death VFX before death animation
+	if VFXManager:
+		VFXManager.play_death_effect(global_position)
+	
 	if animated_sprite:
 		is_animation_locked = true
 		current_state = AnimationState.DEATH

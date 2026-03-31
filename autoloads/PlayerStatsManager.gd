@@ -20,7 +20,10 @@ const RPC_ALLOCATE_STATS = "armored_archer/allocate_stats"
 const RPC_GET_PLAYER_STATS = "armored_archer/get_player_stats"
 
 # --- Player Stats ---
-var player_stats: Dictionary = {}
+var player_stats: Dictionary = {}:
+	set(value):
+		player_stats = value
+		stats_updated.emit(player_stats)
 var is_initialized: bool = false
 
 # --- Signals ---
@@ -71,7 +74,6 @@ func get_player_stats() -> Dictionary:
 	is_initialized = true
 
 	CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 70)
-	stats_updated.emit(player_stats)
 
 	return player_stats
 
@@ -126,7 +128,6 @@ func gain_xp(amount: int, source: String) -> void:
 				analytics.log_level_up(new_level, previous_level, source)
 
 		player_stats = result.player_stats
-		stats_updated.emit(player_stats)
 
 		# Track XP gain in analytics
 		if analytics and analytics.has_method("log_custom_event"):
@@ -172,7 +173,6 @@ func allocate_stat(stat_name: String, points: int) -> void:
 		stat_allocated.emit(stat_name, points)
 		player_stats = result.player_stats
 		CoverageTracker.track_execution("res://autoloads/PlayerStatsManager.gd", 70)
-		stats_updated.emit(player_stats)
 
 		# Track stat allocation in analytics
 		if analytics and analytics.has_method("log_custom_event"):

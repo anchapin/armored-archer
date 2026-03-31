@@ -1,11 +1,12 @@
 extends GutTest
 
-var _game: GameManager
+var GameManagerClass = load("res://autoloads/GameManager.gd")
+var _game
 var _mock_analytics: Node  # Mock AnalyticsManager for test isolation
 
 func before_each():
 	# Create fresh GameManager instance for each test (ISO-04 pattern)
-	_game = GameManager.new()
+	_game = GameManagerClass.new()
 	add_child_autofree(_game)
 
 	# Create mock AnalyticsManager using GUT's double() functionality

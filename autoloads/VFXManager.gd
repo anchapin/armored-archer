@@ -4,9 +4,6 @@ extends Node
 ## Manages visual effects (particles, screen shake) globally
 ## and other combat VFX.
 
-# --- Singleton Instance ---
-
-
 # --- Particle Effects ---
 const HIT_EFFECT_PATH := "res://assets/particles/hit_effect.tscn"
 const CRIT_EFFECT_PATH := "res://assets/particles/crit_effect.tscn"
@@ -15,6 +12,10 @@ const FIRE_EFFECT_PATH := "res://assets/particles/fire_effect.tscn"
 const ICE_EFFECT_PATH := "res://assets/particles/ice_effect.tscn"
 const LIGHTNING_EFFECT_PATH := "res://assets/particles/lightning_effect.tscn"
 const CHARGE_EFFECT_PATH := "res://assets/particles/charge_effect.tscn"
+const DEATH_EFFECT_PATH := "res://assets/particles/death_effect.tscn"
+
+# --- Signals for Combat Integration ---
+signal effect_triggered(effect_type: String, global_position: Vector2)
 
 # --- Scene References ---
 const DAMAGE_POPUP_SCENE := "res://scenes/damage_popup.tscn"
@@ -28,6 +29,7 @@ var _fire_effect: PackedScene
 var _ice_effect: PackedScene
 var _lightning_effect: PackedScene
 var _charge_effect: PackedScene
+var _death_effect: PackedScene
 var _damage_popup_scene: PackedScene
 
 # --- Screen Shake Instance ---
@@ -47,6 +49,7 @@ func _preload_scenes() -> void:
 	_ice_effect = load(ICE_EFFECT_PATH)
 	_lightning_effect = load(LIGHTNING_EFFECT_PATH)
 	_charge_effect = load(CHARGE_EFFECT_PATH)
+	_death_effect = load(DEATH_EFFECT_PATH)
 	_damage_popup_scene = load(DAMAGE_POPUP_SCENE)
 
 	# Preload screen shake (lazy initialization)
@@ -67,34 +70,34 @@ func _ensure_screen_shake() -> void:
 # === Particle Effect Methods ===
 
 func play_hit_effect(global_position: Vector2) -> void:
-	"""Play standard hit particle effect."""
-	_spawn_particle(_hit_effect, global_position)
+	"""Play standard hit particle effect with pooling for performance."""
+	_spawn_particle_pooled(_hit_effect, global_position, "hit")
 
 
 func play_crit_effect(global_position: Vector2) -> void:
 	"""Play critical hit effect with gold particles."""
-	_spawn_particle(_crit_effect, global_position)
+	_spawn_particle_pooled(_crit_effect, global_position, "crit")
 	_trigger_crit_shake()
 
 
 func play_miss_effect(global_position: Vector2) -> void:
 	"""Play miss/dodge effect with gray particles."""
-	_spawn_particle(_miss_effect, global_position)
+	_spawn_particle_pooled(_miss_effect, global_position, "miss")
 
 
 func play_fire_effect(global_position: Vector2) -> void:
 	"""Play fire elemental damage effect."""
-	_spawn_particle(_fire_effect, global_position)
+	_spawn_particle_pooled(_fire_effect, global_position, "fire")
 
 
 func play_ice_effect(global_position: Vector2) -> void:
 	"""Play ice/frost elemental damage effect."""
-	_spawn_particle(_ice_effect, global_position)
+	_spawn_particle_pooled(_ice_effect, global_position, "ice")
 
 
 func play_lightning_effect(global_position: Vector2) -> void:
 	"""Play lightning elemental damage effect."""
-	_spawn_particle(_lightning_effect, global_position)
+	_spawn_particle_pooled(_lightning_effect, global_position, "lightning")
 	_trigger_lightning_shake()
 
 
@@ -104,6 +107,49 @@ func play_charge_effect(global_position: Vector2, parent: Node) -> void:
 		var effect: GPUParticles2D = _charge_effect.instantiate()
 		parent.add_child(effect)
 		effect.global_position = global_position
+
+
+func play_death_effect(global_position: Vector2) -> void:
+	"""Play death explosion particle effect with pooling."""
+	_spawn_particle_pooled(_death_effect, global_position, "death")
+	trigger_impact_shake()
+
+
+func _spawn_particle_pooled(effect_scene: PackedScene, global_position: Vector2, effect_type: String) -> void:
+	"""Spawn a particle effect using object pool for better performance."""
+	if not effect_scene:
+		push_warning("VFXManager: Effect scene not loaded")
+		return
+
+	# Try to get from pool first
+	var effect: GPUParticles2D = null
+	
+	# Use ObjectPool if available for hit/death effects
+	if effect_type == "hit" and ObjectPool.has_method("get_hit_effect"):
+		effect = ObjectPool.get_hit_effect()
+	elif effect_type == "death" and ObjectPool.has_method("get_death_effect"):
+		effect = ObjectPool.get_death_effect()
+	
+	# Fall back to direct instantiation if pool not available
+	if effect == null:
+		effect = effect_scene.instantiate()
+		get_tree().current_scene.add_child(effect)
+	
+	effect.global_position = global_position
+	effect.emitting = true
+	
+	# Connect to return to pool after emission
+	var pool_return_func: Callable
+	if effect_type == "hit":
+		pool_return_func = ObjectPool.return_hit_effect
+	elif effect_type == "death":
+		pool_return_func = ObjectPool.return_death_effect
+	
+	if pool_return_func:
+		var _err = effect.finished.connect(func(): pool_return_func.call(effect))
+	else:
+		# No pool available, just clean up
+		var _err = effect.finished.connect(effect.queue_free)
 
 
 func _spawn_particle(effect_scene: PackedScene, global_position: Vector2) -> void:
@@ -167,10 +213,80 @@ func trigger_heavy_shake() -> void:
 
 
 func trigger_impact_shake() -> void:
-	"""Impact screen shake for boss hits/explosions."""
+	"""Impact screen shake for explosions/boss hits."""
 	_ensure_screen_shake()
 	if _screen_shake:
 		_screen_shake.shake_impact()
+
+
+# === Damage Overlay Methods ===
+
+func show_damage_overlay(intensity: float) -> void:
+	"""Show damage vignette overlay with given intensity (0.0-1.0)."""
+	var overlay := _get_damage_overlay()
+	if overlay:
+		overlay.visible = true
+		var mat = overlay.material as ShaderMaterial
+		if mat:
+			mat.set_shader_parameter("intensity", intensity)
+
+
+func hide_damage_overlay() -> void:
+	"""Hide damage vignette overlay."""
+	var overlay := _get_damage_overlay()
+	if overlay:
+		overlay.visible = false
+
+
+func _get_damage_overlay() -> ColorRect:
+	"""Get or create the damage overlay instance."""
+	var tree := get_tree()
+	if not tree:
+		return null
+	
+	var overlay := tree.get_first_node_in_group("DamageOverlay")
+	
+	if not overlay:
+		# Try to load and instance
+		var scene := load("res://scenes/ui/damage_overlay.tscn")
+		if scene:
+			overlay = scene.instantiate()
+			overlay.add_to_group("DamageOverlay")
+			tree.current_scene.add_child(overlay)
+	
+	return overlay
+
+
+# === Slow Motion Methods ===
+
+var _slow_motion_active: bool = false
+var _original_time_scale: float = 1.0
+
+
+func trigger_slow_motion(scale: float = 0.3, duration: float = 0.5) -> void:
+	"""Trigger slow motion effect.
+	
+	Args:
+		scale: Time scale (0.0-1.0). Lower = slower motion. Default 0.3
+		duration: How long slow motion lasts in seconds. Default 0.5
+	"""
+	if _slow_motion_active:
+		return  # Already in slow mo
+	
+	_slow_motion_active = true
+	_original_time_scale = Engine.time_scale
+	Engine.time_scale = scale
+	
+	# Reset after duration
+	await get_tree().create_timer(duration).timeout
+	stop_slow_motion()
+
+
+func stop_slow_motion() -> void:
+	"""Stop slow motion and restore normal time."""
+	if _slow_motion_active:
+		Engine.time_scale = _original_time_scale
+		_slow_motion_active = false
 
 
 func _trigger_crit_shake() -> void:
@@ -252,6 +368,7 @@ func _exit_tree() -> void:
 	_ice_effect = null
 	_lightning_effect = null
 	_charge_effect = null
+	_death_effect = null
 	_damage_popup_scene = null
 
 	# Clear singleton instance - no longer using static var

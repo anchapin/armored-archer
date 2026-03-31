@@ -15,44 +15,98 @@
 default_font = null
 default_font_size = 16
 
-# Color tokens - Gilded Quest Palette
-colors/theme_override = false
-colors/surface = Color(0.992, 1.0, 0.855, 1)  # #fdffda warm parchment
-colors/surface_container = Color(0.965, 0.953, 0.922, 1)  # #f6f3eb
-colors/surface_container_low = Color(0.988, 0.976, 0.945, 1)  # #fcf9f1
-colors/surface_container_lowest = Color(1, 1, 1, 1)  # #ffffff
-colors/surface_container_high = Color(0.941, 0.933, 0.898, 1)  # #f0eee5
-colors/primary = Color(0, 0.376, 0.808, 1)  # #0060ce Royal Blue
-colors/primary_container = Color(0.431, 0.624, 1, 1)  # #6e9fff
-colors/on_surface = Color(0.22, 0.22, 0.2, 1)  # #383833
-colors/outline_variant = Color(0.733, 0.725, 0.702, 1)  # #bbb9b3
-colors/secondary = Color(1, 0.843, 0, 1)  # #ffd700 Gold
-colors/tertiary = Color(0.314, 0.784, 0.471, 1)  # #50c878 Emerald
+// Stitch Dark Theme - "THE RELIC ARCHIVE"
+// Dark obsidian foundation with golden "Loot Glow" accent
 
-# Label settings - will use custom fonts when imported
-Label/colors/font_color = Color(0.22, 0.22, 0.2, 1)
+// Surface Hierarchy (Background Shift Architecture)
+colors/surface_dim = Color(0.054, 0.054, 0.055, 1)        // #0e0e0e Base layer
+colors/surface = Color(0.054, 0.054, 0.055, 1)            // #0e0e0e
+colors/surface_container_lowest = Color(0, 0, 0, 1)        // #000000
+colors/surface_container_low = Color(0.074, 0.075, 0.076, 1) // #131313
+colors/surface_container = Color(0.098, 0.102, 0.102, 1)     // #191a1a
+colors/surface_container_high = Color(0.122, 0.125, 0.125, 1) // #1f2020
+colors/surface_container_highest = Color(0.149, 0.149, 0.149, 1) // #262626
+colors/surface_bright = Color(0.173, 0.173, 0.173, 1)       // #2c2c2c
+colors/surface_variant = Color(0.149, 0.149, 0.149, 1)     // #262626
+colors/surface_tint = Color(1, 0.675, 0.329, 1)            // #ffac54
+
+// On-Surface colors
+colors/on_surface = Color(1, 1, 1, 1)                       // #ffffff
+colors/on_surface_variant = Color(0.678, 0.667, 0.667, 1) // #adaaaa
+colors/on_surface_disabled = Color(0.388, 0.388, 0.388, 1) // #636363
+
+// Primary - Golden "Loot Glow"
+colors/primary = Color(1, 0.675, 0.329, 1)                  // #ffac54
+colors/primary_dim = Color(0.925, 0.549, 0, 1)             // #ec8c00
+colors/primary_fixed = Color(1, 0.596, 0, 1)               // #ff9800
+colors/primary_fixed_dim = Color(0.925, 0.549, 0, 1)      // #ec8c00
+colors/primary_container = Color(1, 0.596, 0, 1)           // #ff9800
+colors/on_primary = Color(0.345, 0.192, 0, 1)             // #583100
+colors/on_primary_container = Color(0.290, 0.157, 0, 1)    // #4a2800
+colors/on_primary_fixed = Color(0.153, 0.075, 0, 1)        // #271300
+colors/on_primary_fixed_variant = Color(0.337, 0.188, 0, 1) // #563000
+
+// Secondary - Weathered iron/cream
+colors/secondary = Color(0.937, 0.878, 0.82, 1)            // #efe0d1
+colors/secondary_dim = Color(0.882, 0.824, 0.765, 1)      // #e1d2c3
+colors/secondary_fixed = Color(0.937, 0.878, 0.82, 1)    // #efe0d1
+colors/secondary_fixed_dim = Color(0.882, 0.824, 0.765, 1) // #e1d2c3
+colors/secondary_container = Color(0.31, 0.271, 0.227, 1)   // #4f453a
+colors/on_secondary = Color(0.353, 0.314, 0.271, 1)      // #5a5045
+colors/on_secondary_container = Color(0.867, 0.808, 0.749, 1) // #ddcebf
+
+// Tertiary - Green (health, uncommon rarity)
+colors/tertiary = Color(0.494, 0.973, 0.224, 1)            // #7ef839
+colors/tertiary_dim = Color(0.384, 0.859, 0.075, 1)        // #62db13
+colors/tertiary_fixed = Color(0.431, 0.918, 0.157, 1)      // #70ea28
+colors/tertiary_fixed_dim = Color(0.384, 0.859, 0.075, 1)  // #62db13
+colors/tertiary_container = Color(0.431, 0.918, 0.157, 1)  // #70ea28
+colors/on_tertiary = Color(0.137, 0.353, 0, 1)              // #235a00
+colors/on_tertiary_container = Color(0.118, 0.314, 0, 1)   // #1e5000
+colors/on_tertiary_fixed = Color(0.078, 0.227, 0, 1)      // #143a00
+colors/on_tertiary_fixed_variant = Color(0.137, 0.353, 0, 1) // #235a00
+
+// Error - Orange-red (epic rarity, critical health)
+colors/error = Color(1, 0.451, 0.318, 1)                   // #ff7351
+colors/error_dim = Color(0.835, 0.239, 0.094, 1)          // #d53d18
+colors/error_container = Color(0.725, 0.161, 0.008, 1)    // #b92902
+colors/on_error = Color(0.271, 0.035, 0, 1)               // #450900
+colors/on_error_container = Color(1, 0.824, 0.784, 1)    // #ffd2c8
+
+// Inverse colors
+colors/inverse_surface = Color(0.988, 0.976, 0.973, 1)   // #fcf9f8
+colors/inverse_on_surface = Color(0.337, 0.333, 0.333, 1) // #565555
+colors/inverse_primary = Color(0.549, 0.318, 0, 1)          // #8c5100
+
+// Outline colors (Ghost Border - no solid lines)
+colors/outline = Color(0.463, 0.459, 0.459, 1)            // #767575
+colors/outline_variant = Color(0.282, 0.282, 0.282, 1)    // #484848 ghost border
+
+// Label settings - will use custom fonts when imported
+Label/colors/font_color = Color(1, 1, 1, 1)  // White text for dark theme
+Label/colors/font_color_shadow = Color(0, 0, 0, 0.3)
 Label/label_settings = null
 LabelSettings/display_large = ExtResource("1")
 LabelSettings/headline = ExtResource("2")
 LabelSettings/title = ExtResource("3")
 LabelSettings/body = ExtResource("4")
 
-# Button styles - bubbly tactile appearance with shadows
+// Button styles - Tactile Triggers with 4px corner radius
 Button/styles/normal = ExtResource("5")
 Button/styles/hover = ExtResource("6")
 Button/styles/pressed = ExtResource("7")
 Button/styles/disabled = null
 Button/styles/focus = ExtResource("5")
 
-# Panel styles
+// Panel styles
 PanelContainer/styles/panel = ExtResource("8")
 PanelContainer/styles/card = ExtResource("9")
 PanelContainer/styles/modal = ExtResource("10")
 
-# Default corner radius constants
-constants/default_corner_radius = 16
-constants/default_corner_radius_small = 8
-constants/default_corner_radius_large = 24
+// Default corner radius constants - 4px for "machined part" look
+constants/default_corner_radius = 4
+constants/default_corner_radius_small = 4
+constants/default_corner_radius_large = 12
 
-# XL corner radius for modals (from design spec)
-constants/xl_corner_radius = 48
+// XL corner radius for modals (atmospheric blur + glass)
+constants/xl_corner_radius = 16

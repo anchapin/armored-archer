@@ -1,0 +1,24 @@
+
+# Prometheus Alerting Rules for Armored Archer
+
+groups:
+  - name: armoured_archer_critical
+    interval: 30s
+    rules:
+      - alert: GameServerDown
+        expr: up{job="nakama"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Game server (Nakama) is down"
+          description: "Nakama server has been unavailable for more than 1 minute."
+
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database is down"
+          description: "PostgreSQL database is not responding."

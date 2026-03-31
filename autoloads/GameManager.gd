@@ -17,6 +17,8 @@ signal player_died()
 signal game_won()
 signal boss_spawned(boss_node: Node)
 signal stage_completed(stage_id: String)
+signal game_paused()
+signal game_resumed()
 
 # --- References ---
 @onready var analytics: Node = $"/root/AnalyticsManager" if has_node("/root/AnalyticsManager") else null
@@ -33,12 +35,20 @@ var player_current_health: int = 100
 var player_max_health: int = 100
 var current_stage: int = 1
 var is_game_active: bool = false
+var is_paused: bool = false
 var game_start_time: int = 0  # For tracking game duration
 
 # --- Campaign Stage ---
 var current_stage_id: String = ""
 var current_waves: int = 3
 var boss_id: String = ""
+
+# --- Biome Background ---
+var biome_background: Node = null
+var biome_terrain: Node = null
+
+# --- Enemy Scaling ---
+const EnemyScaler = preload("res://scripts/combat/enemy_scaler.gd")
 
 # --- Health Management ---
 func take_player_damage(damage: int) -> void:
@@ -57,6 +67,9 @@ func take_player_damage(damage: int) -> void:
 	var previous_health := player_current_health
 	player_current_health = max(0, player_current_health - damage)
 	health_changed.emit(player_current_health, player_max_health)
+
+	# Trigger VFX on damage
+	_trigger_damage_vfx(damage)
 
 	# Track health change in analytics
 	if analytics and analytics.has_method("log_custom_event"):
@@ -89,6 +102,11 @@ func heal_player(amount: int) -> void:
 	player_current_health = min(player_max_health, player_current_health + amount)
 	health_changed.emit(player_current_health, player_max_health)
 
+	# Heal VFX - hide damage overlay if healed above threshold
+	if player_current_health > int(player_max_health * 0.3):
+		if has_node("/root/VFXManager"):
+			get_node("/root/VFXManager").hide_damage_overlay()
+
 	# Track health change in analytics
 	if analytics and analytics.has_method("log_custom_event"):
 		analytics.log_custom_event("player_healed", {
@@ -99,16 +117,53 @@ func heal_player(amount: int) -> void:
 		})
 
 # --- Game Flow ---
+# === Damage VFX ===
+
+var _previous_health_for_vfx: int = 100
+
+
+func _trigger_damage_vfx(damage: int) -> void:
+	"""Trigger visual effects when player takes damage."""
+	if not has_node("/root/VFXManager"):
+		return
+	
+	var vfx = get_node("/root/VFXManager")
+	
+	# Screen shake based on damage amount
+	if damage >= 20:
+		vfx.trigger_heavy_shake()
+	elif damage >= 10:
+		vfx.trigger_medium_shake()
+	else:
+		vfx.trigger_light_shake()
+	
+	# Show damage overlay if health is low
+	var health_percent := float(player_current_health) / float(player_max_health)
+	if health_percent < 0.3:
+		# Intensity increases as health decreases
+		var intensity := 1.0 - (health_percent / 0.3)
+		vfx.show_damage_overlay(intensity)
+	elif _previous_health_for_vfx > int(player_max_health * 0.3) and player_current_health > int(player_max_health * 0.3):
+		# Healed above threshold - hide overlay
+		vfx.hide_damage_overlay()
+	
+	_previous_health_for_vfx = player_current_health
+
+
 func start_game() -> void:
 	"""Starts a new game session, resetting health and state."""
 	CoverageTracker.track_execution("res://autoloads/GameManager.gd", 94)
 
 	player_current_health = player_max_health
 	is_game_active = true
+	is_paused = false
 	CoverageTracker.track_execution("res://autoloads/GameManager.gd", 94)
 	game_start_time = Time.get_unix_time_from_system()
 	health_changed.emit(player_current_health, player_max_health)
 	CoverageTracker.track_execution("res://autoloads/GameManager.gd", 97)
+	
+	# Set biome background based on current stage
+	_update_biome_background()
 
 	# Track game start in analytics
 	if analytics and analytics.has_method("log_pve_stage_started"):
@@ -124,6 +179,70 @@ func start_game() -> void:
 			"stage_id": current_stage_id,
 			"timestamp": game_start_time
 		})
+
+# --- Pause/Resume Management ---
+
+func pause_game() -> void:
+	"""Pause the game."""
+	if not is_game_active or game_paused:
+		return
+
+	is_paused = true
+	get_tree().paused = true
+	game_paused.emit()
+
+	# Track pause in analytics
+	if analytics and analytics.has_method("log_custom_event"):
+		analytics.log_custom_event("game_paused", {
+			"stage": current_stage,
+			"stage_id": current_stage_id
+		})
+
+func resume_game() -> void:
+	"""Resume the game."""
+	if not is_paused:
+		return
+
+	is_paused = false
+	get_tree().paused = false
+	game_resumed.emit()
+
+	# Track resume in analytics
+	if analytics and analytics.has_method("log_custom_event"):
+		analytics.log_custom_event("game_resumed", {
+			"stage": current_stage,
+			"stage_id": current_stage_id
+		})
+
+func toggle_pause() -> void:
+	"""Toggle pause state."""
+	if is_paused:
+		resume_game()
+	else:
+		pause_game()
+
+func quit_to_main_menu() -> void:
+	"""Quit to main menu."""
+	# Resume game state before changing scenes
+	if is_paused:
+		get_tree().paused = false
+		is_paused = false
+
+	is_game_active = false
+
+	# Track quit in analytics
+	if analytics and analytics.has_method("log_custom_event"):
+		analytics.log_custom_event("quit_to_main_menu", {
+			"stage": current_stage,
+			"stage_id": current_stage_id
+		})
+
+	# Change to main menu
+	var _err = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+
+func get_is_paused() -> bool:
+	"""Check if game is paused."""
+	return is_paused
 
 func end_game(won: bool) -> void:
 	"""Ends the current game session.
@@ -246,6 +365,10 @@ func spawn_boss(boss_name: String) -> void:
 		var boss_instance = boss_scene.instantiate() as CharacterBody2D
 		get_tree().root.add_child(boss_instance)
 		boss_instance.global_position = Vector2(0, -200)
+		
+		# Apply player-level scaling to boss
+		EnemyScaler.apply_scaling_to_boss(boss_instance)
+		
 		boss_spawned.emit(boss_instance)
 		CoverageTracker.track_execution("res://autoloads/GameManager.gd", 225)
 
@@ -256,3 +379,35 @@ func spawn_boss(boss_name: String) -> void:
 				"stage": current_stage,
 				"stage_id": current_stage_id
 			})
+
+func _update_biome_background() -> void:
+	# Find or create biome background
+	if not biome_background or not is_instance_valid(biome_background):
+		biome_background = get_tree().root.find_child("BiomeBackground", true, false)
+	
+	if not biome_background or not is_instance_valid(biome_background):
+		var BiomeBackgroundScene = load("res://scenes/environment/biome_background.tscn")
+		if BiomeBackgroundScene:
+			biome_background = BiomeBackgroundScene.instantiate()
+			get_tree().root.add_child(biome_background)
+	
+	if biome_background and is_instance_valid(biome_background):
+		var biome = BiomeBackground.get_biome_from_encounter(current_stage_id)
+		if biome_background.has_method("set_biome"):
+			biome_background.set_biome(biome, true)
+		print("[GameManager] Biome set to: ", BiomeBackground.Biome.keys()[biome])
+	
+	# Find or create biome terrain
+	if not biome_terrain or not is_instance_valid(biome_terrain):
+		biome_terrain = get_tree().root.find_child("BiomeTerrain", true, false)
+	
+	if not biome_terrain or not is_instance_valid(biome_terrain):
+		var BiomeTerrainScene = load("res://scenes/environment/biome_terrain.tscn")
+		if BiomeTerrainScene:
+			biome_terrain = BiomeTerrainScene.instantiate()
+			get_tree().root.add_child(biome_terrain)
+	
+	if biome_terrain and is_instance_valid(biome_terrain):
+		var biome = BiomeTerrain.get_biome_from_encounter(current_stage_id)
+		if biome_terrain.has_method("spawn_biome_terrain"):
+			biome_terrain.spawn_biome_terrain(biome)

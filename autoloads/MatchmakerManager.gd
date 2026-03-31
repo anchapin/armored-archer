@@ -9,6 +9,8 @@
 ##
 extends Node
 
+const CoverageTracker = preload("res://addons/gut/coverage/coverage_tracker.gd")
+
 # --- RPC IDs ---
 const RPC_LIST_MATCHES = "armored_archer/list_matches"
 const RPC_CREATE_MATCH = "armored_archer/create_match"
@@ -70,6 +72,7 @@ func list_matches(match_type: String = "", min_rank: int = 0, max_rank: int = 0,
 		return
 
 	if response.get("success", false):
+		CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 70)
 		available_matches = response.get("matches", [])
 		player_rank = response.get("player_rank", 0)
 		matches_loaded.emit(available_matches, player_rank)
@@ -106,6 +109,7 @@ func create_match(match_type: String, is_punch_up: bool = false, target_opponent
 		return
 
 	if response.get("success", false):
+		CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 100)
 		current_match = response.get("match", {})
 		match_created.emit(current_match)
 
@@ -145,6 +149,7 @@ func accept_match(match_id: String) -> void:
 		return
 
 	if response.get("success", false):
+		CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 150)
 		current_match = response.get("match", {})
 		match_accepted.emit(current_match)
 
@@ -162,6 +167,7 @@ func get_player_rank() -> void:
 		return
 
 	if response.get("success", false):
+		CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 170)
 		player_rank = response.get("rank", 0)
 		rank_retrieved.emit(player_rank)
 
@@ -204,6 +210,7 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 		return
 
 	if response.get("success", false):
+		CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 215)
 		var match_result: Dictionary = {
 			"match": response.get("match", {}),
 			"winner": response.get("winner", {}),
@@ -212,7 +219,7 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 		}
 
 		# Update cached player rank
-		var my_user_id: String = NetworkManager.user_id
+		var my_user_id: String = network_manager.user_id
 		if my_user_id == winner_id:
 			player_rank = response.get("winner", {}).get("new_rank", player_rank)
 		elif my_user_id == loser_id:
@@ -220,6 +227,7 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 
 		# Update Punch Up statistics
 		if is_punch_up:
+			CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 233)
 			if my_user_id == winner_id:
 				punch_up_wins += 1
 			elif my_user_id == loser_id:
@@ -308,6 +316,7 @@ func is_in_match() -> bool:
 # --- Punch Up Statistics ---
 func _emit_punch_up_stats_updated() -> void:
 	"""Emits punch_up_stats_updated signal with current statistics."""
+	CoverageTracker.track_execution("res://autoloads/MatchmakerManager.gd", 295)
 	var win_rate: float = 0.0
 	var total: int = punch_up_wins + punch_up_losses
 	if total > 0:

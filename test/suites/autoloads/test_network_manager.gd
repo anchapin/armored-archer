@@ -1,11 +1,12 @@
 extends GutTest
 
+var NetworkManagerClass = load("res://autoloads/NetworkManager.gd")
 var _network
 var _mock_http: Node  # Mock HTTPRequest for network isolation
 
 func before_each():
 	# Create fresh NetworkManager instance for each test (ISO-04 pattern)
-	_network = NetworkManager.new()
+	_network = NetworkManagerClass.new()
 	add_child_autofree(_network)
 
 	# Create mock HTTPRequest using GUT's double() functionality

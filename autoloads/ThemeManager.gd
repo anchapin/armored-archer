@@ -15,10 +15,10 @@ signal font_changed(font: Font)
 var _config_file: ConfigFile = null
 
 # --- Theme State ---
-var _current_theme: StringName = &"gilded"
+var _current_theme: StringName = &"gilded_dark"
 var _is_dark: bool = false
-const DEFAULT_FONT_PATH: String = ArcherDesignTokens.FONT_PLUS_JAKARTA_SANS_PATH
-var _current_font_path: String = DEFAULT_FONT_PATH
+var _default_font_path: String = "res://fonts/Plus_Jakarta_Sans.ttf"
+var _current_font_path: String = "res://fonts/Plus_Jakarta_Sans.ttf"
 var _cached_font: Font = null
 
 # --- Persistence ---
@@ -44,31 +44,31 @@ var _themes: Dictionary = {
 	},
 	"gilded": {
 		"name": "Gilded Quest",
-		"background": Color("#fdffda"),
-		"surface": Color("#f6f3eb"),
-		"surface_variant": Color("#f0eee5"),
-		"surface_container": Color("#f6f3eb"),
-		"surface_container_low": Color("#fcf9f1"),
-		"surface_container_lowest": Color("#ffffff"),
-		"surface_container_high": Color("#f0eee5"),
-		"surface_bright": Color("#fdffda"),
-		"surface_dim": Color("#e5e2d9"),
-		"surface_tint": Color("#0060ce"),
-		"border": Color("#bbb9b3"),
-		"outline_variant": Color("#bbb9b3"),
-		"text_primary": Color("#383833"),
-		"text_secondary": Color("#6B655B"),
-		"text_disabled": Color("#B8B2A8"),
-		"on_surface": Color("#383833"),
-		"primary": Color("#0060CE"),
-		"primary_container": Color("#6e9fff"),
-		"primary_dim": Color("#0054b7"),
-		"primary_fixed": Color("#6e9fff"),
-		"primary_tint": Color("#0060ce"),
-		"secondary": Color("#8d5900"),
-		"tertiary": Color("#00734e"),
-		"gradient_primary_start": Color("#0060ce"),
-		"gradient_primary_end": Color("#6e9fff"),
+		"background": Color("#0e0e0e"),
+		"surface": Color("#0e0e0e"),
+		"surface_variant": Color("#262626"),
+		"surface_container": Color("#191a1a"),
+		"surface_container_low": Color("#131313"),
+		"surface_container_lowest": Color("#000000"),
+		"surface_container_high": Color("#1f2020"),
+		"surface_bright": Color("#2c2c2c"),
+		"surface_dim": Color("#0e0e0e"),
+		"surface_tint": Color("#ffac54"),
+		"border": Color("#484848"),
+		"outline_variant": Color("#484848"),
+		"text_primary": Color("#ffffff"),
+		"text_secondary": Color("#adaaaa"),
+		"text_disabled": Color("#767575"),
+		"on_surface": Color("#ffffff"),
+		"primary": Color("#ffac54"),
+		"primary_container": Color("#ff9800"),
+		"primary_dim": Color("#ec8c00"),
+		"primary_fixed": Color("#ff9800"),
+		"primary_tint": Color("#ffac54"),
+		"secondary": Color("#efe0d1"),
+		"tertiary": Color("#7ef839"),
+		"gradient_primary_start": Color("#ffac54"),
+		"gradient_primary_end": Color("#ec8c00"),
 	},
 	"light": {
 		"name": "Light",

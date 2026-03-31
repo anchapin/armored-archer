@@ -1,11 +1,12 @@
 extends GutTest
 
-var _combat: CombatManager
+var CombatManagerClass = load("res://autoloads/CombatManager.gd")
+var _combat
 var _mock_network: Node  # Mock NetworkManager for RPC isolation
 
 func before_each():
 	# Create fresh CombatManager instance for each test (ISO-04 pattern)
-	_combat = CombatManager.new()
+	_combat = CombatManagerClass.new()
 	add_child_autofree(_combat)
 
 	# Create mock NetworkManager using GUT's double() functionality

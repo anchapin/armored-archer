@@ -1,18 +1,19 @@
 extends GutTest
 
-var test_manager: AccessibilityManager
+var AccessibilityManagerClass = load("res://autoloads/AccessibilityManager.gd")
+var test_manager
 var mock_config: ConfigFile
 
 func before_each():
 	# Create fresh mock ConfigFile for each test
 	mock_config = ConfigFile.new()
 	# Inject mock to avoid file I/O
-	test_manager = AccessibilityManager.new(mock_config)
+	test_manager = AccessibilityManagerClass.new(mock_config)
+	add_child_autofree(test_manager)
 
 func after_each():
 	# Clean up instance
-	if test_manager:
-		test_manager.queue_free()
+	test_manager = null
 
 # Test fresh instance isolation (ISO-04)
 func test_fresh_instance_per_test():
@@ -20,8 +21,8 @@ func test_fresh_instance_per_test():
 	assert_eq(test_manager.get_font_scale(), 1.0, "Should start with default")
 
 func test_multiple_instances_have_independent_state():
-	var manager1 = AccessibilityManager.new(ConfigFile.new())
-	var manager2 = AccessibilityManager.new(ConfigFile.new())
+	var manager1 = AccessibilityManagerClass.new(ConfigFile.new())
+	var manager2 = AccessibilityManagerClass.new(ConfigFile.new())
 
 	manager1.set_font_scale(1.2)
 	manager2.set_font_scale(1.4)

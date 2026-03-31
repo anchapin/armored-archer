@@ -1,17 +1,20 @@
 [gd_resource type="StyleBoxFlat" format=3]
 
 [resource]
-bg_color = Color(0, 0.376, 0.808, 1)  # #0060ce Primary Royal Blue
+// Primary button pressed - Darker golden per Stitch spec "SINK" effect
+bg_color = Color(0.925, 0.549, 0, 1)  // #ec8c00 primary_dim - darker
 border_width_left = 0
 border_width_top = 0
 border_width_right = 0
 border_width_bottom = 0
 border_color = Color(0, 0, 0, 1)
-corner_radius_top_left = 24
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 24
-shadow_color = Color(0, 0, 0, 0)  # No shadow on pressed
+// 4px corner radius
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+// No shadow on pressed - "sink" into surface
+shadow_color = Color(0, 0, 0, 0)
 shadow_size = 0
 shadow_offset = Vector2(0, 0)
 content_margin_left = 16.0
