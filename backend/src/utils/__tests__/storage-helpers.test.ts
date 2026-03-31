@@ -8,6 +8,12 @@ import {
   getStorageValue,
   parseStorageValueJson,
   createStorageWrite,
+  readPlayerStats,
+  writePlayerStats,
+  batchStorageRead,
+  batchStorageWrite,
+  StorageReadOptions,
+  StorageWriteOptions,
 } from '../storage-helpers';
 
 describe('storage-helpers', () => {
@@ -105,6 +111,113 @@ describe('storage-helpers', () => {
     it('should stringify object value', () => {
       const result = createStorageWrite('collection', 'key', 'user123', { level: 5 });
       expect(result.value).toBe('{"level":5}');
+    });
+  });
+
+  describe('readPlayerStats', () => {
+    it('should call storageRead with correct parameters', () => {
+      const mockNk = { storageRead: jest.fn().mockReturnValue([]) };
+      readPlayerStats(mockNk as any, 'user123');
+      expect(mockNk.storageRead).toHaveBeenCalledWith([
+        {
+          collection: 'player_stats',
+          key: 'user123',
+          userId: 'user123',
+        },
+      ]);
+    });
+
+    it('should return storage objects', () => {
+      const mockObjects = [{ value: '{"level":5}' }];
+      const mockNk = { storageRead: jest.fn().mockReturnValue(mockObjects) };
+      const result = readPlayerStats(mockNk as any, 'user123');
+      expect(result).toEqual(mockObjects);
+    });
+  });
+
+  describe('writePlayerStats', () => {
+    it('should call storageWrite with correct parameters', () => {
+      const mockNk = { storageWrite: jest.fn() };
+      const stats = { level: 5, xp: 1000 };
+      writePlayerStats(mockNk as any, 'user123', stats);
+      expect(mockNk.storageWrite).toHaveBeenCalledWith([
+        {
+          collection: 'player_stats',
+          key: 'user123',
+          userId: 'user123',
+          value: JSON.stringify(stats),
+        },
+      ]);
+    });
+  });
+
+  describe('batchStorageRead', () => {
+    it('should call storageRead with mapped reads', () => {
+      const mockNk = { storageRead: jest.fn().mockReturnValue([]) };
+      const reads: StorageReadOptions[] = [
+        { collection: 'col1', key: 'key1', userId: 'user1' },
+        { collection: 'col2', key: 'key2', userId: 'user1' },
+      ];
+      batchStorageRead(mockNk as any, reads);
+      expect(mockNk.storageRead).toHaveBeenCalledWith([
+        { collection: 'col1', key: 'key1', userId: 'user1' },
+        { collection: 'col2', key: 'key2', userId: 'user1' },
+      ]);
+    });
+
+    it('should return empty array for empty reads', () => {
+      const mockNk = { storageRead: jest.fn() };
+      const result = batchStorageRead(mockNk as any, []);
+      expect(result).toEqual([]);
+      expect(mockNk.storageRead).not.toHaveBeenCalled();
+    });
+
+    it('should return results from storageRead', () => {
+      const mockObjects = [{ value: '{"a":1}' }, { value: '{"b":2}' }];
+      const mockNk = { storageRead: jest.fn().mockReturnValue(mockObjects) };
+      const result = batchStorageRead(mockNk as any, [
+        { collection: 'col', key: 'key', userId: 'user' },
+      ]);
+      expect(result).toEqual(mockObjects);
+    });
+  });
+
+  describe('batchStorageWrite', () => {
+    it('should call storageWrite with mapped writes', () => {
+      const mockNk = { storageWrite: jest.fn() };
+      const writes: StorageWriteOptions[] = [
+        { collection: 'col1', key: 'key1', userId: 'user1', value: 'val1' },
+      ];
+      batchStorageWrite(mockNk as any, writes);
+      expect(mockNk.storageWrite).toHaveBeenCalledWith([
+        { collection: 'col1', key: 'key1', userId: 'user1', value: 'val1' },
+      ]);
+    });
+
+    it('should not call storageWrite for empty writes', () => {
+      const mockNk = { storageWrite: jest.fn() };
+      batchStorageWrite(mockNk as any, []);
+      expect(mockNk.storageWrite).not.toHaveBeenCalled();
+    });
+
+    it('should stringify object values', () => {
+      const mockNk = { storageWrite: jest.fn() };
+      const writes: StorageWriteOptions[] = [
+        { collection: 'col', key: 'key', userId: 'user', value: { foo: 'bar' } },
+      ];
+      batchStorageWrite(mockNk as any, writes);
+      const callArg = mockNk.storageWrite.mock.calls[0][0];
+      expect(callArg[0].value).toBe('{"foo":"bar"}');
+    });
+
+    it('should keep string values as-is', () => {
+      const mockNk = { storageWrite: jest.fn() };
+      const writes: StorageWriteOptions[] = [
+        { collection: 'col', key: 'key', userId: 'user', value: 'already-string' },
+      ];
+      batchStorageWrite(mockNk as any, writes);
+      const callArg = mockNk.storageWrite.mock.calls[0][0];
+      expect(callArg[0].value).toBe('already-string');
     });
   });
 });
