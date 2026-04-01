@@ -1,31 +1,31 @@
 ---
 gsd_state_version: 1.0
-milestone: post-v3.2.0
-milestone_name: Coverage Push & Alpha Readiness
+milestone: v3.4.0
+milestone_name: Tactical Gameplay & PvE Campaign
 status: in_progress
-last_updated: "2026-04-01T13:40:00.000Z"
+last_updated: "2026-04-01T17:55:00.000Z"
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
 ---
 
 # Armored Archer - Project State
 
 **Last Updated**: 2026-04-01
-**Current Focus**: Alpha readiness and blocker resolution
-**Status**: Active development — P0 blockers resolved
+**Current Focus**: v3.4.0 — wire PvP scenes to backend, build PvE campaign system
+**Status**: Active development — Phase 01 (PvP Integration) complete
 
 ---
 
 ## Current Position
 
-**Milestone**: Post v3.2.0 (Pixel Art Assets shipped 2026-03-26)
-**Active Work**: Blocker resolution complete, ready for Alpha readiness
-**Coverage**: 94.55% lines, 94.4% statements, 93.69% functions, 88.54% branches (target: 60% — EXCEEDED)
+**Milestone**: v3.4.0 Tactical Gameplay & PvE Campaign
+**Active Work**: Phase 01 complete (3 remaining: Campaign, Enemy AI, Loot)
+**Coverage**: 94.55% lines, 94.4% statements, 93.69% functions, 88.54% branches (target: 80% — EXCEEDED)
 **TypeScript**: 0 type errors (15 fixed 2026-04-01)
-**Working Tree**: Clean
+**Working Tree**: Modified (2 files from Phase 01)
 
 ---
 
@@ -50,7 +50,7 @@ progress:
 | Blocker | Status | Resolution |
 |---------|--------|------------|
 | Godot RPC stubs (9 TODOs) | FIXED | Updated 3 managers to use correct `armored_archer/` prefixed RPC names: `MatchmakingManager.gd` (3 RPCs), `InventoryManager.gd` (3 RPCs), `CombatSyncManager.gd` (2 RPCs + added `action_type` field) |
-| CI coverage gate (Stage 3, 60%) | FIXED | Rewrote `coverage-threshold.yml` from Go to TypeScript/Jest; enforces 60% line coverage, blocks merges on failure, adds PR coverage comments |
+| CI coverage gate (Stage 3, 80%) | FIXED | Rewrote `coverage-threshold.yml` from Go to TypeScript/Jest; enforces 80% line coverage, blocks merges on failure, adds PR coverage comments |
 | Phase 15 VERIFICATION.md | ALREADY EXISTS | Verified at `.planning/phases/15-property-based-testing-expansion/15-VERIFICATION.md` — 6/6 PBT requirements satisfied |
 | Coverage 48.7% → 60% | EXCEEDED | Actual coverage is 94.55% lines — the 48.7% figure was outdated. All 52 source files have >80% coverage |
 
@@ -59,7 +59,7 @@ progress:
 | Blocker | Status | Resolution |
 |---------|--------|------------|
 | Mutation testing workflow | FIXED | Installed Stryker (`@stryker-mutator/core`), created `stryker.config.json` for 8 critical modules, updated workflow to use Stryker instead of Go tools, added `npm run mutation:test` script |
-| Coverage gate enforcement | FIXED | Workflow now uses TypeScript/Jest, properly extracts coverage from `coverage-summary.json`, enforces 60% threshold with `exit 1` on failure |
+| Coverage gate enforcement | FIXED | Workflow now uses TypeScript/Jest, properly extracts coverage from `coverage-summary.json`, enforces 80% threshold with `exit 1` on failure |
 
 ### Remaining (Non-Blocking)
 
@@ -111,7 +111,7 @@ progress:
 - Platform: GitHub Actions (26 workflows)
 - Linting: ESLint (backend), gdlint (Godot)
 - Type checking: `tsc --noEmit` (passing)
-- Coverage gate: 60% threshold enforced on PRs (coverage-threshold.yml)
+- Coverage gate: 80% threshold enforced on PRs (coverage-threshold.yml)
 - Mutation testing: Nightly Stryker runs (mutation-testing.yml)
 
 ---
@@ -124,7 +124,7 @@ progress:
 - Installed Stryker mutation testing framework
 - Created stryker.config.json for 8 critical backend modules
 - Updated mutation-testing CI workflow to use Stryker
-- Verified backend coverage at 94.55% (well above 60% target)
+- Verified backend coverage at 94.55% (well above 80% target)
 - Updated .planning/STATE.md with resolved blockers
 
 ---
