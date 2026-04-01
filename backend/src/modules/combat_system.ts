@@ -18,6 +18,7 @@ import { PvPMatch } from './matchmaker';
 import { profileFunction } from './profiling';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { getPlayerInventory, getEquippedGearModifierBonuses, PlayerInventory } from './gear_system';
+import { safeParse } from '../utils/safeParse';
 
 // Match-level inactivity timeout: 2 minutes of inactivity results in auto-forfeit
 const MATCH_INACTIVE_TIMEOUT_MS = 2 * 60 * 1000;
@@ -187,7 +188,13 @@ function validateMatchForCombat(
     return { valid: false, error: 'Match not found' };
   }
 
-  const match = JSON.parse(matchObjects[0].value);
+  const matchResult = safeParse<Record<string, unknown>>(matchObjects[0].value, null, logger, 'validateMatch:match');
+  if (!matchResult.success || !matchResult.data) {
+    span.setAttribute('error', true);
+    span.setAttribute('error.message', 'Failed to parse match data');
+    return { valid: false, error: 'Failed to parse match data' };
+  }
+  const match = matchResult.data as unknown as PvPMatch;
 
   if (isMatchExpired(match)) {
     span.setAttribute('error', true);
@@ -274,8 +281,10 @@ function handleTurnTimeout(
     ]);
 
     if (matchObjects.length > 0) {
-      const match = JSON.parse(matchObjects[0].value);
-      updateMatchStatus(nk, match, winnerId);
+      const matchResult = safeParse<PvPMatch>(matchObjects[0].value, null, logger, 'handleTimeoutForfeit:match');
+      if (matchResult.success && matchResult.data) {
+        updateMatchStatus(nk, matchResult.data, winnerId);
+      }
     }
 
     // Notify opponent of forfeit
@@ -559,7 +568,11 @@ function getOrCreateMatchState(
     if (!stateObjects[0].value) {
       // Fall through to create new state
     } else {
-      return JSON.parse(stateObjects[0].value);
+      const stateResult = safeParse<MatchState>(stateObjects[0].value, null, logger, 'getOrCreateMatchState');
+      if (stateResult.success && stateResult.data) {
+        return stateResult.data;
+      }
+      logger.warn('Failed to parse match state, creating new state');
     }
   }
 
@@ -762,7 +775,22 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logg
       },
     };
   } else {
-    baseStats = JSON.parse(objects[0].value);
+    const statsResult = safeParse<PlayerStats>(objects[0].value, null, logger, 'getPlayerStats');
+    if (!statsResult.success || !statsResult.data) {
+      logger.warn('Failed to parse player stats for user %s, using defaults', userId);
+      baseStats = {
+        level: 1,
+        xp: 0,
+        stats: {
+          attack: 10,
+          defense: 10,
+          dodge: 10,
+          crit_rate: 5,
+        },
+      };
+    } else {
+      baseStats = statsResult.data;
+    }
   }
 
   // Apply gear modifier bonuses from equipped gear
@@ -928,7 +956,11 @@ export async function rpcPlayerDisconnect(
         return JSON.stringify({ error: 'Match not found' });
       }
 
-      const match = JSON.parse(matchObjects[0].value);
+      const matchResult = safeParse<PvPMatch>(matchObjects[0].value, null, logger, 'rpcForfeitMatch:match');
+      if (!matchResult.success || !matchResult.data) {
+        return JSON.stringify({ error: 'Failed to parse match data' });
+      }
+      const match: PvPMatch = matchResult.data;
 
       if (match.status !== 'active') {
         return JSON.stringify({ error: 'Match is not active' });
@@ -956,7 +988,11 @@ export async function rpcPlayerDisconnect(
         return JSON.stringify({ error: 'Match state not found' });
       }
 
-      const matchState: MatchState = JSON.parse(stateObjects[0].value);
+      const stateResult = safeParse<MatchState>(stateObjects[0].value, null, logger, 'rpcForfeitMatch:matchState');
+      if (!stateResult.success || !stateResult.data) {
+        return JSON.stringify({ error: 'Failed to parse match state' });
+      }
+      const matchState: MatchState = stateResult.data;
 
       // Determine winner (opponent)
       const winnerId = ctx.userId === match.creator_id ? match.opponent_id : match.creator_id;

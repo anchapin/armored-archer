@@ -1692,19 +1692,22 @@ export async function rpcAppLaunchCheck(
   }
 
   // Process pending purchases
-  const pendingResult = JSON.parse(await rpcProcessPendingPurchases(ctx, logger, nk, '{}'));
+  const pendingResultRaw = await rpcProcessPendingPurchases(ctx, logger, nk, '{}');
+  const pendingResult = safeParse<Record<string, unknown>>(pendingResultRaw, null, logger, 'app_launch_check:pendingPurchases');
 
   // Check for refunds
-  const refundResult = JSON.parse(await rpcCheckRefunds(ctx, logger, nk, '{}'));
+  const refundResultRaw = await rpcCheckRefunds(ctx, logger, nk, '{}');
+  const refundResult = safeParse<Record<string, unknown>>(refundResultRaw, null, logger, 'app_launch_check:refunds');
 
   // Check subscriptions
-  const subscriptionResult = JSON.parse(await rpcCheckSubscriptions(ctx, logger, nk, '{}'));
+  const subscriptionResultRaw = await rpcCheckSubscriptions(ctx, logger, nk, '{}');
+  const subscriptionResult = safeParse<Record<string, unknown>>(subscriptionResultRaw, null, logger, 'app_launch_check:subscriptions');
 
   return JSON.stringify({
     success: true,
-    pending_purchases: pendingResult,
-    refunds: refundResult,
-    subscriptions: subscriptionResult,
+    pending_purchases: pendingResult.success ? pendingResult.data : { error: 'Parse failed' },
+    refunds: refundResult.success ? refundResult.data : { error: 'Parse failed' },
+    subscriptions: subscriptionResult.success ? subscriptionResult.data : { error: 'Parse failed' },
   });
 }
 
@@ -1825,7 +1828,7 @@ function handleSubscriptionCancelled(
   reason: string | undefined,
   logger: Runtime.Logger,
   eventType: string = 'cancellation'
-): { success: boolean; message: string; event_type?: string } {
+): { success: boolean; message?: string; event_type?: string; error?: string } {
   logger.info(
     'Webhook: Subscription cancelled for user %s, product %s, reason: %s',
     userId,
@@ -1848,7 +1851,13 @@ function handleSubscriptionCancelled(
       logger.warn('No valid subscription data found for user %s', userId);
       return { success: true, message: 'Cancellation noted (no subscription found)', event_type: eventType };
     }
-    const subscription = JSON.parse(value);
+    let subscription: Record<string, unknown>;
+    try {
+      subscription = JSON.parse(value);
+    } catch (e) {
+      logger.error('Failed to parse subscription data for user %s: %s', userId, e);
+      return { success: false, error: 'Invalid subscription data' };
+    }
     subscription.active = false;
     subscription.cancelled = true;
     subscription.cancelled_at = new Date().toISOString();
@@ -1874,7 +1883,7 @@ function handleBillingIssue(
   productId: string,
   logger: Runtime.Logger,
   eventType: string = 'billing_issue'
-): { success: boolean; message: string; event_type?: string } {
+): { success: boolean; message?: string; event_type?: string; error?: string } {
   logger.info(
     'Webhook: Billing issue for user %s, product %s',
     userId,
@@ -1896,7 +1905,13 @@ function handleBillingIssue(
       logger.warn('No valid subscription data found for user %s', userId);
       return { success: true, message: 'Billing issue recorded (no subscription found)', event_type: eventType };
     }
-    const subscription = JSON.parse(value);
+    let subscription: Record<string, unknown>;
+    try {
+      subscription = JSON.parse(value);
+    } catch (e) {
+      logger.error('Failed to parse subscription data for user %s: %s', userId, e);
+      return { success: false, error: 'Invalid subscription data' };
+    }
     subscription.billing_issue = true;
     subscription.billing_issue_at = new Date().toISOString();
 
@@ -2036,7 +2051,7 @@ export async function rpcRevenueCatWebhook(
     return JSON.stringify({ success: false, error: 'Missing app_user_id' });
   }
 
-  let result: { success: boolean; message: string; event_type?: string; gems_awarded?: number; new_balance?: number };
+  let result: { success: boolean; message?: string; event_type?: string; error?: string; gems_awarded?: number; new_balance?: number };
 
   switch (normalizedEventType) {
     case 'initial_purchase':

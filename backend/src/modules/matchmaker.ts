@@ -5,6 +5,8 @@
 
 import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
+import { safeParse } from '../utils/safeParse';
+import { readAndParseStorage } from '../utils/storage-helpers';
 import { isPlayerFlagged, getFlagReason, recordMatchResult } from './anti_cheat';
 import { logAudit } from './audit';
 import {
@@ -165,7 +167,16 @@ export function rpcListMatches(
     });
   }
 
-  const playerStats = JSON.parse(objects[0].value);
+  const playerStatsResult = safeParse<PlayerStats>(
+    objects[0].value,
+    null,
+    logger,
+    'rpcListMatches:playerStats'
+  );
+  if (!playerStatsResult.success || !playerStatsResult.data) {
+    return JSON.stringify({ error: 'Failed to parse player stats' });
+  }
+  const playerStats = playerStatsResult.data;
   const playerRank = calculateRank(playerStats);
 
   const matches = nk.storageList(ctx.userId, 'pvp_matches', limit, '', '');
@@ -173,7 +184,12 @@ export function rpcListMatches(
   const filteredMatches: PvPMatch[] = [];
 
   for (const object of matches) {
-    const match: PvPMatch = JSON.parse(object.value);
+    const matchResult = safeParse<PvPMatch>(object.value, null, logger, 'rpcListMatches:match');
+    if (!matchResult.success || !matchResult.data) {
+      logger.warn('Skipping corrupted match record for user: %s', ctx.userId);
+      continue;
+    }
+    const match = matchResult.data;
 
     if (match.status !== 'pending') {
       continue;
@@ -275,7 +291,16 @@ export function rpcCreateMatch(
     });
   }
 
-  const playerStats = JSON.parse(objects[0].value);
+  const playerStatsResult = safeParse<PlayerStats>(
+    objects[0].value,
+    null,
+    logger,
+    'rpcCreateMatch:playerStats'
+  );
+  if (!playerStatsResult.success || !playerStatsResult.data) {
+    return JSON.stringify({ error: 'Failed to parse player stats' });
+  }
+  const playerStats = playerStatsResult.data;
   const playerRank = calculateRank(playerStats);
 
   if (request.target_opponent_id) {
@@ -293,7 +318,16 @@ export function rpcCreateMatch(
       });
     }
 
-    const targetPlayerStats = JSON.parse(targetStats[0].value);
+    const targetPlayerStatsResult = safeParse<PlayerStats>(
+      targetStats[0].value,
+      null,
+      logger,
+      'rpcCreateMatch:targetStats'
+    );
+    if (!targetPlayerStatsResult.success || !targetPlayerStatsResult.data) {
+      return JSON.stringify({ error: 'Failed to parse target player stats' });
+    }
+    const targetPlayerStats = targetPlayerStatsResult.data;
     const targetRank = calculateRank(targetPlayerStats);
 
     if (!request.is_punch_up && Math.abs(playerRank - targetRank) > 3) {
@@ -432,7 +466,11 @@ export function rpcAcceptMatch(
     });
   }
 
-  const match: PvPMatch = JSON.parse(objects[0].value);
+  const matchResult = safeParse<PvPMatch>(objects[0].value, null, logger, 'rpcAcceptMatch:match');
+  if (!matchResult.success || !matchResult.data) {
+    return JSON.stringify({ error: 'Failed to parse match data' });
+  }
+  const match: PvPMatch = matchResult.data;
 
   if (match.creator_id === ctx.userId) {
     return JSON.stringify({
@@ -460,7 +498,16 @@ export function rpcAcceptMatch(
     });
   }
 
-  const playerStats = JSON.parse(playerObjects[0].value);
+  const playerStatsResult = safeParse<PlayerStats>(
+    playerObjects[0].value,
+    null,
+    logger,
+    'rpcAcceptMatch:playerStats'
+  );
+  if (!playerStatsResult.success || !playerStatsResult.data) {
+    return JSON.stringify({ error: 'Failed to parse player stats' });
+  }
+  const playerStats = playerStatsResult.data;
   const now = Date.now();
   // Active matches expire after 7 days of inactivity
   const ACTIVE_MATCH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
@@ -544,21 +591,18 @@ export function rpcGetPlayerRank(
     return createValidationErrorResponse('get_player_rank', validation.error);
   }
 
-  const objects = nk.storageRead([
-    {
-      collection: 'player_stats',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
-
-  if (objects.length === 0) {
-    return JSON.stringify({
-      error: 'Player stats not found',
-    });
+  const statsResult = readAndParseStorage<PlayerStats>(
+    nk,
+    'player_stats',
+    ctx.userId,
+    ctx.userId,
+    logger,
+    'rpcGetPlayerRank'
+  );
+  if (statsResult.error) {
+    return JSON.stringify({ error: statsResult.error });
   }
-
-  const playerStats = JSON.parse(objects[0].value);
+  const playerStats = statsResult.data!;
   const rank = calculateRank(playerStats);
 
   // Apply rank decay check - this updates the player's rank if they've been inactive
@@ -689,7 +733,7 @@ export function rpcCompleteMatch(
   if (loserFlagged) return loserFlagged;
 
   // Fetch and validate the match
-  const matchResult = getAndValidateMatch(nk, ctx, request);
+  const matchResult = getAndValidateMatch(nk, ctx, request, logger);
   if (matchResult.error || !matchResult.match) {
     return JSON.stringify({ error: matchResult.error || 'Match not found' });
   }
@@ -713,7 +757,8 @@ export function rpcCompleteMatch(
 function getAndValidateMatch(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
-  request: { match_id: string }
+  request: { match_id: string },
+  logger: Runtime.Logger
 ): { match?: PvPMatch; error?: string } {
   const objects = nk.storageRead([
     {
@@ -727,7 +772,11 @@ function getAndValidateMatch(
     return { error: 'Match not found' };
   }
 
-  const match: PvPMatch = JSON.parse(objects[0].value);
+  const matchResult = safeParse<PvPMatch>(objects[0].value, null, logger, 'rpcForfeitMatch:match');
+  if (!matchResult.success || !matchResult.data) {
+    return { error: 'Failed to parse match data' };
+  }
+  const match: PvPMatch = matchResult.data;
 
   if (match.status !== 'active') {
     return { error: 'Match is not active' };
