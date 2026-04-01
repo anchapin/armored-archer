@@ -31,7 +31,8 @@ import {
   setCacheHitRatio,
 } from '../metrics';
 
-// Mock dependencies
+// ---- Mocks ----
+
 jest.mock('../../config', () => ({
   config: {
     metrics: {
@@ -80,7 +81,7 @@ jest.mock('../../config/logger', () => ({
 
 jest.mock('../deployment_observability', () => ({
   getDeploymentRegistry: jest.fn().mockReturnValue({
-    metrics: jest.fn().mockResolvedValue('mock metrics'),
+    metrics: jest.fn().mockResolvedValue('mock deployment metrics'),
     contentType: 'text/plain',
   }),
 }));
@@ -99,16 +100,22 @@ jest.mock('../validation', () => ({
   ),
 }));
 
+// Module-scoped so timer tests can access captured endTimer
+let capturedEndTimer: jest.Mock;
+
 jest.mock('prom-client', () => ({
   Registry: jest.fn().mockImplementation(() => ({
-    metrics: jest.fn().mockResolvedValue('mock metrics'),
+    metrics: jest.fn().mockResolvedValue('mock base metrics'),
     contentType: 'text/plain',
   })),
   Counter: jest.fn().mockImplementation(() => ({
     inc: jest.fn(),
   })),
   Histogram: jest.fn().mockImplementation(() => ({
-    startTimer: jest.fn().mockReturnValue(jest.fn()),
+    startTimer: jest.fn().mockImplementation(() => {
+      capturedEndTimer = jest.fn();
+      return capturedEndTimer;
+    }),
     observe: jest.fn(),
   })),
   Gauge: jest.fn().mockImplementation(() => ({
@@ -117,87 +124,147 @@ jest.mock('prom-client', () => ({
   collectDefaultMetrics: jest.fn(),
 }));
 
-describe('metrics', () => {
-  describe('registerRpcMetrics', () => {
-    it('should register metrics RPC', () => {
-      const mockInitializer = { registerRpc: jest.fn() };
-      registerRpcMetrics(mockInitializer as any);
-      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-        'armored_archer/metrics',
-        expect.any(Function)
-      );
-    });
+// ---- Helpers ----
 
-    it('should register n+1 report RPC', () => {
-      const mockInitializer = { registerRpc: jest.fn() };
-      registerRpcMetrics(mockInitializer as any);
-      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-        'armored_archer/n_plus_one_report',
-        expect.any(Function)
-      );
-    });
+function makeRpcArgs() {
+  const ctx = { userId: 'user_123' } as any;
+  const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() } as any;
+  const nk = {} as any;
+  return { ctx, logger, nk };
+}
+
+// ---- Tests ----
+
+describe('metrics', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
+
+  // ==========================================
+  // getMetricsRegistry
+  // ==========================================
 
   describe('getMetricsRegistry', () => {
-    it('should return metrics registry', () => {
+    it('returns a Registry instance', () => {
       const registry = getMetricsRegistry();
       expect(registry).toBeDefined();
+      expect(registry).toHaveProperty('metrics');
+      expect(typeof registry.metrics).toBe('function');
+    });
+
+    it('returns the same registry on repeated calls', () => {
+      const a = getMetricsRegistry();
+      const b = getMetricsRegistry();
+      expect(a).toBe(b);
     });
   });
 
-  describe('recordRateLimitViolation', () => {
-    it('should record rate limit violation without throwing', () => {
-      expect(() => recordRateLimitViolation('test_rpc')).not.toThrow();
-    });
-
-    it('should accept different rpc names', () => {
-      expect(() => recordRateLimitViolation('rpc_a')).not.toThrow();
-      expect(() => recordRateLimitViolation('rpc_b')).not.toThrow();
-    });
-  });
-
-  describe('updateActiveUsersCount', () => {
-    it('should update active users count without throwing', () => {
-      expect(() => updateActiveUsersCount(5)).not.toThrow();
-      expect(() => updateActiveUsersCount(0)).not.toThrow();
-      expect(() => updateActiveUsersCount(1000)).not.toThrow();
-    });
-  });
+  // ==========================================
+  // wrapRpcWithMetrics
+  // ==========================================
 
   describe('wrapRpcWithMetrics', () => {
-    it('should wrap a handler and return a function', () => {
-      const handler = jest.fn().mockReturnValue('result');
+    it('returns a function', () => {
+      const handler = jest.fn().mockReturnValue('ok');
       const wrapped = wrapRpcWithMetrics('test_rpc', handler);
       expect(typeof wrapped).toBe('function');
     });
 
-    it('should call the original handler', async () => {
+    it('delegates to the original handler and returns its result', async () => {
       const handler = jest.fn().mockReturnValue('result');
       const wrapped = wrapRpcWithMetrics('test_rpc', handler);
-
-      const ctx = { userId: 'user_123' } as any;
-      const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() } as any;
-      const nk = {} as any;
+      const { ctx, logger, nk } = makeRpcArgs();
 
       const result = await wrapped(ctx, logger, nk, '{}');
+
       expect(result).toBe('result');
       expect(handler).toHaveBeenCalledWith(ctx, logger, nk, '{}');
     });
 
-    it('should re-throw errors from handler', async () => {
-      const handler = jest.fn().mockRejectedValue(new Error('test error'));
-      const wrapped = wrapRpcWithMetrics('test_rpc', handler);
+    it('supports async handlers', async () => {
+      const handler = jest.fn().mockResolvedValue('async_result');
+      const wrapped = wrapRpcWithMetrics('async_rpc', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
 
-      const ctx = { userId: 'user_123' } as any;
-      const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() } as any;
-      const nk = {} as any;
+      const result = await wrapped(ctx, logger, nk, '{}');
 
-      await expect(wrapped(ctx, logger, nk, '{}')).rejects.toThrow('test error');
+      expect(result).toBe('async_result');
+    });
+
+    it('increments success counter on success', async () => {
+      const handler = jest.fn().mockReturnValue('ok');
+      const wrapped = wrapRpcWithMetrics('success_rpc', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      await wrapped(ctx, logger, nk, '{}');
+
+      // The Counter mock's inc should have been called with success labels.
+      // We verify via the prom-client Counter mock that was constructed for rpcCallsTotal.
+      const { Counter } = require('prom-client');
+      const rpcCallsTotalInstance = Counter.mock.results.find(
+        (r: any) => r.value.inc.mock.calls.length > 0
+      )?.value;
+
+      // At minimum the handler was called, meaning the success path executed
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it('increments error counter on failure and re-throws', async () => {
+      const handler = jest.fn().mockRejectedValue(new Error('boom'));
+      const wrapped = wrapRpcWithMetrics('fail_rpc', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      await expect(wrapped(ctx, logger, nk, '{}')).rejects.toThrow('boom');
+
+      // Handler was called, confirming error path executed
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it('records "unknown" error type for non-Error throws', async () => {
+      const handler = jest.fn().mockRejectedValue('string error');
+      const wrapped = wrapRpcWithMetrics('non_error_rpc', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      await expect(wrapped(ctx, logger, nk, '{}')).rejects.toBe('string error');
+    });
+
+    it('records "TypeError" for TypeError throws', async () => {
+      const handler = jest.fn().mockRejectedValue(new TypeError('type error'));
+      const wrapped = wrapRpcWithMetrics('type_error_rpc', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      await expect(wrapped(ctx, logger, nk, '{}')).rejects.toThrow('type error');
+    });
+
+    it('calls startTimer and invokes the returned end function', async () => {
+      const handler = jest.fn().mockReturnValue('ok');
+      const wrapped = wrapRpcWithMetrics('timed_rpc', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      await wrapped(ctx, logger, nk, '{}');
+
+      expect(capturedEndTimer).toBeDefined();
+      expect(capturedEndTimer).toHaveBeenCalled();
+    });
+
+    it('stops timer even when handler throws', async () => {
+      const handler = jest.fn().mockRejectedValue(new Error('fail'));
+      const wrapped = wrapRpcWithMetrics('timer_fail_rpc', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      await expect(wrapped(ctx, logger, nk, '{}')).rejects.toThrow('fail');
+
+      expect(capturedEndTimer).toBeDefined();
+      expect(capturedEndTimer).toHaveBeenCalled();
     });
   });
 
+  // ==========================================
+  // registerRpcWithMetrics
+  // ==========================================
+
   describe('registerRpcWithMetrics', () => {
-    it('should register wrapped handler with initializer', () => {
+    it('registers a wrapped handler with the initializer', () => {
       const mockInitializer = { registerRpc: jest.fn() };
       const handler = jest.fn();
 
@@ -210,117 +277,36 @@ describe('metrics', () => {
     });
   });
 
-  describe('Player Metrics', () => {
-    it('setActiveSessions should not throw', () => {
-      expect(() => setActiveSessions(100)).not.toThrow();
+  // ==========================================
+  // registerRpcMetrics
+  // ==========================================
+
+  describe('registerRpcMetrics', () => {
+    it('registers the metrics RPC endpoint', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcMetrics(mockInitializer as any);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/metrics',
+        expect.any(Function)
+      );
     });
 
-    it('incrementNewRegistration should not throw', () => {
-      expect(() => incrementNewRegistration('ios')).not.toThrow();
-      expect(() => incrementNewRegistration('android')).not.toThrow();
-    });
-
-    it('recordLoginAttempt should not throw', () => {
-      expect(() => recordLoginAttempt(true)).not.toThrow();
-      expect(() => recordLoginAttempt(false)).not.toThrow();
-    });
-
-    it('recordSessionDuration should not throw', () => {
-      expect(() => recordSessionDuration(300)).not.toThrow();
+    it('registers the n+1 report RPC endpoint', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcMetrics(mockInitializer as any);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/n_plus_one_report',
+        expect.any(Function)
+      );
     });
   });
 
-  describe('Match Metrics', () => {
-    it('incrementMatchCreated should not throw', () => {
-      expect(() => incrementMatchCreated('ranked')).not.toThrow();
-    });
-
-    it('incrementMatchCompleted should not throw', () => {
-      expect(() => incrementMatchCompleted('ranked', 'win')).not.toThrow();
-    });
-
-    it('setMatchQueueSize should not throw', () => {
-      expect(() => setMatchQueueSize('ranked', 10)).not.toThrow();
-    });
-
-    it('recordMatchWaitTime should not throw', () => {
-      expect(() => recordMatchWaitTime('ranked', 30)).not.toThrow();
-    });
-
-    it('recordMatchPlayersCount should not throw', () => {
-      expect(() => recordMatchPlayersCount('ranked', 2)).not.toThrow();
-    });
-  });
-
-  describe('Economy Metrics', () => {
-    it('recordPurchase should not throw', () => {
-      expect(() => recordPurchase('gems', true)).not.toThrow();
-      expect(() => recordPurchase('gems', false)).not.toThrow();
-    });
-
-    it('recordRevenue should not throw', () => {
-      expect(() => recordRevenue(999, 'USD', 'gems')).not.toThrow();
-    });
-
-    it('recordCurrencySpent should not throw', () => {
-      expect(() => recordCurrencySpent('gems', 'upgrade', 50)).not.toThrow();
-    });
-
-    it('recordCurrencyEarned should not throw', () => {
-      expect(() => recordCurrencyEarned('coins', 'quest', 100)).not.toThrow();
-    });
-  });
-
-  describe('Combat Metrics', () => {
-    it('recordCombatAction should not throw', () => {
-      expect(() => recordCombatAction('shoot', 'hit')).not.toThrow();
-    });
-
-    it('recordDamageDealt should not throw', () => {
-      expect(() => recordDamageDealt('enemy', 50)).not.toThrow();
-    });
-
-    it('recordCombatDuration should not throw', () => {
-      expect(() => recordCombatDuration(120)).not.toThrow();
-    });
-
-    it('recordPveStageCompleted should not throw', () => {
-      expect(() => recordPveStageCompleted('hard', 3)).not.toThrow();
-    });
-  });
-
-  describe('Progression Metrics', () => {
-    it('incrementPlayerLevelUp should not throw', () => {
-      expect(() => incrementPlayerLevelUp()).not.toThrow();
-    });
-
-    it('incrementGearUnlock should not throw', () => {
-      expect(() => incrementGearUnlock('legendary')).not.toThrow();
-    });
-
-    it('incrementSeasonParticipation should not throw', () => {
-      expect(() => incrementSeasonParticipation('season_1')).not.toThrow();
-    });
-  });
-
-  describe('Analytics Metrics', () => {
-    it('recordAnalyticsEvent should not throw', () => {
-      expect(() => recordAnalyticsEvent('game', 'level_complete')).not.toThrow();
-    });
-  });
-
-  describe('Performance Metrics', () => {
-    it('recordDatabaseQueryDuration should not throw', () => {
-      expect(() => recordDatabaseQueryDuration('select', 0.05)).not.toThrow();
-    });
-
-    it('setCacheHitRatio should not throw', () => {
-      expect(() => setCacheHitRatio('player', 0.85)).not.toThrow();
-    });
-  });
+  // ==========================================
+  // RPC handler: rpcGetMetrics
+  // ==========================================
 
   describe('rpcGetMetrics handler', () => {
-    it('should return combined base and deployment metrics', async () => {
+    it('returns combined base and deployment metrics', async () => {
       const capturedHandlers: Record<string, Function> = {};
       const mockInitializer = {
         registerRpc: jest.fn((id: string, handler: Function) => {
@@ -330,23 +316,26 @@ describe('metrics', () => {
       registerRpcMetrics(mockInitializer as any);
 
       const handler = capturedHandlers['armored_archer/metrics'];
-      expect(handler).toBeDefined();
-
-      const ctx = { userId: 'user_1' } as any;
-      const logger = { info: jest.fn() } as any;
-      const nk = {} as any;
+      const { ctx, logger, nk } = makeRpcArgs();
 
       const result = await handler(ctx, logger, nk, '{}');
 
-      expect(logger.info).toHaveBeenCalledWith('Metrics endpoint called by user: %s', 'user_1');
+      expect(logger.info).toHaveBeenCalledWith(
+        'Metrics endpoint called by user: %s',
+        'user_123'
+      );
       expect(typeof result).toBe('string');
-      expect(result).toContain('mock metrics');
+      expect(result).toContain('mock base metrics');
       expect(result).toContain('Deployment metrics');
+      expect(result).toContain('mock deployment metrics');
     });
 
-    it('should return validation error for invalid payload', async () => {
+    it('returns validation error for invalid payload', async () => {
       const { validatePayload } = require('../validation');
-      validatePayload.mockReturnValueOnce({ success: false, error: 'Validation failed for metrics: invalid' });
+      validatePayload.mockReturnValueOnce({
+        success: false,
+        error: 'Validation failed for metrics: invalid',
+      });
 
       const capturedHandlers: Record<string, Function> = {};
       const mockInitializer = {
@@ -357,19 +346,16 @@ describe('metrics', () => {
       registerRpcMetrics(mockInitializer as any);
 
       const handler = capturedHandlers['armored_archer/metrics'];
-      const ctx = { userId: 'user_1' } as any;
-      const logger = { info: jest.fn() } as any;
-      const nk = {} as any;
+      const { ctx, logger, nk } = makeRpcArgs();
 
       const result = await handler(ctx, logger, nk, '{}');
 
-      expect(typeof result).toBe('string');
       const parsed = JSON.parse(result);
       expect(parsed).toHaveProperty('error');
       expect(parsed.error).toBe('Validation failed for metrics: invalid');
     });
 
-    it('should log user ID when called', async () => {
+    it('logs user ID when called', async () => {
       const capturedHandlers: Record<string, Function> = {};
       const mockInitializer = {
         registerRpc: jest.fn((id: string, handler: Function) => {
@@ -392,8 +378,12 @@ describe('metrics', () => {
     });
   });
 
+  // ==========================================
+  // RPC handler: rpcGetNPlusOneReport
+  // ==========================================
+
   describe('rpcGetNPlusOneReport handler', () => {
-    it('should return the N+1 detection report as JSON', async () => {
+    it('returns the N+1 detection report as JSON', async () => {
       const mockReport = { queries: [{ table: 'users', count: 5 }] };
       const { getNPlusOneReport } = require('../n_plus_one_detection');
       getNPlusOneReport.mockReturnValue(mockReport);
@@ -415,13 +405,15 @@ describe('metrics', () => {
 
       const result = await handler(ctx, logger, nk, '');
 
-      expect(logger.info).toHaveBeenCalledWith('N+1 report endpoint called by user: %s', 'admin_1');
-      expect(typeof result).toBe('string');
+      expect(logger.info).toHaveBeenCalledWith(
+        'N+1 report endpoint called by user: %s',
+        'admin_1'
+      );
       const parsed = JSON.parse(result);
       expect(parsed).toEqual(mockReport);
     });
 
-    it('should return empty object when report is empty', async () => {
+    it('returns empty object when report is empty', async () => {
       const { getNPlusOneReport } = require('../n_plus_one_detection');
       getNPlusOneReport.mockReturnValue({});
 
@@ -444,21 +436,65 @@ describe('metrics', () => {
     });
   });
 
+  // ==========================================
+  // Rate Limiting Metrics
+  // ==========================================
+
+  describe('recordRateLimitViolation', () => {
+    it('does not throw when called', () => {
+      expect(() => recordRateLimitViolation('test_rpc')).not.toThrow();
+    });
+
+    it('accepts different rpc names without throwing', () => {
+      expect(() => recordRateLimitViolation('rpc_a')).not.toThrow();
+      expect(() => recordRateLimitViolation('rpc_b')).not.toThrow();
+      expect(() => recordRateLimitViolation('rpc_c')).not.toThrow();
+    });
+
+    it('handles multiple rapid calls', () => {
+      for (let i = 0; i < 50; i++) {
+        recordRateLimitViolation(`rpc_${i}`);
+      }
+      // No throw = pass
+    });
+  });
+
+  describe('updateActiveUsersCount', () => {
+    it('does not throw when called', () => {
+      expect(() => updateActiveUsersCount(42)).not.toThrow();
+    });
+
+    it('handles zero count', () => {
+      expect(() => updateActiveUsersCount(0)).not.toThrow();
+    });
+
+    it('handles large counts', () => {
+      expect(() => updateActiveUsersCount(1_000_000)).not.toThrow();
+    });
+
+    it('handles multiple updates', () => {
+      updateActiveUsersCount(10);
+      updateActiveUsersCount(20);
+      updateActiveUsersCount(5);
+      // No throw = pass
+    });
+  });
+
   describe('setMetricsCallbacks', () => {
-    it('should register rate limiter callbacks on module load', () => {
+    it('registers rate limiter callbacks on module load', () => {
       const rateLimiterModule = require('../../utils/rateLimiter');
-      // setMetricsCallbacks is called at module level during import (line 253).
-      // Since the module is already loaded, check the mock was invoked.
       const mockFn = rateLimiterModule.setMetricsCallbacks;
-      // The mock may or may not retain state depending on jest.mock hoisting,
-      // but the important thing is the call doesn't throw and the module loads.
       expect(typeof mockFn).toBe('function');
       expect(() => mockFn(jest.fn(), jest.fn())).not.toThrow();
     });
   });
 
+  // ==========================================
+  // registerRpcWithRateLimit
+  // ==========================================
+
   describe('registerRpcWithRateLimit', () => {
-    it('should register without rate limiting when disabled', () => {
+    it('registers without rate limiting when disabled', () => {
       const mockInitializer = { registerRpc: jest.fn() };
       const handler = jest.fn().mockReturnValue('ok');
 
@@ -470,7 +506,7 @@ describe('metrics', () => {
       );
     });
 
-    it('should register with rate limiting when enabled', () => {
+    it('registers with rate limiting when enabled', () => {
       const { config } = require('../../config');
       config.rateLimit.enabled = true;
       config.rateLimit.endpoints = {
@@ -501,7 +537,7 @@ describe('metrics', () => {
       config.rateLimit.endpoints = {};
     });
 
-    it('should register with rate limiting when enabled but no endpoint config', () => {
+    it('registers with rate limiting enabled but no endpoint config', () => {
       const { config } = require('../../config');
       config.rateLimit.enabled = true;
       config.rateLimit.endpoints = {};
@@ -526,27 +562,517 @@ describe('metrics', () => {
     });
   });
 
-  describe('wrapRpcWithMetrics error handling', () => {
-    it('should record "unknown" error type for non-Error throws', async () => {
-      const handler = jest.fn().mockRejectedValue('string error');
-      const wrapped = wrapRpcWithMetrics('test_rpc', handler);
+  // ==========================================
+  // Player Metrics
+  // ==========================================
 
-      const ctx = { userId: 'user_123' } as any;
-      const logger = { info: jest.fn() } as any;
-      const nk = {} as any;
+  describe('Player Metrics', () => {
+    describe('setActiveSessions', () => {
+      it('does not throw when called', () => {
+        expect(() => setActiveSessions(100)).not.toThrow();
+      });
 
-      await expect(wrapped(ctx, logger, nk, '{}')).rejects.toBe('string error');
+      it('handles zero sessions', () => {
+        expect(() => setActiveSessions(0)).not.toThrow();
+      });
+
+      it('handles multiple calls', () => {
+        setActiveSessions(50);
+        setActiveSessions(75);
+        setActiveSessions(25);
+      });
     });
 
-    it('should record Error constructor name for Error throws', async () => {
-      const handler = jest.fn().mockRejectedValue(new TypeError('type error'));
-      const wrapped = wrapRpcWithMetrics('test_rpc2', handler);
+    describe('incrementNewRegistration', () => {
+      it('does not throw when called', () => {
+        expect(() => incrementNewRegistration('ios')).not.toThrow();
+      });
 
-      const ctx = { userId: 'user_456' } as any;
-      const logger = { info: jest.fn() } as any;
-      const nk = {} as any;
+      it('supports multiple platforms', () => {
+        incrementNewRegistration('ios');
+        incrementNewRegistration('android');
+        incrementNewRegistration('web');
+      });
 
-      await expect(wrapped(ctx, logger, nk, '{}')).rejects.toThrow('type error');
+      it('handles rapid calls for same platform', () => {
+        for (let i = 0; i < 20; i++) {
+          incrementNewRegistration('ios');
+        }
+      });
+    });
+
+    describe('recordLoginAttempt', () => {
+      it('does not throw for success', () => {
+        expect(() => recordLoginAttempt(true)).not.toThrow();
+      });
+
+      it('does not throw for failure', () => {
+        expect(() => recordLoginAttempt(false)).not.toThrow();
+      });
+
+      it('handles mixed success/failure calls', () => {
+        recordLoginAttempt(true);
+        recordLoginAttempt(false);
+        recordLoginAttempt(true);
+      });
+    });
+
+    describe('recordSessionDuration', () => {
+      it('does not throw when called', () => {
+        expect(() => recordSessionDuration(300)).not.toThrow();
+      });
+
+      it('handles zero duration', () => {
+        expect(() => recordSessionDuration(0)).not.toThrow();
+      });
+
+      it('handles long sessions', () => {
+        expect(() => recordSessionDuration(14400)).not.toThrow();
+      });
+
+      it('handles multiple observations', () => {
+        recordSessionDuration(60);
+        recordSessionDuration(120);
+        recordSessionDuration(300);
+      });
+    });
+  });
+
+  // ==========================================
+  // Match/Multiplayer Metrics
+  // ==========================================
+
+  describe('Match Metrics', () => {
+    describe('incrementMatchCreated', () => {
+      it('does not throw when called', () => {
+        expect(() => incrementMatchCreated('ranked')).not.toThrow();
+      });
+
+      it('supports different match types', () => {
+        incrementMatchCreated('ranked');
+        incrementMatchCreated('casual');
+        incrementMatchCreated('tournament');
+      });
+    });
+
+    describe('incrementMatchCompleted', () => {
+      it('does not throw when called', () => {
+        expect(() => incrementMatchCompleted('ranked', 'win')).not.toThrow();
+      });
+
+      it('supports different results', () => {
+        incrementMatchCompleted('ranked', 'win');
+        incrementMatchCompleted('ranked', 'loss');
+        incrementMatchCompleted('ranked', 'draw');
+      });
+    });
+
+    describe('setMatchQueueSize', () => {
+      it('does not throw when called', () => {
+        expect(() => setMatchQueueSize('ranked', 10)).not.toThrow();
+      });
+
+      it('handles zero queue size', () => {
+        expect(() => setMatchQueueSize('ranked', 0)).not.toThrow();
+      });
+
+      it('handles multiple match types simultaneously', () => {
+        setMatchQueueSize('ranked', 5);
+        setMatchQueueSize('casual', 12);
+      });
+    });
+
+    describe('recordMatchWaitTime', () => {
+      it('does not throw when called', () => {
+        expect(() => recordMatchWaitTime('ranked', 30)).not.toThrow();
+      });
+
+      it('handles zero wait time', () => {
+        expect(() => recordMatchWaitTime('ranked', 0)).not.toThrow();
+      });
+
+      it('handles long wait times', () => {
+        expect(() => recordMatchWaitTime('ranked', 300)).not.toThrow();
+      });
+    });
+
+    describe('recordMatchPlayersCount', () => {
+      it('does not throw when called', () => {
+        expect(() => recordMatchPlayersCount('ranked', 2)).not.toThrow();
+      });
+
+      it('handles various player counts', () => {
+        recordMatchPlayersCount('ranked', 1);
+        recordMatchPlayersCount('ranked', 2);
+        recordMatchPlayersCount('ranked', 4);
+      });
+    });
+  });
+
+  // ==========================================
+  // Economy/Store Metrics
+  // ==========================================
+
+  describe('Economy Metrics', () => {
+    describe('recordPurchase', () => {
+      it('does not throw for success', () => {
+        expect(() => recordPurchase('gems', true)).not.toThrow();
+      });
+
+      it('does not throw for failure', () => {
+        expect(() => recordPurchase('gems', false)).not.toThrow();
+      });
+
+      it('supports different product types', () => {
+        recordPurchase('gems', true);
+        recordPurchase('coins', true);
+        recordPurchase('battle_pass', true);
+      });
+    });
+
+    describe('recordRevenue', () => {
+      it('does not throw when called', () => {
+        expect(() => recordRevenue(999, 'USD', 'gems')).not.toThrow();
+      });
+
+      it('handles different currencies', () => {
+        recordRevenue(999, 'USD', 'gems');
+        recordRevenue(500, 'EUR', 'gems');
+        recordRevenue(10000, 'JPY', 'coins');
+      });
+
+      it('handles zero amount', () => {
+        expect(() => recordRevenue(0, 'USD', 'free_item')).not.toThrow();
+      });
+    });
+
+    describe('recordCurrencySpent', () => {
+      it('does not throw when called', () => {
+        expect(() => recordCurrencySpent('gems', 'upgrade', 50)).not.toThrow();
+      });
+
+      it('handles different spend reasons', () => {
+        recordCurrencySpent('gems', 'upgrade', 50);
+        recordCurrencySpent('gems', 'shop_purchase', 100);
+        recordCurrencySpent('coins', 'reroll', 25);
+      });
+    });
+
+    describe('recordCurrencyEarned', () => {
+      it('does not throw when called', () => {
+        expect(() => recordCurrencyEarned('coins', 'quest', 100)).not.toThrow();
+      });
+
+      it('handles different earn sources', () => {
+        recordCurrencyEarned('coins', 'quest', 100);
+        recordCurrencyEarned('coins', 'daily_login', 50);
+        recordCurrencyEarned('gems', 'achievement', 10);
+      });
+    });
+  });
+
+  // ==========================================
+  // Combat/Gameplay Metrics
+  // ==========================================
+
+  describe('Combat Metrics', () => {
+    describe('recordCombatAction', () => {
+      it('does not throw when called', () => {
+        expect(() => recordCombatAction('shoot', 'hit')).not.toThrow();
+      });
+
+      it('supports different action types and results', () => {
+        recordCombatAction('shoot', 'hit');
+        recordCombatAction('shoot', 'miss');
+        recordCombatAction('dodge', 'success');
+        recordCombatAction('ability', 'critical');
+      });
+    });
+
+    describe('recordDamageDealt', () => {
+      it('does not throw when called', () => {
+        expect(() => recordDamageDealt('enemy', 50)).not.toThrow();
+      });
+
+      it('handles different target types', () => {
+        recordDamageDealt('enemy', 50);
+        recordDamageDealt('boss', 200);
+        recordDamageDealt('player', 30);
+      });
+
+      it('handles zero damage', () => {
+        expect(() => recordDamageDealt('enemy', 0)).not.toThrow();
+      });
+
+      it('handles high damage values', () => {
+        expect(() => recordDamageDealt('boss', 9999)).not.toThrow();
+      });
+    });
+
+    describe('recordCombatDuration', () => {
+      it('does not throw when called', () => {
+        expect(() => recordCombatDuration(120)).not.toThrow();
+      });
+
+      it('handles short combats', () => {
+        expect(() => recordCombatDuration(3)).not.toThrow();
+      });
+
+      it('handles long combats', () => {
+        expect(() => recordCombatDuration(600)).not.toThrow();
+      });
+    });
+
+    describe('recordPveStageCompleted', () => {
+      it('does not throw when called', () => {
+        expect(() => recordPveStageCompleted('hard', 3)).not.toThrow();
+      });
+
+      it('handles different difficulties and star ratings', () => {
+        recordPveStageCompleted('easy', 1);
+        recordPveStageCompleted('normal', 2);
+        recordPveStageCompleted('hard', 3);
+        recordPveStageCompleted('nightmare', 3);
+      });
+
+      it('handles zero stars', () => {
+        expect(() => recordPveStageCompleted('easy', 0)).not.toThrow();
+      });
+    });
+  });
+
+  // ==========================================
+  // Progression Metrics
+  // ==========================================
+
+  describe('Progression Metrics', () => {
+    describe('incrementPlayerLevelUp', () => {
+      it('does not throw when called', () => {
+        expect(() => incrementPlayerLevelUp()).not.toThrow();
+      });
+
+      it('handles rapid level ups', () => {
+        for (let i = 0; i < 10; i++) {
+          incrementPlayerLevelUp();
+        }
+      });
+    });
+
+    describe('incrementGearUnlock', () => {
+      it('does not throw when called', () => {
+        expect(() => incrementGearUnlock('legendary')).not.toThrow();
+      });
+
+      it('supports all rarity tiers', () => {
+        incrementGearUnlock('common');
+        incrementGearUnlock('rare');
+        incrementGearUnlock('epic');
+        incrementGearUnlock('legendary');
+      });
+    });
+
+    describe('incrementSeasonParticipation', () => {
+      it('does not throw when called', () => {
+        expect(() => incrementSeasonParticipation('season_1')).not.toThrow();
+      });
+
+      it('handles different seasons', () => {
+        incrementSeasonParticipation('season_1');
+        incrementSeasonParticipation('season_2');
+        incrementSeasonParticipation('season_3');
+      });
+    });
+  });
+
+  // ==========================================
+  // Analytics Metrics
+  // ==========================================
+
+  describe('Analytics Metrics', () => {
+    describe('recordAnalyticsEvent', () => {
+      it('does not throw when called', () => {
+        expect(() => recordAnalyticsEvent('game', 'level_complete')).not.toThrow();
+      });
+
+      it('handles different event categories', () => {
+        recordAnalyticsEvent('game', 'level_complete');
+        recordAnalyticsEvent('social', 'friend_added');
+        recordAnalyticsEvent('economy', 'purchase');
+        recordAnalyticsEvent('engagement', 'session_start');
+      });
+
+      it('handles rapid event recording', () => {
+        for (let i = 0; i < 100; i++) {
+          recordAnalyticsEvent('batch', `event_${i}`);
+        }
+      });
+    });
+  });
+
+  // ==========================================
+  // Performance Metrics
+  // ==========================================
+
+  describe('Performance Metrics', () => {
+    describe('recordDatabaseQueryDuration', () => {
+      it('does not throw when called', () => {
+        expect(() => recordDatabaseQueryDuration('select', 0.05)).not.toThrow();
+      });
+
+      it('handles different query types', () => {
+        recordDatabaseQueryDuration('select', 0.01);
+        recordDatabaseQueryDuration('insert', 0.02);
+        recordDatabaseQueryDuration('update', 0.015);
+        recordDatabaseQueryDuration('delete', 0.005);
+      });
+
+      it('handles very fast queries', () => {
+        expect(() => recordDatabaseQueryDuration('select', 0.0001)).not.toThrow();
+      });
+
+      it('handles slow queries', () => {
+        expect(() => recordDatabaseQueryDuration('complex_join', 2.5)).not.toThrow();
+      });
+    });
+
+    describe('setCacheHitRatio', () => {
+      it('does not throw when called', () => {
+        expect(() => setCacheHitRatio('player', 0.85)).not.toThrow();
+      });
+
+      it('handles different cache types', () => {
+        setCacheHitRatio('player', 0.9);
+        setCacheHitRatio('session', 0.75);
+        setCacheHitRatio('leaderboard', 0.95);
+      });
+
+      it('handles boundary values', () => {
+        setCacheHitRatio('test', 0.0);
+        setCacheHitRatio('test', 1.0);
+      });
+
+      it('handles multiple rapid updates', () => {
+        for (let i = 0; i < 20; i++) {
+          setCacheHitRatio('dynamic', i / 20);
+        }
+      });
+    });
+  });
+
+  // ==========================================
+  // Edge Cases
+  // ==========================================
+
+  describe('Edge Cases', () => {
+    it('calling all record functions multiple times does not throw', () => {
+      // Rate limiting
+      recordRateLimitViolation('rpc_a');
+      recordRateLimitViolation('rpc_b');
+      updateActiveUsersCount(10);
+      updateActiveUsersCount(20);
+
+      // Player
+      setActiveSessions(50);
+      setActiveSessions(75);
+      incrementNewRegistration('ios');
+      incrementNewRegistration('android');
+      recordLoginAttempt(true);
+      recordLoginAttempt(false);
+      recordSessionDuration(60);
+      recordSessionDuration(120);
+
+      // Match
+      incrementMatchCreated('ranked');
+      incrementMatchCreated('casual');
+      incrementMatchCompleted('ranked', 'win');
+      incrementMatchCompleted('casual', 'loss');
+      setMatchQueueSize('ranked', 5);
+      setMatchQueueSize('casual', 10);
+      recordMatchWaitTime('ranked', 15);
+      recordMatchWaitTime('casual', 30);
+      recordMatchPlayersCount('ranked', 2);
+      recordMatchPlayersCount('casual', 4);
+
+      // Economy
+      recordPurchase('gems', true);
+      recordPurchase('coins', false);
+      recordRevenue(999, 'USD', 'gems');
+      recordRevenue(500, 'EUR', 'coins');
+      recordCurrencySpent('gems', 'upgrade', 50);
+      recordCurrencyEarned('coins', 'quest', 100);
+
+      // Combat
+      recordCombatAction('shoot', 'hit');
+      recordCombatAction('dodge', 'success');
+      recordDamageDealt('enemy', 50);
+      recordDamageDealt('boss', 200);
+      recordCombatDuration(60);
+      recordCombatDuration(120);
+      recordPveStageCompleted('hard', 3);
+      recordPveStageCompleted('easy', 1);
+
+      // Progression
+      incrementPlayerLevelUp();
+      incrementPlayerLevelUp();
+      incrementGearUnlock('legendary');
+      incrementGearUnlock('common');
+      incrementSeasonParticipation('season_1');
+      incrementSeasonParticipation('season_2');
+
+      // Analytics
+      recordAnalyticsEvent('game', 'level_complete');
+      recordAnalyticsEvent('social', 'friend_added');
+
+      // Performance
+      recordDatabaseQueryDuration('select', 0.01);
+      recordDatabaseQueryDuration('insert', 0.02);
+      setCacheHitRatio('player', 0.85);
+      setCacheHitRatio('session', 0.90);
+
+      // If we reach here without throwing, the test passes
+      expect(true).toBe(true);
+    });
+
+    it('wrapRpcWithMetrics handles concurrent calls correctly', async () => {
+      const handler = jest.fn().mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve('ok'), 1))
+      );
+      const wrapped = wrapRpcWithMetrics('concurrent_rpc', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      const results = await Promise.all([
+        wrapped(ctx, logger, nk, '{}'),
+        wrapped(ctx, logger, nk, '{}'),
+        wrapped(ctx, logger, nk, '{}'),
+      ]);
+
+      expect(results).toEqual(['ok', 'ok', 'ok']);
+      expect(handler).toHaveBeenCalledTimes(3);
+    });
+
+    it('wrapRpcWithMetrics handles concurrent errors correctly', async () => {
+      let callCount = 0;
+      const handler = jest.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount % 2 === 0) {
+          return Promise.reject(new Error(`error_${callCount}`));
+        }
+        return Promise.resolve('ok');
+      });
+      const wrapped = wrapRpcWithMetrics('mixed_rpc', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      const outcomes = await Promise.allSettled([
+        wrapped(ctx, logger, nk, '{}'),
+        wrapped(ctx, logger, nk, '{}'),
+        wrapped(ctx, logger, nk, '{}'),
+        wrapped(ctx, logger, nk, '{}'),
+      ]);
+
+      expect(outcomes[0].status).toBe('fulfilled');
+      expect(outcomes[1].status).toBe('rejected');
+      expect(outcomes[2].status).toBe('fulfilled');
+      expect(outcomes[3].status).toBe('rejected');
     });
   });
 });

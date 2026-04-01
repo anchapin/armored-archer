@@ -9,158 +9,376 @@ import {
   suspendUser,
   getAuditStats,
   resetAuditState,
-  AuditConfig,
+  ViolationType,
 } from '../anti_cheat_audit';
 
-describe('anti_cheat_audit', () => {
-  const mockNakama = {
-    storageWrite: jest.fn().mockResolvedValue([]),
-  } as any;
+const mockNk = { storageWrite: jest.fn().mockReturnValue([]) } as any;
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+} as any;
 
-  const mockLogger = {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-  };
+beforeEach(() => {
+  resetAuditState();
+  jest.clearAllMocks();
+  initializeAuditLogging({}, mockNk, mockLogger);
+});
 
-  beforeEach(() => {
-    jest.clearAllMocks();
+describe('initializeAuditLogging', () => {
+  it('sets config and logs initialization', () => {
+    initializeAuditLogging(
+      { highRiskThreshold: 30, suspensionThreshold: 10 },
+      mockNk,
+      mockLogger
+    );
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      'Audit logging system initialized with config: %O',
+      expect.objectContaining({
+        highRiskThreshold: 30,
+        suspensionThreshold: 10,
+      })
+    );
+  });
+
+  it('merges partial config with defaults', () => {
+    initializeAuditLogging({ suspensionThreshold: 25 }, mockNk, mockLogger);
+
+    recordViolation('user1', 'clock_skew');
+    expect(isUserSuspended('user1')).toBe(false);
+  });
+});
+
+describe('recordViolation', () => {
+  it('creates a new profile for a new user', () => {
+    recordViolation('user1', 'clock_skew');
+
+    const profile = getUserViolationSummary('user1');
+    expect(profile).not.toBeNull();
+    expect(profile!.userId).toBe('user1');
+    expect(profile!.violations).toHaveLength(1);
+    expect(profile!.violationCount).toBe(1);
+    expect(profile!.isSuspended).toBe(false);
+  });
+
+  it('accumulates risk score correctly', () => {
+    recordViolation('user1', 'clock_skew');
+    recordViolation('user1', 'out_of_turn');
+
+    const profile = getUserViolationSummary('user1');
+    expect(profile!.riskScore).toBe(11);
+    expect(profile!.violationCount).toBe(2);
+  });
+
+  it('auto-suspends when risk score reaches threshold', () => {
+    recordViolation('user1', 'out_of_turn');
+    expect(isUserSuspended('user1')).toBe(false);
+
+    recordViolation('user1', 'out_of_turn');
+    expect(isUserSuspended('user1')).toBe(true);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'User auto-suspended due to high risk score',
+      expect.objectContaining({ userId: 'user1' })
+    );
+  });
+
+  it('stores violation details', () => {
+    recordViolation('user1', 'replay_attack', { matchId: 'abc123' });
+
+    const profile = getUserViolationSummary('user1');
+    expect(profile!.violations[0].details).toEqual({ matchId: 'abc123' });
+  });
+
+  it('persists to storage when enabled', () => {
+    recordViolation('user1', 'invalid_signature');
+    expect(mockNk.storageWrite).toHaveBeenCalledTimes(1);
+    expect(mockNk.storageWrite).toHaveBeenCalledWith([
+      expect.objectContaining({
+        collection: 'anti_cheat_violations',
+        userId: 'user1',
+      }),
+    ]);
+  });
+
+  it('handles storage write failure gracefully', () => {
+    mockNk.storageWrite.mockImplementationOnce(() => {
+      throw new Error('storage error');
+    });
+
+    recordViolation('user1', 'clock_skew');
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to persist violation',
+      expect.objectContaining({ userId: 'user1' })
+    );
+  });
+});
+
+describe('getUserViolationSummary', () => {
+  it('returns profile for known user', () => {
+    recordViolation('user1', 'clock_skew');
+    const profile = getUserViolationSummary('user1');
+    expect(profile).not.toBeNull();
+    expect(profile!.userId).toBe('user1');
+  });
+
+  it('returns null for unknown user', () => {
+    expect(getUserViolationSummary('nonexistent')).toBeNull();
+  });
+});
+
+describe('getTopViolators', () => {
+  it('sorts by risk score descending', () => {
+    recordViolation('low_user', 'clock_skew');
+    recordViolation('high_user', 'stat_manipulation');
+    recordViolation('mid_user', 'replay_attack');
+
+    const violators = getTopViolators();
+    expect(violators[0].userId).toBe('high_user');
+    expect(violators[1].userId).toBe('mid_user');
+    expect(violators[2].userId).toBe('low_user');
+  });
+
+  it('respects the limit parameter', () => {
+    recordViolation('user1', 'clock_skew');
+    recordViolation('user2', 'clock_skew');
+    recordViolation('user3', 'clock_skew');
+
+    const violators = getTopViolators(2);
+    expect(violators).toHaveLength(2);
+  });
+
+  it('defaults to limit of 10', () => {
+    for (let i = 0; i < 15; i++) {
+      recordViolation(`user${i}`, 'clock_skew');
+    }
+    const violators = getTopViolators();
+    expect(violators).toHaveLength(10);
+  });
+});
+
+describe('generateAuditReport', () => {
+  it('returns null for non-existent user', () => {
+    expect(generateAuditReport('nonexistent')).toBeNull();
+  });
+
+  it('returns report with risk level low for low score', () => {
+    recordViolation('user1', 'clock_skew');
+
+    const result = generateAuditReport('user1');
+    expect(result).not.toBeNull();
+    expect(result!.report.riskLevel).toBe('low');
+    expect(result!.report.recommendedAction).toBe('none');
+  });
+
+  it('returns risk level medium for score >= 25', () => {
+    initializeAuditLogging({ suspensionThreshold: 100 }, mockNk, mockLogger);
+    recordViolation('user1', 'stat_manipulation');
+
+    const result = generateAuditReport('user1');
+    expect(result!.report.riskLevel).toBe('medium');
+    expect(result!.report.recommendedAction).toBe('monitor');
+  });
+
+  it('returns risk level high for score >= highRiskThreshold (50)', () => {
+    initializeAuditLogging({ suspensionThreshold: 100 }, mockNk, mockLogger);
+    recordViolation('user1', 'stat_manipulation');
+    recordViolation('user1', 'stat_manipulation');
+
+    const result = generateAuditReport('user1');
+    expect(result!.report.riskLevel).toBe('high');
+    expect(result!.report.recommendedAction).toBe('flag');
+  });
+
+  it('returns risk level critical for score >= suspensionThreshold (15)', () => {
+    recordViolation('user1', 'out_of_turn');
+    recordViolation('user1', 'out_of_turn');
+
+    const result = generateAuditReport('user1');
+    expect(result!.report.riskLevel).toBe('critical');
+    expect(result!.report.recommendedAction).toBe('suspend');
+  });
+
+  it('counts violations by severity', () => {
+    recordViolation('user1', 'stat_manipulation');
+    recordViolation('user1', 'invalid_progression');
+    recordViolation('user1', 'timing_attack');
+    recordViolation('user1', 'clock_skew');
+
+    const result = generateAuditReport('user1');
+    expect(result!.report.criticalViolations).toBe(1);
+    expect(result!.report.highViolations).toBe(1);
+    expect(result!.report.mediumViolations).toBe(1);
+    expect(result!.report.lowViolations).toBe(1);
+  });
+
+  it('counts violations by type', () => {
+    recordViolation('user1', 'replay_attack');
+    recordViolation('user1', 'replay_attack');
+    recordViolation('user1', 'clock_skew');
+
+    const result = generateAuditReport('user1');
+    expect(result!.report.violationsByType.replay_attack).toBe(2);
+    expect(result!.report.violationsByType.clock_skew).toBe(1);
+    expect(result!.report.violationsByType.invalid_signature).toBe(0);
+  });
+});
+
+describe('isUserSuspended', () => {
+  it('returns false for unknown user', () => {
+    expect(isUserSuspended('nonexistent')).toBe(false);
+  });
+
+  it('returns false for user not yet suspended', () => {
+    recordViolation('user1', 'clock_skew');
+    expect(isUserSuspended('user1')).toBe(false);
+  });
+
+  it('returns true after auto-suspension', () => {
+    recordViolation('user1', 'stat_manipulation');
+    expect(isUserSuspended('user1')).toBe(true);
+  });
+});
+
+describe('clearUserFlag', () => {
+  it('resets score, violations, and suspension', () => {
+    recordViolation('user1', 'stat_manipulation');
+    expect(isUserSuspended('user1')).toBe(true);
+
+    const result = clearUserFlag('user1');
+    expect(result).toBe(true);
+
+    const profile = getUserViolationSummary('user1');
+    expect(profile!.riskScore).toBe(0);
+    expect(profile!.violations).toHaveLength(0);
+    expect(profile!.isSuspended).toBe(false);
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      'User flag cleared',
+      { userId: 'user1' }
+    );
+  });
+
+  it('returns false for unknown user', () => {
+    expect(clearUserFlag('nonexistent')).toBe(false);
+  });
+});
+
+describe('suspendUser', () => {
+  it('suspends existing user and raises score if needed', () => {
+    recordViolation('user1', 'clock_skew');
+
+    const result = suspendUser('user1', 'manual_review');
+    expect(result).toBe(true);
+
+    const profile = getUserViolationSummary('user1');
+    expect(profile!.isSuspended).toBe(true);
+    expect(profile!.riskScore).toBeGreaterThanOrEqual(15);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'User suspended manually',
+      { userId: 'user1', reason: 'manual_review' }
+    );
+  });
+
+  it('creates a suspended profile for new user', () => {
+    const result = suspendUser('new_user', 'admin_action');
+    expect(result).toBe(true);
+    expect(isUserSuspended('new_user')).toBe(true);
+
+    const profile = getUserViolationSummary('new_user');
+    expect(profile!.violationCount).toBe(0);
+    expect(profile!.isSuspended).toBe(true);
+  });
+
+  it('uses default reason when not provided', () => {
+    suspendUser('user1');
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'User suspended manually',
+      { userId: 'user1', reason: 'admin_action' }
+    );
+  });
+});
+
+describe('getAuditStats', () => {
+  it('returns correct counts for empty state', () => {
+    const stats = getAuditStats();
+    expect(stats.totalViolations).toBe(0);
+    expect(stats.uniqueUsers).toBe(0);
+    expect(stats.suspendedUsers).toBe(0);
+    expect(stats.highRiskUsers).toBe(0);
+  });
+
+  it('returns correct counts with multiple users', () => {
+    initializeAuditLogging({ suspensionThreshold: 30 }, mockNk, mockLogger);
+    recordViolation('user1', 'clock_skew');
+    recordViolation('user2', 'stat_manipulation');
+    recordViolation('user2', 'replay_attack');
+    recordViolation('user3', 'replay_attack');
+
+    const stats = getAuditStats();
+    expect(stats.totalViolations).toBe(4);
+    expect(stats.uniqueUsers).toBe(3);
+    expect(stats.suspendedUsers).toBe(1);
+  });
+
+  it('counts high risk users correctly', () => {
+    recordViolation('user1', 'stat_manipulation');
+    recordViolation('user1', 'stat_manipulation');
+
+    const stats = getAuditStats();
+    expect(stats.highRiskUsers).toBe(1);
+  });
+
+  it('counts violations by type', () => {
+    recordViolation('user1', 'replay_attack');
+    recordViolation('user1', 'clock_skew');
+    recordViolation('user2', 'replay_attack');
+
+    const stats = getAuditStats();
+    expect(stats.violationsByType.replay_attack).toBe(2);
+    expect(stats.violationsByType.clock_skew).toBe(1);
+    expect(stats.violationsByType.invalid_signature).toBe(0);
+  });
+});
+
+describe('resetAuditState', () => {
+  it('clears all data', () => {
+    recordViolation('user1', 'stat_manipulation');
+    recordViolation('user2', 'clock_skew');
+
     resetAuditState();
-    initializeAuditLogging({}, mockNakama, mockLogger);
+
+    expect(getUserViolationSummary('user1')).toBeNull();
+    expect(getUserViolationSummary('user2')).toBeNull();
+    expect(getAuditStats().totalViolations).toBe(0);
+    expect(getAuditStats().uniqueUsers).toBe(0);
   });
 
-  describe('initializeAuditLogging', () => {
-    it('should initialize with default config', () => {
-      initializeAuditLogging({}, mockNakama, mockLogger);
-      expect(mockLogger.info).toHaveBeenCalled();
-    });
+  it('resets config to defaults', () => {
+    initializeAuditLogging({ suspensionThreshold: 5 }, mockNk, mockLogger);
+    resetAuditState();
+    initializeAuditLogging({}, mockNk, mockLogger);
 
-    it('should initialize with custom config', () => {
-      const config: Partial<AuditConfig> = {
-        highRiskThreshold: 100,
-        suspensionThreshold: 50,
-      };
-      initializeAuditLogging(config, mockNakama, mockLogger);
-      expect(mockLogger.info).toHaveBeenCalled();
-    });
+    recordViolation('user1', 'stat_manipulation');
+    expect(isUserSuspended('user1')).toBe(true);
   });
+});
 
-  describe('recordViolation', () => {
-    it('should record a new violation for a user', () => {
-      recordViolation('user1', 'replay_attack', { extra: 'data' });
-      const summary = getUserViolationSummary('user1');
-      expect(summary).not.toBeNull();
-      expect(summary?.violationCount).toBe(1);
-      expect(summary?.violations[0].type).toBe('replay_attack');
-    });
+describe('violation severity mapping', () => {
+  const cases: Array<[ViolationType, string]> = [
+    ['stat_manipulation', 'critical'],
+    ['replay_attack', 'critical'],
+    ['inventory_tampering', 'critical'],
+    ['invalid_signature', 'high'],
+    ['invalid_progression', 'high'],
+    ['timing_attack', 'medium'],
+    ['out_of_turn', 'low'],
+    ['clock_skew', 'low'],
+  ];
 
-    it('should add multiple violations', () => {
-      recordViolation('user1', 'replay_attack');
-      recordViolation('user1', 'timing_attack');
-      recordViolation('user1', 'clock_skew');
-      const summary = getUserViolationSummary('user1');
-      expect(summary?.violationCount).toBe(3);
-    });
-
-    it('should calculate risk score based on violation type', () => {
-      recordViolation('user1', 'stat_manipulation');
-      const summary = getUserViolationSummary('user1');
-      expect(summary?.riskScore).toBe(25);
-    });
-
-    it('should auto-suspend user when risk score exceeds threshold', () => {
-      initializeAuditLogging({ suspensionThreshold: 15 }, mockNakama, mockLogger);
-      recordViolation('user1', 'stat_manipulation');
-      recordViolation('user1', 'invalid_signature');
-      const summary = getUserViolationSummary('user1');
-      expect(summary?.isSuspended).toBe(true);
-      expect(mockLogger.warn).toHaveBeenCalled();
-    });
-
-    it('should persist violation if enabled', () => {
-      initializeAuditLogging({ enablePersistence: true }, mockNakama, mockLogger);
-      recordViolation('user1', 'replay_attack');
-      expect(mockNakama.storageWrite).toHaveBeenCalled();
-    });
-  });
-
-  describe('getUserViolationSummary', () => {
-    it('should return null for non-existent user', () => {
-      const summary = getUserViolationSummary('nonexistent');
-      expect(summary).toBeNull();
-    });
-
-    it('should return user profile for existing user', () => {
-      recordViolation('testuser', 'replay_attack');
-      const summary = getUserViolationSummary('testuser');
-      expect(summary).not.toBeNull();
-      expect(summary?.userId).toBe('testuser');
-    });
-  });
-
-  describe('getTopViolators', () => {
-    it('should return array', () => {
-      const topViolators = getTopViolators(10);
-      expect(topViolators).toBeInstanceOf(Array);
-    });
-  });
-
-  describe('generateAuditReport', () => {
-    it('should return null for non-existent user', () => {
-      const report = generateAuditReport('nonexistent');
-      expect(report).toBeNull();
-    });
-
-    it('should generate comprehensive report', () => {
-      recordViolation('user1', 'stat_manipulation');
-      recordViolation('user1', 'replay_attack');
-      recordViolation('user1', 'clock_skew');
-      const report = generateAuditReport('user1');
-      expect(report).not.toBeNull();
-      expect(report?.report.totalViolations).toBe(3);
-    });
-
-    it('should recommend suspend for critical risk', () => {
-      initializeAuditLogging({ suspensionThreshold: 30 }, mockNakama, mockLogger);
-      recordViolation('user1', 'stat_manipulation');
-      recordViolation('user1', 'stat_manipulation');
-      const report = generateAuditReport('user1');
-      expect(report?.report.riskLevel).toBe('critical');
-      expect(report?.report.recommendedAction).toBe('suspend');
-    });
-  });
-
-  describe('isUserSuspended', () => {
-    it('should return false for non-suspended user', () => {
-      recordViolation('user1', 'clock_skew');
-      expect(isUserSuspended('user1')).toBe(false);
-    });
-
-    it('should return false for non-existent user', () => {
-      expect(isUserSuspended('nonexistent')).toBe(false);
-    });
-  });
-
-  describe('clearUserFlag', () => {
-    it('should return false for non-existent user', () => {
-      const result = clearUserFlag('nonexistent');
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('suspendUser', () => {
-    it('should suspend a new user', () => {
-      const result = suspendUser('newuser', 'test reason');
-      expect(result).toBe(true);
-      expect(isUserSuspended('newuser')).toBe(true);
-    });
-  });
-
-  describe('getAuditStats', () => {
-    it('should return stats object', () => {
-      const stats = getAuditStats();
-      expect(stats).toBeDefined();
-      expect(stats.totalViolations).toBeDefined();
-    });
+  it.each(cases)('maps %s to severity %s', (type, expectedSeverity) => {
+    recordViolation('user1', type);
+    const profile = getUserViolationSummary('user1');
+    expect(profile!.violations[0].severity).toBe(expectedSeverity);
   });
 });
