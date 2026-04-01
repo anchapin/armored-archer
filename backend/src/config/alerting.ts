@@ -235,7 +235,7 @@ export const alertingConfig: AlertingConfig = {
         url: process.env.ALERT_WEBHOOK_URL || '',
         method: (process.env.ALERT_WEBHOOK_METHOD || 'POST') as 'POST' | 'PUT',
         headers: process.env.ALERT_WEBHOOK_HEADERS
-          ? JSON.parse(process.env.ALERT_WEBHOOK_HEADERS)
+          ? (() => { try { return JSON.parse(process.env.ALERT_WEBHOOK_HEADERS!); } catch { return { 'Content-Type': 'application/json' }; } })()
           : { 'Content-Type': 'application/json' },
         authType: (process.env.ALERT_WEBHOOK_AUTH_TYPE || 'none') as 'none' | 'basic' | 'bearer',
         username: process.env.ALERT_WEBHOOK_USERNAME,

@@ -730,7 +730,7 @@ const config: AppConfig = {
           tags: {
             environment: process.env.NODE_ENV || 'development',
             service: 'armored-archer-backend',
-            ...(process.env.DATADOG_TAGS ? JSON.parse(process.env.DATADOG_TAGS) : {}),
+            ...(process.env.DATADOG_TAGS ? (() => { try { return JSON.parse(process.env.DATADOG_TAGS!); } catch { return {}; } })() : {}),
           },
         }
       : undefined,

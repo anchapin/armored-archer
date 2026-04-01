@@ -4,6 +4,7 @@
  */
 
 import { Runtime } from '../types/nakama';
+import { safeParse } from './safeParse';
 
 /**
  * Standard storage collection names
@@ -164,4 +165,58 @@ export function batchStorageWrite(nk: Runtime.Nakama, writes: StorageWriteOption
       value: typeof w.value === 'string' ? w.value : JSON.stringify(w.value),
     }))
   );
+}
+
+/**
+ * Read and parse a storage object with consistent error handling.
+ * Returns { data, error } — one will always be null.
+ *
+ * This is the primary helper for the common "storageRead → length check → JSON.parse" pattern
+ * that appears 25+ times across the codebase.
+ */
+export function readAndParseStorage<T>(
+  nk: Runtime.Nakama,
+  collection: string,
+  key: string,
+  userId: string,
+  logger: Runtime.Logger,
+  context: string,
+  defaultValue?: T
+): { data: T; error: null } | { data: null; error: string } {
+  const objects = nk.storageRead([{ collection, key, userId }]);
+
+  if (objects.length === 0 || !objects[0].value) {
+    if (defaultValue !== undefined) {
+      return { data: defaultValue, error: null };
+    }
+    return { data: null, error: `${collection} not found` };
+  }
+
+  const result = safeParse<T>(objects[0].value, null, logger, context);
+  if (!result.success || !result.data) {
+    return { data: null, error: `Failed to parse ${collection}` };
+  }
+
+  return { data: result.data, error: null };
+}
+
+/**
+ * Write a typed object to Nakama storage.
+ * Replaces the common pattern of nk.storageWrite([{ collection, key, userId, value: JSON.stringify(data) }]).
+ */
+export function writeStorageObject<T>(
+  nk: Runtime.Nakama,
+  collection: string,
+  key: string,
+  userId: string,
+  data: T
+): void {
+  nk.storageWrite([
+    {
+      collection,
+      key,
+      userId,
+      value: JSON.stringify(data),
+    },
+  ]);
 }
