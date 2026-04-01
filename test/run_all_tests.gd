@@ -78,6 +78,17 @@ func _run_tests():
         # Scene scripts (enemies)
         "res://test/test_base_enemy.gd",
         "res://test/test_enemy_spawner.gd",
+        "res://test/test_melee_enemy.gd",
+        "res://test/test_ranged_enemy.gd",
+        "res://test/test_tank_enemy.gd",
+        "res://test/test_speed_enemy.gd",
+        "res://test/test_scout_enemy.gd",
+        "res://test/test_brute_enemy.gd",
+        "res://test/test_guardian_enemy.gd",
+        "res://test/test_swarmer_enemy.gd",
+        "res://test/test_necromancer_enemy.gd",
+        "res://test/test_boss_basic.gd",
+        "res://test/test_boss_fire.gd",
 
         # Scene scripts (player/gear)
         "res://test/test_gear_data.gd",
@@ -90,6 +101,7 @@ func _run_tests():
 
         # UI scenes
         "res://test/test_loadout.gd",
+        "res://test/test_stat_allocation.gd",
 
         # Extended coverage
         "res://test/test_gear_enums_coverage.gd"
