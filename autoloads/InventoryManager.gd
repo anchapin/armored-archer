@@ -88,7 +88,7 @@ func equip_gear(gear_id: String, slot: int = GearSlot.HEAD) -> bool:
 		"slot": slot
 	})
 	
-	var response: Dictionary = await NetworkManager.send_rpc("rpc_equip_gear", rpc_payload)
+	var response: Dictionary = await NetworkManager.send_rpc("armored_archer/equip_gear", rpc_payload)
 	
 	if response.has("error"):
 		push_error("[InventoryManager] Equip gear error: %s" % response.error)
@@ -121,7 +121,7 @@ func unequip_gear(slot: int = GearSlot.HEAD) -> bool:
 		"slot": slot
 	})
 	
-	var response: Dictionary = await NetworkManager.send_rpc("rpc_unequip_gear", rpc_payload)
+	var response: Dictionary = await NetworkManager.send_rpc("armored_archer/unequip_gear", rpc_payload)
 	
 	if response.has("error"):
 		push_error("[InventoryManager] Unequip gear error: %s" % response.error)
