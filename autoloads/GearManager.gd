@@ -17,24 +17,15 @@ signal inventory_updated(inventory: Dictionary)
 # Analytics reference
 @onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
 
-var http_request: HTTPRequest
-var network_manager: NetworkManager
+var network_manager: Node
 
 var player_inventory: Dictionary = {}
 var equipped_gear: Dictionary = {}
 var unlocked_modifier_pools: Array = []
 
 func _ready() -> void:
-	"""Initializes HTTP request and loads inventory if session is valid."""
+	"""Initializes network reference and loads inventory if session is valid."""
 	network_manager = get_node_or_null("/root/NetworkManager")
-
-	http_request = HTTPRequest.new()
-	add_child(http_request)
-	var _err = http_request.request_completed.connect(_on_http_request_completed)
-
-	# Don't auto-load inventory - RPC not implemented in Go backend yet
-	# if network_manager and network_manager.is_session_valid():
-	# 	_load_inventory()
 
 func generate_gear(stage_id: String, boss_defeated: bool) -> void:
 	"""Requests gear generation from the server after stage completion.
@@ -47,19 +38,33 @@ func generate_gear(stage_id: String, boss_defeated: bool) -> void:
 		push_error("Cannot generate gear: not connected to server")
 		return
 
-	var url: String = "%s/v2/rpc/armored_archer/generate_gear" % network_manager.base_url
-	var headers: PackedStringArray = network_manager.get_auth_headers()
-
-	var body: Dictionary = {
+	var payload: Dictionary = {
 		"stage_id": stage_id,
 		"boss_defeated": boss_defeated
 	}
 
-	var json_string: String = JSON.stringify(body)
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc("armored_archer/generate_gear", json.stringify(payload))
 
-	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
-	if error != OK:
-		push_error("Failed to generate gear request")
+	if response.has("error"):
+		push_error("Failed to generate gear: %s" % response.error)
+		return
+
+	if response.has("gear"):
+		var gear_data: Dictionary = response.gear
+		player_inventory.gear = response.get("inventory", {}).get("gear", player_inventory.get("gear", []))
+		equipped_gear = response.get("inventory", {}).get("equipped_gear", equipped_gear)
+		unlocked_modifier_pools = response.get("inventory", {}).get("unlocked_modifier_pools", unlocked_modifier_pools)
+		gear_generated.emit(gear_data)
+		inventory_updated.emit(_get_full_inventory())
+
+		if analytics and analytics.has_method("log_gear_obtained"):
+			var gear_id: String = gear_data.get("id", "")
+			var gear_name: String = gear_data.get("name", "")
+			var gear_type: String = gear_data.get("type", "")
+			var rarity: String = gear_data.get("rarity", "common")
+			var source: String = response.get("source", "stage_drop")
+			analytics.log_gear_obtained(gear_id, gear_name, gear_type, rarity, source)
 
 func equip_gear(gear_id: String, slot: String) -> void:
 	"""Requests to equip gear to a specific slot.
@@ -72,19 +77,34 @@ func equip_gear(gear_id: String, slot: String) -> void:
 		push_error("Cannot equip gear: not connected to server")
 		return
 
-	var url: String = "%s/v2/rpc/armored_archer/equip_gear" % network_manager.base_url
-	var headers: PackedStringArray = network_manager.get_auth_headers()
-
-	var body: Dictionary = {
+	var payload: Dictionary = {
 		"gear_id": gear_id,
 		"slot": slot
 	}
 
-	var json_string: String = JSON.stringify(body)
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc("armored_archer/equip_gear", json.stringify(payload))
 
-	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
-	if error != OK:
-		push_error("Failed to equip gear request")
+	if response.has("error"):
+		push_error("Failed to equip gear: %s" % response.error)
+		return
+
+	if response.get("success", false):
+		var old_equipped_gear: Dictionary = equipped_gear.duplicate()
+		equipped_gear = response.get("equipped_gear", equipped_gear)
+		if response.has("gear"):
+			var equip_slot: String = response.gear.get("type", slot)
+			var equip_gear_id: String = response.gear.get("id", gear_id)
+			var gear_name: String = response.gear.get("name", "")
+			gear_equipped.emit(equip_slot, equip_gear_id)
+
+			if analytics and analytics.has_method("log_gear_equipped"):
+				analytics.log_gear_equipped(equip_gear_id, gear_name, response.gear.get("type", ""), equip_slot)
+		else:
+			for old_slot in old_equipped_gear.keys():
+				if not equipped_gear.has(old_slot) or equipped_gear[old_slot].is_empty():
+					gear_unequipped.emit(old_slot)
+		inventory_updated.emit(_get_full_inventory())
 
 func unequip_gear(slot: String) -> void:
 	"""Requests to unequip gear from a specific slot.
@@ -96,30 +116,38 @@ func unequip_gear(slot: String) -> void:
 		push_error("Cannot unequip gear: not connected to server")
 		return
 
-	var url: String = "%s/v2/rpc/armored_archer/unequip_gear" % network_manager.base_url
-	var headers: PackedStringArray = network_manager.get_auth_headers()
-
-	var body: Dictionary = {
+	var payload: Dictionary = {
 		"slot": slot
 	}
 
-	var json_string: String = JSON.stringify(body)
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc("armored_archer/unequip_gear", json.stringify(payload))
 
-	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
-	if error != OK:
-		push_error("Failed to unequip gear request")
+	if response.has("error"):
+		push_error("Failed to unequip gear: %s" % response.error)
+		return
+
+	if response.get("success", false):
+		equipped_gear = response.get("equipped_gear", equipped_gear)
+		gear_unequipped.emit(slot)
+		inventory_updated.emit(_get_full_inventory())
 
 func _load_inventory() -> void:
 	"""Loads player inventory from the server."""
 	if not network_manager or not network_manager.is_session_valid():
 		return
 
-	var url: String = "%s/v2/rpc/armored_archer/get_inventory" % network_manager.base_url
-	var headers: PackedStringArray = network_manager.get_auth_headers()
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc("armored_archer/get_inventory", json.stringify({}))
 
-	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, "{}")
-	if error != OK:
-		push_error("Failed to load inventory")
+	if response.has("error"):
+		push_error("Failed to load inventory: %s" % response.error)
+		return
+
+	player_inventory.gear = response.get("gear", [])
+	equipped_gear = response.get("equipped_gear", {})
+	unlocked_modifier_pools = response.get("unlocked_modifier_pools", [])
+	inventory_updated.emit(_get_full_inventory())
 
 func unlock_modifier_pool(modifier_id: String) -> void:
 	"""Unlocks a modifier pool for gear generation.
@@ -131,90 +159,19 @@ func unlock_modifier_pool(modifier_id: String) -> void:
 		push_error("Cannot unlock modifier pool: not connected to server")
 		return
 
-	var url: String = "%s/v2/rpc/armored_archer/unlock_modifier_pool" % network_manager.base_url
-	var headers: PackedStringArray = network_manager.get_auth_headers()
-
-	var body: Dictionary = {
+	var payload: Dictionary = {
 		"modifier_id": modifier_id
 	}
 
-	var json_string: String = JSON.stringify(body)
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc("armored_archer/unlock_modifier_pool", json.stringify(payload))
 
-	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
-	if error != OK:
-		push_error("Failed to unlock modifier pool request")
+	if response.has("error"):
+		push_error("Failed to unlock modifier pool: %s" % response.error)
+		return
 
-func _on_http_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
-	"""Handles HTTP responses for gear-related requests."""
-	var response_text: String = body.get_string_from_utf8()
-
-	if response_code >= 200 and response_code < 300:
-		var json: JSON = JSON.new()
-		var parse_result: Error = json.parse(response_text)
-
-		if parse_result == OK:
-			var response_data: Dictionary = json.data
-
-			if response_data.has("payload"):
-				var payload_string: String = response_data.payload
-				var payload_json: JSON = JSON.new()
-				if payload_json.parse(payload_string) == OK:
-					var payload: Dictionary = payload_json.data
-					_process_payload(payload, response_data)
-			else:
-				_process_payload(response_data, response_data)
-	else:
-		push_error("Gear system request failed with code: %d" % response_code)
-
-func _process_payload(payload: Dictionary, _response_data: Dictionary) -> void:
-	"""Processes server response payload and emits appropriate signals."""
-	if payload.has("gear"):
-		var gear_data: Dictionary = payload.gear
-		player_inventory.gear = payload.inventory.gear
-		equipped_gear = payload.inventory.equipped_gear
-		unlocked_modifier_pools = payload.inventory.get("unlocked_modifier_pools", [])
-		gear_generated.emit(gear_data)
-		inventory_updated.emit(_get_full_inventory())
-
-		# Track gear obtained in analytics
-		if analytics and analytics.has_method("log_gear_obtained"):
-			var gear_id: String = gear_data.get("id", "")
-			var gear_name: String = gear_data.get("name", "")
-			var gear_type: String = gear_data.get("type", "")
-			var rarity: String = gear_data.get("rarity", "common")
-			var source: String = "stage_drop"
-			if payload.has("source"):
-				source = payload.source
-			analytics.log_gear_obtained(gear_id, gear_name, gear_type, rarity, source)
-
-	if payload.has("success") and payload.success:
-		if payload.has("equipped_gear"):
-			var old_equipped_gear: Dictionary = equipped_gear.duplicate()
-			equipped_gear = payload.equipped_gear
-			if payload.has("gear"):
-				var slot: String = payload.gear.type
-				var gear_id: String = payload.gear.id
-				var gear_name: String = payload.gear.get("name", "")
-				gear_equipped.emit(slot, gear_id)
-
-				# Track gear equipped in analytics
-				if analytics and analytics.has_method("log_gear_equipped"):
-					analytics.log_gear_equipped(gear_id, gear_name, payload.gear.type, slot)
-			else:
-				# Check for unequipped gear (slot was cleared)
-				for slot in old_equipped_gear.keys():
-					if not equipped_gear.has(slot) or equipped_gear[slot].is_empty():
-						gear_unequipped.emit(slot)
-			inventory_updated.emit(_get_full_inventory())
-
-		if payload.has("unlocked_modifier_pools"):
-			unlocked_modifier_pools = payload.unlocked_modifier_pools
-			inventory_updated.emit(_get_full_inventory())
-
-	if payload.has("gear"):
-		player_inventory.gear = payload.gear
-		equipped_gear = payload.get("equipped_gear", {})
-		unlocked_modifier_pools = payload.get("unlocked_modifier_pools", [])
+	if response.get("success", false):
+		unlocked_modifier_pools = response.get("unlocked_modifier_pools", unlocked_modifier_pools)
 		inventory_updated.emit(_get_full_inventory())
 
 func _get_full_inventory() -> Dictionary:
