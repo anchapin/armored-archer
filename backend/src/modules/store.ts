@@ -83,7 +83,12 @@ function cleanupOldReceipts(): void {
 }
 
 // Run cleanup every hour
-setInterval(cleanupOldReceipts, 60 * 60 * 1000);
+const _receiptCleanupInterval = setInterval(cleanupOldReceipts, 60 * 60 * 1000);
+
+/** Clear the receipt cleanup interval (for test teardown). */
+export function stopReceiptCleanup(): void {
+  clearInterval(_receiptCleanupInterval);
+}
 
 /**
  * Check if a receipt has already been used.
@@ -189,6 +194,10 @@ async function markReceiptAsUsed(
  * Cryptographic hash function for receipts using SHA-256 with salt.
  * This prevents collision attacks and replay attack manipulation.
  */
+if (!process.env.RECEIPT_HASH_SALT) {
+  console.warn('[SECURITY] RECEIPT_HASH_SALT not set - using fallback. Set this env var in production.');
+}
+
 function hashReceipt(receipt: string): string {
   const salt = process.env.RECEIPT_HASH_SALT || 'armored_archer_secure_iap_salt_2024';
   return createHash('sha256').update(receipt + salt).digest('hex');

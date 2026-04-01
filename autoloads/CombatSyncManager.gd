@@ -30,23 +30,21 @@ var _poll_interval: float = 0.5  # 500ms polling interval
 
 # --- Initialization ---
 func _ready() -> void:
-	print("[CombatSyncManager] Initialized")
+	pass
 
 # --- Combat Lifecycle ---
 
 ## Starts a combat session with the given match ID
 func start_combat(match_id: String) -> void:
-	print("[CombatSyncManager] Starting combat with match_id: %s" % match_id)
-	
 	current_match_id = match_id
 	is_combat_active = true
 	player_health = 100
 	opponent_health = 100
 	combat_log.clear()
 	is_my_turn = true
-	
+
 	combat_started.emit(match_id)
-	
+
 	# Start polling for opponent moves
 	_start_polling()
 
@@ -55,13 +53,11 @@ func send_move(angle: float, power: float) -> void:
 	if not is_combat_active:
 		push_warning("[CombatSyncManager] Cannot send move: combat not active")
 		return
-	
+
 	if not is_my_turn:
 		push_warning("[CombatSyncManager] Cannot send move: not your turn")
 		return
-	
-	print("[CombatSyncManager] Sending move - angle: %.2f, power: %.2f" % [angle, power])
-	
+
 	var rpc_payload: String = JSON.stringify({
 		"match_id": current_match_id,
 		"action_type": "shoot",
@@ -69,11 +65,11 @@ func send_move(angle: float, power: float) -> void:
 		"power": power,
 		"timestamp": Time.get_ticks_msec()
 	})
-	
+
 	# Fire and forget - don't block on response
 	if has_node("/root/NetworkManager"):
 		NetworkManager.send_rpc_async("armored_archer/submit_combat_action", rpc_payload)
-	
+
 	# Record in combat log
 	var move_entry: Dictionary = {
 		"type": "player_move",
@@ -82,18 +78,13 @@ func send_move(angle: float, power: float) -> void:
 		"timestamp": Time.get_ticks_msec()
 	}
 	combat_log.append(move_entry)
-	
+
 	# Switch turn
 	is_my_turn = false
 
 ## Updates opponent state from polling response
 func update_opponent_state(opponent_move_data: Dictionary) -> void:
 	if not opponent_move_data.is_empty():
-		print("[CombatSyncManager] Opponent moved - angle: %.2f, power: %.2f" % [
-			opponent_move_data.get("angle", 0.0),
-			opponent_move_data.get("power", 0.0)
-		])
-		
 		# Record opponent move
 		combat_log.append({
 			"type": "opponent_move",
@@ -102,12 +93,12 @@ func update_opponent_state(opponent_move_data: Dictionary) -> void:
 			"damage": opponent_move_data.get("damage", 0),
 			"timestamp": Time.get_ticks_msec()
 		})
-		
+
 		# Apply damage if present
 		if opponent_move_data.has("damage"):
 			player_health = max(0, player_health - opponent_move_data["damage"])
 			health_changed.emit(player_health, opponent_health)
-		
+
 		opponent_moved.emit(opponent_move_data)
 		is_my_turn = true
 
@@ -122,45 +113,42 @@ func _start_polling() -> void:
 	if _polling_timer:
 		_polling_timer.stop()
 		_polling_timer.queue_free()
-	
+
 	_polling_timer = Timer.new()
 	_polling_timer.wait_time = _poll_interval
 	add_child(_polling_timer)
-	
+
 	var _err = _polling_timer.timeout.connect(_on_poll_tick)
 	_polling_timer.start()
-	print("[CombatSyncManager] Started polling opponent moves (%.0fms interval)" % (_poll_interval * 1000))
 
 ## Polling tick - checks for opponent moves
 func _on_poll_tick() -> void:
 	if not is_combat_active or current_match_id.is_empty():
 		return
-	
+
 	# Poll for opponent moves
 	var rpc_payload: String = JSON.stringify({
 		"match_id": current_match_id
 	})
-	
+
 	if has_node("/root/NetworkManager"):
 		var response = await NetworkManager.send_rpc("armored_archer/get_match_state", rpc_payload)
-		
+
 		if response.has("error"):
-			print("[CombatSyncManager] Poll error: %s" % response.error)
+			push_warning("[CombatSyncManager] Poll error: %s" % response.error)
 		elif response.has("move_data") and not response.move_data.is_empty():
 			update_opponent_state(response.move_data)
 
 ## Stops combat and cleanup
 func end_combat(winner: String) -> void:
-	print("[CombatSyncManager] Combat ended - Winner: %s" % winner)
-	
 	is_combat_active = false
-	
+
 	# Stop polling
 	if _polling_timer:
 		_polling_timer.stop()
 		_polling_timer.queue_free()
 		_polling_timer = null
-	
+
 	# Record end state
 	combat_log.append({
 		"type": "combat_end",
@@ -169,7 +157,7 @@ func end_combat(winner: String) -> void:
 		"final_opponent_health": opponent_health,
 		"timestamp": Time.get_ticks_msec()
 	})
-	
+
 	combat_ended.emit(winner)
 
 # --- Damage Application ---
@@ -178,7 +166,7 @@ func end_combat(winner: String) -> void:
 func apply_opponent_damage(damage: int) -> void:
 	opponent_health = max(0, opponent_health - damage)
 	health_changed.emit(player_health, opponent_health)
-	
+
 	if opponent_health <= 0:
 		end_combat("player")
 
@@ -186,7 +174,7 @@ func apply_opponent_damage(damage: int) -> void:
 func apply_player_damage(damage: int) -> void:
 	player_health = max(0, player_health - damage)
 	health_changed.emit(player_health, opponent_health)
-	
+
 	if player_health <= 0:
 		end_combat("opponent")
 
@@ -195,4 +183,3 @@ func _exit_tree() -> void:
 	if _polling_timer:
 		_polling_timer.queue_free()
 		_polling_timer = null
-	print("[CombatSyncManager] Cleanup complete")

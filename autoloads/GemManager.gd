@@ -76,7 +76,6 @@ func claim_achievement_reward(achievement_id: String) -> int:
 	"""
 	# Check if already claimed
 	if achievement_id in completed_achievements:
-		print("Achievement reward already claimed: %s" % achievement_id)
 		return 0
 
 	# Check if achievement exists in rewards
@@ -98,7 +97,6 @@ func claim_achievement_reward(achievement_id: String) -> int:
 			"reason": "achievement_reward"
 		})
 
-	print("Achievement completed: %s, Awarded %d gems" % [achievement_id, reward])
 	return reward
 
 func get_achievement_reward(achievement_id: String) -> int:
@@ -156,7 +154,6 @@ func add_gems(amount: int, reason: String = "") -> void:
 
 	gems_updated.emit(_local_gems)
 	save_data()
-	print("Added %d gems. Reason: %s. New balance: %d" % [amount, reason, _local_gems])
 
 func remove_gems(amount: int, reason: String = "") -> void:
 	"""Removes gems from player's balance.
@@ -180,7 +177,6 @@ func remove_gems(amount: int, reason: String = "") -> void:
 
 	gems_updated.emit(_local_gems)
 	save_data()
-	print("Removed %d gems. Reason: %s. New balance: %d" % [amount, reason, _local_gems])
 
 func _on_currency_updated(_gems: int, _gold: int) -> void:
 	"""Handles currency updates (placeholder for future functionality)."""

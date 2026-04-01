@@ -85,9 +85,6 @@ func _initialize_profiler() -> void:
 	# Apply performance settings based on device tier
 	_apply_performance_settings()
 
-	print("[PerformanceProfiler] Initialized - Device tier: %s, Target FPS: %d, Startup Memory: %.1f MB" %
-		[_get_tier_name(), _target_fps, _startup_memory_mb])
-
 func _process(_delta: float) -> void:
 	# Update FPS tracking
 	var current_fps = Engine.get_frames_per_second()
@@ -412,16 +409,14 @@ func reset_memory_leak_detection() -> void:
 	_session_start_time = Time.get_unix_time_from_system()
 	# Reset startup memory to current to avoid false positives after scene transition
 	_startup_memory_mb = _get_memory_usage_mb()
-	print("[PerformanceProfiler] Memory leak detection reset")
 
 # --- Integration with ProfilingInstrumentation ---
 
 ## Get profiling instrumentation data if available
 func get_instrumentation_data() -> Dictionary:
-	if has_node("/root/ProfilingInstrumentation"):
-		var profiler = get_node("/root/ProfilingInstrumentation")
-		if profiler.has_method("get_profile_report"):
-			return profiler.get_profile_report()
+	var profiler = get_node_or_null("/root/ProfilingInstrumentation")
+	if profiler and profiler.has_method("get_profile_report"):
+		return profiler.get_profile_report()
 	return {}
 
 ## Get combined profiling report (PerformanceProfiler + ProfilingInstrumentation)

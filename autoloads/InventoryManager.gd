@@ -31,7 +31,7 @@ enum GearSlot {
 
 # --- Initialization ---
 func _ready() -> void:
-	print("[InventoryManager] Initialized")
+	pass
 
 # --- Inventory Loading ---
 
@@ -45,7 +45,6 @@ func load_gear() -> bool:
 		push_error("[InventoryManager] Cannot load gear: not authenticated")
 		return false
 	
-	print("[InventoryManager] Loading gear inventory")
 	is_loading = true
 	
 	var response: Dictionary = await NetworkManager.send_rpc("armored_archer/get_inventory", "{}")
@@ -58,11 +57,9 @@ func load_gear() -> bool:
 	if response.has("inventory"):
 		inventory = response.inventory
 		_loaded = true
-		print("[InventoryManager] Loaded %d gear items" % inventory.size())
 	
 	if response.has("equipped"):
 		equipped_gear = response.equipped
-		print("[InventoryManager] Loaded equipped gear slots")
 	
 	gear_loaded.emit(inventory)
 	return true
@@ -86,8 +83,6 @@ func equip_gear(gear_id: String, slot: int = GearSlot.HEAD) -> bool:
 		push_error("[InventoryManager] Invalid slot: %d" % slot)
 		return false
 	
-	print("[InventoryManager] Equipping gear %s to slot %d" % [gear_id, slot])
-	
 	var rpc_payload: String = JSON.stringify({
 		"gear_id": gear_id,
 		"slot": slot
@@ -101,8 +96,7 @@ func equip_gear(gear_id: String, slot: int = GearSlot.HEAD) -> bool:
 	
 	# Update local state
 	equipped_gear[slot] = gear_id
-	print("[InventoryManager] Successfully equipped %s to slot %d" % [gear_id, slot])
-	
+
 	gear_equipped.emit(slot, gear_id)
 	_update_total_stats()
 	
@@ -121,10 +115,7 @@ func unequip_gear(slot: int = GearSlot.HEAD) -> bool:
 		return false
 	
 	if equipped_gear[slot].is_empty():
-		print("[InventoryManager] Slot %d already empty" % slot)
 		return true
-	
-	print("[InventoryManager] Unequipping gear from slot %d" % slot)
 	
 	var rpc_payload: String = JSON.stringify({
 		"slot": slot
@@ -138,8 +129,7 @@ func unequip_gear(slot: int = GearSlot.HEAD) -> bool:
 	
 	# Update local state
 	equipped_gear[slot] = ""
-	print("[InventoryManager] Successfully unequipped slot %d" % slot)
-	
+
 	gear_equipped.emit(slot, "")
 	_update_total_stats()
 	
@@ -225,4 +215,4 @@ func get_slot_name(slot: int) -> String:
 
 # --- Cleanup ---
 func _exit_tree() -> void:
-	print("[InventoryManager] Cleanup complete")
+	pass

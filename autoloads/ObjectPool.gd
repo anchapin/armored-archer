@@ -84,9 +84,6 @@ func _initialize_pools() -> void:
 		_hit_effect_pool.append(effect)
 		add_child(effect)
 
-	print("[ObjectPool] Initialized - Arrows: %d, Enemies: %d, HitEffects: %d" %
-		[adjusted_arrow_pool, adjusted_enemy_pool, adjusted_hit_pool])
-
 # --- Arrow Pool ---
 
 ## Get an arrow from the pool, or create a new one if pool is empty
@@ -233,12 +230,11 @@ func _get_reuse_rate(created: int, reused: int) -> float:
 ## Log statistics to console
 func log_statistics() -> void:
 	var stats = get_statistics()
-	print("[ObjectPool] Statistics:")
-	print("  Arrows: %d active, %d available, %d created, %d reused (%.1f%% reuse rate)" %
+	push_warning("[ObjectPool] Arrows: %d active, %d available, %d created, %d reused (%.1f%% reuse rate)" %
 		[stats.arrows.active, stats.arrows.available, stats.arrows.created, stats.arrows.reused, stats.arrows.reuse_rate])
-	print("  Enemies: %d active, %d available, %d created, %d reused (%.1f%% reuse rate)" %
+	push_warning("[ObjectPool] Enemies: %d active, %d available, %d created, %d reused (%.1f%% reuse rate)" %
 		[stats.enemies.active, stats.enemies.available, stats.enemies.created, stats.enemies.reused, stats.enemies.reuse_rate])
-	print("  HitEffects: %d active, %d available, %d created, %d reused (%.1f%% reuse rate)" %
+	push_warning("[ObjectPool] HitEffects: %d active, %d available, %d created, %d reused (%.1f%% reuse rate)" %
 		[stats.hit_effects.active, stats.hit_effects.available, stats.hit_effects.created, stats.hit_effects.reused, stats.hit_effects.reuse_rate])
 
 ## Clean up invalid instances from active tracking arrays
@@ -295,8 +291,6 @@ func cleanup_all() -> void:
 	_hit_effect_pool.clear()
 	_active_hit_effects.clear()
 
-	print("[ObjectPool] All pools cleaned up")
-
 ## Prepare pools for scene transition - returns all active objects to pools
 ## Call this before changing scenes to prevent memory leaks
 func prepare_for_scene_change() -> void:
@@ -335,8 +329,6 @@ func prepare_for_scene_change() -> void:
 			_hit_effect_pool.append(effect)
 	_active_hit_effects.clear()
 
-	print("[ObjectPool] Prepared for scene change - all active objects returned to pools")
-
 ## Disconnect all signals from a node to prevent memory leaks
 func _disconnect_node_signals(node: Node) -> void:
 	if node == null or not is_instance_valid(node):
@@ -359,5 +351,3 @@ func _exit_tree() -> void:
 	_arrow_scene = null
 	_enemy_scene = null
 	_hit_effect_scene = null
-
-	print("[ObjectPool] Cleanup complete - all resources released")

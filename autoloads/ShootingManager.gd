@@ -84,29 +84,20 @@ func shoot_arrow(from_position: Vector2, direction: Vector2) -> void:
 
 func _trigger_muzzle_flash(position: Vector2, direction: Vector2) -> void:
 	"""Create a visual muzzle flash effect at the shooting position."""
-	if not has_node("/root/VFXManager"):
-		return
-
-	var vfx = get_node("/root/VFXManager")
-	if vfx.has_method("play_muzzle_flash"):
+	var vfx = get_node_or_null("/root/VFXManager")
+	if vfx and vfx.has_method("play_muzzle_flash"):
 		vfx.play_muzzle_flash(position, direction)
 
 func _play_shoot_sound() -> void:
 	"""Play shoot sound effect."""
-	if not has_node("/root/AudioManager"):
-		return
-
-	var audio = get_node("/root/AudioManager")
-	if audio.has_method("play_sfx"):
+	var audio = get_node_or_null("/root/AudioManager")
+	if audio and audio.has_method("play_sfx"):
 		audio.play_sfx("shoot")
 
 func _trigger_screen_shake_light() -> void:
 	"""Trigger a light screen shake on shoot."""
-	if not has_node("/root/VFXManager"):
-		return
-
-	var vfx = get_node("/root/VFXManager")
-	if vfx.has_method("trigger_light_shake"):
+	var vfx = get_node_or_null("/root/VFXManager")
+	if vfx and vfx.has_method("trigger_light_shake"):
 		vfx.trigger_light_shake()
 
 ## Check if player can shoot
@@ -162,8 +153,9 @@ func _process_auto_shoot() -> void:
 	if can_shoot() and _cooldown_timer <= 0:
 		# Get bow pivot position
 		var bow_pos = player_pos
-		if player.has_node("BowPivot"):
-			bow_pos = player.get_node("BowPivot").global_position
+		var bow_pivot = player.get_node_or_null("BowPivot")
+		if bow_pivot:
+			bow_pos = bow_pivot.global_position
 
 		shoot_arrow(bow_pos, aim_dir)
 		_cooldown_timer = AUTO_SHOOT_COOLDOWN
@@ -181,10 +173,9 @@ func _start_reload() -> void:
 	_reload_timer = RELOAD_TIME
 
 	# Play reload sound
-	if has_node("/root/AudioManager"):
-		var audio = get_node("/root/AudioManager")
-		if audio.has_method("play_sfx"):
-			audio.play_sfx("reload")
+	var audio = get_node_or_null("/root/AudioManager")
+	if audio and audio.has_method("play_sfx"):
+		audio.play_sfx("reload")
 
 func _finish_reload() -> void:
 	_is_reloading = false

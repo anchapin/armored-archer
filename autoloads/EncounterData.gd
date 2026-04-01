@@ -170,7 +170,7 @@ var encounters: Dictionary = {
 
 func _ready() -> void:
 	"""Initialize encounter data."""
-	print("[EncounterData] Initialized with %d encounters" % encounters.size())
+	pass
 
 func get_encounter(encounter_id: String) -> Dictionary:
 	"""Returns encounter data for a given encounter ID.

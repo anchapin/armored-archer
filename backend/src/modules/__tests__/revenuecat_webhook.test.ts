@@ -159,7 +159,6 @@ describe('rpcRevenueCatWebhook', () => {
         payload
       );
 
-      console.log('add gems result:', result);
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
       expect(parsed.new_balance).toBe(200); // 100 + 100

@@ -599,7 +599,7 @@ export function rpcGetPlayerRank(
     'rpcGetPlayerRank'
   );
   if (statsResult.error) {
-    return JSON.stringify({ error: statsResult.error });
+    return JSON.stringify({ error: 'Player stats not found' });
   }
   const playerStats = statsResult.data!;
   const rank = calculateRank(playerStats);

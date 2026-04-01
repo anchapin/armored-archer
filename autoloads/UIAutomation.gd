@@ -41,7 +41,6 @@ enum SlideDirection {
 
 func _ready() -> void:
 	_instance = self
-	print("[UIAutomation] Initialized")
 
 func _exit_tree() -> void:
 	_instance = null
@@ -354,12 +353,14 @@ static func _get_ease_type(easing: EasingType) -> Tween.EaseType:
 
 ## Check if animations are enabled (respects device performance)
 static func are_animations_enabled() -> bool:
-	if Engine.get_main_loop().root.has_node("/root/UITransitionOptimizer"):
-		return Engine.get_main_loop().root.get_node("/root/UITransitionOptimizer").is_ui_animation_enabled()
+	var optimizer = Engine.get_main_loop().root.get_node_or_null("/root/UITransitionOptimizer")
+	if optimizer:
+		return optimizer.is_ui_animation_enabled()
 	return true
 
 ## Get recommended duration based on device performance
 static func get_recommended_duration() -> float:
-	if Engine.get_main_loop().root.has_node("/root/UITransitionOptimizer"):
-		return Engine.get_main_loop().root.get_node("/root/UITransitionOptimizer").get_transition_duration()
+	var optimizer = Engine.get_main_loop().root.get_node_or_null("/root/UITransitionOptimizer")
+	if optimizer:
+		return optimizer.get_transition_duration()
 	return DEFAULT_DURATION

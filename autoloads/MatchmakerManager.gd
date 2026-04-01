@@ -116,9 +116,9 @@ func create_match(match_type: String, is_punch_up: bool = false, target_opponent
 			var match_id: String = current_match.get("match_id", "")
 			var opponent_id: String = current_match.get("opponent_id", "")
 			var season_id: int = 0
-			if has_node("/root/SeasonManager"):
-				var season_manager = get_node("/root/SeasonManager")
-				season_id = season_manager.current_season.get("season_id") if season_manager.current_season.has("season_id") else 0
+			var season_manager = get_node_or_null("/root/SeasonManager")
+			if season_manager and season_manager.current_season.has("season_id"):
+				season_id = season_manager.current_season.get("season_id")
 			analytics.log_pvp_match_started(match_id, opponent_id, season_id, player_rank)
 
 # --- Match Acceptance ---
@@ -236,9 +236,9 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 			var match_id: String = current_match.get("match_id", "")
 			var opponent_id: String = current_match.get("opponent_id", "")
 			var season_id: int = 0
-			if has_node("/root/SeasonManager"):
-				var season_manager = get_node("/root/SeasonManager")
-				season_id = season_manager.current_season.get("season_id") if season_manager.current_season.has("season_id") else 0
+			var season_manager = get_node_or_null("/root/SeasonManager")
+			if season_manager and season_manager.current_season.has("season_id"):
+				season_id = season_manager.current_season.get("season_id")
 
 			var result: String = "loss"
 			var my_score: int = 0

@@ -24,10 +24,10 @@ func _ready() -> void:
 	_apply_ui_optimizations()
 
 func _apply_ui_optimizations() -> void:
-	if not has_node("/root/PerformanceProfiler"):
+	var perf_profiler = get_node_or_null("/root/PerformanceProfiler")
+	if not perf_profiler:
 		return
 
-	var perf_profiler = get_node("/root/PerformanceProfiler")
 	var is_budget = perf_profiler.is_budget_device()
 	var is_mid_range = perf_profiler.is_mid_range_device()
 
@@ -49,9 +49,6 @@ func _apply_ui_optimizations() -> void:
 		_fade_enabled = true
 		_ui_animation_enabled = true
 		_particle_effects_enabled = true
-
-	print("[UITransitionOptimizer] Applied optimizations - Duration: %.2fs, Fade: %s, Particles: %s" %
-		[_transition_duration, _fade_enabled, _particle_effects_enabled])
 
 ## Get the optimized transition duration
 func get_transition_duration() -> float:
@@ -112,4 +109,4 @@ func refresh_optimizations() -> void:
 
 ## Clean up resources when the node exits the tree
 func _exit_tree() -> void:
-	print("[UITransitionOptimizer] Cleanup complete")
+	pass

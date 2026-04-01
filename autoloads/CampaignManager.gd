@@ -229,10 +229,9 @@ func unlock_modifier_pool(modifier_id: String) -> void:
 				"modifier_id": modifier_id
 			})
 
-		print("Unlocked modifier pool: %s" % modifier_id)
 		save_progress()
 	else:
-		print("Modifier pool already unlocked: %s" % modifier_id)
+		pass
 
 func get_unlocked_modifier_pools() -> Array:
 	"""Returns the list of unlocked modifier pool IDs.

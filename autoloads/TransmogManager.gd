@@ -36,7 +36,9 @@ func _ready() -> void:
 	"""Initializes the gear registry."""
 	# GearRegistry is an autoload but we can't use class_name on autoloads
 	# Get reference to the singleton via get_node
-	gear_registry_instance = get_node("/root/GearRegistry")
+	gear_registry_instance = get_node_or_null("/root/GearRegistry")
+	if not gear_registry_instance:
+		push_warning("[TransmogManager] GearRegistry not found")
 
 func set_character_sprite(sprite: ModularCharacterSprite) -> void:
 	"""Sets the character sprite to apply transmog visuals to.

@@ -22,7 +22,7 @@ var _pending_creation: bool = false
 
 # --- Initialization ---
 func _ready() -> void:
-	print("[MatchmakingManager] Initialized")
+	pass
 
 # --- Match Creation ---
 
@@ -38,8 +38,6 @@ func create_match(match_type: String = "1v1", punch_up: bool = false) -> String:
 	if not NetworkManager.is_session_valid():
 		push_error("[MatchmakingManager] Cannot create match: not authenticated")
 		return ""
-	
-	print("[MatchmakingManager] Creating match - type: %s, punch_up: %s" % [match_type, punch_up])
 	
 	_pending_creation = true
 	
@@ -58,7 +56,6 @@ func create_match(match_type: String = "1v1", punch_up: bool = false) -> String:
 	
 	if response.has("match_id"):
 		var match_id: String = response.match_id
-		print("[MatchmakingManager] Match created: %s" % match_id)
 		match_created.emit(match_id)
 		return match_id
 	
@@ -74,8 +71,6 @@ func list_matches(filters: Dictionary = {}) -> Array:
 		push_error("[MatchmakingManager] Cannot list matches: not authenticated")
 		return []
 	
-	print("[MatchmakingManager] Listing matches with filters: %s" % filters)
-	
 	var rpc_payload: String = JSON.stringify({
 		"filters": filters,
 		"limit": 20,
@@ -90,7 +85,6 @@ func list_matches(filters: Dictionary = {}) -> Array:
 	
 	if response.has("matches"):
 		available_matches = response.matches
-		print("[MatchmakingManager] Found %d available matches" % available_matches.size())
 		matches_updated.emit(available_matches)
 		return available_matches
 	
@@ -114,8 +108,6 @@ func join_match(match_id: String) -> bool:
 		push_error("[MatchmakingManager] Invalid match_id")
 		return false
 	
-	print("[MatchmakingManager] Joining match: %s" % match_id)
-	
 	var rpc_payload: String = JSON.stringify({
 		"match_id": match_id,
 		"timestamp": Time.get_ticks_msec()
@@ -129,7 +121,6 @@ func join_match(match_id: String) -> bool:
 	
 	if response.has("match_data"):
 		current_match = response.match_data
-		print("[MatchmakingManager] Successfully joined match: %s" % match_id)
 		match_joined.emit(match_id, current_match)
 		return true
 	
@@ -177,4 +168,4 @@ func get_matches_by_rating(min_rating: int) -> Array:
 
 # --- Cleanup ---
 func _exit_tree() -> void:
-	print("[MatchmakingManager] Cleanup complete")
+	pass

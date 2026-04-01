@@ -55,6 +55,10 @@ const replayWindow = 300000; // 5 minutes
 const requestTimingLog = new Map<string, number[]>();
 const timingAnalysisWindow = 3600000; // 1 hour
 
+if (!process.env.HMAC_SECRET) {
+  console.warn('[SECURITY] HMAC_SECRET not set - using fallback. Set this env var in production.');
+}
+
 let config: AntiCheatConfig = {
   hmacSecret: process.env.HMAC_SECRET || 'default-secret-change-in-production',
   replayWindowMs: replayWindow,
@@ -657,7 +661,12 @@ export function getLeaderboardAntiCheatStats(): {
 }
 
 // Cleanup job to prevent memory leaks
-setInterval(cleanupExpiredRequests, 60000); // Every minute
+const _antiCheatCleanupInterval = setInterval(cleanupExpiredRequests, 60000); // Every minute
+
+/** Clear the anti-cheat cleanup interval (for test teardown). */
+export function stopAntiCheatCleanup(): void {
+  clearInterval(_antiCheatCleanupInterval);
+}
 
 // ============================================================
 // PLAYER REPORTING SYSTEM

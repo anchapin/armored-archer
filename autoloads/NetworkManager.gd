@@ -396,10 +396,9 @@ func _handle_authentication_error(response_code: int, response_text: String) -> 
 
 func _log_network_error(error_type: String, endpoint: String, status_code: int) -> void:
 	# Use AnalyticsManager if available
-	if has_node("/root/AnalyticsManager"):
-		var analytics: Node = get_node("/root/AnalyticsManager")
-		if analytics.has_method("log_network_error"):
-			analytics.log_network_error(error_type, endpoint, status_code)
+	var analytics = get_node_or_null("/root/AnalyticsManager")
+	if analytics and analytics.has_method("log_network_error"):
+		analytics.log_network_error(error_type, endpoint, status_code)
 
 # --- Session Storage ---
 func _save_session_to_file() -> void:
@@ -613,10 +612,9 @@ func send_rpc_async(rpc_id: String, payload: String, _timeout: float = 10.0) -> 
 
 func _log_rpc_latency(rpc_name: String, latency_ms: int) -> void:
 	# Use AnalyticsManager if available
-	if has_node("/root/AnalyticsManager"):
-		var analytics: Node = get_node("/root/AnalyticsManager")
-		if analytics.has_method("log_rpc_latency"):
-			analytics.log_rpc_latency(rpc_name, latency_ms)
+	var analytics = get_node_or_null("/root/AnalyticsManager")
+	if analytics and analytics.has_method("log_rpc_latency"):
+		analytics.log_rpc_latency(rpc_name, latency_ms)
 
 # ==================== RECONNECTION HANDLING ====================
 

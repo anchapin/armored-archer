@@ -170,7 +170,6 @@ func add_gems(amount: int, reason: String = "") -> void:
 
 	current_gems += amount
 	emit_signal("currency_updated", current_gems, current_gold)
-	print("Added %d gems. Reason: %s. New balance: %d" % [amount, reason, current_gems])
 
 # --- Purchase Flow ---
 func purchase_product(product_id: String) -> void:
@@ -194,10 +193,9 @@ func purchase_product(product_id: String) -> void:
 
 	# Log purchase initiated for analytics
 	var product_info: Dictionary = products.get(product_id, {})
-	if has_node("/root/AnalyticsManager"):
-		var analytics: Node = get_node("/root/AnalyticsManager")
-		if analytics.has_method("log_purchase_initiated"):
-			analytics.log_purchase_initiated(product_id, product_info.get("display_name", ""), product_info.get("type", ""), product_info.get("price_cents", 0))
+	var analytics = get_node_or_null("/root/AnalyticsManager")
+	if analytics and analytics.has_method("log_purchase_initiated"):
+		analytics.log_purchase_initiated(product_id, product_info.get("display_name", ""), product_info.get("type", ""), product_info.get("price_cents", 0))
 
 	if platform == "ios" or platform == "android":
 		_initiate_revenuecat_purchase(product_id)
@@ -334,40 +332,39 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 		emit_signal("purchase_succeeded", product_id, gems_awarded)
 
 		# Track purchase completed in analytics for conversion
-		if has_node("/root/AnalyticsManager"):
-			var analytics: Node = get_node("/root/AnalyticsManager")
+		var purchase_analytics = get_node_or_null("/root/AnalyticsManager")
+		if purchase_analytics and purchase_analytics.has_method("log_purchase_completed"):
 			var product_info: Dictionary = products.get(product_id, {})
-			if analytics.has_method("log_purchase_completed"):
-				analytics.log_purchase_completed(
-					product_id,
-					product_info.get("display_name", ""),
-					product_info.get("type", ""),
-					product_info.get("price_cents", 0),
-					"USD",
-					result.get("transaction_id", "")
-				)
-			# Also log gem purchase specifically
-			if analytics.has_method("log_gem_purchased"):
-				analytics.log_gem_purchased(
-					product_info.get("gem_amount", 0),
-					product_info.get("price_cents", 0),
-					"USD",
-					"iap",
-					result.get("offer_id", "")
-				)
+			purchase_analytics.log_purchase_completed(
+				product_id,
+				product_info.get("display_name", ""),
+				product_info.get("type", ""),
+				product_info.get("price_cents", 0),
+				"USD",
+				result.get("transaction_id", "")
+			)
+		# Also log gem purchase specifically
+		if purchase_analytics and purchase_analytics.has_method("log_gem_purchased"):
+			var product_info: Dictionary = products.get(product_id, {})
+			purchase_analytics.log_gem_purchased(
+				product_info.get("gem_amount", 0),
+				product_info.get("price_cents", 0),
+				"USD",
+				"iap",
+				result.get("offer_id", "")
+			)
 	else:
 		emit_signal("purchase_failed", product_id, "Validation failed")
 
 		# Track purchase failed in analytics
-		if has_node("/root/AnalyticsManager"):
-			var analytics: Node = get_node("/root/AnalyticsManager")
+		var fail_analytics = get_node_or_null("/root/AnalyticsManager")
+		if fail_analytics and fail_analytics.has_method("log_purchase_failed"):
 			var product_info: Dictionary = products.get(product_id, {})
-			if analytics.has_method("log_purchase_failed"):
-				analytics.log_purchase_failed(
-					product_id,
-					product_info.get("display_name", ""),
-					"Validation failed"
-				)
+			fail_analytics.log_purchase_failed(
+				product_id,
+				product_info.get("display_name", ""),
+				"Validation failed"
+			)
 
 # --- Spend Gems ---
 func spend_gems(amount: int, reason: String = "") -> void:

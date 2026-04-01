@@ -78,9 +78,6 @@ func _initialize_profiler() -> void:
 	_profiling_enabled = _should_enable_profiling()
 	_frame_profiling_enabled = _profiling_enabled
 
-	print("[ProfilingInstrumentation] Initialized - Profiling: %s, Frame Profiling: %s" %
-		[_profiling_enabled, _frame_profiling_enabled])
-
 func _should_enable_profiling() -> bool:
 	# Enable in debug builds or when explicitly enabled
 	if OS.has_feature("debug"):
@@ -128,7 +125,6 @@ func is_profiling_enabled() -> bool:
 func set_profiling_enabled(enabled: bool) -> void:
 	_profiling_enabled = enabled
 	profiling_toggled.emit(enabled)
-	print("[ProfilingInstrumentation] Profiling %s" % ["disabled", "enabled"][int(enabled)])
 
 ## Check if frame profiling is enabled
 func is_frame_profiling_enabled() -> bool:
@@ -137,7 +133,6 @@ func is_frame_profiling_enabled() -> bool:
 ## Enable or disable frame profiling
 func set_frame_profiling_enabled(enabled: bool) -> void:
 	_frame_profiling_enabled = enabled
-	print("[ProfilingInstrumentation] Frame profiling %s" % ["disabled", "enabled"][int(enabled)])
 
 ## Start timing a code section
 ## Returns a unique marker ID that should be passed to end_marker
@@ -412,7 +407,6 @@ func clear_profiling_data() -> void:
 	_marker_total_times.clear()
 	_marker_stats.clear()
 	_frame_times.clear()
-	print("[ProfilingInstrumentation] Profiling data cleared")
 
 ## Get active markers (for debugging)
 func get_active_markers() -> Dictionary:

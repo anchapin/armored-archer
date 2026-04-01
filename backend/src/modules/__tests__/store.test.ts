@@ -123,12 +123,8 @@ describe('store', () => {
         transaction_receipt: 'base64receipt',
       });
       const result = await rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
-      
-      // Debug: Log the raw result
-      console.log('Raw result:', result);
-      
+
       const parsed = JSON.parse(result);
-      console.log('Parsed result:', parsed);
 
       expect(parsed.success).toBe(true);
       expect(parsed.gems_awarded).toBe(100);
