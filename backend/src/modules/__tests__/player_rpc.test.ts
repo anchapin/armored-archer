@@ -217,5 +217,29 @@ describe('player_rpc', () => {
       expect(parsed.success).toBe(true);
       expect(parsed.reports).toEqual([]);
     });
+
+    it('should return reports for specified user_id', () => {
+      getReportsForUser.mockReturnValue([
+        { reportId: 'r2', reporterId: 'admin', reason: 'cheating' },
+      ]);
+
+      // Mock validatePayload to return data with user_id (Valibot strips unknown keys)
+      const validation = require('../validation');
+      const originalValidate = validation.validatePayload;
+      validation.validatePayload = jest.fn().mockReturnValue({
+        success: true,
+        data: { user_id: 'target-user' },
+      });
+
+      const payload = JSON.stringify({ user_id: 'target-user' });
+      const result = rpcGetPlayerReports(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.reports).toHaveLength(1);
+      expect(getReportsForUser).toHaveBeenCalledWith('target-user');
+
+      validation.validatePayload = originalValidate;
+    });
   });
 });

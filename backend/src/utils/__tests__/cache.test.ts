@@ -15,6 +15,16 @@ describe('CacheManager', () => {
     cacheManager.destroy();
   });
 
+  describe('constructor', () => {
+    it('creates with null logger by default', () => {
+      const manager = new CacheManager();
+      manager.createCache('noLog', 10, 100);
+      manager.set('noLog', 'k', 'v');
+      expect(manager.get('noLog', 'k')).toBe('v');
+      manager.destroy();
+    });
+  });
+
   describe('createCache', () => {
     it('creates a new cache with options', () => {
       expect(cacheManager.getCacheInfo('test')).toBeDefined();
@@ -85,6 +95,14 @@ describe('CacheManager', () => {
       cacheManager.delete('test', 'missing');
       expect(cacheManager.get('test', 'missing')).toBeUndefined();
     });
+
+    it('handles delete on non-existent cache without logger', () => {
+      const manager = new CacheManager(null);
+      manager.createCache('temp', 10, 100);
+      // Delete on a cache that doesn't exist - no logger, so no error log
+      expect(() => manager.delete('nonexistent', 'k')).not.toThrow();
+      manager.destroy();
+    });
   });
 
   describe('clear', () => {
@@ -130,6 +148,62 @@ describe('CacheManager', () => {
       expect(info).toBeDefined();
       expect(info.size).toBeGreaterThanOrEqual(1);
     });
+
+    it('defaults ttl to 0 when cache ttl is undefined', () => {
+      const manager = new CacheManager(null);
+      const cache = manager.createCache('ttlTest', 10, 5000);
+      // Force ttl to undefined to trigger the ?? 0 branch
+      (cache as any).ttl = undefined;
+      const info = manager.getCacheInfo('ttlTest');
+      expect(info).toBeDefined();
+      expect(info.ttl).toBe(0);
+      manager.destroy();
+    });
+  });
+
+  describe('clear with non-existent cache', () => {
+    it('handles clearing a non-existent cache gracefully', () => {
+      expect(() => cacheManager.clear('nonexistent_clear')).not.toThrow();
+    });
+
+    it('logs error when clearing non-existent cache', () => {
+      cacheManager.clear('nonexistent_log');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Cache not found',
+        expect.objectContaining({
+          cacheName: 'nonexistent_log',
+          operation: 'cache_not_found',
+        })
+      );
+    });
+
+    it('handles clearing non-existent cache without logger', () => {
+      const manager = new CacheManager(null);
+      manager.createCache('temp', 10, 100);
+      expect(() => manager.clear('nonexistent')).not.toThrow();
+      manager.destroy();
+    });
+  });
+
+  describe('get with non-existent cache', () => {
+    it('returns undefined for non-existent cache', () => {
+      expect(cacheManager.get('nonexistent_cache', 'key')).toBeUndefined();
+    });
+  });
+
+  describe('destroy', () => {
+    it('cleans up all caches', () => {
+      cacheManager.set('test', 'k', 'v');
+      cacheManager.destroy();
+      // After destroy, getting should return undefined
+      expect(cacheManager.get('test', 'k')).toBeUndefined();
+    });
+  });
+
+  describe('getCacheInfo with non-existent cache', () => {
+    it('returns undefined for non-existent cache', () => {
+      expect(cacheManager.getCacheInfo('nonexistent_info')).toBeUndefined();
+    });
   });
 });
 
@@ -145,9 +219,53 @@ describe('CacheManager singleton', () => {
     expect(cm1).toBe(cm2);
   });
 
+  it('getCacheManager with logger uses provided logger', () => {
+    const customLogger = { debug: jest.fn(), info: jest.fn(), error: jest.fn() };
+    const cm = getCacheManager(customLogger as any);
+    cm.createCache('custom', 10, 1000);
+    expect(customLogger.info).toHaveBeenCalledWith(
+      'Cache created',
+      expect.objectContaining({ cacheName: 'custom' })
+    );
+  });
+
   it('initializeCaches sets up default caches', () => {
     const cm = initializeCaches();
     expect(cm.getCacheInfo('player_stats')).toBeDefined();
     expect(cm.getCacheInfo('leaderboards')).toBeDefined();
+  });
+
+  it('initializeCaches with logger logs initialization', () => {
+    const customLogger = { debug: jest.fn(), info: jest.fn(), error: jest.fn() };
+    const cm = initializeCaches(customLogger as any);
+    expect(cm.getCacheInfo('player_stats')).toBeDefined();
+    expect(customLogger.info).toHaveBeenCalledWith('All caches initialized');
+  });
+});
+
+describe('CacheManager destroy edge cases', () => {
+  it('handles cache without destroy method by calling clear', () => {
+    const manager = new CacheManager(null);
+    const cache = manager.createCache('test', 100, 60);
+    manager.set('test', 'k', 'v');
+
+    // Replace destroy with undefined to trigger the else branch
+    (cache as any).destroy = undefined;
+
+    manager.destroy();
+    // After destroy, caches map should be empty
+    expect(manager.get('test', 'k')).toBeUndefined();
+  });
+
+  it('handles destroy when cache has destroy as non-function', () => {
+    const manager = new CacheManager(null);
+    const cache = manager.createCache('test', 100, 60);
+    manager.set('test', 'k', 'v');
+
+    // Set destroy to a non-function value
+    (cache as any).destroy = 'not-a-function';
+
+    manager.destroy();
+    expect(manager.get('test', 'k')).toBeUndefined();
   });
 });

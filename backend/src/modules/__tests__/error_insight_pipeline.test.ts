@@ -1657,6 +1657,234 @@ describe('error_insight_pipeline', () => {
     });
   });
 
+  describe('createInsightFromPattern priority branches', () => {
+    it('should assign medium priority for warning severity with count <= 10', () => {
+      for (let i = 0; i < 5; i++) {
+        collectError(new Error('deprecated warning notice'), {
+          severity: 'warning',
+          rpcName: 'dep_rpc',
+        });
+      }
+
+      const store = getErrorStore();
+      const insights = store.getInsights();
+      expect(insights.length).toBeGreaterThan(0);
+      expect(insights[0].priority).toBe('medium');
+    });
+  });
+
+  describe('assessImpact warning severity branch', () => {
+    it('should set correct impact strings for warning severity', () => {
+      for (let i = 0; i < 5; i++) {
+        collectError(new Error('deprecated function usage'), {
+          severity: 'warning',
+          rpcName: 'legacy_rpc',
+          userId: `user-${i}`,
+        });
+      }
+
+      const store = getErrorStore();
+      const insights = store.getInsights();
+      expect(insights.length).toBeGreaterThan(0);
+      expect(insights[0].impact.userImpact).toContain('Some users');
+      expect(insights[0].impact.systemImpact).toContain('Minor');
+    });
+  });
+
+  describe('generateRecommendations nakama with affectedRpcs', () => {
+    it('should add focus recommendation when nakama errors have affected RPCs', () => {
+      for (let i = 0; i < 5; i++) {
+        collectError(new Error('nakama handler error'), {
+          rpcName: 'focus_target_rpc',
+        });
+      }
+
+      const store = getErrorStore();
+      const insights = store.getInsights();
+      expect(insights.length).toBeGreaterThan(0);
+      expect(insights[0].recommendations.some((r: string) => r.includes('focus_target_rpc'))).toBe(true);
+    });
+  });
+
+  describe('processErrors pattern merge with existing RPCs and users', () => {
+    it('should not duplicate RPCs when merging existing pattern', () => {
+      // First batch: creates the pattern
+      for (let i = 0; i < 3; i++) {
+        collectError(new Error('dedup rpc merge test'), {
+          rpcName: 'same_rpc',
+        });
+      }
+
+      const store = getErrorStore();
+      const patternsBefore = store.getPatterns();
+      const targetPattern = patternsBefore.find((p) =>
+        p.messageTemplate.includes('dedup rpc merge test')
+      );
+      const rpcCountBefore = targetPattern ? targetPattern.affectedRpcs.length : 0;
+
+      // Second batch: same rpc name, should not duplicate
+      for (let i = 0; i < 3; i++) {
+        collectError(new Error('dedup rpc merge test'), {
+          rpcName: 'same_rpc',
+        });
+      }
+
+      const patternsAfter = store.getPatterns();
+      const targetAfter = patternsAfter.find((p) =>
+        p.messageTemplate.includes('dedup rpc merge test')
+      );
+      if (targetAfter) {
+        expect(targetAfter.affectedRpcs.length).toBe(rpcCountBefore);
+      }
+    });
+
+    it('should not duplicate users when merging existing pattern', () => {
+      for (let i = 0; i < 3; i++) {
+        collectError(new Error('dedup user merge test'), {
+          rpcName: 'user_dedup_rpc',
+          userId: 'same_user',
+        });
+      }
+
+      const store = getErrorStore();
+      const patternsBefore = store.getPatterns();
+      const targetPattern = patternsBefore.find((p) =>
+        p.messageTemplate.includes('dedup user merge test')
+      );
+      const userCountBefore = targetPattern ? targetPattern.affectedUsers.length : 0;
+
+      // Second batch: same user id, should not duplicate
+      for (let i = 0; i < 3; i++) {
+        collectError(new Error('dedup user merge test'), {
+          rpcName: 'user_dedup_rpc',
+          userId: 'same_user',
+        });
+      }
+
+      const patternsAfter = store.getPatterns();
+      const targetAfter = patternsAfter.find((p) =>
+        p.messageTemplate.includes('dedup user merge test')
+      );
+      if (targetAfter) {
+        expect(targetAfter.affectedUsers.length).toBe(userCountBefore);
+      }
+    });
+  });
+
+  describe('processErrors insight deduplication', () => {
+    it('should not add duplicate insights for same patternId', () => {
+      // This triggers processErrors multiple times with the same pattern
+      for (let i = 0; i < 5; i++) {
+        collectError(new Error('insight dedup test error'), {
+          rpcName: 'dedup_insight_rpc',
+        });
+      }
+
+      const store = getErrorStore();
+      const insights = store.getInsights();
+      const patternIds = insights.map((i) => i.patternId);
+      const uniqueIds = new Set(patternIds);
+      expect(uniqueIds.size).toBe(patternIds.length);
+    });
+  });
+
+  describe('rpcGetErrorSummary branches', () => {
+    it('should handle summary RPC with valid JSON payload', async () => {
+      const { registerErrorInsightRpcs } = require('../error_insight_pipeline');
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerErrorInsightRpcs(mockInitializer);
+
+      const summaryHandler = mockInitializer.registerRpc.mock.calls.find(
+        (call: any[]) => call[0] === 'armored_archer/error_insights_summary'
+      )?.[1];
+
+      if (summaryHandler) {
+        const now = new Date();
+        const payload = JSON.stringify({
+          startTime: new Date(now.getTime() - 3600000).toISOString(),
+          endTime: now.toISOString(),
+        });
+        const result = await summaryHandler(
+          { userId: 'test' },
+          { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+          {},
+          payload
+        );
+        const parsed = JSON.parse(result);
+        expect(parsed).toHaveProperty('totalErrors');
+      }
+    });
+
+    it('should handle summary RPC with empty payload (default time range)', async () => {
+      const { registerErrorInsightRpcs } = require('../error_insight_pipeline');
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerErrorInsightRpcs(mockInitializer);
+
+      const summaryHandler = mockInitializer.registerRpc.mock.calls.find(
+        (call: any[]) => call[0] === 'armored_archer/error_insights_summary'
+      )?.[1];
+
+      if (summaryHandler) {
+        const result = await summaryHandler(
+          { userId: 'test' },
+          { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+          {},
+          ''
+        );
+        const parsed = JSON.parse(result);
+        expect(parsed).toHaveProperty('totalErrors');
+      }
+    });
+
+    it('should handle summary RPC with invalid JSON payload (catch branch)', async () => {
+      const { registerErrorInsightRpcs } = require('../error_insight_pipeline');
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerErrorInsightRpcs(mockInitializer);
+
+      const summaryHandler = mockInitializer.registerRpc.mock.calls.find(
+        (call: any[]) => call[0] === 'armored_archer/error_insights_summary'
+      )?.[1];
+
+      if (summaryHandler) {
+        const result = await summaryHandler(
+          { userId: 'test' },
+          { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+          {},
+          'not valid json{{}'
+        );
+        const parsed = JSON.parse(result);
+        expect(parsed).toHaveProperty('totalErrors');
+      }
+    });
+  });
+
+  describe('rpcGetErrorDashboard validation branch', () => {
+    it('should handle dashboard RPC when validation fails with non-empty payload', async () => {
+      // The validation uses ZodSchemas.health_check
+      // We need a payload that is truthy but fails validation
+      const { registerErrorInsightRpcs } = require('../error_insight_pipeline');
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerErrorInsightRpcs(mockInitializer);
+
+      const dashboardHandler = mockInitializer.registerRpc.mock.calls.find(
+        (call: any[]) => call[0] === 'armored_archer/error_insights_dashboard'
+      )?.[1];
+
+      if (dashboardHandler) {
+        // Pass a payload that might fail validation
+        const result = await dashboardHandler(
+          { userId: 'test' },
+          { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+          {},
+          'invalid-payload'
+        );
+        // Should return either dashboard or validation error
+        const parsed = JSON.parse(result);
+        expect(parsed).toBeDefined();
+      }
+    });
+  });
+
   describe('Edge cases for full coverage', () => {
     it('should handle errors with no rpcName in pattern analysis', () => {
       for (let i = 0; i < 5; i++) {

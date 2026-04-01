@@ -180,6 +180,72 @@ describe('health_monitor', () => {
 
       alertingConfig.healthAlerts.cpuCriticalPercent = 90;
     });
+
+    it('should report healthy as false when memory exceeds critical threshold', () => {
+      const { alertingConfig } = require('../../config/alerting');
+      // Set cpuCritical very high so cpu check passes, then memory check triggers
+      alertingConfig.healthAlerts.cpuCriticalPercent = 101;
+      alertingConfig.healthAlerts.memoryCriticalPercent = 0;
+
+      const status = getHealthStatus();
+      expect(status.healthy).toBe(false);
+
+      alertingConfig.healthAlerts.cpuCriticalPercent = 90;
+      alertingConfig.healthAlerts.memoryCriticalPercent = 90;
+    });
+
+    it('should report healthy as false when disk exceeds critical threshold', () => {
+      const { alertingConfig } = require('../../config/alerting');
+      alertingConfig.healthAlerts.cpuCriticalPercent = 101;
+      alertingConfig.healthAlerts.memoryCriticalPercent = 101;
+      alertingConfig.healthAlerts.diskCriticalPercent = 0;
+
+      const status = getHealthStatus();
+      expect(status.healthy).toBe(false);
+
+      alertingConfig.healthAlerts.cpuCriticalPercent = 90;
+      alertingConfig.healthAlerts.memoryCriticalPercent = 90;
+      alertingConfig.healthAlerts.diskCriticalPercent = 90;
+    });
+
+    it('should report healthy as false when db connections exceed critical threshold', () => {
+      const { alertingConfig } = require('../../config/alerting');
+      alertingConfig.healthAlerts.cpuCriticalPercent = 101;
+      alertingConfig.healthAlerts.memoryCriticalPercent = 101;
+      alertingConfig.healthAlerts.diskCriticalPercent = 101;
+      alertingConfig.healthAlerts.dbConnectionsCriticalPercent = 0;
+
+      const status = getHealthStatus();
+      expect(status.healthy).toBe(false);
+
+      alertingConfig.healthAlerts.cpuCriticalPercent = 90;
+      alertingConfig.healthAlerts.memoryCriticalPercent = 90;
+      alertingConfig.healthAlerts.diskCriticalPercent = 90;
+      alertingConfig.healthAlerts.dbConnectionsCriticalPercent = 90;
+    });
+
+    it('should set health status components correctly', async () => {
+      const { alertingConfig } = require('../../config/alerting');
+      alertingConfig.healthAlerts.cpuCriticalPercent = 0;
+
+      performHealthCheck();
+
+      const registry = getHealthRegistry();
+      const jsonMetrics = await registry.getMetricsAsJSON();
+      const healthStatusMetric = jsonMetrics.find(
+        (m: any) => m.name === 'armored_archer_health_status'
+      );
+
+      expect(healthStatusMetric).toBeDefined();
+      const values = (healthStatusMetric as any).values;
+      const overall = values.find((v: any) => v.labels.component === 'overall');
+      const cpu = values.find((v: any) => v.labels.component === 'cpu');
+
+      expect(overall.value).toBe(0);
+      expect(cpu.value).toBe(0);
+
+      alertingConfig.healthAlerts.cpuCriticalPercent = 90;
+    });
   });
 
   describe('stopHealthMonitoring', () => {
@@ -380,6 +446,151 @@ describe('health_monitor', () => {
       expect(typeof status.metrics.memoryUsage).toBe('number');
 
       (isAlertingEnabled as jest.Mock).mockReturnValue(false);
+    });
+
+    it('should trigger health alerts when thresholds are exceeded and alerting is enabled', () => {
+      const { isAlertingEnabled, alertingConfig } = require('../../config/alerting');
+      const { triggerHealthAlert } = require('../alerting');
+
+      (isAlertingEnabled as jest.Mock).mockReturnValue(true);
+      // Set low thresholds so real metrics trigger alerts
+      alertingConfig.healthAlerts.cpuCriticalPercent = 0;
+      alertingConfig.healthAlerts.cpuWarningPercent = 0;
+      alertingConfig.healthAlerts.memoryCriticalPercent = 0;
+      alertingConfig.healthAlerts.memoryWarningPercent = 0;
+      alertingConfig.healthAlerts.diskCriticalPercent = 0;
+      alertingConfig.healthAlerts.diskWarningPercent = 0;
+      alertingConfig.healthAlerts.dbConnectionsCriticalPercent = 0;
+      alertingConfig.healthAlerts.dbConnectionsWarningPercent = 0;
+      alertingConfig.healthAlerts.responseTimeCriticalMs = 0;
+      alertingConfig.healthAlerts.responseTimeWarningMs = 0;
+      alertingConfig.healthAlerts.errorRateCriticalPercent = 0;
+      alertingConfig.healthAlerts.errorRateWarningPercent = 0;
+
+      startHealthMonitoring(9999999);
+
+      expect(triggerHealthAlert).toHaveBeenCalled();
+
+      (isAlertingEnabled as jest.Mock).mockReturnValue(false);
+      alertingConfig.healthAlerts.cpuCriticalPercent = 90;
+      alertingConfig.healthAlerts.cpuWarningPercent = 80;
+      alertingConfig.healthAlerts.memoryCriticalPercent = 90;
+      alertingConfig.healthAlerts.memoryWarningPercent = 80;
+      alertingConfig.healthAlerts.diskCriticalPercent = 90;
+      alertingConfig.healthAlerts.diskWarningPercent = 80;
+      alertingConfig.healthAlerts.dbConnectionsCriticalPercent = 90;
+      alertingConfig.healthAlerts.dbConnectionsWarningPercent = 80;
+      alertingConfig.healthAlerts.responseTimeCriticalMs = 1000;
+      alertingConfig.healthAlerts.responseTimeWarningMs = 500;
+      alertingConfig.healthAlerts.errorRateCriticalPercent = 10;
+      alertingConfig.healthAlerts.errorRateWarningPercent = 5;
+    });
+
+    it('should trigger metric alerts when thresholds are exceeded', () => {
+      const { isAlertingEnabled, alertingConfig } = require('../../config/alerting');
+      const { triggerMetricAlert } = require('../alerting');
+
+      (isAlertingEnabled as jest.Mock).mockReturnValue(true);
+      alertingConfig.metricAlerts.activeConnectionsCritical = 0;
+      alertingConfig.metricAlerts.activeConnectionsWarning = 0;
+      alertingConfig.metricAlerts.matchQueueCritical = 0;
+      alertingConfig.metricAlerts.matchQueueWarning = 0;
+
+      startHealthMonitoring(9999999);
+
+      expect(triggerMetricAlert).toHaveBeenCalled();
+
+      (isAlertingEnabled as jest.Mock).mockReturnValue(false);
+      alertingConfig.metricAlerts.activeConnectionsCritical = 1000;
+      alertingConfig.metricAlerts.activeConnectionsWarning = 500;
+      alertingConfig.metricAlerts.matchQueueCritical = 100;
+      alertingConfig.metricAlerts.matchQueueWarning = 50;
+    });
+
+    it('should trigger only warning alerts when between warning and critical thresholds', () => {
+      const { isAlertingEnabled, alertingConfig } = require('../../config/alerting');
+      const { triggerHealthAlert } = require('../alerting');
+
+      (isAlertingEnabled as jest.Mock).mockReturnValue(true);
+      // Set warning to 0 but critical to 100 - metrics will exceed warning but not critical
+      alertingConfig.healthAlerts.cpuCriticalPercent = 100;
+      alertingConfig.healthAlerts.cpuWarningPercent = 0;
+      alertingConfig.healthAlerts.memoryCriticalPercent = 100;
+      alertingConfig.healthAlerts.memoryWarningPercent = 0;
+      alertingConfig.healthAlerts.diskCriticalPercent = 100;
+      alertingConfig.healthAlerts.diskWarningPercent = 0;
+      alertingConfig.healthAlerts.dbConnectionsCriticalPercent = 100;
+      alertingConfig.healthAlerts.dbConnectionsWarningPercent = 0;
+      alertingConfig.healthAlerts.responseTimeCriticalMs = 10000;
+      alertingConfig.healthAlerts.responseTimeWarningMs = 0;
+      alertingConfig.healthAlerts.errorRateCriticalPercent = 100;
+      alertingConfig.healthAlerts.errorRateWarningPercent = 0;
+
+      startHealthMonitoring(9999999);
+
+      // Should trigger warning-level alerts (not critical)
+      expect(triggerHealthAlert).toHaveBeenCalled();
+
+      (isAlertingEnabled as jest.Mock).mockReturnValue(false);
+      alertingConfig.healthAlerts.cpuCriticalPercent = 90;
+      alertingConfig.healthAlerts.cpuWarningPercent = 80;
+      alertingConfig.healthAlerts.memoryCriticalPercent = 90;
+      alertingConfig.healthAlerts.memoryWarningPercent = 80;
+      alertingConfig.healthAlerts.diskCriticalPercent = 90;
+      alertingConfig.healthAlerts.diskWarningPercent = 80;
+      alertingConfig.healthAlerts.dbConnectionsCriticalPercent = 90;
+      alertingConfig.healthAlerts.dbConnectionsWarningPercent = 80;
+      alertingConfig.healthAlerts.responseTimeCriticalMs = 1000;
+      alertingConfig.healthAlerts.responseTimeWarningMs = 500;
+      alertingConfig.healthAlerts.errorRateCriticalPercent = 10;
+      alertingConfig.healthAlerts.errorRateWarningPercent = 5;
+    });
+
+    it('should not trigger alerts when metrics are below thresholds', () => {
+      const { isAlertingEnabled, alertingConfig } = require('../../config/alerting');
+      const { triggerHealthAlert, triggerMetricAlert } = require('../alerting');
+
+      (isAlertingEnabled as jest.Mock).mockReturnValue(true);
+      // Set very high thresholds - no alerts should trigger
+      alertingConfig.healthAlerts.cpuCriticalPercent = 99;
+      alertingConfig.healthAlerts.cpuWarningPercent = 95;
+      alertingConfig.healthAlerts.memoryCriticalPercent = 99;
+      alertingConfig.healthAlerts.memoryWarningPercent = 95;
+      alertingConfig.healthAlerts.diskCriticalPercent = 99;
+      alertingConfig.healthAlerts.diskWarningPercent = 95;
+      alertingConfig.healthAlerts.dbConnectionsCriticalPercent = 99;
+      alertingConfig.healthAlerts.dbConnectionsWarningPercent = 95;
+      alertingConfig.healthAlerts.responseTimeCriticalMs = 10000;
+      alertingConfig.healthAlerts.responseTimeWarningMs = 5000;
+      alertingConfig.healthAlerts.errorRateCriticalPercent = 100;
+      alertingConfig.healthAlerts.errorRateWarningPercent = 95;
+      alertingConfig.metricAlerts.activeConnectionsCritical = 999999;
+      alertingConfig.metricAlerts.activeConnectionsWarning = 999999;
+      alertingConfig.metricAlerts.matchQueueCritical = 999999;
+      alertingConfig.metricAlerts.matchQueueWarning = 999999;
+
+      startHealthMonitoring(9999999);
+
+      expect(triggerHealthAlert).not.toHaveBeenCalled();
+      expect(triggerMetricAlert).not.toHaveBeenCalled();
+
+      (isAlertingEnabled as jest.Mock).mockReturnValue(false);
+      alertingConfig.healthAlerts.cpuCriticalPercent = 90;
+      alertingConfig.healthAlerts.cpuWarningPercent = 80;
+      alertingConfig.healthAlerts.memoryCriticalPercent = 90;
+      alertingConfig.healthAlerts.memoryWarningPercent = 80;
+      alertingConfig.healthAlerts.diskCriticalPercent = 90;
+      alertingConfig.healthAlerts.diskWarningPercent = 80;
+      alertingConfig.healthAlerts.dbConnectionsCriticalPercent = 90;
+      alertingConfig.healthAlerts.dbConnectionsWarningPercent = 80;
+      alertingConfig.healthAlerts.responseTimeCriticalMs = 1000;
+      alertingConfig.healthAlerts.responseTimeWarningMs = 500;
+      alertingConfig.healthAlerts.errorRateCriticalPercent = 10;
+      alertingConfig.healthAlerts.errorRateWarningPercent = 5;
+      alertingConfig.metricAlerts.activeConnectionsCritical = 1000;
+      alertingConfig.metricAlerts.activeConnectionsWarning = 500;
+      alertingConfig.metricAlerts.matchQueueCritical = 100;
+      alertingConfig.metricAlerts.matchQueueWarning = 50;
     });
   });
 });

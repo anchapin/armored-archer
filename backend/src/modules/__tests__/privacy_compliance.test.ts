@@ -114,6 +114,38 @@ describe('Privacy Compliance Module', () => {
 
         expect(detections.length).toBeGreaterThanOrEqual(2);
       });
+
+      it('should detect DEVICE_ID patterns', () => {
+        const text = 'device_id="a1b2c3d4-e5f6-7890-abcd-ef1234567890"';
+        const detections = scanForPII(text, [PIIType.DEVICE_ID]);
+
+        expect(detections.length).toBeGreaterThanOrEqual(1);
+        expect(detections[0].type).toBe(PIIType.DEVICE_ID);
+      });
+
+      it('should detect AUTH_TOKEN patterns', () => {
+        const text = 'token="eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123"';
+        const detections = scanForPII(text, [PIIType.AUTH_TOKEN]);
+
+        expect(detections.length).toBeGreaterThanOrEqual(1);
+        expect(detections[0].type).toBe(PIIType.AUTH_TOKEN);
+      });
+
+      it('should detect SESSION_ID patterns', () => {
+        const text = 'session_id="abcdef1234567890abcdef1234567890"';
+        const detections = scanForPII(text, [PIIType.SESSION_ID]);
+
+        expect(detections.length).toBeGreaterThanOrEqual(1);
+        expect(detections[0].type).toBe(PIIType.SESSION_ID);
+      });
+
+      it('should detect PASSWORD patterns', () => {
+        const text = 'password="mySecretP@ss123"';
+        const detections = scanForPII(text, [PIIType.PASSWORD]);
+
+        expect(detections.length).toBeGreaterThanOrEqual(1);
+        expect(detections[0].type).toBe(PIIType.PASSWORD);
+      });
     });
 
     describe('containsPII', () => {
@@ -262,6 +294,13 @@ describe('Privacy Compliance Module', () => {
         expect(classification.piiFields).toHaveLength(0);
         expect(classification.restrictedFields).toHaveLength(0);
       });
+
+      it('should classify INTERNAL level overriding PUBLIC', () => {
+        const data = { match_history: 'data' };
+        const classification = classifyData(data);
+
+        expect(classification.level).toBe(SensitivityLevel.INTERNAL);
+      });
     });
   });
 
@@ -307,6 +346,22 @@ describe('Privacy Compliance Module', () => {
         expect(ccpaWarning).toBeDefined();
       });
 
+      it('should NOT emit CCPA warning when opt-out field is present', () => {
+        const data = { phone: '555-123-4567', opt_out: true };
+        const result = checkPrivacyCompliance(data);
+
+        const ccpaWarning = result.warnings.find((w) => w.toLowerCase().includes('ccpa'));
+        expect(ccpaWarning).toBeUndefined();
+      });
+
+      it('should NOT emit CCPA warning when ccpa field is present', () => {
+        const data = { email: 'user@example.com', ccpa_consent: true };
+        const result = checkPrivacyCompliance(data);
+
+        const ccpaWarning = result.warnings.find((w) => w.toLowerCase().includes('ccpa'));
+        expect(ccpaWarning).toBeUndefined();
+      });
+
       it('should return compliant for null input', () => {
         const result = checkPrivacyCompliance(null);
 
@@ -328,6 +383,27 @@ describe('Privacy Compliance Module', () => {
           w.toLowerCase().includes('encryption')
         );
         expect(encryptionWarning).toBeDefined();
+      });
+
+      it('should NOT warn about encryption when encrypted field is present', () => {
+        const data = { password: 'secret', encrypted_data: 'aes256:...' };
+        const result = checkPrivacyCompliance(data);
+
+        const encryptionWarning = result.warnings.find((w) =>
+          w.toLowerCase().includes('encryption')
+        );
+        expect(encryptionWarning).toBeUndefined();
+      });
+
+      it('should warn about large data volume in restricted fields', () => {
+        const largeValue = 'x'.repeat(10001);
+        const data = { password: { value: largeValue } };
+        const result = checkPrivacyCompliance(data);
+
+        const volumeWarning = result.warnings.find((w) =>
+          w.toLowerCase().includes('large data volume')
+        );
+        expect(volumeWarning).toBeDefined();
       });
     });
 
@@ -385,6 +461,26 @@ describe('Privacy Compliance Module', () => {
         expect(result).toBeDefined();
         const highIssues = result.issues.filter((i) => i.severity === 'high');
         expect(highIssues.length).toBeGreaterThan(0);
+      });
+
+      it('should flag critical issue for persist operation (alias for store)', () => {
+        const data = { password: 'secret' };
+        const result = validateDataHandling('persist', data);
+
+        expect(result.compliant).toBe(false);
+        const criticalIssues = result.issues.filter((i) => i.severity === 'critical');
+        expect(criticalIssues.length).toBeGreaterThan(0);
+        expect(result.issues[0].type).toBe('storage_compliance');
+      });
+
+      it('should flag critical for send operation (alias for transmit)', () => {
+        const data = { auth_token: 'abc123' };
+        const result = validateDataHandling('send', data);
+
+        expect(result.compliant).toBe(false);
+        const criticalIssues = result.issues.filter((i) => i.severity === 'critical');
+        expect(criticalIssues.length).toBeGreaterThan(0);
+        expect(result.issues[0].type).toBe('transmission_compliance');
       });
     });
   });

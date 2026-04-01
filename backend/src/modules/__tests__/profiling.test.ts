@@ -14,6 +14,7 @@ import {
   clearProfileData,
   resetProfiling,
   wrapRpcWithProfiling,
+  registerRpcWithProfiling,
   profileMethod,
   profileCriticalPath,
   initializeProfiling,
@@ -393,5 +394,191 @@ describe('initializeProfiling and logProfileReport', () => {
 
   test('logProfileReport should not throw', () => {
     expect(() => logProfileReport()).not.toThrow();
+  });
+});
+
+describe('registerRpcWithProfiling', () => {
+  beforeEach(() => {
+    resetProfiling({ enabled: true, slowThresholdMs: 1000, logSlowOperations: false });
+  });
+
+  test('should register handler via initializer', () => {
+    const mockRegisterRpc = jest.fn();
+    const mockInitializer = { registerRpc: mockRegisterRpc } as any;
+    const handler = (_ctx: any, _logger: any, _nk: any, payload: string) => `result: ${payload}`;
+
+    registerRpcWithProfiling(mockInitializer, 'my_rpc', 'my_rpc', handler);
+
+    expect(mockRegisterRpc).toHaveBeenCalledTimes(1);
+    expect(mockRegisterRpc).toHaveBeenCalledWith('my_rpc', expect.any(Function));
+  });
+
+  test('registered handler should be wrapped with profiling', async () => {
+    let capturedHandler: any;
+    const mockRegisterRpc = (_id: string, handler: any) => {
+      capturedHandler = handler;
+    };
+    const mockInitializer = { registerRpc: mockRegisterRpc } as any;
+    const handler = (_ctx: any, _logger: any, _nk: any, payload: string) => `echo: ${payload}`;
+
+    registerRpcWithProfiling(mockInitializer, 'wrapped_rpc', 'wrapped_rpc', handler);
+
+    const result = await capturedHandler({} as any, {} as any, {} as any, 'test');
+    expect(result).toBe('echo: test');
+
+    const data = getProfileData('rpc.wrapped_rpc');
+    expect(data).not.toBeNull();
+    expect(data?.callCount).toBe(1);
+  });
+
+  test('registered handler should track errors', async () => {
+    let capturedHandler: any;
+    const mockRegisterRpc = (_id: string, handler: any) => {
+      capturedHandler = handler;
+    };
+    const mockInitializer = { registerRpc: mockRegisterRpc } as any;
+    const handler = () => {
+      throw new Error('handler error');
+    };
+
+    registerRpcWithProfiling(mockInitializer, 'error_rpc2', 'error_rpc2', handler);
+
+    await expect(capturedHandler({} as any, {} as any, {} as any, '')).rejects.toThrow('handler error');
+
+    const data = getProfileData('rpc.error_rpc2');
+    expect(data?.errors).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('Slow operation logging', () => {
+  beforeEach(() => {
+    clearProfileData();
+    setProfilingConfig({ enabled: true, slowThresholdMs: 1, logSlowOperations: true });
+  });
+
+  afterEach(() => {
+    resetProfiling({ logSlowOperations: false });
+  });
+
+  test('profileSync should log slow operations when logSlowOperations is enabled', () => {
+    const { logger: mockLogger } = require('../../config/logger');
+    mockLogger.info.mockClear();
+
+    profileSync('slow_sync_op', () => {
+      // Busy-wait to exceed 1ms threshold
+      const start = Date.now();
+      while (Date.now() - start < 5) {}
+      return true;
+    });
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      expect.stringContaining('Slow operation: slow_sync_op')
+    );
+  });
+
+  test('profileAsync should log slow operations when logSlowOperations is enabled', async () => {
+    const { logger: mockLogger } = require('../../config/logger');
+    mockLogger.info.mockClear();
+
+    await profileAsync('slow_async_op', async () => {
+      await new Promise(r => setTimeout(r, 5));
+      return true;
+    });
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      expect.stringContaining('Slow operation: slow_async_op')
+    );
+  });
+
+  test('profileSync should not log when operation is fast', () => {
+    const { logger: mockLogger } = require('../../config/logger');
+    mockLogger.info.mockClear();
+
+    profileSync('fast_op', () => 42);
+
+    const slowCalls = mockLogger.info.mock.calls.filter((c: any[]) =>
+      c[0]?.includes?.('Slow operation')
+    );
+    expect(slowCalls.length).toBe(0);
+  });
+});
+
+describe('profileFunction sync path', () => {
+  beforeEach(() => {
+    resetProfiling({ enabled: true, slowThresholdMs: 1000, logSlowOperations: false });
+  });
+
+  test('should take sync path for regular functions', async () => {
+    const syncFn = () => 'sync_result';
+    // Verify it's not an AsyncFunction
+    expect(syncFn.constructor.name).not.toBe('AsyncFunction');
+
+    const result = await profileFunction('sync_path_test', syncFn);
+    expect(result).toBe('sync_result');
+
+    const data = getProfileData('sync_path_test');
+    expect(data).not.toBeNull();
+    expect(data?.callCount).toBe(1);
+  });
+
+  test('should take async path for arrow async functions', async () => {
+    const asyncFn = async () => 'async_result';
+    // Arrow async functions have constructor.name 'AsyncFunction'
+    expect(asyncFn.constructor.name).toBe('AsyncFunction');
+
+    const result = await profileFunction('async_path_test', asyncFn);
+    expect(result).toBe('async_result');
+
+    const data = getProfileData('async_path_test');
+    expect(data).not.toBeNull();
+    expect(data?.callCount).toBe(1);
+  });
+});
+
+describe('profileCriticalPath start and end edge cases', () => {
+  beforeEach(() => {
+    resetProfiling({ enabled: true, slowThresholdMs: 1000, logSlowOperations: false });
+  });
+
+  test('start should be callable without error', () => {
+    const path = profileCriticalPath('start_test');
+    expect(() => path.start()).not.toThrow();
+  });
+
+  test('start after end should be a no-op', () => {
+    const path = profileCriticalPath('start_after_end');
+    path.end();
+    const dataBefore = getProfileData('critical.start_after_end');
+    const countBefore = dataBefore?.callCount ?? 0;
+
+    // start() after end() should do nothing
+    path.start();
+
+    const dataAfter = getProfileData('critical.start_after_end');
+    expect(dataAfter?.callCount).toBe(countBefore);
+  });
+
+  test('start when profiling disabled should be a no-op', () => {
+    setProfilingEnabled(false);
+    const path = profileCriticalPath('disabled_start');
+    path.start();
+    // No data should be recorded
+    expect(getProfileData('critical.disabled_start')).toBeNull();
+  });
+
+  test('end when profiling disabled should not record', () => {
+    setProfilingEnabled(false);
+    const path = profileCriticalPath('disabled_end');
+    path.end();
+    expect(getProfileData('critical.disabled_end')).toBeNull();
+  });
+
+  test('getDuration should return positive value after start', () => {
+    const path = profileCriticalPath('duration_after_start');
+    path.start();
+    const start = Date.now();
+    while (Date.now() - start < 2) {}
+    const duration = path.getDuration();
+    expect(duration).toBeGreaterThanOrEqual(0);
   });
 });

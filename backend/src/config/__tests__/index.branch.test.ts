@@ -1,4 +1,4 @@
-import { validateRequiredConfig } from '../index';
+import { validateRequiredConfig, maskSecret, logConfiguration } from '../index';
 
 describe('config/index branch coverage', () => {
   beforeEach(() => {
@@ -117,5 +117,40 @@ describe('config/index branch coverage', () => {
     expect(config).toHaveProperty('match');
     expect(config).toHaveProperty('metrics');
     expect(config).toHaveProperty('rateLimit');
+  });
+
+  describe('maskSecret', () => {
+    it('should return empty string for falsy value', () => {
+      expect(maskSecret('')).toBe('');
+    });
+
+    it('should return *** for short values (<=8 chars)', () => {
+      expect(maskSecret('abc')).toBe('***');
+      expect(maskSecret('12345678')).toBe('***');
+    });
+
+    it('should mask long values with first 4 and last 4 chars', () => {
+      expect(maskSecret('123456789')).toBe('1234...6789');
+      expect(maskSecret('sk_test_abcdefghij')).toBe('sk_t...ghij');
+    });
+  });
+
+  describe('logConfiguration', () => {
+    it('should call logger.info with configuration details', () => {
+      const mockLogger = {
+        info: jest.fn(),
+      };
+      logConfiguration(mockLogger);
+
+      expect(mockLogger.info).toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith('=== Configuration ===');
+      expect(mockLogger.info).toHaveBeenCalledWith('Environment: %s', expect.any(String));
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Server: host=%s, port=%d, console_port=%d',
+        expect.any(String),
+        expect.any(Number),
+        expect.any(Number)
+      );
+    });
   });
 });

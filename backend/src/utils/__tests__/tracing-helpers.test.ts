@@ -2,7 +2,7 @@
  * Tests for tracing-helpers utility
  */
 
-import { withSpanAsync, withSpanSync, setNakamaContextAttributes } from '../tracing-helpers';
+import { withSpanAsync, withSpanSync, withActiveSpanAsync, setNakamaContextAttributes } from '../tracing-helpers';
 
 // Mock OpenTelemetry
 jest.mock('@opentelemetry/api', () => ({
@@ -29,6 +29,11 @@ jest.mock('@opentelemetry/api', () => ({
     OK: 0,
     ERROR: 1,
   },
+  SpanKind: {
+    INTERNAL: 1,
+    SERVER: 2,
+    CLIENT: 3,
+  },
 }));
 
 jest.mock('../../config', () => ({
@@ -47,14 +52,14 @@ describe('tracing-helpers', () => {
 
   describe('withSpanAsync', () => {
     it('should execute function and return result', async () => {
-      const result = await withSpanAsync('test_span', async (span) => {
+      const result = await withSpanAsync('test_span', async () => {
         return 'success';
       });
       expect(result).toBe('success');
     });
 
     it('should set OK status on success', async () => {
-      await withSpanAsync('test_span', async (span) => 'ok');
+      await withSpanAsync('test_span', async () => 'ok');
     });
 
     it('should handle errors and set ERROR status', async () => {
@@ -65,11 +70,37 @@ describe('tracing-helpers', () => {
       ).rejects.toThrow('test error');
     });
 
+    it('should handle non-Error thrown values', async () => {
+      await expect(
+        withSpanAsync('test_span', async () => {
+          throw 'string error';
+        })
+      ).rejects.toBe('string error');
+    });
+
     it('should accept options with attributes', async () => {
       const result = await withSpanAsync(
         'test_span',
         async () => 'result',
         { attributes: { key: 'value' } }
+      );
+      expect(result).toBe('result');
+    });
+
+    it('should accept options with kind', async () => {
+      const result = await withSpanAsync(
+        'test_span',
+        async () => 'result',
+        { kind: 2 }
+      );
+      expect(result).toBe('result');
+    });
+
+    it('should accept options with both kind and attributes', async () => {
+      const result = await withSpanAsync(
+        'test_span',
+        async () => 'result',
+        { kind: 1, attributes: { foo: 'bar', count: 42, flag: true } }
       );
       expect(result).toBe('result');
     });
@@ -87,6 +118,57 @@ describe('tracing-helpers', () => {
           throw new Error('sync error');
         })
       ).toThrow('sync error');
+    });
+
+    it('should handle non-Error thrown values in sync', () => {
+      expect(() =>
+        withSpanSync('test_span', () => {
+          throw 'sync string error';
+        })
+      ).toThrow('sync string error');
+    });
+
+    it('should accept options with kind and attributes', () => {
+      const result = withSpanSync(
+        'test_span',
+        () => 'ok',
+        { kind: 3, attributes: { key: 'val' } }
+      );
+      expect(result).toBe('ok');
+    });
+  });
+
+  describe('withActiveSpanAsync', () => {
+    it('should execute function within active span and return result', async () => {
+      const result = await withActiveSpanAsync('active_span', async () => {
+        return 'active_result';
+      });
+      expect(result).toBe('active_result');
+    });
+
+    it('should handle errors and set ERROR status', async () => {
+      await expect(
+        withActiveSpanAsync('active_span', async () => {
+          throw new Error('active error');
+        })
+      ).rejects.toThrow('active error');
+    });
+
+    it('should handle non-Error thrown values', async () => {
+      await expect(
+        withActiveSpanAsync('active_span', async () => {
+          throw 42;
+        })
+      ).rejects.toBe(42);
+    });
+
+    it('should pass span to the callback', async () => {
+      const result = await withActiveSpanAsync('active_span', async (span) => {
+        expect(span).toBeDefined();
+        expect(typeof span.setStatus).toBe('function');
+        return 'with_span';
+      });
+      expect(result).toBe('with_span');
     });
   });
 

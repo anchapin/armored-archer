@@ -40,6 +40,7 @@ import {
   getDeploymentRegistry,
   getDeploymentState,
   initializeDeploymentObservability,
+  registerDeploymentObservability,
 } from '../deployment_observability';
 
 describe('deployment_observability', () => {
@@ -370,6 +371,380 @@ describe('deployment_observability', () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
         expect.stringContaining('1.0.0')
       );
+    });
+  });
+
+  describe('registerDeploymentObservability', () => {
+    it('should register all 4 deployment RPC handlers', () => {
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      };
+
+      registerDeploymentObservability(mockInitializer as any);
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledTimes(4);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/deployment_record',
+        expect.any(Function)
+      );
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/deployment_health',
+        expect.any(Function)
+      );
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/deployment_history',
+        expect.any(Function)
+      );
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/deployment_metrics',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('RPC handlers', () => {
+    let rpcHandlers: Record<string, Function>;
+
+    beforeEach(() => {
+      rpcHandlers = {};
+      const mockInitializer = {
+        registerRpc: jest.fn((id: string, handler: Function) => {
+          rpcHandlers[id] = handler;
+        }),
+      };
+      registerDeploymentObservability(mockInitializer as any);
+    });
+
+    describe('rpcRecordDeployment', () => {
+      it('should return error for invalid payload', async () => {
+        const { validatePayload } = require('../validation');
+        validatePayload.mockReturnValue({ success: false, error: 'Invalid' });
+
+        const result = await rpcHandlers['armored_archer/deployment_record'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          'invalid'
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(false);
+      });
+
+      it('should record deployment on valid payload', async () => {
+        const { validatePayload } = require('../validation');
+        validatePayload.mockReturnValue({
+          success: true,
+          data: {
+            environment: 'production',
+            version: '1.0.0',
+            status: 'success',
+            metadata: {},
+          },
+        });
+
+        const result = await rpcHandlers['armored_archer/deployment_record'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          '{}'
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(true);
+        expect(parsed.environment).toBe('production');
+        expect(parsed.version).toBe('1.0.0');
+      });
+
+      it('should record duration when startedAt in metadata and status is terminal', async () => {
+        const { validatePayload } = require('../validation');
+        validatePayload.mockReturnValue({
+          success: true,
+          data: {
+            environment: 'production',
+            version: '1.0.0',
+            status: 'success',
+            metadata: { startedAt: String(Date.now() - 5000) },
+          },
+        });
+
+        const result = await rpcHandlers['armored_archer/deployment_record'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          '{}'
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(true);
+      });
+
+      it('should update health status to healthy on success', async () => {
+        const { validatePayload } = require('../validation');
+        validatePayload.mockReturnValue({
+          success: true,
+          data: {
+            environment: 'production',
+            version: '1.0.0',
+            status: 'success',
+            metadata: {},
+          },
+        });
+
+        await rpcHandlers['armored_archer/deployment_record'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          '{}'
+        );
+
+        const registry = getDeploymentRegistry();
+        const metrics = await registry.getMetricsAsJSON();
+        const healthMetric = metrics.find(
+          (m: any) => m.name === 'armored_archer_deployment_health_status'
+        );
+        const values = (healthMetric as any).values;
+        const deploymentHealth = values.find(
+          (v: any) =>
+            v.labels.environment === 'production' && v.labels.component === 'deployment'
+        );
+        expect(deploymentHealth.value).toBe(1);
+      });
+
+      it('should update health status to unhealthy on failure', async () => {
+        const { validatePayload } = require('../validation');
+        validatePayload.mockReturnValue({
+          success: true,
+          data: {
+            environment: 'production',
+            version: '1.0.0',
+            status: 'failed',
+            metadata: {},
+          },
+        });
+
+        await rpcHandlers['armored_archer/deployment_record'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          '{}'
+        );
+
+        const registry = getDeploymentRegistry();
+        const metrics = await registry.getMetricsAsJSON();
+        const healthMetric = metrics.find(
+          (m: any) => m.name === 'armored_archer_deployment_health_status'
+        );
+        const values = (healthMetric as any).values;
+        const deploymentHealth = values.find(
+          (v: any) =>
+            v.labels.environment === 'production' && v.labels.component === 'deployment'
+        );
+        expect(deploymentHealth.value).toBe(0);
+      });
+
+      it('should not record duration when startedAt is missing', async () => {
+        const { validatePayload } = require('../validation');
+        validatePayload.mockReturnValue({
+          success: true,
+          data: {
+            environment: 'production',
+            version: '1.0.0',
+            status: 'success',
+            metadata: {},
+          },
+        });
+
+        const result = await rpcHandlers['armored_archer/deployment_record'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          '{}'
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(true);
+      });
+
+      it('should not update health for rollback status', async () => {
+        const { validatePayload } = require('../validation');
+        validatePayload.mockReturnValue({
+          success: true,
+          data: {
+            environment: 'production',
+            version: '1.0.0',
+            status: 'rollback',
+            metadata: {},
+          },
+        });
+
+        const result = await rpcHandlers['armored_archer/deployment_record'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          '{}'
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(true);
+      });
+    });
+
+    describe('rpcDeploymentHealth', () => {
+      it('should return error for invalid payload', async () => {
+        const { validatePayload } = require('../validation');
+        validatePayload.mockReturnValue({ success: false, error: 'Invalid' });
+
+        const result = await rpcHandlers['armored_archer/deployment_health'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          'invalid'
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(false);
+      });
+
+      it('should return health status with components', async () => {
+        const { validatePayload } = require('../validation');
+        validatePayload.mockReturnValue({ success: true, data: {} });
+
+        const result = await rpcHandlers['armored_archer/deployment_health'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          '{}'
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed).toHaveProperty('status');
+        expect(parsed).toHaveProperty('environment');
+        expect(parsed).toHaveProperty('version');
+        expect(parsed).toHaveProperty('timestamp');
+        expect(parsed).toHaveProperty('components');
+      });
+
+      it('should report healthy when no components set', async () => {
+        const { validatePayload } = require('../validation');
+        validatePayload.mockReturnValue({ success: true, data: {} });
+
+        const result = await rpcHandlers['armored_archer/deployment_health'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          '{}'
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed.status).toBe('healthy');
+      });
+    });
+
+    describe('rpcDeploymentHistory', () => {
+      it('should return deployment history with default limit', async () => {
+        const result = await rpcHandlers['armored_archer/deployment_history'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          '{}'
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed).toHaveProperty('environment');
+        expect(parsed).toHaveProperty('deployments');
+        expect(parsed).toHaveProperty('count');
+        expect(Array.isArray(parsed.deployments)).toBe(true);
+      });
+
+      it('should accept custom limit from payload', async () => {
+        const result = await rpcHandlers['armored_archer/deployment_history'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          JSON.stringify({ limit: 5 })
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed.deployments.length).toBeLessThanOrEqual(5);
+      });
+
+      it('should handle invalid JSON payload gracefully', async () => {
+        const result = await rpcHandlers['armored_archer/deployment_history'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          'not json'
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed).toHaveProperty('deployments');
+      });
+
+      it('should handle null payload', async () => {
+        const result = await rpcHandlers['armored_archer/deployment_history'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          null as any
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed).toHaveProperty('deployments');
+      });
+
+      it('should return deployments sorted by startedAt descending', async () => {
+        // Record some deployments first
+        recordDeployment('test', '1.0.0', 'started');
+        recordDeployment('test', '2.0.0', 'started');
+
+        const result = await rpcHandlers['armored_archer/deployment_history'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          '{}'
+        );
+
+        const parsed = JSON.parse(result);
+        // Deployments should be sorted most recent first
+        for (let i = 1; i < parsed.deployments.length; i++) {
+          expect(parsed.deployments[i - 1].startedAt).toBeGreaterThanOrEqual(
+            parsed.deployments[i].startedAt
+          );
+        }
+      });
+    });
+
+    describe('rpcDeploymentMetrics', () => {
+      it('should return error for invalid payload', async () => {
+        const { validatePayload } = require('../validation');
+        validatePayload.mockReturnValue({ success: false, error: 'Invalid' });
+
+        const result = await rpcHandlers['armored_archer/deployment_metrics'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          'invalid'
+        );
+
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(false);
+      });
+
+      it('should return Prometheus metrics on valid payload', async () => {
+        const { validatePayload } = require('../validation');
+        validatePayload.mockReturnValue({ success: true, data: {} });
+
+        const result = await rpcHandlers['armored_archer/deployment_metrics'](
+          {},
+          { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+          {},
+          '{}'
+        );
+
+        expect(typeof result).toBe('string');
+        expect(result).toContain('armored_archer_');
+      });
     });
   });
 });

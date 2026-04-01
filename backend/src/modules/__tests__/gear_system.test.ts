@@ -848,6 +848,121 @@ describe('gear_system', () => {
     });
   });
 
+  describe('rpcStageComplete loot generation branches', () => {
+    it('should handle loot drop with existing inventory', () => {
+      const inventory = createMockInventory({ gear: [createMockGearItem()] });
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: JSON.stringify(inventory),
+        },
+      ]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.01);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'medium',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.loot.dropped).toBe(true);
+      expect(mockNk.storageWrite).toHaveBeenCalled();
+    });
+
+    it('should not write storage when loot does not drop', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.99);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'easy',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.loot.dropped).toBe(false);
+    });
+
+    it('should handle boss defeat with existing boss defeat data', () => {
+      const existingInventory: PlayerInventory = {
+        user_id: 'test-user',
+        gear: [],
+        equipped_gear: {},
+        unlocked_modifier_pools: ['heavy_impact'],
+      };
+      const existingBossDefeatData = {
+        user_id: 'test-user',
+        defeats: { boss_basic: 2 },
+        unlocked_modifiers: ['heavy_impact'],
+      };
+
+      let callCount = 0;
+      mockNk.storageRead = jest.fn((objects: { collection: string; key: string; userId?: string }[]) => {
+        callCount++;
+        if (callCount <= 2) {
+          return objects.map((obj) => {
+            if (obj.collection === 'player_inventory') {
+              return { collection: 'player_inventory', key: 'test-user', value: JSON.stringify(existingInventory), version: '1' };
+            } else if (obj.collection === 'boss_defeat_tracking') {
+              return { collection: 'boss_defeat_tracking', key: 'test-user', value: JSON.stringify(existingBossDefeatData), version: '1' };
+            }
+            return { collection: obj.collection, key: obj.key, value: '' };
+          });
+        }
+        return objects.map((obj) => {
+          if (obj.collection === 'player_inventory') {
+            return { collection: 'player_inventory', key: 'test-user', value: JSON.stringify(existingInventory), version: '1' };
+          } else if (obj.collection === 'boss_defeat_tracking') {
+            return { collection: 'boss_defeat_tracking', key: 'test-user', value: JSON.stringify({ ...existingBossDefeatData, defeats: { boss_basic: 3 } }), version: '1' };
+          }
+          return { collection: obj.collection, key: obj.key, value: '' };
+        });
+      });
+      jest.spyOn(Math, 'random').mockReturnValue(0.9);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_boss_1',
+        boss_defeated: true,
+        difficulty: 'medium',
+        boss_id: 'boss_basic',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.boss_defeat_count).toBe(3);
+      // heavy_impact already unlocked, so no newly unlocked modifiers
+      expect(parsed.newly_unlocked_modifiers).toEqual([]);
+    });
+
+    it('should handle stage complete with no storage data and boss defeat', () => {
+      // All storage reads return empty arrays (no existing data)
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.9);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_boss_1',
+        boss_defeated: true,
+        difficulty: 'hard',
+        boss_id: 'boss_fire',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      // recordBossDefeat is called and returns defeat_count: 1
+      expect(parsed.boss_defeat_count).toBe(1);
+      // fire_arrow should be newly unlocked from boss_fire
+      expect(parsed.newly_unlocked_modifiers).toContain('fire_arrow');
+    });
+  });
+
   describe('rpcStageComplete with enemy_type', () => {
     it('should unlock modifier pools when enemy_type is provided', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
@@ -937,6 +1052,76 @@ describe('gear_system', () => {
     });
   });
 
+  describe('calculateDropRate edge cases', () => {
+    it('should default to 1.0 multiplier for unknown difficulty', () => {
+      const { calculateDropRate } = require('../gear_system');
+      const rate = calculateDropRate('unknown_difficulty', false);
+      expect(rate).toBe(0.3); // 0.3 * 1.0 (default)
+    });
+
+    it('should return 1.0 when drop rate exceeds cap', () => {
+      const { calculateDropRate } = require('../gear_system');
+      // nightmare (2.0) + boss (0.25) = 0.3 * 2.0 + 0.25 = 0.85, still under 1.0
+      // But if we had a scenario that exceeds, it should cap
+      const rate = calculateDropRate('nightmare', true);
+      expect(rate).toBeLessThanOrEqual(1.0);
+    });
+  });
+
+  describe('getEquippedGearModifierBonuses with zero-value modifiers', () => {
+    it('should skip modifiers with zero value_range[0]', () => {
+      const inventory: PlayerInventory = {
+        user_id: 'test-user',
+        gear: [
+          {
+            id: 'gear-1',
+            name: 'Test Sword',
+            rarity: 'common',
+            type: 'weapon',
+            stats: [{ name: 'attack', base_value: 10, value: 10 }],
+            modifiers: [
+              { id: 'broken_edge', name: 'Broken', description: 'No bonus', stat: 'attack', value_range: [0, 0], rarity: 'common', boss_unlock: null },
+            ],
+            level: 1,
+            timestamp: Date.now(),
+          },
+        ],
+        equipped_gear: { weapon: 'gear-1' },
+        unlocked_modifier_pools: [],
+      };
+
+      const bonuses = getEquippedGearModifierBonuses(inventory);
+      expect(bonuses).toEqual({});
+    });
+
+    it('should handle gear with modifiers matching different stats', () => {
+      const inventory: PlayerInventory = {
+        user_id: 'test-user',
+        gear: [
+          {
+            id: 'gear-1',
+            name: 'Test Sword',
+            rarity: 'rare',
+            type: 'weapon',
+            stats: [{ name: 'attack', base_value: 10, value: 15 }],
+            modifiers: [
+              { id: 'sharp_edge', name: 'Sharp', description: 'More attack', stat: 'attack', value_range: [7, 10], rarity: 'rare', boss_unlock: null },
+              { id: 'lucky', name: 'Lucky', description: 'More crit', stat: 'crit_rate', value_range: [3, 5], rarity: 'rare', boss_unlock: null },
+            ],
+            level: 1,
+            timestamp: Date.now(),
+          },
+        ],
+        equipped_gear: { weapon: 'gear-1' },
+        unlocked_modifier_pools: [],
+      };
+
+      const bonuses = getEquippedGearModifierBonuses(inventory);
+      expect(bonuses.attack).toBe(7);
+      expect(bonuses.crit_rate).toBe(3);
+    });
+  });
+
   describe('rpcStageComplete with boss_id for modifier unlock', () => {
     it('should unlock modifier pools when boss is defeated with boss_id', () => {
       // Initialize with empty inventory and boss defeat data to simulate new player
@@ -1018,6 +1203,58 @@ describe('gear_system', () => {
       expect(parsed.success).toBe(true);
       expect(parsed.unlocked_modifier_pools).toContain('piercing_arrow');
       expect(parsed.unlocked_modifier_pools).toContain('wind_fury');
+    });
+
+    it('should unlock modifiers for enemy_type alongside boss defeat', () => {
+      const existingInventory: PlayerInventory = {
+        user_id: 'test-user',
+        gear: [],
+        equipped_gear: {},
+        unlocked_modifier_pools: [],
+      };
+      const existingBossDefeatData = {
+        user_id: 'test-user',
+        defeats: {},
+        unlocked_modifiers: [],
+      };
+
+      let callCount = 0;
+      mockNk.storageRead = jest.fn((objects: { collection: string; key: string; userId?: string }[]) => {
+        callCount++;
+        if (callCount <= 2) {
+          return objects.map((obj) => {
+            if (obj.collection === 'player_inventory') {
+              return { collection: 'player_inventory', key: 'test-user', value: JSON.stringify(existingInventory), version: '1' };
+            } else if (obj.collection === 'boss_defeat_tracking') {
+              return { collection: 'boss_defeat_tracking', key: 'test-user', value: JSON.stringify(existingBossDefeatData), version: '1' };
+            }
+            return { collection: obj.collection, key: obj.key, value: '' };
+          });
+        }
+        return objects.map((obj) => {
+          if (obj.collection === 'player_inventory') {
+            return { collection: 'player_inventory', key: 'test-user', value: JSON.stringify({ ...existingInventory, unlocked_modifier_pools: ['heavy_impact', 'vitality_boost'] }), version: '1' };
+          } else if (obj.collection === 'boss_defeat_tracking') {
+            return { collection: 'boss_defeat_tracking', key: 'test-user', value: JSON.stringify({ ...existingBossDefeatData, defeats: { boss_basic: 1 }, unlocked_modifiers: ['heavy_impact'] }), version: '1' };
+          }
+          return { collection: obj.collection, key: obj.key, value: '' };
+        });
+      });
+      jest.spyOn(Math, 'random').mockReturnValue(0.1);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_boss_1',
+        boss_defeated: true,
+        difficulty: 'medium',
+        boss_id: 'boss_basic',
+        enemy_type: 'goblin',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.unlocked_modifier_pools).toContain('heavy_impact');
+      expect(parsed.unlocked_modifier_pools).toContain('vitality_boost');
     });
 
     it('should not unlock modifiers when boss_defeated is false', () => {

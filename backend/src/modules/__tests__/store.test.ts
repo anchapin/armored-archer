@@ -4178,4 +4178,405 @@ describe('store', () => {
       expect(parsed.error).toBeDefined();
     });
   });
+
+  // =====================================================================
+  // BRANCH COVERAGE: Additional branches for >= 80%
+  // =====================================================================
+
+  describe('validatePlatform branches', () => {
+    it('should reject invalid platform string', async () => {
+      // The Zod schema validates platform, so 'windows' hits VALIDATION_ERROR
+      const result = await rpcValidatePurchase(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({
+          product_id: 'com.armoredarcher.gems.small',
+          platform: 'windows',
+          transaction_receipt: 'receipt',
+        })
+      );
+      const parsed = JSON.parse(result);
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('getPlayerCurrencyWithCache parse failure branch', () => {
+    it('should use default currency when storage value is empty string', async () => {
+      mockNk.storageRead = jest.fn(() => [{
+        collection: 'player_currency',
+        key: 'parse-fail-user',
+        userId: 'parse-fail-user',
+        value: '',
+      }]);
+      mockCache.get.mockReturnValue(undefined);
+
+      const result = await processRefund(
+        mockNk,
+        'parse-fail-user',
+        50,
+        'tx-parse-fail',
+        RefundReason.OTHER,
+        mockLogger
+      );
+      expect(result.success).toBe(true);
+      expect(result.new_balance).toBe(0);
+    });
+  });
+
+  describe('wouldExceedMaxBalance branch', () => {
+    it('should allow purchase when balance is within max', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: 'active',
+          subscriber: {
+            non_subscriptions: {
+              'com.armoredarcher.gems.small': [{ product_id: 'com.armoredarcher.gems.small' }],
+            },
+          },
+        }),
+      });
+
+      mockNk.storageWrite([{
+        collection: 'player_currency',
+        key: 'test-user',
+        userId: 'test-user',
+        value: JSON.stringify(createMockCurrency({ gems: 100 })),
+      }]);
+
+      const result = await rpcValidatePurchase(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({
+          product_id: 'com.armoredarcher.gems.small',
+          platform: 'ios',
+          transaction_receipt: 'within-max-receipt-unique',
+        })
+      );
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(true);
+    });
+  });
+
+  describe('processRefund with isRefundAlreadyProcessed Redis error', () => {
+    it('should handle refund when Redis throws on check', async () => {
+      const mockRedisModule = require('../../__mocks__/redis');
+      mockRedisModule.getRedisClient.mockReturnValueOnce({
+        ...mockRedisModule,
+        exists: jest.fn().mockRejectedValue(new Error('Redis down')),
+      });
+
+      const nk = createMockNakama();
+      nk.storageWrite([{
+        collection: 'player_currency',
+        key: 'redis-err-user',
+        userId: 'redis-err-user',
+        value: JSON.stringify({ user_id: 'redis-err-user', gems: 200, gold: 0 }),
+      }]);
+
+      const result = await processRefund(
+        nk,
+        'redis-err-user',
+        50,
+        'tx-redis-err',
+        RefundReason.CUSTOMER_SUPPORT,
+        createMockLogger()
+      );
+      expect(result.success).toBe(true);
+
+      mockRedisModule.getRedisClient.mockReturnValue(mockRedisModule);
+    });
+  });
+
+  describe('markReceiptAsUsed storage write error branch', () => {
+    it('should handle storage write error when marking receipt', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: 'active',
+          subscriber: {
+            non_subscriptions: {
+              'com.armoredarcher.gems.small': [{ product_id: 'com.armoredarcher.gems.small' }],
+            },
+          },
+        }),
+      });
+
+      let storageWriteCallCount = 0;
+      mockNk.storageWrite = jest.fn((objects: any[]) => {
+        storageWriteCallCount++;
+        if (storageWriteCallCount > 1 && objects[0]?.collection === 'validated_receipts') {
+          throw new Error('Storage write failed');
+        }
+      });
+      mockNk.storageRead = jest.fn(() => []);
+
+      const result = await rpcValidatePurchase(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({
+          product_id: 'com.armoredarcher.gems.small',
+          platform: 'ios',
+          transaction_receipt: 'storage-write-err-receipt',
+        })
+      );
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(true);
+    });
+  });
+
+  describe('rpcSpendGems with cache hit branch', () => {
+    it('should use cached currency for spending', () => {
+      const cachedCurrency: PlayerCurrency = {
+        user_id: 'test-user',
+        gems: 300,
+        gold: 100,
+      };
+      mockCache.get.mockReturnValue(cachedCurrency);
+
+      const result = rpcSpendGems(mockCtx, mockLogger, mockNk, JSON.stringify({ amount: 50 }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.new_balance).toBe(250);
+    });
+
+    it('should reject spend when cached gems are insufficient', () => {
+      const cachedCurrency: PlayerCurrency = {
+        user_id: 'test-user',
+        gems: 10,
+        gold: 100,
+      };
+      mockCache.get.mockReturnValue(cachedCurrency);
+
+      const result = rpcSpendGems(mockCtx, mockLogger, mockNk, JSON.stringify({ amount: 100 }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Insufficient gems');
+    });
+  });
+
+  describe('rpcCheckRefunds - refunded_at field branch', () => {
+    it('should detect refunds using refunded_at field', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          subscriber: {
+            entitlement_details: {
+              'com.armoredarcher.gems.small': {
+                refunded_at: '2024-02-01T00:00:00Z',
+              },
+            },
+          },
+        }),
+      });
+
+      const currency = createMockCurrency({ gems: 200 });
+      mockNk.storageWrite([{
+        collection: 'player_currency',
+        key: 'test-user',
+        userId: 'test-user',
+        value: JSON.stringify(currency),
+      }]);
+
+      const ctx = createMockContext({ userId: 'test-user' });
+      const result = await rpcCheckRefunds(ctx, mockLogger, mockNk, JSON.stringify({ app_user_id: 'test-user' }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.refunds_found).toBe(1);
+    });
+  });
+
+  describe('rpcCheckRefunds - missing refunds array branch', () => {
+    it('should handle response without refunds field', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          subscriber: {
+            entitlement_details: null,
+          },
+        }),
+      });
+
+      const ctx = createMockContext({ userId: 'test-user' });
+      const result = await rpcCheckRefunds(ctx, mockLogger, mockNk, JSON.stringify({ app_user_id: 'test-user' }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.refunds_found).toBe(0);
+    });
+  });
+
+  describe('isReceiptAlreadyUsed storage fallback branch', () => {
+    it('should check Nakama storage when Redis and memory miss', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: 'active',
+          subscriber: {
+            non_subscriptions: {
+              'com.armoredarcher.gems.small': [{ product_id: 'com.armoredarcher.gems.small' }],
+            },
+          },
+        }),
+      });
+
+      // First purchase - receipt not in storage
+      mockNk.storageRead = jest.fn((objects: any[]) => {
+        if (objects[0]?.collection === 'validated_receipts') return [];
+        return [];
+      });
+
+      const result1 = await rpcValidatePurchase(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({
+          product_id: 'com.armoredarcher.gems.small',
+          platform: 'ios',
+          transaction_receipt: 'storage-fallback-unique-receipt',
+        })
+      );
+      expect(JSON.parse(result1).success).toBe(true);
+    });
+  });
+
+  describe('rpcCheckSubscriptions - is_subscribed with cancellation_date', () => {
+    it('should not count subscription with cancellation_date', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          subscriber: {
+            entitlements: {
+              premium: {
+                product_plan_interval: 'P1M',
+                cancellation_date: '2024-01-15T00:00:00Z',
+              },
+            },
+          },
+        }),
+      });
+
+      const ctx = createMockContext({ userId: 'test-user' });
+      const result = await rpcCheckSubscriptions(ctx, mockLogger, mockNk, JSON.stringify({ app_user_id: 'test-user' }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.active_subscriptions.length).toBe(0);
+    });
+  });
+
+  describe('handleSubscriptionCancelled with invalid value branch', () => {
+    it('should handle cancellation when subscription value is not a string', async () => {
+      const webhookSecret = 'test_webhook_secret';
+      const originalSecret = require('../../config').config.revenuecat.webhookSecret;
+      require('../../config').config.revenuecat.webhookSecret = webhookSecret;
+
+      const nk = createMockNakama();
+      nk.storageRead = jest.fn(() => [{
+        collection: 'player_subscription',
+        key: 'bad-value-user',
+        userId: 'bad-value-user',
+        value: null,
+      }]);
+
+      const payload = JSON.stringify({
+        event_type: 'CANCELLATION',
+        app_user_id: 'bad-value-user',
+        product_id: 'com.armoredarcher.premium.monthly',
+      });
+
+      const { createHmac } = require('crypto');
+      const hmac = createHmac('sha256', webhookSecret);
+      hmac.update(payload);
+      const signature = hmac.digest('hex');
+
+      const ctx = createMockContext({
+        userId: 'test-user',
+        variables: { 'x-revenuecat-signature': signature },
+      });
+
+      const result = await rpcRevenueCatWebhook(ctx, mockLogger, nk, payload);
+      require('../../config').config.revenuecat.webhookSecret = originalSecret;
+
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(true);
+    });
+  });
+
+  describe('handleBillingIssue with invalid value branch', () => {
+    it('should handle billing issue when subscription value is not a string', async () => {
+      const webhookSecret = 'test_webhook_secret';
+      const originalSecret = require('../../config').config.revenuecat.webhookSecret;
+      require('../../config').config.revenuecat.webhookSecret = webhookSecret;
+
+      const nk = createMockNakama();
+      nk.storageRead = jest.fn(() => [{
+        collection: 'player_subscription',
+        key: 'bad-billing-user',
+        userId: 'bad-billing-user',
+        value: 123,
+      }]);
+
+      const payload = JSON.stringify({
+        event_type: 'BILLING_ISSUE',
+        app_user_id: 'bad-billing-user',
+        product_id: 'com.armoredarcher.premium.monthly',
+      });
+
+      const { createHmac } = require('crypto');
+      const hmac = createHmac('sha256', webhookSecret);
+      hmac.update(payload);
+      const signature = hmac.digest('hex');
+
+      const ctx = createMockContext({
+        userId: 'test-user',
+        variables: { 'x-revenuecat-signature': signature },
+      });
+
+      const result = await rpcRevenueCatWebhook(ctx, mockLogger, nk, payload);
+      require('../../config').config.revenuecat.webhookSecret = originalSecret;
+
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(true);
+      expect(parsed.event_type).toBe('billing_issue');
+    });
+  });
+
+  describe('handleInitialPurchase with unknown product', () => {
+    it('should reject webhook purchase for unknown product', async () => {
+      const webhookSecret = 'test_webhook_secret';
+      const originalSecret = require('../../config').config.revenuecat.webhookSecret;
+      require('../../config').config.revenuecat.webhookSecret = webhookSecret;
+
+      const nk = createMockNakama();
+
+      const payload = JSON.stringify({
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'unknown-prod-user-2',
+        product_id: 'com.armoredarcher.unknown.product',
+      });
+
+      const { createHmac } = require('crypto');
+      const hmac = createHmac('sha256', webhookSecret);
+      hmac.update(payload);
+      const signature = hmac.digest('hex');
+
+      const ctx = createMockContext({
+        userId: 'test-user',
+        variables: { 'x-revenuecat-signature': signature },
+      });
+
+      const result = await rpcRevenueCatWebhook(ctx, mockLogger, nk, payload);
+      require('../../config').config.revenuecat.webhookSecret = originalSecret;
+
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(false);
+      expect(parsed.message).toMatch(/Unknown product/);
+    });
+  });
 });

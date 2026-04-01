@@ -364,6 +364,148 @@ describe('resetAuditState', () => {
   });
 });
 
+describe('recordViolation - branch coverage', () => {
+  it('skips persistence when enablePersistence is false', () => {
+    initializeAuditLogging({ enablePersistence: false }, mockNk, mockLogger);
+    recordViolation('user1', 'clock_skew');
+
+    expect(mockNk.storageWrite).not.toHaveBeenCalled();
+    const profile = getUserViolationSummary('user1');
+    expect(profile).not.toBeNull();
+    expect(profile!.violations).toHaveLength(1);
+  });
+
+  it('skips storage write when nk is undefined', () => {
+    resetAuditState();
+    initializeAuditLogging({ enablePersistence: true }, undefined as any, mockLogger);
+    recordViolation('user1', 'clock_skew');
+
+    expect(getUserViolationSummary('user1')).not.toBeNull();
+  });
+
+  it('falls back to weight 5 for unknown violation type', () => {
+    const unknownType = 'unknown_type' as unknown as ViolationType;
+    recordViolation('user1', unknownType);
+
+    const profile = getUserViolationSummary('user1');
+    expect(profile!.riskScore).toBe(5);
+  });
+});
+
+describe('suspendUser - branch coverage', () => {
+  it('keeps existing riskScore when higher than suspensionThreshold', () => {
+    initializeAuditLogging({ suspensionThreshold: 15 }, mockNk, mockLogger);
+    // stat_manipulation weight=25, so riskScore=25 > 15
+    recordViolation('user1', 'stat_manipulation');
+    const before = getUserViolationSummary('user1')!.riskScore;
+
+    suspendUser('user1', 'manual');
+    const profile = getUserViolationSummary('user1');
+    // Math.max(25, 15) = 25
+    expect(profile!.riskScore).toBe(before);
+    expect(profile!.isSuspended).toBe(true);
+  });
+});
+
+describe('generateAuditReport - branch coverage', () => {
+  it('counts all four severity levels across violations', () => {
+    initializeAuditLogging({ suspensionThreshold: 200 }, mockNk, mockLogger);
+    // critical: stat_manipulation(25), replay_attack(20), inventory_tampering(20)
+    // high: invalid_signature(18), invalid_progression(15)
+    // medium: timing_attack(12)
+    // low: out_of_turn(8), clock_skew(3)
+    recordViolation('user1', 'stat_manipulation');
+    recordViolation('user1', 'replay_attack');
+    recordViolation('user1', 'invalid_signature');
+    recordViolation('user1', 'timing_attack');
+    recordViolation('user1', 'clock_skew');
+
+    const result = generateAuditReport('user1');
+    expect(result!.report.criticalViolations).toBe(2);
+    expect(result!.report.highViolations).toBe(1);
+    expect(result!.report.mediumViolations).toBe(1);
+    expect(result!.report.lowViolations).toBe(1);
+    expect(result!.report.totalViolations).toBe(5);
+  });
+
+  it('returns all violation type counts including zeros', () => {
+    recordViolation('user1', 'out_of_turn');
+    const result = generateAuditReport('user1');
+
+    expect(result!.report.violationsByType.out_of_turn).toBe(1);
+    expect(result!.report.violationsByType.replay_attack).toBe(0);
+    expect(result!.report.violationsByType.invalid_signature).toBe(0);
+    expect(result!.report.violationsByType.timing_attack).toBe(0);
+    expect(result!.report.violationsByType.clock_skew).toBe(0);
+    expect(result!.report.violationsByType.invalid_progression).toBe(0);
+    expect(result!.report.violationsByType.stat_manipulation).toBe(0);
+    expect(result!.report.violationsByType.inventory_tampering).toBe(0);
+  });
+});
+
+describe('getAuditStats - branch coverage', () => {
+  it('aggregates all violation types across multiple users', () => {
+    initializeAuditLogging({ suspensionThreshold: 200 }, mockNk, mockLogger);
+    recordViolation('u1', 'replay_attack');
+    recordViolation('u1', 'invalid_signature');
+    recordViolation('u2', 'timing_attack');
+    recordViolation('u2', 'out_of_turn');
+    recordViolation('u3', 'clock_skew');
+    recordViolation('u3', 'invalid_progression');
+    recordViolation('u3', 'stat_manipulation');
+    recordViolation('u3', 'inventory_tampering');
+
+    const stats = getAuditStats();
+    expect(stats.violationsByType.replay_attack).toBe(1);
+    expect(stats.violationsByType.invalid_signature).toBe(1);
+    expect(stats.violationsByType.timing_attack).toBe(1);
+    expect(stats.violationsByType.out_of_turn).toBe(1);
+    expect(stats.violationsByType.clock_skew).toBe(1);
+    expect(stats.violationsByType.invalid_progression).toBe(1);
+    expect(stats.violationsByType.stat_manipulation).toBe(1);
+    expect(stats.violationsByType.inventory_tampering).toBe(1);
+    expect(stats.totalViolations).toBe(8);
+    expect(stats.uniqueUsers).toBe(3);
+  });
+
+  it('counts suspended and high-risk users separately', () => {
+    initializeAuditLogging({ suspensionThreshold: 30, highRiskThreshold: 40 }, mockNk, mockLogger);
+    // user1: 25 + 25 = 50, auto-suspended, high risk
+    recordViolation('user1', 'stat_manipulation');
+    recordViolation('user1', 'stat_manipulation');
+    // user2: 20, not suspended, not high risk
+    recordViolation('user2', 'replay_attack');
+
+    const stats = getAuditStats();
+    expect(stats.suspendedUsers).toBe(1);
+    expect(stats.highRiskUsers).toBe(1);
+  });
+});
+
+describe('clearUserFlag - branch coverage', () => {
+  it('clears autoSuspended state and resets profile', () => {
+    // Auto-suspend user
+    recordViolation('user1', 'stat_manipulation');
+    expect(isUserSuspended('user1')).toBe(true);
+
+    // Clear the flag
+    const result = clearUserFlag('user1');
+    expect(result).toBe(true);
+    expect(isUserSuspended('user1')).toBe(false);
+
+    // Verify fully reset
+    const profile = getUserViolationSummary('user1');
+    expect(profile!.isSuspended).toBe(false);
+    expect(profile!.riskScore).toBe(0);
+    expect(profile!.violations).toHaveLength(0);
+
+    // User can accumulate violations again without stale state
+    recordViolation('user1', 'clock_skew');
+    expect(getUserViolationSummary('user1')!.riskScore).toBe(3);
+    expect(isUserSuspended('user1')).toBe(false);
+  });
+});
+
 describe('violation severity mapping', () => {
   const cases: Array<[ViolationType, string]> = [
     ['stat_manipulation', 'critical'],

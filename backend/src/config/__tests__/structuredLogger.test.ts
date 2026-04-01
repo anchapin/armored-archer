@@ -3,6 +3,7 @@
  */
 
 import { StructuredLogger, createRpcContext, createSystemEventContext, LogLevel } from '../structuredLogger';
+import { LogScrubber } from '../logScrubber';
 
 // Mock Runtime.Logger
 const mockLogger = {
@@ -11,6 +12,9 @@ const mockLogger = {
   error: jest.fn(),
   debug: jest.fn(),
 };
+
+// Disabled scrubber for testing the scrub bypass branch
+const disabledScrubber = new LogScrubber({ enabled: false });
 
 describe('StructuredLogger', () => {
   let logger: StructuredLogger;
@@ -210,5 +214,148 @@ describe('createSystemEventContext', () => {
   it('should create system event context with empty data', () => {
     const context = createSystemEventContext('event_name');
     expect(context.event).toBe('event_name');
+  });
+});
+
+describe('StructuredLogger with disabled scrubber', () => {
+  let logger: StructuredLogger;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = new StructuredLogger(
+      mockLogger as any,
+      'test-service',
+      { defaultKey: 'defaultValue' },
+      disabledScrubber
+    );
+  });
+
+  it('should log info without scrubbing when scrubber is disabled', () => {
+    logger.info('Sensitive info', { password: 'secret123' });
+    expect(mockLogger.info).toHaveBeenCalled();
+    const logged = JSON.parse(mockLogger.info.mock.calls[0][0]);
+    expect(logged.message).toBe('Sensitive info');
+  });
+
+  it('should log warn without scrubbing when scrubber is disabled', () => {
+    logger.warn('Warning', { token: 'abc' });
+    expect(mockLogger.warn).toHaveBeenCalled();
+  });
+
+  it('should log error without scrubbing when scrubber is disabled', () => {
+    logger.error('Error', { apiKey: 'key123' });
+    expect(mockLogger.error).toHaveBeenCalled();
+  });
+
+  it('should log debug without scrubbing when scrubber is disabled', () => {
+    logger.debug('Debug', { secret: 'value' });
+    expect(mockLogger.debug).toHaveBeenCalled();
+  });
+
+  it('should create child logger that inherits disabled scrubber', () => {
+    const childLogger = logger.child({ childKey: 'childValue' });
+    childLogger.info('Child message', { password: 'secret' });
+    expect(mockLogger.info).toHaveBeenCalled();
+  });
+});
+
+describe('StructuredLogger default parameter branches', () => {
+  let logger: StructuredLogger;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = new StructuredLogger(mockLogger as any, 'test-service');
+  });
+
+  it('should use default empty context for info()', () => {
+    logger.info('No context arg');
+    expect(mockLogger.info).toHaveBeenCalled();
+  });
+
+  it('should use default empty context for warn()', () => {
+    logger.warn('No context arg');
+    expect(mockLogger.warn).toHaveBeenCalled();
+  });
+
+  it('should use default empty context for error() without context and error', () => {
+    logger.error('No context or error');
+    expect(mockLogger.error).toHaveBeenCalled();
+  });
+
+  it('should use default empty context for debug()', () => {
+    logger.debug('No context arg');
+    expect(mockLogger.debug).toHaveBeenCalled();
+  });
+
+  it('should use default empty context for logSystemEvent()', () => {
+    logger.logSystemEvent('info', 'test_event');
+    expect(mockLogger.info).toHaveBeenCalled();
+  });
+
+  it('should call logRpcEntry without payload to use default', () => {
+    logger.logRpcEntry('rpc', 'user1', 'req1');
+    expect(mockLogger.info).toHaveBeenCalled();
+  });
+});
+
+describe('StructuredLogger error with stack trace', () => {
+  let logger: StructuredLogger;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = new StructuredLogger(mockLogger as any, 'test-service');
+  });
+
+  it('should include stack trace in error log entry', () => {
+    const error = new Error('Something failed');
+    logger.error('Error with stack', { context: 'test' }, error);
+    expect(mockLogger.error).toHaveBeenCalled();
+    const logged = JSON.parse(mockLogger.error.mock.calls[0][0]);
+    expect(logged.stack).toBeDefined();
+    expect(logged.stack).toContain('Error: Something failed');
+  });
+
+  it('should not include stack trace when no error provided', () => {
+    logger.error('Error without stack', { context: 'test' });
+    expect(mockLogger.error).toHaveBeenCalled();
+    const logged = JSON.parse(mockLogger.error.mock.calls[0][0]);
+    expect(logged.stack).toBeUndefined();
+  });
+});
+
+describe('createRpcContext branch coverage', () => {
+  it('should include all optional fields when provided', () => {
+    const context = createRpcContext({
+      rpcName: 'testRpc',
+      userId: 'user123',
+      requestId: 'req456',
+      payload: { data: 'test' },
+    });
+    expect(context.rpcName).toBe('testRpc');
+    expect(context.userId).toBe('user123');
+    expect(context.requestId).toBe('req456');
+    expect(context.payload).toBe('{"data":"test"}');
+  });
+
+  it('should exclude userId when not provided', () => {
+    const context = createRpcContext({ rpcName: 'testRpc', requestId: 'req456' });
+    expect(context.userId).toBeUndefined();
+    expect(context.requestId).toBe('req456');
+  });
+
+  it('should exclude requestId when not provided', () => {
+    const context = createRpcContext({ rpcName: 'testRpc', userId: 'user123' });
+    expect(context.requestId).toBeUndefined();
+    expect(context.userId).toBe('user123');
+  });
+
+  it('should exclude payload when not provided', () => {
+    const context = createRpcContext({ rpcName: 'testRpc' });
+    expect(context.payload).toBeUndefined();
+  });
+
+  it('should handle string payload', () => {
+    const context = createRpcContext({ rpcName: 'testRpc', payload: 'raw-string' });
+    expect(context.payload).toBe('raw-string');
   });
 });

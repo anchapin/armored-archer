@@ -3,32 +3,32 @@
  */
 
 describe('config re-exports', () => {
-  it('re-exports config as default', () => {
-    const { default: config } = require('../config/index');
+  it('re-exports config as named export', () => {
+    const { config } = require('../config');
     expect(config).toBeDefined();
     expect(config.environment).toBeDefined();
   });
 
   it('re-exports validateRequiredConfig', () => {
-    const { validateRequiredConfig } = require('../config/index');
+    const { validateRequiredConfig } = require('../config');
     expect(validateRequiredConfig).toBeDefined();
     expect(typeof validateRequiredConfig).toBe('function');
   });
 
   it('re-exports maskSecret', () => {
-    const { maskSecret } = require('../config/index');
+    const { maskSecret } = require('../config');
     expect(maskSecret).toBeDefined();
     expect(typeof maskSecret).toBe('function');
   });
 
   it('re-exports logConfiguration', () => {
-    const { logConfiguration } = require('../config/index');
+    const { logConfiguration } = require('../config');
     expect(logConfiguration).toBeDefined();
     expect(typeof logConfiguration).toBe('function');
   });
 
   it('exports type definitions', () => {
-    const configModule = require('../config/index');
+    const configModule = require('../config');
     expect(configModule).toBeDefined();
   });
 });
@@ -47,30 +47,30 @@ describe('config module', () => {
 
   describe('maskSecret', () => {
     it('returns empty string for empty input', () => {
-      const { maskSecret } = require('../config/index');
+      const { maskSecret } = require('../config');
       expect(maskSecret('')).toBe('');
     });
 
     it('returns *** for short values (<=8 chars)', () => {
-      const { maskSecret } = require('../config/index');
+      const { maskSecret } = require('../config');
       expect(maskSecret('short')).toBe('***');
       expect(maskSecret('12345678')).toBe('***');
     });
 
     it('masks long values showing first 4 and last 4 chars', () => {
-      const { maskSecret } = require('../config/index');
+      const { maskSecret } = require('../config');
       expect(maskSecret('abcdefghijklmnop')).toBe('abcd...mnop');
     });
 
     it('masks API keys appropriately', () => {
-      const { maskSecret } = require('../config/index');
+      const { maskSecret } = require('../config');
       expect(maskSecret('sk-1234567890abcdef')).toBe('sk-1...cdef');
     });
   });
 
   describe('logConfiguration', () => {
     it('logs configuration without throwing', () => {
-      const { logConfiguration } = require('../config/index');
+      const { logConfiguration } = require('../config');
       const mockLogger = {
         info: jest.fn(),
       };
@@ -79,7 +79,7 @@ describe('config module', () => {
     });
 
     it('logs server configuration', () => {
-      const { logConfiguration } = require('../config/index');
+      const { logConfiguration } = require('../config');
       const mockLogger = { info: jest.fn() };
       logConfiguration(mockLogger);
       expect(mockLogger.info).toHaveBeenCalledWith(
@@ -91,7 +91,7 @@ describe('config module', () => {
     });
 
     it('logs database configuration', () => {
-      const { logConfiguration } = require('../config/index');
+      const { logConfiguration } = require('../config');
       const mockLogger = { info: jest.fn() };
       logConfiguration(mockLogger);
       expect(mockLogger.info).toHaveBeenCalledWith(
@@ -103,7 +103,7 @@ describe('config module', () => {
     });
 
     it('logs RevenueCat configuration with masked secret', () => {
-      const { logConfiguration } = require('../config/index');
+      const { logConfiguration } = require('../config');
       const mockLogger = { info: jest.fn() };
       logConfiguration(mockLogger);
       expect(mockLogger.info).toHaveBeenCalledWith(
@@ -114,7 +114,7 @@ describe('config module', () => {
     });
 
     it('logs alerting configuration', () => {
-      const { logConfiguration } = require('../config/index');
+      const { logConfiguration } = require('../config');
       const mockLogger = { info: jest.fn() };
       logConfiguration(mockLogger);
       expect(mockLogger.info).toHaveBeenCalledWith(
@@ -131,7 +131,7 @@ describe('config module', () => {
       delete process.env.REVENUECAT_PUBLIC_KEY;
       delete process.env.DATABASE_ADDRESS;
       delete process.env.NAKAMA_DATABASE_ADDRESS;
-      const { validateRequiredConfig } = require('../config/index');
+      const { validateRequiredConfig } = require('../config');
       expect(() => validateRequiredConfig()).toThrow('REVENUECAT_PUBLIC_KEY is required');
     });
 
@@ -139,7 +139,7 @@ describe('config module', () => {
       process.env.REVENUECAT_PUBLIC_KEY = 'pk_test_123';
       delete process.env.DATABASE_ADDRESS;
       delete process.env.NAKAMA_DATABASE_ADDRESS;
-      const { validateRequiredConfig } = require('../config/index');
+      const { validateRequiredConfig } = require('../config');
       expect(() => validateRequiredConfig()).toThrow('DATABASE_ADDRESS or NAKAMA_DATABASE_ADDRESS is required');
     });
 
@@ -151,7 +151,7 @@ describe('config module', () => {
       process.env.SESSION_ENCRYPTION_KEY = 'test-key-12345678';
       process.env.REFRESH_ENCRYPTION_KEY = 'test-key-12345678';
       process.env.TOKEN_ENCRYPTION_KEY = 'test-key-12345678';
-      const { validateRequiredConfig } = require('../config/index');
+      const { validateRequiredConfig } = require('../config');
       expect(() => validateRequiredConfig()).toThrow('NAKAMA_SERVER_KEY must be set in production');
     });
 
@@ -161,7 +161,7 @@ describe('config module', () => {
       process.env.REVENUECAT_PUBLIC_KEY = 'pk_test_123';
       process.env.DATABASE_ADDRESS = 'postgres://user:pass@localhost:5432/nakama';
       delete process.env.SESSION_ENCRYPTION_KEY;
-      const { validateRequiredConfig } = require('../config/index');
+      const { validateRequiredConfig } = require('../config');
       expect(() => validateRequiredConfig()).toThrow('Configuration validation failed');
     });
 
@@ -172,7 +172,7 @@ describe('config module', () => {
       process.env.SESSION_ENCRYPTION_KEY = 'test-key-12345678';
       process.env.REFRESH_ENCRYPTION_KEY = 'test-key-12345678';
       process.env.TOKEN_ENCRYPTION_KEY = 'test-key-12345678';
-      const { validateRequiredConfig } = require('../config/index');
+      const { validateRequiredConfig } = require('../config');
       expect(() => validateRequiredConfig()).toThrow('Invalid server port');
     });
 
@@ -183,7 +183,7 @@ describe('config module', () => {
       process.env.SESSION_ENCRYPTION_KEY = 'test-key-12345678';
       process.env.REFRESH_ENCRYPTION_KEY = 'test-key-12345678';
       process.env.TOKEN_ENCRYPTION_KEY = 'test-key-12345678';
-      const { validateRequiredConfig } = require('../config/index');
+      const { validateRequiredConfig } = require('../config');
       expect(() => validateRequiredConfig()).toThrow('Invalid console port');
     });
 
@@ -193,7 +193,7 @@ describe('config module', () => {
       process.env.SESSION_ENCRYPTION_KEY = 'test-key-12345678';
       process.env.REFRESH_ENCRYPTION_KEY = 'test-key-12345678';
       process.env.TOKEN_ENCRYPTION_KEY = 'test-key-12345678';
-      const { validateRequiredConfig } = require('../config/index');
+      const { validateRequiredConfig } = require('../config');
       expect(() => validateRequiredConfig()).not.toThrow();
     });
   });

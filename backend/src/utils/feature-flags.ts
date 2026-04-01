@@ -28,7 +28,7 @@ export interface FeatureFlagConfig {
 
 // Feature flag definitions
 // In production, these could be loaded from a database or external service
-const FEATURE_FLAGS: FeatureFlagConfig = {
+export const FEATURE_FLAGS: FeatureFlagConfig = {
   defaultEnabled: false,
   flags: [],
 };

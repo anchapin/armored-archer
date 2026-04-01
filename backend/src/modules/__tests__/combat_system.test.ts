@@ -845,6 +845,398 @@ describe('combat_system', () => {
     });
   });
 
+  describe('rpcSubmitCombatAction - anti-cheat edge cases', () => {
+    it('should return error when anti-cheat signature verification fails', async () => {
+      const antiCheat = require('../anti_cheat');
+      antiCheat.verifyRequestSignature.mockReturnValueOnce({ valid: false, violations: [] });
+
+      const match = createMockMatch({ status: 'active' });
+      const matchState: MatchState = {
+        match_id: 'match-123',
+        turn: 1,
+        current_turn_user_id: 'creator-user',
+        creator_id: 'creator-user',
+        opponent_id: 'opponent-user',
+        creator_health: 100,
+        opponent_health: 100,
+        creator_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        opponent_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        status: 'active',
+        log: [],
+        last_turn_timestamp: Date.now(),
+        turn_timeout_ms: 30 * 60 * 1000,
+        consecutive_timeouts: 0,
+      };
+
+      const mockStorage = new Map();
+      mockStorage.set(`pvp_matches:match-123`, JSON.stringify(match));
+      mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
+
+      mockNk.storageRead = jest.fn((objects) => {
+        return objects.map((obj: any) => {
+          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+          if (!val) return null;
+          return { collection: obj.collection, key: obj.key, value: val };
+        }).filter(Boolean);
+      });
+
+      mockNk.storageWrite = jest.fn();
+
+      const payload = JSON.stringify({
+        match_id: 'match-123',
+        action_type: 'shoot',
+        angle: 1.5,
+        power: 0.5,
+        requestId: 'req_1234567890123456789012345678',
+        timestamp: Date.now(),
+        signature: '0123456789012345678901234567890123456789012345678901234567890123',
+        nonce: 'nonce_12345678901234567890123456',
+      });
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('ANTI_CHEAT_VIOLATION: Invalid request signature');
+      expect(parsed.error_code).toBe('ANTI_CHEAT_VIOLATION');
+    });
+
+    it('should return error when combat parameters are invalid', async () => {
+      const antiCheat = require('../anti_cheat');
+      antiCheat.validateCombatActionParameters.mockReturnValueOnce({
+        valid: false,
+        violations: [{ violationType: 'invalid_angle' }],
+      });
+
+      const match = createMockMatch({ status: 'active' });
+      const matchState: MatchState = {
+        match_id: 'match-123',
+        turn: 1,
+        current_turn_user_id: 'creator-user',
+        creator_id: 'creator-user',
+        opponent_id: 'opponent-user',
+        creator_health: 100,
+        opponent_health: 100,
+        creator_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        opponent_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        status: 'active',
+        log: [],
+        last_turn_timestamp: Date.now(),
+        turn_timeout_ms: 30 * 60 * 1000,
+        consecutive_timeouts: 0,
+      };
+
+      const mockStorage = new Map();
+      mockStorage.set(`pvp_matches:match-123`, JSON.stringify(match));
+      mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
+
+      mockNk.storageRead = jest.fn((objects) => {
+        return objects.map((obj: any) => {
+          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+          if (!val) return null;
+          return { collection: obj.collection, key: obj.key, value: val };
+        }).filter(Boolean);
+      });
+
+      mockNk.storageWrite = jest.fn();
+
+      const payload = JSON.stringify({
+        match_id: 'match-123',
+        action_type: 'shoot',
+        angle: 1.5,
+      });
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('INVALID_PARAMETERS: Combat parameters out of valid range');
+      expect(parsed.error_code).toBe('INVALID_PARAMETERS');
+    });
+
+    it('should return error when timing attack is detected', async () => {
+      const antiCheat = require('../anti_cheat');
+      antiCheat.detectTimingAttack.mockReturnValueOnce(true);
+
+      const match = createMockMatch({ status: 'active' });
+      const matchState: MatchState = {
+        match_id: 'match-123',
+        turn: 1,
+        current_turn_user_id: 'creator-user',
+        creator_id: 'creator-user',
+        opponent_id: 'opponent-user',
+        creator_health: 100,
+        opponent_health: 100,
+        creator_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        opponent_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        status: 'active',
+        log: [],
+        last_turn_timestamp: Date.now(),
+        turn_timeout_ms: 30 * 60 * 1000,
+        consecutive_timeouts: 0,
+      };
+
+      const mockStorage = new Map();
+      mockStorage.set(`pvp_matches:match-123`, JSON.stringify(match));
+      mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
+
+      mockNk.storageRead = jest.fn((objects) => {
+        return objects.map((obj: any) => {
+          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+          if (!val) return null;
+          return { collection: obj.collection, key: obj.key, value: val };
+        }).filter(Boolean);
+      });
+
+      mockNk.storageWrite = jest.fn();
+
+      const payload = JSON.stringify({
+        match_id: 'match-123',
+        action_type: 'shoot',
+        angle: 1.5,
+      });
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('TIMING_ANOMALY: Suspicious request pattern detected');
+      expect(parsed.error_code).toBe('TIMING_ANOMALY');
+    });
+
+    it('should return error when out of turn violation detected', async () => {
+      const antiCheat = require('../anti_cheat');
+      antiCheat.validateCombatActionParameters.mockReturnValueOnce({
+        valid: false,
+        violations: [{ violationType: 'out_of_turn' }],
+      });
+
+      const match = createMockMatch({ status: 'active' });
+      const matchState: MatchState = {
+        match_id: 'match-123',
+        turn: 1,
+        current_turn_user_id: 'opponent-user',
+        creator_id: 'creator-user',
+        opponent_id: 'opponent-user',
+        creator_health: 100,
+        opponent_health: 100,
+        creator_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        opponent_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        status: 'active',
+        log: [],
+        last_turn_timestamp: Date.now(),
+        turn_timeout_ms: 30 * 60 * 1000,
+        consecutive_timeouts: 0,
+      };
+
+      const mockStorage = new Map();
+      mockStorage.set(`pvp_matches:match-123`, JSON.stringify(match));
+      mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
+
+      mockNk.storageRead = jest.fn((objects) => {
+        return objects.map((obj: any) => {
+          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+          if (!val) return null;
+          return { collection: obj.collection, key: obj.key, value: val };
+        }).filter(Boolean);
+      });
+
+      mockNk.storageWrite = jest.fn();
+
+      const payload = JSON.stringify({
+        match_id: 'match-123',
+        action_type: 'shoot',
+        angle: 1.5,
+      });
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Not your turn');
+    });
+
+    it('should handle notification send failure gracefully in forfeit', async () => {
+      const match = createMockMatch({ status: 'active' });
+      const timedOutMatchState: MatchState = {
+        match_id: 'match-123',
+        turn: 1,
+        current_turn_user_id: 'creator-user',
+        creator_id: 'creator-user',
+        opponent_id: 'opponent-user',
+        creator_health: 100,
+        opponent_health: 100,
+        creator_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        opponent_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        status: 'active',
+        log: [],
+        last_turn_timestamp: Date.now() - 31 * 60 * 1000,
+        turn_timeout_ms: 30 * 60 * 1000,
+        consecutive_timeouts: 1,
+      };
+
+      const mockStorage = new Map();
+      mockStorage.set(`pvp_matches:match-123`, JSON.stringify(match));
+      mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(timedOutMatchState));
+
+      mockNk.storageRead = jest.fn((objects) => {
+        return objects.map((obj: any) => {
+          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+          if (!val) return null;
+          return { collection: obj.collection, key: obj.key, value: val };
+        }).filter(Boolean);
+      });
+
+      mockNk.storageWrite = jest.fn();
+      // Make notificationSend throw an error
+      mockNk.notificationSend = jest.fn().mockImplementation(() => {
+        throw new Error('Notification service unavailable');
+      });
+
+      const payload = JSON.stringify({
+        match_id: 'match-123',
+        action_type: 'shoot',
+        angle: 1.5,
+      });
+      const result = await rpcSubmitCombatAction(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      // Should still succeed despite notification failure
+      expect(parsed.error).toBe('Match forfeited due to consecutive timeouts');
+      expect(parsed.forfeit).toBe(true);
+    });
+  });
+
+  describe('rpcPlayerDisconnect - edge cases', () => {
+    it('should handle disconnect when match state value is corrupted (empty)', async () => {
+      const match = createMockMatch({ status: 'active' });
+
+      mockNk.storageRead = jest.fn((objects: any[]) => {
+        return objects.map((obj) => {
+          if (obj.collection === 'pvp_matches' && obj.key === 'match-123') {
+            return {
+              collection: 'pvp_matches',
+              key: 'match-123',
+              value: JSON.stringify(match),
+            };
+          }
+          if (obj.collection === 'pvp_match_states' && obj.key === 'match-123') {
+            return {
+              collection: 'pvp_match_states',
+              key: 'match-123',
+              value: '', // Empty/corrupted value
+            };
+          }
+          return null;
+        }).filter(Boolean);
+      });
+
+      const payload = JSON.stringify({
+        match_id: 'match-123',
+        reason: 'disconnect',
+      });
+      const result = await rpcPlayerDisconnect(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Match state not found');
+    });
+
+    it('should handle disconnect with default reason when none provided', async () => {
+      const match = createMockMatch({ status: 'active' });
+      const matchState: MatchState = {
+        match_id: 'match-123',
+        turn: 1,
+        current_turn_user_id: 'creator-user',
+        creator_id: 'creator-user',
+        opponent_id: 'opponent-user',
+        creator_health: 100,
+        opponent_health: 100,
+        creator_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        opponent_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        status: 'active',
+        log: [],
+        last_turn_timestamp: Date.now(),
+        turn_timeout_ms: 30 * 60 * 1000,
+        consecutive_timeouts: 0,
+      };
+
+      const mockStorage = new Map();
+      mockStorage.set(`pvp_matches:match-123`, JSON.stringify(match));
+      mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
+
+      mockNk.storageRead = jest.fn((objects) => {
+        return objects.map((obj: any) => {
+          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+          if (!val) return null;
+          return { collection: obj.collection, key: obj.key, value: val };
+        }).filter(Boolean);
+      });
+
+      mockNk.storageWrite = jest.fn();
+      mockNk.notificationSend = jest.fn();
+
+      // No reason provided - should default to 'disconnect'
+      const payload = JSON.stringify({
+        match_id: 'match-123',
+      });
+      const result = await rpcPlayerDisconnect(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.reason).toBe('disconnect');
+    });
+
+    it('should validate disconnect payload', async () => {
+      const payload = JSON.stringify({
+        match_id: '',
+      });
+      const result = await rpcPlayerDisconnect(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+  });
+
   describe('combat_system helpers and edge cases', () => {
     it('should create initial match state if it does not exist', async () => {
       const match = createMockMatch({ status: 'active' });

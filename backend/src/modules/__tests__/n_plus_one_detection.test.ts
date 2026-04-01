@@ -14,7 +14,10 @@ import {
   getNPlusOneReport,
   getFormattedNPlusOneReport,
   initializeNPlusOneDetection,
+  initializeNPlusOneDetectionWithMetrics,
   resetNPlusOneDetection,
+  wrapRpcWithNPlusOneTracking,
+  registerRpcWithNPlusOneTracking,
 } from '../n_plus_one_detection';
 
 // Mock dependencies
@@ -379,6 +382,226 @@ describe('n_plus_one_detection', () => {
       expect(duration).toBeLessThan(1000);
       const stats = getQueryStats('rapid_test');
       expect(stats?.totalQueries).toBe(100);
+    });
+  });
+
+  describe('initialization with metrics', () => {
+    it('should initialize with metrics registry', () => {
+      const mockRegistry = {
+        metrics: jest.fn().mockResolvedValue('metrics'),
+        contentType: 'text/plain',
+      };
+
+      expect(() =>
+        initializeNPlusOneDetectionWithMetrics(mockRegistry as any)
+      ).not.toThrow();
+    });
+
+    it('should initialize with metrics registry and logger', () => {
+      const mockRegistry = {
+        metrics: jest.fn().mockResolvedValue('metrics'),
+        contentType: 'text/plain',
+      };
+      const mockLogger = {
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+      };
+
+      expect(() =>
+        initializeNPlusOneDetectionWithMetrics(mockRegistry as any, mockLogger as any)
+      ).not.toThrow();
+    });
+  });
+
+  describe('RPC wrapper', () => {
+    it('should wrap RPC handler with N+1 tracking', async () => {
+      const mockHandler = jest.fn().mockResolvedValue('{"ok":true}');
+      const wrapped = wrapRpcWithNPlusOneTracking('test_rpc', mockHandler);
+
+      const mockCtx = {};
+      const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+      const mockNk = {};
+      const result = await wrapped(mockCtx as any, mockLogger as any, mockNk as any, '{}');
+
+      expect(result).toBe('{"ok":true}');
+      expect(mockHandler).toHaveBeenCalled();
+    });
+
+    it('should not track when disabled in wrapper', async () => {
+      setNPlusOneEnabled(false);
+      const mockHandler = jest.fn().mockResolvedValue('ok');
+      const wrapped = wrapRpcWithNPlusOneTracking('disabled_rpc', mockHandler);
+
+      const result = await wrapped({} as any, { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } as any, {} as any, '{}');
+
+      expect(result).toBe('ok');
+    });
+
+    it('should register RPC with tracking', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      const mockHandler = jest.fn().mockResolvedValue('ok');
+
+      registerRpcWithNPlusOneTracking(
+        mockInitializer as any,
+        'test.rpc',
+        'test_rpc',
+        mockHandler as any
+      );
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'test.rpc',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('operation tracking edge cases', () => {
+    it('should not track operations when disabled', () => {
+      setNPlusOneEnabled(false);
+      startOperationTracking('disabled_op');
+      const result = stopOperationTracking('disabled_op');
+      expect(result.queryCount).toBe(0);
+      expect(result.nPlusOneDetected).toBe(false);
+    });
+
+    it('should detect critical severity for high query counts', () => {
+      setNPlusOneConfig({ threshold: 3, logEnabled: true });
+      startOperationTracking('critical_op');
+
+      // threshold * 3 + 1 = 10 queries for critical
+      for (let i = 0; i < 10; i++) {
+        trackQuery('critical_op', 'storage', () => `result${i}`, { collection: 'players' });
+      }
+
+      const result = stopOperationTracking('critical_op');
+      expect(result.nPlusOneDetected).toBe(true);
+      expect(result.warnings.length).toBeGreaterThan(0);
+    });
+
+    it('should detect high query count pattern', () => {
+      setNPlusOneConfig({ threshold: 3, logEnabled: false });
+      startOperationTracking('high_query_op');
+
+      // More than threshold * 2 different queries
+      for (let i = 0; i < 8; i++) {
+        trackQuery('high_query_op', 'storage', () => `result${i}`, { collection: `col_${i}` });
+      }
+
+      const result = stopOperationTracking('high_query_op');
+      expect(result.nPlusOneDetected).toBe(true);
+    });
+
+    it('should update stats with operation name on stop', () => {
+      startOperationTracking('named_op');
+      trackQuery('named_op', 'storage', () => 'result1');
+      trackQuery('named_op', 'storage', () => 'result2');
+
+      stopOperationTracking('named_op');
+
+      const stats = getQueryStats('named_op');
+      expect(stats).toBeDefined();
+      expect(stats?.totalQueries).toBe(2);
+    });
+  });
+
+  describe('query tracking with metrics enabled', () => {
+    it('should track queries when metricsEnabled is true', () => {
+      setNPlusOneConfig({ metricsEnabled: true });
+      trackQuery('metrics_test', 'storage', () => 'result');
+      const stats = getQueryStats('metrics_test');
+      expect(stats?.totalQueries).toBe(1);
+    });
+
+    it('should log slow queries when logEnabled is true', () => {
+      setNPlusOneConfig({ logEnabled: true, slowQueryThresholdMs: 0 });
+      trackQuery('slow_test', 'storage', () => 'result');
+      // Just verify it doesn't throw
+      const stats = getQueryStats('slow_test');
+      expect(stats?.totalQueries).toBe(1);
+    });
+
+    it('should track failed queries correctly', () => {
+      try {
+        trackQuery('fail_test', 'storage', () => {
+          throw new Error('fail');
+        });
+      } catch {
+        // expected
+      }
+      const stats = getQueryStats('fail_test');
+      expect(stats?.totalQueries).toBe(1);
+    });
+
+    it('should track failed async queries correctly', async () => {
+      try {
+        await trackQueryAsync('async_fail_test', 'database', async () => {
+          throw new Error('async fail');
+        });
+      } catch {
+        // expected
+      }
+      const stats = getQueryStats('async_fail_test');
+      expect(stats?.totalQueries).toBe(1);
+    });
+  });
+
+  describe('formatted report edge cases', () => {
+    it('should show no operations when empty', () => {
+      resetNPlusOneDetection();
+      const report = getFormattedNPlusOneReport();
+      expect(report).toContain('No operations tracked');
+    });
+
+    it('should show N+1 detected status in report', () => {
+      startOperationTracking('report_n1');
+      for (let i = 0; i < 5; i++) {
+        trackQuery('report_n1', 'storage', () => `r${i}`, { collection: 'items' });
+      }
+      stopOperationTracking('report_n1');
+
+      const report = getFormattedNPlusOneReport();
+      expect(report).toContain('YES');
+    });
+
+    it('should truncate long operation names in formatted report', () => {
+      const longName = 'a'.repeat(50);
+      trackQuery(longName, 'storage', () => 'result');
+
+      const report = getFormattedNPlusOneReport();
+      expect(report).toContain('a'.repeat(40));
+    });
+  });
+
+  describe('report with multiple operations', () => {
+    it('should sort operations by query count descending', () => {
+      for (let i = 0; i < 3; i++) {
+        trackQuery('op_low', 'storage', () => 'r');
+      }
+      for (let i = 0; i < 10; i++) {
+        trackQuery('op_high', 'storage', () => 'r');
+      }
+
+      const report = getNPlusOneReport();
+      expect(report.operations[0].name).toBe('op_high');
+      expect(report.operations[0].totalQueries).toBe(10);
+    });
+  });
+
+  describe('reset edge cases', () => {
+    it('should reset global counters', () => {
+      startOperationTracking('reset_op');
+      for (let i = 0; i < 5; i++) {
+        trackQuery('reset_op', 'storage', () => 'r', { collection: 'test' });
+      }
+      stopOperationTracking('reset_op');
+
+      resetNPlusOneDetection();
+
+      const report = getNPlusOneReport();
+      expect(report.globalQueryCount).toBe(0);
+      expect(report.globalNPlusOneCount).toBe(0);
     });
   });
 });
