@@ -117,6 +117,23 @@ export function registerRpcListMatches(initializer: Runtime.Initializer): void {
 }
 
 /**
+ * Checks whether a match passes the listing filter criteria.
+ *
+ * @param match - The PvP match to check
+ * @param userId - The requesting user's ID (to exclude own matches)
+ * @param request - The filter parameters from the list request
+ * @returns True if the match should be included in results
+ */
+function matchPassesFilter(match: PvPMatch, userId: string, request: ListMatchesRequest): boolean {
+  if (match.status !== 'pending') return false;
+  if (request.match_type && match.match_type !== request.match_type) return false;
+  if (match.creator_id === userId) return false;
+  if (request.min_rank !== undefined && match.creator_rank < request.min_rank) return false;
+  if (request.max_rank !== undefined && match.creator_rank > request.max_rank) return false;
+  return true;
+}
+
+/**
  * Lists available PvP matches with filtering options.
  *
  * @param ctx - Nakama runtime context
@@ -191,27 +208,9 @@ export function rpcListMatches(
     }
     const match = matchResult.data;
 
-    if (match.status !== 'pending') {
-      continue;
+    if (matchPassesFilter(match, ctx.userId, request)) {
+      filteredMatches.push(match);
     }
-
-    if (request.match_type && match.match_type !== request.match_type) {
-      continue;
-    }
-
-    if (match.creator_id === ctx.userId) {
-      continue;
-    }
-
-    if (request.min_rank !== undefined && match.creator_rank < request.min_rank) {
-      continue;
-    }
-
-    if (request.max_rank !== undefined && match.creator_rank > request.max_rank) {
-      continue;
-    }
-
-    filteredMatches.push(match);
   }
 
   filteredMatches.sort((a, b) => b.created_at - a.created_at);

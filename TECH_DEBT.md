@@ -26,8 +26,8 @@ Technical debt is categorized into:
 |----|----------|-------|-------------|----------|--------|-----------------|-----------------|
 | TD-003 | Testing | Backend test coverage gaps | Some modules lack comprehensive unit tests | Medium | Resolved | 2024-03-09 | 8 hours |
 | TD-004 | Architecture | Error Insight Pipeline optimization | The error_insight_pipeline module needs performance review | Low | Open | 2024-03-09 | 4 hours |
-| TD-005 | Code Quality | Console logging usage | Multiple files use console.log/warn/error instead of proper logger | Low | Acknowledged | 2024-03-09 | 1 hour | Documentation-only (in code comments), not runtime |
-| TD-006 | Type Safety | Using `any` type | Multiple files use `any` type reducing type safety | Low | Open | 2024-03-09 | 4 hours |
+| TD-005 | Code Quality | Console logging usage | Multiple files use console.log/warn/error instead of proper logger | Low | Resolved | 2024-03-09 | 1 hour | Verified 2026-04-01: production code uses proper logger; console usage only in test files and docstring comments |
+| TD-006 | Type Safety | Using `any` type | Multiple files use `any` type reducing type safety | Low | Resolved | 2024-03-09 | 4 hours | Verified 2026-04-01: zero `any` in production code; 94 occurrences only in `__tests__/` files (standard mock practice) |
 
 ### Resolved / No Longer Applicable
 
@@ -36,6 +36,8 @@ Technical debt is categorized into:
 | TD-001 | Deprecated APIs | Deprecated error tracking functions | 2026-03-31 | No longer applicable - functions don't exist |
 | TD-002 | Deprecated APIs | Deprecated logger function | 2026-03-31 | No longer applicable - logRpcError is current implementation |
 | TD-003 | Testing | Backend test coverage gaps | 2026-04-01 | Coverage verified at 94.55% lines — well above 60% target |
+| TD-005 | Code Quality | Console logging usage | 2026-04-01 | Production code uses proper logger; console only in test files |
+| TD-006 | Type Safety | Using `any` type | 2026-04-01 | Zero `any` in production code; test files use standard mock patterns |
 
 ### Historical Debt (Resolved)
 
