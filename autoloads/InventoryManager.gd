@@ -48,7 +48,7 @@ func load_gear() -> bool:
 	print("[InventoryManager] Loading gear inventory")
 	is_loading = true
 	
-	var response: Dictionary = await NetworkManager.send_rpc("rpc_load_gear_inventory", "{}")
+	var response: Dictionary = await NetworkManager.send_rpc("armored_archer/get_inventory", "{}")
 	is_loading = false
 	
 	if response.has("error"):

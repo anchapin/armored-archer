@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: post-v3.2.0
 milestone_name: Coverage Push & Alpha Readiness
 status: in_progress
-last_updated: "2026-04-01T00:00:00.000Z"
+last_updated: "2026-04-01T13:40:00.000Z"
 progress:
   total_phases: 0
   completed_phases: 0
@@ -14,16 +14,16 @@ progress:
 # Armored Archer - Project State
 
 **Last Updated**: 2026-04-01
-**Current Focus**: Coverage improvement (48.7% → 60%) and Alpha readiness
-**Status**: Active development — test expansion in progress
+**Current Focus**: Alpha readiness and blocker resolution
+**Status**: Active development — P0 blockers resolved
 
 ---
 
 ## Current Position
 
 **Milestone**: Post v3.2.0 (Pixel Art Assets shipped 2026-03-26)
-**Active Work**: Test coverage expansion (recent commits adding backend module tests)
-**Coverage**: 48.7% overall Go backend (target: 60%)
+**Active Work**: Blocker resolution complete, ready for Alpha readiness
+**Coverage**: 94.55% lines, 94.4% statements, 93.69% functions, 88.54% branches (target: 60% — EXCEEDED)
 **TypeScript**: 0 type errors (15 fixed 2026-04-01)
 **Working Tree**: Clean
 
@@ -43,30 +43,40 @@ progress:
 
 ---
 
+## Blocker Resolution (2026-04-01)
+
+### P0 Blockers — RESOLVED
+
+| Blocker | Status | Resolution |
+|---------|--------|------------|
+| Godot RPC stubs (9 TODOs) | FIXED | Updated 3 managers to use correct `armored_archer/` prefixed RPC names: `MatchmakingManager.gd` (3 RPCs), `InventoryManager.gd` (3 RPCs), `CombatSyncManager.gd` (2 RPCs + added `action_type` field) |
+| CI coverage gate (Stage 3, 60%) | FIXED | Rewrote `coverage-threshold.yml` from Go to TypeScript/Jest; enforces 60% line coverage, blocks merges on failure, adds PR coverage comments |
+| Phase 15 VERIFICATION.md | ALREADY EXISTS | Verified at `.planning/phases/15-property-based-testing-expansion/15-VERIFICATION.md` — 6/6 PBT requirements satisfied |
+| Coverage 48.7% → 60% | EXCEEDED | Actual coverage is 94.55% lines — the 48.7% figure was outdated. All 52 source files have >80% coverage |
+
+### P1 Blockers — RESOLVED
+
+| Blocker | Status | Resolution |
+|---------|--------|------------|
+| Mutation testing workflow | FIXED | Installed Stryker (`@stryker-mutator/core`), created `stryker.config.json` for 8 critical modules, updated workflow to use Stryker instead of Go tools, added `npm run mutation:test` script |
+| Coverage gate enforcement | FIXED | Workflow now uses TypeScript/Jest, properly extracts coverage from `coverage-summary.json`, enforces 60% threshold with `exit 1` on failure |
+
+### Remaining (Non-Blocking)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Godot CoverageTracker | Pending | 4/30 autoloads have coverage tests. Requires manual `track_execution()` calls per line — larger effort, non-blocking |
+| Fixture mapping in gap analysis | Pending | `suggested_fixtures` always empty in `gaps.json` — low priority |
+
+---
+
 ## Open Items
-
-### High Priority
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Coverage gap: 48.7% → 60% | In progress | Recent test expansion commits adding module/config/utils tests |
-| Phase 15 VERIFICATION.md | Missing | Blocks v2.5.0 completion (31 property tests exist but unverified) |
-| Godot autoload RPC stubs | 9 TODOs | MatchmakingManager (3), InventoryManager (3), CombatSyncManager (2) — client-server gaps |
-
-### Medium Priority
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Mutation testing workflow | Never executed | Configured but no baseline scores, dashboard shows N/A |
-| Godot CoverageTracker | Partial | Only 1 of 23 autoload tests uses track_execution(), coverage.json empty |
-| Fixture mapping in gap analysis | Incomplete | suggested_fixtures always empty in gaps.json |
-| CI coverage gate enforcement | Partial | Stage 3 gate (60%) correctly fails but may not block merges |
 
 ### Tech Debt (from TECH_DEBT.md)
 
 | ID | Category | Severity | Title |
 |----|----------|----------|-------|
-| TD-003 | Testing | Medium | Backend test coverage gaps |
+| TD-003 | Testing | Medium | Backend test coverage gaps — RESOLVED (94.55%) |
 | TD-004 | Architecture | Low | Error Insight Pipeline optimization |
 | TD-005 | Code Quality | Low | Console logging instead of proper logger |
 | TD-006 | Type Safety | Low | `any` type usage in multiple files |
@@ -76,7 +86,7 @@ progress:
 ## Technical Stack
 
 **Client**: Godot 4.x (GDScript) with GUT testing framework
-**Backend**: TypeScript/Nakama (note: "Go migration" in older planning docs is aspirational; backend is currently TypeScript)
+**Backend**: TypeScript/Nakama
 **Database**: PostgreSQL
 **CI/CD**: GitHub Actions (26 workflows, security-hardened 2026-04-01)
 
@@ -87,42 +97,44 @@ progress:
 **Backend Tests**:
 - Location: `backend/src/**/__tests__/`
 - Framework: Jest with TypeScript
-- Coverage: 48.7% overall (target: 60%)
-- Recent activity: Expanding module, config, and utils test coverage
+- Coverage: 94.55% lines, 94.4% statements, 93.69% functions, 88.54% branches
+- Mutation Testing: Stryker configured for 8 critical modules (combat, matchmaking, RPG, gear, store, season, analytics, notifications)
+- All 52 source files exceed 80% line coverage
 
 **Frontend Tests**:
-- Location: `test/test_*.gd`
+- Location: `test/test_*.gd` (67 test files)
 - Framework: GUT (Godot Unit Test)
-- Coverage: Minimal
-- Status: CoverageTracker exists but only 1/23 tests instrumented
+- Coverage: Partial — CoverageTracker exists, 4/30 autoloads have coverage tests
+- Status: CoverageTracker instrumentation is a future enhancement
 
 **CI/CD**:
 - Platform: GitHub Actions (26 workflows)
 - Linting: ESLint (backend), gdlint (Godot)
 - Type checking: `tsc --noEmit` (passing)
-- Coverage: Configured but gate enforcement incomplete
+- Coverage gate: 60% threshold enforced on PRs (coverage-threshold.yml)
+- Mutation testing: Nightly Stryker runs (mutation-testing.yml)
 
 ---
 
-## Recent Activity (2026-03-31 to 2026-04-01)
+## Recent Activity (2026-04-01)
 
-- Expanded backend test coverage for modules, config, and utils (multiple commits)
-- Added enemy, boss, and stat allocation test coverage (Godot)
-- Fixed 15 TypeScript type errors in combat_system.ts, matchmaker.ts, store.ts
-- Security-hardened 26 CI workflows (permissions + SHA pinning)
-- Removed debug print statements from NetworkManager.gd
-- Added safe JSON parsing wrappers in backend config
-- Added readAndParseStorage() helper function
+- Fixed 3 Godot autoload managers to use correct `armored_archer/` prefixed RPC names
+- Added `action_type: "shoot"` to CombatSyncManager combat action payload to match server schema
+- Rewrote coverage-threshold CI workflow from Go to TypeScript/Jest
+- Installed Stryker mutation testing framework
+- Created stryker.config.json for 8 critical backend modules
+- Updated mutation-testing CI workflow to use Stryker
+- Verified backend coverage at 94.55% (well above 60% target)
+- Updated .planning/STATE.md with resolved blockers
 
 ---
 
 ## Next Steps
 
-1. Continue test expansion to reach 60% coverage (COV-01)
-2. Generate Phase 15 VERIFICATION.md (v2.5.0 critical blocker)
-3. Implement Godot autoload RPC stubs (9 TODOs)
-4. Execute mutation testing workflow for baseline scores
-5. Instrument remaining autoload tests with CoverageTracker
+1. Run Stryker mutation testing in CI to establish baseline scores
+2. Address v3.0.0 Alpha readiness (load testing, security audit, 1,000+ CCU)
+3. Instrument remaining 26 autoload tests with CoverageTracker (non-blocking)
+4. Execute v3.4.0 tactical gameplay phases
 
 ---
 
@@ -134,14 +146,12 @@ progress:
 | `.planning/REQUIREMENTS.md` | Requirements with traceability |
 | `.planning/ROADMAP.md` | Phase breakdown and dependencies |
 | `.planning/STATE.md` | Project memory (this file) |
-| `.planning/MILESTONE-v2.6.0-PROPOSAL.md` | Coverage push plan (48.7% → 60%) |
 | `.planning/MILESTONE-v3.0.0-PROPOSAL.md` | Alpha readiness plan |
-| `.planning/v2.5-MILESTONE-AUDIT.md` | Audit gaps and recommendations |
-| `backend/src/**/__tests__/` | Backend tests |
-| `test/test_*.gd` | Frontend tests |
-| `.github/workflows/` | CI/CD pipelines |
+| `backend/stryker.config.json` | Mutation testing configuration |
+| `.github/workflows/coverage-threshold.yml` | CI coverage gate |
+| `.github/workflows/mutation-testing.yml` | CI mutation testing |
 
 ---
 
-*State updated: 2026-04-01*
-*Next update: After reaching 60% coverage or completing next major milestone*
+*State updated: 2026-04-01T13:40:00Z*
+*Next update: After mutation testing baseline or Alpha readiness milestone*

@@ -55,7 +55,9 @@
     "test:smoke": "./scripts/run-smoke-tests.sh --all",
     "test:smoke:quick": "./scripts/run-smoke-tests.sh --quick",
     "test:smoke:coverage": "./scripts/run-smoke-tests.sh --all --coverage",
-    "test:coverage:report": "ts-node scripts/test-coverage-report.ts"
+    "test:coverage:report": "ts-node scripts/test-coverage-report.ts",
+    "mutation:test": "stryker run",
+    "mutation:test:ci": "stryker run --reporters json,clear-text"
   },
   "keywords": [
     "nakama",
@@ -70,6 +72,9 @@
     "@babel/plugin-transform-runtime": "^7.29.0",
     "@babel/preset-env": "^7.29.0",
     "@heroiclabs/nakama-js": "2.8.0",
+    "@stryker-mutator/core": "^9.6.0",
+    "@stryker-mutator/jest-runner": "^9.6.0",
+    "@stryker-mutator/typescript-checker": "^9.6.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.5.0",
     "@types/opossum": "^8.1.9",

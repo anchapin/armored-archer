@@ -35,82 +35,135 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      nakama:
+        image: heroiclabs/nakama:3.21.1
+        env:
+          NAKAMA_SERVER_KEY: defaultkey
+          NAKAMA_SERVER_PORT: 7350
+          DATABASE_ADDRESS: postgres://postgres:changeme@localhost:5432/nakama?sslmode=disable
+        ports:
+          - 7350:7350
+        options: >-
+          --health-cmd "/nakama/nakama healthcheck"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        volumes:
+          - ./backend/nakama.yml:/nakama/data/nakama.yml:ro
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          go-version: '1.21'
-          cache: true
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U postgres; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run database migrations
+        working-directory: ./backend/data
+        run: |
+          for migration in $(ls -1 *.sql 2>/dev/null | sort); do
+            echo "Running migration: $migration"
+            PGPASSWORD=changeme psql -h localhost -U postgres -d nakama -f "$migration" || true
+          done
+
+      - name: Wait for Nakama to be ready
+        run: |
+          echo "Waiting for Nakama to be ready..."
+          for i in {1..60}; do
+            if curl -s http://localhost:7350/ 2>/dev/null || curl -s http://localhost:7351/ 2>/dev/null; then
+              echo "Nakama is ready"
+              break
+            fi
+            echo "Waiting for Nakama... ($i/60)"
+            sleep 2
+          done
 
       - name: Run tests with coverage
         working-directory: ./backend
-        run: |
-          go test -coverprofile=coverage.out -covermode=atomic -coverpkg=./internal/... ./... -v
+        env:
+          NAKAMA_HOST: localhost
+          NAKAMA_PORT: 7350
+          NAKAMA_SERVER_KEY: defaultkey
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5432
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: changeme
+          TEST_DB_NAME: nakama
+        run: npm run test:coverage
 
       - name: Extract coverage metrics
         id: coverage
         working-directory: ./backend
         run: |
-          OVERALL=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-          CRITICAL=$(go tool cover -func=coverage.out | grep -E "(combat|matchmaking|rpg)" | awk '{gsub(/%/, "", $3); sum+=$3; n++} END {printf "%.1f", n>0 ? sum/n : "0"}')
+          # Parse Jest JSON coverage summary
+          if [ -f coverage/coverage-summary.json ]; then
+            OVERALL=$(node -e "const c=require('./coverage/coverage-summary.json'); console.log(c.total.lines.pct)")
+            BRANCHES=$(node -e "const c=require('./coverage/coverage-summary.json'); console.log(c.total.branches.pct)")
+            FUNCTIONS=$(node -e "const c=require('./coverage/coverage-summary.json'); console.log(c.total.functions.pct)")
+            STATEMENTS=$(node -e "const c=require('./coverage/coverage-summary.json'); console.log(c.total.statements.pct)")
 
-          echo "overall=$OVERALL" >> $GITHUB_OUTPUT
-          echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
+            echo "overall=$OVERALL" >> $GITHUB_OUTPUT
+            echo "branches=$BRANCHES" >> $GITHUB_OUTPUT
+            echo "functions=$FUNCTIONS" >> $GITHUB_OUTPUT
+            echo "statements=$STATEMENTS" >> $GITHUB_OUTPUT
 
-          # Extract package coverage
-          PACKAGE_COVERAGE=$(go tool cover -func=coverage.out | grep -v "^total:" | awk '{
-              split($1, parts, ":")
-              pkg = parts[1]
-              gsub(/\/[^\/]+$/, "", pkg)
-              coverage = $3
-              gsub(/%/, "", coverage)
-              pkg_count[pkg]++
-              pkg_total[pkg] += coverage
-          } END {
-              for (p in pkg_count) {
-                  avg = pkg_total[p] / pkg_count[p]
-                  printf "%s|%.1f\n", p, avg
-              }
-          }' | sort -t'|' -k2 -rn | head -20)
+            # Extract per-file coverage for critical modules
+            CRITICAL=$(node -e "
+              const c = require('./coverage/coverage-summary.json');
+              const files = Object.entries(c)
+                .filter(([k]) => k !== 'total' && (k.includes('combat') || k.includes('matchmaker') || k.includes('rpg') || k.includes('gear')))
+                .map(([k, v]) => k.split('/').pop() + '|' + v.lines.pct);
+              console.log(files.join('\n'));
+            ")
+            echo "critical<<EOF" >> $GITHUB_OUTPUT
+            echo "$CRITICAL" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
 
-          echo "package_coverage<<EOF" >> $GITHUB_OUTPUT
-          echo "$PACKAGE_COVERAGE" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Update coverage history
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          make coverage-history
-
-      - name: Check coverage thresholds
-        working-directory: ./backend/tests/quality
-        run: |
-          COVERAGE_GATE_STAGE=${{ steps.coverage.outputs.overall }}
-          if (( $(echo "$COVERAGE_GATE_STAGE >= 30" | bc -l 2>/dev/null || echo 0) )); then
-            export COVERAGE_GATE_STAGE=2
+            echo "Coverage: Overall=$OVERALL%, Branches=$BRANCHES%, Functions=$FUNCTIONS%, Statements=$STATEMENTS%"
+          else
+            echo "::warning::coverage-summary.json not found"
+            echo "overall=0" >> $GITHUB_OUTPUT
           fi
-          if (( $(echo "$COVERAGE_GATE_STAGE >= 45" | bc -l 2>/dev/null || echo 0) )); then
-            export COVERAGE_GATE_STAGE=3
+
+      - name: Check coverage thresholds - Stage 3 at 60%
+        working-directory: ./backend
+        run: |
+          OVERALL=${{ steps.coverage.outputs.overall }}
+          echo "Overall coverage: ${OVERALL}%"
+          echo "Threshold: 60%"
+
+          if (( $(echo "$OVERALL < 60" | bc -l) )); then
+            echo "::error::Coverage ${OVERALL}% is below the 60% threshold (Stage 3 gate)"
+            exit 1
+          else
+            echo "Coverage gate passed: ${OVERALL}% >= 60%"
           fi
-          ./coverage_gates.sh
 
-      - name: Check for regressions
-        run: |
-          scripts/check-coverage-regression.sh
-
-      - name: Generate coverage dashboard
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          make coverage-dashboard
-
-      - name: Upload dashboard artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Upload coverage report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-dashboard
-          path: docs/coverage-dashboard.html
+          name: coverage-report
+          path: |
+            backend/coverage/
           retention-days: 30
 
       - name: Comment PR with coverage summary
@@ -119,49 +172,43 @@ jobs:
         with:
           script: |
             const overall = '${{ steps.coverage.outputs.overall }}';
-            const critical = '${{ steps.coverage.outputs.critical }}';
-            const packageCoverage = `${{ steps.coverage.outputs.package_coverage }}`;
+            const branches = '${{ steps.coverage.outputs.branches }}';
+            const functions = '${{ steps.coverage.outputs.functions }}';
+            const statements = '${{ steps.coverage.outputs.statements }}';
+            const critical = `${{ steps.coverage.outputs.critical }}`;
 
-            // Determine status
-            const overallStatus = parseFloat(overall) >= 30 ? '✅' : '❌';
-            const criticalStatus = parseFloat(critical) >= 80 ? '✅' : '❌';
+            const overallStatus = parseFloat(overall) >= 60 ? '✅' : '❌';
+            const branchesStatus = parseFloat(branches) >= 60 ? '✅' : '❌';
+            const functionsStatus = parseFloat(functions) >= 60 ? '✅' : '❌';
+            const statementsStatus = parseFloat(statements) >= 60 ? '✅' : '❌';
 
-            // Build package list
-            const packages = packageCoverage.split('\n')
+            const criticalFiles = critical.split('\n')
               .filter(line => line.trim())
               .map(line => {
-                const [pkg, cov] = line.split('|');
+                const [file, cov] = line.split('|');
                 const status = parseFloat(cov) >= 80 ? '✅' : parseFloat(cov) >= 50 ? '⚠️' : '❌';
-                return `${status} \`${pkg.split('/').pop()}\`: ${cov}%`;
+                return `${status} \`${file}\`: ${cov}%`;
               })
               .join('\n');
 
             const comment = `
-            ## 📊 Coverage Report
+            ## Coverage Report
 
             ### Summary
             | Metric | Coverage | Threshold | Status |
-            |---------|-----------|------------|--------|
-            | Overall | **${overall}%** | 30% → 45% → 60% | ${overallStatus} |
-            | Critical Path | **${critical}%** | 80% | ${criticalStatus} |
+            |--------|----------|-----------|--------|
+            | Lines | **${overall}%** | 60% | ${overallStatus} |
+            | Branches | **${branches}%** | 60% | ${branchesStatus} |
+            | Functions | **${functions}%** | 60% | ${functionsStatus} |
+            | Statements | **${statements}%** | 60% | ${statementsStatus} |
 
-            ### Top Packages (Coverage)
-            ${packages}
+            ### Critical Modules
+            ${criticalFiles || 'No critical module data available'}
 
-            ### Next Steps
-            ${overallStatus === '✅' ? '✅ Coverage thresholds passed' : '❌ Coverage thresholds failed - add tests to improve coverage'}
-
-            <details>
-            <summary>📖 How to improve coverage</summary>
-
-            1. Run gap analysis: \`make coverage-gap-analysis\`
-            2. Add tests for uncovered functions
-            3. Run tests: \`make backend-test-go\`
-            4. Check thresholds: \`make coverage-threshold-check\`
-            </details>
+            ### Result
+            ${overallStatus === '✅' ? '✅ Coverage thresholds passed' : '❌ Coverage below 60% threshold — add tests to improve coverage'}
             `;
 
-            // Find existing comment
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -170,11 +217,10 @@ jobs:
 
             const botComment = comments.find(comment =>
               comment.user.type === 'Bot' &&
-              comment.body.includes('📊 Coverage Report')
+              comment.body.includes('Coverage Report')
             );
 
             if (botComment) {
-              // Update existing comment
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -182,7 +228,6 @@ jobs:
                 body: comment
               });
             } else {
-              // Create new comment
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -198,7 +243,7 @@ jobs:
           exit 1
 
   regression-check:
-    name: Package Regression Check
+    name: Coverage Regression Check
     runs-on: ubuntu-latest
     needs: coverage-check
     if: github.event_name == 'pull_request'
@@ -206,31 +251,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          go-version: '1.21'
-          cache: true
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Checkout baseline
+      - name: Install dependencies (current)
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run tests on current branch
+        working-directory: ./backend
+        run: npm run test:coverage -- --coverageReporters=json-summary || true
+
+      - name: Save current coverage
+        run: cp backend/coverage/coverage-summary.json /tmp/current-coverage.json || true
+
+      - name: Checkout base branch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.base_ref }}
+          clean: false
           path: baseline
+
+      - name: Install dependencies (baseline)
+        working-directory: ./baseline/backend
+        run: npm ci
+
+      - name: Run tests on baseline
+        working-directory: ./baseline/backend
+        run: npm run test:coverage -- --coverageReporters=json-summary || true
 
       - name: Compare coverage
         run: |
-          echo "Checking for coverage regressions..."
+          if [ -f /tmp/current-coverage.json ] && [ -f baseline/backend/coverage/coverage-summary.json ]; then
+            CURRENT=$(node -e "console.log(require('/tmp/current-coverage.json').total.lines.pct)")
+            BASELINE=$(node -e "console.log(require('baseline/backend/coverage/coverage-summary.json').total.lines.pct)")
+            DIFF=$(echo "$CURRENT - $BASELINE" | bc -l)
+            echo "Current: ${CURRENT}%, Baseline: ${BASELINE}%, Diff: ${DIFF}%"
 
-          # Extract baseline package coverage
-          cd baseline/backend
-          go test -coverprofile=coverage.baseline -covermode=atomic -coverpkg=./internal/... ./... > /dev/null 2>&1 || true
-
-          # Extract current package coverage
-          cd ../../backend
-          go test -coverprofile=coverage.current -covermode=atomic -coverpkg=./internal/... ./... > /dev/null 2>&1 || true
-
-          # Compare
-          if [ -f coverage.baseline ] && [ -f coverage.current ]; then
-            bash ../scripts/check-coverage-regression.sh || true
+            if (( $(echo "$DIFF < -5" | bc -l) )); then
+              echo "::error::Coverage regression detected: ${DIFF}% drop (current: ${CURRENT}%, baseline: ${BASELINE}%)"
+              exit 1
+            else
+              echo "No significant coverage regression"
+            fi
+          else
+            echo "Skipping regression check - coverage data not available"
           fi

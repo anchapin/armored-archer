@@ -49,7 +49,7 @@ func create_match(match_type: String = "1v1", punch_up: bool = false) -> String:
 		"timestamp": Time.get_ticks_msec()
 	})
 	
-	var response: Dictionary = await NetworkManager.send_rpc("rpc_create_match", rpc_payload)
+	var response: Dictionary = await NetworkManager.send_rpc("armored_archer/create_match", rpc_payload)
 	_pending_creation = false
 	
 	if response.has("error"):
@@ -82,7 +82,7 @@ func list_matches(filters: Dictionary = {}) -> Array:
 		"offset": 0
 	})
 	
-	var response: Dictionary = await NetworkManager.send_rpc("rpc_list_matches", rpc_payload)
+	var response: Dictionary = await NetworkManager.send_rpc("armored_archer/list_matches", rpc_payload)
 	
 	if response.has("error"):
 		push_error("[MatchmakingManager] List matches error: %s" % response.error)
@@ -121,7 +121,7 @@ func join_match(match_id: String) -> bool:
 		"timestamp": Time.get_ticks_msec()
 	})
 	
-	var response: Dictionary = await NetworkManager.send_rpc("rpc_join_match", rpc_payload)
+	var response: Dictionary = await NetworkManager.send_rpc("armored_archer/accept_match", rpc_payload)
 	
 	if response.has("error"):
 		push_error("[MatchmakingManager] Join match error: %s" % response.error)

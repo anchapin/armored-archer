@@ -64,6 +64,7 @@ func send_move(angle: float, power: float) -> void:
 	
 	var rpc_payload: String = JSON.stringify({
 		"match_id": current_match_id,
+		"action_type": "shoot",
 		"angle": angle,
 		"power": power,
 		"timestamp": Time.get_ticks_msec()
@@ -71,7 +72,7 @@ func send_move(angle: float, power: float) -> void:
 	
 	# Fire and forget - don't block on response
 	if has_node("/root/NetworkManager"):
-		NetworkManager.send_rpc_async("rpc_send_move", rpc_payload)
+		NetworkManager.send_rpc_async("armored_archer/submit_combat_action", rpc_payload)
 	
 	# Record in combat log
 	var move_entry: Dictionary = {
@@ -141,7 +142,7 @@ func _on_poll_tick() -> void:
 	})
 	
 	if has_node("/root/NetworkManager"):
-		var response = await NetworkManager.send_rpc("rpc_poll_opponent_move", rpc_payload)
+		var response = await NetworkManager.send_rpc("armored_archer/get_match_state", rpc_payload)
 		
 		if response.has("error"):
 			print("[CombatSyncManager] Poll error: %s" % response.error)
