@@ -27,6 +27,9 @@ on:
   repository_dispatch:
     types: [rollback_triggered]
 
+permissions:
+  contents: write
+
 jobs:
   pre-rollback-check:
     runs-on: ubuntu-latest

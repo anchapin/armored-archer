@@ -7,6 +7,10 @@ on:
   push:
     branches: [main, develop]
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   zap-scan:
     name: OWASP ZAP Scan
@@ -16,13 +20,13 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Run OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.9.0
+        uses: zaproxy/action-baseline@a418de766254e096fa7d9e30f8dc9662b58df224 # v0.9.0
         with:
           target: 'https://staging.armored-archer.example.com'
       
       - name: Run OWASP ZAP Full Scan
         if: github.ref == 'refs/heads/main'
-        uses: zaproxy/action-full-scan@v0.9.0
+        uses: zaproxy/action-full-scan@a34710cc692896d035e7bf89bbcf5d40ea422110 # v0.9.0
         with:
           target: 'https://armored-archer.example.com'
       

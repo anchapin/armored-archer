@@ -11,6 +11,11 @@ on:
         required: false
         type: number
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 concurrency:
   group: pr-review-${{ github.event.pull_request.number }}
   cancel-in-progress: false

@@ -21,7 +21,14 @@ Thumbs.db
 .env.local
 .env.staging
 .env.production
+.env.alpha
+.env.beta
+.env.development
 .env.*.local
+backend/.env
+backend/.env.*
+!backend/.env.example
+!backend/.env.*.example
 backend/coverage
 backend/tsconfig.tsbuildinfo
 

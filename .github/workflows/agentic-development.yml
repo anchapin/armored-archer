@@ -27,6 +27,11 @@ on:
         default: 'develop'
         type: string
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 concurrency:
   group: agentic-dev-${{ github.run_id }}
   cancel-in-progress: false

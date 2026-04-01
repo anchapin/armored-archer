@@ -13,6 +13,10 @@ on:
         default: ''
         type: string
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   mutation-testing:
     name: Mutation Testing (Go)

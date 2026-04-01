@@ -17,6 +17,9 @@ on:
           - '75'
           - '100'
 
+permissions:
+  contents: read
+
 jobs:
   gradual-rollout:
     name: Gradual Rollout

@@ -13,6 +13,10 @@ on:
           - staging
           - production
 
+permissions:
+  contents: read
+  deployments: write
+
 # Concurrency control for deployments
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.inputs.environment || 'push' }}
@@ -115,7 +119,7 @@ jobs:
       # Deployment observability: Send deployment notification
       - name: Send deployment notification (staging)
         if: always()
-        uses: slackapi/slack-github-action@v1.25.0
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
         with:
           payload: |
             {
@@ -263,7 +267,7 @@ jobs:
       # Deployment observability: Send deployment notification
       - name: Send deployment notification (production)
         if: always()
-        uses: slackapi/slack-github-action@v1.25.0
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
         with:
           payload: |
             {

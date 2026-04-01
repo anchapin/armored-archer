@@ -20,6 +20,9 @@ on:
           - backend
           - godot
 
+permissions:
+  contents: read
+
 jobs:
   profile-backend:
     name: Profile Backend (Node.js)

@@ -16,6 +16,9 @@ on:
         default: 'false'
         type: boolean
 
+permissions:
+  contents: read
+
 jobs:
   detect-dead-flags:
     name: Detect Dead Feature Flags

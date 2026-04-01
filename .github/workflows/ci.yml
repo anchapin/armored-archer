@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+permissions:
+  contents: read
+
 # Prevent concurrent CI runs to avoid intermittent failures
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -214,7 +217,7 @@ jobs:
       - name: Upload coverage to Codecov
         if: success()
         continue-on-error: true
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         with:
           file: ./backend/coverage/lcov.info
           flags: backend
@@ -616,7 +619,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Run SonarCloud Scanner for Backend (TypeScript/Node.js)
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarcloud-github-action@ba3875ecf642b2129de2b589510c81a8b53dbf4e # master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -639,7 +642,7 @@ jobs:
 
       - name: Run SonarCloud Scanner for Game Scripts
         # Note: GDScript requires SonarQube server with community plugin
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarcloud-github-action@ba3875ecf642b2129de2b589510c81a8b53dbf4e # master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -670,7 +673,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       
       - name: Start PostgreSQL
-        uses: harmon758/postgresql-action@v1
+        uses: harmon758/postgresql-action@0be19fa37850b22cb4c9bbf28a03abbf44abd863 # v1
         with:
           postgresql version: '15'
           postgresql db: nakama

@@ -21,6 +21,9 @@ on:
           - backend
           - godot
 
+permissions:
+  contents: read
+
 jobs:
   flaky-tests-backend:
     name: Backend Flaky Tests (Jest)
