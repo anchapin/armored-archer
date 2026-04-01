@@ -43,8 +43,6 @@ func create_match(match_type: String = "1v1", punch_up: bool = false) -> String:
 	
 	_pending_creation = true
 	
-	# TODO: RPC to Nakama - call rpc_create_match with match_type, punch_up
-	# Expected response: { "match_id": "...", "match_data": {...} }
 	var rpc_payload: String = JSON.stringify({
 		"match_type": match_type,
 		"punch_up": punch_up,
@@ -78,8 +76,6 @@ func list_matches(filters: Dictionary = {}) -> Array:
 	
 	print("[MatchmakingManager] Listing matches with filters: %s" % filters)
 	
-	# TODO: RPC to Nakama - call rpc_list_matches with filters
-	# Expected response: { "matches": [{...}, {...}], "count": 5 }
 	var rpc_payload: String = JSON.stringify({
 		"filters": filters,
 		"limit": 20,
@@ -120,8 +116,6 @@ func join_match(match_id: String) -> bool:
 	
 	print("[MatchmakingManager] Joining match: %s" % match_id)
 	
-	# TODO: RPC to Nakama - call rpc_join_match with match_id
-	# Expected response: { "match_data": {...}, "join_status": "success" }
 	var rpc_payload: String = JSON.stringify({
 		"match_id": match_id,
 		"timestamp": Time.get_ticks_msec()

@@ -48,8 +48,6 @@ func load_gear() -> bool:
 	print("[InventoryManager] Loading gear inventory")
 	is_loading = true
 	
-	# TODO: RPC to Nakama - call rpc_load_gear_inventory
-	# Expected response: { "inventory": {...}, "equipped": [...] }
 	var response: Dictionary = await NetworkManager.send_rpc("rpc_load_gear_inventory", "{}")
 	is_loading = false
 	
@@ -90,8 +88,6 @@ func equip_gear(gear_id: String, slot: int = GearSlot.HEAD) -> bool:
 	
 	print("[InventoryManager] Equipping gear %s to slot %d" % [gear_id, slot])
 	
-	# TODO: RPC to Nakama - call rpc_equip_gear with gear_id, slot
-	# Expected response: { "success": true, "equipped": [...] }
 	var rpc_payload: String = JSON.stringify({
 		"gear_id": gear_id,
 		"slot": slot
@@ -130,8 +126,6 @@ func unequip_gear(slot: int = GearSlot.HEAD) -> bool:
 	
 	print("[InventoryManager] Unequipping gear from slot %d" % slot)
 	
-	# TODO: RPC to Nakama - call rpc_unequip_gear with slot
-	# Expected response: { "success": true, "equipped": [...] }
 	var rpc_payload: String = JSON.stringify({
 		"slot": slot
 	})

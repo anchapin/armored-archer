@@ -62,8 +62,6 @@ func send_move(angle: float, power: float) -> void:
 	
 	print("[CombatSyncManager] Sending move - angle: %.2f, power: %.2f" % [angle, power])
 	
-	# TODO: RPC to Nakama - call rpc_send_move with match_id, angle, power
-	# Expected payload: { "match_id": current_match_id, "angle": angle, "power": power }
 	var rpc_payload: String = JSON.stringify({
 		"match_id": current_match_id,
 		"angle": angle,
@@ -137,8 +135,7 @@ func _on_poll_tick() -> void:
 	if not is_combat_active or current_match_id.is_empty():
 		return
 	
-	# TODO: RPC to Nakama - call rpc_poll_opponent_move with match_id
-	# Expected response: { "move_data": {...} } or empty if no move
+	# Poll for opponent moves
 	var rpc_payload: String = JSON.stringify({
 		"match_id": current_match_id
 	})
