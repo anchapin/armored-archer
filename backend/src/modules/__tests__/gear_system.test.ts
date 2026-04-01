@@ -625,6 +625,318 @@ describe('gear_system', () => {
     });
   });
 
+  describe('rpcEquipGear edge cases', () => {
+    it('should return error when inventory value is null', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: null,
+        },
+      ]);
+
+      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'weapon' });
+      const result = rpcEquipGear(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Invalid inventory data');
+    });
+
+    it('should return error when inventory value is empty string', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: '',
+        },
+      ]);
+
+      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'weapon' });
+      const result = rpcEquipGear(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Invalid inventory data');
+    });
+
+    it('should return error when inventory data is corrupted', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: 'not valid json {{{',
+        },
+      ]);
+
+      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'weapon' });
+      const result = rpcEquipGear(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error_code).toBe('INVALID_DATA');
+    });
+  });
+
+  describe('rpcUnequipGear edge cases', () => {
+    it('should return error when inventory value is null', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: null,
+        },
+      ]);
+
+      const payload = JSON.stringify({ slot: 'weapon' });
+      const result = rpcUnequipGear(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Invalid inventory data');
+    });
+
+    it('should return error when inventory value is empty string', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: '',
+        },
+      ]);
+
+      const payload = JSON.stringify({ slot: 'weapon' });
+      const result = rpcUnequipGear(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Invalid inventory data');
+    });
+
+    it('should return error when inventory data is corrupted', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: '{broken json}',
+        },
+      ]);
+
+      const payload = JSON.stringify({ slot: 'weapon' });
+      const result = rpcUnequipGear(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error_code).toBe('INVALID_DATA');
+    });
+  });
+
+  describe('getEquippedGearModifierBonuses edge cases', () => {
+    it('should return empty object when inventory is null', () => {
+      const bonuses = getEquippedGearModifierBonuses(null as unknown as PlayerInventory);
+      expect(bonuses).toEqual({});
+    });
+
+    it('should return empty object when equipped_gear is null', () => {
+      const inventory = {
+        user_id: 'test-user',
+        gear: [],
+        equipped_gear: null as unknown as PlayerInventory['equipped_gear'],
+        unlocked_modifier_pools: [],
+      };
+      const bonuses = getEquippedGearModifierBonuses(inventory);
+      expect(bonuses).toEqual({});
+    });
+
+    it('should skip equipped gear that is not found in inventory', () => {
+      const inventory = createMockInventory({
+        gear: [],
+        equipped_gear: { weapon: 'nonexistent-gear-id' },
+      });
+
+      const bonuses = getEquippedGearModifierBonuses(inventory);
+      expect(bonuses).toEqual({});
+    });
+
+    it('should skip gear with no modifiers', () => {
+      const gear = createMockGearItem({ id: 'gear-1', modifiers: [] });
+      const inventory = createMockInventory({
+        gear: [gear],
+        equipped_gear: { weapon: 'gear-1' },
+      });
+
+      const bonuses = getEquippedGearModifierBonuses(inventory);
+      expect(bonuses).toEqual({});
+    });
+  });
+
+  describe('rpcUnlockModifierPool edge cases', () => {
+    it('should handle validation failure with audit log', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+
+      const payload = JSON.stringify({ modifier_id: '' });
+      const result = rpcUnlockModifierPool(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+      // Audit log is written on failure
+      expect(mockNk.storageWrite).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle corrupted inventory on unlock', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: '{{invalid json',
+        },
+      ]);
+
+      const payload = JSON.stringify({ modifier_id: 'vitality_boost' });
+      const result = rpcUnlockModifierPool(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error_code).toBe('INVALID_DATA');
+    });
+
+    it('should create new inventory with modifier when value is null', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: null,
+        },
+      ]);
+
+      const payload = JSON.stringify({ modifier_id: 'vitality_boost' });
+      const result = rpcUnlockModifierPool(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.unlocked_modifier_pools).toContain('vitality_boost');
+    });
+  });
+
+  describe('rpcGetInventory edge cases', () => {
+    it('should return default inventory when storage value is null', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: null,
+        },
+      ]);
+
+      const payload = JSON.stringify({});
+      const result = rpcGetInventory(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.gear).toEqual([]);
+      expect(parsed.equipped_gear).toEqual({});
+      expect(parsed.unlocked_modifier_pools).toEqual([]);
+    });
+
+    it('should return stored value when valid', () => {
+      const inventory = createMockInventory({ gear: [createMockGearItem()] });
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: JSON.stringify(inventory),
+        },
+      ]);
+
+      const payload = JSON.stringify({});
+      const result = rpcGetInventory(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.gear).toHaveLength(1);
+    });
+  });
+
+  describe('rpcStageComplete with enemy_type', () => {
+    it('should unlock modifier pools when enemy_type is provided', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.1);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'medium',
+        enemy_type: 'goblin',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.unlocked_modifier_pools).toContain('vitality_boost');
+    });
+
+    it('should unlock multiple modifiers for dragon enemy type', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.1);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'hard',
+        enemy_type: 'dragon',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.unlocked_modifier_pools).toContain('piercing_arrow');
+      expect(parsed.unlocked_modifier_pools).toContain('wind_fury');
+    });
+
+    it('should not unlock modifiers for unknown enemy type', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.1);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'medium',
+        enemy_type: 'unknown_creature',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.unlocked_modifier_pools).toEqual([]);
+    });
+  });
+
+  describe('rpcGenerateGear edge cases', () => {
+    it('should handle inventory with null value', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: null,
+        },
+      ]);
+
+      const payload = JSON.stringify({ stage_id: 'stage_1', boss_defeated: false });
+      const result = rpcGenerateGear(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.gear).toBeDefined();
+    });
+
+    it('should handle corrupted inventory data', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: '{bad json',
+        },
+      ]);
+
+      const payload = JSON.stringify({ stage_id: 'stage_1', boss_defeated: false });
+      const result = rpcGenerateGear(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error_code).toBe('INVALID_DATA');
+    });
+  });
+
   describe('rpcStageComplete with boss_id for modifier unlock', () => {
     it('should unlock modifier pools when boss is defeated with boss_id', () => {
       // Initialize with empty inventory and boss defeat data to simulate new player

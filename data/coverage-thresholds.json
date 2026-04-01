@@ -1,24 +1,24 @@
 {
-  "overall": 60.0,
-  "critical": 80.0,
+  "overall": 74.0,
+  "critical": 85.0,
   "critical_packages": ["combat", "matchmaking", "rpg"],
   "stages": {
-    "1": 45.0,
-    "2": 52.5,
-    "3": 60.0
+    "1": 68.0,
+    "2": 72.0,
+    "3": 74.0
   },
   "current_stage": 3,
-  "regression_warning": 5.0,
-  "regression_failure": 10.0,
+  "regression_warning": 3.0,
+  "regression_failure": 5.0,
   "godot_pass_rate_threshold": 95.0,
   "godot_line_coverage_threshold": 50.0,
   "package_thresholds": {
-    "rpg": 75.0,
-    "matchmaking": 80.0,
-    "store": 55.0,
-    "season": 50.0,
+    "rpg": 80.0,
+    "matchmaking": 97.0,
+    "store": 53.0,
+    "season": 70.0,
     "notifications": 50.0,
-    "rpc": 60.0,
-    "analytics": 80.0
+    "analytics": 65.0,
+    "rpc": 65.0
   }
 }

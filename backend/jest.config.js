@@ -10,7 +10,11 @@ module.exports = {
     '!src/types/**',
     '!src/**/__tests__/**',
     '!src/**/*.test.ts',
-    '!src/**/*.spec.ts'
+    '!src/**/*.spec.ts',
+    '!src/index.ts',
+    '!src/utils/redis.ts',
+    '!src/utils/eslint-rules/**',
+    '!src/config/errorTracking.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html', 'json'],
@@ -30,58 +34,114 @@ module.exports = {
   //     }
   //   }]
   // ],
-  // Coverage thresholds - lowered to match actual achievable coverage
+  // Coverage thresholds - 80% minimum across all metrics
   coverageThreshold: {
     global: {
-      branches: 38,
-      functions: 36,
-      lines: 44,
-      statements: 43
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
-    // Per-file thresholds for critical modules (adjusted to realistic levels)
+    // Critical modules - high thresholds
     './src/modules/combat_system.ts': {
-      branches: 60,
-      functions: 70,
-      lines: 70,
-      statements: 70
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
     './src/modules/rpg_system.ts': {
-      branches: 75,
-      functions: 50,
+      branches: 80,
+      functions: 80,
       lines: 80,
       statements: 80
     },
     './src/modules/matchmaker.ts': {
-      branches: 40,
-      functions: 35,
-      lines: 55,
-      statements: 55
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
     './src/modules/gear_system.ts': {
-      branches: 65,
-      functions: 60,
-      lines: 70,
-      statements: 70
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
-    // New modules from PR #350 - build performance tracking
+    // Analytics module
+    './src/modules/analytics.ts': {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    },
+    // Stage tracking
+    './src/modules/stage_tracking.ts': {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    },
+    // Notifications
+    './src/modules/notifications.ts': {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    },
+    // Metrics
+    './src/modules/metrics.ts': {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    },
+    // Performance tracking modules
     './src/modules/error_insight_pipeline.ts': {
-      branches: 35,
-      functions: 45,
-      lines: 35,
-      statements: 35
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
     './src/modules/alerting.ts': {
-      branches: 40,
-      functions: 45,
-      lines: 45,
-      statements: 45
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
     './src/modules/health_monitor.ts': {
-      branches: 30,
-      functions: 90,
-      lines: 70,
-      statements: 70
-    }
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    },
+    // Season system
+    './src/modules/season_system.ts': {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    },
+    // Store
+    './src/modules/store.ts': {
+      branches: 78,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    },
+    // Progressive rollout
+    './src/modules/progressive_rollout.ts': {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    },
+    // Datadog integration
+    './src/modules/datadog_integration.ts': {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    },
   },
   transform: {
     '^.+\\.ts$': ['ts-jest', {

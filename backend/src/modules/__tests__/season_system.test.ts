@@ -1,4 +1,21 @@
 import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
+
+// Mock anti_cheat module to control flagged/signature/timing behavior in tests
+jest.mock('../anti_cheat', () => ({
+  isPlayerFlagged: jest.fn().mockReturnValue(false),
+  getFlagReason: jest.fn().mockReturnValue('suspicious activity'),
+  recordMatchResult: jest.fn(),
+  verifyRequestSignature: jest.fn().mockReturnValue({ valid: true, violations: [] }),
+  detectTimingAttack: jest.fn().mockReturnValue(false),
+  generateNonce: jest.fn().mockReturnValue('test-nonce'),
+}));
+
+import {
+  isPlayerFlagged,
+  getFlagReason,
+  verifyRequestSignature,
+  detectTimingAttack,
+} from '../anti_cheat';
 import {
   rpcGetSeasonInfo,
   rpcGetLeaderboard,
@@ -6,6 +23,9 @@ import {
   rpcGetSeasonRewards,
   rpcClaimSeasonRewards,
   rpcEndSeason,
+  registerRpcGetSeasonInfo,
+  registerRpcGetLeaderboard,
+  registerRpcUpdateRank,
   SeasonInfo,
 } from '../season_system';
 import { Runtime } from '../../types/nakama';
@@ -276,6 +296,418 @@ describe('season_system', () => {
       expect(parsed.old_season).toBeDefined();
       expect(parsed.new_season).toBeDefined();
       expect(parsed.new_season.season_number).toBeGreaterThan(parsed.old_season.season_number);
+    });
+
+    it('should set old season status to ended', () => {
+      const payload = JSON.stringify({});
+      const result = rpcEndSeason(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.old_season.status).toBe('ended');
+      expect(parsed.new_season.status).toBe('active');
+    });
+
+    it('should create leaderboard for new season', () => {
+      const payload = JSON.stringify({});
+      rpcEndSeason(mockCtx, mockLogger, mockNk, payload);
+
+      expect(mockNk.leaderboardCreate).toHaveBeenCalled();
+    });
+
+    it('should write new season to storage', () => {
+      const payload = JSON.stringify({});
+      rpcEndSeason(mockCtx, mockLogger, mockNk, payload);
+
+      expect(mockNk.storageWrite).toHaveBeenCalled();
+    });
+  });
+
+  describe('applyEloUpdates', () => {
+    it('should calculate correct Elo changes for equal-rated players', () => {
+      const { applyEloUpdates } = require('../season_system');
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const result = applyEloUpdates(
+        mockNk, mockCtx, { season_id: 'season_1' },
+        'winner', 'loser', 1000, 1000, false, null, null
+      );
+
+      expect(result.winnerNewElo).toBeGreaterThan(1000);
+      expect(result.loserNewElo).toBeLessThan(1000);
+    });
+
+    it('should use higher K-factor for punch-up matches', () => {
+      const { applyEloUpdates } = require('../season_system');
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const normalResult = applyEloUpdates(
+        mockNk, mockCtx, { season_id: 'season_1' },
+        'winner', 'loser', 1000, 1000, false, null, null
+      );
+
+      const punchUpResult = applyEloUpdates(
+        mockNk, mockCtx, { season_id: 'season_1' },
+        'winner', 'loser', 1000, 1000, true, null, null
+      );
+
+      // Punch-up should give more points to the lower-rated winner
+      expect(Math.abs(punchUpResult.winnerNewElo - 1000)).toBeGreaterThan(
+        Math.abs(normalResult.winnerNewElo - 1000)
+      );
+    });
+
+    it('should update leaderboard records', () => {
+      const { applyEloUpdates } = require('../season_system');
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      applyEloUpdates(
+        mockNk, mockCtx, { season_id: 'season_1' },
+        'winner', 'loser', 1000, 1000, false, null, null
+      );
+
+      expect(mockNk.leaderboardRecordWrite).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('applyRankDecay', () => {
+    it('should not decay players below minimum score', () => {
+      const { applyRankDecay } = require('../season_system');
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+
+      const result = applyRankDecay(mockNk, 'user_123', 500);
+      expect(result).toBe(500);
+    });
+
+    it('should not decay active players', () => {
+      const { applyRankDecay } = require('../season_system');
+      mockNk.storageRead = jest.fn().mockReturnValue([{
+        value: JSON.stringify({ last_match_time: Date.now() - 1000 }),
+      }]);
+
+      const result = applyRankDecay(mockNk, 'user_123', 1500);
+      expect(result).toBe(1500);
+    });
+
+    it('should return current score when storage has no activity record', () => {
+      const { applyRankDecay } = require('../season_system');
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+
+      const result = applyRankDecay(mockNk, 'user_123', 1500);
+      expect(result).toBeLessThanOrEqual(1500);
+      expect(result).toBeGreaterThanOrEqual(800);
+    });
+  });
+
+  describe('getRankDecayInfo', () => {
+    it('should return decay info for active player', () => {
+      const { getRankDecayInfo } = require('../season_system');
+      mockNk.storageRead = jest.fn().mockReturnValue([{
+        value: JSON.stringify({ last_match_time: Date.now() }),
+      }]);
+
+      const info = getRankDecayInfo(mockNk, 'user_123', 1500);
+      expect(info.days_inactive).toBe(0);
+      expect(info.points_at_risk).toBe(0);
+      expect(info.can_decay).toBe(false);
+    });
+
+    it('should return decay info with no storage data', () => {
+      const { getRankDecayInfo } = require('../season_system');
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+
+      const info = getRankDecayInfo(mockNk, 'user_123', 1500);
+      expect(info.days_inactive).toBeGreaterThanOrEqual(0);
+      expect(typeof info.can_decay).toBe('boolean');
+    });
+
+    it('should not decay below minimum score', () => {
+      const { getRankDecayInfo } = require('../season_system');
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+
+      const info = getRankDecayInfo(mockNk, 'user_123', 500);
+      expect(info.points_at_risk).toBe(0);
+    });
+  });
+
+  describe('recordPlayerActivity', () => {
+    it('should write activity to storage', () => {
+      const { recordPlayerActivity } = require('../season_system');
+      mockNk.storageWrite = jest.fn();
+
+      recordPlayerActivity(mockNk, 'user_123');
+
+      expect(mockNk.storageWrite).toHaveBeenCalledWith([
+        expect.objectContaining({
+          collection: 'player_activity',
+          key: 'user_123',
+        }),
+      ]);
+    });
+  });
+
+  describe('getLeaderboardEntry', () => {
+    it('should return null when no entry found', () => {
+      const { getLeaderboardEntry } = require('../season_system');
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+
+      const entry = getLeaderboardEntry(mockNk, 'user_123', 'season_1');
+      expect(entry).toBeNull();
+    });
+
+    it('should return entry when found', () => {
+      const { getLeaderboardEntry } = require('../season_system');
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([{
+        ownerId: 'user_123',
+        username: 'Player',
+        rank: 5,
+        score: 1500,
+        metadata: JSON.stringify({ wins: 10, losses: 2, win_rate: 0.83, punch_up_wins: 3 }),
+      }]);
+
+      const entry = getLeaderboardEntry(mockNk, 'user_123', 'season_1');
+      expect(entry).toBeDefined();
+      expect(entry!.rank).toBe(5);
+      expect(entry!.score).toBe(1500);
+    });
+  });
+
+  describe('calculateRewards', () => {
+    it('should return legendary rewards for rank 1-10', () => {
+      const { calculateRewards } = require('../season_system');
+      const rewards = calculateRewards(1, 5);
+      expect(rewards.rank_tier).toBe('legendary');
+      expect(rewards.coins).toBe(10000);
+      expect(rewards.gems).toBe(500);
+      expect(rewards.cosmetics).toBeDefined();
+    });
+
+    it('should return epic rewards for rank 11-50', () => {
+      const { calculateRewards } = require('../season_system');
+      const rewards = calculateRewards(25, 5);
+      expect(rewards.rank_tier).toBe('epic');
+      expect(rewards.coins).toBe(5000);
+      expect(rewards.gems).toBe(200);
+    });
+
+    it('should return rare rewards for rank 51-100', () => {
+      const { calculateRewards } = require('../season_system');
+      const rewards = calculateRewards(75, 5);
+      expect(rewards.rank_tier).toBe('rare');
+      expect(rewards.coins).toBe(2000);
+      expect(rewards.gems).toBe(100);
+    });
+
+    it('should return uncommon rewards for rank 101-500', () => {
+      const { calculateRewards } = require('../season_system');
+      const rewards = calculateRewards(200, 5);
+      expect(rewards.rank_tier).toBe('uncommon');
+      expect(rewards.coins).toBe(500);
+      expect(rewards.gems).toBe(0);
+    });
+
+    it('should return common rewards for rank >500', () => {
+      const { calculateRewards } = require('../season_system');
+      const rewards = calculateRewards(600, 5);
+      expect(rewards.rank_tier).toBe('common');
+      expect(rewards.coins).toBe(100);
+      expect(rewards.gems).toBe(0);
+    });
+
+    it('should include season number in cosmetics title', () => {
+      const { calculateRewards } = require('../season_system');
+      const rewards = calculateRewards(1, 7);
+      expect(rewards.cosmetics!.title).toContain('Season 7');
+    });
+  });
+
+  describe('getCurrentSeason', () => {
+    it('should return active season info', () => {
+      const { getCurrentSeason } = require('../season_system');
+      const season = getCurrentSeason();
+
+      expect(season.season_id).toBeDefined();
+      expect(season.season_number).toBeGreaterThan(0);
+      expect(season.status).toBe('active');
+      expect(season.duration_weeks).toBe(4);
+      expect(season.end_time).toBeGreaterThan(season.start_time);
+    });
+  });
+
+  describe('rpcGetSeasonInfo validation error', () => {
+    it('should return validation error for invalid payload', () => {
+      // get_season_info schema is object({}), so invalid JSON should trigger error
+      const result = rpcGetSeasonInfo(mockCtx, mockLogger, mockNk, 'not valid json{{');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('rpcGetLeaderboard validation error', () => {
+    it('should return validation error for invalid payload', () => {
+      // get_leaderboard schema expects optional object with optional limit (number)
+      // Passing a string for limit should fail validation
+      const payload = JSON.stringify({ limit: 'not-a-number' });
+      const result = rpcGetLeaderboard(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('rpcUpdateRank with flagged player', () => {
+    it('should block when winner is flagged', () => {
+      (isPlayerFlagged as jest.Mock).mockImplementation((id: string) => id === 'winner-user');
+      (getFlagReason as jest.Mock).mockReturnValue('match manipulation');
+
+      const payload = JSON.stringify({
+        match_id: 'match-123',
+        winner_id: 'winner-user',
+        loser_id: 'loser-user',
+        winner_old_rank: 1500,
+        loser_old_rank: 1400,
+        winner_new_rank: 1520,
+        loser_new_rank: 1380,
+        is_punch_up: false,
+      });
+      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('PLAYER_FLAGGED');
+      expect(parsed.error).toContain('Player is flagged for review');
+      expect(mockLogger.warn).toHaveBeenCalled();
+    });
+
+    it('should block when loser is flagged', () => {
+      (isPlayerFlagged as jest.Mock).mockImplementation((id: string) => id === 'loser-user');
+      (getFlagReason as jest.Mock).mockReturnValue('suspicious win rate');
+
+      const payload = JSON.stringify({
+        match_id: 'match-123',
+        winner_id: 'winner-user',
+        loser_id: 'loser-user',
+        winner_old_rank: 1500,
+        loser_old_rank: 1400,
+        winner_new_rank: 1520,
+        loser_new_rank: 1380,
+        is_punch_up: false,
+      });
+      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('PLAYER_FLAGGED');
+      expect(parsed.error).toContain('Opponent is flagged for review');
+    });
+  });
+
+  describe('rpcUpdateRank with signature validation failure', () => {
+    it('should reject when signature verification fails', () => {
+      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
+      (verifyRequestSignature as jest.Mock).mockReturnValue({
+        valid: false,
+        violations: ['invalid_signature', 'replay_attack'],
+      });
+
+      const payload = JSON.stringify({
+        match_id: 'match-123',
+        winner_id: 'winner-user',
+        loser_id: 'loser-user',
+        winner_old_rank: 1500,
+        loser_old_rank: 1400,
+        winner_new_rank: 1520,
+        loser_new_rank: 1380,
+        is_punch_up: false,
+        requestId: 'req-abc123',
+        timestamp: Date.now(),
+        signature: 'a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]',
+        nonce: 'nonce-12345678901234567890123456',
+      });
+      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('ANTI_CHEAT_VIOLATION');
+      expect(parsed.error).toBe('Invalid request signature');
+      expect(parsed.violations).toEqual(['invalid_signature', 'replay_attack']);
+    });
+  });
+
+  describe('rpcUpdateRank with timing attack detection', () => {
+    it('should reject when timing attack is detected', () => {
+      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
+      (verifyRequestSignature as jest.Mock).mockReturnValue({ valid: true, violations: [] });
+      (detectTimingAttack as jest.Mock).mockReturnValue(true);
+
+      const payload = JSON.stringify({
+        match_id: 'match-123',
+        winner_id: 'winner-user',
+        loser_id: 'loser-user',
+        winner_old_rank: 1500,
+        loser_old_rank: 1400,
+        winner_new_rank: 1520,
+        loser_new_rank: 1380,
+        is_punch_up: false,
+      });
+      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('TIMING_ANOMALY');
+      expect(parsed.error).toBe('Suspicious request pattern detected');
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Timing attack detected for user: %s',
+        mockCtx.userId
+      );
+    });
+  });
+
+  describe('registerRpcGetSeasonInfo', () => {
+    it('should register the RPC endpoint', () => {
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      } as unknown as Runtime.Initializer;
+
+      registerRpcGetSeasonInfo(mockInitializer);
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_season_info',
+        rpcGetSeasonInfo
+      );
+    });
+  });
+
+  describe('registerRpcGetLeaderboard', () => {
+    it('should register the RPC endpoint', () => {
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      } as unknown as Runtime.Initializer;
+
+      registerRpcGetLeaderboard(mockInitializer);
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_leaderboard',
+        rpcGetLeaderboard
+      );
+    });
+  });
+
+  describe('registerRpcUpdateRank', () => {
+    it('should register the RPC endpoint', () => {
+      const { registerRpcUpdateRank } = require('../season_system');
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      } as unknown as Runtime.Initializer;
+
+      registerRpcUpdateRank(mockInitializer);
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/update_rank',
+        rpcUpdateRank
+      );
     });
   });
 });

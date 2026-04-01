@@ -394,4 +394,389 @@ describe('Progressive Rollout', () => {
       expect(flags.length).toBeGreaterThan(0);
     });
   });
+
+  describe('isFeatureEnabled - canary version range', () => {
+    it('should return true when gameVersion is in range and canaryUserIds is empty', () => {
+      createFeatureFlag('canary_version', 'Canary version', testPhases);
+      updateFeatureFlag('canary_version', {
+        rolloutPhase: 'canary',
+        canaryUserIds: [],
+        canaryVersionMin: '1.0.0',
+        canaryVersionMax: '2.0.0',
+      });
+
+      expect(isFeatureEnabled('canary_version', 'any_user', '1.5.0')).toBe(true);
+    });
+
+    it('should return false when gameVersion is outside range and canaryUserIds is empty', () => {
+      createFeatureFlag('canary_version2', 'Canary version 2', testPhases);
+      updateFeatureFlag('canary_version2', {
+        rolloutPhase: 'canary',
+        canaryUserIds: [],
+        canaryVersionMin: '1.0.0',
+        canaryVersionMax: '2.0.0',
+      });
+
+      expect(isFeatureEnabled('canary_version2', 'any_user', '3.0.0')).toBe(false);
+    });
+
+    it('should return false when no gameVersion is provided and canaryUserIds is empty', () => {
+      createFeatureFlag('canary_no_version', 'Canary no version', testPhases);
+      updateFeatureFlag('canary_no_version', {
+        rolloutPhase: 'canary',
+        canaryUserIds: [],
+        canaryVersionMin: '1.0.0',
+      });
+
+      expect(isFeatureEnabled('canary_no_version', 'any_user')).toBe(false);
+    });
+
+    it('should return true when only canaryVersionMin is set and version meets it', () => {
+      createFeatureFlag('canary_min_only', 'Canary min only', testPhases);
+      updateFeatureFlag('canary_min_only', {
+        rolloutPhase: 'canary',
+        canaryUserIds: [],
+        canaryVersionMin: '1.0.0',
+      });
+
+      expect(isFeatureEnabled('canary_min_only', 'any_user', '2.0.0')).toBe(true);
+    });
+
+    it('should return true when only canaryVersionMax is set and version meets it', () => {
+      createFeatureFlag('canary_max_only', 'Canary max only', testPhases);
+      updateFeatureFlag('canary_max_only', {
+        rolloutPhase: 'canary',
+        canaryUserIds: [],
+        canaryVersionMax: '2.0.0',
+      });
+
+      expect(isFeatureEnabled('canary_max_only', 'any_user', '1.5.0')).toBe(true);
+    });
+  });
+
+  describe('isFeatureEnabled - full phase', () => {
+    it('should return true for full phase regardless of user ID', () => {
+      createFeatureFlag('full_rollout', 'Full rollout', testPhases);
+      updateFeatureFlag('full_rollout', {
+        rolloutPhase: 'full',
+        rolloutPercentage: 100,
+      });
+
+      expect(isFeatureEnabled('full_rollout', 'random_user_1')).toBe(true);
+      expect(isFeatureEnabled('full_rollout', 'random_user_2')).toBe(true);
+      expect(isFeatureEnabled('full_rollout', '')).toBe(true);
+    });
+  });
+
+  describe('checkRollbackCriteria - no metrics', () => {
+    it('should return shouldRollback false when no metrics exist', () => {
+      createFeatureFlag('no_metrics', 'No metrics', testPhases);
+      advancePhase('no_metrics');
+
+      const result = checkRollbackCriteria('no_metrics');
+      expect(result.shouldRollback).toBe(false);
+      expect(result.reason).toBeUndefined();
+    });
+
+    it('should return shouldRollback false when flag has no active phase', () => {
+      createFeatureFlag('no_phase', 'No phase', testPhases);
+
+      const result = checkRollbackCriteria('no_phase');
+      expect(result.shouldRollback).toBe(false);
+    });
+
+    it('should return shouldRollback false for non-existent flag', () => {
+      const result = checkRollbackCriteria('does_not_exist');
+      expect(result.shouldRollback).toBe(false);
+    });
+
+    it('should trigger rollback on custom metric threshold exceeded', () => {
+      const phasesWithCustom = [
+        {
+          ...testPhases[0],
+          rollbackCriteria: {
+            errorRateThreshold: 5,
+            latencyThreshold: 250,
+            healthCheckFails: 3,
+            customMetrics: { p99LatencyMs: 100 },
+          },
+        },
+      ];
+      createFeatureFlag('custom_metric', 'Custom metric', phasesWithCustom);
+      advancePhase('custom_metric');
+
+      recordRolloutMetrics('custom_metric', {
+        errorRate: 1,
+        avgLatencyMs: 50,
+        healthCheckFails: 1,
+        p99LatencyMs: 200,
+      });
+
+      const result = checkRollbackCriteria('custom_metric');
+      expect(result.shouldRollback).toBe(true);
+      expect(result.reason).toContain('Custom metric');
+    });
+  });
+
+  describe('RPC Handlers', () => {
+    let registeredHandlers: Map<string, Function>;
+
+    beforeEach(() => {
+      registeredHandlers = new Map();
+      const mockInitializer = {
+        registerRpc: jest.fn((name: string, handler: Function) => {
+          registeredHandlers.set(name, handler);
+        }),
+      } as unknown as Runtime.Initializer;
+
+      registerProgressiveRollout(mockInitializer);
+    });
+
+    it('rpcCreateFeatureFlag should create a flag via RPC', async () => {
+      const handler = registeredHandlers.get('armored_archer/rollout_create_flag')!;
+      const payload = JSON.stringify({
+        name: 'rpc_test_flag',
+        description: 'RPC test',
+        phases: testPhases,
+      });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+      expect(result.featureFlag.name).toBe('rpc_test_flag');
+    });
+
+    it('rpcCreateFeatureFlag should reject duplicate flag names', async () => {
+      const handler = registeredHandlers.get('armored_archer/rollout_create_flag')!;
+      const payload = JSON.stringify({
+        name: 'duplicate_rpc_flag',
+        description: 'Duplicate',
+        phases: testPhases,
+      });
+
+      await handler(mockCtx, mockLogger, mockNk, payload);
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('already exists');
+    });
+
+    it('rpcCreateFeatureFlag should return validation error for invalid payload', async () => {
+      const handler = registeredHandlers.get('armored_archer/rollout_create_flag')!;
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, 'not json'));
+      expect(result.success).toBe(false);
+    });
+
+    it('rpcUpdateFeatureFlag should update a flag via RPC', async () => {
+      createFeatureFlag('rpc_update', 'RPC update', testPhases);
+      const handler = registeredHandlers.get('armored_archer/rollout_update_flag')!;
+      const payload = JSON.stringify({
+        name: 'rpc_update',
+        enabled: false,
+      });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+      expect(result.featureFlag.enabled).toBe(false);
+    });
+
+    it('rpcUpdateFeatureFlag should return error for non-existent flag', async () => {
+      const handler = registeredHandlers.get('armored_archer/rollout_update_flag')!;
+      const payload = JSON.stringify({ name: 'nonexistent_rpc' });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not found');
+    });
+
+    it('rpcListFeatureFlags should list all flags', async () => {
+      createFeatureFlag('list_test_1', 'List 1', testPhases);
+      createFeatureFlag('list_test_2', 'List 2', testPhases);
+      const handler = registeredHandlers.get('armored_archer/rollout_list_flags')!;
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, ''));
+      expect(result.success).toBe(true);
+      expect(result.featureFlags.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('rpcCheckFeatureFlag should check feature enabled status', async () => {
+      createFeatureFlag('rpc_check', 'RPC check', testPhases);
+      updateFeatureFlag('rpc_check', { rolloutPhase: 'full', rolloutPercentage: 100 });
+      const handler = registeredHandlers.get('armored_archer/rollout_check')!;
+      const payload = JSON.stringify({
+        feature_name: 'rpc_check',
+        user_id: 'test_user',
+      });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+      expect(result.enabled).toBe(true);
+      expect(result.rollout_phase).toBe('full');
+    });
+
+    it('rpcCheckFeatureFlag should return false for disabled feature', async () => {
+      createFeatureFlag('rpc_check_disabled', 'RPC check disabled', testPhases);
+      const handler = registeredHandlers.get('armored_archer/rollout_check')!;
+      const payload = JSON.stringify({
+        feature_name: 'rpc_check_disabled',
+        user_id: 'test_user',
+      });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+      expect(result.enabled).toBe(false);
+    });
+
+    it('rpcCheckFeatureFlag should return disabled phase for non-existent feature', async () => {
+      const handler = registeredHandlers.get('armored_archer/rollout_check')!;
+      const payload = JSON.stringify({
+        feature_name: 'does_not_exist_rpc',
+        user_id: 'test_user',
+      });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+      expect(result.enabled).toBe(false);
+      expect(result.rollout_phase).toBe('disabled');
+    });
+
+    it('rpcAdvancePhase should advance a flag phase via RPC', async () => {
+      createFeatureFlag('rpc_advance', 'RPC advance', testPhases);
+      const handler = registeredHandlers.get('armored_archer/rollout_advance')!;
+      const payload = JSON.stringify({ feature_name: 'rpc_advance' });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+      expect(result.featureFlag.rolloutPhase).toBe('canary');
+    });
+
+    it('rpcAdvancePhase should return error for non-existent flag', async () => {
+      const handler = registeredHandlers.get('armored_archer/rollout_advance')!;
+      const payload = JSON.stringify({ feature_name: 'nonexistent_advance' });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not found');
+    });
+
+    it('rpcRollbackFeature should rollback a flag via RPC', async () => {
+      createFeatureFlag('rpc_rollback', 'RPC rollback', testPhases);
+      advancePhase('rpc_rollback');
+      advancePhase('rpc_rollback');
+      const handler = registeredHandlers.get('armored_archer/rollout_rollback')!;
+      const payload = JSON.stringify({ feature_name: 'rpc_rollback' });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+      expect(result.featureFlag.rolloutPhase).toBe('canary');
+    });
+
+    it('rpcRollbackFeature should return error for non-existent flag', async () => {
+      const handler = registeredHandlers.get('armored_archer/rollout_rollback')!;
+      const payload = JSON.stringify({ feature_name: 'nonexistent_rollback' });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not found');
+    });
+
+    it('rpcGetRolloutMetrics should return metrics for a feature', async () => {
+      createFeatureFlag('rpc_metrics', 'RPC metrics', testPhases);
+      advancePhase('rpc_metrics');
+      recordRolloutMetrics('rpc_metrics', {
+        totalUsers: 100,
+        errorRate: 1,
+        avgLatencyMs: 50,
+        healthCheckFails: 0,
+      });
+      const handler = registeredHandlers.get('armored_archer/rollout_metrics')!;
+      const payload = JSON.stringify({ feature_name: 'rpc_metrics' });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+      expect(result.metrics.totalUsers).toBe(100);
+      expect(result.rollback_check).toBeDefined();
+    });
+
+    it('rpcGetRolloutMetrics should return error when no metrics exist', async () => {
+      createFeatureFlag('rpc_no_metrics', 'RPC no metrics', testPhases);
+      const handler = registeredHandlers.get('armored_archer/rollout_metrics')!;
+      const payload = JSON.stringify({ feature_name: 'rpc_no_metrics' });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No metrics found');
+    });
+
+    it('rpcRecordMetrics should record metrics via RPC', async () => {
+      createFeatureFlag('rpc_record', 'RPC record', testPhases);
+      advancePhase('rpc_record');
+      const handler = registeredHandlers.get('armored_archer/rollout_record_metrics')!;
+      const payload = JSON.stringify({
+        feature_name: 'rpc_record',
+        total_users: 500,
+        active_users: 200,
+        error_count: 5,
+        error_rate: 1.0,
+        avg_latency_ms: 45,
+        p99_latency_ms: 200,
+        health_check_passes: 195,
+        health_check_fails: 0,
+      });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+      expect(result.feature_name).toBe('rpc_record');
+      expect(result.rollback_triggered).toBe(false);
+    });
+
+    it('rpcRecordMetrics should trigger rollback when thresholds exceeded', async () => {
+      createFeatureFlag('rpc_record_rb', 'RPC record rollback', testPhases);
+      advancePhase('rpc_record_rb');
+      const handler = registeredHandlers.get('armored_archer/rollout_record_metrics')!;
+      const payload = JSON.stringify({
+        feature_name: 'rpc_record_rb',
+        error_rate: 10,
+        avg_latency_ms: 50,
+        health_check_fails: 0,
+      });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+      expect(result.rollback_triggered).toBe(true);
+      expect(result.rollback_reason).toBeDefined();
+    });
+
+    it('rpcRolloutHealth should return health status', async () => {
+      createFeatureFlag('rpc_health', 'RPC health', testPhases);
+      advancePhase('rpc_health');
+      const handler = registeredHandlers.get('armored_archer/rollout_health')!;
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, ''));
+      expect(result.status).toBeDefined();
+      expect(result.features).toBeDefined();
+      expect(result.environment).toBe('development');
+    });
+
+    it('rpcRolloutHealth should report unhealthy when rollback criteria met', async () => {
+      createFeatureFlag('rpc_health_bad', 'RPC health bad', testPhases);
+      advancePhase('rpc_health_bad');
+      recordRolloutMetrics('rpc_health_bad', {
+        errorRate: 10,
+        avgLatencyMs: 50,
+        healthCheckFails: 0,
+      });
+      const handler = registeredHandlers.get('armored_archer/rollout_health')!;
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, ''));
+      expect(result.status).toBe('unhealthy');
+    });
+
+    it('rpcPrometheusMetrics should return metrics in Prometheus format', async () => {
+      createFeatureFlag('rpc_prom', 'RPC prom', testPhases);
+      const handler = registeredHandlers.get('armored_archer/rollout_metrics_prometheus')!;
+
+      const result = await handler(mockCtx, mockLogger, mockNk, '');
+      expect(typeof result).toBe('string');
+      expect(result).toContain('armored_archer_');
+    });
+  });
 });

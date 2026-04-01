@@ -1,8 +1,28 @@
 import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
-import { rpcHealthCheck, rpcGetPlayerStats } from '../player_rpc';
+import { rpcHealthCheck, rpcGetPlayerStats, rpcReportPlayer, rpcGetPlayerReports } from '../player_rpc';
 import { Runtime } from '../../types/nakama';
 import { PlayerStats } from '../../types/game';
 import { initializeCaches } from '../../utils/cache';
+
+jest.mock('../anti_cheat', () => ({
+  submitPlayerReport: jest.fn(),
+  getReportsForUser: jest.fn(),
+}));
+
+jest.mock('../metrics', () => ({
+  registerRpcWithMetrics: jest.fn(),
+}));
+
+jest.mock('../../index', () => ({
+  getStructuredLogger: () => ({
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  }),
+}));
+
+const { submitPlayerReport, getReportsForUser } = jest.requireMock('../anti_cheat');
 
 describe('player_rpc', () => {
   let mockLogger: Runtime.Logger;
@@ -92,6 +112,110 @@ describe('player_rpc', () => {
       rpcGetPlayerStats(mockCtx, mockLogger, mockNk, payload);
 
       expect(mockNk.storageRead).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('rpcReportPlayer', () => {
+    it('should return validation error for invalid payload', () => {
+      const payload = JSON.stringify({});
+      const result = rpcReportPlayer(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should return validation error for invalid JSON', () => {
+      const payload = 'not-json';
+      const result = rpcReportPlayer(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should return success when report is submitted', () => {
+      submitPlayerReport.mockReturnValue({ success: true, reportId: 'report-123' });
+
+      const payload = JSON.stringify({
+        reported_user_id: 'other-user',
+        reason: 'harassment',
+      });
+      const result = rpcReportPlayer(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.report_id).toBe('report-123');
+    });
+
+    it('should return error when report submission fails', () => {
+      submitPlayerReport.mockReturnValue({ success: false, error: 'Cannot report yourself' });
+
+      const payload = JSON.stringify({
+        reported_user_id: 'other-user',
+        reason: 'harassment',
+      });
+      const result = rpcReportPlayer(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBe('Cannot report yourself');
+    });
+
+    it('should pass optional fields to submitPlayerReport', () => {
+      submitPlayerReport.mockReturnValue({ success: true, reportId: 'r-1' });
+
+      const payload = JSON.stringify({
+        reported_user_id: 'other-user',
+        reason: 'win_trading',
+        match_id: 'match-42',
+        additional_info: 'They kept disconnecting',
+      });
+      rpcReportPlayer(mockCtx, mockLogger, mockNk, payload);
+
+      expect(submitPlayerReport).toHaveBeenCalledWith(
+        'test-user',
+        'other-user',
+        'win_trading',
+        'match-42',
+        'They kept disconnecting'
+      );
+    });
+  });
+
+  describe('rpcGetPlayerReports', () => {
+    it('should return validation error for invalid JSON', () => {
+      const payload = 'not-valid-json{{{';
+      const result = rpcGetPlayerReports(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should return reports for current user when no user_id provided', () => {
+      getReportsForUser.mockReturnValue([
+        { reportId: 'r1', reporterId: 'test-user', reason: 'harassment' },
+      ]);
+
+      const payload = JSON.stringify({});
+      const result = rpcGetPlayerReports(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.reports).toHaveLength(1);
+      expect(getReportsForUser).toHaveBeenCalledWith('test-user');
+    });
+
+    it('should return empty reports array', () => {
+      getReportsForUser.mockReturnValue([]);
+
+      const payload = JSON.stringify({});
+      const result = rpcGetPlayerReports(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.reports).toEqual([]);
     });
   });
 });

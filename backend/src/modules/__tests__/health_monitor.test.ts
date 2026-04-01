@@ -250,4 +250,314 @@ describe('health_monitor', () => {
       expect(metricNames).toContain('matchQueue');
     });
   });
+
+  describe('checkHealthThresholds warning branches', () => {
+    let savedConfig: Record<string, any>;
+
+    beforeEach(() => {
+      // Save original config values
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      savedConfig = {
+        cpuWarningPercent: cfg.healthAlerts.cpuWarningPercent,
+        cpuCriticalPercent: cfg.healthAlerts.cpuCriticalPercent,
+        memoryWarningPercent: cfg.healthAlerts.memoryWarningPercent,
+        memoryCriticalPercent: cfg.healthAlerts.memoryCriticalPercent,
+        diskWarningPercent: cfg.healthAlerts.diskWarningPercent,
+        diskCriticalPercent: cfg.healthAlerts.diskCriticalPercent,
+        dbConnectionsWarningPercent: cfg.healthAlerts.dbConnectionsWarningPercent,
+        dbConnectionsCriticalPercent: cfg.healthAlerts.dbConnectionsCriticalPercent,
+        responseTimeWarningMs: cfg.healthAlerts.responseTimeWarningMs,
+        responseTimeCriticalMs: cfg.healthAlerts.responseTimeCriticalMs,
+        errorRateWarningPercent: cfg.healthAlerts.errorRateWarningPercent,
+        errorRateCriticalPercent: cfg.healthAlerts.errorRateCriticalPercent,
+      };
+    });
+
+    afterEach(() => {
+      // Restore original config values
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      Object.assign(cfg.healthAlerts, savedConfig);
+    });
+
+    it('should trigger warning alert for CPU when value is between warning and critical', () => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      // Set warning to 1% and critical very high so real CPU falls in warning range
+      cfg.healthAlerts.cpuWarningPercent = 1;
+      cfg.healthAlerts.cpuCriticalPercent = 999999;
+
+      stopHealthMonitoring();
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerHealthAlert as jest.Mock;
+      const cpuCalls = mockedTrigger.mock.calls.filter(
+        (call: any[]) => call[0] === 'cpuWarningPercent'
+      );
+      // Real CPU usage is typically > 1%, so warning should trigger
+      expect(cpuCalls.length).toBeGreaterThan(0);
+    });
+
+    it('should trigger warning alert for memory when value is between warning and critical', () => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      cfg.healthAlerts.memoryWarningPercent = 1;
+      cfg.healthAlerts.memoryCriticalPercent = 999999;
+
+      stopHealthMonitoring();
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerHealthAlert as jest.Mock;
+      const memoryCalls = mockedTrigger.mock.calls.filter(
+        (call: any[]) => call[0] === 'memoryWarningPercent'
+      );
+      expect(memoryCalls.length).toBeGreaterThan(0);
+    });
+
+    it('should trigger warning alert for disk when value is between warning and critical', () => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      // Disk usage returns 0 from placeholder, so set warning to 0 and critical high
+      cfg.healthAlerts.diskWarningPercent = 0;
+      cfg.healthAlerts.diskCriticalPercent = 999999;
+
+      stopHealthMonitoring();
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerHealthAlert as jest.Mock;
+      const diskCalls = mockedTrigger.mock.calls.filter(
+        (call: any[]) => call[0] === 'diskWarningPercent'
+      );
+      expect(diskCalls.length).toBeGreaterThan(0);
+    });
+
+    it('should trigger warning alert for dbConnections when value is between warning and critical', () => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      cfg.healthAlerts.dbConnectionsWarningPercent = 0;
+      cfg.healthAlerts.dbConnectionsCriticalPercent = 999999;
+
+      stopHealthMonitoring();
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerHealthAlert as jest.Mock;
+      const dbCalls = mockedTrigger.mock.calls.filter(
+        (call: any[]) => call[0] === 'dbConnectionsWarningPercent'
+      );
+      expect(dbCalls.length).toBeGreaterThan(0);
+    });
+
+    it('should trigger warning alert for responseTime when value is between warning and critical', () => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      cfg.healthAlerts.responseTimeWarningMs = 0;
+      cfg.healthAlerts.responseTimeCriticalMs = 999999;
+
+      stopHealthMonitoring();
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerHealthAlert as jest.Mock;
+      const rtCalls = mockedTrigger.mock.calls.filter(
+        (call: any[]) => call[0] === 'responseTimeWarningMs'
+      );
+      expect(rtCalls.length).toBeGreaterThan(0);
+    });
+
+    it('should trigger warning alert for errorRate when value is between warning and critical', () => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      cfg.healthAlerts.errorRateWarningPercent = 0;
+      cfg.healthAlerts.errorRateCriticalPercent = 999999;
+
+      stopHealthMonitoring();
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerHealthAlert as jest.Mock;
+      const erCalls = mockedTrigger.mock.calls.filter(
+        (call: any[]) => call[0] === 'errorRateWarningPercent'
+      );
+      expect(erCalls.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('checkHealthThresholds no-alert branches', () => {
+    let savedConfig: Record<string, any>;
+
+    beforeEach(() => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      savedConfig = {
+        cpuWarningPercent: cfg.healthAlerts.cpuWarningPercent,
+        cpuCriticalPercent: cfg.healthAlerts.cpuCriticalPercent,
+        memoryWarningPercent: cfg.healthAlerts.memoryWarningPercent,
+        memoryCriticalPercent: cfg.healthAlerts.memoryCriticalPercent,
+        diskWarningPercent: cfg.healthAlerts.diskWarningPercent,
+        diskCriticalPercent: cfg.healthAlerts.diskCriticalPercent,
+        dbConnectionsWarningPercent: cfg.healthAlerts.dbConnectionsWarningPercent,
+        dbConnectionsCriticalPercent: cfg.healthAlerts.dbConnectionsCriticalPercent,
+        responseTimeWarningMs: cfg.healthAlerts.responseTimeWarningMs,
+        responseTimeCriticalMs: cfg.healthAlerts.responseTimeCriticalMs,
+        errorRateWarningPercent: cfg.healthAlerts.errorRateWarningPercent,
+        errorRateCriticalPercent: cfg.healthAlerts.errorRateCriticalPercent,
+      };
+    });
+
+    afterEach(() => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      Object.assign(cfg.healthAlerts, savedConfig);
+    });
+
+    it('should not trigger any health alerts when all metrics are below thresholds', () => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      // Set all thresholds very high so real metrics are below
+      cfg.healthAlerts.cpuWarningPercent = 999999;
+      cfg.healthAlerts.cpuCriticalPercent = 999999;
+      cfg.healthAlerts.memoryWarningPercent = 999999;
+      cfg.healthAlerts.memoryCriticalPercent = 999999;
+      cfg.healthAlerts.diskWarningPercent = 999999;
+      cfg.healthAlerts.diskCriticalPercent = 999999;
+      cfg.healthAlerts.dbConnectionsWarningPercent = 999999;
+      cfg.healthAlerts.dbConnectionsCriticalPercent = 999999;
+      cfg.healthAlerts.responseTimeWarningMs = 999999;
+      cfg.healthAlerts.responseTimeCriticalMs = 999999;
+      cfg.healthAlerts.errorRateWarningPercent = 999999;
+      cfg.healthAlerts.errorRateCriticalPercent = 999999;
+
+      stopHealthMonitoring();
+      (triggerHealthAlert as jest.Mock).mockClear();
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerHealthAlert as jest.Mock;
+      const healthCalls = mockedTrigger.mock.calls.filter(
+        (call: any[]) =>
+          typeof call[0] === 'string' && call[0].includes('Percent') || call[0].includes('Ms')
+      );
+      expect(healthCalls.length).toBe(0);
+    });
+  });
+
+  describe('checkMetricThresholds warning branches', () => {
+    let savedConfig: Record<string, any>;
+
+    beforeEach(() => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      savedConfig = {
+        activeConnectionsWarning: cfg.metricAlerts.activeConnectionsWarning,
+        activeConnectionsCritical: cfg.metricAlerts.activeConnectionsCritical,
+        matchQueueWarning: cfg.metricAlerts.matchQueueWarning,
+        matchQueueCritical: cfg.metricAlerts.matchQueueCritical,
+      };
+    });
+
+    afterEach(() => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      Object.assign(cfg.metricAlerts, savedConfig);
+    });
+
+    it('should trigger warning alert for activeConnections when value is between warning and critical', () => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      // Active connections returns 0 from placeholder, set warning to 0 and critical high
+      cfg.metricAlerts.activeConnectionsWarning = 0;
+      cfg.metricAlerts.activeConnectionsCritical = 999999;
+
+      stopHealthMonitoring();
+      (triggerMetricAlert as jest.Mock).mockClear();
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerMetricAlert as jest.Mock;
+      const acCalls = mockedTrigger.mock.calls.filter(
+        (call: any[]) => call[0] === 'activeConnections' && call[3] === 'warning'
+      );
+      expect(acCalls.length).toBeGreaterThan(0);
+    });
+
+    it('should trigger warning alert for matchQueue when value is between warning and critical', () => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      cfg.metricAlerts.matchQueueWarning = 0;
+      cfg.metricAlerts.matchQueueCritical = 999999;
+
+      stopHealthMonitoring();
+      (triggerMetricAlert as jest.Mock).mockClear();
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerMetricAlert as jest.Mock;
+      const mqCalls = mockedTrigger.mock.calls.filter(
+        (call: any[]) => call[0] === 'matchQueue' && call[3] === 'warning'
+      );
+      expect(mqCalls.length).toBeGreaterThan(0);
+    });
+
+    it('should not trigger metric alerts when values are below thresholds', () => {
+      const { alertingConfig: cfg } = require('../../config/alerting');
+      cfg.metricAlerts.activeConnectionsWarning = 999999;
+      cfg.metricAlerts.activeConnectionsCritical = 999999;
+      cfg.metricAlerts.matchQueueWarning = 999999;
+      cfg.metricAlerts.matchQueueCritical = 999999;
+
+      stopHealthMonitoring();
+      (triggerMetricAlert as jest.Mock).mockClear();
+      startHealthMonitoring(9999999);
+
+      const mockedTrigger = triggerMetricAlert as jest.Mock;
+      expect(mockedTrigger).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('checkHealthThresholds alerting disabled', () => {
+    it('should not trigger alerts when alerting is disabled', () => {
+      const { alertingConfig: cfg, isAlertingEnabled: isEnabled } = require('../../config/alerting');
+      const originalEnabled = cfg.enabled;
+      cfg.enabled = false;
+
+      stopHealthMonitoring();
+      (triggerHealthAlert as jest.Mock).mockClear();
+      (triggerMetricAlert as jest.Mock).mockClear();
+
+      // Directly call performHealthCheck and check thresholds via startHealthMonitoring
+      // When alerting is disabled, startHealthMonitoring returns early
+      startHealthMonitoring(9999999);
+
+      // Since alerting is disabled, startHealthMonitoring should return early
+      // and not call triggerHealthAlert or triggerMetricAlert
+      expect(triggerHealthAlert).not.toHaveBeenCalled();
+      expect(triggerMetricAlert).not.toHaveBeenCalled();
+
+      cfg.enabled = originalEnabled;
+    });
+  });
+
+  describe('startHealthMonitoring already running', () => {
+    it('should not start a second monitoring loop when already running', () => {
+      startHealthMonitoring(9999999);
+
+      const infoSpy = jest.spyOn(require('../../config/logger').logger, 'warn');
+      startHealthMonitoring(9999999);
+
+      expect(infoSpy).toHaveBeenCalledWith('Health monitoring already running');
+      infoSpy.mockRestore();
+    });
+  });
+
+  describe('Prometheus gauge updates in performHealthCheck', () => {
+    it('should update all Prometheus gauges on health check', () => {
+      const registry = getHealthRegistry();
+      const metrics = performHealthCheck();
+
+      // Verify the metrics were returned with expected keys
+      expect(metrics).toHaveProperty('cpuUsage');
+      expect(metrics).toHaveProperty('memoryUsage');
+      expect(metrics).toHaveProperty('diskUsage');
+      expect(metrics).toHaveProperty('dbConnections');
+      expect(metrics).toHaveProperty('activeConnections');
+      expect(metrics).toHaveProperty('matchQueue');
+      expect(metrics).toHaveProperty('responseTime');
+      expect(metrics).toHaveProperty('errorRate');
+
+      // Verify Prometheus gauges were set by checking registry metrics
+      return registry.getMetricsAsJSON().then((metricsData) => {
+        const metricNames = metricsData.map((m: any) => m.name);
+        expect(metricNames).toContain('armored_archer_health_cpu_usage_percent');
+        expect(metricNames).toContain('armored_archer_health_memory_usage_percent');
+        expect(metricNames).toContain('armored_archer_health_disk_usage_percent');
+        expect(metricNames).toContain('armored_archer_health_db_connections_percent');
+        expect(metricNames).toContain('armored_archer_health_response_time_ms');
+        expect(metricNames).toContain('armored_archer_health_error_rate_percent');
+        expect(metricNames).toContain('armored_archer_health_active_connections');
+        expect(metricNames).toContain('armored_archer_health_match_queue_size');
+        expect(metricNames).toContain('armored_archer_health_status');
+      });
+    });
+  });
 });
