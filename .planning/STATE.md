@@ -3,30 +3,31 @@ gsd_state_version: 1.0
 milestone: v3.4.0
 milestone_name: Tactical Gameplay & PvE Campaign
 status: in_progress
-last_updated: "2026-04-02T03:00:00.000Z"
+last_updated: "2026-04-02T04:15:00.000Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 12
 ---
 
 # Armored Archer - Project State
 
 **Last Updated**: 2026-04-02
-**Current Focus**: v3.4.0 — Phase 05 (Campaign State Persistence) PLANNED
-**Status**: Active development — Phase 04 fully executed (3 plans, all complete). Phase 05 planned (3 plans).
+**Current Focus**: v3.4.0 — Phase 05 (Campaign State Persistence) 2/3 plans done, awaiting human verification
+**Status**: Active development — Phase 05 Plans 01-02 complete. Plan 03 (human verification) pending.
 
 ---
 
 ## Current Position
 
 **Milestone**: v3.4.0 Tactical Gameplay & PvE Campaign
-**Active Work**: Phase 04 COMPLETE — backend 5-type/4-rarity gear aligned, InventoryManager deprecated, e2e loot/XP verified
+**Active Work**: Phase 05 IN PROGRESS — difficulty validation fixed, get_campaign_progress RPC added, client sync implemented
 **Phase 04**: Loot System & Progression — DONE (3/3 plans executed, 6 tasks completed)
+**Phase 05**: Campaign State Persistence — 2/3 plans done (backend RPC + client sync). Awaiting human verification (Plan 03).
 **Coverage**: 94.55% lines, 94.4% statements, 93.69% functions, 88.54% branches (target: 80% — EXCEEDED)
 **TypeScript**: 0 type errors
-**Working Tree**: Clean (all Phase 04 changes committed)
+**Working Tree**: Clean (all Phase 05 changes committed)
 
 ---
 
@@ -117,27 +118,24 @@ progress:
 
 ---
 
-## Recent Activity (2026-04-01)
+## Recent Activity (2026-04-02)
 
-- Enriched campaigns.json: 12 stages with enemy stats, difficulty tiers (1-3), biome metadata, loot config
-- Added 6 CampaignManager query methods: get_enemy_data(), get_difficulty_tier(), get_biome(), get_loot_config(), get_difficulty_metadata(), get_stages_by_difficulty()
-- Added GameManager.current_encounter_data and current_difficulty for PvE handoff
-- Created EnemyAIManager autoload with 3 difficulty tiers (random/basic/adaptive)
-- Rewrote combat_menu.gd to support PvE mode with local enemy turns
-- Enhanced game_over.gd with loot summary, contextual button text, campaign navigation
-- Added LootLabel node to game_over.tscn
-- Registered EnemyAIManager autoload in project.godot
-- Phase 02 (Campaign Encounters) complete: 2 plans executed, 6 tasks done
+- Fixed difficulty validation: added 'normal' to complete_stage and stage_complete schemas
+- Added rpcGetCampaignProgress handler returning completed_stages, unlocked_stages, bosses_defeated
+- Registered armored_archer/get_campaign_progress RPC with rate limiting
+- Added sync_campaign_progress() to CampaignManager for server-side campaign sync
+- Connected connection_status_changed signal to trigger sync on connect
+- Fixed _notify_server_stage_complete to send actual difficulty tier instead of hardcoded "normal"
+- Added _get_difficulty_string() helper: 1->easy, 2->medium, 3->hard
+- Phase 05 Plans 01-02 complete: 5 tasks done, 2 commits
 
 ---
 
 ## Next Steps
 
-1. Execute Phase 05 Plan 01: Backend — fix difficulty validation, add get_campaign_progress RPC
-2. Execute Phase 05 Plan 02: Client — sync_campaign_progress, difficulty fix, connection handler
-3. Human verification: complete a PvE stage and verify persistence across game restart
-4. Run Stryker mutation testing baseline in CI
-5. Address v3.0.0 Alpha readiness (load testing, security audit, 1,000+ CCU)
+1. Human verification: complete a PvE stage, close game, reopen, verify persistence (Plan 05-03)
+2. Run Stryker mutation testing baseline in CI
+3. Address v3.0.0 Alpha readiness (load testing, security audit, 1,000+ CCU)
 
 ---
 
@@ -156,5 +154,5 @@ progress:
 
 ---
 
-*State updated: 2026-04-01T13:40:00Z*
-*Next update: After mutation testing baseline or Alpha readiness milestone*
+*State updated: 2026-04-02T04:15:00Z*
+*Next update: After human verification (Plan 05-03) or mutation testing baseline*
