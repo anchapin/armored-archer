@@ -47,7 +47,7 @@ func _ready() -> void:
 func _on_connection_status_changed(is_online: bool) -> void:
 	"""Syncs campaign progress when connection is established."""
 	if is_online:
-		sync_campaign_progress()
+		await sync_campaign_progress()
 
 func sync_campaign_progress() -> void:
 	"""Fetches campaign progress from server and merges with local state."""
@@ -56,7 +56,7 @@ func sync_campaign_progress() -> void:
 	if not network_manager.is_session_valid():
 		return
 
-	var response: Dictionary = network_manager.send_rpc(
+	var response: Dictionary = await network_manager.send_rpc(
 		"armored_archer/get_campaign_progress",
 		JSON.stringify({})
 	)
