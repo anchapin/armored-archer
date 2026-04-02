@@ -74,11 +74,11 @@ export const ValibotSchemas = {
 
   equip_gear: object({
     gear_id: pipe(string(), minLength(1), maxLength(100)),
-    slot: createEnum(['weapon', 'armor', 'accessory']),
+    slot: createEnum(['helm', 'armor', 'bow', 'arrow', 'amulet']),
   }),
 
   unequip_gear: object({
-    slot: createEnum(['weapon', 'armor', 'accessory']),
+    slot: createEnum(['helm', 'armor', 'bow', 'arrow', 'amulet']),
   }),
 
   get_inventory: object({}),

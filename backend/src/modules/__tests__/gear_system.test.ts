@@ -44,7 +44,7 @@ describe('gear_system', () => {
     id: 'gear-123',
     name: 'Test Sword',
     rarity: 'common',
-    type: 'weapon',
+    type: 'bow',
     stats: [{ name: 'attack', base_value: 10, value: 10 }],
     modifiers: [],
     level: 1,
@@ -95,7 +95,7 @@ describe('gear_system', () => {
 
   describe('rpcEquipGear', () => {
     it('should equip gear successfully', () => {
-      const gear = createMockGearItem({ type: 'weapon' });
+      const gear = createMockGearItem({ type: 'bow' });
       const inventory = createMockInventory({ gear: [gear] });
 
       mockNk.storageRead = jest.fn().mockReturnValue([
@@ -106,18 +106,18 @@ describe('gear_system', () => {
         },
       ]);
 
-      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'weapon' });
+      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'bow' });
       const result = rpcEquipGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.equipped_gear.weapon).toBe('gear-123');
+      expect(parsed.equipped_gear.bow).toBe('gear-123');
     });
 
     it('should return error when inventory not found', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
 
-      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'weapon' });
+      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'bow' });
       const result = rpcEquipGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -134,7 +134,7 @@ describe('gear_system', () => {
         },
       ]);
 
-      const payload = JSON.stringify({ gear_id: 'nonexistent', slot: 'weapon' });
+      const payload = JSON.stringify({ gear_id: 'nonexistent', slot: 'bow' });
       const result = rpcEquipGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -142,7 +142,7 @@ describe('gear_system', () => {
     });
 
     it('should return error when gear type does not match slot', () => {
-      const gear = createMockGearItem({ type: 'weapon' });
+      const gear = createMockGearItem({ type: 'bow' });
       const inventory = createMockInventory({ gear: [gear] });
 
       mockNk.storageRead = jest.fn().mockReturnValue([
@@ -171,7 +171,7 @@ describe('gear_system', () => {
 
   describe('rpcUnequipGear', () => {
     it('should unequip gear successfully', () => {
-      const inventory = createMockInventory({ equipped_gear: { weapon: 'gear-123' } });
+      const inventory = createMockInventory({ equipped_gear: { bow: 'gear-123' } });
 
       mockNk.storageRead = jest.fn().mockReturnValue([
         {
@@ -181,18 +181,18 @@ describe('gear_system', () => {
         },
       ]);
 
-      const payload = JSON.stringify({ slot: 'weapon' });
+      const payload = JSON.stringify({ slot: 'bow' });
       const result = rpcUnequipGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.equipped_gear.weapon).toBeUndefined();
+      expect(parsed.equipped_gear.bow).toBeUndefined();
     });
 
     it('should return error when inventory not found', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
 
-      const payload = JSON.stringify({ slot: 'weapon' });
+      const payload = JSON.stringify({ slot: 'bow' });
       const result = rpcUnequipGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -210,7 +210,7 @@ describe('gear_system', () => {
         },
       ]);
 
-      const payload = JSON.stringify({ slot: 'weapon' });
+      const payload = JSON.stringify({ slot: 'bow' });
       const result = rpcUnequipGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -513,7 +513,7 @@ describe('gear_system', () => {
             id: 'gear-1',
             name: 'Test Sword',
             rarity: 'legendary',
-            type: 'weapon',
+            type: 'bow',
             stats: [{ name: 'attack', base_value: 10, value: 15 }],
             modifiers: [
               { id: 'sharp_edge', stat: 'attack', value_range: [5, 10], rarity_weight: 1 },
@@ -522,7 +522,7 @@ describe('gear_system', () => {
             timestamp: Date.now(),
           },
         ],
-        equipped_gear: { weapon: 'gear-1', armor: null, accessory: null },
+        equipped_gear: { bow: 'gear-1', armor: null, amulet: null },
         unlocked_modifier_pools: [],
       };
 
@@ -534,7 +534,7 @@ describe('gear_system', () => {
       const inventory: PlayerInventory = {
         user_id: 'test-user',
         gear: [],
-        equipped_gear: { weapon: null, armor: null, accessory: null },
+        equipped_gear: { bow: null, armor: null, amulet: null },
         unlocked_modifier_pools: [],
       };
 
@@ -550,7 +550,7 @@ describe('gear_system', () => {
             id: 'gear-1',
             name: 'Test Sword',
             rarity: 'legendary',
-            type: 'weapon',
+            type: 'bow',
             stats: [{ name: 'attack', base_value: 10, value: 15 }],
             modifiers: [
               { id: 'sharp_edge', stat: 'attack', value_range: [5, 10], rarity_weight: 1 },
@@ -571,7 +571,7 @@ describe('gear_system', () => {
             timestamp: Date.now(),
           },
         ],
-        equipped_gear: { weapon: 'gear-1', armor: 'gear-2', accessory: null },
+        equipped_gear: { bow: 'gear-1', armor: 'gear-2', amulet: null },
         unlocked_modifier_pools: [],
       };
 
@@ -591,7 +591,7 @@ describe('gear_system', () => {
             id: 'gear-1',
             name: 'Test Sword',
             rarity: 'legendary',
-            type: 'weapon',
+            type: 'bow',
             stats: [{ name: 'attack', base_value: 10, value: 15 }],
             modifiers: [
               { id: 'sharp_edge', stat: 'attack', value_range: [5, 10], rarity_weight: 1 },
@@ -600,7 +600,7 @@ describe('gear_system', () => {
             timestamp: Date.now(),
           },
         ],
-        equipped_gear: { weapon: 'gear-1', armor: null, accessory: null },
+        equipped_gear: { bow: 'gear-1', armor: null, amulet: null },
         unlocked_modifier_pools: [],
       };
 
@@ -616,7 +616,7 @@ describe('gear_system', () => {
       const inventory: PlayerInventory = {
         user_id: 'test-user',
         gear: [],
-        equipped_gear: { weapon: null, armor: null, accessory: null },
+        equipped_gear: { bow: null, armor: null, amulet: null },
         unlocked_modifier_pools: [],
       };
 
@@ -635,7 +635,7 @@ describe('gear_system', () => {
         },
       ]);
 
-      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'weapon' });
+      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'bow' });
       const result = rpcEquipGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -651,7 +651,7 @@ describe('gear_system', () => {
         },
       ]);
 
-      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'weapon' });
+      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'bow' });
       const result = rpcEquipGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -667,7 +667,7 @@ describe('gear_system', () => {
         },
       ]);
 
-      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'weapon' });
+      const payload = JSON.stringify({ gear_id: 'gear-123', slot: 'bow' });
       const result = rpcEquipGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -685,7 +685,7 @@ describe('gear_system', () => {
         },
       ]);
 
-      const payload = JSON.stringify({ slot: 'weapon' });
+      const payload = JSON.stringify({ slot: 'bow' });
       const result = rpcUnequipGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -701,7 +701,7 @@ describe('gear_system', () => {
         },
       ]);
 
-      const payload = JSON.stringify({ slot: 'weapon' });
+      const payload = JSON.stringify({ slot: 'bow' });
       const result = rpcUnequipGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -717,7 +717,7 @@ describe('gear_system', () => {
         },
       ]);
 
-      const payload = JSON.stringify({ slot: 'weapon' });
+      const payload = JSON.stringify({ slot: 'bow' });
       const result = rpcUnequipGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -745,7 +745,7 @@ describe('gear_system', () => {
     it('should skip equipped gear that is not found in inventory', () => {
       const inventory = createMockInventory({
         gear: [],
-        equipped_gear: { weapon: 'nonexistent-gear-id' },
+        equipped_gear: { bow: 'nonexistent-gear-id' },
       });
 
       const bonuses = getEquippedGearModifierBonuses(inventory);
@@ -756,7 +756,7 @@ describe('gear_system', () => {
       const gear = createMockGearItem({ id: 'gear-1', modifiers: [] });
       const inventory = createMockInventory({
         gear: [gear],
-        equipped_gear: { weapon: 'gear-1' },
+        equipped_gear: { bow: 'gear-1' },
       });
 
       const bonuses = getEquippedGearModifierBonuses(inventory);
@@ -1077,7 +1077,7 @@ describe('gear_system', () => {
             id: 'gear-1',
             name: 'Test Sword',
             rarity: 'common',
-            type: 'weapon',
+            type: 'bow',
             stats: [{ name: 'attack', base_value: 10, value: 10 }],
             modifiers: [
               { id: 'broken_edge', name: 'Broken', description: 'No bonus', stat: 'attack', value_range: [0, 0], rarity: 'common', boss_unlock: null },
@@ -1086,7 +1086,7 @@ describe('gear_system', () => {
             timestamp: Date.now(),
           },
         ],
-        equipped_gear: { weapon: 'gear-1' },
+        equipped_gear: { bow: 'gear-1' },
         unlocked_modifier_pools: [],
       };
 
@@ -1100,9 +1100,9 @@ describe('gear_system', () => {
         gear: [
           {
             id: 'gear-1',
-            name: 'Test Sword',
+            name: 'Test Bow',
             rarity: 'rare',
-            type: 'weapon',
+            type: 'bow',
             stats: [{ name: 'attack', base_value: 10, value: 15 }],
             modifiers: [
               { id: 'sharp_edge', name: 'Sharp', description: 'More attack', stat: 'attack', value_range: [7, 10], rarity: 'rare', boss_unlock: null },
@@ -1112,7 +1112,7 @@ describe('gear_system', () => {
             timestamp: Date.now(),
           },
         ],
-        equipped_gear: { weapon: 'gear-1' },
+        equipped_gear: { bow: 'gear-1' },
         unlocked_modifier_pools: [],
       };
 

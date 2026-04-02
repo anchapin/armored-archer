@@ -85,7 +85,7 @@ describe('Progression Validation', () => {
       const gear1: GearItem = {
         id: 'sword_1',
         name: 'Iron Sword',
-        type: 'weapon',
+        type: 'bow',
         rarity: 'common',
         level: 1,
         timestamp: Date.now(),
@@ -97,9 +97,9 @@ describe('Progression Validation', () => {
         user_id: 'test_user',
         gear: [gear1],
         equipped_gear: {
-          weapon: 'sword_1',
+          bow: 'sword_1',
           armor: null,
-          accessory: null,
+          amulet: null,
         },
         unlocked_modifier_pools: [],
       };
@@ -111,7 +111,7 @@ describe('Progression Validation', () => {
     });
 
     it('should detect missing equipped gear', () => {
-      validInventory.equipped_gear.weapon = 'nonexistent';
+      validInventory.equipped_gear.bow = 'nonexistent';
       const result = validateGearInventory(validInventory);
       expect(result.is_valid).toBe(false);
     });
@@ -147,9 +147,9 @@ describe('Progression Validation', () => {
 
       validInventory.gear = [helm1, helm2];
       validInventory.equipped_gear = {
-        weapon: null,
+        bow: null,
         armor: null,
-        accessory: null,
+        amulet: null,
         head: 'helm_1',
         body: 'helm_2',
       };
@@ -164,9 +164,9 @@ describe('Progression Validation', () => {
         user_id: 'test_user',
         gear: [],
         equipped_gear: {
-          weapon: null,
+          bow: null,
           armor: null,
-          accessory: null,
+          amulet: null,
         },
         unlocked_modifier_pools: [],
       };
@@ -213,7 +213,7 @@ describe('Progression Validation', () => {
       const gear1: GearItem = {
         id: 'sword_1',
         name: 'Iron Sword',
-        type: 'weapon',
+        type: 'bow',
         rarity: 'common',
         level: 1,
         timestamp: Date.now(),
@@ -224,7 +224,7 @@ describe('Progression Validation', () => {
       const validInventory: PlayerInventory = {
         user_id: 'test_user',
         gear: [gear1],
-        equipped_gear: { weapon: 'sword_1', armor: null, accessory: null },
+        equipped_gear: { bow: 'sword_1', armor: null, amulet: null },
         unlocked_modifier_pools: [],
       };
 
@@ -249,7 +249,7 @@ describe('Progression Validation', () => {
       const invalidInventory: PlayerInventory = {
         user_id: 'test_user',
         gear: [],
-        equipped_gear: { weapon: 'nonexistent', armor: null, accessory: null },
+        equipped_gear: { bow: 'nonexistent', armor: null, amulet: null },
         unlocked_modifier_pools: [],
       };
 
