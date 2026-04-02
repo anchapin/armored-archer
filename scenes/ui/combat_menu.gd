@@ -23,16 +23,26 @@ var match_id: String = ""
 var is_initialized: bool = false
 var current_match_state: Dictionary = {}
 
+# --- PvE State ---
+var _is_pve_mode: bool = false
+var _enemy_health: int = 0
+var _enemy_max_health: int = 0
+
+# --- Constants ---
+const CRITICAL_HIT_CHANCE: float = 0.15
+const CRITICAL_HIT_MULTIPLIER: float = 2.0
+const BASE_DAMAGE: int = 10
+
 # --- Initialization ---
 func _ready() -> void:
 	# Get ThemeManager reference
 	theme_manager = get_node_or_null("/root/ThemeManager")
-	
+
 	# Apply theme if available
 	if theme_manager:
 		_apply_theme()
 		theme_manager.theme_changed.connect(_on_theme_changed)
-	
+
 	combat_manager = get_node_or_null("/root/CombatManager")
 
 	if not match_id.is_empty():
@@ -46,21 +56,67 @@ func _ready() -> void:
 		combat_manager.combat_action_submitted.connect(_on_combat_action_submitted)
 		combat_manager.match_state_updated.connect(_on_match_state_updated)
 		combat_manager.turn_changed.connect(_on_turn_changed)
-		combat_manager.combat_ended.connect(_on_combat_ended)
+		combat_manager.combat_ended.connect(_on_pvp_combat_ended)
+
+	# Auto-initialize PvE combat if encounter data is present
+	if not is_initialized and GameManager.current_encounter_data.size() > 0:
+		initialize_combat()
 
 # --- Initialize Combat ---
 func initialize_combat() -> void:
-	if not combat_manager or match_id.is_empty():
-		return
+	var encounter_data = GameManager.current_encounter_data
+	if encounter_data.size() > 0:
+		_init_pve_combat(encounter_data)
+	elif combat_manager and not match_id.is_empty():
+		_init_pvp_combat()
 
+# --- PvP Initialization ---
+func _init_pvp_combat() -> void:
 	loading_label.visible = true
 	is_initialized = false
-
 	combat_manager.get_match_state(match_id)
+
+# --- PvE Initialization ---
+func _init_pve_combat(encounter_data: Dictionary) -> void:
+	_is_pve_mode = true
+	_enemy_health = encounter_data.get("health", 30)
+	_enemy_max_health = _enemy_health
+	var difficulty = GameManager.current_difficulty
+
+	EnemyAIManager.setup_enemy(encounter_data, difficulty)
+
+	# Update UI with enemy stats
+	opponent_health_bar.max_value = _enemy_max_health
+	opponent_health_bar.value = _enemy_health
+	opponent_health_label.text = str(_enemy_health) + " / " + str(_enemy_max_health)
+
+	# Set player health from GameManager
+	my_health_bar.max_value = GameManager.player_max_health
+	my_health_bar.value = GameManager.player_current_health
+	my_health_label.text = str(GameManager.player_current_health) + " / " + str(GameManager.player_max_health)
+
+	turn_label.text = "Your Turn"
+	shoot_button.disabled = false
+	is_initialized = true
+
+	# Hide loading, show stats
+	if loading_label:
+		loading_label.visible = false
+
+	_append_combat_log("Battle begins! %s appears!" % encounter_data.get("type", "Enemy"))
 
 # --- Combat Actions ---
 func _on_shoot_pressed() -> void:
-	if not combat_manager or not is_initialized:
+	if not is_initialized:
+		return
+
+	if _is_pve_mode:
+		_handle_pve_shoot()
+	else:
+		_handle_pvp_shoot()
+
+func _handle_pvp_shoot() -> void:
+	if not combat_manager:
 		return
 
 	if not combat_manager.is_my_turn_sync():
@@ -69,13 +125,86 @@ func _on_shoot_pressed() -> void:
 
 	var angle: float = deg_to_rad(angle_slider.value)
 	combat_manager.submit_combat_action(match_id, "shoot", angle)
-
 	shoot_button.disabled = true
+
+func _handle_pve_shoot() -> void:
+	var player_atk = BASE_DAMAGE
+
+	# Get player attack from PlayerStatsManager if available
+	var stats_manager = get_node_or_null("/root/PlayerStatsManager")
+	if stats_manager and stats_manager.player_stats.has("attack"):
+		player_atk = stats_manager.player_stats.get("attack", BASE_DAMAGE)
+
+	# Calculate player damage to enemy
+	var enemy_def = EnemyAIManager.get_enemy_stats().get("defense", 0)
+	var damage = max(1, player_atk - enemy_def)
+
+	# Critical hit check
+	if randf() < CRITICAL_HIT_CHANCE:
+		damage = int(damage * CRITICAL_HIT_MULTIPLIER)
+		_append_combat_log("CRITICAL HIT!")
+
+	# Apply to enemy
+	EnemyAIManager.take_damage(damage)
+	_enemy_health = EnemyAIManager.get_enemy_health()
+	opponent_health_bar.value = _enemy_health
+	opponent_health_label.text = str(_enemy_health) + " / " + str(_enemy_max_health)
+
+	_append_combat_log("You dealt " + str(damage) + " damage!")
+
+	# Check enemy defeated
+	if EnemyAIManager.is_defeated():
+		_on_pve_combat_ended("player")
+		return
+
+	# Enemy turn
+	turn_label.text = "Enemy Turn"
+	shoot_button.disabled = true
+
+	# Small delay for feel, then enemy acts
+	await get_tree().create_timer(0.5).timeout
+	_handle_pve_enemy_turn()
+
+func _handle_pve_enemy_turn() -> void:
+	var player_def = 0
+	var stats_manager = get_node_or_null("/root/PlayerStatsManager")
+	if stats_manager and stats_manager.player_stats.has("defense"):
+		player_def = stats_manager.player_stats.get("defense", 0)
+
+	var action = EnemyAIManager.decide_action(GameManager.player_current_health, player_def)
+
+	var enemy_damage = action.get("damage", 0)
+	if action.get("action") == "defend":
+		_append_combat_log("Enemy defends!")
+	else:
+		var actual_damage = max(1, enemy_damage - player_def)
+		GameManager.take_player_damage(actual_damage)
+		my_health_bar.value = GameManager.player_current_health
+		my_health_label.text = str(GameManager.player_current_health) + " / " + str(GameManager.player_max_health)
+		_append_combat_log("Enemy " + action.get("action", "attacks") + " for " + str(actual_damage) + " damage!")
+
+	# Check player defeated
+	if GameManager.player_current_health <= 0:
+		_on_pve_combat_ended("enemy")
+		return
+
+	# Back to player turn
+	turn_label.text = "Your Turn"
+	shoot_button.disabled = false
+
+func _on_pve_combat_ended(winner: String) -> void:
+	shoot_button.disabled = true
+	if winner == "player":
+		GameManager.end_game(true)  # triggers game_won signal -> CampaignManager.complete_stage
+		_append_combat_log("Victory!")
+	else:
+		GameManager.end_game(false)  # triggers player_died signal
+		_append_combat_log("Defeat!")
 
 func _on_angle_changed(value: float) -> void:
 	angle_value_label.text = "%.1f°" % value
 
-# --- Combat Handlers ---
+# --- PvP Combat Handlers ---
 func _on_combat_action_submitted(_result: Dictionary) -> void:
 	_refresh_match_state()
 
@@ -100,7 +229,7 @@ func _on_turn_changed(is_my_turn: bool) -> void:
 		shoot_button.disabled = true
 		_refresh_match_state()
 
-func _on_combat_ended(winner: String) -> void:
+func _on_pvp_combat_ended(winner: String) -> void:
 	var dialog: AcceptDialog = AcceptDialog.new()
 
 	if winner == NetworkManager.user_id:
@@ -154,62 +283,10 @@ func _update_combat_log() -> void:
 			if is_crit:
 				damage_text += " (CRIT!)"
 			log_text += "%s %s for %s\n" % [attacker_name, action, damage_text]
-			# Play combat VFX for hits
-			_play_combat_vfx(entry, is_my_action)
 		else:
 			log_text += "%s %s (missed)\n" % [attacker_name, action]
-			# Play miss VFX
-			_play_miss_vfx(entry, is_my_action)
 
 	combat_log.text = log_text
-
-
-func _play_combat_vfx(entry: Dictionary, is_my_action: bool) -> void:
-	"""Play visual effects for combat hits."""
-	if not VFXManager:
-		return
-
-	var damage: int = entry.get("damage", 0)
-	var is_crit: bool = entry.get("is_crit", false)
-	var effect_type: String = entry.get("effect_type", "hit")
-
-	# Determine target position (opponent if my action, self if opponent's action)
-	var target_pos: Vector2 = Vector2.ZERO
-	if is_my_action:
-		target_pos = opponent_health_bar.global_position
-	else:
-		target_pos = my_health_bar.global_position
-
-	# Determine effect type string
-	var vfx_type: String = "hit"
-	match effect_type:
-		"fire":
-			vfx_type = "fire"
-		"ice":
-			vfx_type = "ice"
-		"lightning":
-			vfx_type = "lightning"
-		"crit", "critical":
-			vfx_type = "crit"
-
-	# Play the VFX
-	VFXManager.play_combat_vfx(damage, target_pos, vfx_type, is_crit)
-
-
-func _play_miss_vfx(_entry: Dictionary, is_my_action: bool) -> void:
-	"""Play visual effects for missed attacks."""
-	if not VFXManager:
-		return
-
-	# Determine target position
-	var target_pos: Vector2 = Vector2.ZERO
-	if is_my_action:
-		target_pos = opponent_health_bar.global_position
-	else:
-		target_pos = my_health_bar.global_position
-
-	VFXManager.play_miss_effect(target_pos)
-	VFXManager.show_damage_popup(0, target_pos, false, true)
 
 func _refresh_match_state() -> void:
 	if not combat_manager or match_id.is_empty():
@@ -217,9 +294,19 @@ func _refresh_match_state() -> void:
 
 	combat_manager.get_match_state(match_id)
 
+# --- Combat Log Helper ---
+func _append_combat_log(message: String) -> void:
+	if combat_log:
+		combat_log.text += message + "\n"
+
 # --- Navigation ---
 func _on_back_pressed() -> void:
-	var result = get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
+	if _is_pve_mode:
+		# Return to campaign map from PvE
+		GameManager.current_encounter_data = {}
+		var result = get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
+	else:
+		var result = get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
 
 
 func _exit_tree() -> void:
@@ -231,9 +318,9 @@ func _exit_tree() -> void:
 			combat_manager.match_state_updated.disconnect(_on_match_state_updated)
 		if combat_manager.turn_changed.is_connected(_on_turn_changed):
 			combat_manager.turn_changed.disconnect(_on_turn_changed)
-		if combat_manager.combat_ended.is_connected(_on_combat_ended):
-			combat_manager.combat_ended.disconnect(_on_combat_ended)
-	
+		if combat_manager.combat_ended.is_connected(_on_pvp_combat_ended):
+			combat_manager.combat_ended.disconnect(_on_pvp_combat_ended)
+
 	# Disconnect theme manager
 	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
 		theme_manager.theme_changed.disconnect(_on_theme_changed)
@@ -246,12 +333,12 @@ func set_match_id(new_match_id: String) -> void:
 func _apply_theme() -> void:
 	if not theme_manager:
 		return
-	
+
 	var colors = theme_manager.get_theme_colors()
-	
+
 	# Apply background color
-	modulate = colors["background"]
-	
+	theme_manager.apply_background(self)
+
 	# Apply to stats panel
 	if stats_panel:
 		stats_panel.modulate = colors["surface"]

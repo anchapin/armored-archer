@@ -271,7 +271,7 @@ func _apply_theme() -> void:
 	var colors = theme_manager.get_theme_colors()
 	
 	# Apply background color
-	modulate = colors["background"]
+	theme_manager.apply_background(self)
 	
 	# Apply colors to labels
 	if gear_name_label:

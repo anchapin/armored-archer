@@ -146,6 +146,23 @@ func _save_theme() -> void:
 # HELPER FUNCTIONS
 # =============================================================================
 
+## Apply a background color via a full-rect ColorRect instead of modulating.
+## This avoids darkening child nodes.
+func apply_background(control: Control) -> void:
+	if not control:
+		return
+	var colors = get_theme_colors()
+	# Check if a background panel already exists
+	var bg: ColorRect = control.get_node_or_null("_theme_background") as ColorRect
+	if not bg:
+		bg = ColorRect.new()
+		bg.name = "_theme_background"
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		control.add_child(bg)
+		control.move_child(bg, 0)  # Behind everything
+	bg.color = colors["background"]
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+
 ## Apply theme to a Control node and its children
 func apply_theme_to_control(control: Control) -> void:
 	if not control:
@@ -153,13 +170,8 @@ func apply_theme_to_control(control: Control) -> void:
 	
 	var colors = get_theme_colors()
 	
-	# Apply background color
+	# Apply background color via panel, not modulate
 	if control is Panel or control is PanelContainer:
 		control.modulate = colors["surface"]
-	elif control is Control:
-		control.modulate = colors["background"]
-	
-	# Recursively apply to children
-	for child in control.get_children():
-		if child is Control:
-			apply_theme_to_control(child)
+	else:
+		apply_background(control)
