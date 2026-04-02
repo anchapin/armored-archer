@@ -652,6 +652,39 @@ When working on this project, AI agents should:
 4. **Document Changes**: Update documentation for any new features
 5. **Request Review**: Clearly mark AI-assisted contributions for human review
 
+### AI Integration Documentation
+
+All AI-assisted development should reference:
+
+- **AI_INTEGRATION.md**: Main guide for AI development workflow, prompt templates, and tooling
+- **AI_CODE_REVIEW.md**: Comprehensive checklist for reviewing AI-generated code
+- **ai-setup/README.md**: Local Ollama setup for offline AI-assisted development
+- **FOLEY_AI_SETUP.md**: Audio asset generation setup using Foley AI plugin
+- **scripts/ai-refactor.sh**: CLI tool for AI-assisted code refactoring
+
+### AI Tools Available
+
+| Tool | Purpose | Documentation |
+|------|---------|--------------|
+| **Godogen** | Complete game feature generation | GODOGEN_SETUP.md |
+| **Ziva AI** | Native GD extension for code generation | AI_INTEGRATION.md |
+| **AI Assistant Hub** | Local/cloud model integration | ai-setup/README.md |
+| **Foley AI** | Audio asset generation | FOLEY_AI_SETUP.md |
+| **Ollama** | Local AI inference | ai-setup/README.md |
+
+### Quick AI Command Reference
+
+```bash
+# Refactor code with AI assistance
+./scripts/ai-refactor.sh <file_path> [mobile|types|naming|full]
+
+# Generate new features with Godogen
+/godogen Create a new enemy type: flying gargoyle with ranged attacks
+
+# Use AI for code review (manual checklist)
+# See AI_CODE_REVIEW.md for detailed review criteria
+```
+
 ### Exceptions and Edge Cases
 
 - **Security-Critical Code**: AI should not generate security-critical code without human supervision
