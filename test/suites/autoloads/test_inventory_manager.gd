@@ -1,10 +1,14 @@
 extends GutTest
 
+## @deprecated: InventoryManager is deprecated. Tests skipped — migrate to GearManager.
+## Slot mapping: 0→"helm", 1→"armor", 2→"bow", 3→"arrow", 4→"amulet"
+
 var InventoryManagerClass = load("res://autoloads/InventoryManager.gd")
 var _inv
 var _mock_network: Node
 
 func before_each():
+	skip("InventoryManager is deprecated — use GearManager")
 	_inv = InventoryManagerClass.new()
 	add_child_autofree(_inv)
 

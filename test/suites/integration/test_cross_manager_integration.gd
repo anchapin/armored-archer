@@ -142,9 +142,9 @@ func test_inventory_manager_with_store():
 	var store_mgr = StoreManagerClass.new()
 	add_child_autofree(store_mgr)
 	
-	var InventoryManagerClass = load("res://autoloads/InventoryManager.gd")
-	var inventory_mgr = InventoryManagerClass.new()
-	add_child_autofree(inventory_mgr)
+	var GearManagerClass = load("res://autoloads/GearManager.gd")
+	var gear_mgr = GearManagerClass.new()
+	add_child_autofree(gear_mgr)
 	
 	var player_mgr = PlayerStatsManagerClass.new()
 	add_child_autofree(player_mgr)

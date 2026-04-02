@@ -1,5 +1,10 @@
 extends Node
 
+## @deprecated: InventoryManager is deprecated. Use GearManager instead.
+## These tests are preserved for reference but InventoryManager is no longer
+## registered as an autoload. Use GearManager for all gear operations.
+## Slot mapping: 0→"helm", 1→"armor", 2→"bow", 3→"arrow", 4→"amulet"
+
 var _tests_passed: int = 0
 var _tests_failed: int = 0
 

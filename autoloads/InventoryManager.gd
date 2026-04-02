@@ -1,4 +1,11 @@
 extends Node
+## @deprecated: Use GearManager instead. This autoload will be removed.
+## Migration: Replace InventoryManager calls with GearManager equivalents.
+## - load_gear() → GearManager.get_full_inventory()
+## - equip_gear(slot_int, gear_id) → GearManager.equip_gear(gear_id, slot_string)
+## - unequip_gear(slot_int) → GearManager.unequip_gear(slot_string)
+## Slot mapping: 0→"helm", 1→"armor", 2→"bow", 3→"arrow", 4→"amulet"
+##
 ## Manages gear loading, equipping, and stat calculation.
 ## Handles inventory state and gear persistence via Nakama.
 ##
