@@ -40,6 +40,52 @@ func _ready() -> void:
 		unlocked_stages = ["1_1"]
 		save_progress()
 
+	# Connect to network for sync
+	if network_manager and network_manager.has_signal("connection_status_changed"):
+		network_manager.connection_status_changed.connect(_on_connection_status_changed)
+
+func _on_connection_status_changed(is_online: bool) -> void:
+	"""Syncs campaign progress when connection is established."""
+	if is_online:
+		sync_campaign_progress()
+
+func sync_campaign_progress() -> void:
+	"""Fetches campaign progress from server and merges with local state."""
+	if not network_manager or not network_manager.has_method("send_rpc"):
+		return
+	if not network_manager.is_session_valid():
+		return
+
+	var response: Dictionary = network_manager.send_rpc(
+		"armored_archer/get_campaign_progress",
+		JSON.stringify({})
+	)
+
+	if response.has("error"):
+		push_warning("Failed to sync campaign progress: " + str(response.error))
+		return
+
+	# Merge server completions with local (union)
+	var server_completed: Array = response.get("completed_stages", [])
+	for stage_id in server_completed:
+		if not stage_id in completed_stages:
+			completed_stages.append(stage_id)
+
+	# Merge server unlocks with local (union)
+	var server_unlocked: Array = response.get("unlocked_stages", [])
+	for stage_id in server_unlocked:
+		if not stage_id in unlocked_stages:
+			unlocked_stages.append(stage_id)
+
+	# Merge boss defeats
+	var server_bosses: Array = response.get("bosses_defeated", [])
+	for boss_id in server_bosses:
+		if not boss_id in bosses_defeated:
+			bosses_defeated.append(boss_id)
+
+	# Save merged state locally
+	save_progress()
+
 func load_campaigns_data() -> void:
 	"""Loads campaign definitions from res://data/campaigns.json."""
 	var file = FileAccess.open("res://data/campaigns.json", FileAccess.READ)
@@ -67,6 +113,76 @@ func get_stage_data(stage_id: String) -> Dictionary:
 			if stage.get("id") == stage_id:
 				return stage
 	return {}
+
+## Returns enemy stats dictionary for a stage.
+##
+## Parameters:
+##   stage_id: Stage identifier (e.g., "1_1", "2_3")
+##
+## Returns:
+##   Dictionary: Enemy data with type, health, attack, defense, speed or empty dict
+func get_enemy_data(stage_id: String) -> Dictionary:
+	var stage = get_stage_data(stage_id)
+	return stage.get("enemy", {})
+
+## Returns difficulty tier (1-3) for a stage.
+##
+## Parameters:
+##   stage_id: Stage identifier to check
+##
+## Returns:
+##   int: Difficulty tier (1=Starter, 2=Challenging, 3=Endgame)
+func get_difficulty_tier(stage_id: String) -> int:
+	var stage = get_stage_data(stage_id)
+	return stage.get("difficulty", 1)
+
+## Returns biome name for a chapter.
+##
+## Parameters:
+##   chapter_id: Chapter identifier (e.g., "chapter_1")
+##
+## Returns:
+##   String: Biome name (forest, cavern, mountain)
+func get_biome(chapter_id: String) -> String:
+	for chapter in campaigns_data.get("campaigns", []):
+		if chapter.get("id") == chapter_id:
+			var stages = chapter.get("stages", [])
+			if stages.size() > 0:
+				return stages[0].get("biome", "forest")
+	return "forest"
+
+## Returns loot configuration for a stage.
+##
+## Parameters:
+##   stage_id: Stage identifier to check
+##
+## Returns:
+##   Dictionary: Loot config with xp, gold, rarity_weights
+func get_loot_config(stage_id: String) -> Dictionary:
+	var stage = get_stage_data(stage_id)
+	return stage.get("loot", {})
+
+## Returns difficulty tier metadata (name, color) from campaigns.json.
+##
+## Returns:
+##   Dictionary: Difficulty tier info keyed by tier number
+func get_difficulty_metadata() -> Dictionary:
+	return campaigns_data.get("difficulty_tiers", {})
+
+## Returns stages filtered by difficulty tier.
+##
+## Parameters:
+##   difficulty: Difficulty tier to filter by (1-3)
+##
+## Returns:
+##   Array: List of stage dictionaries matching the difficulty
+func get_stages_by_difficulty(difficulty: int) -> Array:
+	var result = []
+	for chapter in campaigns_data.get("campaigns", []):
+		for stage in chapter.get("stages", []):
+			if stage.get("difficulty", 1) == difficulty:
+				result.append(stage)
+	return result
 
 func complete_stage(stage_id: String) -> void:
 	"""Marks a stage as completed and triggers progression.
@@ -101,11 +217,14 @@ func _notify_server_stage_complete(stage_id: String, boss_id: String) -> void:
 	if not network_manager or not network_manager.has_method("send_rpc"):
 		return
 
+	var tier: int = 1
+	if "current_difficulty" in GameManager:
+		tier = GameManager.current_difficulty
 	var payload: Dictionary = {
 		"stage_id": stage_id,
 		"boss_defeated": boss_id != "",
 		"boss_id": boss_id,
-		"difficulty": "normal"
+		"difficulty": _get_difficulty_string(tier)
 	}
 
 	# Send async RPC to server
@@ -342,3 +461,18 @@ func has_defeated_boss(boss_id: String) -> bool:
 		bool: True if the boss has been defeated
 	"""
 	return boss_id in bosses_defeated
+
+func _get_difficulty_string(tier: int) -> String:
+	"""Converts numeric difficulty tier to server-expected string.
+
+	Parameters:
+		tier: Numeric difficulty tier (1-3)
+
+	Returns:
+		String: Server difficulty string (easy, medium, hard, or normal)
+	"""
+	match tier:
+		1: return "easy"
+		2: return "medium"
+		3: return "hard"
+		_: return "normal"
