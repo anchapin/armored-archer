@@ -29,7 +29,7 @@ func set_progress(value: float) -> void:
 	
 	if has_theme_stylebox("fill"):
 		# Use Godot's built-in progress bar styling
-		progress_ratio = value
+		ratio = value
 	else:
 		# Manual positioning for custom implementation
 		if _fill:
@@ -50,7 +50,7 @@ func set_background_color(color: Color) -> void:
 ## Get current progress value
 func get_progress() -> float:
 	if has_theme_stylebox("fill"):
-		return progress_ratio
+		return ratio
 	else:
 		if _fill and size.x > 0:
 			return _fill.size.x / size.x

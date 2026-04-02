@@ -13,7 +13,7 @@ extends Control
 @export_group("Appearance")
 @export var color: Color = Color.WHITE
 @export var background_color: Color = Color(1, 1, 1, 0.3)
-@export var size: Vector2 = Vector2(64, 64)
+@export var indicator_size: Vector2 = Vector2(64, 64)
 @export var line_width: float = 4.0
 
 @export_group("Animation")
@@ -46,24 +46,24 @@ func setup_spinner() -> void:
 	if not _spinner:
 		return
 	
-	_spinner.custom_minimum_size = size
+	_spinner.custom_minimum_size = indicator_size
 	
 	# Use a StyleBoxFlat for the spinner
 	var style = StyleBoxFlat.new()
 	style.bg_color = background_color
-	style.corner_radius_top_left = size.x / 2
-	style.corner_radius_top_right = size.x / 2
-	style.corner_radius_bottom_left = size.x / 2
-	style.corner_radius_bottom_right = size.x / 2
+	style.corner_radius_top_left = indicator_size.x / 2
+	style.corner_radius_top_right = indicator_size.x / 2
+	style.corner_radius_bottom_left = indicator_size.x / 2
+	style.corner_radius_bottom_right = indicator_size.x / 2
 	style.set_border_width_all(0)
 	
 	# Create a progress fill style
 	var fill_style = StyleBoxFlat.new()
 	fill_style.bg_color = color
-	fill_style.corner_radius_top_left = size.x / 2
-	fill_style.corner_radius_top_right = size.x / 2
-	fill_style.corner_radius_bottom_left = size.x / 2
-	fill_style.corner_radius_bottom_right = size.x / 2
+	fill_style.corner_radius_top_left = indicator_size.x / 2
+	fill_style.corner_radius_top_right = indicator_size.x / 2
+	fill_style.corner_radius_bottom_left = indicator_size.x / 2
+	fill_style.corner_radius_bottom_right = indicator_size.x / 2
 	fill_style.set_border_width_all(line_width / 2)
 	
 	# Apply styles
@@ -74,7 +74,7 @@ func setup_spinner() -> void:
 	_spinner.min_value = 0
 	_spinner.max_value = 100
 	_spinner.value = 25
-	_spinner.fill_mode = ProgressBar.FILL_CLOCKWISE
+	_spinner.fill_mode = ProgressBar.FILL_BEGIN_TO_END
 	_spinner.show_percentage = false
 
 func start() -> void:
@@ -115,7 +115,7 @@ func _animate_progress() -> void:
 	var duration = 1.0 / rotation_speed
 	
 	# Animate from 0 to 100
-	tween.tween_property(_spinner, "value", 100.0, duration).set_ease(Tween.LINEAR).set_trans(Tween.TRANS_LINEAR)
+	tween.tween_property(_spinner, "value", 100.0, duration).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_LINEAR)
 	tween.tween_callback(_animate_progress)
 
 func is_animating() -> bool:
@@ -125,8 +125,8 @@ func set_color(new_color: Color) -> void:
 	color = new_color
 	setup_spinner()
 
-func set_size(new_size: Vector2) -> void:
-	size = new_size
+func set_indicator_size(new_size: Vector2) -> void:
+	indicator_size = new_size
 	setup_spinner()
 
 # --- Full Screen Overlay ---
@@ -141,7 +141,7 @@ func show_overlay(message: String = "") -> void:
 		label.text = message
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.position.y = size.y + 20
+		label.position.y = indicator_size.y + 20
 		label.add_theme_font_size_override("font_size", 16)
 		add_child(label)
 	

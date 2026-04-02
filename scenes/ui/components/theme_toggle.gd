@@ -97,7 +97,7 @@ func is_dark_theme() -> bool:
 	return _is_dark
 
 ## Set theme directly
-func set_theme(is_dark: bool) -> void:
+func apply_theme(is_dark: bool) -> void:
 	_is_dark = is_dark
 	if _theme_manager:
 		_theme_manager.set_theme("dark" if is_dark else "light")

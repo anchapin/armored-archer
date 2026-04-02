@@ -75,7 +75,7 @@ func _layout_default(pos: Vector2, size: Vector2) -> void:
 	for child in get_children():
 		if not child is Control:
 			continue
-		var child_size := child.get_combined_minimum_size()
+		var child_size: Vector2 = child.get_combined_minimum_size()
 		child.position = child_pos
 		child.size = child_size
 
@@ -100,7 +100,7 @@ func _layout_vertical(pos: Vector2, size: Vector2) -> void:
 	for child in get_children():
 		if not child is Control:
 			continue
-		var child_size := child.get_combined_minimum_size()
+		var child_size: Vector2 = child.get_combined_minimum_size()
 		child.position = Vector2(pos.x, child_pos.y)
 		child.size = Vector2(size.x, child_size.y)
 		child_pos.y += child_size.y + spacing
@@ -126,7 +126,7 @@ func _layout_horizontal(pos: Vector2, size: Vector2) -> void:
 	for child in get_children():
 		if not child is Control:
 			continue
-		var child_size := child.get_combined_minimum_size()
+		var child_size: Vector2 = child.get_combined_minimum_size()
 		child.position = Vector2(child_pos.x, pos.y)
 		child.size = Vector2(child_size.x, size.y)
 		child_pos.x += child_size.x + spacing
@@ -143,7 +143,7 @@ func _layout_grid(pos: Vector2, size: Vector2) -> void:
 	for child in get_children():
 		if not child is Control:
 			continue
-		var child_size := child.get_combined_minimum_size()
+		var child_size: Vector2 = child.get_combined_minimum_size()
 		var cell_width := size.x / cols
 		
 		child.position = Vector2(x_pos + col * cell_width, y_pos + row * (max_height + spacing))

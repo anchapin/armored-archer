@@ -207,7 +207,7 @@ func set_button_type(new_type: String) -> void:
 	button_type = new_type
 	_update_button_style()
 
-func set_disabled(disabled: bool) -> void:
+func apply_disabled(disabled: bool) -> void:
 	self.disabled = disabled
 	if disabled:
 		_set_state(ButtonState.DISABLED)
