@@ -74,6 +74,7 @@ import { registerErrorInsightRpcs, initializeErrorInsightsPipeline } from './mod
 import {
   registerRpcCompleteStage,
   registerRpcGetCompletedStages,
+  registerRpcGetCampaignProgress,
 } from './modules/stage_tracking';
 import { initializeNotifications, registerNotificationEndpoints } from './modules/notifications_rpc';
 import { startNotificationScheduler, stopNotificationScheduler } from './modules/notification_scheduler';
@@ -299,6 +300,12 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/get_campaign_progress',
+      'get_campaign_progress',
+      rpcGetCampaignProgressWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/report_player',
       'report_player',
       rpcReportPlayerWrapper
@@ -365,6 +372,7 @@ const InitModule: InitModule = function (
     registerRpcGetPlayerReports(initializer);
     registerRpcCompleteStage(initializer);
     registerRpcGetCompletedStages(initializer);
+    registerRpcGetCampaignProgress(initializer);
   }
 
   logSystemEvent('info', 'Armored Archer server module initialized');
@@ -528,6 +536,16 @@ function rpcCompleteStageWrapper(
 ): string {
   const { rpcCompleteStage } = require('./modules/stage_tracking');
   return rpcCompleteStage(ctx, logger, nk, payload);
+}
+
+function rpcGetCampaignProgressWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcGetCampaignProgress } = require('./modules/stage_tracking');
+  return rpcGetCampaignProgress(ctx, logger, nk, payload);
 }
 
 function rpcReportPlayerWrapper(

@@ -124,6 +124,15 @@ export function registerRpcGetCompletedStages(initializer: Runtime.Initializer):
 }
 
 /**
+ * Registers the get_campaign_progress RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcGetCampaignProgress(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_campaign_progress', rpcGetCampaignProgress);
+}
+
+/**
  * Determines if new completion is better than existing one
  */
 function isBetterCompletion(
@@ -442,6 +451,133 @@ export function rpcGetCompletedStages(
     return JSON.stringify({
       success: false,
       error: 'Failed to retrieve completed stages',
+      error_code: 'INTERNAL_ERROR',
+    });
+  }
+}
+
+/**
+ * Derives the next stage ID in sequence.
+ * e.g., "1_1" -> "1_2", "2_3" -> "2_4"
+ */
+function deriveNextStageId(stageId: string): string | null {
+  const parts = stageId.split('_');
+  if (parts.length !== 2) return null;
+  const chapter = parts[0];
+  const stageNum = parseInt(parts[1], 10);
+  if (isNaN(stageNum)) return null;
+  return `${chapter}_${stageNum + 1}`;
+}
+
+/**
+ * Handles requests to get campaign progress for a player.
+ * Returns completed stages, unlocked stages, and defeated bosses.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (empty or unused)
+ * @returns JSON string with campaign progress
+ */
+export function rpcGetCampaignProgress(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get campaign progress called for user: %s', ctx.userId);
+
+  // Validate authentication
+  if (!ctx.userId) {
+    logger.warn('get_campaign_progress attempted without authentication');
+    return JSON.stringify({
+      success: false,
+      error: 'Authentication required',
+      error_code: 'UNAUTHORIZED',
+    });
+  }
+
+  try {
+    // Read stage completions from storage
+    const storageObjects = nk.storageRead([
+      {
+        collection: STAGE_COMPLETION_COLLECTION,
+        key: ctx.userId,
+        userId: ctx.userId,
+      },
+    ]);
+
+    let storageData: StageCompletionStorage = {
+      user_id: ctx.userId,
+      completions: {},
+    };
+
+    // Parse existing data if it exists
+    if (storageObjects.length > 0 && storageObjects[0].value) {
+      try {
+        storageData = JSON.parse(storageObjects[0].value) as StageCompletionStorage;
+      } catch (e) {
+        logger.warn('Failed to parse stage completion storage: %s', String(e));
+      }
+    }
+
+    // Build completed_stages array from completion keys
+    const completedStages = Object.keys(storageData.completions);
+
+    // Derive unlocked_stages: for each completed stage, the next stage is unlocked
+    const unlockedSet = new Set<string>();
+    for (const stageId of completedStages) {
+      const nextStage = deriveNextStageId(stageId);
+      if (nextStage) {
+        unlockedSet.add(nextStage);
+      }
+    }
+    // Always ensure first stage is available
+    unlockedSet.add('1_1');
+    const unlockedStages = Array.from(unlockedSet);
+
+    // Extract bosses defeated from completions (boss stages typically have boss data)
+    // We read from the gear_system inventory for boss defeats
+    const bossesDefeated: string[] = [];
+    try {
+      const inventoryObjects = nk.storageRead([
+        {
+          collection: 'player_inventory',
+          key: ctx.userId,
+          userId: ctx.userId,
+        },
+      ]);
+      if (inventoryObjects.length > 0 && inventoryObjects[0].value) {
+        const inventory = JSON.parse(inventoryObjects[0].value);
+        if (Array.isArray(inventory.unlocked_modifier_pools)) {
+          // Modifier pools unlocked by bosses indicate boss defeats
+          bossesDefeated.push(...inventory.unlocked_modifier_pools);
+        }
+      }
+    } catch (e) {
+      logger.warn('Failed to read boss defeats from inventory: %s', String(e));
+    }
+
+    logger.info(
+      'Campaign progress for user %s: completed=%d, unlocked=%d, bosses=%d',
+      ctx.userId,
+      completedStages.length,
+      unlockedStages.length,
+      bossesDefeated.length
+    );
+
+    return JSON.stringify({
+      success: true,
+      completed_stages: completedStages,
+      unlocked_stages: unlockedStages,
+      bosses_defeated: bossesDefeated,
+    });
+  } catch (error) {
+    logger.error('Error retrieving campaign progress: %s', String(error));
+
+    return JSON.stringify({
+      success: false,
+      error: 'Failed to retrieve campaign progress',
       error_code: 'INTERNAL_ERROR',
     });
   }
