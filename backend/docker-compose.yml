@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   postgres:
     image: postgres:14-alpine
@@ -138,9 +136,8 @@ services:
     restart: unless-stopped
     volumes:
       - ./config/promtail.yml:/etc/promtail/config.yml
-      - /var/log:/var/log:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./logs:/var/log/armored_archer
+      - promtail-logs:/var/log/armored_archer
       - ./data/logs:/nakama/data/logs
     command: -config.file=/etc/promtail/config.yml
     networks:
@@ -261,6 +258,7 @@ volumes:
   alertmanager_data:
   loki_data:
   tempo_data:
+  promtail-logs:
 
 networks:
   backend-network:

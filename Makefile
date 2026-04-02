@@ -106,13 +106,13 @@ backend-install:
 ## Backend Commands
 backend-start:
 	@echo "$(BLUE)Starting Nakama backend...$(RESET)"
-	cd $(BACKEND_DIR) && docker-compose up -d
+	cd $(BACKEND_DIR) && docker compose up -d
 	@echo "$(GREEN)Nakama started: http://localhost:7350$(RESET)"
 	@echo "$(GREEN)Admin Console: http://localhost:7351 (admin:password)$(RESET)"
 
 backend-stop:
 	@echo "$(BLUE)Stopping backend...$(RESET)"
-	cd $(BACKEND_DIR) && docker-compose down
+	cd $(BACKEND_DIR) && docker compose down
 
 backend-dev:
 	@echo "$(BLUE)Starting backend with auto-reload...$(RESET)"
@@ -236,7 +236,7 @@ rollback:
 ## Local Services Management
 services-start:
 	@echo "$(BLUE)Starting local services (Nakama + PostgreSQL)...$(RESET)"
-	cd $(BACKEND_DIR) && docker-compose up -d
+	cd $(BACKEND_DIR) && docker compose up -d
 	@echo "$(GREEN)✓ Services started$(RESET)"
 	@echo "  - Nakama API:     http://localhost:7350"
 	@echo "  - Nakama Console: http://localhost:7351 (admin:password)"
@@ -246,17 +246,17 @@ services-start:
 
 services-stop:
 	@echo "$(BLUE)Stopping local services...$(RESET)"
-	cd $(BACKEND_DIR) && docker-compose down
+	cd $(BACKEND_DIR) && docker compose down
 	@echo "$(GREEN)✓ Services stopped$(RESET)"
 
 services-restart:
 	@echo "$(BLUE)Restarting local services...$(RESET)"
-	cd $(BACKEND_DIR) && docker-compose restart
+	cd $(BACKEND_DIR) && docker compose restart
 	@echo "$(GREEN)✓ Services restarted$(RESET)"
 
 services-status:
 	@echo "$(BLUE)Local Services Status:$(RESET)"
-	cd $(BACKEND_DIR) && docker-compose ps
+	cd $(BACKEND_DIR) && docker compose ps
 
 services-health:
 	@echo "$(BLUE)Running health checks...$(RESET)"
@@ -271,14 +271,14 @@ services-health:
 
 services-logs:
 	@echo "$(BLUE)Viewing service logs (Ctrl+C to exit)...$(RESET)"
-	cd $(BACKEND_DIR) && docker-compose logs -f
+	cd $(BACKEND_DIR) && docker compose logs -f
 
 services-validate:
 	@echo "$(BLUE)Validating local services setup...$(RESET)"
 	@echo ""
 	@echo "$(BLUE)Checking prerequisites...$(RESET)"
 	@command -v docker >/dev/null 2>&1 && echo "$(GREEN)✓ Docker installed$(RESET)" || echo "$(YELLOW)✗ Docker not found$(RESET)"
-	@command -v docker-compose >/dev/null 2>&1 && echo "$(GREEN)✓ Docker Compose installed$(RESET)" || echo "$(YELLOW)✗ Docker Compose not found$(RESET)"
+	@command -v docker compose >/dev/null 2>&1 && echo "$(GREEN)✓ Docker Compose installed$(RESET)" || echo "$(YELLOW)✗ Docker Compose not found$(RESET)"
 	@docker ps >/dev/null 2>&1 && echo "$(GREEN)✓ Docker daemon running$(RESET)" || echo "$(YELLOW)✗ Docker daemon not running$(RESET)"
 	@echo ""
 	@echo "$(BLUE)Checking environment file...$(RESET)"
@@ -290,7 +290,7 @@ services-validate:
 
 services-clean:
 	@echo "$(BLUE)Stopping and removing local services...$(RESET)"
-	cd $(BACKEND_DIR) && docker-compose down -v
+	cd $(BACKEND_DIR) && docker compose down -v
 	@echo "$(GREEN)✓ Services and volumes removed$(RESET)"
 
 ## Tech Debt Tracking
