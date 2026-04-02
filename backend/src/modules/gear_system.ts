@@ -64,7 +64,7 @@ export interface GearStat {
  * @property id - Unique identifier for the gear
  * @property name - Display name of the gear
  * @property rarity - Rarity level of the gear
- * @property type - Type of gear (weapon, armor, accessory)
+ * @property type - Type of gear (helm, armor, bow, arrow, amulet)
  * @property stats - Array of gear stats
  * @property modifiers - Array of gear modifiers
  * @property level - Level of the gear
@@ -131,35 +131,49 @@ const RARITIES: { [key: string]: GearRarity } = {
   common: {
     name: 'Common',
     stat_multiplier: 1.0,
-    drop_chance: 0.7,
+    drop_chance: 0.6,
     color: '#ffffff',
   },
   rare: {
     name: 'Rare',
     stat_multiplier: 1.5,
     drop_chance: 0.25,
-    color: '#0070dd',
+    color: '#00ff00',
+  },
+  epic: {
+    name: 'Epic',
+    stat_multiplier: 1.8,
+    drop_chance: 0.1,
+    color: '#9b30ff',
   },
   legendary: {
     name: 'Legendary',
     stat_multiplier: 2.0,
     drop_chance: 0.05,
-    color: '#ff8000',
+    color: '#ffa500',
   },
 };
 
-const GEAR_TYPES = ['weapon', 'armor', 'accessory'];
+const GEAR_TYPES = ['helm', 'armor', 'bow', 'arrow', 'amulet'];
 
 const BASE_STATS = {
-  weapon: [
-    { name: 'attack', base_value: 10 },
-    { name: 'crit_rate', base_value: 5 },
+  helm: [
+    { name: 'defense', base_value: 10 },
+    { name: 'health', base_value: 50 },
   ],
   armor: [
     { name: 'defense', base_value: 10 },
     { name: 'health', base_value: 50 },
   ],
-  accessory: [
+  bow: [
+    { name: 'attack', base_value: 10 },
+    { name: 'crit_rate', base_value: 5 },
+  ],
+  arrow: [
+    { name: 'attack', base_value: 10 },
+    { name: 'crit_rate', base_value: 5 },
+  ],
+  amulet: [
     { name: 'dodge', base_value: 5 },
     { name: 'crit_rate', base_value: 3 },
   ],
@@ -435,9 +449,11 @@ export function applyGearModifiersToPlayerStats(
 }
 
 const GEAR_NAMES = {
-  weapon: ['Iron Sword', 'Steel Blade', 'Ancient Bow', 'Staff of Elements', 'Battle Axe'],
+  helm: ['Iron Helm', 'Steel Casque', 'Ancient Crown', 'Dragon Helm', 'Shadow Hood'],
   armor: ['Leather Vest', 'Chainmail', 'Plate Armor', 'Dragon Scale', 'Shadow Cloak'],
-  accessory: ['Wooden Ring', 'Silver Amulet', 'Golden Charm', 'Mystic Stone', 'Spirit Orb'],
+  bow: ['Short Bow', 'Long Bow', 'Composite Bow', 'Dragon Bow', 'Shadow Arc'],
+  arrow: ['Iron Arrow', 'Steel Bolt', 'Flame Arrow', 'Dragon Fang', 'Shadow Spike'],
+  amulet: ['Wooden Charm', 'Silver Amulet', 'Golden Pendant', 'Dragon Eye', 'Shadow Gem'],
 };
 
 /**
@@ -459,7 +475,9 @@ function rollRarity(): string {
 
   if (roll < RARITIES.legendary.drop_chance) {
     return 'legendary';
-  } else if (roll < RARITIES.legendary.drop_chance + RARITIES.rare.drop_chance) {
+  } else if (roll < RARITIES.legendary.drop_chance + RARITIES.epic.drop_chance) {
+    return 'epic';
+  } else if (roll < RARITIES.legendary.drop_chance + RARITIES.epic.drop_chance + RARITIES.rare.drop_chance) {
     return 'rare';
   } else {
     return 'common';
@@ -513,7 +531,7 @@ function getGearDefinitions(logger: Runtime.Logger): GearDefinitions {
 /**
  * Generates a name for a gear item based on type and rarity.
  *
- * @param type - Type of gear (weapon, armor, accessory)
+ * @param type - Type of gear (helm, armor, bow, arrow, amulet)
  * @param rarity - Rarity of the gear
  * @param logger - Nakama logger instance
  * @returns Generated gear name
@@ -580,7 +598,7 @@ function generateModifiers(
     return [];
   }
 
-  const numModifiers = rarity === 'legendary' ? 2 : rarity === 'rare' ? 1 : 0;
+  const numModifiers = rarity === 'legendary' ? 2 : rarity === 'epic' ? 2 : rarity === 'rare' ? 1 : 0;
   const modifiers: GearModifier[] = [];
 
   for (let i = 0; i < numModifiers; i++) {
@@ -801,7 +819,7 @@ export function registerRpcEquipGear(initializer: Runtime.Initializer): void {
  *
  * @example
  * // Request payload
- * { "gear_id": "gear_123", "slot": "weapon" }
+ * { "gear_id": "gear_123", "slot": "helm" }
  *
  * // Response
  * {
@@ -932,7 +950,7 @@ export function registerRpcUnequipGear(initializer: Runtime.Initializer): void {
  *
  * @example
  * // Request payload
- * { "slot": "weapon" }
+ * { "slot": "helm" }
  *
  * // Response
  * {
