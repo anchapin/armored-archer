@@ -3,29 +3,30 @@ gsd_state_version: 1.0
 milestone: v3.4.0
 milestone_name: Tactical Gameplay & PvE Campaign
 status: in_progress
-last_updated: "2026-04-01T17:55:00.000Z"
+last_updated: "2026-04-02T03:00:00.000Z"
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 1
+  completed_phases: 3
+  total_plans: 10
+  completed_plans: 6
 ---
 
 # Armored Archer - Project State
 
-**Last Updated**: 2026-04-01
-**Current Focus**: v3.4.0 — wire PvP scenes to backend, build PvE campaign system
-**Status**: Active development — Phase 01 (PvP Integration) complete
+**Last Updated**: 2026-04-02
+**Current Focus**: v3.4.0 — Phase 04 (Loot System & Progression) Plans 01-02 complete, Plan 03 awaiting human verification
+**Status**: Active development — Phases 01-03 complete, Phase 04 Plans 01-02 committed, Plan 03 at checkpoint
 
 ---
 
 ## Current Position
 
 **Milestone**: v3.4.0 Tactical Gameplay & PvE Campaign
-**Active Work**: Phase 01 complete, Phase 02 planned — 2 plans ready for execution
+**Active Work**: Phase 04 Plans 01-02 committed — backend 5-type/4-rarity gear aligned, InventoryManager deprecated
+**Phase 04**: Loot System & Progression — Plan 01 (backend align) + Plan 02 (client consolidate) DONE. Plan 03 (e2e wiring) at checkpoint:human-verify
 **Coverage**: 94.55% lines, 94.4% statements, 93.69% functions, 88.54% branches (target: 80% — EXCEEDED)
 **TypeScript**: 0 type errors (15 fixed 2026-04-01)
-**Working Tree**: Modified (2 files from Phase 01)
+**Working Tree**: Clean (Phase 04 changes committed)
 
 ---
 
@@ -118,23 +119,24 @@ progress:
 
 ## Recent Activity (2026-04-01)
 
-- Fixed 3 Godot autoload managers to use correct `armored_archer/` prefixed RPC names
-- Added `action_type: "shoot"` to CombatSyncManager combat action payload to match server schema
-- Rewrote coverage-threshold CI workflow from Go to TypeScript/Jest
-- Installed Stryker mutation testing framework
-- Created stryker.config.json for 8 critical backend modules
-- Updated mutation-testing CI workflow to use Stryker
-- Verified backend coverage at 94.55% (well above 80% target)
-- Updated .planning/STATE.md with resolved blockers
+- Enriched campaigns.json: 12 stages with enemy stats, difficulty tiers (1-3), biome metadata, loot config
+- Added 6 CampaignManager query methods: get_enemy_data(), get_difficulty_tier(), get_biome(), get_loot_config(), get_difficulty_metadata(), get_stages_by_difficulty()
+- Added GameManager.current_encounter_data and current_difficulty for PvE handoff
+- Created EnemyAIManager autoload with 3 difficulty tiers (random/basic/adaptive)
+- Rewrote combat_menu.gd to support PvE mode with local enemy turns
+- Enhanced game_over.gd with loot summary, contextual button text, campaign navigation
+- Added LootLabel node to game_over.tscn
+- Registered EnemyAIManager autoload in project.godot
+- Phase 02 (Campaign Encounters) complete: 2 plans executed, 6 tasks done
 
 ---
 
 ## Next Steps
 
-1. Run Stryker mutation testing in CI to establish baseline scores
-2. Address v3.0.0 Alpha readiness (load testing, security audit, 1,000+ CCU)
-3. Instrument remaining 26 autoload tests with CoverageTracker (non-blocking)
-4. Execute v3.4.0 tactical gameplay phases
+1. Human verification: complete a PvE stage and verify loot/XP flow end-to-end
+2. Execute Phase 05: Campaign state persistence across sessions
+3. Run Stryker mutation testing baseline in CI
+4. Address v3.0.0 Alpha readiness (load testing, security audit, 1,000+ CCU)
 
 ---
 
