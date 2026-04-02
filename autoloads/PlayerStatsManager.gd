@@ -39,9 +39,7 @@ func _ready() -> void:
 func _on_connection_status_changed(is_online: bool) -> void:
 	"""Fetches player stats when network connection is established."""
 	if is_online:
-		# Don't auto-fetch stats - RPC might not be ready yet
-		# await get_player_stats()
-		pass
+		await get_player_stats()
 
 # --- Public API ---
 func get_player_stats() -> Dictionary:

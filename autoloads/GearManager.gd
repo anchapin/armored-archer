@@ -233,8 +233,9 @@ func get_gear_stats_summary(gear_data: Dictionary) -> String:
 	var summary: String = ""
 	var rarity_colors: Dictionary = {
 		"common": "#FFFFFF",
-		"rare": "#0070DD",
-		"legendary": "#FF8000"
+		"rare": "#00FF00",
+		"epic": "#9B30FF",
+		"legendary": "#FFA500"
 	}
 
 	var rarity: String = gear_data.get("rarity", "common")
@@ -332,6 +333,7 @@ func _calculate_gear_score(gear_data: Dictionary) -> int:
 	var rarity_multipliers: Dictionary = {
 		"common": 1,
 		"rare": 2,
+		"epic": 3,
 		"legendary": 4
 	}
 
