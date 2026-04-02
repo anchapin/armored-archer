@@ -14,19 +14,19 @@ progress:
 # Armored Archer - Project State
 
 **Last Updated**: 2026-04-02
-**Current Focus**: v3.4.0 — Phase 04 (Loot System & Progression) Plans 01-02 complete, Plan 03 awaiting human verification
-**Status**: Active development — Phases 01-03 complete, Phase 04 Plans 01-02 committed, Plan 03 at checkpoint
+**Current Focus**: v3.4.0 — Phase 04 (Loot System & Progression) COMPLETE
+**Status**: Active development — Phase 04 fully executed (3 plans, all complete)
 
 ---
 
 ## Current Position
 
 **Milestone**: v3.4.0 Tactical Gameplay & PvE Campaign
-**Active Work**: Phase 04 Plans 01-02 committed — backend 5-type/4-rarity gear aligned, InventoryManager deprecated
-**Phase 04**: Loot System & Progression — Plan 01 (backend align) + Plan 02 (client consolidate) DONE. Plan 03 (e2e wiring) at checkpoint:human-verify
+**Active Work**: Phase 04 COMPLETE — backend 5-type/4-rarity gear aligned, InventoryManager deprecated, e2e loot/XP verified
+**Phase 04**: Loot System & Progression — DONE (3/3 plans executed, 6 tasks completed)
 **Coverage**: 94.55% lines, 94.4% statements, 93.69% functions, 88.54% branches (target: 80% — EXCEEDED)
-**TypeScript**: 0 type errors (15 fixed 2026-04-01)
-**Working Tree**: Clean (Phase 04 changes committed)
+**TypeScript**: 0 type errors
+**Working Tree**: Clean (all Phase 04 changes committed)
 
 ---
 
