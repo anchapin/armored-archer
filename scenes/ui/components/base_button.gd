@@ -1,4 +1,4 @@
-class_name BaseButton
+class_name ArcheryBaseButton
 extends Button
 
 # =============================================================================

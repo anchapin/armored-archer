@@ -49,10 +49,12 @@ AnimationUtils="*res://autoloads/AnimationUtils.gd"
 ThemeManager="*res://autoloads/ThemeManager.gd"
 AccessibilityManager="*res://autoloads/AccessibilityManager.gd"
 GutCoverageTracker="*res://addons/gut/coverage/coverage_tracker.gd"
-DesignTokens="*res://autoloads/design_tokens.gd"
 EncounterData="*res://autoloads/EncounterData.gd"
 CombatSyncManager="*res://autoloads/CombatSyncManager.gd"
 AnalyticsManager="*res://addons/analytics_manager/analytics_manager.gd"
+MCPScreenshot="*res://addons/godot_mcp/mcp_screenshot_service.gd"
+MCPInputService="*res://addons/godot_mcp/mcp_input_service.gd"
+MCPGameInspector="*res://addons/godot_mcp/mcp_game_inspector_service.gd"
 
 [debug]
 
@@ -74,7 +76,7 @@ window/vsync/use_vsync=false
 
 [editor_plugins]
 
-enabled=["res://addons/godot_mcp/plugin.cfg"]
+enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")
 
 [input]
 

@@ -136,33 +136,33 @@ func _add_button_animations() -> void:
 		return
 	
 	# Add hover animations to each button
-	_play_button.mouse_entered.connect(func(): _on_button_hover(play_button))
-	_play_button.mouse_exited.connect(func(): _on_button_hover_exit(play_button))
-	_play_button.button_down.connect(func(): _on_button_press(play_button))
+	play_button.mouse_entered.connect(func(): _on_button_hover(play_button))
+	play_button.mouse_exited.connect(func(): _on_button_hover_exit(play_button))
+	play_button.button_down.connect(func(): _on_button_press(play_button))
 	
-	_pvp_button.mouse_entered.connect(func(): _on_button_hover(pvp_button))
-	_pvp_button.mouse_exited.connect(func(): _on_button_hover_exit(pvp_button))
-	_pvp_button.button_down.connect(func(): _on_button_press(pvp_button))
+	pvp_button.mouse_entered.connect(func(): _on_button_hover(pvp_button))
+	pvp_button.mouse_exited.connect(func(): _on_button_hover_exit(pvp_button))
+	pvp_button.button_down.connect(func(): _on_button_press(pvp_button))
 	
-	_shop_button.mouse_entered.connect(func(): _on_button_hover(shop_button))
-	_shop_button.mouse_exited.connect(func(): _on_button_hover_exit(shop_button))
-	_shop_button.button_down.connect(func(): _on_button_press(shop_button))
+	shop_button.mouse_entered.connect(func(): _on_button_hover(shop_button))
+	shop_button.mouse_exited.connect(func(): _on_button_hover_exit(shop_button))
+	shop_button.button_down.connect(func(): _on_button_press(shop_button))
 	
-	_buy_gems_button.mouse_entered.connect(func(): _on_button_hover(buy_gems_button))
-	_buy_gems_button.mouse_exited.connect(func(): _on_button_hover_exit(buy_gems_button))
-	_buy_gems_button.button_down.connect(func(): _on_button_press(buy_gems_button))
+	buy_gems_button.mouse_entered.connect(func(): _on_button_hover(buy_gems_button))
+	buy_gems_button.mouse_exited.connect(func(): _on_button_hover_exit(buy_gems_button))
+	buy_gems_button.button_down.connect(func(): _on_button_press(buy_gems_button))
 	
-	_settings_button.mouse_entered.connect(func(): _on_button_hover(settings_button))
-	_settings_button.mouse_exited.connect(func(): _on_button_hover_exit(settings_button))
-	_settings_button.button_down.connect(func(): _on_button_press(settings_button))
+	settings_button.mouse_entered.connect(func(): _on_button_hover(settings_button))
+	settings_button.mouse_exited.connect(func(): _on_button_hover_exit(settings_button))
+	settings_button.button_down.connect(func(): _on_button_press(settings_button))
 	
-	_quit_button.mouse_entered.connect(func(): _on_button_hover(quit_button))
-	_quit_button.mouse_exited.connect(func(): _on_button_hover_exit(quit_button))
-	_quit_button.button_down.connect(func(): _on_button_press(quit_button))
+	quit_button.mouse_entered.connect(func(): _on_button_hover(quit_button))
+	quit_button.mouse_exited.connect(func(): _on_button_hover_exit(quit_button))
+	quit_button.button_down.connect(func(): _on_button_press(quit_button))
 	
-	_loadout_button.mouse_entered.connect(func(): _on_button_hover(loadout_button))
-	_loadout_button.mouse_exited.connect(func(): _on_button_hover_exit(loadout_button))
-	_loadout_button.button_down.connect(func(): _on_button_press(loadout_button))
+	loadout_button.mouse_entered.connect(func(): _on_button_hover(loadout_button))
+	loadout_button.mouse_exited.connect(func(): _on_button_hover_exit(loadout_button))
+	loadout_button.button_down.connect(func(): _on_button_press(loadout_button))
 
 func _on_button_hover(button: Button) -> void:
 	if ui_automation and ui_automation.has_method("button_hover_in") and is_instance_valid(button):
