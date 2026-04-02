@@ -488,10 +488,17 @@ func is_staging() -> bool:
 # Track RPC request ID separately from auth request ID
 var _rpc_request_id: int = 0
 var _pending_rpc_callbacks: Dictionary = {}  # Map request_id to callback info
+var _rpc_busy: bool = false  # Serialize requests to single HTTPRequest node
 
 func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Dictionary:
 	if not is_session_valid():
 		return {"error": "Not authenticated", "is_auth_error": false}
+
+	# Wait for any in-flight request to complete
+	while _rpc_busy:
+		await get_tree().process_frame
+
+	_rpc_busy = true
 
 	# Increment RPC request ID
 	_rpc_request_id += 1
@@ -525,7 +532,8 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	var on_request_completed: Callable = func(_result: int, _response_code: int, _headers: PackedStringArray, body: PackedByteArray):
 		request_result = [_result, _response_code, _headers, body, this_rpc_id]
 		response_received = true
-		timer.stop()
+		if is_instance_valid(timer):
+			timer.stop()
 
 	var _err1 = timer.timeout.connect(on_timeout, CONNECT_ONE_SHOT)
 	var _err2 = http_request.request_completed.connect(on_request_completed, CONNECT_ONE_SHOT)
@@ -536,6 +544,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 
 	if error_code != OK:
 		timer.queue_free()
+		_rpc_busy = false
 		return {"error": "Failed to send RPC request"}
 
 	# Wait for response with timeout protection
@@ -546,6 +555,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 
 	# Check if request timed out
 	if timed_out:
+		_rpc_busy = false
 		return {"error": "Request timed out after %.1f seconds" % timeout}
 
 	# Process the successful response
@@ -555,6 +565,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	# Validate that request_result has enough elements (should have 5: result, code, headers, body, rpc_id)
 	if result.size() < 4:
 		push_error("Request result incomplete: got %d elements, expected 5. Response received: %s" % [result.size(), response_received])
+		_rpc_busy = false
 		return {"error": "Invalid response: request_result is incomplete", "is_auth_error": false}
 
 	var rpc_id_completed: int = -1
@@ -588,6 +599,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	var latency_ms: int = Time.get_ticks_msec() - start_time
 	_log_rpc_latency(rpc_id, latency_ms)
 
+	_rpc_busy = false
 	return response_data
 
 ## Sends an RPC request without waiting for response (fire-and-forget).
