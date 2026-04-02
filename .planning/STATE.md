@@ -5,17 +5,17 @@ milestone_name: Tactical Gameplay & PvE Campaign
 status: in_progress
 last_updated: "2026-04-02T03:00:00.000Z"
 progress:
-  total_phases: 4
-  completed_phases: 3
-  total_plans: 10
-  completed_plans: 6
+  total_phases: 5
+  completed_phases: 4
+  total_plans: 13
+  completed_plans: 10
 ---
 
 # Armored Archer - Project State
 
 **Last Updated**: 2026-04-02
-**Current Focus**: v3.4.0 — Phase 04 (Loot System & Progression) COMPLETE
-**Status**: Active development — Phase 04 fully executed (3 plans, all complete)
+**Current Focus**: v3.4.0 — Phase 05 (Campaign State Persistence) PLANNED
+**Status**: Active development — Phase 04 fully executed (3 plans, all complete). Phase 05 planned (3 plans).
 
 ---
 
@@ -133,10 +133,11 @@ progress:
 
 ## Next Steps
 
-1. Human verification: complete a PvE stage and verify loot/XP flow end-to-end
-2. Execute Phase 05: Campaign state persistence across sessions
-3. Run Stryker mutation testing baseline in CI
-4. Address v3.0.0 Alpha readiness (load testing, security audit, 1,000+ CCU)
+1. Execute Phase 05 Plan 01: Backend — fix difficulty validation, add get_campaign_progress RPC
+2. Execute Phase 05 Plan 02: Client — sync_campaign_progress, difficulty fix, connection handler
+3. Human verification: complete a PvE stage and verify persistence across game restart
+4. Run Stryker mutation testing baseline in CI
+5. Address v3.0.0 Alpha readiness (load testing, security audit, 1,000+ CCU)
 
 ---
 
