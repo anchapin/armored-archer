@@ -74,13 +74,12 @@ func _start_authentication() -> void:
 func _on_session_created(success: bool, error_message: String) -> void:
 	is_connecting = false
 
-	var tween: Tween = create_tween()
-
 	if success:
 		loading_label.text = "Connected!"
 		status_label.text = "Welcome back, %s!" % NetworkManager.username
 		progress_bar.value = 100.0
 
+		var tween: Tween = create_tween()
 		var _t1 = tween.tween_interval(0.5)
 		var _t2 = tween.tween_callback(_load_main_menu)
 
