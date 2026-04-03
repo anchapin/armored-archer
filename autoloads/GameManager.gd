@@ -55,6 +55,11 @@ func take_player_damage(damage: int) -> void:
 	player_current_health = max(0, player_current_health - damage)
 	health_changed.emit(player_current_health, player_max_health)
 
+	# Update damage overlay through EffectsManager
+	var effects_manager: Node = get_node_or_null("/root/EffectsManager")
+	if effects_manager and effects_manager.has_method("on_player_damage"):
+		effects_manager.on_player_damage(damage, player_current_health, player_max_health)
+
 	# Trigger screen shake based on damage amount
 	var vfx_manager: Node = get_node_or_null("/root/VFXManager")
 	if vfx_manager and vfx_manager.has_method("trigger_light_shake"):
@@ -90,6 +95,11 @@ func heal_player(amount: int) -> void:
 	var previous_health := player_current_health
 	player_current_health = min(player_max_health, player_current_health + amount)
 	health_changed.emit(player_current_health, player_max_health)
+
+	# Update damage overlay through EffectsManager
+	var effects_manager: Node = get_node_or_null("/root/EffectsManager")
+	if effects_manager and effects_manager.has_method("on_player_heal"):
+		effects_manager.on_player_heal(player_current_health, player_max_health)
 
 	# Track health change in analytics
 	if analytics and analytics.has_method("log_custom_event"):

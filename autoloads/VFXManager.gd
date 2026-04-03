@@ -81,6 +81,7 @@ func play_crit_effect(global_position: Vector2) -> void:
 	"""Play critical hit effect with gold particles."""
 	_spawn_particle(_crit_effect, global_position)
 	_trigger_crit_shake()
+	_trigger_slow_motion()
 
 
 func play_miss_effect(global_position: Vector2) -> void:
@@ -207,6 +208,13 @@ func _trigger_crit_shake() -> void:
 func _trigger_lightning_shake() -> void:
 	"""Internal: Trigger shake for lightning hits."""
 	trigger_medium_shake()
+
+
+func _trigger_slow_motion() -> void:
+	"""Internal: Trigger slow-motion for critical hits."""
+	var effects_manager: Node = get_node_or_null("/root/EffectsManager")
+	if effects_manager and effects_manager.has_method("trigger_slow_motion"):
+		effects_manager.trigger_slow_motion()
 
 
 # === Combo Combat VFX ===
