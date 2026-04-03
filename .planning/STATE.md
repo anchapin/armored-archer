@@ -156,3 +156,14 @@ progress:
 
 *State updated: 2026-04-02T04:15:00Z*
 *Next update: After human verification (Plan 05-03) or mutation testing baseline*
+
+---
+
+## Post-Processing & Screen Effects (Phase 02)
+
+**Status**: Plan 02-01 (WorldEnvironment Configuration) — COMPLETE
+
+Recent changes (2026-04-03):
+- Added WorldEnvironment to main scene for post-processing effects
+- Glow (0.5 intensity, 0.3 bloom) and vignette (0.4 intensity) configured
+- Mobile optimization: low quality preset available for budget devices
