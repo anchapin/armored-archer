@@ -23,7 +23,9 @@ var _damage_overlay: ColorRect = null
 
 func _ready() -> void:
 	instance = self
-	_ensure_damage_overlay()
+	# Don't initialize damage overlay immediately - it will be lazy-loaded
+	# when first needed, to avoid issues during headless initialization
+
 
 
 func _process(delta: float) -> void:
