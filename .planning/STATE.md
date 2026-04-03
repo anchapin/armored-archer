@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.4.0
-milestone_name: Tactical Gameplay & PvE Campaign
-status: in_progress
-last_updated: "2026-04-02T04:15:00.000Z"
+milestone: v2.3.0
+milestone_name: Testing & QA Infrastructure
+status: unknown
+last_updated: "2026-04-03T12:51:52.056Z"
 progress:
-  total_phases: 5
-  completed_phases: 4
-  total_plans: 13
-  completed_plans: 12
+  total_phases: 18
+  completed_phases: 14
+  total_plans: 42
+  completed_plans: 54
 ---
 
 # Armored Archer - Project State
@@ -97,6 +97,7 @@ progress:
 ## Test Infrastructure
 
 **Backend Tests**:
+
 - Location: `backend/src/**/__tests__/`
 - Framework: Jest with TypeScript
 - Coverage: 94.55% lines, 94.4% statements, 93.69% functions, 88.54% branches
@@ -104,12 +105,14 @@ progress:
 - All 52 source files exceed 80% line coverage
 
 **Frontend Tests**:
+
 - Location: `test/test_*.gd` (67 test files)
 - Framework: GUT (Godot Unit Test)
 - Coverage: Partial — CoverageTracker exists, 4/30 autoloads have coverage tests
 - Status: CoverageTracker instrumentation is a future enhancement
 
 **CI/CD**:
+
 - Platform: GitHub Actions (26 workflows)
 - Linting: ESLint (backend), gdlint (Godot)
 - Type checking: `tsc --noEmit` (passing)
@@ -161,9 +164,15 @@ progress:
 
 ## Post-Processing & Screen Effects (Phase 02)
 
-**Status**: Plan 02-01 (WorldEnvironment Configuration) — COMPLETE
+**Status**: Plans 02-01 (WorldEnvironment Configuration) and 02-02 (Camera Shake Integration) — COMPLETE
 
 Recent changes (2026-04-03):
+
 - Added WorldEnvironment to main scene for post-processing effects
 - Glow (0.5 intensity, 0.3 bloom) and vignette (0.4 intensity) configured
 - Mobile optimization: low quality preset available for budget devices
+- Camera shake integrated with combat events via VFXManager
+- Shake intensity varies by damage: light (<15), medium (15-29), heavy (30+)
+- Enemy death triggers heavy screen shake
+- Fixed EffectsManager lazy-loading for headless compatibility
+- Removed invalid Tween node from damage_overlay.tscn (Godot 4)

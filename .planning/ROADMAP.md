@@ -155,7 +155,7 @@
 7. Integration tests have proper setup/teardown lifecycle with before/after hooks
 8. Test data fixtures are shared between Go and Godot tests via JSON format
 
-**Plans:** TBD
+**Plans:** 4/4 plans complete
 
 ---
 
@@ -206,7 +206,7 @@
 
 **Success Criteria** (what must be TRUE):
 1. Code coverage is measured for both Go backend and Godot frontend with unified reports
-2. CI enforces coverage thresholds (80% for critical paths, 60% overall) and blocks failing PRs
+2. CI enforces coverage thresholds (85% for critical paths, 80% overall) and blocks failing PRs
 3. Coverage reports are generated as CI artifacts and viewable in dashboard
 4. Coverage metrics are tracked over time to identify trends and regression
 5. CI automatically detects flaky tests via repeated test runs (3x retry logic)
@@ -230,7 +230,7 @@
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1. Test Infrastructure Foundation | v2.3.0 | 0/6 | Not started | - |
-| 2. Fixtures & Mocks Layer | v2.3.0 | 0/13 | Not started | - |
+| 2. Fixtures & Mocks Layer | v2.3.0 | 4/4 | Complete   | 2026-04-03 |
 | 3. Godot Test Framework Enhancement | v2.3.0 | 0/2 | Not started | - |
 | 4. Load Testing Infrastructure | v2.3.0 | 0/5 | Not started | - |
 | 5. Coverage, Reporting & Quality Gates | v2.3.0 | 0/14 | Not started | - |
@@ -280,7 +280,7 @@ graph TD
 
 **Coverage Targets:**
 - Critical paths (combat, matchmaking, progression): 80%
-- Overall codebase: 60%
+- Overall codebase: 80%
 - Tracked over time to identify trends
 
 **Test Reliability:**
