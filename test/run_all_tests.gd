@@ -64,6 +64,7 @@ func _run_tests():
         # Scripts
         "res://test/test_arrow.gd",
         "res://test/test_screen_shake.gd",
+        "res://test/test_camera_shake_integration.gd",
         "res://test/test_damage_popup.gd",
         "res://test/test_character_body_2d.gd",
         "res://test/test_background_palette.gd",
