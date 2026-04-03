@@ -24,5 +24,3 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0)
 script = ExtResource("2_damage_script")
-
-[node name="Tween" type="Tween" parent="."]
