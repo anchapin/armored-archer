@@ -139,8 +139,9 @@ func retreat_from_player() -> void:
 func perform_magic_attack() -> void:
 	attack_timer = 0.0
 
-	if player_ref and player_ref.has_method("take_damage"):
-		player_ref.take_damage(damage)
+	var game_manager = get_node_or_null("/root/GameManager")
+	if game_manager and game_manager.has_method("take_player_damage"):
+		game_manager.take_player_damage(damage)
 
 func start_summoning() -> void:
 	if not minion_scene or active_minions >= max_minions:
@@ -212,5 +213,6 @@ func die() -> void:
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):
-		if body.has_method("take_damage"):
-			body.take_damage(damage)
+		var game_manager = get_node_or_null("/root/GameManager")
+		if game_manager and game_manager.has_method("take_player_damage"):
+			game_manager.take_player_damage(damage)

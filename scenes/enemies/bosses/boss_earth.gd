@@ -170,13 +170,15 @@ func perform_seismic_slam() -> void:
 	await get_tree().create_timer(0.4).timeout
 
 	# Check for players in range
+	var game_manager = get_node_or_null("/root/GameManager")
 	if player_ref:
 		var distance: float = global_position.distance_to(player_ref.global_position)
 		if distance <= seismic_slam_radius:
 			var slam_damage = 30
 			if is_enraged:
 				slam_damage = int(slam_damage * 1.3)
-			player_ref.take_damage(slam_damage)
+			if game_manager and game_manager.has_method("take_player_damage"):
+				game_manager.take_player_damage(slam_damage)
 
 			# Knockback
 			if player_ref.has_method("apply_knockback"):
@@ -205,6 +207,7 @@ func start_earthquake() -> void:
 	# Continuous damage during earthquake
 	var earthquake_duration: float = 2.5
 	var elapsed: float = 0.0
+	var game_manager = get_node_or_null("/root/GameManager")
 
 	while elapsed < earthquake_duration:
 		await get_tree().create_timer(0.5).timeout
@@ -216,7 +219,8 @@ func start_earthquake() -> void:
 				var dmg = int(earthquake_damage * 0.5)
 				if is_enraged:
 					dmg = int(dmg * 1.2)
-				player_ref.take_damage(dmg)
+				if game_manager and game_manager.has_method("take_player_damage"):
+					game_manager.take_player_damage(dmg)
 
 	is_earthquake_active = false
 	if sprite:
@@ -290,5 +294,6 @@ func _on_hurt_area_body_entered(body: Node2D) -> void:
 		var dmg = damage
 		if is_enraged:
 			dmg = int(dmg * 1.2)
-		if body.has_method("take_damage"):
-			body.take_damage(dmg)
+		var game_manager = get_node_or_null("/root/GameManager")
+		if game_manager and game_manager.has_method("take_player_damage"):
+			game_manager.take_player_damage(dmg)

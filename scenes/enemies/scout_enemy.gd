@@ -73,8 +73,9 @@ func perform_hit_and_run_attack() -> void:
 	attack_timer = 0.0
 
 	# Deal damage
-	if player_ref and player_ref.has_method("take_damage"):
-		player_ref.take_damage(damage)
+	var game_manager = get_node_or_null("/root/GameManager")
+	if game_manager and game_manager.has_method("take_player_damage"):
+		game_manager.take_player_damage(damage)
 
 	# Brief pause before retreating
 	await get_tree().create_timer(attack_pause).timeout
@@ -101,5 +102,6 @@ func retreat_after_attack() -> void:
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):
-		if body.has_method("take_damage"):
-			body.take_damage(damage)
+		var game_manager = get_node_or_null("/root/GameManager")
+		if game_manager and game_manager.has_method("take_player_damage"):
+			game_manager.take_player_damage(damage)

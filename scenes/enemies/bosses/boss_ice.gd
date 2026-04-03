@@ -189,13 +189,15 @@ func spawn_ice_spikes() -> void:
 			sprite.modulate = flash_color
 
 		# Check if spike hits player
+		var game_manager = get_node_or_null("/root/GameManager")
 		if player_ref:
 			var distance: float = spike_pos.distance_to(player_ref.global_position)
 			if distance < 40:
 				var spike_damage = 25
 				if is_enraged:
 					spike_damage = int(spike_damage * 1.3)
-				player_ref.take_damage(spike_damage)
+				if game_manager and game_manager.has_method("take_player_damage"):
+					game_manager.take_player_damage(spike_damage)
 
 				# Apply freeze
 				if player_ref.has_method("apply_slow"):
@@ -216,10 +218,12 @@ func handle_blizzard(_delta: float) -> void:
 
 	if is_in_blizzard:
 		# Continuous damage in blizzard
+		var game_manager = get_node_or_null("/root/GameManager")
 		if player_ref:
 			var distance: float = global_position.distance_to(player_ref.global_position)
 			if distance < 150:
-				player_ref.take_damage(blizzard_damage)
+				if game_manager and game_manager.has_method("take_player_damage"):
+					game_manager.take_player_damage(blizzard_damage)
 
 func start_blizzard() -> void:
 	is_in_blizzard = true
@@ -289,7 +293,8 @@ func _on_hurt_area_body_entered(body: Node2D) -> void:
 		var dmg = damage
 		if is_enraged:
 			dmg = int(dmg * 1.3)
-		if body.has_method("take_damage"):
-			body.take_damage(dmg)
+		var game_manager = get_node_or_null("/root/GameManager")
+		if game_manager and game_manager.has_method("take_player_damage"):
+			game_manager.take_player_damage(dmg)
 		if body.has_method("apply_slow"):
 			body.apply_slow(0.6, 1.0)

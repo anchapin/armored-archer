@@ -122,5 +122,6 @@ func perform_ranged_attack() -> void:
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):
-		if body.has_method("take_damage"):
-			body.take_damage(damage)
+		var game_manager = get_node_or_null("/root/GameManager")
+		if game_manager and game_manager.has_method("take_player_damage"):
+			game_manager.take_player_damage(damage)

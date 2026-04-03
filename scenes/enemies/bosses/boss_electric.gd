@@ -120,8 +120,9 @@ func attack_player(_delta: float) -> void:
 		perform_attack()
 
 func perform_attack() -> void:
-	if player_ref and player_ref.has_method("take_damage"):
-		player_ref.take_damage(damage)
+	var game_manager = get_node_or_null("/root/GameManager")
+	if game_manager and game_manager.has_method("take_player_damage"):
+		game_manager.take_player_damage(damage)
 
 func check_special_attacks() -> void:
 	# Electric projectile attack
@@ -168,7 +169,9 @@ func fire_chain_lightning() -> void:
 
 	# Chain lightning hits the player first, then chains to nearby enemies
 	# Deal damage to player
-	player_ref.take_damage(damage)
+	var game_manager = get_node_or_null("/root/GameManager")
+	if game_manager and game_manager.has_method("take_player_damage"):
+		game_manager.take_player_damage(damage)
 
 	# Get all enemies in range to chain to
 	var all_bodies = get_tree().get_nodes_in_group("Enemies")
@@ -181,7 +184,7 @@ func fire_chain_lightning() -> void:
 		if dist < chain_range:
 			enemies_in_range.append(body)
 
-	# Chain to up to 2 enemies
+	# Chain to up to 2 enemies (keep direct take_damage for other enemies)
 	var chains = min(2, enemies_in_range.size())
 	for i in range(chains):
 		var target = enemies_in_range[i]
@@ -193,9 +196,11 @@ func fire_thunder_clap() -> void:
 		return
 
 	# Deal damage in a wide area around boss
+	var game_manager = get_node_or_null("/root/GameManager")
 	var distance = global_position.distance_to(player_ref.global_position)
 	if distance < detection_range * 0.6:
-		player_ref.take_damage(int(damage * 1.5))
+		if game_manager and game_manager.has_method("take_player_damage"):
+			game_manager.take_player_damage(int(damage * 1.5))
 
 	# Could add knockback effect here
 
@@ -265,5 +270,6 @@ func die() -> void:
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):
-		if body.has_method("take_damage"):
-			body.take_damage(damage)
+		var game_manager = get_node_or_null("/root/GameManager")
+		if game_manager and game_manager.has_method("take_player_damage"):
+			game_manager.take_player_damage(damage)

@@ -90,13 +90,14 @@ func attack_player(_delta: float) -> void:
 func perform_heavy_attack() -> void:
 	attack_timer = 0.0
 
-	if player_ref and player_ref.has_method("take_damage"):
+	if player_ref and player_ref.has_method("apply_knockback"):
 		# Apply knockback to player
 		var direction: Vector2 = (player_ref.global_position - global_position).normalized()
-		if player_ref.has_method("apply_knockback"):
-			player_ref.apply_knockback(direction * knockback_force)
+		player_ref.apply_knockback(direction * knockback_force)
 
-		player_ref.take_damage(damage)
+	var game_manager = get_node_or_null("/root/GameManager")
+	if game_manager and game_manager.has_method("take_player_damage"):
+		game_manager.take_player_damage(damage)
 
 func start_charge() -> void:
 	if not player_ref:
@@ -151,5 +152,6 @@ func take_damage(amount: int) -> void:
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):
-		if body.has_method("take_damage"):
-			body.take_damage(damage)
+		var game_manager = get_node_or_null("/root/GameManager")
+		if game_manager and game_manager.has_method("take_player_damage"):
+			game_manager.take_player_damage(damage)

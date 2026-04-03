@@ -179,13 +179,15 @@ func perform_flame_wave() -> void:
 	await get_tree().create_timer(0.5).timeout
 
 	# Damage player if close
+	var game_manager = get_node_or_null("/root/GameManager")
 	if player_ref:
 		var distance: float = global_position.distance_to(player_ref.global_position)
 		if distance < 200:
 			var wave_damage = 30
 			if is_enraged:
 				wave_damage = int(wave_damage * enraged_damage_multiplier)
-			player_ref.take_damage(wave_damage)
+			if game_manager and game_manager.has_method("take_player_damage"):
+				game_manager.take_player_damage(wave_damage)
 
 	await get_tree().create_timer(0.5).timeout
 
@@ -249,5 +251,6 @@ func _on_hurt_area_body_entered(body: Node2D) -> void:
 		var dmg = damage
 		if is_enraged:
 			dmg = int(dmg * enraged_damage_multiplier)
-		if body.has_method("take_damage"):
-			body.take_damage(dmg)
+		var game_manager = get_node_or_null("/root/GameManager")
+		if game_manager and game_manager.has_method("take_player_damage"):
+			game_manager.take_player_damage(dmg)

@@ -126,8 +126,9 @@ func perform_shield_bash() -> void:
 		var direction: Vector2 = (player_ref.global_position - global_position).normalized()
 		player_ref.apply_knockback(direction * 40.0)
 
-	if player_ref and player_ref.has_method("take_damage"):
-		player_ref.take_damage(damage)
+	var game_manager = get_node_or_null("/root/GameManager")
+	if game_manager and game_manager.has_method("take_player_damage"):
+		game_manager.take_player_damage(damage)
 
 	is_attacking = false
 
@@ -166,5 +167,6 @@ func regenerate_shield() -> void:
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):
-		if body.has_method("take_damage"):
-			body.take_damage(damage)
+		var game_manager = get_node_or_null("/root/GameManager")
+		if game_manager and game_manager.has_method("take_player_damage"):
+			game_manager.take_player_damage(damage)
