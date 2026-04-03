@@ -14,6 +14,8 @@ const FIRE_EFFECT_PATH := "res://assets/particles/fire_effect.tscn"
 const ICE_EFFECT_PATH := "res://assets/particles/ice_effect.tscn"
 const LIGHTNING_EFFECT_PATH := "res://assets/particles/lightning_effect.tscn"
 const CHARGE_EFFECT_PATH := "res://assets/particles/charge_effect.tscn"
+const DEATH_EFFECT_PATH := "res://assets/particles/death_effect.tscn"
+const ARROW_TRAIL_PATH := "res://assets/particles/arrow_trail.tscn"
 
 # --- Scene References ---
 const DAMAGE_POPUP_SCENE := "res://scenes/damage_popup.tscn"
@@ -27,6 +29,8 @@ var _fire_effect: PackedScene
 var _ice_effect: PackedScene
 var _lightning_effect: PackedScene
 var _charge_effect: PackedScene
+var _death_effect: PackedScene
+var _arrow_trail: PackedScene
 var _damage_popup_scene: PackedScene
 
 # --- Screen Shake Instance ---
@@ -47,6 +51,8 @@ func _preload_scenes() -> void:
 	_ice_effect = load(ICE_EFFECT_PATH)
 	_lightning_effect = load(LIGHTNING_EFFECT_PATH)
 	_charge_effect = load(CHARGE_EFFECT_PATH)
+	_death_effect = load(DEATH_EFFECT_PATH)
+	_arrow_trail = load(ARROW_TRAIL_PATH)
 	_damage_popup_scene = load(DAMAGE_POPUP_SCENE)
 
 	# Preload screen shake (lazy initialization)
@@ -104,6 +110,26 @@ func play_charge_effect(global_position: Vector2, parent: Node) -> void:
 		var effect: GPUParticles2D = _charge_effect.instantiate()
 		parent.add_child(effect)
 		effect.global_position = global_position
+
+
+func play_death_effect(global_position: Vector2) -> void:
+	"""Play death explosion effect for enemy defeat."""
+	_spawn_particle(_death_effect, global_position)
+	trigger_heavy_shake()
+
+
+func spawn_arrow_trail(parent: Node) -> GPUParticles2D:
+	"""Attach arrow trail particle to a parent node (e.g., Arrow).
+
+	Returns the trail node for manual cleanup or lifetime management.
+	"""
+	if not _arrow_trail or not parent:
+		push_warning("VFXManager: Arrow trail scene or parent not available")
+		return null
+
+	var trail: GPUParticles2D = _arrow_trail.instantiate()
+	parent.add_child(trail)
+	return trail
 
 
 func _spawn_particle(effect_scene: PackedScene, global_position: Vector2) -> void:
@@ -198,7 +224,7 @@ func play_combat_vfx(
 	Args:
 		damage: Damage amount to display
 		global_position: World position for effects
-		effect_type: Type of effect ("hit", "fire", "ice", "lightning", "charge")
+		effect_type: Type of effect ("hit", "fire", "ice", "lightning", "charge", "death")
 		is_crit: Whether this is a critical hit
 		is_miss: Whether the attack missed
 		is_heal: Whether this is a heal (negative damage shown as +)
@@ -218,11 +244,13 @@ func play_combat_vfx(
 		"charge":
 			# Charge is special - it attaches to parent
 			pass
+		"death":
+			play_death_effect(global_position)
 		_:  # "hit" or default
 			play_hit_effect(global_position)
 
-	# Show damage popup (skip for charge effect)
-	if effect_type != "charge":
+	# Show damage popup (skip for charge and death effects)
+	if effect_type != "charge" and effect_type != "death":
 		show_damage_popup(damage, global_position, is_crit, is_miss, is_heal)
 
 	# Trigger screen shake based on effect type
@@ -231,6 +259,8 @@ func play_combat_vfx(
 			trigger_heavy_shake()
 		"lightning":
 			trigger_medium_shake()
+		"death":
+			trigger_impact_shake()
 		"hit":
 			if is_crit:
 				trigger_heavy_shake()
@@ -252,6 +282,8 @@ func _exit_tree() -> void:
 	_ice_effect = null
 	_lightning_effect = null
 	_charge_effect = null
+	_death_effect = null
+	_arrow_trail = null
 	_damage_popup_scene = null
 
 	# Clear singleton instance
