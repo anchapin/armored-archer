@@ -1,0 +1,28 @@
+[gd_scene load_steps=4 format=3 uid="uid://damage_overlay_scene"]
+
+[ext_resource type="Shader" path="res://shaders/damage_vignette.gdshader" id="1_damage_shader"]
+[ext_resource type="Script" path="res://scripts/damage_overlay.gd" id="2_damage_script"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_damage_overlay"]
+render_priority = 0
+shader = ExtResource("1_damage_shader")
+shader_parameter/intensity = 0.0
+shader_parameter/vignette_color = Color(0.8, 0, 0, 1)
+shader_parameter/radius = 0.8
+shader_parameter/softness = 0.5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_damage_overlay"]
+bg_color = Color(0, 0, 0, 0)
+
+[node name="DamageOverlay" type="ColorRect"]
+visible = false
+material = SubResource("ShaderMaterial_damage_overlay")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0)
+script = ExtResource("2_damage_script")
+
+[node name="Tween" type="Tween" parent="."]
