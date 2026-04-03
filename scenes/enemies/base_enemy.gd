@@ -47,6 +47,12 @@ func take_damage(amount: int) -> void:
 
 func die() -> void:
 	AutoAimManager.unregister_enemy(self)
+
+	# Trigger death VFX
+	var vfx_manager: Node = get_node_or_null("/root/VFXManager")
+	if vfx_manager and vfx_manager.has_method("play_death_effect"):
+		vfx_manager.play_death_effect(global_position)
+
 	died.emit(xp_reward)
 	# Return enemy to object pool for reuse
 	ObjectPool.return_enemy(self)

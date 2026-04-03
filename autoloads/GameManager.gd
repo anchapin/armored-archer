@@ -38,6 +38,8 @@ var game_start_time: int = 0  # For tracking game duration
 var current_stage_id: String = ""
 var current_waves: int = 3
 var boss_id: String = ""
+var current_encounter_data: Dictionary = {}
+var current_difficulty: int = 1
 
 # --- Health Management ---
 func take_player_damage(damage: int) -> void:
@@ -52,6 +54,16 @@ func take_player_damage(damage: int) -> void:
 	var previous_health := player_current_health
 	player_current_health = max(0, player_current_health - damage)
 	health_changed.emit(player_current_health, player_max_health)
+
+	# Trigger screen shake based on damage amount
+	var vfx_manager: Node = get_node_or_null("/root/VFXManager")
+	if vfx_manager and vfx_manager.has_method("trigger_light_shake"):
+		if damage >= 30:
+			vfx_manager.trigger_heavy_shake()
+		elif damage >= 15:
+			vfx_manager.trigger_medium_shake()
+		elif damage > 0:
+			vfx_manager.trigger_light_shake()
 
 	# Track health change in analytics
 	if analytics and analytics.has_method("log_custom_event"):
