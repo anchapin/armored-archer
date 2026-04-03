@@ -1,9 +1,6 @@
 [gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://bow_sprite"]
 
-[ext_resource type="Texture2D" path="res://icon.svg" id="1"]
-
-[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
-size = Vector2(64, 16)
+[ext_resource type="Texture2D" uid="uid://d2ipkpsdp82le" path="res://assets/sprites/player/bow_draw_right_0.png" id="1_bow_sprite"]
 
 [resource]
-SubResource = SubResource("PlaceholderTexture2D_1")
+resource = ExtResource("1_bow_sprite")

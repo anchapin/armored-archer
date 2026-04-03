@@ -1,7 +1,6 @@
 [gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://enemy_sprite"]
 
-[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_enemy"]
-size = Vector2(32, 32)
+[ext_resource type="Texture2D" uid="uid://nvqyggojltgd" path="res://assets/sprites/enemies/goblin_idle_down_0.png" id="1_enemy_sprite"]
 
 [resource]
-SubResource = SubResource("PlaceholderTexture2D_enemy")
+resource = ExtResource("1_enemy_sprite")

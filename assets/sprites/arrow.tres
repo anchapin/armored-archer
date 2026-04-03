@@ -1,7 +1,6 @@
 [gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://arrow_sprite"]
 
-[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
-size = Vector2(32, 8)
+[ext_resource type="Texture2D" uid="uid://c1n3tupywf2le" path="res://assets/sprites/equipment/arrows/iron.png" id="1_arrow_sprite"]
 
 [resource]
-SubResource = SubResource("PlaceholderTexture2D_1")
+resource = ExtResource("1_arrow_sprite")
