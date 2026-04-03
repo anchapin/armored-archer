@@ -149,3 +149,9 @@ None - no external service configuration required.
 ---
 *Phase: 02-post-processing-screen-effects*
 *Completed: 2026-04-03*
+
+## Self-Check: PASSED
+
+- Created files exist: autoloads/GameManager.gd, scenes/enemies/base_enemy.gd, autoloads/EffectsManager.gd, test/test_camera_shake_integration.gd, 02-02-SUMMARY.md
+- Commits exist: 99f183f3 (camera shake integration), d0c0347c (effects fixes and test), fd884d9b (documentation)
+- No new stubs introduced (existing TODO comments are pre-existing, not from this plan)
