@@ -2,7 +2,7 @@ extends Control
 
 # --- Node References ---
 @onready var result_label: Label = $VBoxContainer/ResultLabel
-@onready var restart_button: Button = $VBoxContainer/RestartButton
+@onready var restart_button: ArcheryBaseButton = $VBoxContainer/RestartButton
 @onready var loot_label: Label = $VBoxContainer/LootLabel
 
 # --- Theme Manager Reference ---

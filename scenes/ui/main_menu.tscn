@@ -1,9 +1,10 @@
-[gd_scene load_steps=3 format=3 uid="uid://main_menu"]
+[gd_scene format=3 uid="uid://mldp8a8ajobt"]
 
-[ext_resource type="Script" path="res://scenes/ui/main_menu.gd" id="1"]
-[ext_resource type="PackedScene" uid="uid://safe_area_container" path="res://scenes/ui/safe_area_container.tscn" id="2"]
+[ext_resource type="Script" uid="uid://3m4otmrx7502" path="res://scenes/ui/main_menu.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/ui/safe_area_container.tscn" id="2"]
+[ext_resource type="Script" uid="uid://cx8y22877gji7" path="res://scenes/ui/components/base_button.gd" id="4_m1kxf"]
 
-[node name="MainMenu" type="Control"]
+[node name="MainMenu" type="Control" unique_id=1012315282]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,61 +13,71 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
 
-[node name="SafeAreaContainer" parent="." instance=ExtResource("2")]
+[node name="SafeAreaContainer" parent="." unique_id=679143124 instance=ExtResource("2")]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
 
-[node name="CenterContainer" type="CenterContainer" parent="SafeAreaContainer"]
+[node name="CenterContainer" type="CenterContainer" parent="SafeAreaContainer" unique_id=1036028890]
 layout_mode = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="SafeAreaContainer/CenterContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="SafeAreaContainer/CenterContainer" unique_id=2032979807]
 layout_mode = 2
+theme_override_constants/separation = 0
 
-[node name="TitleLabel" type="Label" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
+[node name="TitleLabel" type="Label" parent="SafeAreaContainer/CenterContainer/VBoxContainer" unique_id=1149290672]
 layout_mode = 2
 text = "ARMORED ARCHER"
 horizontal_alignment = 1
 
-[node name="GemContainer" type="HBoxContainer" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
+[node name="GemContainer" type="HBoxContainer" parent="SafeAreaContainer/CenterContainer/VBoxContainer" unique_id=513144018]
 layout_mode = 2
 
-[node name="GemLabel" type="Label" parent="SafeAreaContainer/CenterContainer/VBoxContainer/GemContainer"]
+[node name="GemLabel" type="Label" parent="SafeAreaContainer/CenterContainer/VBoxContainer/GemContainer" unique_id=254623995]
 layout_mode = 2
 text = "Gems: 0"
 horizontal_alignment = 1
 
-[node name="PlayButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
+[node name="PlayButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer" unique_id=1786086209]
+custom_minimum_size = Vector2(160, 48)
 layout_mode = 2
 text = "Play"
+script = ExtResource("4_m1kxf")
 
-[node name="LoadoutButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
+[node name="LoadoutButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer" unique_id=1357984460]
+custom_minimum_size = Vector2(160, 48)
 layout_mode = 2
 text = "Loadout"
+script = ExtResource("4_m1kxf")
 
-[node name="PvpButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
+[node name="PvpButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer" unique_id=906298737]
+custom_minimum_size = Vector2(160, 48)
 layout_mode = 2
 text = "PvP"
+script = ExtResource("4_m1kxf")
 
-[node name="ShopButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
+[node name="ShopButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer" unique_id=795248628]
+custom_minimum_size = Vector2(160, 48)
 layout_mode = 2
 text = "Shop"
+script = ExtResource("4_m1kxf")
 
-[node name="LoadoutButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
-layout_mode = 2
-text = "Loadout"
-
-[node name="BuyGemsButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
+[node name="BuyGemsButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer" unique_id=1407197976]
+custom_minimum_size = Vector2(160, 48)
 layout_mode = 2
 text = "Buy Gems"
+script = ExtResource("4_m1kxf")
 
-[node name="SettingsButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
+[node name="SettingsButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer" unique_id=1540766148]
+custom_minimum_size = Vector2(160, 48)
 layout_mode = 2
 text = "Settings"
+script = ExtResource("4_m1kxf")
 
-[node name="QuitButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer"]
+[node name="QuitButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer" unique_id=1460653037]
+custom_minimum_size = Vector2(160, 48)
 layout_mode = 2
 text = "Quit"
+script = ExtResource("4_m1kxf")
+
+[node name="ParchmentBackground" type="ColorRect" parent="SafeAreaContainer" unique_id=1508041796]
+layout_mode = 2
+color = Color(0.99, 0.98, 0.96, 1)

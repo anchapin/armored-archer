@@ -6,8 +6,8 @@ extends Control
 # --- UI References ---
 var loading_label: Label
 var status_label: Label
-var retry_button: Button
-var test_connection_button: Button
+var retry_button: ArcheryBaseButton
+var test_connection_button: ArcheryBaseButton
 var progress_bar: ProgressBar
 
 # --- Theme Manager Reference ---
@@ -34,8 +34,8 @@ func _ready() -> void:
 
 	loading_label = vbox.get_node_or_null("LoadingLabel") as Label
 	status_label = vbox.get_node_or_null("StatusLabel") as Label
-	retry_button = vbox.get_node_or_null("RetryButton") as Button
-	test_connection_button = vbox.get_node_or_null("TestConnectionButton") as Button
+	retry_button = vbox.get_node_or_null("RetryButton") as ArcheryBaseButton
+	test_connection_button = vbox.get_node_or_null("TestConnectionButton") as ArcheryBaseButton
 	progress_bar = vbox.get_node_or_null("ProgressBar") as ProgressBar
 
 	# Verify critical nodes

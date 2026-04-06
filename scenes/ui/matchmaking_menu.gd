@@ -3,13 +3,13 @@ extends Control
 # --- UI References ---
 @onready var rank_label: Label = $SafeAreaContainer/VBoxContainer/TopPanel/StatsContainer/RankLabel
 @onready var match_type_option: OptionButton = $SafeAreaContainer/VBoxContainer/FilterPanel/MatchTypeOption
-@onready var list_button: Button = $SafeAreaContainer/VBoxContainer/FilterPanel/ListButton
+@onready var list_button: ArcheryBaseButton = $SafeAreaContainer/VBoxContainer/FilterPanel/ListButton
 @onready var matches_container: VBoxContainer = $SafeAreaContainer/VBoxContainer/ScrollContainer/MatchesContainer
-@onready var create_ranked_button: Button = $SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox/CreateRankedButton
-@onready var create_casual_button: Button = $SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox/CreateCasualButton
+@onready var create_ranked_button: ArcheryBaseButton = $SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox/CreateRankedButton
+@onready var create_casual_button: ArcheryBaseButton = $SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox/CreateCasualButton
 @onready var punch_up_check: CheckBox = $SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox/PunchUpCheck
-@onready var leaderboard_button: Button = $SafeAreaContainer/VBoxContainer/BottomPanel/LeaderboardButton
-@onready var back_button: Button = $SafeAreaContainer/VBoxContainer/BottomPanel/BackButton
+@onready var leaderboard_button: ArcheryBaseButton = $SafeAreaContainer/VBoxContainer/BottomPanel/LeaderboardButton
+@onready var back_button: ArcheryBaseButton = $SafeAreaContainer/VBoxContainer/BottomPanel/BackButton
 @onready var loading_label: Label = $SafeAreaContainer/VBoxContainer/LoadingLabel
 @onready var punch_up_stats_label: Label = $SafeAreaContainer/VBoxContainer/TopPanel/StatsContainer/PunchUpStatsLabel
 
@@ -168,7 +168,7 @@ func _create_match_item(match_data: Dictionary) -> Control:
 	if match_data.get("is_punch_up", false):
 		info_vbox.add_child(punch_up_label)
 
-	var accept_button: Button = Button.new()
+	var accept_button: ArcheryBaseButton = ArcheryBaseButton.new()
 	accept_button.text = "Accept"
 	
 	# Style button with DesignTokens

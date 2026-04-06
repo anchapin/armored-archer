@@ -5,10 +5,10 @@ extends Control
 @onready var gold_label: Label = $SafeAreaContainer/CenterContainer/VBoxContainer/HeaderContainer/GoldContainer/GoldLabel
 @onready var purchase_container: Control = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer
 
-@onready var small_gems_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/SmallGemContainer/BuyButton
-@onready var medium_gems_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/MediumGemContainer/BuyButton
-@onready var large_gems_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/LargeGemContainer/BuyButton
-@onready var back_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/BackButton
+@onready var small_gems_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/SmallGemContainer/BuyButton
+@onready var medium_gems_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/MediumGemContainer/BuyButton
+@onready var large_gems_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/LargeGemContainer/BuyButton
+@onready var back_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/BackButton
 
 @onready var loading_indicator: Control = $LoadingIndicator
 @onready var error_dialog: AcceptDialog = $ErrorDialog

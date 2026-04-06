@@ -2,13 +2,13 @@ extends Control
 
 # --- UI References ---
 @onready var gem_label: Label = $SafeAreaContainer/CenterContainer/VBoxContainer/GemContainer/GemLabel
-@onready var play_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PlayButton
-@onready var pvp_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/PvpButton
-@onready var shop_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/ShopButton
-@onready var buy_gems_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/BuyGemsButton
-@onready var settings_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/SettingsButton
-@onready var quit_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/QuitButton
-@onready var loadout_button: Button = $SafeAreaContainer/CenterContainer/VBoxContainer/LoadoutButton
+@onready var play_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/PlayButton
+@onready var pvp_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/PvpButton
+@onready var shop_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/ShopButton
+@onready var buy_gems_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/BuyGemsButton
+@onready var settings_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/SettingsButton
+@onready var quit_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/QuitButton
+@onready var loadout_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/LoadoutButton
 @onready var menu_container: Control = $SafeAreaContainer/CenterContainer/VBoxContainer
 
 # --- Manager References ---
@@ -164,15 +164,15 @@ func _add_button_animations() -> void:
 	loadout_button.mouse_exited.connect(func(): _on_button_hover_exit(loadout_button))
 	loadout_button.button_down.connect(func(): _on_button_press(loadout_button))
 
-func _on_button_hover(button: Button) -> void:
+func _on_button_hover(button: ArcheryBaseButton) -> void:
 	if ui_automation and ui_automation.has_method("button_hover_in") and is_instance_valid(button):
 		ui_automation.button_hover_in(button)
 
-func _on_button_hover_exit(button: Button) -> void:
+func _on_button_hover_exit(button: ArcheryBaseButton) -> void:
 	if ui_automation and ui_automation.has_method("button_hover_out") and is_instance_valid(button):
 		ui_automation.button_hover_out(button)
 
-func _on_button_press(button: Button) -> void:
+func _on_button_press(button: ArcheryBaseButton) -> void:
 	if ui_automation and ui_automation.has_method("button_press") and is_instance_valid(button):
 		ui_automation.button_press(button)
 
