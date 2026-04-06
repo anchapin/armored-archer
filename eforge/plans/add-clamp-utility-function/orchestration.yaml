@@ -1,0 +1,31 @@
+name: add-clamp-utility-function
+description: Add clamp() utility function
+created: 2026-04-06
+mode: errand
+base_branch: main
+pipeline:
+  scope: errand
+  compile:
+    - prd-passthrough
+  defaultBuild: &a1
+    - implement
+  defaultReview: &a2
+    strategy: single
+    perspectives:
+      - correctness
+    maxRounds: 1
+    evaluatorStrictness: lenient
+  rationale: "This is a trivial single-file task: creating a simple utility
+    function with well-defined acceptance criteria. The PRD is clear and
+    self-contained, making prd-passthrough appropriate (no LLM planning needed).
+    The implementation is low-risk (a new utility file with a straightforward
+    clamp function), requiring only the implement stage. Review is kept minimal
+    with a single correctness perspective and lenient strictness, as this is
+    non-critical utility code with no security or data implications."
+plans:
+  - id: plan-01-add-clamp-utility-function
+    name: Add clamp() utility function
+    depends_on: []
+    branch: add-clamp-utility-function/main
+    build: *a1
+    review: *a2
