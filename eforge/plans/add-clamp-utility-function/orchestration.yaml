@@ -1,5 +1,5 @@
 name: add-clamp-utility-function
-description: Add clamp() utility function
+description: Create utility library with clamp() and other helper functions
 created: 2026-04-06
 mode: errand
 base_branch: main
@@ -10,21 +10,22 @@ pipeline:
   defaultBuild: &a1
     - implement
   defaultReview: &a2
-    strategy: single
+    strategy: auto
     perspectives:
-      - correctness
+      - functionality
     maxRounds: 1
     evaluatorStrictness: lenient
-  rationale: "This is a trivial single-file task: creating a simple utility
-    function with well-defined acceptance criteria. The PRD is clear and
-    self-contained, making prd-passthrough appropriate (no LLM planning needed).
-    The implementation is low-risk (a new utility file with a straightforward
-    clamp function), requiring only the implement stage. Review is kept minimal
-    with a single correctness perspective and lenient strictness, as this is
-    non-critical utility code with no security or data implications."
+  rationale: This PRD creates a single utility file with one simple function that
+    wraps Godot's built-in clamp(). The task is well-defined, low-risk, and
+    touches only one new file. Using errand scope with prd-passthrough is most
+    efficient - the PRD itself serves as the implementation plan. No review
+    cycle is needed since the implementation is trivial (wrapping a built-in
+    function), has no security implications, and no existing code is being
+    modified. The review configuration is provided for completeness but will not
+    be executed in the minimal build pipeline.
 plans:
   - id: plan-01-add-clamp-utility-function
-    name: Add clamp() utility function
+    name: Create utility library with clamp() and other helper functions
     depends_on: []
     branch: add-clamp-utility-function/main
     build: *a1
