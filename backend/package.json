@@ -108,7 +108,7 @@
     "@babel/runtime": "^7.28.6",
     "@opentelemetry/auto-instrumentations-node": "^0.71.0",
     "@opentelemetry/exporter-jaeger": "^2.6.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.213.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.214.0",
     "@opentelemetry/exporter-zipkin": "^1.28.0",
     "@opentelemetry/resources": "2.6.0",
     "@opentelemetry/sdk-node": "^0.213.0",
