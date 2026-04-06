@@ -6,24 +6,27 @@ created: 2026-04-06
 # Create test.txt File
 
 ## Problem / Motivation
+
 N/A
 
 ## Goal
-Create a file named `test.txt` with the content "hello".
+
+Create a file named test.txt with the content 'hello'.
 
 ## Approach
-Create a text file named `test.txt` and write the string "hello" to it.
+
+N/A
 
 ## Scope
+
 **In scope:**
 - Create a file named `test.txt`
-- Write the exact content "hello" to the file
+- The file must contain the text `hello`
 
 **Out of scope:**
-- Creation of any other files
-- Additional content beyond "hello"
-- Modifications to the file after initial creation
+N/A
 
 ## Acceptance Criteria
-- A file named `test.txt` exists
-- The file contains exactly the text "hello"
+
+- File `test.txt` exists in the specified location
+- The file content is exactly `hello`
