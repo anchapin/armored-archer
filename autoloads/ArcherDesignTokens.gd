@@ -75,7 +75,77 @@ const COLOR_GRADIENT_PRIMARY_END := Color("#6e9fff")  # Primary gradient end
 const COLOR_SURFACE_TINT := Color("#0060ce")  # Surface tint
 const COLOR_INVERSE_SURFACE := Color("#0e0e0b")  # Inverse surface
 const COLOR_INVERSE_ON_SURFACE := Color("#9f9d97")  # Inverse on-surface
-const COLOR_SURFACE_VARIANT := Color("#262626")  # Surface variant
+
+# =============================================================================
+# RELIC ARCHIVE PALETTE (DARK MODE)
+# =============================================================================
+# Design System: The Relic Archive - Tactical, High-Contrast ARPG
+# Based on Stitch "Main Lobby" project (ID: 511335207036122308)
+#
+# Key Principles:
+# - No-Line Rule: Background shift architecture instead of borders
+# - Surface Hierarchy: Metallic plate stacking for depth
+# - Luminance Lift: Higher surface tier = "lifted" appearance
+# - Ambient Glows: Soft, tinted shadows (24px blur, 12% opacity)
+# =============================================================================
+
+# --- Surface Hierarchy (Background Shift Architecture) ---
+const RA_SURFACE := Color("#0e0e0e")  # Base layer - Deep Obsidian
+const RA_SURFACE_CONTAINER := Color("#191a1a")  # Floating panels
+const RA_SURFACE_CONTAINER_HIGH := Color("#1f2020")  # Nested elements
+const RA_SURFACE_CONTAINER_HIGHEST := Color("#262626")  # Item slots, inventory cells
+const RA_SURFACE_CONTAINER_LOW := Color("#131313")  # Subtle layers
+const RA_SURFACE_CONTAINER_LOWEST := Color("#000000")  # Deepest background
+
+# --- Content Colors ---
+const RA_ON_SURFACE := Color("#ffffff")  # Primary text
+const RA_ON_SURFACE_VARIANT := Color("#adaaaa")  # Secondary info (gritty feel)
+
+# --- Primary (Golden Tier) ---
+const RA_PRIMARY := Color("#ffac54")  # Golden Tier - High-energy CTAs, currency highlights
+const RA_PRIMARY_DIM := Color("#ec8c00")  # Pressed/active states
+const RA_PRIMARY_FIXED := Color("#ff9800")  # Fixed primary
+const RA_PRIMARY_FIXED_DIM := Color("#ec8c00")  # Fixed dim primary
+const RA_ON_PRIMARY := Color("#583100")  # Text on primary
+const RA_PRIMARY_CONTAINER := Color("#ff9800")  # Light primary for containers
+const RA_ON_PRIMARY_CONTAINER := Color("#4a2800")  # Text on primary container
+
+# --- Secondary (Iron) ---
+const RA_SECONDARY := Color("#4f453a")  # Forged iron
+const RA_SECONDARY_DIM := Color("#e1d2c3")  # Dimmer secondary
+const RA_SECONDARY_FIXED := Color("#efe0d1")  # Fixed secondary
+const RA_SECONDARY_FIXED_DIM := Color("#e1d2c3")  # Fixed dim secondary
+const RA_ON_SECONDARY := Color("#5a5045")  # Text on secondary
+const RA_SECONDARY_CONTAINER := Color("#efe0d1")  # Secondary container
+const RA_ON_SECONDARY_CONTAINER := Color("#ddcebf")  # Text on secondary container
+
+# --- Accent Colors ---
+const RA_OUTLINE_VARIANT := Color("#484848")  # Etched metal - Ghost borders (15% opacity)
+const RA_TERTIARY := Color("#7ef839")  # Green/Uncommon - Health, uncommon items
+const RA_TERTIARY_DIM := Color("#62db13")  # Dim tertiary
+const RA_TERTIARY_CONTAINER := Color("#70ea28")  # Tertiary container
+const RA_ON_TERTIARY := Color("#235a00")  # Text on tertiary
+const RA_ON_TERTIARY_CONTAINER := Color("#1e5000")  # Text on tertiary container
+const RA_ERROR := Color("#ff7351")  # Orange/Epic - Errors, epic items
+const RA_ERROR_DIM := Color("#d53d18")  # Dim error
+const RA_ERROR_CONTAINER := Color("#b92902")  # Error container
+const RA_ON_ERROR := Color("#450900")  # Text on error
+const RA_ON_ERROR_CONTAINER := Color("#ffd2c8")  # Text on error container
+
+# --- Gradients ---
+const RA_GRADIENT_PRIMARY_START := Color("#ffac54")  # Primary gradient start
+const RA_GRADIENT_PRIMARY_END := Color("#ec8c00")  # Primary gradient end
+
+# --- Ambient Effects ---
+const RA_AMBIENT_SHADOW_COLOR := Color(0.49, 0.97, 0.22, 0.12)  # Tertiary at 12%
+const RA_AMBIENT_SHADOW_BLUR := 24  # Blur for ambient shadows
+const RA_GHOST_BORDER_COLOR := Color(0.28, 0.28, 0.28, 0.15)  # 15% outline_variant
+
+# --- Roundness (Armored Angular Design) ---
+const RA_ROUNDNESS_FOUR := 4  # Default corner radius (machined part feel)
+const RA_ROUNDNESS_EIGHT := 8
+const RA_ROUNDNESS_TWELVE := 12
+const RA_ROUNDNESS_FULL := 9999
 
 # =============================================================================
 # TYPOGRAPHY FONTS
@@ -91,6 +161,21 @@ const FONT_BE_VIETNAM_PRO_PATH := "res://fonts/Be_Vietnam_Pro.ttf"
 const FONT_INTER_PATH := "res://fonts/Inter.ttf"
 
 # Note: Font files need to be added to project.godot as custom fonts
+
+# =============================================================================
+# RELIC ARCHIVE TYPOGRAPHY FONTS
+# =============================================================================
+
+## Epilogue - Heroic Display (display-lg) for boss names, level-up milestones
+const FONT_EPILOGUE_PATH := "res://fonts/Epilogue-Regular.ttf"
+const FONT_EPILOGUE_BOLD_PATH := "res://fonts/Epilogue-Bold.ttf"
+
+## Space Grotesk - Tactical Stats (body-lg, title-md) for combat stats
+const FONT_SPACE_GROTESK_PATH := "res://fonts/SpaceGrotesk-Regular.ttf"
+const FONT_SPACE_GROTESK_BOLD_PATH := "res://fonts/SpaceGrotesk-Bold.ttf"
+
+## Lexend - Micro-Labels (label-md) for secondary metadata
+const FONT_LEXEND_PATH := "res://fonts/Lexend-Regular.ttf"
 
 # =============================================================================
 # BUTTON DEPTH STYLES (3D Bubbly)
@@ -329,6 +414,111 @@ static func get_rarity_color(rarity: String) -> Color:
 		"rare": return COLOR_PRIMARY  # Blue
 		"epic": return COLOR_SECONDARY  # Gold/Orange
 		"legendary": return Color(1, 0.77, 0.22, 1)  # Purple
+		_: return Color(0.61, 0.61, 0.61, 1)  # Default to common
+
+# =============================================================================
+# RELIC ARCHIVE HELPER FUNCTIONS
+# =============================================================================
+
+## Get Relic Archive surface tier color by tier for depth hierarchy
+## Use instead of borders for "No-Line Rule"
+static func get_ra_surface_tier_color(tier: String) -> Color:
+	match tier:
+		"base", "background":
+			return RA_SURFACE
+		"container":
+			return RA_SURFACE_CONTAINER
+		"low":
+			return RA_SURFACE_CONTAINER_LOW
+		"lowest":
+			return RA_SURFACE_CONTAINER_LOWEST
+		"high":
+			return RA_SURFACE_CONTAINER_HIGH
+		"highest":
+			return RA_SURFACE_CONTAINER_HIGHEST
+		"variant":
+			return COLOR_SURFACE_VARIANT
+		_:
+			return RA_SURFACE
+
+## Get Relic Archive primary color with state
+static func get_ra_primary_color(state: String = "default") -> Color:
+	match state:
+		"hover": return RA_PRIMARY_FIXED
+		"pressed": return RA_PRIMARY_DIM
+		"disabled": return Color(1, 1, 1, 0.4)  # 40% opacity
+		_: return RA_PRIMARY
+
+## Get Relic Archive ambient shadow color (tinted, soft)
+## Use for floating elements like tooltips, dragged items
+static func get_ra_ambient_shadow_color() -> Color:
+	return RA_AMBIENT_SHADOW_COLOR
+
+## Get Relic Archive ambient shadow blur size
+static func get_ra_ambient_shadow_blur() -> int:
+	return RA_AMBIENT_SHADOW_BLUR
+
+## Get Relic Archive ghost border color (low opacity outline_variant)
+## Use sparingly for empty equipment slots only
+static func get_ra_ghost_border_color() -> Color:
+	return RA_GHOST_BORDER_COLOR
+
+## Get Relic Archive gradient colors for buttons and CTAs
+## Returns Array[Color] with [start_color, end_color]
+static func get_ra_gradient_colors(type: String = "primary") -> Array[Color]:
+	match type:
+		"primary":
+			return [RA_GRADIENT_PRIMARY_START, RA_GRADIENT_PRIMARY_END]
+		"secondary":
+			return [RA_SECONDARY, RA_SECONDARY_CONTAINER]
+		"tertiary":
+			return [RA_TERTIARY, RA_TERTIARY_CONTAINER]
+		_:
+			return [RA_GRADIENT_PRIMARY_START, RA_GRADIENT_PRIMARY_END]
+
+## Get Relic Archive rarity color
+static func get_ra_rarity_color(rarity: String) -> Color:
+	match rarity:
+		"common": return Color(0.61, 0.61, 0.61, 1)  # Gray
+		"rare": return RA_PRIMARY  # Golden
+		"epic": return RA_ERROR  # Orange
+		"legendary": return Color(1, 0.22, 0.77, 1)  # Purple
+		_: return Color(0.61, 0.61, 0.61, 1)  # Default to common
+
+## Get Relic Archive button corner radius
+static func get_ra_button_radius() -> int:
+	return RA_ROUNDNESS_FOUR  # Machined part feel
+
+## Get Relic Archive health bar color based on percentage
+static func get_ra_health_color(percentage: float) -> Color:
+	if percentage <= 0.25:
+		return RA_ERROR  # Critical (orange)
+	elif percentage <= 0.5:
+		return Color(0.96, 0.71, 0.35, 1)  # Low (orange)
+	else:
+		return RA_TERTIARY  # Healthy (green)
+
+## Get Relic Archive tier name from color (for debugging)
+static func get_ra_tier_name(color: Color) -> String:
+	var tolerance := 0.01
+	if _color_equals_approx(color, RA_SURFACE, tolerance):
+		return "base"
+	elif _color_equals_approx(color, RA_SURFACE_CONTAINER, tolerance):
+		return "container"
+	elif _color_equals_approx(color, RA_SURFACE_CONTAINER_HIGH, tolerance):
+		return "high"
+	elif _color_equals_approx(color, RA_SURFACE_CONTAINER_HIGHEST, tolerance):
+		return "highest"
+	elif _color_equals_approx(color, RA_SURFACE_CONTAINER_LOW, tolerance):
+		return "low"
+	elif _color_equals_approx(color, RA_SURFACE_CONTAINER_LOWEST, tolerance):
+		return "lowest"
+	else:
+		return "unknown"
+
+## Helper: Compare colors with tolerance
+static func _color_equals_approx(a: Color, b: Color, tolerance: float) -> bool:
+	return abs(a.r - b.r) < tolerance and abs(a.g - b.g) < tolerance and abs(a.b - b.b) < tolerance
 
 # =============================================================================
 # LEGACY COLORS (For backward compatibility - deprecate over time)
@@ -447,14 +637,6 @@ const FONT_SCALE_MAX := 1.5
 # HELPER FUNCTIONS
 # =============================================================================
 
-## Get primary color with state (legacy compatibility)
-static func get_primary_color(state: String = "default") -> Color:
-	match state:
-		"hover": return COLOR_PRIMARY_HOVER_LEGACY
-		"pressed": return COLOR_PRIMARY_PRESSED_LEGACY
-		"disabled": return COLOR_PRIMARY_DISABLED_LEGACY
-		_: return COLOR_PRIMARY
-
 ## Get semantic color (success/warning/error/info)
 static func get_semantic_color(type: String) -> Color:
 	match type:
@@ -491,25 +673,3 @@ static func get_text_secondary_color(is_dark: bool = true) -> Color:
 ## Get disabled text color for current theme (legacy compatibility)
 static func get_text_disabled_color(is_dark: bool = true) -> Color:
 	return COLOR_TEXT_DISABLED_DARK if is_dark else COLOR_TEXT_DISABLED_LIGHT
-
-## Get scaled font size
-static func get_scaled_font_size(base_size: int, scale: float = 1.0) -> int:
-	return int(base_size * clampf(scale, FONT_SCALE_MIN, FONT_SCALE_MAX))
-
-## Get health bar color based on percentage
-static func get_health_color(percentage: float) -> Color:
-	if percentage <= 0.25:
-		return COLOR_HEALTH_LOW
-	elif percentage <= 0.5:
-		return COLOR_HEALTH_MEDIUM
-	else:
-		return COLOR_HEALTH
-
-## Get rarity color
-static func get_rarity_color(rarity: String) -> Color:
-	match rarity:
-		"common": return COLOR_RARITY_COMMON
-		"rare": return COLOR_RARITY_RARE
-		"epic": return COLOR_RARITY_EPIC
-		"legendary": return COLOR_RARITY_LEGENDARY
-		_: return COLOR_RARITY_COMMON

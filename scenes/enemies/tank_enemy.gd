@@ -1,4 +1,4 @@
-extends "res://scenes/enemies/base_enemy.gd"
+extends BaseEnemy
 
 ## Tank enemy - slow but high health.
 ## Has a shield that blocks some damage.

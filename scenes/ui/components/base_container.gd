@@ -12,12 +12,12 @@ extends Container
 @export var alignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER
 @export var vertical_alignment: VerticalAlignment = VERTICAL_ALIGNMENT_CENTER
 
-@export var padding_top: int = DesignTokens.SPACING_MD
-@export var padding_bottom: int = DesignTokens.SPACING_MD
-@export var padding_left: int = DesignTokens.SPACING_MD
-@export var padding_right: int = DesignTokens.SPACING_MD
+@export var padding_top: int = ArcherDesignTokens.SPACING_MD
+@export var padding_bottom: int = ArcherDesignTokens.SPACING_MD
+@export var padding_left: int = ArcherDesignTokens.SPACING_MD
+@export var padding_right: int = ArcherDesignTokens.SPACING_MD
 
-@export var spacing: int = DesignTokens.SPACING_SM
+@export var spacing: int = ArcherDesignTokens.SPACING_SM
 
 var _is_dark_theme: bool = true
 

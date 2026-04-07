@@ -31,10 +31,10 @@ var selected_gear_id: String = ""
 
 # --- Rarity Colors (using DesignTokens) ---
 var rarity_colors: Dictionary = {
-	"common": Color("#9CA3AF"),    # DesignTokens.COLOR_RARITY_COMMON
-	"rare": Color("#3B82F6"),       # DesignTokens.COLOR_RARITY_RARE
-	"epic": Color("#8B5CF6"),      # DesignTokens.COLOR_RARITY_EPIC
-	"legendary": Color("#F59E0B")  # DesignTokens.COLOR_RARITY_LEGENDARY
+	"common": Color("#9CA3AF"),    # ArcherDesignTokens.COLOR_RARITY_COMMON
+	"rare": Color("#3B82F6"),       # ArcherDesignTokens.COLOR_RARITY_RARE
+	"epic": Color("#8B5CF6"),      # ArcherDesignTokens.COLOR_RARITY_EPIC
+	"legendary": Color("#F59E0B")  # ArcherDesignTokens.COLOR_RARITY_LEGENDARY
 }
 
 var gear_types: Dictionary = {

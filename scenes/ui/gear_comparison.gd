@@ -23,10 +23,10 @@ var design_tokens: Node
 
 # --- Rarity Colors (using DesignTokens) ---
 var rarity_colors: Dictionary = {
-	"common": Color("#9CA3AF"),    # DesignTokens.COLOR_RARITY_COMMON
-	"rare": Color("#3B82F6"),       # DesignTokens.COLOR_RARITY_RARE
-	"epic": Color("#8B5CF6"),      # DesignTokens.COLOR_RARITY_EPIC
-	"legendary": Color("#F59E0B")  # DesignTokens.COLOR_RARITY_LEGENDARY
+	"common": Color("#9CA3AF"),    # ArcherDesignTokens.COLOR_RARITY_COMMON
+	"rare": Color("#3B82F6"),       # ArcherDesignTokens.COLOR_RARITY_RARE
+	"epic": Color("#8B5CF6"),      # ArcherDesignTokens.COLOR_RARITY_EPIC
+	"legendary": Color("#F59E0B")  # ArcherDesignTokens.COLOR_RARITY_LEGENDARY
 }
 
 func _ready() -> void:
@@ -89,9 +89,9 @@ func _display_comparison_result(comparison: Dictionary) -> void:
 	var better: String = comparison.get("better", "equal")
 
 	# Get DesignTokens colors
-	var success_color = DesignTokens.COLOR_SUCCESS if design_tokens else Color.GREEN
-	var error_color = DesignTokens.COLOR_ERROR if design_tokens else Color.RED
-	var warning_color = DesignTokens.COLOR_WARNING if design_tokens else Color.YELLOW
+	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color.GREEN
+	var error_color = ArcherDesignTokens.COLOR_ERROR if design_tokens else Color.RED
+	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color.YELLOW
 	var text_color = Color.WHITE
 	
 	if theme_manager:

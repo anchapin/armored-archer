@@ -135,7 +135,9 @@ func test_singleton_instance() -> void:
 
 	vfx.queue_free()
 
-	if VFXManager.instance == null:
+	# Access static instance through the loaded class
+	var VFXManagerClass = load("res://autoloads/VFXManager.gd")
+	if VFXManagerClass.instance == null:
 		_pass("test_singleton_clears_on_exit")
 	else:
 		_fail("test_singleton_clears_on_exit", "Singleton should be null after cleanup")

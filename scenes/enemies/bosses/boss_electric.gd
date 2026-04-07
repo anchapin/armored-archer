@@ -1,4 +1,4 @@
-extends "res://scenes/enemies/base_enemy.gd"
+extends BaseEnemy
 
 ## Thunder Lord boss with electric-based attacks and phases.
 ##

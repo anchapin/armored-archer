@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://player_scene" path="res://scenes/player.tscn" id="2_player_scene"]
 [ext_resource type="PackedScene" uid="uid://touch_ui_scene" path="res://scenes/touch_ui.tscn" id="3_touch_ui_scene"]
 [ext_resource type="PackedScene" uid="uid://health_bar_scene" path="res://scenes/ui/health_bar.tscn" id="4_health_bar_scene"]
-[ext_resource type="PackedScene" uid="uid://game_over_scene" path="res://scenes/ui/game_over.tscn" id="5_game_over_scene"]
+[ext_resource type="PackedScene" uid="uid://ca77d1erwjhbw" path="res://scenes/ui/game_over.tscn" id="5_game_over_scene"]
 [ext_resource type="PackedScene" uid="uid://enemy_spawner_scene" path="res://scenes/enemies/enemy_spawner.tscn" id="6_spawner_scene"]
 [ext_resource type="PackedScene" uid="uid://world_environment" path="res://scenes/world_environment.tscn" id="7_world_environment"]
 

@@ -2,7 +2,7 @@ extends Node
 
 class_name E2ETestRunner
 
-const MockNetworkManagerScene = preload("res://tests/e2e/MockNetworkManager.gd")
+const MockNetworkManagerScene = preload("res://test/suites/e2e/MockNetworkManager.gd")
 
 var framework: Node
 

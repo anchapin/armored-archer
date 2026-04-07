@@ -1,5 +1,7 @@
 extends Node
 
+const AccessibilityManager = preload("res://autoloads/AccessibilityManager.gd")
+
 var _tests_passed: int = 0
 var _tests_failed: int = 0
 

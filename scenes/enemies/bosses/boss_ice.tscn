@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://boss_ice_scene"]
 
 [ext_resource type="Script" path="res://scenes/enemies/bosses/boss_ice.gd" id="1_boss_ice_script"]
-[ext_resource type="PlaceholderTexture2D" uid="uid://boss_ice_sprite" path="res://assets/sprites/boss_basic.tres" id="2_boss_ice_sprite"]
+[ext_resource type="PlaceholderTexture2D" uid="uid://boss_basic_sprite" path="res://assets/sprites/boss_basic.tres" id="2_boss_ice_sprite"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_boss_ice"]
 size = Vector2(60, 60)

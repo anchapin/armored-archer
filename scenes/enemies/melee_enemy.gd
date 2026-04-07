@@ -1,4 +1,4 @@
-extends "res://scenes/enemies/base_enemy.gd"
+extends BaseEnemy
 
 ## AI state variables
 var player_ref: CharacterBody2D = null

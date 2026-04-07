@@ -8,7 +8,7 @@ var _inv
 var _mock_network: Node
 
 func before_each():
-	skip("InventoryManager is deprecated — use GearManager")
+	pending("InventoryManager is deprecated — use GearManager")
 	_inv = InventoryManagerClass.new()
 	add_child_autofree(_inv)
 

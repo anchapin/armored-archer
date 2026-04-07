@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://boss_fire_scene"]
 
 [ext_resource type="Script" path="res://scenes/enemies/bosses/boss_fire.gd" id="1_boss_fire_script"]
-[ext_resource type="PlaceholderTexture2D" uid="uid://boss_fire_sprite" path="res://assets/sprites/boss_basic.tres" id="2_boss_fire_sprite"]
+[ext_resource type="PlaceholderTexture2D" uid="uid://boss_basic_sprite" path="res://assets/sprites/boss_basic.tres" id="2_boss_fire_sprite"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_boss_fire"]
 size = Vector2(64, 64)

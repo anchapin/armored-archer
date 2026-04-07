@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://boss_earth_scene"]
 
 [ext_resource type="Script" path="res://scenes/enemies/bosses/boss_earth.gd" id="1_boss_earth_script"]
-[ext_resource type="PlaceholderTexture2D" uid="uid://boss_earth_sprite" path="res://assets/sprites/boss_basic.tres" id="2_boss_earth_sprite"]
+[ext_resource type="PlaceholderTexture2D" uid="uid://boss_basic_sprite" path="res://assets/sprites/boss_basic.tres" id="2_boss_earth_sprite"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_boss_earth"]
 size = Vector2(60, 60)

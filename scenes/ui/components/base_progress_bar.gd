@@ -8,8 +8,8 @@ extends ProgressBar
 # Uses DesignTokens for styling.
 # =============================================================================
 
-@export var bar_color: Color = DesignTokens.COLOR_HEALTH
-@export var background_color: Color = DesignTokens.COLOR_SURFACE_VARIANT_DARK
+@export var bar_color: Color = ArcherDesignTokens.COLOR_HEALTH
+@export var background_color: Color = ArcherDesignTokens.COLOR_SURFACE_VARIANT_DARK
 @export var is_rounded: bool = true
 
 @onready var _fill: ColorRect = $Fill

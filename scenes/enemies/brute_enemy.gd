@@ -1,4 +1,4 @@
-extends "res://scenes/enemies/base_enemy.gd"
+extends BaseEnemy
 
 ## Tank enemy (Brute) - slow with high health and damage.
 ##

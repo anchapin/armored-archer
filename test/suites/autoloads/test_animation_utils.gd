@@ -12,7 +12,8 @@ func test_animation_utils_class_type():
 	var anim_utils = AnimationUtilsClass.new()
 	add_child_autofree(anim_utils)
 	assert_true(anim_utils != null, "AnimationUtils should instantiate")
-	assert_eq(anim_utils.get_class(), "AnimationUtils", "Class should be AnimationUtils")
+	assert_true(anim_utils.has_method("fade_in"), "Should have fade_in method")
+	assert_true(anim_utils.has_method("fade_out"), "Should have fade_out method")
 
 func test_static_fade_in_callable():
 	var node = Node2D.new()

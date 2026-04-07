@@ -1,4 +1,4 @@
-extends "res://scenes/enemies/base_enemy.gd"
+extends BaseEnemy
 
 ## Swarmer enemy - erratic movement patterns.
 ## Uses unpredictable zig-zag movement to evade attacks.

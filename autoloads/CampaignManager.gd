@@ -21,8 +21,8 @@ var unlocked_modifier_pools: Array = []
 
 # --- Manager References ---
 # --- Analytics Reference ---
-@onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
-@onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
+var analytics: Node
+var network_manager: Node
 
 # --- Signals ---
 signal stage_unlocked(stage_id: String)
@@ -32,8 +32,15 @@ signal modifier_pool_unlocked(modifier_id: String)
 
 func _ready() -> void:
 	"""Initializes campaign data and loads saved progress."""
-	load_campaigns_data()
-	load_progress()
+	if analytics == null:
+		analytics = get_node_or_null("/root/AnalyticsManager")
+	if network_manager == null:
+		network_manager = get_node_or_null("/root/NetworkManager")
+
+	# Only load data for singleton instances
+	if is_inside_tree() and get_tree().current_scene == self:
+		load_campaigns_data()
+		load_progress()
 
 	# If no saved progress, initialize with first stage unlocked
 	if unlocked_stages.is_empty():
@@ -419,12 +426,6 @@ func save_progress() -> void:
 	if file:
 		var _err = file.store_string(JSON.stringify(save_data))
 		file.close()
-
-func update_campaign_progress() -> void:
-	"""Emits campaign progress updated signal after data changes."""
-	for campaign in campaigns_data.get("campaigns", []):
-		var chapter_id = campaign.id
-		update_campaign_progress.emit(chapter_id, get_chapter_progress(chapter_id))
 
 func load_progress() -> void:
 	"""Loads campaign progress from user://campaign_progress.json."""

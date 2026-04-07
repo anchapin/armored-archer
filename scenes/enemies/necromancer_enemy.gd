@@ -1,4 +1,4 @@
-extends "res://scenes/enemies/base_enemy.gd"
+extends BaseEnemy
 
 ## Summoner enemy (Necromancer) - summons smaller minions to fight.
 ##

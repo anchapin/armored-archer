@@ -3,20 +3,30 @@ extends Node
 # =============================================================================
 # THEME MANAGER - Armored Archer
 # =============================================================================
-# Manages Tactile Heroism design system state.
+# Manages design system state including light/dark theme modes.
 # Uses ArcherDesignTokens for colors, this manager for theme state.
 #
-# Design System: Tactile Heroism (The Illuminated Legend)
-# Single tactile theme based on "Digital Pop-Up Book" metaphor.
+# Design Systems:
+# - Tactile Heroism (Light Mode) - "The Illuminated Legend" - Digital Pop-Up Book
+# - Relic Archive (Dark Mode) - "The Relic Archive" - Tactical High-Contrast ARPG
 # =============================================================================
 
-signal theme_changed(enabled: bool)
+signal theme_changed(theme_mode: String)
+signal dark_mode_changed(enabled: bool)
+
+# --- Theme Mode Enum ---
+enum ThemeMode {
+	LIGHT,
+	DARK
+}
 
 # --- Theme State ---
+var _theme_mode: ThemeMode = ThemeMode.LIGHT  # Current theme mode
 var _theme_enabled: bool = true  # Single toggle for accessibility
 
 # --- Persistence ---
 const THEME_CONFIG_PATH := "user://theme.cfg"
+const THEME_MODE_KEY := "theme_mode"
 const THEME_KEY := "theme_enabled"
 
 # =============================================================================
@@ -34,14 +44,21 @@ func _load_theme() -> void:
 	var config = ConfigFile.new()
 	var err = config.load(THEME_CONFIG_PATH)
 	if err == OK:
+		# Load theme mode (default to LIGHT)
+		var saved_mode = config.get_value("settings", THEME_MODE_KEY, ThemeMode.LIGHT)
+		_theme_mode = saved_mode if saved_mode is int else ThemeMode.LIGHT
+
+		# Load theme enabled state (for accessibility)
 		var saved_theme = config.get_value("settings", THEME_KEY, true)
 		_theme_enabled = saved_theme
 	else:
-		# Default to theme enabled
+		# Default to LIGHT mode with theme enabled
+		_theme_mode = ThemeMode.LIGHT
 		_theme_enabled = true
 
 func _save_theme() -> void:
 	var config = ConfigFile.new()
+	config.set_value("settings", THEME_MODE_KEY, _theme_mode)
 	config.set_value("settings", THEME_KEY, _theme_enabled)
 	var err = config.save(THEME_CONFIG_PATH)
 	if err != OK:
@@ -51,6 +68,28 @@ func _save_theme() -> void:
 # PUBLIC API
 # =============================================================================
 
+## Get current theme mode (LIGHT or DARK)
+func get_theme_mode() -> ThemeMode:
+	return _theme_mode
+
+## Check if dark mode is enabled
+func is_dark_mode() -> bool:
+	return _theme_mode == ThemeMode.DARK
+
+## Set theme mode (LIGHT or DARK)
+func set_theme_mode(mode: ThemeMode) -> void:
+	if _theme_mode != mode:
+		_theme_mode = mode
+		_save_theme()
+		var mode_str = "dark" if mode == ThemeMode.DARK else "light"
+		theme_changed.emit(mode_str)
+		dark_mode_changed.emit(mode == ThemeMode.DARK)
+
+## Toggle between light and dark mode
+func toggle_theme_mode() -> void:
+	var new_mode = ThemeMode.DARK if _theme_mode == ThemeMode.LIGHT else ThemeMode.LIGHT
+	set_theme_mode(new_mode)
+
 ## Check if tactile theme is enabled
 func is_theme_enabled() -> bool:
 	return _theme_enabled
@@ -59,7 +98,7 @@ func is_theme_enabled() -> bool:
 func set_tactile_theme(enabled: bool) -> void:
 	_theme_enabled = enabled
 	_save_theme()
-	theme_changed.emit(enabled)
+	theme_changed.emit("enabled" if enabled else "disabled")
 
 ## Toggle tactile theme state
 func toggle_theme() -> void:
@@ -187,7 +226,7 @@ func apply_ambient_shadow(panel: Panel, is_floating: bool = false) -> void:
 # =============================================================================
 
 ## Check if a color is light (for text contrast)
-func is_color_light(color: Color) -> bool:
+static func is_color_light(color: Color) -> bool:
 	# Calculate luminance using relative luminance formula
 	return (0.299 * color.r + 0.587 * color.g + 0.114 * color.b) > 0.5
 

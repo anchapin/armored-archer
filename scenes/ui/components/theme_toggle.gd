@@ -66,11 +66,11 @@ func _update_button_display() -> void:
 			_toggle_button.text = icon + ("Dark" if _is_dark else "Light")
 	
 	# Apply design tokens if available
-	if DesignTokens:
+	if ArcherDesignTokens:
 		if _is_dark:
-			_toggle_button.modulate = DesignTokens.COLOR_TEXT_SECONDARY_DARK
+			_toggle_button.modulate = ArcherDesignTokens.COLOR_TEXT_SECONDARY_DARK
 		else:
-			_toggle_button.modulate = DesignTokens.COLOR_TEXT_SECONDARY_LIGHT
+			_toggle_button.modulate = ArcherDesignTokens.COLOR_TEXT_SECONDARY_LIGHT
 
 func _on_toggle_pressed() -> void:
 	if not _theme_manager:

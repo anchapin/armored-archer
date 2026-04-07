@@ -1,4 +1,4 @@
-extends "res://scenes/enemies/base_enemy.gd"
+extends BaseEnemy
 
 ## Shield enemy (Guardian) - has a shield that blocks damage.
 ##

@@ -1,5 +1,7 @@
 extends Node
 
+const DamagePopup = preload("res://scripts/damage_popup.gd")
+
 var _tests_passed: int = 0
 var _tests_failed: int = 0
 
@@ -73,7 +75,7 @@ func test_setup_damage_normal() -> void:
 
 func test_setup_damage_crit() -> void:
 	var dp = _create_damage_popup()
-	dp.setup_damage(150, is_crit=true)
+	dp.setup_damage(150, true, false, false)
 
 	if dp.text == "150!" and dp.modulate == dp.COLOR_CRIT:
 		_pass("test_setup_damage_crit")
@@ -84,7 +86,7 @@ func test_setup_damage_crit() -> void:
 
 func test_setup_miss() -> void:
 	var dp = _create_damage_popup()
-	dp.setup_damage(0, is_miss=true)
+	dp.setup_damage(0, false, true, false)
 
 	if dp.text == "MISS" and dp.modulate == dp.COLOR_MISS:
 		_pass("test_setup_miss")
@@ -95,7 +97,7 @@ func test_setup_miss() -> void:
 
 func test_setup_heal() -> void:
 	var dp = _create_damage_popup()
-	dp.setup_damage(50, is_heal=true)
+	dp.setup_damage(50, false, false, true)
 
 	if dp.text == "+50" and dp.modulate == dp.COLOR_HEAL:
 		_pass("test_setup_heal")
@@ -105,7 +107,7 @@ func test_setup_heal() -> void:
 	dp.queue_free()
 
 func test_factory_method() -> void:
-	var popup = Label.create_damage_popup(100, Vector2(200, 200), false, false, false)
+	var popup = DamagePopup.create_damage_popup(100, Vector2(200, 200), false, false, false)
 
 	if popup != null and popup.text == "100" and popup.position == Vector2(200, 200):
 		_pass("test_factory_method")

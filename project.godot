@@ -50,10 +50,12 @@ AnimationUtils="*res://autoloads/AnimationUtils.gd"
 ThemeManager="*res://autoloads/ThemeManager.gd"
 AccessibilityManager="*res://autoloads/AccessibilityManager.gd"
 GutCoverageTracker="*res://addons/gut/coverage/coverage_tracker.gd"
-DesignTokens="*res://autoloads/ArcherDesignTokens.gd"
 EncounterData="*res://autoloads/EncounterData.gd"
 CombatSyncManager="*res://autoloads/CombatSyncManager.gd"
 AnalyticsManager="*res://addons/analytics_manager/analytics_manager.gd"
+MCPScreenshot="*res://addons/godot_mcp/mcp_screenshot_service.gd"
+MCPInputService="*res://addons/godot_mcp/mcp_input_service.gd"
+MCPGameInspector="*res://addons/godot_mcp/mcp_game_inspector_service.gd"
 
 [debug]
 
@@ -75,7 +77,7 @@ window/vsync/use_vsync=false
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/ai_assistant_hub/plugin.cfg", "res://addons/godot_mcp/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")
 
 [input]
 
@@ -154,14 +156,6 @@ mid_range_memory_threshold=512
 
 Gut/enabled="true"
 Gut/settings/config_file="res://.gutconfig.json"
-
-[plugins]
-
-ai_assistant_hub/llm_api="openrouter_api"
-ai_assistant_hub/preferences/thinking_target=0
-ai_assistant_hub/preferences/skip_greeting=false
-ai_assistant_hub/preferences/always_scroll_to_bottom=false
-ai_assistant_hub/preferences/audio_hints=true
 
 [rendering]
 

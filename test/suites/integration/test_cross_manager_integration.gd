@@ -38,7 +38,7 @@ func test_player_stats_with_gear_integration():
 	game_mgr.network_manager = mock_net
 	
 	var player_mgr = PlayerStatsManagerClass.new()
-	add_child_autoffree(player_mgr)
+	add_child_autofree(player_mgr)
 	
 	player_mgr.network_manager = mock_net
 	player_mgr.user_id = "test_player_1"
@@ -124,7 +124,7 @@ func test_season_manager_affects_player_rewards():
 	add_child_autofree(season_mgr)
 	
 	var player_mgr = PlayerStatsManagerClass.new()
-	add_child_autoffree(player_mgr)
+	add_child_autofree(player_mgr)
 	
 	season_mgr.current_season = {
 		"season_id": "season_1",

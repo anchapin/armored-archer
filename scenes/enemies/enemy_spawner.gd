@@ -99,7 +99,16 @@ func spawn_enemy() -> void:
 	var spawn_position: Vector2 = get_random_spawn_position()
 
 	# Use object pool for enemy instantiation (performance optimization)
-	var enemy_instance: Node = ObjectPool.get_enemy()
+	var enemy_instance: Node
+	var object_pool = get_node_or_null("/root/ObjectPool")
+	if object_pool and object_pool.has_method("get_enemy"):
+		enemy_instance = object_pool.get_enemy()
+	else:
+		# Fallback: instantiate from preloaded scenes if object pool unavailable
+		var enemy_scenes = [MELEE_ENEMY_SCENE, RANGED_ENEMY_SCENE, SCOUT_ENEMY_SCENE,
+			BRUTE_ENEMY_SCENE, GUARDIAN_ENEMY_SCENE, NECROMANCER_ENEMY_SCENE]
+		var random_scene = enemy_scenes[randi() % enemy_scenes.size()]
+		enemy_instance = random_scene.instantiate()
 
 	# Validate enemy instance before connecting signals
 	if enemy_instance and enemy_instance.has_signal("died"):
@@ -146,7 +155,9 @@ func _on_enemy_died(_xp_reward: int) -> void:
 	if active_enemies.size() == 0 and not is_spawning:
 		if current_wave >= max_waves:
 			if boss_id == "" or not is_boss_alive():
-				GameManager.end_game(true)
+				var game_mgr = get_node_or_null("/root/GameManager")
+				if game_mgr and game_mgr.has_method("end_game"):
+					game_mgr.end_game(true)
 		else:
 			start_next_wave()
 
@@ -154,7 +165,9 @@ func spawn_boss() -> void:
 	if boss_id == "":
 		return
 
-	GameManager.spawn_boss(boss_id)
+	var game_mgr = get_node_or_null("/root/GameManager")
+	if game_mgr and game_mgr.has_method("spawn_boss"):
+		game_mgr.spawn_boss(boss_id)
 
 func is_boss_alive() -> bool:
 	var bosses: Array[Node] = get_tree().get_nodes_in_group("Boss")

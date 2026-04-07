@@ -1,4 +1,4 @@
-extends "res://scenes/enemies/base_enemy.gd"
+extends BaseEnemy
 
 ## Fire boss (Inferno) - powerful fire-based boss.
 ##
@@ -243,7 +243,9 @@ func enter_phase_3() -> void:
 
 func die() -> void:
 	boss_defeated.emit(boss_name)
-	CampaignManager.unlock_modifier_pool("fire_arrow")
+	var campaign_mgr = get_node_or_null("/root/CampaignManager")
+	if campaign_mgr and campaign_mgr.has_method("unlock_modifier_pool"):
+		campaign_mgr.unlock_modifier_pool("fire_arrow")
 	super.die()
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:

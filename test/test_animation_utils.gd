@@ -1,5 +1,8 @@
 extends Node
 
+const AnimationUtils = preload("res://autoloads/AnimationUtils.gd")
+const ArcherDesignTokens = preload("res://autoloads/ArcherDesignTokens.gd")
+
 var _tests_passed: int = 0
 var _tests_failed: int = 0
 
@@ -23,25 +26,6 @@ func run_tests() -> void:
 	await test_slide_in_bottom()
 	await test_fade_out_hide_on_complete()
 	await test_fade_in_default_duration()
-	await test_fade_out_default_duration()
-	await test_slide_in_default_duration()
-	await test_scale_bounce_custom_factor()
-	await test_scale_down_custom_factor()
-	await test_pulse_custom_params()
-	await test_slide_in_top()
-	await test_slide_in_bottom()
-	await test_fade_out_hide_on_complete()
-	await test_fade_in_default_duration()
-	await test_fade_out_default_duration()
-	await test_slide_in_default_duration()
-	await test_scale_bounce_custom_factor()
-	await test_scale_down_custom_factor()
-	await test_pulse_custom_params()
-	await test_slide_in_top()
-	await test_slide_in_bottom()
-	await test_fade_out_hide_on_complete()
-	await test_fade_in_default_duration()
-	await test_fade_out_default_duration()
 	await test_slide_in_default_duration()
 	await test_scale_bounce_custom_factor()
 	await test_scale_down_custom_factor()
@@ -204,159 +188,21 @@ func test_scale_up() -> void:
 func test_design_tokens_reference() -> void:
 	var node = _create_test_node()
 
-	if ArcherDesignTokens.has("ANIM_DURATION_FAST"):
+	# Check that design token constants exist
+	if ArcherDesignTokens.ANIM_DURATION_FAST == 0.1:
 		_pass("test_design_tokens_anim_duration_fast")
 	else:
-		_fail("test_design_tokens_anim_duration_fast", "Should have ANIM_DURATION_FAST")
+		_fail("test_design_tokens_anim_duration_fast", "Should have ANIM_DURATION_FAST = 0.1")
 
-	if ArcherDesignTokens.has("ANIM_DURATION_NORMAL"):
+	if ArcherDesignTokens.ANIM_DURATION_NORMAL == 0.2:
 		_pass("test_design_tokens_anim_duration_normal")
 	else:
-		_fail("test_design_tokens_anim_duration_normal", "Should have ANIM_DURATION_NORMAL")
+		_fail("test_design_tokens_anim_duration_normal", "Should have ANIM_DURATION_NORMAL = 0.2")
 
-	if ArcherDesignTokens.has("ANIM_DURATION_SLOW"):
+	if ArcherDesignTokens.ANIM_DURATION_SLOW == 0.3:
 		_pass("test_design_tokens_anim_duration_slow")
 	else:
-		_fail("test_design_tokens_anim_duration_slow", "Should have ANIM_DURATION_SLOW")
-
-	node.queue_free()
-
-func test_slide_in_top() -> void:
-	var node = _create_test_node()
-	var original_pos = node.position
-
-	var tween = AnimationUtils.slide_in(node, "top", 0.1)
-
-	if tween != null:
-		_pass("test_slide_in_top_returns_tween")
-	else:
-		_fail("test_slide_in_top_returns_tween", "Should return a tween")
-
-	if node.visible == true:
-		_pass("test_slide_in_top_sets_visible")
-	else:
-		_fail("test_slide_in_top_sets_visible", "Node should be visible")
-
-	if node.position.y != original_pos.y:
-		_pass("test_slide_in_top_moves_node")
-	else:
-		_fail("test_slide_in_top_moves_node", "Node position should change for top slide")
-
-	node.queue_free()
-
-func test_slide_in_bottom() -> void:
-	var node = _create_test_node()
-	var original_pos = node.position
-
-	var tween = AnimationUtils.slide_in(node, "bottom", 0.1)
-
-	if tween != null:
-		_pass("test_slide_in_bottom_returns_tween")
-	else:
-		_fail("test_slide_in_bottom_returns_tween", "Should return a tween")
-
-	if node.visible == true:
-		_pass("test_slide_in_bottom_sets_visible")
-	else:
-		_fail("test_slide_in_bottom_sets_visible", "Node should be visible")
-
-	if node.position.y != original_pos.y:
-		_pass("test_slide_in_bottom_moves_node")
-	else:
-		_fail("test_slide_in_bottom_moves_node", "Node position should change for bottom slide")
-
-	node.queue_free()
-
-func test_fade_out_hide_on_complete() -> void:
-	var node = _create_test_node()
-	node.modulate.a = 1.0
-	node.visible = true
-
-	var tween = AnimationUtils.fade_out(node, 0.1, true)
-
-	if tween != null:
-		_pass("test_fade_out_hide_on_complete_returns_tween")
-	else:
-		_fail("test_fade_out_hide_on_complete_returns_tween", "Should return a tween")
-
-	node.queue_free()
-
-func test_fade_in_default_duration() -> void:
-	var node = _create_test_node()
-	node.modulate.a = 1.0
-	node.visible = false
-
-	var tween = AnimationUtils.fade_in(node)
-
-	if tween != null:
-		_pass("test_fade_in_default_duration")
-	else:
-		_fail("test_fade_in_default_duration", "Should work with default duration")
-
-	node.queue_free()
-
-func test_fade_out_default_duration() -> void:
-	var node = _create_test_node()
-	node.modulate.a = 1.0
-	node.visible = true
-
-	var tween = AnimationUtils.fade_out(node)
-
-	if tween != null:
-		_pass("test_fade_out_default_duration")
-	else:
-		_fail("test_fade_out_default_duration", "Should work with default duration")
-
-	node.queue_free()
-
-func test_slide_in_default_duration() -> void:
-	var node = _create_test_node()
-
-	var tween = AnimationUtils.slide_in(node, "left")
-
-	if tween != null:
-		_pass("test_slide_in_default_duration")
-	else:
-		_fail("test_slide_in_default_duration", "Should work with default duration")
-
-	node.queue_free()
-
-func test_scale_bounce_custom_factor() -> void:
-	var node = _create_test_node()
-	node.scale = Vector2(1.0, 1.0)
-
-	var tween = AnimationUtils.scale_bounce(node, 1.5)
-
-	if tween != null:
-		_pass("test_scale_bounce_custom_factor")
-	else:
-		_fail("test_scale_bounce_custom_factor", "Should work with custom scale factor")
-
-	node.queue_free()
-
-func test_scale_down_custom_factor() -> void:
-	var node = _create_test_node()
-	node.scale = Vector2(1.0, 1.0)
-
-	var tween = AnimationUtils.scale_down(node, 0.8)
-
-	if tween != null:
-		_pass("test_scale_down_custom_factor")
-	else:
-		_fail("test_scale_down_custom_factor", "Should work with custom scale factor")
-
-	node.queue_free()
-
-func test_pulse_custom_params() -> void:
-	var node = _create_test_node()
-	node.scale = Vector2(1.0, 1.0)
-
-	var tween = AnimationUtils.pulse(node, 0.2, 4.0)
-
-	if tween != null and tween.get_loop_count() == -1:
-		_pass("test_pulse_custom_params")
-	else:
-		_fail("test_pulse_custom_params", "Should work with custom params and loop")
+		_fail("test_design_tokens_anim_duration_slow", "Should have ANIM_DURATION_SLOW = 0.3")
 
 	node.queue_free()
 

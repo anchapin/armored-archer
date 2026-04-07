@@ -33,12 +33,17 @@ func _ready() -> void:
 	if hurt_area:
 		var _err = hurt_area.body_entered.connect(_on_hurt_area_body_entered)
 
-	AutoAimManager.register_enemy(self)
+	# Register with auto-aim if available
+	var aim_mgr = get_node_or_null("/root/AutoAimManager")
+	if aim_mgr and aim_mgr.has_method("register_enemy"):
+		aim_mgr.register_enemy(self)
 
 # Reset enemy state for reuse from object pool
 func reset_for_spawn() -> void:
 	current_health = max_health
-	AutoAimManager.register_enemy(self)
+	var aim_mgr = get_node_or_null("/root/AutoAimManager")
+	if aim_mgr and aim_mgr.has_method("register_enemy"):
+		aim_mgr.register_enemy(self)
 
 func take_damage(amount: int) -> void:
 	current_health -= amount
@@ -46,7 +51,9 @@ func take_damage(amount: int) -> void:
 		die()
 
 func die() -> void:
-	AutoAimManager.unregister_enemy(self)
+	var aim_mgr = get_node_or_null("/root/AutoAimManager")
+	if aim_mgr and aim_mgr.has_method("unregister_enemy"):
+		aim_mgr.unregister_enemy(self)
 
 	# Trigger death VFX
 	var vfx_manager: Node = get_node_or_null("/root/VFXManager")
@@ -55,7 +62,9 @@ func die() -> void:
 
 	died.emit(xp_reward)
 	# Return enemy to object pool for reuse
-	ObjectPool.return_enemy(self)
+	var object_pool = get_node_or_null("/root/ObjectPool")
+	if object_pool and object_pool.has_method("return_enemy"):
+		object_pool.return_enemy(self)
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):
@@ -78,4 +87,6 @@ func reset_pooled_state() -> void:
 
 ## Cleanup when enemy is freed
 func _exit_tree() -> void:
-	AutoAimManager.unregister_enemy(self)
+	var aim_mgr = get_node_or_null("/root/AutoAimManager")
+	if aim_mgr and aim_mgr.has_method("unregister_enemy"):
+		aim_mgr.unregister_enemy(self)

@@ -36,3 +36,6 @@ backend/tsconfig.tsbuildinfo
 node-compile-cache/
 v8-compile-cache-*/
 jest_rs/
+
+# Eforge
+.eforge/

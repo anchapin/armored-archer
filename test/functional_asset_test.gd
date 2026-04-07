@@ -61,14 +61,14 @@ func test_player_sprites_animation_count() -> void:
 	var animation_count = animations.size()
 	# Expected: 24 animations (4 directions × 6 base animations)
 	# idle(4), walk(4), attack(4), bow_draw(4), hit(4), death(4) = 24
-	assert_greater_than_or_equal(animation_count, 24, "Should have at least 24 player animations, got: " + str(animation_count))
+	assert_true(animation_count >= 24, "Should have at least 24 player animations, got: " + str(animation_count))
 	test_results["animation_system_tests"].append({"test": "player_sprites_animation_count", "status": "PASS", "count": animation_count, "expected": ">=24"})
 
 func test_enemy_sprites_animation_count() -> void:
 	var animations = _enemy_sprites.get_animation_names()
 	var animation_count = animations.size()
 	# Expected: multiple enemies × animations each
-	assert_greater_than(animation_count, 0, "Should have enemy animations")
+	assert_true(animation_count > 0, "Should have enemy animations")
 	test_results["animation_system_tests"].append({"test": "enemy_sprites_animation_count", "status": "PASS", "count": animation_count})
 
 func test_player_animation_fps_settings() -> void:
@@ -137,7 +137,7 @@ func test_gamemanager_exists() -> void:
 func test_gear_registry_initializes() -> void:
 	var registry = GearRegistry
 	assert_not_null(registry, "GearRegistry autoload should exist")
-	assert_greater_than(registry.base_gear_db.size(), 0, "GearRegistry should have base gear items")
+	assert_true(registry.base_gear_db.size() > 0, "GearRegistry should have base gear items")
 	test_results["equipment_system_tests"].append({"test": "gear_registry_initializes", "status": "PASS", "gear_count": registry.base_gear_db.size()})
 
 func test_gear_registry_texture_paths() -> void:

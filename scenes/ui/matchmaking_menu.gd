@@ -142,9 +142,9 @@ func _create_match_item(match_data: Dictionary) -> Control:
 	var rank_diff_label: Label = Label.new()
 	var rank_diff: int = opponent_rank - player_rank_val
 	
-	var success_color = DesignTokens.COLOR_SUCCESS if design_tokens else Color.GREEN
-	var warning_color = DesignTokens.COLOR_WARNING if design_tokens else Color.ORANGE
-	var error_color = DesignTokens.COLOR_ERROR if design_tokens else Color.RED
+	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color.GREEN
+	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color.ORANGE
+	var error_color = ArcherDesignTokens.COLOR_ERROR if design_tokens else Color.RED
 	
 	if rank_diff > 0:
 		rank_diff_label.text = "(+%d above you)" % rank_diff
@@ -173,7 +173,7 @@ func _create_match_item(match_data: Dictionary) -> Control:
 	
 	# Style button with DesignTokens
 	if design_tokens:
-		accept_button.modulate = DesignTokens.COLOR_PRIMARY
+		accept_button.modulate = ArcherDesignTokens.COLOR_PRIMARY
 	
 	accept_button.pressed.connect(_on_accept_match.bind(match_data.get("match_id", "")))
 

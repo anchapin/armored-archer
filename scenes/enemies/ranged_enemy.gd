@@ -1,4 +1,4 @@
-extends "res://scenes/enemies/base_enemy.gd"
+extends BaseEnemy
 
 ## Ranged enemy (Shooter) that attacks from a distance with projectiles.
 ##

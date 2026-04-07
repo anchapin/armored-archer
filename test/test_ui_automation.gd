@@ -59,16 +59,17 @@ func test_constants() -> void:
 	ui_auto.queue_free()
 
 func test_singleton_initialization() -> void:
+	var UIAutomationClass = load("res://autoloads/UIAutomation.gd")
 	var ui_auto = await _create_ui_automation()
 
-	if ui_auto._instance == ui_auto:
+	if UIAutomationClass._instance == ui_auto:
 		_pass("test_singleton_sets_instance")
 	else:
 		_fail("test_singleton_sets_instance", "Singleton should set _instance")
 
 	ui_auto.queue_free()
 
-	if not UIAutomation._instance:
+	if not UIAutomationClass._instance:
 		_pass("test_singleton_clears_on_exit")
 	else:
 		_fail("test_singleton_clears_on_exit", "Singleton should clear on exit")
@@ -181,10 +182,11 @@ func test_static_methods_exist() -> void:
 	ui_auto.queue_free()
 
 func test_get_instance_creates_instance() -> void:
+	var UIAutomationClass = load("res://autoloads/UIAutomation.gd")
 	var ui_auto = await _create_ui_automation()
 	ui_auto.queue_free()
 
-	var instance = UIAutomation.get_instance()
+	var instance = UIAutomationClass.get_instance()
 	if instance != null:
 		_pass("test_get_instance_returns_instance")
 		instance.queue_free()

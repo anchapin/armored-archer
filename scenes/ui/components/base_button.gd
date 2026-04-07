@@ -180,8 +180,10 @@ func _get_pressed_colors(colors: Dictionary) -> Dictionary:
 	}
 
 func _get_disabled_colors(colors: Dictionary) -> Dictionary:
-	var disabled_bg := colors["bg"].lerp(ArcherDesignTokens.RA_SURFACE, 0.5)
-	var disabled_text := colors["text"].lerp(ArcherDesignTokens.RA_ON_SURFACE_VARIANT, 0.5)
+	var bg_color: Color = colors["bg"]
+	var text_color: Color = colors["text"]
+	var disabled_bg: Color = bg_color.lerp(ArcherDesignTokens.RA_SURFACE, 0.5)
+	var disabled_text: Color = text_color.lerp(ArcherDesignTokens.RA_ON_SURFACE_VARIANT, 0.5)
 	return {
 		"bg": disabled_bg,
 		"text": disabled_text,
@@ -190,7 +192,8 @@ func _get_disabled_colors(colors: Dictionary) -> Dictionary:
 	}
 
 func _get_toggled_colors(colors: Dictionary) -> Dictionary:
-	var toggled_bg := colors["bg"].darkened(0.15)
+	var bg_color: Color = colors["bg"]
+	var toggled_bg: Color = bg_color.darkened(0.15)
 	return {
 		"bg": toggled_bg,
 		"text": colors["text"],
@@ -242,7 +245,7 @@ func _update_size() -> void:
 	custom_minimum_size = Vector2(120, 40)
 	
 	# Set font size
-	add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_BASE)
+	add_theme_font_size_override("font_size", ArcherDesignTokens.FONT_SIZE_BASE)
 
 # --- Public Methods ---
 func set_button_type(new_type: String) -> void:

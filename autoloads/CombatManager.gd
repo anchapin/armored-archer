@@ -20,7 +20,12 @@ signal turn_changed(is_my_turn: bool)
 signal combat_ended(winner: String)
 
 # --- Network Reference ---
-@onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
+# Only set network_manager if it wasn't already set (e.g., by tests)
+var network_manager: Node
+
+func _ready() -> void:
+	if network_manager == null:
+		network_manager = get_node_or_null("/root/NetworkManager")
 
 # --- Submit Combat Action ---
 func submit_combat_action(match_id: String, action_type: String, angle: float, power: float = 1.0) -> void:

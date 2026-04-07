@@ -1,4 +1,4 @@
-extends "res://scenes/enemies/base_enemy.gd"
+extends BaseEnemy
 
 ## Speed enemy - fast but low health.
 ## Uses dash attacks to close distance quickly.

@@ -1,5 +1,7 @@
 extends Node
 
+const ArcherDesignTokens = preload("res://autoloads/ArcherDesignTokens.gd")
+
 var _tests_passed: int = 0
 var _tests_failed: int = 0
 
@@ -41,20 +43,20 @@ func _fail(test_name: String, message: String) -> void:
 	print("[FAIL] " + test_name + ": " + message)
 
 func test_primary_colors() -> void:
-	if ArcherDesignTokens.COLOR_PRIMARY == Color("#4A90D9"):
+	if ArcherDesignTokens.COLOR_PRIMARY == Color("#0060ce"):
 		_pass("test_color_primary")
 	else:
 		_fail("test_color_primary", "COLOR_PRIMARY incorrect")
 
-	if ArcherDesignTokens.COLOR_PRIMARY_HOVER == Color("#5BA0E9"):
-		_pass("test_color_primary_hover")
+	if ArcherDesignTokens.COLOR_PRIMARY_FIXED == Color("#6e9fff"):
+		_pass("test_color_primary_fixed")
 	else:
-		_fail("test_color_primary_hover", "COLOR_PRIMARY_HOVER incorrect")
+		_fail("test_color_primary_fixed", "COLOR_PRIMARY_FIXED incorrect")
 
-	if ArcherDesignTokens.COLOR_PRIMARY_PRESSED == Color("#3A80C9"):
-		_pass("test_color_primary_pressed")
+	if ArcherDesignTokens.COLOR_PRIMARY_DIM == Color("#0054b7"):
+		_pass("test_color_primary_dim")
 	else:
-		_fail("test_color_primary_pressed", "COLOR_PRIMARY_PRESSED incorrect")
+		_fail("test_color_primary_dim", "COLOR_PRIMARY_DIM incorrect")
 
 func test_semantic_colors() -> void:
 	if ArcherDesignTokens.COLOR_SUCCESS == Color("#22C55E"):
@@ -99,17 +101,17 @@ func test_neutral_colors() -> void:
 		_fail("test_color_text_primary_dark", "COLOR_TEXT_PRIMARY_DARK incorrect")
 
 func test_game_colors() -> void:
-	if ArcherDesignTokens.COLOR_HEALTH == Color("#22C55E"):
+	if ArcherDesignTokens.COLOR_HEALTH == Color("#00734e"):
 		_pass("test_color_health")
 	else:
 		_fail("test_color_health", "COLOR_HEALTH incorrect")
 
-	if ArcherDesignTokens.COLOR_HEALTH_LOW == Color("#EF4444"):
+	if ArcherDesignTokens.COLOR_HEALTH_LOW == Color(0.94, 0.27, 0.31, 1):
 		_pass("test_color_health_low")
 	else:
 		_fail("test_color_health_low", "COLOR_HEALTH_LOW incorrect")
 
-	if ArcherDesignTokens.COLOR_GOLD == Color("#F59E0B"):
+	if ArcherDesignTokens.COLOR_GOLD == Color("#8d5900"):
 		_pass("test_color_gold")
 	else:
 		_fail("test_color_gold", "COLOR_GOLD incorrect")
@@ -119,22 +121,22 @@ func test_game_colors() -> void:
 	else:
 		_fail("test_color_gems", "COLOR_GEMS incorrect")
 
-	if ArcherDesignTokens.COLOR_RARITY_COMMON == Color("#9CA3AF"):
+	if ArcherDesignTokens.COLOR_RARITY_COMMON == Color(0.61, 0.61, 0.61, 1):
 		_pass("test_color_rarity_common")
 	else:
 		_fail("test_color_rarity_common", "COLOR_RARITY_COMMON incorrect")
 
-	if ArcherDesignTokens.COLOR_RARITY_RARE == Color("#3B82F6"):
+	if ArcherDesignTokens.COLOR_RARITY_RARE == Color("#0060ce"):
 		_pass("test_color_rarity_rare")
 	else:
 		_fail("test_color_rarity_rare", "COLOR_RARITY_RARE incorrect")
 
-	if ArcherDesignTokens.COLOR_RARITY_EPIC == Color("#8B5CF6"):
+	if ArcherDesignTokens.COLOR_RARITY_EPIC == Color("#8d5900"):
 		_pass("test_color_rarity_epic")
 	else:
 		_fail("test_color_rarity_epic", "COLOR_RARITY_EPIC incorrect")
 
-	if ArcherDesignTokens.COLOR_RARITY_LEGENDARY == Color("#F59E0B"):
+	if ArcherDesignTokens.COLOR_RARITY_LEGENDARY == Color(1, 0.77, 0.22, 1):
 		_pass("test_color_rarity_legendary")
 	else:
 		_fail("test_color_rarity_legendary", "COLOR_RARITY_LEGENDARY incorrect")
@@ -240,25 +242,25 @@ func test_animation_durations() -> void:
 
 func test_get_primary_color() -> void:
 	var color = ArcherDesignTokens.get_primary_color("default")
-	if color == Color("#4A90D9"):
+	if color == Color("#0060ce"):
 		_pass("test_get_primary_color_default")
 	else:
 		_fail("test_get_primary_color_default", "get_primary_color default incorrect")
 
 	color = ArcherDesignTokens.get_primary_color("hover")
-	if color == Color("#5BA0E9"):
+	if color == Color("#6e9fff"):
 		_pass("test_get_primary_color_hover")
 	else:
 		_fail("test_get_primary_color_hover", "get_primary_color hover incorrect")
 
 	color = ArcherDesignTokens.get_primary_color("pressed")
-	if color == Color("#3A80C9"):
+	if color == Color("#0054b7"):
 		_pass("test_get_primary_color_pressed")
 	else:
 		_fail("test_get_primary_color_pressed", "get_primary_color pressed incorrect")
 
 	color = ArcherDesignTokens.get_primary_color("disabled")
-	if color == Color("#7AB3E8"):
+	if color == Color(1, 1, 1, 0.4):
 		_pass("test_get_primary_color_disabled")
 	else:
 		_fail("test_get_primary_color_disabled", "get_primary_color disabled incorrect")
@@ -297,50 +299,50 @@ func test_get_background_color() -> void:
 
 func test_get_health_color() -> void:
 	var color = ArcherDesignTokens.get_health_color(0.8)
-	if color == Color("#22C55E"):
+	if color == Color("#00734e"):
 		_pass("test_get_health_color_high")
 	else:
 		_fail("test_get_health_color_high", "get_health_color high incorrect")
 
 	color = ArcherDesignTokens.get_health_color(0.4)
-	if color == Color("#F59E0B"):
+	if color == Color(0.96, 0.71, 0.35, 1):
 		_pass("test_get_health_color_medium")
 	else:
 		_fail("test_get_health_color_medium", "get_health_color medium incorrect")
 
 	color = ArcherDesignTokens.get_health_color(0.1)
-	if color == Color("#EF4444"):
+	if color == Color(0.94, 0.27, 0.31, 1):
 		_pass("test_get_health_color_low")
 	else:
 		_fail("test_get_health_color_low", "get_health_color low incorrect")
 
 func test_get_rarity_color() -> void:
 	var color = ArcherDesignTokens.get_rarity_color("common")
-	if color == Color("#9CA3AF"):
+	if color == Color(0.61, 0.61, 0.61, 1):
 		_pass("test_get_rarity_color_common")
 	else:
 		_fail("test_get_rarity_color_common", "get_rarity_color common incorrect")
 
 	color = ArcherDesignTokens.get_rarity_color("rare")
-	if color == Color("#3B82F6"):
+	if color == Color("#0060ce"):
 		_pass("test_get_rarity_color_rare")
 	else:
 		_fail("test_get_rarity_color_rare", "get_rarity_color rare incorrect")
 
 	color = ArcherDesignTokens.get_rarity_color("epic")
-	if color == Color("#8B5CF6"):
+	if color == Color("#8d5900"):
 		_pass("test_get_rarity_color_epic")
 	else:
 		_fail("test_get_rarity_color_epic", "get_rarity_color epic incorrect")
 
 	color = ArcherDesignTokens.get_rarity_color("legendary")
-	if color == Color("#F59E0B"):
+	if color == Color(1, 0.77, 0.22, 1):
 		_pass("test_get_rarity_color_legendary")
 	else:
 		_fail("test_get_rarity_color_legendary", "get_rarity_color legendary incorrect")
 
 	color = ArcherDesignTokens.get_rarity_color("unknown")
-	if color == Color("#9CA3AF"):
+	if color == Color(0.61, 0.61, 0.61, 1):
 		_pass("test_get_rarity_color_unknown")
 	else:
 		_fail("test_get_rarity_color_unknown", "get_rarity_color unknown should fallback")

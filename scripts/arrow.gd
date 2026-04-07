@@ -59,7 +59,11 @@ func _on_body_entered(body: Node) -> void:
 func _return_to_pool() -> void:
 	"""Return this arrow to the object pool."""
 	is_active = false
-	ObjectPool.return_arrow(self)
+	var object_pool = get_node_or_null("/root/ObjectPool")
+	if object_pool and object_pool.has_method("return_arrow"):
+		object_pool.return_arrow(self)
+	else:
+		queue_free()
 
 ## Reset state when returning to pool - called by ObjectPool
 func reset_pooled_state() -> void:

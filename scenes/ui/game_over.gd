@@ -16,8 +16,8 @@ var player_stats: Node
 var gear_manager: Node
 
 # --- Game Over Colors ---
-const VICTORY_COLOR = Color("#22C55E")  # Green - DesignTokens.COLOR_SUCCESS
-const DEFEAT_COLOR = Color("#EF4444")   # Red - DesignTokens.COLOR_ERROR
+const VICTORY_COLOR = Color("#22C55E")  # Green - ArcherDesignTokens.COLOR_SUCCESS
+const DEFEAT_COLOR = Color("#EF4444")   # Red - ArcherDesignTokens.COLOR_ERROR
 
 # --- Looted Gear ---
 var _looted_gear: Dictionary = {}
@@ -164,7 +164,7 @@ func _apply_theme() -> void:
 	if result_label:
 		result_label.modulate = colors["text_primary"]
 	if restart_button:
-		restart_button.modulate = DesignTokens.COLOR_PRIMARY if design_tokens else Color.WHITE
+		restart_button.modulate = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color.WHITE
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()

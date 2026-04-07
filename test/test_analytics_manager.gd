@@ -154,7 +154,7 @@ func test_session_tracking() -> void:
 		_fail(test_name, "AnalyticsManager not available")
 		return
 
-	var initial_session_count := analytics.session_count
+	var initial_session_count: int = analytics.session_count
 	analytics.start_session()
 
 	if analytics.current_session_id != "" and analytics.session_start_time > 0:

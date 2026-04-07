@@ -3,6 +3,8 @@ extends GutTest
 # Unit tests for const.gd
 # Tests that constants are correctly defined and accessible
 
+const Const = preload("res://autoloads/const.gd")
+
 func test_default_player_health() -> void:
 	assert_eq(Const.DEFAULT_PLAYER_HEALTH, 100, "Default player health should be 100")
 
@@ -77,43 +79,6 @@ func test_max_fps() -> void:
 
 func test_target_frame_time() -> void:
 	assert_between(Const.TARGET_FRAME_TIME, 0.016, 0.017, "Target frame time should be ~0.016")
-
-func test_constants_are_immutable() -> void:
-	var health = Const.DEFAULT_PLAYER_HEALTH
-	assert_eq(health, 100, "Constants should be readable")
-
-func test_equipment_slots_order() -> void:
-	var slots = Const.EQUIPMENT_SLOTS
-	assert_eq(slots[0], "helm", "First slot should be helm")
-	assert_eq(slots[4], "amulet", "Last slot should be amulet")
-
-func test_gear_rarities_order() -> void:
-	var rarities = Const.GEAR_RARITIES
-	assert_eq(rarities[0], "common", "First rarity should be common")
-	assert_eq(rarities[3], "legendary", "Last rarity should be legendary")
-
-func test_combat_constants_relationship() -> void:
-	assert_true(Const.CRITICAL_HIT_MULTIPLIER > 1.0, "Critical multiplier should be greater than 1")
-	assert_true(Const.CRITICAL_HIT_CHANCE > 0.0 and Const.CRITICAL_HIT_CHANCE < 1.0, "Crit chance should be between 0 and 1")
-
-func test_animation_constants_relationship() -> void:
-	assert_true(Const.FAST_ANIMATION_DURATION < Const.DEFAULT_ANIMATION_DURATION, "Fast should be less than default")
-	assert_true(Const.SLOW_ANIMATION_DURATION > Const.DEFAULT_ANIMATION_DURATION, "Slow should be greater than default")
-
-func test_effect_constants_are_positive() -> void:
-	assert_true(Const.DAMAGE_POPUP_DURATION > 0.0, "Damage popup duration should be positive")
-	assert_true(Const.SCREEN_SHAKE_DURATION > 0.0, "Screen shake duration should be positive")
-	assert_true(Const.HIT_EFFECT_DURATION > 0.0, "Hit effect duration should be positive")
-
-func test_performance_constants() -> void:
-	assert_true(Const.MAX_FPS > 0, "Max FPS should be positive")
-	assert_true(Const.TARGET_FRAME_TIME > 0.0, "Target frame time should be positive")
-	assert_eq(Const.TARGET_FRAME_TIME, 1.0 / Const.MAX_FPS, "Target frame time should equal 1/MAX_FPS")
-
-func test_network_constants() -> void:
-	assert_true(Const.REQUEST_TIMEOUT > 0.0, "Request timeout should be positive")
-	assert_true(Const.DEFAULT_SERVER_URL.begins_with("http"), "Server URL should be valid HTTP URL")
-	assert_ne(Const.API_VERSION, "", "API version should not be empty")
 
 func test_constants_are_immutable() -> void:
 	var health = Const.DEFAULT_PLAYER_HEALTH

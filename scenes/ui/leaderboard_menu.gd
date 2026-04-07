@@ -115,7 +115,7 @@ func _create_leaderboard_entry(entry: Dictionary) -> Control:
 	if rank_value <= 3:
 		rank_label.modulate = RANK_COLORS.get(rank_value, Color.WHITE)
 	elif rank_value <= 10:
-		rank_label.modulate = DesignTokens.COLOR_GOLD if design_tokens else Color.GOLD
+		rank_label.modulate = ArcherDesignTokens.COLOR_GOLD if design_tokens else Color.GOLD
 	elif rank_value <= 50:
 		rank_label.modulate = Color.SILVER
 	elif rank_value <= 100:

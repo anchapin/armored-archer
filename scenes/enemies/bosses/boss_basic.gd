@@ -1,4 +1,4 @@
-extends "res://scenes/enemies/base_enemy.gd"
+extends BaseEnemy
 
 # --- Boss Stats ---
 @export var boss_name: String = "Basic Boss"

@@ -171,11 +171,11 @@ func _apply_theme() -> void:
 
 func _apply_design_tokens() -> void:
 	# Apply design tokens to currency labels
-	if gold_label and DesignTokens:
-		gold_label.modulate = DesignTokens.COLOR_GOLD
-	
-	if gems_label and DesignTokens:
-		gems_label.modulate = DesignTokens.COLOR_GEMS
+	if gold_label and ArcherDesignTokens:
+		gold_label.modulate = ArcherDesignTokens.COLOR_GOLD
+
+	if gems_label and ArcherDesignTokens:
+		gems_label.modulate = ArcherDesignTokens.COLOR_GEMS
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()
