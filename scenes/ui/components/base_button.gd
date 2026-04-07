@@ -84,8 +84,8 @@ func _set_state(new_state: ButtonState) -> void:
 # --- Style Updates ---
 func _update_button_style() -> void:
 	var colors: Dictionary = _get_colors_for_type()
-	var radius: int = DesignTokens.RADIUS_MD
-	
+	var radius: int = ArcherDesignTokens.get_ra_button_radius()  # RA_ROUNDNESS_FOUR (4px)
+
 	match _current_state:
 		ButtonState.HOVER:
 			colors = _get_hover_colors(colors)
@@ -93,107 +93,149 @@ func _update_button_style() -> void:
 			colors = _get_pressed_colors(colors)
 		ButtonState.DISABLED:
 			colors = _get_disabled_colors(colors)
-	
+
 	if _is_toggled:
 		colors = _get_toggled_colors(colors)
-	
+
 	_apply_style(colors, radius)
 
 func _get_colors_for_type() -> Dictionary:
+	# Use Relic Archive (dark mode) palette
 	match button_type:
 		"primary":
 			return {
-				"bg": DesignTokens.COLOR_PRIMARY,
-				"text": Color.WHITE,
-				"border": DesignTokens.COLOR_PRIMARY
+				"bg": ArcherDesignTokens.RA_PRIMARY,
+				"text": ArcherDesignTokens.RA_ON_PRIMARY,
+				"gradient_start": ArcherDesignTokens.RA_PRIMARY,
+				"gradient_end": ArcherDesignTokens.RA_PRIMARY_DIM
 			}
 		"secondary":
 			return {
-				"bg": DesignTokens.COLOR_SECONDARY,
-				"text": Color.WHITE,
-				"border": DesignTokens.COLOR_SECONDARY
+				"bg": ArcherDesignTokens.RA_SECONDARY,
+				"text": ArcherDesignTokens.RA_ON_SECONDARY,
+				"gradient_start": ArcherDesignTokens.RA_SECONDARY,
+				"gradient_end": ArcherDesignTokens.RA_SECONDARY_DIM
 			}
 		"success":
 			return {
-				"bg": DesignTokens.COLOR_SUCCESS,
-				"text": Color.WHITE,
-				"border": DesignTokens.COLOR_SUCCESS
+				"bg": ArcherDesignTokens.RA_TERTIARY,
+				"text": ArcherDesignTokens.RA_ON_TERTIARY,
+				"gradient_start": ArcherDesignTokens.RA_TERTIARY,
+				"gradient_end": ArcherDesignTokens.RA_TERTIARY_DIM
 			}
 		"warning":
 			return {
-				"bg": DesignTokens.COLOR_WARNING,
-				"text": Color.BLACK,
-				"border": DesignTokens.COLOR_WARNING
+				"bg": ArcherDesignTokens.RA_PRIMARY,
+				"text": ArcherDesignTokens.RA_ON_PRIMARY,
+				"gradient_start": ArcherDesignTokens.RA_PRIMARY,
+				"gradient_end": ArcherDesignTokens.RA_PRIMARY_DIM
 			}
 		"error":
 			return {
-				"bg": DesignTokens.COLOR_ERROR,
-				"text": Color.WHITE,
-				"border": DesignTokens.COLOR_ERROR
+				"bg": ArcherDesignTokens.RA_ERROR,
+				"text": ArcherDesignTokens.RA_ON_ERROR,
+				"gradient_start": ArcherDesignTokens.RA_ERROR,
+				"gradient_end": ArcherDesignTokens.RA_ERROR_DIM
 			}
 		"ghost":
 			return {
 				"bg": Color.TRANSPARENT,
-				"text": DesignTokens.COLOR_TEXT_PRIMARY_DARK,
-				"border": Color.TRANSPARENT
+				"text": ArcherDesignTokens.RA_ON_SURFACE,
+				"gradient_start": Color.TRANSPARENT,
+				"gradient_end": Color.TRANSPARENT
 			}
 		"outline":
 			return {
 				"bg": Color.TRANSPARENT,
-				"text": DesignTokens.COLOR_PRIMARY,
-				"border": DesignTokens.COLOR_PRIMARY
+				"text": ArcherDesignTokens.RA_PRIMARY,
+				"gradient_start": Color.TRANSPARENT,
+				"gradient_end": Color.TRANSPARENT
 			}
 		_:
 			return {
-				"bg": DesignTokens.COLOR_PRIMARY,
-				"text": Color.WHITE,
-				"border": DesignTokens.COLOR_PRIMARY
+				"bg": ArcherDesignTokens.RA_PRIMARY,
+				"text": ArcherDesignTokens.RA_ON_PRIMARY,
+				"gradient_start": ArcherDesignTokens.RA_PRIMARY,
+				"gradient_end": ArcherDesignTokens.RA_PRIMARY_DIM
 			}
 
 func _get_hover_colors(colors: Dictionary) -> Dictionary:
-	var hover_bg: Color = colors["bg"].lightened(0.1)
-	return {"bg": hover_bg, "text": colors["text"], "border": colors["border"]}
+	# Use RA_PRIMARY_FIXED for hover (golden hover)
+	var hover_bg := ArcherDesignTokens.get_ra_primary_color("hover")
+	return {
+		"bg": hover_bg,
+		"text": colors["text"],
+		"gradient_start": hover_bg,
+		"gradient_end": colors.get("gradient_end", hover_bg)
+	}
 
 func _get_pressed_colors(colors: Dictionary) -> Dictionary:
-	var pressed_bg: Color = colors["bg"].darkened(0.1)
-	return {"bg": pressed_bg, "text": colors["text"], "border": colors["border"]}
+	# Use RA_PRIMARY_DIM for pressed (golden press)
+	var pressed_bg := ArcherDesignTokens.get_ra_primary_color("pressed")
+	return {
+		"bg": pressed_bg,
+		"text": colors["text"],
+		"gradient_start": pressed_bg,
+		"gradient_end": pressed_bg
+	}
 
 func _get_disabled_colors(colors: Dictionary) -> Dictionary:
+	var disabled_bg := colors["bg"].lerp(ArcherDesignTokens.RA_SURFACE, 0.5)
+	var disabled_text := colors["text"].lerp(ArcherDesignTokens.RA_ON_SURFACE_VARIANT, 0.5)
 	return {
-		"bg": colors["bg"].lerp(Color.GRAY, 0.5),
-		"text": colors["text"].lerp(Color.GRAY, 0.5),
-		"border": colors["border"].lerp(Color.GRAY, 0.5)
+		"bg": disabled_bg,
+		"text": disabled_text,
+		"gradient_start": disabled_bg,
+		"gradient_end": disabled_bg
 	}
 
 func _get_toggled_colors(colors: Dictionary) -> Dictionary:
+	var toggled_bg := colors["bg"].darkened(0.15)
 	return {
-		"bg": colors["bg"].darkened(0.15),
+		"bg": toggled_bg,
 		"text": colors["text"],
-		"border": colors["border"]
+		"gradient_start": toggled_bg,
+		"gradient_end": toggled_bg
 	}
 
 func _apply_style(colors: Dictionary, radius: int) -> void:
 	# Create StyleBoxFlat for button background
 	var style_normal := StyleBoxFlat.new()
-	style_normal.bg_color = colors["bg"]
+
+	# Apply gradient if available (No-Line Rule: use gradients instead of borders)
+	if colors.has("gradient_start") and colors.has("gradient_end"):
+		# Create gradient from golden to darker gold
+		style_normal.bg_color = colors["bg"]  # Fallback
+		style_normal.bg_color = colors["gradient_start"]
+		# Note: Godot StyleBoxFlat doesn't support gradients directly,
+		# so we use the lighter color as the base
+	else:
+		style_normal.bg_color = colors["bg"]
+
+	# No-Line Rule: Remove all borders, use corner radius for depth
 	style_normal.corner_radius_top_left = radius
 	style_normal.corner_radius_top_right = radius
 	style_normal.corner_radius_bottom_left = radius
 	style_normal.corner_radius_bottom_right = radius
-	style_normal.border_width_left = 1
-	style_normal.border_width_top = 1
-	style_normal.border_width_right = 1
-	style_normal.border_width_bottom = 1
-	style_normal.border_color = colors["border"]
-	
+	style_normal.border_width_left = 0
+	style_normal.border_width_top = 0
+	style_normal.border_width_right = 0
+	style_normal.border_width_bottom = 0
+
+	# Add ambient glow for primary buttons (Relic Archive design)
+	if button_type == "primary":
+		style_normal.shadow_color = ArcherDesignTokens.RA_AMBIENT_SHADOW_COLOR
+		style_normal.shadow_size = ArcherDesignTokens.RA_AMBIENT_SHADOW_BLUR
+		style_normal.shadow_offset = Vector2(0, 0)
+
 	# Set the style
 	add_theme_stylebox_override("normal", style_normal)
-	
-	# Set text color
+
+	# Set text color (using Relic Archive colors)
 	add_theme_color_override("font_color", colors["text"])
 	add_theme_color_override("font_hover_color", colors["text"])
 	add_theme_color_override("font_pressed_color", colors["text"])
-	add_theme_color_override("font_disabled_color", DesignTokens.COLOR_TEXT_DISABLED_DARK)
+	add_theme_color_override("font_disabled_color", ArcherDesignTokens.RA_ON_SURFACE_VARIANT)
 
 func _update_size() -> void:
 	# Set minimum size

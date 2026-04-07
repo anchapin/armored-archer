@@ -1,15 +1,16 @@
 extends Control
 
 # --- UI References ---
-@onready var gem_label: Label = $SafeAreaContainer/CenterContainer/VBoxContainer/GemContainer/GemLabel
-@onready var play_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/PlayButton
-@onready var pvp_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/PvpButton
-@onready var shop_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/ShopButton
-@onready var buy_gems_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/BuyGemsButton
-@onready var settings_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/SettingsButton
-@onready var quit_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/QuitButton
-@onready var loadout_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/LoadoutButton
-@onready var menu_container: Control = $SafeAreaContainer/CenterContainer/VBoxContainer
+@onready var title_label: Label = $SafeAreaContainer/MainContainer/TopBar/TitleLabel
+@onready var gem_label: Label = $SafeAreaContainer/MainContainer/TopBar/GemContainer/GemLabel
+@onready var play_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/ButtonContainer/LeftButtons/PlayButton
+@onready var pvp_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/ButtonContainer/LeftButtons/PvpButton
+@onready var shop_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/ButtonContainer/RightButtons/ShopButton
+@onready var buy_gems_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/ButtonContainer/RightButtons/BuyGemsButton
+@onready var settings_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/ButtonContainer/RightButtons/SettingsButton
+@onready var quit_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/ButtonContainer/RightButtons/QuitButton
+@onready var loadout_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/ButtonContainer/LeftButtons/LoadoutButton
+@onready var menu_container: Control = $SafeAreaContainer/MainContainer
 
 # --- Manager References ---
 @onready var gem_manager: Node = get_node_or_null("/root/GemManager")
@@ -43,15 +44,13 @@ func _ready() -> void:
 	settings_button.pressed.connect(_on_settings_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	loadout_button.pressed.connect(_on_loadout_pressed)
-	
-	# Apply theme if ThemeManager is available
-	if theme_manager:
-		_apply_theme()
-		theme_manager.theme_changed.connect(_on_theme_changed)
-	
+
+	# Apply Relic Archive dark theme directly
+	_apply_theme()
+
 	# Add hover animations to buttons
 	_add_button_animations()
-	
+
 	# Animate menu entry
 	_animate_menu_entry()
 
@@ -115,20 +114,34 @@ func _on_currency_updated( _gems: int, _gold: int) -> void:
 
 # --- Theme Support ---
 func _apply_theme() -> void:
-	if not theme_manager:
-		return
-	
-	var colors = theme_manager.get_theme_colors()
-	
-	# Apply background color
-	theme_manager.apply_background(self)
-	
-	# Apply to menu container if available
-	if menu_container:
-		menu_container.modulate = colors["surface"]
+	# Apply Relic Archive dark theme directly
+	var bg: ColorRect = get_node_or_null("ParchmentBackground") as ColorRect
+	if bg:
+		bg.color = ArcherDesignTokens.RA_SURFACE  # Dark obsidian background (base tier)
 
-func _on_theme_changed(is_dark: bool) -> void:
-	_apply_theme()
+	# Apply surface tier hierarchy to TopBar (container tier - floating panel)
+	var top_bar: PanelContainer = get_node_or_null("SafeAreaContainer/MainContainer/TopBar") as PanelContainer
+	if top_bar:
+		var top_bar_style := StyleBoxFlat.new()
+		top_bar_style.bg_color = ArcherDesignTokens.RA_SURFACE_CONTAINER  # Slightly lighter for depth
+		top_bar_style.corner_radius_top_left = 0
+		top_bar_style.corner_radius_top_right = 0
+		top_bar_style.corner_radius_bottom_left = 0
+		top_bar_style.corner_radius_bottom_right = 0
+		top_bar_style.border_width_left = 0
+		top_bar_style.border_width_top = 0
+		top_bar_style.border_width_right = 0
+		top_bar_style.border_width_bottom = 0
+		top_bar.add_theme_stylebox_override("panel", top_bar_style)
+
+	# Update title label color (left-aligned, white)
+	if title_label:
+		title_label.modulate = ArcherDesignTokens.RA_ON_SURFACE
+
+	# Update gem label color (right-aligned, golden)
+	if gem_label:
+		gem_label.modulate = ArcherDesignTokens.RA_PRIMARY  # Golden for currency
+
 
 # --- UI Animations ---
 func _add_button_animations() -> void:
