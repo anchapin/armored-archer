@@ -1,8 +1,8 @@
 extends Control
 
 # --- UI References ---
-@onready var title_label: Label = $SafeAreaContainer/MainContainer/TopBar/TitleLabel
-@onready var gem_label: Label = $SafeAreaContainer/MainContainer/TopBar/GemContainer/GemLabel
+@onready var title_label: Label = $SafeAreaContainer/MainContainer/TopBar/TopBarContent/TitleLabel
+@onready var gem_label: Label = $SafeAreaContainer/MainContainer/TopBar/TopBarContent/GemContainer/GemLabel
 @onready var play_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/ButtonContainer/LeftButtons/PlayButton
 @onready var pvp_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/ButtonContainer/LeftButtons/PvpButton
 @onready var shop_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/ButtonContainer/RightButtons/ShopButton
@@ -37,13 +37,13 @@ func _ready() -> void:
 
 	_update_gem_display()
 
-	play_button.pressed.connect(_on_play_pressed)
-	pvp_button.pressed.connect(_on_pvp_pressed)
-	shop_button.pressed.connect(_on_shop_pressed)
-	buy_gems_button.pressed.connect(_on_buy_gems_pressed)
-	settings_button.pressed.connect(_on_settings_pressed)
-	quit_button.pressed.connect(_on_quit_pressed)
-	loadout_button.pressed.connect(_on_loadout_pressed)
+	var _err = play_button.pressed.connect(_on_play_pressed)
+	_err = pvp_button.pressed.connect(_on_pvp_pressed)
+	_err = shop_button.pressed.connect(_on_shop_pressed)
+	_err = buy_gems_button.pressed.connect(_on_buy_gems_pressed)
+	_err = settings_button.pressed.connect(_on_settings_pressed)
+	_err = quit_button.pressed.connect(_on_quit_pressed)
+	_err = loadout_button.pressed.connect(_on_loadout_pressed)
 
 	# Apply Relic Archive dark theme directly
 	_apply_theme()
@@ -109,7 +109,7 @@ func _update_gem_display() -> void:
 	if gem_manager:
 		gem_label.text = "Gems: %d" % gem_manager.get_gem_balance()
 
-func _on_currency_updated( _gems: int, _gold: int) -> void:
+func _on_currency_updated(_gems: int, _gold: int) -> void:
 	_update_gem_display()
 
 # --- Theme Support ---
@@ -147,32 +147,32 @@ func _apply_theme() -> void:
 func _add_button_animations() -> void:
 	if not ui_automation:
 		return
-	
+
 	# Add hover animations to each button
 	play_button.mouse_entered.connect(func(): _on_button_hover(play_button))
 	play_button.mouse_exited.connect(func(): _on_button_hover_exit(play_button))
 	play_button.button_down.connect(func(): _on_button_press(play_button))
-	
+
 	pvp_button.mouse_entered.connect(func(): _on_button_hover(pvp_button))
 	pvp_button.mouse_exited.connect(func(): _on_button_hover_exit(pvp_button))
 	pvp_button.button_down.connect(func(): _on_button_press(pvp_button))
-	
+
 	shop_button.mouse_entered.connect(func(): _on_button_hover(shop_button))
 	shop_button.mouse_exited.connect(func(): _on_button_hover_exit(shop_button))
 	shop_button.button_down.connect(func(): _on_button_press(shop_button))
-	
+
 	buy_gems_button.mouse_entered.connect(func(): _on_button_hover(buy_gems_button))
 	buy_gems_button.mouse_exited.connect(func(): _on_button_hover_exit(buy_gems_button))
 	buy_gems_button.button_down.connect(func(): _on_button_press(buy_gems_button))
-	
+
 	settings_button.mouse_entered.connect(func(): _on_button_hover(settings_button))
 	settings_button.mouse_exited.connect(func(): _on_button_hover_exit(settings_button))
 	settings_button.button_down.connect(func(): _on_button_press(settings_button))
-	
+
 	quit_button.mouse_entered.connect(func(): _on_button_hover(quit_button))
 	quit_button.mouse_exited.connect(func(): _on_button_hover_exit(quit_button))
 	quit_button.button_down.connect(func(): _on_button_press(quit_button))
-	
+
 	loadout_button.mouse_entered.connect(func(): _on_button_hover(loadout_button))
 	loadout_button.mouse_exited.connect(func(): _on_button_hover_exit(loadout_button))
 	loadout_button.button_down.connect(func(): _on_button_press(loadout_button))

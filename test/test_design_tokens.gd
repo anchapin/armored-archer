@@ -2,8 +2,7 @@ extends GutTest
 
 # Unit tests for ArcherDesignTokens.gd
 # Tests design token constants and helper functions
-
-const ArcherDesignTokens = preload("res://autoloads/ArcherDesignTokens.gd")
+# Using the autoload singleton directly
 
 func test_primary_colors_exist() -> void:
 	assert_eq(ArcherDesignTokens.COLOR_PRIMARY, Color("#0060ce"), "Primary color should match")
