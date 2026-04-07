@@ -1,132 +1,100 @@
 @tool
 extends EditorPlugin
+## Godot MCP Plugin
+## Connects to the godot-mcp-server via WebSocket and executes tools.
 
-const _MCP_AUTOLOADS: Array[Array] = [
-	["autoload/MCPScreenshot", "res://addons/godot_mcp/mcp_screenshot_service.gd"],
-	["autoload/MCPInputService", "res://addons/godot_mcp/mcp_input_service.gd"],
-	["autoload/MCPGameInspector", "res://addons/godot_mcp/mcp_game_inspector_service.gd"],
-]
+const MCPClientScript = preload("res://addons/godot_mcp/mcp_client.gd")
+const ToolExecutorScript = preload("res://addons/godot_mcp/tool_executor.gd")
 
-const _MCP_TEMP_FILES: Array[String] = [
-	"mcp_game_request",
-	"mcp_game_response",
-	"mcp_input_commands",
-	"mcp_screenshot_request",
-]
-
-var websocket_server: Node
-var command_router: Node
-var status_panel: Control
+var _mcp_client: Node  # MCPClient
+var _tool_executor: Node  # ToolExecutor
+var _status_label: Label
 
 func _enter_tree() -> void:
-	# Create command router
-	command_router = preload("res://addons/godot_mcp/command_router.gd").new()
-	command_router.name = "MCPCommandRouter"
-	command_router.editor_plugin = self
-	add_child(command_router)
+	print("[Godot MCP] Plugin loading...")
 
-	# Create WebSocket server
-	websocket_server = preload("res://addons/godot_mcp/websocket_server.gd").new()
-	websocket_server.name = "MCPWebSocketServer"
-	websocket_server.command_router = command_router
-	add_child(websocket_server)
+	# Create MCP client
+	_mcp_client = MCPClientScript.new()
+	_mcp_client.name = "MCPClient"
+	add_child(_mcp_client)
 
-	# Create status panel
-	var panel_scene: PackedScene = preload("res://addons/godot_mcp/ui/status_panel.tscn")
-	status_panel = panel_scene.instantiate()
-	add_control_to_bottom_panel(status_panel, "MCP Server")
-	status_panel.call_deferred("setup", websocket_server, command_router)
+	# Create tool executor
+	_tool_executor = ToolExecutorScript.new()
+	_tool_executor.name = "ToolExecutor"
+	add_child(_tool_executor)  # _ready() runs here, creating child tools
+	_tool_executor.set_editor_plugin(self)  # Now _visualizer_tools exists
 
-	# Inject MCP autoloads into project settings
-	_inject_autoloads()
+	# Connect signals
+	_mcp_client.connected.connect(_on_connected)
+	_mcp_client.disconnected.connect(_on_disconnected)
+	_mcp_client.tool_requested.connect(_on_tool_requested)
+	_mcp_client.client_count_changed.connect(_on_client_count_changed)
 
-	websocket_server.start_server()
-	print("[MCP] Godot MCP Pro v1.6.0 started (ports 6505-6509)")
+	# Add status indicator to editor
+	_setup_status_indicator()
 
+	# Start connection
+	_mcp_client.connect_to_server()
+
+	print("[Godot MCP] Plugin loaded - connecting to MCP server...")
 
 func _exit_tree() -> void:
-	# Remove MCP autoloads and clean up temp files
-	_remove_autoloads()
-	_cleanup_temp_files()
+	print("[Godot MCP] Plugin unloading...")
 
-	if websocket_server:
-		websocket_server.stop_server()
+	if _mcp_client:
+		_mcp_client.disconnect_from_server()
+		_mcp_client.queue_free()
 
-	if status_panel:
-		remove_control_from_bottom_panel(status_panel)
-		status_panel.queue_free()
+	if _tool_executor:
+		_tool_executor.queue_free()
 
-	if command_router:
-		command_router.queue_free()
+	if _status_label:
+		remove_control_from_container(EditorPlugin.CONTAINER_TOOLBAR, _status_label)
+		_status_label.queue_free()
 
-	if websocket_server:
-		websocket_server.queue_free()
+	print("[Godot MCP] Plugin unloaded")
 
-	print("[MCP] Godot MCP Pro stopped")
+func _setup_status_indicator() -> void:
+	"""Add a small status label to the editor toolbar."""
+	_status_label = Label.new()
+	_status_label.text = "MCP: Connecting..."
+	_status_label.add_theme_color_override("font_color", Color.YELLOW)
+	_status_label.add_theme_font_size_override("font_size", 20)
+	add_control_to_container(EditorPlugin.CONTAINER_TOOLBAR, _status_label)
 
+func _on_connected() -> void:
+	print("[Godot MCP] Connected to MCP server")
+	if _status_label:
+		_status_label.text = "MCP: No Agent"
+		_status_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.0))  # orange
 
-func _inject_autoloads() -> void:
-	var changed := false
-	for entry: Array in _MCP_AUTOLOADS:
-		var key: String = entry[0]
-		var script: String = entry[1]
-		if not ProjectSettings.has_setting(key):
-			ProjectSettings.set_setting(key, "*" + script)
-			changed = true
-	if changed:
-		ProjectSettings.save()
+func _on_disconnected() -> void:
+	print("[Godot MCP] Disconnected from MCP server")
+	if _status_label:
+		_status_label.text = "MCP: Disconnected"
+		_status_label.add_theme_color_override("font_color", Color.RED)
 
-
-func _remove_autoloads() -> void:
-	var changed := false
-	for entry: Array in _MCP_AUTOLOADS:
-		var key: String = entry[0]
-		if ProjectSettings.has_setting(key):
-			ProjectSettings.set_setting(key, null)
-			changed = true
-	if changed:
-		ProjectSettings.save()
-
-
-func _process(_delta: float) -> void:
-	# Check if game inspector requested debugger continue
-	var flag_path := OS.get_user_data_dir() + "/mcp_debugger_continue"
-	if FileAccess.file_exists(flag_path):
-		DirAccess.remove_absolute(flag_path)
-		_try_debugger_continue()
-
-
-func _try_debugger_continue() -> void:
-	# Last resort: find and press the debugger Continue button to unstick the game
-	var base: Node = EditorInterface.get_base_control()
-	var continue_btn := _find_debugger_continue_button(base)
-	if continue_btn and continue_btn.visible and not continue_btn.disabled:
-		continue_btn.emit_signal("pressed")
-		push_warning("[MCP] Auto-pressed debugger Continue button")
+func _on_client_count_changed(count: int) -> void:
+	if not _status_label:
+		return
+	if count > 0:
+		_status_label.text = "MCP: Agent Active" if count == 1 else "MCP: Agents (%d)" % count
+		_status_label.add_theme_color_override("font_color", Color.GREEN)
 	else:
-		push_warning("[MCP] Could not find debugger Continue button")
+		_status_label.text = "MCP: No Agent"
+		_status_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.0))  # orange
 
+func _on_tool_requested(request_id: String, tool_name: String, args: Dictionary) -> void:
+	"""Handle incoming tool request from MCP server."""
+	print("[Godot MCP] Executing tool: ", tool_name)
 
-func _find_debugger_continue_button(node: Node) -> Button:
-	# Search for the Continue button in ScriptEditorDebugger
-	if node is Button:
-		var btn: Button = node
-		if btn.tooltip_text.contains("Continue") or btn.text == "Continue":
-			return btn
-	for child in node.get_children():
-		var found: Button = _find_debugger_continue_button(child)
-		if found:
-			return found
-	return null
+	# Execute the tool
+	var result: Dictionary = _tool_executor.execute_tool(tool_name, args)
 
-
-func _cleanup_temp_files() -> void:
-	var user_dir := OS.get_user_data_dir()
-	for filename: String in _MCP_TEMP_FILES:
-		var path := user_dir + "/" + filename
-		if FileAccess.file_exists(path):
-			DirAccess.remove_absolute(path)
-	# Also clean up screenshot image
-	var screenshot_path := user_dir + "/mcp_screenshot.png"
-	if FileAccess.file_exists(screenshot_path):
-		DirAccess.remove_absolute(screenshot_path)
+	var success: bool = result.get(&"ok", false)
+	if success:
+		result.erase(&"ok")
+		_mcp_client.send_tool_result(request_id, true, result)
+	else:
+		var error: String = result.get(&"error", "Unknown error")
+		_mcp_client.send_tool_result(request_id, false, null, error)
