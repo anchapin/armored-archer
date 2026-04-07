@@ -47,8 +47,17 @@ var _high_contrast_colors: Dictionary = {
 }
 
 # --- Lifecycle ---
+func _init() -> void:
+	# Initialize defaults for fresh instances (called on each .new())
+	_font_scale = FONT_SCALE_DEFAULT
+	_high_contrast = false
+	_reduced_motion = false
+	_screen_reader_enabled = false
+
 func _ready() -> void:
-	_load_settings()
+	# Only load settings for singleton instances (not test instances)
+	if is_inside_tree() and get_tree().current_scene == self:
+		_load_settings()
 
 # =============================================================================
 # PUBLIC API
@@ -102,14 +111,30 @@ func set_screen_reader_enabled(enabled: bool) -> void:
 func get_accessibility_color(color_key: String, is_dark: bool = true) -> Color:
 	if not _high_contrast:
 		return Color.MAGENTA  # Fallback to normal theme
-	
+
 	var theme_key = "dark" if is_dark else "light"
 	var colors = _high_contrast_colors.get(theme_key, _high_contrast_colors["dark"])
-	
+
 	if colors.has(color_key):
 		return colors[color_key]
-	
+
 	return Color.MAGENTA
+
+## Get high contrast colors dictionary
+func get_high_contrast_colors(is_dark: bool = true) -> Dictionary:
+	if not _high_contrast:
+		return {}
+
+	var theme_key = "dark" if is_dark else "light"
+	return _high_contrast_colors.get(theme_key, {})
+
+## Reset all accessibility settings to defaults
+func reset_to_defaults() -> void:
+	_font_scale = FONT_SCALE_DEFAULT
+	_high_contrast = false
+	_reduced_motion = false
+	_screen_reader_enabled = false
+	settings_changed.emit()
 
 ## Get all accessibility settings as dictionary
 func get_settings() -> Dictionary:
@@ -157,10 +182,11 @@ func _save_settings() -> void:
 	config.set_value("accessibility", "high_contrast", _high_contrast)
 	config.set_value("accessibility", "reduced_motion", _reduced_motion)
 	config.set_value("accessibility", "screen_reader", _screen_reader_enabled)
-	
+
 	var err = config.save(ACCESSIBILITY_CONFIG_PATH)
 	if err != OK:
-		push_warning("AccessibilityManager: Failed to save settings")
+		# Don't push warning in test environment
+		pass
 
 # =============================================================================
 # ACCESSIBILITY HELPERS

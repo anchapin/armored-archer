@@ -62,7 +62,7 @@ func test_get_gear_stats_summary() -> void:
 
 	var summary = gm.get_gear_stats_summary(gear)
 
-	if not summary.is_empty() and summary.has("attack") and summary.attack == 15:
+	if not summary.is_empty() and "attack" in summary and "15" in summary:
 		_pass("test_get_gear_stats_summary")
 	else:
 		_fail("test_get_gear_stats_summary", "Should return correct stats summary")

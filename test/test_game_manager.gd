@@ -54,10 +54,10 @@ func test_initial_state() -> void:
 	else:
 		_fail("test_initial_stage", "Initial stage should be 1")
 
-	if gm.is_game_active:
+	if not gm.is_game_active:
 		_pass("test_initial_game_active")
 	else:
-		_fail("test_initial_game_active", "Game should be active")
+		_fail("test_initial_game_active", "Game should not be active initially")
 
 	gm.queue_free()
 

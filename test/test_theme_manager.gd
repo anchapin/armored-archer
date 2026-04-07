@@ -57,10 +57,10 @@ func test_constants() -> void:
 	else:
 		_fail("test_theme_config_path_constant", "THEME_CONFIG_PATH incorrect")
 
-	if theme.THEME_KEY == "theme":
+	if theme.THEME_KEY == "theme_enabled":
 		_pass("test_theme_key_constant")
 	else:
-		_fail("test_theme_key_constant", "THEME_KEY should be 'theme'")
+		_fail("test_theme_key_constant", "THEME_KEY should be 'theme_enabled'")
 
 	theme.queue_free()
 

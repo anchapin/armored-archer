@@ -10,7 +10,8 @@
 extends Node
 
 # --- References ---
-@onready var analytics: Node = $"/root/AnalyticsManager" if has_node("/root/AnalyticsManager") else null
+var analytics: Node
+var network_manager: Node
 
 # --- RPC IDs ---
 const RPC_GAIN_XP = "armored_archer/gain_xp"
@@ -26,9 +27,6 @@ signal stats_updated(stats: Dictionary)
 signal level_up(new_level: int, ability_points_gained: int)
 signal xp_gained(amount: int, total_xp: int)
 signal stat_allocated(stat_name: String, amount: int)
-
-# --- Network Reference ---
-@onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
 
 # --- Initialization ---
 func _ready() -> void:

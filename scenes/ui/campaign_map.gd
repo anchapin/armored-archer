@@ -119,9 +119,9 @@ func create_stage_button(stage_data: Dictionary) -> Button:
 	button.custom_minimum_size = Vector2(400, 60)
 
 	# Get colors from DesignTokens if available
-	var primary_color = DesignTokens.COLOR_PRIMARY if design_tokens else Color("#4A90D9")
-	var success_color = DesignTokens.COLOR_SUCCESS if design_tokens else Color("#22C55E")
-	var warning_color = DesignTokens.COLOR_WARNING if design_tokens else Color("#F59E0B")
+	var primary_color = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color("#4A90D9")
+	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color("#22C55E")
+	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color("#F59E0B")
 	var text_color = Color.WHITE
 
 	if theme_manager:
@@ -226,7 +226,7 @@ func _apply_theme() -> void:
 		return
 	
 	var colors = theme_manager.get_theme_colors()
-	var is_dark = theme_manager.is_dark_theme()
+	var is_dark = theme_manager.is_dark_mode()
 	
 	# Apply background color
 	theme_manager.apply_background(self)
