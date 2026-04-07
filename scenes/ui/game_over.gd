@@ -11,9 +11,24 @@ var theme_manager: Node
 # --- Design Tokens Reference ---
 var design_tokens: Node
 
+# --- Manager References ---
+var player_stats: Node
+var gear_manager: Node
+
 # --- Game Over Colors ---
 const VICTORY_COLOR = Color("#22C55E")  # Green - DesignTokens.COLOR_SUCCESS
 const DEFEAT_COLOR = Color("#EF4444")   # Red - DesignTokens.COLOR_ERROR
+
+# --- Looted Gear ---
+var _looted_gear: Dictionary = {}
+
+# --- Rarity Colors ---
+const RARITY_COLORS = {
+	"common": "#FFFFFF",
+	"rare": "#00FF00",
+	"epic": "#9B30FF",
+	"legendary": "#FFA500"
+}
 
 func _ready() -> void:
 	# Get ThemeManager reference
@@ -21,6 +36,10 @@ func _ready() -> void:
 
 	# Get DesignTokens reference
 	design_tokens = get_node_or_null("/root/DesignTokens")
+
+	# Get manager references
+	player_stats = get_node_or_null("/root/PlayerStatsManager")
+	gear_manager = get_node_or_null("/root/GearManager")
 
 	# Apply theme if available
 	if theme_manager:
@@ -30,6 +49,11 @@ func _ready() -> void:
 	restart_button.pressed.connect(_on_restart_button_pressed)
 	GameManager.player_died.connect(_on_player_died)
 	GameManager.game_won.connect(_on_game_won)
+
+	# Connect to gear manager for loot
+	if gear_manager and gear_manager.has_signal("gear_generated"):
+		gear_manager.gear_generated.connect(_on_gear_generated)
+
 	visible = false
 
 func _on_player_died() -> void:
@@ -51,9 +75,53 @@ func _on_game_won() -> void:
 		var xp = loot_config.get("xp", 50)
 		var gold = loot_config.get("gold", 25)
 
-		if loot_label:
-			loot_label.text = "+" + str(xp) + " XP  +" + str(gold) + " Gold"
-			loot_label.visible = true
+		# Grant XP to player
+		if player_stats and player_stats.has_method("gain_xp"):
+			player_stats.gain_xp(xp, "pve")
+
+		# Generate gear loot
+		if gear_manager and gear_manager.has_method("generate_gear"):
+			var boss_id: String = encounter_data.get("boss", "")
+			gear_manager.generate_gear(GameManager.current_stage_id, not boss_id.is_empty())
+
+		# Display loot (will be updated when gear arrives)
+		_update_loot_label(xp, gold)
+
+func _update_loot_label(xp: int, gold: int) -> void:
+	"""Updates loot label with XP, gold, and earned gear.
+
+	Parameters:
+		xp: XP amount gained
+		gold: Gold amount gained
+	"""
+	var loot_text: String = "+" + str(xp) + " XP  +" + str(gold) + " Gold"
+
+	# Add gear to display if looted
+	if not _looted_gear.is_empty():
+		var gear_name: String = _looted_gear.get("name", "Unknown Gear")
+		var rarity: String = _looted_gear.get("rarity", "common")
+		var rarity_color: String = RARITY_COLORS.get(rarity, "#FFFFFF")
+		loot_text += "\n\n[color=%s][b]%s (%s)[/b][/color]" % [rarity_color, gear_name, rarity.capitalize()]
+
+	if loot_label:
+		loot_label.text = loot_text
+		loot_label.visible = true
+
+func _on_gear_generated(gear_data: Dictionary) -> void:
+	"""Handle gear generation from server.
+
+	Parameters:
+		gear_data: Generated gear dictionary
+	"""
+	_looted_gear = gear_data.duplicate()
+
+	# Update loot display with gear
+	var encounter_data = GameManager.current_encounter_data
+	if encounter_data.size() > 0 and CampaignManager:
+		var loot_config = CampaignManager.get_loot_config(GameManager.current_stage_id)
+		var xp = loot_config.get("xp", 50)
+		var gold = loot_config.get("gold", 25)
+		_update_loot_label(xp, gold)
 
 func _on_restart_button_pressed() -> void:
 	# If playing campaign mode, return to campaign map
@@ -72,6 +140,11 @@ func _exit_tree() -> void:
 			GameManager.player_died.disconnect(_on_player_died)
 		if GameManager.game_won.is_connected(_on_game_won):
 			GameManager.game_won.disconnect(_on_game_won)
+
+	# Disconnect gear manager
+	if gear_manager and gear_manager.has_signal("gear_generated"):
+		if gear_manager.gear_generated.is_connected(_on_gear_generated):
+			gear_manager.gear_generated.disconnect(_on_gear_generated)
 
 	# Disconnect theme manager
 	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
