@@ -83,6 +83,9 @@ func sync_campaign_progress() -> void:
 		if not boss_id in bosses_defeated:
 			bosses_defeated.append(boss_id)
 
+	# Emit campaign progress updated signal
+	update_campaign_progress()
+
 	# Save merged state locally
 	save_progress()
 
@@ -277,6 +280,25 @@ func unlock_next_stage(stage_id: String) -> void:
 					"chapter": int(current_chapter)
 				})
 
+func get_chapter_progress(chapter_id: String) -> float:
+	"""Calculates progress for a chapter based on completed stages.
+
+	Parameters:
+		chapter_id: Chapter identifier to calculate progress for
+
+	Returns:
+		float: Progress value from 0.0 to 1.0
+	"""
+	for campaign in campaigns_data.get("campaigns", []):
+		if campaign.id == chapter_id:
+			var total_stages = campaign.get("stages", []).size()
+			var completed_in_chapter = 0
+			for stage in campaign.get("stages", []):
+				if stage.id in completed_stages:
+					completed_in_chapter += 1
+			return float(completed_in_chapter) / float(total_stages)
+	return 0.0
+
 func handle_boss_defeat(boss_id: String) -> void:
 	"""Handles special rewards for defeating a boss.
 
@@ -397,6 +419,12 @@ func save_progress() -> void:
 	if file:
 		var _err = file.store_string(JSON.stringify(save_data))
 		file.close()
+
+func update_campaign_progress() -> void:
+	"""Emits campaign progress updated signal after data changes."""
+	for campaign in campaigns_data.get("campaigns", []):
+		var chapter_id = campaign.id
+		update_campaign_progress.emit(chapter_id, get_chapter_progress(chapter_id))
 
 func load_progress() -> void:
 	"""Loads campaign progress from user://campaign_progress.json."""
