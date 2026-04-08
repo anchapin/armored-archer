@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.5.0
-milestone_name: Alpha Readiness
+milestone: v4.0.0
+milestone_name: Gameplay Refinement
 status: unknown
 last_updated: "2026-04-08T19:44:40.371Z"
 progress:
-  total_phases: 18
-  completed_phases: 14
-  total_plans: 39
-  completed_plans: 55
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Armored Archer - Project State
