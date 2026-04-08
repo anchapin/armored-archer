@@ -32,15 +32,15 @@ const RANK_COLORS = {
 func _ready() -> void:
 	# Get ThemeManager reference
 	theme_manager = get_node_or_null("/root/ThemeManager")
-	
+
 	# Get DesignTokens reference
 	design_tokens = get_node_or_null("/root/DesignTokens")
-	
+
 	# Apply theme if available
 	if theme_manager:
 		_apply_theme()
 		theme_manager.theme_changed.connect(_on_theme_changed)
-	
+
 	# Get available chapters from CampaignManager
 	load_available_chapters()
 
@@ -125,7 +125,7 @@ func create_stage_button(stage_data: Dictionary) -> Button:
 	var text_color = Color.WHITE
 
 	if theme_manager:
-		text_color = theme_manager.get_text_primary_color()
+		text_color = theme_manager.get_text_color()
 
 	var stage_id = stage_data.get("id")
 	var is_unlocked = CampaignManager.is_stage_unlocked(stage_id)
@@ -203,7 +203,7 @@ func _on_progress_updated(chapter_id: String, progress: float) -> void:
 		print("Chapter %s progress: %d%%" % [chapter_id, percentage])
 
 func _on_back_button_pressed() -> void:
-	var result = get_tree().change_scene_to_file("res://scenes/main.tscn")
+	var result = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
 
 
 func _exit_tree() -> void:
@@ -233,11 +233,11 @@ func _apply_theme() -> void:
 	
 	# Apply colors to labels if they exist
 	if chapter_title:
-		chapter_title.modulate = colors["text_primary"]
+		chapter_title.modulate = colors["on_surface"]
 	if chapter_label:
-		chapter_label.modulate = colors["text_secondary"]
+		chapter_label.modulate = colors["on_surface"]
 	if progress_label:
-		progress_label.modulate = colors["text_secondary"]
+		progress_label.modulate = colors["on_surface"]
 	
 	# Rebuild stage buttons to apply new theme colors
 	build_stage_buttons()

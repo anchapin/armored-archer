@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.3.0
-milestone_name: Testing & QA Infrastructure
+milestone: v3.5.0
+milestone_name: Alpha Readiness
 status: unknown
-last_updated: "2026-04-03T12:51:52.056Z"
+last_updated: "2026-04-08T19:44:40.371Z"
 progress:
   total_phases: 18
   completed_phases: 14
-  total_plans: 42
-  completed_plans: 54
+  total_plans: 39
+  completed_plans: 55
 ---
 
 # Armored Archer - Project State
@@ -21,6 +21,8 @@ progress:
 
 ## Current Position
 
+Phase: 05
+Plan: Not started
 **Milestone**: v3.4.0 Tactical Gameplay & PvE Campaign
 **Active Work**: Phase 05 IN PROGRESS — difficulty validation fixed, get_campaign_progress RPC added, client sync implemented
 **Phase 04**: Loot System & Progression — DONE (3/3 plans executed, 6 tasks completed)

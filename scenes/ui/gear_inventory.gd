@@ -275,11 +275,11 @@ func _apply_theme() -> void:
 	
 	# Apply colors to labels
 	if gear_name_label:
-		gear_name_label.modulate = colors["text_primary"]
+		gear_name_label.modulate = colors["on_surface"]
 	if gear_rarity_label:
-		gear_rarity_label.modulate = colors["text_secondary"]
+		gear_rarity_label.modulate = colors["on_surface"]
 	if gear_type_label:
-		gear_type_label.modulate = colors["text_secondary"]
+		gear_type_label.modulate = colors["on_surface"]
 	
 	# Refresh gear details to apply theme
 	if not current_gear.is_empty():

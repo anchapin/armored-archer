@@ -4,6 +4,10 @@ class_name CharacterBody2DScript
 ## Base character body script for the player
 ## Handles movement, physics, and basic character behavior
 
+# --- Health Stats ---
+@export var max_health: int = 500
+var current_health: int
+
 # --- Movement Stats ---
 @export var move_speed: float = 200.0
 @export var acceleration: float = 800.0
@@ -31,6 +35,7 @@ func _ready() -> void:
 	# Initialize character state
 	is_moving = false
 	is_aiming = false
+	current_health = max_health
 	# Add player to group for ShootingManager
 	add_to_group("Player")
 
@@ -75,6 +80,10 @@ func _physics_process(delta: float) -> void:
 
 	# Move the character
 	var _moved = move_and_slide()
+
+
+	# Clamp player position to viewport bounds
+	_clamp_to_viewport()
 
 
 ## Handle shooting when player presses shoot button
@@ -143,3 +152,36 @@ func get_aim_direction() -> Vector2:
 
 func is_player_aiming() -> bool:
 	return is_aiming
+
+
+## Handle taking damage from enemies
+func take_damage(amount: int) -> void:
+	current_health -= amount
+	if current_health <= 0:
+		die()
+
+
+## Handle player death
+func die() -> void:
+	# Trigger game over
+	var game_mgr = get_node_or_null("/root/GameManager")
+	if game_mgr and game_mgr.has_method("end_game"):
+		game_mgr.end_game(false)
+
+## Clamp player position to viewport bounds
+func _clamp_to_viewport() -> void:
+	var camera = get_viewport().get_camera_2d()
+	if not camera:
+		return
+	
+	var viewport_size = get_viewport_rect().size
+	var half_size = viewport_size / 2.0
+	var margin = 20.0  # Keep player slightly inside edges
+	
+	var min_x = camera.global_position.x - half_size.x + margin
+	var max_x = camera.global_position.x + half_size.x - margin
+	var min_y = camera.global_position.y - half_size.y + margin
+	var max_y = camera.global_position.y + half_size.y - margin
+	
+	global_position.x = clamp(global_position.x, min_x, max_x)
+	global_position.y = clamp(global_position.y, min_y, max_y)

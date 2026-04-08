@@ -1,7 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://brute_enemy_scene"]
+[gd_scene format=3 uid="uid://c8lcijrsa7e2h"]
 
-[ext_resource type="Script" path="res://scenes/enemies/brute_enemy.gd" id="1_brute_enemy_script"]
-[ext_resource type="PlaceholderTexture2D" uid="uid://enemy_sprite" path="res://assets/sprites/enemy.tres" id="2_brute_enemy_sprite"]
+[ext_resource type="Script" uid="uid://up4clxg0p7el" path="res://scenes/enemies/brute_enemy.gd" id="1_brute_enemy_script"]
+[ext_resource type="Texture2D" uid="uid://dchs2cjfe8xyh" path="res://assets/sprites/enemies/brute_idle_down_0.png" id="2_6phdu"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_brute_enemy"]
 size = Vector2(48, 48)
@@ -9,18 +9,18 @@ size = Vector2(48, 48)
 [sub_resource type="CircleShape2D" id="CircleShape2D_hurt"]
 radius = 40.0
 
-[node name="BruteEnemy" type="CharacterBody2D"]
+[node name="BruteEnemy" type="CharacterBody2D" unique_id=1308590970]
 script = ExtResource("1_brute_enemy_script")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-texture = ExtResource("2_brute_enemy_sprite")
-offset = Vector2(24, 24)
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=292497965]
 modulate = Color(0.5, 0.2, 0.5, 1)
+texture = ExtResource("2_6phdu")
+offset = Vector2(24, 24)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1871558409]
 shape = SubResource("RectangleShape2D_brute_enemy")
 
-[node name="HurtArea" type="Area2D" parent="."]
+[node name="HurtArea" type="Area2D" parent="." unique_id=443770623]
 
-[node name="HurtCollision" type="CollisionShape2D" parent="HurtArea"]
+[node name="HurtCollision" type="CollisionShape2D" parent="HurtArea" unique_id=388208983]
 shape = SubResource("CircleShape2D_hurt")

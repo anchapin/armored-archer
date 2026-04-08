@@ -95,7 +95,7 @@ func _display_comparison_result(comparison: Dictionary) -> void:
 	var text_color = Color.WHITE
 	
 	if theme_manager:
-		text_color = theme_manager.get_text_primary_color()
+		text_color = theme_manager.get_text_color()
 
 	# Build result text with stat differences
 	var result_text: String = ""
@@ -145,11 +145,11 @@ func _apply_theme() -> void:
 	
 	# Apply colors to labels
 	if gear1_name:
-		gear1_name.modulate = colors["text_primary"]
+		gear1_name.modulate = colors["on_surface"]
 	if gear2_name:
-		gear2_name.modulate = colors["text_primary"]
+		gear2_name.modulate = colors["on_surface"]
 	if result_label:
-		result_label.modulate = colors["text_primary"]
+		result_label.modulate = colors["on_surface"]
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()

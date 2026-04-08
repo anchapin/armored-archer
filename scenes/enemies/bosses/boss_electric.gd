@@ -265,7 +265,8 @@ func enter_phase_3() -> void:
 
 func die() -> void:
 	boss_defeated.emit(boss_name)
-	CampaignManager.unlock_modifier_pool("lightning_damage")
+	if CampaignManager and CampaignManager.has_method("unlock_modifier_pool"):
+		CampaignManager.unlock_modifier_pool("lightning_damage")
 	super.die()
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:

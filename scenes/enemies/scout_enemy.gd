@@ -55,9 +55,11 @@ func _physics_process(delta: float) -> void:
 	var _moved = move_and_slide()
 
 func find_player() -> void:
-	var players: Array[Node] = get_tree().get_nodes_in_group("Player")
+	var players = get_tree().get_nodes_in_group("Player")
 	if players.size() > 0:
 		player_ref = players[0] as CharacterBody2D
+	else:
+		player_ref = null
 
 func chase_player() -> void:
 	if not player_ref:

@@ -2,10 +2,10 @@ extends BaseEnemy
 
 ## AI state variables
 var player_ref: CharacterBody2D = null
-var detection_range: float = 400.0
-var attack_range: float = 50.0
+var detection_range: float = 200.0
+var attack_range: float = 35.0
 var is_attacking: bool = false
-var attack_cooldown: float = 1.0
+var attack_cooldown: float = 1.5
 var attack_timer: float = 0.0
 
 func _ready() -> void:
@@ -32,6 +32,8 @@ func find_player() -> void:
 	var players = get_tree().get_nodes_in_group("Player")
 	if players.size() > 0:
 		player_ref = players[0]
+	else:
+		player_ref = null
 
 func chase_player() -> void:
 	if not player_ref:
@@ -54,5 +56,5 @@ func perform_attack() -> void:
 		player_ref.take_damage(damage)
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
-	if body.is_in_group("Player"):
+	if body.is_in_group("Player") and body.has_method("take_damage"):
 		body.take_damage(damage)

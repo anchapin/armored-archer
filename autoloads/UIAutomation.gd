@@ -67,7 +67,7 @@ static func fade_in(node: Node, duration: float = DEFAULT_DURATION, easing: Easi
 		return null
 	
 	var tween = node.create_tween()
-	var ease = _get_ease_type(easing)
+	var ease_type = _get_ease_type(easing)
 	
 	# Set initial state
 	node.modulate.a = 0.0
@@ -75,7 +75,9 @@ static func fade_in(node: Node, duration: float = DEFAULT_DURATION, easing: Easi
 		node.visible = true
 	
 	# Fade in
-	tween.tween_property(node, "modulate:a", 1.0, duration).set_ease(ease).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(node, "modulate:a", 1.0, duration)
+	tweener1.set_ease(ease_type)
+	tweener1.set_trans(Tween.TRANS_SINE)
 	
 	return tween
 
@@ -85,16 +87,18 @@ static func fade_out(node: Node, duration: float = DEFAULT_DURATION, easing: Eas
 		return null
 	
 	var tween = node.create_tween()
-	var ease = _get_ease_type(easing)
+	var ease_type = _get_ease_type(easing)
 	
 	# Set initial state
 	node.modulate.a = 1.0
 	
 	# Fade out
-	tween.tween_property(node, "modulate:a", 0.0, duration).set_ease(ease).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(node, "modulate:a", 0.0, duration)
+	tweener1.set_ease(ease_type)
+	tweener1.set_trans(Tween.TRANS_SINE)
 	
 	if free_on_complete:
-		tween.tween_callback(node.queue_free)
+		tween.tween_callback(func(): node.queue_free())
 	
 	return tween
 
@@ -108,7 +112,7 @@ static func scale_in(node: Node, duration: float = DEFAULT_DURATION, easing: Eas
 		return null
 	
 	var tween = node.create_tween()
-	var ease = _get_ease_type(easing)
+	var ease_type = _get_ease_type(easing)
 	
 	# Set initial state
 	node.scale = Vector2.ZERO
@@ -116,11 +120,13 @@ static func scale_in(node: Node, duration: float = DEFAULT_DURATION, easing: Eas
 		node.visible = true
 	
 	# Scale in with optional overshoot
+	var tweener1 = tween.tween_property(node, "scale", Vector2.ONE, duration)
+	tweener1.set_ease(ease_type)
 	if easing == EasingType.EASE_OUT:
 		# Elastic out effect
-		tween.tween_property(node, "scale", Vector2.ONE, duration).set_ease(ease).set_trans(Tween.TRANS_ELASTIC)
+		tweener1.set_trans(Tween.TRANS_ELASTIC)
 	else:
-		tween.tween_property(node, "scale", Vector2.ONE, duration).set_ease(ease).set_trans(Tween.TRANS_SINE)
+		tweener1.set_trans(Tween.TRANS_SINE)
 	
 	return tween
 
@@ -130,16 +136,18 @@ static func scale_out(node: Node, duration: float = DEFAULT_DURATION, easing: Ea
 		return null
 	
 	var tween = node.create_tween()
-	var ease = _get_ease_type(easing)
+	var ease_type = _get_ease_type(easing)
 	
 	# Set initial state
 	node.scale = Vector2.ONE
 	
 	# Scale out
-	tween.tween_property(node, "scale", Vector2.ZERO, duration).set_ease(ease).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(node, "scale", Vector2.ZERO, duration)
+	tweener1.set_ease(ease_type)
+	tweener1.set_trans(Tween.TRANS_SINE)
 	
 	if free_on_complete:
-		tween.tween_callback(node.queue_free)
+		tween.tween_callback(func(): node.queue_free())
 	
 	return tween
 
@@ -153,7 +161,7 @@ static func slide_in(node: Node, direction: SlideDirection, duration: float = DE
 		return null
 	
 	var tween = node.create_tween()
-	var ease = _get_ease_type(easing)
+	var ease_type = _get_ease_type(easing)
 	
 	# Calculate start position based on direction
 	var screen_size = Engine.get_main_loop().root.get_visible_rect().size
@@ -175,7 +183,9 @@ static func slide_in(node: Node, direction: SlideDirection, duration: float = DE
 		node.visible = true
 	
 	# Slide to original position
-	tween.tween_property(node, "position", node.position - offset, duration).set_ease(ease).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(node, "position", node.position - offset, duration)
+	tweener1.set_ease(ease_type)
+	tweener1.set_trans(Tween.TRANS_SINE)
 	
 	return tween
 
@@ -185,7 +195,7 @@ static func slide_out(node: Node, direction: SlideDirection, duration: float = D
 		return null
 	
 	var tween = node.create_tween()
-	var ease = _get_ease_type(easing)
+	var ease_type = _get_ease_type(easing)
 	
 	# Calculate end position based on direction
 	var screen_size = Engine.get_main_loop().root.get_visible_rect().size
@@ -202,10 +212,12 @@ static func slide_out(node: Node, direction: SlideDirection, duration: float = D
 			offset = Vector2(0, screen_size.y)
 	
 	# Slide to end position
-	tween.tween_property(node, "position", node.position + offset, duration).set_ease(ease).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(node, "position", node.position + offset, duration)
+	tweener1.set_ease(ease_type)
+	tweener1.set_trans(Tween.TRANS_SINE)
 	
 	if free_on_complete:
-		tween.tween_callback(node.queue_free)
+		tween.tween_callback(func(): node.queue_free())
 	
 	return tween
 
@@ -222,9 +234,13 @@ static func pulse(node: Node, scale_factor: float = 1.1, duration: float = 0.15)
 	var original_scale = node.scale
 	
 	# Pulse up
-	tween.tween_property(node, "scale", original_scale * scale_factor, duration).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(node, "scale", original_scale * scale_factor, duration)
+	tweener1.set_ease(Tween.EASE_OUT)
+	tweener1.set_trans(Tween.TRANS_SINE)
 	# Pulse back
-	tween.tween_property(node, "scale", original_scale, duration).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
+	var tweener2 = tween.tween_property(node, "scale", original_scale, duration)
+	tweener2.set_ease(Tween.EASE_IN)
+	tweener2.set_trans(Tween.TRANS_SINE)
 	
 	return tween
 
@@ -259,7 +275,9 @@ static func button_hover_in(button: Control) -> Tween:
 		return null
 	
 	var tween = button.create_tween()
-	tween.tween_property(button, "scale", Vector2(1.05, 1.05), 0.1).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(button, "scale", Vector2(1.05, 1.05), 0.1)
+	tweener1.set_ease(Tween.EASE_OUT)
+	tweener1.set_trans(Tween.TRANS_SINE)
 	return tween
 
 ## Animate button hover out (scale back)
@@ -268,7 +286,9 @@ static func button_hover_out(button: Control) -> Tween:
 		return null
 	
 	var tween = button.create_tween()
-	tween.tween_property(button, "scale", Vector2.ONE, 0.1).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(button, "scale", Vector2.ONE, 0.1)
+	tweener1.set_ease(Tween.EASE_OUT)
+	tweener1.set_trans(Tween.TRANS_SINE)
 	return tween
 
 ## Animate button press (scale down then back)
@@ -277,8 +297,12 @@ static func button_press(button: Control) -> Tween:
 		return null
 	
 	var tween = button.create_tween()
-	tween.tween_property(button, "scale", Vector2(0.95, 0.95), 0.05).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
-	tween.tween_property(button, "scale", Vector2.ONE, 0.1).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(button, "scale", Vector2(0.95, 0.95), 0.05)
+	tweener1.set_ease(Tween.EASE_OUT)
+	tweener1.set_trans(Tween.TRANS_SINE)
+	var tweener2 = tween.tween_property(button, "scale", Vector2.ONE, 0.1)
+	tweener2.set_ease(Tween.EASE_OUT)
+	tweener2.set_trans(Tween.TRANS_SINE)
 	return tween
 
 # =============================================================================
@@ -294,7 +318,9 @@ static func animate_number(label: Label, from_value: int, to_value: int, duratio
 	
 	# Create a custom tweener for counting
 	var counter = { "value": from_value }
-	tween.tween_property(counter, "value", to_value, duration).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(counter, "value", to_value, duration)
+	tweener1.set_ease(Tween.EASE_OUT)
+	tweener1.set_trans(Tween.TRANS_SINE)
 	tween.tween_callback(func(): label.text = str(counter["value"]))
 	
 	# Update label each frame
@@ -325,13 +351,17 @@ static func screen_fade(color: Color, duration: float = 0.3, callback: Callable 
 	var tween = overlay.create_tween()
 	
 	# Fade to color
-	tween.tween_property(overlay, "modulate:a", 1.0, duration / 2.0).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(overlay, "modulate:a", 1.0, duration / 2.0)
+	tweener1.set_ease(Tween.EASE_IN)
+	tweener1.set_trans(Tween.TRANS_SINE)
 	
 	if callback.is_valid():
 		tween.tween_callback(callback)
 	
 	# Fade from color
-	tween.tween_property(overlay, "modulate:a", 0.0, duration / 2.0).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	var tweener2 = tween.tween_property(overlay, "modulate:a", 0.0, duration / 2.0)
+	tweener2.set_ease(Tween.EASE_OUT)
+	tweener2.set_trans(Tween.TRANS_SINE)
 	tween.tween_callback(overlay.queue_free)
 
 # =============================================================================

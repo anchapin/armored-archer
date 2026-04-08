@@ -1,5 +1,97 @@
 # Armored Archer - Milestones Summary
 
+## v3.4.0 Tactical Gameplay & PvE Campaign (Shipped: 2026-04-06)
+
+**Phases completed:** 5 phases (PvP Backend Integration, Campaign Map & Encounters, Enemy AI & PvE Combat, Loot System & Progression, Campaign State Persistence)
+
+**Plans completed:** 6 plans
+**Tasks completed:** ~15 tasks
+**Files modified:** ~50 files
+**Lines added:** ~2,500 insertions
+
+**Key accomplishments:**
+- PvP backend integration with matchmaking, combat sync, and gear loadouts
+- Campaign map with 8 encounters across 3 difficulty tiers (Forest → Cavern → Mountain)
+- Enemy AI with difficulty-based tactics (random → adaptive)
+- Loot system with rarity scaling (Common → Rare → Epic → Legendary)
+- Campaign state persistence with server sync and cross-session save
+
+**Project**: Armored Archer
+**Focus**: Tactical Gameplay & PvE Campaign
+**Timeline**: ~5 days (2026-04-01 → 2026-04-06)
+**Goal**: Functional PvP and PvE gameplay loops
+
+---
+
+## v3.2.0 Pixel Art (Shipped: 2026-04-08)
+
+**Phases completed:** 8 phases (Project Settings & Import Pipeline, Beta Readiness, Coverage Reporting, Player Character Animation, Enemy Sprites, Test Infrastructure Integration, Equipment & UI Sprites, Fix Broken Packages)
+
+**Plans completed:** ~35 plans
+**Tasks completed:** ~100+ tasks
+**Files modified:** ~200 files
+**Lines added:** ~369 insertions (planning files only)
+
+**Key accomplishments:**
+- Pixel-perfect viewport configuration (640x360, canvas_items, integer scaling)
+- 168 player sprite frames across 6 animation states and 4 directions
+- 928 enemy sprites for 8 enemy types with full animation states
+- 31 equipment sprites (bows, arrows, armor, helms, amulets)
+- 5 UI icons (health, mana, speed, strength, inventory)
+- Beta deployment infrastructure with 6 services (postgres, redis, nakama, prometheus, grafana)
+- Coverage reporting and quality gates automation
+- Test infrastructure (Go testify, Godot GUT enhancements)
+
+**Project**: Armored Archer
+**Focus**: Pixel Art
+**Timeline**: ~15 days (2026-03-24 → 2026-04-08)
+**Goal**: Create all needed pixel art sprites to replace Godot placeholder textures
+
+---
+
+## v3.1.0 Polish & Juice (Shipped: 2026-03-27)
+
+**Phases completed:** 4 phases
+
+**Plans completed:** 4 plans
+**Tasks completed:** ~15 tasks
+**Files modified:** ~20 files
+**Lines added:** ~1,500 insertions
+
+**Key accomplishments:**
+- Particle effects system with emission patterns
+- Post-processing effects (bloom, color grading, screen effects)
+- UI polish with smooth transitions and hover states
+- Audio polish with enhanced sound effects and spatial audio
+
+**Project**: Armored Archer
+**Focus**: Polish & Juice
+**Timeline**: ~3 days (2026-03-24 → 2026-03-27)
+**Goal**: Enhance visual feedback with particles, post-processing, and animations
+
+---
+
+## v3.0.0 Visual Improvements (Shipped: 2026-03-24)
+
+**Phases completed:** 4 phases
+
+**Plans completed:** 4 plans
+**Tasks completed:** ~15 tasks
+**Files modified:** ~20 files
+**Lines added:** ~1,200 insertions
+
+**Key accomplishments:**
+- Particle effects for enhanced visual feedback
+- Post-processing shaders (bloom, chromatic aberration, vignette)
+- UI visual enhancements (animations, transitions, polish)
+
+**Project**: Armored Archer
+**Focus**: Visual Improvements
+**Timeline**: ~5 days
+**Goal**: Enhance game visuals with particle effects and post-processing
+
+---
+
 ## v2.2.0 UI/UX Polish (Shipped: 2026-03-19)
 
 **Phases completed:** 4 phases (Design System Foundation, Core UI Components, Screen Improvements, Animation & Polish)
