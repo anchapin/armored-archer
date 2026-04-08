@@ -120,7 +120,30 @@ Players always know what to do next (map markers, quest objectives, level requir
 
 ## Traceability
 
-*This section populated by roadmap during phase planning. Each requirement maps to specific phase plans for implementation verification.*
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| COMBAT-01 | Phase 1 | Pending |
+| COMBAT-02 | Phase 1 | Pending |
+| COMBAT-03 | Phase 1 | Pending |
+| COMBAT-04 | Phase 1 | Pending |
+| COMBAT-05 | Phase 1 | Pending |
+| ENEMY-01 | Phase 2 | Pending |
+| ENEMY-02 | Phase 2 | Pending |
+| ENEMY-03 | Phase 2 | Pending |
+| JUICE-01 | Phase 3 | Pending |
+| JUICE-02 | Phase 3 | Pending |
+| JUICE-03 | Phase 3 | Pending |
+| JUICE-04 | Phase 3 | Pending |
+| PVP-01 | Phase 4 | Pending |
+| PVP-02 | Phase 4 | Pending |
+| PVP-03 | Phase 4 | Pending |
+| PROG-01 | Phase 5 | Pending |
+| PROG-02 | Phase 5 | Pending |
+| PROG-03 | Phase 5 | Pending |
+| PROG-04 | Phase 5 | Pending |
+| DIFFICULTY-01 | Phase 5 | Pending |
+| DIFFICULTY-02 | Phase 5 | Pending |
+| DIFFICULTY-03 | Phase 5 | Pending |
 
 ---
 
