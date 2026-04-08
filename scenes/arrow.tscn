@@ -1,20 +1,22 @@
-[gd_scene load_steps=4 format=3 uid="uid://arrow_scene"]
+[gd_scene format=3 uid="uid://bp06tspyewy1f"]
 
-[ext_resource type="Script" path="res://scripts/arrow.gd" id="1_arrow_script"]
-[ext_resource type="PlaceholderTexture2D" uid="uid://arrow_sprite" path="res://assets/sprites/arrow.tres" id="2_arrow_sprite"]
+[ext_resource type="Script" uid="uid://3ll7bv1mlq7y" path="res://scripts/arrow.gd" id="1_arrow_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/arrow.tres" id="2_arrow_sprite"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_arrow"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_arrow"]
 size = Vector2(32, 8)
 
-[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_arrow"]
-
-[node name="Arrow" type="Area2D"]
-script = ExtResource("1_arrow_script")
+[node name="Arrow" type="Area2D" unique_id=366470969]
 material = SubResource("CanvasItemMaterial_arrow")
+collision_layer = 1
+collision_mask = 2
+script = ExtResource("1_arrow_script")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=329497092]
 shape = SubResource("RectangleShape2D_arrow")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=524584392]
 texture = ExtResource("2_arrow_sprite")
 offset = Vector2(16, 4)

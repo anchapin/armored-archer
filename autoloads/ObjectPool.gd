@@ -85,7 +85,9 @@ func _initialize_pools() -> void:
 		enemy.set_physics_process(false)
 		enemy.visible = false
 		_enemy_pool.append(enemy)
-		add_child(enemy)
+		# CRITICAL: Don't add to scene yet - enemies added to scene during initialization
+		# will exist and be hittable but not tracked by spawner.
+		# They will be added to scene when actually spawned via get_enemy()
 
 	for i in range(max(adjusted_hit_pool, 3)):
 		var effect = _hit_effect_scene.instantiate()
@@ -155,6 +157,12 @@ func get_enemy() -> Node:
 	enemy.set_process(true)
 	enemy.set_physics_process(true)
 	enemy.visible = true
+	
+	# CRITICAL: Add to scene if not parented (enemies without parents can't be hittable)
+	# This handles both first-time pool use and re-parenting from scene
+	if enemy.get_parent() == null:
+		add_child(enemy)
+	
 	_active_enemies.append(enemy)
 
 	return enemy

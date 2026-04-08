@@ -4,7 +4,7 @@ extends Area2D
 
 # --- Configuration ---
 var speed: float = 800.0
-var damage: int = 25
+var damage: int = 50
 var direction: Vector2 = Vector2.RIGHT
 var lifetime: float = 5.0
 var _lifetime_timer: float = 0.0
@@ -38,22 +38,42 @@ func setup(start_pos: Vector2, dir: Vector2, dmg: int, spd: float = 800.0) -> vo
 	_lifetime_timer = 0.0
 	is_active = true
 
+	# CRITICAL: Arrows (Area2D) use collision_layer=1 (projectiles) to collide with enemies on layer 2
+	# The arrow's collision_layer=1 must be in the enemy's collision_mask
+	# The arrow's collision_mask=2 must match the enemy's collision_layer
+	collision_layer = 1
+	# Set collision mask to check enemy layer (layer 2)
+	collision_mask = 2
+
+	# CRITICAL: Re-enable collision shape (it's disabled in reset_pooled_state)
+	if _collision_shape:
+		_collision_shape.disabled = false
+
 	# Rotate sprite to face direction
 	if direction.length() > 0.1:
 		rotation = direction.angle()
+
+	# Log collision layers for debugging
+	if _collision_shape:
+		print("DEBUG: Arrow setup - collision_layer=%d, collision_mask=%d, is_active=%s" % [collision_layer, collision_mask, is_active])
 
 func _on_body_entered(body: Node) -> void:
 	"""Handle collision with body."""
 	if not is_active:
 		return
 
+	print("DEBUG: Arrow hit body: %s, collision_layer=%d, collision_mask=%d" % [body.name, collision_layer, collision_mask])
+
 	# Check if we hit an enemy
-	if body.is_in_group("Enemy") or body.is_in_group("Boss"):
+	if body.is_in_group("Enemies") or body.is_in_group("Boss"):
+		print("DEBUG: Arrow hit enemy: %s, damage: %d" % [body.name, damage])
 		if body.has_method("take_damage"):
+			print("DEBUG: Calling take_damage(%d) on enemy %s" % [damage, body.name])
 			body.take_damage(damage)
 		_return_to_pool()
 	elif body.is_in_group("Environment"):
 		# Hit wall/obstacle
+		print("DEBUG: Arrow hit environment")
 		_return_to_pool()
 
 func _return_to_pool() -> void:
@@ -75,10 +95,14 @@ func reset_pooled_state() -> void:
 	lifetime = 5.0
 	position = Vector2.ZERO
 	rotation = 0.0
+	# CRITICAL: Reset collision_layer to 1 (projectiles)
+	# Arrows (Area2D) should have collision_layer=1 and use collision_mask=2 to detect enemies on layer 2
+	collision_layer = 1
 
 	# Disable collision
 	if _collision_shape:
 		_collision_shape.set_deferred("disabled", true)
+
 
 func _exit_tree() -> void:
 	# Clean up any remaining references
