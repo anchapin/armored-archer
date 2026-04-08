@@ -1,14 +1,14 @@
 # Armored Archer
 
-## Current Milestone: v2.3.0 Testing & QA Infrastructure
+## Current Milestone: v3.5.0 Alpha Readiness
 
-**Goal:** Build comprehensive test infrastructure and QA processes to catch bugs early, ship with confidence, test at scale, and streamline QA workflows.
+**Goal:** Final validation, performance check, and alpha deployment preparation.
 
 **Target features:**
-- Comprehensive test coverage (backend, frontend, integration)
-- Automated CI/CD quality gates
-- Load testing and performance benchmarks
-- QA workflow automation and bug tracking
+- Performance benchmarking and validation
+- Security review and vulnerability assessment
+- Alpha deployment pipeline and rollback procedures
+- Monitoring and alerting configuration
 
 ## What This Is
 
@@ -30,16 +30,21 @@ Quality and reliability are foundational — every feature must be tested, every
 - ✓ **Go Backend Migration** — v2.0.0 — Complete TypeScript to Go migration with 234 integration tests
 - ✓ **Core Gameplay** — v1.x — Combat, matchmaking, gear, progression, seasons
 - ✓ **Alpha Launch** — v2.1.0 — Monitoring, observability, user onboarding
+- ✓ **Test Infrastructure** — v2.3.0 — Go testify, Godot GUT, unified test runner, fixtures, mocks
+- ✓ **Visual Improvements** — v3.0.0 — Particle effects, post-processing shaders
+- ✓ **Polish & Juice** — v3.1.0 — Enhanced UI animations, audio polish
+- ✓ **Pixel Art** — v3.2.0 — 1,100+ sprites, pixel-perfect rendering, character/enemy animations
+- ✓ **Tactical Gameplay** — v3.4.0 — PvP backend integration, PvE campaign, enemy AI, loot system, persistence
 
 ### Active
 
 *Current scope. Building toward these.*
 
-- [ ] **Test Coverage** — Comprehensive unit, integration, and E2E tests for backend and frontend
-- [ ] **CI/CD Quality Gates** — Automated testing in pipeline with coverage thresholds
-- [ ] **Load Testing** — Performance benchmarks and stress testing infrastructure
-- [ ] **QA Workflow** — Bug tracking, automated verification, regression testing
-- [ ] **Test Reporting** — Coverage reports, test metrics, quality dashboards
+- [ ] **Performance Benchmarking** — Validate response times, memory usage, and frame rate targets
+- [ ] **Load Testing** — Stress test with 1000+ concurrent users
+- [ ] **Security Review** — Vulnerability assessment, input validation audit, penetration testing
+- [ ] **Alpha Deployment** — Deployment pipeline, rollback procedures, environment configuration
+- [ ] **Monitoring Setup** — Alert rules, dashboards, error tracking integration
 
 ### Out of Scope
 
@@ -56,20 +61,31 @@ Quality and reliability are foundational — every feature must be tested, every
 - Godot 4.x for game client (GDScript)
 - Go 1.21+ for Nakama backend
 - PostgreSQL for data persistence
-- Jest for existing backend tests
-- Godot test framework for client tests
+- testify for Go backend tests
+- Godot GUT framework for client tests
+
+**Current Codebase State:**
+- Godot LOC: ~83,839 lines
+- Backend: Go migration complete, TypeScript removed
+- Coverage: 94.55% backend lines
+- Sprites: 1,100+ pixel art assets created
+- Animations: Player character, 8 enemy types fully animated
+- Equipment: 31 equipment sprites, 5 UI icons
 
 **Known Issues to Address:**
-- Test coverage is incomplete (backend has some tests, frontend has minimal)
-- No automated regression testing
-- No load/stress testing infrastructure
-- Manual QA is ad-hoc, no systematic workflow
-- CI/CD lacks comprehensive quality gates
+- Load testing not executed (k6 scripts ready)
+- Security review pending for alpha launch
+- Performance baselines not yet established
+- Monitoring dashboards need alpha configuration
 
 **Prior Work:**
 - v2.0.0 migrated backend from TypeScript to Go with 234 integration tests
 - v2.2.0 built comprehensive UI/UX design system
 - v2.1.0 added monitoring and observability (Prometheus, Grafana)
+- v3.0.0 added particle effects and post-processing shaders
+- v3.1.0 enhanced UI animations and audio polish
+- v3.2.0 created 1,100+ sprites with pixel-perfect rendering
+- v3.4.0 implemented PvP and PvE gameplay loops with campaign progression
 
 ## Constraints
 
@@ -88,4 +104,4 @@ Quality and reliability are foundational — every feature must be tested, every
 | Automated quality gates | Ship with confidence | — Pending |
 
 ---
-*Last updated: 2026-03-19 after starting v2.3.0 milestone*
+*Last updated: 2026-04-08 after completing v3.2.0 and v3.4.0 milestones*

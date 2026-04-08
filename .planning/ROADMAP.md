@@ -1,7 +1,7 @@
 # Roadmap: Armored Archer
 
-**Current Milestone:** v2.3.0 - Testing & QA Infrastructure
-**Last Updated:** 2026-03-19
+**Current Milestone:** v3.4.0 - Tactical Gameplay & PvE Campaign
+**Last Updated:** 2026-04-08
 
 ---
 
@@ -10,7 +10,13 @@
 - ✅ **v2.0.0 Go Backend Migration** - Phases 1-15 (shipped 2026-03-15)
 - ✅ **v2.1.0 Alpha Launch & Stabilization** - Phases 1-6 (shipped 2026-03-17)
 - ✅ **v2.2.0 UI/UX Polish** - Phases 1-4 (shipped 2026-03-18)
-- 🚧 **v2.3.0 Testing & QA Infrastructure** - Phases 1-5 (in progress)
+- ✅ **v2.3.0 Testing & QA Infrastructure** - Phases 1-5 (shipped 2026-03-24)
+- ✅ **v3.0.0 Visual Improvements** - Phases 1-4 (shipped 2026-03-24)
+- ✅ **v3.1.0 Polish & Juice** - Phases 1-4 (shipped 2026-03-27)
+- ✅ **v3.2.0 Pixel Art** - Phases 05-08 (shipped 2026-04-08)
+- ✅ **v3.3.0 - Polish & Juice** - Phases 1-4 (shipped 2026-03-27)
+- ✅ **v3.4.0 Tactical Gameplay & PvE Campaign** - Phases 1-5 (shipped 2026-04-06)
+- 🚧 **v3.5.0 Alpha Readiness** - Phases TBD (planned)
 
 ---
 
@@ -107,9 +113,53 @@
 **Completion Summary**: DesignTokens (50+ tokens), 8 base components, all 11 UI screens migrated, UIAutomation system, AccessibilityManager, light/dark themes
 </details>
 
+<details>
+<summary>✅ v3.1.0 Polish & Juice (Phases 1-4) - SHIPPED 2026-03-27</summary>
+
+**Particle effects, post-processing, UI polish for enhanced visual feedback**
+
+- [x] Phase 01: Particle System Foundation — particle nodes, emission patterns
+- [x] Phase 02: Post-Processing Effects — bloom, color grading, screen effects
+- [x] Phase 03: UI Polish & Animations — smooth transitions, hover states, loading indicators
+- [x] Phase 04: Audio Polish & Effects — sound effects, audio balance, spatial audio
+
+**Delivered:** particle system, post-processing shaders, UI animations, enhanced audio feedback
+</details>
+
+<details>
+<summary>✅ v3.2.0 Pixel Art (Phases 05-08) - SHIPPED 2026-04-08</summary>
+
+**Pixel-perfect rendering pipeline, character animations, enemy sprites, equipment, and UI icons**
+
+- [x] Phase 05: Project Settings & Import Pipeline (3 plans) — pixel-perfect viewport, folder structure
+- [x] Phase 06: Beta Readiness (2 plans) — beta deployment infrastructure, health verification
+- [x] Phase 06: Coverage Reporting (5 plans) — coverage measurement, quality gates
+- [x] Phase 06: Player Character Animation (3 plans) — 168 sprite frames, AnimatedSprite2D integration
+- [x] Phase 07: Enemy Sprites (2 plans) — 928 enemy sprites, 8 types, full animations
+- [x] Phase 07: Test Infrastructure (2 plans) — Go testify, Godot GUT enhancements
+- [x] Phase 08: Equipment & UI Sprites (2 plans) — 31 equipment sprites, 5 UI icons
+- [x] Phase 08: Fix Broken Packages (18 plans) — dependency fixes, linting, CI quality gates
+
+**Delivered:** 36/36 requirements, ~1,100 sprites, ~83,839 Godot LOC, pixel-perfect rendering pipeline
+</details>
+
+<details>
+<summary>✅ v3.4.0 Tactical Gameplay & PvE Campaign (Phases 1-5) - SHIPPED 2026-04-06</summary>
+
+**Functional PvP and PvE gameplay loops with campaign progression**
+
+- [x] Phase 01: PvP Backend Integration — matchmaking, combat sync, gear loadouts
+- [x] Phase 02: Campaign Map & Encounters — campaign navigation, stage selection, difficulty tiers
+- [x] Phase 03: Enemy AI & PvE Combat — enemy turn-taking, difficulty tactics
+- [x] Phase 04: Loot System & Progression — loot drops, XP, inventory integration
+- [x] Phase 05: Campaign State Persistence — server sync, cross-session progress
+
+**Delivered:** playable PvP and PvE, campaign progression, loot system, persistence
+</details>
+
 ---
 
-## 🚧 v2.3.0 Testing & QA Infrastructure (In Progress)
+## 🚧 v3.5.0 Alpha Readiness (Planned)
 
 **Milestone Goal:** Build comprehensive test infrastructure and QA processes to catch bugs early, ship with confidence, test at scale, and streamline QA workflows
 
