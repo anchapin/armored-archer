@@ -34,7 +34,7 @@ Quality and reliability are foundational — every feature must be tested, every
 - ✓ **Visual Improvements** — v3.0.0 — Particle effects, post-processing shaders
 - ✓ **Polish & Juice** — v3.1.0 — Enhanced UI animations, audio polish
 - ✓ **Pixel Art** — v3.2.0 — 1,100+ sprites, pixel-perfect rendering, character/enemy animations
-- ✓ **Tactical Gameplay** — v3.4.0 — PvP backend integration, PvE campaign, enemy AI, loot system, persistence
+- ✓ **Tactical Gameplay** — v3.4.0 — PvP backend integration, PvE campaign, enemy AI, loot system, campaign persistence
 
 ### Active
 
@@ -104,4 +104,4 @@ Quality and reliability are foundational — every feature must be tested, every
 | Automated quality gates | Ship with confidence | — Pending |
 
 ---
-*Last updated: 2026-04-08 after completing v3.2.0 and v3.4.0 milestones*
+*Last updated: 2026-04-08 after completing v3.2.0, v3.4.0, and Phase 05 (Campaign Persistence)*
