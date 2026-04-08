@@ -1,5 +1,66 @@
 # Armored Archer - Milestones Summary
 
+## v3.5.0 Alpha Readiness (Shipped: 2026-04-08)
+
+**Phases completed:** 18 phases, 39 plans, 75 tasks
+
+**Key accomplishments:**
+
+- Milestone
+- Milestone
+- Milestone
+- Milestone
+- Milestone
+- Milestone
+- AudioManager autoload with 10 pooled AudioStreamPlayer nodes and audio bus configuration for independent SFX/Music/Ambience volume control
+- Placeholder combat SFX files and wired CombatManager with audio triggers for arrow shots, hits, and kills
+- Phase
+- Phase
+- Phase
+- Phase
+- Status
+- Status:
+- Status:
+- Status:
+- Phase:
+- Migrated Go backend tests to testify framework, created domain-specific assertion helpers, built test fixture foundation, and fixed bugs discovered during migration.
+- GUT (Godot Unit Test) framework installed and configured with comprehensive testing capabilities, organized test suite structure, sample tests migrated, and CI integration enabled via JUnit XML output.
+- Testcontainers-go setup implemented for isolated PostgreSQL instances in integration tests, providing database isolation via Docker containers with snapshot/restore for fast reset and proper setup/teardown lifecycle management.
+- Decision
+- Duration:
+- Mock validation tests and contract tests implemented to prevent mock drift, enhanced integration test suite with proper lifecycle management supporting both real DB and mock patterns.
+- Milestone
+- Status
+- Milestone
+- Milestone
+- Milestone
+- Status:
+- Camera shake integrated with combat events using VFXManager with damage-based intensity tiers
+- Found during:
+- ConfigFile dependency injection pattern for Godot autoloads with comprehensive test suites demonstrating fresh instance isolation, signal testing, and mock injection
+- Phase:
+- Milestone
+- Milestone
+- Version
+- Phase
+- Phase
+- Milestone
+- Plan Type:
+- Go benchmarks for 7 critical RPC handlers with testcontainers database isolation and performance baseline tracking
+- Duration:
+- Commit:
+- Commit:
+- One-liner:
+- One-liner:
+- One-liner:
+- Milestone
+- Difficulty validation accepts 'normal' value and new get_campaign_progress RPC returns completed/unlocked stages from Nakama storage
+- CampaignManager syncs progress from server on connection and sends correct difficulty tier instead of hardcoded "normal"
+- Human verification confirmed campaign progress persists across game sessions with no server validation errors
+- Phase
+
+---
+
 ## v3.4.0 Tactical Gameplay & PvE Campaign (Shipped: 2026-04-06)
 
 **Phases completed:** 5 phases (PvP Backend Integration, Campaign Map & Encounters, Enemy AI & PvE Combat, Loot System & Progression, Campaign State Persistence)
@@ -10,6 +71,7 @@
 **Lines added:** ~2,500 insertions
 
 **Key accomplishments:**
+
 - PvP backend integration with matchmaking, combat sync, and gear loadouts
 - Campaign map with 8 encounters across 3 difficulty tiers (Forest → Cavern → Mountain)
 - Enemy AI with difficulty-based tactics (random → adaptive)
@@ -33,6 +95,7 @@
 **Lines added:** ~369 insertions (planning files only)
 
 **Key accomplishments:**
+
 - Pixel-perfect viewport configuration (640x360, canvas_items, integer scaling)
 - 168 player sprite frames across 6 animation states and 4 directions
 - 928 enemy sprites for 8 enemy types with full animation states
@@ -59,6 +122,7 @@
 **Lines added:** ~1,500 insertions
 
 **Key accomplishments:**
+
 - Particle effects system with emission patterns
 - Post-processing effects (bloom, color grading, screen effects)
 - UI polish with smooth transitions and hover states
@@ -81,6 +145,7 @@
 **Lines added:** ~1,200 insertions
 
 **Key accomplishments:**
+
 - Particle effects for enhanced visual feedback
 - Post-processing shaders (bloom, chromatic aberration, vignette)
 - UI visual enhancements (animations, transitions, polish)
@@ -102,6 +167,7 @@
 **Lines added:** 3,058 insertions
 
 **Key accomplishments:**
+
 - Created DesignTokens (50+ tokens) and ThemeManager for consistent theming across all screens
 - Built 8 base UI components (button, panel, container, label, progress bar, icon, loading indicator, theme toggle)
 - Migrated all 11 major UI screens to design system (main menu, login, combat, store, loadout, campaign, leaderboard, matchmaking, gear inventory/comparison, game over)
@@ -125,17 +191,20 @@
 **Status**: ✅ Complete
 
 ### Phases Completed
+
 | Phase | Name | Plans | Status |
 |-------|------|-------|--------|
 | 01-design-system | Design System Foundation | 4 | ✅ Complete |
 
 ### Key Accomplishments
+
 - Created DesignTokens and ThemeManager for consistent theming
 - Migrated all core UI screens (Login, Combat, Store, Loadout)
 - Added screen improvements (Campaign Map, Leaderboard, Matchmaking, Gear, Game Over)
 - Implemented UI animations and mobile responsiveness
 
 ### Notes
+
 - All 20+ UI screens now use design system
 - Light/dark themes work on all screens
 - Accessibility features integrated
@@ -145,6 +214,7 @@
 ## 🎯 Ultimate Goal
 
 **Ship with polished UI/UX that:**
+
 1. Has consistent visual design across all screens
 2. Provides intuitive, easy-to-use navigation
 3. Works well on all screen sizes (320px+)
@@ -174,6 +244,7 @@ Week 10:   ███████████████████████
 **Goal**: Go project structure, config, database layer working
 
 **Deliverables**:
+
 - [ ] Go module compiles
 - [ ] Nakama loads Go module
 - [ ] Config loading works
@@ -190,6 +261,7 @@ Week 10:   ███████████████████████
 **Goal**: RPC infrastructure and player systems working
 
 **Deliverables**:
+
 - [ ] RPC registration system works
 - [ ] Session validation functional
 - [ ] Error handling matches TypeScript
@@ -206,6 +278,7 @@ Week 10:   ███████████████████████
 **Goal**: All core game systems migrated
 
 **Deliverables**:
+
 - [ ] Combat system functional
 - [ ] Matchmaking works
 - [ ] Gear/inventory works
@@ -222,6 +295,7 @@ Week 10:   ███████████████████████
 **Goal**: Store, notifications, monetization working
 
 **Deliverables**:
+
 - [ ] IAP validation works
 - [ ] RevenueCat webhooks process
 - [ ] Notifications send
@@ -237,6 +311,7 @@ Week 10:   ███████████████████████
 **Goal**: Monitoring, metrics, alerting functional
 
 **Deliverables**:
+
 - [ ] Metrics export to Prometheus
 - [ ] Health checks work
 - [ ] Alerts fire correctly
@@ -252,6 +327,7 @@ Week 10:   ███████████████████████
 **Goal**: 100% test parity with TypeScript
 
 **Deliverables**:
+
 - [ ] All 10 integration test suites pass
 - [ ] Test coverage matches TypeScript
 - [ ] CI pipeline runs tests
@@ -267,6 +343,7 @@ Week 10:   ███████████████████████
 **Goal**: All TypeScript code removed, docs updated
 
 **Deliverables**:
+
 - [ ] TypeScript backend deleted
 - [ ] README updated for Go
 - [ ] Build scripts updated
@@ -283,6 +360,7 @@ Week 10:   ███████████████████████
 **Goal**: Production-ready for alpha testing
 
 **Deliverables**:
+
 - [ ] Performance benchmarks meet targets
 - [ ] Load testing passes
 - [ ] Security review complete
@@ -362,18 +440,25 @@ Progress: 0% ██████████████████████�
 ### Commands
 
 ```bash
+
 # Start migration
+
 /gsd:execute-phase 1
 
 # Check progress
+
 /gsd:progress
 
 # View current phase
+
 cat .planning/phases/*/PLAN.md | head -50
 
 # Update state after phase
+
 cat >> .planning/STATE.md << 'EOF'
+
 ## Phase X Completed
+
 Date: $(date)
 Summary: ...
 Lessons: ...

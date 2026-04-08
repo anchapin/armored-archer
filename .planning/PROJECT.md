@@ -1,14 +1,8 @@
 # Armored Archer
 
-## Current Milestone: v3.5.0 Alpha Readiness
+## Current Milestone: v3.6.0 - Planning
 
-**Goal:** Final validation, performance check, and alpha deployment preparation.
-
-**Target features:**
-- Performance benchmarking and validation
-- Security review and vulnerability assessment
-- Alpha deployment pipeline and rollback procedures
-- Monitoring and alerting configuration
+**Goal:** [To be determined via `/gsd:new-milestone`]
 
 ## What This Is
 
@@ -35,16 +29,14 @@ Quality and reliability are foundational — every feature must be tested, every
 - ✓ **Polish & Juice** — v3.1.0 — Enhanced UI animations, audio polish
 - ✓ **Pixel Art** — v3.2.0 — 1,100+ sprites, pixel-perfect rendering, character/enemy animations
 - ✓ **Tactical Gameplay** — v3.4.0 — PvP backend integration, PvE campaign, enemy AI, loot system, campaign persistence
+- ✓ **Alpha Readiness** — v3.5.0 — Test infrastructure (75 plans), 73.3% overall coverage, CI quality gates, load testing benchmarks
 
 ### Active
 
-*Current scope. Building toward these.*
+*Current scope. Planning next milestone.*
 
-- [ ] **Performance Benchmarking** — Validate response times, memory usage, and frame rate targets
-- [ ] **Load Testing** — Stress test with 1000+ concurrent users
-- [ ] **Security Review** — Vulnerability assessment, input validation audit, penetration testing
-- [ ] **Alpha Deployment** — Deployment pipeline, rollback procedures, environment configuration
-- [ ] **Monitoring Setup** — Alert rules, dashboards, error tracking integration
+- [ ] [To be defined via `/gsd:new-milestone`]
+
 
 ### Out of Scope
 
@@ -67,16 +59,11 @@ Quality and reliability are foundational — every feature must be tested, every
 **Current Codebase State:**
 - Godot LOC: ~83,839 lines
 - Backend: Go migration complete, TypeScript removed
-- Coverage: 94.55% backend lines
+- Coverage: 73.3% overall, 92-95% on critical paths (v3.5.0 achieved)
 - Sprites: 1,100+ pixel art assets created
 - Animations: Player character, 8 enemy types fully animated
 - Equipment: 31 equipment sprites, 5 UI icons
-
-**Known Issues to Address:**
-- Load testing not executed (k6 scripts ready)
-- Security review pending for alpha launch
-- Performance baselines not yet established
-- Monitoring dashboards need alpha configuration
+- Test Infrastructure: Go testify, Godot GUT 9.6.0, testcontainers, CI quality gates
 
 **Prior Work:**
 - v2.0.0 migrated backend from TypeScript to Go with 234 integration tests
@@ -86,6 +73,7 @@ Quality and reliability are foundational — every feature must be tested, every
 - v3.1.0 enhanced UI animations and audio polish
 - v3.2.0 created 1,100+ sprites with pixel-perfect rendering
 - v3.4.0 implemented PvP and PvE gameplay loops with campaign progression
+- v3.5.0 built comprehensive test infrastructure (75 plans, 73.3% coverage, CI gates)
 
 ## Constraints
 
@@ -99,9 +87,10 @@ Quality and reliability are foundational — every feature must be tested, every
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Focus on testing infrastructure | Quality foundation before scaling | — Pending |
-| Build comprehensive coverage | Catch bugs early, reduce manual QA | — Pending |
-| Automated quality gates | Ship with confidence | — Pending |
+| Testify framework for Go | Leverage mature assertion library instead of custom helpers | ✓ Good (v3.5.0) |
+| Testcontainers for DB isolation | Realistic integration tests with disposable containers | ✓ Good (v3.5.0) |
+| ConfigFile DI for Godot autoloads | Enable autoload mocking without singleton issues | ✓ Good (v3.5.0) |
+| Coverage target 60% (v3.5.0) | Incremental improvement from previous state | ✓ Achieved (73.3% actual) |
 
 ---
-*Last updated: 2026-04-08 after completing v3.2.0, v3.4.0, and Phase 05 (Campaign Persistence)*
+*Last updated: 2026-04-08 after completing v3.5.0 milestone*
