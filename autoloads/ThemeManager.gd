@@ -166,6 +166,10 @@ func get_secondary_color() -> Color:
 func get_text_color() -> Color:
 	return ArcherDesignTokens.COLOR_ON_SURFACE
 
+## Get disabled text color
+func get_text_disabled_color() -> Color:
+	return Color(1, 1, 1, 0.5)  # Semi-transparent white
+
 ## Get ambient shadow color
 func get_ambient_shadow_color() -> Color:
 	return ArcherDesignTokens.COLOR_AMBIENT_SHADOW
@@ -231,7 +235,7 @@ static func is_color_light(color: Color) -> bool:
 	return (0.299 * color.r + 0.587 * color.g + 0.114 * color.b) > 0.5
 
 ## Get appropriate text color for a background
-static func get_text_color_for_background(bg_color: Color, light_color: Color = ArcherDesignTokens.COLOR_ON_SURFACE, dark_color: Color = Color.WHITE) -> Color:
+static func get_text_color_for_background(bg_color: Color, _light_color: Color = ArcherDesignTokens.COLOR_ON_SURFACE, dark_color: Color = Color.WHITE) -> Color:
 	if is_color_light(bg_color):
 		return ArcherDesignTokens.COLOR_ON_SURFACE
 	else:

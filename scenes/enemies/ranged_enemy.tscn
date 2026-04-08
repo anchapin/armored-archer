@@ -1,7 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://ranged_enemy_scene"]
+[gd_scene format=3 uid="uid://bcfpd2vmhm15"]
 
-[ext_resource type="Script" path="res://scenes/enemies/ranged_enemy.gd" id="1_ranged_enemy_script"]
-[ext_resource type="PlaceholderTexture2D" uid="uid://enemy_sprite" path="res://assets/sprites/enemy.tres" id="2_ranged_enemy_sprite"]
+[ext_resource type="Script" uid="uid://b8jq4iyvj1bdw" path="res://scenes/enemies/ranged_enemy.gd" id="1_ranged_enemy_script"]
+[ext_resource type="Texture2D" uid="uid://c0l5h3t58a3cd" path="res://assets/sprites/enemies/skeleton_idle_down_0.png" id="2_k7uv6"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ranged_enemy"]
 size = Vector2(28, 28)
@@ -9,18 +9,18 @@ size = Vector2(28, 28)
 [sub_resource type="CircleShape2D" id="CircleShape2D_hurt"]
 radius = 24.0
 
-[node name="RangedEnemy" type="CharacterBody2D"]
+[node name="RangedEnemy" type="CharacterBody2D" unique_id=288624065]
 script = ExtResource("1_ranged_enemy_script")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-texture = ExtResource("2_ranged_enemy_sprite")
-offset = Vector2(14, 14)
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=846259046]
 modulate = Color(0.2, 0.8, 0.2, 1)
+texture = ExtResource("2_k7uv6")
+offset = Vector2(14, 14)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1898659829]
 shape = SubResource("RectangleShape2D_ranged_enemy")
 
-[node name="HurtArea" type="Area2D" parent="."]
+[node name="HurtArea" type="Area2D" parent="." unique_id=39882972]
 
-[node name="HurtCollision" type="CollisionShape2D" parent="HurtArea"]
+[node name="HurtCollision" type="CollisionShape2D" parent="HurtArea" unique_id=975335780]
 shape = SubResource("CircleShape2D_hurt")

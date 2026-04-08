@@ -306,6 +306,12 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/get_campaign_progress',
+      'get_campaign_progress',
+      rpcGetCampaignProgressWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/report_player',
       'report_player',
       rpcReportPlayerWrapper

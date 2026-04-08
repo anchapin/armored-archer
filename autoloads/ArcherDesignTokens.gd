@@ -312,7 +312,7 @@ static func get_secondary_color(state: String = "default") -> Color:
 
 ## Get surface color by tier for depth hierarchy
 ## Use instead of borders for "No-Line Rule"
-static func get_surface_tier_color(tier: String) -> Color:
+func get_surface_tier_color(tier: String) -> Color:
 	match tier:
 		"base":
 			return COLOR_SURFACE
@@ -342,7 +342,7 @@ static func get_ambient_shadow_color() -> Color:
 
 ## Get ambient shadow blur size
 ## Use larger blur for "floating" elements
-static func get_ambient_shadow_blur(is_floating: bool = false) -> int:
+func get_ambient_shadow_blur(is_floating: bool = false) -> int:
 	return AMBIENT_SHADOW_BLUR_MAX if is_floating else AMBIENT_SHADOW_BLUR_MIN
 
 ## Get ghost border color (low opacity outline_variant)
@@ -383,7 +383,7 @@ static func get_text_color_for_background(bg_color: Color, light_color: Color = 
 
 ## Get gradient colors for buttons and CTAs
 ## Returns Array[Color] with [start_color, end_color]
-static func get_gradient_colors(type: String = "primary") -> Array[Color]:
+func get_gradient_colors(type: String = "primary") -> Array[Color]:
 	match type:
 		"primary":
 			return [COLOR_GRADIENT_PRIMARY_START, COLOR_GRADIENT_PRIMARY_END]

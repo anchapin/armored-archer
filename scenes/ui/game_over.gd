@@ -162,7 +162,7 @@ func _apply_theme() -> void:
 
 	# Apply colors to labels
 	if result_label:
-		result_label.modulate = colors["text_primary"]
+		result_label.modulate = colors["on_surface"]
 	if restart_button:
 		restart_button.modulate = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color.WHITE
 

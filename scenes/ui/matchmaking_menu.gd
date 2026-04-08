@@ -126,7 +126,7 @@ func _create_match_item(match_data: Dictionary) -> Control:
 	
 	# Apply theme text color
 	if theme_manager:
-		type_label.modulate = theme_manager.get_text_primary_color()
+		type_label.modulate = theme_manager.get_text_color()
 
 	var opponent_rank: int = match_data.get("creator_rank", 0)
 	var player_rank_val: int = matchmaker_manager.get_player_rank_sync() if matchmaker_manager else 0
@@ -136,7 +136,7 @@ func _create_match_item(match_data: Dictionary) -> Control:
 	
 	# Apply theme text color
 	if theme_manager:
-		rank_label.modulate = theme_manager.get_text_secondary_color()
+		rank_label.modulate = theme_manager.get_text_color()
 
 	# Display rank difference - use DesignTokens colors
 	var rank_diff_label: Label = Label.new()
@@ -155,7 +155,7 @@ func _create_match_item(match_data: Dictionary) -> Control:
 	else:
 		rank_diff_label.text = "(same rank)"
 		if theme_manager:
-			rank_diff_label.modulate = theme_manager.get_text_secondary_color()
+			rank_diff_label.modulate = theme_manager.get_text_color()
 
 	var punch_up_label: Label = Label.new()
 	if match_data.get("is_punch_up", false):
@@ -261,11 +261,11 @@ func _apply_theme() -> void:
 	
 	# Apply colors to labels
 	if loading_label:
-		loading_label.modulate = colors["text_secondary"]
+		loading_label.modulate = colors["on_surface"]
 	if rank_label:
-		rank_label.modulate = colors["text_primary"]
+		rank_label.modulate = colors["on_surface"]
 	if punch_up_stats_label:
-		punch_up_stats_label.modulate = colors["text_secondary"]
+		punch_up_stats_label.modulate = colors["on_surface"]
 	
 	# Refresh matches to apply theme to entries
 	if not current_matches.is_empty():

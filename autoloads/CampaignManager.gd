@@ -37,10 +37,9 @@ func _ready() -> void:
 	if network_manager == null:
 		network_manager = get_node_or_null("/root/NetworkManager")
 
-	# Only load data for singleton instances
-	if is_inside_tree() and get_tree().current_scene == self:
-		load_campaigns_data()
-		load_progress()
+	# Load campaign data and progress
+	load_campaigns_data()
+	load_progress()
 
 	# If no saved progress, initialize with first stage unlocked
 	if unlocked_stages.is_empty():
@@ -205,8 +204,9 @@ func complete_stage(stage_id: String) -> void:
 		stage_completed.emit(stage_id)
 
 		var stage_data = get_stage_data(stage_id)
-		var boss_id: String = stage_data.get("boss", "")
-
+		var boss_value = stage_data.get("boss")
+		var boss_id: String = boss_value if boss_value != null else ""
+	
 		# Send stage completion to server with boss defeat info
 		_notify_server_stage_complete(stage_id, boss_id)
 

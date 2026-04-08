@@ -121,7 +121,7 @@ func on_critical_hit() -> void:
 		vfx_manager.trigger_heavy_shake()
 
 
-func on_player_damage(damage: int, current_health: int, max_health: int) -> void:
+func on_player_damage(_damage: int, current_health: int, max_health: int) -> void:
 	"""Handle player damage event - update damage overlay.
 
 	Parameters:

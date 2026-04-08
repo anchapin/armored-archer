@@ -129,7 +129,7 @@ func _create_leaderboard_entry(entry: Dictionary) -> Control:
 	
 	# Apply theme text color
 	if theme_manager:
-		username_label.modulate = theme_manager.get_text_primary_color()
+		username_label.modulate = theme_manager.get_text_color()
 
 	var score_label: Label = Label.new()
 	score_label.text = str(entry.get("score", 0))
@@ -137,7 +137,7 @@ func _create_leaderboard_entry(entry: Dictionary) -> Control:
 	
 	# Apply theme text color
 	if theme_manager:
-		score_label.modulate = theme_manager.get_text_primary_color()
+		score_label.modulate = theme_manager.get_text_color()
 
 	var meta: Dictionary = entry.get("meta", {})
 	var wins: int = meta.get("wins", 0)
@@ -150,7 +150,7 @@ func _create_leaderboard_entry(entry: Dictionary) -> Control:
 	
 	# Apply theme secondary text color
 	if theme_manager:
-		stats_label.modulate = theme_manager.get_text_secondary_color()
+		stats_label.modulate = theme_manager.get_text_color()
 
 	item.add_child(rank_container)
 	item.add_child(username_label)
@@ -229,15 +229,15 @@ func _apply_theme() -> void:
 	
 	# Apply colors to labels
 	if season_label:
-		season_label.modulate = colors["text_primary"]
+		season_label.modulate = colors["on_surface"]
 	if time_label:
-		time_label.modulate = colors["text_secondary"]
+		time_label.modulate = colors["on_surface"]
 	if your_rank_label:
-		your_rank_label.modulate = colors["text_primary"]
+		your_rank_label.modulate = colors["on_surface"]
 	if your_tier_label:
-		your_tier_label.modulate = colors["text_secondary"]
+		your_tier_label.modulate = colors["on_surface"]
 	if loading_label:
-		loading_label.modulate = colors["text_secondary"]
+		loading_label.modulate = colors["on_surface"]
 	
 	# Refresh leaderboard to apply theme to entries
 	if is_initialized:

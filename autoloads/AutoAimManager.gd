@@ -99,6 +99,35 @@ func get_target_position(player_pos: Vector2, aim_direction: Vector2) -> Vector2
 
 	return Vector2.ZERO
 
+func get_nearest_enemy(player_pos: Vector2) -> Node2D:
+	"""Finds the nearest enemy by distance only.
+
+	Parameters:
+		player_pos: Player's current position
+
+	Returns:
+		Node2D: Nearest enemy or null if none in range
+	"""
+	var nearest_enemy: Node2D = null
+	var best_distance: float = AIM_RANGE
+
+	for id in registered_enemies:
+		var weak_ref: WeakRef = registered_enemies[id]
+		var enemy: Node2D = weak_ref.get_ref()
+
+		if enemy == null or not is_instance_valid(enemy):
+			# Clean up invalid weak reference
+			var _err = registered_enemies.erase(id)
+			continue
+
+		var distance: float = (enemy.global_position - player_pos).length()
+
+		if distance < best_distance:
+			best_distance = distance
+			nearest_enemy = enemy
+
+	return nearest_enemy
+
 func is_target_locked(player_pos: Vector2, aim_direction: Vector2) -> bool:
 	"""Checks if there is a valid target in the aiming cone.
 

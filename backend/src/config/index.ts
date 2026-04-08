@@ -532,6 +532,10 @@ const config: AppConfig = {
         maxRequests: parseInt(process.env.RATE_LIMIT_COMPLETE_STAGE_MAX || '30', 10),
         windowMs: parseInt(process.env.RATE_LIMIT_COMPLETE_STAGE_WINDOW_MS || '60000', 10),
       },
+      get_campaign_progress: {
+        maxRequests: parseInt(process.env.RATE_LIMIT_GET_CAMPAIGN_PROGRESS_MAX || '30', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_GET_CAMPAIGN_PROGRESS_WINDOW_MS || '60000', 10),
+      },
       track_event: {
         maxRequests: parseInt(process.env.RATE_LIMIT_TRACK_EVENT_MAX || '60', 10),
         windowMs: parseInt(process.env.RATE_LIMIT_TRACK_EVENT_WINDOW_MS || '60000', 10),

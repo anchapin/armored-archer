@@ -14,16 +14,18 @@ static func fade_in(node: Node, duration: float = 0.0) -> Tween:
 	var tween: Tween = node.create_tween()
 	node.modulate.a = 0.0
 	node.visible = true
-	tween.tween_property(node, "modulate:a", 1.0, dur).set_ease(
-		Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(node, "modulate:a", 1.0, dur)
+	tweener1.set_ease(Tween.EASE_OUT)
+	tweener1.set_trans(Tween.TRANS_SINE)
 	return tween
 
 ## Fade out a node (alpha 1 -> 0) then hide
 static func fade_out(node: Node, duration: float = 0.0, hide_on_complete: bool = true) -> Tween:
 	var dur: float = duration if duration > 0 else ArcherDesignTokens.ANIM_DURATION_NORMAL
 	var tween: Tween = node.create_tween()
-	tween.tween_property(node, "modulate:a", 0.0, dur).set_ease(
-		Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	var tweener1 = tween.tween_property(node, "modulate:a", 0.0, dur)
+	tweener1.set_ease(Tween.EASE_OUT)
+	tweener1.set_trans(Tween.TRANS_SINE)
 	if hide_on_complete:
 		tween.tween_callback(func(): node.visible = false)
 	return tween
@@ -32,10 +34,12 @@ static func fade_out(node: Node, duration: float = 0.0, hide_on_complete: bool =
 static func scale_bounce(node: Node, scale_factor: float = 1.1) -> Tween:
 	var tween: Tween = node.create_tween()
 	var original_scale: Vector2 = node.scale
-	tween.tween_property(node, "scale", original_scale * scale_factor, 
-		ArcherDesignTokens.ANIM_DURATION_FAST).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	tween.tween_property(node, "scale", original_scale, 
-		ArcherDesignTokens.ANIM_DURATION_NORMAL).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	var tweener1 = tween.tween_property(node, "scale", original_scale * scale_factor, ArcherDesignTokens.ANIM_DURATION_FAST)
+	tweener1.set_ease(Tween.EASE_OUT)
+	tweener1.set_trans(Tween.TRANS_BACK)
+	var tweener2 = tween.tween_property(node, "scale", original_scale, ArcherDesignTokens.ANIM_DURATION_NORMAL)
+	tweener2.set_ease(Tween.EASE_OUT)
+	tweener2.set_trans(Tween.TRANS_BACK)
 	return tween
 
 ## Slide in from edge (left/right/top/bottom)
@@ -61,13 +65,15 @@ static func slide_in(node: Node, from_edge: String, duration: float = 0.0) -> Tw
 	node.visible = true
 	
 	var tween: Tween = node.create_tween()
-	tween.tween_property(node, "position", start_pos, dur).set_ease(
-		Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	var tweener1 = tween.tween_property(node, "position", start_pos, dur)
+	tweener1.set_ease(Tween.EASE_OUT)
+	tweener1.set_trans(Tween.TRANS_CUBIC)
 	return tween
 
 ## Continuous pulse animation
 static func pulse(node: Node, scale_range: float = 0.1, speed: float = 2.0) -> Tween:
-	var tween: Tween = node.create_tween().set_loops()
+	var tween: Tween = node.create_tween()
+	tween.set_loops()
 	var base_scale: Vector2 = node.scale
 	tween.tween_property(node, "scale", base_scale * (1.0 + scale_range), 0.5 / speed)
 	tween.tween_property(node, "scale", base_scale, 0.5 / speed)
@@ -76,15 +82,16 @@ static func pulse(node: Node, scale_range: float = 0.1, speed: float = 2.0) -> T
 ## Scale down effect (press feedback)
 static func scale_down(node: Node, scale_factor: float = 0.95) -> Tween:
 	var tween: Tween = node.create_tween()
-	tween.tween_property(node, "scale", node.scale * scale_factor, 
-		ArcherDesignTokens.ANIM_DURATION_FAST).set_ease(Tween.EASE_OUT)
+	tween.tween_property(node, "scale", node.scale * scale_factor, ArcherDesignTokens.ANIM_DURATION_FAST)
+	var tweener1 = tween.tween_property(node, "scale", node.scale * scale_factor, ArcherDesignTokens.ANIM_DURATION_FAST)
+	tweener1.set_ease(Tween.EASE_OUT)
 	return tween
 
 ## Scale up effect (release feedback)
 static func scale_up(node: Node) -> Tween:
 	var tween: Tween = node.create_tween()
-	var original_scale: Vector2 = node.scale / node.scale.x  # Normalize to Vector2.ONE assumption
 	# Reset to original scale (assume Vector2.ONE as base)
-	tween.tween_property(node, "scale", Vector2.ONE, 
-		ArcherDesignTokens.ANIM_DURATION_NORMAL).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	var tweener1 = tween.tween_property(node, "scale", Vector2.ONE, ArcherDesignTokens.ANIM_DURATION_NORMAL)
+	tweener1.set_ease(Tween.EASE_OUT)
+	tweener1.set_trans(Tween.TRANS_BACK)
 	return tween

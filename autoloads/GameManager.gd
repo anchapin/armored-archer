@@ -42,6 +42,8 @@ var current_encounter_data: Dictionary = {}
 var current_difficulty: int = 1
 
 # --- Health Management ---
+var damage_cooldown: float = 0.0
+
 func take_player_damage(damage: int) -> void:
 	"""Applies damage to the player.
 
@@ -50,6 +52,11 @@ func take_player_damage(damage: int) -> void:
 	"""
 	if not is_game_active:
 		return
+
+	# Small cooldown to prevent damage spam (0.1s between hits)
+	if damage_cooldown > 0:
+		return
+	damage_cooldown = 0.1
 
 	var previous_health := player_current_health
 	player_current_health = max(0, player_current_health - damage)
@@ -139,6 +146,8 @@ func end_game(won: bool) -> void:
 	Parameters:
 		won: True if the player won, false if they died
 	"""
+	if not is_game_active:
+		return
 	is_game_active = false
 
 	var game_duration: float = 0.0

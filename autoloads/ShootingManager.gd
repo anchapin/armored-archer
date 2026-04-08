@@ -26,7 +26,7 @@ const AUTO_SHOOT_COOLDOWN: float = 0.6  # Slightly longer for auto-shoot
 const MAX_AMMO: int = 50  # Maximum ammo capacity
 
 # --- State ---
-var _shooting_mode: ShootingMode = ShootingMode.MANUAL
+var _shooting_mode: ShootingMode = ShootingMode.AUTO
 var _cooldown_timer: float = 0.0
 var _current_ammo: int = MAX_AMMO
 var _is_reloading: bool = false
@@ -56,7 +56,7 @@ func shoot_arrow(from_position: Vector2, direction: Vector2) -> void:
 	if arrow:
 		# Setup arrow with position and direction
 		if arrow.has_method("setup"):
-			arrow.setup(from_position, direction, 25, 800.0)
+			arrow.setup(from_position, direction, 50, 800.0)
 		else:
 			# Fallback for arrows without setup method
 			arrow.position = from_position
@@ -125,6 +125,8 @@ func handle_auto_shoot(delta: float) -> void:
 	# Handle auto-shoot mode
 	if _shooting_mode == ShootingMode.AUTO:
 		_process_auto_shoot()
+	# Check for auto-aim toggle
+	check_auto_aim_toggle()
 
 ## Process auto-shoot logic
 func _process_auto_shoot() -> void:
@@ -133,21 +135,22 @@ func _process_auto_shoot() -> void:
 	if not player:
 		return
 
-	# Check if player is aiming
-	if not player.has_method("is_player_aiming"):
-		return
-	if not player.is_player_aiming():
-		return
-
-	# Get aim direction
-	if not player.has_method("get_aim_direction"):
-		return
-	var aim_dir = player.get_aim_direction()
-
-	# Check if there's a target in range
+	# In AUTO mode, automatically aim at nearest enemy
 	var player_pos = player.global_position
-	if not AutoAimManager.is_target_locked(player_pos, aim_dir):
-		return
+	
+	# Find nearest enemy
+	var nearest_enemy = AutoAimManager.get_nearest_enemy(player_pos)
+	if not nearest_enemy:
+		return  # No enemy in range
+	
+	# Calculate aim direction to enemy
+	var aim_dir = (nearest_enemy.global_position - player_pos).normalized()
+	
+	# Update player's aim direction
+	if player.has_method("_update_aim_direction_internal"):
+		player._update_aim_direction_internal(aim_dir)
+	elif player.has_method("set_virtual_aim_direction"):
+		player.set_virtual_aim_direction(aim_dir)
 
 	# Auto-shoot if cooldown is ready
 	if can_shoot() and _cooldown_timer <= 0:
@@ -214,6 +217,11 @@ func toggle_shooting_mode() -> void:
 		set_shooting_mode(ShootingMode.AUTO)
 	else:
 		set_shooting_mode(ShootingMode.MANUAL)
+
+## Toggle auto-aim with Tab key
+func check_auto_aim_toggle() -> void:
+	if Input.is_action_just_pressed("ui_text_newline_above"):  # Tab key
+		toggle_shooting_mode()
 
 # --- Settings Persistence ---
 
