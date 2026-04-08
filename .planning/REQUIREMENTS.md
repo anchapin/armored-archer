@@ -1,168 +1,142 @@
-# Requirements: Armored Archer v2.3.0
+# Armored Archer - Requirements
 
-**Defined:** 2026-03-19
-**Core Value:** Players can enjoy a polished, responsive archery game with reliable performance and minimal bugs
-**Milestone:** v2.3.0 - Testing & QA Infrastructure
+**Current Milestone:** v4.0.0 - Gameplay Refinement
+**Last Updated:** 2026-04-08
 
-## v1 Requirements
+---
 
-Requirements for v2.3.0 milestone. Each maps to roadmap phases.
+## Requirements
 
-### Test Foundation (FND)
+### Validated Requirements
 
-- [ ] **FND-01**: Go backend uses testify framework for assertions and test suites
-- [ ] **FND-02**: Godot client uses enhanced GUT framework with autoload testing support
-- [ ] **FND-03**: Test runner executes all backend and frontend tests with unified reporting
-- [ ] **FND-04**: Test pyramid is enforced (70% unit, 20% integration, 10% E2E) via automated checks
-- [ ] **FND-05**: Go race detector runs in CI for all concurrent code
-- [ ] **FND-06**: Tests are isolated and don't depend on shared state
+*Shipped and confirmed valuable.*
 
-### Test Isolation & Fixtures (ISO)
+- ✓ **UI/UX Design System** — v2.2.0 — DesignTokens, ThemeManager, 8 base components, all screens migrated
+- ✓ **Go Backend Migration** — v2.0.0 — Complete TypeScript to Go migration with 234 integration tests
+- ✓ **Core Gameplay** — v1.x — Combat, matchmaking, gear, progression, seasons
+- ✓ **Alpha Launch** — v2.1.0 — Monitoring, observability, user onboarding
+- ✓ **Test Infrastructure** — v2.3.0 — Go testify, Godot GUT, unified test runner, fixtures, mocks
+- ✓ **Visual Improvements** — v3.0.0 — Particle effects, post-processing shaders
+- ✓ **Polish & Juice** — v3.1.0 — Enhanced UI animations, audio polish
+- ✓ **Pixel Art** — v3.2.0 — 1,100+ sprites, pixel-perfect rendering, character/enemy animations
+- ✓ **Tactical Gameplay** — v3.4.0 — PvP backend integration, PvE campaign, enemy AI, loot system, campaign persistence
 
-- [ ] **ISO-01**: Database tests use testcontainers-go for isolated PostgreSQL instances
-- [ ] **ISO-02**: Test fixtures use factory pattern for consistent test data generation
-- [ ] **ISO-03**: Test data cleanup runs automatically after each test suite
-- [ ] **ISO-04**: Godot autoload tests use fresh instances per test to prevent state leakage
-- [ ] **ISO-05**: Integration tests have proper setup/teardown lifecycle management
+### Active Requirements
 
-### Coverage & Quality Gates (COV)
+*Current scope. Building toward these.*
 
-- [ ] **COV-01**: Code coverage is measured for backend (Go) and frontend (Godot)
-- [ ] **COV-02**: Coverage thresholds are enforced in CI (80% for critical paths, 60% overall)
-- [ ] **COV-03**: Pull requests that fail coverage tests are automatically blocked from merging
-- [ ] **COV-04**: Coverage reports are generated and viewable in CI artifacts
-- [ ] **COV-05**: Coverage metrics are tracked over time to identify trends
+#### COMBAT-01: Attack Timing Refinement
+Player attacks have consistent timing with clear wind-up and release frames.
 
-### Flaky Test Detection (FLK)
+#### COMBAT-02: Hit Detection Feedback
+Visual feedback shows when attacks connect (damage numbers, hit effects, screen shake).
 
-- [ ] **FLK-01**: CI automatically detects flaky tests via repeated test runs
-- [ ] **FLK-02**: Flaky tests are quarantined and don't block PR merges
-- [ ] **FLK-03**: Flaky test dashboard shows test reliability metrics
-- [ ] **FLK-04**: Developers are notified when their tests are flagged as flaky
+#### COMBAT-03: Damage Calculation Validation
+Damage formulas are consistent between PvP and PvE modes with clear stat-to-damage mapping.
 
-### Performance Testing (PERF)
+#### COMBAT-04: Weapon Variety
+Multiple weapon types (bows, crossbows) have distinct attack patterns, ranges, and power curves.
 
-- [ ] **PERF-01**: Backend has Go benchmarks for critical RPC endpoints
-- [ ] **PERF-02**: Frontend has performance tests for 60 FPS target validation
-- [ ] **PERF-03**: Load tests validate backend can handle 100+ concurrent players
-- [ ] **PERF-04**: Load test scripts use k6 for realistic traffic simulation
-- [ ] **PERF-05**: Performance baselines are established and regressions are detected
+#### COMBAT-05: Critical Hit Reactions
+Enemies flash white when critically hit, pause briefly, then react with distinct animations.
 
-### Visual Regression Testing (VIS)
+#### ENEMY-01: New Enemy Types
+3-5 new enemy types added (e.g., elementals, flying, swarmers) with unique AI patterns.
 
-- [ ] **VIS-01**: Design system components have visual regression tests
-- [ ] **VIS-02**: UI screens are validated for layout consistency
-- [ ] **VIS-03**: Visual regression tests run in CI for theme changes
+#### ENEMY-02: Boss Encounter System
+3 boss types with distinct phases, special attacks, and loot tables.
 
-### Test Fixtures Layer (FIX)
+#### ENEMY-03: AI Pattern Variety
+Enemies use varied behaviors (aggressive, defensive, pack-hunting, ambush) across encounter types.
 
-- [ ] **FIX-01**: Factory functions create test players with sensible defaults
-- [ ] **FIX-02**: Factory functions create test gear items with configurable properties
-- [ ] **FIX-03**: Factory functions create test matches with realistic game state
-- [ ] **FIX-04**: Fixtures support builder pattern for flexible test data creation
-- [ ] **FIX-05**: Test data is shared between Go and Godot tests via common format (JSON)
+#### PVP-01: Weapon/Power Balancing
+Weapon damage curves balanced across all tiers to prevent one-shot exploits.
 
-### Mock Infrastructure (MOCK)
+#### PVP-02: Matchmaking Fairness
+Ranking system accounts for player skill difference with balanced matchmaking pools.
 
-- [ ] **MOCK-01**: Nakama runtime is mocked for unit testing RPC handlers
-- [ ] **MOCK-02**: Database layer is mocked using interface-based approach
-- [ ] **MOCK-03**: Godot autoloads are mockable via dependency injection
-- [ ] **MOCK-04**: Mock generation uses uber/mock for Go interfaces
-- [ ] **MOCK-05**: Mocks are validated against real implementations periodically
+#### PVP-03: Ranking System
+Leaderboards track seasonal progress with decay to prevent farming.
 
-### Property-Based Testing (PBT)
+#### PROG-01: XP Curve Tuning
+Level progression uses satisfying growth curves (early levels faster, later levels more grindy but rewarding).
 
-- [ ] **PBT-01**: Critical combat calculations use property-based tests (rapid)
-- [ ] **PBT-02**: RNG systems have property-based tests for edge case detection
-- [ ] **PBT-03**: Property-based tests run in CI alongside unit tests
+#### PROG-02: Level Scaling
+Enemy difficulty scales appropriately with player level (both damage and AI behavior).
 
-## v2 Requirements
+#### PROG-03: Stat Allocation System
+Players can respec stats with cost to encourage diverse builds.
 
-Deferred to future milestone. Not in current roadmap.
+#### PROG-04: Gear Stat Balance
+Equipment stats have diminishing returns to prevent power stacking exploits.
 
-### Future Enhancements
+#### JUICE-01: Impact Effects
+Strong attacks have screen shake and particle bursts on impact.
 
-- **Mutation Testing** — Evaluate test quality by introducing code mutations (high setup cost)
-- **Contract Testing** — Validate API contracts between client and server (API still evolving)
-- **Chaos Engineering** — Test system resilience under failure conditions
-- **Test Parallelization** — Run tests concurrently to reduce CI time (optimization)
-- **Fuzzing** — Automate finding security vulnerabilities (overkill for current complexity)
+#### JUICE-02: Damage Indicators
+Floating damage numbers show amount dealt with appropriate color coding (green for weak, red for critical).
+
+#### JUICE-03: Hit Reactions
+Player character briefly flinches or stutters when taking damage.
+
+#### JUICE-04: Kill Feedback
+Enemies have clear death animations with ragdoll-like effects.
+
+#### DIFFICULTY-01: Dynamic Difficulty Adjustment
+Game adjusts difficulty based on player performance (win streaks increase challenge, losing streaks reduce it).
+
+#### DIFFICULTY-02: Pacing Variety
+Encounters include varied pacing (intense combat, exploration puzzles, narrative downtime).
+
+#### DIFFICULTY-03: Clear Progression Indicators
+Players always know what to do next (map markers, quest objectives, level requirements).
+
+---
 
 ## Out of Scope
 
-Explicitly excluded. Documented to prevent scope creep.
+### Deferred Features
+*Items moved to future milestones or explicitly not in current scope.*
 
-| Feature | Reason |
-|---------|--------|
-| 100% Code Coverage | Diminishing returns; tests trivial code; wastes time. Focus on critical paths. |
-| E2E Tests for Everything | Extremely slow; flaky; expensive. Use test pyramid instead. |
-| Manual QA as Primary | Not scalable; inconsistent; slow. Use for exploratory testing only. |
-| Testing Private Methods | Couples tests to implementation; breaks on refactoring. Test public interfaces. |
-| Mock Everything | Tests become brittle; may not catch real integration issues. Mock only slow/unstable deps. |
-| New Gameplay Features | This milestone focuses on testing infrastructure, not content. |
-| Backend Rewrites | Building tests for existing Go backend, not refactoring. |
-| Database Migrations | No schema changes; only testing existing data layer. |
+- New game modes (Capture the Flag, Survival Mode)
+- Guild/Team system
+- Trading/Auction house
+- Housing/Base building
+- Pet/Mount system
+- Complex crafting beyond gear stat system
+- Weather effects system
+
+### Explicitly Excluded
+
+*Items decided NOT to build and the reasoning.*
+
+- Backend rewrite from Go back to TypeScript (maintain Go performance)
+- Godot engine upgrade (stay on 4.x for stability)
+- Mobile platform expansion (focus on Linux/Web first)
+- In-app purchase overhaul (revenuecat integration sufficient for now)
+- Voice chat system (text chat meets current needs)
+
+---
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| FND-01 | Phase 1 | Pending |
-| FND-02 | Phase 1 | Pending |
-| FND-03 | Phase 1 | Pending |
-| FND-04 | Phase 1 | Pending |
-| FND-05 | Phase 1 | Pending |
-| FND-06 | Phase 1 | Pending |
-| ISO-01 | Phase 2 | Pending |
-| ISO-02 | Phase 2 | Pending |
-| ISO-03 | Phase 2 | Pending |
-| ISO-04 | Phase 3 | Pending |
-| ISO-05 | Phase 2 | Pending |
-| COV-01 | Phase 5 | Pending |
-| COV-02 | Phase 5 | Pending |
-| COV-03 | Phase 5 | Pending |
-| COV-04 | Phase 5 | Pending |
-| COV-05 | Phase 5 | Pending |
-| FLK-01 | Phase 5 | Pending |
-| FLK-02 | Phase 5 | Pending |
-| FLK-03 | Phase 5 | Pending |
-| FLK-04 | Phase 5 | Pending |
-| PERF-01 | Phase 4 | Pending |
-| PERF-02 | Phase 4 | Pending |
-| PERF-03 | Phase 4 | Pending |
-| PERF-04 | Phase 4 | Pending |
-| PERF-05 | Phase 4 | Pending |
-| VIS-01 | Phase 5 | Pending |
-| VIS-02 | Phase 5 | Pending |
-| VIS-03 | Phase 5 | Pending |
-| FIX-01 | Phase 2 | Pending |
-| FIX-02 | Phase 2 | Pending |
-| FIX-03 | Phase 2 | Pending |
-| FIX-04 | Phase 2 | Pending |
-| FIX-05 | Phase 2 | Pending |
-| MOCK-01 | Phase 2 | Pending |
-| MOCK-02 | Phase 2 | Pending |
-| MOCK-03 | Phase 3 | Pending |
-| MOCK-04 | Phase 2 | Pending |
-| MOCK-05 | Phase 2 | Pending |
-| PBT-01 | Phase 5 | Pending |
-| PBT-02 | Phase 5 | Pending |
-| PBT-03 | Phase 5 | Pending |
-
-**Coverage:**
-- v1 requirements: 40 total
-- Mapped to phases: 40 (100%)
-- Unmapped: 0 ✓
-
-**Phase Distribution:**
-- Phase 1 (Test Infrastructure Foundation): 6 requirements
-- Phase 2 (Fixtures & Mocks Layer): 13 requirements
-- Phase 3 (Godot Test Framework Enhancement): 2 requirements
-- Phase 4 (Load Testing Infrastructure): 5 requirements
-- Phase 5 (Coverage, Reporting & Quality Gates): 14 requirements
+*This section populated by roadmap during phase planning. Each requirement maps to specific phase plans for implementation verification.*
 
 ---
-*Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after roadmap creation*
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd:transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
