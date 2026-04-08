@@ -13,4 +13,4 @@ extends Node
 func _ready() -> void:
 	"""Ensures BaseEnemy class is loaded on project start."""
 	# Preload BaseEnemy to ensure it's available for all enemy types
-	_ = preload("res://scenes/enemies/base_enemy.gd")
+	preload("res://scenes/enemies/base_enemy.gd")
