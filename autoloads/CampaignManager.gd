@@ -23,12 +23,14 @@ var unlocked_modifier_pools: Array = []
 # --- Analytics Reference ---
 var analytics: Node
 var network_manager: Node
+var difficulty_manager: Node
 
 # --- Signals ---
 signal stage_unlocked(stage_id: String)
 signal stage_completed(stage_id: String)
 signal campaign_progress_updated(chapter_id: String, progress: float)
 signal modifier_pool_unlocked(modifier_id: String)
+signal difficulty_display_changed(difficulty_level: String)
 
 func _ready() -> void:
 	"""Initializes campaign data and loads saved progress."""
@@ -36,6 +38,12 @@ func _ready() -> void:
 		analytics = get_node_or_null("/root/AnalyticsManager")
 	if network_manager == null:
 		network_manager = get_node_or_null("/root/NetworkManager")
+	if difficulty_manager == null:
+		difficulty_manager = get_node_or_null("/root/DynamicDifficultyManager")
+
+		# Connect to difficulty changes
+		if difficulty_manager and difficulty_manager.has_signal("difficulty_changed"):
+			difficulty_manager.difficulty_changed.connect(_on_difficulty_changed)
 
 	# Load campaign data and progress
 	load_campaigns_data()
@@ -94,6 +102,22 @@ func sync_campaign_progress() -> void:
 
 	# Save merged state locally
 	save_progress()
+
+func _on_difficulty_changed(new_level: String, modifier: float) -> void:
+	"""Handles difficulty level changes and updates display.
+
+	Parameters:
+		new_level: New difficulty level string
+		modifier: Difficulty modifier value
+	"""
+	difficulty_display_changed.emit(new_level)
+
+	# Track difficulty change in analytics
+	if analytics and analytics.has_method("log_custom_event"):
+		analytics.log_custom_event("difficulty_changed", {
+			"new_level": new_level,
+			"modifier": modifier
+		})
 
 func load_campaigns_data() -> void:
 	"""Loads campaign definitions from res://data/campaigns.json."""
@@ -505,3 +529,56 @@ func _get_difficulty_string(tier: int) -> String:
 		2: return "medium"
 		3: return "hard"
 		_: return "normal"
+
+# --- Dynamic Difficulty Integration ---
+func get_current_difficulty_level() -> String:
+	"""Returns the current dynamic difficulty level.
+
+	Returns:
+		String: Current difficulty level ("Easy", "Normal", "Hard", or "Extreme")
+	"""
+	if difficulty_manager:
+		return difficulty_manager.get_difficulty_level_string()
+	return "Normal"
+
+func get_difficulty_modifier() -> float:
+	"""Returns the current difficulty modifier.
+
+	Returns:
+		float: Modifier value from -0.20 to 0.20
+	"""
+	if difficulty_manager:
+		return difficulty_manager.get_difficulty_modifier()
+	return 0.0
+
+func get_stage_difficulty_with_modifier(stage_id: String) -> Dictionary:
+	"""Calculates stage difficulty including dynamic difficulty modifier.
+
+	Parameters:
+		stage_id: Stage identifier
+
+	Returns:
+		Dictionary: Stage data with adjusted difficulty
+	"""
+	var stage_data = get_stage_data(stage_id)
+	var base_difficulty = stage_data.get("difficulty", 1)
+
+	if difficulty_manager:
+		var modifier = difficulty_manager.get_difficulty_modifier()
+		var adjusted_difficulty = base_difficulty
+
+		# Map modifier to difficulty adjustment
+		if modifier <= -0.15:
+			adjusted_difficulty = max(1, base_difficulty - 1)
+		elif modifier >= 0.15:
+			adjusted_difficulty = min(3, base_difficulty + 1)
+
+		stage_data["adjusted_difficulty"] = adjusted_difficulty
+		stage_data["dynamic_modifier"] = modifier
+
+	return stage_data
+
+func save_difficulty_setting() -> void:
+	"""Saves the current difficulty setting for persistence."""
+	if difficulty_manager:
+		difficulty_manager.save_difficulty_state()

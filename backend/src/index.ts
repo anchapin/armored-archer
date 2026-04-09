@@ -88,6 +88,11 @@ import {
 } from './modules/stage_tracking';
 import { initializeNotifications, registerNotificationEndpoints } from './modules/notifications_rpc';
 import { startNotificationScheduler, stopNotificationScheduler } from './modules/notification_scheduler';
+import {
+  registerRpcSyncDifficulty,
+  registerRpcTrackMatchOutcome,
+  registerRpcGetPlayerPerformance,
+} from './modules/dynamic_difficulty';
 
 // Global structured logger instance for use by all modules
 let globalStructuredLogger: StructuredLogger | null = null;
@@ -353,6 +358,24 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/sync_difficulty',
+      'sync_difficulty',
+      rpcSyncDifficultyWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/track_match_outcome',
+      'track_match_outcome',
+      rpcTrackMatchOutcomeWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/get_player_performance',
+      'get_player_performance',
+      rpcGetPlayerPerformanceWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/get_player_reports',
       'get_player_reports',
       rpcGetPlayerReportsWrapper
@@ -421,6 +444,9 @@ const InitModule: InitModule = function (
     registerRpcJoinPool(initializer);
     registerRpcLeavePool(initializer);
     registerRpcGetQueueStatus(initializer);
+    registerRpcSyncDifficulty(initializer);
+    registerRpcTrackMatchOutcome(initializer);
+    registerRpcGetPlayerPerformance(initializer);
   }
 
   logSystemEvent('info', 'Armored Archer server module initialized');
@@ -684,6 +710,36 @@ function rpcTrackRevenueWrapper(
 ): string {
   const { rpcTrackRevenue } = require('./modules/analytics');
   return rpcTrackRevenue(ctx, logger, nk, payload);
+}
+
+function rpcSyncDifficultyWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcSyncDifficulty } = require('./modules/dynamic_difficulty');
+  return rpcSyncDifficulty(ctx, logger, nk, payload);
+}
+
+function rpcTrackMatchOutcomeWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcTrackMatchOutcome } = require('./modules/dynamic_difficulty');
+  return rpcTrackMatchOutcome(ctx, logger, nk, payload);
+}
+
+function rpcGetPlayerPerformanceWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcGetPlayerPerformance } = require('./modules/dynamic_difficulty');
+  return rpcGetPlayerPerformance(ctx, logger, nk, payload);
 }
 
 // Register RPC to start notification scheduler (can be called externally)
