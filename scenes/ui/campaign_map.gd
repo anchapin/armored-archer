@@ -109,12 +109,17 @@ func build_stage_buttons() -> void:
 		child.queue_free()
 
 	var stages = get_campaign_stages(current_chapter)
+	var stage_markers = {}
+
+	# Get stage markers if CampaignManager has the method
+	if CampaignManager and CampaignManager.has_method("get_all_stage_markers"):
+		stage_markers = CampaignManager.get_all_stage_markers()
 
 	for stage_data in stages:
-		var stage_button = create_stage_button(stage_data)
+		var stage_button = create_stage_button(stage_data, stage_markers)
 		stages_container.add_child(stage_button)
 
-func create_stage_button(stage_data: Dictionary) -> Button:
+func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {}) -> Button:
 	var button = Button.new()
 	button.custom_minimum_size = Vector2(400, 60)
 
@@ -130,6 +135,13 @@ func create_stage_button(stage_data: Dictionary) -> Button:
 	var stage_id = stage_data.get("id")
 	var is_unlocked = CampaignManager.is_stage_unlocked(stage_id)
 	var is_completed = CampaignManager.is_stage_completed(stage_id)
+
+	# Get stage marker info
+	var marker_info = stage_markers.get(stage_id, {})
+	var has_quest = marker_info.get("has_quest", false)
+	var quest_description = marker_info.get("quest_description", "")
+	var is_marker_locked = marker_info.get("is_locked", false)
+	var is_marker_available = marker_info.get("is_available", false)
 
 	# Build button text with difficulty indicator
 	var difficulty = stage_data.get("difficulty", 1)
@@ -166,6 +178,24 @@ func create_stage_button(stage_data: Dictionary) -> Button:
 		button.text += " [BOSS]"
 		if is_unlocked and not is_completed:
 			button.modulate = warning_color
+
+	# Add quest marker if active quest
+	if has_quest and is_unlocked and not is_completed:
+		button.text += " \u25CF"  # Bullet point for quest marker
+		if quest_description != "":
+			button.tooltip_text += "\nQuest: " + quest_description
+
+	# Add locked marker if stage has level requirement not met
+	if is_marker_locked and not is_unlocked:
+		button.text += " \u1F512"  # Lock emoji
+		if CampaignManager and CampaignManager.has_method("get_stage_with_progression"):
+			var stage_progression = CampaignManager.get_stage_with_progression(stage_id)
+			var level_req = stage_progression.get("level_requirement", 1)
+			button.tooltip_text = "Requires Level %d" % level_req
+
+	# Add available marker for new content
+	if is_marker_available and is_unlocked and not is_completed:
+		button.text += " \u2713"  # Checkmark
 
 	if is_unlocked:
 		button.pressed.connect(_on_stage_pressed.bind(stage_id))

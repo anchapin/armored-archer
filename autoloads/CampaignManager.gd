@@ -25,6 +25,7 @@ var analytics: Node
 var network_manager: Node
 var difficulty_manager: Node
 var pacing_manager: Node
+var progression_manager: Node
 
 # --- Signals ---
 signal stage_unlocked(stage_id: String)
@@ -49,6 +50,9 @@ func _ready() -> void:
 	if pacing_manager == null:
 		pacing_manager = get_node_or_null("/root/PacingManager")
 
+	if progression_manager == null:
+		progression_manager = get_node_or_null("/root/ProgressionIndicatorManager")
+
 	# Load campaign data and progress
 	load_campaigns_data()
 	load_progress()
@@ -61,6 +65,10 @@ func _ready() -> void:
 	# Connect to network for sync
 	if network_manager and network_manager.has_signal("connection_status_changed"):
 		network_manager.connection_status_changed.connect(_on_connection_status_changed)
+
+	# Connect to progression manager for quest tracking
+	if progression_manager and progression_manager.has_signal("quest_updated"):
+		progression_manager.quest_updated.connect(_on_quest_updated)
 
 func _on_connection_status_changed(is_online: bool) -> void:
 	"""Syncs campaign progress when connection is established."""
@@ -671,3 +679,134 @@ func reset_pacing_state() -> void:
 	"""Resets pacing state for new session."""
 	if pacing_manager:
 		pacing_manager.reset_pacing_state()
+
+# --- Progression Indicators Integration ---
+## Returns the next available stage for the player.
+##
+## Returns:
+##   String: Stage ID of the next available stage, or empty string if none
+func get_next_available_stage() -> String:
+	"""Returns the next available stage for the player."""
+	for chapter in campaigns_data.get("campaigns", []):
+		var stages = chapter.get("stages", [])
+		for stage_data in stages:
+			var stage_id = stage_data.get("id", "")
+			if is_stage_unlocked(stage_id) and not is_stage_completed(stage_id):
+				return stage_id
+	return ""
+
+## Gets stage data with progression information.
+##
+## Parameters:
+##   stage_id: Stage identifier
+##
+## Returns:
+##   Dictionary: Stage data with progression info
+func get_stage_with_progression(stage_id: String) -> Dictionary:
+	"""Gets stage data with progression information."""
+	var stage_data = get_stage_data(stage_id)
+
+	if stage_data.is_empty():
+		return {}
+
+	stage_data["is_unlocked"] = is_stage_unlocked(stage_id)
+	stage_data["is_completed"] = is_stage_completed(stage_id)
+
+	# Add level requirement if available
+	if progression_manager:
+		var reqs = progression_manager.get_level_requirements(stage_id)
+		if not reqs.is_empty():
+			stage_data["level_requirement"] = reqs.get("level", 1)
+		else:
+			stage_data["level_requirement"] = 1
+	else:
+		stage_data["level_requirement"] = 1
+
+	return stage_data
+
+## Gets the quest objectives for a specific stage.
+##
+## Parameters:
+##   stage_id: Stage identifier
+##
+## Returns:
+##   Array: List of quest objectives
+func get_stage_quest_objectives(stage_id: String) -> Array:
+	"""Gets quest objectives for a specific stage."""
+	if progression_manager and progression_manager.has_method("get_quest_objectives"):
+		var quest_id = "stage_%s" % stage_id
+		return progression_manager.get_quest_objectives(quest_id)
+	return []
+
+## Gets the current quest progress for a stage.
+##
+## Parameters:
+##   stage_id: Stage identifier
+##
+## Returns:
+##   float: Progress percentage (0.0 to 1.0)
+func get_stage_quest_progress(stage_id: String) -> float:
+	"""Gets quest progress for a specific stage."""
+	var objectives = get_stage_quest_objectives(stage_id)
+	if objectives.is_empty():
+		return 0.0
+
+	var total = objectives.size()
+	var completed = 0
+
+	for objective in objectives:
+		if objective.get("state") == ProgressionIndicatorManager.ObjectiveState.COMPLETED:
+			completed += 1
+
+	return float(completed) / float(total) if total > 0 else 0.0
+
+## Handles quest updated signal from ProgressionIndicatorManager.
+##
+## Parameters:
+##   quest_id: ID of the updated quest
+##   progress: Progress percentage (0.0 to 1.0)
+func _on_quest_updated(quest_id: String, progress: float) -> void:
+	"""Handles quest progress update from ProgressionIndicatorManager."""
+	# Update campaign progress if this is a stage completion quest
+	if quest_id.begins_with("stage_"):
+		var stage_id = quest_id.substr(6)  # Remove "stage_" prefix
+		update_campaign_progress()
+
+## Gets all stage markers for the campaign map.
+##
+## Returns:
+##   Dictionary: Stage markers keyed by stage ID
+func get_all_stage_markers() -> Dictionary:
+	"""Gets all stage markers for the campaign map."""
+	var markers = {}
+
+	if not progression_manager:
+		return markers
+
+	var map_markers_data = progression_manager.get_map_markers()
+	var player_stats_manager = get_node_or_null("/root/PlayerStatsManager")
+
+	for stage_id in map_markers_data:
+		var stage_markers = map_markers_data[stage_id]
+		var marker_info = {
+			"stage_id": stage_id,
+			"has_quest": false,
+			"is_locked": false,
+			"is_available": false
+		}
+
+		# Check each marker type
+		for marker in stage_markers.get("markers", []):
+			var marker_type = marker.get("type", "")
+			match marker_type:
+				"quest":
+					marker_info["has_quest"] = true
+					marker_info["quest_description"] = marker.get("description", "")
+				"available":
+					marker_info["is_available"] = true
+				"locked":
+					marker_info["is_locked"] = true
+
+		markers[stage_id] = marker_info
+
+	return markers
