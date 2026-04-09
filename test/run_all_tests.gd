@@ -106,6 +106,13 @@ func _run_next_test():
 		"res://test/test_cosmetic_skin_data.gd",
 		"res://test/test_modular_character_sprite.gd",
 
+		# Combat Juice Integration (Phase 3)
+		"res://test/test_combat_juice_integration.gd",
+		"res://test/test_damage_indicator_manager.gd",
+		"res://test/test_hit_reactions.gd",
+		"res://test/test_death_animations.gd",
+		"res://test/test_impact_manager.gd",
+
 		# UI components
 		"res://test/test_ui_components.gd",
 
