@@ -4,9 +4,8 @@
  */
 
 import { Runtime } from '../types/nakama';
-import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { validatePayload, ZodSchemas } from './validation';
 
 /**
  * Weapon tier definitions with power multipliers.
@@ -276,7 +275,7 @@ export async function applyBalanceAdjustment(
         collection: 'weapon_balance_adjustments',
         key: adjustment.adjustment_id,
         userId: userId,
-        value: adjustment,
+        value: JSON.stringify(adjustment),
         permissionRead: 2, // Public read (for clients to fetch)
         permissionWrite: 0, // No public write
       },
@@ -331,7 +330,8 @@ async function checkAdminAuthorization(nk: Runtime.Nakama, userId: string): Prom
     ]);
 
     if (objects.length > 0) {
-      const metadata = objects[0].value;
+      const data = objects[0].value;
+      const metadata = JSON.parse(data) as Record<string, unknown>;
       return metadata.is_admin === true;
     }
 
@@ -376,7 +376,7 @@ export async function trackWeaponUsage(
     };
 
     if (objects.length > 0) {
-      stats = objects[0].value as WeaponUsageStats;
+      stats = JSON.parse(objects[0].value) as WeaponUsageStats;
     }
 
     // Update statistics
@@ -398,7 +398,7 @@ export async function trackWeaponUsage(
         collection: 'weapon_usage_stats',
         key: statsKey,
         userId: '00000000-0000-0000-0000-000000000000',
-        value: stats,
+        value: JSON.stringify(stats),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -430,7 +430,7 @@ export async function getBalanceAdjustments(
     const adjustments: Record<string, number> = {};
 
     for (const obj of objects) {
-      const adjustment = obj.value as BalanceAdjustment;
+      const adjustment = JSON.parse(obj.value) as BalanceAdjustment;
       // Use the most recent adjustment for each weapon
       if (!adjustments[adjustment.weapon_id] || obj.createTime > 0) {
         adjustments[adjustment.weapon_id] = adjustment.multiplier;
@@ -461,13 +461,8 @@ export async function rpcApplyBalanceAdjustment(
 ): Promise<string> {
   logger.debug('ApplyBalanceAdjustment RPC called');
 
-  // Parse and validate payload
-  const parseResult = safeParse<ApplyBalanceAdjustmentRequest>(payload);
-  if (!parseResult.success) {
-    return JSON.stringify(createValidationErrorResponse('Invalid JSON payload'));
-  }
-
-  const validation = validatePayload(ZodSchemas.apply_balance_adjustment, parseResult.data);
+  // Validate payload
+  const validation = validatePayload(ZodSchemas.apply_balance_adjustment, payload, 'apply_balance_adjustment');
   if (!validation.success) {
     return JSON.stringify(validation.error);
   }
@@ -500,7 +495,7 @@ export async function getWeaponStats(
     ]);
 
     if (objects.length > 0) {
-      return objects[0].value as WeaponUsageStats;
+      return JSON.parse(objects[0].value) as WeaponUsageStats;
     }
 
     return null;
@@ -527,18 +522,27 @@ export async function rpcGetBalanceMetrics(
 ): Promise<string> {
   logger.debug('GetBalanceMetrics RPC called');
 
-  const parseResult = safeParse<{ weapon_id?: string }>(payload);
-
   try {
     const adjustments = await getBalanceAdjustments(nk);
 
-    if (parseResult.success && parseResult.data?.weapon_id) {
+    // Parse optional weapon_id from payload
+    let weaponId: string | undefined;
+    if (payload && payload.trim() !== '{}') {
+      try {
+        const parsed = JSON.parse(payload) as { weapon_id?: string };
+        weaponId = parsed.weapon_id;
+      } catch {
+        // Invalid JSON, ignore
+      }
+    }
+
+    if (weaponId) {
       // Return stats for specific weapon
-      const stats = await getWeaponStats(nk, parseResult.data.weapon_id);
+      const stats = await getWeaponStats(nk, weaponId);
       return JSON.stringify({
         success: true,
-        weapon_id: parseResult.data.weapon_id,
-        balance_multiplier: adjustments[parseResult.data.weapon_id] || 1.0,
+        weapon_id: weaponId,
+        balance_multiplier: adjustments[weaponId] || 1.0,
         usage_stats: stats,
       });
     }

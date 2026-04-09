@@ -6,7 +6,7 @@
 import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
-import { validatePayload, ZodSchemas, safeParse, object } from './validation';
+import { validatePayload, ZodSchemas, object } from './validation';
 
 /**
  * Match quality metrics for monitoring matchmaking health.
@@ -791,7 +791,7 @@ export async function rpcGetMatchQualityMetrics(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
-  payload: string
+  _payload: string
 ): Promise<string> {
   logger.debug('GetMatchQualityMetrics RPC called');
 
@@ -828,21 +828,24 @@ export async function rpcGetWeaponStats(
 ): Promise<string> {
   logger.debug('GetWeaponStats RPC called');
 
-  const parseResult = safeParse(
-    payload,
-    null,
-    undefined,
-    'get_weapon_stats'
-  );
+  let weaponId: string | undefined;
+  if (payload && payload.trim() !== '{}') {
+    try {
+      const parsed = JSON.parse(payload) as { weapon_id?: string };
+      weaponId = parsed.weapon_id;
+    } catch (e) {
+      // Invalid JSON, ignore
+    }
+  }
 
   try {
-    if (parseResult.success && parseResult.data?.weapon_id) {
+    if (weaponId) {
       // Return stats for specific weapon
       const stats = await generateWeaponStats(nk);
       return JSON.stringify({
         success: true,
-        weapon_id: parseResult.data.weapon_id,
-        stats: stats[parseResult.data.weapon_id] || null,
+        weapon_id: weaponId,
+        stats: stats[weaponId] || null,
       });
     }
 
@@ -874,7 +877,7 @@ export async function rpcDetectBalanceIssues(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
-  payload: string
+  _payload: string
 ): Promise<string> {
   logger.debug('DetectBalanceIssues RPC called');
 

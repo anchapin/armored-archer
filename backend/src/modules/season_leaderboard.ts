@@ -81,7 +81,8 @@ const STORAGE_KEY_PLAYER_LAST_ACTIVE = 'player_last_active';
  */
 export async function applyDailyDecay(
   nk: Runtime.Nakama,
-  seasonId: string
+  seasonId: string,
+  logger?: Runtime.Logger
 ): Promise<{ affected: number; total_loss: number }> {
   const decayConfig = getDecayConfig(nk);
   const leaderboardRecords = nk.leaderboardRecordList(seasonId, [], 1000, '', 0);
@@ -116,7 +117,7 @@ export async function applyDailyDecay(
       affectedCount++;
       totalLoss += actualLoss;
 
-      nk.logger.info('Rating decay applied', {
+      logger?.info('Rating decay applied', {
         player_id: record.ownerId,
         original_rating: record.score,
         new_rating: newRating,
@@ -277,7 +278,8 @@ export async function getPlayerRank(
  */
 export async function recordSeasonCompletion(
   nk: Runtime.Nakama,
-  seasonId: string
+  seasonId: string,
+  logger?: Runtime.Logger
 ): Promise<SeasonArchive> {
   // Get current season info
   const currentSeason = getCurrentSeasonInfo(nk);
@@ -295,21 +297,26 @@ export async function recordSeasonCompletion(
     start_time: currentSeason.start_time,
     end_time: currentSeason.end_time,
     winner_id: winner?.player_id || '',
-    winner_name: winner ? getPlayerUsername(nk, winner.player_id) : '',
+    winner_name: winner ? await getPlayerUsername(nk, winner.player_id) : '',
     winner_rating: winner?.rating || 0,
     total_players: leaderboardRecords.length,
     rewards_distributed: false,
   };
 
-  // Archive season data
+  // Archive season data using system user
   const archiveData = await getSeasonArchive(nk);
   archiveData[seasonId] = archive;
 
-  nk.storageWrite({
-    [STORAGE_KEY_SEASON_ARCHIVE]: JSON.stringify(archiveData),
-  });
+  nk.storageWrite([
+    {
+      collection: STORAGE_KEY_SEASON_ARCHIVE,
+      key: STORAGE_KEY_SEASON_ARCHIVE,
+      userId: '00000000-0000-0000-0000-000000000000',
+      value: JSON.stringify(archiveData),
+    },
+  ]);
 
-  nk.logger.info('Season archived', {
+  logger?.info('Season archived', {
     season_id: seasonId,
     season_number: archive.season_number,
     winner_id: archive.winner_id,
@@ -424,12 +431,18 @@ export function getCurrentSeasonInfo(_nk: Runtime.Nakama): SeasonInfo {
  */
 export function getDecayConfig(nk: Runtime.Nakama): RatingDecayConfig {
   try {
-    const storage = nk.storageRead([STORAGE_KEY_DECAY_CONFIG]);
-    if (storage[STORAGE_KEY_DECAY_CONFIG]) {
-      return JSON.parse(storage[STORAGE_KEY_DECAY_CONFIG] as string);
+    const storage = nk.storageRead([
+      {
+        collection: STORAGE_KEY_DECAY_CONFIG,
+        key: STORAGE_KEY_DECAY_CONFIG,
+        userId: '00000000-0000-0000-0000-000000000000',
+      },
+    ]);
+    if (storage.length > 0 && storage[0].value) {
+      return JSON.parse(storage[0].value);
     }
-  } catch (e) {
-    nk.logger.warn('Failed to load decay config, using defaults', { error: String(e) });
+  } catch {
+    // Silently return defaults if storage read fails
   }
 
   return DEFAULT_DECAY_CONFIG;
@@ -441,12 +454,21 @@ export function getDecayConfig(nk: Runtime.Nakama): RatingDecayConfig {
  * @param nk - Nakama server interface
  * @param config - New decay configuration
  */
-export function setDecayConfig(nk: Runtime.Nakama, config: RatingDecayConfig): void {
-  nk.storageWrite({
-    [STORAGE_KEY_DECAY_CONFIG]: JSON.stringify(config),
-  });
+export function setDecayConfig(
+  nk: Runtime.Nakama,
+  config: RatingDecayConfig,
+  logger?: Runtime.Logger
+): void {
+  nk.storageWrite([
+    {
+      collection: STORAGE_KEY_DECAY_CONFIG,
+      key: STORAGE_KEY_DECAY_CONFIG,
+      userId: '00000000-0000-0000-0000-000000000000',
+      value: JSON.stringify(config),
+    },
+  ]);
 
-  nk.logger.info('Rating decay config updated', config);
+  logger?.info('Rating decay config updated', config);
 }
 
 /**
@@ -467,11 +489,11 @@ export async function getPlayerLastActive(nk: Runtime.Nakama, playerId: string):
     ]);
 
     if (storage.length > 0 && storage[0].value) {
-      const data = JSON.parse(storage[0].value);
-      return data.last_active || data.last_match_time || 0;
+      const data = JSON.parse(storage[0].value) as Record<string, unknown>;
+      return (data.last_active as number) || (data.last_match_time as number) || 0;
     }
-  } catch (e) {
-    nk.logger.warn('Failed to load player last active', { player_id: playerId, error: String(e) });
+  } catch {
+    // Silently return 0 if storage read fails
   }
 
   return 0;
@@ -502,12 +524,18 @@ export function updatePlayerLastActive(nk: Runtime.Nakama, playerId: string): vo
  */
 export async function getSeasonArchive(nk: Runtime.Nakama): Promise<Record<string, SeasonArchive>> {
   try {
-    const storage = nk.storageRead([STORAGE_KEY_SEASON_ARCHIVE]);
-    if (storage[STORAGE_KEY_SEASON_ARCHIVE]) {
-      return JSON.parse(storage[STORAGE_KEY_SEASON_ARCHIVE] as string);
+    const storage = nk.storageRead([
+      {
+        collection: STORAGE_KEY_SEASON_ARCHIVE,
+        key: STORAGE_KEY_SEASON_ARCHIVE,
+        userId: '00000000-0000-0000-0000-000000000000',
+      },
+    ]);
+    if (storage.length > 0 && storage[0].value) {
+      return JSON.parse(storage[0].value);
     }
-  } catch (e) {
-    nk.logger.warn('Failed to load season archive', { error: String(e) });
+  } catch {
+    // Silently return empty object if storage read fails
   }
 
   return {};
@@ -520,14 +548,23 @@ export async function getSeasonArchive(nk: Runtime.Nakama): Promise<Record<strin
  * @param playerId - Player ID
  * @returns Player username
  */
-function getPlayerUsername(nk: Runtime.Nakama, playerId: string): string {
+async function getPlayerUsername(nk: Runtime.Nakama, playerId: string): Promise<string> {
   try {
-    const users = nk.getUsers([playerId]);
-    if (users.length > 0) {
-      return users[0].username || users[0].displayName || 'Unknown';
+    // Try to get username from storage (store it when player activity is recorded)
+    const storage = nk.storageRead([
+      {
+        collection: 'user_metadata',
+        key: playerId,
+        userId: playerId,
+      },
+    ]);
+
+    if (storage.length > 0 && storage[0].value) {
+      const data = JSON.parse(storage[0].value) as Record<string, unknown>;
+      return (data.username as string) || (data.display_name as string) || 'Unknown';
     }
-  } catch (e) {
-    nk.logger.warn('Failed to get username', { player_id: playerId, error: String(e) });
+  } catch {
+    // Return default if storage read fails
   }
 
   return 'Unknown';

@@ -14,6 +14,7 @@ import { config } from '../config';
 import { logAudit } from './audit';
 import { isPII } from './privacy_compliance';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { logger } from '../config/logger';
 
 /**
  * Maximum gem balance allowed to prevent overflow exploits.
@@ -195,7 +196,7 @@ async function markReceiptAsUsed(
  * This prevents collision attacks and replay attack manipulation.
  */
 if (!process.env.RECEIPT_HASH_SALT) {
-  console.warn(
+  logger.warn(
     '[SECURITY] RECEIPT_HASH_SALT not set - using fallback. Set this env var in production.'
   );
 }

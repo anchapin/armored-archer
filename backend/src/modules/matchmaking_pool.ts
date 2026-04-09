@@ -133,7 +133,7 @@ function calculateBracketSize(waitTime: number): number {
 /**
  * Check if two players are compatible for matching.
  */
-function _arePlayersCompatible(player1: QueuedPlayer, player2: QueuedPlayer): boolean {
+function _arePlayersCompatible(_player1: QueuedPlayer, _player2: QueuedPlayer): boolean {
   // Must be same mode
   if (player1.mode !== player2.mode) {
     return false;

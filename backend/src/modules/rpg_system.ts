@@ -545,6 +545,94 @@ export function registerRpcRespecStats(initializer: Runtime.Initializer): void {
 }
 
 /**
+ * Validates respec request data and loads required data.
+ */
+function validateRespecRequest(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  payload: string
+): {
+  error?: { message: string; auditDetails: Record<string, unknown> };
+  data?: { playerStats: PlayerStats; respecData: RespecData; request: RespecRequest };
+} {
+  // Validate payload
+  const validation = validatePayload(
+    {
+      new_allocation: {
+        attack: pipe(number(), integer(), minValue(0)),
+        defense: pipe(number(), integer(), minValue(0)),
+        dodge: pipe(number(), integer(), minValue(0)),
+        crit_rate: pipe(number(), integer(), minValue(0)),
+      },
+      use_free_respec: optional(boolean()),
+    },
+    payload,
+    'respec_stats'
+  );
+  if (!validation.success) {
+    return {
+      error: {
+        message: validation.error,
+        auditDetails: {},
+      },
+    };
+  }
+  const request = validation.data;
+
+  // Load player stats
+  const playerStatsResult = loadPlayerStats(nk, ctx.userId);
+  if (!playerStatsResult.success || !playerStatsResult.data) {
+    return {
+      error: {
+        message: playerStatsResult.error || 'Failed to load player stats',
+        auditDetails: {},
+      },
+    };
+  }
+  const playerStats = playerStatsResult.data;
+
+  // Validate allocation matches available points
+  const allocationValidation = validateStatAllocation(playerStats, request.new_allocation);
+  if (!allocationValidation.valid) {
+    return {
+      error: {
+        message: allocationValidation.error || 'Invalid allocation',
+        auditDetails: {},
+      },
+    };
+  }
+
+  // Load and validate respec data
+  const respecDataResult = loadRespecData(nk, ctx.userId);
+  const defaultRespecData: RespecData = {
+    last_respec_time: 0,
+    free_respecs_used: 0,
+    current_season_id: '',
+  };
+  const respecData = respecDataResult.success
+    ? (respecDataResult.data as RespecData)
+    : defaultRespecData;
+
+  const cooldownCheck = checkRespecCooldown(respecData, request.use_free_respec || false);
+  if (cooldownCheck.onCooldown) {
+    return {
+      error: {
+        message: `Respec is on cooldown (${cooldownCheck.cooldownRemaining}s remaining)`,
+        auditDetails: { cooldown_remaining: cooldownCheck.cooldownRemaining },
+      },
+    };
+  }
+
+  return {
+    data: {
+      playerStats,
+      respecData,
+      request,
+    },
+  };
+}
+
+/**
  * Handles stat respec requests.
  *
  * @param ctx - Nakama runtime context
@@ -572,137 +660,51 @@ export function rpcRespecStats(
 ): string {
   logger.info('Respec stats called for user: %s', ctx.userId);
 
-  const validation = validatePayload(
-    {
-      new_allocation: {
-        attack: pipe(number(), integer(), minValue(0)),
-        defense: pipe(number(), integer(), minValue(0)),
-        dodge: pipe(number(), integer(), minValue(0)),
-        crit_rate: pipe(number(), integer(), minValue(0)),
-      },
-      use_free_respec: optional(boolean()),
-    },
-    payload,
-    'respec_stats'
-  );
-  if (!validation.success) {
+  const validation = validateRespecRequest(nk, ctx, payload);
+  if (validation.error) {
     logAudit(
       nk,
       ctx.userId,
       ctx.ipAddress ?? null,
       'respec_stats',
       'player_stats',
-      {},
+      validation.error.auditDetails,
       'failure',
-      validation.error
+      validation.error.message
     );
-    return createValidationErrorResponse('respec_stats', validation.error);
-  }
-
-  const request = validation.data;
-
-  // Load player stats
-  const playerStatsResult = loadPlayerStats(nk, ctx.userId);
-  if (!playerStatsResult.success || !playerStatsResult.data) {
     return JSON.stringify({
-      error: playerStatsResult.error || 'Failed to load player stats',
+      error: validation.error.message,
     });
   }
-  const playerStats = playerStatsResult.data;
 
-  // Validate allocation matches available points
-  const currentTotalSpent = Object.values(playerStats.stats).reduce(
-    (a: number, b: number) => a + b,
-    0
-  );
-  const newTotalSpent = (Object.values(request.new_allocation) as number[]).reduce(
-    (a: number, b: number) => a + b,
-    0
-  );
+  const { playerStats, respecData, request } = validation.data!;
 
-  if (newTotalSpent !== currentTotalSpent) {
+  // Determine if free respec can be used
+  const useFreeRespec = canUseFreeRespec(respecData, request.use_free_respec || false);
+
+  // Calculate and validate cost
+  const costResult = calculateAndValidateCost(playerStats, useFreeRespec);
+  if (costResult.error) {
     logAudit(
       nk,
       ctx.userId,
       ctx.ipAddress ?? null,
       'respec_stats',
       'player_stats',
-      { current_total: currentTotalSpent, new_total: newTotalSpent },
+      { cost: costResult.costPaid },
       'failure',
-      'Total stat points must match'
+      costResult.error
     );
     return JSON.stringify({
-      error: 'Total stat points must match current allocation',
+      error: costResult.error,
+      cost: costResult.costPaid,
     });
   }
 
-  // Load respec data
-  const respecDataResult = loadRespecData(nk, ctx.userId);
-  const respecData = respecDataResult.success
-    ? respecDataResult.data
-    : {
-        last_respec_time: 0,
-        free_respecs_used: 0,
-        current_season_id: '',
-      };
-
-  // Check cooldown
-  const currentTime = Math.floor(Date.now() / 1000);
-  const cooldownRemaining =
-    RESPEC_COOLDOWN_SECONDS - (currentTime - (respecData?.last_respec_time || 0));
-  if (cooldownRemaining > 0 && !request.use_free_respec && respecData) {
-    logAudit(
-      nk,
-      ctx.userId,
-      ctx.ipAddress ?? null,
-      'respec_stats',
-      'player_stats',
-      { cooldown_remaining: cooldownRemaining },
-      'failure',
-      'Respec on cooldown'
-    );
-    return JSON.stringify({
-      error: 'Respec is on cooldown',
-      cooldown_remaining: cooldownRemaining,
-    });
-  }
-
-  // Check free respec availability
-  let useFreeRespec = request.use_free_respec || false;
-  if (useFreeRespec && (respecData?.free_respecs_used || 0) >= FREE_RESPEC_PER_SEASON) {
-    useFreeRespec = false;
-  }
-
-  // Calculate cost
-  let costPaid = 0;
+  // Deduct gems if not using free respec
   if (!useFreeRespec) {
-    // Use gem balance from player stats (already loaded)
-    const gemBalance = (playerStats?.stats as any)?.gems || 0;
-
-    costPaid = Math.floor(gemBalance * RESPEC_COST_PERCENT);
-    costPaid = Math.max(RESPEC_MIN_COST, Math.min(RESPEC_MAX_COST, costPaid));
-
-    // Check if player has enough gems
-    if (gemBalance < costPaid) {
-      logAudit(
-        nk,
-        ctx.userId,
-        ctx.ipAddress ?? null,
-        'respec_stats',
-        'player_stats',
-        { cost: costPaid, balance: gemBalance },
-        'failure',
-        'Not enough gems'
-      );
-      return JSON.stringify({
-        error: 'Not enough gems for respec',
-        cost: costPaid,
-      });
-    }
-
-    // Deduct gems
     nk.walletUpdate(ctx.userId, {
-      gem: -costPaid,
+      gem: -costResult.costPaid,
     });
   }
 
@@ -715,12 +717,12 @@ export function rpcRespecStats(
   };
 
   // Update respec data
+  const currentTime = Math.floor(Date.now() / 1000);
   (respecData as RespecData).last_respec_time = currentTime;
   if (useFreeRespec) {
     (respecData as RespecData).free_respecs_used++;
   }
   saveRespecData(nk, ctx.userId, respecData as RespecData);
-
   // Save player stats
   savePlayerStats(nk, ctx, logger, playerStats, 'respec_stats');
 
@@ -730,14 +732,14 @@ export function rpcRespecStats(
     ctx.ipAddress ?? null,
     'respec_stats',
     'player_stats',
-    { cost_paid: costPaid, used_free_respec: useFreeRespec },
+    { cost_paid: costResult.costPaid, used_free_respec: useFreeRespec },
     'success'
   );
 
   return JSON.stringify({
     success: true,
     player_stats: playerStats,
-    cost_paid: costPaid,
+    cost_paid: costResult.costPaid,
     used_free_respec: useFreeRespec,
   });
 }
@@ -976,7 +978,84 @@ export function rpcGetBuilds(
 // --- Helper Functions ---
 
 /**
- *
+ * Validates that the new stat allocation total matches the current total.
+ */
+function validateStatAllocation(
+  currentStats: PlayerStats,
+  newAllocation: Record<string, number>
+): { valid: boolean; error?: string } {
+  const currentTotalSpent = Object.values(currentStats.stats).reduce((a, b) => a + b, 0);
+  const newTotalSpent = Object.values(newAllocation).reduce((a, b) => a + b, 0);
+
+  if (newTotalSpent !== currentTotalSpent) {
+    return {
+      valid: false,
+      error: `Total stat points must match (current: ${currentTotalSpent}, new: ${newTotalSpent})`,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Checks if respec is on cooldown.
+ */
+function checkRespecCooldown(respecData: RespecData, useFreeRespec: boolean): {
+  onCooldown: boolean;
+  cooldownRemaining?: number;
+} {
+  const currentTime = Math.floor(Date.now() / 1000);
+  const cooldownRemaining =
+    RESPEC_COOLDOWN_SECONDS - (currentTime - (respecData?.last_respec_time || 0));
+
+  if (cooldownRemaining > 0 && !useFreeRespec && respecData) {
+    return { onCooldown: true, cooldownRemaining };
+  }
+
+  return { onCooldown: false };
+}
+
+/**
+ * Determines if free respec can be used.
+ */
+function canUseFreeRespec(respecData: RespecData, useFreeRespec: boolean): boolean {
+  if (!useFreeRespec) {
+    return false;
+  }
+
+  const freeRespecsUsed = respecData?.free_respecs_used || 0;
+  return freeRespecsUsed < FREE_RESPEC_PER_SEASON;
+}
+
+/**
+ * Calculates the respec cost and validates player has enough gems.
+ */
+function calculateAndValidateCost(
+  playerStats: PlayerStats,
+  useFreeRespec: boolean
+): { costPaid: number; error?: string } {
+  if (useFreeRespec) {
+    return { costPaid: 0 };
+  }
+
+  // Use gem balance from player stats (already loaded)
+  const statsWithGems = playerStats.stats as Record<string, number>;
+  const gemBalance = statsWithGems.gems || 0;
+  let costPaid = Math.floor(gemBalance * RESPEC_COST_PERCENT);
+  costPaid = Math.max(RESPEC_MIN_COST, Math.min(RESPEC_MAX_COST, costPaid));
+
+  if (gemBalance < costPaid) {
+    return {
+      costPaid,
+      error: `Not enough gems for respec (cost: ${costPaid}, balance: ${gemBalance})`,
+    };
+  }
+
+  return { costPaid };
+}
+
+/**
+ * Loads player stats from storage.
  */
 function loadPlayerStats(
   nk: Runtime.Nakama,
