@@ -3,14 +3,14 @@
  * @fileoverview Manages dynamic difficulty adjustment based on player performance.
  */
 
+import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
-import { safeParse, createErrorResponse } from '../utils/safeParse';
+import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import {
   validatePayload,
   createValidationErrorResponse,
-  object,
   number,
   string,
   boolean,
@@ -39,8 +39,8 @@ export enum DifficultyLevel {
 /**
  * Difficulty modifier bounds.
  */
-const MAX_MODIFIER = 0.20;
-const MIN_MODIFIER = -0.20;
+const MAX_MODIFIER = 0.2;
+const MIN_MODIFIER = -0.2;
 
 /**
  * Streak thresholds for difficulty adjustment.
@@ -182,7 +182,12 @@ export function rpcSyncDifficulty(
   const validation = validatePayload(
     {
       difficulty_modifier: pipe(number(), minValue(MIN_MODIFIER), maxValue(MAX_MODIFIER)),
-      difficulty_level: createEnum([DifficultyLevel.EASY, DifficultyLevel.NORMAL, DifficultyLevel.HARD, DifficultyLevel.EXTREME]),
+      difficulty_level: createEnum([
+        DifficultyLevel.EASY,
+        DifficultyLevel.NORMAL,
+        DifficultyLevel.HARD,
+        DifficultyLevel.EXTREME,
+      ]),
     },
     payload,
     'sync_difficulty'
@@ -311,13 +316,15 @@ export function rpcTrackMatchOutcome(
 
   // Load current difficulty state
   const stateResult = loadDifficultyState(nk, ctx.userId);
-  const state = stateResult.success ? stateResult.data! : {
-    player_id: ctx.userId,
-    current_modifier: 0.0,
-    win_streak: 0,
-    lose_streak: 0,
-    updated_at: 0,
-  };
+  const state = stateResult.success
+    ? stateResult.data!
+    : {
+        player_id: ctx.userId,
+        current_modifier: 0.0,
+        win_streak: 0,
+        lose_streak: 0,
+        updated_at: 0,
+      };
 
   // Update streaks
   if (request.won) {
@@ -333,7 +340,7 @@ export function rpcTrackMatchOutcome(
 
   if (state.win_streak >= WIN_STREAK_THRESHOLD) {
     const oldModifier = state.current_modifier;
-    state.current_modifier = Math.min(state.current_modifier + 0.10, MAX_MODIFIER);
+    state.current_modifier = Math.min(state.current_modifier + 0.1, MAX_MODIFIER);
     state.win_streak = 0; // Reset after adjustment
     if (state.current_modifier !== oldModifier) {
       adjustmentNeeded = true;
@@ -342,7 +349,7 @@ export function rpcTrackMatchOutcome(
 
   if (state.lose_streak >= LOSE_STREAK_THRESHOLD) {
     const oldModifier = state.current_modifier;
-    state.current_modifier = Math.max(state.current_modifier - 0.10, MIN_MODIFIER);
+    state.current_modifier = Math.max(state.current_modifier - 0.1, MIN_MODIFIER);
     state.lose_streak = 0; // Reset after adjustment
     if (state.current_modifier !== oldModifier) {
       adjustmentNeeded = true;
@@ -437,18 +444,20 @@ export function rpcGetPlayerPerformance(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
-  payload: string
+  _payload: string
 ): string {
   logger.info('Get player performance called for user: %s', ctx.userId);
 
   const stateResult = loadDifficultyState(nk, ctx.userId);
-  const state = stateResult.success ? stateResult.data! : {
-    player_id: ctx.userId,
-    current_modifier: 0.0,
-    win_streak: 0,
-    lose_streak: 0,
-    updated_at: 0,
-  };
+  const state = stateResult.success
+    ? stateResult.data!
+    : {
+        player_id: ctx.userId,
+        current_modifier: 0.0,
+        win_streak: 0,
+        lose_streak: 0,
+        updated_at: 0,
+      };
 
   const historyResult = loadMatchHistory(nk, ctx.userId);
   const history = historyResult.success ? historyResult.data! : [];
@@ -459,7 +468,11 @@ export function rpcGetPlayerPerformance(
   const winRate = recentMatches.length > 0 ? wins / recentMatches.length : 0.0;
 
   // Calculate performance rating
-  const performanceRating = calculatePerformanceRating(winRate, state.win_streak, state.lose_streak);
+  const performanceRating = calculatePerformanceRating(
+    winRate,
+    state.win_streak,
+    state.lose_streak
+  );
 
   return JSON.stringify({
     win_rate: winRate,
@@ -477,8 +490,8 @@ export function rpcGetPlayerPerformance(
  */
 function calculatePerformanceRating(
   winRate: number,
-  winStreak: number,
-  loseStreak: number
+  _winStreak: number,
+  _loseStreak: number
 ): string {
   if (winRate >= 0.8) {
     return 'Excellent';
@@ -516,7 +529,7 @@ function getModifierForLevel(level: string): number {
     case DifficultyLevel.NORMAL:
       return 0.0;
     case DifficultyLevel.HARD:
-      return 0.10;
+      return 0.1;
     case DifficultyLevel.EXTREME:
       return MAX_MODIFIER;
     default:

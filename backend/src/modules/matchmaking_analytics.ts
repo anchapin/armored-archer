@@ -5,8 +5,10 @@
 
 import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
-import { validatePayload, ZodSchemas } from './validation';
+import { logAudit } from './audit';
+import { validatePayload, ZodSchemas, safeParse } from './validation';
 import { registerRpcWithMetrics } from './metrics';
+import { safeParse } from './validation';
 
 /**
  * Match quality metrics for monitoring matchmaking health.
@@ -75,6 +77,9 @@ export interface LogMatchDataRequest {
   rating_diff: number;
   weapons: string[];
   duration: number;
+  completed?: boolean;
+  abandoned?: boolean;
+  abandonment_reason?: string;
 }
 
 /**
@@ -105,8 +110,8 @@ export interface LogQueueTimeRequest {
 
 // --- Target Metrics ---
 const TARGET_RATING_DIFF = 100; // Average rating difference target
-const TARGET_COMPLETION_RATE = 0.90; // 90% completion rate target
-const TARGET_WIN_RATE_VARIANCE = 0.10; // 10% variance target (45-55%)
+const TARGET_COMPLETION_RATE = 0.9; // 90% completion rate target
+const TARGET_WIN_RATE_VARIANCE = 0.1; // 10% variance target (45-55%)
 const TARGET_QUEUE_TIME_MEDIAN = 60; // 60 seconds median queue time target
 const TARGET_ABANDONMENT_RATE = 0.05; // 5% abandonment rate target
 
@@ -122,9 +127,7 @@ const COLLECTION_BALANCE_ISSUES = 'matchmaking_balance_issues';
  * @param nk - Nakama runtime module
  * @returns Match quality metrics
  */
-export async function aggregateMatchMetrics(
-  nk: Runtime.NakamaModule
-): Promise<MatchQualityMetrics> {
+export async function aggregateMatchMetrics(nk: Runtime.Nakama): Promise<MatchQualityMetrics> {
   try {
     // Read all match data
     const matchObjects = await nk.storageRead([
@@ -153,7 +156,7 @@ export async function aggregateMatchMetrics(
     const queueTimes: number[] = [];
 
     for (const obj of matchObjects) {
-      const matchData = obj.value as LogMatchDataRequest;
+      const matchData = obj.value as unknown as LogMatchDataRequest;
       if (matchData.completed !== false) {
         completedMatches++;
         ratingDiffSum += matchData.rating_diff;
@@ -164,7 +167,7 @@ export async function aggregateMatchMetrics(
     }
 
     for (const obj of queueObjects) {
-      const queueData = obj.value as LogQueueTimeRequest;
+      const queueData = obj.value as unknown as LogQueueTimeRequest;
       queueTimes.push(queueData.queue_time);
     }
 
@@ -199,7 +202,7 @@ export async function aggregateMatchMetrics(
  * @returns Map of weapon_id to weapon statistics
  */
 export async function generateWeaponStats(
-  nk: Runtime.NakamaModule
+  nk: Runtime.Nakama
 ): Promise<Record<string, WeaponStats>> {
   try {
     const weaponObjects = await nk.storageRead([
@@ -213,7 +216,7 @@ export async function generateWeaponStats(
     const weaponStats: Record<string, WeaponStats> = {};
 
     for (const obj of weaponObjects) {
-      const stats = obj.value as WeaponStats;
+      const stats = obj.value as unknown as WeaponStats;
       const winRate = stats.matches_played > 0 ? stats.wins / stats.matches_played : 0;
 
       weaponStats[stats.weapon_id] = {
@@ -235,9 +238,7 @@ export async function generateWeaponStats(
  * @param nk - Nakama runtime module
  * @returns Array of detected balance issues
  */
-export async function detectBalanceIssues(
-  nk: Runtime.NakamaModule
-): Promise<BalanceIssue[]> {
+export async function detectBalanceIssues(nk: Runtime.Nakama): Promise<BalanceIssue[]> {
   const issues: BalanceIssue[] = [];
 
   try {
@@ -253,8 +254,8 @@ export async function detectBalanceIssues(
       const winRate = stats.win_rate;
 
       // Check for high win rate (overpowered)
-      if (winRate > 0.60) {
-        const severity = winRate > 0.80 ? 'high' : winRate > 0.70 ? 'medium' : 'low';
+      if (winRate > 0.6) {
+        const severity = winRate > 0.8 ? 'high' : winRate > 0.7 ? 'medium' : 'low';
         issues.push({
           weapon_id: weaponId,
           issue_type: 'high_win_rate',
@@ -264,8 +265,8 @@ export async function detectBalanceIssues(
         });
       }
       // Check for low win rate (underpowered)
-      else if (winRate < 0.40) {
-        const severity = winRate < 0.20 ? 'high' : winRate < 0.30 ? 'medium' : 'low';
+      else if (winRate < 0.4) {
+        const severity = winRate < 0.2 ? 'high' : winRate < 0.3 ? 'medium' : 'low';
         issues.push({
           weapon_id: weaponId,
           issue_type: 'low_win_rate',
@@ -311,7 +312,7 @@ export async function detectBalanceIssues(
           collection: COLLECTION_BALANCE_ISSUES,
           key: `issues_${Date.now()}`,
           userId: '00000000-0000-0000-0000-000000000000',
-          value: { issues, timestamp: Date.now() },
+          value: JSON.stringify({ issues, timestamp: Date.now() }),
           permissionRead: 2,
           permissionWrite: 0,
         },
@@ -331,13 +332,11 @@ export async function detectBalanceIssues(
  * @param nk - Nakama runtime module
  * @returns Analytics report
  */
-export async function exportAnalyticsReport(
-  nk: Runtime.NakamaModule
-): Promise<AnalyticsReport> {
+export async function exportAnalyticsReport(nk: Runtime.Nakama): Promise<AnalyticsReport> {
   try {
     const qualityMetrics = await aggregateMatchMetrics(nk);
     const weaponStats = await generateWeaponStats(nk);
-    const ratingDiffDistribution = calculateRatingDiffDistribution(nk);
+    const ratingDiffDistribution = await calculateRatingDiffDistribution(nk);
     const detectedIssues = await detectBalanceIssues(nk);
 
     return {
@@ -360,7 +359,7 @@ export async function exportAnalyticsReport(
  * @returns Rating difference distribution
  */
 async function calculateRatingDiffDistribution(
-  nk: Runtime.NakamaModule
+  nk: Runtime.Nakama
 ): Promise<RatingDiffDistribution> {
   try {
     const matchObjects = await nk.storageRead([
@@ -380,7 +379,7 @@ async function calculateRatingDiffDistribution(
     };
 
     for (const obj of matchObjects) {
-      const matchData = obj.value as LogMatchDataRequest;
+      const matchData = obj.value as unknown as LogMatchDataRequest;
       const diff = matchData.rating_diff;
 
       if (diff <= 50) {
@@ -434,7 +433,7 @@ function calculateMedian(values: number[]): number {
  * @param request - Match data request
  */
 export async function logMatchData(
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   request: LogMatchDataRequest
 ): Promise<void> {
   try {
@@ -443,23 +442,27 @@ export async function logMatchData(
         collection: COLLECTION_MATCH_DATA,
         key: request.match_id,
         userId: '00000000-0000-0000-0000-000000000000',
-        value: request,
+        value: JSON.stringify(request),
         permissionRead: 2,
         permissionWrite: 0,
       },
     ]);
 
     // Log audit trail
-    await logAudit(nk, {
-      action: 'match_data_logged',
-      user_id: 'system',
-      details: {
+    await logAudit(
+      nk,
+      '00000000-0000-0000-0000-000000000000',
+      null,
+      'match_data_logged',
+      'match_data',
+      {
         match_id: request.match_id,
         rating_diff: request.rating_diff,
         weapons: request.weapons,
         duration: request.duration,
       },
-    });
+      'success'
+    );
   } catch (error) {
     console.error('Failed to log match data:', error);
   }
@@ -472,7 +475,7 @@ export async function logMatchData(
  * @param request - Abandonment request
  */
 export async function logAbandonment(
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   request: LogAbandonmentRequest
 ): Promise<void> {
   try {
@@ -486,7 +489,7 @@ export async function logAbandonment(
     ]);
 
     if (matchObjects.length > 0) {
-      const matchData = matchObjects[0].value as LogMatchDataRequest;
+      const matchData = matchObjects[0].value as unknown as LogMatchDataRequest;
       matchData.completed = false;
       matchData.abandoned = true;
       matchData.abandonment_reason = request.reason;
@@ -496,7 +499,7 @@ export async function logAbandonment(
           collection: COLLECTION_MATCH_DATA,
           key: request.match_id,
           userId: '00000000-0000-0000-0000-000000000000',
-          value: matchData,
+          value: JSON.stringify(matchData),
           permissionRead: 2,
           permissionWrite: 0,
         },
@@ -504,14 +507,18 @@ export async function logAbandonment(
     }
 
     // Log audit trail
-    await logAudit(nk, {
-      action: 'abandonment_logged',
-      user_id: 'system',
-      details: {
+    await logAudit(
+      nk,
+      '00000000-0000-0000-0000-000000000000',
+      null,
+      'abandonment_logged',
+      'abandonment',
+      {
         match_id: request.match_id,
         reason: request.reason,
       },
-    });
+      'success'
+    );
   } catch (error) {
     console.error('Failed to log abandonment:', error);
   }
@@ -526,7 +533,7 @@ export async function logAbandonment(
  * @param ratingDiff - Rating difference for the match
  */
 export async function logWeaponResult(
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   weaponId: string,
   isWin: boolean,
   ratingDiff: number
@@ -552,7 +559,7 @@ export async function logWeaponResult(
     };
 
     if (objects.length > 0) {
-      stats = objects[0].value as WeaponStats;
+      stats = objects[0].value as unknown as WeaponStats;
     }
 
     // Update statistics
@@ -573,7 +580,7 @@ export async function logWeaponResult(
         collection: COLLECTION_WEAPON_STATS,
         key: statsKey,
         userId: '00000000-0000-0000-0000-000000000000',
-        value: stats,
+        value: JSON.stringify(stats),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -590,7 +597,7 @@ export async function logWeaponResult(
  * @param request - Queue time request
  */
 export async function logQueueTime(
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   request: LogQueueTimeRequest
 ): Promise<void> {
   try {
@@ -601,7 +608,7 @@ export async function logQueueTime(
         collection: COLLECTION_QUEUE_TIMES,
         key: queueId,
         userId: '00000000-0000-0000-0000-000000000000',
-        value: request,
+        value: JSON.stringify(request),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -645,12 +652,16 @@ export async function logQueueTime(
 export async function rpcLogMatchData(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
   logger.debug('LogMatchData RPC called');
 
-  const validation = validatePayload<LogMatchDataRequest>(ZodSchemas.log_match_data, payload, 'LogMatchData');
+  const validation = validatePayload<LogMatchDataRequest>(
+    ZodSchemas.log_match_data,
+    payload,
+    'LogMatchData'
+  );
   if (!validation.success) {
     return JSON.stringify(validation.error);
   }
@@ -675,12 +686,16 @@ export async function rpcLogMatchData(
 export async function rpcLogAbandonment(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
   logger.debug('LogAbandonment RPC called');
 
-  const validation = validatePayload<LogAbandonmentRequest>(ZodSchemas.log_abandonment, payload, 'LogAbandonment');
+  const validation = validatePayload<LogAbandonmentRequest>(
+    ZodSchemas.log_abandonment,
+    payload,
+    'LogAbandonment'
+  );
   if (!validation.success) {
     return JSON.stringify(validation.error);
   }
@@ -705,12 +720,16 @@ export async function rpcLogAbandonment(
 export async function rpcLogWeaponResult(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
   logger.debug('LogWeaponResult RPC called');
 
-  const validation = validatePayload<LogWeaponResultRequest & { rating_diff?: number }>(ZodSchemas.log_weapon_result, payload, 'LogWeaponResult');
+  const validation = validatePayload<LogWeaponResultRequest & { rating_diff?: number }>(
+    ZodSchemas.log_weapon_result,
+    payload,
+    'LogWeaponResult'
+  );
   if (!validation.success) {
     return JSON.stringify(validation.error);
   }
@@ -740,12 +759,16 @@ export async function rpcLogWeaponResult(
 export async function rpcLogQueueTime(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
   logger.debug('LogQueueTime RPC called');
 
-  const validation = validatePayload<LogQueueTimeRequest>(ZodSchemas.log_queue_time, payload, 'LogQueueTime');
+  const validation = validatePayload<LogQueueTimeRequest>(
+    ZodSchemas.log_queue_time,
+    payload,
+    'LogQueueTime'
+  );
   if (!validation.success) {
     return JSON.stringify(validation.error);
   }
@@ -769,7 +792,7 @@ export async function rpcLogQueueTime(
 export async function rpcGetMatchQualityMetrics(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
   logger.debug('GetMatchQualityMetrics RPC called');
@@ -802,12 +825,16 @@ export async function rpcGetMatchQualityMetrics(
 export async function rpcGetWeaponStats(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
   logger.debug('GetWeaponStats RPC called');
 
-  const parseResult = safeParse<{ weapon_id?: string }>(payload);
+  const parseResult = safeParse(
+    ZodSchemas.get_weapon_stats || object({}),
+    payload,
+    'get_weapon_stats'
+  );
 
   try {
     if (parseResult.success && parseResult.data?.weapon_id) {
@@ -847,7 +874,7 @@ export async function rpcGetWeaponStats(
 export async function rpcDetectBalanceIssues(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
   logger.debug('DetectBalanceIssues RPC called');
@@ -881,7 +908,7 @@ export async function rpcDetectBalanceIssues(
 export async function rpcExportAnalyticsReport(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
   logger.debug('ExportAnalyticsReport RPC called');
@@ -918,10 +945,30 @@ export const MATCHMAKING_ANALYTICS_TARGETS = {
  */
 export function registerMatchmakingAnalyticsEndpoints(initializer: Runtime.Initializer): void {
   // Data logging endpoints
-  registerRpcWithMetrics(initializer, 'armored_archer/log_match_data', 'log_match_data', rpcLogMatchData);
-  registerRpcWithMetrics(initializer, 'armored_archer/log_abandonment', 'log_abandonment', rpcLogAbandonment);
-  registerRpcWithMetrics(initializer, 'armored_archer/log_weapon_result', 'log_weapon_result', rpcLogWeaponResult);
-  registerRpcWithMetrics(initializer, 'armored_archer/log_queue_time', 'log_queue_time', rpcLogQueueTime);
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/log_match_data',
+    'log_match_data',
+    rpcLogMatchData
+  );
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/log_abandonment',
+    'log_abandonment',
+    rpcLogAbandonment
+  );
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/log_weapon_result',
+    'log_weapon_result',
+    rpcLogWeaponResult
+  );
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/log_queue_time',
+    'log_queue_time',
+    rpcLogQueueTime
+  );
 
   // Analytics query endpoints
   registerRpcWithMetrics(
@@ -930,7 +977,12 @@ export function registerMatchmakingAnalyticsEndpoints(initializer: Runtime.Initi
     'get_match_quality_metrics',
     rpcGetMatchQualityMetrics
   );
-  registerRpcWithMetrics(initializer, 'armored_archer/get_weapon_stats', 'get_weapon_stats', rpcGetWeaponStats);
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/get_weapon_stats',
+    'get_weapon_stats',
+    rpcGetWeaponStats
+  );
   registerRpcWithMetrics(
     initializer,
     'armored_archer/detect_balance_issues',

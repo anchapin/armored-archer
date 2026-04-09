@@ -4,8 +4,8 @@
  */
 
 import { Runtime } from '../types/nakama';
-import { GearItem, GearStat } from './gear_system';
 import { logAudit } from './audit';
+import { GearItem } from './gear_system';
 
 /**
  * Soft cap ratio for diminishing returns.
@@ -172,7 +172,7 @@ export function calculateEffectiveStat(
  * @returns Promise resolving when tracking is complete
  */
 export async function trackGearUsage(
-  ctx: Runtime,
+  nk: Runtime.Nakama,
   userId: string,
   gearId: string,
   action: 'equip' | 'unequip' | 'generate'
@@ -182,7 +182,7 @@ export async function trackGearUsage(
     const timestamp = Date.now();
 
     // Get existing usage data
-    const objects = await ctx.storageRead([
+    const objects = await nk.storageRead([
       {
         collection: 'gear_balance',
         key: storageKey,
@@ -195,7 +195,7 @@ export async function trackGearUsage(
     if (objects.length > 0) {
       try {
         usageData = JSON.parse(objects[0].value);
-      } catch (e) {
+      } catch {
         // Invalid data, start fresh
       }
     }
@@ -209,7 +209,7 @@ export async function trackGearUsage(
     usageData.lastTimestamp = timestamp;
 
     // Store updated usage data
-    await ctx.storageWrite([
+    await nk.storageWrite([
       {
         collection: 'gear_balance',
         key: storageKey,
@@ -219,7 +219,15 @@ export async function trackGearUsage(
     ]);
 
     // Log audit event
-    logAudit(ctx, userId, `gear_${action}`, { gearId, timestamp });
+    logAudit(
+      nk,
+      userId,
+      null,
+      `gear_${action}`,
+      `gear_${gearId}`,
+      { gearId, timestamp },
+      'success'
+    );
   } catch (error) {
     // Log error but don't fail the operation
     console.error(`Failed to track gear usage: ${error}`);
@@ -233,19 +241,22 @@ export async function trackGearUsage(
  * @param userId - User ID to get stats for
  * @returns Promise resolving to usage statistics
  */
-export async function getGearUsageStats(ctx: Runtime, userId: string): Promise<{ [key: string]: any }> {
-  const stats = {};
+export async function getGearUsageStats(
+  nk: Runtime.Nakama,
+  userId: string
+): Promise<{ [key: string]: any }> {
+  const stats: { [key: string]: any } = {};
 
   try {
     // Read all gear balance objects for this user
-    const objects = await ctx.storageList(userId, 'gear_balance', 100);
+    const objects = await nk.storageList(userId, 'gear_balance', 100, '', '');
 
     for (const obj of objects) {
       const gearId = obj.key.split(':')[2];
       try {
         const usageData = JSON.parse(obj.value);
         stats[gearId] = usageData;
-      } catch (e) {
+      } catch {
         // Skip invalid entries
       }
     }
@@ -264,7 +275,7 @@ export async function getGearUsageStats(ctx: Runtime, userId: string): Promise<{
  * @returns Promise resolving when adjustment is recorded
  */
 export async function recordBalanceAdjustment(
-  ctx: Runtime,
+  nk: Runtime.Nakama,
   adjustment: {
     gearId: string;
     stat: string;
@@ -282,17 +293,25 @@ export async function recordBalanceAdjustment(
       timestamp,
     };
 
-    await ctx.storageWrite([
+    await nk.storageWrite([
       {
         collection: 'gear_balance_history',
         key: storageKey,
         value: JSON.stringify(adjustmentData),
-        userId: ctx.env['SYSTEM_USER_ID'] || 'system',
+        userId: '00000000-0000-0000-0000-000000000000',
       },
     ]);
 
     // Log audit event
-    logAudit(ctx, 'system', 'balance_adjustment', adjustmentData);
+    logAudit(
+      nk,
+      '00000000-0000-0000-0000-000000000000',
+      null,
+      'balance_adjustment',
+      'gear_balance',
+      adjustmentData,
+      'success'
+    );
   } catch (error) {
     console.error(`Failed to record balance adjustment: ${error}`);
   }

@@ -20,6 +20,10 @@ import {
   optional,
   pipe,
   integer,
+  minValue,
+  maxValue,
+  minLength,
+  maxLength,
 } from 'valibot';
 
 /**
@@ -608,8 +612,8 @@ export function rpcRespecStats(
   const playerStats = playerStatsResult.data;
 
   // Validate allocation matches available points
-  const currentTotalSpent = Object.values(playerStats.stats).reduce((a, b) => a + b, 0);
-  const newTotalSpent = Object.values(request.new_allocation).reduce((a, b) => a + b, 0);
+  const currentTotalSpent = Object.values(playerStats.stats).reduce((a: number, b: number) => a + b, 0);
+  const newTotalSpent = Object.values(request.new_allocation).reduce((a: number, b: number) => a + b, 0);
 
   if (newTotalSpent !== currentTotalSpent) {
     logAudit(
@@ -629,16 +633,18 @@ export function rpcRespecStats(
 
   // Load respec data
   const respecDataResult = loadRespecData(nk, ctx.userId);
-  const respecData = respecDataResult.success ? respecDataResult.data : {
-    last_respec_time: 0,
-    free_respecs_used: 0,
-    current_season_id: '',
-  };
+  const respecData = respecDataResult.success
+    ? respecDataResult.data
+    : {
+        last_respec_time: 0,
+        free_respecs_used: 0,
+        current_season_id: '',
+      };
 
   // Check cooldown
   const currentTime = Math.floor(Date.now() / 1000);
-  const cooldownRemaining = RESPEC_COOLDOWN_SECONDS - (currentTime - respecData.last_respec_time);
-  if (cooldownRemaining > 0 && !request.use_free_respec) {
+  const cooldownRemaining = RESPEC_COOLDOWN_SECONDS - (currentTime - (respecData?.last_respec_time || 0));
+  if (cooldownRemaining > 0 && !request.use_free_respec && respecData) {
     logAudit(
       nk,
       ctx.userId,
@@ -657,16 +663,15 @@ export function rpcRespecStats(
 
   // Check free respec availability
   let useFreeRespec = request.use_free_respec || false;
-  if (useFreeRespec && respecData.free_respecs_used >= FREE_RESPEC_PER_SEASON) {
+  if (useFreeRespec && (respecData?.free_respecs_used || 0) >= FREE_RESPEC_PER_SEASON) {
     useFreeRespec = false;
   }
 
   // Calculate cost
   let costPaid = 0;
   if (!useFreeRespec) {
-    // Get current gem balance
-    const wallet = nk.walletRead([ctx.userId])[0];
-    const gemBalance = parseInt(wallet?.balance?.['gem'] || '0', 10);
+    // Use gem balance from player stats (already loaded)
+    const gemBalance = playerStats?.stats?.gems || 0;
 
     costPaid = Math.floor(gemBalance * RESPEC_COST_PERCENT);
     costPaid = Math.max(RESPEC_MIN_COST, Math.min(RESPEC_MAX_COST, costPaid));
@@ -741,12 +746,7 @@ const MAX_BUILD_SLOTS = 3;
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcSaveBuild(initializer: Runtime.Initializer): void {
-  registerRpcWithMetrics(
-    initializer,
-    'armored_archer/save_build',
-    'save_build',
-    rpcSaveBuild
-  );
+  registerRpcWithMetrics(initializer, 'armored_archer/save_build', 'save_build', rpcSaveBuild);
 }
 
 /**
@@ -755,12 +755,7 @@ export function registerRpcSaveBuild(initializer: Runtime.Initializer): void {
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcLoadBuild(initializer: Runtime.Initializer): void {
-  registerRpcWithMetrics(
-    initializer,
-    'armored_archer/load_build',
-    'load_build',
-    rpcLoadBuild
-  );
+  registerRpcWithMetrics(initializer, 'armored_archer/load_build', 'load_build', rpcLoadBuild);
 }
 
 /**
@@ -769,12 +764,7 @@ export function registerRpcLoadBuild(initializer: Runtime.Initializer): void {
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcGetBuilds(initializer: Runtime.Initializer): void {
-  registerRpcWithMetrics(
-    initializer,
-    'armored_archer/get_builds',
-    'get_builds',
-    rpcGetBuilds
-  );
+  registerRpcWithMetrics(initializer, 'armored_archer/get_builds', 'get_builds', rpcGetBuilds);
 }
 
 /**
@@ -1021,39 +1011,44 @@ function loadRespecData(
   ]);
 
   if (objects.length === 0) {
-    return { success: true, data: {
-      last_respec_time: 0,
-      free_respecs_used: 0,
-      current_season_id: '',
-    } };
+    return {
+      success: true,
+      data: {
+        last_respec_time: 0,
+        free_respecs_used: 0,
+        current_season_id: '',
+      },
+    };
   }
 
   const value = objects[0].value;
   if (!value) {
-    return { success: true, data: {
-      last_respec_time: 0,
-      free_respecs_used: 0,
-      current_season_id: '',
-    } };
+    return {
+      success: true,
+      data: {
+        last_respec_time: 0,
+        free_respecs_used: 0,
+        current_season_id: '',
+      },
+    };
   }
 
   const parseResult = safeParse<RespecData>(value, null, logger, 'respec_data');
   if (!parseResult.success || !parseResult.data) {
-    return { success: true, data: {
-      last_respec_time: 0,
-      free_respecs_used: 0,
-      current_season_id: '',
-    } };
+    return {
+      success: true,
+      data: {
+        last_respec_time: 0,
+        free_respecs_used: 0,
+        current_season_id: '',
+      },
+    };
   }
 
   return { success: true, data: parseResult.data };
 }
 
-function saveRespecData(
-  nk: Runtime.Nakama,
-  userId: string,
-  respecData: RespecData
-): void {
+function saveRespecData(nk: Runtime.Nakama, userId: string, respecData: RespecData): void {
   nk.storageWrite([
     {
       collection: 'respec_data',

@@ -19,6 +19,29 @@ import {
   unknown,
 } from 'valibot';
 
+// Re-export valibot functions for use in other modules
+export {
+  object,
+  number,
+  string,
+  boolean,
+  enum,
+  enum as enumType,
+  array,
+  record,
+  minValue,
+  maxValue,
+  minLength,
+  maxLength,
+  length,
+  regex,
+  optional,
+  pipe,
+  integer,
+  safeParse,
+  unknown,
+};
+
 // Type assertion helper for enum schemas
 function createEnum<T extends string>(values: readonly T[]): ReturnType<typeof enumType> {
   return enumType(values as any);

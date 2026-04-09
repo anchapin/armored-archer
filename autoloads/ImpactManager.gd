@@ -66,11 +66,10 @@ func shake_screen(intensity: String, duration: float, decay: bool) -> Dictionary
 			var progress = float(i) / 10.0
 			_apply_shake_progress(progress)
 			await get_tree().process_frame
-		_current_shake.intensity = _current_shake.intensity * (1.0 - progress)
+			_current_shake.intensity = _current_shake.intensity * (1.0 - progress)
 		_is_shaking = true
 		_shake_timer += get_process_delta_time() * _current_shake.duration
-
-	_is_shaking = false
+		_is_shaking = false
 		_current_shake = {}
 		_active_shake_duration = 0.0
 		shake_completed.emit(result)

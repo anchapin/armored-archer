@@ -308,9 +308,9 @@ func _execute_respec(use_free_respec: bool) -> void:
 	var points_per_stat: int = allocatable_points / 4
 	var remainder: int = allocatable_points % 4
 
-	new_allocation["attack"] = 10 + points_per_stat + (remainder > 0 ? 1 : 0)
-	new_allocation["defense"] = 10 + points_per_stat + (remainder > 1 ? 1 : 0)
-	new_allocation["dodge"] = 10 + points_per_stat + (remainder > 2 ? 1 : 0)
+	new_allocation["attack"] = 10 + points_per_stat + (1 if remainder > 0 else 0)
+	new_allocation["defense"] = 10 + points_per_stat + (1 if remainder > 1 else 0)
+	new_allocation["dodge"] = 10 + points_per_stat + (1 if remainder > 2 else 0)
 	new_allocation["crit_rate"] = 5 + points_per_stat
 
 	stat_allocation_manager.respec_stats_server_side(new_allocation)
