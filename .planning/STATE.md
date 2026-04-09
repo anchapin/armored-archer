@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v4.0.0
 milestone_name: Gameplay Refinement
 status: in_progress
-last_updated: "2026-04-08T21:40:00.000Z"
+last_updated: "2026-04-08T22:00:00.000Z"
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 3
   completed_plans: 3
 ---
@@ -14,17 +14,17 @@ progress:
 # Armored Archer - Project State
 
 **Last Updated**: 2026-04-08
-**Current Focus**: v4.0.0 — Gameplay Refinement (Phase 4 Planning)
-**Status**: Phase 1 (Combat Foundation) and Phase 2 (Enemy System) complete. Phase 3 (Combat Polish & Juice) plan complete. Ready for execution.
+**Current Focus**: v4.0.0 — Gameplay Refinement (Phase 4 Ready)
+**Status**: Phase 1 (Combat Foundation), Phase 2 (Enemy System), and Phase 3 (Combat Polish & Juice) complete. Ready for Phase 4 (PvP Balance & Ranking) planning.
 
 ---
 
 ## Current Position
 
-Phase: 3 (Combat Polish & Juice Plan Complete)
-Plan: 01-01-PLAN.md (Complete)
+Phase: 4 (PvP Balance & Ranking Ready)
+Plan: TBD
 **Milestone**: v4.0.0 Gameplay Refinement
-**Active Work**: Phase 3 (Combat Polish & Juice) plan complete with 6 tasks defined. CombatJuiceManager, ImpactManager, DamageIndicatorManager for coordinating juice effects. Player hit reactions and enemy death animations defined. Ready for execution.
+**Active Work**: Phase 3 (Combat Polish & Juice) complete with 6 tasks implemented. CombatJuiceManager coordinates all juice effects (ImpactManager, DamageIndicatorManager). Player hit reactions (flinch/stutter) and enemy death animations (fade out/ragdoll/particles) implemented. Integration tests created for all components.
 **Previous Milestone**: v3.4.0 Tactical Gameplay & PvE Campaign — SHIPPED 2026-04-06
 **Coverage**: 21/21 requirements mapped to phases (100%)
 **Granularity**: Standard (5 phases)
@@ -126,9 +126,10 @@ Plan: 01-01-PLAN.md (Complete)
 
 ## Next Steps
 
-1. Execute Phase 3: Combat Polish & Juice (`/gsd:execute-phase 03`)
-2. Verify Phase 3 success criteria
-3. Continue through Phase 5
+1. Plan Phase 4: PvP Balance & Ranking (`/gsd:plan-phase 04`)
+2. Execute Phase 4
+3. Verify Phase 4 success criteria
+4. Continue to Phase 5
 
 ---
 
@@ -173,5 +174,5 @@ Plan: 01-01-PLAN.md (Complete)
 
 ---
 
-*State updated: 2026-04-08T21:30:00Z*
-*Next update: After Phase 3 planning*
+*State updated: 2026-04-08T22:00:00Z*
+*Next update: After Phase 4 planning*
