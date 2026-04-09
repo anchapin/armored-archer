@@ -16,6 +16,10 @@ import {
 import {
   registerRpcGainXP,
   registerRpcAllocateStats,
+  registerRpcRespecStats,
+  registerRpcSaveBuild,
+  registerRpcLoadBuild,
+  registerRpcGetBuilds,
 } from './modules/rpg_system';
 import {
   registerRpcListMatches,
@@ -211,6 +215,30 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/respec_stats',
+      'respec_stats',
+      rpcRespecStatsWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/save_build',
+      'save_build',
+      rpcSaveBuildWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/load_build',
+      'load_build',
+      rpcLoadBuildWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/get_builds',
+      'get_builds',
+      rpcGetBuildsWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/submit_combat_action',
       'submit_combat_action',
       rpcSubmitCombatActionWrapper
@@ -351,6 +379,10 @@ const InitModule: InitModule = function (
     registerRpcHealthCheck(initializer);
     registerRpcGainXP(initializer);
     registerRpcAllocateStats(initializer);
+    registerRpcRespecStats(initializer);
+    registerRpcSaveBuild(initializer);
+    registerRpcLoadBuild(initializer);
+    registerRpcGetBuilds(initializer);
     registerRpcGetPlayerStats(initializer);
     registerRpcListMatches(initializer);
     registerRpcCreateMatch(initializer);
@@ -432,6 +464,46 @@ function rpcAllocateStatsWrapper(
 ): string {
   const { rpcAllocateStats } = require('./modules/rpg_system');
   return rpcAllocateStats(ctx, logger, nk, payload);
+}
+
+function rpcRespecStatsWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcRespecStats } = require('./modules/rpg_system');
+  return rpcRespecStats(ctx, logger, nk, payload);
+}
+
+function rpcSaveBuildWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcSaveBuild } = require('./modules/rpg_system');
+  return rpcSaveBuild(ctx, logger, nk, payload);
+}
+
+function rpcLoadBuildWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcLoadBuild } = require('./modules/rpg_system');
+  return rpcLoadBuild(ctx, logger, nk, payload);
+}
+
+function rpcGetBuildsWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcGetBuilds } = require('./modules/rpg_system');
+  return rpcGetBuilds(ctx, logger, nk, payload);
 }
 
 function rpcSubmitCombatActionWrapper(
