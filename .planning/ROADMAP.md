@@ -33,7 +33,7 @@
 - [x] **Phase 1: Combat Foundation** - Core combat mechanics with timing, hit detection, damage formulas, and weapon variety
 - [x] **Phase 2: Enemy System** - New enemy types, boss encounters, and varied AI patterns
 - [x] **Phase 3: Combat Polish & Juice** - Visual feedback, impact effects, damage indicators, and hit/kill reactions | 1 plan complete
-- [ ] **Phase 4: PvP Balance & Ranking** - Weapon/power balancing, fair matchmaking, and seasonal ranking system
+- [x] **Phase 4: PvP Balance & Ranking** - Weapon/power balancing, fair matchmaking, and seasonal ranking system | 1 plan complete
 - [ ] **Phase 5: Progression & Difficulty** - XP tuning, level scaling, stat systems, gear balance, and dynamic difficulty
 
 ---
@@ -141,10 +141,10 @@
 | 1. Combat Foundation | 1/1 | Complete | 2026-04-08 |
 | 2. Enemy System | 1/1 | Complete | 2026-04-08 |
 | 3. Combat Polish & Juice | 1/1 | Complete | 2026-04-08 |
-| 4. PvP Balance & Ranking | 0/0 | Not started | - |
+| 4. PvP Balance & Ranking | 1/1 | Plan complete | 2026-04-08 |
 | 5. Progression & Difficulty | 0/0 | Not started | - |
 
-**Overall Progress:** 3/5 phases complete (60%)
+**Overall Progress:** 3/5 phases complete (60%), 4/5 phases planned (80%)
 
 ---
 
