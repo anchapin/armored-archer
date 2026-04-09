@@ -3,28 +3,28 @@ gsd_state_version: 1.0
 milestone: v4.0.0
 milestone_name: Gameplay Refinement
 status: in_progress
-last_updated: "2026-04-08T21:30:00.000Z"
+last_updated: "2026-04-08T21:40:00.000Z"
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Armored Archer - Project State
 
 **Last Updated**: 2026-04-08
-**Current Focus**: v4.0.0 — Gameplay Refinement (Phase 3 Planning)
-**Status**: Phase 1 (Combat Foundation) and Phase 2 (Enemy System) complete. Ready for Phase 3 planning.
+**Current Focus**: v4.0.0 — Gameplay Refinement (Phase 4 Planning)
+**Status**: Phase 1 (Combat Foundation) and Phase 2 (Enemy System) complete. Phase 3 (Combat Polish & Juice) plan complete. Ready for execution.
 
 ---
 
 ## Current Position
 
-Phase: 2 (Enemy System Complete)
+Phase: 3 (Combat Polish & Juice Plan Complete)
 Plan: 01-01-PLAN.md (Complete)
 **Milestone**: v4.0.0 Gameplay Refinement
-**Active Work**: Phase 2 (Enemy System) complete with all 9 tasks delivered. New enemy types (elemental, flying, swarmer), boss encounters (Guardian, Warlock, Titan), and AI behaviors (aggressive, defensive, pack-hunt, ambush) implemented. Ready for Phase 3: Combat Polish & Juice.
+**Active Work**: Phase 3 (Combat Polish & Juice) plan complete with 6 tasks defined. CombatJuiceManager, ImpactManager, DamageIndicatorManager for coordinating juice effects. Player hit reactions and enemy death animations defined. Ready for execution.
 **Previous Milestone**: v3.4.0 Tactical Gameplay & PvE Campaign — SHIPPED 2026-04-06
 **Coverage**: 21/21 requirements mapped to phases (100%)
 **Granularity**: Standard (5 phases)
@@ -126,10 +126,9 @@ Plan: 01-01-PLAN.md (Complete)
 
 ## Next Steps
 
-1. Plan Phase 3: Combat Polish & Juice (`/gsd:plan-phase 3`)
-2. Execute Phase 3 plans
-3. Verify Phase 3 success criteria
-4. Continue through Phase 5
+1. Execute Phase 3: Combat Polish & Juice (`/gsd:execute-phase 03`)
+2. Verify Phase 3 success criteria
+3. Continue through Phase 5
 
 ---
 
