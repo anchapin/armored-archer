@@ -149,7 +149,7 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Workflow:*\n${{ workflow_url }}"
+                      "text": "*Workflow:*\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                     }
                   ]
                 },
@@ -297,7 +297,7 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Workflow:*\n${{ workflow_url }}"
+                      "text": "*Workflow:*\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                     }
                   ]
                 },
