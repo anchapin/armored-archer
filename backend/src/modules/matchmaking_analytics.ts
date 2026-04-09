@@ -6,7 +6,7 @@
 import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
-import { validatePayload, ZodSchemas, object } from './validation';
+import { validatePayload, ZodSchemas } from './validation';
 
 /**
  * Match quality metrics for monitoring matchmaking health.
@@ -833,7 +833,7 @@ export async function rpcGetWeaponStats(
     try {
       const parsed = JSON.parse(payload) as { weapon_id?: string };
       weaponId = parsed.weapon_id;
-    } catch (e) {
+    } catch {
       // Invalid JSON, ignore
     }
   }
@@ -911,7 +911,7 @@ export async function rpcExportAnalyticsReport(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
-  payload: string
+  _payload: string
 ): Promise<string> {
   logger.debug('ExportAnalyticsReport RPC called');
 

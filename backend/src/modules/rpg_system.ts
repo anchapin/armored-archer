@@ -1000,7 +1000,10 @@ function validateStatAllocation(
 /**
  * Checks if respec is on cooldown.
  */
-function checkRespecCooldown(respecData: RespecData, useFreeRespec: boolean): {
+function checkRespecCooldown(
+  respecData: RespecData,
+  useFreeRespec: boolean
+): {
   onCooldown: boolean;
   cooldownRemaining?: number;
 } {

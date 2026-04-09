@@ -3,6 +3,7 @@
  * @fileoverview Manages dynamic difficulty adjustment based on player performance.
  */
 
+import { enum as enumType } from 'valibot';
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
@@ -19,7 +20,6 @@ import {
   maxValue,
   minLength,
 } from './validation';
-import { enum as enumType } from 'valibot';
 
 // Type assertion helper for enum schemas
 function createEnum<T extends string>(values: readonly T[]): ReturnType<typeof enumType> {

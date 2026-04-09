@@ -414,9 +414,7 @@ export async function trackWeaponUsage(
  * @param nk - Nakama runtime module
  * @returns Map of weapon_id to multiplier
  */
-export async function getBalanceAdjustments(
-  nk: Runtime.Nakama
-): Promise<Record<string, number>> {
+export async function getBalanceAdjustments(nk: Runtime.Nakama): Promise<Record<string, number>> {
   try {
     // Read all balance adjustments
     const objects = await nk.storageRead([
@@ -462,7 +460,11 @@ export async function rpcApplyBalanceAdjustment(
   logger.debug('ApplyBalanceAdjustment RPC called');
 
   // Validate payload
-  const validation = validatePayload(ZodSchemas.apply_balance_adjustment, payload, 'apply_balance_adjustment');
+  const validation = validatePayload(
+    ZodSchemas.apply_balance_adjustment,
+    payload,
+    'apply_balance_adjustment'
+  );
   if (!validation.success) {
     return JSON.stringify(validation.error);
   }

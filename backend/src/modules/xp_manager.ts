@@ -19,7 +19,7 @@ export type XpGainRequest = z.infer<typeof XpGainSchema>;
 /**
  * XP response schema
  */
-const _XpResponseSchema = z.object({
+export const XpResponseSchema = z.object({
   success: z.boolean(),
   xp_gained: z.number(),
   total_xp: z.number(),
@@ -27,7 +27,7 @@ const _XpResponseSchema = z.object({
   levels_gained: z.number(),
 });
 
-export type XpResponse = z.infer<typeof _XpResponseSchema>;
+export type XpResponse = z.infer<typeof XpResponseSchema>;
 
 /**
  * Level curve type

@@ -131,37 +131,6 @@ function calculateBracketSize(waitTime: number): number {
 }
 
 /**
- * Check if two players are compatible for matching.
- */
-function _arePlayersCompatible(_player1: QueuedPlayer, _player2: QueuedPlayer): boolean {
-  // Must be same mode
-  if (player1.mode !== player2.mode) {
-    return false;
-  }
-
-  // For 2v2 mode, we need 4 players, so this is simplified to finding pairs
-  // Real implementation would need to handle team composition
-
-  const now = Date.now();
-  const waitTime1 = now - player1.joined_at;
-  const waitTime2 = now - player2.joined_at;
-
-  const bracket1 = calculateBracketSize(waitTime1);
-  const bracket2 = calculateBracketSize(waitTime2);
-
-  // If either has any rating bracket (-1), they're compatible
-  if (bracket1 === -1 || bracket2 === -1) {
-    return true;
-  }
-
-  // Check rating difference against smaller bracket
-  const bracketSize = Math.min(bracket1, bracket2);
-  const ratingDiff = Math.abs(player1.rating - player2.rating);
-
-  return ratingDiff <= bracketSize;
-}
-
-/**
  * Find the best match for a player.
  */
 function findBestMatch(player: QueuedPlayer, pool: MatchmakingPool): QueuedPlayer | null {
