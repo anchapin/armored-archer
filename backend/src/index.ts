@@ -25,6 +25,11 @@ import {
   registerRpcCompleteMatch,
 } from './modules/matchmaker';
 import {
+  registerRpcJoinPool,
+  registerRpcLeavePool,
+  registerRpcGetQueueStatus,
+} from './modules/matchmaking_pool';
+import {
   registerRpcSubmitCombatAction,
   registerRpcGetMatchState,
   registerRpcPlayerDisconnect,
@@ -66,6 +71,16 @@ import { registerProgressiveRollout, initializeProgressiveRollout } from './modu
 import { initializeAlerting } from './modules/alerting';
 import { initializeHealthMonitoring } from './modules/health_monitor';
 import { registerAnalyticsEndpoints } from './modules/analytics';
+import {
+  registerRpcLogMatchData,
+  registerRpcLogAbandonment,
+  registerRpcLogWeaponResult,
+  registerRpcLogQueueTime,
+  registerRpcGetMatchQualityMetrics,
+  registerRpcGetWeaponStats,
+  registerRpcDetectBalanceIssues,
+  registerRpcExportAnalyticsReport,
+} from './modules/matchmaking_analytics';
 import { initializeSentry } from './config/errorTracking';
 import { initializeTracing } from './config/tracing';
 import { logger, logSystemEvent } from './config/logger';
@@ -379,6 +394,9 @@ const InitModule: InitModule = function (
     registerRpcCompleteStage(initializer);
     registerRpcGetCompletedStages(initializer);
     registerRpcGetCampaignProgress(initializer);
+    registerRpcJoinPool(initializer);
+    registerRpcLeavePool(initializer);
+    registerRpcGetQueueStatus(initializer);
   }
 
   logSystemEvent('info', 'Armored Archer server module initialized');

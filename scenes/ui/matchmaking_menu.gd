@@ -8,6 +8,7 @@ extends Control
 @onready var create_ranked_button: ArcheryBaseButton = $SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox/CreateRankedButton
 @onready var create_casual_button: ArcheryBaseButton = $SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox/CreateCasualButton
 @onready var punch_up_check: CheckBox = $SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox/PunchUpCheck
+@onready var quick_join_button: ArcheryBaseButton = $SafeAreaContainer/VBoxContainer/CreatePanel/QuickJoinButton
 @onready var leaderboard_button: ArcheryBaseButton = $SafeAreaContainer/VBoxContainer/BottomPanel/LeaderboardButton
 @onready var back_button: ArcheryBaseButton = $SafeAreaContainer/VBoxContainer/BottomPanel/BackButton
 @onready var loading_label: Label = $SafeAreaContainer/VBoxContainer/LoadingLabel
@@ -21,6 +22,8 @@ var design_tokens: Node
 
 # --- State ---
 var matchmaker_manager: Node = null
+var matchmaking_pool_manager: Node = null
+var player_rating_manager: Node = null
 var current_matches: Array = []
 
 # --- Initialization ---
@@ -37,14 +40,19 @@ func _ready() -> void:
 		theme_manager.theme_changed.connect(_on_theme_changed)
 	
 	matchmaker_manager = get_node_or_null("/root/MatchmakerManager")
+	matchmaking_pool_manager = get_node_or_null("/root/MatchmakingPoolManager")
+	player_rating_manager = get_node_or_null("/root/PlayerRatingManager")
 
 	match_type_option.add_item("All", 0)
+	match_type_option.add_item("1v1", 1)
+	match_type_option.add_item("2v2", 2)
 	match_type_option.add_item("Ranked", 1)
 	match_type_option.add_item("Casual", 2)
 
 	list_button.pressed.connect(_on_list_pressed)
 	create_ranked_button.pressed.connect(_on_create_ranked_pressed)
 	create_casual_button.pressed.connect(_on_create_casual_pressed)
+	quick_join_button.pressed.connect(_on_quick_join_pressed)
 	leaderboard_button.pressed.connect(_on_leaderboard_pressed)
 	back_button.pressed.connect(_on_back_pressed)
 
@@ -93,6 +101,28 @@ func _on_create_casual_pressed() -> void:
 
 	var is_punch_up: bool = punch_up_check.button_pressed
 	matchmaker_manager.create_match("casual", is_punch_up)
+
+func _on_quick_join_pressed() -> void:
+	if not matchmaking_pool_manager:
+		push_error("MatchmakingPoolManager not available")
+		return
+
+	# Determine mode from selection
+	var pool_mode: int = MatchmakingPoolManager.MatchMode.ONE_V_ONE
+	match match_type_option.selected:
+		1:
+			pool_mode = MatchmakingPoolManager.MatchMode.ONE_V_ONE
+		2:
+			pool_mode = MatchmakingPoolManager.MatchMode.TWO_V_TWO
+		_:
+			pool_mode = MatchmakingPoolManager.MatchMode.ONE_V_ONE
+
+	# Navigate to matchmaking queue scene
+	var queue_scene = load("res://scenes/pvp/matchmaking_queue.tscn")
+	var queue_ui = queue_scene.instantiate()
+	queue_ui.set_mode(pool_mode)
+	get_tree().current_scene.add_child(queue_ui)
+	queue_ui.join_queue()
 
 # --- Match Handlers ---
 func _on_matches_loaded(matches: Array, player_rank: int) -> void:

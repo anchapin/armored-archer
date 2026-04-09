@@ -110,6 +110,19 @@ export const ValibotSchemas = {
 
   get_player_rank: object({}),
 
+  join_pool: object({
+    mode: createEnum(['1v1', '2v2']),
+    rating: pipe(number(), integer(), minValue(1000), maxValue(3000)),
+  }),
+
+  leave_pool: object({
+    mode: createEnum(['1v1', '2v2']),
+  }),
+
+  get_queue_status: object({
+    mode: createEnum(['1v1', '2v2']),
+  }),
+
   submit_combat_action: object({
     match_id: pipe(string(), minLength(1), maxLength(100)),
     action_type: createEnum(['shoot']),
@@ -390,6 +403,32 @@ export const ValibotSchemas = {
     match_id: pipe(string(), minLength(1), maxLength(100)),
     match_result: createEnum(['win', 'loss']),
     rating_diff: number(),
+  }),
+
+  // Matchmaking analytics schemas
+  log_match_data: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    timestamp: pipe(number(), integer(), minValue(0)),
+    rating_diff: pipe(number(), integer(), minValue(0)),
+    weapons: array(pipe(string(), minLength(1), maxLength(100))),
+    duration: pipe(number(), minValue(0)),
+  }),
+
+  log_abandonment: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    reason: optional(pipe(string(), minLength(1), maxLength(500))),
+    timestamp: pipe(number(), integer(), minValue(0)),
+  }),
+
+  log_weapon_result: object({
+    weapon_id: pipe(string(), minLength(1), maxLength(100)),
+    is_win: boolean(),
+    timestamp: pipe(number(), integer(), minValue(0)),
+  }),
+
+  log_queue_time: object({
+    queue_time: pipe(number(), minValue(0)),
+    timestamp: pipe(number(), integer(), minValue(0)),
   }),
 } as const;
 
