@@ -2,29 +2,29 @@
 gsd_state_version: 1.0
 milestone: v4.0.0
 milestone_name: Gameplay Refinement
-status: in_progress
-last_updated: "2026-04-08T22:30:00.000Z"
+status: unknown
+last_updated: "2026-04-09T04:36:37.499Z"
 progress:
-  total_phases: 5
-  completed_phases: 3
-  total_plans: 4
-  completed_plans: 4
+  total_phases: 22
+  completed_phases: 17
+  total_plans: 43
+  completed_plans: 58
 ---
 
 # Armored Archer - Project State
 
-**Last Updated**: 2026-04-08
+**Last Updated**: 2026-04-09
 **Current Focus**: v4.0.0 — Gameplay Refinement (Phase 4 Execution)
-**Status**: Phase 1 (Combat Foundation), Phase 2 (Enemy System), Phase 3 (Combat Polish & Juice) complete. Phase 4 (PvP Balance & Ranking) plan complete with 6 tasks defined. Ready for execution.
+**Status**: Phase 1 (Combat Foundation), Phase 2 (Enemy System), Phase 3 (Combat Polish & Juice) complete. Phase 4 (PvP Balance & Ranking) Task 6 (Integration Tests) complete.
 
 ---
 
 ## Current Position
 
-Phase: 4 (PvP Balance & Ranking Ready)
-Plan: 01-01-PLAN.md (Complete)
+Phase: 4 (PvP Balance & Ranking)
+Plan: 06 (Integration Tests) - Complete
 **Milestone**: v4.0.0 Gameplay Refinement
-**Active Work**: Phase 4 (PvP Balance & Ranking) plan complete with 6 tasks defined. WeaponBalanceManager for damage curves, PlayerRatingManager for ELO ratings, MatchmakingPoolManager for fair matching, Seasonal Leaderboards with decay, MatchmakingAnalyticsManager for quality monitoring. Ready for execution.
+**Active Work**: Phase 4 (PvP Balance & Ranking) integration tests completed. Created comprehensive test coverage for WeaponBalanceManager, PlayerRatingManager, MatchmakingPoolManager, SeasonManager, and MatchmakingAnalyticsManager. All PvP systems now have integration tests.
 **Previous Milestone**: v3.4.0 Tactical Gameplay & PvE Campaign — SHIPPED 2026-04-06
 **Coverage**: 21/21 requirements mapped to phases (100%)
 **Granularity**: Standard (5 phases)
@@ -53,6 +53,7 @@ Plan: 01-01-PLAN.md (Complete)
 **Scope**: Large (major overhaul, ~2-3 months)
 
 **Phases**: 5
+
 1. Combat Foundation (5 requirements)
 2. Enemy System (3 requirements)
 3. Combat Polish & Juice (4 requirements)
@@ -60,6 +61,7 @@ Plan: 01-01-PLAN.md (Complete)
 5. Progression & Difficulty (7 requirements)
 
 **Key Issues Being Addressed**:
+
 - "Too hard" gameplay difficulty
 - "Bland" combat lacking feedback and variety
 - Unbalanced PvP weapons and matchmaking
@@ -75,6 +77,7 @@ Plan: 01-01-PLAN.md (Complete)
 **CI/CD**: GitHub Actions (26 workflows, security-hardened)
 
 **Current Codebase State**:
+
 - Godot LOC: ~83,839 lines
 - Backend: TypeScript/Nakama
 - Coverage: 94.55% backend lines
@@ -87,17 +90,20 @@ Plan: 01-01-PLAN.md (Complete)
 ## Test Infrastructure
 
 **Backend Tests**:
+
 - Location: `backend/src/**/__tests__/`
 - Framework: Jest with TypeScript
 - Coverage: 94.55% lines, 94.4% statements, 93.69% functions, 88.54% branches
 - Mutation Testing: Stryker configured for 8 critical modules
 
 **Frontend Tests**:
+
 - Location: `test/test_*.gd` (67 test files)
 - Framework: GUT (Godot Unit Test)
 - Coverage: Partial — CoverageTracker exists, 4/30 autoloads have coverage tests
 
 **CI/CD**:
+
 - Platform: GitHub Actions (26 workflows)
 - Linting: ESLint (backend), gdlint (Godot)
 - Type checking: `tsc --noEmit` (passing)
@@ -152,16 +158,19 @@ Plan: 01-01-PLAN.md (Complete)
 ### Key Decisions from Previous Milestones
 
 **v3.4.0**:
+
 - PvP backend integration completed with Nakama RPC handlers
 - Campaign persistence implemented with server-side sync
 - Enemy AI with difficulty-based tactics
 
 **v3.2.0**:
+
 - Pixel-perfect rendering pipeline implemented
 - 1,100+ sprites created with asset organization
 - Character and enemy animations fully integrated
 
 **v2.2.0**:
+
 - Design system with DesignTokens and ThemeManager
 - 8 base UI components with design token support
 - All 11 UI screens migrated to design system
