@@ -117,6 +117,9 @@ func _run_next_test():
 	# PvP Balance (Phase 4)
 	"res://test/test_weapon_balance_manager.gd",
 	"res://test/test_player_rating_manager.gd",
+	"res://test/test_matchmaking_pool_manager.gd",
+	"res://test/test_season_leaderboard.gd",
+	"res://test/test_matchmaking_analytics_manager.gd",
 
 		# UI components
 		"res://test/test_ui_components.gd",
