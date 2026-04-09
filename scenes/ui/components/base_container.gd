@@ -2,15 +2,19 @@ class_name BaseContainer
 extends Container
 
 # =============================================================================
-# BASE CONTAINER - Armored Archer
+# BASE CONTAINER - Armored Archer (Relic Archive Update)
 # =============================================================================
 # Reusable container component for layout management.
 # Provides consistent margins, padding, and alignment.
+# Now supports Relic Archive design system:
+# - Surface hierarchy for depth (metallic plate stacking)
+# - No-Line Rule (background shift architecture)
 # =============================================================================
 
 @export var container_type: String = "default"  # default, vertical, horizontal, grid
 @export var alignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER
 @export var vertical_alignment: VerticalAlignment = VERTICAL_ALIGNMENT_CENTER
+@export var surface_tier: String = "base"  # Relic Archive surface tier
 
 @export var padding_top: int = ArcherDesignTokens.SPACING_MD
 @export var padding_bottom: int = ArcherDesignTokens.SPACING_MD
@@ -36,13 +40,15 @@ func _apply_layout_settings() -> void:
 			custom_minimum_size = Vector2(200, 100)
 		"grid":
 			custom_minimum_size = Vector2(300, 200)
-	
-	# Set theme colors
+
+	# Set theme colors with surface tier
 	_update_theme_colors()
 
 func _update_theme_colors() -> void:
+	# Apply Relic Archive surface tier for background
 	if _is_dark_theme:
-		modulate = Color.WHITE
+		var bg_color = ArcherDesignTokens.get_ra_surface_tier_color(surface_tier)
+		modulate = Color(1, 1, 1, 1)  # Full opacity
 	else:
 		modulate = Color.WHITE
 
@@ -58,7 +64,7 @@ func _do_layout() -> void:
 		rect.size.x - padding_left - padding_right,
 		rect.size.y - padding_top - padding_bottom
 	)
-	
+
 	match container_type:
 		"vertical":
 			_layout_vertical(content_pos, content_size)
@@ -82,20 +88,20 @@ func _layout_default(pos: Vector2, size: Vector2) -> void:
 func _layout_vertical(pos: Vector2, size: Vector2) -> void:
 	var child_pos := pos
 	var total_height := 0
-	
+
 	# First pass: calculate total height
 	for child in get_children():
 		if not child is Control:
 			continue
 		total_height += child.get_combined_minimum_size().y + spacing
-	
+
 	# Adjust starting position for alignment
 	match vertical_alignment:
 		VERTICAL_ALIGNMENT_CENTER:
 			child_pos.y += (size.y - total_height) / 2
 		VERTICAL_ALIGNMENT_BOTTOM:
 			child_pos.y += size.y - total_height
-	
+
 	# Second pass: position children
 	for child in get_children():
 		if not child is Control:
@@ -108,20 +114,20 @@ func _layout_vertical(pos: Vector2, size: Vector2) -> void:
 func _layout_horizontal(pos: Vector2, size: Vector2) -> void:
 	var child_pos := pos
 	var total_width := 0
-	
+
 	# First pass: calculate total width
 	for child in get_children():
 		if not child is Control:
 			continue
 		total_width += child.get_combined_minimum_size().x + spacing
-	
+
 	# Adjust starting position for alignment
 	match alignment:
 		HORIZONTAL_ALIGNMENT_CENTER:
 			child_pos.x += (size.x - total_width) / 2
 		HORIZONTAL_ALIGNMENT_RIGHT:
 			child_pos.x += size.x - total_width
-	
+
 	# Second pass: position children
 	for child in get_children():
 		if not child is Control:
@@ -139,16 +145,16 @@ func _layout_grid(pos: Vector2, size: Vector2) -> void:
 	var x_pos := pos.x
 	var y_pos := pos.y
 	var max_height := 0
-	
+
 	for child in get_children():
 		if not child is Control:
 			continue
 		var child_size: Vector2 = child.get_combined_minimum_size()
 		var cell_width := size.x / cols
-		
+
 		child.position = Vector2(x_pos + col * cell_width, y_pos + row * (max_height + spacing))
 		child.size = Vector2(cell_width - spacing, child_size.y)
-		
+
 		max_height = max(max_height, child_size.y)
 		col += 1
 		if col >= cols:
@@ -169,6 +175,10 @@ func set_alignment(h_align: HorizontalAlignment) -> void:
 func set_vertical_alignment(v_align: VerticalAlignment) -> void:
 	vertical_alignment = v_align
 	_do_layout()
+
+func set_surface_tier(new_tier: String) -> void:
+	surface_tier = new_tier
+	_update_theme_colors()
 
 func set_padding(all: int) -> void:
 	padding_top = all

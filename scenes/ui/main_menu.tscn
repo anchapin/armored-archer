@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://3m4otmrx7502" path="res://scenes/ui/main_menu.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/safe_area_container.tscn" id="2"]
-[ext_resource type="Script" uid="uid://cx8y22877gji7" path="res://scenes/ui/components/base_button.gd" id="4_m1kxf"]
+[ext_resource type="Script" uid="uid://cx8y22877gji7" path="res://scenes/ui/components/base_button.gd" id="3_m1kxf"]
 
 [node name="MainMenu" type="Control" unique_id=1012315282]
 layout_mode = 3
@@ -27,7 +27,7 @@ layout_mode = 1
 
 [node name="MainContainer" type="VBoxContainer" parent="SafeAreaContainer" unique_id=2032979807]
 layout_mode = 2
-theme_override_constants/separation = 32
+theme_override_constants/separation = 16
 
 [node name="TopBar" type="PanelContainer" parent="SafeAreaContainer/MainContainer" unique_id=1036028891]
 layout_mode = 2
@@ -39,87 +39,159 @@ layout_mode = 2
 [node name="TitleLabel" type="Label" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent" unique_id=1149290672]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 28
 text = "ARMORED ARCHER"
+horizontal_alignment = 0
+
+[node name="SubtitleLabel" type="Label" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent" unique_id=1149290673]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "The Relic Archive"
 horizontal_alignment = 0
 
 [node name="Spacer" type="Control" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent"]
 layout_mode = 2
 size_flags_horizontal = 3
+custom_minimum_size = Vector2(16, 0)
 
 [node name="GemContainer" type="HBoxContainer" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent" unique_id=513144018]
 layout_mode = 2
 
+[node name="GemIcon" type="Label" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent/GemContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "💎"
+horizontal_alignment = 2
+
 [node name="GemLabel" type="Label" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent/GemContainer" unique_id=254623995]
 layout_mode = 2
-text = "Gems: 0"
+theme_override_font_sizes/font_size = 16
+text = "0"
+horizontal_alignment = 2
+
+[node name="GoldContainer" type="HBoxContainer" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent" unique_id=513144019]
+layout_mode = 2
+
+[node name="GoldIcon" type="Label" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent/GoldContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "🪙"
+horizontal_alignment = 2
+
+[node name="GoldLabel" type="Label" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent/GoldContainer" unique_id=254623996]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "0"
 horizontal_alignment = 2
 
 [node name="SpacerBottom" type="Control" parent="SafeAreaContainer/MainContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 24)
 
-[node name="ButtonContainer" type="HBoxContainer" parent="SafeAreaContainer/MainContainer" unique_id=1036028892]
+[node name="CenterContent" type="HBoxContainer" parent="SafeAreaContainer/MainContainer" unique_id=1036028893]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 0
+size_flags_vertical = 3
 
-[node name="LeftButtons" type="VBoxContainer" parent="SafeAreaContainer/MainContainer/ButtonContainer" unique_id=1036028893]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="PlayButton" type="Button" parent="SafeAreaContainer/MainContainer/ButtonContainer/LeftButtons" unique_id=1786086209]
-custom_minimum_size = Vector2(200, 56)
-layout_mode = 2
-text = "Play"
-script = ExtResource("4_m1kxf")
-button_type = "primary"
-
-[node name="LoadoutButton" type="Button" parent="SafeAreaContainer/MainContainer/ButtonContainer/LeftButtons" unique_id=1357984460]
-custom_minimum_size = Vector2(200, 56)
-layout_mode = 2
-text = "Loadout"
-script = ExtResource("4_m1kxf")
-button_type = "primary"
-
-[node name="PvpButton" type="Button" parent="SafeAreaContainer/MainContainer/ButtonContainer/LeftButtons" unique_id=906298737]
-custom_minimum_size = Vector2(200, 56)
-layout_mode = 2
-text = "PvP"
-script = ExtResource("4_m1kxf")
-button_type = "primary"
-
-[node name="SpacerButtons" type="Control" parent="SafeAreaContainer/MainContainer/ButtonContainer"]
+[node name="LeftPanel" type="PanelContainer" parent="SafeAreaContainer/MainContainer/CenterContent" unique_id=1036028894]
 layout_mode = 2
 size_flags_horizontal = 3
+custom_minimum_size = Vector2(200, 0)
 
-[node name="RightButtons" type="VBoxContainer" parent="SafeAreaContainer/MainContainer/ButtonContainer" unique_id=1036028894]
+[node name="ActionButtons" type="VBoxContainer" parent="SafeAreaContainer/MainContainer/CenterContent/LeftPanel"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="ShopButton" type="Button" parent="SafeAreaContainer/MainContainer/ButtonContainer/RightButtons" unique_id=795248628]
-custom_minimum_size = Vector2(200, 56)
+[node name="PlayButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/LeftPanel/ActionButtons" unique_id=1786086209]
+custom_minimum_size = Vector2(180, 48)
 layout_mode = 2
-text = "Shop"
-script = ExtResource("4_m1kxf")
+text = "PLAY"
+script = ExtResource("3_m1kxf")
 button_type = "primary"
 
-[node name="BuyGemsButton" type="Button" parent="SafeAreaContainer/MainContainer/ButtonContainer/RightButtons" unique_id=1407197976]
-custom_minimum_size = Vector2(200, 56)
+[node name="LoadoutButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/LeftPanel/ActionButtons" unique_id=1357984460]
+custom_minimum_size = Vector2(180, 48)
 layout_mode = 2
-text = "Buy Gems"
-script = ExtResource("4_m1kxf")
+text = "LOADOUT"
+script = ExtResource("3_m1kxf")
 button_type = "primary"
 
-[node name="SettingsButton" type="Button" parent="SafeAreaContainer/MainContainer/ButtonContainer/RightButtons" unique_id=1540766148]
-custom_minimum_size = Vector2(200, 56)
+[node name="PvpButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/LeftPanel/ActionButtons" unique_id=906298737]
+custom_minimum_size = Vector2(180, 48)
 layout_mode = 2
-text = "Settings"
-script = ExtResource("4_m1kxf")
+text = "PVP"
+script = ExtResource("3_m1kxf")
 button_type = "primary"
 
-[node name="QuitButton" type="Button" parent="SafeAreaContainer/MainContainer/ButtonContainer/RightButtons" unique_id=1460653037]
-custom_minimum_size = Vector2(200, 56)
+[node name="CharacterPreview" type="Control" parent="SafeAreaContainer/MainContainer/CenterContent" unique_id=1036028895]
 layout_mode = 2
-text = "Quit"
-script = ExtResource("4_m1kxf")
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 0)
+
+[node name="CharacterPlaceholder" type="Label" parent="SafeAreaContainer/MainContainer/CenterContent/CharacterPreview"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -150.0
+offset_right = 100.0
+offset_bottom = 150.0
+theme_override_font_sizes/font_size = 72
+text = "🏹"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RightPanel" type="PanelContainer" parent="SafeAreaContainer/MainContainer/CenterContent" unique_id=1036028896]
+layout_mode = 2
+theme_override_constants/separation = 12
+custom_minimum_size = Vector2(200, 0)
+
+[node name="ShopButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel" unique_id=795248628]
+custom_minimum_size = Vector2(180, 48)
+layout_mode = 2
+text = "SHOP"
+script = ExtResource("3_m1kxf")
 button_type = "primary"
+
+[node name="BuyGemsButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel" unique_id=1407197976]
+custom_minimum_size = Vector2(180, 48)
+layout_mode = 2
+text = "BUY GEMS"
+script = ExtResource("3_m1kxf")
+button_type = "primary"
+
+[node name="SettingsButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel" unique_id=1540766148]
+custom_minimum_size = Vector2(180, 48)
+layout_mode = 2
+text = "SETTINGS"
+script = ExtResource("3_m1kxf")
+button_type = "primary"
+
+[node name="QuitButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel" unique_id=1460653037]
+custom_minimum_size = Vector2(180, 48)
+layout_mode = 2
+text = "QUIT"
+script = ExtResource("3_m1kxf")
+button_type = "primary"
+
+[node name="BottomBar" type="PanelContainer" parent="SafeAreaContainer/MainContainer" unique_id=1036028897]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 40)
+
+[node name="BottomBarContent" type="HBoxContainer" parent="SafeAreaContainer/MainContainer/BottomBar"]
+layout_mode = 2
+
+[node name="SeasonLabel" type="Label" parent="SafeAreaContainer/MainContainer/BottomBar/BottomBarContent"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Season 1: The Relic Archive"
+horizontal_alignment = 0
+
+[node name="SpacerBottomBar" type="Control" parent="SafeAreaContainer/MainContainer/BottomBar/BottomBarContent"]
+layout_mode = 2
+size_flags_horizontal = 3
