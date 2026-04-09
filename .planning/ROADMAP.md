@@ -128,7 +128,8 @@
 6. Encounters provide varied pacing with intense combat segments, exploration/puzzle moments, and narrative downtime that prevents fatigue
 7. Players always know what to do next through clear map markers, quest objectives, and level requirements that prevent getting stuck
 
-**Plans:** TBD
+**Plans:**
+- Progression & Difficulty Plan (8 tasks: XP Curve Tuning, Level Scaling, Stat Allocation, Gear Stat Balance, Dynamic Difficulty, Pacing & Variety, Progression Indicators, Integration Tests) | 6/8 tasks complete
 
 ---
 
