@@ -26,6 +26,7 @@ func _run_next_test():
 		"res://test/test_matchmaking_manager.gd",
 		"res://test/test_network_manager.gd",
 		"res://test/test_player_stats_manager.gd",
+		"res://test/test_weapon_balance_manager.gd",
 		"res://test/test_store_manager.gd",
 		"res://test/test_campaign_manager.gd",
 		"res://test/test_season_manager.gd",

@@ -370,6 +370,27 @@ export const ValibotSchemas = {
   classify_data: object({
     data: record(string(), unknown()),
   }),
+
+  // Weapon balance schemas
+  apply_balance_adjustment: object({
+    weapon_id: pipe(string(), minLength(1), maxLength(100)),
+    multiplier: pipe(number(), minValue(0.1), maxValue(10.0)),
+    reason: pipe(string(), minLength(1), maxLength(500)),
+  }),
+
+  get_balance_metrics: optional(
+    object({
+      weapon_id: optional(pipe(string(), minLength(1), maxLength(100))),
+    })
+  ),
+
+  // Weapon usage tracking for balance tuning
+  track_weapon_usage: object({
+    weapon_id: pipe(string(), minLength(1), maxLength(100)),
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    match_result: createEnum(['win', 'loss']),
+    rating_diff: number(),
+  }),
 } as const;
 
 // Export with Zod-like names for backward compatibility
