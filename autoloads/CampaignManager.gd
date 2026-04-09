@@ -24,6 +24,7 @@ var unlocked_modifier_pools: Array = []
 var analytics: Node
 var network_manager: Node
 var difficulty_manager: Node
+var pacing_manager: Node
 
 # --- Signals ---
 signal stage_unlocked(stage_id: String)
@@ -44,6 +45,9 @@ func _ready() -> void:
 		# Connect to difficulty changes
 		if difficulty_manager and difficulty_manager.has_signal("difficulty_changed"):
 			difficulty_manager.difficulty_changed.connect(_on_difficulty_changed)
+
+	if pacing_manager == null:
+		pacing_manager = get_node_or_null("/root/PacingManager")
 
 	# Load campaign data and progress
 	load_campaigns_data()
@@ -582,3 +586,88 @@ func save_difficulty_setting() -> void:
 	"""Saves the current difficulty setting for persistence."""
 	if difficulty_manager:
 		difficulty_manager.save_difficulty_state()
+
+# --- Pacing & Variety Integration ---
+func track_encounter_pacing(stage_id: String, duration: float) -> void:
+	"""Tracks encounter pacing for the given stage.
+
+	Parameters:
+		stage_id: ID of the stage
+		duration: Duration of the encounter in seconds
+	"""
+	if not pacing_manager:
+		return
+
+	var stage_data = get_stage_data(stage_id)
+	if stage_data.is_empty():
+		return
+
+	# Classify the encounter
+	var encounter_type = pacing_manager.classify_encounter(stage_data)
+
+	# Track pacing state
+	pacing_manager.track_pacing_state(encounter_type, duration)
+
+	# Log to server
+	pacing_manager.log_encounter_pacing()
+
+func get_pacing_recommendations() -> Dictionary:
+	"""Gets current pacing recommendations.
+
+	Returns:
+		Dictionary with pacing recommendations
+	"""
+	if not pacing_manager:
+		return {}
+
+	return pacing_manager.suggest_break()
+
+func get_pacing_metrics() -> Dictionary:
+	"""Gets current pacing metrics.
+
+	Returns:
+		Dictionary with pacing metrics
+	"""
+	if not pacing_manager:
+		return {}
+
+	return pacing_manager.get_pacing_metrics()
+
+func get_recommended_encounter() -> String:
+	"""Gets the recommended next encounter type.
+
+	Returns:
+		String: Recommended encounter type (combat, exploration, narrative, puzzle)
+	"""
+	if not pacing_manager:
+		return "combat"
+
+	var recommended_type = pacing_manager.get_recommended_encounter_type()
+	match recommended_type:
+		PacingManager.ContentType.COMBAT: return "combat"
+		PacingManager.ContentType.EXPLORATION: return "exploration"
+		PacingManager.ContentType.NARRATIVE: return "narrative"
+		PacingManager.ContentType.PUZZLE: return "puzzle"
+		_: return "combat"
+
+func show_pacing_warning_if_needed() -> bool:
+	"""Checks if pacing warning should be shown.
+
+	Returns:
+		bool: True if warning should be shown, false otherwise
+	"""
+	if not pacing_manager:
+		return false
+
+	var metrics = pacing_manager.get_pacing_metrics()
+	var fatigue_level: String = metrics.get("fatigue_level", "None")
+
+	if fatigue_level in ["High", "Critical"]:
+		return true
+
+	return false
+
+func reset_pacing_state() -> void:
+	"""Resets pacing state for new session."""
+	if pacing_manager:
+		pacing_manager.reset_pacing_state()

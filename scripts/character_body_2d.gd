@@ -30,6 +30,11 @@ signal aim_direction_changed(direction: Vector2)
 @onready var bow_pivot: Node2D = $BowPivot
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 
+# --- Pacing Tracking ---
+var encounter_start_time: float = 0.0
+var in_combat: bool = false
+var pacing_manager: Node
+
 
 func _ready() -> void:
 	# Initialize character state
@@ -38,6 +43,9 @@ func _ready() -> void:
 	current_health = max_health
 	# Add player to group for ShootingManager
 	add_to_group("Player")
+
+	# Get pacing manager reference
+	pacing_manager = get_node_or_null("/root/PacingManager")
 
 
 func _physics_process(delta: float) -> void:
@@ -157,7 +165,13 @@ func is_player_aiming() -> bool:
 ## Handle taking damage from enemies
 func take_damage(amount: int) -> void:
 	current_health -= amount
+
+	# Track combat engagement for pacing
+	if not in_combat:
+		_start_combat_encounter()
+
 	if current_health <= 0:
+		_end_combat_encounter()
 		die()
 
 
@@ -173,15 +187,76 @@ func _clamp_to_viewport() -> void:
 	var camera = get_viewport().get_camera_2d()
 	if not camera:
 		return
-	
+
 	var viewport_size = get_viewport_rect().size
 	var half_size = viewport_size / 2.0
 	var margin = 20.0  # Keep player slightly inside edges
-	
+
 	var min_x = camera.global_position.x - half_size.x + margin
 	var max_x = camera.global_position.x + half_size.x - margin
 	var min_y = camera.global_position.y - half_size.y + margin
 	var max_y = camera.global_position.y + half_size.y - margin
-	
+
 	global_position.x = clamp(global_position.x, min_x, max_x)
 	global_position.y = clamp(global_position.y, min_y, max_y)
+
+# --- Pacing & Variety ---
+
+## Starts tracking combat encounter for pacing metrics.
+func _start_combat_encounter() -> void:
+	"""Starts tracking combat encounter for pacing metrics."""
+	if not pacing_manager:
+		return
+
+	in_combat = true
+	encounter_start_time = Time.get_unix_time_from_system()
+
+## Ends tracking combat encounter and records pacing metrics.
+func _end_combat_encounter() -> void:
+	"""Ends tracking combat encounter and records pacing metrics."""
+	if not pacing_manager or not in_combat:
+		return
+
+	var duration = Time.get_unix_time_from_system() - encounter_start_time
+
+	# Track pacing state with combat type
+	pacing_manager.track_pacing_state(PacingManager.ContentType.COMBAT, duration)
+
+	in_combat = false
+	encounter_start_time = 0.0
+
+## Gets current combat duration for pacing.
+##
+## Returns:
+##   float: Combat duration in seconds, or 0 if not in combat
+func get_combat_duration() -> float:
+	"""Gets current combat duration for pacing.
+
+	Returns:
+		float: Combat duration in seconds, or 0 if not in combat
+	"""
+	if not in_combat:
+		return 0.0
+
+	return Time.get_unix_time_from_system() - encounter_start_time
+
+## Manually starts an encounter of a specific type (for exploration/narrative content).
+##
+## Parameters:
+##   encounter_type: PacingManager.ContentType enum value
+func start_encounter(encounter_type: int) -> void:
+	"""Manually starts an encounter of a specific type.
+
+	Parameters:
+		encounter_type: PacingManager.ContentType enum value
+	"""
+	if not pacing_manager:
+		return
+
+	in_combat = true
+	encounter_start_time = Time.get_unix_time_from_system()
+
+## Ends current encounter and records pacing metrics.
+func end_encounter() -> void:
+	"""Ends current encounter and records pacing metrics."""
+	_end_combat_encounter()
