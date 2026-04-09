@@ -137,13 +137,13 @@ Players always know what to do next (map markers, quest objectives, level requir
 | PVP-01 | Phase 4 | Pending |
 | PVP-02 | Phase 4 | Pending |
 | PVP-03 | Phase 4 | Pending |
-| PROG-01 | Phase 5 | Pending |
-| PROG-02 | Phase 5 | Pending |
-| PROG-03 | Phase 5 | Pending |
-| PROG-04 | Phase 5 | Pending |
-| DIFFICULTY-01 | Phase 5 | Pending |
-| DIFFICULTY-02 | Phase 5 | Pending |
-| DIFFICULTY-03 | Phase 5 | Pending |
+| PROG-01 | Phase 5 | Complete |
+| PROG-02 | Phase 5 | Complete |
+| PROG-03 | Phase 5 | Complete |
+| PROG-04 | Phase 5 | Complete |
+| DIFFICULTY-01 | Phase 5 | Complete |
+| DIFFICULTY-02 | Phase 5 | Complete |
+| DIFFICULTY-03 | Phase 5 | Complete |
 
 ---
 
