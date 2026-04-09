@@ -30,7 +30,7 @@
 
 ### Phases
 
-- [ ] **Phase 1: Combat Foundation** - Core combat mechanics with timing, hit detection, damage formulas, and weapon variety
+- [x] **Phase 1: Combat Foundation** - Core combat mechanics with timing, hit detection, damage formulas, and weapon variety
 - [ ] **Phase 2: Enemy System** - New enemy types, boss encounters, and varied AI patterns
 - [ ] **Phase 3: Combat Polish & Juice** - Visual feedback, impact effects, damage indicators, and hit/kill reactions
 - [ ] **Phase 4: PvP Balance & Ranking** - Weapon/power balancing, fair matchmaking, and seasonal ranking system
