@@ -20,6 +20,7 @@ var theme_manager: Node
 
 var gear_manager: GearManager
 var gear_registry: GearRegistry
+var gear_balance_calculator: Node
 var equipped_slots: Dictionary = {}
 var slot_nodes: Dictionary = {}
 
@@ -52,14 +53,15 @@ var rarity_colors: Dictionary = {
 func _ready() -> void:
 	# Get ThemeManager reference
 	theme_manager = get_node_or_null("/root/ThemeManager")
-	
+
 	# Apply theme if available
 	if theme_manager:
 		_apply_theme()
 		theme_manager.theme_changed.connect(_on_theme_changed)
-	
+
 	gear_manager = get_node_or_null("/root/GearManager")
 	gear_registry = get_node_or_null("/root/GearRegistry")
+	gear_balance_calculator = get_node_or_null("/root/GearBalanceCalculator")
 
 	_setup_button_connections()
 	_create_slot_nodes()
@@ -123,7 +125,14 @@ func _update_stats_display() -> void:
 	if not gear_registry:
 		return
 
-	var total_stats: Dictionary = {"attack": 0, "defense": 0, "speed": 0, "health": 0}
+	# Get stats with diminishing returns if available
+	var total_stats: Dictionary
+	if gear_manager and gear_manager.has_method("get_total_equipped_stats"):
+		total_stats = gear_manager.get_total_equipped_stats()
+	else:
+		# Fallback to simple calculation
+		total_stats = {"attack": 0, "defense": 0, "speed": 0, "health": 0}
+
 	var inventory: Dictionary = gear_manager._get_full_inventory()
 	var equipped: Dictionary = inventory.get("equipped_gear", {})
 
@@ -152,10 +161,40 @@ func _update_stats_display() -> void:
 				if stat_name in total_stats:
 					total_stats[stat_name] += stat_value
 
+	# Display stats
 	_add_stat_label("Attack", total_stats.get("attack", 0))
 	_add_stat_label("Defense", total_stats.get("defense", 0))
 	_add_stat_label("Speed", total_stats.get("speed", 0))
 	_add_stat_label("Health", total_stats.get("health", 0))
+
+	# Display total power rating
+	if gear_balance_calculator and gear_balance_calculator.has_method("get_gear_power_rating"):
+		var total_power: float = 0.0
+		for slot_key in equipped.keys():
+			var gear_id: String = equipped[slot_key]
+			var gear_data: Dictionary = gear_manager.get_gear_by_id(gear_id)
+			if not gear_data.is_empty():
+				total_power += gear_balance_calculator.get_gear_power_rating(gear_data)
+
+		var power_label: Label = Label.new()
+		power_label.text = "Total Power: %s" % gear_balance_calculator.format_power_rating(total_power)
+		power_label.add_theme_font_size_override("font_size", 16)
+		stats_container.add_child(power_label)
+
+	# Display synergy bonuses
+	if gear_manager and gear_manager.has_method("get_synergy_bonuses"):
+		var synergy_bonuses: Dictionary = gear_manager.get_synergy_bonuses()
+		if not synergy_bonuses.is_empty():
+			var synergy_label: Label = Label.new()
+			synergy_label.text = "\n[b]Synergy Bonuses:[/b]"
+			stats_container.add_child(synergy_label)
+
+			for stat_name in synergy_bonuses.keys():
+				if stat_name == "all_multiplier":
+					var bonus: float = float(synergy_bonuses[stat_name]) * 100.0
+					_add_stat_label("All Stats +", bonus)
+				else:
+					_add_stat_label(stat_name.capitalize(), synergy_bonuses[stat_name])
 
 func _clear_stats_container() -> void:
 	for child in stats_container.get_children():
