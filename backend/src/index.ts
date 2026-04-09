@@ -71,16 +71,7 @@ import { registerProgressiveRollout, initializeProgressiveRollout } from './modu
 import { initializeAlerting } from './modules/alerting';
 import { initializeHealthMonitoring } from './modules/health_monitor';
 import { registerAnalyticsEndpoints } from './modules/analytics';
-import {
-  registerRpcLogMatchData,
-  registerRpcLogAbandonment,
-  registerRpcLogWeaponResult,
-  registerRpcLogQueueTime,
-  registerRpcGetMatchQualityMetrics,
-  registerRpcGetWeaponStats,
-  registerRpcDetectBalanceIssues,
-  registerRpcExportAnalyticsReport,
-} from './modules/matchmaking_analytics';
+import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
 import { initializeSentry } from './config/errorTracking';
 import { initializeTracing } from './config/tracing';
 import { logger, logSystemEvent } from './config/logger';
@@ -194,6 +185,7 @@ const InitModule: InitModule = function (
   registerDeploymentObservability(initializer);
   registerProgressiveRollout(initializer);
   registerAnalyticsEndpoints(initializer);
+  registerMatchmakingAnalyticsEndpoints(initializer);
   registerErrorInsightRpcs(initializer);
   registerNotificationEndpoints(initializer);
 
