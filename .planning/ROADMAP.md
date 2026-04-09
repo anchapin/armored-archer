@@ -32,7 +32,7 @@
 
 - [x] **Phase 1: Combat Foundation** - Core combat mechanics with timing, hit detection, damage formulas, and weapon variety
 - [x] **Phase 2: Enemy System** - New enemy types, boss encounters, and varied AI patterns
-- [ ] **Phase 3: Combat Polish & Juice** - Visual feedback, impact effects, damage indicators, and hit/kill reactions
+- [ ] **Phase 3: Combat Polish & Juice** - Visual feedback, impact effects, damage indicators, and hit/kill reactions | 1 plan complete
 - [ ] **Phase 4: PvP Balance & Ranking** - Weapon/power balancing, fair matchmaking, and seasonal ranking system
 - [ ] **Phase 5: Progression & Difficulty** - XP tuning, level scaling, stat systems, gear balance, and dynamic difficulty
 
@@ -90,7 +90,7 @@
 3. Player character briefly flinches or stutters when taking damage, providing clear feedback that damage was received
 4. Enemies have clear, satisfying death animations with ragdoll-like physics effects that make kills feel rewarding
 
-**Plans:** TBD
+**Plans:** 01-01-PLAN.md (Complete)
 
 ---
 
@@ -140,7 +140,7 @@
 |-------|----------------|--------|-----------|
 | 1. Combat Foundation | 1/1 | Complete | 2026-04-08 |
 | 2. Enemy System | 1/1 | Complete | 2026-04-08 |
-| 3. Combat Polish & Juice | 0/0 | Not started | - |
+| 3. Combat Polish & Juice | 1/1 | Not started | - |
 | 4. PvP Balance & Ranking | 0/0 | Not started | - |
 | 5. Progression & Difficulty | 0/0 | Not started | - |
 
