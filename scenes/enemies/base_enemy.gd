@@ -93,15 +93,28 @@ func die() -> void:
 	# CRITICAL: Set is_dead flag immediately to prevent re-damage before deferred pool return
 	is_dead = true
 
-	# Trigger death VFX
-	var vfx_manager: Node = get_node_or_null("/root/VFXManager")
-	if vfx_manager and vfx_manager.has_method("play_death_effect"):
-		vfx_manager.play_death_effect(global_position)
-
-	# Emit death signals
+	# Emit death signals first
 	print("DEBUG: Emitting died signal for %s (%s)" % [name, str(get_instance_id())])
 	died.emit(xp_reward)
 
+	# Trigger death animation through CombatJuiceManager
+	var combat_juice = get_node_or_null("/root/CombatJuiceManager")
+	if combat_juice and combat_juice.has_method("trigger_combat_juice"):
+		# Pass enemy_node and particle_count params
+		combat_juice.trigger_combat_juice(
+			"DEATH_ANIMATION",
+			{"enemy_node": self, "particle_count": 5}
+		)
+	else:
+		# Fallback: Directly play death animation and spawn particles
+		play_death_animation()
+		spawn_death_particles(5)
+		# Return to pool after animation
+		_direct_return_to_pool()
+
+## Direct pool return when CombatJuiceManager unavailable
+func _direct_return_to_pool() -> void:
+	"""Directly return enemy to pool (fallback when CombatJuiceManager unavailable)"""
 	# CRITICAL: Directly notify spawner of enemy death (EnemySpawner is now an autoload)
 	var spawner: Node = get_node_or_null("/root/EnemySpawner")
 	if spawner and spawner.has_method("_on_enemy_exiting"):
@@ -115,7 +128,6 @@ func die() -> void:
 		enemy_died.emit(self)
 
 	# CRITICAL: Return enemy to pool via deferred call to ensure signals process first
-	# This prevents race condition where signal handler can't execute due to immediate node removal
 	call_deferred("_return_to_pool_deferred")
 
 func _return_to_pool_deferred() -> void:
@@ -155,3 +167,40 @@ func _exit_tree() -> void:
 	var aim_mgr = get_node_or_null("/root/AutoAimManager")
 	if aim_mgr and aim_mgr.has_method("unregister_enemy"):
 		aim_mgr.unregister_enemy(self)
+
+## Death animation: Fade out and apply ragdoll physics
+func play_death_animation() -> void:
+	"""Fade out sprite over 0.5s and trigger ragdoll physics"""
+	# Fade out sprite over 0.5s
+	if sprite:
+		var tween = create_tween()
+		tween.tween_property(sprite, "modulate:a", 0.0, 0.5)
+		await tween.finished
+
+	# Call ragdoll physics
+	apply_ragdoll_physics()
+
+## Apply ragdoll physics to create death effect
+func apply_ragdoll_physics() -> void:
+	"""Apply random rotation and velocity to create ragdoll effect"""
+	if sprite:
+		# Random rotation
+		var rotation_amount = randf() * PI * 2
+		sprite.rotation = rotation_amount
+
+		# Random velocity vector (push effect)
+		var ragdoll_velocity = Vector2(randf_range(-100, 100), randf_range(-100, 100))
+
+		# Disable gravity
+		ragdoll_velocity.y = 0.0
+
+		# Apply rotation tween
+		var tween = create_tween()
+		tween.tween_property(sprite, "rotation", sprite.rotation + rotation_amount * 2.0, 0.5)
+
+## Spawn death particle burst
+func spawn_death_particles(particle_count: int = 5) -> void:
+	"""Spawn death particle burst for satisfying kills"""
+	var vfx_manager = get_node_or_null("/root/VFXManager")
+	if vfx_manager and vfx_manager.has_method("spawn_death_particles"):
+		vfx_manager.spawn_death_particles(global_position, particle_count)

@@ -70,29 +70,6 @@ func register_impact_effect(effect_type: EffectType, effect_handler: Node) -> bo
 	_juice_effects[effect_type] = effect_handler
 	return true
 
-## Trigger combat juice event
-##
-## Parameters:
-##   effect_type: Type of effect
-##   data: Dictionary of effect-specific data
-##
-## Returns:
-##   Dictionary: Result from effect handler
-func trigger_combat_juice(effect_type: EffectType, data: Dictionary) -> Dictionary:
-	if not _juice_effects.has(effect_type):
-		push_warning("CombatJuiceManager: No handler registered for effect type: %s" % effect_type)
-		return {}
-
-	var handler = _juice_effects[effect_type]
-	if not handler:
-		return {}
-
-	juice_effect_started.emit(effect_type.to_lower(), data)
-	var result = handler.handle_juice_effect(data)
-
-	juice_effect_completed.emit(effect_type.to_lower(), result)
-	return result
-
 ## Central entry point for all combat juice
 ##
 ## Parameters:
@@ -200,13 +177,31 @@ func _trigger_hit_reaction(data: Dictionary) -> Dictionary:
 ##   enemy_node: Enemy that died
 ##   particle_count: Number of death particles
 func _trigger_death_animation(data: Dictionary) -> Dictionary:
-	if not _impact_manager:
-		return {"success": false, "error": "ImpactManager not found"}
+	var enemy_node = data.get("enemy_node")
+	var particle_count = data.get("particle_count", 5)
+
+	if not enemy_node:
+		return {"success": false, "error": "Enemy node not provided"}
 
 	juice_effect_started.emit("death_animation", data)
 
-	var result = _impact_manager.spawn_death_particles(data.enemy_node, data.particle_count)
+	# Trigger enemy's death animation
+	if enemy_node.has_method("play_death_animation"):
+		enemy_node.play_death_animation()
 
+	# Spawn death particles
+	if enemy_node.has_method("spawn_death_particles"):
+		enemy_node.spawn_death_particles(particle_count)
+
+	# Wait for animation to complete (approx 1.0s)
+	await get_tree().create_timer(1.0).timeout
+
+	# Return enemy to pool
+	var object_pool = get_node_or_null("/root/ObjectPool")
+	if object_pool and object_pool.has_method("return_enemy"):
+		object_pool.return_enemy(enemy_node)
+
+	var result = {"success": true, "enemy_id": str(enemy_node.get_instance_id())}
 	juice_effect_completed.emit("death_animation", result)
 	return result
 
