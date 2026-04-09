@@ -483,7 +483,7 @@ export function rpcGetCampaignProgress(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
-  payload: string
+  _payload: string
 ): string {
   logger.info('Get campaign progress called for user: %s', ctx.userId);
 

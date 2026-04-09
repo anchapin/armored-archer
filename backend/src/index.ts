@@ -4,15 +4,73 @@ import { InitModule, Runtime } from './types/nakama';
 if (typeof (globalThis as any).exports === 'undefined') {
   (globalThis as any).exports = {};
 }
-import './config';
 import { validateRequiredConfig, config } from './config';
-import { initializeCaches } from './utils/cache';
+import { initializeSentry } from './config/errorTracking';
+import { logger, logSystemEvent } from './config/logger';
+import { createStructuredLogger, StructuredLogger } from './config/structuredLogger';
+import { initializeTracing } from './config/tracing';
+import { initializeAlerting } from './modules/alerting';
+import { registerAnalyticsEndpoints } from './modules/analytics';
+import {
+  registerRpcSubmitCombatAction,
+  registerRpcGetMatchState,
+  registerRpcPlayerDisconnect,
+} from './modules/combat_system';
+import {
+  registerDeploymentObservability,
+  initializeDeploymentObservability,
+} from './modules/deployment_observability';
+import {
+  registerRpcSyncDifficulty,
+  registerRpcTrackMatchOutcome,
+  registerRpcGetPlayerPerformance,
+} from './modules/dynamic_difficulty';
+import {
+  registerErrorInsightRpcs,
+  initializeErrorInsightsPipeline,
+} from './modules/error_insight_pipeline';
+import {
+  registerRpcGenerateGear,
+  registerRpcEquipGear,
+  registerRpcUnequipGear,
+  registerRpcGetInventory,
+  registerRpcUnlockModifierPool,
+  registerRpcStageComplete,
+  registerRpcGetUnlockedModifiers,
+} from './modules/gear_system';
+import { initializeHealthMonitoring } from './modules/health_monitor';
+import {
+  registerRpcListMatches,
+  registerRpcCreateMatch,
+  registerRpcAcceptMatch,
+  registerRpcGetPlayerRank,
+  registerRpcCompleteMatch,
+} from './modules/matchmaker';
+import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
+import {
+  registerRpcJoinPool,
+  registerRpcLeavePool,
+  registerRpcGetQueueStatus,
+} from './modules/matchmaking_pool';
+import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
+import {
+  startNotificationScheduler,
+  stopNotificationScheduler,
+} from './modules/notification_scheduler';
+import {
+  initializeNotifications,
+  registerNotificationEndpoints,
+} from './modules/notifications_rpc';
 import {
   registerRpcHealthCheck,
   registerRpcReportPlayer,
   registerRpcGetPlayerReports,
   registerRpcGetPlayerStats,
 } from './modules/player_rpc';
+import {
+  registerProgressiveRollout,
+  initializeProgressiveRollout,
+} from './modules/progressive_rollout';
 import {
   registerRpcGainXP,
   registerRpcAllocateStats,
@@ -22,23 +80,6 @@ import {
   registerRpcGetBuilds,
 } from './modules/rpg_system';
 import {
-  registerRpcListMatches,
-  registerRpcCreateMatch,
-  registerRpcAcceptMatch,
-  registerRpcGetPlayerRank,
-  registerRpcCompleteMatch,
-} from './modules/matchmaker';
-import {
-  registerRpcJoinPool,
-  registerRpcLeavePool,
-  registerRpcGetQueueStatus,
-} from './modules/matchmaking_pool';
-import {
-  registerRpcSubmitCombatAction,
-  registerRpcGetMatchState,
-  registerRpcPlayerDisconnect,
-} from './modules/combat_system';
-import {
   registerRpcGetSeasonInfo,
   registerRpcGetLeaderboard,
   registerRpcUpdateRank,
@@ -46,6 +87,11 @@ import {
   registerRpcClaimSeasonRewards,
   registerRpcEndSeason,
 } from './modules/season_system';
+import {
+  registerRpcCompleteStage,
+  registerRpcGetCompletedStages,
+  registerRpcGetCampaignProgress,
+} from './modules/stage_tracking';
 import {
   registerRpcValidatePurchase,
   registerRpcGetCurrency,
@@ -60,54 +106,7 @@ import {
   rpcCheckSubscriptions,
   rpcAppLaunchCheck,
 } from './modules/store';
-import {
-  registerRpcGenerateGear,
-  registerRpcEquipGear,
-  registerRpcUnequipGear,
-  registerRpcGetInventory,
-  registerRpcUnlockModifierPool,
-  registerRpcStageComplete,
-  registerRpcGetUnlockedModifiers,
-} from './modules/gear_system';
-import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
-import {
-  registerDeploymentObservability,
-  initializeDeploymentObservability,
-} from './modules/deployment_observability';
-import {
-  registerProgressiveRollout,
-  initializeProgressiveRollout,
-} from './modules/progressive_rollout';
-import { initializeAlerting } from './modules/alerting';
-import { initializeHealthMonitoring } from './modules/health_monitor';
-import { registerAnalyticsEndpoints } from './modules/analytics';
-import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
-import { initializeSentry } from './config/errorTracking';
-import { initializeTracing } from './config/tracing';
-import { logger, logSystemEvent } from './config/logger';
-import { createStructuredLogger, StructuredLogger } from './config/structuredLogger';
-import {
-  registerErrorInsightRpcs,
-  initializeErrorInsightsPipeline,
-} from './modules/error_insight_pipeline';
-import {
-  registerRpcCompleteStage,
-  registerRpcGetCompletedStages,
-  registerRpcGetCampaignProgress,
-} from './modules/stage_tracking';
-import {
-  initializeNotifications,
-  registerNotificationEndpoints,
-} from './modules/notifications_rpc';
-import {
-  startNotificationScheduler,
-  stopNotificationScheduler,
-} from './modules/notification_scheduler';
-import {
-  registerRpcSyncDifficulty,
-  registerRpcTrackMatchOutcome,
-  registerRpcGetPlayerPerformance,
-} from './modules/dynamic_difficulty';
+import { initializeCaches } from './utils/cache';
 
 // Global structured logger instance for use by all modules
 let globalStructuredLogger: StructuredLogger | null = null;

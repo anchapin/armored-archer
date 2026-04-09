@@ -4,7 +4,7 @@
  */
 
 import { Runtime } from '../types/nakama';
-import { SeasonInfo, LeaderboardEntry, SeasonRewards } from './season_system';
+import { SeasonInfo } from './season_system';
 
 // --- Types ---
 
@@ -83,7 +83,6 @@ export async function applyDailyDecay(
   nk: Runtime.Nakama,
   seasonId: string
 ): Promise<{ affected: number; total_loss: number }> {
-  const currentSeason = getCurrentSeasonInfo(nk);
   const decayConfig = getDecayConfig(nk);
   const leaderboardRecords = nk.leaderboardRecordList(seasonId, [], 1000, '', 0);
 
@@ -247,7 +246,6 @@ export async function getPlayerRank(
       continue;
     }
 
-    const otherMetadata = otherRecord.metadata ? JSON.parse(otherRecord.metadata) : {};
     const otherLastActive = await getPlayerLastActive(nk, otherRecord.ownerId);
     const otherDaysInactive = getDaysInactive(otherLastActive);
     const otherDecayAmount = calculateDecayAmount(
@@ -402,7 +400,7 @@ export function getDaysInactive(lastActiveTimestamp: number): number {
  * @param nk - Nakama server interface
  * @returns Current season info
  */
-export function getCurrentSeasonInfo(nk: Runtime.Nakama): SeasonInfo {
+export function getCurrentSeasonInfo(_nk: Runtime.Nakama): SeasonInfo {
   const now = Date.now();
   const seasonNumber = Math.floor(now / SEASON_DURATION_MS) + 1;
   const seasonStartTime = (seasonNumber - 1) * SEASON_DURATION_MS;

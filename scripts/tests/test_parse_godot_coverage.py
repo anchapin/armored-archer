@@ -5,17 +5,16 @@ Unit tests for parse_godot_coverage.py.
 Tests HTML report generation with Jinja2 templating.
 """
 
-import unittest
 import json
-import tempfile
 import os
 import sys
-from pathlib import Path
+import tempfile
+import unittest
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from parse_godot_coverage import parse_coverage_json, generate_html_report
+from parse_godot_coverage import generate_html_report, parse_coverage_json
 
 
 class TestParseGodotCoverage(unittest.TestCase):
@@ -88,7 +87,7 @@ class TestParseGodotCoverage(unittest.TestCase):
             self.assertTrue(os.path.exists(temp_file))
 
             # Verify HTML contains expected content
-            with open(temp_file, 'r') as f:
+            with open(temp_file) as f:
                 html_content = f.read()
                 self.assertIn("Godot Coverage Report", html_content)
                 self.assertIn("autoloads/combat_manager.gd", html_content)
@@ -118,7 +117,7 @@ class TestParseGodotCoverage(unittest.TestCase):
             generate_html_report(coverage_data, temp_file)
 
             # Verify badge class and percentage
-            with open(temp_file, 'r') as f:
+            with open(temp_file) as f:
                 html_content = f.read()
                 self.assertIn("badge-success", html_content)
                 self.assertIn("80%", html_content)
@@ -147,7 +146,7 @@ class TestParseGodotCoverage(unittest.TestCase):
             generate_html_report(coverage_data, temp_file)
 
             # Verify CSS classes
-            with open(temp_file, 'r') as f:
+            with open(temp_file) as f:
                 html_content = f.read()
                 # Check for covered line styling (green)
                 self.assertIn("background-color: #22C55E", html_content)

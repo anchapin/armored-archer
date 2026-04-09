@@ -4,9 +4,8 @@
  */
 
 import { Runtime } from '../types/nakama';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { safeParse } from '../utils/safeParse';
-import { readAndParseStorage } from '../utils/storage-helpers';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Player in matchmaking queue.
@@ -75,7 +74,6 @@ const EXPANSION_TIME_1 = 30 * 1000; // 30 seconds in ms
 const EXPANSION_TIME_2 = 60 * 1000; // 60 seconds in ms
 const MAX_WAIT_TIME = 90 * 1000; // 90 seconds in ms
 const POOL_STORAGE_KEY = 'matchmaking_pool';
-const POOL_UPDATE_INTERVAL = 2000; // 2 seconds
 
 /**
  * Get the current pool from storage.
@@ -135,7 +133,7 @@ function calculateBracketSize(waitTime: number): number {
 /**
  * Check if two players are compatible for matching.
  */
-function arePlayersCompatible(player1: QueuedPlayer, player2: QueuedPlayer): boolean {
+function _arePlayersCompatible(player1: QueuedPlayer, player2: QueuedPlayer): boolean {
   // Must be same mode
   if (player1.mode !== player2.mode) {
     return false;

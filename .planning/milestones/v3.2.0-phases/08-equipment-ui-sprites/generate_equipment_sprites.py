@@ -2,7 +2,6 @@
 """Generate equipment and UI placeholder sprite resources for Godot."""
 
 import os
-import sys
 
 # Get project root (parent of .planning directory)
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -91,34 +90,34 @@ size = Vector2({width}, {height})
 def create_sprites():
     """Create all equipment and UI sprite placeholder files."""
     total_created = 0
-    
+
     # Create equipment sprites
     for equip_type, data in EQUIPMENT.items():
         dir_path = os.path.join(BASE_PATH, "equipment", equip_type)
         width, height = data["size"]
-        
+
         for sprite_name, sprite_data in data["sprites"].items():
             file_path = os.path.join(dir_path, f"{sprite_name}.tres")
             content = generate_tres_content(width, height, sprite_data["color"])
-            
+
             with open(file_path, "w") as f:
                 f.write(content)
             total_created += 1
             print(f"Created: {file_path}")
-    
+
     # Create UI icons
     ui_dir = os.path.join(BASE_PATH, "ui")
     width, height = UI_ICONS["size"]
-    
+
     for icon_name, icon_data in UI_ICONS["icons"].items():
         file_path = os.path.join(ui_dir, f"{icon_name}.tres")
         content = generate_tres_content(width, height, icon_data["color"])
-        
+
         with open(file_path, "w") as f:
             f.write(content)
         total_created += 1
         print(f"Created: {file_path}")
-    
+
     print(f"\nTotal sprites created: {total_created}")
 
 if __name__ == "__main__":

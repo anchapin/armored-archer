@@ -25,8 +25,6 @@ export {
   number,
   string,
   boolean,
-  enum,
-  enum as enumType,
   array,
   record,
   minValue,
@@ -41,6 +39,9 @@ export {
   safeParse,
   unknown,
 };
+
+// Re-export enum with a different name to avoid reserved keyword conflict
+export { enum as enumType } from 'valibot';
 
 // Type assertion helper for enum schemas
 function createEnum<T extends string>(values: readonly T[]): ReturnType<typeof enumType> {
@@ -490,7 +491,6 @@ export type SchemaName = keyof typeof ValibotSchemas;
 
 export type ValidationResult<T> = { success: true; data: T } | { success: false; error: string };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySchema = any;
 
 export function validatePayload<T = any>(

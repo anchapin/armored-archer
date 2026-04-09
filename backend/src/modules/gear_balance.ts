@@ -367,7 +367,7 @@ export function calculateSynergyBonus(equippedGear: { [key: string]: string }): 
     for (const tierCount of Object.keys(bonusTiers)) {
       const tier = parseInt(tierCount, 10);
       if (equippedCount >= tier) {
-        const bonus = bonusTiers[tier];
+        const bonus = bonusTiers[tier as keyof typeof bonusTiers];
         const stat = bonus.stat;
         const value = bonus.value;
 

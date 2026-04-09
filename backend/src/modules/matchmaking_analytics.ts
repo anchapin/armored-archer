@@ -5,10 +5,8 @@
 
 import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
-import { logAudit } from './audit';
-import { validatePayload, ZodSchemas, safeParse } from './validation';
 import { registerRpcWithMetrics } from './metrics';
-import { safeParse } from './validation';
+import { validatePayload, ZodSchemas, safeParse, object } from './validation';
 
 /**
  * Match quality metrics for monitoring matchmaking health.
@@ -831,8 +829,9 @@ export async function rpcGetWeaponStats(
   logger.debug('GetWeaponStats RPC called');
 
   const parseResult = safeParse(
-    ZodSchemas.get_weapon_stats || object({}),
     payload,
+    null,
+    undefined,
     'get_weapon_stats'
   );
 

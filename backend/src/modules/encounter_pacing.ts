@@ -3,12 +3,12 @@
  * @fileoverview Manages encounter pacing tracking and analytics for fatigue prevention.
  */
 
+import { number, string, pipe, minValue, maxValue } from 'valibot';
 import { Runtime } from '../types/nakama';
-import { safeParse, createErrorResponse } from '../utils/safeParse';
+import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, createValidationErrorResponse } from './validation';
-import { object, number, string, array, pipe, minValue, maxValue } from 'valibot';
 
 /**
  * Content type enum for encounters.

@@ -12,9 +12,8 @@
  * @version 1.0.0
  */
 
-import { TSESTree, ESLintUtils, AST_NODE_TYPES } from '@typescript-eslint/utils';
+import { TSESTree, AST_NODE_TYPES } from '@typescript-eslint/utils';
 import type { RuleModule } from '@typescript-eslint/utils/dist/ts-eslint/Rule';
-import type { RuleContext } from '@typescript-eslint/utils/dist/ts-eslint';
 
 // Database method patterns
 const DB_METHOD_PATTERNS = [
@@ -120,25 +119,6 @@ export const NPlusOneDetectionRule: RuleModule<
       hasDbCall: boolean;
       line: number;
     }> = [];
-
-    // Visit a node and check for loops
-    function checkLoop(node: TSESTree.Node, loopType: string): void {
-      const dbMethod = isDatabaseMethodCall(node);
-      if (dbMethod && loopStack.length > 0) {
-        const currentLoop = loopStack[loopStack.length - 1];
-        if (!currentLoop.hasDbCall) {
-          currentLoop.hasDbCall = true;
-          context.report({
-            node,
-            messageId: 'nPlusOneQuery',
-            data: {
-              method: dbMethod,
-              loopType,
-            },
-          });
-        }
-      }
-    }
 
     return {
       // Track entering loops

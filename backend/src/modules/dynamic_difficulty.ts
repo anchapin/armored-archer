@@ -14,12 +14,12 @@ import {
   number,
   string,
   boolean,
-  enum as enumType,
   pipe,
   minValue,
   maxValue,
   minLength,
 } from './validation';
+import { enum as enumType } from 'valibot';
 
 // Type assertion helper for enum schemas
 function createEnum<T extends string>(values: readonly T[]): ReturnType<typeof enumType> {

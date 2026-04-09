@@ -3,8 +3,6 @@
  * @fileoverview Manages enemy damage scaling and AI difficulty tiers.
  */
 
-import { z } from 'zod';
-
 /**
  * Difficulty level label
  */

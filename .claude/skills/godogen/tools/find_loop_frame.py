@@ -18,7 +18,6 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-
 EMBED_SIZE = 32
 
 

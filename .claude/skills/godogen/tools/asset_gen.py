@@ -16,7 +16,6 @@ from pathlib import Path
 
 import requests
 import xai_sdk
-
 from tripo3d import MODEL_V3, image_to_glb
 
 TOOLS_DIR = Path(__file__).parent

@@ -3,17 +3,7 @@
  * @fileoverview Handles XP gains and stat allocation.
  */
 
-import { Runtime } from '../types/nakama';
-
-import { getCacheManager } from '../utils/cache';
-import { invalidatePlayerStatsCache } from '../utils/db_optimizer';
-import { getPlayerStatsWithCache } from '../utils/player-data-helpers';
-import { safeParse, createErrorResponse } from '../utils/safeParse';
-import { logAudit } from './audit';
-import { registerRpcWithMetrics } from './metrics';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import {
-  object,
   number,
   string,
   boolean,
@@ -25,6 +15,15 @@ import {
   minLength,
   maxLength,
 } from 'valibot';
+import { Runtime } from '../types/nakama';
+
+import { getCacheManager } from '../utils/cache';
+import { invalidatePlayerStatsCache } from '../utils/db_optimizer';
+import { getPlayerStatsWithCache } from '../utils/player-data-helpers';
+import { safeParse, createErrorResponse } from '../utils/safeParse';
+import { logAudit } from './audit';
+import { registerRpcWithMetrics } from './metrics';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Helper function to save player stats to storage and invalidate cache.
@@ -612,8 +611,14 @@ export function rpcRespecStats(
   const playerStats = playerStatsResult.data;
 
   // Validate allocation matches available points
-  const currentTotalSpent = Object.values(playerStats.stats).reduce((a: number, b: number) => a + b, 0);
-  const newTotalSpent = Object.values(request.new_allocation).reduce((a: number, b: number) => a + b, 0);
+  const currentTotalSpent = Object.values(playerStats.stats).reduce(
+    (a: number, b: number) => a + b,
+    0
+  );
+  const newTotalSpent = (Object.values(request.new_allocation) as number[]).reduce(
+    (a: number, b: number) => a + b,
+    0
+  );
 
   if (newTotalSpent !== currentTotalSpent) {
     logAudit(
@@ -643,7 +648,8 @@ export function rpcRespecStats(
 
   // Check cooldown
   const currentTime = Math.floor(Date.now() / 1000);
-  const cooldownRemaining = RESPEC_COOLDOWN_SECONDS - (currentTime - (respecData?.last_respec_time || 0));
+  const cooldownRemaining =
+    RESPEC_COOLDOWN_SECONDS - (currentTime - (respecData?.last_respec_time || 0));
   if (cooldownRemaining > 0 && !request.use_free_respec && respecData) {
     logAudit(
       nk,
@@ -671,7 +677,7 @@ export function rpcRespecStats(
   let costPaid = 0;
   if (!useFreeRespec) {
     // Use gem balance from player stats (already loaded)
-    const gemBalance = playerStats?.stats?.gems || 0;
+    const gemBalance = (playerStats?.stats as any)?.gems || 0;
 
     costPaid = Math.floor(gemBalance * RESPEC_COST_PERCENT);
     costPaid = Math.max(RESPEC_MIN_COST, Math.min(RESPEC_MAX_COST, costPaid));
@@ -709,11 +715,11 @@ export function rpcRespecStats(
   };
 
   // Update respec data
-  respecData.last_respec_time = currentTime;
+  (respecData as RespecData).last_respec_time = currentTime;
   if (useFreeRespec) {
-    respecData.free_respecs_used++;
+    (respecData as RespecData).free_respecs_used++;
   }
-  saveRespecData(nk, ctx.userId, respecData);
+  saveRespecData(nk, ctx.userId, respecData as RespecData);
 
   // Save player stats
   savePlayerStats(nk, ctx, logger, playerStats, 'respec_stats');
@@ -926,7 +932,7 @@ export function rpcGetBuilds(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
-  payload: string
+  _payload: string
 ): string {
   logger.info('Get builds called for user: %s', ctx.userId);
 
@@ -969,6 +975,9 @@ export function rpcGetBuilds(
 
 // --- Helper Functions ---
 
+/**
+ *
+ */
 function loadPlayerStats(
   nk: Runtime.Nakama,
   userId: string
@@ -990,7 +999,7 @@ function loadPlayerStats(
     return { success: false, error: 'Player stats data is empty' };
   }
 
-  const parseResult = safeParse<PlayerStats>(value, null, logger, 'player_stats');
+  const parseResult = safeParse<PlayerStats>(value, null, undefined as any, 'player_stats');
   if (!parseResult.success || !parseResult.data) {
     return { success: false, error: 'Failed to parse player stats' };
   }
@@ -998,6 +1007,9 @@ function loadPlayerStats(
   return { success: true, data: parseResult.data };
 }
 
+/**
+ *
+ */
 function loadRespecData(
   nk: Runtime.Nakama,
   userId: string
@@ -1033,7 +1045,7 @@ function loadRespecData(
     };
   }
 
-  const parseResult = safeParse<RespecData>(value, null, logger, 'respec_data');
+  const parseResult = safeParse<RespecData>(value, null, undefined as any, 'respec_data');
   if (!parseResult.success || !parseResult.data) {
     return {
       success: true,
@@ -1048,6 +1060,9 @@ function loadRespecData(
   return { success: true, data: parseResult.data };
 }
 
+/**
+ *
+ */
 function saveRespecData(nk: Runtime.Nakama, userId: string, respecData: RespecData): void {
   nk.storageWrite([
     {

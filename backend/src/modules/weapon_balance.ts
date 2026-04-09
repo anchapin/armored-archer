@@ -230,7 +230,7 @@ export function validateWeaponPower(baseDamage: number, tier: WeaponTier): boole
  * @returns Success response or error
  */
 export async function applyBalanceAdjustment(
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   userId: string,
   request: ApplyBalanceAdjustmentRequest
 ): Promise<{ success: boolean; error?: string; adjustment?: BalanceAdjustment }> {
@@ -283,16 +283,20 @@ export async function applyBalanceAdjustment(
     ]);
 
     // Log audit trail
-    await logAudit(nk, {
-      action: 'balance_adjustment_applied',
-      user_id: userId,
-      details: {
+    await logAudit(
+      nk,
+      userId,
+      null, // ipAddress - not available in this context
+      'balance_adjustment_applied',
+      'weapon_balance_adjustment',
+      {
         weapon_id: request.weapon_id,
         multiplier: request.multiplier,
         reason: request.reason,
         adjustment_id: adjustment.adjustment_id,
       },
-    });
+      'success'
+    );
 
     return {
       success: true,
@@ -314,7 +318,7 @@ export async function applyBalanceAdjustment(
  * @param userId - User ID to check
  * @returns True if user is authorized
  */
-async function checkAdminAuthorization(nk: Runtime.NakamaModule, userId: string): Promise<boolean> {
+async function checkAdminAuthorization(nk: Runtime.Nakama, userId: string): Promise<boolean> {
   try {
     // In production, this would check user groups or roles
     // For now, we'll check for an admin flag in user storage
@@ -347,7 +351,7 @@ async function checkAdminAuthorization(nk: Runtime.NakamaModule, userId: string)
  * @param ratingDiff - Rating difference between players
  */
 export async function trackWeaponUsage(
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   weaponId: string,
   matchResult: 'win' | 'loss',
   ratingDiff: number
@@ -411,7 +415,7 @@ export async function trackWeaponUsage(
  * @returns Map of weapon_id to multiplier
  */
 export async function getBalanceAdjustments(
-  nk: Runtime.NakamaModule
+  nk: Runtime.Nakama
 ): Promise<Record<string, number>> {
   try {
     // Read all balance adjustments
@@ -452,7 +456,7 @@ export async function getBalanceAdjustments(
 export async function rpcApplyBalanceAdjustment(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
   logger.debug('ApplyBalanceAdjustment RPC called');
@@ -463,7 +467,7 @@ export async function rpcApplyBalanceAdjustment(
     return JSON.stringify(createValidationErrorResponse('Invalid JSON payload'));
   }
 
-  const validation = validatePayload(ZodSchemas.applyBalanceAdjustment, parseResult.data);
+  const validation = validatePayload(ZodSchemas.apply_balance_adjustment, parseResult.data);
   if (!validation.success) {
     return JSON.stringify(validation.error);
   }
@@ -482,7 +486,7 @@ export async function rpcApplyBalanceAdjustment(
  * @returns Weapon usage statistics
  */
 export async function getWeaponStats(
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   weaponId: string
 ): Promise<WeaponUsageStats | null> {
   try {
@@ -518,7 +522,7 @@ export async function getWeaponStats(
 export async function rpcGetBalanceMetrics(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  nk: Runtime.NakamaModule,
+  nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
   logger.debug('GetBalanceMetrics RPC called');
