@@ -114,6 +114,10 @@ func _run_next_test():
 		"res://test/test_death_animations.gd",
 		"res://test/test_impact_manager.gd",
 
+	# PvP Balance (Phase 4)
+	"res://test/test_weapon_balance_manager.gd",
+	"res://test/test_player_rating_manager.gd",
+
 		# UI components
 		"res://test/test_ui_components.gd",
 
