@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://bx7xv9k3m4lpr"]
+
+[ext_resource type="Script" uid="uid://bx7xv9k3m4lps" path="res://scenes/enemies/flying_enemy.gd" id="1_flying_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/enemy.tres" id="2_sprite"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_collision"]
+size = Vector2(32, 32)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hurt"]
+radius = 28.0
+
+[node name="FlyingEnemy" type="CharacterBody2D" unique_id=1607551684]
+script = ExtResource("1_flying_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1025519920]
+texture = ExtResource("2_sprite")
+offset = Vector2(16, 16)
+modulate = Color(1, 0.8, 0.6, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=2022863303]
+shape = SubResource("RectangleShape2D_collision")
+
+[node name="HurtArea" type="Area2D" parent="." unique_id=2067545654]
+
+[node name="HurtCollision" type="CollisionShape2D" parent="HurtArea" unique_id=1426075609]
+shape = SubResource("CircleShape2D_hurt")
+
+[node name="AttackTimer" type="Timer" parent="." unique_id=1426075610]
+wait_time = 4.0
+one_shot = true
