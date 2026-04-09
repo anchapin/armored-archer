@@ -58,6 +58,34 @@ export const ValibotSchemas = {
     points: pipe(number(), integer(), minValue(1), maxValue(1000)),
   }),
 
+  respec_stats: object({
+    new_allocation: object({
+      attack: pipe(number(), integer(), minValue(0)),
+      defense: pipe(number(), integer(), minValue(0)),
+      dodge: pipe(number(), integer(), minValue(0)),
+      crit_rate: pipe(number(), integer(), minValue(0)),
+    }),
+    use_free_respec: optional(boolean()),
+  }),
+
+  save_build: object({
+    build_slot: pipe(number(), integer(), minValue(1), maxValue(3)),
+    build_name: pipe(string(), minLength(1), maxLength(50)),
+    stats: object({
+      attack: pipe(number(), integer(), minValue(0)),
+      defense: pipe(number(), integer(), minValue(0)),
+      dodge: pipe(number(), integer(), minValue(0)),
+      crit_rate: pipe(number(), integer(), minValue(0)),
+    }),
+    level: pipe(number(), integer(), minValue(1)),
+  }),
+
+  load_build: object({
+    build_slot: pipe(number(), integer(), minValue(1), maxValue(3)),
+  }),
+
+  get_builds: object({}),
+
   generate_gear: object({
     stage_id: pipe(string(), minLength(1), maxLength(100)),
     boss_defeated: boolean(),
