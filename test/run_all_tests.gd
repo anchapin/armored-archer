@@ -114,12 +114,12 @@ func _run_next_test():
 		"res://test/test_death_animations.gd",
 		"res://test/test_impact_manager.gd",
 
-	# PvP Balance (Phase 4)
-	"res://test/test_weapon_balance_manager.gd",
-	"res://test/test_player_rating_manager.gd",
-	"res://test/test_matchmaking_pool_manager.gd",
-	"res://test/test_season_leaderboard.gd",
-	"res://test/test_matchmaking_analytics_manager.gd",
+		# PvP Balance (Phase 4)
+		"res://test/test_weapon_balance_manager.gd",
+		"res://test/test_player_rating_manager.gd",
+		"res://test/test_matchmaking_pool_manager.gd",
+		"res://test/test_season_leaderboard.gd",
+		"res://test/test_matchmaking_analytics_manager.gd",
 
 		# UI components
 		"res://test/test_ui_components.gd",
@@ -129,7 +129,16 @@ func _run_next_test():
 		"res://test/test_stat_allocation.gd",
 
 		# Extended coverage
-		"res://test/test_gear_enums_coverage.gd"
+		"res://test/test_gear_enums_coverage.gd",
+
+		# Progression & Difficulty (Phase 5)
+		"res://test/test_xp_manager.gd",
+		"res://test/test_difficulty_scaling_manager.gd",
+		"res://test/test_stat_allocation_manager.gd",
+		"res://test/test_dynamic_difficulty_manager.gd",
+		"res://test/test_pacing_manager.gd",
+		"res://test/test_progression_indicator_manager.gd",
+		"res://test/test_progression_scenarios.gd"
 	]
 
 	_total_tests = test_files.size()
