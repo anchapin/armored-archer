@@ -13,18 +13,18 @@ progress:
 
 # Armored Archer - Project State
 
-**Last Updated**: 2026-04-09
-**Current Focus**: v4.0.0 — Gameplay Refinement (Phase 4 Execution)
-**Status**: Phase 1 (Combat Foundation), Phase 2 (Enemy System), Phase 3 (Combat Polish & Juice) complete. Phase 4 (PvP Balance & Ranking) Task 6 (Integration Tests) complete.
+**Last Updated**: 2026-04-08
+**Current Focus**: v4.0.0 — Gameplay Refinement (Phase 5 Ready)
+**Status**: Phase 1 (Combat Foundation), Phase 2 (Enemy System), Phase 3 (Combat Polish & Juice), Phase 4 (PvP Balance & Ranking) complete.
 
 ---
 
 ## Current Position
 
-Phase: 4 (PvP Balance & Ranking)
-Plan: 06 (Integration Tests) - Complete
+Phase: 5 (Progression & Difficulty)
+Plan: TBD
 **Milestone**: v4.0.0 Gameplay Refinement
-**Active Work**: Phase 4 (PvP Balance & Ranking) integration tests completed. Created comprehensive test coverage for WeaponBalanceManager, PlayerRatingManager, MatchmakingPoolManager, SeasonManager, and MatchmakingAnalyticsManager. All PvP systems now have integration tests.
+**Active Work**: Phase 4 (PvP Balance & Ranking) complete with 6 tasks implemented. WeaponBalanceManager (tier damage curves, PvP modifiers), PlayerRatingManager (ELO-based rating system), MatchmakingPoolManager (±100 bracket with time expansion), SeasonManager updates (30-day seasons, rating decay), MatchmakingAnalyticsManager (quality metrics, balance alerts). Comprehensive integration tests created for all PvP systems.
 **Previous Milestone**: v3.4.0 Tactical Gameplay & PvE Campaign — SHIPPED 2026-04-06
 **Coverage**: 21/21 requirements mapped to phases (100%)
 **Granularity**: Standard (5 phases)
@@ -132,9 +132,9 @@ Plan: 06 (Integration Tests) - Complete
 
 ## Next Steps
 
-1. Execute Phase 4: PvP Balance & Ranking (`/gsd:execute-phase 04`)
-2. Verify Phase 4 success criteria
-3. Plan Phase 5: Progression & Difficulty
+1. Plan Phase 5: Progression & Difficulty (`/gsd:plan-phase 05`)
+2. Execute Phase 5
+3. Verify Phase 5 success criteria
 4. Continue through remaining phases
 
 ---
@@ -183,5 +183,5 @@ Plan: 06 (Integration Tests) - Complete
 
 ---
 
-*State updated: 2026-04-08T22:30:00Z*
-*Next update: After Phase 4 execution*
+*State updated: 2026-04-08T23:00:00Z*
+*Next update: After Phase 5 planning*

@@ -141,10 +141,10 @@
 | 1. Combat Foundation | 1/1 | Complete | 2026-04-08 |
 | 2. Enemy System | 1/1 | Complete | 2026-04-08 |
 | 3. Combat Polish & Juice | 1/1 | Complete | 2026-04-08 |
-| 4. PvP Balance & Ranking | 1/1 | Plan complete | 2026-04-08 |
+| 4. PvP Balance & Ranking | 1/1 | Complete | 2026-04-08 |
 | 5. Progression & Difficulty | 0/0 | Not started | - |
 
-**Overall Progress:** 3/5 phases complete (60%), 4/5 phases planned (80%)
+**Overall Progress:** 4/5 phases complete (80%)
 
 ---
 
