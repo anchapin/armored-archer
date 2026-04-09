@@ -1,0 +1,40 @@
+[gd_scene format=3 uid="uid://bw7xv9k3m4lpq"]
+
+[ext_resource type="Script" uid="uid://bw7xv9k3m4lpr" path="res://scenes/enemies/elemental_enemy.gd" id="1_elemental_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/enemy.tres" id="2_sprite"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_collision"]
+size = Vector2(32, 32)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hurt"]
+radius = 24.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_detection"]
+radius = 200.0
+
+[node name="ElementalEnemy" type="CharacterBody2D" unique_id=1607551683]
+script = ExtResource("1_elemental_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1025519918]
+texture = ExtResource("2_sprite")
+offset = Vector2(16, 16)
+modulate = Color(1, 0, 0, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=2022863301]
+shape = SubResource("RectangleShape2D_collision")
+
+[node name="HurtArea" type="Area2D" parent="." unique_id=2067545653]
+
+[node name="HurtCollision" type="CollisionShape2D" parent="HurtArea" unique_id=1426075607]
+shape = SubResource("CircleShape2D_hurt")
+
+[node name="DetectionArea" type="Area2D" parent="." unique_id=1025519919]
+collision_layer = 0
+collision_mask = 1
+
+[node name="DetectionShape" type="CollisionShape2D" parent="DetectionArea" unique_id=2022863302]
+shape = SubResource("CircleShape2D_detection")
+
+[node name="AttackTimer" type="Timer" parent="." unique_id=1426075608]
+wait_time = 2.0
+one_shot = true
