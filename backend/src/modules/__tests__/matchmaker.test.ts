@@ -610,7 +610,11 @@ describe('matchmaker', () => {
       jest.clearAllMocks();
       (isPlayerFlagged as jest.Mock).mockReturnValue(false);
       (getFlagReason as jest.Mock).mockReturnValue('No reason');
-      (getCurrentSeason as jest.Mock).mockReturnValue({ season_id: 'season_1', start_time: 0, end_time: Date.now() + 86400000 });
+      (getCurrentSeason as jest.Mock).mockReturnValue({
+        season_id: 'season_1',
+        start_time: 0,
+        end_time: Date.now() + 86400000,
+      });
       (getLeaderboardEntry as jest.Mock).mockReturnValue(null);
       (applyEloUpdates as jest.Mock).mockReturnValue({ winnerNewElo: 1210, loserNewElo: 1140 });
       (recordPlayerActivity as jest.Mock).mockImplementation();
@@ -663,9 +667,7 @@ describe('matchmaker', () => {
     });
 
     it('should return error when loser is flagged', () => {
-      (isPlayerFlagged as jest.Mock)
-        .mockReturnValueOnce(false)
-        .mockReturnValueOnce(true);
+      (isPlayerFlagged as jest.Mock).mockReturnValueOnce(false).mockReturnValueOnce(true);
       (getFlagReason as jest.Mock).mockReturnValue('Suspicious activity');
 
       const payload = JSON.stringify({

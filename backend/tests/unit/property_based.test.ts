@@ -99,7 +99,7 @@ describe('Property-Based Testing - Combat System', () => {
           match_id: 'match1',
           action_type: 'attack',
           angle: 45,
-          power: 1.0
+          power: 1.0,
         });
 
         const state = combat.getMatchState('match1');
@@ -118,7 +118,7 @@ describe('Property-Based Testing - Combat System', () => {
           match_id: 'match1',
           action_type: 'attack',
           angle: 45,
-          power: 1.0
+          power: 1.0,
         });
 
         const state = combat.getMatchState('match1');
@@ -175,7 +175,7 @@ describe('Property-Based Testing - RPG System', () => {
     it('gems should never be negative', () => {
       const uniqueId = 'user_gems_' + Date.now() + '_' + Math.random();
       rpg.createPlayer(uniqueId);
-      
+
       for (let i = 0; i < 100; i++) {
         rpg.addGems(uniqueId, 10);
       }
@@ -195,7 +195,7 @@ describe('Property-Based Testing - RPG System', () => {
 
     it('calculateLevel should be monotonic with XP', () => {
       let totalXP = 0;
-      
+
       for (let i = 0; i < 10; i++) {
         const xpToAdd = Math.floor(Math.random() * 500) + 100;
         totalXP += xpToAdd;

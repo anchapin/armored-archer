@@ -12,17 +12,12 @@ describe('RPG System Integration Tests', () => {
 
   afterEach(async () => {
     // Reset player stats to baseline after each test
-    await testHelper.writeStorageObject(
-      'player_stats',
-      player.userId,
-      player.userId,
-      {
-        level: 1,
-        xp: 0,
-        ability_points: 0,
-        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 }
-      }
-    );
+    await testHelper.writeStorageObject('player_stats', player.userId, player.userId, {
+      level: 1,
+      xp: 0,
+      ability_points: 0,
+      stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+    });
   });
 
   afterAll(async () => {
@@ -99,10 +94,16 @@ describe('RPG System Integration Tests', () => {
     });
 
     test('should accept both pve and pvp XP sources', async () => {
-      const pveResult = await rpcCall(player, 'armored_archer/gain_xp', { xp_amount: 50, source: 'pve' });
+      const pveResult = await rpcCall(player, 'armored_archer/gain_xp', {
+        xp_amount: 50,
+        source: 'pve',
+      });
       expect(pveResult.success).toBe(true);
 
-      const pvpResult = await rpcCall(player, 'armored_archer/gain_xp', { xp_amount: 50, source: 'pvp' });
+      const pvpResult = await rpcCall(player, 'armored_archer/gain_xp', {
+        xp_amount: 50,
+        source: 'pvp',
+      });
       expect(pvpResult.success).toBe(true);
 
       const stats = await getPlayerStats(player);
@@ -183,17 +184,12 @@ describe('RPG System Integration Tests', () => {
 
     test('should fail when not enough ability points', async () => {
       // Reset to minimal ability points
-      await testHelper.writeStorageObject(
-        'player_stats',
-        player.userId,
-        player.userId,
-        {
-          level: 2,
-          xp: 100,
-          ability_points: 1,
-          stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 }
-        }
-      );
+      await testHelper.writeStorageObject('player_stats', player.userId, player.userId, {
+        level: 2,
+        xp: 100,
+        ability_points: 1,
+        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+      });
 
       const payload = { stat_name: 'attack', points: 2 };
       const result = await rpcCall(player, 'armored_archer/allocate_stats', payload);
@@ -227,14 +223,22 @@ describe('RPG System Integration Tests', () => {
     test('should persist stat allocation across sessions', async () => {
       // Allocate points
       const allocatePayload = { stat_name: 'attack', points: 3 };
-      const allocateResult = await rpcCall(player, 'armored_archer/allocate_stats', allocatePayload);
+      const allocateResult = await rpcCall(
+        player,
+        'armored_archer/allocate_stats',
+        allocatePayload
+      );
       expect(allocateResult.success).toBe(true);
       expect(allocateResult.player_stats.stats.attack).toBe(13); // base 10 + 3
 
       // Create a new client for same user to verify persistence
       const newAccount = await testHelper.createTestAccount('rpg_player_2');
       // We can't use same userId easily with createTestAccount, but we can directly read storage
-      const storageObj = await testHelper.getStorageObject('player_stats', player.userId, player.userId);
+      const storageObj = await testHelper.getStorageObject(
+        'player_stats',
+        player.userId,
+        player.userId
+      );
       expect(storageObj).not.toBeNull();
       const storedStats = JSON.parse(storageObj!.value);
       expect(storedStats.stats.attack).toBe(13);
@@ -243,17 +247,12 @@ describe('RPG System Integration Tests', () => {
 
   describe('rpcGetPlayerStats', () => {
     test('should return player stats', async () => {
-      await testHelper.writeStorageObject(
-        'player_stats',
-        player.userId,
-        player.userId,
-        {
-          level: 15,
-          xp: 2500,
-          ability_points: 3,
-          stats: { attack: 35, defense: 25, dodge: 20, crit_rate: 15 }
-        }
-      );
+      await testHelper.writeStorageObject('player_stats', player.userId, player.userId, {
+        level: 15,
+        xp: 2500,
+        ability_points: 3,
+        stats: { attack: 35, defense: 25, dodge: 20, crit_rate: 15 },
+      });
 
       const result = await rpcCall(player, 'armored_archer/get_player_stats', {});
 

@@ -1,9 +1,9 @@
 /**
  * Low-End Device Performance Tests
- * 
+ *
  * Tests performance characteristics specifically for budget/low-end devices
  * Simulates low-end device conditions and verifies performance targets
- * 
+ *
  * Budget device targets (from PERFORMANCE.md):
  * - Target FPS: 30
  * - Min FPS: 24

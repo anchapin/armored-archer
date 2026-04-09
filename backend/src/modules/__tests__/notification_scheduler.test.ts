@@ -62,7 +62,9 @@ describe('notification_scheduler', () => {
 
     it('should handle errors gracefully', async () => {
       mockNakama.dbQuery = jest.fn().mockRejectedValue(new Error('DB error'));
-      await expect(notifyUsersAboutEvent(mockNakama, 'event1', 'Event Name')).resolves.not.toThrow();
+      await expect(
+        notifyUsersAboutEvent(mockNakama, 'event1', 'Event Name')
+      ).resolves.not.toThrow();
     });
   });
 
@@ -419,7 +421,9 @@ describe('notification_scheduler', () => {
       logger.info.mockClear();
       startNotificationScheduler(mockNakama, 5000);
       expect(getSchedulerStatus().running).toBe(true);
-      expect(logger.info).toHaveBeenCalledWith('Starting notification scheduler', { intervalMs: 5000 });
+      expect(logger.info).toHaveBeenCalledWith('Starting notification scheduler', {
+        intervalMs: 5000,
+      });
     });
 
     it('should use default interval when not specified', () => {

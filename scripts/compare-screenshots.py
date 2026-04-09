@@ -7,10 +7,10 @@ pixel difference threshold.
 """
 
 import argparse
-import subprocess
-import sys
 import json
 import os
+import subprocess
+import sys
 
 
 def parse_imagemagick_output(output: str) -> float:

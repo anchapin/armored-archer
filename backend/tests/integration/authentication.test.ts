@@ -33,7 +33,14 @@ describe('Authentication Tests', () => {
       const password = 'SecurePassword123!';
       const username = `custom_user_${Date.now()}`;
 
-      const client = new Client(TEST_ADMIN_KEY, TEST_HOST, TEST_PORT.toString(), false, 10000, false);
+      const client = new Client(
+        TEST_ADMIN_KEY,
+        TEST_HOST,
+        TEST_PORT.toString(),
+        false,
+        10000,
+        false
+      );
       const session = await client.authenticateEmail(email, password, true, username);
 
       expect(session).toBeDefined();
@@ -84,20 +91,19 @@ describe('Authentication Tests', () => {
       const account = await testHelper.createTestAccount('valid_session_test');
 
       // Setup player stats for the test
-      await testHelper.writeStorageObject(
-        'player_stats',
-        account.userId,
-        account.userId,
-        {
-          level: 1,
-          xp: 0,
-          ability_points: 0,
-          stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 }
-        }
-      );
+      await testHelper.writeStorageObject('player_stats', account.userId, account.userId, {
+        level: 1,
+        xp: 0,
+        ability_points: 0,
+        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+      });
 
       // Make an RPC call with valid session
-      const response = await account.client.rpc(account.session, 'armored_archer/get_player_rank', {});
+      const response = await account.client.rpc(
+        account.session,
+        'armored_archer/get_player_rank',
+        {}
+      );
       const result = response.payload ? JSON.parse(response.payload as unknown as string) : {};
 
       expect(result).toBeDefined();
@@ -112,7 +118,7 @@ describe('Authentication Tests', () => {
       const invalidSession = {
         ...account.session,
         token: 'invalid_token_here',
-        expires_at: 0
+        expires_at: 0,
       };
 
       try {
@@ -240,7 +246,7 @@ describe('Authentication Tests', () => {
 
       const malformedSession = {
         ...account.session,
-        token: 'not.a.valid.jwt.token'
+        token: 'not.a.valid.jwt.token',
       };
 
       try {
@@ -256,7 +262,7 @@ describe('Authentication Tests', () => {
 
       const emptySession = {
         ...account.session,
-        token: ''
+        token: '',
       };
 
       try {
@@ -273,8 +279,22 @@ describe('Authentication Tests', () => {
       const password = 'Password123!';
       const username = `concurrent_user_${Date.now()}`;
 
-      const client1 = new Client(TEST_ADMIN_KEY, TEST_HOST, TEST_PORT.toString(), false, 10000, false);
-      const client2 = new Client(TEST_ADMIN_KEY, TEST_HOST, TEST_PORT.toString(), false, 10000, false);
+      const client1 = new Client(
+        TEST_ADMIN_KEY,
+        TEST_HOST,
+        TEST_PORT.toString(),
+        false,
+        10000,
+        false
+      );
+      const client2 = new Client(
+        TEST_ADMIN_KEY,
+        TEST_HOST,
+        TEST_PORT.toString(),
+        false,
+        10000,
+        false
+      );
 
       // Create two sessions for same user
       const session1 = await client1.authenticateEmail(email, password, true, username);
@@ -285,11 +305,13 @@ describe('Authentication Tests', () => {
       expect(session1.user_id).toBe(session2.user_id);
 
       // Both sessions should work
-      const client1Works = await client1.rpc(session1, 'armored_archer/get_player_rank', {})
+      const client1Works = await client1
+        .rpc(session1, 'armored_archer/get_player_rank', {})
         .then(() => true)
         .catch(() => false);
 
-      const client2Works = await client2.rpc(session2, 'armored_archer/get_player_rank', {})
+      const client2Works = await client2
+        .rpc(session2, 'armored_archer/get_player_rank', {})
         .then(() => true)
         .catch(() => false);
 
@@ -304,7 +326,14 @@ describe('Authentication Tests', () => {
       const password = 'Password123!';
       const username = `special_user_${Date.now()}`;
 
-      const client = new Client(TEST_ADMIN_KEY, TEST_HOST, TEST_PORT.toString(), false, 10000, false);
+      const client = new Client(
+        TEST_ADMIN_KEY,
+        TEST_HOST,
+        TEST_PORT.toString(),
+        false,
+        10000,
+        false
+      );
       const session = await client.authenticateEmail(email, password, true, username);
 
       expect(session).toBeDefined();
@@ -316,7 +345,14 @@ describe('Authentication Tests', () => {
       const password = 'Password123!';
       const username = `very_long_username_${'_'.repeat(50)}_${Date.now()}`;
 
-      const client = new Client(TEST_ADMIN_KEY, TEST_HOST, TEST_PORT.toString(), false, 10000, false);
+      const client = new Client(
+        TEST_ADMIN_KEY,
+        TEST_HOST,
+        TEST_PORT.toString(),
+        false,
+        10000,
+        false
+      );
       const session = await client.authenticateEmail(email, password, true, username);
 
       expect(session).toBeDefined();
@@ -328,7 +364,14 @@ describe('Authentication Tests', () => {
       const password = 'Password123!';
       const username = `User_🎮_${Date.now()}`;
 
-      const client = new Client(TEST_ADMIN_KEY, TEST_HOST, TEST_PORT.toString(), false, 10000, false);
+      const client = new Client(
+        TEST_ADMIN_KEY,
+        TEST_HOST,
+        TEST_PORT.toString(),
+        false,
+        10000,
+        false
+      );
       const session = await client.authenticateEmail(email, password, true, username);
 
       expect(session).toBeDefined();

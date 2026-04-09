@@ -1,4 +1,9 @@
-import { CombatSystem, CombatState, CombatAction, CombatResult } from '../../src/modules/combat_system';
+import {
+  CombatSystem,
+  CombatState,
+  CombatAction,
+  CombatResult,
+} from '../../src/modules/combat_system';
 
 describe('CombatSystem', () => {
   let combat: CombatSystem;
@@ -38,12 +43,12 @@ describe('CombatSystem', () => {
   describe('submitCombatAction', () => {
     it('should process combat action and return result', () => {
       combat.createMatch('match1', 'player1', 'player2');
-      
+
       const action: CombatAction = {
         match_id: 'match1',
         action_type: 'attack',
         angle: 45,
-        power: 1.0
+        power: 1.0,
       };
 
       const result = combat.submitCombatAction(action);
@@ -61,7 +66,7 @@ describe('CombatSystem', () => {
         match_id: 'nonexistent',
         action_type: 'attack',
         angle: 45,
-        power: 1.0
+        power: 1.0,
       };
 
       const result = combat.submitCombatAction(action);
@@ -108,17 +113,17 @@ describe('CombatSystem', () => {
   });
 
   describe('isMyTurn', () => {
-    it('should return true when it is the user\'s turn', () => {
+    it("should return true when it is the user's turn", () => {
       combat.createMatch('match1', 'player1', 'player2');
-      
+
       const isTurn = combat.isMyTurn('match1', 'player1');
 
       expect(isTurn).toBe(true);
     });
 
-    it('should return false when it is not the user\'s turn', () => {
+    it("should return false when it is not the user's turn", () => {
       combat.createMatch('match1', 'player1', 'player2');
-      
+
       const isTurn = combat.isMyTurn('match1', 'player2');
 
       expect(isTurn).toBe(false);
@@ -128,7 +133,7 @@ describe('CombatSystem', () => {
   describe('getHealthForUser', () => {
     it('should return correct health for creator', () => {
       combat.createMatch('match1', 'player1', 'player2');
-      
+
       const health = combat.getHealthForUser('match1', 'player1');
 
       expect(health).not.toBeNull();
@@ -138,7 +143,7 @@ describe('CombatSystem', () => {
 
     it('should return correct health for opponent', () => {
       combat.createMatch('match1', 'player1', 'player2');
-      
+
       const health = combat.getHealthForUser('match1', 'player2');
 
       expect(health).not.toBeNull();
@@ -156,19 +161,19 @@ describe('CombatSystem', () => {
     it('should handle numeric string match ID', () => {
       const state = combat.createMatch('123', 'player1', 'player2');
       expect(state.match_id).toBe('123');
-      
+
       const retrieved = combat.getMatchState('123');
       expect(retrieved).not.toBeNull();
     });
 
     it('should handle very large angle values', () => {
       combat.createMatch('match1', 'player1', 'player2');
-      
+
       const result = combat.submitCombatAction({
         match_id: 'match1',
         action_type: 'attack',
         angle: 999999,
-        power: 1.0
+        power: 1.0,
       });
 
       expect(result).not.toBeNull();
@@ -177,12 +182,12 @@ describe('CombatSystem', () => {
 
     it('should handle negative power values', () => {
       combat.createMatch('match1', 'player1', 'player2');
-      
+
       const result = combat.submitCombatAction({
         match_id: 'match1',
         action_type: 'attack',
         angle: 45,
-        power: -5
+        power: -5,
       });
 
       expect(result).not.toBeNull();
@@ -190,31 +195,31 @@ describe('CombatSystem', () => {
 
     it('should alternate turns correctly through multiple actions', () => {
       combat.createMatch('match1', 'player1', 'player2');
-      
+
       expect(combat.isMyTurn('match1', 'player1')).toBe(true);
-      
+
       combat.submitCombatAction({
         match_id: 'match1',
         action_type: 'attack',
         angle: 45,
-        power: 1.0
+        power: 1.0,
       });
-      
+
       expect(combat.isMyTurn('match1', 'player2')).toBe(true);
-      
+
       combat.submitCombatAction({
         match_id: 'match1',
         action_type: 'attack',
         angle: 45,
-        power: 1.0
+        power: 1.0,
       });
-      
+
       expect(combat.isMyTurn('match1', 'player1')).toBe(true);
     });
 
     it('should end match when creator health reaches zero', () => {
       combat.createMatch('match1', 'player1', 'player2');
-      
+
       let state = combat.getMatchState('match1');
       let iterations = 0;
       while (state && state.creator_health > 0 && iterations < 100) {
@@ -222,12 +227,12 @@ describe('CombatSystem', () => {
           match_id: 'match1',
           action_type: 'attack',
           angle: 45,
-          power: 1.0
+          power: 1.0,
         });
         state = combat.getMatchState('match1');
         iterations++;
       }
-      
+
       if (state) {
         expect(state.status).toBe('completed');
       }
@@ -235,7 +240,7 @@ describe('CombatSystem', () => {
 
     it('should end match when opponent health reaches zero', () => {
       combat.createMatch('match1', 'player1', 'player2');
-      
+
       let state = combat.getMatchState('match1');
       let iterations = 0;
       while (state && state.status === 'active' && iterations < 100) {
@@ -243,12 +248,12 @@ describe('CombatSystem', () => {
           match_id: 'match1',
           action_type: 'attack',
           angle: 45,
-          power: 1.0
+          power: 1.0,
         });
         state = combat.getMatchState('match1');
         iterations++;
       }
-      
+
       if (state && state.status === 'completed' && state.opponent_health <= 0) {
         expect(state.winner).toBeDefined();
       }
@@ -256,12 +261,12 @@ describe('CombatSystem', () => {
 
     it('should not allow actions on completed match', () => {
       combat.createMatch('match1', 'player1', 'player2');
-      
+
       const action: CombatAction = {
         match_id: 'match1',
         action_type: 'attack',
         angle: 45,
-        power: 1.0
+        power: 1.0,
       };
 
       let state = combat.getMatchState('match1');
@@ -271,14 +276,14 @@ describe('CombatSystem', () => {
         state = combat.getMatchState('match1');
         iterations++;
       }
-      
+
       const finalResult = combat.submitCombatAction({
         match_id: 'match1',
         action_type: 'attack',
         angle: 45,
-        power: 1.0
+        power: 1.0,
       });
-      
+
       expect(finalResult).toBeNull();
     });
 

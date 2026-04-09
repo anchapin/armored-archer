@@ -61,8 +61,10 @@ function findFiles(dir: string, files: string[] = []): string[] {
  */
 function shouldExcludeFile(filePath: string): boolean {
   const fileName = filePath.split('/').pop() || '';
-  return EXCLUDE_PATTERNS.some((pattern) => filePath.includes(pattern)) ||
-         EXCLUDE_FILES.includes(fileName);
+  return (
+    EXCLUDE_PATTERNS.some((pattern) => filePath.includes(pattern)) ||
+    EXCLUDE_FILES.includes(fileName)
+  );
 }
 
 /**
@@ -154,7 +156,7 @@ function scanForPIIInCodebase(): ScanResult[] {
     if (shouldExcludeFile(file)) {
       continue;
     }
-    
+
     const content = fs.readFileSync(file, 'utf-8');
     const lines = content.split('\n');
     const relativePath = getRelativePath(file);

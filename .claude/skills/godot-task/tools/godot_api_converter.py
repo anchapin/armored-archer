@@ -23,13 +23,14 @@ Usage:
     python godot_api_converter.py --help
 """
 
-import xml.etree.ElementTree as ET
-import re
 import argparse
-from pathlib import Path
+import re
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from enum import Enum
-from class_list import CLASS_SCENE, CLASS_SCRIPT, PRIORITY_CLASSES, CLASS_UNIFIED
+from pathlib import Path
+
+from class_list import CLASS_SCENE, CLASS_SCRIPT, CLASS_UNIFIED, PRIORITY_CLASSES
 
 
 class DescriptionMode(Enum):

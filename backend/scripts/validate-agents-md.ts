@@ -33,15 +33,39 @@ const REQUIRED_SECTIONS = [
 
 // Section patterns to look for (can be partial matches)
 const EXPECTED_SECTIONS = [
-  { pattern: /Project Structure/i, required: true, description: 'Project directory structure documentation' },
-  { pattern: /Build & Development Commands/i, required: true, description: 'Build and development command documentation' },
-  { pattern: /Godot Client|GDScript/i, required: true, description: 'Godot client/GDScript section' },
+  {
+    pattern: /Project Structure/i,
+    required: true,
+    description: 'Project directory structure documentation',
+  },
+  {
+    pattern: /Build & Development Commands/i,
+    required: true,
+    description: 'Build and development command documentation',
+  },
+  {
+    pattern: /Godot Client|GDScript/i,
+    required: true,
+    description: 'Godot client/GDScript section',
+  },
   { pattern: /Backend|Nakama|TypeScript/i, required: true, description: 'Backend/Nakama section' },
   { pattern: /Database|PostgreSQL/i, required: true, description: 'Database section' },
-  { pattern: /GDScript Code Style/i, required: true, description: 'GDScript code style guidelines' },
-  { pattern: /TypeScript Code Style/i, required: true, description: 'TypeScript code style guidelines' },
+  {
+    pattern: /GDScript Code Style/i,
+    required: true,
+    description: 'GDScript code style guidelines',
+  },
+  {
+    pattern: /TypeScript Code Style/i,
+    required: true,
+    description: 'TypeScript code style guidelines',
+  },
   { pattern: /Testing Guidelines/i, required: true, description: 'Testing guidelines' },
-  { pattern: /AI-Assisted Development|AI Agent/i, required: true, description: 'AI-assisted development guidelines' },
+  {
+    pattern: /AI-Assisted Development|AI Agent/i,
+    required: true,
+    description: 'AI-assisted development guidelines',
+  },
   { pattern: /Release Notes/i, required: false, description: 'Release notes automation' },
   { pattern: /Technical Debt/i, required: false, description: 'Technical debt tracking' },
   { pattern: /Bundle Size/i, required: false, description: 'Bundle size tracking' },
@@ -106,8 +130,8 @@ function validateAgentsMd(): ValidationResult {
 
   // Check for required sections
   for (const section of EXPECTED_SECTIONS) {
-    const found = lines.some(line => section.pattern.test(line));
-    
+    const found = lines.some((line) => section.pattern.test(line));
+
     if (found) {
       result.sections.found.push(section.pattern.source);
     } else if (section.required) {
@@ -118,7 +142,10 @@ function validateAgentsMd(): ValidationResult {
         message: `Required section not found: ${section.description}`,
       });
       result.summary.errors++;
-      result.sections.missing.push({ pattern: section.pattern.source, description: section.description });
+      result.sections.missing.push({
+        pattern: section.pattern.source,
+        description: section.description,
+      });
     } else {
       result.issues.push({
         type: 'warning',
@@ -130,7 +157,7 @@ function validateAgentsMd(): ValidationResult {
   }
 
   // Check for basic formatting issues
-  
+
   // 1. Check file has a title (first line should be # heading)
   if (lines.length > 0 && !lines[0].startsWith('# ')) {
     result.valid = false;
@@ -153,7 +180,7 @@ function validateAgentsMd(): ValidationResult {
   for (let i = 0; i < lines_array.length; i++) {
     const line = lines_array[i];
     const codeBlockStartMatch = line.match(/^```(\w+)?/);
-    
+
     if (codeBlockStartMatch) {
       if (!inCodeBlock) {
         // This is an opening code block
@@ -176,13 +203,14 @@ function validateAgentsMd(): ValidationResult {
       }
     }
   }
-  
+
   // If we found code blocks without lang, also add a summary message
   if (hasCodeBlockWithoutLang) {
     result.issues.push({
       type: 'warning',
       category: 'format',
-      message: 'Add language hints to code blocks for better syntax highlighting (e.g., ```bash, ```typescript, ```text)',
+      message:
+        'Add language hints to code blocks for better syntax highlighting (e.g., ```bash, ```typescript, ```text)',
     });
     result.summary.warnings++;
   }
@@ -196,13 +224,13 @@ function validateAgentsMd(): ValidationResult {
     const headingMatch = line.match(/^(#{1,6})\s/);
     if (headingMatch) {
       const level = headingMatch[1].length;
-      
+
       // Skip H1 (document title) - don't use it as a parent for section headings
       if (level === 1) {
         lastHeadingLevel = 0;
         continue;
       }
-      
+
       // Warn if skipping more than one level (e.g., ### to ##### or ## to ####)
       // The only valid progression is: ## -> ### -> #### -> ##### -> ######
       // So we warn if level > lastHeadingLevel + 1
@@ -216,7 +244,7 @@ function validateAgentsMd(): ValidationResult {
         });
         result.summary.warnings++;
       }
-      
+
       lastHeadingLevel = level;
     }
   }
@@ -263,7 +291,7 @@ function validateAgentsMd(): ValidationResult {
   }
 
   // 7. Check for minimum word count (reasonable documentation should be substantial)
-  const wordCount = content.split(/\s+/).filter(w => w.length > 0).length;
+  const wordCount = content.split(/\s+/).filter((w) => w.length > 0).length;
   const minWords = 500;
   if (wordCount < minWords) {
     result.issues.push({
@@ -275,20 +303,21 @@ function validateAgentsMd(): ValidationResult {
   }
 
   // 8. Check for required subsections in Build & Development Commands
-  const buildSectionStart = lines.findIndex(l => /Build & Development Commands/i.test(l));
+  const buildSectionStart = lines.findIndex((l) => /Build & Development Commands/i.test(l));
   if (buildSectionStart !== -1) {
     const buildSectionContent = lines.slice(buildSectionStart, buildSectionStart + 100).join('\n');
-    
+
     if (!/Godot Client|GDScript/i.test(buildSectionContent)) {
       result.valid = false;
       result.issues.push({
         type: 'error',
         category: 'content',
-        message: 'Build & Development Commands section must include Godot Client/GDScript subsection',
+        message:
+          'Build & Development Commands section must include Godot Client/GDScript subsection',
       });
       result.summary.errors++;
     }
-    
+
     if (!/Backend|Nakama/i.test(buildSectionContent)) {
       result.valid = false;
       result.issues.push({
@@ -327,7 +356,7 @@ function printResults(result: ValidationResult): void {
   console.log('\n📋 AGENTS.md Validation Results\n');
   console.log(`File: ${result.file}`);
   console.log(`Exists: ${result.exists ? '✅ Yes' : '❌ No'}`);
-  
+
   if (!result.exists) {
     console.log('\n❌ Validation failed: File not found\n');
     return;
@@ -350,11 +379,11 @@ function printResults(result: ValidationResult): void {
 
   if (result.issues.length > 0) {
     console.log('\n🔍 Issues:');
-    
+
     // Group by type
-    const errors = result.issues.filter(i => i.type === 'error');
-    const warnings = result.issues.filter(i => i.type === 'warning');
-    
+    const errors = result.issues.filter((i) => i.type === 'error');
+    const warnings = result.issues.filter((i) => i.type === 'warning');
+
     if (errors.length > 0) {
       console.log('\n   ❌ Errors:');
       for (const issue of errors) {
@@ -365,7 +394,7 @@ function printResults(result: ValidationResult): void {
         }
       }
     }
-    
+
     if (warnings.length > 0) {
       console.log('\n   ⚠️  Warnings:');
       for (const issue of warnings) {
@@ -379,24 +408,28 @@ function printResults(result: ValidationResult): void {
 }
 
 function generateJSONReport(result: ValidationResult): string {
-  return JSON.stringify({
-    timestamp: new Date().toISOString(),
-    valid: result.valid,
-    file: result.file,
-    exists: result.exists,
-    sections: {
-      found: result.sections.found,
-      missing: result.sections.missing,
+  return JSON.stringify(
+    {
+      timestamp: new Date().toISOString(),
+      valid: result.valid,
+      file: result.file,
+      exists: result.exists,
+      sections: {
+        found: result.sections.found,
+        missing: result.sections.missing,
+      },
+      issues: result.issues.map((issue) => ({
+        type: issue.type,
+        category: issue.category,
+        message: issue.message,
+        line: issue.line,
+        context: issue.context,
+      })),
+      summary: result.summary,
     },
-    issues: result.issues.map(issue => ({
-      type: issue.type,
-      category: issue.category,
-      message: issue.message,
-      line: issue.line,
-      context: issue.context,
-    })),
-    summary: result.summary,
-  }, null, 2);
+    null,
+    2
+  );
 }
 
 function main(): void {

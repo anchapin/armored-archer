@@ -1,112 +1,98 @@
+class_name GuardianBoss
 extends BaseEnemy
 
-## Earth boss (Terra) - defensive boss with barriers and rocks.
+## Guardian Boss (Stone Guardian) - defense-heavy boss with multiple phases.
 ##
-## Phase 1: Rock projectiles and stone skin (damage reduction)
-## Phase 2 (below 50% health): Rock armor, seismic slam
-## Phase 3 (below 25% health): Earthquake ability, faster attacks
+## Phase 1 (100-75%): Basic melee attacks, slow movement
+## Phase 2 (75-50%): Ground slam shockwave attack (AOE)
+## Phase 3 (50-0%): Shield bash combo, enraged movement
+##
+## Integrates with BossManager for phase management and loot.
 
 # --- Boss Stats ---
-@export var boss_name: String = "Terra"
+@export var boss_name: String = "Stone Guardian"
 
 # --- AI State ---
-var player_ref: CharacterBody2D = null
+var player_ref: Node2D = null
 var detection_range: float = 500.0
-var attack_range: float = 100.0
-var phase: int = 1
+var attack_range: float = 80.0
 
 # --- Movement ---
-var base_move_speed: float = 90.0
-var phase2_speed: float = 110.0
-var phase3_speed: float = 130.0
+var base_move_speed: float = 80.0
+var enraged_speed: float = 100.0
 
 # --- Attack Settings ---
-var attack_cooldown: float = 2.0
+var attack_cooldown: float = 2.5
 var attack_timer: float = 0.0
 
-# --- Rock Projectile Settings ---
-var rock_projectile_cooldown: float = 3.5
-var rock_projectile_timer: float = 0.0
-var rock_projectile_speed: float = 200.0
-var rock_projectile_damage: int = 18
-var rock_count: int = 3
+# --- Special Attack Settings ---
+var ground_slam_cooldown: float = 5.0
+var shield_bash_cooldown: float = 4.0
+var current_special_cooldown: float = 0.0
 
-# --- Stone Skin Settings (Phase 1) ---
-var stone_skin_damage_reduction: float = 0.25
-
-# --- Rock Armor Settings (Phase 2+) ---
-var rock_armor_damage_reduction: float = 0.40
-var rock_armor_health_bonus: int = 150
-var is_rock_armor_active: bool = false
-
-# --- Seismic Slam Settings (Phase 2+) ---
-var seismic_slam_cooldown: float = 5.0
-var seismic_slam_timer: float = 0.0
-var seismic_slam_radius: float = 120.0
-
-# --- Earthquake Settings (Phase 3) ---
-var earthquake_cooldown: float = 7.0
-var earthquake_timer: float = 0.0
-var is_earthquake_active: bool = false
-var earthquake_damage: int = 25
-
-# --- Enraged Settings (Phase 3) ---
+# --- Boss State ---
+var current_phase: int = 0
 var is_enraged: bool = false
+
+# --- Manager References ---
+var _boss_manager: Node
 
 # --- Signals ---
 signal boss_defeated(boss_name: String)
 signal health_changed(current: int, max: int)
 
 func _ready() -> void:
-	max_health = 750
-	damage = 22
+	max_health = 800
+	damage = 15
 	move_speed = base_move_speed
 	current_health = max_health
 	add_to_group("Boss")
 	super._ready()
 
+	_boss_manager = get_node_or_null("/root/BossManager")
+
 	health_changed.emit(current_health, max_health)
 
 func _physics_process(delta: float) -> void:
+	if is_dead:
+		return
+
 	if not player_ref:
 		find_player()
 
-	update_timers(delta)
+	# Update attack cooldowns
+	if attack_timer > 0:
+		attack_timer -= delta
+	if current_special_cooldown > 0:
+		current_special_cooldown -= delta
+
+	# Update BossManager cooldowns
+	if _boss_manager:
+		_boss_manager.update_attack_cooldowns(delta)
 
 	if player_ref:
-		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
+		var distance_to_player = global_position.distance_to(player_ref.global_position)
 
-		if not is_earthquake_active:
-			if distance_to_player <= detection_range:
-				if distance_to_player > attack_range:
-					chase_player()
-				else:
-					handle_attacks()
+		if distance_to_player <= detection_range:
+			if distance_to_player > attack_range:
+				chase_player()
 			else:
-				velocity = Vector2.ZERO
-
-	# Phase 3 earthquake effect
-	if phase >= 3:
-		handle_earthquake()
+				handle_attacks()
+		else:
+			velocity = Vector2.ZERO
 
 	var _moved = move_and_slide()
 
-func update_timers(_delta: float) -> void:
-	attack_timer += _delta
-	rock_projectile_timer += _delta
-	seismic_slam_timer += _delta
-	earthquake_timer += _delta
-
 func find_player() -> void:
-	var players: Array[Node] = get_tree().get_nodes_in_group("Player")
+	var players = get_tree().get_nodes_in_group("Player")
 	if players.size() > 0:
-		player_ref = players[0] as CharacterBody2D
+		player_ref = players[0]
 
 func chase_player() -> void:
 	if not player_ref:
 		return
 
-	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
+	var direction = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed
 	if sprite:
 		sprite.flip_h = direction.x < 0
@@ -114,51 +100,47 @@ func chase_player() -> void:
 func handle_attacks() -> void:
 	velocity = Vector2.ZERO
 
-	check_rock_projectile()
-	if phase >= 2:
-		check_seismic_slam()
+	# Use special attack from BossManager if available
+	if _boss_manager and current_special_cooldown <= 0:
+		var special_attack = _boss_manager.get_special_attack()
+		if not special_attack.is_empty():
+			_perform_special_attack(special_attack)
+			return
 
-func check_rock_projectile() -> void:
-	if rock_projectile_timer >= rock_projectile_cooldown and player_ref:
-		fire_rock_projectiles()
-		rock_projectile_timer = 0.0
+	# Basic melee attack
+	if attack_timer <= 0:
+		perform_basic_attack()
+		attack_timer = attack_cooldown
 
-func fire_rock_projectiles() -> void:
+func perform_basic_attack() -> void:
 	if not player_ref:
 		return
 
-	var projectile_scene: PackedScene = preload("res://scenes/arrow.tscn")
+	var attack_damage = damage
+	if is_enraged:
+		attack_damage = int(damage * 1.2)
 
-	for i in range(rock_count):
-		if projectile_scene:
-			var rock: Node = projectile_scene.instantiate()
+	if player_ref.has_method("take_damage"):
+		player_ref.take_damage(attack_damage)
 
-			# Add slight spread to rocks
-			var base_direction: Vector2 = (player_ref.global_position - global_position).normalized()
-			var spread_angle: float = randf_range(-0.3, 0.3)
-			var direction: Vector2 = base_direction.rotated(spread_angle)
+func _perform_special_attack(attack_data: Dictionary) -> void:
+	var attack_name = attack_data.keys()[0] if attack_data else ""
 
-			rock.global_position = global_position + direction * 30.0
-			rock.rotation = direction.angle()
-			rock.scale = Vector2(1.5, 1.5)
-			rock.modulate = Color(0.6, 0.5, 0.4, 1)
+	match attack_name:
+		"ground_slam":
+			perform_ground_slam(attack_data.ground_slam)
+		"shield_bash":
+			perform_shield_bash(attack_data.shield_bash)
 
-			if rock.has_method("set_damage"):
-				var dmg = rock_projectile_damage
-				if is_enraged:
-					dmg = int(dmg * 1.3)
-				rock.set_damage(dmg)
-
-			get_tree().root.add_child(rock)
-
-func check_seismic_slam() -> void:
-	if seismic_slam_timer >= seismic_slam_cooldown and player_ref:
-		perform_seismic_slam()
-		seismic_slam_timer = 0.0
-
-func perform_seismic_slam() -> void:
+func perform_ground_slam(attack_data: Dictionary) -> void:
 	if not player_ref:
 		return
+
+	var slam_cooldown = attack_data.get("cooldown", 5.0)
+	var slam_damage = attack_data.get("damage", 30)
+	var aoe_radius = attack_data.get("aoe_radius", 100.0)
+
+	current_special_cooldown = slam_cooldown
 
 	# Visual feedback - shake
 	if sprite:
@@ -167,128 +149,103 @@ func perform_seismic_slam() -> void:
 	# Stop movement during slam
 	velocity = Vector2.ZERO
 
-	await get_tree().create_timer(0.4).timeout
+	await get_tree().create_timer(0.5).timeout
 
 	# Check for players in range
-	var game_manager = get_node_or_null("/root/GameManager")
 	if player_ref:
-		var distance: float = global_position.distance_to(player_ref.global_position)
-		if distance <= seismic_slam_radius:
-			var slam_damage = 30
+		var distance = global_position.distance_to(player_ref.global_position)
+		if distance <= aoe_radius:
+			var final_damage = slam_damage
 			if is_enraged:
-				slam_damage = int(slam_damage * 1.3)
-			if game_manager and game_manager.has_method("take_player_damage"):
-				game_manager.take_player_damage(slam_damage)
+				final_damage = int(slam_damage * 1.2)
+			if player_ref.has_method("take_damage"):
+				player_ref.take_damage(final_damage)
 
 			# Knockback
 			if player_ref.has_method("apply_knockback"):
-				var direction: Vector2 = (player_ref.global_position - global_position).normalized()
-				player_ref.apply_knockback(direction * 100.0)
+				var direction = (player_ref.global_position - global_position).normalized()
+				player_ref.apply_knockback(direction * 80.0)
 
 	# Reset visual
 	if sprite:
 		sprite.modulate = Color(1, 1, 1, 1)
 
-func handle_earthquake() -> void:
-	if not is_earthquake_active and earthquake_timer >= earthquake_cooldown:
-		start_earthquake()
+func perform_shield_bash(attack_data: Dictionary) -> void:
+	if not player_ref:
+		return
 
-func start_earthquake() -> void:
-	is_earthquake_active = true
-	earthquake_timer = 0.0
+	var bash_cooldown = attack_data.get("cooldown", 4.0)
+	var bash_damage = attack_data.get("damage", 20)
+	var stun_duration = attack_data.get("stun_duration", 1.5)
 
-	# Visual feedback - intense shaking
+	current_special_cooldown = bash_cooldown
+
+	# Visual feedback
 	if sprite:
-		sprite.modulate = Color(0.5, 0.4, 0.3, 1)
+		sprite.modulate = Color(0.8, 0.7, 0.6, 1)
 
-	# Stop movement
 	velocity = Vector2.ZERO
 
-	# Continuous damage during earthquake
-	var earthquake_duration: float = 2.5
-	var elapsed: float = 0.0
-	var game_manager = get_node_or_null("/root/GameManager")
+	await get_tree().create_timer(0.3).timeout
 
-	while elapsed < earthquake_duration:
-		await get_tree().create_timer(0.5).timeout
-		elapsed += 0.5
+	if player_ref:
+		var distance = global_position.distance_to(player_ref.global_position)
+		if distance <= attack_range:
+			var final_damage = bash_damage
+			if is_enraged:
+				final_damage = int(bash_damage * 1.2)
+			if player_ref.has_method("take_damage"):
+				player_ref.take_damage(final_damage)
 
-		if player_ref:
-			var distance: float = global_position.distance_to(player_ref.global_position)
-			if distance < 180:
-				var dmg = int(earthquake_damage * 0.5)
-				if is_enraged:
-					dmg = int(dmg * 1.2)
-				if game_manager and game_manager.has_method("take_player_damage"):
-					game_manager.take_player_damage(dmg)
+			# Stun effect
+			if player_ref.has_method("apply_stun"):
+				player_ref.apply_stun(stun_duration)
 
-	is_earthquake_active = false
+	# Reset visual
 	if sprite:
 		sprite.modulate = Color(1, 1, 1, 1)
 
 func take_damage(amount: int) -> void:
-	# Calculate damage reduction based on phase and abilities
-	var damage_reduction: float = stone_skin_damage_reduction
-
-	if phase >= 2 and is_rock_armor_active:
-		damage_reduction = rock_armor_damage_reduction
-
-	if is_enraged:
-		damage_reduction -= 0.1  # Takes more damage when enraged
-
-	var actual_damage: int = int(float(amount) * (1.0 - damage_reduction))
-	actual_damage = max(1, actual_damage)  # Always deal at least 1 damage
-
-	current_health -= actual_damage
+	super.take_damage(amount)
 	health_changed.emit(current_health, max_health)
 
-	var health_percentage = float(current_health) / float(max_health)
-
-	# Phase transitions
-	if health_percentage <= 0.25 and phase == 2:
-		enter_phase_3()
-	elif health_percentage <= 0.5 and phase == 1:
-		enter_phase_2()
+	# Check phase transitions via BossManager
+	if _boss_manager:
+		var new_phase = _boss_manager.check_phase_transition(current_health, max_health)
+		if new_phase != current_phase:
+			transition_to_phase(new_phase)
 
 	if current_health <= 0:
 		die()
 
-func enter_phase_2() -> void:
-	phase = 2
-	move_speed = phase2_speed
-	damage = 30
-	rock_projectile_damage = 22
+func transition_to_phase(phase_num: int) -> void:
+	current_phase = phase_num
 
-	# Activate rock armor
-	is_rock_armor_active = true
-	max_health += rock_armor_health_bonus
-	current_health += rock_armor_health_bonus
-
-	# Visual feedback
-	if sprite:
-		sprite.modulate = Color(0.6, 0.5, 0.4, 1)
-		await get_tree().create_timer(0.5).timeout
-		sprite.modulate = Color(1, 1, 1, 1)
-
-	health_changed.emit(current_health, max_health)
-
-func enter_phase_3() -> void:
-	phase = 3
-	move_speed = phase3_speed
-	is_enraged = true
-	rock_armor_damage_reduction = 0.35
+	match phase_num:
+		0:  # Phase 1
+			move_speed = base_move_speed
+			damage = 15
+		1:  # Phase 2
+			move_speed = base_move_speed
+			damage = 18
+		2:  # Phase 3 (enraged)
+			is_enraged = true
+			move_speed = enraged_speed
+			damage = 22
 
 	# Visual feedback
 	if sprite:
-		sprite.modulate = Color(0.4, 0.3, 0.2, 1)
+		sprite.modulate = Color(0.8, 0.7, 0.6, 1)
 		await get_tree().create_timer(0.5).timeout
 		sprite.modulate = Color(1, 1, 1, 1)
 
 func die() -> void:
 	boss_defeated.emit(boss_name)
-	var campaign_mgr = get_node_or_null("/root/CampaignManager")
-	if campaign_mgr and campaign_mgr.has_method("unlock_modifier_pool"):
-		campaign_mgr.unlock_modifier_pool("earth_arrow")
+
+	# Trigger BossManager defeat
+	if _boss_manager:
+		_boss_manager.end_boss_encounter(true)
+
 	super.die()
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
@@ -296,6 +253,5 @@ func _on_hurt_area_body_entered(body: Node2D) -> void:
 		var dmg = damage
 		if is_enraged:
 			dmg = int(dmg * 1.2)
-		var game_manager = get_node_or_null("/root/GameManager")
-		if game_manager and game_manager.has_method("take_player_damage"):
-			game_manager.take_player_damage(dmg)
+		if body.has_method("take_damage"):
+			body.take_damage(dmg)

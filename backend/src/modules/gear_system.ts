@@ -477,7 +477,10 @@ function rollRarity(): string {
     return 'legendary';
   } else if (roll < RARITIES.legendary.drop_chance + RARITIES.epic.drop_chance) {
     return 'epic';
-  } else if (roll < RARITIES.legendary.drop_chance + RARITIES.epic.drop_chance + RARITIES.rare.drop_chance) {
+  } else if (
+    roll <
+    RARITIES.legendary.drop_chance + RARITIES.epic.drop_chance + RARITIES.rare.drop_chance
+  ) {
     return 'rare';
   } else {
     return 'common';
@@ -598,7 +601,8 @@ function generateModifiers(
     return [];
   }
 
-  const numModifiers = rarity === 'legendary' ? 2 : rarity === 'epic' ? 2 : rarity === 'rare' ? 1 : 0;
+  const numModifiers =
+    rarity === 'legendary' ? 2 : rarity === 'epic' ? 2 : rarity === 'rare' ? 1 : 0;
   const modifiers: GearModifier[] = [];
 
   for (let i = 0; i < numModifiers; i++) {

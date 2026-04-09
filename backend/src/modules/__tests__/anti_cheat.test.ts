@@ -618,7 +618,9 @@ describe('Anti-Cheat Module', () => {
         recordAbandonment(userId, `match-clear-${i}`, 'opp', false, 1000);
         // Wait past grace period
         const start = Date.now();
-        while (Date.now() - start < 60) { /* busy wait */ }
+        while (Date.now() - start < 60) {
+          /* busy wait */
+        }
       }
       expect(isPlayerFlagged(userId)).toBe(true);
 
@@ -696,7 +698,9 @@ describe('Anti-Cheat Module', () => {
       for (let i = 0; i < 5; i++) {
         recordAbandonment(userId, `m-fl-${i}`, 'opp', false, 100);
         const start = Date.now();
-        while (Date.now() - start < 60) { /* wait past grace period */ }
+        while (Date.now() - start < 60) {
+          /* wait past grace period */
+        }
       }
       expect(isPlayerFlagged(userId)).toBe(true);
       expect(getFlagReason(userId)).toContain('Excessive abandonments');

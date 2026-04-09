@@ -38,12 +38,11 @@ describe('Store System Integration Tests', () => {
 
   // Helper to set currency
   async function setCurrency(account: TestAccount, gems: number, gold: number): Promise<void> {
-    await testHelper.writeStorageObject(
-      'player_currency',
-      account.userId,
-      account.userId,
-      { user_id: account.userId, gems, gold }
-    );
+    await testHelper.writeStorageObject('player_currency', account.userId, account.userId, {
+      user_id: account.userId,
+      gems,
+      gold,
+    });
   }
 
   describe('rpcGetCurrency', () => {
@@ -83,7 +82,7 @@ describe('Store System Integration Tests', () => {
       const payload = {
         product_id: 'com.armoredarcher.gems.small',
         platform: 'ios',
-        transaction_receipt: 'valid_receipt_123'
+        transaction_receipt: 'valid_receipt_123',
       };
 
       const result = await rpcCall(player, 'armored_archer/validate_purchase', payload);
@@ -100,7 +99,7 @@ describe('Store System Integration Tests', () => {
       const payload = {
         product_id: 'com.armoredarcher.gems.medium',
         platform: 'android',
-        transaction_receipt: 'valid_receipt_456'
+        transaction_receipt: 'valid_receipt_456',
       };
 
       const result = await rpcCall(player, 'armored_archer/validate_purchase', payload);
@@ -116,7 +115,7 @@ describe('Store System Integration Tests', () => {
       const payload = {
         product_id: 'com.armoredarcher.gems.large',
         platform: 'ios',
-        transaction_receipt: 'valid_receipt_789'
+        transaction_receipt: 'valid_receipt_789',
       };
 
       const result = await rpcCall(player, 'armored_archer/validate_purchase', payload);
@@ -130,7 +129,7 @@ describe('Store System Integration Tests', () => {
       const payload = {
         product_id: 'invalid.product.id',
         platform: 'ios',
-        transaction_receipt: 'valid_receipt'
+        transaction_receipt: 'valid_receipt',
       };
 
       const result = await rpcCall(player, 'armored_archer/validate_purchase', payload);
@@ -142,7 +141,7 @@ describe('Store System Integration Tests', () => {
       const bundles = [
         'com.armoredarcher.gems.small',
         'com.armoredarcher.gems.medium',
-        'com.armoredarcher.gems.large'
+        'com.armoredarcher.gems.large',
       ];
 
       for (const bundle of bundles) {
@@ -152,7 +151,7 @@ describe('Store System Integration Tests', () => {
         const payload = {
           product_id: bundle,
           platform: 'ios',
-          transaction_receipt: `receipt_${bundle}`
+          transaction_receipt: `receipt_${bundle}`,
         };
 
         const result = await rpcCall(freshPlayer, 'armored_archer/validate_purchase', payload);
@@ -166,7 +165,7 @@ describe('Store System Integration Tests', () => {
       let payload = {
         product_id: 'com.armoredarcher.gems.small',
         platform: 'ios',
-        transaction_receipt: 'receipt_1'
+        transaction_receipt: 'receipt_1',
       };
       let result = await rpcCall(player, 'armored_archer/validate_purchase', payload);
       expect(result.success).toBe(true);
@@ -176,7 +175,7 @@ describe('Store System Integration Tests', () => {
       payload = {
         product_id: 'com.armoredarcher.gems.small',
         platform: 'ios',
-        transaction_receipt: 'receipt_2'
+        transaction_receipt: 'receipt_2',
       };
       result = await rpcCall(player, 'armored_archer/validate_purchase', payload);
       expect(result.success).toBe(true);
@@ -187,7 +186,7 @@ describe('Store System Integration Tests', () => {
       const payload = {
         product_id: 'com.armoredarcher.gems.small',
         platform: 'ios',
-        transaction_receipt: ''
+        transaction_receipt: '',
       };
 
       const result = await rpcCall(player, 'armored_archer/validate_purchase', payload);
@@ -199,7 +198,7 @@ describe('Store System Integration Tests', () => {
       const payload = {
         product_id: 'com.armoredarcher.gems.small',
         platform: 'web',
-        transaction_receipt: 'receipt'
+        transaction_receipt: 'receipt',
       };
 
       const result = await rpcCall(player, 'armored_archer/validate_purchase', payload);
@@ -289,7 +288,11 @@ describe('Store System Integration Tests', () => {
       expect(result.new_balance).toBe(350);
 
       // Verify persistence by reading storage
-      const storageObj = await testHelper.getStorageObject('player_currency', player.userId, player.userId);
+      const storageObj = await testHelper.getStorageObject(
+        'player_currency',
+        player.userId,
+        player.userId
+      );
       expect(storageObj).not.toBeNull();
       const storedCurrency = JSON.parse(storageObj!.value);
       expect(storedCurrency.gems).toBe(350);
@@ -318,9 +321,13 @@ describe('Store System Integration Tests', () => {
       const purchasePayload = {
         product_id: 'com.armoredarcher.gems.small',
         platform: 'ios',
-        transaction_receipt: 'receipt_flow'
+        transaction_receipt: 'receipt_flow',
       };
-      const purchaseResult = await rpcCall(player, 'armored_archer/validate_purchase', purchasePayload);
+      const purchaseResult = await rpcCall(
+        player,
+        'armored_archer/validate_purchase',
+        purchasePayload
+      );
       expect(purchaseResult.success).toBe(true);
       expect(purchaseResult.new_balance).toBe(100);
 
@@ -342,14 +349,14 @@ describe('Store System Integration Tests', () => {
       await rpcCall(player, 'armored_archer/validate_purchase', {
         product_id: 'com.armoredarcher.gems.small',
         platform: 'ios',
-        transaction_receipt: 'r1'
+        transaction_receipt: 'r1',
       });
 
       // Buy another small bundle
       await rpcCall(player, 'armored_archer/validate_purchase', {
         product_id: 'com.armoredarcher.gems.small',
         platform: 'ios',
-        transaction_receipt: 'r2'
+        transaction_receipt: 'r2',
       });
 
       // Should have 200 gems now

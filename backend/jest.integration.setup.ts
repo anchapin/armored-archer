@@ -52,23 +52,23 @@ function getComposeCommand(): string {
  */
 function startServices(): void {
   console.log('🐳 Starting Docker Compose services for integration tests...');
-  
+
   const compose = getComposeCommand();
   const backendDir = join(__dirname, '..');
-  
+
   try {
     // Start services
     execSync(`${compose} -f docker-compose.yml -p ${composeProject} up -d postgres redis nakama`, {
       cwd: backendDir,
       stdio: 'inherit',
     });
-    
+
     // Wait for services to be ready
     console.log('⏳ Waiting for services to be healthy...');
     waitForPostgres(compose, backendDir);
     waitForRedis(compose, backendDir);
     waitForNakama();
-    
+
     console.log('✅ All services are ready!');
   } catch (error) {
     console.error('❌ Failed to start services:', error);
@@ -81,7 +81,7 @@ function startServices(): void {
  */
 function waitForPostgres(compose: string, backendDir: string, timeoutMs: number = 60000): void {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeoutMs) {
     try {
       execSync(`docker exec ${composeProject}_postgres pg_isready -U postgres -d nakama`, {
@@ -94,7 +94,7 @@ function waitForPostgres(compose: string, backendDir: string, timeoutMs: number 
       // Wait and retry
     }
   }
-  
+
   throw new Error('PostgreSQL failed to start within timeout');
 }
 
@@ -103,7 +103,7 @@ function waitForPostgres(compose: string, backendDir: string, timeoutMs: number 
  */
 function waitForRedis(compose: string, backendDir: string, timeoutMs: number = 60000): void {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeoutMs) {
     try {
       execSync(`docker exec ${composeProject}_redis redis-cli ping`, {
@@ -116,7 +116,7 @@ function waitForRedis(compose: string, backendDir: string, timeoutMs: number = 6
       // Wait and retry
     }
   }
-  
+
   throw new Error('Redis failed to start within timeout');
 }
 
@@ -125,9 +125,9 @@ function waitForRedis(compose: string, backendDir: string, timeoutMs: number = 6
  */
 function waitForNakama(timeoutMs: number = 90000): void {
   const startTime = Date.now();
-  
+
   console.log('⏳ Waiting for Nakama (this may take a minute for migrations)...');
-  
+
   while (Date.now() - startTime < timeoutMs) {
     try {
       execSync('curl -s http://localhost:7350/healthcheck', { stdio: 'ignore' });
@@ -136,11 +136,13 @@ function waitForNakama(timeoutMs: number = 90000): void {
     } catch {
       // Wait and retry
       if (Date.now() - startTime > 30000) {
-        console.log(`  Still waiting for Nakama... (${Math.floor((Date.now() - startTime) / 1000)}s elapsed)`);
+        console.log(
+          `  Still waiting for Nakama... (${Math.floor((Date.now() - startTime) / 1000)}s elapsed)`
+        );
       }
     }
   }
-  
+
   throw new Error('Nakama failed to start within timeout');
 }
 
@@ -149,10 +151,10 @@ function waitForNakama(timeoutMs: number = 90000): void {
  */
 function stopServices(): void {
   console.log('🛑 Stopping Docker Compose services...');
-  
+
   const compose = getComposeCommand();
   const backendDir = join(__dirname, '..');
-  
+
   try {
     execSync(`${compose} -f docker-compose.yml -p ${composeProject} stop`, {
       cwd: backendDir,
@@ -169,9 +171,9 @@ function stopServices(): void {
  */
 function runMigrations(): void {
   console.log('🔄 Running Nakama migrations...');
-  
+
   const backendDir = join(__dirname, '..');
-  
+
   try {
     execSync(
       'docker exec armored_archer_test_nakama /nakama/nakama migrate up --database.address postgres://postgres:changeme@postgres:5432/nakama',
@@ -195,22 +197,22 @@ export default async function globalSetup(): Promise<void> {
   process.env.NAKAMA_PORT = '7350';
   process.env.NAKAMA_SERVER_KEY = 'defaultkey';
   process.env.DATABASE_ADDRESS = 'postgres://postgres:changeme@localhost:5432/nakama';
-  
+
   if (!isLocalTest) {
     console.log('🌐 Running in CI mode - assuming services are managed externally');
     return;
   }
-  
+
   if (!hasDockerCompose()) {
     console.warn('⚠️  Docker Compose not available - tests may fail if services are not running');
     return;
   }
-  
+
   if (areServicesRunning()) {
     console.log('✅ Services already running, skipping startup');
     return;
   }
-  
+
   startServices();
   runMigrations();
 }
@@ -220,12 +222,12 @@ export default async function globalTeardown(): Promise<void> {
   if (!isLocalTest) {
     return;
   }
-  
+
   // Only stop services if we started them
   if (hasDockerCompose() && areServicesRunning()) {
     // Check if we should keep services running (useful for development)
     const keepServices = process.env.KEEP_SERVICES === 'true';
-    
+
     if (keepServices) {
       console.log('💡 Keeping services running (set KEEP_SERVICES=false to stop)');
     } else {

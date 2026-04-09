@@ -42,7 +42,7 @@ const DEPRECATED_PATTERNS = [
     extractDetails: (line: string) => {
       const match = line.match(/@deprecated\s+(.+)/);
       return match ? match[1].trim() : 'Deprecated API';
-    }
+    },
   },
   {
     // Deprecated function calls in code
@@ -53,7 +53,7 @@ const DEPRECATED_PATTERNS = [
     extractDetails: (line: string) => {
       const match = line.match(/(captureExceptionLegacy|captureMessageLegacy|logRpcErrorLegacy)/);
       return match ? `Using ${match[1]}` : 'Deprecated function';
-    }
+    },
   },
   {
     // console.log warnings that should be replaced
@@ -64,7 +64,7 @@ const DEPRECATED_PATTERNS = [
     extractDetails: (line: string) => {
       const match = line.match(/console\.(log|warn|error)/);
       return match ? `console.${match[1]} used` : 'Console logging';
-    }
+    },
   },
   {
     // TODO comments with enhanced extraction
@@ -82,7 +82,7 @@ const DEPRECATED_PATTERNS = [
     extractDate: (line: string) => {
       const match = line.match(DATE_PATTERN);
       return match ? match[1] : null;
-    }
+    },
   },
   {
     // FIXME comments with enhanced extraction
@@ -97,7 +97,7 @@ const DEPRECATED_PATTERNS = [
     extractDate: (line: string) => {
       const match = line.match(DATE_PATTERN);
       return match ? match[1] : null;
-    }
+    },
   },
   {
     // HACK comments
@@ -108,7 +108,7 @@ const DEPRECATED_PATTERNS = [
     extractDetails: (line: string) => {
       const match = line.match(/\/\/\s*HACK(?::|\s+)(.+)/i);
       return match ? match[1].trim() : 'Unspecified HACK';
-    }
+    },
   },
   {
     // XXX comments
@@ -119,7 +119,7 @@ const DEPRECATED_PATTERNS = [
     extractDetails: (line: string) => {
       const match = line.match(/\/\/\s*XXX(?::|\s+)(.+)/i);
       return match ? match[1].trim() : 'Unspecified XXX';
-    }
+    },
   },
   {
     // Any() type usage - type safety issue
@@ -130,7 +130,7 @@ const DEPRECATED_PATTERNS = [
     extractDetails: (line: string) => {
       const match = line.match(/:(\s*any)\b/);
       return match ? `Variable typed as 'any'` : 'Using any type';
-    }
+    },
   },
   {
     // @ts-ignore or @ts-expect-error - type errors being suppressed
@@ -141,7 +141,7 @@ const DEPRECATED_PATTERNS = [
     extractDetails: (line: string) => {
       const match = line.match(/\/\/\s*@ts-(ignore|expect-error)/);
       return match ? `@ts-${match[1]} used` : 'TypeScript error suppressed';
-    }
+    },
   },
   {
     // Empty catch block - error swallowing
@@ -149,8 +149,8 @@ const DEPRECATED_PATTERNS = [
     type: 'error-handling',
     severity: 'high',
     description: 'Empty catch block - errors are being swallowed',
-    extractDetails: () => 'Empty catch block - errors silently swallowed'
-  }
+    extractDetails: () => 'Empty catch block - errors silently swallowed',
+  },
 ];
 
 interface TechDebtIssue {
@@ -167,7 +167,7 @@ interface TechDebtIssue {
 }
 
 function shouldExclude(filePath: string): boolean {
-  return EXCLUDED_DIRS.some(excluded => filePath.includes(excluded));
+  return EXCLUDED_DIRS.some((excluded) => filePath.includes(excluded));
 }
 
 function getTypeScriptFiles(dir: string): string[] {
@@ -219,7 +219,7 @@ function detectTechDebtInFile(filePath: string): TechDebtIssue[] {
       if (config.pattern.test(line)) {
         // Extract details if available
         const details = config.extractDetails ? config.extractDetails(line) : undefined;
-        
+
         // Extract date and calculate age if available
         let dateAdded: string | undefined;
         let age: number | undefined;
@@ -239,7 +239,7 @@ function detectTechDebtInFile(filePath: string): TechDebtIssue[] {
             }
           }
         }
-        
+
         issues.push({
           file: relativePath,
           line: lineNum,
@@ -250,7 +250,7 @@ function detectTechDebtInFile(filePath: string): TechDebtIssue[] {
           description: config.description,
           details,
           dateAdded,
-          age
+          age,
         });
       }
     }
@@ -261,25 +261,25 @@ function detectTechDebtInFile(filePath: string): TechDebtIssue[] {
 
 function categorizeIssues(issues: TechDebtIssue[]): Map<string, TechDebtIssue[]> {
   const categories = new Map<string, TechDebtIssue[]>();
-  
+
   for (const issue of issues) {
     const existing = categories.get(issue.type) || [];
     existing.push(issue);
     categories.set(issue.type, existing);
   }
-  
+
   return categories;
 }
 
 function countBySeverity(issues: TechDebtIssue[]): Record<string, number> {
   const counts = { critical: 0, high: 0, medium: 0, low: 0 };
-  
+
   for (const issue of issues) {
     if (counts[issue.severity as keyof typeof counts] !== undefined) {
       counts[issue.severity as keyof typeof counts]++;
     }
   }
-  
+
   return counts;
 }
 
@@ -291,21 +291,32 @@ function printResults(issues: TechDebtIssue[]): void {
 
   const severityCounts = countBySeverity(issues);
   console.log(`\n⚠️  Found ${issues.length} technical debt issue(s):`);
-  console.log(`   Critical: ${severityCounts.critical}, High: ${severityCounts.high}, Medium: ${severityCounts.medium}, Low: ${severityCounts.low}\n`);
+  console.log(
+    `   Critical: ${severityCounts.critical}, High: ${severityCounts.high}, Medium: ${severityCounts.medium}, Low: ${severityCounts.low}\n`
+  );
 
   // Group by type
   const categories = categorizeIssues(issues);
 
   const severityOrder = ['critical', 'high', 'medium', 'low'];
-  
+
   for (const severity of severityOrder) {
     for (const [type, typeIssues] of categories) {
-      const filtered = typeIssues.filter(i => i.severity === severity);
+      const filtered = typeIssues.filter((i) => i.severity === severity);
       if (filtered.length === 0) continue;
-      
-      const severityEmoji = severity === 'critical' ? '🔴' : severity === 'high' ? '🟠' : severity === 'medium' ? '🟡' : '🟢';
-      console.log(`${severityEmoji} ${severity.toUpperCase()} - ${type} (${filtered.length} issues)`);
-      
+
+      const severityEmoji =
+        severity === 'critical'
+          ? '🔴'
+          : severity === 'high'
+            ? '🟠'
+            : severity === 'medium'
+              ? '🟡'
+              : '🟢';
+      console.log(
+        `${severityEmoji} ${severity.toUpperCase()} - ${type} (${filtered.length} issues)`
+      );
+
       // Group by file
       const byFile = new Map<string, TechDebtIssue[]>();
       for (const issue of filtered) {
@@ -313,16 +324,18 @@ function printResults(issues: TechDebtIssue[]): void {
         existing.push(issue);
         byFile.set(issue.file, existing);
       }
-      
+
       for (const [file, fileIssues] of byFile) {
         console.log(`  📁 ${file}`);
-        for (const issue of fileIssues.slice(0, 3)) { // Limit to 3 per file
+        for (const issue of fileIssues.slice(0, 3)) {
+          // Limit to 3 per file
           console.log(`     Line ${issue.line}: ${issue.description}`);
           if (issue.details) {
             console.log(`     Details: ${issue.details}`);
           }
           if (issue.age !== undefined) {
-            const ageText = issue.age > 30 ? `⚠️ Aging (${issue.age} days old)` : `(${issue.age} days old)`;
+            const ageText =
+              issue.age > 30 ? `⚠️ Aging (${issue.age} days old)` : `(${issue.age} days old)`;
             console.log(`     Age: ${ageText}`);
           }
           console.log(`     Code: ${issue.code}`);
@@ -337,7 +350,7 @@ function printResults(issues: TechDebtIssue[]): void {
 
   // Show aging issues if track-age is enabled
   if (TRACK_AGE) {
-    const agingIssues = issues.filter(i => i.age !== undefined && i.age! > 90);
+    const agingIssues = issues.filter((i) => i.age !== undefined && i.age! > 90);
     if (agingIssues.length > 0) {
       console.log('⚠️  Aging Issues (>90 days old):');
       for (const issue of agingIssues.slice(0, 10)) {
@@ -361,7 +374,7 @@ function printResults(issues: TechDebtIssue[]): void {
 function generateJSONReport(issues: TechDebtIssue[]): string {
   const severityCounts = countBySeverity(issues);
   const categories = categorizeIssues(issues);
-  
+
   const report = {
     timestamp: new Date().toISOString(),
     summary: {
@@ -372,9 +385,9 @@ function generateJSONReport(issues: TechDebtIssue[]): string {
       low: severityCounts.low,
       byCategory: Object.fromEntries(
         Array.from(categories.entries()).map(([type, items]) => [type, items.length])
-      )
+      ),
     },
-    issues: issues.map(issue => ({
+    issues: issues.map((issue) => ({
       file: issue.file,
       line: issue.line,
       type: issue.type,
@@ -383,10 +396,10 @@ function generateJSONReport(issues: TechDebtIssue[]): string {
       code: issue.code,
       details: issue.details,
       dateAdded: issue.dateAdded,
-      age: issue.age
-    }))
+      age: issue.age,
+    })),
   };
-  
+
   return JSON.stringify(report, null, 2);
 }
 
@@ -422,7 +435,7 @@ function main(): void {
 
   // Generate JSON report
   const jsonReport = generateJSONReport(allIssues);
-  
+
   // Save JSON report
   const reportPath = path.join(BACKEND_DIR, 'tech-debt-report.json');
   fs.writeFileSync(reportPath, jsonReport);

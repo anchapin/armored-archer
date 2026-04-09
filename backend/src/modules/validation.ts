@@ -19,6 +19,30 @@ import {
   unknown,
 } from 'valibot';
 
+// Re-export valibot functions for use in other modules
+export {
+  object,
+  number,
+  string,
+  boolean,
+  array,
+  record,
+  minValue,
+  maxValue,
+  minLength,
+  maxLength,
+  length,
+  regex,
+  optional,
+  pipe,
+  integer,
+  safeParse,
+  unknown,
+};
+
+// Re-export enum with a different name to avoid reserved keyword conflict
+export { enum as enumType } from 'valibot';
+
 // Type assertion helper for enum schemas
 function createEnum<T extends string>(values: readonly T[]): ReturnType<typeof enumType> {
   return enumType(values as any);
@@ -57,6 +81,34 @@ export const ValibotSchemas = {
     stat_name: createEnum(['attack', 'defense', 'dodge', 'crit_rate']),
     points: pipe(number(), integer(), minValue(1), maxValue(1000)),
   }),
+
+  respec_stats: object({
+    new_allocation: object({
+      attack: pipe(number(), integer(), minValue(0)),
+      defense: pipe(number(), integer(), minValue(0)),
+      dodge: pipe(number(), integer(), minValue(0)),
+      crit_rate: pipe(number(), integer(), minValue(0)),
+    }),
+    use_free_respec: optional(boolean()),
+  }),
+
+  save_build: object({
+    build_slot: pipe(number(), integer(), minValue(1), maxValue(3)),
+    build_name: pipe(string(), minLength(1), maxLength(50)),
+    stats: object({
+      attack: pipe(number(), integer(), minValue(0)),
+      defense: pipe(number(), integer(), minValue(0)),
+      dodge: pipe(number(), integer(), minValue(0)),
+      crit_rate: pipe(number(), integer(), minValue(0)),
+    }),
+    level: pipe(number(), integer(), minValue(1)),
+  }),
+
+  load_build: object({
+    build_slot: pipe(number(), integer(), minValue(1), maxValue(3)),
+  }),
+
+  get_builds: object({}),
 
   generate_gear: object({
     stage_id: pipe(string(), minLength(1), maxLength(100)),
@@ -109,6 +161,19 @@ export const ValibotSchemas = {
   }),
 
   get_player_rank: object({}),
+
+  join_pool: object({
+    mode: createEnum(['1v1', '2v2']),
+    rating: pipe(number(), integer(), minValue(1000), maxValue(3000)),
+  }),
+
+  leave_pool: object({
+    mode: createEnum(['1v1', '2v2']),
+  }),
+
+  get_queue_status: object({
+    mode: createEnum(['1v1', '2v2']),
+  }),
 
   submit_combat_action: object({
     match_id: pipe(string(), minLength(1), maxLength(100)),
@@ -370,6 +435,53 @@ export const ValibotSchemas = {
   classify_data: object({
     data: record(string(), unknown()),
   }),
+
+  // Weapon balance schemas
+  apply_balance_adjustment: object({
+    weapon_id: pipe(string(), minLength(1), maxLength(100)),
+    multiplier: pipe(number(), minValue(0.1), maxValue(10.0)),
+    reason: pipe(string(), minLength(1), maxLength(500)),
+  }),
+
+  get_balance_metrics: optional(
+    object({
+      weapon_id: optional(pipe(string(), minLength(1), maxLength(100))),
+    })
+  ),
+
+  // Weapon usage tracking for balance tuning
+  track_weapon_usage: object({
+    weapon_id: pipe(string(), minLength(1), maxLength(100)),
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    match_result: createEnum(['win', 'loss']),
+    rating_diff: number(),
+  }),
+
+  // Matchmaking analytics schemas
+  log_match_data: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    timestamp: pipe(number(), integer(), minValue(0)),
+    rating_diff: pipe(number(), integer(), minValue(0)),
+    weapons: array(pipe(string(), minLength(1), maxLength(100))),
+    duration: pipe(number(), minValue(0)),
+  }),
+
+  log_abandonment: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    reason: optional(pipe(string(), minLength(1), maxLength(500))),
+    timestamp: pipe(number(), integer(), minValue(0)),
+  }),
+
+  log_weapon_result: object({
+    weapon_id: pipe(string(), minLength(1), maxLength(100)),
+    is_win: boolean(),
+    timestamp: pipe(number(), integer(), minValue(0)),
+  }),
+
+  log_queue_time: object({
+    queue_time: pipe(number(), minValue(0)),
+    timestamp: pipe(number(), integer(), minValue(0)),
+  }),
 } as const;
 
 // Export with Zod-like names for backward compatibility
@@ -379,7 +491,6 @@ export type SchemaName = keyof typeof ValibotSchemas;
 
 export type ValidationResult<T> = { success: true; data: T } | { success: false; error: string };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySchema = any;
 
 export function validatePayload<T = any>(

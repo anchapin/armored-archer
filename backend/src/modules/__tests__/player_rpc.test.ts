@@ -1,5 +1,10 @@
 import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
-import { rpcHealthCheck, rpcGetPlayerStats, rpcReportPlayer, rpcGetPlayerReports } from '../player_rpc';
+import {
+  rpcHealthCheck,
+  rpcGetPlayerStats,
+  rpcReportPlayer,
+  rpcGetPlayerReports,
+} from '../player_rpc';
 import { Runtime } from '../../types/nakama';
 import { PlayerStats } from '../../types/game';
 import { initializeCaches } from '../../utils/cache';

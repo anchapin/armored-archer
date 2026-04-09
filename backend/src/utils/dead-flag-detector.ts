@@ -52,7 +52,7 @@ class DeadFlagDetectorClass {
 
     // For now, we return an empty array since we can't easily parse TS files
     // This is a placeholder for actual implementation
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     void definedFlags;
 
     return unusedFlags;

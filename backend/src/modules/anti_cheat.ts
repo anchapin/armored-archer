@@ -56,7 +56,7 @@ const requestTimingLog = new Map<string, number[]>();
 const timingAnalysisWindow = 3600000; // 1 hour
 
 if (!process.env.HMAC_SECRET) {
-  console.warn('[SECURITY] HMAC_SECRET not set - using fallback. Set this env var in production.');
+  logger.warn('[SECURITY] HMAC_SECRET not set - using fallback. Set this env var in production.');
 }
 
 let config: AntiCheatConfig = {

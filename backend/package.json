@@ -67,14 +67,10 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@babel/cli": "^7.28.6",
     "@babel/core": "^7.29.0",
-    "@babel/plugin-transform-runtime": "^7.29.0",
     "@babel/preset-env": "^7.29.0",
     "@heroiclabs/nakama-js": "2.8.0",
     "@stryker-mutator/core": "^9.6.0",
-    "@stryker-mutator/jest-runner": "^9.6.0",
-    "@stryker-mutator/typescript-checker": "^9.6.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.5.0",
     "@types/opossum": "^8.1.9",
@@ -105,7 +101,6 @@
     "webpack-cli": "^7.0.0"
   },
   "dependencies": {
-    "@babel/runtime": "^7.28.6",
     "@opentelemetry/auto-instrumentations-node": "^0.71.0",
     "@opentelemetry/exporter-jaeger": "^2.6.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.213.0",

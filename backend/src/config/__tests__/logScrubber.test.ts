@@ -11,7 +11,9 @@ describe('LogScrubber', () => {
   describe('scrub string values', () => {
     it('should scrub JWT tokens', () => {
       const scrubber = new LogScrubber({ enabled: true });
-      const result = scrubber.scrub('Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c');
+      const result = scrubber.scrub(
+        'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'
+      );
       expect(result).toBe('Bearer [JWT_REDACTED]');
     });
 
@@ -344,11 +346,10 @@ describe('LogScrubber', () => {
 
     it('should handle metadata in scrubLogByLevel', () => {
       const scrubber = new LogScrubber({ enabled: true });
-      const result = scrubber.scrubLogByLevel(
-        'User login',
-        'info',
-        { password: 'secret', userId: 123 }
-      );
+      const result = scrubber.scrubLogByLevel('User login', 'info', {
+        password: 'secret',
+        userId: 123,
+      });
       expect(result.message).toBe('User login');
       expect(result.meta?.['[REDACTED_PASSWORD]']).toBe('[REDACTED]');
       expect(result.meta?.userId).toBe(123);
@@ -394,7 +395,8 @@ describe('LogScrubber', () => {
   describe('additional sensitive patterns', () => {
     it('should scrub private keys (PEM format)', () => {
       const scrubber = new LogScrubber({ enabled: true });
-      const input = '-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQ...\n-----END RSA PRIVATE KEY-----';
+      const input =
+        '-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQ...\n-----END RSA PRIVATE KEY-----';
       const result = scrubber.scrub(input);
       expect(result).toContain('[PRIVATE_KEY_REDACTED]');
     });

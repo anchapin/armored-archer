@@ -9,7 +9,12 @@ jest.mock('../feature-flags', () => ({
   FeatureFlags: {
     getAllFlags: jest.fn().mockReturnValue([
       { name: 'active_flag', enabled: true, description: 'An active flag' },
-      { name: 'disabled_flag', enabled: false, rolloutPercentage: 0, description: 'A disabled flag' },
+      {
+        name: 'disabled_flag',
+        enabled: false,
+        rolloutPercentage: 0,
+        description: 'A disabled flag',
+      },
       { name: 'rollout_flag', enabled: true, rolloutPercentage: 50, description: 'A rollout flag' },
     ]),
   },

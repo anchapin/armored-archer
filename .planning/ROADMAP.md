@@ -1,6 +1,6 @@
 # Roadmap: Armored Archer
 
-**Current Milestone:** v3.4.0 - Tactical Gameplay & PvE Campaign
+**Current Milestone:** v4.0.0 - Gameplay Refinement
 **Last Updated:** 2026-04-08
 
 ---
@@ -16,9 +16,230 @@
 - ✅ **v3.2.0 Pixel Art** - Phases 05-08 (shipped 2026-04-08)
 - ✅ **v3.3.0 - Polish & Juice** - Phases 1-4 (shipped 2026-03-27)
 - ✅ **v3.4.0 Tactical Gameplay & PvE Campaign** - Phases 1-5 (shipped 2026-04-06)
-- 🚧 **v3.5.0 Alpha Readiness** - Phases TBD (planned)
+- 🚧 **v4.0.0 Gameplay Refinement** - Phases 1-5 (in progress)
 
 ---
+
+## v4.0.0 Gameplay Refinement
+
+**Milestone Goal:** Comprehensive gameplay improvements and balancing across combat, enemies, PvP, progression, and feedback systems to address "too hard" and "bland" issues
+
+**Created:** 2026-04-08
+**Granularity:** Standard (5 phases)
+**Coverage:** 21/21 requirements mapped
+
+### Phases
+
+- [x] **Phase 1: Combat Foundation** - Core combat mechanics with timing, hit detection, damage formulas, and weapon variety
+- [x] **Phase 2: Enemy System** - New enemy types, boss encounters, and varied AI patterns
+- [x] **Phase 3: Combat Polish & Juice** - Visual feedback, impact effects, damage indicators, and hit/kill reactions | 1 plan complete
+- [x] **Phase 4: PvP Balance & Ranking** - Weapon/power balancing, fair matchmaking, and seasonal ranking system | 1 plan complete
+- [x] **Phase 5: Progression & Difficulty** - XP tuning, level scaling, stat systems, gear balance, and dynamic difficulty | 1 plan complete
+
+---
+
+## Phase Details
+
+### Phase 1: Combat Foundation
+
+**Goal:** Core combat mechanics feel responsive and consistent with clear timing, reliable hit detection, validated damage calculations, and distinct weapon types
+
+**Depends on:** Nothing (first phase)
+
+**Requirements:** COMBAT-01, COMBAT-02, COMBAT-03, COMBAT-04, COMBAT-05
+
+**Success Criteria** (what must be TRUE):
+1. Player attacks have consistent timing with clear visual wind-up and release phases that feel predictable
+2. When attacks connect, visual feedback (damage numbers, hit effects, screen shake) provides immediate confirmation
+3. Damage calculations produce consistent results between PvP and PvE modes with transparent stat-to-damage mapping
+4. Different weapon types (bows, crossbows) have distinct attack patterns, ranges, and power curves that create meaningful player choice
+5. Critical hits cause enemies to flash white, pause briefly, then react with distinct animations that telegraph the special hit
+
+**Plans:** TBD
+
+---
+
+### Phase 2: Enemy System
+
+**Goal:** Enemies provide varied, engaging challenges through new types, boss encounters, and diverse AI patterns
+
+**Depends on:** Phase 1 (combat foundation provides mechanics for enemies to use)
+
+**Requirements:** ENEMY-01, ENEMY-02, ENEMY-03
+
+**Success Criteria** (what must be TRUE):
+1. Players encounter 3-5 new enemy types (e.g., elementals, flying, swarmers) with unique AI patterns that require different tactics
+2. Boss encounters feature 3 distinct boss types with multiple phases, special attacks, and valuable loot tables
+3. Enemies demonstrate varied behaviors (aggressive, defensive, pack-hunting, ambush) across different encounter types that prevent combat from feeling repetitive
+
+**Plans:** 01-01-PLAN.md (Complete)
+
+---
+
+### Phase 3: Combat Polish & Juice
+
+**Goal:** Combat provides satisfying visual feedback through impact effects, damage indicators, hit reactions, and kill animations
+
+**Depends on:** Phase 1 (combat foundation provides mechanics to enhance with polish)
+
+**Requirements:** JUICE-01, JUICE-02, JUICE-03, JUICE-04
+
+**Success Criteria** (what must be TRUE):
+1. Strong attacks trigger screen shake and particle bursts on impact that convey power and weight
+2. Floating damage numbers show amount dealt with color coding (green for weak hits, yellow for normal, red for critical) that provides instant combat feedback
+3. Player character briefly flinches or stutters when taking damage, providing clear feedback that damage was received
+4. Enemies have clear, satisfying death animations with ragdoll-like physics effects that make kills feel rewarding
+
+**Plans:** 01-01-PLAN.md (Complete)
+
+---
+
+### Phase 4: PvP Balance & Ranking
+
+**Goal:** PvP combat is fair and balanced with appropriate weapon power curves, skill-based matchmaking, and seasonal progression
+
+**Depends on:** Phase 1 (combat foundation ensures mechanics are balanced before PvP adjustments)
+
+**Requirements:** PVP-01, PVP-02, PVP-03
+
+**Success Criteria** (what must be TRUE):
+1. Weapon damage curves are balanced across all tiers to prevent one-shot exploits and ensure no single weapon dominates the meta
+2. Matchmaking pairs players with similar skill levels, accounting for ranking differences to create balanced competitive matches
+3. Seasonal leaderboards track player progress with decay mechanisms that prevent farming and encourage active participation
+
+**Plans:** TBD
+
+---
+
+### Phase 5: Progression & Difficulty
+
+**Goal:** Progression feels rewarding and appropriately challenging with tuned XP curves, level scaling, meaningful stat choices, balanced gear, and dynamic difficulty
+
+**Depends on:** Phase 1 (combat foundation) and Phase 2 (enemy system) - difficulty requires both player and enemy systems in place
+
+**Requirements:** PROG-01, PROG-02, PROG-03, PROG-04, DIFFICULTY-01, DIFFICULTY-02, DIFFICULTY-03
+
+**Success Criteria** (what must be TRUE):
+1. Level progression uses satisfying growth curves where early levels feel fast and rewarding while later levels provide meaningful, grindy advancement
+2. Enemy difficulty scales appropriately with player level through both damage increases and more sophisticated AI behaviors
+3. Players can respec stats with a reasonable cost that encourages diverse builds without punishing experimentation
+4. Equipment stats have diminishing returns that prevent power stacking exploits while still making upgrades feel valuable
+5. Game difficulty adjusts dynamically based on player performance (win streaks increase challenge, losing streaks reduce it) to maintain engagement
+6. Encounters provide varied pacing with intense combat segments, exploration/puzzle moments, and narrative downtime that prevents fatigue
+7. Players always know what to do next through clear map markers, quest objectives, and level requirements that prevent getting stuck
+
+**Plans:**
+- Progression & Difficulty Plan (8 tasks: XP Curve Tuning, Level Scaling, Stat Allocation, Gear Stat Balance, Dynamic Difficulty, Pacing & Variety, Progression Indicators, Integration Tests) | 6/8 tasks complete
+
+---
+
+## Progress
+
+**Execution Order:** Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Combat Foundation | 1/1 | Complete | 2026-04-08 |
+| 2. Enemy System | 1/1 | Complete | 2026-04-08 |
+| 3. Combat Polish & Juice | 1/1 | Complete | 2026-04-08 |
+| 4. PvP Balance & Ranking | 1/1 | Complete | 2026-04-08 |
+| 5. Progression & Difficulty | 4/3 | Complete   | 2026-04-09 |
+
+**Overall Progress:** 5/5 phases complete (100%)
+
+---
+
+## v4.0.0 Dependencies
+
+```mermaid
+graph TD
+    A[Phase 1: Combat Foundation] --> B[Phase 2: Enemy System]
+    A --> C[Phase 3: Combat Polish & Juice]
+    A --> D[Phase 4: PvP Balance & Ranking]
+    B --> E[Phase 5: Progression & Difficulty]
+    C --> E
+    D --> E
+```
+
+**Critical Path:** Phase 1 → Phase 2 → Phase 5 (core mechanics → enemies → progression)
+
+**Parallel Opportunities:**
+- Phase 3 (polish) and Phase 4 (PvP) can run in parallel after Phase 1
+- Phase 5 (progression) can start once Phase 2 is complete, doesn't need to wait for Phase 3/4
+
+---
+
+## v4.0.0 Risk Gates
+
+| Gate | After Phase | Go/No-Go Criteria |
+|------|-------------|-------------------|
+| Gate 1 | Phase 1 | Attack timing is consistent; hit detection is reliable; damage formulas validated between PvP/PvE |
+| Gate 2 | Phase 2 | 3-5 new enemy types implemented; boss encounters have distinct phases; AI patterns vary across encounters |
+| Gate 3 | Phase 3 | Impact effects provide satisfying feedback; damage numbers are clear and color-coded; hit/kill animations feel responsive |
+| Gate 4 | Phase 4 | No one-shot exploits in weapon balance; matchmaking produces fair matches; leaderboards track seasonal progress with decay |
+| Gate 5 | Phase 5 | XP curve feels rewarding; level scaling provides appropriate challenge; stat respec works; gear has diminishing returns; dynamic difficulty engages players |
+
+**If any gate fails:** Pause, assess, decide: continue with mitigations, pivot approach, or defer remaining work to v4.1.0
+
+---
+
+## v4.0.0 Quality Metrics
+
+**Combat Quality:**
+- Attack timing consistency: < 5% variance between wind-up and release phases
+- Hit detection accuracy: > 99% of visible hits register correctly
+- Damage formula consistency: PvP and PvE produce identical results for same stat inputs
+
+**Enemy Variety:**
+- Unique enemy types: 3-5 implemented with distinct AI patterns
+- Boss encounters: 3 types with minimum 2 phases each
+- AI behavior diversity: Minimum 4 distinct patterns (aggressive, defensive, pack-hunting, ambush)
+
+**PvP Balance:**
+- Weapon damage variance: < 10% across same-tier weapons
+- Matchmaking skill gap: < 20% rating difference between matched players
+- Leaderboard decay: Active players retain ranking, inactive players decay appropriately
+
+**Progression Quality:**
+- Level time investment: Early levels (<10) complete in <30 min, mid levels (10-30) in 1-2 hours, late levels (>30) in 2-4 hours
+- Stat respec cost: 5-10% of player's current gem total
+- Gear diminishing returns: Each stat point provides less benefit than the previous, with soft cap at 70% of max
+
+**Difficulty Pacing:**
+- Dynamic difficulty range: ±20% from baseline based on win/loss streaks
+- Encounter pacing ratio: 60% combat, 20% exploration/puzzle, 20% narrative/downtime
+- Quest clarity: 100% of objectives have map markers or clear text instructions
+
+---
+
+## v4.0.0 Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| 5-phase structure | Natural delivery boundaries from requirement categories; combat → enemies → polish → PvP → progression | Foundation → Enemies → Juice → PvP → Progression |
+| Standard granularity | 21 requirements across 6 categories; 5 phases provides balanced grouping | Each phase delivers 3-7 requirements |
+| Phase 1 first | Combat foundation is prerequisite for all other phases (enemies, polish, PvP, progression) | Prevents rebalancing work |
+| Phase 2 before Phase 5 | Progression scaling requires enemy AI and difficulty systems in place | Ensures meaningful challenge curves |
+| Parallel Phase 3/4 | Combat polish and PvP balance are independent workstreams after Phase 1 | Reduces timeline by ~1 week |
+| Phase 5 combines PROG + DIFFICULTY | Progression and difficulty are tightly coupled systems that work best together | Prevents disjointed difficulty scaling |
+
+---
+
+## Notes
+
+**Phase Numbering:**
+- Independent phase numbering per milestone (starts at 1 for v4.0.0)
+- Previous milestones (v2.0.0 - v3.4.0) used independent numbering
+- Decimal phases (1.1, 1.2) reserved for urgent insertions via `/gsd:insert-phase`
+
+**Coverage Validation:**
+- All 21 v1 requirements mapped to exactly one phase
+- No orphaned requirements
+- No duplicate mappings
+
+---
+
+## Historical Milestones
 
 <details>
 <summary>✅ v2.0.0 Go Backend Migration (Phases 1-15) - SHIPPED 2026-03-15</summary>
@@ -158,221 +379,5 @@
 </details>
 
 ---
-
-## 🚧 v3.5.0 Alpha Readiness (Planned)
-
-**Milestone Goal:** Build comprehensive test infrastructure and QA processes to catch bugs early, ship with confidence, test at scale, and streamline QA workflows
-
-**Created:** 2026-03-19
-**Granularity:** Standard (5-8 phases)
-**Coverage:** 40/40 requirements mapped
-
-### Phase 1: Test Infrastructure Foundation
-
-**Goal:** Establish robust test frameworks and foundational testing patterns for both Go backend and Godot client
-
-**Depends on:** Nothing (first phase)
-
-**Requirements:** FND-01, FND-02, FND-03, FND-04, FND-05, FND-06
-
-**Success Criteria** (what must be TRUE):
-1. Developer can run `go test ./...` and all tests execute with testify assertions and test suite structure
-2. Developer can run Godot tests with enhanced GUT framework and see unified test reporting
-3. Test runner executes both backend and frontend tests in single command with consolidated results
-4. Test pyramid enforcement prevents PR merge if ratio falls outside 70/20/10 (unit/integration/E2E)
-5. Go race detector runs in CI and fails build on race conditions in concurrent code
-6. Tests are isolated — running test suite in random order produces identical results
-
-**Plans:** TBD
-
----
-
-### Phase 2: Fixtures & Mocks Layer
-
-**Goal:** Build reusable test data factories and mock infrastructure for fast, isolated unit and integration tests
-
-**Depends on:** Phase 1 (test infrastructure and helpers)
-
-**Requirements:** ISO-01, ISO-02, ISO-03, ISO-05, FIX-01, FIX-02, FIX-03, FIX-04, FIX-05, MOCK-01, MOCK-02, MOCK-04, MOCK-05
-
-**Success Criteria** (what must be TRUE):
-1. Database tests use testcontainers-go to spawn isolated PostgreSQL instances per test suite
-2. Developer can create test players, gear, and matches using factory functions with sensible defaults
-3. Builder pattern allows flexible test data creation (e.g., `NewPlayer().WithLevel(10).WithGear(epicBow).Build()`)
-4. Test data is automatically cleaned up after each test suite via teardown hooks
-5. Nakama runtime and database layer are mocked using interface-based approach for fast unit tests
-6. Mocks are generated from interfaces using uber/mock and validated against real implementations
-7. Integration tests have proper setup/teardown lifecycle with before/after hooks
-8. Test data fixtures are shared between Go and Godot tests via JSON format
-
-**Plans:** 4/4 plans complete
-
----
-
-### Phase 3: Godot Test Framework Enhancement
-
-**Goal:** Enhance Godot testing capabilities with autoload mocking, signal testing, and improved isolation
-
-**Depends on:** Phase 1 (test infrastructure)
-
-**Requirements:** ISO-04, MOCK-03
-
-**Success Criteria** (what must be TRUE):
-1. Godot autoload tests use fresh instances per test to prevent state leakage between tests
-2. Autoloads are mockable via dependency injection pattern for isolated unit testing
-3. Signal-based tests can verify Godot signal emissions and payload data
-4. Developer can run Godot tests in CI with consistent results across different platforms
-
-**Plans:** TBD
-
----
-
-### Phase 4: Load Testing Infrastructure
-
-**Goal:** Implement performance benchmarks and load testing to validate system can handle 100+ concurrent players
-
-**Depends on:** Phase 2 (stable fixtures and test data)
-
-**Requirements:** PERF-01, PERF-02, PERF-03, PERF-04, PERF-05
-
-**Success Criteria** (what must be TRUE):
-1. Go benchmarks exist for critical RPC endpoints (combat, matchmaking, gear operations)
-2. Godot performance tests validate 60 FPS target for core gameplay loops
-3. k6 load test scripts simulate 100+ concurrent players with realistic traffic patterns
-4. Load tests run in CI on schedule and generate performance reports
-5. Performance baselines are established and PRs that regress beyond threshold are blocked
-
-**Plans:** TBD
-
----
-
-### Phase 5: Coverage, Reporting & Quality Gates
-
-**Goal:** Establish comprehensive coverage reporting, flaky test detection, and automated quality gates in CI
-
-**Depends on:** Phase 1, 2, 3, 4 (comprehensive test suite required)
-
-**Requirements:** COV-01, COV-02, COV-03, COV-04, COV-05, FLK-01, FLK-02, FLK-03, FLK-04, VIS-01, VIS-02, VIS-03, PBT-01, PBT-02, PBT-03
-
-**Success Criteria** (what must be TRUE):
-1. Code coverage is measured for both Go backend and Godot frontend with unified reports
-2. CI enforces coverage thresholds (85% for critical paths, 80% overall) and blocks failing PRs
-3. Coverage reports are generated as CI artifacts and viewable in dashboard
-4. Coverage metrics are tracked over time to identify trends and regression
-5. CI automatically detects flaky tests via repeated test runs (3x retry logic)
-6. Flaky tests are quarantined and don't block PR merges while being tracked for fixes
-7. Flaky test dashboard shows test reliability metrics and notifies developers of flagged tests
-8. Design system components have visual regression tests that validate UI consistency
-9. UI screens are validated for layout consistency across themes and screen sizes
-10. Visual regression tests run in CI for theme changes and block layout-breaking changes
-11. Critical combat calculations use property-based tests (rapid) to find edge cases
-12. RNG systems have property-based tests to validate statistical properties
-13. Property-based tests run in CI alongside unit tests with clear reporting
-
-**Plans:** TBD
-
----
-
-## Progress
-
-**Execution Order:** Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
-
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
-| 1. Test Infrastructure Foundation | v2.3.0 | 0/6 | Not started | - |
-| 2. Fixtures & Mocks Layer | v2.3.0 | 4/4 | Complete   | 2026-04-03 |
-| 3. Godot Test Framework Enhancement | v2.3.0 | 0/2 | Not started | - |
-| 4. Load Testing Infrastructure | v2.3.0 | 0/5 | Not started | - |
-| 5. Coverage, Reporting & Quality Gates | v2.3.0 | 0/14 | Not started | - |
-
-**Overall Progress:** 0/5 phases complete (0%)
-
----
-
-## v2.3.0 Dependencies
-
-```mermaid
-graph TD
-    A[Phase 1: Test Infrastructure Foundation] --> B[Phase 2: Fixtures & Mocks Layer]
-    A --> C[Phase 3: Godot Test Framework Enhancement]
-    B --> D[Phase 4: Load Testing Infrastructure]
-    B --> E[Phase 5: Coverage, Reporting & Quality Gates]
-    C --> E
-    D --> E
-```
-
-**Critical Path:** Phase 1 → Phase 2 → Phase 5 (core testing infrastructure)
-
-**Parallel Opportunities:**
-- Phase 2 (Go fixtures/mocks) and Phase 3 (Godot framework) can run in parallel after Phase 1
-- Phase 4 (load testing) can run in parallel with Phase 5 once Phase 2 is complete
-
----
-
-## v2.3.0 Risk Gates
-
-| Gate | After Phase | Go/No-Go Criteria |
-|------|-------------|-------------------|
-| Gate 1 | Phase 1 | Test runner executes all tests with unified reporting; race detector runs in CI |
-| Gate 2 | Phase 2 | Database tests use testcontainers; factory functions create test data; mocks work for unit tests |
-| Gate 3 | Phase 4 | Load tests can simulate 100+ concurrent players; performance baselines established |
-| Gate 4 | Phase 5 | Coverage thresholds enforced in CI; flaky test detection operational; quality gates block failing PRs |
-
-**If any gate fails:** Pause, assess, decide: continue with mitigations, pivot approach, or defer remaining work to v2.4.0
-
----
-
-## v2.3.0 Quality Metrics
-
-**Test Pyramid Health:**
-- Target: 70% unit / 20% integration / 10% E2E
-- Measured via automated test classification
-
-**Coverage Targets:**
-- Critical paths (combat, matchmaking, progression): 80%
-- Overall codebase: 80%
-- Tracked over time to identify trends
-
-**Test Reliability:**
-- Flaky test rate: < 2% of total tests
-- Measured via CI flaky test detection
-
-**Performance Baselines:**
-- Backend RPC p95 latency: < 200ms
-- Frontend frame rate: 60 FPS during core gameplay
-- Validated via load tests and benchmarks
-
----
-
-## v2.3.0 Key Decisions
-
-| Decision | Rationale | Outcome |
-|----------|-----------|---------|
-| 5-phase structure | Research suggests natural delivery boundaries; matches requirement categories | Foundation → Fixtures → Godot → Load → Coverage |
-| Standard granularity | 40 requirements across 9 categories; 5 phases provides balanced grouping | Each phase delivers 2-14 requirements |
-| Phase 1 before Phase 2/3 | Test infrastructure must exist before fixtures/mocks can be built | Prevents brittle tests |
-| Phase 2 before Phase 4 | Load testing requires stable fixtures and test data | Ensures realistic load scenarios |
-| Phase 5 last | Coverage reporting requires comprehensive test suite | Meaningful metrics only after tests exist |
-| Parallel Phase 2/3 | Go and Godot testing are independent codebases | Reduces timeline by ~1 week |
-
----
-
-## Notes
-
-**Phase Numbering:**
-- Independent phase numbering per milestone (starts at 1 for v2.3.0)
-- Previous milestones (v2.0.0, v2.1.0, v2.2.0) used independent numbering
-- Decimal phases (1.1, 1.2) reserved for urgent insertions via `/gsd:insert-phase`
-
-**Research Alignment:**
-- Phase structure matches research recommendations (5 phases)
-- Research flags identified Phase 3 (Godot autoload mocking) and Phase 4 (Nakama load testing) as areas needing deeper planning
-
-**Coverage Validation:**
-- All 40 v1 requirements mapped to exactly one phase
-- No orphaned requirements
-- No duplicate mappings
-
----
-*Roadmap updated: 2026-03-19*
+*Roadmap updated: 2026-04-08*
 *Next review: After Phase 1 completion*

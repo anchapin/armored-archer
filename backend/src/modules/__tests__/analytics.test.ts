@@ -62,9 +62,8 @@ jest.mock('../validation', () => ({
     get_analytics_summary: {},
     track_revenue: {},
   },
-  createValidationErrorResponse: jest.fn(
-    (name: string, error: string) =>
-      JSON.stringify({ success: false, error: `${name}: ${error}` })
+  createValidationErrorResponse: jest.fn((name: string, error: string) =>
+    JSON.stringify({ success: false, error: `${name}: ${error}` })
   ),
 }));
 
@@ -224,12 +223,7 @@ describe('Analytics Module', () => {
 
   describe('rpcGetCircuitBreakerStates', () => {
     it('should return circuit breaker states', () => {
-      const result = rpcGetCircuitBreakerStates(
-        mockCtx,
-        mockLogger as any,
-        mockNk,
-        '{}'
-      );
+      const result = rpcGetCircuitBreakerStates(mockCtx, mockLogger as any, mockNk, '{}');
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -360,9 +354,8 @@ describe('Analytics Module - Analytics Enabled', () => {
         get_analytics_summary: {},
         track_revenue: {},
       },
-      createValidationErrorResponse: jest.fn(
-        (name: string, error: string) =>
-          JSON.stringify({ success: false, error: `${name}: ${error}` })
+      createValidationErrorResponse: jest.fn((name: string, error: string) =>
+        JSON.stringify({ success: false, error: `${name}: ${error}` })
       ),
     }));
 
@@ -773,25 +766,45 @@ describe('Analytics Module - Analytics Enabled', () => {
         ctx1,
         mockLogger as any,
         mockNk,
-        JSON.stringify({ event_name: 'pve_stage_completed', properties: {}, platform: 'android', session_id: '' })
+        JSON.stringify({
+          event_name: 'pve_stage_completed',
+          properties: {},
+          platform: 'android',
+          session_id: '',
+        })
       );
       analytics.rpcTrackEvent(
         ctx1,
         mockLogger as any,
         mockNk,
-        JSON.stringify({ event_name: 'pve_stage_completed', properties: {}, platform: 'android', session_id: '' })
+        JSON.stringify({
+          event_name: 'pve_stage_completed',
+          properties: {},
+          platform: 'android',
+          session_id: '',
+        })
       );
       analytics.rpcTrackEvent(
         ctx2,
         mockLogger as any,
         mockNk,
-        JSON.stringify({ event_name: 'pve_stage_completed', properties: {}, platform: 'ios', session_id: '' })
+        JSON.stringify({
+          event_name: 'pve_stage_completed',
+          properties: {},
+          platform: 'ios',
+          session_id: '',
+        })
       );
       analytics.rpcTrackEvent(
         ctx1,
         mockLogger as any,
         mockNk,
-        JSON.stringify({ event_name: 'purchase_completed', properties: {}, platform: 'android', session_id: '' })
+        JSON.stringify({
+          event_name: 'purchase_completed',
+          properties: {},
+          platform: 'android',
+          session_id: '',
+        })
       );
 
       const today = new Date().toISOString().split('T')[0];
@@ -831,13 +844,23 @@ describe('Analytics Module - Analytics Enabled', () => {
         ctx1,
         mockLogger as any,
         mockNk,
-        JSON.stringify({ event_name: 'session_start', properties: {}, platform: 'web', session_id: '' })
+        JSON.stringify({
+          event_name: 'session_start',
+          properties: {},
+          platform: 'web',
+          session_id: '',
+        })
       );
       analytics.rpcTrackEvent(
         ctx1,
         mockLogger as any,
         mockNk,
-        JSON.stringify({ event_name: 'session_end', properties: {}, platform: 'web', session_id: '' })
+        JSON.stringify({
+          event_name: 'session_end',
+          properties: {},
+          platform: 'web',
+          session_id: '',
+        })
       );
 
       const today = new Date().toISOString().split('T')[0];

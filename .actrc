@@ -12,5 +12,5 @@
 # Increase shared memory for Godot
 --shm-size=2gb
 
-# Use full Ubuntu image with more dependencies
---container-ubuntu-full
+# Note: --container-ubuntu-full flag removed (deprecated)
+# Using default container behavior instead

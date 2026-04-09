@@ -247,9 +247,11 @@ describe('notifications', () => {
 
     it('should return preferences when they exist', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([
-          { user_id: 'user123', daily_rewards_enabled: true, events_enabled: true },
-        ]),
+        dbQuery: jest
+          .fn()
+          .mockResolvedValue([
+            { user_id: 'user123', daily_rewards_enabled: true, events_enabled: true },
+          ]),
       });
 
       const result = await getNotificationPreferences(mockNk, 'user123');
@@ -386,9 +388,9 @@ describe('notifications', () => {
   describe('getPendingNotifications', () => {
     it('should return pending notifications', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([
-          { notification_id: '1', user_id: 'user1', title: 'Test' },
-        ]),
+        dbQuery: jest
+          .fn()
+          .mockResolvedValue([{ notification_id: '1', user_id: 'user1', title: 'Test' }]),
       });
 
       const result = await getPendingNotifications(mockNk, 10);
@@ -457,9 +459,11 @@ describe('notifications', () => {
 
     it('should return false when notifications disabled', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([
-          { user_id: 'user123', notifications_enabled: false, daily_rewards_enabled: true },
-        ]),
+        dbQuery: jest
+          .fn()
+          .mockResolvedValue([
+            { user_id: 'user123', notifications_enabled: false, daily_rewards_enabled: true },
+          ]),
       });
 
       const result = await shouldSendNotification(mockNk, 'user123', 'daily_reward');
@@ -492,16 +496,14 @@ describe('notifications', () => {
 
     it('should return true for unknown type', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([
-          { user_id: 'user123', notifications_enabled: true, daily_rewards_enabled: false },
-        ]),
+        dbQuery: jest
+          .fn()
+          .mockResolvedValue([
+            { user_id: 'user123', notifications_enabled: true, daily_rewards_enabled: false },
+          ]),
       });
 
-      const result = await shouldSendNotification(
-        mockNk,
-        'user123',
-        'custom' as NotificationType
-      );
+      const result = await shouldSendNotification(mockNk, 'user123', 'custom' as NotificationType);
 
       expect(result).toBe(true);
     });
@@ -525,9 +527,11 @@ describe('notifications', () => {
   describe('sendDailyRewardNotification', () => {
     it('should return error when user disabled daily reward notifications', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([
-          { user_id: 'user123', notifications_enabled: true, daily_rewards_enabled: false },
-        ]),
+        dbQuery: jest
+          .fn()
+          .mockResolvedValue([
+            { user_id: 'user123', notifications_enabled: true, daily_rewards_enabled: false },
+          ]),
       });
 
       const result = await sendDailyRewardNotification(mockNk, 'user123');
@@ -559,9 +563,11 @@ describe('notifications', () => {
   describe('sendEventNotification', () => {
     it('should return error when user disabled event notifications', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([
-          { user_id: 'user123', notifications_enabled: true, events_enabled: false },
-        ]),
+        dbQuery: jest
+          .fn()
+          .mockResolvedValue([
+            { user_id: 'user123', notifications_enabled: true, events_enabled: false },
+          ]),
       });
 
       const result = await sendEventNotification(mockNk, 'user123', 'Summer Event', 'event123');
@@ -573,9 +579,11 @@ describe('notifications', () => {
   describe('sendPvpChallengeNotification', () => {
     it('should return error when user disabled PvP notifications', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([
-          { user_id: 'user123', notifications_enabled: true, pvp_challenges_enabled: false },
-        ]),
+        dbQuery: jest
+          .fn()
+          .mockResolvedValue([
+            { user_id: 'user123', notifications_enabled: true, pvp_challenges_enabled: false },
+          ]),
       });
 
       const result = await sendPvpChallengeNotification(mockNk, 'user123', 'Challenger');

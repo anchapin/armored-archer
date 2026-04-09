@@ -1,101 +1,100 @@
+class_name WarlockBoss
 extends BaseEnemy
 
-## Fire boss (Inferno) - powerful fire-based boss.
+## Warlock Boss (Shadow Warlock) - ranged spells boss with minion summoning.
 ##
-## Phase 1: Fireball attacks and ground fire
-## Phase 2 (below 50% health): Faster attacks, more fireballs, flame wave
-## Phase 3 (below 25% health): Enraged - all attacks are stronger
+## Phase 1: Shadow bolt projectiles, teleport dodge
+## Phase 2: Summon 2 shadow minions at transition
+## Phase 3: Dual shadow bolts + rapid teleports
+##
+## Integrates with BossManager for phase management and loot.
 
 # --- Boss Stats ---
-@export var boss_name: String = "Inferno"
+@export var boss_name: String = "Shadow Warlock"
 
 # --- AI State ---
-var player_ref: CharacterBody2D = null
-var detection_range: float = 600.0
-var attack_range: float = 150.0
-var phase: int = 1
+var player_ref: Node2D = null
+var detection_range: float = 400.0
+var attack_range: float = 250.0
 
 # --- Movement ---
-var base_move_speed: float = 100.0
-var phase2_speed: float = 130.0
-var phase3_speed: float = 160.0
+var base_move_speed: float = 90.0
+var teleport_range: float = 150.0
 
 # --- Attack Settings ---
 var attack_cooldown: float = 2.0
 var attack_timer: float = 0.0
 
-# --- Fireball Settings ---
-var fireball_cooldown: float = 4.0
-var fireball_timer: float = 0.0
-var fireball_speed: float = 250.0
-var fireball_damage: int = 20
-var phase2_fireball_cooldown: float = 2.5
-var phase3_fireball_cooldown: float = 1.5
+# --- Special Attack Settings ---
+var current_special_cooldown: float = 0.0
+var can_summon_minions: bool = false
 
-# --- Ground Fire Settings ---
-var ground_fire_cooldown: float = 5.0
-var ground_fire_timer: float = 0.0
-var ground_fire_duration: float = 4.0
-
-# --- Flame Wave Settings (Phase 2+) ---
-var flame_wave_cooldown: float = 6.0
-var flame_wave_timer: float = 0.0
-var is_using_flame_wave: bool = false
-
-# --- Enraged Settings (Phase 3) ---
+# --- Boss State ---
+var current_phase: int = 0
 var is_enraged: bool = false
-var enraged_damage_multiplier: float = 1.5
+
+# --- Manager References ---
+var _boss_manager: Node
 
 # --- Signals ---
 signal boss_defeated(boss_name: String)
 signal health_changed(current: int, max: int)
 
 func _ready() -> void:
-	max_health = 800
-	damage = 25
+	max_health = 700
+	damage = 18
 	move_speed = base_move_speed
 	current_health = max_health
 	add_to_group("Boss")
 	super._ready()
 
+	_boss_manager = get_node_or_null("/root/BossManager")
+
 	health_changed.emit(current_health, max_health)
 
 func _physics_process(delta: float) -> void:
+	if is_dead:
+		return
+
 	if not player_ref:
 		find_player()
 
-	update_timers(delta)
+	# Update attack cooldowns
+	if attack_timer > 0:
+		attack_timer -= delta
+	if current_special_cooldown > 0:
+		current_special_cooldown -= delta
+
+	# Update BossManager cooldowns
+	if _boss_manager:
+		_boss_manager.update_attack_cooldowns(delta)
 
 	if player_ref:
-		var distance_to_player: float = global_position.distance_to(player_ref.global_position)
+		var distance_to_player = global_position.distance_to(player_ref.global_position)
 
-		if not is_using_flame_wave:
-			if distance_to_player <= detection_range:
-				if distance_to_player > attack_range:
-					chase_player()
-				else:
-					handle_attacks()
+		if distance_to_player <= detection_range:
+			# Warlock keeps distance
+			if distance_to_player < 150.0:
+				_teleport_away()
+			elif distance_to_player > attack_range:
+				chase_player()
 			else:
-				velocity = Vector2.ZERO
+				handle_attacks()
+		else:
+			velocity = Vector2.ZERO
 
 	var _moved = move_and_slide()
 
-func update_timers(_delta: float) -> void:
-	attack_timer += _delta
-	fireball_timer += _delta
-	ground_fire_timer += _delta
-	flame_wave_timer += _delta
-
 func find_player() -> void:
-	var players: Array[Node] = get_tree().get_nodes_in_group("Player")
+	var players = get_tree().get_nodes_in_group("Player")
 	if players.size() > 0:
-		player_ref = players[0] as CharacterBody2D
+		player_ref = players[0]
 
 func chase_player() -> void:
 	if not player_ref:
 		return
 
-	var direction: Vector2 = (player_ref.global_position - global_position).normalized()
+	var direction = (player_ref.global_position - global_position).normalized()
 	velocity = direction * move_speed
 	if sprite:
 		sprite.flip_h = direction.x < 0
@@ -103,156 +102,174 @@ func chase_player() -> void:
 func handle_attacks() -> void:
 	velocity = Vector2.ZERO
 
-	# Check which attacks to use based on cooldowns and phase
-	check_fireball_attack()
-	check_ground_fire()
-	if phase >= 2:
-		check_flame_wave()
+	# Use special attack from BossManager if available
+	if _boss_manager and current_special_cooldown <= 0:
+		var special_attack = _boss_manager.get_special_attack()
+		if not special_attack.is_empty():
+			_perform_special_attack(special_attack)
+			return
 
-func check_fireball_attack() -> void:
-	var cooldown = fireball_cooldown
-	if phase == 2:
-		cooldown = phase2_fireball_cooldown
-	elif phase == 3:
-		cooldown = phase3_fireball_cooldown
+	# Shadow bolt attack
+	if attack_timer <= 0:
+		fire_shadow_bolt()
+		attack_timer = attack_cooldown
 
-	if fireball_timer >= cooldown and player_ref:
-		fire_fireball()
-		fireball_timer = 0.0
-
-func fire_fireball() -> void:
+func fire_shadow_bolt() -> void:
 	if not player_ref:
 		return
 
+	var bolt_damage = damage
+	if is_enraged:
+		bolt_damage = int(damage * 1.3)
+
+	# Create shadow bolt projectile
 	var projectile_scene: PackedScene = preload("res://scenes/arrow.tscn")
 	if projectile_scene:
-		var fireball: Node = projectile_scene.instantiate()
+		var bolt = projectile_scene.instantiate()
 
-		var direction: Vector2 = (player_ref.global_position - global_position).normalized()
-		fireball.global_position = global_position + direction * 40.0
-		fireball.rotation = direction.angle()
-		fireball.scale = Vector2(1.8, 1.8)
+		var direction = (player_ref.global_position - global_position).normalized()
+		bolt.global_position = global_position + direction * 40.0
+		bolt.rotation = direction.angle()
+		bolt.scale = Vector2(1.5, 1.5)
+		bolt.modulate = Color(0.3, 0.3, 0.4, 1)  # Dark purple
 
-		if fireball.has_method("set_damage"):
-			var dmg = fireball_damage
-			if is_enraged:
-				dmg = int(dmg * enraged_damage_multiplier)
-			fireball.set_damage(dmg)
+		if bolt.has_method("set_damage"):
+			bolt.set_damage(bolt_damage)
 
-		get_tree().root.add_child(fireball)
+		get_tree().root.add_child(bolt)
 
-func check_ground_fire() -> void:
-	if ground_fire_timer >= ground_fire_cooldown and player_ref:
-		spawn_ground_fire()
-		ground_fire_timer = 0.0
+func _perform_special_attack(attack_data: Dictionary) -> void:
+	var attack_name = attack_data.keys()[0] if attack_data else ""
 
-func spawn_ground_fire() -> void:
-	if not player_ref:
-		return
+	match attack_name:
+		"shadow_bolt":
+			fire_shadow_bolt()  # More powerful version
+		"teleport":
+			_perform_teleport(attack_data.teleport)
+		"summon_minions":
+			summon_shadow_minions(attack_data.summon_minions)
 
-	# Spawn ground fire at player's current position
-	# In a full implementation, this would create a damaging area
-	# For now, we'll use visual feedback and damage
-	var fire_position: Vector2 = player_ref.global_position
+func _perform_teleport(attack_data: Dictionary) -> void:
+	var teleport_cooldown = attack_data.get("cooldown", 6.0)
+	var teleport_range_val = attack_data.get("range", 300.0)
 
-	# Create visual effect (simple implementation)
+	current_special_cooldown = teleport_cooldown
+
+	# Visual feedback - fade out
 	if sprite:
-		var flash_color = Color(1.0, 0.3, 0.0, 0.5)
-		sprite.modulate = flash_color
-		await get_tree().create_timer(0.3).timeout
-		sprite.modulate = Color(1, 1, 1, 1)
+		sprite.modulate.a = 0.3
 
-func check_flame_wave() -> void:
-	if phase >= 2 and flame_wave_timer >= flame_wave_cooldown and player_ref:
-		perform_flame_wave()
+	await get_tree().create_timer(0.2).timeout
 
-func perform_flame_wave() -> void:
-	is_using_flame_wave = true
-	flame_wave_timer = 0.0
-	velocity = Vector2.ZERO
+	# Teleport to random position near player
+	if player_ref:
+		var random_angle = randf() * PI * 2
+		var teleport_pos = player_ref.global_position + Vector2(cos(random_angle), sin(random_angle)) * teleport_range_val
+
+		# Keep within bounds
+		teleport_pos = teleport_pos.clamp(Vector2(50, 50), Vector2(590, 310))
+		global_position = teleport_pos
+
+	# Visual feedback - fade in
+	if sprite:
+		sprite.modulate.a = 1.0
+
+func summon_shadow_minions(attack_data: Dictionary) -> void:
+	var summon_cooldown = attack_data.get("cooldown", 10.0)
+	var minion_count = attack_data.get("minion_count", 2)
+
+	current_special_cooldown = summon_cooldown
 
 	# Visual feedback
 	if sprite:
-		sprite.modulate = Color(1.0, 0.5, 0.0, 1)
+		sprite.modulate = Color(0.5, 0.3, 0.5, 1)
 
-	# Hold position during flame wave
-	await get_tree().create_timer(0.5).timeout
+	# Spawn minions (using enemy spawner or enemy factory)
+	for i in range(minion_count):
+		var minion_pos = global_position + Vector2(randf_range(-50, 50), randf_range(-50, 50))
 
-	# Damage player if close
-	var game_manager = get_node_or_null("/root/GameManager")
-	if player_ref:
-		var distance: float = global_position.distance_to(player_ref.global_position)
-		if distance < 200:
-			var wave_damage = 30
-			if is_enraged:
-				wave_damage = int(wave_damage * enraged_damage_multiplier)
-			if game_manager and game_manager.has_method("take_player_damage"):
-				game_manager.take_player_damage(wave_damage)
+		# Use EnemyFactory if available
+		var enemy_factory = get_node_or_null("/root/EnemyFactory")
+		if enemy_factory and enemy_factory.has_method("spawn_enemy"):
+			enemy_factory.spawn_enemy(0, minion_pos, 2)  # Type 0: Goblin, Difficulty 2
 
 	await get_tree().create_timer(0.5).timeout
 
-	is_using_flame_wave = false
+	# Reset visual
 	if sprite:
 		sprite.modulate = Color(1, 1, 1, 1)
 
-func take_damage(amount: int) -> void:
-	var actual_damage = amount
-	if is_enraged:
-		actual_damage = int(amount * 1.2)  # Takes 20% more damage when enraged
+func _teleport_away() -> void:
+	if not player_ref:
+		return
 
-	current_health -= actual_damage
+	# Simple teleport away when too close
+	var direction = (global_position - player_ref.global_position).normalized()
+	var teleport_pos = global_position + direction * teleport_range
+
+	teleport_pos = teleport_pos.clamp(Vector2(50, 50), Vector2(590, 310))
+
+	# Visual feedback
+	if sprite:
+		sprite.modulate.a = 0.3
+
+	await get_tree().create_timer(0.15).timeout
+
+	global_position = teleport_pos
+
+	if sprite:
+		sprite.modulate.a = 1.0
+
+func take_damage(amount: int) -> void:
+	super.take_damage(amount)
 	health_changed.emit(current_health, max_health)
 
-	var health_percentage = float(current_health) / float(max_health)
-
-	# Phase transitions
-	if health_percentage <= 0.25 and phase == 2:
-		enter_phase_3()
-	elif health_percentage <= 0.5 and phase == 1:
-		enter_phase_2()
+	# Check phase transitions via BossManager
+	if _boss_manager:
+		var new_phase = _boss_manager.check_phase_transition(current_health, max_health)
+		if new_phase != current_phase:
+			transition_to_phase(new_phase)
 
 	if current_health <= 0:
 		die()
 
-func enter_phase_2() -> void:
-	phase = 2
-	move_speed = phase2_speed
-	damage = 35
-	fireball_damage = 25
+func transition_to_phase(phase_num: int) -> void:
+	current_phase = phase_num
+
+	match phase_num:
+		0:  # Phase 1
+			move_speed = base_move_speed
+			damage = 18
+			can_summon_minions = false
+		1:  # Phase 2
+			move_speed = base_move_speed
+			damage = 22
+			can_summon_minions = true
+		2:  # Phase 3
+			is_enraged = true
+			move_speed = base_move_speed * 1.2
+			damage = 26
+			can_summon_minions = true
 
 	# Visual feedback
 	if sprite:
-		sprite.modulate = Color(1.0, 0.6, 0.0, 1)
-		await get_tree().create_timer(0.5).timeout
-		sprite.modulate = Color(1, 1, 1, 1)
-
-func enter_phase_3() -> void:
-	phase = 3
-	move_speed = phase3_speed
-	is_enraged = true
-
-	# More aggressive cooldowns
-	flame_wave_cooldown = 4.0
-	ground_fire_cooldown = 3.5
-
-	# Visual feedback - enraged state
-	if sprite:
-		sprite.modulate = Color(1.0, 0.2, 0.0, 1)
+		sprite.modulate = Color(0.6, 0.4, 0.6, 1)
 		await get_tree().create_timer(0.5).timeout
 		sprite.modulate = Color(1, 1, 1, 1)
 
 func die() -> void:
 	boss_defeated.emit(boss_name)
-	var campaign_mgr = get_node_or_null("/root/CampaignManager")
-	if campaign_mgr and campaign_mgr.has_method("unlock_modifier_pool"):
-		campaign_mgr.unlock_modifier_pool("fire_arrow")
+
+	# Trigger BossManager defeat
+	if _boss_manager:
+		_boss_manager.end_boss_encounter(true)
+
 	super.die()
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):
 		var dmg = damage
 		if is_enraged:
-			dmg = int(dmg * enraged_damage_multiplier)
-		var game_manager = get_node_or_null("/root/GameManager")
-		if game_manager and game_manager.has_method("take_player_damage"):
-			game_manager.take_player_damage(dmg)
+			dmg = int(dmg * 1.3)
+		if body.has_method("take_damage"):
+			body.take_damage(dmg)
