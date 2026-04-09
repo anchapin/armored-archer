@@ -7,9 +7,8 @@ import { Runtime } from '../types/nakama';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
+import { validatePayload, createValidationErrorResponse } from './validation';
 import {
-  validatePayload,
-  createValidationErrorResponse,
   object,
   number,
   string,
@@ -17,7 +16,7 @@ import {
   pipe,
   minValue,
   maxValue,
-} from './validation';
+} from 'valibot';
 
 /**
  * Content type enum for encounters.
@@ -478,4 +477,5 @@ const logger = {
   info: (_message: string, ..._args: any[]) => {},
   warn: (_message: string, ..._args: any[]) => {},
   error: (_message: string, ..._args: any[]) => {},
+  debug: (_message: string, ..._args: any[]) => {},
 };
