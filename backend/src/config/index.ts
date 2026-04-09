@@ -13,9 +13,11 @@ function loadEnvironment(): void {
   // Skip environment loading in Nakama runtime
   // Nakama provides environment variables directly
   // Check for Nakama-specific global or environment
-  if (typeof (globalThis as any).nakama !== 'undefined' || 
-      process.env.NAKAMA_RUNNER || 
-      process.env.RUNTIME_PROVIDER === 'nakama') {
+  if (
+    typeof (globalThis as any).nakama !== 'undefined' ||
+    process.env.NAKAMA_RUNNER ||
+    process.env.RUNTIME_PROVIDER === 'nakama'
+  ) {
     return;
   }
 
@@ -23,8 +25,8 @@ function loadEnvironment(): void {
   // This will fail in Nakama's runtime, which is expected
   try {
     // Use require for dynamic loading to avoid webpack bundling issues
-    fs = (typeof require !== 'undefined' ? require('fs') : undefined);
-    path = (typeof require !== 'undefined' ? require('path') : undefined);
+    fs = typeof require !== 'undefined' ? require('fs') : undefined;
+    path = typeof require !== 'undefined' ? require('path') : undefined;
   } catch (e) {
     // Not in Node.js environment, skip environment loading
     return;
@@ -734,7 +736,15 @@ const config: AppConfig = {
           tags: {
             environment: process.env.NODE_ENV || 'development',
             service: 'armored-archer-backend',
-            ...(process.env.DATADOG_TAGS ? (() => { try { return JSON.parse(process.env.DATADOG_TAGS!); } catch { return {}; } })() : {}),
+            ...(process.env.DATADOG_TAGS
+              ? (() => {
+                  try {
+                    return JSON.parse(process.env.DATADOG_TAGS!);
+                  } catch {
+                    return {};
+                  }
+                })()
+              : {}),
           },
         }
       : undefined,
@@ -856,9 +866,11 @@ export function logConfiguration(logger: {
     config.database.port,
     config.database.database
   );
-  logger.info('RevenueCat: public_key=%s, webhook_secret_configured=%s', 
-    maskSecret(config.revenuecat.publicKey), 
-    config.revenuecat.webhookSecret ? 'true' : 'false');
+  logger.info(
+    'RevenueCat: public_key=%s, webhook_secret_configured=%s',
+    maskSecret(config.revenuecat.publicKey),
+    config.revenuecat.webhookSecret ? 'true' : 'false'
+  );
   logger.info('Session: expiry_sec=%d', config.session.expirySec);
   logger.info(
     'Logger: level=%s, format=%s, output=%s, scrubLogs=%s',

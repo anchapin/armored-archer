@@ -104,9 +104,11 @@ describe('profileSync', () => {
   });
 
   test('should track errors', () => {
-    expect(() => profileSync('error_fn', () => {
-      throw new Error('test error');
-    })).toThrow('test error');
+    expect(() =>
+      profileSync('error_fn', () => {
+        throw new Error('test error');
+      })
+    ).toThrow('test error');
     const data = getProfileData('error_fn');
     expect(data?.errors).toBe(1);
   });
@@ -130,7 +132,7 @@ describe('profileAsync', () => {
 
   test('should record profile data for async', async () => {
     await profileAsync('async_recorded', async () => {
-      await new Promise(r => setTimeout(r, 1));
+      await new Promise((r) => setTimeout(r, 1));
       return true;
     });
     const data = getProfileData('async_recorded');
@@ -139,9 +141,11 @@ describe('profileAsync', () => {
   });
 
   test('should track errors in async', async () => {
-    await expect(profileAsync('async_error', async () => {
-      throw new Error('async error');
-    })).rejects.toThrow('async error');
+    await expect(
+      profileAsync('async_error', async () => {
+        throw new Error('async error');
+      })
+    ).rejects.toThrow('async error');
     const data = getProfileData('async_error');
     expect(data?.errors).toBe(1);
   });
@@ -243,18 +247,20 @@ describe('Profile Data Retrieval', () => {
     profileSync('avg_test', () => 0);
     profileSync('avg_test', () => 0);
     const report = getProfileReport();
-    const entry = report.find(r => r.name === 'avg_test');
+    const entry = report.find((r) => r.name === 'avg_test');
     expect(entry).toBeDefined();
     expect(entry?.callCount).toBe(2);
   });
 
   test('getProfileReport should calculate errorRate', () => {
-    expect(() => profileSync('error_rate', () => {
-      throw new Error('fail');
-    })).toThrow();
+    expect(() =>
+      profileSync('error_rate', () => {
+        throw new Error('fail');
+      })
+    ).toThrow();
     profileSync('error_rate', () => 0);
     const report = getProfileReport();
-    const entry = report.find(r => r.name === 'error_rate');
+    const entry = report.find((r) => r.name === 'error_rate');
     expect(entry?.errorRate).toBe(0.5);
   });
 
@@ -443,7 +449,9 @@ describe('registerRpcWithProfiling', () => {
 
     registerRpcWithProfiling(mockInitializer, 'error_rpc2', 'error_rpc2', handler);
 
-    await expect(capturedHandler({} as any, {} as any, {} as any, '')).rejects.toThrow('handler error');
+    await expect(capturedHandler({} as any, {} as any, {} as any, '')).rejects.toThrow(
+      'handler error'
+    );
 
     const data = getProfileData('rpc.error_rpc2');
     expect(data?.errors).toBeGreaterThanOrEqual(1);
@@ -481,7 +489,7 @@ describe('Slow operation logging', () => {
     mockLogger.info.mockClear();
 
     await profileAsync('slow_async_op', async () => {
-      await new Promise(r => setTimeout(r, 5));
+      await new Promise((r) => setTimeout(r, 5));
       return true;
     });
 

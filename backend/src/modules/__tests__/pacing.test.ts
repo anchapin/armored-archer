@@ -83,17 +83,17 @@ describe('Pacing', () => {
   describe('Pacing targets', () => {
     it('should have 60% combat target', () => {
       const targets = getPacingTargets();
-      expect(targets.TARGET_COMBAT_RATIO).toBe(0.60);
+      expect(targets.TARGET_COMBAT_RATIO).toBe(0.6);
     });
 
     it('should have 20% exploration target', () => {
       const targets = getPacingTargets();
-      expect(targets.TARGET_EXPLORATION_RATIO).toBe(0.20);
+      expect(targets.TARGET_EXPLORATION_RATIO).toBe(0.2);
     });
 
     it('should have 20% narrative target', () => {
       const targets = getPacingTargets();
-      expect(targets.TARGET_NARRATIVE_RATIO).toBe(0.20);
+      expect(targets.TARGET_NARRATIVE_RATIO).toBe(0.2);
     });
 
     it('should have max combat streak of 5', () => {
@@ -229,9 +229,9 @@ describe('Pacing', () => {
     it('should calculate correct ratios', () => {
       const metrics = getPacingMetrics(mockCtx, testUserId);
 
-      expect(metrics.combat_ratio).toBeCloseTo(0.60, 0.01);  // 6/10
-      expect(metrics.exploration_ratio).toBeCloseTo(0.20, 0.01);  // 2/10
-      expect(metrics.narrative_ratio).toBeCloseTo(0.20, 0.01);  // 2/10
+      expect(metrics.combat_ratio).toBeCloseTo(0.6, 0.01); // 6/10
+      expect(metrics.exploration_ratio).toBeCloseTo(0.2, 0.01); // 2/10
+      expect(metrics.narrative_ratio).toBeCloseTo(0.2, 0.01); // 2/10
     });
 
     it('should track session encounters separately', () => {
@@ -344,7 +344,9 @@ describe('Pacing', () => {
       }
 
       const recommended = getRecommendedEncounterType(mockCtx, testUserId);
-      expect([ContentType.NARRATIVE, ContentType.EXPLORATION, ContentType.COMBAT]).toContain(recommended);
+      expect([ContentType.NARRATIVE, ContentType.EXPLORATION, ContentType.COMBAT]).toContain(
+        recommended
+      );
     });
   });
 

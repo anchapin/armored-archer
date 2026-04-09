@@ -113,7 +113,7 @@ describe('error_insight_pipeline', () => {
 
       const store = getErrorStore();
       const errors = store.getErrorsInRange(new Date(0), new Date());
-      const collectedErrors = errors.filter(e => e.message === 'Should not be collected');
+      const collectedErrors = errors.filter((e) => e.message === 'Should not be collected');
       expect(collectedErrors.length).toBe(0);
 
       config.errorInsights.enabled = true;
@@ -1457,9 +1457,7 @@ describe('error_insight_pipeline', () => {
       const store = getErrorStore();
       const insights = store.getInsights();
       expect(insights.length).toBeGreaterThan(0);
-      expect(insights[0].recommendations).toContain(
-        'Increase database query timeout settings'
-      );
+      expect(insights[0].recommendations).toContain('Increase database query timeout settings');
     });
 
     it('should add circuit breaker recommendation for high frequency cache errors', () => {
@@ -1500,9 +1498,7 @@ describe('error_insight_pipeline', () => {
       const store = getErrorStore();
       const insights = store.getInsights();
       expect(insights.length).toBeGreaterThan(0);
-      expect(
-        insights[0].recommendations[0]
-      ).toContain('URGENT');
+      expect(insights[0].recommendations[0]).toContain('URGENT');
     });
 
     it('should add validation-specific recommendations', () => {
@@ -1515,15 +1511,11 @@ describe('error_insight_pipeline', () => {
       const store = getErrorStore();
       const insights = store.getInsights();
       expect(insights.length).toBeGreaterThan(0);
-      expect(insights[0].recommendations).toContain(
-        'Review client-side validation logic'
-      );
+      expect(insights[0].recommendations).toContain('Review client-side validation logic');
       expect(insights[0].recommendations).toContain(
         'Add more descriptive error messages for users'
       );
-      expect(insights[0].recommendations).toContain(
-        'Consider implementing input sanitization'
-      );
+      expect(insights[0].recommendations).toContain('Consider implementing input sanitization');
     });
 
     it('should add external-specific recommendations', () => {
@@ -1540,9 +1532,7 @@ describe('error_insight_pipeline', () => {
       expect(insights[0].recommendations).toContain(
         'Implement retry logic with exponential backoff'
       );
-      expect(insights[0].recommendations).toContain(
-        'Consider adding fallback mechanisms'
-      );
+      expect(insights[0].recommendations).toContain('Consider adding fallback mechanisms');
     });
 
     it('should add unknown source recommendations', () => {
@@ -1556,9 +1546,7 @@ describe('error_insight_pipeline', () => {
       const insights = store.getInsights();
       expect(insights.length).toBeGreaterThan(0);
       expect(insights[0].recommendations).toContain('Investigate error root cause');
-      expect(insights[0].recommendations).toContain(
-        'Add detailed logging around this operation'
-      );
+      expect(insights[0].recommendations).toContain('Add detailed logging around this operation');
     });
   });
 
@@ -1610,9 +1598,7 @@ describe('error_insight_pipeline', () => {
 
       const store = getErrorStore();
       const patterns = store.getPatterns();
-      const mergePattern = patterns.find((p) =>
-        p.messageTemplate.includes('merge test error')
-      );
+      const mergePattern = patterns.find((p) => p.messageTemplate.includes('merge test error'));
 
       if (mergePattern) {
         expect(mergePattern.count).toBeGreaterThanOrEqual(5);
@@ -1628,9 +1614,7 @@ describe('error_insight_pipeline', () => {
 
       const store = getErrorStore();
       const patterns = store.getPatterns();
-      const mergePattern = patterns.find((p) =>
-        p.messageTemplate.includes('merge rpc error')
-      );
+      const mergePattern = patterns.find((p) => p.messageTemplate.includes('merge rpc error'));
 
       if (mergePattern) {
         expect(mergePattern.affectedRpcs.length).toBeGreaterThanOrEqual(1);
@@ -1647,9 +1631,7 @@ describe('error_insight_pipeline', () => {
 
       const store = getErrorStore();
       const patterns = store.getPatterns();
-      const mergePattern = patterns.find((p) =>
-        p.messageTemplate.includes('user merge error')
-      );
+      const mergePattern = patterns.find((p) => p.messageTemplate.includes('user merge error'));
 
       if (mergePattern) {
         expect(mergePattern.affectedUsers.length).toBeGreaterThanOrEqual(1);
@@ -1702,7 +1684,9 @@ describe('error_insight_pipeline', () => {
       const store = getErrorStore();
       const insights = store.getInsights();
       expect(insights.length).toBeGreaterThan(0);
-      expect(insights[0].recommendations.some((r: string) => r.includes('focus_target_rpc'))).toBe(true);
+      expect(insights[0].recommendations.some((r: string) => r.includes('focus_target_rpc'))).toBe(
+        true
+      );
     });
   });
 

@@ -106,7 +106,14 @@ describe('ProgressionTracking', () => {
     });
 
     it('should validate quest type enum', () => {
-      const validTypes = ['stage_completion', 'boss_defeat', 'stat_target', 'level_target', 'collect_item', 'survival'];
+      const validTypes = [
+        'stage_completion',
+        'boss_defeat',
+        'stat_target',
+        'level_target',
+        'collect_item',
+        'survival',
+      ];
 
       for (const type of validTypes) {
         const questData = {
@@ -174,8 +181,20 @@ describe('ProgressionTracking', () => {
         quest_id: 'test_quest',
         quest_type: 'stage_completion',
         objectives: [
-          { objective_id: 'obj1', description: 'Objective 1', state: 'in_progress', target: 1, current: 0 },
-          { objective_id: 'obj2', description: 'Objective 2', state: 'not_started', target: 1, current: 0 },
+          {
+            objective_id: 'obj1',
+            description: 'Objective 1',
+            state: 'in_progress',
+            target: 1,
+            current: 0,
+          },
+          {
+            objective_id: 'obj2',
+            description: 'Objective 2',
+            state: 'not_started',
+            target: 1,
+            current: 0,
+          },
         ],
         started_at: new Date().toISOString(),
         priority: 100,
@@ -499,7 +518,13 @@ describe('ProgressionTracking', () => {
         quest_id: 'test_quest',
         quest_type: 'stage_completion',
         objectives: [
-          { objective_id: 'obj1', description: 'Objective 1', state: 'in_progress', target: 1, current: 0 },
+          {
+            objective_id: 'obj1',
+            description: 'Objective 1',
+            state: 'in_progress',
+            target: 1,
+            current: 0,
+          },
         ],
         started_at: new Date().toISOString(),
         priority: 100,
@@ -519,8 +544,20 @@ describe('ProgressionTracking', () => {
         quest_id: 'test_quest',
         quest_type: 'stage_completion',
         objectives: [
-          { objective_id: 'obj1', description: 'Objective 1', state: 'completed', target: 1, current: 1 },
-          { objective_id: 'obj2', description: 'Objective 2', state: 'in_progress', target: 1, current: 0 },
+          {
+            objective_id: 'obj1',
+            description: 'Objective 1',
+            state: 'completed',
+            target: 1,
+            current: 1,
+          },
+          {
+            objective_id: 'obj2',
+            description: 'Objective 2',
+            state: 'in_progress',
+            target: 1,
+            current: 0,
+          },
         ],
         started_at: new Date().toISOString(),
         priority: 100,
@@ -540,8 +577,20 @@ describe('ProgressionTracking', () => {
         quest_id: 'test_quest',
         quest_type: 'stage_completion',
         objectives: [
-          { objective_id: 'obj1', description: 'Objective 1', state: 'completed', target: 1, current: 1 },
-          { objective_id: 'obj2', description: 'Objective 2', state: 'completed', target: 1, current: 1 },
+          {
+            objective_id: 'obj1',
+            description: 'Objective 1',
+            state: 'completed',
+            target: 1,
+            current: 1,
+          },
+          {
+            objective_id: 'obj2',
+            description: 'Objective 2',
+            state: 'completed',
+            target: 1,
+            current: 1,
+          },
         ],
         started_at: new Date().toISOString(),
         priority: 100,

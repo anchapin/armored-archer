@@ -133,9 +133,7 @@ describe('logger branch coverage', () => {
 
   it('captureRpcErrorWithContext without optional params', () => {
     const error = new Error('test');
-    expect(() =>
-      captureRpcErrorWithContext('rpc', 'user-1', 'req-1', error, 100)
-    ).not.toThrow();
+    expect(() => captureRpcErrorWithContext('rpc', 'user-1', 'req-1', error, 100)).not.toThrow();
   });
 
   it('captureRpcErrorWithContext with only payload', () => {

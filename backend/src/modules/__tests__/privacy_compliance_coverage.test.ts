@@ -1,4 +1,11 @@
-import { PIIType, SensitivityLevel, isPII, containsPII, classifyField, anonymizePII } from '../privacy_compliance';
+import {
+  PIIType,
+  SensitivityLevel,
+  isPII,
+  containsPII,
+  classifyField,
+  anonymizePII,
+} from '../privacy_compliance';
 
 describe('Privacy Compliance - PII Detection', () => {
   test('isPII should detect email', () => {

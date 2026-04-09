@@ -4,11 +4,7 @@
  */
 
 import { Runtime } from '../types/nakama';
-import {
-  SeasonInfo,
-  LeaderboardEntry,
-  SeasonRewards,
-} from './season_system';
+import { SeasonInfo, LeaderboardEntry, SeasonRewards } from './season_system';
 
 // --- Types ---
 
@@ -102,11 +98,7 @@ export async function applyDailyDecay(
       continue;
     }
 
-    const decayAmount = calculateDecayAmount(
-      record.score,
-      daysInactive,
-      decayConfig
-    );
+    const decayAmount = calculateDecayAmount(record.score, daysInactive, decayConfig);
 
     if (decayAmount > 0) {
       const newRating = Math.max(record.score - decayAmount, decayConfig.minimum_rating);
@@ -114,20 +106,13 @@ export async function applyDailyDecay(
 
       // Update leaderboard with decayed rating
       const metadata = record.metadata ? JSON.parse(record.metadata) : {};
-      nk.leaderboardRecordWrite(
-        seasonId,
-        record.ownerId,
-        record.username,
-        newRating,
-        0,
-        {
-          ...metadata,
-          original_rating: String(record.score),
-          decayed: 'true',
-          days_inactive: String(daysInactive),
-          decay_amount: String(actualLoss),
-        }
-      );
+      nk.leaderboardRecordWrite(seasonId, record.ownerId, record.username, newRating, 0, {
+        ...metadata,
+        original_rating: String(record.score),
+        decayed: 'true',
+        days_inactive: String(daysInactive),
+        decay_amount: String(actualLoss),
+      });
 
       affectedCount++;
       totalLoss += actualLoss;
@@ -172,11 +157,7 @@ export async function getTopPlayers(
     const lastActiveData = await getPlayerLastActive(nk, record.ownerId);
     const daysInactive = getDaysInactive(lastActiveData);
 
-    const decayAmount = calculateDecayAmount(
-      record.score,
-      daysInactive,
-      decayConfig
-    );
+    const decayAmount = calculateDecayAmount(record.score, daysInactive, decayConfig);
     const decayedRating = Math.max(record.score - decayAmount, decayConfig.minimum_rating);
 
     // Filter by mode if specified
@@ -266,9 +247,7 @@ export async function getPlayerRank(
       continue;
     }
 
-    const otherMetadata = otherRecord.metadata
-      ? JSON.parse(otherRecord.metadata)
-      : {};
+    const otherMetadata = otherRecord.metadata ? JSON.parse(otherRecord.metadata) : {};
     const otherLastActive = await getPlayerLastActive(nk, otherRecord.ownerId);
     const otherDaysInactive = getDaysInactive(otherLastActive);
     const otherDecayAmount = calculateDecayAmount(
@@ -445,9 +424,7 @@ export function getCurrentSeasonInfo(nk: Runtime.Nakama): SeasonInfo {
  * @param nk - Nakama server interface
  * @returns Decay configuration
  */
-export function getDecayConfig(
-  nk: Runtime.Nakama
-): RatingDecayConfig {
+export function getDecayConfig(nk: Runtime.Nakama): RatingDecayConfig {
   try {
     const storage = nk.storageRead([STORAGE_KEY_DECAY_CONFIG]);
     if (storage[STORAGE_KEY_DECAY_CONFIG]) {
@@ -466,10 +443,7 @@ export function getDecayConfig(
  * @param nk - Nakama server interface
  * @param config - New decay configuration
  */
-export function setDecayConfig(
-  nk: Runtime.Nakama,
-  config: RatingDecayConfig
-): void {
+export function setDecayConfig(nk: Runtime.Nakama, config: RatingDecayConfig): void {
   nk.storageWrite({
     [STORAGE_KEY_DECAY_CONFIG]: JSON.stringify(config),
   });
@@ -484,16 +458,15 @@ export function setDecayConfig(
  * @param playerId - Player ID
  * @returns Last activity timestamp (ms)
  */
-export async function getPlayerLastActive(
-  nk: Runtime.Nakama,
-  playerId: string
-): Promise<number> {
+export async function getPlayerLastActive(nk: Runtime.Nakama, playerId: string): Promise<number> {
   try {
-    const storage = nk.storageRead([{
-      collection: STORAGE_KEY_PLAYER_LAST_ACTIVE,
-      key: playerId,
-      userId: playerId,
-    }]);
+    const storage = nk.storageRead([
+      {
+        collection: STORAGE_KEY_PLAYER_LAST_ACTIVE,
+        key: playerId,
+        userId: playerId,
+      },
+    ]);
 
     if (storage.length > 0 && storage[0].value) {
       const data = JSON.parse(storage[0].value);
@@ -512,16 +485,15 @@ export async function getPlayerLastActive(
  * @param nk - Nakama server interface
  * @param playerId - Player ID
  */
-export function updatePlayerLastActive(
-  nk: Runtime.Nakama,
-  playerId: string
-): void {
-  nk.storageWrite([{
-    collection: STORAGE_KEY_PLAYER_LAST_ACTIVE,
-    key: playerId,
-    userId: playerId,
-    value: JSON.stringify({ last_active: Date.now() }),
-  }]);
+export function updatePlayerLastActive(nk: Runtime.Nakama, playerId: string): void {
+  nk.storageWrite([
+    {
+      collection: STORAGE_KEY_PLAYER_LAST_ACTIVE,
+      key: playerId,
+      userId: playerId,
+      value: JSON.stringify({ last_active: Date.now() }),
+    },
+  ]);
 }
 
 /**
@@ -530,9 +502,7 @@ export function updatePlayerLastActive(
  * @param nk - Nakama server interface
  * @returns Archive data object
  */
-export async function getSeasonArchive(
-  nk: Runtime.Nakama
-): Promise<Record<string, SeasonArchive>> {
+export async function getSeasonArchive(nk: Runtime.Nakama): Promise<Record<string, SeasonArchive>> {
   try {
     const storage = nk.storageRead([STORAGE_KEY_SEASON_ARCHIVE]);
     if (storage[STORAGE_KEY_SEASON_ARCHIVE]) {

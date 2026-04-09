@@ -84,11 +84,11 @@ describe('Matchmaking Analytics Module', () => {
     });
 
     it('should have correct target completion rate', () => {
-      expect(MATCHMAKING_ANALYTICS_TARGETS.TARGET_COMPLETION_RATE).toBe(0.90);
+      expect(MATCHMAKING_ANALYTICS_TARGETS.TARGET_COMPLETION_RATE).toBe(0.9);
     });
 
     it('should have correct target win rate variance', () => {
-      expect(MATCHMAKING_ANALYTICS_TARGETS.TARGET_WIN_RATE_VARIANCE).toBe(0.10);
+      expect(MATCHMAKING_ANALYTICS_TARGETS.TARGET_WIN_RATE_VARIANCE).toBe(0.1);
     });
 
     it('should have correct target queue time median', () => {

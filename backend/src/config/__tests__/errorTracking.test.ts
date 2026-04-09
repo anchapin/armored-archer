@@ -36,7 +36,7 @@ import { errorTrackingConfig, initializeSentry, clearContext } from '../errorTra
 // Reset mocks before each test
 beforeEach(() => {
   jest.clearAllMocks();
-  
+
   // Reset environment
   process.env.SENTRY_DSN = 'https://testkey@sentry.io/1234567';
   process.env.NODE_ENV = 'test';
@@ -65,7 +65,7 @@ describe('initializeSentry', () => {
     // Set DSN for this test
     process.env.SENTRY_DSN = 'https://testkey@sentry.io/1234567';
     jest.resetModules();
-    
+
     // Re-require to get fresh config
     const { initializeSentry } = require('../errorTracking');
     initializeSentry();
@@ -82,7 +82,7 @@ describe('initializeSentry', () => {
   it('should not initialize when DSN is missing', () => {
     process.env.SENTRY_DSN = '';
     jest.resetModules();
-    
+
     const { initializeSentry } = require('../errorTracking');
     initializeSentry();
 
@@ -92,7 +92,7 @@ describe('initializeSentry', () => {
   it('should not initialize when disabled', () => {
     process.env.SENTRY_ENABLED = 'false';
     jest.resetModules();
-    
+
     const { initializeSentry } = require('../errorTracking');
     initializeSentry();
 
@@ -118,9 +118,14 @@ describe('Disabled State', () => {
   });
 
   it('should not call Sentry when disabled', () => {
-    const { captureException, captureMessage, setSessionContext, setGameStateContext, clearContext } = 
-      require('../errorTracking');
-    
+    const {
+      captureException,
+      captureMessage,
+      setSessionContext,
+      setGameStateContext,
+      clearContext,
+    } = require('../errorTracking');
+
     captureException(new Error('Test error'));
     captureMessage('Test message');
     setSessionContext({ userId: 'user123' });

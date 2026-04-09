@@ -51,53 +51,37 @@ describe('Performance Smoke Tests', () => {
     player = await testHelper.createTestAccount('perf_main');
 
     // Setup player with stats
-    await testHelper.writeStorageObject(
-      'player_stats',
-      player.userId,
-      player.userId,
-      {
-        level: 10,
-        xp: 2000,
-        ability_points: 5,
-        stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 }
-      }
-    );
+    await testHelper.writeStorageObject('player_stats', player.userId, player.userId, {
+      level: 10,
+      xp: 2000,
+      ability_points: 5,
+      stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
+    });
 
     // Create inventory
-    await testHelper.writeStorageObject(
-      'player_inventory',
-      player.userId,
-      player.userId,
-      {
-        user_id: player.userId,
-        gear: [],
-        equipped_gear: {},
-        unlocked_modifier_pools: []
-      }
-    );
+    await testHelper.writeStorageObject('player_inventory', player.userId, player.userId, {
+      user_id: player.userId,
+      gear: [],
+      equipped_gear: {},
+      unlocked_modifier_pools: [],
+    });
 
     // Create currency
-    await testHelper.writeStorageObject(
-      'player_currency',
-      player.userId,
-      player.userId,
-      { user_id: player.userId, gems: 1000, gold: 5000 }
-    );
+    await testHelper.writeStorageObject('player_currency', player.userId, player.userId, {
+      user_id: player.userId,
+      gems: 1000,
+      gold: 5000,
+    });
 
     // Create additional test players for concurrent tests
     for (let i = 0; i < PERFORMANCE_THRESHOLDS.minConcurrentUsers; i++) {
       const testPlayer = await testHelper.createTestAccount(`perf_concurrent_${i}`);
-      await testHelper.writeStorageObject(
-        'player_stats',
-        testPlayer.userId,
-        testPlayer.userId,
-        {
-          level: 5,
-          xp: 500,
-          ability_points: 2,
-          stats: { attack: 15, defense: 10, dodge: 8, crit_rate: 6 }
-        }
-      );
+      await testHelper.writeStorageObject('player_stats', testPlayer.userId, testPlayer.userId, {
+        level: 5,
+        xp: 500,
+        ability_points: 2,
+        stats: { attack: 15, defense: 10, dodge: 8, crit_rate: 6 },
+      });
       testPlayers.push(testPlayer);
     }
   }, 120000);
@@ -128,7 +112,7 @@ describe('Performance Smoke Tests', () => {
       return {
         duration,
         success: true,
-        result: response.payload ? JSON.parse(response.payload as unknown as string) : {}
+        result: response.payload ? JSON.parse(response.payload as unknown as string) : {},
       };
     } catch (error: any) {
       const endTime = performance.now();
@@ -136,7 +120,7 @@ describe('Performance Smoke Tests', () => {
       return {
         duration,
         success: false,
-        result: error.message
+        result: error.message,
       };
     }
   }
@@ -166,7 +150,7 @@ describe('Performance Smoke Tests', () => {
         p50Ms: 0,
         p95Ms: 0,
         p99Ms: 0,
-        requestsPerSecond: 0
+        requestsPerSecond: 0,
       };
     }
 
@@ -184,7 +168,7 @@ describe('Performance Smoke Tests', () => {
       p50Ms: percentile(times, 50),
       p95Ms: percentile(times, 95),
       p99Ms: percentile(times, 99),
-      requestsPerSecond: times.length / (sum / 1000)
+      requestsPerSecond: times.length / (sum / 1000),
     };
   }
 
@@ -197,7 +181,9 @@ describe('Performance Smoke Tests', () => {
       }
 
       const metrics = calculateMetrics('armored_archer/get_player_rank');
-      console.log(`get_player_rank: avg=${metrics.averageMs.toFixed(2)}ms, p95=${metrics.p95Ms.toFixed(2)}ms`);
+      console.log(
+        `get_player_rank: avg=${metrics.averageMs.toFixed(2)}ms, p95=${metrics.p95Ms.toFixed(2)}ms`
+      );
 
       expect(metrics.averageMs).toBeLessThan(PERFORMANCE_THRESHOLDS.averageResponseTimeMs);
       expect(metrics.p95Ms).toBeLessThan(PERFORMANCE_THRESHOLDS.p95ResponseTimeMs);
@@ -209,7 +195,9 @@ describe('Performance Smoke Tests', () => {
       }
 
       const metrics = calculateMetrics('armored_archer/get_player_stats');
-      console.log(`get_player_stats: avg=${metrics.averageMs.toFixed(2)}ms, p95=${metrics.p95Ms.toFixed(2)}ms`);
+      console.log(
+        `get_player_stats: avg=${metrics.averageMs.toFixed(2)}ms, p95=${metrics.p95Ms.toFixed(2)}ms`
+      );
 
       expect(metrics.averageMs).toBeLessThan(PERFORMANCE_THRESHOLDS.averageResponseTimeMs);
       expect(metrics.p95Ms).toBeLessThan(PERFORMANCE_THRESHOLDS.p95ResponseTimeMs);
@@ -221,7 +209,9 @@ describe('Performance Smoke Tests', () => {
       }
 
       const metrics = calculateMetrics('armored_archer/get_inventory');
-      console.log(`get_inventory: avg=${metrics.averageMs.toFixed(2)}ms, p95=${metrics.p95Ms.toFixed(2)}ms`);
+      console.log(
+        `get_inventory: avg=${metrics.averageMs.toFixed(2)}ms, p95=${metrics.p95Ms.toFixed(2)}ms`
+      );
 
       expect(metrics.averageMs).toBeLessThan(PERFORMANCE_THRESHOLDS.averageResponseTimeMs);
       expect(metrics.p95Ms).toBeLessThan(PERFORMANCE_THRESHOLDS.p95ResponseTimeMs);
@@ -233,7 +223,9 @@ describe('Performance Smoke Tests', () => {
       }
 
       const metrics = calculateMetrics('armored_archer/get_currency');
-      console.log(`get_currency: avg=${metrics.averageMs.toFixed(2)}ms, p95=${metrics.p95Ms.toFixed(2)}ms`);
+      console.log(
+        `get_currency: avg=${metrics.averageMs.toFixed(2)}ms, p95=${metrics.p95Ms.toFixed(2)}ms`
+      );
 
       expect(metrics.averageMs).toBeLessThan(PERFORMANCE_THRESHOLDS.averageResponseTimeMs);
       expect(metrics.p95Ms).toBeLessThan(PERFORMANCE_THRESHOLDS.p95ResponseTimeMs);
@@ -245,7 +237,9 @@ describe('Performance Smoke Tests', () => {
       }
 
       const metrics = calculateMetrics('armored_archer/get_season_info');
-      console.log(`get_season_info: avg=${metrics.averageMs.toFixed(2)}ms, p95=${metrics.p95Ms.toFixed(2)}ms`);
+      console.log(
+        `get_season_info: avg=${metrics.averageMs.toFixed(2)}ms, p95=${metrics.p95Ms.toFixed(2)}ms`
+      );
 
       expect(metrics.averageMs).toBeLessThan(PERFORMANCE_THRESHOLDS.averageResponseTimeMs);
       expect(metrics.p95Ms).toBeLessThan(PERFORMANCE_THRESHOLDS.p95ResponseTimeMs);
@@ -257,7 +251,9 @@ describe('Performance Smoke Tests', () => {
       }
 
       const metrics = calculateMetrics('armored_archer/list_matches');
-      console.log(`list_matches: avg=${metrics.averageMs.toFixed(2)}ms, p95=${metrics.p95Ms.toFixed(2)}ms`);
+      console.log(
+        `list_matches: avg=${metrics.averageMs.toFixed(2)}ms, p95=${metrics.p95Ms.toFixed(2)}ms`
+      );
 
       expect(metrics.averageMs).toBeLessThan(PERFORMANCE_THRESHOLDS.averageResponseTimeMs);
       expect(metrics.p95Ms).toBeLessThan(PERFORMANCE_THRESHOLDS.p95ResponseTimeMs);
@@ -269,7 +265,7 @@ describe('Performance Smoke Tests', () => {
       const startTime = performance.now();
 
       // All users make requests simultaneously
-      const promises = testPlayers.map(player =>
+      const promises = testPlayers.map((player) =>
         measureRpcTime(player, 'armored_archer/get_player_rank', {})
       );
 
@@ -283,7 +279,7 @@ describe('Performance Smoke Tests', () => {
       expect(results.length).toBe(testPlayers.length);
 
       // Most should succeed
-      const successful = results.filter(r => r.success);
+      const successful = results.filter((r) => r.success);
       expect(successful.length).toBeGreaterThanOrEqual(8);
 
       // Total time should be within threshold
@@ -301,7 +297,7 @@ describe('Performance Smoke Tests', () => {
         'get_leaderboard',
         'get_player_rank',
         'get_player_stats',
-        'get_inventory'
+        'get_inventory',
       ];
 
       const startTime = performance.now();
@@ -319,7 +315,7 @@ describe('Performance Smoke Tests', () => {
 
       expect(results.length).toBe(endpoints.length);
 
-      const successful = results.filter(r => r.success);
+      const successful = results.filter((r) => r.success);
       expect(successful.length).toBeGreaterThanOrEqual(8);
 
       expect(totalDuration).toBeLessThan(PERFORMANCE_THRESHOLDS.maxConcurrentTestMs);
@@ -345,7 +341,9 @@ describe('Performance Smoke Tests', () => {
 
       const degradation = ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100;
 
-      console.log(`Sustained load: first_half=${firstHalfAvg.toFixed(2)}ms, second_half=${secondHalfAvg.toFixed(2)}ms, degradation=${degradation.toFixed(2)}%`);
+      console.log(
+        `Sustained load: first_half=${firstHalfAvg.toFixed(2)}ms, second_half=${secondHalfAvg.toFixed(2)}ms, degradation=${degradation.toFixed(2)}%`
+      );
 
       // Performance should not degrade more than 50%
       expect(degradation).toBeLessThan(50);
@@ -367,15 +365,23 @@ describe('Performance Smoke Tests', () => {
       const baselineAvg = baselineTimes.reduce((a, b) => a + b, 0) / 10;
 
       // Check for anomalies (response time > 3x baseline)
-      const { duration: testDuration } = await measureRpcTime(player, 'armored_archer/get_player_rank', {});
+      const { duration: testDuration } = await measureRpcTime(
+        player,
+        'armored_archer/get_player_rank',
+        {}
+      );
 
       const anomalyThreshold = baselineAvg * 3;
 
-      console.log(`Baseline avg: ${baselineAvg.toFixed(2)}ms, Test: ${testDuration.toFixed(2)}ms, Threshold: ${anomalyThreshold.toFixed(2)}ms`);
+      console.log(
+        `Baseline avg: ${baselineAvg.toFixed(2)}ms, Test: ${testDuration.toFixed(2)}ms, Threshold: ${anomalyThreshold.toFixed(2)}ms`
+      );
 
       // This test logs the anomaly detection; actual failure depends on server state
       if (testDuration > anomalyThreshold) {
-        console.warn(`Performance anomaly detected: ${testDuration.toFixed(2)}ms > ${anomalyThreshold.toFixed(2)}ms`);
+        console.warn(
+          `Performance anomaly detected: ${testDuration.toFixed(2)}ms > ${anomalyThreshold.toFixed(2)}ms`
+        );
       }
 
       // Don't fail the test for anomalies in smoke tests, just detect
@@ -390,7 +396,9 @@ describe('Performance Smoke Tests', () => {
 
       for (let i = 0; i < 20; i++) {
         // Simulate memory measurement
-        const simulatedMemory = process.memoryUsage ? process.memoryUsage().heapUsed / 1024 / 1024 : 50 + Math.random() * 10;
+        const simulatedMemory = process.memoryUsage
+          ? process.memoryUsage().heapUsed / 1024 / 1024
+          : 50 + Math.random() * 10;
         memorySnapshots.push(simulatedMemory);
 
         await measureRpcTime(player, 'armored_archer/get_player_rank', {});
@@ -404,7 +412,9 @@ describe('Performance Smoke Tests', () => {
 
       const growth = secondHalfAvg - firstHalfAvg;
 
-      console.log(`Memory: first_half=${firstHalfAvg.toFixed(2)}MB, second_half=${secondHalfAvg.toFixed(2)}MB, growth=${growth.toFixed(2)}MB`);
+      console.log(
+        `Memory: first_half=${firstHalfAvg.toFixed(2)}MB, second_half=${secondHalfAvg.toFixed(2)}MB, growth=${growth.toFixed(2)}MB`
+      );
 
       // Memory growth should be minimal (< 50MB)
       expect(growth).toBeLessThan(50);
@@ -426,13 +436,13 @@ describe('Performance Smoke Tests', () => {
         'armored_archer/get_inventory',
         'armored_archer/get_currency',
         'armored_archer/get_season_info',
-        'armored_archer/list_matches'
+        'armored_archer/list_matches',
       ];
 
-      const report = endpoints.map(endpoint => calculateMetrics(endpoint));
+      const report = endpoints.map((endpoint) => calculateMetrics(endpoint));
 
       console.log('\n=== Performance Report ===');
-      report.forEach(metrics => {
+      report.forEach((metrics) => {
         console.log(`${metrics.endpoint}:`);
         console.log(`  Requests: ${metrics.totalRequests}`);
         console.log(`  Average: ${metrics.averageMs.toFixed(2)}ms`);
@@ -442,7 +452,7 @@ describe('Performance Smoke Tests', () => {
 
       // Verify overall performance
       const overallAvg = report.reduce((sum, m) => sum + m.averageMs, 0) / report.length;
-      const overallP95 = Math.max(...report.map(m => m.p95Ms));
+      const overallP95 = Math.max(...report.map((m) => m.p95Ms));
 
       console.log(`\nOverall Average: ${overallAvg.toFixed(2)}ms`);
       console.log(`Overall P95: ${overallP95.toFixed(2)}ms`);

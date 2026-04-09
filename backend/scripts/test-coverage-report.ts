@@ -46,7 +46,7 @@ const EXPECTED_SUITES: TestSuite[] = [
     testCount: 0,
     categories: ['auth', 'security', 'session'],
     endpoints: ['authenticateEmail', 'refreshSession', 'rpc'],
-    status: 'missing'
+    status: 'missing',
   },
   {
     name: 'Player System Tests',
@@ -55,7 +55,7 @@ const EXPECTED_SUITES: TestSuite[] = [
     testCount: 0,
     categories: ['player', 'rpg', 'progression'],
     endpoints: ['gain_xp', 'allocate_stats', 'get_player_stats', 'get_player_rank'],
-    status: 'missing'
+    status: 'missing',
   },
   {
     name: 'Combat System Tests',
@@ -64,7 +64,7 @@ const EXPECTED_SUITES: TestSuite[] = [
     testCount: 0,
     categories: ['combat', 'pvp', 'match'],
     endpoints: ['submit_combat_action', 'get_match_state', 'create_match', 'accept_match'],
-    status: 'missing'
+    status: 'missing',
   },
   {
     name: 'Gear & Inventory Tests',
@@ -72,8 +72,14 @@ const EXPECTED_SUITES: TestSuite[] = [
     description: 'Gear generation, inventory management, equip/unequip, modifiers',
     testCount: 0,
     categories: ['gear', 'inventory', 'equipment'],
-    endpoints: ['generate_gear', 'get_inventory', 'equip_gear', 'unequip_gear', 'unlock_modifier_pool'],
-    status: 'missing'
+    endpoints: [
+      'generate_gear',
+      'get_inventory',
+      'equip_gear',
+      'unequip_gear',
+      'unlock_modifier_pool',
+    ],
+    status: 'missing',
   },
   {
     name: 'Matchmaking Tests',
@@ -82,7 +88,7 @@ const EXPECTED_SUITES: TestSuite[] = [
     testCount: 0,
     categories: ['matchmaking', 'pvp', 'ranking'],
     endpoints: ['create_match', 'accept_match', 'list_matches', 'get_player_rank'],
-    status: 'missing'
+    status: 'missing',
   },
   {
     name: 'Season System Tests',
@@ -90,8 +96,14 @@ const EXPECTED_SUITES: TestSuite[] = [
     description: 'Season info, leaderboard, rewards, rank updates',
     testCount: 0,
     categories: ['season', 'leaderboard', 'rewards'],
-    endpoints: ['get_season_info', 'get_leaderboard', 'update_rank', 'get_season_rewards', 'claim_season_rewards'],
-    status: 'missing'
+    endpoints: [
+      'get_season_info',
+      'get_leaderboard',
+      'update_rank',
+      'get_season_rewards',
+      'claim_season_rewards',
+    ],
+    status: 'missing',
   },
   {
     name: 'Store System Tests',
@@ -100,7 +112,7 @@ const EXPECTED_SUITES: TestSuite[] = [
     testCount: 0,
     categories: ['store', 'currency', 'iap'],
     endpoints: ['get_currency', 'validate_purchase', 'spend_gems'],
-    status: 'missing'
+    status: 'missing',
   },
   {
     name: 'Performance Smoke Tests',
@@ -109,7 +121,7 @@ const EXPECTED_SUITES: TestSuite[] = [
     testCount: 0,
     categories: ['performance', 'load', 'smoke'],
     endpoints: ['all'],
-    status: 'missing'
+    status: 'missing',
   },
   {
     name: 'Error Handling Tests',
@@ -118,7 +130,7 @@ const EXPECTED_SUITES: TestSuite[] = [
     testCount: 0,
     categories: ['errors', 'validation', 'security'],
     endpoints: ['all'],
-    status: 'missing'
+    status: 'missing',
   },
   {
     name: 'Network Resilience Tests',
@@ -127,8 +139,8 @@ const EXPECTED_SUITES: TestSuite[] = [
     testCount: 0,
     categories: ['network', 'resilience', 'offline'],
     endpoints: ['all'],
-    status: 'missing'
-  }
+    status: 'missing',
+  },
 ];
 
 function countTestsInFile(filePath: string): number {
@@ -144,7 +156,7 @@ function countTestsInFile(filePath: string): number {
 
 function checkSuiteStatus(suite: TestSuite): 'complete' | 'partial' | 'missing' {
   const filePath = path.join(TESTS_DIR, suite.file);
-  
+
   if (!fs.existsSync(filePath)) {
     return 'missing';
   }
@@ -158,23 +170,23 @@ function checkSuiteStatus(suite: TestSuite): 'complete' | 'partial' | 'missing' 
   } else if (testCount > 0) {
     return 'partial';
   }
-  
+
   return 'missing';
 }
 
 function generateCoverageReport(): CoverageReport {
-  const suites = EXPECTED_SUITES.map(suite => ({
+  const suites = EXPECTED_SUITES.map((suite) => ({
     ...suite,
-    status: checkSuiteStatus(suite)
+    status: checkSuiteStatus(suite),
   }));
 
-  const completedSuites = suites.filter(s => s.status === 'complete').length;
-  const partialSuites = suites.filter(s => s.status === 'partial').length;
-  const missingSuites = suites.filter(s => s.status === 'missing').length;
+  const completedSuites = suites.filter((s) => s.status === 'complete').length;
+  const partialSuites = suites.filter((s) => s.status === 'partial').length;
+  const missingSuites = suites.filter((s) => s.status === 'missing').length;
   const totalTests = suites.reduce((sum, s) => sum + s.testCount, 0);
 
   // Calculate coverage percentage (complete + 0.5 * partial)
-  const coverageScore = completedSuites + (partialSuites * 0.5);
+  const coverageScore = completedSuites + partialSuites * 0.5;
   const coveragePercentage = (coverageScore / suites.length) * 100;
 
   return {
@@ -184,13 +196,13 @@ function generateCoverageReport(): CoverageReport {
     missingSuites,
     totalTests,
     coveragePercentage,
-    suites
+    suites,
   };
 }
 
 function generateMarkdownReport(report: CoverageReport): string {
   const date = new Date().toISOString().split('T')[0];
-  
+
   let md = `# Test Coverage Report - Phase 1.4 Smoke Testing
 
 **Generated:** ${new Date().toISOString()}
@@ -225,8 +237,9 @@ function generateMarkdownReport(report: CoverageReport): string {
 |------------|--------|-------|------------|
 `;
 
-  report.suites.forEach(suite => {
-    const statusIcon = suite.status === 'complete' ? '✅' : suite.status === 'partial' ? '⚠️' : '❌';
+  report.suites.forEach((suite) => {
+    const statusIcon =
+      suite.status === 'complete' ? '✅' : suite.status === 'partial' ? '⚠️' : '❌';
     md += `| ${suite.name} | ${statusIcon} ${suite.status} | ${suite.testCount} | ${suite.categories.join(', ')} |\n`;
   });
 
@@ -234,8 +247,10 @@ function generateMarkdownReport(report: CoverageReport): string {
 
 `;
 
-  report.suites.filter(s => s.status === 'complete').forEach(suite => {
-    md += `### ${suite.name}
+  report.suites
+    .filter((s) => s.status === 'complete')
+    .forEach((suite) => {
+      md += `### ${suite.name}
 
 - **File**: \`${suite.file}\`
 - **Tests**: ${suite.testCount}
@@ -244,17 +259,17 @@ function generateMarkdownReport(report: CoverageReport): string {
 - **Description**: ${suite.description}
 
 `;
-  });
+    });
 
   md += `## Partial Suites
 
 `;
 
-  const partial = report.suites.filter(s => s.status === 'partial');
+  const partial = report.suites.filter((s) => s.status === 'partial');
   if (partial.length === 0) {
     md += `None - all suites are either complete or missing\n\n`;
   } else {
-    partial.forEach(suite => {
+    partial.forEach((suite) => {
       md += `### ${suite.name}
 
 - **File**: \`${suite.file}\`
@@ -270,11 +285,11 @@ function generateMarkdownReport(report: CoverageReport): string {
 
 `;
 
-  const missing = report.suites.filter(s => s.status === 'missing');
+  const missing = report.suites.filter((s) => s.status === 'missing');
   if (missing.length === 0) {
     md += `None - all required test suites are implemented\n\n`;
   } else {
-    missing.forEach(suite => {
+    missing.forEach((suite) => {
       md += `### ${suite.name}
 
 - **File**: \`${suite.file}\`
@@ -293,7 +308,7 @@ function generateMarkdownReport(report: CoverageReport): string {
 
   if (missing.length > 0) {
     md += `1. **Create missing test suites**:\n`;
-    missing.forEach(suite => {
+    missing.forEach((suite) => {
       md += `   - ${suite.name} (\`${suite.file}\`)\n`;
     });
     md += `\n`;
@@ -301,7 +316,7 @@ function generateMarkdownReport(report: CoverageReport): string {
 
   if (partial.length > 0) {
     md += `2. **Expand partial test suites**:\n`;
-    partial.forEach(suite => {
+    partial.forEach((suite) => {
       md += `   - ${suite.name}: Add more test cases\n`;
     });
     md += `\n`;

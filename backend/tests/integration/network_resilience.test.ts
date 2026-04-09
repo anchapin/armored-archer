@@ -21,12 +21,12 @@ describe('Network Resilience Integration Tests', () => {
     await setupPlayerStats(playerA, {
       level: 10,
       xp: 2000,
-      stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 }
+      stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
     });
     await setupPlayerStats(playerB, {
       level: 10,
       xp: 2000,
-      stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 }
+      stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
     });
   }, 120000);
 
@@ -37,12 +37,7 @@ describe('Network Resilience Integration Tests', () => {
 
   // Helper to setup player stats
   async function setupPlayerStats(account: TestAccount, stats: any): Promise<void> {
-    await testHelper.writeStorageObject(
-      'player_stats',
-      account.userId,
-      account.userId,
-      stats
-    );
+    await testHelper.writeStorageObject('player_stats', account.userId, account.userId, stats);
   }
 
   // Helper to call RPC
@@ -75,10 +70,10 @@ describe('Network Resilience Integration Tests', () => {
       ];
 
       const results = await Promise.all(promises);
-      
+
       // All should succeed (or at least not crash)
       expect(results).toHaveLength(3);
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result).toBeDefined();
       });
     });
@@ -88,11 +83,15 @@ describe('Network Resilience Integration Tests', () => {
     test('should handle RPC call when session is invalid', async () => {
       // Create a client with an invalid/expired token
       const expiredClient = await testHelper.createTestAccount('expired_test');
-      
+
       // Write invalid token to simulate offline/invalid session
       // The RPC should still return a proper error response
       try {
-        const result = await expiredClient.client.rpc(expiredClient.session, 'armored_archer/get_player_rank', {});
+        const result = await expiredClient.client.rpc(
+          expiredClient.session,
+          'armored_archer/get_player_rank',
+          {}
+        );
         // If we get here without error, the response should indicate the issue
         expect(result).toBeDefined();
       } catch (error: any) {
@@ -104,9 +103,9 @@ describe('Network Resilience Integration Tests', () => {
     test('should return appropriate error for missing player stats', async () => {
       // Create a new account without stats
       const newAccount = await testHelper.createTestAccount('no_stats');
-      
+
       const result = await rpcCall(newAccount, 'armored_archer/get_player_rank', {});
-      
+
       // Should return error about missing stats
       expect(result.error).toBeDefined();
       expect(result.error).toContain('not found');
@@ -120,14 +119,14 @@ describe('Network Resilience Integration Tests', () => {
       // Create a match for testing
       const result = await rpcCall(playerA, 'armored_archer/create_match', {
         match_type: 'ranked',
-        target_opponent_id: playerB.userId
+        target_opponent_id: playerB.userId,
       });
       matchId = result.match.match_id;
     });
 
     test('should handle match creation with valid session', async () => {
       const result = await rpcCall(playerA, 'armored_archer/create_match', {
-        match_type: 'ranked'
+        match_type: 'ranked',
       });
 
       expect(result.success).toBe(true);
@@ -139,11 +138,11 @@ describe('Network Resilience Integration Tests', () => {
       // Create new match
       const createResult = await rpcCall(playerA, 'armored_archer/create_match', {
         match_type: 'ranked',
-        target_opponent_id: playerB.userId
+        target_opponent_id: playerB.userId,
       });
 
       const acceptResult = await rpcCall(playerB, 'armored_archer/accept_match', {
-        match_id: createResult.match.match_id
+        match_id: createResult.match.match_id,
       });
 
       expect(acceptResult.success).toBe(true);
@@ -154,11 +153,11 @@ describe('Network Resilience Integration Tests', () => {
       // Create and accept a match
       const createResult = await rpcCall(playerA, 'armored_archer/create_match', {
         match_type: 'ranked',
-        target_opponent_id: playerB.userId
+        target_opponent_id: playerB.userId,
       });
 
       await rpcCall(playerB, 'armored_archer/accept_match', {
-        match_id: createResult.match.match_id
+        match_id: createResult.match.match_id,
       });
 
       // Complete the match
@@ -166,7 +165,7 @@ describe('Network Resilience Integration Tests', () => {
         match_id: createResult.match.match_id,
         winner_id: playerA.userId,
         loser_id: playerB.userId,
-        is_punch_up: false
+        is_punch_up: false,
       });
 
       expect(completeResult.success).toBe(true);
@@ -176,25 +175,25 @@ describe('Network Resilience Integration Tests', () => {
     test('should handle rapid match operations', async () => {
       // Test handling of rapid sequential match operations
       const operations = [];
-      
+
       for (let i = 0; i < 5; i++) {
         operations.push(
           rpcCall(playerA, 'armored_archer/create_match', {
-            match_type: 'casual'
+            match_type: 'casual',
           })
         );
       }
 
       const results = await Promise.allSettled(operations);
-      
+
       // Check that at least some succeeded
-      const fulfilled = results.filter(r => r.status === 'fulfilled');
+      const fulfilled = results.filter((r) => r.status === 'fulfilled');
       expect(fulfilled.length).toBeGreaterThan(0);
     });
 
     test('should handle invalid match ID', async () => {
       const result = await rpcCall(playerA, 'armored_archer/accept_match', {
-        match_id: 'invalid_match_id_12345'
+        match_id: 'invalid_match_id_12345',
       });
 
       expect(result.error).toBeDefined();
@@ -204,13 +203,13 @@ describe('Network Resilience Integration Tests', () => {
     test('should handle concurrent match operations from multiple players', async () => {
       // Player A creates a match
       const createResult = await rpcCall(playerA, 'armored_archer/create_match', {
-        match_type: 'ranked'
+        match_type: 'ranked',
       });
 
       // Both players try to list matches concurrently
       const [listA, listB] = await Promise.all([
         rpcCall(playerA, 'armored_archer/list_matches', {}),
-        rpcCall(playerB, 'armored_archer/list_matches', {})
+        rpcCall(playerB, 'armored_archer/list_matches', {}),
       ]);
 
       expect(listA.success).toBe(true);
@@ -222,17 +221,17 @@ describe('Network Resilience Integration Tests', () => {
     test('should handle session re-authentication', async () => {
       // Simulate reconnection by creating a new session
       const newAccount = await testHelper.createTestAccount('reconnect_test');
-      
+
       // Verify session works
       const result = await rpcCall(newAccount, 'armored_archer/get_player_rank', {});
-      
+
       // Should work with fresh session (need to setup stats first)
       await setupPlayerStats(newAccount, {
         level: 5,
         xp: 500,
-        stats: { attack: 10, defense: 10, dodge: 5, crit_rate: 5 }
+        stats: { attack: 10, defense: 10, dodge: 5, crit_rate: 5 },
       });
-      
+
       const resultAfterStats = await rpcCall(newAccount, 'armored_archer/get_player_rank', {});
       expect(resultAfterStats.success).toBe(true);
     });
@@ -242,7 +241,7 @@ describe('Network Resilience Integration Tests', () => {
       await setupPlayerStats(account, {
         level: 5,
         xp: 500,
-        stats: { attack: 10, defense: 10, dodge: 5, crit_rate: 5 }
+        stats: { attack: 10, defense: 10, dodge: 5, crit_rate: 5 },
       });
 
       // Simulate rapid reconnection attempts
@@ -253,7 +252,7 @@ describe('Network Resilience Integration Tests', () => {
       }
 
       // All should succeed
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result.success).toBe(true);
       });
     });
@@ -261,14 +260,14 @@ describe('Network Resilience Integration Tests', () => {
     test('should maintain match state after reconnection simulation', async () => {
       // Create a match
       const createResult = await rpcCall(playerA, 'armored_archer/create_match', {
-        match_type: 'casual'
+        match_type: 'casual',
       });
-      
+
       const matchId = createResult.match.match_id;
 
       // Simulate reconnection by getting the match again
       const listResult = await rpcCall(playerA, 'armored_archer/list_matches', {});
-      
+
       // The match should still be available
       const match = listResult.matches.find((m: any) => m.match_id === matchId);
       expect(match).toBeDefined();
@@ -322,19 +321,19 @@ describe('Network Resilience Integration Tests', () => {
       // Create a match
       const createResult = await rpcCall(playerA, 'armored_archer/create_match', {
         match_type: 'ranked',
-        target_opponent_id: playerB.userId
+        target_opponent_id: playerB.userId,
       });
 
       // Accept it
       await rpcCall(playerB, 'armored_archer/accept_match', {
-        match_id: createResult.match.match_id
+        match_id: createResult.match.match_id,
       });
 
       // Try to complete with invalid data (simulating network issues)
       const invalidComplete = await rpcCall(playerA, 'armored_archer/complete_match', {
         match_id: createResult.match.match_id,
         winner_id: 'invalid_winner',
-        loser_id: playerB.userId
+        loser_id: playerB.userId,
       });
 
       // Should return error, not crash
@@ -352,7 +351,7 @@ describe('Network Resilience Integration Tests', () => {
       await rpcCall(playerA, 'armored_archer/complete_match', {
         match_id: 'nonexistent_match',
         winner_id: playerA.userId,
-        loser_id: playerB.userId
+        loser_id: playerB.userId,
       });
 
       // Get rank again - should be unchanged
@@ -363,9 +362,9 @@ describe('Network Resilience Integration Tests', () => {
     test('should handle storage write failures gracefully', async () => {
       // Try to create match without proper stats (should fail gracefully)
       const noStatsAccount = await testHelper.createTestAccount('no_stats_write');
-      
+
       const result = await rpcCall(noStatsAccount, 'armored_archer/create_match', {
-        match_type: 'ranked'
+        match_type: 'ranked',
       });
 
       // Should return error, not crash

@@ -140,7 +140,9 @@ describe('config module', () => {
       delete process.env.DATABASE_ADDRESS;
       delete process.env.NAKAMA_DATABASE_ADDRESS;
       const { validateRequiredConfig } = require('../config');
-      expect(() => validateRequiredConfig()).toThrow('DATABASE_ADDRESS or NAKAMA_DATABASE_ADDRESS is required');
+      expect(() => validateRequiredConfig()).toThrow(
+        'DATABASE_ADDRESS or NAKAMA_DATABASE_ADDRESS is required'
+      );
     });
 
     it('throws when server key is missing in production', () => {

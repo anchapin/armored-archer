@@ -20,17 +20,17 @@ describe('Matchmaker Integration Tests', () => {
     await setupPlayerStats(playerA, {
       level: 10,
       xp: 2000,
-      stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 }
+      stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
     });
     await setupPlayerStats(playerB, {
       level: 10,
       xp: 2000,
-      stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 }
+      stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
     });
     await setupPlayerStats(playerC, {
       level: 10,
       xp: 2000,
-      stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 }
+      stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
     });
   }, 120000);
 
@@ -41,11 +41,13 @@ describe('Matchmaker Integration Tests', () => {
         // We cannot directly delete matches via client unless we have admin rights
         // Use admin to delete storage objects for these matches
         const admin = await testHelper.getAdminClient();
-        await admin.storageDelete([{
-          collection: 'pvp_matches',
-          key: matchId,
-          userId: '' // delete regardless of userId
-        }]);
+        await admin.storageDelete([
+          {
+            collection: 'pvp_matches',
+            key: matchId,
+            userId: '', // delete regardless of userId
+          },
+        ]);
       } catch (e) {
         // ignore cleanup errors
       }
@@ -61,12 +63,7 @@ describe('Matchmaker Integration Tests', () => {
 
   // Helper to setup player stats
   async function setupPlayerStats(account: TestAccount, stats: any): Promise<void> {
-    await testHelper.writeStorageObject(
-      'player_stats',
-      account.userId,
-      account.userId,
-      stats
-    );
+    await testHelper.writeStorageObject('player_stats', account.userId, account.userId, stats);
   }
 
   // Helper to call RPC and parse JSON
@@ -88,7 +85,7 @@ describe('Matchmaker Integration Tests', () => {
     test('should create a match with target opponent', async () => {
       const payload = {
         match_type: 'ranked',
-        target_opponent_id: playerB.userId
+        target_opponent_id: playerB.userId,
       };
       const result = await createMatch(playerA, payload);
 
@@ -106,13 +103,13 @@ describe('Matchmaker Integration Tests', () => {
       await setupPlayerStats(playerC, {
         level: 5,
         xp: 500,
-        stats: { attack: 15, defense: 10, dodge: 8, crit_rate: 6 }
+        stats: { attack: 15, defense: 10, dodge: 8, crit_rate: 6 },
       });
 
       const payload = {
         match_type: 'ranked',
         target_opponent_id: playerC.userId,
-        is_punch_up: true
+        is_punch_up: true,
       };
       const result = await createMatch(playerA, payload);
 
@@ -123,11 +120,11 @@ describe('Matchmaker Integration Tests', () => {
     test('should return error when target player not found', async () => {
       const payload = {
         match_type: 'ranked',
-        target_opponent_id: 'non-existent-user'
+        target_opponent_id: 'non-existent-user',
       };
       const result = await rpcCall(playerA, 'armored_archer/create_match', payload);
 
-      expect(result.error).toBe("Target player not found");
+      expect(result.error).toBe('Target player not found');
     });
 
     test('should return error when rank difference too large without punch-up', async () => {
@@ -135,26 +132,26 @@ describe('Matchmaker Integration Tests', () => {
       await setupPlayerStats(playerC, {
         level: 20,
         xp: 5000,
-        stats: { attack: 40, defense: 35, dodge: 25, crit_rate: 20 }
+        stats: { attack: 40, defense: 35, dodge: 25, crit_rate: 20 },
       });
 
       const payload = {
         match_type: 'ranked',
-        target_opponent_id: playerC.userId
+        target_opponent_id: playerC.userId,
       };
       const result = await rpcCall(playerA, 'armored_archer/create_match', payload);
 
-      expect(result.error).toBe("Rank difference too large for direct challenge");
+      expect(result.error).toBe('Rank difference too large for direct challenge');
     });
 
     test('should create open match when no target specified', async () => {
       const payload = {
-        match_type: 'casual'
+        match_type: 'casual',
       };
       const result = await createMatch(playerA, payload);
 
       expect(result.success).toBe(true);
-      expect(result.match.opponent_id).toBe("");
+      expect(result.match.opponent_id).toBe('');
       expect(result.match.status).toBe('pending');
       expect(result.match.match_type).toBe('casual');
     });
@@ -164,11 +161,11 @@ describe('Matchmaker Integration Tests', () => {
       // No stats written
 
       const payload = {
-        match_type: 'ranked'
+        match_type: 'ranked',
       };
       const result = await rpcCall(lonelyPlayer, 'armored_archer/create_match', payload);
 
-      expect(result.error).toBe("Player stats not found");
+      expect(result.error).toBe('Player stats not found');
     });
   });
 
@@ -179,7 +176,7 @@ describe('Matchmaker Integration Tests', () => {
       // Create a match where playerA invites playerB
       const createPayload = {
         match_type: 'ranked',
-        target_opponent_id: playerB.userId
+        target_opponent_id: playerB.userId,
       };
       const createResult = await createMatch(playerA, createPayload);
       matchId = createResult.match.match_id;
@@ -200,14 +197,14 @@ describe('Matchmaker Integration Tests', () => {
       const payload = { match_id: 'nonexistent' };
       const result = await rpcCall(playerB, 'armored_archer/accept_match', payload);
 
-      expect(result.error).toBe("Match not found");
+      expect(result.error).toBe('Match not found');
     });
 
     test('should return error when user is the creator', async () => {
       const payload = { match_id: matchId };
       const result = await rpcCall(playerA, 'armored_archer/accept_match', payload);
 
-      expect(result.error).toBe("Cannot accept your own match");
+      expect(result.error).toBe('Cannot accept your own match');
     });
 
     test('should return error when match is not pending', async () => {
@@ -218,7 +215,7 @@ describe('Matchmaker Integration Tests', () => {
       const payload = { match_id: matchId };
       const result = await rpcCall(playerC, 'armored_archer/accept_match', payload);
 
-      expect(result.error).toBe("Match is no longer available");
+      expect(result.error).toBe('Match is no longer available');
     });
 
     test('should return error when player stats not found', async () => {
@@ -226,21 +223,25 @@ describe('Matchmaker Integration Tests', () => {
       await setupPlayerStats(freshAccount, {
         level: 5,
         xp: 100,
-        stats: { attack: 10, defense: 10, dodge: 5, crit_rate: 5 }
+        stats: { attack: 10, defense: 10, dodge: 5, crit_rate: 5 },
       });
 
       // Delete the stats we just wrote to simulate missing
-      await testHelper.deleteStorageObject('player_stats', freshAccount.userId, freshAccount.userId);
+      await testHelper.deleteStorageObject(
+        'player_stats',
+        freshAccount.userId,
+        freshAccount.userId
+      );
 
       const createPayload = {
         match_type: 'ranked',
-        target_opponent_id: freshAccount.userId
+        target_opponent_id: freshAccount.userId,
       };
       const createResult = await createMatch(playerA, createPayload);
       const acceptPayload = { match_id: createResult.match.match_id };
       const result = await rpcCall(freshAccount, 'armored_archer/accept_match', acceptPayload);
 
-      expect(result.error).toBe("Player stats not found");
+      expect(result.error).toBe('Player stats not found');
     });
   });
 
@@ -307,26 +308,29 @@ describe('Matchmaker Integration Tests', () => {
       const payload = {};
       const result = await rpcCall(freshPlayer, 'armored_archer/get_player_rank', payload);
 
-      expect(result.error).toBe("Player stats not found");
+      expect(result.error).toBe('Player stats not found');
     });
   });
 });
 
 // Helper function to create a match as a specific user (used in beforeAll)
-async function createMatchForUser(prefix: string, targetOpponentId: string, overrides: any = {}): Promise<any> {
+async function createMatchForUser(
+  prefix: string,
+  targetOpponentId: string,
+  overrides: any = {}
+): Promise<any> {
   const helper = testHelper;
   const user = await helper.createTestAccount(prefix);
-  await helper.writeStorageObject(
-    'player_stats',
-    user.userId,
-    user.userId,
-    { level: 10, xp: 2000, stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 } }
-  );
+  await helper.writeStorageObject('player_stats', user.userId, user.userId, {
+    level: 10,
+    xp: 2000,
+    stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
+  });
 
   const payload = {
     match_type: 'ranked',
     target_opponent_id: targetOpponentId,
-    ...overrides
+    ...overrides,
   };
   // Note: we need to track created match for cleanup; but we can't easily from here.
   // Since this is used in beforeAll, the main afterEach cleanup only tracks matches from playerA,B,C.

@@ -87,12 +87,12 @@ const BOSS_PHASES: Record<string, BossPhaseProgression> = {
   '11-20': {
     phases: 2,
     abilities: ['basic_attack', 'teleport', 'summon_minions'],
-    phase_transitions: [50],  // 50% HP
+    phase_transitions: [50], // 50% HP
   },
   '21-50': {
     phases: 3,
     abilities: ['basic_attack', 'teleport', 'summon_minions', 'enrage', 'area_attack'],
-    phase_transitions: [75, 50],  // 75% and 50% HP
+    phase_transitions: [75, 50], // 75% and 50% HP
   },
 };
 
@@ -108,16 +108,16 @@ export function getEnemyDamageMult(level: number): number {
 
   if (level <= 10) {
     // Early levels: 0.8x-1.0x
-    return 0.8 + (level / 10) * 0.2;  // 0.8 to 1.0
+    return 0.8 + (level / 10) * 0.2; // 0.8 to 1.0
   } else if (level <= 20) {
     // Mid levels: 1.0x-1.2x
-    return 1.0 + ((level - 10) / 10) * 0.2;  // 1.0 to 1.2
+    return 1.0 + ((level - 10) / 10) * 0.2; // 1.0 to 1.2
   } else if (level <= 30) {
     // Upper mid levels: 1.2x-1.5x
-    return 1.2 + ((level - 20) / 10) * 0.3;  // 1.2 to 1.5
+    return 1.2 + ((level - 20) / 10) * 0.3; // 1.2 to 1.5
   } else {
     // Late levels: 1.5x-2.0x
-    return 1.5 + ((level - 30) / 20) * 0.5;  // 1.5 to 2.0
+    return 1.5 + ((level - 30) / 20) * 0.5; // 1.5 to 2.0
   }
 }
 
@@ -176,7 +176,7 @@ export function calculateEncounterDifficulty(playerLevel: number, enemyLevel: nu
   if (enemyLevel <= 0) return 1.0;
 
   const levelDiff = enemyLevel - playerLevel;
-  const difficulty = 1.0 + (levelDiff / 20.0);
+  const difficulty = 1.0 + levelDiff / 20.0;
 
   return clamp(difficulty, 0.5, 1.5);
 }

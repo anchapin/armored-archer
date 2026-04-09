@@ -321,11 +321,10 @@ describe('Tracing Configuration', () => {
     });
 
     it('should pass options to withSpanSync', () => {
-      const result = traceSync(
-        'test-with-options',
-        () => 'result',
-        { kind: SpanKind.CLIENT, attributes: { key: 'value' } }
-      );
+      const result = traceSync('test-with-options', () => 'result', {
+        kind: SpanKind.CLIENT,
+        attributes: { key: 'value' },
+      });
       expect(result).toBe('result');
     });
   });
@@ -402,9 +401,7 @@ describe('Tracing Configuration', () => {
       initializeTracing();
 
       expect(OTLPTraceExporter).toHaveBeenCalled();
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('OTLP exporter configured')
-      );
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('OTLP exporter configured'));
       cfg.tracing.exporter = originalExporter;
     });
 
@@ -417,9 +414,7 @@ describe('Tracing Configuration', () => {
       shutdownTracing();
       initializeTracing();
 
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Unknown exporter type')
-      );
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Unknown exporter type'));
       cfg.tracing.exporter = originalExporter;
     });
 

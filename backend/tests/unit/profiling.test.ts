@@ -278,7 +278,7 @@ describe('profiling', () => {
     it('should calculate error rate', () => {
       setProfilingEnabled(true);
       profileSync('error_rate_op', () => {});
-      
+
       try {
         profileSync('error_rate_op', () => {
           throw new Error('Error');
@@ -334,14 +334,14 @@ describe('profiling', () => {
   describe('wrapRpcWithProfiling', () => {
     it('should wrap RPC handler with profiling', async () => {
       setProfilingEnabled(true);
-      
+
       const mockHandler = jest.fn().mockReturnValue('{"success": true}');
       const wrappedHandler = wrapRpcWithProfiling('test_rpc', mockHandler);
 
       const ctx = { userId: 'user123' };
       const logger = { info: jest.fn() };
       const nk = {};
-      
+
       const result = await wrappedHandler(ctx as any, logger as any, nk as any, '{}');
 
       expect(mockHandler).toHaveBeenCalled();
@@ -351,7 +351,7 @@ describe('profiling', () => {
 
     it('should record errors in profile', async () => {
       setProfilingEnabled(true);
-      
+
       const mockHandler = jest.fn().mockRejectedValue(new Error('RPC Error'));
       const wrappedHandler = wrapRpcWithProfiling('error_rpc', mockHandler);
 
@@ -377,10 +377,7 @@ describe('profiling', () => {
       const handler = () => 'result';
       registerRpcWithProfiling(mockInitializer as any, 'test_rpc', 'test', handler);
 
-      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-        'test_rpc',
-        expect.any(Function)
-      );
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith('test_rpc', expect.any(Function));
     });
   });
 

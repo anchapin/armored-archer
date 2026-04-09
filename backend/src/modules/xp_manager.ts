@@ -103,7 +103,7 @@ const XP_CURVE: Record<number, number> = {
 export function getXpForLevel(level: number): number {
   if (level < 1) return 0;
   if (level > 50) level = 50;
-  return XP_CURVE[level] || (100 * level * level);
+  return XP_CURVE[level] || 100 * level * level;
 }
 
 /**

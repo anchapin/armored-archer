@@ -60,9 +60,8 @@ const LIST_TEMPLATES = process.argv.includes('--list-templates');
 
 // Get minimum severity from args
 const severityIndex = process.argv.indexOf('--min-severity');
-const MIN_SEVERITY = severityIndex >= 0 && process.argv[severityIndex + 1] 
-  ? process.argv[severityIndex + 1] 
-  : 'high';
+const MIN_SEVERITY =
+  severityIndex >= 0 && process.argv[severityIndex + 1] ? process.argv[severityIndex + 1] : 'high';
 
 const severityOrder = ['critical', 'high', 'medium', 'low'];
 const minSeverityIndex = severityOrder.indexOf(MIN_SEVERITY);
@@ -74,36 +73,36 @@ function shouldInclude(severity: string): boolean {
 
 // Labels for GitHub issues
 const severityLabels: Record<string, string> = {
-  'critical': 'severity:critical',
-  'high': 'severity:high',
-  'medium': 'severity:medium',
-  'low': 'severity:low'
+  critical: 'severity:critical',
+  high: 'severity:high',
+  medium: 'severity:medium',
+  low: 'severity:low',
 };
 
 const typeLabels: Record<string, string> = {
-  'deprecated': 'type:deprecated',
-  'logging': 'type:code-quality',
-  'todo': 'type:todo',
-  'fixme': 'type:fixme',
-  'hack': 'type:hack',
-  'xxx': 'type:xxx',
+  deprecated: 'type:deprecated',
+  logging: 'type:code-quality',
+  todo: 'type:todo',
+  fixme: 'type:fixme',
+  hack: 'type:hack',
+  xxx: 'type:xxx',
   'type-safety': 'type:type-safety',
   'type-suppression': 'type:type-safety',
   'error-handling': 'type:error-handling',
-  'marker': 'type:code-quality'
+  marker: 'type:code-quality',
 };
 
 const categoryLabels: Record<string, string> = {
-  'deprecated': 'category:deprecated-apis',
-  'logging': 'category:code-quality',
-  'todo': 'category:code-quality',
-  'fixme': 'category:code-quality',
-  'hack': 'category:code-quality',
-  'xxx': 'category:code-quality',
+  deprecated: 'category:deprecated-apis',
+  logging: 'category:code-quality',
+  todo: 'category:code-quality',
+  fixme: 'category:code-quality',
+  hack: 'category:code-quality',
+  xxx: 'category:code-quality',
   'type-safety': 'category:type-safety',
   'type-suppression': 'category:type-safety',
   'error-handling': 'category:code-quality',
-  'marker': 'category:code-quality'
+  marker: 'category:code-quality',
 };
 
 function loadReport(): TechDebtReport | null {
@@ -130,7 +129,7 @@ function generateIssueBody(issue: TechDebtIssue): string {
   const labels = [
     severityLabels[issue.severity] || 'type:other',
     typeLabels[issue.type] || 'type:other',
-    'tech-debt'
+    'tech-debt',
   ].filter(Boolean);
 
   return `## Technical Debt Item
@@ -166,23 +165,27 @@ ${issue.code}
 
 function getIssueLabels(issue: TechDebtIssue): string[] {
   const labels = ['tech-debt'];
-  
+
   if (severityLabels[issue.severity]) {
     labels.push(severityLabels[issue.severity]);
   }
-  
+
   if (typeLabels[issue.type]) {
     labels.push(typeLabels[issue.type]);
   }
-  
+
   if (categoryLabels[issue.type]) {
     labels.push(categoryLabels[issue.type]);
   }
-  
+
   return labels;
 }
 
-function createGitHubIssue(title: string, body: string, labels: string[]): Promise<{ number: number; url: string } | null> {
+function createGitHubIssue(
+  title: string,
+  body: string,
+  labels: string[]
+): Promise<{ number: number; url: string } | null> {
   return new Promise((resolve) => {
     if (!GITHUB_TOKEN) {
       console.log('   ⚠️  No GITHUB_TOKEN found, skipping API call');
@@ -196,7 +199,7 @@ function createGitHubIssue(title: string, body: string, labels: string[]): Promi
       repo,
       title,
       body,
-      labels
+      labels,
     });
 
     const options = {
@@ -204,27 +207,27 @@ function createGitHubIssue(title: string, body: string, labels: string[]): Promi
       path: `/repos/${owner}/${repo}/issues`,
       method: 'POST',
       headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `token ${GITHUB_TOKEN}`,
+        Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData),
-        'User-Agent': 'tech-debt-sync-script'
-      }
+        'User-Agent': 'tech-debt-sync-script',
+      },
     };
 
     const req = https.request(options, (res) => {
       let data = '';
-      
+
       res.on('data', (chunk) => {
         data += chunk;
       });
-      
+
       res.on('end', () => {
         if (res.statusCode === 201) {
           const response = JSON.parse(data);
           resolve({
             number: response.number,
-            url: response.html_url
+            url: response.html_url,
           });
         } else {
           console.log(`   ❌ Failed to create issue: ${res.statusCode}`);
@@ -246,13 +249,13 @@ function createGitHubIssue(title: string, body: string, labels: string[]): Promi
 
 async function createIssues(issues: TechDebtIssue[]): Promise<void> {
   const issuesDir = path.join(BACKEND_DIR, 'github-issues');
-  
+
   if (!fs.existsSync(issuesDir)) {
     fs.mkdirSync(issuesDir, { recursive: true });
   }
 
   console.log(`\n📝 Creating GitHub issues...\n`);
-  
+
   let createdCount = 0;
   let skippedCount = 0;
 
@@ -332,9 +335,13 @@ async function main(): Promise<void> {
   }
 
   // Filter issues by severity
-  const relevantIssues = report.issues.filter(issue => 
-    shouldInclude(issue.severity) && 
-    (issue.type === 'deprecated' || issue.type === 'fixme' || issue.type === 'hack' || issue.type === 'error-handling')
+  const relevantIssues = report.issues.filter(
+    (issue) =>
+      shouldInclude(issue.severity) &&
+      (issue.type === 'deprecated' ||
+        issue.type === 'fixme' ||
+        issue.type === 'hack' ||
+        issue.type === 'error-handling')
   );
 
   if (relevantIssues.length === 0) {
@@ -343,7 +350,7 @@ async function main(): Promise<void> {
   }
 
   console.log(`📊 Found ${relevantIssues.length} issues to process:`);
-  
+
   // Group by severity
   const bySeverity: Record<string, TechDebtIssue[]> = {};
   for (const issue of relevantIssues) {
@@ -352,7 +359,7 @@ async function main(): Promise<void> {
     }
     bySeverity[issue.severity].push(issue);
   }
-  
+
   for (const severity of severityOrder) {
     if (bySeverity[severity]) {
       console.log(`   ${severity}: ${bySeverity[severity].length}`);
@@ -360,7 +367,7 @@ async function main(): Promise<void> {
   }
 
   await createIssues(relevantIssues);
-  
+
   console.log('\n✅ GitHub issue creation complete!\n');
 }
 

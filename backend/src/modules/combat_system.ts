@@ -188,7 +188,12 @@ function validateMatchForCombat(
     return { valid: false, error: 'Match not found' };
   }
 
-  const matchResult = safeParse<Record<string, unknown>>(matchObjects[0].value, null, logger, 'validateMatch:match');
+  const matchResult = safeParse<Record<string, unknown>>(
+    matchObjects[0].value,
+    null,
+    logger,
+    'validateMatch:match'
+  );
   if (!matchResult.success || !matchResult.data) {
     span.setAttribute('error', true);
     span.setAttribute('error.message', 'Failed to parse match data');
@@ -281,7 +286,12 @@ function handleTurnTimeout(
     ]);
 
     if (matchObjects.length > 0) {
-      const matchResult = safeParse<PvPMatch>(matchObjects[0].value, null, logger, 'handleTimeoutForfeit:match');
+      const matchResult = safeParse<PvPMatch>(
+        matchObjects[0].value,
+        null,
+        logger,
+        'handleTimeoutForfeit:match'
+      );
       if (matchResult.success && matchResult.data) {
         updateMatchStatus(nk, matchResult.data, winnerId);
       }
@@ -568,7 +578,12 @@ function getOrCreateMatchState(
     if (!stateObjects[0].value) {
       // Fall through to create new state
     } else {
-      const stateResult = safeParse<MatchState>(stateObjects[0].value, null, logger, 'getOrCreateMatchState');
+      const stateResult = safeParse<MatchState>(
+        stateObjects[0].value,
+        null,
+        logger,
+        'getOrCreateMatchState'
+      );
       if (stateResult.success && stateResult.data) {
         return stateResult.data;
       }
@@ -956,7 +971,12 @@ export async function rpcPlayerDisconnect(
         return JSON.stringify({ error: 'Match not found' });
       }
 
-      const matchResult = safeParse<PvPMatch>(matchObjects[0].value, null, logger, 'rpcForfeitMatch:match');
+      const matchResult = safeParse<PvPMatch>(
+        matchObjects[0].value,
+        null,
+        logger,
+        'rpcForfeitMatch:match'
+      );
       if (!matchResult.success || !matchResult.data) {
         return JSON.stringify({ error: 'Failed to parse match data' });
       }
@@ -988,7 +1008,12 @@ export async function rpcPlayerDisconnect(
         return JSON.stringify({ error: 'Match state not found' });
       }
 
-      const stateResult = safeParse<MatchState>(stateObjects[0].value, null, logger, 'rpcForfeitMatch:matchState');
+      const stateResult = safeParse<MatchState>(
+        stateObjects[0].value,
+        null,
+        logger,
+        'rpcForfeitMatch:matchState'
+      );
       if (!stateResult.success || !stateResult.data) {
         return JSON.stringify({ error: 'Failed to parse match state' });
       }

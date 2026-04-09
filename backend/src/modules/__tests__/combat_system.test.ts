@@ -100,15 +100,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(mockMatchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn((objects) => {
@@ -216,15 +218,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       const payload = JSON.stringify({
@@ -382,15 +386,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       // Include anti-cheat fields with valid lengths (requestId = 32, signature = 64, nonce = 32)
@@ -446,15 +452,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(timedOutMatchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -502,15 +510,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(timedOutMatchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -565,15 +575,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -594,7 +606,7 @@ describe('combat_system', () => {
 
     it('should handle miss (hit=false)', async () => {
       const match = createMockMatch({ status: 'active' });
-      
+
       // High dodge defender to ensure miss
       const matchState: MatchState = {
         match_id: 'match-123',
@@ -683,7 +695,9 @@ describe('combat_system', () => {
         if (objects[0].collection === 'pvp_matches') {
           return [{ collection: 'pvp_matches', key: 'match-123', value: JSON.stringify(match) }];
         }
-        return [{ collection: 'pvp_match_states', key: 'match-123', value: JSON.stringify(matchState) }];
+        return [
+          { collection: 'pvp_match_states', key: 'match-123', value: JSON.stringify(matchState) },
+        ];
       });
 
       mockNk.storageWrite = jest.fn();
@@ -739,15 +753,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -820,18 +836,20 @@ describe('combat_system', () => {
 
     it('should return error when match state not found', async () => {
       const match = createMockMatch({ status: 'active' });
-      
+
       mockNk.storageRead = jest.fn((objects: any[]) => {
-        return objects.map((obj) => {
-          if (obj.collection === 'pvp_matches' && obj.key === 'match-123') {
-            return {
-              collection: 'pvp_matches',
-              key: 'match-123',
-              value: JSON.stringify(match),
-            };
-          }
-          return null;
-        }).filter(Boolean);
+        return objects
+          .map((obj) => {
+            if (obj.collection === 'pvp_matches' && obj.key === 'match-123') {
+              return {
+                collection: 'pvp_matches',
+                key: 'match-123',
+                value: JSON.stringify(match),
+              };
+            }
+            return null;
+          })
+          .filter(Boolean);
       });
 
       const payload = JSON.stringify({
@@ -881,11 +899,13 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return { collection: obj.collection, key: obj.key, value: val };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return { collection: obj.collection, key: obj.key, value: val };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -945,11 +965,13 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return { collection: obj.collection, key: obj.key, value: val };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return { collection: obj.collection, key: obj.key, value: val };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -1001,11 +1023,13 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return { collection: obj.collection, key: obj.key, value: val };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return { collection: obj.collection, key: obj.key, value: val };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -1060,11 +1084,13 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return { collection: obj.collection, key: obj.key, value: val };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return { collection: obj.collection, key: obj.key, value: val };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -1112,11 +1138,13 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(timedOutMatchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return { collection: obj.collection, key: obj.key, value: val };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return { collection: obj.collection, key: obj.key, value: val };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -1144,23 +1172,25 @@ describe('combat_system', () => {
       const match = createMockMatch({ status: 'active' });
 
       mockNk.storageRead = jest.fn((objects: any[]) => {
-        return objects.map((obj) => {
-          if (obj.collection === 'pvp_matches' && obj.key === 'match-123') {
-            return {
-              collection: 'pvp_matches',
-              key: 'match-123',
-              value: JSON.stringify(match),
-            };
-          }
-          if (obj.collection === 'pvp_match_states' && obj.key === 'match-123') {
-            return {
-              collection: 'pvp_match_states',
-              key: 'match-123',
-              value: '', // Empty/corrupted value
-            };
-          }
-          return null;
-        }).filter(Boolean);
+        return objects
+          .map((obj) => {
+            if (obj.collection === 'pvp_matches' && obj.key === 'match-123') {
+              return {
+                collection: 'pvp_matches',
+                key: 'match-123',
+                value: JSON.stringify(match),
+              };
+            }
+            if (obj.collection === 'pvp_match_states' && obj.key === 'match-123') {
+              return {
+                collection: 'pvp_match_states',
+                key: 'match-123',
+                value: '', // Empty/corrupted value
+              };
+            }
+            return null;
+          })
+          .filter(Boolean);
       });
 
       const payload = JSON.stringify({
@@ -1205,11 +1235,13 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return { collection: obj.collection, key: obj.key, value: val };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return { collection: obj.collection, key: obj.key, value: val };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -1242,7 +1274,8 @@ describe('combat_system', () => {
       const match = createMockMatch({ status: 'active' });
 
       // Mock storageRead: first call (match) returns match, second call (match state) returns empty
-      mockNk.storageRead = jest.fn()
+      mockNk.storageRead = jest
+        .fn()
         .mockReturnValueOnce([
           {
             collection: 'pvp_matches',
@@ -1258,14 +1291,20 @@ describe('combat_system', () => {
           {
             collection: 'player_stats',
             key: 'creator-user',
-            value: JSON.stringify({ level: 1, stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 } }),
+            value: JSON.stringify({
+              level: 1,
+              stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+            }),
           },
         ])
         .mockReturnValueOnce([
           {
             collection: 'player_stats',
             key: 'opponent-user',
-            value: JSON.stringify({ level: 1, stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 } }),
+            value: JSON.stringify({
+              level: 1,
+              stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+            }),
           },
         ]);
 
@@ -1285,11 +1324,11 @@ describe('combat_system', () => {
 
     it('should return error when match has expired', async () => {
       // Create match with expired timestamp
-      const expiredMatch = createMockMatch({ 
+      const expiredMatch = createMockMatch({
         status: 'active',
-        expires_at: Date.now() - 1000 // Expired 1 second ago
+        expires_at: Date.now() - 1000, // Expired 1 second ago
       });
-      
+
       mockNk.storageRead = jest.fn().mockReturnValue([
         {
           collection: 'pvp_matches',
@@ -1341,15 +1380,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -1357,7 +1398,7 @@ describe('combat_system', () => {
 
       // User is opponent, so winner should be creator
       const opponentCtx = createMockContext({ userId: 'opponent-user' });
-      
+
       const payload = JSON.stringify({
         match_id: 'match-123',
         reason: 'disconnect',
@@ -1402,15 +1443,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -1477,15 +1520,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -1543,15 +1588,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(timedOutMatchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -1586,11 +1633,13 @@ describe('combat_system', () => {
         readCallCount++;
         if (readCallCount === 1) {
           // First call: match lookup
-          return [{
-            collection: 'pvp_matches',
-            key: 'match-123',
-            value: JSON.stringify(match),
-          }];
+          return [
+            {
+              collection: 'pvp_matches',
+              key: 'match-123',
+              value: JSON.stringify(match),
+            },
+          ];
         }
         if (readCallCount === 2) {
           // Second call: match state lookup (empty - no state exists)
@@ -1598,27 +1647,31 @@ describe('combat_system', () => {
         }
         if (readCallCount === 3) {
           // Third call: creator player stats
-          return [{
-            collection: 'player_stats',
-            key: 'creator-user',
-            value: JSON.stringify({
-              level: 1,
-              xp: 0,
-              stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
-            }),
-          }];
+          return [
+            {
+              collection: 'player_stats',
+              key: 'creator-user',
+              value: JSON.stringify({
+                level: 1,
+                xp: 0,
+                stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+              }),
+            },
+          ];
         }
         if (readCallCount === 4) {
           // Fourth call: opponent player stats
-          return [{
-            collection: 'player_stats',
-            key: 'opponent-user',
-            value: JSON.stringify({
-              level: 1,
-              xp: 0,
-              stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
-            }),
-          }];
+          return [
+            {
+              collection: 'player_stats',
+              key: 'opponent-user',
+              value: JSON.stringify({
+                level: 1,
+                xp: 0,
+                stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+              }),
+            },
+          ];
         }
         // Subsequent calls: inventory (empty)
         return [];
@@ -1676,15 +1729,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -1719,43 +1774,51 @@ describe('combat_system', () => {
         readCallCount++;
         if (readCallCount === 1) {
           // First call: match lookup
-          return [{
-            collection: 'pvp_matches',
-            key: 'match-123',
-            value: JSON.stringify(match),
-          }];
+          return [
+            {
+              collection: 'pvp_matches',
+              key: 'match-123',
+              value: JSON.stringify(match),
+            },
+          ];
         }
         if (readCallCount === 2) {
           // Second call: match state lookup with empty value (corrupted)
-          return [{
-            collection: 'pvp_match_states',
-            key: 'match-123',
-            value: '', // Empty/corrupted value
-          }];
+          return [
+            {
+              collection: 'pvp_match_states',
+              key: 'match-123',
+              value: '', // Empty/corrupted value
+            },
+          ];
         }
         if (readCallCount === 3) {
           // Creator player stats
-          return [{
-            collection: 'player_stats',
-            key: 'creator-user',
-            value: JSON.stringify({
-              level: 1,
-              xp: 0,
-              stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
-            }),
-          }];
+          return [
+            {
+              collection: 'player_stats',
+              key: 'creator-user',
+              value: JSON.stringify({
+                level: 1,
+                xp: 0,
+                stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+              }),
+            },
+          ];
         }
         if (readCallCount === 4) {
           // Opponent player stats
-          return [{
-            collection: 'player_stats',
-            key: 'opponent-user',
-            value: JSON.stringify({
-              level: 1,
-              xp: 0,
-              stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
-            }),
-          }];
+          return [
+            {
+              collection: 'player_stats',
+              key: 'opponent-user',
+              value: JSON.stringify({
+                level: 1,
+                xp: 0,
+                stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+              }),
+            },
+          ];
         }
         // Inventory calls
         return [];
@@ -1813,15 +1876,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(timedOutMatchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();
@@ -1874,15 +1939,17 @@ describe('combat_system', () => {
       mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
 
       mockNk.storageRead = jest.fn((objects) => {
-        return objects.map((obj: any) => {
-          const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
-          if (!val) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            value: val,
-          };
-        }).filter(Boolean);
+        return objects
+          .map((obj: any) => {
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+            if (!val) return null;
+            return {
+              collection: obj.collection,
+              key: obj.key,
+              value: val,
+            };
+          })
+          .filter(Boolean);
       });
 
       mockNk.storageWrite = jest.fn();

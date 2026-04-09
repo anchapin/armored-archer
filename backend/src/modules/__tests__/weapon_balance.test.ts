@@ -115,9 +115,9 @@ describe('weapon_balance', () => {
       const legendaryPower = calculateWeaponPowerRating(legendaryWeapon);
 
       // Base power = 100 * (tier + 1)
-      expect(commonPower).toBe(100 * (0 + 1));  // 100
-      expect(rarePower).toBe(100 * (1 + 1));    // 200
-      expect(epicPower).toBe(100 * (2 + 1));    // 300
+      expect(commonPower).toBe(100 * (0 + 1)); // 100
+      expect(rarePower).toBe(100 * (1 + 1)); // 200
+      expect(epicPower).toBe(100 * (2 + 1)); // 300
       expect(legendaryPower).toBe(100 * (3 + 1)); // 400
     });
 

@@ -71,9 +71,8 @@ const CREATE_ISSUES = process.argv.includes('--create-issues');
 
 // Get minimum severity from args
 const severityIndex = process.argv.indexOf('--min-severity');
-const MIN_SEVERITY = severityIndex >= 0 && process.argv[severityIndex + 1] 
-  ? process.argv[severityIndex + 1] 
-  : 'low';
+const MIN_SEVERITY =
+  severityIndex >= 0 && process.argv[severityIndex + 1] ? process.argv[severityIndex + 1] : 'low';
 
 const severityOrder = ['critical', 'high', 'medium', 'low'];
 const minSeverityIndex = severityOrder.indexOf(MIN_SEVERITY);
@@ -85,24 +84,24 @@ function shouldInclude(severity: string): boolean {
 
 // Category mapping from type to TECH_DEBT.md categories
 const categoryMap: Record<string, string> = {
-  'deprecated': 'Deprecated APIs',
-  'logging': 'Code Quality',
-  'todo': 'Code Quality',
-  'fixme': 'Code Quality',
-  'hack': 'Code Quality',
-  'xxx': 'Code Quality',
+  deprecated: 'Deprecated APIs',
+  logging: 'Code Quality',
+  todo: 'Code Quality',
+  fixme: 'Code Quality',
+  hack: 'Code Quality',
+  xxx: 'Code Quality',
   'type-safety': 'Type Safety',
   'type-suppression': 'Type Safety',
   'error-handling': 'Code Quality',
-  'marker': 'Code Quality'
+  marker: 'Code Quality',
 };
 
 // Estimated effort mapping
 const effortMap: Record<string, string> = {
-  'critical': '1 hour',
-  'high': '2 hours',
-  'medium': '4 hours',
-  'low': '8 hours'
+  critical: '1 hour',
+  high: '2 hours',
+  medium: '4 hours',
+  low: '8 hours',
 };
 
 function loadReport(): TechDebtReport | null {
@@ -136,18 +135,24 @@ function loadExistingTechDebtItems(): TechDebtItem[] {
   try {
     const content = fs.readFileSync(TECH_DEBT_MD_PATH, 'utf-8');
     // Parse the table from TECH_DEBT.md
-    const tableMatch = content.match(/\| ID \| Category \| Title \| Description \| Severity \| Status \| Date Identified \| Estimated Effort \|\n\|[-|\s]+\|\n/);
+    const tableMatch = content.match(
+      /\| ID \| Category \| Title \| Description \| Severity \| Status \| Date Identified \| Estimated Effort \|\n\|[-|\s]+\|\n/
+    );
     if (!tableMatch) return items;
 
     const tableStart = content.indexOf(tableMatch[0]) + tableMatch[0].length;
     const activeDebtStart = content.indexOf('### Historical Debt');
-    const tableContent = activeDebtStart > 0 
-      ? content.substring(tableStart, activeDebtStart)
-      : content.substring(tableStart);
+    const tableContent =
+      activeDebtStart > 0
+        ? content.substring(tableStart, activeDebtStart)
+        : content.substring(tableStart);
 
     const lines = tableContent.split('\n');
     for (const line of lines) {
-      const parts = line.split('|').map(p => p.trim()).filter(p => p);
+      const parts = line
+        .split('|')
+        .map((p) => p.trim())
+        .filter((p) => p);
       if (parts.length >= 8 && /^[A-Z]+-\d+$/.test(parts[0])) {
         items.push({
           id: parts[0],
@@ -157,7 +162,7 @@ function loadExistingTechDebtItems(): TechDebtItem[] {
           severity: parts[4],
           status: parts[5],
           dateIdentified: parts[6],
-          estimatedEffort: parts[7]
+          estimatedEffort: parts[7],
         });
       }
     }
@@ -168,7 +173,9 @@ function loadExistingTechDebtItems(): TechDebtItem[] {
 }
 
 function getNextTechDebtId(existingItems: TechDebtItem[]): string {
-  const activeItems = existingItems.filter(item => item.id.startsWith('TD-') && !item.id.startsWith('TD-1'));
+  const activeItems = existingItems.filter(
+    (item) => item.id.startsWith('TD-') && !item.id.startsWith('TD-1')
+  );
   let maxNum = 0;
   for (const item of activeItems) {
     const match = item.id.match(/TD-(\d+)/);
@@ -180,17 +187,21 @@ function getNextTechDebtId(existingItems: TechDebtItem[]): string {
   return `TD-${String(maxNum + 1).padStart(3, '0')}`;
 }
 
-function findNewIssues(current: TechDebtReport, previous: TechDebtReport | null, existing: TechDebtItem[]): TechDebtIssue[] {
+function findNewIssues(
+  current: TechDebtReport,
+  previous: TechDebtReport | null,
+  existing: TechDebtItem[]
+): TechDebtIssue[] {
   const newIssues: TechDebtIssue[] = [];
-  const existingKeys = new Set(existing.map(e => `${e.file}:${e.line}:${e.type}`));
-  
+  const existingKeys = new Set(existing.map((e) => `${e.file}:${e.line}:${e.type}`));
+
   for (const issue of current.issues) {
     const key = `${issue.file}:${issue.line}:${issue.type}`;
     if (!existingKeys.has(key) && shouldInclude(issue.severity)) {
       // Check if this is new (not in previous report)
       if (previous) {
-        const wasInPrevious = previous.issues.some(p => 
-          p.file === issue.file && p.line === issue.line && p.type === issue.type
+        const wasInPrevious = previous.issues.some(
+          (p) => p.file === issue.file && p.line === issue.line && p.type === issue.type
         );
         if (!wasInPrevious) {
           newIssues.push(issue);
@@ -200,7 +211,7 @@ function findNewIssues(current: TechDebtReport, previous: TechDebtReport | null,
       }
     }
   }
-  
+
   return newIssues;
 }
 
@@ -238,21 +249,21 @@ ${issue.details ? `### Additional Details\n${issue.details}\n` : ''}
 
 function generateGitHubIssues(newIssues: TechDebtIssue[], existingItems: TechDebtItem[]): void {
   const issuesDir = path.join(BACKEND_DIR, 'tech-debt-issues');
-  
+
   if (!fs.existsSync(issuesDir)) {
     fs.mkdirSync(issuesDir, { recursive: true });
   }
 
   console.log(`\n📝 Generating GitHub issue drafts...\n`);
-  
+
   for (const issue of newIssues) {
     const id = getNextTechDebtId(existingItems);
     const filename = `${id}-${issue.type}-${issue.file.split('/').pop()}.md`;
     const filepath = path.join(issuesDir, filename);
-    
+
     const content = generateIssueBody(issue, id);
     fs.writeFileSync(filepath, content);
-    
+
     console.log(`   ✅ Created: ${filepath}`);
     existingItems.push({
       id,
@@ -264,10 +275,10 @@ function generateGitHubIssues(newIssues: TechDebtIssue[], existingItems: TechDeb
       dateIdentified: new Date().toISOString().split('T')[0],
       estimatedEffort: effortMap[issue.severity] || 'Unknown',
       file: issue.file,
-      line: issue.line
+      line: issue.line,
     });
   }
-  
+
   console.log(`\n📁 Issue drafts saved to: ${issuesDir}`);
   console.log('   Review and create issues on GitHub, then update TECH_DEBT.md');
 }
@@ -279,24 +290,26 @@ function updateTechDebtMd(newIssues: TechDebtIssue[], existingItems: TechDebtIte
   }
 
   console.log(`\n📝 Syncing ${newIssues.length} new item(s) to TECH_DEBT.md...\n`);
-  
+
   try {
     let content = fs.readFileSync(TECH_DEBT_MD_PATH, 'utf-8');
-    
+
     // Find the table position
-    const tableStart = content.indexOf('| ID | Category | Title | Description | Severity | Status | Date Identified | Estimated Effort |');
+    const tableStart = content.indexOf(
+      '| ID | Category | Title | Description | Severity | Status | Date Identified | Estimated Effort |'
+    );
     if (tableStart === -1) {
       console.log('⚠️  Could not find tech debt table in TECH_DEBT.md');
       return;
     }
-    
+
     // Find end of header line
     const headerEnd = content.indexOf('\n', tableStart) + 1;
     const separatorEnd = content.indexOf('\n', headerEnd) + 1;
-    
+
     // Find the start of Historical Debt section
     const historicalStart = content.indexOf('### Historical Debt');
-    
+
     let tableContent = '';
     if (historicalStart > 0) {
       tableContent = content.substring(separatorEnd, historicalStart).trimEnd();
@@ -304,12 +317,13 @@ function updateTechDebtMd(newIssues: TechDebtIssue[], existingItems: TechDebtIte
       // Find end of table (empty line or next section)
       const remaining = content.substring(separatorEnd);
       const nextSection = remaining.search(/\n###\s/);
-      tableContent = nextSection > 0 ? remaining.substring(0, nextSection).trimEnd() : remaining.trimEnd();
+      tableContent =
+        nextSection > 0 ? remaining.substring(0, nextSection).trimEnd() : remaining.trimEnd();
     }
-    
+
     // Add new items to the table
     const today = new Date().toISOString().split('T')[0];
-    
+
     for (const issue of newIssues) {
       const id = getNextTechDebtId(existingItems);
       const category = categoryMap[issue.type] || 'Code Quality';
@@ -317,10 +331,10 @@ function updateTechDebtMd(newIssues: TechDebtIssue[], existingItems: TechDebtIte
       const description = issue.description;
       const severity = issue.severity.charAt(0).toUpperCase() + issue.severity.slice(1);
       const effort = effortMap[issue.severity] || '4 hours';
-      
+
       const newRow = `| ${id} | ${category} | ${title} | ${description} | ${severity} | Open | ${today} | ${effort} |\n`;
       tableContent = newRow + tableContent;
-      
+
       // Add to existing items for tracking
       existingItems.push({
         id,
@@ -332,19 +346,23 @@ function updateTechDebtMd(newIssues: TechDebtIssue[], existingItems: TechDebtIte
         dateIdentified: today,
         estimatedEffort: effort,
         file: issue.file,
-        line: issue.line
+        line: issue.line,
       });
-      
+
       console.log(`   ✅ Added: ${id} - ${title}`);
     }
-    
+
     // Rebuild content
     if (historicalStart > 0) {
-      content = content.substring(0, separatorEnd) + tableContent + '\n' + content.substring(historicalStart);
+      content =
+        content.substring(0, separatorEnd) +
+        tableContent +
+        '\n' +
+        content.substring(historicalStart);
     } else {
       content = content.substring(0, separatorEnd) + tableContent + '\n';
     }
-    
+
     if (DRY_RUN) {
       console.log('\n🔍 Dry run - not writing changes:');
       console.log(content.substring(tableStart, tableStart + 500) + '...\n');
@@ -376,23 +394,23 @@ function main(): void {
 
   const previousReport = loadPreviousReport();
   const existingItems = loadExistingTechDebtItems();
-  
+
   console.log(`📊 Current Report:`);
   console.log(`   Total: ${currentReport.summary.total} issues`);
   console.log(`   Critical: ${currentReport.summary.critical}`);
   console.log(`   High: ${currentReport.summary.high}`);
   console.log(`   Medium: ${currentReport.summary.medium}`);
   console.log(`   Low: ${currentReport.summary.low}`);
-  
+
   if (previousReport) {
     console.log(`\n📊 Previous Report: ${previousReport.summary.total} issues`);
   }
-  
+
   console.log(`\n📋 Existing Tech Debt Items: ${existingItems.length}`);
 
   // Find new issues
   const newIssues = findNewIssues(currentReport, previousReport, existingItems);
-  
+
   if (newIssues.length === 0) {
     console.log('\n✅ No new tech debt items detected.');
     savePreviousReport(currentReport);
@@ -400,7 +418,7 @@ function main(): void {
   }
 
   console.log(`\n🆕 New Issues Found: ${newIssues.length}`);
-  
+
   // Group by severity
   const bySeverity: Record<string, TechDebtIssue[]> = {};
   for (const issue of newIssues) {
@@ -409,7 +427,7 @@ function main(): void {
     }
     bySeverity[issue.severity].push(issue);
   }
-  
+
   for (const severity of severityOrder) {
     if (bySeverity[severity]) {
       console.log(`   ${severity}: ${bySeverity[severity].length}`);
@@ -426,7 +444,7 @@ function main(): void {
 
   // Save current report as previous for next run
   savePreviousReport(currentReport);
-  
+
   console.log('\n✅ Tech debt sync complete!\n');
 }
 

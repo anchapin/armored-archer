@@ -143,13 +143,21 @@ describe('validatePlayerStats', () => {
     // XP=0 => sqrt(0)=0 => level 1
     expect(validatePlayerStats(makePlayerStats({ xp: 0, level: 1 })).is_valid).toBe(true);
     // XP=100 => sqrt(1)=1 => level 2
-    expect(validatePlayerStats(makePlayerStats({ xp: 100, level: 2, ability_points: 1 })).is_valid).toBe(true);
+    expect(
+      validatePlayerStats(makePlayerStats({ xp: 100, level: 2, ability_points: 1 })).is_valid
+    ).toBe(true);
     // XP=400 => sqrt(4)=2 => level 3
-    expect(validatePlayerStats(makePlayerStats({ xp: 400, level: 3, ability_points: 2 })).is_valid).toBe(true);
+    expect(
+      validatePlayerStats(makePlayerStats({ xp: 400, level: 3, ability_points: 2 })).is_valid
+    ).toBe(true);
     // XP=900 => sqrt(9)=3 => level 4
-    expect(validatePlayerStats(makePlayerStats({ xp: 900, level: 4, ability_points: 3 })).is_valid).toBe(true);
+    expect(
+      validatePlayerStats(makePlayerStats({ xp: 900, level: 4, ability_points: 3 })).is_valid
+    ).toBe(true);
     // XP=1600 => sqrt(16)=4 => level 5
-    expect(validatePlayerStats(makePlayerStats({ xp: 1600, level: 5, ability_points: 4 })).is_valid).toBe(true);
+    expect(
+      validatePlayerStats(makePlayerStats({ xp: 1600, level: 5, ability_points: 4 })).is_valid
+    ).toBe(true);
   });
 
   it('should return critical for negative attack stat', () => {
@@ -242,10 +250,7 @@ describe('validateGearInventory', () => {
 
   it('should return valid for correctly equipped gear', () => {
     const inventory = makeInventory({
-      gear: [
-        { id: 'sword1', type: 'weapon' } as any,
-        { id: 'shield1', type: 'armor' } as any,
-      ],
+      gear: [{ id: 'sword1', type: 'weapon' } as any, { id: 'shield1', type: 'armor' } as any],
       equipped_gear: { weapon: 'sword1', armor: 'shield1' },
     });
     const result = validateGearInventory(inventory);
@@ -273,10 +278,7 @@ describe('validateGearInventory', () => {
 
   it('should return critical for multiple helmets', () => {
     const inventory = makeInventory({
-      gear: [
-        { id: 'helmet1', type: 'helmet' } as any,
-        { id: 'crown1', type: 'crown' } as any,
-      ],
+      gear: [{ id: 'helmet1', type: 'helmet' } as any, { id: 'crown1', type: 'crown' } as any],
       equipped_gear: { head: 'helmet1', face: 'crown1' },
     });
     const result = validateGearInventory(inventory);
@@ -293,18 +295,13 @@ describe('validateGearInventory', () => {
 
   it('should detect helmet type variants (head, mask, crown)', () => {
     const inventory = makeInventory({
-      gear: [
-        { id: 'mask1', type: 'mask' } as any,
-        { id: 'headgear1', type: 'head' } as any,
-      ],
+      gear: [{ id: 'mask1', type: 'mask' } as any, { id: 'headgear1', type: 'head' } as any],
       equipped_gear: { slot1: 'mask1', slot2: 'headgear1' },
     });
     const result = validateGearInventory(inventory);
 
     expect(result.is_valid).toBe(false);
-    expect(result.issues).toContainEqual(
-      expect.objectContaining({ category: 'multiple_helmets' })
-    );
+    expect(result.issues).toContainEqual(expect.objectContaining({ category: 'multiple_helmets' }));
   });
 
   it('should allow one helmet piece equipped', () => {
@@ -351,18 +348,13 @@ describe('validateGearInventory', () => {
 
   it('should detect case-insensitive helmet types', () => {
     const inventory = makeInventory({
-      gear: [
-        { id: 'h1', type: 'Helmet' } as any,
-        { id: 'h2', type: 'Crown' } as any,
-      ],
+      gear: [{ id: 'h1', type: 'Helmet' } as any, { id: 'h2', type: 'Crown' } as any],
       equipped_gear: { slot1: 'h1', slot2: 'h2' },
     });
     const result = validateGearInventory(inventory);
 
     expect(result.is_valid).toBe(false);
-    expect(result.issues).toContainEqual(
-      expect.objectContaining({ category: 'multiple_helmets' })
-    );
+    expect(result.issues).toContainEqual(expect.objectContaining({ category: 'multiple_helmets' }));
   });
 });
 
@@ -569,9 +561,7 @@ describe('warning-only issues', () => {
     const result = validatePlayerStats(stats);
 
     expect(result.is_valid).toBe(true);
-    expect(
-      result.issues.filter((i) => i.severity === 'critical')
-    ).toHaveLength(0);
+    expect(result.issues.filter((i) => i.severity === 'critical')).toHaveLength(0);
   });
 });
 

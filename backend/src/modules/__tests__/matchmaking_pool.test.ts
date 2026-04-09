@@ -544,7 +544,7 @@ describe('matchmaking_pool', () => {
           user_id: `user_${i}`,
           mode: '1v1',
           rating: 1000 + (i % 500),
-          joined_at: Date.now() - (i * 1000),
+          joined_at: Date.now() - i * 1000,
           bracket_size: 100,
         });
       }

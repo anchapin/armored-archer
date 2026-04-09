@@ -152,7 +152,7 @@ export function calculatePvpDamage(
 function applyDamageCurve(damage: number, tier: WeaponTier): number {
   if (damage <= 0) return 0;
 
-  const curveFactor = 0.1 + (tier * 0.025);
+  const curveFactor = 0.1 + tier * 0.025;
   return damage * (1.0 - curveFactor * Math.log(1.0 + damage / 20.0));
 }
 
@@ -469,11 +469,7 @@ export async function rpcApplyBalanceAdjustment(
   }
 
   // Apply adjustment
-  const result = await applyBalanceAdjustment(
-    nk,
-    ctx.userId,
-    validation.data
-  );
+  const result = await applyBalanceAdjustment(nk, ctx.userId, validation.data);
 
   return JSON.stringify(result);
 }

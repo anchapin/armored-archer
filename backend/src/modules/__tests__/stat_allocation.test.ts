@@ -60,18 +60,18 @@ describe('StatAllocation', () => {
 
   describe('hasFreeRespec', () => {
     it('should return true when free respec available', () => {
-      const hasFree = hasFreeRespec(0);  // 0 used this season
+      const hasFree = hasFreeRespec(0); // 0 used this season
       expect(hasFree).toBe(true);
     });
 
     it('should return false when free respec used', () => {
-      const hasFree = hasFreeRespec(1);  // 1 used this season
+      const hasFree = hasFreeRespec(1); // 1 used this season
       expect(hasFree).toBe(false);
     });
 
     it('should reset on new season', () => {
       const oldSeason = hasFreeRespec(1);
-      const newSeason = hasFreeRespec(0);  // Season reset
+      const newSeason = hasFreeRespec(0); // Season reset
       expect(oldSeason).toBe(false);
       expect(newSeason).toBe(true);
     });
@@ -154,7 +154,7 @@ describe('StatAllocation', () => {
 
     it('should reject invalid slot numbers', () => {
       const buildData = {
-        slot: 5,  // Invalid (max 3)
+        slot: 5, // Invalid (max 3)
         name: 'Invalid Build',
         stats: { attack: 10 },
         level: 10,
@@ -187,7 +187,7 @@ describe('StatAllocation', () => {
     });
 
     it('should return empty for unused slot', () => {
-      const result = loadBuild(mockCtx, 3);  // Assuming slot 3 is empty
+      const result = loadBuild(mockCtx, 3); // Assuming slot 3 is empty
       expect(result.success).toBe(true);
       expect(result.build_data).toEqual({});
     });
@@ -227,12 +227,12 @@ describe('StatAllocation', () => {
 
   describe('isRespecOnCooldown', () => {
     it('should return false when not on cooldown', () => {
-      const onCooldown = isRespecOnCooldown(0);  // No cooldown
+      const onCooldown = isRespecOnCooldown(0); // No cooldown
       expect(onCooldown).toBe(false);
     });
 
     it('should return true when on cooldown', () => {
-      const onCooldown = isRespecOnCooldown(3600);  // 1 hour remaining
+      const onCooldown = isRespecOnCooldown(3600); // 1 hour remaining
       expect(onCooldown).toBe(true);
     });
 
@@ -317,16 +317,16 @@ describe('StatAllocation', () => {
   describe('Respec cooldown tracking', () => {
     it('should track cooldown from last respec', () => {
       const now = Date.now();
-      const lastRespecTime = now - 3600;  // 1 hour ago
+      const lastRespecTime = now - 3600; // 1 hour ago
       const remaining = getRespecCooldownRemaining(lastRespecTime);
 
-      const expected = 86400 - 3600;  // 24 hours - 1 hour elapsed
+      const expected = 86400 - 3600; // 24 hours - 1 hour elapsed
       expect(remaining).toBeLessThanOrEqual(expected);
       expect(remaining).toBeGreaterThanOrEqual(0);
     });
 
     it('should expire cooldown after 24 hours', () => {
-      const lastRespecTime = Date.now() - 86400;  // 24 hours ago
+      const lastRespecTime = Date.now() - 86400; // 24 hours ago
       const remaining = getRespecCooldownRemaining(lastRespecTime);
       expect(remaining).toBe(0);
     });
@@ -334,7 +334,7 @@ describe('StatAllocation', () => {
 
   describe('Format cooldown time', () => {
     it('should format hours and minutes', () => {
-      const formatted = formatCooldownTime(3661);  // 1 hour, 1 minute
+      const formatted = formatCooldownTime(3661); // 1 hour, 1 minute
       expect(formatted).toContain('h');
       expect(formatted).toContain('m');
     });
@@ -345,7 +345,7 @@ describe('StatAllocation', () => {
     });
 
     it('should show minutes only for short cooldowns', () => {
-      const formatted = formatCooldownTime(300);  // 5 minutes
+      const formatted = formatCooldownTime(300); // 5 minutes
       expect(formatted).toBe('5m');
     });
   });

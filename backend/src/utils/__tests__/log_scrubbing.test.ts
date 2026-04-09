@@ -56,7 +56,9 @@ describe('scrubLogMessage', () => {
 
   describe('token scrubbing', () => {
     it('should scrub JWT tokens', () => {
-      const result = scrubLogMessage('access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c');
+      const result = scrubLogMessage(
+        'access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'
+      );
       expect(result.scrubbed).toBe(true);
       expect(result.message).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
       expect(result.scrubbedTypes).toContain('access_token');
@@ -297,11 +299,7 @@ describe('scrubObjectForLogging', () => {
 
 describe('scrubArgumentsForLogging', () => {
   it('should scrub array of mixed arguments', () => {
-    const args = [
-      'User login',
-      { password: 'secret123' },
-      'email: test@example.com',
-    ];
+    const args = ['User login', { password: 'secret123' }, 'email: test@example.com'];
     const result = scrubArgumentsForLogging(args);
     expect(result[0]).toBe('User login');
     // The object should have password scrubbed

@@ -70,8 +70,14 @@ import {
   registerRpcGetUnlockedModifiers,
 } from './modules/gear_system';
 import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
-import { registerDeploymentObservability, initializeDeploymentObservability } from './modules/deployment_observability';
-import { registerProgressiveRollout, initializeProgressiveRollout } from './modules/progressive_rollout';
+import {
+  registerDeploymentObservability,
+  initializeDeploymentObservability,
+} from './modules/deployment_observability';
+import {
+  registerProgressiveRollout,
+  initializeProgressiveRollout,
+} from './modules/progressive_rollout';
 import { initializeAlerting } from './modules/alerting';
 import { initializeHealthMonitoring } from './modules/health_monitor';
 import { registerAnalyticsEndpoints } from './modules/analytics';
@@ -80,14 +86,23 @@ import { initializeSentry } from './config/errorTracking';
 import { initializeTracing } from './config/tracing';
 import { logger, logSystemEvent } from './config/logger';
 import { createStructuredLogger, StructuredLogger } from './config/structuredLogger';
-import { registerErrorInsightRpcs, initializeErrorInsightsPipeline } from './modules/error_insight_pipeline';
+import {
+  registerErrorInsightRpcs,
+  initializeErrorInsightsPipeline,
+} from './modules/error_insight_pipeline';
 import {
   registerRpcCompleteStage,
   registerRpcGetCompletedStages,
   registerRpcGetCampaignProgress,
 } from './modules/stage_tracking';
-import { initializeNotifications, registerNotificationEndpoints } from './modules/notifications_rpc';
-import { startNotificationScheduler, stopNotificationScheduler } from './modules/notification_scheduler';
+import {
+  initializeNotifications,
+  registerNotificationEndpoints,
+} from './modules/notifications_rpc';
+import {
+  startNotificationScheduler,
+  stopNotificationScheduler,
+} from './modules/notification_scheduler';
 import {
   registerRpcSyncDifficulty,
   registerRpcTrackMatchOutcome,
@@ -152,7 +167,10 @@ export function isStructuredLoggerInitialized(): boolean {
  * @param runtimeLogger - The Nakama Runtime.Logger instance
  * @param serviceName - Name of the service
  */
-export function initializeStructuredLogger(runtimeLogger: Runtime.Logger, serviceName: string = 'armored-archer-backend'): void {
+export function initializeStructuredLogger(
+  runtimeLogger: Runtime.Logger,
+  serviceName: string = 'armored-archer-backend'
+): void {
   globalStructuredLogger = createStructuredLogger(runtimeLogger, serviceName, {
     environment: process.env.NODE_ENV || 'development',
   });

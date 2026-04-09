@@ -120,7 +120,8 @@ describe('datadog_integration (enabled)', () => {
   });
 
   it('should initialize DataDog client when enabled', async () => {
-    const { initializeDataDog, getDataDogClient, isDataDogEnabled } = await import('../datadog_integration');
+    const { initializeDataDog, getDataDogClient, isDataDogEnabled } =
+      await import('../datadog_integration');
     initializeDataDog();
     expect(getDataDogClient()).not.toBeNull();
     expect(isDataDogEnabled()).toBe(true);
@@ -130,7 +131,9 @@ describe('datadog_integration (enabled)', () => {
     const { initializeDataDog } = await import('../datadog_integration');
     const { logger } = await import('../../config/logger');
     initializeDataDog();
-    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('DataDog initialized with prefix'));
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('DataDog initialized with prefix')
+    );
   });
 
   it('should create UDP socket on initialize', async () => {
@@ -180,11 +183,15 @@ describe('datadog_integration (enabled)', () => {
       }),
     }));
 
-    const { initializeDataDog, getDataDogClient, isDataDogEnabled } = await import('../datadog_integration');
+    const { initializeDataDog, getDataDogClient, isDataDogEnabled } =
+      await import('../datadog_integration');
     const { logger } = await import('../../config/logger');
 
     initializeDataDog();
-    expect(logger.error).toHaveBeenCalledWith('Failed to initialize DataDog metrics client:', expect.any(Error));
+    expect(logger.error).toHaveBeenCalledWith(
+      'Failed to initialize DataDog metrics client:',
+      expect.any(Error)
+    );
     expect(getDataDogClient()).not.toBeNull();
     // After init error, the client internally disables itself but is still returned
     expect(isDataDogEnabled()).toBe(true);
@@ -243,7 +250,8 @@ describe('datadog_integration (enabled)', () => {
   });
 
   it('should send player metrics with active client', async () => {
-    const { initializeDataDog, sendPlayerMetricsToDataDog } = await import('../datadog_integration');
+    const { initializeDataDog, sendPlayerMetricsToDataDog } =
+      await import('../datadog_integration');
     initializeDataDog();
     expect(() => sendPlayerMetricsToDataDog(100)).not.toThrow();
   });
@@ -255,19 +263,22 @@ describe('datadog_integration (enabled)', () => {
   });
 
   it('should send economy metrics with active client - success', async () => {
-    const { initializeDataDog, sendEconomyMetricsToDataDog } = await import('../datadog_integration');
+    const { initializeDataDog, sendEconomyMetricsToDataDog } =
+      await import('../datadog_integration');
     initializeDataDog();
     expect(() => sendEconomyMetricsToDataDog('gem_pack', 500, 'USD', true)).not.toThrow();
   });
 
   it('should send economy metrics with active client - failure', async () => {
-    const { initializeDataDog, sendEconomyMetricsToDataDog } = await import('../datadog_integration');
+    const { initializeDataDog, sendEconomyMetricsToDataDog } =
+      await import('../datadog_integration');
     initializeDataDog();
     expect(() => sendEconomyMetricsToDataDog('coin_pack', 1000, 'EUR', false)).not.toThrow();
   });
 
   it('should send health metrics with active client', async () => {
-    const { initializeDataDog, sendHealthMetricsToDataDog } = await import('../datadog_integration');
+    const { initializeDataDog, sendHealthMetricsToDataDog } =
+      await import('../datadog_integration');
     initializeDataDog();
     expect(() => sendHealthMetricsToDataDog(true, 30, 50)).not.toThrow();
     expect(() => sendHealthMetricsToDataDog(false, 90, 85)).not.toThrow();

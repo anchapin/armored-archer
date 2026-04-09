@@ -122,12 +122,12 @@ describe('DynamicDifficulty', () => {
       }
 
       const modifier = getDifficultyModifier(mockCtx, testUserId);
-      expect(modifier).toBe(0.0);  // Should remain at normal
+      expect(modifier).toBe(0.0); // Should remain at normal
     });
 
     it('should not decrease difficulty below threshold', () => {
       // Set to higher difficulty first
-      setDifficultyModifier(mockCtx, testUserId, 0.10);
+      setDifficultyModifier(mockCtx, testUserId, 0.1);
 
       // Track only 2 losses (below threshold)
       for (let i = 0; i < 2; i++) {
@@ -135,7 +135,7 @@ describe('DynamicDifficulty', () => {
       }
 
       const modifier = getDifficultyModifier(mockCtx, testUserId);
-      expect(modifier).toBe(0.10);  // Should remain unchanged
+      expect(modifier).toBe(0.1); // Should remain unchanged
     });
   });
 
@@ -147,7 +147,7 @@ describe('DynamicDifficulty', () => {
       }
 
       const modifier = getDifficultyModifier(mockCtx, testUserId);
-      expect(modifier).toBeLessThanOrEqual(0.20);
+      expect(modifier).toBeLessThanOrEqual(0.2);
     });
 
     it('should not go below -20% (-0.20)', () => {
@@ -160,23 +160,23 @@ describe('DynamicDifficulty', () => {
       }
 
       const modifier = getDifficultyModifier(mockCtx, testUserId);
-      expect(modifier).toBeGreaterThanOrEqual(-0.20);
+      expect(modifier).toBeGreaterThanOrEqual(-0.2);
     });
 
     it('should clamp to valid range', () => {
-      setDifficultyModifier(mockCtx, testUserId, 0.30);  // Try to set above max
+      setDifficultyModifier(mockCtx, testUserId, 0.3); // Try to set above max
       const modifier = getDifficultyModifier(mockCtx, testUserId);
-      expect(modifier).toBe(0.20);
+      expect(modifier).toBe(0.2);
 
-      setDifficultyModifier(mockCtx, testUserId, -0.30);  // Try to set below min
+      setDifficultyModifier(mockCtx, testUserId, -0.3); // Try to set below min
       const modifier2 = getDifficultyModifier(mockCtx, testUserId);
-      expect(modifier2).toBe(-0.20);
+      expect(modifier2).toBe(-0.2);
     });
   });
 
   describe('getDifficultyLevelString', () => {
     it('should return "Easy" for -20% modifier', () => {
-      setDifficultyModifier(mockCtx, testUserId, -0.20);
+      setDifficultyModifier(mockCtx, testUserId, -0.2);
       const level = getDifficultyLevelString(mockCtx, testUserId);
       expect(level).toBe('Easy');
     });
@@ -188,13 +188,13 @@ describe('DynamicDifficulty', () => {
     });
 
     it('should return "Hard" for +10% modifier', () => {
-      setDifficultyModifier(mockCtx, testUserId, 0.10);
+      setDifficultyModifier(mockCtx, testUserId, 0.1);
       const level = getDifficultyLevelString(mockCtx, testUserId);
       expect(level).toBe('Hard');
     });
 
     it('should return "Extreme" for +20% modifier', () => {
-      setDifficultyModifier(mockCtx, testUserId, 0.20);
+      setDifficultyModifier(mockCtx, testUserId, 0.2);
       const level = getDifficultyLevelString(mockCtx, testUserId);
       expect(level).toBe('Extreme');
     });
@@ -313,31 +313,31 @@ describe('DynamicDifficulty', () => {
     });
 
     it('should increase difficulty with positive modifier', () => {
-      setDifficultyModifier(mockCtx, testUserId, 0.20);
+      setDifficultyModifier(mockCtx, testUserId, 0.2);
       const target = calculateTargetDifficulty(mockCtx, testUserId, 0.5);
       expect(target).toBeCloseTo(0.6, 0.01);
     });
 
     it('should decrease difficulty with negative modifier', () => {
-      setDifficultyModifier(mockCtx, testUserId, -0.20);
+      setDifficultyModifier(mockCtx, testUserId, -0.2);
       const target = calculateTargetDifficulty(mockCtx, testUserId, 0.5);
       expect(target).toBeCloseTo(0.4, 0.01);
     });
 
     it('should clamp to maximum of 1.5', () => {
-      const target = calculateTargetDifficulty(mockCtx, testUserId, 1.0, 0.20);
+      const target = calculateTargetDifficulty(mockCtx, testUserId, 1.0, 0.2);
       expect(target).toBeLessThanOrEqual(1.5);
     });
 
     it('should clamp to minimum of 0.0', () => {
-      const target = calculateTargetDifficulty(mockCtx, testUserId, 0.5, -0.20);
+      const target = calculateTargetDifficulty(mockCtx, testUserId, 0.5, -0.2);
       expect(target).toBeGreaterThanOrEqual(0.0);
     });
   });
 
   describe('getEncounterRewardModifier', () => {
     it('should return 0.8x for Easy difficulty', () => {
-      setDifficultyModifier(mockCtx, testUserId, -0.20);
+      setDifficultyModifier(mockCtx, testUserId, -0.2);
       const modifier = getEncounterRewardModifier(mockCtx, testUserId);
       expect(modifier).toBeCloseTo(0.8, 0.01);
     });
@@ -349,13 +349,13 @@ describe('DynamicDifficulty', () => {
     });
 
     it('should return 1.2x for Hard difficulty', () => {
-      setDifficultyModifier(mockCtx, testUserId, 0.10);
+      setDifficultyModifier(mockCtx, testUserId, 0.1);
       const modifier = getEncounterRewardModifier(mockCtx, testUserId);
       expect(modifier).toBeCloseTo(1.2, 0.01);
     });
 
     it('should return 1.4x for Extreme difficulty', () => {
-      setDifficultyModifier(mockCtx, testUserId, 0.20);
+      setDifficultyModifier(mockCtx, testUserId, 0.2);
       const modifier = getEncounterRewardModifier(mockCtx, testUserId);
       expect(modifier).toBeCloseTo(1.4, 0.01);
     });
@@ -398,13 +398,13 @@ describe('DynamicDifficulty', () => {
 
   describe('Persistence', () => {
     it('should save difficulty state to storage', () => {
-      setDifficultyModifier(mockCtx, testUserId, 0.10);
+      setDifficultyModifier(mockCtx, testUserId, 0.1);
 
       expect(mockCtx.storageWrite).toHaveBeenCalledWith(
         'difficulty_state',
         expect.objectContaining({
           player_id: testUserId,
-          current_modifier: 0.10,
+          current_modifier: 0.1,
         })
       );
     });

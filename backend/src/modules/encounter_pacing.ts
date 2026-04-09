@@ -8,15 +8,7 @@ import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, createValidationErrorResponse } from './validation';
-import {
-  object,
-  number,
-  string,
-  array,
-  pipe,
-  minValue,
-  maxValue,
-} from 'valibot';
+import { object, number, string, array, pipe, minValue, maxValue } from 'valibot';
 
 /**
  * Content type enum for encounters.
@@ -116,9 +108,9 @@ export interface PacingRecommendation {
 }
 
 // Pacing targets
-const TARGET_COMBAT_RATIO = 0.60;
-const TARGET_EXPLORATION_RATIO = 0.20;
-const TARGET_NARRATIVE_RATIO = 0.20;
+const TARGET_COMBAT_RATIO = 0.6;
+const TARGET_EXPLORATION_RATIO = 0.2;
+const TARGET_NARRATIVE_RATIO = 0.2;
 const MAX_COMBAT_STREAK = 5;
 const MIN_EXPLORATION_STREAK = 3;
 const FATIGUE_THRESHOLD_HIGH = 70;
@@ -306,10 +298,14 @@ export function rpcGetPacingReport(
  * Calculates pacing metrics from pacing state.
  */
 function calculateMetrics(state: PacingState): PacingMetrics {
-  const combatCount = state.recent_encounters.filter(e => e.type === ContentType.COMBAT).length;
-  const explorationCount = state.recent_encounters.filter(e => e.type === ContentType.EXPLORATION).length;
-  const narrativeCount = state.recent_encounters.filter(e => e.type === ContentType.NARRATIVE).length;
-  const puzzleCount = state.recent_encounters.filter(e => e.type === ContentType.PUZZLE).length;
+  const combatCount = state.recent_encounters.filter((e) => e.type === ContentType.COMBAT).length;
+  const explorationCount = state.recent_encounters.filter(
+    (e) => e.type === ContentType.EXPLORATION
+  ).length;
+  const narrativeCount = state.recent_encounters.filter(
+    (e) => e.type === ContentType.NARRATIVE
+  ).length;
+  const puzzleCount = state.recent_encounters.filter((e) => e.type === ContentType.PUZZLE).length;
   const total = state.recent_encounters.length;
 
   return {

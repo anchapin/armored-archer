@@ -1,8 +1,4 @@
-import config, {
-  validateRequiredConfig,
-  maskSecret,
-  logConfiguration,
-} from '../index';
+import config, { validateRequiredConfig, maskSecret, logConfiguration } from '../index';
 
 describe('config/index direct function tests', () => {
   describe('maskSecret', () => {
