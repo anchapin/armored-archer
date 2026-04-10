@@ -13,7 +13,7 @@
     "declaration": true,
     "declarationMap": false,
     "sourceMap": false,
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
     "noEmitOnError": true,

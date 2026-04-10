@@ -161,7 +161,7 @@ class GodotAutoFixer:
         uid_issues = self.scan_scene_uids()
         if uid_issues:
             self.log(f"Found {len(uid_issues)} invalid UID references", "WARN")
-            for scene_file, old_uid, path, new_uid in uid_issues:
+            for scene_file, old_uid, _path, new_uid in uid_issues:
                 self.fix_uid_reference(scene_file, old_uid, new_uid)
         else:
             self.log("No invalid UID references found")
