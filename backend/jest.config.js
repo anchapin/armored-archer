@@ -158,8 +158,10 @@ module.exports = {
       tsconfig: {
         module: 'commonjs',
         target: 'ES2020',
+        moduleResolution: 'node16',
         esModuleInterop: true,
-        allowSyntheticDefaultImports: true
+        allowSyntheticDefaultImports: true,
+        ignoreDeprecations: '6.0'
       }
     }],
     // Transform JS files with Babel for ES module support

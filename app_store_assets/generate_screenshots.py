@@ -42,7 +42,7 @@ def create_placeholder_screenshot(size, label, description, output_path):
         font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 60)
         font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
         font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
-    except (OSError, IOError):
+    except OSError:
         # Fall back to default font
         font_large = ImageFont.load_default()
         font_medium = ImageFont.load_default()

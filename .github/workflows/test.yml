@@ -33,16 +33,15 @@ jobs:
         run: |
           # Run headless tests using the test runner scene
           # Note: This requires a test scene or headless mode
-          # Capture output and check for test failures
-          TEST_OUTPUT=$(./godot4 --headless --script test/run_all_tests.gd 2>&1)
-          echo "$TEST_OUTPUT"
-          
-          # Check for test failures in output
-          if echo "$TEST_OUTPUT" | grep -q "Failed: [1-9]"; then
-            echo "❌ Godot tests failed!"
+          # The headless runner avoids await process_frame which doesn't work in headless mode
+          # Run headless tests using the headless-compatible test runner
+          # The headless runner avoids await process_frame which doesn't work in headless mode
+          timeout 300 ./godot4 --headless --script test/run_all_tests_headless.gd 2>&1 || {
+            echo "Godot tests failed or timed out!"
             exit 1
-          fi
-          echo "✅ All Godot tests passed"
+          }
+
+          echo "All Godot tests completed"
           
       - name: Check test coverage
         run: |
@@ -144,10 +143,11 @@ jobs:
         options: >-
           --health-cmd "/nakama/nakama healthcheck"
           --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
+          --health-timeout 10s
+          --health-retries 30
+          --health-start-period 20s
         volumes:
-          - ${{ github.workspace }}/backend/nakama.yml:/nakama/data/nakama.yml:ro
+          - ./backend/nakama.yml:/nakama/data/nakama.yml:ro
     
     steps:
       - uses: actions/checkout@v4

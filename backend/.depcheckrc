@@ -4,7 +4,10 @@
     "husky",
     "lint-staged",
     "webpack*",
-    "ts-loader"
+    "ts-loader",
+    "@babel/runtime",
+    "buffer",
+    "process"
   ],
   "skipMissing": ["@jest/globals"]
 }

@@ -18,6 +18,7 @@ module.exports = [
       'src/types/nakama*.d.ts',
       'src/config/**',
       '**/__tests__/**',
+      '**/__mocks__/**',
       'src/utils/__tests__/**',
       'src/modules/config_validation.ts',
       'src/modules/metrics.ts',

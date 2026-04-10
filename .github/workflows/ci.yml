@@ -151,8 +151,9 @@ jobs:
         options: >-
           --health-cmd "/nakama/nakama healthcheck"
           --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
+          --health-timeout 10s
+          --health-retries 30
+          --health-start-period 20s
         volumes:
           - ${{ github.workspace }}/backend/nakama.yml:/nakama/data/nakama.yml:ro
     
@@ -440,7 +441,16 @@ jobs:
         run: pip install gdtoolkit
 
       - name: Run gdlint
-        run: gdlint .
+        run: |
+          # Lint only project files, excluding third-party addons (GUT)
+          # Run gdlint and capture exit code - non-zero means errors found
+          gdlint autoloads/ scenes/ scripts/ test/
+          LINT_EXIT_CODE=$?
+          if [ "$LINT_EXIT_CODE" -ne 0 ]; then
+            echo "❌ GDScript linting failed with exit code $LINT_EXIT_CODE"
+            exit 1
+          fi
+          echo "✅ GDScript linting passed"
 
   tech-debt-tracking:
     name: Tech Debt Tracking
@@ -530,8 +540,9 @@ jobs:
         options: >-
           --health-cmd "/nakama/nakama healthcheck"
           --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
+          --health-timeout 10s
+          --health-retries 30
+          --health-start-period 20s
         volumes:
           - ${{ github.workspace }}/backend/nakama.yml:/nakama/data/nakama.yml:ro
     

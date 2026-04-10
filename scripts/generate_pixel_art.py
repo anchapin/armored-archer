@@ -98,7 +98,7 @@ class PixelArtGenerator:
         """Set a pixel to a specific color from palette"""
         if 0 <= x < img.width and 0 <= y < img.height and 0 <= color_idx < len(palette):
             color = palette[color_idx]
-            img.putpixel((x, y), color + (255,))  # Add alpha
+            img.putpixel((x, y), (*color, 255))  # Add alpha
 
     def draw_rectangle(self, img: Image.Image, x: int, y: int, w: int, h: int, palette: list[tuple], color_idx: int):
         """Draw a filled rectangle"""
@@ -129,7 +129,7 @@ class PixelArtGenerator:
         self.draw_rectangle(img, 22, 10, 2, 10, palette, 2)  # Bow staff
 
         # Breathing animation sway (frame 0-5)
-        sway = int((frame / 6) * 2) - 1
+        _sway = int((frame / 6) * 2) - 1
         # Slight horizontal offset based on frame
 
         return img
@@ -287,7 +287,7 @@ class PixelArtGenerator:
         directions = ['down', 'up', 'left', 'right']
 
         for enemy_type in enemy_types:
-            palette_key = 'goblin' if enemy_type == 'goblin' else 'player_archer'
+            _palette_key = 'goblin' if enemy_type == 'goblin' else 'player_archer'
             for direction in directions:
                 for frame in range(4):  # Simple 4-frame idle
                     img = self.generate_enemy_idle(enemy_type, direction, frame)

@@ -55,7 +55,7 @@ class GodotAutoFixer:
                         # Check if UID looks like a human-readable identifier (invalid)
                         if uid.startswith("uid://") and re.match(r"uid://[a-z_]+$", uid):
                             # Try to get actual UID from the referenced file
-                            ref_file = PROJECT_ROOT / path.lstrip("res://")
+                            ref_file = PROJECT_ROOT / path.removeprefix("res://")
                             if ref_file.exists():
                                 actual_uid = self._get_file_uid(ref_file)
                                 if actual_uid and actual_uid != uid:

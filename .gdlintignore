@@ -1,0 +1,19 @@
+# Third-party testing framework - do not lint
+addons/gut/
+
+# Generated files
+*.import
+*.tres
+*.tscn
+*.remap
+
+# Translation files
+*.translation
+
+# Godot cache
+.godot/
+.tscn/
+
+# Temporary files
+*~
+*.tmp

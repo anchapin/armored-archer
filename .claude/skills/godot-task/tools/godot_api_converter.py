@@ -149,6 +149,216 @@ def should_skip_class(name: str) -> bool:
     return False
 
 
+def _format_class_description(
+    root: ET.Element, config: ConversionConfig
+) -> str:
+    """Extract and format the class description based on config."""
+    if config.class_description == DescriptionMode.NONE:
+        return ""
+
+    brief_elem = root.find("brief_description")
+    full_desc_elem = root.find("description")
+
+    if config.class_description == DescriptionMode.FIRST_SENTENCE:
+        if brief_elem is not None and brief_elem.text:
+            return first_sentence(brief_elem.text)
+    elif config.class_description == DescriptionMode.BRIEF:
+        if brief_elem is not None and brief_elem.text:
+            return convert_bbcode(brief_elem.text)
+    elif config.class_description == DescriptionMode.FULL:
+        if full_desc_elem is not None and full_desc_elem.text:
+            return convert_bbcode(full_desc_elem.text)
+
+    return ""
+
+
+def _format_members(
+    members: ET.Element, config: ConversionConfig
+) -> list[str]:
+    """Format properties/members section."""
+    lines: list[str] = []
+
+    if config.compact_format:
+        lines.append("**Props:**")
+        for m in members:
+            mname = m.get("name", "")
+            mtype = m.get("type", "")
+            default = m.get("default", "")
+            enum = m.get("enum")
+
+            if enum:
+                mtype = f"{mtype} ({enum})"
+
+            if default:
+                lines.append(f"- {mname}: {mtype} = {default}")
+            else:
+                lines.append(f"- {mname}: {mtype}")
+    else:
+        lines.append("### Properties")
+        lines.append("| Name | Type | Default |")
+        lines.append("|------|------|---------|")
+
+        for m in members:
+            mname = m.get("name", "")
+            mtype = m.get("type", "")
+            default = m.get("default", "")
+            enum = m.get("enum")
+
+            if enum:
+                mtype = f"{mtype} ({enum})"
+
+            default = escape_table_cell(default)
+            lines.append(f"| {mname} | {mtype} | {default} |")
+
+    # Add property descriptions if enabled
+    if config.property_descriptions != DescriptionMode.NONE:
+        lines.append("")
+        for m in members:
+            mname = m.get("name", "")
+            desc = get_description(m.text, config.property_descriptions)
+            if desc:
+                lines.append(f"- **{mname}**: {desc}")
+
+    lines.append("")
+    return lines
+
+
+def _format_methods(
+    methods: ET.Element, config: ConversionConfig
+) -> list[str]:
+    """Format methods section."""
+    method_lines: list[str] = []
+
+    for m in methods:
+        mname = m.get("name", "")
+        qualifiers = m.get("qualifiers", "")
+
+        # Skip virtual methods if configured
+        is_virtual = "virtual" in qualifiers
+        if config.no_virtual and is_virtual:
+            continue
+
+        # Get return type
+        ret = m.find("return")
+        ret_type = ret.get("type") if ret is not None else "void"
+
+        # Get parameters
+        params = []
+        for p in m.findall("param"):
+            params.append(format_param(p))
+
+        # Get description
+        desc_elem = m.find("description")
+        desc = get_description(
+            desc_elem.text if desc_elem is not None else None, config.method_descriptions
+        )
+
+        virtual_marker = "" if config.compact_format else ("🔷 " if is_virtual else "")
+        ret_str = f" -> {ret_type}" if ret_type and ret_type != "void" else ""
+        desc_str = f" - {desc}" if desc else ""
+
+        method_lines.append(
+            f"- {virtual_marker}{mname}({', '.join(params)}){ret_str}{desc_str}"
+        )
+
+    lines: list[str] = []
+    if method_lines:
+        if config.compact_format:
+            lines.append("**Methods:**")
+        else:
+            lines.append("### Methods")
+        lines.extend(method_lines)
+        lines.append("")
+
+    return lines
+
+
+def _format_signals(
+    signals: ET.Element, config: ConversionConfig
+) -> list[str]:
+    """Format signals section."""
+    lines: list[str] = []
+
+    if config.compact_format:
+        lines.append("**Signals:**")
+    else:
+        lines.append("### Signals")
+
+    for s in signals:
+        sname = s.get("name", "")
+
+        # Get parameters
+        params = []
+        for p in s.findall("param"):
+            pname = p.get("name", "")
+            ptype = p.get("type", "")
+            params.append(f"{pname}: {ptype}")
+
+        # Get description
+        desc_elem = s.find("description")
+        desc = get_description(
+            desc_elem.text if desc_elem is not None else None, config.signal_descriptions
+        )
+
+        # Build signal line - simplified format for parameterless signals
+        if config.simple_signals and not params:
+            param_str = ""
+        else:
+            param_str = f"({', '.join(params)})" if params else ""
+        desc_str = f" - {desc}" if desc else ""
+
+        lines.append(f"- {sname}{param_str}{desc_str}")
+
+    lines.append("")
+    return lines
+
+
+def _format_constants(
+    constants: ET.Element, config: ConversionConfig
+) -> list[str]:
+    """Format constants/enums section."""
+    lines: list[str] = []
+
+    # Group by enum name
+    enums: dict[str, list[tuple[str, str, str | None]]] = {}
+
+    for c in constants:
+        enum_name = c.get("enum", "Constants")
+        cname = c.get("name", "")
+        cvalue = c.get("value", "")
+        cdesc_raw = c.text
+
+        if enum_name not in enums:
+            enums[enum_name] = []
+        enums[enum_name].append((cname, cvalue, cdesc_raw))
+
+    if not enums:
+        return lines
+
+    if config.compact_format:
+        lines.append("**Enums:**")
+    else:
+        lines.append("### Enums")
+
+    for enum_name, values in enums.items():
+        # Format: **EnumName:** CONST1=0, CONST2=1, ...
+        value_strs = [f"{n}={v}" for n, v, _ in values[: config.max_enum_values]]
+        if len(values) > config.max_enum_values:
+            value_strs.append("...")
+
+        lines.append(f"**{enum_name}:** {', '.join(value_strs)}")
+
+        # Add descriptions if enabled
+        if config.constant_descriptions != DescriptionMode.NONE:
+            for cname, _cvalue, cdesc_raw in values:
+                cdesc = get_description(cdesc_raw, config.constant_descriptions)
+                if cdesc:
+                    lines.append(f"  - {cname}: {cdesc}")
+
+    lines.append("")
+    return lines
+
+
 def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:
     """Parse a single XML class file and return markdown string."""
     try:
@@ -159,29 +369,12 @@ def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:
         return None
 
     name = root.get("name")
-    if not name:
-        return None
-
-    if should_skip_class(name):
+    if not name or should_skip_class(name):
         return None
 
     inherits = root.get("inherits", "")
 
-    class_desc = ""
-    if config.class_description != DescriptionMode.NONE:
-        brief_elem = root.find("brief_description")
-        full_desc_elem = root.find("description")
-
-        if config.class_description == DescriptionMode.FIRST_SENTENCE:
-            if brief_elem is not None and brief_elem.text:
-                class_desc = first_sentence(brief_elem.text)
-        elif config.class_description == DescriptionMode.BRIEF:
-            if brief_elem is not None and brief_elem.text:
-                class_desc = convert_bbcode(brief_elem.text)
-        elif config.class_description == DescriptionMode.FULL:
-            if full_desc_elem is not None and full_desc_elem.text:
-                class_desc = convert_bbcode(full_desc_elem.text)
-
+    # Format class header
     if config.compact_format and inherits:
         lines = [f"## {name} <- {inherits}"]
     else:
@@ -191,6 +384,8 @@ def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:
 
     lines.append("")
 
+    # Add class description
+    class_desc = _format_class_description(root, config)
     if class_desc:
         lines.append(class_desc)
         lines.append("")
@@ -198,167 +393,22 @@ def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:
     # Properties/Members
     members = root.find("members")
     if members is not None and len(members):
-        if config.compact_format:
-            lines.append("**Props:**")
-            for m in members:
-                mname = m.get("name", "")
-                mtype = m.get("type", "")
-                default = m.get("default", "")
-                enum = m.get("enum")
-
-                if enum:
-                    mtype = f"{mtype} ({enum})"
-
-                # Inline format: name: Type = default (omit empty default)
-                if default:
-                    lines.append(f"- {mname}: {mtype} = {default}")
-                else:
-                    lines.append(f"- {mname}: {mtype}")
-        else:
-            lines.append("### Properties")
-            lines.append("| Name | Type | Default |")
-            lines.append("|------|------|---------|")
-
-            for m in members:
-                mname = m.get("name", "")
-                mtype = m.get("type", "")
-                default = m.get("default", "")
-                enum = m.get("enum")
-
-                if enum:
-                    mtype = f"{mtype} ({enum})"
-
-                default = escape_table_cell(default)
-                lines.append(f"| {mname} | {mtype} | {default} |")
-
-        # Add property descriptions if enabled
-        if config.property_descriptions != DescriptionMode.NONE:
-            lines.append("")
-            for m in members:
-                mname = m.get("name", "")
-                desc = get_description(m.text, config.property_descriptions)
-                if desc:
-                    lines.append(f"- **{mname}**: {desc}")
-
-        lines.append("")
+        lines.extend(_format_members(members, config))
 
     # Methods
     methods = root.find("methods")
     if methods is not None:
-        method_lines = []
-        for m in methods:
-            mname = m.get("name", "")
-            qualifiers = m.get("qualifiers", "")
-
-            # Skip virtual methods if configured
-            is_virtual = "virtual" in qualifiers
-            if config.no_virtual and is_virtual:
-                continue
-
-            # Get return type
-            ret = m.find("return")
-            ret_type = ret.get("type") if ret is not None else "void"
-
-            # Get parameters
-            params = []
-            for p in m.findall("param"):
-                params.append(format_param(p))
-
-            # Get description
-            desc_elem = m.find("description")
-            desc = get_description(
-                desc_elem.text if desc_elem is not None else None, config.method_descriptions
-            )
-
-            virtual_marker = "" if config.compact_format else ("🔷 " if is_virtual else "")
-            ret_str = f" -> {ret_type}" if ret_type and ret_type != "void" else ""
-            desc_str = f" - {desc}" if desc else ""
-
-            method_lines.append(
-                f"- {virtual_marker}{mname}({', '.join(params)}){ret_str}{desc_str}"
-            )
-
-        if method_lines:
-            if config.compact_format:
-                lines.append("**Methods:**")
-            else:
-                lines.append("### Methods")
-            lines.extend(method_lines)
-            lines.append("")
+        lines.extend(_format_methods(methods, config))
 
     # Signals
     signals = root.find("signals")
     if signals is not None and len(signals):
-        if config.compact_format:
-            lines.append("**Signals:**")
-        else:
-            lines.append("### Signals")
-
-        for s in signals:
-            sname = s.get("name", "")
-
-            # Get parameters
-            params = []
-            for p in s.findall("param"):
-                pname = p.get("name", "")
-                ptype = p.get("type", "")
-                params.append(f"{pname}: {ptype}")
-
-            # Get description
-            desc_elem = s.find("description")
-            desc = get_description(
-                desc_elem.text if desc_elem is not None else None, config.signal_descriptions
-            )
-
-            # Build signal line - simplified format for parameterless signals
-            if config.simple_signals and not params:
-                param_str = ""
-            else:
-                param_str = f"({', '.join(params)})" if params else ""
-            desc_str = f" - {desc}" if desc else ""
-
-            lines.append(f"- {sname}{param_str}{desc_str}")
-
-        lines.append("")
+        lines.extend(_format_signals(signals, config))
 
     # Constants/Enums
     constants = root.find("constants")
     if constants is not None and len(constants):
-        # Group by enum name
-        enums: dict[str, list[tuple[str, str, str | None]]] = {}
-
-        for c in constants:
-            enum_name = c.get("enum", "Constants")
-            cname = c.get("name", "")
-            cvalue = c.get("value", "")
-            cdesc_raw = c.text  # Store raw text
-
-            if enum_name not in enums:
-                enums[enum_name] = []
-            enums[enum_name].append((cname, cvalue, cdesc_raw))
-
-        if enums:
-            if config.compact_format:
-                lines.append("**Enums:**")
-            else:
-                lines.append("### Enums")
-
-            for enum_name, values in enums.items():
-                # Format: **EnumName:** CONST1=0, CONST2=1, ...
-                value_strs = [f"{n}={v}" for n, v, _ in values[: config.max_enum_values]]
-                if len(values) > config.max_enum_values:
-                    value_strs.append("...")
-
-                lines.append(f"**{enum_name}:** {', '.join(value_strs)}")
-
-                # Add descriptions if enabled
-                if config.constant_descriptions != DescriptionMode.NONE:
-                    for cname, cvalue, cdesc_raw in values:
-                        cdesc = get_description(cdesc_raw, config.constant_descriptions)
-                        if cdesc:
-                            lines.append(f"  - {cname}: {cdesc}")
-
-            lines.append("")
+        lines.extend(_format_constants(constants, config))
 
     return "\n".join(lines)
 

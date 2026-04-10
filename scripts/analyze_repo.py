@@ -121,7 +121,7 @@ class RepoAnalyzer:
         except Exception:
             return None
 
-    def _search_files(self, pattern: str, content_pattern: str = None) -> bool:
+    def _search_files(self, pattern: str, content_pattern: str | None = None) -> bool:
         """Search for files matching pattern, optionally with content."""
         matches = list(self.repo_path.glob(pattern))
         if not matches:
@@ -529,7 +529,7 @@ class RepoAnalyzer:
             n_plus_one = True
         # Also check for npm scripts or detection scripts
         if not n_plus_one:
-            code, output = self._run_command(
+            code, _ = self._run_command(
                 ["npm", "run", "detect-n-plus-one", "--prefix", "backend"],
                 timeout=30
             )
