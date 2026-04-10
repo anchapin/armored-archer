@@ -5,17 +5,17 @@ extends GutTest
 
 var weapon_balance_manager: Node
 var gear_enums
-var WeaponBalanceManager_script
+var weapon_balance_manager_script: Resource
 
 func before_each():
 	# Load gear enums
 	gear_enums = preload("res://scripts/gear_enums.gd")
 
 	# Load WeaponBalanceManager script
-	WeaponBalanceManager_script = preload("res://autoloads/WeaponBalanceManager.gd")
+	weapon_balance_manager_script = preload("res://autoloads/WeaponBalanceManager.gd")
 
 	# Create WeaponBalanceManager instance
-	weapon_balance_manager = WeaponBalanceManager_script.new()
+	weapon_balance_manager = weapon_balance_manager_script.new()
 	# Set up as if it were autoload
 	weapon_balance_manager.name = "WeaponBalanceManager"
 	weapon_balance_manager.gear_registry = null  # Will use simple tests without registry

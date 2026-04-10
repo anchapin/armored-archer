@@ -16,6 +16,9 @@ var enemy_factory: Node
 var ai_manager: Node
 var test_player: Node2D
 
+# --- Preloaded Scenes ---
+const ELEMENTAL_ENEMY_SCENE = preload("res://scenes/enemies/elemental_enemy.tscn")
+
 # --- Setup and Teardown ---
 
 func before_all() -> void:
@@ -96,7 +99,7 @@ func test_difficulty_scaling() -> void:
 
 func test_elemental_attacks() -> void:
 	# Test: Elemental enemies have elemental attacks
-	var elemental_scene = load("res://scenes/enemies/elemental_enemy.tscn")
+	var elemental_scene = ELEMENTAL_ENEMY_SCENE
 	assert_true(elemental_scene != null, "Elemental enemy scene should exist")
 
 	var elemental: ElementalEnemy = elemental_scene.instantiate()
@@ -115,7 +118,7 @@ func test_elemental_attacks() -> void:
 
 func test_elemental_weakness() -> void:
 	# Test: Elemental weakness deals 2x damage
-	var elemental: ElementalEnemy = load("res://scenes/enemies/elemental_enemy.tscn").instantiate()
+	var elemental: ElementalEnemy = ELEMENTAL_ENEMY_SCENE.instantiate()
 	if elemental:
 		get_tree().root.add_child(elemental)
 

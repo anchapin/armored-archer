@@ -1,8 +1,11 @@
 extends GutTest
 
-var GameManagerClass = load("res://autoloads/GameManager.gd")
-var PlayerStatsManagerClass = load("res://autoloads/PlayerStatsManager.gd")
-var GearManagerClass = load("res://autoloads/GearManager.gd")
+const GameManagerClass = preload("res://autoloads/GameManager.gd")
+const PlayerStatsManagerClass = preload("res://autoloads/PlayerStatsManager.gd")
+const GearManagerClass = preload("res://autoloads/GearManager.gd")
+const CombatManagerClass = preload("res://autoloads/CombatManager.gd")
+const SeasonManagerClass = preload("res://autoloads/SeasonManager.gd")
+const StoreManagerClass = preload("res://autoloads/StoreManager.gd")
 
 class MockNetworkManager extends Node:
 	var is_server_connected: bool = true
@@ -66,7 +69,6 @@ func test_combat_manager_network_integration():
 		"status": "active"
 	}
 	
-	var CombatManagerClass = load("res://autoloads/CombatManager.gd")
 	var combat_mgr = CombatManagerClass.new()
 	add_child_autofree(combat_mgr)
 	combat_mgr.network_manager = mock_net
@@ -98,7 +100,6 @@ func test_gear_equipped_affects_combat():
 		"quiver": {"item_id": "quiver_common", "damage_multiplier": 1.2}
 	}
 	
-	var CombatManagerClass = load("res://autoloads/CombatManager.gd")
 	var combat_mgr = CombatManagerClass.new()
 	add_child_autofree(combat_mgr)
 	combat_mgr.network_manager = mock_net
@@ -119,7 +120,6 @@ func test_gear_equipped_affects_combat():
 	assert_eq(combat_mgr.opponent_health, 70, "Opponent should take damage")
 
 func test_season_manager_affects_player_rewards():
-	var SeasonManagerClass = load("res://autoloads/SeasonManager.gd")
 	var season_mgr = SeasonManagerClass.new()
 	add_child_autofree(season_mgr)
 	
@@ -138,11 +138,9 @@ func test_season_manager_affects_player_rewards():
 	assert_eq(bonus_xp, 150, "Season bonus should apply to XP rewards")
 
 func test_inventory_manager_with_store():
-	var StoreManagerClass = load("res://autoloads/StoreManager.gd")
 	var store_mgr = StoreManagerClass.new()
 	add_child_autofree(store_mgr)
 	
-	var GearManagerClass = load("res://autoloads/GearManager.gd")
 	var gear_mgr = GearManagerClass.new()
 	add_child_autofree(gear_mgr)
 	

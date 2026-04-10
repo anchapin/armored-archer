@@ -4,14 +4,14 @@ extends GutTest
 ## Tests match quality metrics, balance detection, and analytics reporting
 
 var analytics_manager: Node
-var MatchmakingAnalyticsManager_script
+var matchmaking_analytics_manager_script: Resource
 
 func before_each():
 	# Load MatchmakingAnalyticsManager script
-	MatchmakingAnalyticsManager_script = preload("res://autoloads/MatchmakingAnalyticsManager.gd")
+	matchmaking_analytics_manager_script = preload("res://autoloads/MatchmakingAnalyticsManager.gd")
 
 	# Create MatchmakingAnalyticsManager instance
-	analytics_manager = MatchmakingAnalyticsManager_script.new()
+	analytics_manager = matchmaking_analytics_manager_script.new()
 	# Set up as if it were autoload
 	analytics_manager.name = "MatchmakingAnalyticsManager"
 	# Set up mock network manager

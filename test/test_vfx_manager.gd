@@ -1,5 +1,7 @@
 extends Node
 
+const VFX_MANAGER_CLASS = preload("res://autoloads/VFXManager.gd")
+
 var _tests_passed: int = 0
 var _tests_failed: int = 0
 
@@ -30,7 +32,7 @@ func run_tests() -> void:
 	queue_free()
 
 func _create_vfx_manager() -> Node:
-	var vfx = load("res://autoloads/VFXManager.gd").new()
+	var vfx = VFX_MANAGER_CLASS.new()
 	add_child(vfx)
 	await get_tree().process_frame
 	return vfx
@@ -136,8 +138,7 @@ func test_singleton_instance() -> void:
 	vfx.queue_free()
 
 	# Access static instance through the loaded class
-	var VFXManagerClass = load("res://autoloads/VFXManager.gd")
-	if VFXManagerClass.instance == null:
+	if VFX_MANAGER_CLASS.instance == null:
 		_pass("test_singleton_clears_on_exit")
 	else:
 		_fail("test_singleton_clears_on_exit", "Singleton should be null after cleanup")

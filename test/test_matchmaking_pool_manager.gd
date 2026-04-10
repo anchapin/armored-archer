@@ -4,14 +4,14 @@ extends GutTest
 ## Tests rating-based pool matching, bracket expansion, and queue management
 
 var matchmaking_pool_manager: Node
-var MatchmakingPoolManager_script
+var matchmaking_pool_manager_script: Resource
 
 func before_each():
 	# Load MatchmakingPoolManager script
-	MatchmakingPoolManager_script = preload("res://autoloads/MatchmakingPoolManager.gd")
+	matchmaking_pool_manager_script = preload("res://autoloads/MatchmakingPoolManager.gd")
 
 	# Create MatchmakingPoolManager instance
-	matchmaking_pool_manager = MatchmakingPoolManager_script.new()
+	matchmaking_pool_manager = matchmaking_pool_manager_script.new()
 	# Set up as if it were autoload
 	matchmaking_pool_manager.name = "MatchmakingPoolManager"
 	# Set up mock network manager

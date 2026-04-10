@@ -1,5 +1,7 @@
 extends Node
 
+const UIAutomationClass = preload("res://autoloads/UIAutomation.gd")
+
 var _tests_passed: int = 0
 var _tests_failed: int = 0
 
@@ -23,7 +25,7 @@ func run_tests() -> void:
 	queue_free()
 
 func _create_ui_automation() -> Node:
-	var ui_auto = load("res://autoloads/UIAutomation.gd").new()
+	var ui_auto = UIAutomationClass.new()
 	add_child(ui_auto)
 	await get_tree().process_frame
 	return ui_auto
@@ -59,7 +61,6 @@ func test_constants() -> void:
 	ui_auto.queue_free()
 
 func test_singleton_initialization() -> void:
-	var UIAutomationClass = load("res://autoloads/UIAutomation.gd")
 	var ui_auto = await _create_ui_automation()
 
 	if UIAutomationClass._instance == ui_auto:
@@ -182,7 +183,6 @@ func test_static_methods_exist() -> void:
 	ui_auto.queue_free()
 
 func test_get_instance_creates_instance() -> void:
-	var UIAutomationClass = load("res://autoloads/UIAutomation.gd")
 	var ui_auto = await _create_ui_automation()
 	ui_auto.queue_free()
 
