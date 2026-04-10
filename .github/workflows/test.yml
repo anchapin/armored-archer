@@ -132,6 +132,9 @@ jobs:
           --health-retries 5
 
       # Nakama game server service
+      # NOTE: Nakama healthcheck is disabled because it requires database to be initialized.
+      # Migrations run in job steps after Nakama starts, so the built-in healthcheck
+      # would fail. We manually wait for Nakama after running migrations instead.
       nakama:
         image: heroiclabs/nakama:3.21.1
         env:
@@ -141,11 +144,7 @@ jobs:
         ports:
           - 7350:7350
         options: >-
-          --health-cmd "/nakama/nakama healthcheck"
-          --health-interval 10s
-          --health-timeout 10s
-          --health-retries 30
-          --health-start-period 20s
+          --no-healthcheck
         volumes:
           - ${{ github.workspace }}/backend/nakama.yml:/nakama/data/nakama.yml:ro
     
