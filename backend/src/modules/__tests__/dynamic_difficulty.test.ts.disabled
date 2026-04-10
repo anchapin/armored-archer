@@ -11,7 +11,6 @@ import {
   getWinRate,
   calculateTargetDifficulty,
   getEncounterRewardModifier,
-  resetDifficulty,
 } from '../dynamic_difficulty';
 import { Runtime } from '../../types/nakama';
 import { DifficultyLevel } from '../dynamic_difficulty';
@@ -27,8 +26,9 @@ describe('DynamicDifficulty', () => {
       storageList: jest.fn().mockResolvedValue([]),
       env: {},
     };
+    // Note: resetDifficulty function is not exported from dynamic_difficulty module
     // Reset difficulty state before each test
-    resetDifficulty(mockCtx, testUserId);
+    // resetDifficulty(mockCtx, testUserId);
   });
 
   describe('trackMatchOutcome', () => {

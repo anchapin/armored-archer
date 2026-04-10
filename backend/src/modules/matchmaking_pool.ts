@@ -208,6 +208,7 @@ export function rpcJoinPool(
   const existingPlayer = pool.players.find((p) => p.user_id === ctx.userId);
   if (existingPlayer) {
     return JSON.stringify({
+      success: false,
       error: 'Already in matchmaking pool',
     });
   }
@@ -284,6 +285,7 @@ export function rpcLeavePool(
   const playerIndex = pool.players.findIndex((p) => p.user_id === ctx.userId);
   if (playerIndex === -1) {
     return JSON.stringify({
+      success: false,
       error: 'Not in matchmaking pool',
     });
   }
@@ -336,6 +338,7 @@ export function rpcGetQueueStatus(
   const player = pool.players.find((p) => p.user_id === ctx.userId);
   if (!player) {
     return JSON.stringify({
+      success: false,
       error: 'Not in matchmaking pool',
     });
   }

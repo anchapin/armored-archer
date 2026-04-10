@@ -35,7 +35,9 @@ describe('matchmaking_pool', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockNk.storageRead.mockResolvedValue([]);
+    // Mock storageRead to handle different call patterns
+    // storageRead is synchronous in Nakama, returns StorageObject[] directly
+    mockNk.storageRead.mockImplementation(() => []);
     mockNk.storageWrite.mockImplementation(() => {});
   });
 
@@ -62,7 +64,7 @@ describe('matchmaking_pool', () => {
       };
 
       // Simulate existing pool with player
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: [
@@ -89,7 +91,7 @@ describe('matchmaking_pool', () => {
 
     it('should remove player from pool on leave', () => {
       // First add player to pool
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: [
@@ -118,7 +120,7 @@ describe('matchmaking_pool', () => {
     });
 
     it('should reject leave when not in pool', () => {
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: [],
@@ -143,7 +145,7 @@ describe('matchmaking_pool', () => {
       const request1v1: JoinPoolRequest = { mode: '1v1', rating: 1200 };
       const request2v2: JoinPoolRequest = { mode: '2v2', rating: 1150 };
 
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: [
@@ -255,7 +257,7 @@ describe('matchmaking_pool', () => {
 
   describe('Queue Status', () => {
     it('should return queue position and estimated wait', () => {
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: [
@@ -289,7 +291,7 @@ describe('matchmaking_pool', () => {
     });
 
     it('should reject status for non-existent player', () => {
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: [],
@@ -310,7 +312,7 @@ describe('matchmaking_pool', () => {
       const now = Date.now();
       const sixtySecondsAgo = now - 60000;
 
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: [
@@ -341,7 +343,7 @@ describe('matchmaking_pool', () => {
     it('should find match when players in same bracket', () => {
       const now = Date.now();
 
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: [
@@ -377,7 +379,7 @@ describe('matchmaking_pool', () => {
     it('should prioritize closest rating when multiple matches', () => {
       const now = Date.now();
 
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: [
@@ -423,7 +425,7 @@ describe('matchmaking_pool', () => {
       const now = Date.now();
       const sixtySecondsAgo = now - 60000;
 
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: [
@@ -493,7 +495,7 @@ describe('matchmaking_pool', () => {
     });
 
     it('should not match when insufficient players', () => {
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: [
@@ -520,7 +522,7 @@ describe('matchmaking_pool', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty pool gracefully', () => {
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: [],
@@ -549,7 +551,7 @@ describe('matchmaking_pool', () => {
         });
       }
 
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockImplementation(() => [
         {
           value: JSON.stringify({
             players: players,

@@ -15,6 +15,8 @@ module.exports = {
     '!src/utils/redis.ts',
     '!src/utils/eslint-rules/**',
     '!src/config/errorTracking.ts',
+    'data/**',
+    'backend/src/modules/__mocks__/**',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html', 'json'],
