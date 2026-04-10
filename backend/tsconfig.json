@@ -32,7 +32,9 @@
   ],
   "ts-node": {
     "compilerOptions": {
-      "module": "commonjs"
+      "module": "commonjs",
+      "types": ["node"],
+      "moduleResolution": "node"
     }
   }
 }

@@ -147,7 +147,7 @@ jobs:
           --health-retries 30
           --health-start-period 20s
         volumes:
-          - ./backend/nakama.yml:/nakama/data/nakama.yml:ro
+          - ${{ github.workspace }}/backend/nakama.yml:/nakama/data/nakama.yml:ro
     
     steps:
       - uses: actions/checkout@v4
