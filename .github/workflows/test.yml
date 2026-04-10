@@ -13,14 +13,24 @@ jobs:
   godot-tests:
     name: Run Godot Tests
     runs-on: ubuntu-latest
+    if: github.actor != 'nektos/act' # Skip in act (local GitHub Actions runner)
     strategy:
       matrix:
         godot-version: ['4.6']
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
+      - name: Skip Godot tests in act
+        if: github.actor == 'nektos/act'
+        run: |
+          echo "⚠️  Skipping Godot tests in act (local GitHub Actions runner)"
+          echo "Reason: Headless Godot tests require full Godot environment and cannot run reliably in act"
+          echo "Please run Godot tests locally: godot --headless --script test/run_all_tests.gd"
+          echo "See docs/TESTING_SETUP.md for details"
+          exit 0
+
       - name: Setup Godot
         run: |
           # Download Godot headless binary directly
@@ -28,7 +38,7 @@ jobs:
           unzip -q godot.zip
           chmod +x Godot_v4.6-stable_linux.x86_64
           mv Godot_v4.6-stable_linux.x86_64 godot4
-      
+
       - name: Run Godot Tests
         run: |
           # Run headless tests using the test runner scene
@@ -42,7 +52,7 @@ jobs:
           }
 
           echo "All Godot tests completed"
-          
+
       - name: Check test coverage
         run: |
           # Count test files and estimate coverage

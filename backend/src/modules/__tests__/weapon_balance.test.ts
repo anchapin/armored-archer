@@ -33,15 +33,25 @@ describe('weapon_balance', () => {
     });
 
     it('should apply stat bonuses correctly', () => {
-      const baseDamage = 50;
+      // Use a base damage below the cap so stat bonuses have room to take effect
+      // For RARE tier, the cap is 19.5, so we need base damage < 13
+      const baseDamage = 10;
       const tier = WeaponTier.RARE;
-      const stats = { attack: 20, ability_power: 10 };
+      const stats = { attack: 10, ability_power: 5 };
 
       const result = calculatePvpDamage(baseDamage, tier, stats);
+      const baseResult = calculatePvpDamage(baseDamage, tier, {});
 
       // Stat bonuses should increase damage
-      const baseResult = calculatePvpDamage(baseDamage, tier, {});
+      // attack adds 10 * 0.5 = 5
+      // ability_power adds 5 * 0.3 = 1.5
+      // After PvP reduction (0.85): ~5.525 bonus
       expect(result).toBeGreaterThan(baseResult);
+
+      // Verify the difference accounts for stat contributions
+      const difference = result - baseResult;
+      expect(difference).toBeGreaterThan(0);
+      expect(difference).toBeCloseTo(5.5, 1); // Should be around 5.5 after reduction
     });
 
     it('should enforce maximum damage cap', () => {
@@ -219,7 +229,10 @@ describe('weapon_balance', () => {
 
   describe('validateWeaponPower', () => {
     it('should validate reasonable weapon damage', () => {
-      const result = validateWeaponPower(100, WeaponTier.COMMON);
+      // For common tier: base damage = (bow: 10 + arrow: 5) / 2 = 7.5
+      // Max allowed = 7.5 * 2.0 = 15
+      // Use a reasonable damage value within this range
+      const result = validateWeaponPower(10, WeaponTier.COMMON);
       expect(result).toBe(true);
     });
 
@@ -238,7 +251,17 @@ describe('weapon_balance', () => {
       const tiers = [WeaponTier.COMMON, WeaponTier.RARE, WeaponTier.EPIC, WeaponTier.LEGENDARY];
 
       for (const tier of tiers) {
-        const reasonableDamage = 50;
+        // Calculate appropriate damage for each tier
+        // Tier multiplier: Common=1.0, Rare=1.3, Epic=1.6, Legendary=2.0
+        // Base average = (bow: 10 + arrow: 5) / 2 = 7.5
+        const tierMultiplier = {
+          [WeaponTier.COMMON]: 1.0,
+          [WeaponTier.RARE]: 1.3,
+          [WeaponTier.EPIC]: 1.6,
+          [WeaponTier.LEGENDARY]: 2.0,
+        }[tier];
+
+        const reasonableDamage = 7.5 * tierMultiplier; // Damage within tier range
         const result = validateWeaponPower(reasonableDamage, tier);
         expect(result).toBe(true);
       }
