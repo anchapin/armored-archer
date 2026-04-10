@@ -105,7 +105,7 @@
     "@opentelemetry/exporter-jaeger": "^2.6.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.213.0",
     "@opentelemetry/exporter-zipkin": "^1.28.0",
-    "@opentelemetry/resources": "2.6.0",
+    "@opentelemetry/resources": "2.6.1",
     "@opentelemetry/sdk-node": "^0.213.0",
     "@opentelemetry/semantic-conventions": "1.40.0",
     "@sentry/node": "^10.40.0",
