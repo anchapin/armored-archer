@@ -9,3 +9,5 @@
 # - --container-ubuntu-full: Deprecated
 
 # Note: Volume mounts in workflows now use ${{ github.workspace }} for compatibility
+# Note: For jobs with services (postgres, nakama), run with: act -P ... -W ...
+# to use a different base image that doesn't require host networking
