@@ -134,12 +134,10 @@ func _run_tests():
 	_all_tests_completed = true
 
 	# Cleanup: Free all test root children to prevent memory leaks
+	# Use free() instead of queue_free() since we're in headless mode without main loop
 	for child in _test_root.get_children():
 		if is_instance_valid(child):
-			child.queue_free()
-	# Process frames to ensure queued frees execute
-	for i in range(2):
-		process_frame()
+			child.free()
 
 	_print_summary()
 	quit(_exit_code)
@@ -165,11 +163,9 @@ func _run_single_test(test_file: String):
 
 	# Proper cleanup for headless mode
 	if is_instance_valid(test_instance):
-		# First queue free the test instance
-		test_instance.queue_free()
-		# Process one frame to allow queued frees to execute
-		# This is critical for preventing memory leaks in headless mode
-		process_frame()
+		# Free the test instance directly (not queue_free)
+		# In headless mode without main loop, queue_free won't process
+		test_instance.free()
 
 func _print_summary():
 	print("")
