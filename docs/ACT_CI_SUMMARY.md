@@ -174,7 +174,12 @@ act -j backend-test --pull=false --container-architecture linux/amd64
 
 **Fix:** Prefixed with underscore: `_payload`
 
-### 7. cd.yml Workflow Compatibility
+### 7. Jest Duplicate Mock Warnings
+**Issue:** Integration tests using `jest.integration.config.js` picked up duplicate mock files from both `src/__mocks__/` and `data/modules/__mocks__/` directories, causing Jest haste-map warnings.
+
+**Fix:** Updated `jest.integration.config.js` to use `roots: ['<rootDir>/src']` instead of `roots: ['<rootDir>']` to exclude the `data/modules/__mocks__/` directory.
+
+### 8. cd.yml Workflow Compatibility
 **Issue:** Uses `environment` job property not supported by act
 
 **Fix:** Act doesn't support this feature - workflow can only be run on GitHub CI

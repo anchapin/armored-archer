@@ -9,3 +9,9 @@
 --container-options --volume=/home/runner/.local/share/godot:/root/.local/share/godot
 --container-options --volume=/home/runner/.config/godot:/root/.config/godot
 --container-options --shm-size=2gb
+
+# IMPORTANT: For workflows using custom Docker images (like armored-archer/nakama-postgres),
+# use --pull=false to use locally built images instead of trying to pull from registry.
+# Example: act -j backend-test --pull=false
+# Build the image first: docker build -t armored-archer/nakama-postgres:3.21.1 -f .docker/nakama-postgres/Dockerfile .
+--pull=false
