@@ -35,7 +35,7 @@ describe('alerting', () => {
       ok: true,
       status: 200,
       statusText: 'OK',
-    } as Response);
+    } as unknown);
   });
 
   afterEach(() => {
@@ -273,7 +273,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sendAlert('Disabled Alert', 'Should not send', 'critical');
       expect(fetchSpy).not.toHaveBeenCalled();
@@ -420,7 +420,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('Webhook Alert', 'Sent via webhook', 'critical');
 
@@ -456,7 +456,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('Bearer Alert', 'Bearer auth', 'critical');
 
@@ -488,7 +488,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('Basic Auth Alert', 'Basic auth', 'critical');
 
@@ -518,7 +518,7 @@ describe('alerting', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-      } as Response);
+      } as unknown);
 
       await expect(sa('Fail Alert', 'Will fail', 'critical')).resolves.not.toThrow();
 
@@ -547,7 +547,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('PD Critical', 'PagerDuty alert', 'critical');
 
@@ -581,7 +581,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('PD Warning', 'Warning alert', 'warning');
 
@@ -609,7 +609,7 @@ describe('alerting', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-      } as Response);
+      } as unknown);
 
       await expect(sa('PD Fail', 'Will fail', 'critical')).resolves.not.toThrow();
 
@@ -662,7 +662,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('None Alert', 'Should not send', 'info');
 
@@ -690,7 +690,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       // Should not throw - unknown provider just logs a warning
       await expect(sa('Unknown', 'Unknown provider', 'warning')).resolves.not.toThrow();
@@ -721,7 +721,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('Slack Test', 'Testing slack provider', 'critical', { region: 'us-east' });
 
@@ -759,7 +759,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('No Slack', 'No webhook configured', 'warning');
 
@@ -786,7 +786,7 @@ describe('alerting', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-      } as Response);
+      } as unknown);
 
       await expect(sa('Slack Fail', 'Should handle failure', 'critical')).resolves.not.toThrow();
 
@@ -810,7 +810,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('Error Emoji', 'Testing emoji', 'error');
 
@@ -838,7 +838,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('Warn Slack', 'Warning via slack', 'warning', { svc: 'api' });
 
@@ -867,7 +867,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('Info Slack', 'Info via slack', 'info');
 
@@ -898,7 +898,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('No Webhook', 'URL not set', 'warning');
 
@@ -926,7 +926,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('PUT Webhook', 'Testing PUT', 'warning');
 
@@ -955,7 +955,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('No PD', 'API key missing', 'critical');
 
@@ -982,7 +982,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('PD Info', 'Info alert', 'info');
 
@@ -1011,7 +1011,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('PD Error', 'Error alert', 'error');
 
@@ -1041,7 +1041,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('No Email', 'SMTP not configured', 'warning');
 
@@ -1167,7 +1167,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('DefaultSlack', 'Via slack', 'warning');
 
@@ -1195,7 +1195,7 @@ describe('alerting', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      } as Response);
+      } as unknown);
 
       await sa('InfoSlack', 'Info via slack', 'info');
 
