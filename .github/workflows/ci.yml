@@ -58,7 +58,7 @@ jobs:
         run: npm run complexity
 
   backend-n-plus-one:
-    name: N+1 Query Detection
+    name: N+1 Query Detection (Non-Blocking)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -271,7 +271,7 @@ jobs:
         run: npm test -- --testPathPatterns=log_scrubbing
 
   n-plus-one-detection:
-    name: N+1 Query Detection
+    name: N+1 Query Detection (Blocking)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
