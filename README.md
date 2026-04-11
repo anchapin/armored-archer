@@ -205,6 +205,30 @@ To export the game for a specific platform:
 | `npm run format:check` | Check code formatting |
 | `npm run docs` | Generate TypeDoc documentation |
 
+### Running CI Locally
+
+You can run GitHub Actions workflows locally using `act` before pushing to remote:
+
+```bash
+# Install act
+brew install act  # macOS
+# or download from: https://github.com/nektos/act/releases
+
+# Build custom Nakama image (required for CI)
+docker build -t armored-archer/nakama-postgres:3.21.1 -f .docker/nakama-postgres/Dockerfile .
+
+# Run backend tests with CI workflow
+act -j backend-test --container-architecture linux/amd64 --pull=false
+
+# Run specific job
+act -j backend-lint
+
+# List all available jobs
+act -l
+```
+
+**Note:** The project uses a custom Nakama Docker image configured for PostgreSQL. See [docs/ACT_CI_SUMMARY.md](docs/ACT_CI_SUMMARY.md) and [.docker/nakama-postgres/README.md](.docker/nakama-postgres/README.md) for details.
+
 ### Database
 
 PostgreSQL is managed via Docker Compose:
