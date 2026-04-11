@@ -149,25 +149,25 @@ describe('XPManager', () => {
     it('should accept positive XP gains', () => {
       const result = validateXpGain(100, 10);
       expect(result.valid).toBe(true);
-      expect(result.reason).toBeUndefined();
+      expect(result.error).toBeUndefined();
     });
 
     it('should reject negative XP gains', () => {
       const result = validateXpGain(-100, 10);
       expect(result.valid).toBe(false);
-      expect(result.reason).toContain('negative');
+      expect(result.error).toContain('negative');
     });
 
     it('should reject zero XP gains', () => {
       const result = validateXpGain(0, 10);
       expect(result.valid).toBe(false);
-      expect(result.reason).toContain('zero');
+      expect(result.error).toContain('positive');
     });
 
     it('should reject invalid level', () => {
       const result = validateXpGain(100, 0);
       expect(result.valid).toBe(false);
-      expect(result.reason).toContain('level');
+      expect(result.error).toContain('level');
     });
   });
 
