@@ -145,7 +145,7 @@ jobs:
         env:
           NAKAMA_SERVER_KEY: defaultkey
           NAKAMA_SERVER_PORT: 7350
-          DATABASE_ADDRESS: postgres://postgres:changeme@localhost:5432/nakama?sslmode=disable
+          NAKAMA_DB_DSN: "postgres://postgres:changeme@postgres:5432/nakama?sslmode=disable"
         ports:
           - 7350:7350
         options: >-
@@ -154,7 +154,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
         volumes:
-          - ./backend/nakama.yml:/nakama/data/nakama.yml:ro
+          - ${{ github.workspace }}/backend/nakama.yml:/nakama/data/nakama.yml:ro
     
     steps:
       - uses: actions/checkout@v4
@@ -423,11 +423,10 @@ jobs:
       - name: Fix Python hostedtoolcache permissions (for act only)
         if: env.ACT == 'true'
         run: |
-          sudo mkdir -p /opt/hostedtoolcache/Python
-          sudo chown -R $(id -u):$(id -g) /opt/hostedtoolcache/Python
+          # Use mkdir -p without sudo (container runs as root by default)
+          mkdir -p /opt/hostedtoolcache/Python
           # Also create version-specific directory and ensure write permissions
-          sudo mkdir -p /opt/hostedtoolcache/Python/3.10.20
-          sudo chown -R $(id -u):$(id -g) /opt/hostedtoolcache/Python/3.10.20
+          mkdir -p /opt/hostedtoolcache/Python/3.10.20
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -450,11 +449,10 @@ jobs:
       - name: Fix Python hostedtoolcache permissions (for act only)
         if: env.ACT == 'true'
         run: |
-          sudo mkdir -p /opt/hostedtoolcache/Python
-          sudo chown -R $(id -u):$(id -g) /opt/hostedtoolcache/Python
+          # Use mkdir -p without sudo (container runs as root by default)
+          mkdir -p /opt/hostedtoolcache/Python
           # Also create version-specific directory and ensure write permissions
-          sudo mkdir -p /opt/hostedtoolcache/Python/3.10.20
-          sudo chown -R $(id -u):$(id -g) /opt/hostedtoolcache/Python/3.10.20
+          mkdir -p /opt/hostedtoolcache/Python/3.10.20
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -511,11 +509,10 @@ jobs:
       - name: Fix Python hostedtoolcache permissions (for act only)
         if: env.ACT == 'true'
         run: |
-          sudo mkdir -p /opt/hostedtoolcache/Python
-          sudo chown -R $(id -u):$(id -g) /opt/hostedtoolcache/Python
+          # Use mkdir -p without sudo (container runs as root by default)
+          mkdir -p /opt/hostedtoolcache/Python
           # Also create version-specific directory and ensure write permissions
-          sudo mkdir -p /opt/hostedtoolcache/Python/3.10.20
-          sudo chown -R $(id -u):$(id -g) /opt/hostedtoolcache/Python/3.10.20
+          mkdir -p /opt/hostedtoolcache/Python/3.10.20
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -570,7 +567,7 @@ jobs:
         env:
           NAKAMA_SERVER_KEY: defaultkey
           NAKAMA_SERVER_PORT: 7350
-          DATABASE_ADDRESS: postgres://postgres:changeme@localhost:5432/nakama?sslmode=disable
+          NAKAMA_DB_DSN: "postgres://postgres:changeme@postgres:5432/nakama?sslmode=disable"
         ports:
           - 7350:7350
         options: >-
@@ -579,7 +576,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
         volumes:
-          - ./backend/nakama.yml:/nakama/data/nakama.yml:ro
+          - ${{ github.workspace }}/backend/nakama.yml:/nakama/data/nakama.yml:ro
     
     steps:
       - uses: actions/checkout@v4

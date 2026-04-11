@@ -5,12 +5,12 @@ Runs GUT tests multiple times and identifies tests with failure rate >= threshol
 """
 
 import argparse
-import subprocess
-import json
-import xml.etree.ElementTree as ET
 import datetime
+import json
 import os
-import sys
+import subprocess
+import xml.etree.ElementTree as ET
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Detect flaky Godot tests')
@@ -22,7 +22,7 @@ def run_gut_tests():
     """Run GUT tests and parse JUnit XML output"""
     try:
         # Run GUT tests
-        proc = subprocess.run(
+        subprocess.run(
             ['godot4', '--headless', '--script', 'res://test/run_all_tests.gd'],
             capture_output=True,
             text=True,
@@ -60,7 +60,7 @@ def run_gut_tests():
 def main():
     args = parse_args()
 
-    print(f"Running Godot flaky test detection...")
+    print("Running Godot flaky test detection...")
     print(f"Runs: {args.runs}, Threshold: {args.threshold}")
 
     # Create data directory
@@ -99,7 +99,7 @@ def main():
     with open('data/godot-flaky-tests.json', 'w') as f:
         json.dump(output, f, indent=2)
 
-    print(f"\nFlaky test detection complete!")
+    print("\nFlaky test detection complete!")
     print(f"Found {len(flaky_tests)} flaky test(s)")
     print("Results written to data/godot-flaky-tests.json")
 

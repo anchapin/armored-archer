@@ -39,6 +39,7 @@ excluded_directories: !!set
   script_templates: null
   test: null
   tests: null
+  addons: null
 expression-not-assigned: null
 function-argument-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*
 function-arguments-number: 10

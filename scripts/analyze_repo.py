@@ -15,10 +15,9 @@ import json
 import os
 import re
 import subprocess
-from dataclasses import dataclass, field, asdict
-from pathlib import Path
-from typing import Optional
+from dataclasses import asdict, dataclass, field
 from enum import Enum
+from pathlib import Path
 
 
 class CriterionStatus(str, Enum):
@@ -51,7 +50,7 @@ class PillarResult:
         return int((self.passed / self.total) * 100)
 
 
-@dataclass 
+@dataclass
 class AnalysisResult:
     repo_path: str
     repo_name: str
@@ -67,7 +66,7 @@ class AnalysisResult:
 
 class RepoAnalyzer:
     """Analyzes repository for agent readiness criteria."""
-    
+
     def __init__(self, repo_path: str):
         self.repo_path = Path(repo_path).resolve()
         self.result = AnalysisResult(
@@ -76,7 +75,7 @@ class RepoAnalyzer:
         )
         self._file_cache: dict[str, bool] = {}
         self._content_cache: dict[str, str] = {}
-        
+
     def analyze(self) -> AnalysisResult:
         """Run full analysis and return results."""
         self._detect_repo_type()
@@ -84,7 +83,7 @@ class RepoAnalyzer:
         self._evaluate_all_pillars()
         self._calculate_levels()
         return self.result
-    
+
     def _file_exists(self, *patterns: str) -> bool:
         """Check if any of the given file patterns exist."""
         for pattern in patterns:
@@ -93,43 +92,43 @@ class RepoAnalyzer:
                 if self._file_cache[cache_key]:
                     return True
                 continue
-            
+
             # Handle glob patterns
             if "*" in pattern:
                 matches = list(self.repo_path.glob(pattern))
                 exists = len(matches) > 0
             else:
                 exists = (self.repo_path / pattern).exists()
-            
+
             self._file_cache[cache_key] = exists
             if exists:
                 return True
         return False
-    
-    def _read_file(self, path: str) -> Optional[str]:
+
+    def _read_file(self, path: str) -> str | None:
         """Read file content, with caching."""
         if path in self._content_cache:
             return self._content_cache[path]
-        
+
         full_path = self.repo_path / path
         if not full_path.exists():
             return None
-        
+
         try:
             content = full_path.read_text(errors='ignore')
             self._content_cache[path] = content
             return content
         except Exception:
             return None
-    
-    def _search_files(self, pattern: str, content_pattern: str = None) -> bool:
+
+    def _search_files(self, pattern: str, content_pattern: str | None = None) -> bool:
         """Search for files matching pattern, optionally with content."""
         matches = list(self.repo_path.glob(pattern))
         if not matches:
             return False
         if content_pattern is None:
             return True
-        
+
         regex = re.compile(content_pattern, re.IGNORECASE)
         for match in matches[:10]:  # Limit for performance
             try:
@@ -139,7 +138,7 @@ class RepoAnalyzer:
             except Exception:
                 continue
         return False
-    
+
     def _run_command(self, cmd: list[str], timeout: int = 10) -> tuple[int, str]:
         """Run a command and return (exit_code, output)."""
         try:
@@ -153,7 +152,7 @@ class RepoAnalyzer:
             return result.returncode, result.stdout + result.stderr
         except Exception as e:
             return -1, str(e)
-    
+
     def _detect_repo_type(self):
         """Detect repository type for criterion skipping."""
         # Check for library indicators
@@ -161,7 +160,7 @@ class RepoAnalyzer:
             if "library" in str(self._read_file("setup.py") or "").lower():
                 self.result.repo_type = "library"
                 return
-        
+
         if self._file_exists("pyproject.toml"):
             content = self._read_file("pyproject.toml") or ""
             if "[project]" in content and "Dockerfile" not in os.listdir(self.repo_path):
@@ -170,30 +169,30 @@ class RepoAnalyzer:
                 if "pip install" in readme.lower() and "docker" not in readme.lower():
                     self.result.repo_type = "library"
                     return
-        
+
         # Check for CLI tool
         if self._file_exists("**/cli.py", "**/main.py", "**/cmd/**"):
             readme = self._read_file("README.md") or ""
             if any(x in readme.lower() for x in ["command line", "cli", "usage:"]):
                 self.result.repo_type = "cli"
                 return
-        
+
         # Check for database project
         if "database" in self.result.repo_name.lower() or "db" in self.result.repo_name.lower():
             self.result.repo_type = "database"
             return
-        
+
         # Check for monorepo
         if self._file_exists("packages/*", "apps/*", "lerna.json", "pnpm-workspace.yaml"):
             self.result.repo_type = "monorepo"
             return
-        
+
         self.result.repo_type = "application"
-    
+
     def _detect_languages(self):
         """Detect primary programming languages."""
         languages = []
-        
+
         if self._file_exists("*.py", "**/*.py", "pyproject.toml", "setup.py"):
             languages.append("Python")
         if self._file_exists("*.ts", "**/*.ts", "tsconfig.json"):
@@ -211,13 +210,13 @@ class RepoAnalyzer:
             languages.append("Ruby")
         if self._file_exists("*.cpp", "*.cc", "**/*.cpp", "CMakeLists.txt"):
             languages.append("C++")
-        
+
         self.result.languages = languages if languages else ["Unknown"]
-    
+
     def _should_skip(self, criterion_id: str) -> tuple[bool, str]:
         """Determine if a criterion should be skipped based on repo type."""
         repo_type = self.result.repo_type
-        
+
         skip_rules = {
             "library": [
                 ("health_checks", "Library, not a deployed service"),
@@ -246,34 +245,34 @@ class RepoAnalyzer:
                 ("progressive_rollout", "CLI tool without deployments"),
             ],
         }
-        
+
         for rule_type, rules in skip_rules.items():
             if repo_type == rule_type:
                 for crit_id, reason in rules:
                     if criterion_id == crit_id:
                         return True, reason
-        
+
         # Skip monorepo criteria for non-monorepos
         if repo_type != "monorepo":
             if criterion_id in ["monorepo_tooling", "version_drift_detection"]:
                 return True, "Single-application repository, not a monorepo"
-        
+
         # Skip prerequisites
         if criterion_id == "devcontainer_runnable":
             if not self._file_exists(".devcontainer/devcontainer.json"):
                 return True, "No devcontainer to test (prerequisite failed)"
-        
+
         if criterion_id == "agents_md_validation":
             if not self._file_exists("AGENTS.md", "CLAUDE.md"):
                 return True, "No AGENTS.md exists (prerequisite failed)"
-        
+
         if criterion_id == "dead_feature_flag_detection":
             # Check if feature flags exist first
             if not self._check_feature_flags():
                 return True, "No feature flag infrastructure (prerequisite failed)"
-        
+
         return False, ""
-    
+
     def _check_feature_flags(self) -> bool:
         """Check if feature flag infrastructure exists."""
         # Check for common feature flag services or feature flag files
@@ -281,7 +280,7 @@ class RepoAnalyzer:
             "launchdarkly", "statsig", "unleash", "growthbook",
             "feature.flag", "featureflag", "feature_flag"
         ]
-        
+
         # Check package.json, requirements.txt, go.mod, Gemfile
         for pattern in ["package.json", "requirements.txt", "go.mod", "Gemfile"]:
             content = self._read_file(pattern)
@@ -289,11 +288,11 @@ class RepoAnalyzer:
                 for flag_pattern in patterns:
                     if flag_pattern in content.lower():
                         return True
-        
+
         # Check for feature flag TypeScript files
         if self._search_files("backend/src/**/*.ts", r"feature.?flags?|FeatureFlags"):
             return True
-            
+
         return False
 
     def _evaluate_all_pillars(self):
@@ -309,38 +308,38 @@ class RepoAnalyzer:
             "Task Discovery": self._evaluate_task_discovery,
             "Product & Analytics": self._evaluate_product_analytics,
         }
-        
+
         for pillar_name, evaluate_func in pillars.items():
             criteria = evaluate_func()
             passed = sum(1 for c in criteria if c.status == CriterionStatus.PASS)
             total = sum(1 for c in criteria if c.status != CriterionStatus.SKIP)
-            
+
             self.result.pillars[pillar_name] = PillarResult(
                 name=pillar_name,
                 passed=passed,
                 total=total,
                 criteria=criteria
             )
-            
+
             self.result.total_passed += passed
             self.result.total_criteria += total
-        
+
         if self.result.total_criteria > 0:
             self.result.pass_rate = round(
                 (self.result.total_passed / self.result.total_criteria) * 100, 1
             )
-    
+
     def _make_result(
-        self, 
-        criterion_id: str, 
-        pillar: str, 
-        level: int, 
-        passed: bool, 
+        self,
+        criterion_id: str,
+        pillar: str,
+        level: int,
+        passed: bool,
         reason: str
     ) -> CriterionResult:
         """Create a criterion result, handling skips."""
         should_skip, skip_reason = self._should_skip(criterion_id)
-        
+
         if should_skip:
             return CriterionResult(
                 id=criterion_id,
@@ -350,7 +349,7 @@ class RepoAnalyzer:
                 score="—/—",
                 reason=skip_reason
             )
-        
+
         return CriterionResult(
             id=criterion_id,
             pillar=pillar,
@@ -364,7 +363,7 @@ class RepoAnalyzer:
         """Evaluate Style & Validation pillar."""
         pillar = "Style & Validation"
         results = []
-        
+
         # L1: formatter
         formatter_found = self._file_exists(
             ".prettierrc", ".prettierrc.json", ".prettierrc.js", "prettier.config.js",
@@ -380,7 +379,7 @@ class RepoAnalyzer:
             "formatter", pillar, 1, formatter_found,
             "Formatter configured" if formatter_found else "No formatter config found"
         ))
-        
+
         # L1: lint_config
         lint_found = self._file_exists(
             ".eslintrc", ".eslintrc.js", ".eslintrc.json", ".eslintrc.yaml",
@@ -395,7 +394,7 @@ class RepoAnalyzer:
             "lint_config", pillar, 1, lint_found,
             "Linter configured" if lint_found else "No linter config found"
         ))
-        
+
         # L1: type_check
         type_check = False
         if "Go" in self.result.languages or "Rust" in self.result.languages:
@@ -409,7 +408,7 @@ class RepoAnalyzer:
             "type_check", pillar, 1, type_check,
             "Type checking configured" if type_check else "No type checking found"
         ))
-        
+
         # L2: strict_typing
         strict_typing = False
         if "Go" in self.result.languages or "Rust" in self.result.languages:
@@ -424,7 +423,7 @@ class RepoAnalyzer:
             "strict_typing", pillar, 2, strict_typing,
             "Strict typing enabled" if strict_typing else "Strict typing not enabled"
         ))
-        
+
         # L2: pre_commit_hooks
         pre_commit = self._file_exists(
             ".pre-commit-config.yaml", ".pre-commit-config.yml",
@@ -434,7 +433,7 @@ class RepoAnalyzer:
             "pre_commit_hooks", pillar, 2, pre_commit,
             "Pre-commit hooks configured" if pre_commit else "No pre-commit hooks found"
         ))
-        
+
         # L2: naming_consistency
         naming = False
         eslint = self._read_file(".eslintrc.json") or self._read_file(".eslintrc") or ""
@@ -450,7 +449,7 @@ class RepoAnalyzer:
             "naming_consistency", pillar, 2, naming,
             "Naming conventions enforced" if naming else "No naming convention enforcement"
         ))
-        
+
         # L2: large_file_detection
         large_file = self._file_exists(".gitattributes", ".lfsconfig")
         if not large_file:
@@ -460,7 +459,7 @@ class RepoAnalyzer:
             "large_file_detection", pillar, 2, large_file,
             "Large file detection configured" if large_file else "No large file detection"
         ))
-        
+
         # L3: code_modularization
         modular = self._file_exists(
             ".importlinter", "nx.json", "BUILD.bazel", "BUILD"
@@ -469,7 +468,7 @@ class RepoAnalyzer:
             "code_modularization", pillar, 3, modular,
             "Module boundaries enforced" if modular else "No module boundary enforcement"
         ))
-        
+
         # L3: cyclomatic_complexity
         complexity = False
         for config in [".golangci.yml", ".golangci.yaml", "pyproject.toml"]:
@@ -481,7 +480,7 @@ class RepoAnalyzer:
             "cyclomatic_complexity", pillar, 3, complexity,
             "Complexity analysis configured" if complexity else "No complexity analysis"
         ))
-        
+
         # L3: dead_code_detection
         dead_code = False
         workflows = list(self.repo_path.glob(".github/workflows/*.yml")) + \
@@ -495,7 +494,7 @@ class RepoAnalyzer:
             "dead_code_detection", pillar, 3, dead_code,
             "Dead code detection enabled" if dead_code else "No dead code detection"
         ))
-        
+
         # L3: duplicate_code_detection
         duplicate = False
         for wf in workflows[:5]:
@@ -507,7 +506,7 @@ class RepoAnalyzer:
             "duplicate_code_detection", pillar, 3, duplicate,
             "Duplicate detection enabled" if duplicate else "No duplicate detection"
         ))
-        
+
         # L4: tech_debt_tracking
         tech_debt = False
         for wf in workflows[:5]:
@@ -519,7 +518,7 @@ class RepoAnalyzer:
             "tech_debt_tracking", pillar, 4, tech_debt,
             "Tech debt tracking enabled" if tech_debt else "No tech debt tracking"
         ))
-        
+
         # L4: n_plus_one_detection
         n_plus_one = False
         deps = (self._read_file("requirements.txt") or "") + \
@@ -530,7 +529,7 @@ class RepoAnalyzer:
             n_plus_one = True
         # Also check for npm scripts or detection scripts
         if not n_plus_one:
-            code, output = self._run_command(
+            code, _output = self._run_command(
                 ["npm", "run", "detect-n-plus-one", "--prefix", "backend"],
                 timeout=30
             )
@@ -540,14 +539,14 @@ class RepoAnalyzer:
             "n_plus_one_detection", pillar, 4, n_plus_one,
             "N+1 detection enabled" if n_plus_one else "No N+1 query detection"
         ))
-        
+
         return results
 
     def _evaluate_build_system(self) -> list[CriterionResult]:
         """Evaluate Build System pillar."""
         pillar = "Build System"
         results = []
-        
+
         # L1: build_cmd_doc
         readme = self._read_file("README.md") or ""
         agents_md = self._read_file("AGENTS.md") or self._read_file("CLAUDE.md") or ""
@@ -559,7 +558,7 @@ class RepoAnalyzer:
             "build_cmd_doc", pillar, 1, build_doc,
             "Build commands documented" if build_doc else "Build commands not documented"
         ))
-        
+
         # L1: deps_pinned
         lockfile = self._file_exists(
             "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
@@ -570,7 +569,7 @@ class RepoAnalyzer:
             "deps_pinned", pillar, 1, lockfile,
             "Dependencies pinned with lockfile" if lockfile else "No lockfile found"
         ))
-        
+
         # L1: vcs_cli_tools
         code, output = self._run_command(["gh", "auth", "status"])
         vcs_cli = code == 0
@@ -581,7 +580,7 @@ class RepoAnalyzer:
             "vcs_cli_tools", pillar, 1, vcs_cli,
             "VCS CLI authenticated" if vcs_cli else "VCS CLI not authenticated"
         ))
-        
+
         # L2: fast_ci_feedback
         # Check for CI config existence as proxy
         ci_exists = self._file_exists(
@@ -593,7 +592,7 @@ class RepoAnalyzer:
             "fast_ci_feedback", pillar, 2, ci_exists,
             "CI workflow configured" if ci_exists else "No CI configuration found"
         ))
-        
+
         # L2: single_command_setup
         single_cmd = any(x in (readme + agents_md).lower() for x in [
             "make install", "npm install", "yarn install", "pip install -e",
@@ -603,7 +602,7 @@ class RepoAnalyzer:
             "single_command_setup", pillar, 2, single_cmd,
             "Single command setup documented" if single_cmd else "No single command setup"
         ))
-        
+
         # L2: release_automation
         release_auto = self._search_files(
             ".github/workflows/*.yml",
@@ -616,14 +615,14 @@ class RepoAnalyzer:
             "release_automation", pillar, 2, release_auto,
             "Release automation configured" if release_auto else "No release automation"
         ))
-        
+
         # L2: deployment_frequency (check for recent releases)
         release_auto_exists = release_auto  # Use same check as proxy
         results.append(self._make_result(
             "deployment_frequency", pillar, 2, release_auto_exists,
             "Regular deployments" if release_auto_exists else "Deployment frequency unclear"
         ))
-        
+
         # L3: release_notes_automation
         release_notes = self._search_files(
             ".github/workflows/*.yml",
@@ -633,7 +632,7 @@ class RepoAnalyzer:
             "release_notes_automation", pillar, 3, release_notes,
             "Release notes automated" if release_notes else "No release notes automation"
         ))
-        
+
         # L3: agentic_development
         code, output = self._run_command(["git", "log", "--oneline", "-50"])
         agentic = any(x in output.lower() for x in [
@@ -643,7 +642,7 @@ class RepoAnalyzer:
             "agentic_development", pillar, 3, agentic,
             "AI agent commits found" if agentic else "No AI agent commits detected"
         ))
-        
+
         # L3: automated_pr_review
         pr_review = self._file_exists("danger.js", "dangerfile.js", "dangerfile.ts")
         if not pr_review:
@@ -657,14 +656,14 @@ class RepoAnalyzer:
             "automated_pr_review", pillar, 3, pr_review,
             "Automated PR review configured" if pr_review else "No automated PR review"
         ))
-        
+
         # L3: feature_flag_infrastructure
         feature_flags = self._check_feature_flags()
         results.append(self._make_result(
             "feature_flag_infrastructure", pillar, 3, feature_flags,
             "Feature flags configured" if feature_flags else "No feature flag system"
         ))
-        
+
         # L4: build_performance_tracking
         build_perf = False
         if self._file_exists("turbo.json", "nx.json"):
@@ -673,7 +672,7 @@ class RepoAnalyzer:
             "build_performance_tracking", pillar, 4, build_perf,
             "Build caching configured" if build_perf else "No build performance tracking"
         ))
-        
+
         # L4: heavy_dependency_detection (for JS bundles)
         heavy_deps = False
         pkg_json = self._read_file("package.json") or ""
@@ -683,7 +682,7 @@ class RepoAnalyzer:
             "heavy_dependency_detection", pillar, 4, heavy_deps,
             "Bundle size tracking configured" if heavy_deps else "No bundle size tracking"
         ))
-        
+
         # L4: unused_dependencies_detection
         unused_deps = False
         workflows = list(self.repo_path.glob(".github/workflows/*.yml"))
@@ -696,7 +695,7 @@ class RepoAnalyzer:
             "unused_dependencies_detection", pillar, 4, unused_deps,
             "Unused deps detection enabled" if unused_deps else "No unused deps detection"
         ))
-        
+
         # L4: dead_feature_flag_detection
         dead_flags = False
         # Run dead flag detection if feature flag infrastructure exists
@@ -713,21 +712,21 @@ class RepoAnalyzer:
             "dead_feature_flag_detection", pillar, 4, dead_flags,
             "Dead flag detection enabled" if dead_flags else "No dead flag detection"
         ))
-        
+
         # L4: monorepo_tooling
         monorepo_tools = self._file_exists("lerna.json", "nx.json", "turbo.json", "pnpm-workspace.yaml")
         results.append(self._make_result(
             "monorepo_tooling", pillar, 4, monorepo_tools,
             "Monorepo tooling configured" if monorepo_tools else "No monorepo tooling"
         ))
-        
+
         # L4: version_drift_detection
         version_drift = False  # Complex to detect
         results.append(self._make_result(
             "version_drift_detection", pillar, 4, version_drift,
             "Version drift detection enabled" if version_drift else "No version drift detection"
         ))
-        
+
         # L5: progressive_rollout
         progressive = False
         for pattern in ["*.yml", "*.yaml"]:
@@ -738,7 +737,7 @@ class RepoAnalyzer:
             "progressive_rollout", pillar, 5, progressive,
             "Progressive rollout configured" if progressive else "No progressive rollout"
         ))
-        
+
         # L5: rollback_automation
         rollback = False
         # Check for rollback scripts
@@ -755,14 +754,14 @@ class RepoAnalyzer:
             "rollback_automation", pillar, 5, rollback,
             "Rollback automation configured" if rollback else "No rollback automation"
         ))
-        
+
         return results
 
     def _evaluate_testing(self) -> list[CriterionResult]:
         """Evaluate Testing pillar."""
         pillar = "Testing"
         results = []
-        
+
         # L1: unit_tests_exist
         tests_exist = self._file_exists(
             "tests/**/*.py", "test/**/*.py", "*_test.py", "*_test.go",
@@ -773,7 +772,7 @@ class RepoAnalyzer:
             "unit_tests_exist", pillar, 1, tests_exist,
             "Unit tests found" if tests_exist else "No unit tests found"
         ))
-        
+
         # L1: unit_tests_runnable
         readme = self._read_file("README.md") or ""
         agents_md = self._read_file("AGENTS.md") or self._read_file("CLAUDE.md") or ""
@@ -785,7 +784,7 @@ class RepoAnalyzer:
             "unit_tests_runnable", pillar, 1, test_cmd,
             "Test commands documented" if test_cmd else "Test commands not documented"
         ))
-        
+
         # L2: test_naming_conventions
         naming = False
         if self._file_exists("pyproject.toml"):
@@ -799,7 +798,7 @@ class RepoAnalyzer:
             "test_naming_conventions", pillar, 2, naming,
             "Test naming conventions enforced" if naming else "No test naming conventions"
         ))
-        
+
         # L2: test_isolation
         isolation = False
         if self._file_exists("pyproject.toml"):
@@ -817,7 +816,7 @@ class RepoAnalyzer:
             "test_isolation", pillar, 2, isolation,
             "Tests support isolation/parallelism" if isolation else "No test isolation"
         ))
-        
+
         # L3: integration_tests_exist
         integration = self._file_exists(
             "tests/integration/**", "integration/**", "e2e/**",
@@ -827,7 +826,7 @@ class RepoAnalyzer:
             "integration_tests_exist", pillar, 3, integration,
             "Integration tests found" if integration else "No integration tests found"
         ))
-        
+
         # L3: test_coverage_thresholds
         coverage = False
         for wf in workflows[:5]:
@@ -841,7 +840,7 @@ class RepoAnalyzer:
             "test_coverage_thresholds", pillar, 3, coverage,
             "Coverage thresholds enforced" if coverage else "No coverage thresholds"
         ))
-        
+
         # L4: flaky_test_detection
         flaky = False
         for wf in workflows[:5]:
@@ -853,7 +852,7 @@ class RepoAnalyzer:
             "flaky_test_detection", pillar, 4, flaky,
             "Flaky test handling configured" if flaky else "No flaky test detection"
         ))
-        
+
         # L4: test_performance_tracking
         test_perf = False
         for wf in workflows[:5]:
@@ -865,28 +864,28 @@ class RepoAnalyzer:
             "test_performance_tracking", pillar, 4, test_perf,
             "Test performance tracked" if test_perf else "No test performance tracking"
         ))
-        
+
         return results
 
     def _evaluate_documentation(self) -> list[CriterionResult]:
         """Evaluate Documentation pillar."""
         pillar = "Documentation"
         results = []
-        
+
         # L1: readme
         readme = self._file_exists("README.md", "README.rst", "README.txt", "README")
         results.append(self._make_result(
             "readme", pillar, 1, readme,
             "README exists" if readme else "No README found"
         ))
-        
+
         # L2: agents_md
         agents_md = self._file_exists("AGENTS.md", "CLAUDE.md")
         results.append(self._make_result(
             "agents_md", pillar, 2, agents_md,
             "AGENTS.md exists" if agents_md else "No AGENTS.md found"
         ))
-        
+
         # L2: documentation_freshness
         freshness = False
         code, output = self._run_command([
@@ -898,7 +897,7 @@ class RepoAnalyzer:
             "documentation_freshness", pillar, 2, freshness,
             "Documentation recently updated" if freshness else "Documentation may be stale"
         ))
-        
+
         # L3: api_schema_docs
         api_docs = self._file_exists(
             "openapi.yaml", "openapi.json", "swagger.yaml", "swagger.json",
@@ -909,7 +908,7 @@ class RepoAnalyzer:
             "api_schema_docs", pillar, 3, api_docs,
             "API documentation exists" if api_docs else "No API documentation found"
         ))
-        
+
         # L3: automated_doc_generation
         doc_gen = self._search_files(
             ".github/workflows/*.yml",
@@ -919,7 +918,7 @@ class RepoAnalyzer:
             "automated_doc_generation", pillar, 3, doc_gen,
             "Doc generation automated" if doc_gen else "No automated doc generation"
         ))
-        
+
         # L3: service_flow_documented
         diagrams = self._file_exists(
             "**/*.mermaid", "**/*.puml", "docs/architecture*",
@@ -929,7 +928,7 @@ class RepoAnalyzer:
             "service_flow_documented", pillar, 3, diagrams,
             "Architecture documented" if diagrams else "No architecture documentation"
         ))
-        
+
         # L3: skills
         skills = self._file_exists(
             ".claude/skills/**", ".factory/skills/**", ".skills/**"
@@ -938,7 +937,7 @@ class RepoAnalyzer:
             "skills", pillar, 3, skills,
             "Skills directory exists" if skills else "No skills directory"
         ))
-        
+
         # L4: agents_md_validation
         agents_validation = False
         workflows = list(self.repo_path.glob(".github/workflows/*.yml"))
@@ -951,14 +950,14 @@ class RepoAnalyzer:
             "agents_md_validation", pillar, 4, agents_validation,
             "AGENTS.md validation in CI" if agents_validation else "No AGENTS.md validation"
         ))
-        
+
         return results
 
     def _evaluate_dev_environment(self) -> list[CriterionResult]:
         """Evaluate Dev Environment pillar."""
         pillar = "Dev Environment"
         results = []
-        
+
         # L2: env_template
         env_template = self._file_exists(".env.example", ".env.template", ".env.sample")
         if not env_template:
@@ -969,14 +968,14 @@ class RepoAnalyzer:
             "env_template", pillar, 2, env_template,
             "Environment template exists" if env_template else "No environment template"
         ))
-        
+
         # L3: devcontainer
         devcontainer = self._file_exists(".devcontainer/devcontainer.json")
         results.append(self._make_result(
             "devcontainer", pillar, 3, devcontainer,
             "Devcontainer configured" if devcontainer else "No devcontainer found"
         ))
-        
+
         # L3: devcontainer_runnable
         devcontainer_valid = False
         if devcontainer:
@@ -987,7 +986,7 @@ class RepoAnalyzer:
             "devcontainer_runnable", pillar, 3, devcontainer_valid,
             "Devcontainer appears valid" if devcontainer_valid else "Devcontainer not runnable"
         ))
-        
+
         # L3: database_schema
         db_schema = self._file_exists(
             "migrations/**", "db/migrations/**", "alembic/**",
@@ -997,7 +996,7 @@ class RepoAnalyzer:
             "database_schema", pillar, 3, db_schema,
             "Database schema managed" if db_schema else "No database schema management"
         ))
-        
+
         # L3: local_services_setup
         local_services = self._file_exists(
             "docker-compose.yml", "docker-compose.yaml",
@@ -1007,14 +1006,14 @@ class RepoAnalyzer:
             "local_services_setup", pillar, 3, local_services,
             "Local services configured" if local_services else "No local services setup"
         ))
-        
+
         return results
 
     def _evaluate_observability(self) -> list[CriterionResult]:
         """Evaluate Debugging & Observability pillar."""
         pillar = "Debugging & Observability"
         results = []
-        
+
         # L2: structured_logging
         logging_found = False
         deps = (self._read_file("package.json") or "") + \
@@ -1032,7 +1031,7 @@ class RepoAnalyzer:
             "structured_logging", pillar, 2, logging_found,
             "Structured logging configured" if logging_found else "No structured logging"
         ))
-        
+
         # L2: code_quality_metrics
         quality_metrics = self._search_files(
             ".github/workflows/*.yml",
@@ -1042,7 +1041,7 @@ class RepoAnalyzer:
             "code_quality_metrics", pillar, 2, quality_metrics,
             "Code quality metrics tracked" if quality_metrics else "No quality metrics"
         ))
-        
+
         # L3: error_tracking_contextualized
         error_tracking = any(x in deps.lower() for x in [
             "sentry", "bugsnag", "rollbar", "honeybadger"
@@ -1051,7 +1050,7 @@ class RepoAnalyzer:
             "error_tracking_contextualized", pillar, 3, error_tracking,
             "Error tracking configured" if error_tracking else "No error tracking"
         ))
-        
+
         # L3: distributed_tracing
         tracing = any(x in deps.lower() for x in [
             "opentelemetry", "jaeger", "zipkin", "datadog", "x-request-id"
@@ -1060,7 +1059,7 @@ class RepoAnalyzer:
             "distributed_tracing", pillar, 3, tracing,
             "Distributed tracing configured" if tracing else "No distributed tracing"
         ))
-        
+
         # L3: metrics_collection
         metrics = any(x in deps.lower() for x in [
             "prometheus", "datadog", "newrelic", "statsd", "cloudwatch"
@@ -1073,7 +1072,7 @@ class RepoAnalyzer:
             "metrics_collection", pillar, 3, metrics,
             "Metrics collection configured" if metrics else "No metrics collection"
         ))
-        
+
         # L3: health_checks
         health = self._search_files(
             "**/*.py", r"health|ready|alive"
@@ -1086,7 +1085,7 @@ class RepoAnalyzer:
             "health_checks", pillar, 3, health,
             "Health checks implemented" if health else "No health checks found"
         ))
-        
+
         # L4: profiling_instrumentation
         profiling = any(x in deps.lower() for x in [
             "pyinstrument", "py-spy", "pprof", "clinic"
@@ -1098,7 +1097,7 @@ class RepoAnalyzer:
             "profiling_instrumentation", pillar, 4, profiling,
             "Profiling configured" if profiling else "No profiling instrumentation"
         ))
-        
+
         # L4: alerting_configured
         alerting = self._file_exists(
             "**/alerts*.yml", "**/alertmanager*", "monitoring/**"
@@ -1107,7 +1106,7 @@ class RepoAnalyzer:
             "alerting_configured", pillar, 4, alerting,
             "Alerting configured" if alerting else "No alerting configuration"
         ))
-        
+
         # L4: deployment_observability
         deploy_obs = self._search_files(
             ".github/workflows/*.yml",
@@ -1117,14 +1116,14 @@ class RepoAnalyzer:
             "deployment_observability", pillar, 4, deploy_obs,
             "Deployment observability configured" if deploy_obs else "No deployment observability"
         ))
-        
+
         # L4: runbooks_documented
         runbooks = self._file_exists("runbooks/**", "docs/runbooks/**", "ops/**")
         results.append(self._make_result(
             "runbooks_documented", pillar, 4, runbooks,
             "Runbooks documented" if runbooks else "No runbooks found"
         ))
-        
+
         # L5: circuit_breakers
         circuit = any(x in deps.lower() for x in [
             "opossum", "resilience4j", "hystrix", "cockatiel"
@@ -1133,14 +1132,14 @@ class RepoAnalyzer:
             "circuit_breakers", pillar, 5, circuit,
             "Circuit breakers configured" if circuit else "No circuit breakers"
         ))
-        
+
         return results
 
     def _evaluate_security(self) -> list[CriterionResult]:
         """Evaluate Security pillar."""
         pillar = "Security"
         results = []
-        
+
         # L1: gitignore_comprehensive
         gitignore = self._file_exists(".gitignore")
         comprehensive = False
@@ -1153,7 +1152,7 @@ class RepoAnalyzer:
             "gitignore_comprehensive", pillar, 1, comprehensive,
             "Comprehensive .gitignore" if comprehensive else "Incomplete .gitignore"
         ))
-        
+
         # L2: secrets_management
         secrets_mgmt = False
         workflows = list(self.repo_path.glob(".github/workflows/*.yml"))
@@ -1166,21 +1165,21 @@ class RepoAnalyzer:
             "secrets_management", pillar, 2, secrets_mgmt,
             "Secrets properly managed" if secrets_mgmt else "No secrets management"
         ))
-        
+
         # L2: codeowners
         codeowners = self._file_exists("CODEOWNERS", ".github/CODEOWNERS")
         results.append(self._make_result(
             "codeowners", pillar, 2, codeowners,
             "CODEOWNERS configured" if codeowners else "No CODEOWNERS file"
         ))
-        
+
         # L2: branch_protection
         branch_rules = self._file_exists(".github/branch-protection.yml", ".github/rulesets/**")
         results.append(self._make_result(
             "branch_protection", pillar, 2, branch_rules,
             "Branch protection configured" if branch_rules else "Branch protection unclear"
         ))
-        
+
         # L3: dependency_update_automation
         dep_updates = self._file_exists(
             ".github/dependabot.yml", "renovate.json", ".renovaterc"
@@ -1189,7 +1188,7 @@ class RepoAnalyzer:
             "dependency_update_automation", pillar, 3, dep_updates,
             "Dependency updates automated" if dep_updates else "No dependency automation"
         ))
-        
+
         # L3: log_scrubbing
         log_scrub = False
         deps = (self._read_file("package.json") or "") + \
@@ -1200,7 +1199,7 @@ class RepoAnalyzer:
             "log_scrubbing", pillar, 3, log_scrub,
             "Log scrubbing configured" if log_scrub else "No log scrubbing"
         ))
-        
+
         # L3: pii_handling
         pii = self._search_files(
             "**/*.py", r"(redact|sanitize|mask|pii)"
@@ -1211,7 +1210,7 @@ class RepoAnalyzer:
             "pii_handling", pillar, 3, pii,
             "PII handling implemented" if pii else "No PII handling found"
         ))
-        
+
         # L4: automated_security_review
         security_scan = self._search_files(
             ".github/workflows/*.yml",
@@ -1221,7 +1220,7 @@ class RepoAnalyzer:
             "automated_security_review", pillar, 4, security_scan,
             "Security scanning enabled" if security_scan else "No security scanning"
         ))
-        
+
         # L4: secret_scanning
         secret_scan = self._search_files(
             ".github/workflows/*.yml",
@@ -1231,7 +1230,7 @@ class RepoAnalyzer:
             "secret_scanning", pillar, 4, secret_scan,
             "Secret scanning enabled" if secret_scan else "No secret scanning"
         ))
-        
+
         # L5: dast_scanning
         dast = self._search_files(
             ".github/workflows/*.yml",
@@ -1241,7 +1240,7 @@ class RepoAnalyzer:
             "dast_scanning", pillar, 5, dast,
             "DAST scanning enabled" if dast else "No DAST scanning"
         ))
-        
+
         # L5: privacy_compliance
         privacy = self._file_exists(
             "PRIVACY.md", "docs/privacy/**", "gdpr/**"
@@ -1250,14 +1249,14 @@ class RepoAnalyzer:
             "privacy_compliance", pillar, 5, privacy,
             "Privacy compliance documented" if privacy else "No privacy documentation"
         ))
-        
+
         return results
 
     def _evaluate_task_discovery(self) -> list[CriterionResult]:
         """Evaluate Task Discovery pillar."""
         pillar = "Task Discovery"
         results = []
-        
+
         # L2: issue_templates
         issue_templates = self._file_exists(
             ".github/ISSUE_TEMPLATE/**", ".github/ISSUE_TEMPLATE.md"
@@ -1266,7 +1265,7 @@ class RepoAnalyzer:
             "issue_templates", pillar, 2, issue_templates,
             "Issue templates configured" if issue_templates else "No issue templates"
         ))
-        
+
         # L2: issue_labeling_system
         labels = False
         if issue_templates:
@@ -1280,7 +1279,7 @@ class RepoAnalyzer:
             "issue_labeling_system", pillar, 2, labels,
             "Issue labels configured" if labels else "No issue labeling system"
         ))
-        
+
         # L2: pr_templates
         pr_template = self._file_exists(
             ".github/pull_request_template.md",
@@ -1291,21 +1290,21 @@ class RepoAnalyzer:
             "pr_templates", pillar, 2, pr_template,
             "PR template configured" if pr_template else "No PR template"
         ))
-        
+
         # L3: backlog_health
         backlog = self._file_exists("CONTRIBUTING.md", ".github/CONTRIBUTING.md")
         results.append(self._make_result(
             "backlog_health", pillar, 3, backlog,
             "Contributing guidelines exist" if backlog else "No contributing guidelines"
         ))
-        
+
         return results
 
     def _evaluate_product_analytics(self) -> list[CriterionResult]:
         """Evaluate Product & Analytics pillar."""
         pillar = "Product & Analytics"
         results = []
-        
+
         # L5: error_to_insight_pipeline
         error_pipeline = False
         workflows = list(self.repo_path.glob(".github/workflows/*.yml"))
@@ -1329,7 +1328,7 @@ class RepoAnalyzer:
             "error_to_insight_pipeline", pillar, 5, error_pipeline,
             "Error-to-issue pipeline exists" if error_pipeline else "No error-to-issue pipeline"
         ))
-        
+
         # L5: product_analytics_instrumentation
         analytics = False
         if any(x in deps.lower() for x in [
@@ -1340,34 +1339,34 @@ class RepoAnalyzer:
             "product_analytics_instrumentation", pillar, 5, analytics,
             "Product analytics configured" if analytics else "No product analytics"
         ))
-        
+
         return results
 
     def _calculate_levels(self):
         """Calculate maturity level based on criteria pass rates."""
         level_criteria: dict[int, list[CriterionResult]] = {i: [] for i in range(1, 6)}
-        
+
         for pillar in self.result.pillars.values():
             for criterion in pillar.criteria:
                 if criterion.status != CriterionStatus.SKIP:
                     level_criteria[criterion.level].append(criterion)
-        
+
         for level in range(1, 6):
             criteria = level_criteria[level]
             if not criteria:
                 self.result.level_scores[level] = 100.0
                 continue
-            
+
             passed = sum(1 for c in criteria if c.status == CriterionStatus.PASS)
             self.result.level_scores[level] = round((passed / len(criteria)) * 100, 1)
-        
+
         achieved = 0
         for level in range(1, 6):
             if self.result.level_scores[level] >= 80:
                 achieved = level
             else:
                 break
-        
+
         # Only set achieved level if at least L1 is passed
         self.result.achieved_level = achieved if achieved > 0 else 0
 
@@ -1391,15 +1390,15 @@ def main():
         action="store_true",
         help="Suppress progress output"
     )
-    
+
     args = parser.parse_args()
-    
+
     if not args.quiet:
         print(f"🔍 Analyzing repository: {args.repo_path}")
-    
+
     analyzer = RepoAnalyzer(args.repo_path)
     result = analyzer.analyze()
-    
+
     output = {
         "repo_path": result.repo_path,
         "repo_name": result.repo_name,
@@ -1412,7 +1411,7 @@ def main():
         "level_scores": result.level_scores,
         "pillars": {}
     }
-    
+
     for pillar_name, pillar in result.pillars.items():
         output["pillars"][pillar_name] = {
             "name": pillar.name,
@@ -1421,16 +1420,16 @@ def main():
             "percentage": pillar.percentage,
             "criteria": [asdict(c) for c in pillar.criteria]
         }
-    
+
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(output, indent=2))
-    
+
     if not args.quiet:
         print(f"✅ Analysis complete: {result.total_passed}/{result.total_criteria} criteria passed ({result.pass_rate}%)")
         print(f"📊 Achieved Level: L{result.achieved_level}")
         print(f"📄 Results saved to: {args.output}")
-    
+
     return result
 
 

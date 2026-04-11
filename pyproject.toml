@@ -36,6 +36,12 @@ max-complexity = 15
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["C901"]
+".claude/**" = ["ALL"]
+"app_store_assets/**" = ["ALL"]
+".planning/**" = ["ALL"]
+"scripts/analyze_repo.py" = ["C901"]
+"scripts/generate_pixel_art.py" = ["C901"]
+"scripts/generate_report.py" = ["C901"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["backend"]
