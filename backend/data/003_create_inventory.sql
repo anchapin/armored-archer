@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS inventory (
 );
 
 -- Unique constraint: player can only own one instance of each base gear
-CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_user_gear ON inventory(user_id, gear_id);
+-- Using UNIQUE constraint (not INDEX) to satisfy schema validation tests
+ALTER TABLE inventory DROP CONSTRAINT IF EXISTS inventory_user_gear_key;
+ALTER TABLE inventory ADD CONSTRAINT inventory_user_gear_key UNIQUE (user_id, gear_id);
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_inventory_user_id ON inventory(user_id);
