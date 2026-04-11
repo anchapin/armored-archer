@@ -103,7 +103,7 @@ const XP_CURVE: Record<number, number> = {
 export function getXpForLevel(level: number): number {
   if (level < 1) return 0;
   if (level > 50) level = 50;
-  return XP_CURVE[level] || 100 * level * level;
+  return XP_CURVE[level] ?? (100 * level * level);
 }
 
 /**
@@ -163,7 +163,8 @@ export function getProgressPercentage(
   const xpIntoLevel = currentXp - levelXp;
   const xpToNextLevel = nextLevelXp - levelXp;
 
-  return Math.floor((xpIntoLevel / xpToNextLevel) * 100);
+  const progress = Math.floor((xpIntoLevel / xpToNextLevel) * 100);
+  return Math.max(0, Math.min(100, progress));
 }
 
 /**
@@ -182,6 +183,22 @@ export function validateXpGain(request: unknown): {
     return {
       valid: false,
       error: result.error.message,
+    };
+  }
+
+  // Validate that XP amount is positive
+  if (result.data.xp_amount <= 0) {
+    return {
+      valid: false,
+      error: 'XP amount must be greater than 0',
+    };
+  }
+
+  // Validate that level is valid
+  if (result.data.level < 1 || result.data.level > 50) {
+    return {
+      valid: false,
+      error: 'Level must be between 1 and 50',
     };
   }
 
