@@ -123,3 +123,16 @@ The CI workflow runs successfully with only one configuration fix required (`jes
 **Jobs Passing:** 14/14 tested
 **Critical Fixes Required:** 1 (completed)
 **Non-Critical Recommendations:** 2 (deprecated packages)
+
+### Final Status (2026-04-11)
+
+**Completed Fixes:**
+1. ✅ **Jest integration config** - Added `tests` to `roots` in `jest.integration.config.js`
+2. ✅ **Package deprecation warnings** - Removed `@types/ioredis@5.0.0` (ioredis provides its own types) and updated `@opentelemetry/auto-instrumentations-node` to `^0.72.0` (latest)
+
+**Note:** Transitive dependency warnings (inflight, rimraf, glob, @opentelemetry/instrumentation-fastify, node-domexception) are resolved by their parent packages being updated. These will be addressed naturally as package updates propagate through the dependency tree.
+
+**Commits:**
+- `3ab114ae`: Fixed jest.integration.config.js (schema validation now passes)
+- `8f4d3d26`: Updated package dependencies (removed @types/ioredis, updated @opentelemetry packages)
+
