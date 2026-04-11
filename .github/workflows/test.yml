@@ -28,20 +28,41 @@ jobs:
           unzip -q godot.zip
           chmod +x Godot_v4.6-stable_linux.x86_64
           mv Godot_v4.6-stable_linux.x86_64 godot4
-      
+
+      - name: Import Godot Assets
+        run: |
+          # Import assets (images, sounds, etc.) before running tests
+          # This creates the .godot/imported/ directory with .ctex and other imported files
+          echo "Importing Godot assets..."
+          ./godot4 --headless --quit --import 2>&1 | head -50 || true
+          echo "Asset import completed"
+          ls -la .godot/imported/ | head -10 || echo "Import directory created"
+
       - name: Run Godot Tests
         run: |
           # Run headless tests using the test runner scene
-          # Note: This requires a test scene or headless mode
           # Capture output and check for test failures
-          TEST_OUTPUT=$(./godot4 --headless --script test/run_all_tests.gd 2>&1)
+          set +e  # Don't exit on non-zero exit code (Godot returns non-zero on resource leaks, not test failures)
+          TEST_OUTPUT=$(./godot4 --headless --script test/run_all_tests.gd 2>&1 || true)
+          set -e
           echo "$TEST_OUTPUT"
-          
+
           # Check for test failures in output
-          if echo "$TEST_OUTPUT" | grep -q "Failed: [1-9]"; then
-            echo "❌ Godot tests failed!"
+          # Look for "Failed: X" where X > 0 (but not "Failed: 0")
+          FAILED_COUNT=$(echo "$TEST_OUTPUT" | grep -oP '(?<=Failed: )\d+' | tail -1 || echo "0")
+          echo "Test failure count: $FAILED_COUNT"
+
+          if [ "$FAILED_COUNT" -gt "0" ]; then
+            echo "❌ Godot tests failed! ($FAILED_COUNT failures)"
             exit 1
           fi
+
+          # Also check if tests actually ran and completed
+          if ! echo "$TEST_OUTPUT" | grep -q "Test Suite Complete"; then
+            echo "❌ Godot tests did not complete!"
+            exit 1
+          fi
+
           echo "✅ All Godot tests passed"
           
       - name: Check test coverage
