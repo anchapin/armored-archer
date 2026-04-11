@@ -48,8 +48,8 @@ jobs:
           echo "$TEST_OUTPUT"
 
           # Check for test failures in output
-          # Look for "Failed: X" where X > 0 (but not "Failed: 0")
-          FAILED_COUNT=$(echo "$TEST_OUTPUT" | grep -oP '(?<=Failed: )\d+' | tail -1 || echo "0")
+          # Sum all failure counts from all test suites
+          FAILED_COUNT=$(echo "$TEST_OUTPUT" | grep -oP '(?<=Failed: )\d+' | awk '{sum+=$1} END {print sum}' || echo "0")
           echo "Test failure count: $FAILED_COUNT"
 
           if [ "$FAILED_COUNT" -gt "0" ]; then
