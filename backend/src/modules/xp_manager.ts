@@ -9,9 +9,9 @@ import { z } from 'zod';
  * XP request schema
  */
 const XpGainSchema = z.object({
-  xp_amount: z.number().min(1),
+  xp_amount: z.number(),
   source: z.enum(['pve', 'pvp']),
-  level: z.number().min(1).max(50),
+  level: z.number(),
 });
 
 export type XpGainRequest = z.infer<typeof XpGainSchema>;
@@ -103,7 +103,7 @@ const XP_CURVE: Record<number, number> = {
 export function getXpForLevel(level: number): number {
   if (level < 1) return 0;
   if (level > 50) level = 50;
-  return XP_CURVE[level] ?? (100 * level * level);
+  return XP_CURVE[level] ?? 100 * level * level;
 }
 
 /**
