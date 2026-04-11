@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart
 
 # Default target
 all: help
@@ -53,7 +53,7 @@ help:
 	@echo "  make backend-migrate-new Create new migration file"
 	@echo "  make backend-db-schema   Display current database schema"
 	@echo ""
-	@echo "$(GREEN)Local Services$(RESET)"
+	@echo "$(GREEN)Local Services (Dev)$(RESET)"
 	@echo "  make services-start     Start Nakama + PostgreSQL containers"
 	@echo "  make services-stop      Stop all service containers"
 	@echo "  make services-restart  Restart all services"
@@ -62,6 +62,12 @@ help:
 	@echo "  make services-logs     View service logs"
 	@echo "  make services-validate Validate prerequisites"
 	@echo "  make services-clean    Stop and remove services + volumes"
+	@echo ""
+	@echo "$(GREEN)CI Services (for act)$(RESET)"
+	@echo "  make ci-services-start  Start CI services (PostgreSQL:5432, Nakama:7350)"
+	@echo "  make ci-services-stop   Stop CI services"
+	@echo "  make ci-services-status Show CI services status"
+	@echo "  make ci-services-restart Restart CI services"
 	@echo ""
 	@echo "$(GREEN)Development$(RESET)"
 	@echo "  make dev                Start development (backend with auto-reload)"
@@ -397,3 +403,29 @@ agents-md-check:
 agents-md-check-ci:
 	@echo "$(BLUE)Running AGENTS.md validation (CI mode)...$(RESET)"
 	cd $(BACKEND_DIR) && npm run validate:agents-md:ci
+
+## CI Services (for local act testing)
+# These services match the CI environment exactly (different ports than dev)
+ci-services-start:
+	@echo "$(BLUE)Starting CI services (for act)...$(RESET)"
+	docker compose -f .github/docker-compose.yml -p ci-armored-archer up -d
+	@echo "$(GREEN)✓ CI services started$(RESET)"
+	@echo "  - PostgreSQL: localhost:5432 (CI port)"
+	@echo "  - Nakama:    localhost:7350"
+	@echo ""
+	@echo "Run with act:"
+	@echo "  act -W .github/workflows/test.yml"
+
+ci-services-stop:
+	@echo "$(BLUE)Stopping CI services...$(RESET)"
+	docker compose -f .github/docker-compose.yml -p ci-armored-archer down
+	@echo "$(GREEN)✓ CI services stopped$(RESET)"
+
+ci-services-status:
+	@echo "$(BLUE)CI Services Status:$(RESET)"
+	docker compose -f .github/docker-compose.yml -p ci-armored-archer ps
+
+ci-services-restart:
+	@echo "$(BLUE)Restarting CI services...$(RESET)"
+	@docker compose -f .github/docker-compose.yml -p ci-armored-archer restart
+	@echo "$(GREEN)✓ CI services restarted$(RESET)"
