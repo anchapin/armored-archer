@@ -214,10 +214,15 @@ jobs:
         if: success()
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         continue-on-error: true
+        env:
+          # Skip Codecov for act environment - git worktrees cause issues
+          CODECOV_SKIP: ${{ env.ACT == 'true' && 'true' || '' }}
         with:
           file: ./backend/coverage/lcov.info
           flags: backend
           fail_ci_if_error: false
+          git_service_name: github
+          verbose: true
 
   security-audit:
     name: Security Audit
@@ -591,6 +596,12 @@ jobs:
         working-directory: ./backend
         run: npm run build
 
+      - name: Skip SonarCloud for act environment
+        if: env.ACT == 'true'
+        run: |
+          echo "⚠️  Skipping SonarCloud scan when running locally with act"
+          echo "This job requires GitHub context variables that are not available locally"
+
       - name: Wait for PostgreSQL to be ready
         run: |
           for i in {1..30}; do
@@ -635,7 +646,15 @@ jobs:
           TEST_DB_NAME: nakama
         run: npm run test:coverage
 
+      - name: Skip SonarCloud for act environment
+        if: env.ACT == 'true'
+        run: |
+          echo "⚠️  Skipping SonarCloud scan when running locally with act"
+          echo "This job requires GitHub context variables and secrets that are not available locally"
+          echo "Skipping remaining steps in this job..."
+
       - name: Run SonarCloud Scanner for Backend (TypeScript/Node.js)
+        if: env.ACT != 'true'
         uses: SonarSource/sonarcloud-github-action@ba3875ecf642b2129de2b589510c81a8b53dbf4e # master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -659,6 +678,7 @@ jobs:
 
       - name: Run SonarCloud Scanner for Game Scripts
         # Note: GDScript requires SonarQube server with community plugin
+        if: env.ACT != 'true'
         uses: SonarSource/sonarcloud-github-action@ba3875ecf642b2129de2b589510c81a8b53dbf4e # master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

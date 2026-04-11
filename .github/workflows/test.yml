@@ -376,11 +376,16 @@ jobs:
       - name: Upload coverage to Codecov
         if: success()
         continue-on-error: true
+        env:
+          # Skip Codecov for act environment - git worktrees cause issues
+          CODECOV_SKIP: ${{ env.ACT == 'true' && 'true' || '' }}
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         with:
           file: ./backend/coverage/lcov.info
           flags: backend
           fail_ci_if_error: false
+          git_service_name: github
+          verbose: true
       
       - name: Upload test results
         uses: actions/upload-artifact@v4
