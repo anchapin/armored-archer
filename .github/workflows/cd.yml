@@ -118,7 +118,7 @@ jobs:
 
       # Deployment observability: Send deployment notification
       - name: Send deployment notification (staging)
-        if: always()
+        if: always() && env.ACT != 'true'
         uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
         with:
           payload: |
@@ -149,7 +149,7 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Workflow:*\n${{ workflow_url }}"
+                      "text": "*Workflow:*\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                     }
                   ]
                 },
@@ -266,7 +266,7 @@ jobs:
 
       # Deployment observability: Send deployment notification
       - name: Send deployment notification (production)
-        if: always()
+        if: always() && env.ACT != 'true'
         uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
         with:
           payload: |
@@ -297,7 +297,7 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Workflow:*\n${{ workflow_url }}"
+                      "text": "*Workflow:*\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                     }
                   ]
                 },

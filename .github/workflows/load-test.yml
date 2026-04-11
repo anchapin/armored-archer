@@ -36,7 +36,6 @@ jobs:
         env:
           POSTGRES_DB: nakama
           POSTGRES_USER: postgres
-          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: localdbpassword
           POSTGRES_HOST: postgres
         ports:

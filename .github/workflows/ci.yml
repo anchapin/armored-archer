@@ -420,6 +420,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Fix Python hostedtoolcache permissions (for act only)
+        if: env.ACT == 'true'
+        run: |
+          sudo mkdir -p /opt/hostedtoolcache/Python
+          sudo chown -R $(id -u):$(id -g) /opt/hostedtoolcache/Python
+          # Also create version-specific directory and ensure write permissions
+          sudo mkdir -p /opt/hostedtoolcache/Python/3.10.20
+          sudo chown -R $(id -u):$(id -g) /opt/hostedtoolcache/Python/3.10.20
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -437,6 +446,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Fix Python hostedtoolcache permissions (for act only)
+        if: env.ACT == 'true'
+        run: |
+          sudo mkdir -p /opt/hostedtoolcache/Python
+          sudo chown -R $(id -u):$(id -g) /opt/hostedtoolcache/Python
+          # Also create version-specific directory and ensure write permissions
+          sudo mkdir -p /opt/hostedtoolcache/Python/3.10.20
+          sudo chown -R $(id -u):$(id -g) /opt/hostedtoolcache/Python/3.10.20
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -489,6 +507,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Fix Python hostedtoolcache permissions (for act only)
+        if: env.ACT == 'true'
+        run: |
+          sudo mkdir -p /opt/hostedtoolcache/Python
+          sudo chown -R $(id -u):$(id -g) /opt/hostedtoolcache/Python
+          # Also create version-specific directory and ensure write permissions
+          sudo mkdir -p /opt/hostedtoolcache/Python/3.10.20
+          sudo chown -R $(id -u):$(id -g) /opt/hostedtoolcache/Python/3.10.20
 
       - name: Set up Python
         uses: actions/setup-python@v5
