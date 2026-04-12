@@ -281,11 +281,14 @@ func test_update_campaign_progress() -> void:
 		]
 	}
 
-	var progress_updated = false
+	var progress_updated := false
 	var update_progress = func(_data): progress_updated = true
 	campaign.campaign_progress_updated.connect(update_progress)
 
 	campaign.update_campaign_progress()
+
+	# In headless mode, give a frame for the signal callback to process
+	await get_tree().process_frame
 
 	if progress_updated:
 		_pass("test_update_campaign_progress_signal")
