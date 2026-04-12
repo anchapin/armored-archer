@@ -168,15 +168,10 @@ jobs:
 
       - name: Wait for PostgreSQL to be ready
         run: |
-          # In GitHub Actions, use job.services.postgres.id; in act, find container by name
-          if [ -n "${{ job.services.postgres.id }}" ]; then
-            POSTGRES_CONTAINER="${{ job.services.postgres.id }}"
-          else
-            # Find PostgreSQL container by image name (act environment)
-            POSTGRES_CONTAINER=$(docker ps --filter ancestor=postgres:14-alpine --format '{{.ID}}' | head -1)
-          fi
+          # For act local testing, use direct pg_isready connection
+          # For GitHub Actions, this also works with the service container
           for i in {1..30}; do
-            if docker exec $POSTGRES_CONTAINER pg_isready -U postgres 2>/dev/null; then
+            if PGPASSWORD=changeme pg_isready -h localhost -p 5432 -U postgres 2>/dev/null; then
               echo "PostgreSQL is ready"
               break
             fi
@@ -187,16 +182,11 @@ jobs:
       - name: Run database migrations
         working-directory: ./backend/data
         run: |
-          # In GitHub Actions, use job.services.postgres.id; in act, find container by name
-          if [ -n "${{ job.services.postgres.id }}" ]; then
-            POSTGRES_CONTAINER="${{ job.services.postgres.id }}"
-          else
-            # Find PostgreSQL container by image name (act environment)
-            POSTGRES_CONTAINER=$(docker ps --filter ancestor=postgres:14-alpine --format '{{.ID}}' | head -1)
-          fi
+          # For act local testing, use direct psql connection
+          # For GitHub Actions, this also works with the service container
           for migration in $(ls -1 *.sql 2>/dev/null | sort); do
             echo "Running migration: $migration"
-            docker exec -i $POSTGRES_CONTAINER psql -U postgres -d nakama < "$migration" || true
+            PGPASSWORD=changeme psql -h localhost -p 5432 -U postgres -d nakama -f "$migration" || true
           done
 
       - name: Wait for Nakama to be ready
@@ -618,15 +608,10 @@ jobs:
 
       - name: Wait for PostgreSQL to be ready
         run: |
-          # In GitHub Actions, use job.services.postgres.id; in act, find container by name
-          if [ -n "${{ job.services.postgres.id }}" ]; then
-            POSTGRES_CONTAINER="${{ job.services.postgres.id }}"
-          else
-            # Find PostgreSQL container by image name (act environment)
-            POSTGRES_CONTAINER=$(docker ps --filter ancestor=postgres:14-alpine --format '{{.ID}}' | head -1)
-          fi
+          # For act local testing, use direct pg_isready connection
+          # For GitHub Actions, this also works with the service container
           for i in {1..30}; do
-            if docker exec $POSTGRES_CONTAINER pg_isready -U postgres 2>/dev/null; then
+            if PGPASSWORD=changeme pg_isready -h localhost -p 5432 -U postgres 2>/dev/null; then
               echo "PostgreSQL is ready"
               break
             fi
@@ -637,16 +622,11 @@ jobs:
       - name: Run database migrations
         working-directory: ./backend/data
         run: |
-          # In GitHub Actions, use job.services.postgres.id; in act, find container by name
-          if [ -n "${{ job.services.postgres.id }}" ]; then
-            POSTGRES_CONTAINER="${{ job.services.postgres.id }}"
-          else
-            # Find PostgreSQL container by image name (act environment)
-            POSTGRES_CONTAINER=$(docker ps --filter ancestor=postgres:14-alpine --format '{{.ID}}' | head -1)
-          fi
+          # For act local testing, use direct psql connection
+          # For GitHub Actions, this also works with the service container
           for migration in $(ls -1 *.sql 2>/dev/null | sort); do
             echo "Running migration: $migration"
-            docker exec -i $POSTGRES_CONTAINER psql -U postgres -d nakama < "$migration" || true
+            PGPASSWORD=changeme psql -h localhost -p 5432 -U postgres -d nakama -f "$migration" || true
           done
 
       - name: Wait for Nakama to be ready
@@ -754,15 +734,10 @@ jobs:
 
       - name: Wait for PostgreSQL to be ready
         run: |
-          # In GitHub Actions, use job.services.postgres.id; in act, find container by name
-          if [ -n "${{ job.services.postgres.id }}" ]; then
-            POSTGRES_CONTAINER="${{ job.services.postgres.id }}"
-          else
-            # Find PostgreSQL container by image name (act environment)
-            POSTGRES_CONTAINER=$(docker ps --filter ancestor=postgres:15-alpine --format '{{.ID}}' | head -1)
-          fi
+          # For act local testing, use direct pg_isready connection
+          # For GitHub Actions, this also works with the service container
           for i in {1..30}; do
-            if docker exec $POSTGRES_CONTAINER pg_isready -U postgres 2>/dev/null; then
+            if PGPASSWORD=localdbpassword pg_isready -h localhost -p 5433 -U postgres 2>/dev/null; then
               echo "PostgreSQL is ready"
               break
             fi
@@ -773,16 +748,11 @@ jobs:
       - name: Run migrations
         working-directory: ./backend/data
         run: |
-          # In GitHub Actions, use job.services.postgres.id; in act, find container by name
-          if [ -n "${{ job.services.postgres.id }}" ]; then
-            POSTGRES_CONTAINER="${{ job.services.postgres.id }}"
-          else
-            # Find PostgreSQL container by image name (act environment)
-            POSTGRES_CONTAINER=$(docker ps --filter ancestor=postgres:15-alpine --format '{{.ID}}' | head -1)
-          fi
+          # For act local testing, use direct psql connection
+          # For GitHub Actions, this also works with the service container
           for migration in $(ls -1 *.sql 2>/dev/null | sort); do
             echo "Running migration: $migration"
-            docker exec -i $POSTGRES_CONTAINER psql -U postgres -d nakama < "$migration" || true
+            PGPASSWORD=localdbpassword psql -h localhost -p 5433 -U postgres -d nakama -f "$migration" || true
           done
 
       - name: Install dependencies
