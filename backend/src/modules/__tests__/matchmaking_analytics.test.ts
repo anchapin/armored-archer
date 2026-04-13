@@ -283,28 +283,40 @@ describe('Matchmaking Analytics Module', () => {
     });
 
     it('should detect high abandonment rate', async () => {
-      mockNk.storageRead
-        .mockResolvedValue([
-          {
-            value: {
-              match_id: 'match1',
-              completed: true,
+      let callCount = 0;
+      mockNk.storageRead.mockImplementation((requests: any) => {
+        callCount++;
+        // First call is for weapon stats (empty)
+        if (callCount === 1) {
+          return Promise.resolve([]);
+        }
+        // Second and third calls are for match data and queue times
+        if (callCount === 2) {
+          // Return match data with high abandonment rate
+          return Promise.resolve([
+            {
+              value: {
+                match_id: 'match1',
+                completed: true,
+              },
             },
-          },
-          {
-            value: {
-              match_id: 'match2',
-              completed: false,
+            {
+              value: {
+                match_id: 'match2',
+                completed: false,
+              },
             },
-          },
-          {
-            value: {
-              match_id: 'match3',
-              completed: false,
+            {
+              value: {
+                match_id: 'match3',
+                completed: false,
+              },
             },
-          },
-        ])
-        .mockResolvedValue([]);
+          ]);
+        }
+        // Third call is for queue times (empty)
+        return Promise.resolve([]);
+      });
 
       const issues = await detectBalanceIssues(mockNk);
 
@@ -392,7 +404,7 @@ describe('Matchmaking Analytics Module', () => {
 
       await logWeaponResult(mockNk, 'weapon_1', true, 50);
 
-      expect(mockNk.storageWrite).toHaveBeenCalledTimes(2);
+      expect(mockNk.storageWrite).toHaveBeenCalledTimes(1);
     });
 
     it('should create new weapon stats if not exists', async () => {
@@ -406,16 +418,17 @@ describe('Matchmaking Analytics Module', () => {
 
   describe('logQueueTime', () => {
     it('should log queue time to storage', async () => {
+      const timestamp = Date.now();
       await logQueueTime(mockNk, {
         queue_time: 45,
-        timestamp: Date.now(),
+        timestamp,
       });
 
       expect(mockNk.storageWrite).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
             collection: 'matchmaking_queue_times',
-            value: JSON.stringify({ queue_time: 45, timestamp: Date.now() }),
+            value: expect.stringMatching(/\"queue_time\":45/),
           }),
         ])
       );

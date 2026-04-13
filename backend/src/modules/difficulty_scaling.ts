@@ -126,12 +126,34 @@ export function getEnemyDamageMult(level: number): number {
  * @returns AI difficulty tier data
  */
 export function getAiDifficultyTier(level: number): AiDifficultyTier {
-  if (level < 1) return AI_TIERS['1-10'];
+  if (level < 1) return { ...AI_TIERS['1-10'] };
   if (level > 50) level = 50;
 
-  if (level <= 10) return AI_TIERS['1-10'];
-  if (level <= 20) return AI_TIERS['11-20'];
-  return AI_TIERS['21-50'];
+  let baseTier: AiDifficultyTier;
+  let progress = 0; // 0 to 1 within the tier range
+
+  if (level <= 10) {
+    // First tier - no interpolation, all levels have same complexity
+    baseTier = AI_TIERS['1-10'];
+    return { ...baseTier };
+  } else if (level <= 20) {
+    baseTier = AI_TIERS['11-20'];
+    progress = (level - 11) / 9; // 11 to 20
+  } else {
+    baseTier = AI_TIERS['21-50'];
+    progress = (level - 21) / 29; // 21 to 50
+  }
+
+  // Interpolate pattern complexity to increase with level within tier
+  const baseComplexity = baseTier.pattern_complexity;
+  const nextTierComplexity =
+    level <= 20 ? 7 : 10; // Next tier's complexity
+  const interpolatedComplexity = baseComplexity + (nextTierComplexity - baseComplexity) * progress;
+
+  return {
+    ...baseTier,
+    pattern_complexity: Math.round(interpolatedComplexity * 10) / 10, // Round to 1 decimal
+  };
 }
 
 /**
