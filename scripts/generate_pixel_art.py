@@ -98,7 +98,7 @@ class PixelArtGenerator:
         """Set a pixel to a specific color from palette"""
         if 0 <= x < img.width and 0 <= y < img.height and 0 <= color_idx < len(palette):
             color = palette[color_idx]
-            img.putpixel((x, y), color + (255,))  # Add alpha
+            img.putpixel((x, y), (*color, 255))  # Add alpha
 
     def draw_rectangle(self, img: Image.Image, x: int, y: int, w: int, h: int, palette: list[tuple], color_idx: int):
         """Draw a filled rectangle"""

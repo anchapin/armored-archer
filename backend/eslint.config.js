@@ -35,6 +35,7 @@ module.exports = [
       'src/modules/combat_system.ts',
       'src/modules/season_system.ts',
       'src/modules/store.ts',
+      '**/__mocks__/**',
     ],
   },
 

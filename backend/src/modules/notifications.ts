@@ -207,7 +207,7 @@ export async function sendBatchNotifications(
 
   // Firebase allows sending to up to 500 tokens at once
   const BATCH_SIZE = 500;
-  const batches = [];
+  const batches: string[][] = [];
 
   for (let i = 0; i < deviceTokens.length; i += BATCH_SIZE) {
     batches.push(deviceTokens.slice(i, i + BATCH_SIZE));
