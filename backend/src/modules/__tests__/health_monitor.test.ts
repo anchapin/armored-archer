@@ -158,10 +158,15 @@ describe('health_monitor', () => {
       const { isAlertingEnabled } = require('../../config/alerting');
       (isAlertingEnabled as jest.Mock).mockReturnValue(true);
 
+      // Temporarily override NODE_ENV to test actual monitoring behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startHealthMonitoring(9999999);
       const status = getHealthStatus();
       expect(status.isMonitoring).toBe(true);
 
+      process.env.NODE_ENV = originalNodeEnv;
       (isAlertingEnabled as jest.Mock).mockReturnValue(false);
     });
 
@@ -253,6 +258,10 @@ describe('health_monitor', () => {
       const { isAlertingEnabled } = require('../../config/alerting');
       (isAlertingEnabled as jest.Mock).mockReturnValue(true);
 
+      // Temporarily override NODE_ENV to test actual monitoring behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startHealthMonitoring(9999999);
 
       // Verify monitoring is running
@@ -265,6 +274,7 @@ describe('health_monitor', () => {
       status = getHealthStatus();
       expect(status.isMonitoring).toBe(false);
 
+      process.env.NODE_ENV = originalNodeEnv;
       (isAlertingEnabled as jest.Mock).mockReturnValue(false);
     });
 
@@ -276,6 +286,10 @@ describe('health_monitor', () => {
       const { isAlertingEnabled } = require('../../config/alerting');
       (isAlertingEnabled as jest.Mock).mockReturnValue(true);
 
+      // Temporarily override NODE_ENV to test actual monitoring behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startHealthMonitoring(9999999);
       stopHealthMonitoring();
 
@@ -284,6 +298,7 @@ describe('health_monitor', () => {
       const status = getHealthStatus();
       expect(status.isMonitoring).toBe(true);
 
+      process.env.NODE_ENV = originalNodeEnv;
       (isAlertingEnabled as jest.Mock).mockReturnValue(false);
     });
   });
@@ -347,6 +362,10 @@ describe('health_monitor', () => {
       const { isAlertingEnabled } = require('../../config/alerting');
       (isAlertingEnabled as jest.Mock).mockReturnValue(true);
 
+      // Temporarily override NODE_ENV to test actual monitoring behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       const mockLogger = {
         info: jest.fn(),
         error: jest.fn(),
@@ -359,6 +378,7 @@ describe('health_monitor', () => {
       const status = getHealthStatus();
       expect(status.isMonitoring).toBe(true);
 
+      process.env.NODE_ENV = originalNodeEnv;
       (isAlertingEnabled as jest.Mock).mockReturnValue(false);
     });
 
@@ -423,6 +443,10 @@ describe('health_monitor', () => {
       const { isAlertingEnabled } = require('../../config/alerting');
       (isAlertingEnabled as jest.Mock).mockReturnValue(true);
 
+      // Temporarily override NODE_ENV to test actual monitoring behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startHealthMonitoring(9999999);
       const { logger } = require('../../config/logger');
       (logger.warn as jest.Mock).mockClear();
@@ -431,12 +455,17 @@ describe('health_monitor', () => {
 
       expect(logger.warn).toHaveBeenCalledWith('Health monitoring already running');
 
+      process.env.NODE_ENV = originalNodeEnv;
       (isAlertingEnabled as jest.Mock).mockReturnValue(false);
     });
 
     it('should run an initial health check on start', () => {
       const { isAlertingEnabled } = require('../../config/alerting');
       (isAlertingEnabled as jest.Mock).mockReturnValue(true);
+
+      // Temporarily override NODE_ENV to test actual monitoring behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
 
       startHealthMonitoring(9999999);
 
@@ -445,6 +474,7 @@ describe('health_monitor', () => {
       expect(typeof status.metrics.cpuUsage).toBe('number');
       expect(typeof status.metrics.memoryUsage).toBe('number');
 
+      process.env.NODE_ENV = originalNodeEnv;
       (isAlertingEnabled as jest.Mock).mockReturnValue(false);
     });
 
@@ -467,10 +497,15 @@ describe('health_monitor', () => {
       alertingConfig.healthAlerts.errorRateCriticalPercent = 0;
       alertingConfig.healthAlerts.errorRateWarningPercent = 0;
 
+      // Temporarily override NODE_ENV to test actual monitoring behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startHealthMonitoring(9999999);
 
       expect(triggerHealthAlert).toHaveBeenCalled();
 
+      process.env.NODE_ENV = originalNodeEnv;
       (isAlertingEnabled as jest.Mock).mockReturnValue(false);
       alertingConfig.healthAlerts.cpuCriticalPercent = 90;
       alertingConfig.healthAlerts.cpuWarningPercent = 80;
@@ -496,10 +531,15 @@ describe('health_monitor', () => {
       alertingConfig.metricAlerts.matchQueueCritical = 0;
       alertingConfig.metricAlerts.matchQueueWarning = 0;
 
+      // Temporarily override NODE_ENV to test actual monitoring behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startHealthMonitoring(9999999);
 
       expect(triggerMetricAlert).toHaveBeenCalled();
 
+      process.env.NODE_ENV = originalNodeEnv;
       (isAlertingEnabled as jest.Mock).mockReturnValue(false);
       alertingConfig.metricAlerts.activeConnectionsCritical = 1000;
       alertingConfig.metricAlerts.activeConnectionsWarning = 500;
@@ -526,11 +566,16 @@ describe('health_monitor', () => {
       alertingConfig.healthAlerts.errorRateCriticalPercent = 100;
       alertingConfig.healthAlerts.errorRateWarningPercent = 0;
 
+      // Temporarily override NODE_ENV to test actual monitoring behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startHealthMonitoring(9999999);
 
       // Should trigger warning-level alerts (not critical)
       expect(triggerHealthAlert).toHaveBeenCalled();
 
+      process.env.NODE_ENV = originalNodeEnv;
       (isAlertingEnabled as jest.Mock).mockReturnValue(false);
       alertingConfig.healthAlerts.cpuCriticalPercent = 90;
       alertingConfig.healthAlerts.cpuWarningPercent = 80;
@@ -569,11 +614,16 @@ describe('health_monitor', () => {
       alertingConfig.metricAlerts.matchQueueCritical = 999999;
       alertingConfig.metricAlerts.matchQueueWarning = 999999;
 
+      // Temporarily override NODE_ENV to test actual monitoring behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startHealthMonitoring(9999999);
 
       expect(triggerHealthAlert).not.toHaveBeenCalled();
       expect(triggerMetricAlert).not.toHaveBeenCalled();
 
+      process.env.NODE_ENV = originalNodeEnv;
       (isAlertingEnabled as jest.Mock).mockReturnValue(false);
       alertingConfig.healthAlerts.cpuCriticalPercent = 90;
       alertingConfig.healthAlerts.cpuWarningPercent = 80;

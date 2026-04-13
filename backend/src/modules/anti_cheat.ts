@@ -660,12 +660,16 @@ export function getLeaderboardAntiCheatStats(): {
   };
 }
 
-// Cleanup job to prevent memory leaks
-const _antiCheatCleanupInterval = setInterval(cleanupExpiredRequests, 60000); // Every minute
+// Cleanup job to prevent memory leaks (only in production, not during tests)
+const _antiCheatCleanupInterval = process.env.NODE_ENV !== 'test'
+  ? setInterval(cleanupExpiredRequests, 60000) // Every minute
+  : null as unknown as NodeJS.Timeout;
 
 /** Clear the anti-cheat cleanup interval (for test teardown). */
 export function stopAntiCheatCleanup(): void {
-  clearInterval(_antiCheatCleanupInterval);
+  if (_antiCheatCleanupInterval) {
+    clearInterval(_antiCheatCleanupInterval);
+  }
 }
 
 // ============================================================
