@@ -80,7 +80,7 @@ def get_top_opportunities(data: dict, n: int = 5) -> list[tuple[str, str, str]]:
     return [(o[0], o[2], o[3]) for o in opportunities[:n]]
 
 
-def generate_markdown_report(data: dict) -> str:
+def generate_markdown_report(data: dict) -> str:  # noqa: C901
     """Generate a full markdown report from analysis data."""
     repo_name = data["repo_name"]
     pass_rate = data["pass_rate"]

@@ -55,9 +55,7 @@
     "test:smoke": "./scripts/run-smoke-tests.sh --all",
     "test:smoke:quick": "./scripts/run-smoke-tests.sh --quick",
     "test:smoke:coverage": "./scripts/run-smoke-tests.sh --all --coverage",
-    "test:coverage:report": "ts-node scripts/test-coverage-report.ts",
-    "mutation:test": "stryker run",
-    "mutation:test:ci": "stryker run --reporters json,clear-text"
+    "test:coverage:report": "ts-node scripts/test-coverage-report.ts"
   },
   "keywords": [
     "nakama",
@@ -67,14 +65,9 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@babel/cli": "^7.28.6",
     "@babel/core": "^7.29.0",
-    "@babel/plugin-transform-runtime": "^7.29.0",
     "@babel/preset-env": "^7.29.0",
     "@heroiclabs/nakama-js": "2.8.0",
-    "@stryker-mutator/core": "^9.6.0",
-    "@stryker-mutator/jest-runner": "^9.6.0",
-    "@stryker-mutator/typescript-checker": "^9.6.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.5.0",
     "@types/opossum": "^8.1.9",
@@ -105,7 +98,6 @@
     "webpack-cli": "^7.0.0"
   },
   "dependencies": {
-    "@babel/runtime": "^7.28.6",
     "@opentelemetry/auto-instrumentations-node": "^0.71.0",
     "@opentelemetry/exporter-jaeger": "^2.6.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.213.0",
@@ -115,13 +107,11 @@
     "@opentelemetry/semantic-conventions": "1.40.0",
     "@sentry/node": "^10.40.0",
     "@types/ioredis": "^5.0.0",
-    "buffer": "^6.0.3",
     "ioredis": "^5.10.0",
     "js-yaml": "^4.1.1",
     "lru-cache": "^11.2.6",
     "opossum": "^9.0.0",
     "pg": "^8.11.0",
-    "process": "^0.11.10",
     "prom-client": "^15.0.0",
     "tslib": "^2.8.1",
     "uuid": "^13.0.0",

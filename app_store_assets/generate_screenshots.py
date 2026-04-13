@@ -42,7 +42,7 @@ def create_placeholder_screenshot(size, label, description, output_path):
         font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 60)
         font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
         font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
-    except:
+    except Exception:
         # Fall back to default font
         font_large = ImageFont.load_default()
         font_medium = ImageFont.load_default()
@@ -62,7 +62,7 @@ def create_placeholder_screenshot(size, label, description, output_path):
 
     # Calculate center positions
     center_x = size[0] // 2
-    center_y = size[1] // 2
+    _center_y = size[1] // 2
 
     # Draw label at top
     label_y = 150
@@ -109,7 +109,7 @@ def main():
 
     # Create Android screenshots
     android_base = os.path.join(base_path, "android", "screenshots")
-    for i, screen in enumerate(SCREENS[:6], 1):
+    for _i, screen in enumerate(SCREENS[:6], 1):
         # Use standard Android sizes
         output_path = os.path.join(android_base, f"{screen['name']}.png")
         create_placeholder_screenshot((1080, 1920), screen['label'], screen['description'], output_path)

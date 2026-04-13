@@ -148,7 +148,7 @@ class TraceVerifier:
 
     def check_docker_service(self, service_name: str) -> TestResult:
         """Check if a Docker service is running."""
-        returncode, stdout, stderr = self.run_command([
+        returncode, stdout, _stderr = self.run_command([
             "docker", "inspect", "-f", "{{.State.Status}}", service_name
         ])
 

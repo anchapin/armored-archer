@@ -43,7 +43,7 @@ def calculate_overall_coverage(coverage_data):
     if isinstance(coverage_data, dict) and 'coverage' in coverage_data:
         coverage_data = coverage_data['coverage']
 
-    for file_path, data in coverage_data.items():
+    for _file_path, data in coverage_data.items():
         if isinstance(data, dict):
             total_lines += data.get('total_count', 0)
             covered_lines += data.get('covered_count', 0)

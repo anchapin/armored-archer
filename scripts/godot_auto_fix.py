@@ -55,7 +55,7 @@ class GodotAutoFixer:
                         # Check if UID looks like a human-readable identifier (invalid)
                         if uid.startswith("uid://") and re.match(r"uid://[a-z_]+$", uid):
                             # Try to get actual UID from the referenced file
-                            ref_file = PROJECT_ROOT / path.lstrip("res://")
+                            ref_file = PROJECT_ROOT / path.removeprefix("res://")
                             if ref_file.exists():
                                 actual_uid = self._get_file_uid(ref_file)
                                 if actual_uid and actual_uid != uid:
@@ -161,7 +161,7 @@ class GodotAutoFixer:
         uid_issues = self.scan_scene_uids()
         if uid_issues:
             self.log(f"Found {len(uid_issues)} invalid UID references", "WARN")
-            for scene_file, old_uid, path, new_uid in uid_issues:
+            for scene_file, old_uid, _path, new_uid in uid_issues:
                 self.fix_uid_reference(scene_file, old_uid, new_uid)
         else:
             self.log("No invalid UID references found")

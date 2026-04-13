@@ -121,7 +121,7 @@ class RepoAnalyzer:
         except Exception:
             return None
 
-    def _search_files(self, pattern: str, content_pattern: str = None) -> bool:
+    def _search_files(self, pattern: str, content_pattern: str | None = None) -> bool:
         """Search for files matching pattern, optionally with content."""
         matches = list(self.repo_path.glob(pattern))
         if not matches:
@@ -359,7 +359,7 @@ class RepoAnalyzer:
             reason=reason
         )
 
-    def _evaluate_style_validation(self) -> list[CriterionResult]:
+    def _evaluate_style_validation(self) -> list[CriterionResult]:  # noqa: C901
         """Evaluate Style & Validation pillar."""
         pillar = "Style & Validation"
         results = []
@@ -529,7 +529,7 @@ class RepoAnalyzer:
             n_plus_one = True
         # Also check for npm scripts or detection scripts
         if not n_plus_one:
-            code, output = self._run_command(
+            code, _output = self._run_command(
                 ["npm", "run", "detect-n-plus-one", "--prefix", "backend"],
                 timeout=30
             )
@@ -542,7 +542,7 @@ class RepoAnalyzer:
 
         return results
 
-    def _evaluate_build_system(self) -> list[CriterionResult]:
+    def _evaluate_build_system(self) -> list[CriterionResult]:  # noqa: C901
         """Evaluate Build System pillar."""
         pillar = "Build System"
         results = []
