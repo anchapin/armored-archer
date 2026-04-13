@@ -38,6 +38,8 @@ func run_tests() -> void:
 func _create_shooting_manager() -> Node:
 	var sm = load("res://autoloads/ShootingManager.gd").new()
 	add_child(sm)
+	# Wait for _ready() to complete
+	await get_tree().process_frame
 	return sm
 
 func _pass(test_name: String) -> void:

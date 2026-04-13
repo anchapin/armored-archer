@@ -1,0 +1,6 @@
+# GDScript Linter configuration
+
+# Exclude directories from linting
+exclude:
+  - "addons/**/*"
+  - "test/**/*"

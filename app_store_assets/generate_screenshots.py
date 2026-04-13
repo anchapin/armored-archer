@@ -109,7 +109,7 @@ def main():
 
     # Create Android screenshots
     android_base = os.path.join(base_path, "android", "screenshots")
-    for i, screen in enumerate(SCREENS[:6], 1):
+    for _i, screen in enumerate(SCREENS[:6], 1):
         # Use standard Android sizes
         output_path = os.path.join(android_base, f"{screen['name']}.png")
         create_placeholder_screenshot((1080, 1920), screen['label'], screen['description'], output_path)

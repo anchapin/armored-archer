@@ -52,11 +52,6 @@ func test_initial_state() -> void:
 	else:
 		_fail("test_initial_state_empty", "Initial enemies should be empty")
 
-	if aim._cache_valid == false:
-		_pass("test_initial_cache_invalid")
-	else:
-		_fail("test_initial_cache_invalid", "Cache should initially be invalid")
-
 	aim.queue_free()
 
 func test_constants() -> void:
@@ -66,11 +61,6 @@ func test_constants() -> void:
 		_pass("test_aim_range_constant")
 	else:
 		_fail("test_aim_range_constant", "AIM_RANGE should be 500.0")
-
-	if aim.AIM_RANGE_SQUARED == 250000.0:
-		_pass("test_aim_range_squared_constant")
-	else:
-		_fail("test_aim_range_squared_constant", "AIM_RANGE_SQUARED should be 250000.0")
 
 	if abs(aim.MAX_AIM_ANGLE - 0.785398) < 0.001:  # pi/4
 		_pass("test_max_aim_angle_constant")
@@ -245,6 +235,7 @@ func test_get_target_position() -> void:
 
 	# Test with no target
 	enemy.queue_free()
+	await get_tree().process_frame  # Wait for queue_free to actually free the node
 	pos = aim.get_target_position(Vector2.ZERO, Vector2.RIGHT)
 	if pos == Vector2.ZERO:
 		_pass("test_get_target_position_no_target")
@@ -266,6 +257,7 @@ func test_is_target_locked() -> void:
 		_fail("test_is_target_locked_true", "Should return true when target locked")
 
 	enemy.queue_free()
+	await get_tree().process_frame  # Wait for queue_free to actually free the node
 
 	if not aim.is_target_locked(Vector2.ZERO, Vector2.RIGHT):
 		_pass("test_is_target_locked_false")

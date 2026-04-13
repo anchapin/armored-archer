@@ -131,8 +131,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Grant necessary permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON beta_users TO nakama;
-GRANT SELECT, INSERT, UPDATE, DELETE ON beta_invitations TO nakama;
-GRANT EXECUTE ON FUNCTION generate_beta_invite_code() TO nakama;
-GRANT EXECUTE ON FUNCTION register_beta_user(UUID, TEXT) TO nakama;
+-- Grant necessary permissions (only if nakama role exists)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nakama') THEN
+        EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON beta_users TO nakama';
+        EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON beta_invitations TO nakama';
+        EXECUTE 'GRANT EXECUTE ON FUNCTION generate_beta_invite_code() TO nakama';
+        EXECUTE 'GRANT EXECUTE ON FUNCTION register_beta_user(UUID, TEXT) TO nakama';
+    END IF;
+END $$;

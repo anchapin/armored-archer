@@ -57,6 +57,8 @@ func run_tests() -> void:
 func _create_profiler() -> void:
 	_profiler = load("res://autoloads/PerformanceProfiler.gd").new()
 	add_child(_profiler)
+	# Wait for _ready() to complete
+	await get_tree().process_frame
 
 func _pass(test_name: String) -> void:
 	_tests_passed += 1

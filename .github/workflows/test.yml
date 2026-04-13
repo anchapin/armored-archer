@@ -16,35 +16,69 @@ jobs:
     strategy:
       matrix:
         godot-version: ['4.6']
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
+      - name: Skip for act (OOM issue)
+        if: env.ACT == 'true'
+        run: |
+          echo "⚠️  Skipping Godot tests for act (ACT environment detected)"
+          echo "❌ Godot tests cause OOM in Docker containers with act"
+          echo "✅ Tests must be run with Godot Editor or on GitHub Actions CI"
+          echo "::warning::Godot tests skipped for act - run 'godot --headless --script test/run_all_tests.gd' locally instead"
+          exit 0
+
       - name: Setup Godot
+        if: env.ACT != 'true'
         run: |
           # Download Godot headless binary directly
           wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
           unzip -q godot.zip
           chmod +x Godot_v4.6-stable_linux.x86_64
           mv Godot_v4.6-stable_linux.x86_64 godot4
-      
+
+      - name: Import Godot Assets
+        if: env.ACT != 'true'
+        run: |
+          # Import assets (images, sounds, etc.) before running tests
+          # This creates the .godot/imported/ directory with .ctex and other imported files
+          echo "Importing Godot assets..."
+          ./godot4 --headless --quit --import 2>&1 | head -50 || true
+          echo "Asset import completed"
+          ls -la .godot/imported/ | head -10 || echo "Import directory created"
+
       - name: Run Godot Tests
+        if: env.ACT != 'true'
         run: |
           # Run headless tests using the test runner scene
-          # Note: This requires a test scene or headless mode
           # Capture output and check for test failures
-          TEST_OUTPUT=$(./godot4 --headless --script test/run_all_tests.gd 2>&1)
+          set +e  # Don't exit on non-zero exit code (Godot returns non-zero on resource leaks, not test failures)
+          TEST_OUTPUT=$(./godot4 --headless --script test/run_all_tests.gd 2>&1 || true)
+          set -e
           echo "$TEST_OUTPUT"
-          
+
           # Check for test failures in output
-          if echo "$TEST_OUTPUT" | grep -q "Failed: [1-9]"; then
-            echo "❌ Godot tests failed!"
+          # Sum all failure counts from all test suites
+          FAILED_COUNT=$(echo "$TEST_OUTPUT" | grep -oP '(?<=Failed: )\d+' | awk '{sum+=$1} END {print sum}' || echo "0")
+          echo "Test failure count: $FAILED_COUNT"
+
+          if [ "$FAILED_COUNT" -gt "0" ]; then
+            echo "❌ Godot tests failed! ($FAILED_COUNT failures)"
             exit 1
           fi
+
+          # Also check if tests actually ran and completed
+          if ! echo "$TEST_OUTPUT" | grep -q "Test Suite Complete"; then
+            echo "❌ Godot tests did not complete!"
+            exit 1
+          fi
+
           echo "✅ All Godot tests passed"
-          
+
       - name: Check test coverage
+        if: env.ACT != 'true'
         run: |
           # Count test files and estimate coverage
           echo "=== Test Coverage Summary ==="
@@ -132,37 +166,32 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      # Nakama game server service
+      # Nakama game server service (custom image with PostgreSQL config)
       nakama:
-        image: heroiclabs/nakama:3.21.1
-        env:
-          NAKAMA_SERVER_KEY: defaultkey
-          NAKAMA_SERVER_PORT: 7350
-          DATABASE_ADDRESS: postgres://postgres:changeme@localhost:5432/nakama?sslmode=disable
+        image: armored-archer/nakama-postgres:3.21.1
         ports:
           - 7350:7350
         options: >-
           --health-cmd "/nakama/nakama healthcheck"
           --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-        volumes:
-          - ./backend/nakama.yml:/nakama/data/nakama.yml:ro
-    
+          --health-timeout 10s
+          --health-retries 60
+          --health-start-period 60s
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
-      
+
       - name: Install dependencies
         working-directory: ./backend
         run: npm ci
-      
+
       - name: Wait for PostgreSQL to be ready
         run: |
           for i in {1..30}; do
@@ -173,7 +202,7 @@ jobs:
             echo "Waiting for PostgreSQL... ($i/30)"
             sleep 2
           done
-      
+
       - name: Run database migrations
         working-directory: ./backend/data
         run: |
@@ -181,7 +210,7 @@ jobs:
             echo "Running migration: $migration"
             PGPASSWORD=changeme psql -h localhost -U postgres -d nakama -f "$migration" || true
           done
-      
+
       - name: Wait for Nakama to be ready
         run: |
           echo "Waiting for Nakama to be ready..."
@@ -193,7 +222,7 @@ jobs:
             echo "Waiting for Nakama... ($i/60)"
             sleep 2
           done
-      
+
       - name: Run tests with coverage
         working-directory: ./backend
         env:
@@ -357,21 +386,53 @@ jobs:
             " 2>/dev/null || echo "⚠️ Could not parse coverage details, but Jest threshold check will enforce requirements"
           fi
       
-      - name: Upload coverage to Codecov
+      - name: Detect git worktree environment
+        id: detect-worktree
         if: success()
-        continue-on-error: true
+        run: |
+          # Detect if we're in a git worktree (e.g., /var/tmp/vibe-kanban/worktrees/)
+          GIT_DIR=$(git rev-parse --git-dir 2>/dev/null || echo "")
+          IS_WORKTREE=0
+
+          if [[ "$GIT_DIR" == *"/.git/worktrees/"* ]] || [[ "$PWD" == *"/worktrees/"* ]]; then
+            echo "::warning title=Git Worktree Detected::Running in a git worktree. Codecov has issues with worktrees."
+            IS_WORKTREE=1
+          fi
+
+          # Also check for act environment variable
+          if [ "${{ env.ACT }}" == "true" ]; then
+            echo "::warning title=Act Environment Detected::Running with act. Skipping Codecov upload."
+            IS_WORKTREE=1
+          fi
+
+          echo "is_worktree=$IS_WORKTREE" >> $GITHUB_OUTPUT
+          echo "Git directory: $GIT_DIR"
+          echo "Working directory: $PWD"
+
+      - name: Upload coverage to Codecov
+        if: success() && steps.detect-worktree.outputs.is_worktree == '0'
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         with:
           file: ./backend/coverage/lcov.info
           flags: backend
           fail_ci_if_error: false
+          git_service_name: github
+          verbose: true
+
+      - name: Skip Codecov (worktree/act detected)
+        if: success() && steps.detect-worktree.outputs.is_worktree == '1'
+        run: |
+          echo "⚠️  Skipping Codecov upload due to git worktree or act environment"
+          echo "This is expected behavior - Codecov has issues with worktrees and local testing"
       
       - name: Upload test results
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: backend-test-results
           path: backend/test-results/
           retention-days: 30
+          if-no-files-found: ignore
 
   require-tests:
     name: All Tests Must Pass
@@ -438,7 +499,9 @@ jobs:
       
       - name: Upload report
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: flaky-test-report
           path: docs/flaky-tests-report.md
           retention-days: 7
+          if-no-files-found: ignore

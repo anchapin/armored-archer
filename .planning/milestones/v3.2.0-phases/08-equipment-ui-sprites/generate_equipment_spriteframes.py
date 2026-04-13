@@ -61,7 +61,7 @@ def generate_spriteframes(equipment_type: str, sprites: list) -> str:
     # Build the frames string
     frames = []
     for sprite_file in sprites:
-        sprite_name = sprite_file.replace(".tres", "")
+        sprite_file.replace(".tres", "")
         # Use res:// path format for Godot
         res_path = f"res://assets/sprites/equipment/{equipment_type}/{sprite_file}"
         frames.append(f'"{res_path}"')

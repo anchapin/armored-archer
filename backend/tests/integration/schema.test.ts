@@ -334,12 +334,13 @@ describe('Database Schema Migration Tests', () => {
           kcu.column_name,
           ccu.table_name AS foreign_table_name
         FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage kcu 
+        JOIN information_schema.key_column_usage kcu
           ON tc.constraint_name = kcu.constraint_name
         JOIN information_schema.constraint_column_usage ccu
           ON ccu.constraint_name = tc.constraint_name
-        WHERE tc.table_name = 'loadout' 
+        WHERE tc.table_name = 'loadout'
           AND tc.constraint_type = 'FOREIGN KEY'
+          AND kcu.column_name IN ('helm_gear_id', 'armor_gear_id', 'bow_gear_id', 'arrow_gear_id', 'amulet_gear_id')
       `);
 
       const foreignTables = result.rows.map((r) => r.foreign_table_name);

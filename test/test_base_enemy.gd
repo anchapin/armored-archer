@@ -94,6 +94,7 @@ func test_take_damage_triggers_death_at_zero() -> void:
 	var died = false
 	enemy.died.connect(func(_xp): died = true)
 	enemy.take_damage(100)
+	await get_tree().process_frame
 	if died:
 		_pass("test_take_damage_triggers_death_at_zero")
 	else:
@@ -106,6 +107,7 @@ func test_take_damage_no_death_above_zero() -> void:
 	var died = false
 	enemy.died.connect(func(_xp): died = true)
 	enemy.take_damage(50)
+	await get_tree().process_frame
 	if not died and enemy.current_health == 50:
 		_pass("test_take_damage_no_death_above_zero")
 	else:
@@ -130,6 +132,8 @@ func test_died_signal_emitted() -> void:
 	var received = false
 	enemy.died.connect(func(_xp): received = true)
 	enemy.take_damage(999)
+	# In headless mode, give a frame for the signal callback to process
+	await get_tree().process_frame
 	if received:
 		_pass("test_died_signal_emitted")
 	else:
@@ -143,6 +147,7 @@ func test_died_signal_xp_value() -> void:
 	var received_xp = -1
 	enemy.died.connect(func(xp): received_xp = xp)
 	enemy.take_damage(999)
+	await get_tree().process_frame
 	if received_xp == 50:
 		_pass("test_died_signal_xp_value")
 	else:

@@ -1,11 +1,11 @@
-module.exports = {                                                                           
-  preset: 'ts-jest',                                                                         
-  testEnvironment: 'node',                                                                   
-  roots: ['<rootDir>'],                                                                      
-  testMatch: ['**/tests/integration/**/*.test.ts'],                                          
-  moduleFileExtensions: ['ts', 'js', 'json'],                                                
-  collectCoverage: false,                                                                    
-  coverageDirectory: 'coverage/integration',                                                 
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  roots: ['<rootDir>/src', '<rootDir>/tests'],
+  testMatch: ['**/tests/integration/**/*.test.ts'],
+  moduleFileExtensions: ['ts', 'js', 'json'],
+  collectCoverage: false,
+  coverageDirectory: 'coverage/integration',
   testTimeout: 60000,
   verbose: true,
   // Use detectOpenHandles to properly wait for async cleanup instead of forceExit

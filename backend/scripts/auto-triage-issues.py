@@ -27,7 +27,7 @@ from difflib import SequenceMatcher
 
 # Try to import GitHub, fall back to API calls if not available
 try:
-    from github import Github, GithubException
+    from github import Github
     GITHUB_LIBRARY_AVAILABLE = True
 except ImportError:
     GITHUB_LIBRARY_AVAILABLE = False
@@ -162,10 +162,11 @@ class TriageResult:
 class AutoTriage:
     """Auto-triage system for GitHub issues."""
 
+<<<<<<< HEAD
     def __init__(self, github_token: str | None = None, repo: str = "armored-archer", owner: str = None):
         """
         Initialize auto-triage system.
-        
+
         Args:
             github_token: GitHub personal access token
             repo: Repository name
@@ -200,19 +201,19 @@ class AutoTriage:
             except Exception as e:
                 print(f"❌ Failed to connect to GitHub: {e}")
         elif REQUESTS_AVAILABLE:
-            print("ℹ️  Using requests library for GitHub API calls")
+            print("i: Using requests library for GitHub API calls")
         else:
             print("❌ No GitHub API client available. Install PyGithub or requests.")
 
     def analyze_issue(self, issue_number: int, title: str, body: str) -> TriageResult:
         """
         Analyze a GitHub issue and return triage result.
-        
+
         Args:
             issue_number: GitHub issue number
             title: Issue title
             body: Issue body/description
-            
+
         Returns:
             TriageResult with categorization and recommendations
         """
@@ -264,7 +265,7 @@ class AutoTriage:
     def _detect_category(self, content: str) -> tuple[str | None, float]:
         """
         Detect bug category from content.
-        
+
         Returns:
             Tuple of (category_name, confidence_score)
         """
@@ -316,7 +317,7 @@ class AutoTriage:
     def _check_duplicate(self, title: str, body: str) -> dict | None:
         """
         Check for potential duplicate issues.
-        
+
         Returns:
             Dict with issue number and confidence if duplicate found, None otherwise
         """
@@ -405,11 +406,11 @@ class AutoTriage:
     def apply_labels(self, issue_number: int, labels: list[str]) -> bool:
         """
         Apply labels to a GitHub issue.
-        
+
         Args:
             issue_number: GitHub issue number
             labels: List of label names to apply
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -437,11 +438,11 @@ class AutoTriage:
     def add_comment(self, issue_number: int, comment: str) -> bool:
         """
         Add a comment to a GitHub issue.
-        
+
         Args:
             issue_number: GitHub issue number
             comment: Comment text
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -462,10 +463,10 @@ class AutoTriage:
     def send_slack_alert(self, result: TriageResult) -> bool:
         """
         Send Slack alert for critical/high severity issues.
-        
+
         Args:
             result: TriageResult with issue information
-            
+
         Returns:
             True if alert sent successfully, False otherwise
         """

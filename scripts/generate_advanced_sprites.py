@@ -189,7 +189,6 @@ class AdvancedSpriteGenerator:
         # Arrow shaft
         self.fill_rect(img, 4, 14, 20, 4, palette, shaft_c)
         # Arrowhead
-        triangle_points = [(24, 15), (28, 16), (24, 17)]
         for x in range(24, 29):
             self.set_pixel(img, x, 16, palette, tip_c)
 

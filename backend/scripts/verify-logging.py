@@ -6,7 +6,7 @@ Validates Loki and Promtail setup for centralized log aggregation.
 
 Usage:
     python3 scripts/verify-logging.py
-    
+
 Options:
     --verbose, -v    Show detailed output
     --quiet, -q      Only show errors

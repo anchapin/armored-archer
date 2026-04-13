@@ -129,7 +129,7 @@ class PixelArtGenerator:
         self.draw_rectangle(img, 22, 10, 2, 10, palette, 2)  # Bow staff
 
         # Breathing animation sway (frame 0-5)
-        sway = int((frame / 6) * 2) - 1
+        int((frame / 6) * 2) - 1
         # Slight horizontal offset based on frame
 
         return img
@@ -287,7 +287,6 @@ class PixelArtGenerator:
         directions = ['down', 'up', 'left', 'right']
 
         for enemy_type in enemy_types:
-            palette_key = 'goblin' if enemy_type == 'goblin' else 'player_archer'
             for direction in directions:
                 for frame in range(4):  # Simple 4-frame idle
                     img = self.generate_enemy_idle(enemy_type, direction, frame)

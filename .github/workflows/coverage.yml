@@ -62,6 +62,7 @@ jobs:
           name: coverage-gaps
           path: backend/coverage/gaps.json
           retention-days: 30
+          if-no-files-found: ignore
 
       - name: Extract coverage metrics
         id: coverage
@@ -91,6 +92,7 @@ jobs:
           name: backend-coverage-html
           path: backend/coverage/html/
           retention-days: 30
+          if-no-files-found: ignore
 
       - name: Track coverage history
         run: |
@@ -169,6 +171,7 @@ jobs:
           name: coverage-gaps
           path: backend/coverage/gaps.json
           retention-days: 30
+          if-no-files-found: ignore
 
       - name: Comment PR with gaps
         if: github.event_name == 'pull_request'
@@ -234,6 +237,7 @@ jobs:
           name: godot-test-results
           path: test/results/
           retention-days: 30
+          if-no-files-found: ignore
 
   coverage-gate:
     name: Coverage Gate (Block PR on Failure)

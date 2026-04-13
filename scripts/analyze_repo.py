@@ -529,7 +529,7 @@ class RepoAnalyzer:
             n_plus_one = True
         # Also check for npm scripts or detection scripts
         if not n_plus_one:
-            code, output = self._run_command(
+            code, _output = self._run_command(
                 ["npm", "run", "detect-n-plus-one", "--prefix", "backend"],
                 timeout=30
             )

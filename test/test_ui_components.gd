@@ -71,6 +71,8 @@ func _create_base_button() -> Button:
 	var btn = Button.new()
 	btn.set_script(load("res://scenes/ui/components/base_button.gd"))
 	add_child(btn)
+	# Wait for _ready() to complete
+	await get_tree().process_frame
 	return btn
 
 func test_base_button_default_type() -> void:
@@ -135,6 +137,8 @@ func _create_base_label() -> Label:
 	var lbl = Label.new()
 	lbl.set_script(load("res://scenes/ui/components/base_label.gd"))
 	add_child(lbl)
+	# Wait for _ready() to complete
+	await get_tree().process_frame
 	return lbl
 
 func test_base_label_default_type() -> void:
@@ -178,6 +182,8 @@ func _create_base_panel() -> PanelContainer:
 	var panel = PanelContainer.new()
 	panel.set_script(load("res://scenes/ui/components/base_panel.gd"))
 	add_child(panel)
+	# Wait for _ready() to complete
+	await get_tree().process_frame
 	return panel
 
 func test_base_panel_default_type() -> void:
@@ -235,6 +241,8 @@ func _create_base_container() -> Container:
 	var container = Container.new()
 	container.set_script(load("res://scenes/ui/components/base_container.gd"))
 	add_child(container)
+	# Wait for _ready() to complete
+	await get_tree().process_frame
 	return container
 
 func test_base_container_default_type() -> void:
@@ -278,6 +286,8 @@ func _create_base_icon() -> TextureRect:
 	var icon = TextureRect.new()
 	icon.set_script(load("res://scenes/ui/components/base_icon.gd"))
 	add_child(icon)
+	# Wait for _ready() to complete
+	await get_tree().process_frame
 	return icon
 
 func test_base_icon_default_color() -> void:
@@ -322,6 +332,8 @@ func _create_loading_indicator() -> Control:
 	var indicator = Control.new()
 	indicator.set_script(load("res://scenes/ui/components/loading_indicator.gd"))
 	add_child(indicator)
+	# Wait for _ready() to complete
+	await get_tree().process_frame
 	return indicator
 
 func test_loading_indicator_initial_state() -> void:
@@ -347,6 +359,8 @@ func _create_theme_toggle() -> Control:
 	var toggle = Control.new()
 	toggle.set_script(load("res://scenes/ui/components/theme_toggle.gd"))
 	add_child(toggle)
+	# Wait for _ready() to complete
+	await get_tree().process_frame
 	return toggle
 
 func test_theme_toggle_default_dark() -> void:

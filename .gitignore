@@ -39,3 +39,9 @@ jest_rs/
 
 # Eforge
 .eforge/
+
+# CI-generated reports
+*.jscpd-report.json
+tech-debt-report.json
+.bundle-size-history.json
+agents-md-validation-report.json
