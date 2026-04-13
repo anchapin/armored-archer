@@ -15,3 +15,15 @@
 # Example: act -j backend-test --pull=false
 # Build the image first: docker build -t armored-archer/nakama-postgres:3.21.1 -f .docker/nakama-postgres/Dockerfile .
 --pull=false
+
+# NOTE: Running the full workflow with 'act' may encounter cache contention errors
+# ('archive/tar: write too long') due to multiple jobs accessing npm cache simultaneously.
+#
+# Workarounds:
+# 1. Run jobs individually: act -j <job-name>
+# 2. Use sequential runner: ./scripts/run-ci-locally.sh
+# 3. Use --reuse flag: act --reuse (experimental)
+# 4. Run without cache: act --no-cache-cache
+#
+# The project is configured to work correctly with GitHub Actions CI.
+# Local testing is primarily for individual job validation.
