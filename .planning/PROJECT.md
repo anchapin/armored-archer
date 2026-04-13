@@ -1,16 +1,14 @@
 # Armored Archer
 
-## Current Milestone: v4.0.0 Gameplay Refinement
+## Current Milestone: v3.5.0 Alpha Readiness
 
-**Goal:** Comprehensive gameplay improvements and balancing across combat, enemies, PvP, and progression systems.
+**Goal:** Final validation, performance check, and alpha deployment preparation.
 
 **Target features:**
-- Combat system refinement (attack timing, hit detection, damage calculation, weapon variety)
-- Enemy variety & behaviors (new enemy types, AI patterns, boss encounters)
-- PvP balance adjustments (weapon/power balancing, matchmaking fairness, ranking systems)
-- Progression tuning (XP curves, level scaling, stat allocation, gear stat balance)
-- Combat "juice" and feedback (impact effects, damage indicators, hit reactions)
-- Game difficulty and pacing (address "too hard" and "bland" issues)
+- Performance benchmarking and validation
+- Security review and vulnerability assessment
+- Alpha deployment pipeline and rollback procedures
+- Monitoring and alerting configuration
 
 ## What This Is
 
