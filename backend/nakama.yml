@@ -29,7 +29,7 @@ session:
   token_encryption_key: default-token-key
 
 database:
-  address: "postgres:localdbpassword@localhost:5432/nakama?sslmode=disable"
+  address: "postgres:changeme@postgres:5432/nakama?sslmode=disable"
   conn_max_lifetime: 60
   max_open_conns: 25
   max_idle_conns: 10
