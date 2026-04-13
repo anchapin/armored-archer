@@ -186,20 +186,26 @@ jobs:
         run: |
           for migration in $(ls -1 *.sql 2>/dev/null | sort); do
             echo "Running migration: $migration"
-            PGPASSWORD=changeme psql -h localhost -U postgres -d nakama -f "$migration" || true
+            PGPASSWORD=changeme psql -h localhost -U postgres -d nakama -f "$migration"
           done
       
       - name: Wait for Nakama to be ready
         run: |
           echo "Waiting for Nakama to be ready..."
-          for i in {1..60}; do
+          for i in {1..90}; do
             if curl -s http://localhost:7350/ 2>/dev/null || curl -s http://localhost:7351/ 2>/dev/null; then
               echo "Nakama is ready"
               break
             fi
-            echo "Waiting for Nakama... ($i/60)"
+            echo "Waiting for Nakama... ($i/90)"
             sleep 2
           done
+          # Verify Nakama is ready
+          if ! curl -s http://localhost:7350/ 2>/dev/null && ! curl -s http://localhost:7351/ 2>/dev/null; then
+            echo "Error: Nakama failed to start within timeout period"
+            echo "Check Nakama logs for details"
+            exit 1
+          fi
       
       - name: Run tests with coverage
         working-directory: ./backend
@@ -580,20 +586,26 @@ jobs:
         run: |
           for migration in $(ls -1 *.sql 2>/dev/null | sort); do
             echo "Running migration: $migration"
-            PGPASSWORD=changeme psql -h localhost -U postgres -d nakama -f "$migration" || true
+            PGPASSWORD=changeme psql -h localhost -U postgres -d nakama -f "$migration"
           done
       
       - name: Wait for Nakama to be ready
         run: |
           echo "Waiting for Nakama to be ready..."
-          for i in {1..60}; do
+          for i in {1..90}; do
             if curl -s http://localhost:7350/ 2>/dev/null || curl -s http://localhost:7351/ 2>/dev/null; then
               echo "Nakama is ready"
               break
             fi
-            echo "Waiting for Nakama... ($i/60)"
+            echo "Waiting for Nakama... ($i/90)"
             sleep 2
           done
+          # Verify Nakama is ready
+          if ! curl -s http://localhost:7350/ 2>/dev/null && ! curl -s http://localhost:7351/ 2>/dev/null; then
+            echo "Error: Nakama failed to start within timeout period"
+            echo "Check Nakama logs for details"
+            exit 1
+          fi
 
       - name: Run tests for coverage
         working-directory: ./backend

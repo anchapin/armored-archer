@@ -146,8 +146,7 @@ export function getAiDifficultyTier(level: number): AiDifficultyTier {
 
   // Interpolate pattern complexity to increase with level within tier
   const baseComplexity = baseTier.pattern_complexity;
-  const nextTierComplexity =
-    level <= 20 ? 7 : 10; // Next tier's complexity
+  const nextTierComplexity = level <= 20 ? 7 : 10; // Next tier's complexity
   const interpolatedComplexity = baseComplexity + (nextTierComplexity - baseComplexity) * progress;
 
   return {

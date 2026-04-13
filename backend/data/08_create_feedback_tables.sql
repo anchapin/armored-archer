@@ -79,28 +79,28 @@ ON CONFLICT (name) DO NOTHING;
 -- Stores user feedback submissions
 CREATE TABLE IF NOT EXISTS feedback_submissions (
     feedback_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,  -- Nakama user ID (stored as TEXT, can be updated to UUID when users table exists)
     category feedback_category NOT NULL DEFAULT 'other',
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     priority feedback_priority NOT NULL DEFAULT 'medium',
     status feedback_status NOT NULL DEFAULT 'submitted',
-    
+
     -- Context information
     game_version TEXT NOT NULL DEFAULT 'unknown',
     platform TEXT NOT NULL DEFAULT 'unknown',
     device_info TEXT,                          -- Device model, OS version, etc.
     session_id TEXT,                           -- Game session identifier
-    
+
     -- Optional attachments
     screenshot_url TEXT,                       -- URL to uploaded screenshot
     replay_data JSONB DEFAULT '{}',            -- Optional replay/context data
-    
+
     -- Triage and assignment
     assigned_to TEXT,                          -- Developer username assigned
     tags TEXT[] DEFAULT '{}',                  -- Custom tags for filtering
     internal_notes TEXT,                       -- Internal developer notes
-    
+
     -- Timestamps
     submitted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     reviewed_at TIMESTAMP WITH TIME ZONE,
@@ -128,6 +128,7 @@ CREATE TRIGGER update_feedback_submissions_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 COMMENT ON TABLE feedback_submissions IS 'Stores user feedback submissions with categorization and status tracking';
+COMMENT ON COLUMN feedback_submissions.user_id IS 'Nakama user ID (stored as TEXT for Nakama compatibility)';
 COMMENT ON COLUMN feedback_submissions.category IS 'Feedback category (bug, suggestion, balance, etc.)';
 COMMENT ON COLUMN feedback_submissions.priority IS 'Priority level for triage';
 COMMENT ON COLUMN feedback_submissions.status IS 'Current status in workflow';
@@ -146,7 +147,7 @@ COMMENT ON COLUMN feedback_submissions.internal_notes IS 'Internal developer not
 CREATE TABLE IF NOT EXISTS feedback_responses (
     response_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     feedback_id UUID NOT NULL REFERENCES feedback_submissions(feedback_id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,  -- Developer who responded
+    user_id TEXT NOT NULL,  -- Developer username who responded (or UUID when users table exists)
     response_text TEXT NOT NULL,
     is_internal BOOLEAN NOT NULL DEFAULT false,  -- Internal note vs public response
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -172,10 +173,10 @@ COMMENT ON COLUMN feedback_responses.is_internal IS 'True for internal notes, fa
 CREATE TABLE IF NOT EXISTS feedback_votes (
     vote_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     feedback_id UUID NOT NULL REFERENCES feedback_submissions(feedback_id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,  -- Nakama user ID (stored as TEXT, can be updated to UUID when users table exists)
     vote_type INTEGER NOT NULL CHECK (vote_type IN (1, -1)),  -- 1 for upvote, -1 for downvote
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    
+
     -- Ensure one vote per user per feedback
     UNIQUE(feedback_id, user_id)
 );
@@ -192,7 +193,7 @@ COMMENT ON COLUMN feedback_votes.vote_type IS '1 for upvote, -1 for downvote';
 CREATE TABLE IF NOT EXISTS feedback_notifications (
     notification_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     feedback_id UUID NOT NULL REFERENCES feedback_submissions(feedback_id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,  -- Nakama user ID (stored as TEXT, can be updated to UUID when users table exists)
     notification_type TEXT NOT NULL CHECK (notification_type IN (
         'status_change',      -- Status changed (e.g., submitted -> in_progress)
         'developer_response', -- Developer responded
@@ -231,7 +232,7 @@ CREATE OR REPLACE FUNCTION get_feedback_with_votes(
 )
 RETURNS TABLE (
     feedback_id UUID,
-    user_id UUID,
+    user_id TEXT,
     category feedback_category,
     title TEXT,
     description TEXT,
@@ -281,7 +282,7 @@ $$ LANGUAGE plpgsql;
 -- Function: submit_feedback_fn
 -- Submits new feedback and returns the feedback_id
 CREATE OR REPLACE FUNCTION submit_feedback_fn(
-    p_user_id UUID,
+    p_user_id TEXT,
     p_category feedback_category,
     p_title TEXT,
     p_description TEXT,
@@ -367,7 +368,7 @@ $$ LANGUAGE plpgsql;
 -- Adds a response to feedback
 CREATE OR REPLACE FUNCTION add_feedback_response_fn(
     p_feedback_id UUID,
-    p_user_id UUID,
+    p_user_id TEXT,
     p_response_text TEXT,
     p_is_internal BOOLEAN DEFAULT false
 )
@@ -470,10 +471,10 @@ $$ LANGUAGE plpgsql;
 -- View: feedback_dashboard_view
 -- Provides a denormalized view for dashboard queries
 CREATE OR REPLACE VIEW feedback_dashboard_view AS
-SELECT 
+SELECT
     fs.feedback_id,
     fs.user_id,
-    u.username AS submitter_username,
+    NULL AS submitter_username,  -- Username will be available when users table exists
     fs.category,
     fs.title,
     fs.description,
@@ -491,7 +492,6 @@ SELECT
     COALESCE(r.public_response_count, 0) AS response_count,
     COALESCE(n.unread_count, 0) AS unread_notification_count
 FROM feedback_submissions fs
-LEFT JOIN users u ON fs.user_id = u.id
 LEFT JOIN (
     SELECT feedback_id, SUM(vote_type) AS vote_count
     FROM feedback_votes

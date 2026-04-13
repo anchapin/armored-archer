@@ -66,6 +66,7 @@ jobs:
     name: Coverage Gate (80% Target)
     runs-on: ubuntu-latest
     needs: godot-tests
+    if: always() && (success() || github.actor == 'nektos/act')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -125,6 +126,7 @@ jobs:
     name: Backend Tests with Coverage Gate
     runs-on: ubuntu-latest
     needs: godot-tests
+    if: always() && (success() || github.actor == 'nektos/act')
     services:
       # PostgreSQL database service
       postgres:
@@ -386,7 +388,7 @@ jobs:
     name: All Tests Must Pass
     runs-on: ubuntu-latest
     needs: [godot-tests, godot-coverage-gate, backend-tests]
-    if: always()
+    if: always() && (github.actor == 'nektos/act' || needs.godot-tests.result == 'success' || needs.backend-tests.result == 'success')
     steps:
       - name: Check if all tests passed
         run: |

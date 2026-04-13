@@ -4,13 +4,13 @@
 
 CREATE TABLE IF NOT EXISTS weapon_balance_adjustments (
   adjustment_id TEXT PRIMARY KEY,
-  weapon_id TEXT NOT NULL REFERENCES catalog(gear_id) ON DELETE CASCADE,
+  weapon_id UUID NOT NULL REFERENCES catalog(gear_id) ON DELETE CASCADE,
   multiplier NUMERIC(5, 2) NOT NULL CHECK (multiplier > 0 AND multiplier <= 10.0),
   reason TEXT NOT NULL,
-  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_by TEXT,  -- Admin username who applied the adjustment (when users table exists, this can be updated to UUID)
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   reverted_at TIMESTAMP WITH TIME ZONE,
-  reverted_by UUID REFERENCES users(id) ON DELETE SET NULL
+  reverted_by TEXT  -- Admin username who reverted the adjustment (when users table exists, this can be updated to UUID)
 );
 
 -- Index for querying adjustments by weapon
@@ -24,16 +24,16 @@ CREATE INDEX IF NOT EXISTS idx_weapon_balance_adjustments_active ON weapon_balan
 -- Comments for weapon_balance_adjustments table
 COMMENT ON TABLE weapon_balance_adjustments IS 'Stores balance adjustment history for PvP weapons';
 COMMENT ON COLUMN weapon_balance_adjustments.adjustment_id IS 'Unique identifier for the adjustment';
-COMMENT ON COLUMN weapon_balance_adjustments.weapon_id IS 'Weapon being adjusted (references catalog.gear_id)';
+COMMENT ON COLUMN weapon_balance_adjustments.weapon_id IS 'Weapon being adjusted (UUID referencing catalog.gear_id)';
 COMMENT ON COLUMN weapon_balance_adjustments.multiplier IS 'Damage multiplier (1.0 = default, 0.5 = -50%, 1.5 = +50%)';
 COMMENT ON COLUMN weapon_balance_adjustments.reason IS 'Admin-provided reason for the adjustment';
-COMMENT ON COLUMN weapon_balance_adjustments.created_by IS 'Admin user who applied the adjustment';
+COMMENT ON COLUMN weapon_balance_adjustments.created_by IS 'Admin username who applied the adjustment (or UUID when users table exists)';
 COMMENT ON COLUMN weapon_balance_adjustments.reverted_at IS 'Timestamp when adjustment was reverted (NULL if active)';
-COMMENT ON COLUMN weapon_balance_adjustments.reverted_by IS 'Admin user who reverted the adjustment';
+COMMENT ON COLUMN weapon_balance_adjustments.reverted_by IS 'Admin username who reverted the adjustment (or UUID when users table exists)';
 
 -- Weapon usage statistics for balance tuning
 CREATE TABLE IF NOT EXISTS weapon_usage_stats (
-  weapon_id TEXT NOT NULL REFERENCES catalog(gear_id) ON DELETE CASCADE,
+  weapon_id UUID NOT NULL REFERENCES catalog(gear_id) ON DELETE CASCADE,
   matches_played INTEGER NOT NULL DEFAULT 0 CHECK (matches_played >= 0),
   wins INTEGER NOT NULL DEFAULT 0 CHECK (wins >= 0),
   losses INTEGER NOT NULL DEFAULT 0 CHECK (losses >= 0),
@@ -58,7 +58,7 @@ CREATE TRIGGER update_weapon_usage_stats_updated_at
 
 -- Comments for weapon_usage_stats table
 COMMENT ON TABLE weapon_usage_stats IS 'Aggregates weapon usage statistics for balance tuning';
-COMMENT ON COLUMN weapon_usage_stats.weapon_id IS 'Weapon being tracked';
+COMMENT ON COLUMN weapon_usage_stats.weapon_id IS 'Weapon being tracked (UUID referencing catalog.gear_id)';
 COMMENT ON COLUMN weapon_usage_stats.matches_played IS 'Total number of matches played with this weapon';
 COMMENT ON COLUMN weapon_usage_stats.wins IS 'Total wins with this weapon';
 COMMENT ON COLUMN weapon_usage_stats.losses IS 'Total losses with this weapon';
@@ -67,7 +67,7 @@ COMMENT ON COLUMN weapon_usage_stats.average_rating_diff IS 'Average rating diff
 
 -- Function to increment weapon usage stats
 CREATE OR REPLACE FUNCTION increment_weapon_usage(
-  p_weapon_id TEXT,
+  p_weapon_id UUID,
   p_match_result TEXT,
   p_rating_diff BIGINT
 ) RETURNS VOID AS $$
@@ -93,7 +93,7 @@ $$ LANGUAGE plpgsql;
 COMMENT ON FUNCTION increment_weapon_usage IS 'Increments weapon usage statistics after a match';
 
 -- Function to get current balance multiplier for a weapon
-CREATE OR REPLACE FUNCTION get_weapon_balance_multiplier(p_weapon_id TEXT) RETURNS NUMERIC(5, 2) AS $$
+CREATE OR REPLACE FUNCTION get_weapon_balance_multiplier(p_weapon_id UUID) RETURNS NUMERIC(5, 2) AS $$
 DECLARE
   v_multiplier NUMERIC(5, 2);
 BEGIN

@@ -6,7 +6,7 @@
 -- Beta Users table
 CREATE TABLE IF NOT EXISTS beta_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
+    user_id TEXT NOT NULL,  -- Nakama user ID (stored as TEXT, can be updated to UUID when users table exists)
     invite_code VARCHAR(20) UNIQUE,
     registered_at TIMESTAMP DEFAULT NOW(),
     status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'removed')),
@@ -38,6 +38,7 @@ CREATE INDEX idx_beta_invitations_status ON beta_invitations(status);
 
 -- Comments
 COMMENT ON TABLE beta_users IS 'Tracks beta testing participants';
+COMMENT ON COLUMN beta_users.user_id IS 'Nakama user ID (stored as TEXT for Nakama compatibility)';
 COMMENT ON TABLE beta_invitations IS 'Tracks beta invitation codes';
 
 -- Function to generate invite code
@@ -66,7 +67,7 @@ $$ LANGUAGE plpgsql;
 
 -- Function to register a new beta user
 CREATE OR REPLACE FUNCTION register_beta_user(
-    p_user_id UUID,
+    p_user_id TEXT,
     p_invite_code TEXT DEFAULT NULL
 )
 RETURNS TABLE(
@@ -131,8 +132,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Grant necessary permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON beta_users TO nakama;
-GRANT SELECT, INSERT, UPDATE, DELETE ON beta_invitations TO nakama;
-GRANT EXECUTE ON FUNCTION generate_beta_invite_code() TO nakama;
-GRANT EXECUTE ON FUNCTION register_beta_user(UUID, TEXT) TO nakama;
+-- Note: Grant permissions to nakama role should be set up when the role is created
+-- These permissions will be granted via a separate migration when the nakama role exists
+-- Uncomment when nakama role is available:
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON beta_users TO nakama;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON beta_invitations TO nakama;
+-- GRANT EXECUTE ON FUNCTION generate_beta_invite_code() TO nakama;
+-- GRANT EXECUTE ON FUNCTION register_beta_user(TEXT, TEXT) TO nakama;
