@@ -151,9 +151,7 @@ describe('storage-helpers', () => {
       const logger = createMockLogger();
       parseStorageValueJson('bad json', null, logger, 'my_context');
       expect(logger.error).toHaveBeenCalledTimes(1);
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('my_context')
-      );
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('my_context'));
     });
 
     it('does not log when no logger or context provided', () => {

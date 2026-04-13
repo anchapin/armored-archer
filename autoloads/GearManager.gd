@@ -18,6 +18,7 @@ signal inventory_updated(inventory: Dictionary)
 @onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
 
 var network_manager: Node
+var gear_balance_calculator: Node
 
 var player_inventory: Dictionary = {}
 var equipped_gear: Dictionary = {}
@@ -26,6 +27,7 @@ var unlocked_modifier_pools: Array = []
 func _ready() -> void:
 	"""Initializes network reference and loads inventory if session is valid."""
 	network_manager = get_node_or_null("/root/NetworkManager")
+	gear_balance_calculator = get_node_or_null("/root/GearBalanceCalculator")
 
 func generate_gear(stage_id: String, boss_defeated: bool) -> void:
 	"""Requests gear generation from the server after stage completion.
@@ -243,6 +245,11 @@ func get_gear_stats_summary(gear_data: Dictionary) -> String:
 
 	summary += "[color=%s][b]%s[/b][/color] (%s)\n" % [color, gear_data.get("name", ""), rarity.capitalize()]
 
+	# Add power rating
+	if gear_balance_calculator and gear_balance_calculator.has_method("get_gear_power_rating"):
+		var power: float = gear_balance_calculator.get_gear_power_rating(gear_data)
+		summary += "Power: %s\n" % gear_balance_calculator.format_power_rating(power)
+
 	for stat in gear_data.get("stats", []):
 		summary += "%s: %d\n" % [stat.name, stat.value]
 
@@ -350,10 +357,10 @@ func _calculate_gear_score(gear_data: Dictionary) -> int:
 	return score
 
 func get_total_equipped_stats() -> Dictionary:
-	"""Calculates total stats from all equipped gear.
+	"""Calculates total stats from all equipped gear with diminishing returns.
 
 	Returns:
-		Dictionary: Total stats from equipped gear (attack, defense, health, dodge, crit_rate)
+		Dictionary: Total effective stats from equipped gear (attack, defense, health, dodge, crit_rate)
 	"""
 	var total_stats: Dictionary = {
 		"attack": 0,
@@ -363,15 +370,22 @@ func get_total_equipped_stats() -> Dictionary:
 		"crit_rate": 0
 	}
 
+	# Build equipped gear dictionary for synergy calculation
+	var equipped_gear_data: Dictionary = {}
 	for slot in equipped_gear.keys():
 		var gear_id: String = equipped_gear[slot]
-		if gear_id.is_empty():
-			continue
+		if not gear_id.is_empty():
+			var gear_data: Dictionary = get_gear_by_id(gear_id)
+			if not gear_data.is_empty():
+				equipped_gear_data[slot] = gear_data
 
-		var gear_data: Dictionary = get_gear_by_id(gear_id)
-		if gear_data.is_empty():
-			continue
+	# If we have the balance calculator, use it for proper diminishing returns
+	if gear_balance_calculator and gear_balance_calculator.has_method("calculate_total_effective_stats"):
+		var effective_stats: Dictionary = gear_balance_calculator.calculate_total_effective_stats(equipped_gear_data)
+		return effective_stats
 
+	# Fallback: simple summation without diminishing returns
+	for gear_data in equipped_gear_data.values():
 		for stat in gear_data.get("stats", []):
 			var stat_name: String = stat.get("name", "")
 			var stat_value: int = stat.get("value", 0)
@@ -380,3 +394,37 @@ func get_total_equipped_stats() -> Dictionary:
 				total_stats[stat_name] += stat_value
 
 	return total_stats
+
+func get_equipped_gear_data() -> Dictionary:
+	"""Returns all equipped gear data as a dictionary for balance calculations.
+
+	Returns:
+		Dictionary: Mapping of slot names to gear data dictionaries
+	"""
+	var result: Dictionary = {}
+	for slot in equipped_gear.keys():
+		var gear_id: String = equipped_gear[slot]
+		if not gear_id.is_empty():
+			var gear_data: Dictionary = get_gear_by_id(gear_id)
+			if not gear_data.is_empty():
+				result[slot] = gear_data
+	return result
+
+func get_synergy_bonuses() -> Dictionary:
+	"""Gets current synergy bonuses from equipped gear.
+
+	Returns:
+		Dictionary: Synergy bonuses by stat name
+	"""
+	if not gear_balance_calculator or not gear_balance_calculator.has_method("get_synergy_bonus"):
+		return {}
+
+	var gear_set_ids: Dictionary = {}
+	for slot in equipped_gear.keys():
+		var gear_id: String = equipped_gear[slot]
+		if not gear_id.is_empty():
+			var gear_data: Dictionary = get_gear_by_id(gear_id)
+			if not gear_data.is_empty():
+				gear_set_ids[slot] = gear_data.get("base_gear_id", "")
+
+	return gear_balance_calculator.get_synergy_bonus(gear_set_ids)

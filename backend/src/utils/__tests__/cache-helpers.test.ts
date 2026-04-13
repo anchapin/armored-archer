@@ -189,7 +189,9 @@ describe('cache-helpers', () => {
     });
 
     test('should handle deletion of non-existent key', () => {
-      expect(() => deleteCacheEntry(mockCache, mockLogger, 'testCache', 'nonexistent')).not.toThrow();
+      expect(() =>
+        deleteCacheEntry(mockCache, mockLogger, 'testCache', 'nonexistent')
+      ).not.toThrow();
     });
 
     test('should handle undefined cache', () => {

@@ -46,13 +46,8 @@ describe('rpcRevenueCatWebhook', () => {
   describe('Webhook Validation', () => {
     it('should reject empty payload', async () => {
       const nk = createTestNakama();
-      
-      const result = await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        ''
-      );
+
+      const result = await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, '');
 
       const parsed = JSON.parse(result);
       expect(parsed.error).toBe('Invalid payload');
@@ -60,7 +55,7 @@ describe('rpcRevenueCatWebhook', () => {
 
     it('should reject invalid JSON payload', async () => {
       const nk = createTestNakama();
-      
+
       const result = await rpcRevenueCatWebhook(
         mockCtx as any,
         createMockLogger(),
@@ -75,13 +70,8 @@ describe('rpcRevenueCatWebhook', () => {
     it('should reject payload missing required fields', async () => {
       const nk = createTestNakama();
       const payload = JSON.stringify({ some_field: 'value' });
-      
-      const result = await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        payload
-      );
+
+      const result = await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, payload);
 
       const parsed = JSON.parse(result);
       expect(parsed.error).toBe('Missing app_user_id');
@@ -92,7 +82,7 @@ describe('rpcRevenueCatWebhook', () => {
     it('should process initial purchase and award gems', async () => {
       const storageWriteFn = jest.fn().mockReturnValue([]);
       const storageReadFn = jest.fn().mockReturnValue([]); // No existing currency
-      
+
       const nk = createTestNakama({
         storageRead: storageReadFn,
         storageWrite: storageWriteFn,
@@ -110,16 +100,11 @@ describe('rpcRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        payload
-      );
+      const result = await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, payload);
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
-      
+
       // Verify storage was written for gems
       expect(storageWriteFn).toHaveBeenCalled();
     });
@@ -130,12 +115,16 @@ describe('rpcRevenueCatWebhook', () => {
         gems: 100,
         gold: 50,
       };
-      
+
       const storageWriteFn = jest.fn().mockReturnValue([]);
       const storageReadFn = jest.fn().mockReturnValue([
-        { collection: 'player_currency', key: 'test-user-123', value: JSON.stringify(existingCurrency) }
+        {
+          collection: 'player_currency',
+          key: 'test-user-123',
+          value: JSON.stringify(existingCurrency),
+        },
       ]);
-      
+
       const nk = createTestNakama({
         storageRead: storageReadFn,
         storageWrite: storageWriteFn,
@@ -152,12 +141,7 @@ describe('rpcRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        payload
-      );
+      const result = await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, payload);
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
@@ -182,18 +166,14 @@ describe('rpcRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        payload
-      );
+      await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, payload);
 
       // Check that storageWrite was called with player_currency record (gem bundles don't create subscriptions)
       const writeCalls = storageWriteFn.mock.calls;
-      const currencyWriteCall = writeCalls.find((call: any) => 
-        call[0].collection === 'player_currency' ||
-        (call[0] && call[0][0] && call[0][0].collection === 'player_currency')
+      const currencyWriteCall = writeCalls.find(
+        (call: any) =>
+          call[0].collection === 'player_currency' ||
+          (call[0] && call[0][0] && call[0][0].collection === 'player_currency')
       );
       expect(currencyWriteCall).toBeDefined();
     });
@@ -203,7 +183,7 @@ describe('rpcRevenueCatWebhook', () => {
     it('should process subscription renewal', async () => {
       const storageWriteFn = jest.fn().mockReturnValue([]);
       const storageReadFn = jest.fn().mockReturnValue([]); // No existing subscription
-      
+
       const nk = createTestNakama({
         storageRead: storageReadFn,
         storageWrite: storageWriteFn,
@@ -222,12 +202,7 @@ describe('rpcRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        payload
-      );
+      const result = await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, payload);
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
@@ -242,12 +217,16 @@ describe('rpcRevenueCatWebhook', () => {
         active: true,
         start_date: '2024-01-01T00:00:00Z',
       };
-      
+
       const storageWriteFn = jest.fn().mockReturnValue([]);
       const storageReadFn = jest.fn().mockReturnValue([
-        { collection: 'player_subscription', key: 'test-user-123', value: JSON.stringify(existingSubscription) }
+        {
+          collection: 'player_subscription',
+          key: 'test-user-123',
+          value: JSON.stringify(existingSubscription),
+        },
       ]);
-      
+
       const nk = createTestNakama({
         storageRead: storageReadFn,
         storageWrite: storageWriteFn,
@@ -263,21 +242,19 @@ describe('rpcRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        payload
-      );
+      const result = await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, payload);
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
-      
+
       // Verify subscription was updated
       const writeCalls = storageWriteFn.mock.calls;
       // storageWrite takes an array [{ collection, key, value, userId }]
-      const subscriptionUpdate = writeCalls.find((call: any) => 
-        call[0] && call[0].some && call[0].some((w: any) => w.collection === 'player_subscription')
+      const subscriptionUpdate = writeCalls.find(
+        (call: any) =>
+          call[0] &&
+          call[0].some &&
+          call[0].some((w: any) => w.collection === 'player_subscription')
       );
       expect(subscriptionUpdate).toBeDefined();
     });
@@ -287,7 +264,7 @@ describe('rpcRevenueCatWebhook', () => {
     it('should handle billing issues', async () => {
       const storageWriteFn = jest.fn().mockReturnValue([]);
       const storageReadFn = jest.fn().mockReturnValue([]); // No existing subscription
-      
+
       const nk = createTestNakama({
         storageRead: storageReadFn,
         storageWrite: storageWriteFn,
@@ -302,12 +279,7 @@ describe('rpcRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        payload
-      );
+      const result = await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, payload);
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
@@ -319,7 +291,7 @@ describe('rpcRevenueCatWebhook', () => {
     it('should handle product/plan changes', async () => {
       const storageWriteFn = jest.fn().mockReturnValue([]);
       const storageReadFn = jest.fn().mockReturnValue([]); // No existing
-      
+
       const nk = createTestNakama({
         storageRead: storageReadFn,
         storageWrite: storageWriteFn,
@@ -335,12 +307,7 @@ describe('rpcRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        payload
-      );
+      const result = await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, payload);
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
@@ -355,12 +322,16 @@ describe('rpcRevenueCatWebhook', () => {
         gems: 550,
         gold: 100,
       };
-      
+
       const storageWriteFn = jest.fn().mockReturnValue([]);
       const storageReadFn = jest.fn().mockReturnValue([
-        { collection: 'player_currency', key: 'test-user-123', value: JSON.stringify(existingCurrency) }
+        {
+          collection: 'player_currency',
+          key: 'test-user-123',
+          value: JSON.stringify(existingCurrency),
+        },
       ]);
-      
+
       const nk = createTestNakama({
         storageRead: storageReadFn,
         storageWrite: storageWriteFn,
@@ -376,12 +347,7 @@ describe('rpcRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        payload
-      );
+      const result = await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, payload);
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
@@ -395,12 +361,16 @@ describe('rpcRevenueCatWebhook', () => {
         gems: 100,
         gold: 50,
       };
-      
+
       const storageWriteFn = jest.fn().mockReturnValue([]);
       const storageReadFn = jest.fn().mockReturnValue([
-        { collection: 'player_currency', key: 'test-user-123', value: JSON.stringify(existingCurrency) }
+        {
+          collection: 'player_currency',
+          key: 'test-user-123',
+          value: JSON.stringify(existingCurrency),
+        },
       ]);
-      
+
       const nk = createTestNakama({
         storageRead: storageReadFn,
         storageWrite: storageWriteFn,
@@ -416,12 +386,7 @@ describe('rpcRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        payload
-      );
+      const result = await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, payload);
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
@@ -443,12 +408,7 @@ describe('rpcRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        payload
-      );
+      const result = await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, payload);
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
@@ -463,12 +423,16 @@ describe('rpcRevenueCatWebhook', () => {
         revenuecat_user_id: 'rc-user-789',
         created_at: '2024-01-01T00:00:00Z',
       };
-      
+
       const storageWriteFn = jest.fn().mockReturnValue([]);
       const storageReadFn = jest.fn().mockReturnValue([
-        { collection: 'revenuecat_user_mapping', key: 'rc-user-789', value: JSON.stringify(userMapping) }
+        {
+          collection: 'revenuecat_user_mapping',
+          key: 'rc-user-789',
+          value: JSON.stringify(userMapping),
+        },
       ]);
-      
+
       const nk = createTestNakama({
         storageRead: storageReadFn,
         storageWrite: storageWriteFn,
@@ -484,16 +448,11 @@ describe('rpcRevenueCatWebhook', () => {
         environment: 'PRODUCTION',
       });
 
-      const result = await rpcRevenueCatWebhook(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        payload
-      );
+      const result = await rpcRevenueCatWebhook(mockCtx as any, createMockLogger(), nk, payload);
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
-      
+
       // Should use mapped user ID for storage operations
       expect(storageWriteFn).toHaveBeenCalled();
     });
@@ -505,7 +464,7 @@ describe('GEM_BUNDLES Configuration', () => {
   it('should have correct gem bundle mappings', () => {
     // These are verified by validating the webhook handler
     // Small: 100 gems
-    // Medium: 550 gems  
+    // Medium: 550 gems
     // Large: 1200 gems
     // This is tested through the webhook processing
   });

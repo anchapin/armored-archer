@@ -62,7 +62,7 @@ def create_placeholder_screenshot(size, label, description, output_path):
 
     # Calculate center positions
     center_x = size[0] // 2
-    size[1] // 2
+    center_y = size[1] // 2
 
     # Draw label at top
     label_y = 150

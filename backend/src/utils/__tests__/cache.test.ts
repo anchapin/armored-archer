@@ -37,7 +37,7 @@ describe('CacheManager', () => {
           cacheName: 'test',
           max: 100,
           ttl: 60,
-          operation: 'cache_create'
+          operation: 'cache_create',
         })
       );
     });

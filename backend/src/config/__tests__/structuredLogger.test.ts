@@ -2,7 +2,12 @@
  * StructuredLogger Unit Tests
  */
 
-import { StructuredLogger, createRpcContext, createSystemEventContext, LogLevel } from '../structuredLogger';
+import {
+  StructuredLogger,
+  createRpcContext,
+  createSystemEventContext,
+  LogLevel,
+} from '../structuredLogger';
 import { LogScrubber } from '../logScrubber';
 
 // Mock Runtime.Logger
@@ -21,7 +26,9 @@ describe('StructuredLogger', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    logger = new StructuredLogger(mockLogger as any, 'test-service', { defaultKey: 'defaultValue' });
+    logger = new StructuredLogger(mockLogger as any, 'test-service', {
+      defaultKey: 'defaultValue',
+    });
   });
 
   describe('constructor', () => {
@@ -31,7 +38,9 @@ describe('StructuredLogger', () => {
     });
 
     it('should create a logger with default context', () => {
-      const customLogger = new StructuredLogger(mockLogger as any, 'test', { contextKey: 'contextValue' });
+      const customLogger = new StructuredLogger(mockLogger as any, 'test', {
+        contextKey: 'contextValue',
+      });
       expect(customLogger).toBeDefined();
     });
   });

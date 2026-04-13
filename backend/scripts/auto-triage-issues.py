@@ -162,7 +162,8 @@ class TriageResult:
 class AutoTriage:
     """Auto-triage system for GitHub issues."""
 
-    def __init__(self, github_token: str | None = None, repo: str = "armored-archer", owner: str | None = None):
+<<<<<<< HEAD
+    def __init__(self, github_token: str | None = None, repo: str = "armored-archer", owner: str = None):
         """
         Initialize auto-triage system.
 

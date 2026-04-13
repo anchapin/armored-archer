@@ -318,9 +318,7 @@ describe('health_monitor', () => {
 
       expect(healthStatusMetric).toBeDefined();
       const values = (healthStatusMetric as any).values;
-      const componentValues = values.filter(
-        (v: any) => v.labels.component !== 'overall'
-      );
+      const componentValues = values.filter((v: any) => v.labels.component !== 'overall');
 
       // After initialization, all components should be healthy (1)
       for (const v of componentValues) {
@@ -338,9 +336,7 @@ describe('health_monitor', () => {
 
       initializeHealthMonitoring(mockLogger as any);
 
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        '[HealthMonitor] Initialized health monitoring'
-      );
+      expect(mockLogger.info).toHaveBeenCalledWith('[HealthMonitor] Initialized health monitoring');
     });
 
     it('should start monitoring when alerting is enabled', () => {

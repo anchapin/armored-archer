@@ -99,10 +99,7 @@ describe('FeatureFlags', () => {
     });
 
     it('should return all defined flags', () => {
-      FEATURE_FLAGS.flags.push(
-        { name: 'flag1', enabled: true },
-        { name: 'flag2', enabled: false }
-      );
+      FEATURE_FLAGS.flags.push({ name: 'flag1', enabled: true }, { name: 'flag2', enabled: false });
       const flags = FeatureFlags.getAllFlags();
       expect(flags).toHaveLength(2);
       expect(flags[0].name).toBe('flag1');

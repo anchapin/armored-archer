@@ -569,7 +569,9 @@ describe('AntiCheat Module', () => {
 
       // Wait past grace period
       const start = Date.now();
-      while (Date.now() - start < 60) { /* busy wait */ }
+      while (Date.now() - start < 60) {
+        /* busy wait */
+      }
 
       const result = recordAbandonment(userId, 'match-2', 'opp', false, 1010);
       expect(result.penalty).toBeGreaterThan(0);
@@ -582,7 +584,9 @@ describe('AntiCheat Module', () => {
       for (let i = 0; i < 3; i++) {
         recordAbandonment(userId, `a-${i}`, 'opp', false, 1000);
         const start = Date.now();
-        while (Date.now() - start < 60) { /* wait past grace */ }
+        while (Date.now() - start < 60) {
+          /* wait past grace */
+        }
       }
 
       // Verify count is 3
@@ -604,7 +608,9 @@ describe('AntiCheat Module', () => {
 
       const first = recordAbandonment(userId, 'a1', 'opp', false, 1000);
       const start = Date.now();
-      while (Date.now() - start < 60) { /* wait past grace */ }
+      while (Date.now() - start < 60) {
+        /* wait past grace */
+      }
 
       const second = recordAbandonment(userId, 'a2', 'opp', false, 1000);
       expect(second.penalty).toBeGreaterThan(first.penalty);
@@ -619,7 +625,9 @@ describe('AntiCheat Module', () => {
       for (let i = 0; i < 5; i++) {
         recordAbandonment(userId, `abandon-${i}`, 'opp', false, 1000);
         const start = Date.now();
-        while (Date.now() - start < 60) { /* wait past grace period */ }
+        while (Date.now() - start < 60) {
+          /* wait past grace period */
+        }
       }
 
       expect(isPlayerFlagged(userId)).toBe(true);
@@ -645,7 +653,9 @@ describe('AntiCheat Module', () => {
       for (let i = 0; i < 5; i++) {
         recordAbandonment(userId, `a-${i}`, 'opp', false, 1000);
         const start = Date.now();
-        while (Date.now() - start < 60) { /* wait past grace period */ }
+        while (Date.now() - start < 60) {
+          /* wait past grace period */
+        }
       }
       expect(isPlayerFlagged(userId)).toBe(true);
 

@@ -222,9 +222,7 @@ describe('player-data-helpers', () => {
         set: jest.fn(),
       });
       const nk = createMockNk({
-        storageRead: jest.fn().mockReturnValue([
-          createStorageObject(JSON.stringify(storageData)),
-        ]),
+        storageRead: jest.fn().mockReturnValue([createStorageObject(JSON.stringify(storageData))]),
       });
       const logger = createMockLogger();
       const ctx = createMockCtx();
@@ -415,7 +413,12 @@ describe('player-data-helpers', () => {
         get: jest.fn().mockReturnValue(undefined),
       });
 
-      const result = getPlayerStatsWithCache(nk as any, logger as any, ctx as any, cacheManager as any);
+      const result = getPlayerStatsWithCache(
+        nk as any,
+        logger as any,
+        ctx as any,
+        cacheManager as any
+      );
 
       const parsed = JSON.parse(result);
       expect(parsed).toEqual({ error: 'Failed to read player stats' });
@@ -435,7 +438,12 @@ describe('player-data-helpers', () => {
         get: jest.fn().mockReturnValue(undefined),
       });
 
-      const result = getPlayerStatsWithCache(nk as any, logger as any, ctx as any, cacheManager as any);
+      const result = getPlayerStatsWithCache(
+        nk as any,
+        logger as any,
+        ctx as any,
+        cacheManager as any
+      );
 
       const parsed = JSON.parse(result);
       expect(parsed).toEqual({ error: 'Player stats not found' });
@@ -453,7 +461,12 @@ describe('player-data-helpers', () => {
         set: jest.fn(),
       });
 
-      const result = getPlayerStatsWithCache(nk as any, logger as any, ctx as any, cacheManager as any);
+      const result = getPlayerStatsWithCache(
+        nk as any,
+        logger as any,
+        ctx as any,
+        cacheManager as any
+      );
 
       const parsed = JSON.parse(result);
       expect(parsed).toEqual(statsData);
@@ -468,7 +481,12 @@ describe('player-data-helpers', () => {
         get: jest.fn().mockReturnValue(JSON.stringify(cachedStats)),
       });
 
-      const result = getPlayerStatsWithCache(nk as any, logger as any, ctx as any, cacheManager as any);
+      const result = getPlayerStatsWithCache(
+        nk as any,
+        logger as any,
+        ctx as any,
+        cacheManager as any
+      );
 
       const parsed = JSON.parse(result);
       expect(parsed).toEqual(cachedStats);

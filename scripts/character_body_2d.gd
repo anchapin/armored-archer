@@ -30,6 +30,16 @@ signal aim_direction_changed(direction: Vector2)
 @onready var bow_pivot: Node2D = $BowPivot
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 
+# --- Pacing Tracking ---
+var encounter_start_time: float = 0.0
+var in_combat: bool = false
+var pacing_manager: Node
+
+# --- Progression Tracking ---
+var progression_manager: Node
+var current_stage_id: String = ""
+var quest_objectives_tracked: Dictionary = {}
+
 
 func _ready() -> void:
 	# Initialize character state
@@ -38,6 +48,16 @@ func _ready() -> void:
 	current_health = max_health
 	# Add player to group for ShootingManager
 	add_to_group("Player")
+
+	# Get pacing manager reference
+	pacing_manager = get_node_or_null("/root/PacingManager")
+
+	# Get progression manager reference
+	progression_manager = get_node_or_null("/root/ProgressionIndicatorManager")
+
+	# Set current stage from GameManager if available
+	if "GameManager" in get_tree():
+		current_stage_id = GameManager.current_stage_id if "current_stage_id" in GameManager else ""
 
 
 func _physics_process(delta: float) -> void:
@@ -157,7 +177,13 @@ func is_player_aiming() -> bool:
 ## Handle taking damage from enemies
 func take_damage(amount: int) -> void:
 	current_health -= amount
+
+	# Track combat engagement for pacing
+	if not in_combat:
+		_start_combat_encounter()
+
 	if current_health <= 0:
+		_end_combat_encounter()
 		die()
 
 
@@ -173,15 +199,206 @@ func _clamp_to_viewport() -> void:
 	var camera = get_viewport().get_camera_2d()
 	if not camera:
 		return
-	
+
 	var viewport_size = get_viewport_rect().size
 	var half_size = viewport_size / 2.0
 	var margin = 20.0  # Keep player slightly inside edges
-	
+
 	var min_x = camera.global_position.x - half_size.x + margin
 	var max_x = camera.global_position.x + half_size.x - margin
 	var min_y = camera.global_position.y - half_size.y + margin
 	var max_y = camera.global_position.y + half_size.y - margin
-	
+
 	global_position.x = clamp(global_position.x, min_x, max_x)
 	global_position.y = clamp(global_position.y, min_y, max_y)
+
+# --- Pacing & Variety ---
+
+## Starts tracking combat encounter for pacing metrics.
+func _start_combat_encounter() -> void:
+	"""Starts tracking combat encounter for pacing metrics."""
+	if not pacing_manager:
+		return
+
+	in_combat = true
+	encounter_start_time = Time.get_unix_time_from_system()
+
+## Ends tracking combat encounter and records pacing metrics.
+func _end_combat_encounter() -> void:
+	"""Ends tracking combat encounter and records pacing metrics."""
+	if not pacing_manager or not in_combat:
+		return
+
+	var duration = Time.get_unix_time_from_system() - encounter_start_time
+
+	# Track pacing state with combat type
+	pacing_manager.track_pacing_state(PacingManager.ContentType.COMBAT, duration)
+
+	in_combat = false
+	encounter_start_time = 0.0
+
+## Gets current combat duration for pacing.
+##
+## Returns:
+##   float: Combat duration in seconds, or 0 if not in combat
+func get_combat_duration() -> float:
+	"""Gets current combat duration for pacing.
+
+	Returns:
+		float: Combat duration in seconds, or 0 if not in combat
+	"""
+	if not in_combat:
+		return 0.0
+
+	return Time.get_unix_time_from_system() - encounter_start_time
+
+## Manually starts an encounter of a specific type (for exploration/narrative content).
+##
+## Parameters:
+##   encounter_type: PacingManager.ContentType enum value
+func start_encounter(encounter_type: int) -> void:
+	"""Manually starts an encounter of a specific type.
+
+	Parameters:
+		encounter_type: PacingManager.ContentType enum value
+	"""
+	if not pacing_manager:
+		return
+
+	in_combat = true
+	encounter_start_time = Time.get_unix_time_from_system()
+
+## Ends current encounter and records pacing metrics.
+func end_encounter() -> void:
+	"""Ends current encounter and records pacing metrics."""
+	_end_combat_encounter()
+
+# --- Progression Indicators Integration ---
+
+## Sets the current stage ID for quest tracking.
+##
+## Parameters:
+##   stage_id: ID of the current stage
+func set_current_stage(stage_id: String) -> void:
+	"""Sets the current stage ID for quest tracking."""
+	current_stage_id = stage_id
+
+## Tracks objective completion during gameplay.
+##
+## Parameters:
+##   objective_id: ID of the objective to track
+##   progress: Progress value to add
+func track_objective_progress(objective_id: String, progress: int = 1) -> void:
+	"""Tracks objective completion during gameplay.
+
+	Parameters:
+		objective_id: ID of the objective to track
+		progress: Progress value to add (default: 1)
+	"""
+	if not progression_manager or current_stage_id.is_empty():
+		return
+
+	var quest_id = "stage_%s" % current_stage_id
+
+	# Track progress locally
+	if not quest_objectives_tracked.has(quest_id):
+		quest_objectives_tracked[quest_id] = {}
+
+	if not quest_objectives_tracked[quest_id].has(objective_id):
+		quest_objectives_tracked[quest_id][objective_id] = 0
+
+	quest_objectives_tracked[quest_id][objective_id] += progress
+
+	# Update progression manager if it has the method
+	if progression_manager.has_method("_on_objective_completed"):
+		# Get current objectives
+		var objectives = progression_manager.get_quest_objectives(quest_id)
+
+		# Find and update the objective
+		for objective in objectives:
+			if objective.get("id") == objective_id:
+				var new_current = quest_objectives_tracked[quest_id][objective_id]
+				var target = objective.get("target", 1)
+
+				# Update objective current value
+				objective["current"] = min(new_current, target)
+
+				# Check if objective is completed
+				if new_current >= target and objective.get("state") != ProgressionIndicatorManager.ObjectiveState.COMPLETED:
+					objective["state"] = ProgressionIndicatorManager.ObjectiveState.COMPLETED
+					objective["completed_at"] = Time.get_datetime_string_from_system()
+
+## Completes the current quest when stage is finished.
+func complete_current_quest() -> void:
+	"""Completes the current quest when stage is finished."""
+	if not progression_manager or current_stage_id.is_empty():
+		return
+
+	var quest_id = "stage_%s" % current_stage_id
+
+	# Update progression manager if it has the method
+	if progression_manager.has_method("_on_stage_completed"):
+		progression_manager._on_stage_completed(current_stage_id)
+
+## Gets the current quest objectives for the active stage.
+##
+## Returns:
+##   Array: List of objective dictionaries
+func get_current_objectives() -> Array:
+	"""Gets the current quest objectives for the active stage.
+
+	Returns:
+		Array: List of objective dictionaries
+	"""
+	if not progression_manager or current_stage_id.is_empty():
+		return []
+
+	var quest_id = "stage_%s" % current_stage_id
+	return progression_manager.get_quest_objectives(quest_id)
+
+## Gets the current quest progress as a percentage.
+##
+## Returns:
+##   float: Progress percentage (0.0 to 1.0)
+func get_current_quest_progress() -> float:
+	"""Gets the current quest progress as a percentage.
+
+	Returns:
+		float: Progress percentage (0.0 to 1.0)
+	"""
+	var objectives = get_current_objectives()
+	if objectives.is_empty():
+		return 0.0
+
+	var total = objectives.size()
+	var completed = 0
+
+	for objective in objectives:
+		if objective.get("state") == ProgressionIndicatorManager.ObjectiveState.COMPLETED:
+			completed += 1
+
+	return float(completed) / float(total) if total > 0 else 0.0
+
+## Gets the next objective to complete.
+##
+## Returns:
+##   Dictionary: Next objective to complete, or empty dict if none
+func get_next_objective() -> Dictionary:
+	"""Gets the next objective to complete.
+
+	Returns:
+		Dictionary: Next objective to complete, or empty dict if none
+	"""
+	var objectives = get_current_objectives()
+
+	for objective in objectives:
+		var state = objective.get("state", ProgressionIndicatorManager.ObjectiveState.NOT_STARTED)
+		if state != ProgressionIndicatorManager.ObjectiveState.COMPLETED:
+			return objective
+
+	return {}
+
+## Resets quest tracking for the current stage.
+func reset_quest_tracking() -> void:
+	"""Resets quest tracking for the current stage."""
+	quest_objectives_tracked.clear()

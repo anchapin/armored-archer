@@ -939,11 +939,7 @@ function getLastMatchTime(nk: Runtime.Nakama, userId: string): number {
  * @param currentScore - Player's current rank score
  * @returns New score after decay (or original if no decay applies)
  */
-export function applyRankDecay(
-  nk: Runtime.Nakama,
-  userId: string,
-  currentScore: number
-): number {
+export function applyRankDecay(nk: Runtime.Nakama, userId: string, currentScore: number): number {
   // Don't decay players below minimum score
   if (currentScore < RANK_DECAY_MIN_SCORE) {
     return currentScore;

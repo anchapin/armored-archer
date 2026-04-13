@@ -1,0 +1,110 @@
+[gd_scene load_steps=3 format=3 uid="uid://fatigue_indicator_scene"]
+
+[ext_resource type="Script" path="res://scenes/ui/fatigue_indicator.gd" id="1_fatigue_indicator_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fatigue_bg"]
+bg_color = Color(0.1, 0.1, 0.1, 0.8)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fatigue_fill"]
+bg_color = Color(0.2, 0.8, 0.2, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="FatigueIndicator" type="Control"]
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -100.0
+offset_right = 200.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("1_fatigue_indicator_script")
+
+[node name="FatigueLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -100.0
+offset_top = 0.0
+offset_right = 100.0
+offset_bottom = 20.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 14
+text = "Fatigue: 0%"
+horizontal_alignment = 1
+
+[node name="FatigueBar" type="ProgressBar" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -180.0
+offset_top = 25.0
+offset_right = 180.0
+offset_bottom = 45.0
+grow_horizontal = 2
+min_value = 0.0
+max_value = 100.0
+value = 0.0
+theme_override_styles/background = SubResource("StyleBoxFlat_fatigue_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_fatigue_fill")
+
+[node name="StaminaContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -50.0
+offset_top = 50.0
+offset_right = 50.0
+offset_bottom = 70.0
+grow_horizontal = 2
+
+[node name="RecommendationLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -180.0
+offset_top = 75.0
+offset_right = 180.0
+offset_bottom = 95.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 12
+text = "Pacing is good"
+horizontal_alignment = 1
+
+[node name="BreakButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -80.0
+offset_top = -25.0
+offset_right = 80.0
+offset_bottom = 0.0
+grow_horizontal = 2
+text = "Take Break"
+visible = false

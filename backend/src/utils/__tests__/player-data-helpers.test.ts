@@ -328,9 +328,7 @@ describe('player-data-helpers', () => {
         set: jest.fn(),
       };
       const mockNk = {
-        storageRead: jest.fn().mockReturnValue([
-          { value: '{"level":5,"xp":100,"stats":{}}' },
-        ]),
+        storageRead: jest.fn().mockReturnValue([{ value: '{"level":5,"xp":100,"stats":{}}' }]),
       };
 
       const result = getPlayerStatsWithCache(

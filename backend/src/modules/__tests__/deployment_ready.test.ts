@@ -76,7 +76,7 @@ describe('Deployment Readiness', () => {
       // Structured logger outputs JSON format, so we check that info was called
       // The message is wrapped in JSON format by structuredLogger
       expect(mockLogger.info).toHaveBeenCalled();
-      
+
       // Get the actual call arguments - structured logger passes JSON string
       const infoCalls = mockLogger.info.mock.calls;
       // Find a call that contains our health check message when parsed as JSON

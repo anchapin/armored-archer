@@ -331,11 +331,7 @@ describe('validation', () => {
       });
 
       it('should return error for truncated JSON', () => {
-        const result = validatePayload(
-          ValibotSchemas.gain_xp,
-          '{"xp_amount": 500',
-          'gain_xp'
-        );
+        const result = validatePayload(ValibotSchemas.gain_xp, '{"xp_amount": 500', 'gain_xp');
 
         expect(result.success).toBe(false);
         if (!result.success) {
@@ -357,11 +353,7 @@ describe('validation', () => {
       });
 
       it('should return error for JSON array instead of object', () => {
-        const result = validatePayload(
-          ValibotSchemas.consent,
-          '[]',
-          'consent'
-        );
+        const result = validatePayload(ValibotSchemas.consent, '[]', 'consent');
 
         expect(result.success).toBe(false);
         if (!result.success) {
@@ -1119,9 +1111,7 @@ describe('validation', () => {
       expect(parsed.success).toBe(false);
       expect(parsed.error_code).toBe('VALIDATION_ERROR');
       expect(parsed.rpc_name).toBe('complete_stage');
-      expect(parsed.error).toBe(
-        'Validation failed for complete_stage: stage_id: Required'
-      );
+      expect(parsed.error).toBe('Validation failed for complete_stage: stage_id: Required');
     });
 
     it('should include the rpc_name in the response', () => {

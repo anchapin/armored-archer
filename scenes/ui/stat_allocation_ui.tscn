@@ -1,0 +1,247 @@
+[gd_scene load_steps=4 format=3 uid="uid://stat_allocation_ui"]
+
+[ext_resource type="Script" path="res://scenes/ui/stat_allocation_ui.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://safe_area_container" path="res://scenes/ui/safe_area_container.tscn" id="2"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.1, 0.1, 0.15, 0.95)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
+bg_color = Color(0.3, 0.6, 0.9, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="StatAllocationUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="SafeAreaContainer" parent="." instance=ExtResource("2")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="LoadingIndicator" type="Control" parent="."]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ColorRect" type="ColorRect" parent="LoadingIndicator"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.5)
+
+[node name="Label" type="Label" parent="LoadingIndicator"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -25.0
+offset_right = 100.0
+offset_bottom = 25.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Loading..."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SafeAreaContainer"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -300.0
+offset_right = 200.0
+offset_bottom = 300.0
+
+[node name="TitleLabel" type="Label" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+text = "Stat Allocation"
+horizontal_alignment = 1
+
+[node name="AbilityPointsLabel" type="Label" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+text = "Ability Points: 0"
+horizontal_alignment = 1
+
+[node name="StatsContainer" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LevelContainer" type="HBoxContainer" parent="SafeAreaContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="LevelLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer/LevelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Level: 1"
+
+[node name="XPContainer" type="HBoxContainer" parent="SafeAreaContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="XPLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer/XPContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "XP: 0"
+
+[node name="AttackContainer" type="HBoxContainer" parent="SafeAreaContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="AttackLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer/AttackContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Attack"
+
+[node name="AttackValue" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer/AttackContainer"]
+layout_mode = 2
+text = "10"
+
+[node name="AttackPlus" type="Button" parent="SafeAreaContainer/VBoxContainer/StatsContainer/AttackContainer"]
+layout_mode = 2
+text = "+"
+
+[node name="DefenseContainer" type="HBoxContainer" parent="SafeAreaContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="DefenseLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer/DefenseContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Defense"
+
+[node name="DefenseValue" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer/DefenseContainer"]
+layout_mode = 2
+text = "10"
+
+[node name="DefensePlus" type="Button" parent="SafeAreaContainer/VBoxContainer/StatsContainer/DefenseContainer"]
+layout_mode = 2
+text = "+"
+
+[node name="DodgeContainer" type="HBoxContainer" parent="SafeAreaContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="DodgeLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer/DodgeContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Dodge"
+
+[node name="DodgeValue" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer/DodgeContainer"]
+layout_mode = 2
+text = "10"
+
+[node name="DodgePlus" type="Button" parent="SafeAreaContainer/VBoxContainer/StatsContainer/DodgeContainer"]
+layout_mode = 2
+text = "+"
+
+[node name="CritRateContainer" type="HBoxContainer" parent="SafeAreaContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="CritRateLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer/CritRateContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Crit Rate"
+
+[node name="CritRateValue" type="Label" parent="SafeAreaContainer/VBoxContainer/StatsContainer/CritRateContainer"]
+layout_mode = 2
+text = "5"
+
+[node name="CritRatePlus" type="Button" parent="SafeAreaContainer/VBoxContainer/StatsContainer/CritRateContainer"]
+layout_mode = 2
+text = "+"
+
+[node name="XPProgressBar" type="ProgressBar" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+min_value = 0.0
+max_value = 100.0
+value = 0.0
+
+[node name="RespecButton" type="Button" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+text = "Respec Stats"
+
+[node name="RespecContainer" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="RespecCostLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/RespecContainer"]
+layout_mode = 2
+text = "Cost: 0 Gems"
+horizontal_alignment = 1
+
+[node name="RespecCooldownLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/RespecContainer"]
+layout_mode = 2
+text = "Cooldown: Available"
+horizontal_alignment = 1
+visible = false
+
+[node name="FreeRespecLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/RespecContainer"]
+layout_mode = 2
+text = "1 free respec remaining this season"
+horizontal_alignment = 1
+visible = false
+
+[node name="BuildSlotsContainer" type="HBoxContainer" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="BuildSlot1" type="Button" parent="SafeAreaContainer/VBoxContainer/BuildSlotsContainer"]
+layout_mode = 2
+text = "Slot 1 (Empty)"
+
+[node name="BuildSlot2" type="Button" parent="SafeAreaContainer/VBoxContainer/BuildSlotsContainer"]
+layout_mode = 2
+text = "Slot 2 (Empty)"
+
+[node name="BuildSlot3" type="Button" parent="SafeAreaContainer/VBoxContainer/BuildSlotsContainer"]
+layout_mode = 2
+text = "Slot 3 (Empty)"
+
+[node name="SaveBuildButton" type="Button" parent="SafeAreaContainer/VBoxContainer/BuildSlotsContainer"]
+layout_mode = 2
+text = "Save Build"
+
+[node name="BackButton" type="Button" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+text = "Back"
+
+[node name="SaveBuildDialog" type="ConfirmationDialog" parent="."]
+title = "Save Build"
+unresizable = true
+size = Vector2i(300, 150)
+
+[node name="BuildNameInput" type="LineEdit" parent="SaveBuildDialog"]
+layout_mode = 2
+offset_left = 20.0
+offset_top = 40.0
+offset_right = -20.0
+offset_bottom = 70.0
+placeholder_text = "Build name..."

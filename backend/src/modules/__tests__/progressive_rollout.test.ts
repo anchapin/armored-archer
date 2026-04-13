@@ -41,9 +41,8 @@ jest.mock('../validation', () => ({
     }
   }),
   ZodSchemas: {},
-  createValidationErrorResponse: jest.fn(
-    (rpcName: string, error: string) =>
-      JSON.stringify({ success: false, error })
+  createValidationErrorResponse: jest.fn((rpcName: string, error: string) =>
+    JSON.stringify({ success: false, error })
   ),
 }));
 

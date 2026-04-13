@@ -4,19 +4,41 @@ import { InitModule, Runtime } from './types/nakama';
 if (typeof (globalThis as any).exports === 'undefined') {
   (globalThis as any).exports = {};
 }
-import './config';
 import { validateRequiredConfig, config } from './config';
-import { initializeCaches } from './utils/cache';
+import { initializeSentry } from './config/errorTracking';
+import { logger, logSystemEvent } from './config/logger';
+import { createStructuredLogger, StructuredLogger } from './config/structuredLogger';
+import { initializeTracing } from './config/tracing';
+import { initializeAlerting } from './modules/alerting';
+import { registerAnalyticsEndpoints } from './modules/analytics';
 import {
-  registerRpcHealthCheck,
-  registerRpcReportPlayer,
-  registerRpcGetPlayerReports,
-  registerRpcGetPlayerStats,
-} from './modules/player_rpc';
+  registerRpcSubmitCombatAction,
+  registerRpcGetMatchState,
+  registerRpcPlayerDisconnect,
+} from './modules/combat_system';
 import {
-  registerRpcGainXP,
-  registerRpcAllocateStats,
-} from './modules/rpg_system';
+  registerDeploymentObservability,
+  initializeDeploymentObservability,
+} from './modules/deployment_observability';
+import {
+  registerRpcSyncDifficulty,
+  registerRpcTrackMatchOutcome,
+  registerRpcGetPlayerPerformance,
+} from './modules/dynamic_difficulty';
+import {
+  registerErrorInsightRpcs,
+  initializeErrorInsightsPipeline,
+} from './modules/error_insight_pipeline';
+import {
+  registerRpcGenerateGear,
+  registerRpcEquipGear,
+  registerRpcUnequipGear,
+  registerRpcGetInventory,
+  registerRpcUnlockModifierPool,
+  registerRpcStageComplete,
+  registerRpcGetUnlockedModifiers,
+} from './modules/gear_system';
+import { initializeHealthMonitoring } from './modules/health_monitor';
 import {
   registerRpcListMatches,
   registerRpcCreateMatch,
@@ -24,11 +46,39 @@ import {
   registerRpcGetPlayerRank,
   registerRpcCompleteMatch,
 } from './modules/matchmaker';
+import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
 import {
-  registerRpcSubmitCombatAction,
-  registerRpcGetMatchState,
-  registerRpcPlayerDisconnect,
-} from './modules/combat_system';
+  registerRpcJoinPool,
+  registerRpcLeavePool,
+  registerRpcGetQueueStatus,
+} from './modules/matchmaking_pool';
+import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
+import {
+  startNotificationScheduler,
+  stopNotificationScheduler,
+} from './modules/notification_scheduler';
+import {
+  initializeNotifications,
+  registerNotificationEndpoints,
+} from './modules/notifications_rpc';
+import {
+  registerRpcHealthCheck,
+  registerRpcReportPlayer,
+  registerRpcGetPlayerReports,
+  registerRpcGetPlayerStats,
+} from './modules/player_rpc';
+import {
+  registerProgressiveRollout,
+  initializeProgressiveRollout,
+} from './modules/progressive_rollout';
+import {
+  registerRpcGainXP,
+  registerRpcAllocateStats,
+  registerRpcRespecStats,
+  registerRpcSaveBuild,
+  registerRpcLoadBuild,
+  registerRpcGetBuilds,
+} from './modules/rpg_system';
 import {
   registerRpcGetSeasonInfo,
   registerRpcGetLeaderboard,
@@ -37,6 +87,11 @@ import {
   registerRpcClaimSeasonRewards,
   registerRpcEndSeason,
 } from './modules/season_system';
+import {
+  registerRpcCompleteStage,
+  registerRpcGetCompletedStages,
+  registerRpcGetCampaignProgress,
+} from './modules/stage_tracking';
 import {
   registerRpcValidatePurchase,
   registerRpcGetCurrency,
@@ -51,33 +106,7 @@ import {
   rpcCheckSubscriptions,
   rpcAppLaunchCheck,
 } from './modules/store';
-import {
-  registerRpcGenerateGear,
-  registerRpcEquipGear,
-  registerRpcUnequipGear,
-  registerRpcGetInventory,
-  registerRpcUnlockModifierPool,
-  registerRpcStageComplete,
-  registerRpcGetUnlockedModifiers,
-} from './modules/gear_system';
-import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
-import { registerDeploymentObservability, initializeDeploymentObservability } from './modules/deployment_observability';
-import { registerProgressiveRollout, initializeProgressiveRollout } from './modules/progressive_rollout';
-import { initializeAlerting } from './modules/alerting';
-import { initializeHealthMonitoring } from './modules/health_monitor';
-import { registerAnalyticsEndpoints } from './modules/analytics';
-import { initializeSentry } from './config/errorTracking';
-import { initializeTracing } from './config/tracing';
-import { logger, logSystemEvent } from './config/logger';
-import { createStructuredLogger, StructuredLogger } from './config/structuredLogger';
-import { registerErrorInsightRpcs, initializeErrorInsightsPipeline } from './modules/error_insight_pipeline';
-import {
-  registerRpcCompleteStage,
-  registerRpcGetCompletedStages,
-  registerRpcGetCampaignProgress,
-} from './modules/stage_tracking';
-import { initializeNotifications, registerNotificationEndpoints } from './modules/notifications_rpc';
-import { startNotificationScheduler, stopNotificationScheduler } from './modules/notification_scheduler';
+import { initializeCaches } from './utils/cache';
 
 // Global structured logger instance for use by all modules
 let globalStructuredLogger: StructuredLogger | null = null;
@@ -137,7 +166,10 @@ export function isStructuredLoggerInitialized(): boolean {
  * @param runtimeLogger - The Nakama Runtime.Logger instance
  * @param serviceName - Name of the service
  */
-export function initializeStructuredLogger(runtimeLogger: Runtime.Logger, serviceName: string = 'armored-archer-backend'): void {
+export function initializeStructuredLogger(
+  runtimeLogger: Runtime.Logger,
+  serviceName: string = 'armored-archer-backend'
+): void {
   globalStructuredLogger = createStructuredLogger(runtimeLogger, serviceName, {
     environment: process.env.NODE_ENV || 'development',
   });
@@ -179,6 +211,7 @@ const InitModule: InitModule = function (
   registerDeploymentObservability(initializer);
   registerProgressiveRollout(initializer);
   registerAnalyticsEndpoints(initializer);
+  registerMatchmakingAnalyticsEndpoints(initializer);
   registerErrorInsightRpcs(initializer);
   registerNotificationEndpoints(initializer);
 
@@ -201,6 +234,30 @@ const InitModule: InitModule = function (
       'armored_archer/allocate_stats',
       'allocate_stats',
       rpcAllocateStatsWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/respec_stats',
+      'respec_stats',
+      rpcRespecStatsWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/save_build',
+      'save_build',
+      rpcSaveBuildWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/load_build',
+      'load_build',
+      rpcLoadBuildWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/get_builds',
+      'get_builds',
+      rpcGetBuildsWrapper
     );
     registerRpcWithRateLimit(
       initializer,
@@ -318,6 +375,24 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/sync_difficulty',
+      'sync_difficulty',
+      rpcSyncDifficultyWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/track_match_outcome',
+      'track_match_outcome',
+      rpcTrackMatchOutcomeWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/get_player_performance',
+      'get_player_performance',
+      rpcGetPlayerPerformanceWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/get_player_reports',
       'get_player_reports',
       rpcGetPlayerReportsWrapper
@@ -344,6 +419,10 @@ const InitModule: InitModule = function (
     registerRpcHealthCheck(initializer);
     registerRpcGainXP(initializer);
     registerRpcAllocateStats(initializer);
+    registerRpcRespecStats(initializer);
+    registerRpcSaveBuild(initializer);
+    registerRpcLoadBuild(initializer);
+    registerRpcGetBuilds(initializer);
     registerRpcGetPlayerStats(initializer);
     registerRpcListMatches(initializer);
     registerRpcCreateMatch(initializer);
@@ -379,6 +458,12 @@ const InitModule: InitModule = function (
     registerRpcCompleteStage(initializer);
     registerRpcGetCompletedStages(initializer);
     registerRpcGetCampaignProgress(initializer);
+    registerRpcJoinPool(initializer);
+    registerRpcLeavePool(initializer);
+    registerRpcGetQueueStatus(initializer);
+    registerRpcSyncDifficulty(initializer);
+    registerRpcTrackMatchOutcome(initializer);
+    registerRpcGetPlayerPerformance(initializer);
   }
 
   logSystemEvent('info', 'Armored Archer server module initialized');
@@ -422,6 +507,46 @@ function rpcAllocateStatsWrapper(
 ): string {
   const { rpcAllocateStats } = require('./modules/rpg_system');
   return rpcAllocateStats(ctx, logger, nk, payload);
+}
+
+function rpcRespecStatsWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcRespecStats } = require('./modules/rpg_system');
+  return rpcRespecStats(ctx, logger, nk, payload);
+}
+
+function rpcSaveBuildWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcSaveBuild } = require('./modules/rpg_system');
+  return rpcSaveBuild(ctx, logger, nk, payload);
+}
+
+function rpcLoadBuildWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcLoadBuild } = require('./modules/rpg_system');
+  return rpcLoadBuild(ctx, logger, nk, payload);
+}
+
+function rpcGetBuildsWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcGetBuilds } = require('./modules/rpg_system');
+  return rpcGetBuilds(ctx, logger, nk, payload);
 }
 
 function rpcSubmitCombatActionWrapper(
@@ -602,6 +727,36 @@ function rpcTrackRevenueWrapper(
 ): string {
   const { rpcTrackRevenue } = require('./modules/analytics');
   return rpcTrackRevenue(ctx, logger, nk, payload);
+}
+
+function rpcSyncDifficultyWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcSyncDifficulty } = require('./modules/dynamic_difficulty');
+  return rpcSyncDifficulty(ctx, logger, nk, payload);
+}
+
+function rpcTrackMatchOutcomeWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcTrackMatchOutcome } = require('./modules/dynamic_difficulty');
+  return rpcTrackMatchOutcome(ctx, logger, nk, payload);
+}
+
+function rpcGetPlayerPerformanceWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcGetPlayerPerformance } = require('./modules/dynamic_difficulty');
+  return rpcGetPlayerPerformance(ctx, logger, nk, payload);
 }
 
 // Register RPC to start notification scheduler (can be called externally)

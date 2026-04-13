@@ -121,7 +121,7 @@ class RepoAnalyzer:
         except Exception:
             return None
 
-    def _search_files(self, pattern: str, content_pattern: str | None = None) -> bool:
+    def _search_files(self, pattern: str, content_pattern: str = None) -> bool:
         """Search for files matching pattern, optionally with content."""
         matches = list(self.repo_path.glob(pattern))
         if not matches:

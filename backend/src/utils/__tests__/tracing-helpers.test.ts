@@ -2,7 +2,12 @@
  * Tests for tracing-helpers utility
  */
 
-import { withSpanAsync, withSpanSync, withActiveSpanAsync, setNakamaContextAttributes } from '../tracing-helpers';
+import {
+  withSpanAsync,
+  withSpanSync,
+  withActiveSpanAsync,
+  setNakamaContextAttributes,
+} from '../tracing-helpers';
 
 // Mock OpenTelemetry
 jest.mock('@opentelemetry/api', () => ({
@@ -79,29 +84,22 @@ describe('tracing-helpers', () => {
     });
 
     it('should accept options with attributes', async () => {
-      const result = await withSpanAsync(
-        'test_span',
-        async () => 'result',
-        { attributes: { key: 'value' } }
-      );
+      const result = await withSpanAsync('test_span', async () => 'result', {
+        attributes: { key: 'value' },
+      });
       expect(result).toBe('result');
     });
 
     it('should accept options with kind', async () => {
-      const result = await withSpanAsync(
-        'test_span',
-        async () => 'result',
-        { kind: 2 }
-      );
+      const result = await withSpanAsync('test_span', async () => 'result', { kind: 2 });
       expect(result).toBe('result');
     });
 
     it('should accept options with both kind and attributes', async () => {
-      const result = await withSpanAsync(
-        'test_span',
-        async () => 'result',
-        { kind: 1, attributes: { foo: 'bar', count: 42, flag: true } }
-      );
+      const result = await withSpanAsync('test_span', async () => 'result', {
+        kind: 1,
+        attributes: { foo: 'bar', count: 42, flag: true },
+      });
       expect(result).toBe('result');
     });
   });
@@ -129,11 +127,7 @@ describe('tracing-helpers', () => {
     });
 
     it('should accept options with kind and attributes', () => {
-      const result = withSpanSync(
-        'test_span',
-        () => 'ok',
-        { kind: 3, attributes: { key: 'val' } }
-      );
+      const result = withSpanSync('test_span', () => 'ok', { kind: 3, attributes: { key: 'val' } });
       expect(result).toBe('ok');
     });
   });

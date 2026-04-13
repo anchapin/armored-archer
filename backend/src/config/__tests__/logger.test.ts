@@ -168,7 +168,9 @@ describe('logger helpers', () => {
 
     it('logs system event at error level', () => {
       const { logSystemEvent } = require('../logger');
-      expect(() => logSystemEvent('error', 'db_connection_failed', { host: 'localhost' })).not.toThrow();
+      expect(() =>
+        logSystemEvent('error', 'db_connection_failed', { host: 'localhost' })
+      ).not.toThrow();
     });
 
     it('logs system event at debug level', () => {
@@ -195,7 +197,9 @@ describe('logger helpers', () => {
 
     it('logs cache set with metadata', () => {
       const { logCacheOperation } = require('../logger');
-      expect(() => logCacheOperation('set', 'player_cache', 'player:789', { ttl: 300 })).not.toThrow();
+      expect(() =>
+        logCacheOperation('set', 'player_cache', 'player:789', { ttl: 300 })
+      ).not.toThrow();
     });
 
     it('logs cache delete', () => {
@@ -271,15 +275,10 @@ describe('logger helpers', () => {
       const { captureRpcErrorWithContext } = require('../logger');
       const error = new Error('Test error');
       expect(() =>
-        captureRpcErrorWithContext(
-          'submit_combat',
-          'user-1',
-          'req-1',
-          error,
-          200,
-          undefined,
-          { userId: 'user-1', sessionId: 'sess-1' }
-        )
+        captureRpcErrorWithContext('submit_combat', 'user-1', 'req-1', error, 200, undefined, {
+          userId: 'user-1',
+          sessionId: 'sess-1',
+        })
       ).not.toThrow();
     });
   });

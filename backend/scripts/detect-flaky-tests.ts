@@ -1,13 +1,13 @@
 #!/usr/bin/env npx ts-node
 /**
  * Flaky Test Detection Script
- * 
+ *
  * This script runs tests multiple times to identify non-deterministic failures.
  * It tracks flaky test history and generates reports.
- * 
+ *
  * Usage:
  *   npx ts-node scripts/detect-flaky-tests.ts [--runs=N] [--threshold=N] [--test-pattern=PATTERN]
- * 
+ *
  * Options:
  *   --runs=N          Number of times to run each test (default: 3)
  *   --threshold=N     Minimum failure rate to consider a test flaky (default: 0.33)
@@ -66,8 +66,8 @@ class FlakyTestDetector {
     this.threshold = this.parseFloatArg(args, 'threshold', DEFAULT_THRESHOLD);
     this.verbose = args.includes('--verbose') || args.includes('-v');
     this.ciMode = args.includes('--ci-mode');
-    
-    const patternArg = args.find(arg => arg.startsWith('--test-pattern='));
+
+    const patternArg = args.find((arg) => arg.startsWith('--test-pattern='));
     if (patternArg) {
       const pattern = patternArg.split('=')[1];
       this.testPattern = new RegExp(pattern);
@@ -75,7 +75,7 @@ class FlakyTestDetector {
   }
 
   private parseIntArg(args: string[], name: string, defaultValue: number): number {
-    const arg = args.find(a => a.startsWith(`--${name}=`));
+    const arg = args.find((a) => a.startsWith(`--${name}=`));
     if (arg) {
       const value = parseInt(arg.split('=')[1], 10);
       return isNaN(value) ? defaultValue : value;
@@ -84,7 +84,7 @@ class FlakyTestDetector {
   }
 
   private parseFloatArg(args: string[], name: string, defaultValue: number): number {
-    const arg = args.find(a => a.startsWith(`--${name}=`));
+    const arg = args.find((a) => a.startsWith(`--${name}=`));
     if (arg) {
       const value = parseFloat(arg.split('=')[1]);
       return isNaN(value) ? defaultValue : value;
@@ -143,30 +143,32 @@ class FlakyTestDetector {
   /**
    * Run a specific test and capture the result
    */
-  private async runTest(testName: string): Promise<{ success: boolean; duration: number; error?: string }> {
+  private async runTest(
+    testName: string
+  ): Promise<{ success: boolean; duration: number; error?: string }> {
     const startTime = Date.now();
-    
+
     try {
       // Run Jest with the specific test name filter
       const escapedTestName = testName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const cmd = `npx jest --testNamePattern="${escapedTestName}" --no-coverage --passWithNoTests 2>&1`;
-      
-      execSync(cmd, { 
+
+      execSync(cmd, {
         cwd: path.join(__dirname, '..'),
         stdio: this.verbose ? 'inherit' : 'pipe',
         encoding: 'utf-8',
-        timeout: 60000 // 60 second timeout
+        timeout: 60000, // 60 second timeout
       });
 
       return {
         success: true,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     } catch (error: any) {
       return {
         success: false,
         duration: Date.now() - startTime,
-        error: error.message?.substring(0, 500) || 'Unknown error'
+        error: error.message?.substring(0, 500) || 'Unknown error',
       };
     }
   }
@@ -189,14 +191,14 @@ class FlakyTestDetector {
     const allTestNames = new Set<string>();
     for (const file of testFiles) {
       const testNames = this.getTestNamesFromFile(file);
-      testNames.forEach(name => allTestNames.add(name));
+      testNames.forEach((name) => allTestNames.add(name));
     }
 
     console.log(`📝 Found ${allTestNames.size} tests to analyze\n`);
 
     // If we have a test pattern filter, only run matching tests
-    const testsToRun = this.testPattern 
-      ? Array.from(allTestNames).filter(name => this.testPattern!.test(name))
+    const testsToRun = this.testPattern
+      ? Array.from(allTestNames).filter((name) => this.testPattern!.test(name))
       : Array.from(allTestNames);
 
     // Run each test multiple times
@@ -216,16 +218,18 @@ class FlakyTestDetector {
           timestamp: new Date().toISOString(),
           success: result.success,
           duration: result.duration,
-          error: result.error
+          error: result.error,
         });
 
         if (this.verbose) {
-          console.log(`   Result: ${result.success ? '✅ PASS' : '❌ FAIL'} (${result.duration}ms)`);
+          console.log(
+            `   Result: ${result.success ? '✅ PASS' : '❌ FAIL'} (${result.duration}ms)`
+          );
         }
       }
 
       // Calculate failure rate
-      const failures = history.filter(h => !h.success).length;
+      const failures = history.filter((h) => !h.success).length;
       const failureRate = failures / this.runs;
 
       // Only store if there were any failures or if test pattern is specified
@@ -235,14 +239,14 @@ class FlakyTestDetector {
           runs: this.runs,
           failures,
           failureRate,
-          history
+          history,
         });
       }
     }
 
     // Identify flaky tests
     const flakyTests = Array.from(this.results.values())
-      .filter(result => result.failureRate >= this.threshold)
+      .filter((result) => result.failureRate >= this.threshold)
       .sort((a, b) => b.failureRate - a.failureRate);
 
     const executionTime = Date.now() - this.startTime;
@@ -257,8 +261,8 @@ class FlakyTestDetector {
         flakyTests: flakyTests.length,
         runsPerTest: this.runs,
         threshold: this.threshold,
-        executionTime
-      }
+        executionTime,
+      },
     };
   }
 
@@ -267,16 +271,16 @@ class FlakyTestDetector {
    */
   private saveHistory(flakyTests: FlakyTestResult[]): void {
     const dataDir = path.join(__dirname, '..', 'data');
-    
+
     // Ensure data directory exists
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
 
     const historyPath = path.join(dataDir, HISTORY_FILE.replace('data/', ''));
-    
+
     let existingHistory: Record<string, FlakyTestResult> = {};
-    
+
     if (fs.existsSync(historyPath)) {
       try {
         existingHistory = JSON.parse(fs.readFileSync(historyPath, 'utf-8'));
@@ -295,7 +299,7 @@ class FlakyTestDetector {
         existing.history = [...existing.history, ...result.history];
         // Keep last 30 runs
         existing.history = existing.history.slice(-30);
-        existing.failures = existing.history.filter(h => !h.success).length;
+        existing.failures = existing.history.filter((h) => !h.success).length;
         existing.runs = existing.history.length;
         existing.failureRate = existing.failures / existing.runs;
       }
@@ -337,10 +341,12 @@ class FlakyTestDetector {
     for (const test of flakyTests) {
       const status = test.failureRate >= 0.5 ? '🔴' : test.failureRate >= 0.33 ? '🟡' : '🟢';
       console.log(`\n${status} ${test.testName}`);
-      console.log(`   Failure rate: ${(test.failureRate * 100).toFixed(0)}% (${test.failures}/${test.runs} runs)`);
-      
+      console.log(
+        `   Failure rate: ${(test.failureRate * 100).toFixed(0)}% (${test.failures}/${test.runs} runs)`
+      );
+
       if (test.history.length > 0) {
-        const recentFailures = test.history.slice(-5).filter(h => !h.success).length;
+        const recentFailures = test.history.slice(-5).filter((h) => !h.success).length;
         console.log(`   Recent failures: ${recentFailures}/5`);
       }
 
@@ -377,7 +383,7 @@ class FlakyTestDetector {
     console.log(`execution_time_ms=${summary.executionTime}`);
 
     if (flakyTests.length > 0) {
-      console.log('flaky_tests=' + flakyTests.map(t => t.testName.replace(/ /g, '_')).join(','));
+      console.log('flaky_tests=' + flakyTests.map((t) => t.testName.replace(/ /g, '_')).join(','));
     } else {
       console.log('flaky_tests=');
     }
@@ -395,7 +401,7 @@ class FlakyTestDetector {
 // Main execution
 async function main() {
   const args = process.argv.slice(2);
-  
+
   if (args.includes('--help') || args.includes('-h')) {
     console.log(`
 Flaky Test Detection Script

@@ -135,7 +135,7 @@ describe('RPGSystem', () => {
     it('should handle numeric string user ID', () => {
       const player = rpg.createPlayer('12345');
       expect(player.user_id).toBe('12345');
-      
+
       const retrieved = rpg.getPlayer('12345');
       expect(retrieved).not.toBeNull();
     });

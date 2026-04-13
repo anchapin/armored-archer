@@ -27,8 +27,8 @@ jest.mock('../validation', () => ({
     deployment_record: {},
     health_check: {},
   },
-  createValidationErrorResponse: jest.fn(
-    (name: string, error: string) => JSON.stringify({ success: false, error, name })
+  createValidationErrorResponse: jest.fn((name: string, error: string) =>
+    JSON.stringify({ success: false, error, name })
   ),
 }));
 
@@ -171,8 +171,7 @@ describe('deployment_observability', () => {
       expect(healthMetric).toBeDefined();
       const values = (healthMetric as any).values;
       const match = values.find(
-        (v: any) =>
-          v.labels.environment === 'production' && v.labels.component === 'deployment'
+        (v: any) => v.labels.environment === 'production' && v.labels.component === 'deployment'
       );
       expect(match).toBeDefined();
       expect(match.value).toBe(1);
@@ -190,8 +189,7 @@ describe('deployment_observability', () => {
       expect(healthMetric).toBeDefined();
       const values = (healthMetric as any).values;
       const match = values.find(
-        (v: any) =>
-          v.labels.environment === 'production' && v.labels.component === 'deployment'
+        (v: any) => v.labels.environment === 'production' && v.labels.component === 'deployment'
       );
       expect(match).toBeDefined();
       expect(match.value).toBe(0);
@@ -209,12 +207,10 @@ describe('deployment_observability', () => {
 
       const values = (healthMetric as any).values;
       const deploymentVal = values.find(
-        (v: any) =>
-          v.labels.environment === 'production' && v.labels.component === 'deployment'
+        (v: any) => v.labels.environment === 'production' && v.labels.component === 'deployment'
       );
       const databaseVal = values.find(
-        (v: any) =>
-          v.labels.environment === 'production' && v.labels.component === 'database'
+        (v: any) => v.labels.environment === 'production' && v.labels.component === 'database'
       );
 
       expect(deploymentVal.value).toBe(1);
@@ -326,12 +322,10 @@ describe('deployment_observability', () => {
       expect(healthMetric).toBeDefined();
       const values = (healthMetric as any).values;
       const deploymentVal = values.find(
-        (v: any) =>
-          v.labels.environment === 'test' && v.labels.component === 'deployment'
+        (v: any) => v.labels.environment === 'test' && v.labels.component === 'deployment'
       );
       const systemVal = values.find(
-        (v: any) =>
-          v.labels.environment === 'test' && v.labels.component === 'system'
+        (v: any) => v.labels.environment === 'test' && v.labels.component === 'system'
       );
 
       expect(deploymentVal).toBeDefined();
@@ -365,12 +359,8 @@ describe('deployment_observability', () => {
 
       initializeDeploymentObservability(mockLogger as any);
 
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.stringContaining('test')
-      );
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.stringContaining('1.0.0')
-      );
+      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('test'));
+      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('1.0.0'));
     });
   });
 
@@ -505,8 +495,7 @@ describe('deployment_observability', () => {
         );
         const values = (healthMetric as any).values;
         const deploymentHealth = values.find(
-          (v: any) =>
-            v.labels.environment === 'production' && v.labels.component === 'deployment'
+          (v: any) => v.labels.environment === 'production' && v.labels.component === 'deployment'
         );
         expect(deploymentHealth.value).toBe(1);
       });
@@ -537,8 +526,7 @@ describe('deployment_observability', () => {
         );
         const values = (healthMetric as any).values;
         const deploymentHealth = values.find(
-          (v: any) =>
-            v.labels.environment === 'production' && v.labels.component === 'deployment'
+          (v: any) => v.labels.environment === 'production' && v.labels.component === 'deployment'
         );
         expect(deploymentHealth.value).toBe(0);
       });

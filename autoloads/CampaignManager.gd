@@ -23,12 +23,16 @@ var unlocked_modifier_pools: Array = []
 # --- Analytics Reference ---
 var analytics: Node
 var network_manager: Node
+var difficulty_manager: Node
+var pacing_manager: Node
+var progression_manager: Node
 
 # --- Signals ---
 signal stage_unlocked(stage_id: String)
 signal stage_completed(stage_id: String)
 signal campaign_progress_updated(chapter_id: String, progress: float)
 signal modifier_pool_unlocked(modifier_id: String)
+signal difficulty_display_changed(difficulty_level: String)
 
 func _ready() -> void:
 	"""Initializes campaign data and loads saved progress."""
@@ -36,6 +40,18 @@ func _ready() -> void:
 		analytics = get_node_or_null("/root/AnalyticsManager")
 	if network_manager == null:
 		network_manager = get_node_or_null("/root/NetworkManager")
+	if difficulty_manager == null:
+		difficulty_manager = get_node_or_null("/root/DynamicDifficultyManager")
+
+		# Connect to difficulty changes
+		if difficulty_manager and difficulty_manager.has_signal("difficulty_changed"):
+			difficulty_manager.difficulty_changed.connect(_on_difficulty_changed)
+
+	if pacing_manager == null:
+		pacing_manager = get_node_or_null("/root/PacingManager")
+
+	if progression_manager == null:
+		progression_manager = get_node_or_null("/root/ProgressionIndicatorManager")
 
 	# Load campaign data and progress
 	load_campaigns_data()
@@ -49,6 +65,10 @@ func _ready() -> void:
 	# Connect to network for sync
 	if network_manager and network_manager.has_signal("connection_status_changed"):
 		network_manager.connection_status_changed.connect(_on_connection_status_changed)
+
+	# Connect to progression manager for quest tracking
+	if progression_manager and progression_manager.has_signal("quest_updated"):
+		progression_manager.quest_updated.connect(_on_quest_updated)
 
 func _on_connection_status_changed(is_online: bool) -> void:
 	"""Syncs campaign progress when connection is established."""
@@ -94,6 +114,22 @@ func sync_campaign_progress() -> void:
 
 	# Save merged state locally
 	save_progress()
+
+func _on_difficulty_changed(new_level: String, modifier: float) -> void:
+	"""Handles difficulty level changes and updates display.
+
+	Parameters:
+		new_level: New difficulty level string
+		modifier: Difficulty modifier value
+	"""
+	difficulty_display_changed.emit(new_level)
+
+	# Track difficulty change in analytics
+	if analytics and analytics.has_method("log_custom_event"):
+		analytics.log_custom_event("difficulty_changed", {
+			"new_level": new_level,
+			"modifier": modifier
+		})
 
 func load_campaigns_data() -> void:
 	"""Loads campaign definitions from res://data/campaigns.json."""
@@ -505,3 +541,272 @@ func _get_difficulty_string(tier: int) -> String:
 		2: return "medium"
 		3: return "hard"
 		_: return "normal"
+
+# --- Dynamic Difficulty Integration ---
+func get_current_difficulty_level() -> String:
+	"""Returns the current dynamic difficulty level.
+
+	Returns:
+		String: Current difficulty level ("Easy", "Normal", "Hard", or "Extreme")
+	"""
+	if difficulty_manager:
+		return difficulty_manager.get_difficulty_level_string()
+	return "Normal"
+
+func get_difficulty_modifier() -> float:
+	"""Returns the current difficulty modifier.
+
+	Returns:
+		float: Modifier value from -0.20 to 0.20
+	"""
+	if difficulty_manager:
+		return difficulty_manager.get_difficulty_modifier()
+	return 0.0
+
+func get_stage_difficulty_with_modifier(stage_id: String) -> Dictionary:
+	"""Calculates stage difficulty including dynamic difficulty modifier.
+
+	Parameters:
+		stage_id: Stage identifier
+
+	Returns:
+		Dictionary: Stage data with adjusted difficulty
+	"""
+	var stage_data = get_stage_data(stage_id)
+	var base_difficulty = stage_data.get("difficulty", 1)
+
+	if difficulty_manager:
+		var modifier = difficulty_manager.get_difficulty_modifier()
+		var adjusted_difficulty = base_difficulty
+
+		# Map modifier to difficulty adjustment
+		if modifier <= -0.15:
+			adjusted_difficulty = max(1, base_difficulty - 1)
+		elif modifier >= 0.15:
+			adjusted_difficulty = min(3, base_difficulty + 1)
+
+		stage_data["adjusted_difficulty"] = adjusted_difficulty
+		stage_data["dynamic_modifier"] = modifier
+
+	return stage_data
+
+func save_difficulty_setting() -> void:
+	"""Saves the current difficulty setting for persistence."""
+	if difficulty_manager:
+		difficulty_manager.save_difficulty_state()
+
+# --- Pacing & Variety Integration ---
+func track_encounter_pacing(stage_id: String, duration: float) -> void:
+	"""Tracks encounter pacing for the given stage.
+
+	Parameters:
+		stage_id: ID of the stage
+		duration: Duration of the encounter in seconds
+	"""
+	if not pacing_manager:
+		return
+
+	var stage_data = get_stage_data(stage_id)
+	if stage_data.is_empty():
+		return
+
+	# Classify the encounter
+	var encounter_type = pacing_manager.classify_encounter(stage_data)
+
+	# Track pacing state
+	pacing_manager.track_pacing_state(encounter_type, duration)
+
+	# Log to server
+	pacing_manager.log_encounter_pacing()
+
+func get_pacing_recommendations() -> Dictionary:
+	"""Gets current pacing recommendations.
+
+	Returns:
+		Dictionary with pacing recommendations
+	"""
+	if not pacing_manager:
+		return {}
+
+	return pacing_manager.suggest_break()
+
+func get_pacing_metrics() -> Dictionary:
+	"""Gets current pacing metrics.
+
+	Returns:
+		Dictionary with pacing metrics
+	"""
+	if not pacing_manager:
+		return {}
+
+	return pacing_manager.get_pacing_metrics()
+
+func get_recommended_encounter() -> String:
+	"""Gets the recommended next encounter type.
+
+	Returns:
+		String: Recommended encounter type (combat, exploration, narrative, puzzle)
+	"""
+	if not pacing_manager:
+		return "combat"
+
+	var recommended_type = pacing_manager.get_recommended_encounter_type()
+	match recommended_type:
+		PacingManager.ContentType.COMBAT: return "combat"
+		PacingManager.ContentType.EXPLORATION: return "exploration"
+		PacingManager.ContentType.NARRATIVE: return "narrative"
+		PacingManager.ContentType.PUZZLE: return "puzzle"
+		_: return "combat"
+
+func show_pacing_warning_if_needed() -> bool:
+	"""Checks if pacing warning should be shown.
+
+	Returns:
+		bool: True if warning should be shown, false otherwise
+	"""
+	if not pacing_manager:
+		return false
+
+	var metrics = pacing_manager.get_pacing_metrics()
+	var fatigue_level: String = metrics.get("fatigue_level", "None")
+
+	if fatigue_level in ["High", "Critical"]:
+		return true
+
+	return false
+
+func reset_pacing_state() -> void:
+	"""Resets pacing state for new session."""
+	if pacing_manager:
+		pacing_manager.reset_pacing_state()
+
+# --- Progression Indicators Integration ---
+## Returns the next available stage for the player.
+##
+## Returns:
+##   String: Stage ID of the next available stage, or empty string if none
+func get_next_available_stage() -> String:
+	"""Returns the next available stage for the player."""
+	for chapter in campaigns_data.get("campaigns", []):
+		var stages = chapter.get("stages", [])
+		for stage_data in stages:
+			var stage_id = stage_data.get("id", "")
+			if is_stage_unlocked(stage_id) and not is_stage_completed(stage_id):
+				return stage_id
+	return ""
+
+## Gets stage data with progression information.
+##
+## Parameters:
+##   stage_id: Stage identifier
+##
+## Returns:
+##   Dictionary: Stage data with progression info
+func get_stage_with_progression(stage_id: String) -> Dictionary:
+	"""Gets stage data with progression information."""
+	var stage_data = get_stage_data(stage_id)
+
+	if stage_data.is_empty():
+		return {}
+
+	stage_data["is_unlocked"] = is_stage_unlocked(stage_id)
+	stage_data["is_completed"] = is_stage_completed(stage_id)
+
+	# Add level requirement if available
+	if progression_manager:
+		var reqs = progression_manager.get_level_requirements(stage_id)
+		if not reqs.is_empty():
+			stage_data["level_requirement"] = reqs.get("level", 1)
+		else:
+			stage_data["level_requirement"] = 1
+	else:
+		stage_data["level_requirement"] = 1
+
+	return stage_data
+
+## Gets the quest objectives for a specific stage.
+##
+## Parameters:
+##   stage_id: Stage identifier
+##
+## Returns:
+##   Array: List of quest objectives
+func get_stage_quest_objectives(stage_id: String) -> Array:
+	"""Gets quest objectives for a specific stage."""
+	if progression_manager and progression_manager.has_method("get_quest_objectives"):
+		var quest_id = "stage_%s" % stage_id
+		return progression_manager.get_quest_objectives(quest_id)
+	return []
+
+## Gets the current quest progress for a stage.
+##
+## Parameters:
+##   stage_id: Stage identifier
+##
+## Returns:
+##   float: Progress percentage (0.0 to 1.0)
+func get_stage_quest_progress(stage_id: String) -> float:
+	"""Gets quest progress for a specific stage."""
+	var objectives = get_stage_quest_objectives(stage_id)
+	if objectives.is_empty():
+		return 0.0
+
+	var total = objectives.size()
+	var completed = 0
+
+	for objective in objectives:
+		if objective.get("state") == ProgressionIndicatorManager.ObjectiveState.COMPLETED:
+			completed += 1
+
+	return float(completed) / float(total) if total > 0 else 0.0
+
+## Handles quest updated signal from ProgressionIndicatorManager.
+##
+## Parameters:
+##   quest_id: ID of the updated quest
+##   progress: Progress percentage (0.0 to 1.0)
+func _on_quest_updated(quest_id: String, progress: float) -> void:
+	"""Handles quest progress update from ProgressionIndicatorManager."""
+	# Update campaign progress if this is a stage completion quest
+	if quest_id.begins_with("stage_"):
+		var stage_id = quest_id.substr(6)  # Remove "stage_" prefix
+		update_campaign_progress()
+
+## Gets all stage markers for the campaign map.
+##
+## Returns:
+##   Dictionary: Stage markers keyed by stage ID
+func get_all_stage_markers() -> Dictionary:
+	"""Gets all stage markers for the campaign map."""
+	var markers = {}
+
+	if not progression_manager:
+		return markers
+
+	var map_markers_data = progression_manager.get_map_markers()
+	var player_stats_manager = get_node_or_null("/root/PlayerStatsManager")
+
+	for stage_id in map_markers_data:
+		var stage_markers = map_markers_data[stage_id]
+		var marker_info = {
+			"stage_id": stage_id,
+			"has_quest": false,
+			"is_locked": false,
+			"is_available": false
+		}
+
+		# Check each marker type
+		for marker in stage_markers.get("markers", []):
+			var marker_type = marker.get("type", "")
+			match marker_type:
+				"quest":
+					marker_info["has_quest"] = true
+					marker_info["quest_description"] = marker.get("description", "")
+				"available":
+					marker_info["is_available"] = true
+				"locked":
+					marker_info["is_locked"] = true
+
+		markers[stage_id] = marker_info
+
+	return markers
