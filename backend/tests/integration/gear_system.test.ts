@@ -65,7 +65,7 @@ describe('Gear System Integration Tests', () => {
       for (let i = 0; i < 20; i++) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: `stage_${i + 100}`,
-          boss_defeated: false
+          boss_defeated: false,
         });
 
         if (result.success && result.gear.modifiers && result.gear.modifiers.length > 0) {
@@ -85,7 +85,9 @@ describe('Gear System Integration Tests', () => {
 
         // Check that at least one modifier has a matching stat
         const modifierStatNames = new Set(gearWithModifiers.modifiers.map((m: any) => m.stat));
-        const matchingStats = gearWithModifiers.stats.filter((s: any) => modifierStatNames.has(s.name));
+        const matchingStats = gearWithModifiers.stats.filter((s: any) =>
+          modifierStatNames.has(s.name)
+        );
 
         // The stat values should be different from base values when modifiers exist
         for (const stat of matchingStats) {
@@ -110,7 +112,7 @@ describe('Gear System Integration Tests', () => {
       for (let i = 0; i < 10; i++) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: `stage_${i}`,
-          boss_defeated: false
+          boss_defeated: false,
         });
         if (result.success) {
           generatedTypes.add(result.gear.type);
@@ -128,7 +130,7 @@ describe('Gear System Integration Tests', () => {
       for (let i = 0; i < 50; i++) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: 'stage_test',
-          boss_defeated: false
+          boss_defeated: false,
         });
         if (result.success) {
           generatedRarities.push(result.gear.rarity);
@@ -136,9 +138,9 @@ describe('Gear System Integration Tests', () => {
       }
 
       // Should have at least some common items (70% chance)
-      expect(generatedRarities.filter(r => r === 'common').length).toBeGreaterThan(0);
+      expect(generatedRarities.filter((r) => r === 'common').length).toBeGreaterThan(0);
       // Should have some rare items (25% chance)
-      expect(generatedRarities.filter(r => r === 'rare').length).toBeGreaterThan(0);
+      expect(generatedRarities.filter((r) => r === 'rare').length).toBeGreaterThan(0);
       // Legendary is rare (5% chance) but should be possible with 50 tries
       // This might fail occasionally but 50 tries gives ~92% chance of at least one legendary
     });
@@ -147,7 +149,7 @@ describe('Gear System Integration Tests', () => {
       // First generate without boss defeat
       const result1 = await rpcCall(player, 'armored_archer/generate_gear', {
         stage_id: 'stage_boss_1',
-        boss_defeated: false
+        boss_defeated: false,
       });
       expect(result1.success).toBe(true);
 
@@ -156,13 +158,13 @@ describe('Gear System Integration Tests', () => {
 
       // Unlock a modifier pool manually
       await rpcCall(player, 'armored_archer/unlock_modifier_pool', {
-        modifier_id: 'piercing_arrow'
+        modifier_id: 'piercing_arrow',
       });
 
       // Generate with boss defeat should potentially unlock new pools
       const result2 = await rpcCall(player, 'armored_archer/generate_gear', {
         stage_id: 'stage_boss_2',
-        boss_defeated: true
+        boss_defeated: true,
       });
       expect(result2.success).toBe(true);
 
@@ -199,7 +201,7 @@ describe('Gear System Integration Tests', () => {
       // Generate some gear
       const generateResult = await rpcCall(player, 'armored_archer/generate_gear', {
         stage_id: 'stage_1',
-        boss_defeated: false
+        boss_defeated: false,
       });
       expect(generateResult.success).toBe(true);
 
@@ -214,7 +216,7 @@ describe('Gear System Integration Tests', () => {
       for (let i = 0; i < 3; i++) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: `stage_${i}`,
-          boss_defeated: false
+          boss_defeated: false,
         });
         expect(result.success).toBe(true);
       }
@@ -227,20 +229,20 @@ describe('Gear System Integration Tests', () => {
       // Generate gear
       const gear1 = await rpcCall(player, 'armored_archer/generate_gear', {
         stage_id: 'stage_eq1',
-        boss_defeated: false
+        boss_defeated: false,
       });
       expect(gear1.success).toBe(true);
 
       const gear2 = await rpcCall(player, 'armored_archer/generate_gear', {
         stage_id: 'stage_eq2',
-        boss_defeated: false
+        boss_defeated: false,
       });
       expect(gear2.success).toBe(true);
 
       // Equip first gear as weapon
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: gear1.gear.id,
-        slot: 'weapon'
+        slot: 'weapon',
       });
 
       // Check inventory
@@ -258,7 +260,7 @@ describe('Gear System Integration Tests', () => {
       while (!weaponGear && attempts < 20) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: 'stage_weapon',
-          boss_defeated: false
+          boss_defeated: false,
         });
         if (result.success && result.gear.type === 'weapon') {
           weaponGear = result.gear;
@@ -280,7 +282,7 @@ describe('Gear System Integration Tests', () => {
       while (!armorGear && attempts < 20) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: 'stage_armor',
-          boss_defeated: false
+          boss_defeated: false,
         });
         if (result.success && result.gear.type === 'armor') {
           armorGear = result.gear;
@@ -302,7 +304,7 @@ describe('Gear System Integration Tests', () => {
       while (!accessoryGear && attempts < 20) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: 'stage_accessory',
-          boss_defeated: false
+          boss_defeated: false,
         });
         if (result.success && result.gear.type === 'accessory') {
           accessoryGear = result.gear;
@@ -329,7 +331,7 @@ describe('Gear System Integration Tests', () => {
       // Generate a weapon
       const weaponGear = await rpcCall(player, 'armored_archer/generate_gear', {
         stage_id: 'stage_mismatch',
-        boss_defeated: false
+        boss_defeated: false,
       });
       expect(weaponGear.success).toBe(true);
 
@@ -347,7 +349,7 @@ describe('Gear System Integration Tests', () => {
       while (!weapon1 && attempts < 20) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: 'stage_w1',
-          boss_defeated: false
+          boss_defeated: false,
         });
         if (result.success && result.gear.type === 'weapon') {
           weapon1 = result.gear;
@@ -361,7 +363,7 @@ describe('Gear System Integration Tests', () => {
       while (!weapon2 && attempts < 20) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: 'stage_w2',
-          boss_defeated: false
+          boss_defeated: false,
         });
         if (result.success && result.gear.type === 'weapon' && result.gear.id !== weapon1.id) {
           weapon2 = result.gear;
@@ -374,13 +376,13 @@ describe('Gear System Integration Tests', () => {
       // Equip first weapon
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: weapon1.id,
-        slot: 'weapon'
+        slot: 'weapon',
       });
 
       // Equip second weapon (should replace first)
       const result = await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: weapon2.id,
-        slot: 'weapon'
+        slot: 'weapon',
       });
       expect(result.success).toBe(true);
       expect(result.equipped_gear.weapon).toBe(weapon2.id);
@@ -399,7 +401,7 @@ describe('Gear System Integration Tests', () => {
       while (!weaponGear && attempts < 20) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: 'stage_eq_uneq',
-          boss_defeated: false
+          boss_defeated: false,
         });
         if (result.success && result.gear.type === 'weapon') {
           weaponGear = result.gear;
@@ -410,7 +412,7 @@ describe('Gear System Integration Tests', () => {
 
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: weaponGear.id,
-        slot: 'weapon'
+        slot: 'weapon',
       });
 
       // Verify equipped
@@ -419,7 +421,7 @@ describe('Gear System Integration Tests', () => {
 
       // Unequip
       const result = await rpcCall(player, 'armored_archer/unequip_gear', {
-        slot: 'weapon'
+        slot: 'weapon',
       });
       expect(result.success).toBe(true);
       expect(result.equipped_gear.weapon).toBeUndefined();
@@ -442,7 +444,7 @@ describe('Gear System Integration Tests', () => {
       while (!armorGear && attempts < 20) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: 'stage_armor_uneq',
-          boss_defeated: false
+          boss_defeated: false,
         });
         if (result.success && result.gear.type === 'armor') {
           armorGear = result.gear;
@@ -453,11 +455,11 @@ describe('Gear System Integration Tests', () => {
 
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: armorGear.id,
-        slot: 'armor'
+        slot: 'armor',
       });
 
       const result = await rpcCall(player, 'armored_archer/unequip_gear', {
-        slot: 'armor'
+        slot: 'armor',
       });
       expect(result.success).toBe(true);
 
@@ -471,7 +473,7 @@ describe('Gear System Integration Tests', () => {
       while (!accessoryGear && attempts < 20) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: 'stage_acc_uneq',
-          boss_defeated: false
+          boss_defeated: false,
         });
         if (result.success && result.gear.type === 'accessory') {
           accessoryGear = result.gear;
@@ -482,11 +484,11 @@ describe('Gear System Integration Tests', () => {
 
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: accessoryGear.id,
-        slot: 'accessory'
+        slot: 'accessory',
       });
 
       const result = await rpcCall(player, 'armored_archer/unequip_gear', {
-        slot: 'accessory'
+        slot: 'accessory',
       });
       expect(result.success).toBe(true);
 
@@ -498,7 +500,7 @@ describe('Gear System Integration Tests', () => {
   describe('rpcUnlockModifierPool', () => {
     test('should unlock a modifier pool', async () => {
       const result = await rpcCall(player, 'armored_archer/unlock_modifier_pool', {
-        modifier_id: 'piercing_arrow'
+        modifier_id: 'piercing_arrow',
       });
 
       expect(result.success).toBe(true);
@@ -510,14 +512,14 @@ describe('Gear System Integration Tests', () => {
 
       for (const mod of modifiers) {
         const result = await rpcCall(player, 'armored_archer/unlock_modifier_pool', {
-          modifier_id: mod
+          modifier_id: mod,
         });
         expect(result.success).toBe(true);
       }
 
       const inventory = await getInventory(player);
       expect(inventory.unlocked_modifier_pools.length).toBe(3);
-      modifiers.forEach(mod => {
+      modifiers.forEach((mod) => {
         expect(inventory.unlocked_modifier_pools).toContain(mod);
       });
     });
@@ -525,23 +527,25 @@ describe('Gear System Integration Tests', () => {
     test('should not duplicate pools', async () => {
       // Unlock same pool twice
       const result1 = await rpcCall(player, 'armored_archer/unlock_modifier_pool', {
-        modifier_id: 'piercing_arrow'
+        modifier_id: 'piercing_arrow',
       });
       expect(result1.success).toBe(true);
 
       const result2 = await rpcCall(player, 'armored_archer/unlock_modifier_pool', {
-        modifier_id: 'piercing_arrow'
+        modifier_id: 'piercing_arrow',
       });
       expect(result2.success).toBe(true);
 
       const inventory = await getInventory(player);
-      const count = inventory.unlocked_modifier_pools.filter((p: string) => p === 'piercing_arrow').length;
+      const count = inventory.unlocked_modifier_pools.filter(
+        (p: string) => p === 'piercing_arrow'
+      ).length;
       expect(count).toBe(1);
     });
 
     test('should include unlocked pools in inventory response', async () => {
       await rpcCall(player, 'armored_archer/unlock_modifier_pool', {
-        modifier_id: 'wind_fury'
+        modifier_id: 'wind_fury',
       });
 
       const inventory = await getInventory(player);
@@ -553,7 +557,7 @@ describe('Gear System Integration Tests', () => {
     test('should return unlocked modifiers and boss defeat counts', async () => {
       // First, unlock a modifier pool
       await rpcCall(player, 'armored_archer/unlock_modifier_pool', {
-        modifier_id: 'piercing_arrow'
+        modifier_id: 'piercing_arrow',
       });
 
       // Get unlocked modifiers
@@ -584,7 +588,7 @@ describe('Gear System Integration Tests', () => {
         stage_id: 'stage_wind_boss',
         boss_defeated: true,
         difficulty: 'medium' as const,
-        boss_id: 'boss_wind'
+        boss_id: 'boss_wind',
       };
 
       const result = await rpcCall(player, 'armored_archer/stage_complete', payload);
@@ -600,7 +604,7 @@ describe('Gear System Integration Tests', () => {
         stage_id: 'stage_wind_boss',
         boss_defeated: true,
         difficulty: 'easy' as const,
-        boss_id: 'boss_wind'
+        boss_id: 'boss_wind',
       };
 
       // First defeat
@@ -634,7 +638,7 @@ describe('Gear System Integration Tests', () => {
         stage_id: 'stage_wind_boss',
         boss_defeated: true,
         difficulty: 'easy' as const,
-        boss_id: 'boss_wind'
+        boss_id: 'boss_wind',
       };
 
       // Defeat the same boss twice
@@ -643,7 +647,9 @@ describe('Gear System Integration Tests', () => {
 
       // Get modifiers - should only have piercing_arrow once
       const result = await rpcCall(player, 'armored_archer/get_unlocked_modifiers', {});
-      const piercingCount = result.unlocked_modifier_pools.filter((m: string) => m === 'piercing_arrow').length;
+      const piercingCount = result.unlocked_modifier_pools.filter(
+        (m: string) => m === 'piercing_arrow'
+      ).length;
       expect(piercingCount).toBe(1);
     });
   });

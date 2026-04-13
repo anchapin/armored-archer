@@ -94,9 +94,8 @@ jest.mock('../n_plus_one_detection', () => ({
 jest.mock('../validation', () => ({
   validatePayload: jest.fn().mockReturnValue({ success: true, data: {} }),
   ZodSchemas: { health_check: {} },
-  createValidationErrorResponse: jest.fn(
-    (rpcName: string, error: string) =>
-      JSON.stringify({ success: false, error })
+  createValidationErrorResponse: jest.fn((rpcName: string, error: string) =>
+    JSON.stringify({ success: false, error })
   ),
 }));
 
@@ -270,10 +269,7 @@ describe('metrics', () => {
 
       registerRpcWithMetrics(mockInitializer as any, 'rpc_id', 'rpc_name', handler);
 
-      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-        'rpc_id',
-        expect.any(Function)
-      );
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith('rpc_id', expect.any(Function));
     });
   });
 
@@ -320,10 +316,7 @@ describe('metrics', () => {
 
       const result = await handler(ctx, logger, nk, '{}');
 
-      expect(logger.info).toHaveBeenCalledWith(
-        'Metrics endpoint called by user: %s',
-        'user_123'
-      );
+      expect(logger.info).toHaveBeenCalledWith('Metrics endpoint called by user: %s', 'user_123');
       expect(typeof result).toBe('string');
       expect(result).toContain('mock base metrics');
       expect(result).toContain('Deployment metrics');
@@ -405,10 +398,7 @@ describe('metrics', () => {
 
       const result = await handler(ctx, logger, nk, '');
 
-      expect(logger.info).toHaveBeenCalledWith(
-        'N+1 report endpoint called by user: %s',
-        'admin_1'
-      );
+      expect(logger.info).toHaveBeenCalledWith('N+1 report endpoint called by user: %s', 'admin_1');
       const parsed = JSON.parse(result);
       expect(parsed).toEqual(mockReport);
     });
@@ -500,10 +490,7 @@ describe('metrics', () => {
 
       registerRpcWithRateLimit(mockInitializer as any, 'rpc/test', 'test_rpc', handler);
 
-      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-        'rpc/test',
-        expect.any(Function)
-      );
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith('rpc/test', expect.any(Function));
     });
 
     it('registers with rate limiting when enabled', () => {
@@ -518,16 +505,13 @@ describe('metrics', () => {
 
       registerRpcWithRateLimit(mockInitializer as any, 'rpc/limited', 'limited_rpc', handler);
 
-      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-        'rpc/limited',
-        expect.any(Function)
-      );
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith('rpc/limited', expect.any(Function));
 
       const rateLimiterModule = require('../../utils/rateLimiter');
-      expect(rateLimiterModule.setEndpointRateLimit).toHaveBeenCalledWith(
-        'limited_rpc',
-        { maxRequests: 10, windowMs: 60000 }
-      );
+      expect(rateLimiterModule.setEndpointRateLimit).toHaveBeenCalledWith('limited_rpc', {
+        maxRequests: 10,
+        windowMs: 60000,
+      });
       expect(rateLimiterModule.createRateLimitedRpcHandler).toHaveBeenCalledWith(
         'limited_rpc',
         handler
@@ -547,10 +531,7 @@ describe('metrics', () => {
 
       registerRpcWithRateLimit(mockInitializer as any, 'rpc/other', 'other_rpc', handler);
 
-      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-        'rpc/other',
-        expect.any(Function)
-      );
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith('rpc/other', expect.any(Function));
 
       const rateLimiterModule = require('../../utils/rateLimiter');
       expect(rateLimiterModule.createRateLimitedRpcHandler).toHaveBeenCalledWith(
@@ -1027,16 +1008,16 @@ describe('metrics', () => {
       recordDatabaseQueryDuration('select', 0.01);
       recordDatabaseQueryDuration('insert', 0.02);
       setCacheHitRatio('player', 0.85);
-      setCacheHitRatio('session', 0.90);
+      setCacheHitRatio('session', 0.9);
 
       // If we reach here without throwing, the test passes
       expect(true).toBe(true);
     });
 
     it('wrapRpcWithMetrics handles concurrent calls correctly', async () => {
-      const handler = jest.fn().mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve('ok'), 1))
-      );
+      const handler = jest
+        .fn()
+        .mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve('ok'), 1)));
       const wrapped = wrapRpcWithMetrics('concurrent_rpc', handler);
       const { ctx, logger, nk } = makeRpcArgs();
 

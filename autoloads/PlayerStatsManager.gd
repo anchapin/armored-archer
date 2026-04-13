@@ -17,6 +17,10 @@ var network_manager: Node
 const RPC_GAIN_XP = "armored_archer/gain_xp"
 const RPC_ALLOCATE_STATS = "armored_archer/allocate_stats"
 const RPC_GET_PLAYER_STATS = "armored_archer/get_player_stats"
+const RPC_RESPEC_STATS = "armored_archer/respec_stats"
+const RPC_SAVE_BUILD = "armored_archer/save_build"
+const RPC_LOAD_BUILD = "armored_archer/load_build"
+const RPC_GET_BUILDS = "armored_archer/get_builds"
 
 # --- Player Stats ---
 var player_stats: Dictionary = {}
@@ -27,6 +31,9 @@ signal stats_updated(stats: Dictionary)
 signal level_up(new_level: int, ability_points_gained: int)
 signal xp_gained(amount: int, total_xp: int)
 signal stat_allocated(stat_name: String, amount: int)
+signal stats_respec(new_stats: Dictionary, cost_paid: int)
+signal build_saved(build_slot: int, build_data: Dictionary)
+signal build_loaded(build_slot: int, build_data: Dictionary)
 
 # --- Initialization ---
 func _ready() -> void:
@@ -233,3 +240,140 @@ func get_crit_rate() -> int:
 		int: Critical hit rate percentage
 	"""
 	return get_stat("crit_rate")
+
+# --- Respec System ---
+func respec_stats(new_allocation: Dictionary, use_free_respec: bool = false) -> void:
+	"""Respecs player stats with gem cost.
+
+	Parameters:
+		new_allocation: New stat allocation {attack: int, defense: int, dodge: int, crit_rate: int}
+		use_free_respec: If true, uses free respec if available
+	"""
+	if not network_manager or not network_manager.is_connected:
+		push_error("Not connected to server")
+		return
+
+	var payload = JSON.stringify({
+		"new_allocation": new_allocation,
+		"use_free_respec": use_free_respec
+	})
+
+	var response = await network_manager.send_rpc(RPC_RESPEC_STATS, payload)
+
+	if response.has("error"):
+		push_error("Failed to respec stats: %s" % response.error)
+		return
+
+	var result = response  # Response is already a Dictionary from send_rpc
+
+	if result.get("success", false):
+		var cost_paid: int = result.get("cost_paid", 0)
+		player_stats = result.player_stats
+		stats_updated.emit(player_stats)
+		stats_respec.emit(new_allocation, cost_paid)
+
+		# Track respec in analytics
+		if analytics and analytics.has_method("log_custom_event"):
+			analytics.log_custom_event("stats_respec", {
+				"cost_paid": cost_paid,
+				"used_free_respec": use_free_respec,
+				"level": player_stats.get("level", 1)
+			})
+
+# --- Build Save/Load System ---
+func save_build(build_slot: int, build_name: String) -> void:
+	"""Saves current stat allocation to a build slot.
+
+	Parameters:
+		build_slot: Slot number (1-3)
+		build_name: Display name for the build
+	"""
+	if not network_manager or not network_manager.is_connected:
+		push_error("Not connected to server")
+		return
+
+	var current_stats: Dictionary = player_stats.get("stats", {}).duplicate()
+	var current_level: int = player_stats.get("level", 1)
+
+	var payload = JSON.stringify({
+		"build_slot": build_slot,
+		"build_name": build_name,
+		"stats": current_stats,
+		"level": current_level
+	})
+
+	var response = await network_manager.send_rpc(RPC_SAVE_BUILD, payload)
+
+	if response.has("error"):
+		push_error("Failed to save build: %s" % response.error)
+		return
+
+	var result = response  # Response is already a Dictionary from send_rpc
+
+	if result.get("success", false):
+		var build_data: Dictionary = result.get("build_data", {})
+		build_saved.emit(build_slot, build_data)
+
+		# Track build save in analytics
+		if analytics and analytics.has_method("log_custom_event"):
+			analytics.log_custom_event("build_saved", {
+				"build_slot": build_slot,
+				"build_name": build_name,
+				"level": current_level
+			})
+
+func load_build(build_slot: int) -> void:
+	"""Loads stat allocation from a build slot.
+
+	Parameters:
+		build_slot: Slot number (1-3)
+	"""
+	if not network_manager or not network_manager.is_connected:
+		push_error("Not connected to server")
+		return
+
+	var payload = JSON.stringify({
+		"build_slot": build_slot
+	})
+
+	var response = await network_manager.send_rpc(RPC_LOAD_BUILD, payload)
+
+	if response.has("error"):
+		push_error("Failed to load build: %s" % response.error)
+		return
+
+	var result = response  # Response is already a Dictionary from send_rpc
+
+	if result.get("success", false):
+		var build_data: Dictionary = result.get("build_data", {})
+		build_loaded.emit(build_slot, build_data)
+
+		# Track build load in analytics
+		if analytics and analytics.has_method("log_custom_event"):
+			analytics.log_custom_event("build_loaded", {
+				"build_slot": build_slot,
+				"build_name": build_data.get("name", "Unknown")
+			})
+
+func get_builds() -> void:
+	"""Retrieves all saved builds from server."""
+	if not network_manager or not network_manager.is_connected:
+		push_error("Not connected to server")
+		return
+
+	var payload = JSON.stringify({})
+
+	var response = await network_manager.send_rpc(RPC_GET_BUILDS, payload)
+
+	if response.has("error"):
+		push_error("Failed to get builds: %s" % response.error)
+		return
+
+	var result = response  # Response is already a Dictionary from send_rpc
+
+	if result.get("success", false):
+		var builds: Dictionary = result.get("builds", {})
+		builds_updated.emit(builds)
+
+# --- Build Update Signal ---
+signal builds_updated(builds: Dictionary)

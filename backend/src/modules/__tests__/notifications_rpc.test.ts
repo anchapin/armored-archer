@@ -23,10 +23,7 @@ jest.mock('../notifications', () => ({
   isFirebaseInitialized: jest.fn().mockReturnValue(false),
 }));
 
-import {
-  registerNotificationEndpoints,
-  initializeNotifications,
-} from '../notifications_rpc';
+import { registerNotificationEndpoints, initializeNotifications } from '../notifications_rpc';
 
 import {
   registerDeviceToken as mockRegisterDeviceToken,
@@ -243,12 +240,7 @@ describe('notifications_rpc', () => {
       registerNotificationEndpoints(mockInitializer);
       const handler = getHandler('armored_archer_remove_device_token');
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        {},
-        '{}'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, {}, '{}');
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);
@@ -295,12 +287,7 @@ describe('notifications_rpc', () => {
       registerNotificationEndpoints(mockInitializer);
       const handler = getHandler('armored_archer_remove_device_token');
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        {},
-        '{{invalid'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, {}, '{{invalid');
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);
@@ -313,12 +300,7 @@ describe('notifications_rpc', () => {
       registerNotificationEndpoints(mockInitializer);
       const handler = getHandler('armored_archer_get_notification_preferences');
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        {},
-        '{}'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, {}, '{}');
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
@@ -338,12 +320,7 @@ describe('notifications_rpc', () => {
       registerNotificationEndpoints(mockInitializer);
       const handler = getHandler('armored_archer_get_notification_preferences');
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        {},
-        '{}'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, {}, '{}');
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);
@@ -356,12 +333,7 @@ describe('notifications_rpc', () => {
       registerNotificationEndpoints(mockInitializer);
       const handler = getHandler('armored_archer_get_notification_preferences');
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        {},
-        '{}'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, {}, '{}');
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);
@@ -384,12 +356,7 @@ describe('notifications_rpc', () => {
       registerNotificationEndpoints(mockInitializer);
       const handler = getHandler('armored_archer_get_notification_preferences');
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        {},
-        '{}'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, {}, '{}');
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
@@ -474,12 +441,7 @@ describe('notifications_rpc', () => {
       registerNotificationEndpoints(mockInitializer);
       const handler = getHandler('armored_archer_update_notification_preferences');
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        {},
-        '{bad json'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, {}, '{bad json');
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);
@@ -623,12 +585,7 @@ describe('notifications_rpc', () => {
       registerNotificationEndpoints(mockInitializer);
       const handler = getHandler('armored_archer_schedule_notification');
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        {},
-        '{{notjson'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, {}, '{{notjson');
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);
@@ -641,12 +598,7 @@ describe('notifications_rpc', () => {
       registerNotificationEndpoints(mockInitializer);
       const handler = getHandler('armored_archer_cancel_notification');
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        {},
-        '{}'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, {}, '{}');
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);
@@ -667,10 +619,7 @@ describe('notifications_rpc', () => {
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
-      expect(mockCancelScheduledNotification).toHaveBeenCalledWith(
-        expect.anything(),
-        'notif-456'
-      );
+      expect(mockCancelScheduledNotification).toHaveBeenCalledWith(expect.anything(), 'notif-456');
     });
 
     test('should handle cancellation failure', async () => {
@@ -699,12 +648,7 @@ describe('notifications_rpc', () => {
       registerNotificationEndpoints(mockInitializer);
       const handler = getHandler('armored_archer_cancel_notification');
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        {},
-        '{invalid'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, {}, '{invalid');
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);
@@ -722,12 +666,7 @@ describe('notifications_rpc', () => {
         dbQuery: jest.fn().mockResolvedValue([{ count: 3 }]),
       };
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        mockNk,
-        '{}'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, mockNk, '{}');
 
       const parsed = JSON.parse(result);
       expect(parsed.firebaseEnabled).toBe(true);
@@ -744,12 +683,7 @@ describe('notifications_rpc', () => {
         dbQuery: jest.fn().mockResolvedValue([]),
       };
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        mockNk,
-        '{}'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, mockNk, '{}');
 
       const parsed = JSON.parse(result);
       expect(parsed.firebaseEnabled).toBe(false);
@@ -765,12 +699,7 @@ describe('notifications_rpc', () => {
         dbQuery: jest.fn().mockRejectedValue(new Error('DB error')),
       };
 
-      const result = await handler(
-        { userId: 'user-123' },
-        { error: jest.fn() },
-        mockNk,
-        '{}'
-      );
+      const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, mockNk, '{}');
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);

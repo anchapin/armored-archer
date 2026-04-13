@@ -27,10 +27,12 @@ jest.mock('@opentelemetry/api', () => {
     trace: {
       getTracer: jest.fn().mockReturnValue({
         startSpan: jest.fn().mockReturnValue(mockSpan),
-        startActiveSpan: jest.fn().mockImplementation((_name: string, _opts: unknown, fn: unknown) => {
-          const callback = typeof _opts === 'function' ? _opts : fn;
-          return (callback as (span: typeof mockSpan) => unknown)(mockSpan);
-        }),
+        startActiveSpan: jest
+          .fn()
+          .mockImplementation((_name: string, _opts: unknown, fn: unknown) => {
+            const callback = typeof _opts === 'function' ? _opts : fn;
+            return (callback as (span: typeof mockSpan) => unknown)(mockSpan);
+          }),
       }),
       getSpan: jest.fn().mockReturnValue(mockSpan),
     },
@@ -66,12 +68,20 @@ jest.mock('../tracing-helpers', () => {
     addEvent: jest.fn(),
   };
   return {
-    withSpanAsync: jest.fn().mockImplementation(async (_name: string, fn: (span: typeof mockSpan) => Promise<unknown>) => {
-      return fn(mockSpan);
-    }),
-    withActiveSpanAsync: jest.fn().mockImplementation(async (_name: string, fn: (span: typeof mockSpan) => Promise<unknown>) => {
-      return fn(mockSpan);
-    }),
+    withSpanAsync: jest
+      .fn()
+      .mockImplementation(
+        async (_name: string, fn: (span: typeof mockSpan) => Promise<unknown>) => {
+          return fn(mockSpan);
+        }
+      ),
+    withActiveSpanAsync: jest
+      .fn()
+      .mockImplementation(
+        async (_name: string, fn: (span: typeof mockSpan) => Promise<unknown>) => {
+          return fn(mockSpan);
+        }
+      ),
   };
 });
 

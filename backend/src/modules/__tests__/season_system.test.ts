@@ -328,8 +328,16 @@ describe('season_system', () => {
       mockNk.leaderboardRecordWrite = jest.fn();
 
       const result = applyEloUpdates(
-        mockNk, mockCtx, { season_id: 'season_1' },
-        'winner', 'loser', 1000, 1000, false, null, null
+        mockNk,
+        mockCtx,
+        { season_id: 'season_1' },
+        'winner',
+        'loser',
+        1000,
+        1000,
+        false,
+        null,
+        null
       );
 
       expect(result.winnerNewElo).toBeGreaterThan(1000);
@@ -341,13 +349,29 @@ describe('season_system', () => {
       mockNk.leaderboardRecordWrite = jest.fn();
 
       const normalResult = applyEloUpdates(
-        mockNk, mockCtx, { season_id: 'season_1' },
-        'winner', 'loser', 1000, 1000, false, null, null
+        mockNk,
+        mockCtx,
+        { season_id: 'season_1' },
+        'winner',
+        'loser',
+        1000,
+        1000,
+        false,
+        null,
+        null
       );
 
       const punchUpResult = applyEloUpdates(
-        mockNk, mockCtx, { season_id: 'season_1' },
-        'winner', 'loser', 1000, 1000, true, null, null
+        mockNk,
+        mockCtx,
+        { season_id: 'season_1' },
+        'winner',
+        'loser',
+        1000,
+        1000,
+        true,
+        null,
+        null
       );
 
       // Punch-up should give more points to the lower-rated winner
@@ -361,8 +385,16 @@ describe('season_system', () => {
       mockNk.leaderboardRecordWrite = jest.fn();
 
       applyEloUpdates(
-        mockNk, mockCtx, { season_id: 'season_1' },
-        'winner', 'loser', 1000, 1000, false, null, null
+        mockNk,
+        mockCtx,
+        { season_id: 'season_1' },
+        'winner',
+        'loser',
+        1000,
+        1000,
+        false,
+        null,
+        null
       );
 
       expect(mockNk.leaderboardRecordWrite).toHaveBeenCalledTimes(2);
@@ -380,9 +412,11 @@ describe('season_system', () => {
 
     it('should not decay active players', () => {
       const { applyRankDecay } = require('../season_system');
-      mockNk.storageRead = jest.fn().mockReturnValue([{
-        value: JSON.stringify({ last_match_time: Date.now() - 1000 }),
-      }]);
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          value: JSON.stringify({ last_match_time: Date.now() - 1000 }),
+        },
+      ]);
 
       const result = applyRankDecay(mockNk, 'user_123', 1500);
       expect(result).toBe(1500);
@@ -401,9 +435,11 @@ describe('season_system', () => {
   describe('getRankDecayInfo', () => {
     it('should return decay info for active player', () => {
       const { getRankDecayInfo } = require('../season_system');
-      mockNk.storageRead = jest.fn().mockReturnValue([{
-        value: JSON.stringify({ last_match_time: Date.now() }),
-      }]);
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          value: JSON.stringify({ last_match_time: Date.now() }),
+        },
+      ]);
 
       const info = getRankDecayInfo(mockNk, 'user_123', 1500);
       expect(info.days_inactive).toBe(0);
@@ -456,13 +492,15 @@ describe('season_system', () => {
 
     it('should return entry when found', () => {
       const { getLeaderboardEntry } = require('../season_system');
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([{
-        ownerId: 'user_123',
-        username: 'Player',
-        rank: 5,
-        score: 1500,
-        metadata: JSON.stringify({ wins: 10, losses: 2, win_rate: 0.83, punch_up_wins: 3 }),
-      }]);
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([
+        {
+          ownerId: 'user_123',
+          username: 'Player',
+          rank: 5,
+          score: 1500,
+          metadata: JSON.stringify({ wins: 10, losses: 2, win_rate: 0.83, punch_up_wins: 3 }),
+        },
+      ]);
 
       const entry = getLeaderboardEntry(mockNk, 'user_123', 'season_1');
       expect(entry).toBeDefined();

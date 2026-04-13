@@ -22,7 +22,7 @@ def run_gut_tests():
     """Run GUT tests and parse JUnit XML output"""
     try:
         # Run GUT tests
-        _proc = subprocess.run(
+        subprocess.run(
             ['godot4', '--headless', '--script', 'res://test/run_all_tests.gd'],
             capture_output=True,
             text=True,

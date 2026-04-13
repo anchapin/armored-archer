@@ -442,7 +442,11 @@ describe('gear_system', () => {
     });
 
     it('should validate input payload', () => {
-      const payload = JSON.stringify({ stage_id: '', boss_defeated: 'not boolean', difficulty: 'invalid' });
+      const payload = JSON.stringify({
+        stage_id: '',
+        boss_defeated: 'not boolean',
+        difficulty: 'invalid',
+      });
       const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -903,27 +907,49 @@ describe('gear_system', () => {
       };
 
       let callCount = 0;
-      mockNk.storageRead = jest.fn((objects: { collection: string; key: string; userId?: string }[]) => {
-        callCount++;
-        if (callCount <= 2) {
+      mockNk.storageRead = jest.fn(
+        (objects: { collection: string; key: string; userId?: string }[]) => {
+          callCount++;
+          if (callCount <= 2) {
+            return objects.map((obj) => {
+              if (obj.collection === 'player_inventory') {
+                return {
+                  collection: 'player_inventory',
+                  key: 'test-user',
+                  value: JSON.stringify(existingInventory),
+                  version: '1',
+                };
+              } else if (obj.collection === 'boss_defeat_tracking') {
+                return {
+                  collection: 'boss_defeat_tracking',
+                  key: 'test-user',
+                  value: JSON.stringify(existingBossDefeatData),
+                  version: '1',
+                };
+              }
+              return { collection: obj.collection, key: obj.key, value: '' };
+            });
+          }
           return objects.map((obj) => {
             if (obj.collection === 'player_inventory') {
-              return { collection: 'player_inventory', key: 'test-user', value: JSON.stringify(existingInventory), version: '1' };
+              return {
+                collection: 'player_inventory',
+                key: 'test-user',
+                value: JSON.stringify(existingInventory),
+                version: '1',
+              };
             } else if (obj.collection === 'boss_defeat_tracking') {
-              return { collection: 'boss_defeat_tracking', key: 'test-user', value: JSON.stringify(existingBossDefeatData), version: '1' };
+              return {
+                collection: 'boss_defeat_tracking',
+                key: 'test-user',
+                value: JSON.stringify({ ...existingBossDefeatData, defeats: { boss_basic: 3 } }),
+                version: '1',
+              };
             }
             return { collection: obj.collection, key: obj.key, value: '' };
           });
         }
-        return objects.map((obj) => {
-          if (obj.collection === 'player_inventory') {
-            return { collection: 'player_inventory', key: 'test-user', value: JSON.stringify(existingInventory), version: '1' };
-          } else if (obj.collection === 'boss_defeat_tracking') {
-            return { collection: 'boss_defeat_tracking', key: 'test-user', value: JSON.stringify({ ...existingBossDefeatData, defeats: { boss_basic: 3 } }), version: '1' };
-          }
-          return { collection: obj.collection, key: obj.key, value: '' };
-        });
-      });
+      );
       jest.spyOn(Math, 'random').mockReturnValue(0.9);
 
       const payload = JSON.stringify({
@@ -1080,7 +1106,15 @@ describe('gear_system', () => {
             type: 'bow',
             stats: [{ name: 'attack', base_value: 10, value: 10 }],
             modifiers: [
-              { id: 'broken_edge', name: 'Broken', description: 'No bonus', stat: 'attack', value_range: [0, 0], rarity: 'common', boss_unlock: null },
+              {
+                id: 'broken_edge',
+                name: 'Broken',
+                description: 'No bonus',
+                stat: 'attack',
+                value_range: [0, 0],
+                rarity: 'common',
+                boss_unlock: null,
+              },
             ],
             level: 1,
             timestamp: Date.now(),
@@ -1105,8 +1139,24 @@ describe('gear_system', () => {
             type: 'bow',
             stats: [{ name: 'attack', base_value: 10, value: 15 }],
             modifiers: [
-              { id: 'sharp_edge', name: 'Sharp', description: 'More attack', stat: 'attack', value_range: [7, 10], rarity: 'rare', boss_unlock: null },
-              { id: 'lucky', name: 'Lucky', description: 'More crit', stat: 'crit_rate', value_range: [3, 5], rarity: 'rare', boss_unlock: null },
+              {
+                id: 'sharp_edge',
+                name: 'Sharp',
+                description: 'More attack',
+                stat: 'attack',
+                value_range: [7, 10],
+                rarity: 'rare',
+                boss_unlock: null,
+              },
+              {
+                id: 'lucky',
+                name: 'Lucky',
+                description: 'More crit',
+                stat: 'crit_rate',
+                value_range: [3, 5],
+                rarity: 'rare',
+                boss_unlock: null,
+              },
             ],
             level: 1,
             timestamp: Date.now(),
@@ -1135,60 +1185,62 @@ describe('gear_system', () => {
         defeats: {},
         unlocked_modifiers: [],
       };
-      
+
       // Track calls to simulate storage state changes
       let callCount = 0;
-      mockNk.storageRead = jest.fn((objects: { collection: string; key: string; userId?: string }[]) => {
-        callCount++;
-        if (callCount <= 2) {
-          // Initial reads for getPlayerInventory and getBossDefeatData
+      mockNk.storageRead = jest.fn(
+        (objects: { collection: string; key: string; userId?: string }[]) => {
+          callCount++;
+          if (callCount <= 2) {
+            // Initial reads for getPlayerInventory and getBossDefeatData
+            return objects.map((obj) => {
+              if (obj.collection === 'player_inventory') {
+                return {
+                  collection: 'player_inventory',
+                  key: 'test-user',
+                  value: JSON.stringify(initialInventory),
+                  version: '1',
+                };
+              } else if (obj.collection === 'boss_defeat_tracking') {
+                return {
+                  collection: 'boss_defeat_tracking',
+                  key: 'test-user',
+                  value: JSON.stringify(initialBossDefeatData),
+                  version: '1',
+                };
+              }
+              return { collection: obj.collection, key: obj.key, value: '' };
+            });
+          }
+          // Subsequent reads (after storageWrite) - return updated data
           return objects.map((obj) => {
             if (obj.collection === 'player_inventory') {
               return {
                 collection: 'player_inventory',
                 key: 'test-user',
-                value: JSON.stringify(initialInventory),
+                value: JSON.stringify({
+                  ...initialInventory,
+                  unlocked_modifier_pools: ['piercing_arrow', 'wind_fury'],
+                }),
                 version: '1',
               };
             } else if (obj.collection === 'boss_defeat_tracking') {
               return {
                 collection: 'boss_defeat_tracking',
                 key: 'test-user',
-                value: JSON.stringify(initialBossDefeatData),
+                value: JSON.stringify({
+                  ...initialBossDefeatData,
+                  defeats: { boss_wind: 1 },
+                  unlocked_modifiers: ['piercing_arrow', 'wind_fury'],
+                }),
                 version: '1',
               };
             }
             return { collection: obj.collection, key: obj.key, value: '' };
           });
         }
-        // Subsequent reads (after storageWrite) - return updated data
-        return objects.map((obj) => {
-          if (obj.collection === 'player_inventory') {
-            return {
-              collection: 'player_inventory',
-              key: 'test-user',
-              value: JSON.stringify({
-                ...initialInventory,
-                unlocked_modifier_pools: ['piercing_arrow', 'wind_fury'],
-              }),
-              version: '1',
-            };
-          } else if (obj.collection === 'boss_defeat_tracking') {
-            return {
-              collection: 'boss_defeat_tracking',
-              key: 'test-user',
-              value: JSON.stringify({
-                ...initialBossDefeatData,
-                defeats: { boss_wind: 1 },
-                unlocked_modifiers: ['piercing_arrow', 'wind_fury'],
-              }),
-              version: '1',
-            };
-          }
-          return { collection: obj.collection, key: obj.key, value: '' };
-        });
-      });
-      
+      );
+
       jest.spyOn(Math, 'random').mockReturnValue(0.1);
 
       const payload = JSON.stringify({
@@ -1219,27 +1271,56 @@ describe('gear_system', () => {
       };
 
       let callCount = 0;
-      mockNk.storageRead = jest.fn((objects: { collection: string; key: string; userId?: string }[]) => {
-        callCount++;
-        if (callCount <= 2) {
+      mockNk.storageRead = jest.fn(
+        (objects: { collection: string; key: string; userId?: string }[]) => {
+          callCount++;
+          if (callCount <= 2) {
+            return objects.map((obj) => {
+              if (obj.collection === 'player_inventory') {
+                return {
+                  collection: 'player_inventory',
+                  key: 'test-user',
+                  value: JSON.stringify(existingInventory),
+                  version: '1',
+                };
+              } else if (obj.collection === 'boss_defeat_tracking') {
+                return {
+                  collection: 'boss_defeat_tracking',
+                  key: 'test-user',
+                  value: JSON.stringify(existingBossDefeatData),
+                  version: '1',
+                };
+              }
+              return { collection: obj.collection, key: obj.key, value: '' };
+            });
+          }
           return objects.map((obj) => {
             if (obj.collection === 'player_inventory') {
-              return { collection: 'player_inventory', key: 'test-user', value: JSON.stringify(existingInventory), version: '1' };
+              return {
+                collection: 'player_inventory',
+                key: 'test-user',
+                value: JSON.stringify({
+                  ...existingInventory,
+                  unlocked_modifier_pools: ['heavy_impact', 'vitality_boost'],
+                }),
+                version: '1',
+              };
             } else if (obj.collection === 'boss_defeat_tracking') {
-              return { collection: 'boss_defeat_tracking', key: 'test-user', value: JSON.stringify(existingBossDefeatData), version: '1' };
+              return {
+                collection: 'boss_defeat_tracking',
+                key: 'test-user',
+                value: JSON.stringify({
+                  ...existingBossDefeatData,
+                  defeats: { boss_basic: 1 },
+                  unlocked_modifiers: ['heavy_impact'],
+                }),
+                version: '1',
+              };
             }
             return { collection: obj.collection, key: obj.key, value: '' };
           });
         }
-        return objects.map((obj) => {
-          if (obj.collection === 'player_inventory') {
-            return { collection: 'player_inventory', key: 'test-user', value: JSON.stringify({ ...existingInventory, unlocked_modifier_pools: ['heavy_impact', 'vitality_boost'] }), version: '1' };
-          } else if (obj.collection === 'boss_defeat_tracking') {
-            return { collection: 'boss_defeat_tracking', key: 'test-user', value: JSON.stringify({ ...existingBossDefeatData, defeats: { boss_basic: 1 }, unlocked_modifiers: ['heavy_impact'] }), version: '1' };
-          }
-          return { collection: obj.collection, key: obj.key, value: '' };
-        });
-      });
+      );
       jest.spyOn(Math, 'random').mockReturnValue(0.1);
 
       const payload = JSON.stringify({
@@ -1289,10 +1370,31 @@ describe('gear_system', () => {
 
       // Track calls to simulate storage state changes
       let callCount = 0;
-      mockNk.storageRead = jest.fn((objects: { collection: string; key: string; userId?: string }[]) => {
-        callCount++;
-        if (callCount <= 2) {
-          // Initial reads for getPlayerInventory and getBossDefeatData
+      mockNk.storageRead = jest.fn(
+        (objects: { collection: string; key: string; userId?: string }[]) => {
+          callCount++;
+          if (callCount <= 2) {
+            // Initial reads for getPlayerInventory and getBossDefeatData
+            return objects.map((obj) => {
+              if (obj.collection === 'player_inventory') {
+                return {
+                  collection: 'player_inventory',
+                  key: 'test-user',
+                  value: JSON.stringify(existingInventory),
+                  version: '1',
+                };
+              } else if (obj.collection === 'boss_defeat_tracking') {
+                return {
+                  collection: 'boss_defeat_tracking',
+                  key: 'test-user',
+                  value: JSON.stringify(existingBossDefeatData),
+                  version: '1',
+                };
+              }
+              return { collection: obj.collection, key: obj.key, value: '' };
+            });
+          }
+          // Subsequent reads (after storageWrite) - return updated data
           return objects.map((obj) => {
             if (obj.collection === 'player_inventory') {
               return {
@@ -1312,26 +1414,7 @@ describe('gear_system', () => {
             return { collection: obj.collection, key: obj.key, value: '' };
           });
         }
-        // Subsequent reads (after storageWrite) - return updated data
-        return objects.map((obj) => {
-          if (obj.collection === 'player_inventory') {
-            return {
-              collection: 'player_inventory',
-              key: 'test-user',
-              value: JSON.stringify(existingInventory),
-              version: '1',
-            };
-          } else if (obj.collection === 'boss_defeat_tracking') {
-            return {
-              collection: 'boss_defeat_tracking',
-              key: 'test-user',
-              value: JSON.stringify(existingBossDefeatData),
-              version: '1',
-            };
-          }
-          return { collection: obj.collection, key: obj.key, value: '' };
-        });
-      });
+      );
       jest.spyOn(Math, 'random').mockReturnValue(0.1);
 
       const payload = JSON.stringify({
@@ -1345,7 +1428,9 @@ describe('gear_system', () => {
 
       expect(parsed.success).toBe(true);
       // Should only have piercing_arrow once
-      const count = parsed.unlocked_modifier_pools.filter((m: string) => m === 'piercing_arrow').length;
+      const count = parsed.unlocked_modifier_pools.filter(
+        (m: string) => m === 'piercing_arrow'
+      ).length;
       expect(count).toBe(1);
     });
   });

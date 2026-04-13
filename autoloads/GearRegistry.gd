@@ -11,6 +11,46 @@ const GearEnums = preload("res://scripts/gear_enums.gd")
 var base_gear_db: Dictionary = {}
 var skin_db: Dictionary = {}
 
+# Soft cap values for gear stats (used for diminishing returns)
+const GEAR_SOFT_CAPS: Dictionary = {
+	"helm": {"defense": 70, "health": 350},
+	"armor": {"defense": 105, "health": 420},
+	"bow": {"attack": 105, "crit_rate": 21},
+	"arrow": {"attack": 70, "crit_rate": 18},
+	"amulet": {"dodge": 21, "crit_rate": 14}
+}
+
+# Synergy groups for set bonuses
+const SYNERGY_GROUPS: Dictionary = {
+	"dragon_set": {
+		"pieces": ["helm_dragon", "armor_plate", "bow_crossbow", "arrow_dragon", "amulet_dragon"],
+		"bonuses": {
+			2: {"stat": "attack", "value": 5},
+			3: {"stat": "crit_rate", "value": 3},
+			4: {"stat": "health", "value": 50},
+			5: {"stat": "all", "value": 10}
+		}
+	},
+	"iron_set": {
+		"pieces": ["helm_iron", "armor_chain", "bow_composite", "arrow_iron", "amulet_power"],
+		"bonuses": {
+			2: {"stat": "defense", "value": 5},
+			3: {"stat": "health", "value": 30},
+			4: {"stat": "dodge", "value": 2},
+			5: {"stat": "defense", "value": 15}
+		}
+	}
+}
+
+# Maximum stat values for validation
+const MAX_STATS: Dictionary = {
+	"helm": {"defense": 100, "health": 500},
+	"armor": {"defense": 150, "health": 600},
+	"bow": {"attack": 150, "crit_rate": 30},
+	"arrow": {"attack": 100, "crit_rate": 25},
+	"amulet": {"dodge": 30, "crit_rate": 20}
+}
+
 func _ready() -> void:
 	"""Initializes the gear and skin databases."""
 	_initialize_base_gear()
@@ -164,3 +204,89 @@ func calculate_total_stats(loadout: Dictionary) -> Dictionary:
 			for stat in total_stats:
 				total_stats[stat] += gear_data.stats.get(stat, 0)
 	return total_stats
+
+func get_synergy_groups() -> Dictionary:
+	"""Returns the synergy groups configuration.
+
+	Returns:
+		Dictionary: Synergy groups with pieces and bonuses
+	"""
+	return SYNERGY_GROUPS
+
+func get_gear_soft_caps() -> Dictionary:
+	"""Returns soft cap values for gear stats.
+
+	Returns:
+		Dictionary: Soft caps by gear type and stat
+	"""
+	return GEAR_SOFT_CAPS
+
+func get_max_stats() -> Dictionary:
+	"""Returns maximum stat values for gear validation.
+
+	Returns:
+		Dictionary: Max values by gear type and stat
+	"""
+	return MAX_STATS
+
+func validate_gear_stats(gear_type: String, stats: Dictionary) -> Dictionary:
+	"""Validates that gear stats do not exceed maximum values.
+
+	Parameters:
+		gear_type: Type of gear (helm, armor, bow, arrow, amulet)
+		stats: Dictionary of stat names to values
+
+	Returns:
+		Dictionary: {"valid": bool, "reason": String}
+	"""
+	var max_values: Dictionary = MAX_STATS.get(gear_type, {})
+
+	for stat_name in stats.keys():
+		var stat_value: int = int(stats[stat_name])
+		var max_allowed: int = max_values.get(stat_name, 100)
+
+		if stat_value > max_allowed:
+			return {
+				"valid": false,
+				"reason": "Stat %s value %d exceeds maximum %d for %s" % [stat_name, stat_value, max_allowed, gear_type]
+			}
+
+	return {"valid": true, "reason": ""}
+
+func get_synergy_bonus_for_set(equipped_gear_ids: Array) -> Dictionary:
+	"""Calculates synergy bonuses from equipped gear.
+
+	Parameters:
+		equipped_gear_ids: Array of base gear IDs currently equipped
+
+	Returns:
+		Dictionary: Synergy bonuses by stat name
+	"""
+	var bonuses: Dictionary = {}
+
+	for synergy_name in SYNERGY_GROUPS.keys():
+		var synergy_data: Dictionary = SYNERGY_GROUPS[synergy_name]
+		var pieces: Array = synergy_data["pieces"]
+		var bonus_tiers: Dictionary = synergy_data["bonuses"]
+
+		# Count how many pieces from this set are equipped
+		var equipped_count: int = 0
+		for gear_id in equipped_gear_ids:
+			if pieces.has(gear_id):
+				equipped_count += 1
+
+		# Apply bonuses based on count
+		for tier_count in bonus_tiers.keys():
+			if equipped_count >= tier_count:
+				var bonus: Dictionary = bonus_tiers[tier_count]
+				var stat: String = bonus["stat"]
+				var value: float = float(bonus["value"])
+
+				if stat == "all":
+					# Apply bonus to all stats
+					bonuses["all_multiplier"] = max(bonuses.get("all_multiplier", 0.0), value / 100.0)
+				else:
+					# Stack with existing bonus
+					bonuses[stat] = bonuses.get(stat, 0.0) + value
+
+	return bonuses

@@ -12,17 +12,12 @@ describe('Error Handling Tests', () => {
     adminAccount = await testHelper.createTestAccount('error_test_admin');
 
     // Setup player stats
-    await testHelper.writeStorageObject(
-      'player_stats',
-      player.userId,
-      player.userId,
-      {
-        level: 10,
-        xp: 2000,
-        ability_points: 5,
-        stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 }
-      }
-    );
+    await testHelper.writeStorageObject('player_stats', player.userId, player.userId, {
+      level: 10,
+      xp: 2000,
+      ability_points: 5,
+      stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
+    });
   }, 120000);
 
   afterAll(async () => {
@@ -81,7 +76,7 @@ describe('Error Handling Tests', () => {
       // Create invalid session
       const invalidSession = {
         ...freshAccount.session,
-        token: 'invalid_token_xyz'
+        token: 'invalid_token_xyz',
       };
 
       try {
@@ -99,7 +94,7 @@ describe('Error Handling Tests', () => {
       // Create expired session
       const expiredSession = {
         ...freshAccount.session,
-        expires_at: 0
+        expires_at: 0,
       };
 
       try {
@@ -116,7 +111,7 @@ describe('Error Handling Tests', () => {
       test('should return error for negative XP amount', async () => {
         const result = await rpcCall(player, 'armored_archer/gain_xp', {
           xp_amount: -100,
-          source: 'pve'
+          source: 'pve',
         });
 
         expect(result.error_code).toBe('VALIDATION_ERROR');
@@ -125,7 +120,7 @@ describe('Error Handling Tests', () => {
       test('should return error for zero XP amount', async () => {
         const result = await rpcCall(player, 'armored_archer/gain_xp', {
           xp_amount: 0,
-          source: 'pve'
+          source: 'pve',
         });
 
         expect(result.error_code).toBe('VALIDATION_ERROR');
@@ -134,7 +129,7 @@ describe('Error Handling Tests', () => {
       test('should return error for invalid XP source', async () => {
         const result = await rpcCall(player, 'armored_archer/gain_xp', {
           xp_amount: 100,
-          source: 'invalid_source'
+          source: 'invalid_source',
         });
 
         expect(result.error_code).toBe('VALIDATION_ERROR');
@@ -142,7 +137,7 @@ describe('Error Handling Tests', () => {
 
       test('should return error for missing XP source', async () => {
         const result = await rpcCall(player, 'armored_archer/gain_xp', {
-          xp_amount: 100
+          xp_amount: 100,
         });
 
         expect(result.error_code).toBe('VALIDATION_ERROR');
@@ -153,7 +148,7 @@ describe('Error Handling Tests', () => {
       test('should return error for negative stat points', async () => {
         const result = await rpcCall(player, 'armored_archer/allocate_stats', {
           stat_name: 'attack',
-          points: -1
+          points: -1,
         });
 
         expect(result.error_code).toBe('VALIDATION_ERROR');
@@ -162,7 +157,7 @@ describe('Error Handling Tests', () => {
       test('should return error for zero stat points', async () => {
         const result = await rpcCall(player, 'armored_archer/allocate_stats', {
           stat_name: 'attack',
-          points: 0
+          points: 0,
         });
 
         expect(result.error_code).toBe('VALIDATION_ERROR');
@@ -171,7 +166,7 @@ describe('Error Handling Tests', () => {
       test('should return error for invalid stat name', async () => {
         const result = await rpcCall(player, 'armored_archer/allocate_stats', {
           stat_name: 'invalid_stat',
-          points: 1
+          points: 1,
         });
 
         expect(result.error_code).toBe('VALIDATION_ERROR');
@@ -179,21 +174,16 @@ describe('Error Handling Tests', () => {
 
       test('should return error for insufficient ability points', async () => {
         // Set player with only 1 ability point
-        await testHelper.writeStorageObject(
-          'player_stats',
-          player.userId,
-          player.userId,
-          {
-            level: 2,
-            xp: 100,
-            ability_points: 1,
-            stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 }
-          }
-        );
+        await testHelper.writeStorageObject('player_stats', player.userId, player.userId, {
+          level: 2,
+          xp: 100,
+          ability_points: 1,
+          stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+        });
 
         const result = await rpcCall(player, 'armored_archer/allocate_stats', {
           stat_name: 'attack',
-          points: 5
+          points: 5,
         });
 
         expect(result.error).toBe('Not enough ability points');
@@ -205,13 +195,13 @@ describe('Error Handling Tests', () => {
         // First generate some gear
         const generateResult = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: 'stage_test',
-          boss_defeated: false
+          boss_defeated: false,
         });
 
         if (generateResult.success && generateResult.gear) {
           const result = await rpcCall(player, 'armored_archer/equip_gear', {
             gear_id: generateResult.gear.id,
-            slot: 'invalid_slot'
+            slot: 'invalid_slot',
           });
 
           expect(result.error).toBeDefined();
@@ -221,7 +211,7 @@ describe('Error Handling Tests', () => {
       test('should return error for non-existent gear ID', async () => {
         const result = await rpcCall(player, 'armored_archer/equip_gear', {
           gear_id: 'nonexistent_gear_12345',
-          slot: 'weapon'
+          slot: 'weapon',
         });
 
         expect(result.error).toBe('Gear not found in inventory');
@@ -233,7 +223,7 @@ describe('Error Handling Tests', () => {
         for (let i = 0; i < 20; i++) {
           const result = await rpcCall(player, 'armored_archer/generate_gear', {
             stage_id: `stage_armor_${i}`,
-            boss_defeated: false
+            boss_defeated: false,
           });
           if (result.success && result.gear.type === 'armor') {
             armorGear = result.gear;
@@ -245,7 +235,7 @@ describe('Error Handling Tests', () => {
           // Try to equip armor as weapon
           const result = await rpcCall(player, 'armored_archer/equip_gear', {
             gear_id: armorGear.id,
-            slot: 'weapon'
+            slot: 'weapon',
           });
 
           expect(result.error).toBe('Gear type does not match slot');
@@ -256,7 +246,7 @@ describe('Error Handling Tests', () => {
     describe('Match System Validation', () => {
       test('should return error for non-existent match ID', async () => {
         const result = await rpcCall(player, 'armored_archer/accept_match', {
-          match_id: 'nonexistent_match_xyz'
+          match_id: 'nonexistent_match_xyz',
         });
 
         expect(result.error).toContain('not found');
@@ -264,7 +254,7 @@ describe('Error Handling Tests', () => {
 
       test('should return error for invalid match type', async () => {
         const result = await rpcCall(player, 'armored_archer/create_match', {
-          match_type: 'invalid_type'
+          match_type: 'invalid_type',
         });
 
         expect(result.error).toBeDefined();
@@ -273,7 +263,7 @@ describe('Error Handling Tests', () => {
       test('should return error for self-targeting in match creation', async () => {
         const result = await rpcCall(player, 'armored_archer/create_match', {
           match_type: 'ranked',
-          target_opponent_id: player.userId
+          target_opponent_id: player.userId,
         });
 
         // Should either succeed (allowing self-matches) or return error
@@ -284,7 +274,7 @@ describe('Error Handling Tests', () => {
     describe('Store System Validation', () => {
       test('should return error for negative gem amount', async () => {
         const result = await rpcCall(player, 'armored_archer/spend_gems', {
-          amount: -50
+          amount: -50,
         });
 
         expect(result.error_code).toBe('VALIDATION_ERROR');
@@ -292,7 +282,7 @@ describe('Error Handling Tests', () => {
 
       test('should return error for zero gem amount', async () => {
         const result = await rpcCall(player, 'armored_archer/spend_gems', {
-          amount: 0
+          amount: 0,
         });
 
         expect(result.error_code).toBe('VALIDATION_ERROR');
@@ -300,15 +290,14 @@ describe('Error Handling Tests', () => {
 
       test('should return error for insufficient gems', async () => {
         // Set low gem balance
-        await testHelper.writeStorageObject(
-          'player_currency',
-          player.userId,
-          player.userId,
-          { user_id: player.userId, gems: 10, gold: 100 }
-        );
+        await testHelper.writeStorageObject('player_currency', player.userId, player.userId, {
+          user_id: player.userId,
+          gems: 10,
+          gold: 100,
+        });
 
         const result = await rpcCall(player, 'armored_archer/spend_gems', {
-          amount: 100
+          amount: 100,
         });
 
         expect(result.error).toBe('Insufficient gems');
@@ -318,7 +307,7 @@ describe('Error Handling Tests', () => {
         const result = await rpcCall(player, 'armored_archer/validate_purchase', {
           product_id: 'invalid.product.id',
           platform: 'ios',
-          transaction_receipt: 'test_receipt'
+          transaction_receipt: 'test_receipt',
         });
 
         expect(result.error).toBe('Invalid product ID');
@@ -328,7 +317,7 @@ describe('Error Handling Tests', () => {
         const result = await rpcCall(player, 'armored_archer/validate_purchase', {
           product_id: 'com.armoredarcher.gems.small',
           platform: 'web',
-          transaction_receipt: 'test_receipt'
+          transaction_receipt: 'test_receipt',
         });
 
         expect(result.error_code).toBe('VALIDATION_ERROR');
@@ -371,7 +360,7 @@ describe('Error Handling Tests', () => {
   describe('Error Response Format', () => {
     test('should include error field in error responses', async () => {
       const result = await rpcCall(player, 'armored_archer/accept_match', {
-        match_id: 'nonexistent'
+        match_id: 'nonexistent',
       });
 
       expect(result.error).toBeDefined();
@@ -380,7 +369,7 @@ describe('Error Handling Tests', () => {
     test('should include error_code for validation errors', async () => {
       const result = await rpcCall(player, 'armored_archer/gain_xp', {
         xp_amount: -100,
-        source: 'pve'
+        source: 'pve',
       });
 
       expect(result.error_code).toBe('VALIDATION_ERROR');
@@ -389,7 +378,7 @@ describe('Error Handling Tests', () => {
     test('should provide descriptive error messages', async () => {
       const result = await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: 'fake_gear_id',
-        slot: 'weapon'
+        slot: 'weapon',
       });
 
       expect(result.error).toBeDefined();
@@ -398,7 +387,7 @@ describe('Error Handling Tests', () => {
 
     test('should not expose internal error details to client', async () => {
       const result = await rpcCall(player, 'armored_archer/get_inventory', {
-        inject_sql: "'; DROP TABLE player_inventory; --"
+        inject_sql: "'; DROP TABLE player_inventory; --",
       });
 
       // Should return error without exposing SQL or internal details
@@ -412,7 +401,7 @@ describe('Error Handling Tests', () => {
     test('should handle very large numbers', async () => {
       const result = await rpcCall(player, 'armored_archer/gain_xp', {
         xp_amount: Number.MAX_SAFE_INTEGER,
-        source: 'pve'
+        source: 'pve',
       });
 
       // Should handle gracefully (either succeed or return validation error)
@@ -422,7 +411,7 @@ describe('Error Handling Tests', () => {
     test('should handle very long strings', async () => {
       const longString = 'a'.repeat(10000);
       const result = await rpcCall(player, 'armored_archer/create_match', {
-        match_type: longString
+        match_type: longString,
       });
 
       // Should return validation error, not crash
@@ -432,7 +421,7 @@ describe('Error Handling Tests', () => {
     test('should handle special characters in payloads', async () => {
       const result = await rpcCall(player, 'armored_archer/create_match', {
         match_type: 'ranked\ninjected',
-        target_opponent_id: 'user<script>alert(1)</script>'
+        target_opponent_id: 'user<script>alert(1)</script>',
       });
 
       // Should handle safely
@@ -441,7 +430,7 @@ describe('Error Handling Tests', () => {
 
     test('should handle empty arrays', async () => {
       const result = await rpcCall(player, 'armored_archer/get_leaderboard', {
-        limit: 0
+        limit: 0,
       });
 
       // Should return empty or minimal result
@@ -450,7 +439,7 @@ describe('Error Handling Tests', () => {
 
     test('should handle very large limit values', async () => {
       const result = await rpcCall(player, 'armored_archer/get_leaderboard', {
-        limit: 999999
+        limit: 999999,
       });
 
       // Should handle gracefully (likely cap at max)
@@ -462,15 +451,13 @@ describe('Error Handling Tests', () => {
     test('should handle rapid sequential requests', async () => {
       const promises = [];
       for (let i = 0; i < 10; i++) {
-        promises.push(
-          rpcCall(player, 'armored_archer/get_player_rank', {})
-        );
+        promises.push(rpcCall(player, 'armored_archer/get_player_rank', {}));
       }
 
       const results = await Promise.allSettled(promises);
 
       // Most should succeed (some may be rate limited)
-      const fulfilled = results.filter(r => r.status === 'fulfilled');
+      const fulfilled = results.filter((r) => r.status === 'fulfilled');
       expect(fulfilled.length).toBeGreaterThan(5);
     });
 
@@ -480,17 +467,17 @@ describe('Error Handling Tests', () => {
         'get_player_stats',
         'get_inventory',
         'get_currency',
-        'get_season_info'
+        'get_season_info',
       ];
 
-      const promises = endpoints.map(endpoint =>
+      const promises = endpoints.map((endpoint) =>
         rpcCall(player, `armored_archer/${endpoint}`, {})
       );
 
       const results = await Promise.allSettled(promises);
 
       // Most should succeed
-      const fulfilled = results.filter(r => r.status === 'fulfilled');
+      const fulfilled = results.filter((r) => r.status === 'fulfilled');
       expect(fulfilled.length).toBeGreaterThanOrEqual(3);
     });
   });
@@ -514,7 +501,7 @@ describe('Error Handling Tests', () => {
       // Try invalid operation
       await rpcCall(player, 'armored_archer/gain_xp', {
         xp_amount: -1000,
-        source: 'pve'
+        source: 'pve',
       });
 
       // Verify state unchanged

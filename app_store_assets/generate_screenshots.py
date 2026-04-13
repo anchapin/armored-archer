@@ -42,7 +42,7 @@ def create_placeholder_screenshot(size, label, description, output_path):
         font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 60)
         font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
         font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
-    except Exception:
+    except:
         # Fall back to default font
         font_large = ImageFont.load_default()
         font_medium = ImageFont.load_default()
@@ -62,7 +62,7 @@ def create_placeholder_screenshot(size, label, description, output_path):
 
     # Calculate center positions
     center_x = size[0] // 2
-    _center_y = size[1] // 2
+    center_y = size[1] // 2
 
     # Draw label at top
     label_y = 150

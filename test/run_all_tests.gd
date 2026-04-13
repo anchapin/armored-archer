@@ -4,6 +4,8 @@ var _test_root: Node
 var _all_tests_completed := false
 var _total_tests := 0
 var _tests_run := 0
+var _total_passed := 0
+var _total_failed := 0
 
 func _init():
 	print("=== Starting Armored Archer Test Suite ===")
@@ -26,6 +28,7 @@ func _run_next_test():
 		"res://test/test_matchmaking_manager.gd",
 		"res://test/test_network_manager.gd",
 		"res://test/test_player_stats_manager.gd",
+		"res://test/test_weapon_balance_manager.gd",
 		"res://test/test_store_manager.gd",
 		"res://test/test_campaign_manager.gd",
 		"res://test/test_season_manager.gd",
@@ -106,6 +109,20 @@ func _run_next_test():
 		"res://test/test_cosmetic_skin_data.gd",
 		"res://test/test_modular_character_sprite.gd",
 
+		# Combat Juice Integration (Phase 3)
+		"res://test/test_combat_juice_integration.gd",
+		"res://test/test_damage_indicator_manager.gd",
+		"res://test/test_hit_reactions.gd",
+		"res://test/test_death_animations.gd",
+		"res://test/test_impact_manager.gd",
+
+		# PvP Balance (Phase 4)
+		"res://test/test_weapon_balance_manager.gd",
+		"res://test/test_player_rating_manager.gd",
+		"res://test/test_matchmaking_pool_manager.gd",
+		"res://test/test_season_leaderboard.gd",
+		"res://test/test_matchmaking_analytics_manager.gd",
+
 		# UI components
 		"res://test/test_ui_components.gd",
 
@@ -114,7 +131,16 @@ func _run_next_test():
 		"res://test/test_stat_allocation.gd",
 
 		# Extended coverage
-		"res://test/test_gear_enums_coverage.gd"
+		"res://test/test_gear_enums_coverage.gd",
+
+		# Progression & Difficulty (Phase 5)
+		"res://test/test_xp_manager.gd",
+		"res://test/test_difficulty_scaling_manager.gd",
+		"res://test/test_stat_allocation_manager.gd",
+		"res://test/test_dynamic_difficulty_manager.gd",
+		"res://test/test_pacing_manager.gd",
+		"res://test/test_progression_indicator_manager.gd",
+		"res://test/test_progression_scenarios.gd"
 	]
 
 	_total_tests = test_files.size()
@@ -127,10 +153,44 @@ func _run_tests_async(test_files: Array):
 			var test_instance = test_script.new()
 			_test_root.add_child(test_instance)
 			_tests_run += 1
-			# Give tests time to complete
-			await process_frame
-			await process_frame
+
+			# Wait for test to complete by connecting to test_completed signal
+			var test_completed := false
+			var local_passed := 0
+			var local_failed := 0
+
+			if test_instance.has_signal("test_completed"):
+				test_instance.test_completed.connect(func(_name, passed):
+					if passed:
+						local_passed += 1
+					else:
+						local_failed += 1
+				)
+
+			# Wait for test to finish - give it more time for async operations
+			# Wait up to 10 seconds (600 frames) for each test
+			var wait_frames := 0
+			while not test_completed and wait_frames < 600:
+				await process_frame
+				wait_frames += 1
+				# Check if test has finished by checking if it's been queued for free
+				if not is_instance_valid(test_instance):
+					break
+
+			# Collect final results from test instance if possible
 			if is_instance_valid(test_instance):
+				# Try to get results from test instance properties
+				if test_instance.has_method("get_results"):
+					var results = test_instance.get_results()
+					_total_passed += results.get("passed", 0)
+					_total_failed += results.get("failed", 0)
+				# Fallback to local counts if test doesn't have get_results
+				elif test_instance.get("_tests_passed") != null:
+					_total_passed += test_instance._tests_passed
+					_total_failed += test_instance._tests_failed
+				else:
+					_total_passed += local_passed
+					_total_failed += local_failed
 				test_instance.queue_free()
 		else:
 			print("Warning: Could not load test file: " + test_file)
@@ -145,4 +205,11 @@ func _print_summary():
 	print("=== Test Suite Complete ===")
 	print("Total test files: %d" % _total_tests)
 	print("Tests run: %d" % _tests_run)
-	quit()
+	print("Total passed: %d" % _total_passed)
+	print("Total failed: %d" % _total_failed)
+
+	# Return non-zero exit code if there are failures
+	if _total_failed > 0:
+		quit(1)
+	else:
+		quit(0)

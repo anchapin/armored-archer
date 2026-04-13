@@ -121,7 +121,7 @@ class RepoAnalyzer:
         except Exception:
             return None
 
-    def _search_files(self, pattern: str, content_pattern: str | None = None) -> bool:
+    def _search_files(self, pattern: str, content_pattern: str = None) -> bool:
         """Search for files matching pattern, optionally with content."""
         matches = list(self.repo_path.glob(pattern))
         if not matches:
@@ -359,7 +359,7 @@ class RepoAnalyzer:
             reason=reason
         )
 
-    def _evaluate_style_validation(self) -> list[CriterionResult]:  # noqa: C901
+    def _evaluate_style_validation(self) -> list[CriterionResult]:
         """Evaluate Style & Validation pillar."""
         pillar = "Style & Validation"
         results = []
@@ -542,7 +542,7 @@ class RepoAnalyzer:
 
         return results
 
-    def _evaluate_build_system(self) -> list[CriterionResult]:  # noqa: C901
+    def _evaluate_build_system(self) -> list[CriterionResult]:
         """Evaluate Build System pillar."""
         pillar = "Build System"
         results = []

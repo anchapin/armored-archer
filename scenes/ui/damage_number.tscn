@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://dmgn1"]
+
+[node name="DamageNumber" type="Control" unique_id=42]
+
+[sub_resource type="Label" id="Label_node"]
+
+[node name="Label" type="Label" parent="." unique_id=43]
+offset_from_left=24
+offset_from_top=12
+
+[node name="Label" type="Label" parent="." unique_id=44]
+offset_from_left=32
+offset_from_top=20

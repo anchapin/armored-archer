@@ -98,7 +98,7 @@ class PixelArtGenerator:
         """Set a pixel to a specific color from palette"""
         if 0 <= x < img.width and 0 <= y < img.height and 0 <= color_idx < len(palette):
             color = palette[color_idx]
-            img.putpixel((x, y), (*color, 255))  # Add alpha
+            img.putpixel((x, y), color + (255,))  # Add alpha
 
     def draw_rectangle(self, img: Image.Image, x: int, y: int, w: int, h: int, palette: list[tuple], color_idx: int):
         """Draw a filled rectangle"""
@@ -128,8 +128,9 @@ class PixelArtGenerator:
         # Bow
         self.draw_rectangle(img, 22, 10, 2, 10, palette, 2)  # Bow staff
 
-        # Breathing animation sway (frame 0-5) - future enhancement for horizontal offset
-        _ = int((frame / 6) * 2) - 1  # sway calculation reserved for future use
+        # Breathing animation sway (frame 0-5)
+        int((frame / 6) * 2) - 1
+        # Slight horizontal offset based on frame
 
         return img
 
@@ -194,7 +195,7 @@ class PixelArtGenerator:
 
         return img
 
-    def generate_ui_icon(self, icon_name: str) -> Image.Image:  # noqa: C901
+    def generate_ui_icon(self, icon_name: str) -> Image.Image:
         """Generate UI icon (32x32)"""
         img = self.create_pixel_image(32, 32, PALETTES['ui'])
         palette = PALETTES['ui']

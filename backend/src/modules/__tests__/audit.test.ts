@@ -67,7 +67,7 @@ describe('logAudit', () => {
   it('handles storageWrite failure gracefully', () => {
     // Import the logger after mocks are set up
     const { logger } = require('../../config/logger');
-    
+
     mockNk.storageWrite = jest.fn(() => {
       throw new Error('DB error');
     });

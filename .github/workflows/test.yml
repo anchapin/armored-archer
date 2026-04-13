@@ -16,45 +16,69 @@ jobs:
     strategy:
       matrix:
         godot-version: ['4.6']
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
+      - name: Skip for act (OOM issue)
+        if: env.ACT == 'true'
+        run: |
+          echo "⚠️  Skipping Godot tests for act (ACT environment detected)"
+          echo "❌ Godot tests cause OOM in Docker containers with act"
+          echo "✅ Tests must be run with Godot Editor or on GitHub Actions CI"
+          echo "::warning::Godot tests skipped for act - run 'godot --headless --script test/run_all_tests.gd' locally instead"
+          exit 0
+
       - name: Setup Godot
+        if: env.ACT != 'true'
         run: |
           # Download Godot headless binary directly
           wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
           unzip -q godot.zip
           chmod +x Godot_v4.6-stable_linux.x86_64
           mv Godot_v4.6-stable_linux.x86_64 godot4
-      
+
+      - name: Import Godot Assets
+        if: env.ACT != 'true'
+        run: |
+          # Import assets (images, sounds, etc.) before running tests
+          # This creates the .godot/imported/ directory with .ctex and other imported files
+          echo "Importing Godot assets..."
+          ./godot4 --headless --quit --import 2>&1 | head -50 || true
+          echo "Asset import completed"
+          ls -la .godot/imported/ | head -10 || echo "Import directory created"
+
       - name: Run Godot Tests
+        if: env.ACT != 'true'
         run: |
           # Run headless tests using the test runner scene
-          # Use timeout to prevent indefinite hangs in Docker
-          # Use proper flags for headless operation
-          set -o pipefail
-          timeout 120s ./godot4 --headless --quit --script test/run_all_tests.gd 2>&1 | tee /tmp/godot_test_output.txt || {
-            EXIT_CODE=$?
-            if [ $EXIT_CODE -eq 124 ]; then
-              echo "❌ Godot tests timed out after 120 seconds"
-              exit 1
-            else
-              echo "❌ Godot tests failed with exit code: $EXIT_CODE"
-              exit 1
-            fi
-          }
+          # Capture output and check for test failures
+          set +e  # Don't exit on non-zero exit code (Godot returns non-zero on resource leaks, not test failures)
+          TEST_OUTPUT=$(./godot4 --headless --script test/run_all_tests.gd 2>&1 || true)
+          set -e
+          echo "$TEST_OUTPUT"
 
           # Check for test failures in output
-          if grep -q "Failed: [1-9]" /tmp/godot_test_output.txt 2>/dev/null; then
-            echo "❌ Godot tests failed!"
-            grep "Failed:" /tmp/godot_test_output.txt || true
+          # Sum all failure counts from all test suites
+          FAILED_COUNT=$(echo "$TEST_OUTPUT" | grep -oP '(?<=Failed: )\d+' | awk '{sum+=$1} END {print sum}' || echo "0")
+          echo "Test failure count: $FAILED_COUNT"
+
+          if [ "$FAILED_COUNT" -gt "0" ]; then
+            echo "❌ Godot tests failed! ($FAILED_COUNT failures)"
             exit 1
           fi
+
+          # Also check if tests actually ran and completed
+          if ! echo "$TEST_OUTPUT" | grep -q "Test Suite Complete"; then
+            echo "❌ Godot tests did not complete!"
+            exit 1
+          fi
+
           echo "✅ All Godot tests passed"
-          
+
       - name: Check test coverage
+        if: env.ACT != 'true'
         run: |
           # Count test files and estimate coverage
           echo "=== Test Coverage Summary ==="
@@ -142,20 +166,32 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      # Nakama game server service (custom image with PostgreSQL config)
+      nakama:
+        image: armored-archer/nakama-postgres:3.21.1
+        ports:
+          - 7350:7350
+        options: >-
+          --health-cmd "/nakama/nakama healthcheck"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 60
+          --health-start-period 60s
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
-      
+
       - name: Install dependencies
         working-directory: ./backend
         run: npm ci
-      
+
       - name: Wait for PostgreSQL to be ready
         run: |
           for i in {1..30}; do
@@ -166,7 +202,7 @@ jobs:
             echo "Waiting for PostgreSQL... ($i/30)"
             sleep 2
           done
-      
+
       - name: Run database migrations
         working-directory: ./backend/data
         run: |
@@ -174,10 +210,25 @@ jobs:
             echo "Running migration: $migration"
             PGPASSWORD=changeme psql -h localhost -U postgres -d nakama -f "$migration" || true
           done
-      
+
+      - name: Wait for Nakama to be ready
+        run: |
+          echo "Waiting for Nakama to be ready..."
+          for i in {1..60}; do
+            if curl -s http://localhost:7350/ 2>/dev/null || curl -s http://localhost:7351/ 2>/dev/null; then
+              echo "Nakama is ready"
+              break
+            fi
+            echo "Waiting for Nakama... ($i/60)"
+            sleep 2
+          done
+
       - name: Run tests with coverage
         working-directory: ./backend
         env:
+          NAKAMA_HOST: localhost
+          NAKAMA_PORT: 7350
+          NAKAMA_SERVER_KEY: defaultkey
           TEST_DB_HOST: localhost
           TEST_DB_PORT: 5432
           TEST_DB_USER: postgres
@@ -229,7 +280,7 @@ jobs:
         id: coverage-summary
         run: |
           echo "=== Backend Coverage Analysis ==="
-
+          
           # Parse coverage from JSON
           if [ -f coverage/coverage-final.json ]; then
             # Get overall coverage percentages
@@ -237,72 +288,31 @@ jobs:
             node -e "
               const fs = require('fs');
               const data = JSON.parse(fs.readFileSync('coverage/coverage-final.json', 'utf8'));
-
-              // Jest 30+ format: object keyed by file paths, not data.total
-              // Calculate totals from all file entries
-              const fileKeys = Object.keys(data);
-
-              let totalStmts = 0, coveredStmts = 0;
-              let totalBranches = 0, coveredBranches = 0;
-              let totalFuncs = 0, coveredFuncs = 0;
-              let totalLines = 0, coveredLines = 0;
-
-              fileKeys.forEach(key => {
-                const f = data[key];
-                if (f && f.s) {
-                  Object.values(f.s).forEach(count => {
-                    totalStmts++;
-                    if (count > 0) coveredStmts++;
-                  });
-                }
-                if (f && f.b) {
-                  Object.values(f.b).forEach(branchArray => {
-                    branchArray.forEach(branch => {
-                      totalBranches++;
-                      if (branch > 0) coveredBranches++;
-                    });
-                  });
-                }
-                if (f && f.f) {
-                  Object.values(f.f).forEach(count => {
-                    totalFuncs++;
-                    if (count > 0) coveredFuncs++;
-                  });
-                }
-                if (f && f.statementMap) {
-                  totalLines += Object.keys(f.statementMap).length;
-                }
-              });
-
-              const stmtPct = totalStmts > 0 ? (coveredStmts / totalStmts * 100).toFixed(2) : 0;
-              const branchPct = totalBranches > 0 ? (coveredBranches / totalBranches * 100).toFixed(2) : 0;
-              const funcPct = totalFuncs > 0 ? (coveredFuncs / totalFuncs * 100).toFixed(2) : 0;
-              const linePct = totalLines > 0 ? (coveredLines / totalLines * 100).toFixed(2) : 0;
-
-              console.log('  Statements: ' + stmtPct + '%');
-              console.log('  Branches: ' + branchPct + '%');
-              console.log('  Functions: ' + funcPct + '%');
-              console.log('  Lines: ' + linePct + '%');
+              const totals = data.total;
+              console.log('  Statements: ' + totals.stmts.pct + '%');
+              console.log('  Branches: ' + totals.branches.pct + '%');
+              console.log('  Functions: ' + totals.functions.pct + '%');
+              console.log('  Lines: ' + totals.lines.pct + '%');
             "
             
             echo ""
             echo "Critical Systems Coverage:"
-
+            
             # Check combat_system.ts
             if [ -f coverage/src/modules/combat_system.ts ]; then
-              echo "  combat_system: $(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('coverage/src/modules/combat_system.ts'));console.log(d.s?.pct||'N/A')")"
+              echo "  combat_system: $(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('coverage/src/modules/combat_system.ts'));console.log(d.stmts.pct+'%')")"
             else
               echo "  combat_system: (not tracked)"
             fi
-
+            
             # Check rpg_system.ts (PlayerStatsManager backend)
             if [ -f coverage/src/modules/rpg_system.ts ]; then
-              echo "  rpg_system (PlayerStats): $(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('coverage/src/modules/rpg_system.ts'));console.log(d.s?.pct||'N/A')")"
+              echo "  rpg_system (PlayerStats): $(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('coverage/src/modules/rpg_system.ts'));console.log(d.stmts.pct+'%')")"
             fi
-
+            
             # Check matchmaker.ts (Network auth related)
             if [ -f coverage/src/modules/matchmaker.ts ]; then
-              echo "  matchmaker (Network): $(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('coverage/src/modules/matchmaker.ts'));console.log(d.s?.pct||'N/A')")"
+              echo "  matchmaker (Network): $(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('coverage/src/modules/matchmaker.ts'));console.log(d.stmts.pct+'%')")"
             fi
           fi
       
@@ -376,21 +386,53 @@ jobs:
             " 2>/dev/null || echo "⚠️ Could not parse coverage details, but Jest threshold check will enforce requirements"
           fi
       
-      - name: Upload coverage to Codecov
+      - name: Detect git worktree environment
+        id: detect-worktree
         if: success()
-        continue-on-error: true
+        run: |
+          # Detect if we're in a git worktree (e.g., /var/tmp/vibe-kanban/worktrees/)
+          GIT_DIR=$(git rev-parse --git-dir 2>/dev/null || echo "")
+          IS_WORKTREE=0
+
+          if [[ "$GIT_DIR" == *"/.git/worktrees/"* ]] || [[ "$PWD" == *"/worktrees/"* ]]; then
+            echo "::warning title=Git Worktree Detected::Running in a git worktree. Codecov has issues with worktrees."
+            IS_WORKTREE=1
+          fi
+
+          # Also check for act environment variable
+          if [ "${{ env.ACT }}" == "true" ]; then
+            echo "::warning title=Act Environment Detected::Running with act. Skipping Codecov upload."
+            IS_WORKTREE=1
+          fi
+
+          echo "is_worktree=$IS_WORKTREE" >> $GITHUB_OUTPUT
+          echo "Git directory: $GIT_DIR"
+          echo "Working directory: $PWD"
+
+      - name: Upload coverage to Codecov
+        if: success() && steps.detect-worktree.outputs.is_worktree == '0'
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         with:
           file: ./backend/coverage/lcov.info
           flags: backend
           fail_ci_if_error: false
+          git_service_name: github
+          verbose: true
+
+      - name: Skip Codecov (worktree/act detected)
+        if: success() && steps.detect-worktree.outputs.is_worktree == '1'
+        run: |
+          echo "⚠️  Skipping Codecov upload due to git worktree or act environment"
+          echo "This is expected behavior - Codecov has issues with worktrees and local testing"
       
       - name: Upload test results
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: backend-test-results
           path: backend/test-results/
           retention-days: 30
+          if-no-files-found: ignore
 
   require-tests:
     name: All Tests Must Pass
@@ -457,7 +499,9 @@ jobs:
       
       - name: Upload report
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: flaky-test-report
           path: docs/flaky-tests-report.md
           retention-days: 7
+          if-no-files-found: ignore

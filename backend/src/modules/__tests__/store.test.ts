@@ -59,12 +59,12 @@ describe('store', () => {
   beforeEach(() => {
     // Restore env before each test
     process.env = { ...originalEnv, REVENUECAT_API_KEY: 'test-api-key' };
-    
+
     // Mock fetch for RevenueCat API calls
     mockFetch = jest.fn();
     // @ts-ignore - global.fetch
     global.fetch = mockFetch;
-    
+
     // Clear in-memory receipt cache to avoid false positive duplicate detection
     validatedReceipts.clear();
 
@@ -272,9 +272,9 @@ describe('store', () => {
     };
 
     const createMockCtxWithSignature = (signature: string) => {
-      return createMockContext({ 
+      return createMockContext({
         userId: 'test-user',
-        variables: { 'x-revenuecat-signature': signature }
+        variables: { 'x-revenuecat-signature': signature },
       });
     };
 
@@ -282,22 +282,21 @@ describe('store', () => {
       // Set webhook secret
       const originalSecret = require('../../config').config.revenuecat.webhookSecret;
       require('../../config').config.revenuecat.webhookSecret = webhookSecret;
-      
-      const payload = createWebhookPayload('initial_purchase', 'com.armoredarcher.gems.small', 'test-user');
-      const ctxWithNoSig = createMockContext({ 
-        userId: 'test-user',
-        variables: { 'x-revenuecat-signature': '' }
-      });
-      
-      const result = await rpcRevenueCatWebhook(
-        ctxWithNoSig,
-        mockLogger,
-        mockNk,
-        payload
+
+      const payload = createWebhookPayload(
+        'initial_purchase',
+        'com.armoredarcher.gems.small',
+        'test-user'
       );
-      
+      const ctxWithNoSig = createMockContext({
+        userId: 'test-user',
+        variables: { 'x-revenuecat-signature': '' },
+      });
+
+      const result = await rpcRevenueCatWebhook(ctxWithNoSig, mockLogger, mockNk, payload);
+
       require('../../config').config.revenuecat.webhookSecret = originalSecret;
-      
+
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);
       expect(parsed.error).toContain('Invalid signature');
@@ -307,49 +306,47 @@ describe('store', () => {
       // Set webhook secret
       const originalSecret = require('../../config').config.revenuecat.webhookSecret;
       require('../../config').config.revenuecat.webhookSecret = webhookSecret;
-      
-      const payload = createWebhookPayload('initial_purchase', 'com.armoredarcher.gems.small', 'test-user');
-      const ctxWithInvalidSig = createMockContext({ 
-        userId: 'test-user',
-        variables: { 'x-revenuecat-signature': 'invalid_signature' }
-      });
-      
-      const result = await rpcRevenueCatWebhook(
-        ctxWithInvalidSig,
-        mockLogger,
-        mockNk,
-        payload
+
+      const payload = createWebhookPayload(
+        'initial_purchase',
+        'com.armoredarcher.gems.small',
+        'test-user'
       );
-      
+      const ctxWithInvalidSig = createMockContext({
+        userId: 'test-user',
+        variables: { 'x-revenuecat-signature': 'invalid_signature' },
+      });
+
+      const result = await rpcRevenueCatWebhook(ctxWithInvalidSig, mockLogger, mockNk, payload);
+
       require('../../config').config.revenuecat.webhookSecret = originalSecret;
-      
+
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);
       expect(parsed.error).toContain('Invalid signature');
     });
 
     it('should return error for missing webhook secret', async () => {
-      // When webhook secret is not configured but there's a signature, 
+      // When webhook secret is not configured but there's a signature,
       // we should still be able to process (current behavior skips verification)
       // This test verifies that the webhook can still process when no secret is configured
       const originalSecret = require('../../config').config.revenuecat.webhookSecret;
       require('../../config').config.revenuecat.webhookSecret = '';
-      
-      const payload = createWebhookPayload('initial_purchase', 'com.armoredarcher.gems.small', 'test-user');
-      const ctx = createMockContext({ 
-        userId: 'test-user',
-        variables: { 'x-revenuecat-signature': 'some_signature' }
-      });
-      
-      const result = await rpcRevenueCatWebhook(
-        ctx,
-        mockLogger,
-        mockNk,
-        payload
+
+      const payload = createWebhookPayload(
+        'initial_purchase',
+        'com.armoredarcher.gems.small',
+        'test-user'
       );
-      
+      const ctx = createMockContext({
+        userId: 'test-user',
+        variables: { 'x-revenuecat-signature': 'some_signature' },
+      });
+
+      const result = await rpcRevenueCatWebhook(ctx, mockLogger, mockNk, payload);
+
       require('../../config').config.revenuecat.webhookSecret = originalSecret;
-      
+
       // When webhook secret is not configured, the request should still be processed
       // (verification is skipped for development)
       const parsed = JSON.parse(result);
@@ -358,30 +355,29 @@ describe('store', () => {
     });
 
     it('should return error for unknown event type', async () => {
-      const payload = createWebhookPayload('unknown_event', 'com.armoredarcher.gems.small', 'test-user');
+      const payload = createWebhookPayload(
+        'unknown_event',
+        'com.armoredarcher.gems.small',
+        'test-user'
+      );
       const { createHmac } = require('crypto');
       const hmac = createHmac('sha256', webhookSecret);
       hmac.update(payload);
       const signature = hmac.digest('hex');
-      
+
       // Mock config
       const originalSecret = require('../../config').config.revenuecat.webhookSecret;
       require('../../config').config.revenuecat.webhookSecret = webhookSecret;
-      
-      const ctx = createMockContext({ 
+
+      const ctx = createMockContext({
         userId: 'test-user',
-        variables: { 'x-revenuecat-signature': signature }
+        variables: { 'x-revenuecat-signature': signature },
       });
-      
-      const result = await rpcRevenueCatWebhook(
-        ctx,
-        mockLogger,
-        mockNk,
-        payload
-      );
-      
+
+      const result = await rpcRevenueCatWebhook(ctx, mockLogger, mockNk, payload);
+
       require('../../config').config.revenuecat.webhookSecret = originalSecret;
-      
+
       const parsed = JSON.parse(result);
       // With valid signature, unknown events will still be processed - signature verification passes
       // The handler will return an error for unknown event type
@@ -389,90 +385,87 @@ describe('store', () => {
     });
 
     it('should process initial_purchase event', async () => {
-      const payload = createWebhookPayload('initial_purchase', 'com.armoredarcher.gems.small', 'test-user-123');
+      const payload = createWebhookPayload(
+        'initial_purchase',
+        'com.armoredarcher.gems.small',
+        'test-user-123'
+      );
       const { createHmac } = require('crypto');
       const hmac = createHmac('sha256', webhookSecret);
       hmac.update(payload);
       const signature = hmac.digest('hex');
-      
+
       // Mock config
       const originalSecret = require('../../config').config.revenuecat.webhookSecret;
       require('../../config').config.revenuecat.webhookSecret = webhookSecret;
-      
-      const ctx = createMockContext({ 
+
+      const ctx = createMockContext({
         userId: 'test-user',
-        variables: { 'x-revenuecat-signature': signature }
+        variables: { 'x-revenuecat-signature': signature },
       });
-      
-      const result = await rpcRevenueCatWebhook(
-        ctx,
-        mockLogger,
-        mockNk,
-        payload
-      );
-      
+
+      const result = await rpcRevenueCatWebhook(ctx, mockLogger, mockNk, payload);
+
       require('../../config').config.revenuecat.webhookSecret = originalSecret;
-      
+
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
       expect(parsed.event_type).toBe('initial_purchase');
     });
 
     it('should process renewal event', async () => {
-      const payload = createWebhookPayload('renewal', 'com.armoredarcher.gems.small', 'test-user-123');
+      const payload = createWebhookPayload(
+        'renewal',
+        'com.armoredarcher.gems.small',
+        'test-user-123'
+      );
       const { createHmac } = require('crypto');
       const hmac = createHmac('sha256', webhookSecret);
       hmac.update(payload);
       const signature = hmac.digest('hex');
-      
+
       // Mock config
       const originalSecret = require('../../config').config.revenuecat.webhookSecret;
       require('../../config').config.revenuecat.webhookSecret = webhookSecret;
-      
-      const ctx = createMockContext({ 
+
+      const ctx = createMockContext({
         userId: 'test-user',
-        variables: { 'x-revenuecat-signature': signature }
+        variables: { 'x-revenuecat-signature': signature },
       });
-      
-      const result = await rpcRevenueCatWebhook(
-        ctx,
-        mockLogger,
-        mockNk,
-        payload
-      );
-      
+
+      const result = await rpcRevenueCatWebhook(ctx, mockLogger, mockNk, payload);
+
       require('../../config').config.revenuecat.webhookSecret = originalSecret;
-      
+
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
       expect(parsed.event_type).toBe('renewal');
     });
 
     it('should process cancellation event', async () => {
-      const payload = createWebhookPayload('cancellation', 'com.armoredarcher.gems.small', 'test-user-123');
+      const payload = createWebhookPayload(
+        'cancellation',
+        'com.armoredarcher.gems.small',
+        'test-user-123'
+      );
       const { createHmac } = require('crypto');
       const hmac = createHmac('sha256', webhookSecret);
       hmac.update(payload);
       const signature = hmac.digest('hex');
-      
+
       // Mock config
       const originalSecret = require('../../config').config.revenuecat.webhookSecret;
       require('../../config').config.revenuecat.webhookSecret = webhookSecret;
-      
-      const ctx = createMockContext({ 
+
+      const ctx = createMockContext({
         userId: 'test-user',
-        variables: { 'x-revenuecat-signature': signature }
+        variables: { 'x-revenuecat-signature': signature },
       });
-      
-      const result = await rpcRevenueCatWebhook(
-        ctx,
-        mockLogger,
-        mockNk,
-        payload
-      );
-      
+
+      const result = await rpcRevenueCatWebhook(ctx, mockLogger, mockNk, payload);
+
       require('../../config').config.revenuecat.webhookSecret = originalSecret;
-      
+
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
       expect(parsed.event_type).toBe('cancellation');
@@ -1642,60 +1635,115 @@ describe('store', () => {
     it('should handle refund with CUSTOMER_SUPPORT reason', async () => {
       const currency = createMockCurrency({ gems: 200 });
       const nk = createMockNakama();
-      nk.storageWrite([{
-        collection: 'player_currency', key: 'cs-user', userId: 'cs-user',
-        value: JSON.stringify(currency),
-      }]);
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'cs-user',
+          userId: 'cs-user',
+          value: JSON.stringify(currency),
+        },
+      ]);
 
-      const result = await processRefund(nk, 'cs-user', 50, 'tx-cs', RefundReason.CUSTOMER_SUPPORT, createMockLogger());
+      const result = await processRefund(
+        nk,
+        'cs-user',
+        50,
+        'tx-cs',
+        RefundReason.CUSTOMER_SUPPORT,
+        createMockLogger()
+      );
       expect(result.success).toBe(true);
     });
 
     it('should handle refund with CHARGEBACK reason', async () => {
       const currency = createMockCurrency({ gems: 200 });
       const nk = createMockNakama();
-      nk.storageWrite([{
-        collection: 'player_currency', key: 'cb-user', userId: 'cb-user',
-        value: JSON.stringify(currency),
-      }]);
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'cb-user',
+          userId: 'cb-user',
+          value: JSON.stringify(currency),
+        },
+      ]);
 
-      const result = await processRefund(nk, 'cb-user', 50, 'tx-cb', RefundReason.CHARGEBACK, createMockLogger());
+      const result = await processRefund(
+        nk,
+        'cb-user',
+        50,
+        'tx-cb',
+        RefundReason.CHARGEBACK,
+        createMockLogger()
+      );
       expect(result.success).toBe(true);
     });
 
     it('should handle refund with DUPLICATE reason', async () => {
       const currency = createMockCurrency({ gems: 200 });
       const nk = createMockNakama();
-      nk.storageWrite([{
-        collection: 'player_currency', key: 'dup-user2', userId: 'dup-user2',
-        value: JSON.stringify(currency),
-      }]);
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'dup-user2',
+          userId: 'dup-user2',
+          value: JSON.stringify(currency),
+        },
+      ]);
 
-      const result = await processRefund(nk, 'dup-user2', 50, 'tx-dup2', RefundReason.DUPLICATE, createMockLogger());
+      const result = await processRefund(
+        nk,
+        'dup-user2',
+        50,
+        'tx-dup2',
+        RefundReason.DUPLICATE,
+        createMockLogger()
+      );
       expect(result.success).toBe(true);
     });
 
     it('should handle refund with FRAUD reason', async () => {
       const currency = createMockCurrency({ gems: 200 });
       const nk = createMockNakama();
-      nk.storageWrite([{
-        collection: 'player_currency', key: 'fraud-user2', userId: 'fraud-user2',
-        value: JSON.stringify(currency),
-      }]);
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'fraud-user2',
+          userId: 'fraud-user2',
+          value: JSON.stringify(currency),
+        },
+      ]);
 
-      const result = await processRefund(nk, 'fraud-user2', 50, 'tx-fraud2', RefundReason.FRAUD, createMockLogger());
+      const result = await processRefund(
+        nk,
+        'fraud-user2',
+        50,
+        'tx-fraud2',
+        RefundReason.FRAUD,
+        createMockLogger()
+      );
       expect(result.success).toBe(true);
     });
 
     it('should handle refund with OTHER reason', async () => {
       const currency = createMockCurrency({ gems: 200 });
       const nk = createMockNakama();
-      nk.storageWrite([{
-        collection: 'player_currency', key: 'other-user2', userId: 'other-user2',
-        value: JSON.stringify(currency),
-      }]);
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'other-user2',
+          userId: 'other-user2',
+          value: JSON.stringify(currency),
+        },
+      ]);
 
-      const result = await processRefund(nk, 'other-user2', 50, 'tx-other2', RefundReason.OTHER, createMockLogger());
+      const result = await processRefund(
+        nk,
+        'other-user2',
+        50,
+        'tx-other2',
+        RefundReason.OTHER,
+        createMockLogger()
+      );
       expect(result.success).toBe(true);
     });
   });
@@ -1917,12 +1965,14 @@ describe('store', () => {
       });
 
       const currency = createMockCurrency({ gems: 200 });
-      mockNk.storageWrite([{
-        collection: 'player_currency',
-        key: 'test-user',
-        userId: 'test-user',
-        value: JSON.stringify(currency),
-      }]);
+      mockNk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify(currency),
+        },
+      ]);
 
       const ctx = createMockContext({ userId: 'test-user' });
       const result = await rpcCheckRefunds(ctx, mockLogger, mockNk, '{}');
@@ -2598,12 +2648,23 @@ describe('store', () => {
     it('should handle refund amount equal to balance (not partial)', async () => {
       const currency = createMockCurrency({ gems: 100 });
       const nk = createMockNakama();
-      nk.storageWrite([{
-        collection: 'player_currency', key: 'exact-user', userId: 'exact-user',
-        value: JSON.stringify(currency),
-      }]);
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'exact-user',
+          userId: 'exact-user',
+          value: JSON.stringify(currency),
+        },
+      ]);
 
-      const result = await processRefund(nk, 'exact-user', 100, 'tx-exact', RefundReason.OTHER, createMockLogger());
+      const result = await processRefund(
+        nk,
+        'exact-user',
+        100,
+        'tx-exact',
+        RefundReason.OTHER,
+        createMockLogger()
+      );
       expect(result.success).toBe(true);
       expect(result.message).toBe('Refund processed successfully');
       expect(result.new_balance).toBe(0);
@@ -2612,12 +2673,23 @@ describe('store', () => {
     it('should handle refund with large amount greater than balance', async () => {
       const currency = createMockCurrency({ gems: 25 });
       const nk = createMockNakama();
-      nk.storageWrite([{
-        collection: 'player_currency', key: 'small-user', userId: 'small-user',
-        value: JSON.stringify(currency),
-      }]);
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'small-user',
+          userId: 'small-user',
+          value: JSON.stringify(currency),
+        },
+      ]);
 
-      const result = await processRefund(nk, 'small-user', 10000, 'tx-huge', RefundReason.FRAUD, createMockLogger());
+      const result = await processRefund(
+        nk,
+        'small-user',
+        10000,
+        'tx-huge',
+        RefundReason.FRAUD,
+        createMockLogger()
+      );
       expect(result.success).toBe(true);
       expect(result.message).toBe('Partial refund applied');
       expect(result.new_balance).toBe(0);
@@ -2741,12 +2813,14 @@ describe('store', () => {
       });
 
       // Pre-populate currency so refund has something to deduct
-      nk.storageWrite([{
-        collection: 'player_currency',
-        key: 'refund-test-user',
-        userId: 'refund-test-user',
-        value: JSON.stringify({ user_id: 'refund-test-user', gems: 500, gold: 0 }),
-      }]);
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'refund-test-user',
+          userId: 'refund-test-user',
+          value: JSON.stringify({ user_id: 'refund-test-user', gems: 500, gold: 0 }),
+        },
+      ]);
 
       const result = await rpcRevenueCatWebhook(ctx, mockLogger, nk, payload);
       require('../../config').config.revenuecat.webhookSecret = originalSecret;
@@ -2935,23 +3009,28 @@ describe('store', () => {
       // Pre-populate storage with a validated receipt
       const receiptHash = require('crypto')
         .createHash('sha256')
-        .update('storage_fallback_receipt' + (process.env.RECEIPT_HASH_SALT || 'armored_archer_secure_iap_salt_2024'))
+        .update(
+          'storage_fallback_receipt' +
+            (process.env.RECEIPT_HASH_SALT || 'armored_archer_secure_iap_salt_2024')
+        )
         .digest('hex');
 
       mockNk.storageRead = jest.fn((objects: any[]) => {
         // Return the receipt from storage when checked
         if (objects[0]?.collection === 'validated_receipts') {
-          return [{
-            collection: 'validated_receipts',
-            key: `receipt_${receiptHash}`,
-            userId: 'test-user',
-            value: JSON.stringify({ validated_at: Date.now(), receipt_hash: receiptHash }),
-            version: '1',
-            permissionRead: 1,
-            permissionWrite: 1,
-            createTime: Date.now(),
-            updateTime: Date.now(),
-          }];
+          return [
+            {
+              collection: 'validated_receipts',
+              key: `receipt_${receiptHash}`,
+              userId: 'test-user',
+              value: JSON.stringify({ validated_at: Date.now(), receipt_hash: receiptHash }),
+              version: '1',
+              permissionRead: 1,
+              permissionWrite: 1,
+              createTime: Date.now(),
+              updateTime: Date.now(),
+            },
+          ];
         }
         // Return empty for player_currency
         return [];
@@ -3092,12 +3171,7 @@ describe('store', () => {
 
   describe('rpcValidatePurchase error handling branches', () => {
     it('should return VALIDATION_ERROR for invalid JSON payload', async () => {
-      const result = await rpcValidatePurchase(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        'not valid json{{{'
-      );
+      const result = await rpcValidatePurchase(mockCtx, mockLogger, mockNk, 'not valid json{{{');
 
       const parsed = JSON.parse(result);
       expect(parsed.error_code).toBe('VALIDATION_ERROR');
@@ -3348,12 +3422,7 @@ describe('store', () => {
 
   describe('rpcProcessPendingPurchases branches', () => {
     it('should return no pending purchases when queue is empty', async () => {
-      const result = await rpcProcessPendingPurchases(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        '{}'
-      );
+      const result = await rpcProcessPendingPurchases(mockCtx, mockLogger, mockNk, '{}');
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
@@ -3376,12 +3445,7 @@ describe('store', () => {
 
   describe('rpcCheckRefunds branches', () => {
     it('should return validation error for invalid payload', async () => {
-      const result = await rpcCheckRefunds(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        'invalid json{{{'
-      );
+      const result = await rpcCheckRefunds(mockCtx, mockLogger, mockNk, 'invalid json{{{');
 
       const parsed = JSON.parse(result);
       expect(parsed.error).toBeDefined();
@@ -3449,12 +3513,7 @@ describe('store', () => {
 
   describe('rpcCheckSubscriptions branches', () => {
     it('should return validation error for invalid payload', async () => {
-      const result = await rpcCheckSubscriptions(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        'invalid json{{{'
-      );
+      const result = await rpcCheckSubscriptions(mockCtx, mockLogger, mockNk, 'invalid json{{{');
 
       const parsed = JSON.parse(result);
       expect(parsed.error).toBeDefined();
@@ -3632,60 +3691,49 @@ describe('store', () => {
 
   describe('rpcSpendGems branches', () => {
     it('should return validation error for invalid payload', () => {
-      const result = rpcSpendGems(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        'invalid json{{{'
-      );
+      const result = rpcSpendGems(mockCtx, mockLogger, mockNk, 'invalid json{{{');
 
       const parsed = JSON.parse(result);
       expect(parsed.error).toBeDefined();
     });
 
     it('should reject spend when insufficient gems', () => {
-      mockNk.storageRead = jest.fn(() => [{
-        collection: 'player_currency',
-        key: 'test-user',
-        userId: 'test-user',
-        value: JSON.stringify({ user_id: 'test-user', gems: 10, gold: 0 }),
-        version: '1',
-        permissionRead: 1,
-        permissionWrite: 1,
-        createTime: Date.now(),
-        updateTime: Date.now(),
-      }]);
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_currency',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify({ user_id: 'test-user', gems: 10, gold: 0 }),
+          version: '1',
+          permissionRead: 1,
+          permissionWrite: 1,
+          createTime: Date.now(),
+          updateTime: Date.now(),
+        },
+      ]);
 
-      const result = rpcSpendGems(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({ amount: 100 })
-      );
+      const result = rpcSpendGems(mockCtx, mockLogger, mockNk, JSON.stringify({ amount: 100 }));
 
       const parsed = JSON.parse(result);
       expect(parsed.error).toBe('Insufficient gems');
     });
 
     it('should successfully spend gems when balance is sufficient', () => {
-      mockNk.storageRead = jest.fn(() => [{
-        collection: 'player_currency',
-        key: 'test-user',
-        userId: 'test-user',
-        value: JSON.stringify({ user_id: 'test-user', gems: 500, gold: 0 }),
-        version: '1',
-        permissionRead: 1,
-        permissionWrite: 1,
-        createTime: Date.now(),
-        updateTime: Date.now(),
-      }]);
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_currency',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify({ user_id: 'test-user', gems: 500, gold: 0 }),
+          version: '1',
+          permissionRead: 1,
+          permissionWrite: 1,
+          createTime: Date.now(),
+          updateTime: Date.now(),
+        },
+      ]);
 
-      const result = rpcSpendGems(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({ amount: 50 })
-      );
+      const result = rpcSpendGems(mockCtx, mockLogger, mockNk, JSON.stringify({ amount: 50 }));
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
@@ -3696,36 +3744,28 @@ describe('store', () => {
 
   describe('rpcGetCurrency branches', () => {
     it('should return validation error for invalid payload', () => {
-      const result = rpcGetCurrency(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        'invalid json{{{'
-      );
+      const result = rpcGetCurrency(mockCtx, mockLogger, mockNk, 'invalid json{{{');
 
       const parsed = JSON.parse(result);
       expect(parsed.error).toBeDefined();
     });
 
     it('should return currency data for valid request', () => {
-      mockNk.storageRead = jest.fn(() => [{
-        collection: 'player_currency',
-        key: 'test-user',
-        userId: 'test-user',
-        value: JSON.stringify({ user_id: 'test-user', gems: 250, gold: 1000 }),
-        version: '1',
-        permissionRead: 1,
-        permissionWrite: 1,
-        createTime: Date.now(),
-        updateTime: Date.now(),
-      }]);
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_currency',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify({ user_id: 'test-user', gems: 250, gold: 1000 }),
+          version: '1',
+          permissionRead: 1,
+          permissionWrite: 1,
+          createTime: Date.now(),
+          updateTime: Date.now(),
+        },
+      ]);
 
-      const result = rpcGetCurrency(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        '{}'
-      );
+      const result = rpcGetCurrency(mockCtx, mockLogger, mockNk, '{}');
 
       const parsed = JSON.parse(result);
       expect(parsed.gems).toBe(250);
@@ -3735,12 +3775,7 @@ describe('store', () => {
     it('should return default currency when no data exists', () => {
       mockNk.storageRead = jest.fn(() => []);
 
-      const result = rpcGetCurrency(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        '{}'
-      );
+      const result = rpcGetCurrency(mockCtx, mockLogger, mockNk, '{}');
 
       const parsed = JSON.parse(result);
       expect(parsed.gems).toBe(0);
@@ -3750,17 +3785,19 @@ describe('store', () => {
 
   describe('processRefund branches', () => {
     it('should process refund successfully', async () => {
-      mockNk.storageRead = jest.fn(() => [{
-        collection: 'player_currency',
-        key: 'refund-user',
-        userId: 'refund-user',
-        value: JSON.stringify({ user_id: 'refund-user', gems: 500, gold: 0 }),
-        version: '1',
-        permissionRead: 1,
-        permissionWrite: 1,
-        createTime: Date.now(),
-        updateTime: Date.now(),
-      }]);
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_currency',
+          key: 'refund-user',
+          userId: 'refund-user',
+          value: JSON.stringify({ user_id: 'refund-user', gems: 500, gold: 0 }),
+          version: '1',
+          permissionRead: 1,
+          permissionWrite: 1,
+          createTime: Date.now(),
+          updateTime: Date.now(),
+        },
+      ]);
 
       const result = await processRefund(
         mockNk,
@@ -3776,17 +3813,19 @@ describe('store', () => {
     });
 
     it('should process refund with different RefundReason values', async () => {
-      mockNk.storageRead = jest.fn(() => [{
-        collection: 'player_currency',
-        key: 'reason-test-user',
-        userId: 'reason-test-user',
-        value: JSON.stringify({ user_id: 'reason-test-user', gems: 500, gold: 0 }),
-        version: '1',
-        permissionRead: 1,
-        permissionWrite: 1,
-        createTime: Date.now(),
-        updateTime: Date.now(),
-      }]);
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_currency',
+          key: 'reason-test-user',
+          userId: 'reason-test-user',
+          value: JSON.stringify({ user_id: 'reason-test-user', gems: 500, gold: 0 }),
+          version: '1',
+          permissionRead: 1,
+          permissionWrite: 1,
+          createTime: Date.now(),
+          updateTime: Date.now(),
+        },
+      ]);
 
       const result = await processRefund(
         mockNk,
@@ -3802,17 +3841,19 @@ describe('store', () => {
     });
 
     it('should process refund with DUPLICATE reason', async () => {
-      mockNk.storageRead = jest.fn(() => [{
-        collection: 'player_currency',
-        key: 'dup-reason-user',
-        userId: 'dup-reason-user',
-        value: JSON.stringify({ user_id: 'dup-reason-user', gems: 300, gold: 0 }),
-        version: '1',
-        permissionRead: 1,
-        permissionWrite: 1,
-        createTime: Date.now(),
-        updateTime: Date.now(),
-      }]);
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_currency',
+          key: 'dup-reason-user',
+          userId: 'dup-reason-user',
+          value: JSON.stringify({ user_id: 'dup-reason-user', gems: 300, gold: 0 }),
+          version: '1',
+          permissionRead: 1,
+          permissionWrite: 1,
+          createTime: Date.now(),
+          updateTime: Date.now(),
+        },
+      ]);
 
       const result = await processRefund(
         mockNk,
@@ -3828,17 +3869,19 @@ describe('store', () => {
     });
 
     it('should process refund with OTHER reason', async () => {
-      mockNk.storageRead = jest.fn(() => [{
-        collection: 'player_currency',
-        key: 'other-reason-user',
-        userId: 'other-reason-user',
-        value: JSON.stringify({ user_id: 'other-reason-user', gems: 200, gold: 0 }),
-        version: '1',
-        permissionRead: 1,
-        permissionWrite: 1,
-        createTime: Date.now(),
-        updateTime: Date.now(),
-      }]);
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_currency',
+          key: 'other-reason-user',
+          userId: 'other-reason-user',
+          value: JSON.stringify({ user_id: 'other-reason-user', gems: 200, gold: 0 }),
+          version: '1',
+          permissionRead: 1,
+          permissionWrite: 1,
+          createTime: Date.now(),
+          updateTime: Date.now(),
+        },
+      ]);
 
       const result = await processRefund(
         mockNk,
@@ -3854,17 +3897,19 @@ describe('store', () => {
     });
 
     it('should not deduct gems below zero', async () => {
-      mockNk.storageRead = jest.fn(() => [{
-        collection: 'player_currency',
-        key: 'low-balance-user',
-        userId: 'low-balance-user',
-        value: JSON.stringify({ user_id: 'low-balance-user', gems: 50, gold: 0 }),
-        version: '1',
-        permissionRead: 1,
-        permissionWrite: 1,
-        createTime: Date.now(),
-        updateTime: Date.now(),
-      }]);
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_currency',
+          key: 'low-balance-user',
+          userId: 'low-balance-user',
+          value: JSON.stringify({ user_id: 'low-balance-user', gems: 50, gold: 0 }),
+          version: '1',
+          permissionRead: 1,
+          permissionWrite: 1,
+          createTime: Date.now(),
+          updateTime: Date.now(),
+        },
+      ]);
 
       const result = await processRefund(
         mockNk,
@@ -4163,12 +4208,7 @@ describe('store', () => {
 
   describe('rpcAppLaunchCheck', () => {
     it('should return validation error for invalid payload', async () => {
-      const result = await rpcAppLaunchCheck(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        'invalid json{{{'
-      );
+      const result = await rpcAppLaunchCheck(mockCtx, mockLogger, mockNk, 'invalid json{{{');
 
       const parsed = JSON.parse(result);
       expect(parsed.error).toBeDefined();
@@ -4199,12 +4239,14 @@ describe('store', () => {
 
   describe('getPlayerCurrencyWithCache parse failure branch', () => {
     it('should use default currency when storage value is empty string', async () => {
-      mockNk.storageRead = jest.fn(() => [{
-        collection: 'player_currency',
-        key: 'parse-fail-user',
-        userId: 'parse-fail-user',
-        value: '',
-      }]);
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_currency',
+          key: 'parse-fail-user',
+          userId: 'parse-fail-user',
+          value: '',
+        },
+      ]);
       mockCache.get.mockReturnValue(undefined);
 
       const result = await processRefund(
@@ -4234,12 +4276,14 @@ describe('store', () => {
         }),
       });
 
-      mockNk.storageWrite([{
-        collection: 'player_currency',
-        key: 'test-user',
-        userId: 'test-user',
-        value: JSON.stringify(createMockCurrency({ gems: 100 })),
-      }]);
+      mockNk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify(createMockCurrency({ gems: 100 })),
+        },
+      ]);
 
       const result = await rpcValidatePurchase(
         mockCtx,
@@ -4265,12 +4309,14 @@ describe('store', () => {
       });
 
       const nk = createMockNakama();
-      nk.storageWrite([{
-        collection: 'player_currency',
-        key: 'redis-err-user',
-        userId: 'redis-err-user',
-        value: JSON.stringify({ user_id: 'redis-err-user', gems: 200, gold: 0 }),
-      }]);
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'redis-err-user',
+          userId: 'redis-err-user',
+          value: JSON.stringify({ user_id: 'redis-err-user', gems: 200, gold: 0 }),
+        },
+      ]);
 
       const result = await processRefund(
         nk,
@@ -4371,15 +4417,22 @@ describe('store', () => {
       });
 
       const currency = createMockCurrency({ gems: 200 });
-      mockNk.storageWrite([{
-        collection: 'player_currency',
-        key: 'test-user',
-        userId: 'test-user',
-        value: JSON.stringify(currency),
-      }]);
+      mockNk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify(currency),
+        },
+      ]);
 
       const ctx = createMockContext({ userId: 'test-user' });
-      const result = await rpcCheckRefunds(ctx, mockLogger, mockNk, JSON.stringify({ app_user_id: 'test-user' }));
+      const result = await rpcCheckRefunds(
+        ctx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({ app_user_id: 'test-user' })
+      );
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -4399,7 +4452,12 @@ describe('store', () => {
       });
 
       const ctx = createMockContext({ userId: 'test-user' });
-      const result = await rpcCheckRefunds(ctx, mockLogger, mockNk, JSON.stringify({ app_user_id: 'test-user' }));
+      const result = await rpcCheckRefunds(
+        ctx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({ app_user_id: 'test-user' })
+      );
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -4458,7 +4516,12 @@ describe('store', () => {
       });
 
       const ctx = createMockContext({ userId: 'test-user' });
-      const result = await rpcCheckSubscriptions(ctx, mockLogger, mockNk, JSON.stringify({ app_user_id: 'test-user' }));
+      const result = await rpcCheckSubscriptions(
+        ctx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({ app_user_id: 'test-user' })
+      );
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -4473,12 +4536,14 @@ describe('store', () => {
       require('../../config').config.revenuecat.webhookSecret = webhookSecret;
 
       const nk = createMockNakama();
-      nk.storageRead = jest.fn(() => [{
-        collection: 'player_subscription',
-        key: 'bad-value-user',
-        userId: 'bad-value-user',
-        value: null,
-      }]);
+      nk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_subscription',
+          key: 'bad-value-user',
+          userId: 'bad-value-user',
+          value: null,
+        },
+      ]);
 
       const payload = JSON.stringify({
         event_type: 'CANCELLATION',
@@ -4511,12 +4576,14 @@ describe('store', () => {
       require('../../config').config.revenuecat.webhookSecret = webhookSecret;
 
       const nk = createMockNakama();
-      nk.storageRead = jest.fn(() => [{
-        collection: 'player_subscription',
-        key: 'bad-billing-user',
-        userId: 'bad-billing-user',
-        value: 123,
-      }]);
+      nk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_subscription',
+          key: 'bad-billing-user',
+          userId: 'bad-billing-user',
+          value: 123,
+        },
+      ]);
 
       const payload = JSON.stringify({
         event_type: 'BILLING_ISSUE',

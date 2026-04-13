@@ -381,4 +381,3 @@ export function resetAuditState(): void {
   nk = undefined as any;
   logger = undefined as any;
 }
-

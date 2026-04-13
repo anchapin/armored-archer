@@ -1,20 +1,19 @@
 /**
  * Custom ESLint Rule: n-plus-one-detection
- * 
+ *
  * Detects potential N+1 query patterns in TypeScript code.
  * This rule identifies database operations inside loops which can cause
  * performance issues in database-driven applications.
- * 
+ *
  * The rule detects:
  * 1. Database method calls inside loop structures (for, while, forEach, map, etc.)
  * 2. Async database operations that iterate over results
- * 
+ *
  * @version 1.0.0
  */
 
-import { TSESTree, ESLintUtils, AST_NODE_TYPES } from '@typescript-eslint/utils';
+import { TSESTree, AST_NODE_TYPES } from '@typescript-eslint/utils';
 import type { RuleModule } from '@typescript-eslint/utils/dist/ts-eslint/Rule';
-import type { RuleContext } from '@typescript-eslint/utils/dist/ts-eslint';
 
 // Database method patterns
 const DB_METHOD_PATTERNS = [
@@ -44,7 +43,10 @@ interface RuleOptions {
 }
 
 // Create the rule
-export const NPlusOneDetectionRule: RuleModule<'nPlusOneQuery' | 'nPlusOneIteration', [RuleOptions?]> = {
+export const NPlusOneDetectionRule: RuleModule<
+  'nPlusOneQuery' | 'nPlusOneIteration',
+  [RuleOptions?]
+> = {
   meta: {
     type: 'problem' as const,
     docs: {
@@ -52,8 +54,10 @@ export const NPlusOneDetectionRule: RuleModule<'nPlusOneQuery' | 'nPlusOneIterat
       url: 'https://docs.example.com/n-plus-one-detection',
     },
     messages: {
-      nPlusOneQuery: 'Potential N+1 query: {{ method }} called inside {{ loopType }} loop. Consider using batch operations or eager loading.',
-      nPlusOneIteration: 'Potential N+1 query: Iterating over results and calling {{ method }} for each item. Consider using batch operations.',
+      nPlusOneQuery:
+        'Potential N+1 query: {{ method }} called inside {{ loopType }} loop. Consider using batch operations or eager loading.',
+      nPlusOneIteration:
+        'Potential N+1 query: Iterating over results and calling {{ method }} for each item. Consider using batch operations.',
     },
     schema: [
       {
@@ -115,25 +119,6 @@ export const NPlusOneDetectionRule: RuleModule<'nPlusOneQuery' | 'nPlusOneIterat
       hasDbCall: boolean;
       line: number;
     }> = [];
-
-    // Visit a node and check for loops
-    function checkLoop(node: TSESTree.Node, loopType: string): void {
-      const dbMethod = isDatabaseMethodCall(node);
-      if (dbMethod && loopStack.length > 0) {
-        const currentLoop = loopStack[loopStack.length - 1];
-        if (!currentLoop.hasDbCall) {
-          currentLoop.hasDbCall = true;
-          context.report({
-            node,
-            messageId: 'nPlusOneQuery',
-            data: {
-              method: dbMethod,
-              loopType,
-            },
-          });
-        }
-      }
-    }
 
     return {
       // Track entering loops

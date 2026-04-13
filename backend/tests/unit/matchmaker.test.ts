@@ -12,7 +12,7 @@ describe('Matchmaker', () => {
       const result = matchmaker.addToQueue({
         user_id: 'user1',
         preferred_mode: 'pvp',
-        skill_rating: 1000
+        skill_rating: 1000,
       });
 
       expect(result.position).toBe(0);
@@ -22,13 +22,13 @@ describe('Matchmaker', () => {
       matchmaker.addToQueue({
         user_id: 'user1',
         preferred_mode: 'pvp',
-        skill_rating: 1000
+        skill_rating: 1000,
       });
 
       const result = matchmaker.addToQueue({
         user_id: 'user1',
         preferred_mode: 'pve',
-        skill_rating: 1100
+        skill_rating: 1100,
       });
 
       expect(result.position).toBe(0);
@@ -40,7 +40,7 @@ describe('Matchmaker', () => {
       matchmaker.addToQueue({
         user_id: 'user1',
         preferred_mode: 'pvp',
-        skill_rating: 1000
+        skill_rating: 1000,
       });
 
       const removed = matchmaker.removeFromQueue('user1');
@@ -60,13 +60,13 @@ describe('Matchmaker', () => {
       matchmaker.addToQueue({
         user_id: 'user1',
         preferred_mode: 'pvp',
-        skill_rating: 1000
+        skill_rating: 1000,
       });
 
       matchmaker.addToQueue({
         user_id: 'user2',
         preferred_mode: 'pvp',
-        skill_rating: 1050
+        skill_rating: 1050,
       });
 
       const result = matchmaker.findMatch('user1');
@@ -80,7 +80,7 @@ describe('Matchmaker', () => {
       matchmaker.addToQueue({
         user_id: 'user1',
         preferred_mode: 'pvp',
-        skill_rating: 1000
+        skill_rating: 1000,
       });
 
       const result = matchmaker.findMatch('user1');
@@ -109,7 +109,7 @@ describe('Matchmaker', () => {
   describe('getMatch', () => {
     it('should return match entry', () => {
       const match = matchmaker.createPvPMatch('player1', 'player2');
-      
+
       const found = matchmaker.getMatch(match.match_id);
 
       expect(found).not.toBeNull();
@@ -142,7 +142,7 @@ describe('Matchmaker', () => {
       const result = matchmaker.addToQueue({
         user_id: '',
         preferred_mode: 'pvp',
-        skill_rating: 1000
+        skill_rating: 1000,
       });
 
       expect(result.position).toBe(0);
@@ -152,7 +152,7 @@ describe('Matchmaker', () => {
       const result = matchmaker.addToQueue({
         user_id: 'user1',
         preferred_mode: 'pvp',
-        skill_rating: -100
+        skill_rating: -100,
       });
 
       expect(result.position).toBe(0);
@@ -162,7 +162,7 @@ describe('Matchmaker', () => {
       const result = matchmaker.addToQueue({
         user_id: 'user1',
         preferred_mode: 'pvp',
-        skill_rating: 0
+        skill_rating: 0,
       });
 
       expect(result.position).toBe(0);
@@ -172,7 +172,7 @@ describe('Matchmaker', () => {
       const result = matchmaker.addToQueue({
         user_id: 'user_large_skill',
         preferred_mode: 'pvp',
-        skill_rating: 999999
+        skill_rating: 999999,
       });
 
       expect(result.position).toBe(0);
@@ -185,7 +185,7 @@ describe('Matchmaker', () => {
       const result = matchmaker.addToQueue({
         user_id: 'user1',
         preferred_mode: 'pve',
-        skill_rating: 1000
+        skill_rating: 1000,
       });
 
       expect(result.position).toBe(0);
@@ -195,7 +195,7 @@ describe('Matchmaker', () => {
       const result = matchmaker.addToQueue({
         user_id: 'user1',
         preferred_mode: 'campaign',
-        skill_rating: 1000
+        skill_rating: 1000,
       });
 
       expect(result.position).toBe(0);

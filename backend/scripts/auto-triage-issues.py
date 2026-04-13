@@ -162,7 +162,8 @@ class TriageResult:
 class AutoTriage:
     """Auto-triage system for GitHub issues."""
 
-    def __init__(self, github_token: str | None = None, repo: str = "armored-archer", owner: str | None = None):
+<<<<<<< HEAD
+    def __init__(self, github_token: str | None = None, repo: str = "armored-archer", owner: str = None):
         """
         Initialize auto-triage system.
 
@@ -200,7 +201,7 @@ class AutoTriage:
             except Exception as e:
                 print(f"❌ Failed to connect to GitHub: {e}")
         elif REQUESTS_AVAILABLE:
-            print("INFO: Using requests library for GitHub API calls")
+            print("i: Using requests library for GitHub API calls")
         else:
             print("❌ No GitHub API client available. Install PyGithub or requests.")
 

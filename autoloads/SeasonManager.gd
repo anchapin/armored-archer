@@ -1,5 +1,5 @@
 ## Manages seasonal ranking system, leaderboards, and rewards.
-## Handles rank updates, leaderboard retrieval, and season reward claims.
+## Handles rank updates, leaderboard retrieval, season reward claims, and rating decay.
 ##
 ## Signals:
 ## - season_info_loaded(season_info: Dictionary): Emitted when season data is retrieved
@@ -7,6 +7,8 @@
 ## - rank_updated(rank_change: Dictionary): Emitted when rank changes after a match
 ## - rewards_loaded(rewards: Dictionary): Emitted when season rewards are available
 ## - rewards_claimed(rewards: Dictionary): Emitted when rewards are claimed
+## - season_transitioned(old_season: Dictionary, new_season: Dictionary): Emitted on season end
+## - decay_info_updated(decay_info: Dictionary): Emitted when decay info is updated
 ##
 extends Node
 
@@ -16,6 +18,20 @@ const RPC_GET_LEADERBOARD = "armored_archer/get_leaderboard"
 const RPC_UPDATE_RANK = "armored_archer/update_rank"
 const RPC_GET_SEASON_REWARDS = "armored_archer/get_season_rewards"
 const RPC_CLAIM_SEASON_REWARDS = "armored_archer/claim_season_rewards"
+const RPC_GET_SEASON_HISTORY = "armored_archer/get_season_history"
+const RPC_GET_PLAYER_RANK = "armored_archer/get_player_rank"
+
+# --- Season Duration ---
+const SEASON_DURATION_DAYS: int = 30  # 30 days per season
+const SEASON_DURATION_MS: int = SEASON_DURATION_DAYS * 24 * 60 * 60 * 1000
+
+# --- Rating Decay Configuration ---
+const DECAY_INACTIVE_DAYS_THRESHOLD: int = 7  # 1% decay starts after 7 days
+const DECAY_RATE_PERCENT: float = 1.0  # 1% per decay period
+const HIGH_DECAY_THRESHOLD_DAYS: int = 30  # 2% decay after 30 days
+const HIGH_DECAY_RATE_PERCENT: float = 2.0  # 2% per decay period
+const MINIMUM_RATING: int = 1000  # Rating floor
+const MAX_DECAY_LOSS: int = 200  # Maximum points per decay check
 
 # --- Season Data ---
 var current_season: Dictionary = {}
@@ -27,12 +43,25 @@ var season_rewards: Dictionary = {}
 var rewards_claimed: bool = false
 var has_claimed_rewards: bool = false  # Track if rewards have been claimed
 
+# --- Decay Info ---
+var decay_info: Dictionary = {
+	"days_inactive": 0,
+	"points_at_risk": 0,
+	"can_decay": false
+}
+
+# --- Season History ---
+var season_history: Array = []
+
 # --- Signals ---
 signal season_info_loaded(season_info: Dictionary)
 signal leaderboard_loaded(leaderboard: Array)
 signal rank_updated(rank_change: Dictionary)
 signal rewards_loaded(rewards: Dictionary)
 signal rewards_claimed_signal(rewards: Dictionary)
+signal season_transitioned(old_season: Dictionary, new_season: Dictionary)
+signal decay_info_updated(decay_info: Dictionary)
+signal season_history_loaded(history: Array)
 
 # --- Network Reference ---
 @onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
@@ -73,6 +102,26 @@ func get_season_info() -> void:
 				current_season.get("id", 0),
 				current_season.get("name", "Season")
 			)
+
+		# Update decay info
+		_update_decay_info()
+
+# --- Get Season End Time ---
+func get_season_end_time() -> int:
+	"""Returns the end time of the current season in milliseconds.
+
+	Returns:
+		int: Season end time (Unix timestamp in ms)
+	"""
+	if current_season.has("end_time"):
+		return int(current_season.end_time)
+
+	# Calculate based on start time if end time not available
+	if current_season.has("start_time"):
+		return int(current_season.start_time) + SEASON_DURATION_MS
+
+	# Default: calculate from current time
+	return int(Time.get_unix_time_from_system() * 1000) + SEASON_DURATION_MS
 
 # --- Get Leaderboard ---
 func get_leaderboard(limit: int = 50) -> void:
@@ -303,3 +352,195 @@ func get_rank_color(rank: int) -> Color:
 		return Color.GREEN
 	else:
 		return Color.GRAY
+
+# --- Rating Decay Methods ---
+
+## Apply rating decay based on inactivity
+func apply_rating_decay(current_rating: int, last_active_ms: int) -> int:
+	"""Calculates the decayed rating based on inactivity days.
+
+	Parameters:
+		current_rating: Player's current rating
+		last_active_ms: Last activity timestamp in milliseconds
+
+	Returns:
+		int: Rating after decay calculation
+	"""
+	if current_rating <= MINIMUM_RATING:
+		return current_rating
+
+	var now_ms: int = int(Time.get_unix_time_from_system() * 1000)
+	var inactive_ms: int = now_ms - last_active_ms
+	var days_inactive: int = inactive_ms / (24 * 60 * 60 * 1000)
+
+	# No decay if within threshold
+	if days_inactive < DECAY_INACTIVE_DAYS_THRESHOLD:
+		return current_rating
+
+	# Determine decay rate
+	var decay_rate: float = DECAY_RATE_PERCENT
+	if days_inactive >= HIGH_DECAY_THRESHOLD_DAYS:
+		decay_rate = HIGH_DECAY_RATE_PERCENT
+
+	# Calculate decay periods
+	var inactive_days: int = days_inactive - DECAY_INACTIVE_DAYS_THRESHOLD
+	var decay_periods: int = inactive_days / DECAY_INACTIVE_DAYS_THRESHOLD
+
+	# Calculate loss
+	var decay_loss: float = current_rating * (decay_rate / 100.0) * float(decay_periods)
+	decay_loss = min(decay_loss, float(MAX_DECAY_LOSS))
+
+	# Apply decay with floor
+	var new_rating: int = max(current_rating - int(decay_loss), MINIMUM_RATING)
+
+	return new_rating
+
+## Get player's decay info
+func get_decay_info() -> Dictionary:
+	"""Returns player's rating decay information.
+
+	Returns:
+		Dictionary: Decay info with days_inactive, points_at_risk, can_decay
+	"""
+	return decay_info
+
+## Update decay info from server or local calculation
+func _update_decay_info() -> void:
+	"""Updates the decay info based on current player data."""
+	if not current_season.is_empty() and player_score > 0:
+		# Estimate last active time from local storage
+		var last_active_ms: int = _get_last_active_from_storage()
+
+		var now_ms: int = int(Time.get_unix_time_from_system() * 1000)
+		var inactive_ms: int = max(0, now_ms - last_active_ms)
+		var days_inactive: int = inactive_ms / (24 * 60 * 60 * 1000)
+
+		var points_at_risk: int = 0
+		var can_decay: bool = false
+
+		if days_inactive >= DECAY_INACTIVE_DAYS_THRESHOLD and player_score > MINIMUM_RATING:
+			can_decay = true
+			var inactive_days: int = days_inactive - DECAY_INACTIVE_DAYS_THRESHOLD
+			var decay_periods: int = inactive_days / DECAY_INACTIVE_DAYS_THRESHOLD
+
+			var decay_rate: float = DECAY_RATE_PERCENT
+			if days_inactive >= HIGH_DECAY_THRESHOLD_DAYS:
+				decay_rate = HIGH_DECAY_RATE_PERCENT
+
+			var decay_loss: float = player_score * (decay_rate / 100.0) * float(decay_periods)
+			points_at_risk = min(int(decay_loss), MAX_DECAY_LOSS)
+
+		decay_info = {
+			"days_inactive": days_inactive,
+			"points_at_risk": points_at_risk,
+			"can_decay": can_decay,
+			"threshold_days": DECAY_INACTIVE_DAYS_THRESHOLD,
+			"minimum_rating": MINIMUM_RATING
+		}
+
+		decay_info_updated.emit(decay_info)
+
+## Get last active timestamp from storage
+func _get_last_active_from_storage() -> int:
+	"""Retrieves the player's last active timestamp from local storage.
+
+	Returns:
+		int: Last active timestamp in milliseconds (0 if not found)
+	"""
+	if not network_manager:
+		return 0
+
+	var storage = network_manager.get_storage_sync()
+	if not storage:
+		return 0
+
+	var last_active_data = storage.get("player_last_active")
+	if last_active_data is Dictionary and last_active_data.has("timestamp"):
+		return int(last_active_data.timestamp)
+
+	# Default to current time (no decay for new players)
+	return int(Time.get_unix_time_from_system() * 1000)
+
+## Update player's last active timestamp
+func update_player_activity() -> void:
+	"""Updates the player's last activity timestamp."""
+	if not network_manager:
+		return
+
+	var storage = network_manager.get_storage_sync()
+	if not storage:
+		return
+
+	var timestamp_ms: int = int(Time.get_unix_time_from_system() * 1000)
+	storage.put("player_last_active", {
+		"timestamp": timestamp_ms
+	})
+
+	# Update decay info
+	_update_decay_info()
+
+# --- Season History Methods ---
+
+## Get season history
+func get_season_history(limit: int = 10) -> void:
+	"""Retrieves historical season data.
+
+	Parameters:
+		limit: Maximum number of seasons to retrieve (default 10)
+	"""
+	if not network_manager or not network_manager.is_connected:
+		push_error("Not connected to server")
+		return
+
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_SEASON_HISTORY, json.stringify({"limit": limit}))
+
+	if response.has("error"):
+		push_error("Failed to get season history: %s" % response.error)
+		return
+
+	if response.get("success", false):
+		season_history = response.get("history", [])
+		season_history_loaded.emit(season_history)
+
+## Get player rank in current season
+func get_player_rank() -> void:
+	"""Retrieves the player's current rank in the season."""
+	if not network_manager or not network_manager.is_connected:
+		push_error("Not connected to server")
+		return
+
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_PLAYER_RANK, json.stringify({}))
+
+	if response.has("error"):
+		push_error("Failed to get player rank: %s" % response.error)
+		return
+
+	if response.get("success", false):
+		player_rank = response.get("rank", 0)
+		player_score = response.get("rating", 0)
+		time_remaining = response.get("time_remaining", 0)
+
+		season_info_loaded.emit({
+			"season": current_season,
+			"player_rank": player_rank,
+			"player_score": player_score,
+			"time_remaining": time_remaining
+		})
+
+# --- Season Transition ---
+
+## Handle season transition event
+func on_season_transition(old_season: Dictionary, new_season: Dictionary) -> void:
+	"""Called when a season ends and a new one begins.
+
+	Parameters:
+		old_season: The season that just ended
+		new_season: The new active season
+	"""
+	current_season = new_season
+	player_rank = 0
+	player_score = 0
+
+	season_transitioned.emit(old_season, new_season)

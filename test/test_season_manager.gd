@@ -7,6 +7,7 @@ signal test_completed(test_name: String, passed: bool)
 
 func _ready() -> void:
 	print("=== Running SeasonManager Tests ===\n")
+	await get_tree().process_frame  # Allow SceneTree to process before starting tests
 	await run_tests()
 
 func run_tests() -> void:

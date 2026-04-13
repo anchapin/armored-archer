@@ -54,51 +54,45 @@ describe('circuitBreaker', () => {
     it('should log warning on open event', () => {
       const breaker = createCircuitBreaker('event_open_cb');
       breaker.open();
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('event_open_cb')
-      );
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('event_open_cb'));
     });
 
     it('should log info on close event', () => {
       const breaker = createCircuitBreaker('event_close_cb');
       breaker.open();
       breaker.close();
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('event_close_cb')
-      );
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('event_close_cb'));
     });
 
     it('should log debug on success event', async () => {
       const breaker = createCircuitBreaker('event_success_cb');
       await breaker.fire(async () => 'ok');
-      expect(logger.debug).toHaveBeenCalledWith(
-        expect.stringContaining('event_success_cb')
-      );
+      expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('event_success_cb'));
     });
 
     it('should log error on failure event', async () => {
       const breaker = createCircuitBreaker('event_failure_cb');
-      try { await breaker.fire(async () => { throw new Error('fail'); }); } catch {}
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('event_failure_cb')
-      );
+      try {
+        await breaker.fire(async () => {
+          throw new Error('fail');
+        });
+      } catch {}
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('event_failure_cb'));
     });
 
     it('should log warning on reject event', async () => {
       const breaker = createCircuitBreaker('event_reject_cb');
       breaker.open();
-      try { await breaker.fire(async () => 'ok'); } catch {}
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('event_reject_cb')
-      );
+      try {
+        await breaker.fire(async () => 'ok');
+      } catch {}
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('event_reject_cb'));
     });
 
     it('should log info on halfOpen event', () => {
       const breaker = createCircuitBreaker('event_halfopen_cb');
       breaker.emit('halfOpen');
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('event_halfopen_cb')
-      );
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('event_halfopen_cb'));
     });
   });
 
@@ -205,7 +199,11 @@ describe('circuitBreaker', () => {
 
     it('should track failures via event', async () => {
       const breaker = getCircuitBreaker('stats_failures_cb');
-      try { await breaker.fire(async () => { throw new Error('fail'); }); } catch {}
+      try {
+        await breaker.fire(async () => {
+          throw new Error('fail');
+        });
+      } catch {}
       const stats = getCircuitStats('stats_failures_cb');
       expect(stats!.failures).toBe(1);
       expect(stats!.lastFailure).not.toBeNull();
@@ -221,7 +219,9 @@ describe('circuitBreaker', () => {
     it('should track rejects via event', async () => {
       const breaker = getCircuitBreaker('stats_rejects_cb');
       breaker.open();
-      try { await breaker.fire(async () => 'ok'); } catch {}
+      try {
+        await breaker.fire(async () => 'ok');
+      } catch {}
       const stats = getCircuitStats('stats_rejects_cb');
       expect(stats!.rejects).toBe(1);
     });
@@ -276,33 +276,25 @@ describe('circuitBreaker', () => {
 
     it('should log warning when opening unknown circuit', () => {
       openCircuit('nonexistent_warn_cb');
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Cannot open circuit')
-      );
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Cannot open circuit'));
     });
 
     it('should log warning when closing unknown circuit', () => {
       closeCircuit('nonexistent_close_cb');
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Cannot close circuit')
-      );
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Cannot close circuit'));
     });
 
     it('should log warning when manually opening', () => {
       getCircuitBreaker('manual_open_cb');
       openCircuit('manual_open_cb');
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Circuit manually opened')
-      );
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Circuit manually opened'));
     });
 
     it('should log info when manually closing', () => {
       getCircuitBreaker('manual_close_cb');
       openCircuit('manual_close_cb');
       closeCircuit('manual_close_cb');
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('Circuit manually closed')
-      );
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('Circuit manually closed'));
     });
   });
 
@@ -358,7 +350,11 @@ describe('circuitBreaker', () => {
     it('should include stats in info', async () => {
       const breaker = getCircuitBreaker('info_stats_cb');
       await breaker.fire(async () => 'ok');
-      try { await breaker.fire(async () => { throw new Error('err'); }); } catch {}
+      try {
+        await breaker.fire(async () => {
+          throw new Error('err');
+        });
+      } catch {}
       const info = getAllCircuitInfo();
       const entry = info.find((i) => i.serviceName === 'info_stats_cb');
       expect(entry).toBeDefined();

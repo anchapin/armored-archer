@@ -249,7 +249,11 @@ describe('FeatureFlags (features/)', () => {
 
   describe('updateFeatureFlag', () => {
     it('updates an existing flag', async () => {
-      const { createFeatureFlag, updateFeatureFlag, getFeatureFlag } = require('../features/FeatureFlags');
+      const {
+        createFeatureFlag,
+        updateFeatureFlag,
+        getFeatureFlag,
+      } = require('../features/FeatureFlags');
       await createFeatureFlag({
         name: 'updatable',
         description: 'Updatable feature',
@@ -271,7 +275,11 @@ describe('FeatureFlags (features/)', () => {
 
   describe('deleteFeatureFlag', () => {
     it('deletes an existing flag', async () => {
-      const { createFeatureFlag, deleteFeatureFlag, getFeatureFlag } = require('../features/FeatureFlags');
+      const {
+        createFeatureFlag,
+        deleteFeatureFlag,
+        getFeatureFlag,
+      } = require('../features/FeatureFlags');
       await createFeatureFlag({
         name: 'deletable',
         description: 'Deletable feature',
@@ -293,7 +301,11 @@ describe('FeatureFlags (features/)', () => {
 
   describe('toggleFeatureFlag', () => {
     it('toggles enabled state', async () => {
-      const { createFeatureFlag, toggleFeatureFlag, getFeatureFlag } = require('../features/FeatureFlags');
+      const {
+        createFeatureFlag,
+        toggleFeatureFlag,
+        getFeatureFlag,
+      } = require('../features/FeatureFlags');
       await createFeatureFlag({
         name: 'toggleable',
         description: 'Toggleable feature',
@@ -339,7 +351,10 @@ describe('FeatureFlags (features/)', () => {
 
   describe('getFeatureFlagsByEnvironment', () => {
     it('returns flags for specific environment', async () => {
-      const { createFeatureFlag, getFeatureFlagsByEnvironment } = require('../features/FeatureFlags');
+      const {
+        createFeatureFlag,
+        getFeatureFlagsByEnvironment,
+      } = require('../features/FeatureFlags');
       await createFeatureFlag({
         name: 'prod_flag',
         description: 'Production only',
@@ -358,7 +373,10 @@ describe('FeatureFlags (features/)', () => {
     });
 
     it('excludes flags for different environments', async () => {
-      const { createFeatureFlag, getFeatureFlagsByEnvironment } = require('../features/FeatureFlags');
+      const {
+        createFeatureFlag,
+        getFeatureFlagsByEnvironment,
+      } = require('../features/FeatureFlags');
       await createFeatureFlag({
         name: 'dev_only',
         description: 'Development only',
@@ -374,7 +392,11 @@ describe('FeatureFlags (features/)', () => {
 
   describe('evaluateFeatures', () => {
     it('evaluates multiple flags at once', async () => {
-      const { createFeatureFlag, evaluateFeatures, clearFeatureFlagCache } = require('../features/FeatureFlags');
+      const {
+        createFeatureFlag,
+        evaluateFeatures,
+        clearFeatureFlagCache,
+      } = require('../features/FeatureFlags');
       clearFeatureFlagCache();
       await createFeatureFlag({
         name: 'eval_flag1',
@@ -402,7 +424,11 @@ describe('FeatureFlags (features/)', () => {
 
   describe('checkDependencies', () => {
     it('returns satisfied when no dependencies', async () => {
-      const { createFeatureFlag, checkDependencies, clearFeatureFlagCache } = require('../features/FeatureFlags');
+      const {
+        createFeatureFlag,
+        checkDependencies,
+        clearFeatureFlagCache,
+      } = require('../features/FeatureFlags');
       clearFeatureFlagCache();
       await createFeatureFlag({
         name: 'no_deps',
@@ -418,7 +444,11 @@ describe('FeatureFlags (features/)', () => {
     });
 
     it('returns satisfied when all dependencies are enabled', async () => {
-      const { createFeatureFlag, checkDependencies, clearFeatureFlagCache } = require('../features/FeatureFlags');
+      const {
+        createFeatureFlag,
+        checkDependencies,
+        clearFeatureFlagCache,
+      } = require('../features/FeatureFlags');
       clearFeatureFlagCache();
       await createFeatureFlag({
         name: 'dep_base',
@@ -443,7 +473,11 @@ describe('FeatureFlags (features/)', () => {
     });
 
     it('returns missing when dependency is disabled', async () => {
-      const { createFeatureFlag, checkDependencies, clearFeatureFlagCache } = require('../features/FeatureFlags');
+      const {
+        createFeatureFlag,
+        checkDependencies,
+        clearFeatureFlagCache,
+      } = require('../features/FeatureFlags');
       clearFeatureFlagCache();
       await createFeatureFlag({
         name: 'disabled_dep',

@@ -21,32 +21,44 @@ func run_tests() -> void:
 
 func test_vfxmanager_shake_methods() -> void:
 	"""Test that VFXManager has screen shake methods."""
+	# Create instance to check methods (script.has_method doesn't work reliably)
 	var vfx_manager_script = load("res://autoloads/VFXManager.gd")
+	var vfx_manager = Node.new()
+	vfx_manager.set_script(vfx_manager_script)
+	add_child(vfx_manager)
 
-	if vfx_manager_script.has_method("trigger_light_shake"):
+	if vfx_manager.has_method("trigger_light_shake"):
 		_pass("test_vfxmanager_shake_methods - trigger_light_shake")
 	else:
 		_fail("test_vfxmanager_shake_methods - trigger_light_shake", "Method not found")
 
-	if vfx_manager_script.has_method("trigger_medium_shake"):
+	if vfx_manager.has_method("trigger_medium_shake"):
 		_pass("test_vfxmanager_shake_methods - trigger_medium_shake")
 	else:
 		_fail("test_vfxmanager_shake_methods - trigger_medium_shake", "Method not found")
 
-	if vfx_manager_script.has_method("trigger_heavy_shake"):
+	if vfx_manager.has_method("trigger_heavy_shake"):
 		_pass("test_vfxmanager_shake_methods - trigger_heavy_shake")
 	else:
 		_fail("test_vfxmanager_shake_methods - trigger_heavy_shake", "Method not found")
 
+	vfx_manager.queue_free()
+
 func test_baseenemy_die_calls_vfx() -> void:
 	"""Test that BaseEnemy.die() triggers VFXManager."""
 	var base_enemy_script = load("res://scenes/enemies/base_enemy.gd")
+	var base_enemy = CharacterBody2D.new()
+	base_enemy.set_script(base_enemy_script)
+	base_enemy.name = "TestEnemy"
+	add_child(base_enemy)
 
 	# Check that die() method exists
-	if base_enemy_script.has_method("die"):
+	if base_enemy.has_method("die"):
 		_pass("test_baseenemy_die_calls_vfx - die method exists")
 	else:
 		_fail("test_baseenemy_die_calls_vfx - die method exists", "Method not found")
+
+	base_enemy.queue_free()
 
 	# Read the source to check for VFXManager call
 	var source_code = FileAccess.open("res://scenes/enemies/base_enemy.gd", FileAccess.READ)

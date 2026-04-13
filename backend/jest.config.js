@@ -176,8 +176,10 @@ module.exports = {
   testTimeout: 30000,  // 30 seconds for local/act testing
   verbose: true,
   passWithNoTests: true,
-  // Use detectOpenHandles instead of forceExit to properly wait for async cleanup
-  detectOpenHandles: true,
+  // Use detectOpenHandles in development, forceExit in CI to prevent hanging
+  // CI mode: detectOpenHandles can cause indefinite waits, so use forceExit instead
+  detectOpenHandles: !process.env.CI,
+  forceExit: !!process.env.CI,
   // Detect leaks to find unclosed resources
   detectLeaks: false,
   // Clear mocks between tests to prevent interference

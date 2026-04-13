@@ -226,12 +226,88 @@ func get_encounters_by_biome(biome: String) -> Array:
 
 func is_boss_encounter(encounter_id: String) -> bool:
 	"""Checks if an encounter is a boss encounter.
-	
+
 	Parameters:
 		encounter_id: ID of the encounter
-		
+
 	Returns:
 		bool: True if the encounter is a boss fight
 	"""
 	var encounter = get_encounter(encounter_id)
 	return encounter.get("is_boss", false)
+
+# --- Pacing & Variety Support ---
+## Gets the encounter type for pacing classification.
+##
+## Parameters:
+##   encounter_id: ID of the encounter
+##
+## Returns:
+##   String: Encounter type (combat, exploration, narrative, puzzle)
+func get_encounter_pacing_type(encounter_id: String) -> String:
+	"""Gets the encounter type for pacing classification.
+
+	Parameters:
+		encounter_id: ID of the encounter
+
+	Returns:
+		String: Encounter type (combat, exploration, narrative, puzzle)
+	"""
+	var encounter = get_encounter(encounter_id)
+	var biome = encounter.get("biome", "")
+	var difficulty = encounter.get("difficulty", 1)
+	var is_boss = encounter.get("is_boss", false)
+
+	# Boss encounters are always combat
+	if is_boss:
+		return "combat"
+
+	# Difficulty-based classification
+	match difficulty:
+		1:
+			# Forest: Mix of combat and exploration
+			if biome == "forest":
+				# Randomly classify as exploration for variety
+				if encounter_id in ["forest_scout"]:
+					return "exploration"
+		2:
+			# Cavern: More combat, some puzzles
+			if biome == "cavern":
+				# Some cavern encounters can be puzzles
+				if encounter_id in ["cavern_golem"]:
+					return "puzzle"
+		3:
+			# Sky: Heavy combat
+			if biome == "sky":
+				return "combat"
+
+	# Default to combat
+	return "combat"
+
+## Gets the intensity of an encounter for fatigue calculation.
+##
+## Parameters:
+##   encounter_id: ID of the encounter
+##
+## Returns:
+##   float: Intensity value (0.0 to 1.0)
+func get_encounter_intensity(encounter_id: String) -> float:
+	"""Gets the intensity of an encounter for fatigue calculation.
+
+	Parameters:
+		encounter_id: ID of the encounter
+
+	Returns:
+		float: Intensity value (0.0 to 1.0)
+	"""
+	var encounter = get_encounter(encounter_id)
+	var difficulty = encounter.get("difficulty", 1)
+	var is_boss = encounter.get("is_boss", false)
+
+	var intensity: float = float(difficulty) / 3.0
+
+	# Bosses are more intense
+	if is_boss:
+		intensity = min(intensity * 1.5, 1.0)
+
+	return intensity

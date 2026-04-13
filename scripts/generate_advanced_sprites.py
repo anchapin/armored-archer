@@ -115,7 +115,7 @@ class AdvancedSpriteGenerator:
         """Set pixel with palette color"""
         if 0 <= x < img.width and 0 <= y < img.height and 0 <= color_idx < len(palette):
             c = palette[color_idx]
-            img.putpixel((x, y), (*c, 255))
+            img.putpixel((x, y), c + (255,))
 
     def fill_rect(self, img, x, y, w, h, palette, color_idx):
         """Draw filled rectangle"""
@@ -234,7 +234,7 @@ class AdvancedSpriteGenerator:
             'dragon': (0, 4),
         }
 
-        main_c, _accent_c = helm_colors.get(helm_type, (2, 5))
+        main_c, accent_c = helm_colors.get(helm_type, (2, 5))
 
         # Dome
         self.fill_circle(img, 16, 12, 7, palette, main_c)

@@ -3,7 +3,12 @@
  */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { validatePlayerStats, validateGearInventory, recordStatMutation, validateFullProgression } from '../progression_validation';
+import {
+  validatePlayerStats,
+  validateGearInventory,
+  recordStatMutation,
+  validateFullProgression,
+} from '../progression_validation';
 import { PlayerStats } from '../rpg_system';
 import { PlayerInventory, GearItem } from '../gear_system';
 
@@ -181,7 +186,14 @@ describe('Progression Validation', () => {
         storageWrite: jest.fn().mockResolvedValue({} as any),
       } as any;
 
-      recordStatMutation(mockNk, 'user_1', '127.0.0.1', { attack: 10, defense: 5 }, { attack: 15, defense: 5 }, 'level_up');
+      recordStatMutation(
+        mockNk,
+        'user_1',
+        '127.0.0.1',
+        { attack: 10, defense: 5 },
+        { attack: 15, defense: 5 },
+        'level_up'
+      );
 
       expect(mockNk.storageWrite).toHaveBeenCalled();
     });
@@ -228,7 +240,13 @@ describe('Progression Validation', () => {
         unlocked_modifier_pools: [],
       };
 
-      const result = validateFullProgression(mockNk, 'user_1', mockLogger, validStats, validInventory);
+      const result = validateFullProgression(
+        mockNk,
+        'user_1',
+        mockLogger,
+        validStats,
+        validInventory
+      );
 
       expect(result.is_valid).toBe(true);
       expect(result.issues).toHaveLength(0);
@@ -253,7 +271,13 @@ describe('Progression Validation', () => {
         unlocked_modifier_pools: [],
       };
 
-      const result = validateFullProgression(mockNk, 'user_1', mockLogger, invalidStats, invalidInventory);
+      const result = validateFullProgression(
+        mockNk,
+        'user_1',
+        mockLogger,
+        invalidStats,
+        invalidInventory
+      );
 
       expect(result.is_valid).toBe(false);
       expect(result.issues.length).toBeGreaterThan(1);

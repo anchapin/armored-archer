@@ -59,7 +59,7 @@ interface NPlusOneIssue {
 }
 
 function shouldExclude(filePath: string): boolean {
-  return EXCLUDED_DIRS.some(excluded => filePath.includes(excluded));
+  return EXCLUDED_DIRS.some((excluded) => filePath.includes(excluded));
 }
 
 function getTypeScriptFiles(dir: string): string[] {
@@ -93,12 +93,12 @@ function getTypeScriptFiles(dir: string): string[] {
 function detectNPlusOneInFile(filePath: string): NPlusOneIssue[] {
   const issues: NPlusOneIssue[] = [];
   const content = fs.readFileSync(filePath, 'utf-8');
-  
+
   // Remove comments to avoid false positives
   const contentWithoutComments = content
     .replace(/\/\/.*$/gm, '') // Remove single-line comments
     .replace(/\/\*[\s\S]*?\*\//g, ''); // Remove multi-line comments
-  
+
   const lines = content.split('\n');
   const relativePath = path.relative(process.cwd(), filePath);
 
@@ -112,7 +112,11 @@ function detectNPlusOneInFile(filePath: string): NPlusOneIssue[] {
     const lineNum = i + 1;
 
     // Skip if line is only a comment
-    if (line.trim().startsWith('//') || line.trim().startsWith('/*') || line.trim().startsWith('*')) {
+    if (
+      line.trim().startsWith('//') ||
+      line.trim().startsWith('/*') ||
+      line.trim().startsWith('*')
+    ) {
       continue;
     }
 
@@ -134,7 +138,7 @@ function detectNPlusOneInFile(filePath: string): NPlusOneIssue[] {
             line: lineNum,
             column: line.indexOf(line.trim()),
             code: line.trim().substring(0, 100),
-            issue: 'Potential N+1 query: Database operation inside loop'
+            issue: 'Potential N+1 query: Database operation inside loop',
           });
         }
       }

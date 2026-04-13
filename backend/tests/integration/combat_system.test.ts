@@ -18,14 +18,14 @@ describe('Combat System Integration Tests', () => {
     await setupPlayerStats(playerA, {
       level: 10,
       xp: 2000,
-      stats: { attack: 30, defense: 10, dodge: 15, crit_rate: 20 }
+      stats: { attack: 30, defense: 10, dodge: 15, crit_rate: 20 },
     });
 
     // Player B: balanced stats
     await setupPlayerStats(playerB, {
       level: 10,
       xp: 2000,
-      stats: { attack: 20, defense: 20, dodge: 15, crit_rate: 10 }
+      stats: { attack: 20, defense: 20, dodge: 15, crit_rate: 10 },
     });
   }, 120000);
 
@@ -33,7 +33,7 @@ describe('Combat System Integration Tests', () => {
     // Create an active match before each combat test
     const createPayload = {
       match_type: 'ranked',
-      target_opponent_id: playerB.userId
+      target_opponent_id: playerB.userId,
     };
     const createResult = await rpcCall(playerA, 'armored_archer/create_match', createPayload);
     activeMatchId = createResult.match.match_id;
@@ -51,7 +51,7 @@ describe('Combat System Integration Tests', () => {
         // Delete both match and match state
         await admin.storageDelete([
           { collection: 'pvp_matches', key: matchId, userId: '' },
-          { collection: 'pvp_match_states', key: matchId, userId: '' }
+          { collection: 'pvp_match_states', key: matchId, userId: '' },
         ]);
       } catch (e) {
         // ignore
@@ -67,12 +67,7 @@ describe('Combat System Integration Tests', () => {
 
   // Helper to setup player stats
   async function setupPlayerStats(account: TestAccount, stats: any): Promise<void> {
-    await testHelper.writeStorageObject(
-      'player_stats',
-      account.userId,
-      account.userId,
-      stats
-    );
+    await testHelper.writeStorageObject('player_stats', account.userId, account.userId, stats);
   }
 
   // Helper to call RPC and parse JSON
@@ -92,7 +87,7 @@ describe('Combat System Integration Tests', () => {
       const payload = {
         match_id: activeMatchId,
         action_type: 'shoot',
-        angle: Math.PI / 2
+        angle: Math.PI / 2,
       };
       const result = await rpcCall(playerA, 'armored_archer/submit_combat_action', payload);
 
@@ -111,7 +106,7 @@ describe('Combat System Integration Tests', () => {
       const resultA = await rpcCall(playerA, 'armored_archer/submit_combat_action', {
         match_id: activeMatchId,
         action_type: 'shoot',
-        angle: 1.0
+        angle: 1.0,
       });
       expect(resultA.success).toBe(true);
 
@@ -124,7 +119,7 @@ describe('Combat System Integration Tests', () => {
       const resultB = await rpcCall(playerB, 'armored_archer/submit_combat_action', {
         match_id: activeMatchId,
         action_type: 'shoot',
-        angle: 1.0
+        angle: 1.0,
       });
       expect(resultB.success).toBe(true);
 
@@ -143,7 +138,7 @@ describe('Combat System Integration Tests', () => {
       const resultA = await rpcCall(playerA, 'armored_archer/submit_combat_action', {
         match_id: activeMatchId,
         action_type: 'shoot',
-        angle: 1.0
+        angle: 1.0,
       });
 
       const stateAfterA = await getMatchState(playerA, activeMatchId);
@@ -163,12 +158,12 @@ describe('Combat System Integration Tests', () => {
       await setupPlayerStats(playerA, {
         level: 50,
         xp: 10000,
-        stats: { attack: 100, defense: 100, dodge: 0, crit_rate: 100 } // guaranteed high damage, crit always
+        stats: { attack: 100, defense: 100, dodge: 0, crit_rate: 100 }, // guaranteed high damage, crit always
       });
       await setupPlayerStats(playerB, {
         level: 1,
         xp: 0,
-        stats: { attack: 1, defense: 1, dodge: 0, crit_rate: 0 }
+        stats: { attack: 1, defense: 1, dodge: 0, crit_rate: 0 },
       });
 
       // Keep shooting until someone wins
@@ -178,7 +173,7 @@ describe('Combat System Integration Tests', () => {
         const resultA = await rpcCall(playerA, 'armored_archer/submit_combat_action', {
           match_id: activeMatchId,
           action_type: 'shoot',
-          angle: 1.0
+          angle: 1.0,
         });
 
         if (resultA.result.match_status === 'completed') {
@@ -192,7 +187,7 @@ describe('Combat System Integration Tests', () => {
           const resultB = await rpcCall(playerB, 'armored_archer/submit_combat_action', {
             match_id: activeMatchId,
             action_type: 'shoot',
-            angle: 1.0
+            angle: 1.0,
           });
 
           if (resultB.result.match_status === 'completed') {
@@ -216,17 +211,17 @@ describe('Combat System Integration Tests', () => {
       await rpcCall(playerA, 'armored_archer/submit_combat_action', {
         match_id: activeMatchId,
         action_type: 'shoot',
-        angle: 1.0
+        angle: 1.0,
       });
       await rpcCall(playerB, 'armored_archer/submit_combat_action', {
         match_id: activeMatchId,
         action_type: 'shoot',
-        angle: 1.0
+        angle: 1.0,
       });
       await rpcCall(playerA, 'armored_archer/submit_combat_action', {
         match_id: activeMatchId,
         action_type: 'shoot',
-        angle: 1.0
+        angle: 1.0,
       });
 
       const state = await getMatchState(playerA, activeMatchId);
@@ -247,7 +242,7 @@ describe('Combat System Integration Tests', () => {
       const payload = {
         match_id: 'nonexistent_match',
         action_type: 'shoot',
-        angle: 1.0
+        angle: 1.0,
       };
       const result = await rpcCall(playerA, 'armored_archer/submit_combat_action', payload);
 
@@ -261,7 +256,7 @@ describe('Combat System Integration Tests', () => {
       const payload = {
         match_id: activeMatchId,
         action_type: 'shoot',
-        angle: 1.0
+        angle: 1.0,
       };
       const result = await rpcCall(playerA, 'armored_archer/submit_combat_action', payload);
 
@@ -273,13 +268,13 @@ describe('Combat System Integration Tests', () => {
       await setupPlayerStats(outsider, {
         level: 5,
         xp: 500,
-        stats: { attack: 15, defense: 10, dodge: 10, crit_rate: 5 }
+        stats: { attack: 15, defense: 10, dodge: 10, crit_rate: 5 },
       });
 
       const payload = {
         match_id: activeMatchId,
         action_type: 'shoot',
-        angle: 1.0
+        angle: 1.0,
       };
       const result = await rpcCall(outsider, 'armored_archer/submit_combat_action', payload);
 
@@ -294,7 +289,7 @@ describe('Combat System Integration Tests', () => {
       const payload = {
         match_id: activeMatchId,
         action_type: 'shoot',
-        angle: 1.0
+        angle: 1.0,
       };
       const result = await rpcCall(playerB, 'armored_archer/submit_combat_action', payload);
 
@@ -305,7 +300,7 @@ describe('Combat System Integration Tests', () => {
       const payload = {
         match_id: activeMatchId,
         action_type: 'invalid_action',
-        angle: 1.0
+        angle: 1.0,
       };
       const result = await rpcCall(playerA, 'armored_archer/submit_combat_action', payload);
 
@@ -349,7 +344,7 @@ describe('Combat System Integration Tests', () => {
       await rpcCall(playerA, 'armored_archer/submit_combat_action', {
         match_id: activeMatchId,
         action_type: 'shoot',
-        angle: 1.0
+        angle: 1.0,
       });
 
       const newState = await getMatchState(playerA, activeMatchId);
@@ -411,21 +406,25 @@ async function setupMatchStateForTurn(matchId: string, currentTurnUserId: string
     log: [],
   };
 
-  await admin.storageWrite([{
-    collection: 'pvp_match_states',
-    key: matchId,
-    userId: match.creator_id,
-    value: JSON.stringify(matchState),
-  }]);
+  await admin.storageWrite([
+    {
+      collection: 'pvp_match_states',
+      key: matchId,
+      userId: match.creator_id,
+      value: JSON.stringify(matchState),
+    },
+  ]);
 }
 
 async function getPlayerStatsFromStorage(helper: any, userId: string): Promise<any> {
   const obj = await helper.getStorageObject('player_stats', userId, userId);
-  return obj ? JSON.parse(obj.value) : {
-    level: 1,
-    xp: 0,
-    stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 }
-  };
+  return obj
+    ? JSON.parse(obj.value)
+    : {
+        level: 1,
+        xp: 0,
+        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+      };
 }
 
 // Helper to force complete a match
@@ -442,10 +441,12 @@ async function forceCompleteMatch(matchId: string, winnerId: string): Promise<vo
   match.winner = winnerId;
   match.updated_at = Date.now();
 
-  await admin.storageWrite([{
-    collection: 'pvp_matches',
-    key: matchId,
-    userId: match.creator_id,
-    value: JSON.stringify(match),
-  }]);
+  await admin.storageWrite([
+    {
+      collection: 'pvp_matches',
+      key: matchId,
+      userId: match.creator_id,
+      value: JSON.stringify(match),
+    },
+  ]);
 }

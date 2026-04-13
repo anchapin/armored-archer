@@ -23,9 +23,14 @@ signal combat_ended(winner: String)
 # Only set network_manager if it wasn't already set (e.g., by tests)
 var network_manager: Node
 
+# --- Difficulty Reference ---
+var difficulty_manager: Node
+
 func _ready() -> void:
 	if network_manager == null:
 		network_manager = get_node_or_null("/root/NetworkManager")
+	if difficulty_manager == null:
+		difficulty_manager = get_node_or_null("/root/DynamicDifficultyManager")
 
 # --- Submit Combat Action ---
 func submit_combat_action(match_id: String, action_type: String, angle: float, power: float = 1.0) -> void:
@@ -158,3 +163,80 @@ func get_match_status() -> String:
 
 func is_combat_active() -> bool:
 	return get_match_status() == "active"
+
+# --- Difficulty Modifiers ---
+func apply_difficulty_to_damage(base_damage: float, is_enemy_damage: bool = true) -> float:
+	"""Applies difficulty modifier to damage calculations.
+
+	Parameters:
+		base_damage: Base damage value before modification
+		is_enemy_damage: If true, applies difficulty to enemy damage. If false, applies to player damage.
+
+	Returns:
+		float: Modified damage value
+	"""
+	if not difficulty_manager:
+		return base_damage
+
+	var modifier = difficulty_manager.get_difficulty_modifier()
+
+	# Higher difficulty = more enemy damage, lower player damage
+	# Lower difficulty = less enemy damage, higher player damage
+	if is_enemy_damage:
+		return base_damage * (1.0 + modifier)
+	else:
+		return base_damage * (1.0 - modifier * 0.5)
+
+func apply_difficulty_to_ai(difficulty_tier: int) -> int:
+	"""Adjusts AI difficulty based on dynamic difficulty modifier.
+
+	Parameters:
+		difficulty_tier: Base AI difficulty tier (1-3)
+
+	Returns:
+		int: Adjusted difficulty tier
+	"""
+	if not difficulty_manager:
+		return difficulty_tier
+
+	var modifier = difficulty_manager.get_difficulty_modifier()
+
+	# Modifier ranges from -0.20 (Easy) to +0.20 (Extreme)
+	# Map to tier adjustments
+	var tier_adjustment = int(modifier * 10)  # -2 to +2
+	return clamp(difficulty_tier + tier_adjustment, 1, 5)
+
+func apply_difficulty_to_rewards(base_rewards: Dictionary) -> Dictionary:
+	"""Applies difficulty modifier to encounter rewards.
+
+	Parameters:
+		base_rewards: Dictionary with xp, gold, etc.
+
+	Returns:
+		Dictionary: Modified rewards
+	"""
+	if not difficulty_manager:
+		return base_rewards
+
+	var reward_modifier = difficulty_manager.get_encounter_reward_modifier()
+	var modified_rewards = base_rewards.duplicate()
+
+	for key in modified_rewards:
+		if modified_rewards[key] is float or modified_rewards[key] is int:
+			modified_rewards[key] = int(modified_rewards[key] * reward_modifier)
+
+	return modified_rewards
+
+func get_adjusted_encounter_difficulty(base_difficulty: float) -> float:
+	"""Returns the difficulty modifier-adjusted encounter difficulty.
+
+	Parameters:
+		base_difficulty: Base encounter difficulty (0.0 to 1.0)
+
+	Returns:
+		float: Adjusted difficulty
+	"""
+	if not difficulty_manager:
+		return base_difficulty
+
+	return difficulty_manager.calculate_target_difficulty(base_difficulty)

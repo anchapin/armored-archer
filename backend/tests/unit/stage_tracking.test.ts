@@ -126,7 +126,7 @@ describe('stage_tracking types', () => {
     // Test comparison logic that would be used in stage tracking
     it('should compare stars correctly', () => {
       const isBetterThan = (newStars: number, existingStars: number) => newStars > existingStars;
-      
+
       expect(isBetterThan(3, 2)).toBe(true);
       expect(isBetterThan(2, 3)).toBe(false);
       expect(isBetterThan(3, 3)).toBe(false);
@@ -134,7 +134,7 @@ describe('stage_tracking types', () => {
 
     it('should compare scores when stars equal', () => {
       const isBetterScore = (newScore: number, existingScore: number) => newScore > existingScore;
-      
+
       expect(isBetterScore(1000, 500)).toBe(true);
       expect(isBetterScore(500, 1000)).toBe(false);
       expect(isBetterScore(500, 500)).toBe(false);
@@ -160,8 +160,8 @@ describe('stage_tracking types', () => {
 
     it('should unlock modifiers when boss defeated', () => {
       const bossModifiers: Record<string, string[]> = {
-        'boss_1': ['modifier_1', 'modifier_2'],
-        'boss_2': ['modifier_3'],
+        boss_1: ['modifier_1', 'modifier_2'],
+        boss_2: ['modifier_3'],
       };
 
       const getModifiersUnlockedByBoss = (bossId: string): string[] => {

@@ -1,10 +1,10 @@
 /**
  * Schema Migration Tests
- * 
+ *
  * These tests verify that the database schema is correctly set up
  * by checking for the existence of required tables, columns, indexes,
  * and relationships.
- * 
+ *
  * Run with: npm run test:schema
  * Or: npx jest backend/tests/integration/schema.test.ts
  */
@@ -94,8 +94,8 @@ describe('Database Schema Migration Tests', () => {
         ORDER BY ordinal_position
       `);
 
-      const columns = result.rows.map(r => r.column_name);
-      
+      const columns = result.rows.map((r) => r.column_name);
+
       // Required columns
       expect(columns).toContain('user_id');
       expect(columns).toContain('level');
@@ -115,7 +115,7 @@ describe('Database Schema Migration Tests', () => {
         WHERE tc.table_name = 'player_stats' 
           AND tc.constraint_type = 'PRIMARY KEY'
       `);
-      
+
       expect(result.rows).toHaveLength(1);
       expect(result.rows[0].column_name).toBe('user_id');
     });
@@ -134,7 +134,7 @@ describe('Database Schema Migration Tests', () => {
         WHERE tc.table_name = 'player_stats' 
           AND tc.constraint_type = 'FOREIGN KEY'
       `);
-      
+
       expect(result.rows).toHaveLength(1);
       expect(result.rows[0].column_name).toBe('user_id');
       expect(result.rows[0].foreign_table_name).toBe('users');
@@ -146,10 +146,10 @@ describe('Database Schema Migration Tests', () => {
         FROM information_schema.check_constraints
         WHERE constraint_name LIKE '%player_stats%level%'
       `);
-      
+
       expect(result.rows.length).toBeGreaterThan(0);
-      const hasLevelCheck = result.rows.some(r => 
-        r.check_clause.includes('level') && r.check_clause.includes('>= 1')
+      const hasLevelCheck = result.rows.some(
+        (r) => r.check_clause.includes('level') && r.check_clause.includes('>= 1')
       );
       expect(hasLevelCheck).toBe(true);
     });
@@ -160,8 +160,8 @@ describe('Database Schema Migration Tests', () => {
         FROM pg_indexes
         WHERE tablename = 'player_stats'
       `);
-      
-      const indexNames = result.rows.map(r => r.indexname);
+
+      const indexNames = result.rows.map((r) => r.indexname);
       expect(indexNames).toContain('idx_player_stats_level');
       expect(indexNames).toContain('idx_player_stats_experience');
     });
@@ -173,7 +173,7 @@ describe('Database Schema Migration Tests', () => {
         WHERE event_object_table = 'player_stats'
           AND trigger_name LIKE '%updated_at%'
       `);
-      
+
       expect(result.rows.length).toBeGreaterThan(0);
     });
   });
@@ -187,8 +187,8 @@ describe('Database Schema Migration Tests', () => {
         ORDER BY ordinal_position
       `);
 
-      const columns = result.rows.map(r => r.column_name);
-      
+      const columns = result.rows.map((r) => r.column_name);
+
       expect(columns).toContain('gear_id');
       expect(columns).toContain('gear_type');
       expect(columns).toContain('name');
@@ -208,8 +208,8 @@ describe('Database Schema Migration Tests', () => {
         WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'gear_type')
         ORDER BY enumsortorder
       `);
-      
-      const values = result.rows.map(r => r.enumlabel);
+
+      const values = result.rows.map((r) => r.enumlabel);
       expect(values).toEqual(['helm', 'armor', 'bow', 'arrow', 'amulet']);
     });
 
@@ -220,8 +220,8 @@ describe('Database Schema Migration Tests', () => {
         WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'gear_rarity')
         ORDER BY enumsortorder
       `);
-      
-      const values = result.rows.map(r => r.enumlabel);
+
+      const values = result.rows.map((r) => r.enumlabel);
       expect(values).toEqual(['common', 'rare', 'epic', 'legendary']);
     });
 
@@ -231,8 +231,8 @@ describe('Database Schema Migration Tests', () => {
         FROM pg_indexes
         WHERE tablename = 'catalog'
       `);
-      
-      const indexNames = result.rows.map(r => r.indexname);
+
+      const indexNames = result.rows.map((r) => r.indexname);
       expect(indexNames).toContain('idx_catalog_gear_type');
       expect(indexNames).toContain('idx_catalog_rarity');
       expect(indexNames).toContain('idx_catalog_base_stats');
@@ -249,8 +249,8 @@ describe('Database Schema Migration Tests', () => {
         ORDER BY ordinal_position
       `);
 
-      const columns = result.rows.map(r => r.column_name);
-      
+      const columns = result.rows.map((r) => r.column_name);
+
       expect(columns).toContain('inventory_id');
       expect(columns).toContain('user_id');
       expect(columns).toContain('gear_id');
@@ -271,8 +271,8 @@ describe('Database Schema Migration Tests', () => {
         WHERE tc.table_name = 'inventory' 
           AND tc.constraint_type = 'FOREIGN KEY'
       `);
-      
-      const foreignTables = result.rows.map(r => r.foreign_table_name);
+
+      const foreignTables = result.rows.map((r) => r.foreign_table_name);
       expect(foreignTables).toContain('users');
       expect(foreignTables).toContain('catalog');
     });
@@ -287,7 +287,7 @@ describe('Database Schema Migration Tests', () => {
           AND tc.constraint_type = 'UNIQUE'
           AND kcu.column_name IN ('user_id', 'gear_id')
       `);
-      
+
       expect(result.rows.length).toBe(2);
     });
   });
@@ -301,8 +301,8 @@ describe('Database Schema Migration Tests', () => {
         ORDER BY ordinal_position
       `);
 
-      const columns = result.rows.map(r => r.column_name);
-      
+      const columns = result.rows.map((r) => r.column_name);
+
       expect(columns).toContain('loadout_id');
       expect(columns).toContain('user_id');
       expect(columns).toContain('helm_gear_id');
@@ -324,7 +324,7 @@ describe('Database Schema Migration Tests', () => {
           AND tc.constraint_type = 'UNIQUE'
           AND kcu.column_name = 'user_id'
       `);
-      
+
       expect(result.rows).toHaveLength(1);
     });
 
@@ -334,17 +334,18 @@ describe('Database Schema Migration Tests', () => {
           kcu.column_name,
           ccu.table_name AS foreign_table_name
         FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage kcu 
+        JOIN information_schema.key_column_usage kcu
           ON tc.constraint_name = kcu.constraint_name
         JOIN information_schema.constraint_column_usage ccu
           ON ccu.constraint_name = tc.constraint_name
-        WHERE tc.table_name = 'loadout' 
+        WHERE tc.table_name = 'loadout'
           AND tc.constraint_type = 'FOREIGN KEY'
+          AND kcu.column_name IN ('helm_gear_id', 'armor_gear_id', 'bow_gear_id', 'arrow_gear_id', 'amulet_gear_id')
       `);
-      
-      const foreignTables = result.rows.map(r => r.foreign_table_name);
+
+      const foreignTables = result.rows.map((r) => r.foreign_table_name);
       // All gear slot foreign keys should reference catalog
-      expect(foreignTables.every(t => t === 'catalog')).toBe(true);
+      expect(foreignTables.every((t) => t === 'catalog')).toBe(true);
     });
   });
 
@@ -356,7 +357,7 @@ describe('Database Schema Migration Tests', () => {
         WHERE routine_name = 'update_updated_at_column'
           AND routine_type = 'FUNCTION'
       `);
-      
+
       expect(result.rows).toHaveLength(1);
     });
 
@@ -367,8 +368,8 @@ describe('Database Schema Migration Tests', () => {
         WHERE action_statement LIKE '%update_updated_at_column%'
         ORDER BY event_object_table
       `);
-      
-      const tables = result.rows.map(r => r.event_object_table);
+
+      const tables = result.rows.map((r) => r.event_object_table);
       // Should have triggers on player_stats, catalog, and loadout
       expect(tables).toContain('player_stats');
       expect(tables).toContain('catalog');
@@ -383,7 +384,7 @@ describe('Database Schema Migration Tests', () => {
         FROM pg_description
         WHERE objoid = (SELECT oid FROM pg_class WHERE relname = 'player_stats')
       `);
-      
+
       expect(result.rows.length).toBeGreaterThan(0);
     });
 
@@ -393,7 +394,7 @@ describe('Database Schema Migration Tests', () => {
         FROM pg_description
         WHERE objoid = (SELECT oid FROM pg_class WHERE relname = 'catalog')
       `);
-      
+
       expect(result.rows.length).toBeGreaterThan(0);
     });
 
@@ -403,7 +404,7 @@ describe('Database Schema Migration Tests', () => {
         FROM pg_description
         WHERE objoid = (SELECT oid FROM pg_class WHERE relname = 'inventory')
       `);
-      
+
       expect(result.rows.length).toBeGreaterThan(0);
     });
 
@@ -413,7 +414,7 @@ describe('Database Schema Migration Tests', () => {
         FROM pg_description
         WHERE objoid = (SELECT oid FROM pg_class WHERE relname = 'loadout')
       `);
-      
+
       expect(result.rows.length).toBeGreaterThan(0);
     });
   });
@@ -422,25 +423,31 @@ describe('Database Schema Migration Tests', () => {
     it('should allow inserting valid player_stats data', async () => {
       // First, get a valid user_id from the users table
       const userResult = await pool.query('SELECT id FROM users LIMIT 1');
-      
+
       if (userResult.rows.length > 0) {
         const userId = userResult.rows[0].id;
-        
+
         // Insert test data
-        await pool.query(`
+        await pool.query(
+          `
           INSERT INTO player_stats (user_id, level, experience, ability_points, stats)
           VALUES ($1, 1, 0, 0, '{"attack_power": 0}')
           ON CONFLICT (user_id) DO NOTHING
-        `, [userId]);
-        
+        `,
+          [userId]
+        );
+
         // Verify it was inserted
-        const result = await pool.query(`
+        const result = await pool.query(
+          `
           SELECT * FROM player_stats WHERE user_id = $1
-        `, [userId]);
-        
+        `,
+          [userId]
+        );
+
         expect(result.rows.length).toBe(1);
         expect(result.rows[0].level).toBe(1);
-        
+
         // Clean up
         await pool.query('DELETE FROM player_stats WHERE user_id = $1', [userId]);
       }
@@ -448,15 +455,20 @@ describe('Database Schema Migration Tests', () => {
 
     it('should enforce level CHECK constraint', async () => {
       const userResult = await pool.query('SELECT id FROM users LIMIT 1');
-      
+
       if (userResult.rows.length > 0) {
         const userId = userResult.rows[0].id;
-        
+
         // Try to insert invalid data (level < 1)
-        await expect(pool.query(`
+        await expect(
+          pool.query(
+            `
           INSERT INTO player_stats (user_id, level)
           VALUES ($1, 0)
-        `, [userId])).rejects.toThrow();
+        `,
+            [userId]
+          )
+        ).rejects.toThrow();
       }
     });
   });

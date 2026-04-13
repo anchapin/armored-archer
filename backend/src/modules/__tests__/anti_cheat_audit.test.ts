@@ -28,11 +28,7 @@ beforeEach(() => {
 
 describe('initializeAuditLogging', () => {
   it('sets config and logs initialization', () => {
-    initializeAuditLogging(
-      { highRiskThreshold: 30, suspensionThreshold: 10 },
-      mockNk,
-      mockLogger
-    );
+    initializeAuditLogging({ highRiskThreshold: 30, suspensionThreshold: 10 }, mockNk, mockLogger);
 
     expect(mockLogger.info).toHaveBeenCalledWith(
       'Audit logging system initialized with config: %O',
@@ -253,10 +249,7 @@ describe('clearUserFlag', () => {
     expect(profile!.riskScore).toBe(0);
     expect(profile!.violations).toHaveLength(0);
     expect(profile!.isSuspended).toBe(false);
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      'User flag cleared',
-      { userId: 'user1' }
-    );
+    expect(mockLogger.info).toHaveBeenCalledWith('User flag cleared', { userId: 'user1' });
   });
 
   it('returns false for unknown user', () => {
@@ -274,10 +267,10 @@ describe('suspendUser', () => {
     const profile = getUserViolationSummary('user1');
     expect(profile!.isSuspended).toBe(true);
     expect(profile!.riskScore).toBeGreaterThanOrEqual(15);
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      'User suspended manually',
-      { userId: 'user1', reason: 'manual_review' }
-    );
+    expect(mockLogger.warn).toHaveBeenCalledWith('User suspended manually', {
+      userId: 'user1',
+      reason: 'manual_review',
+    });
   });
 
   it('creates a suspended profile for new user', () => {
@@ -292,10 +285,10 @@ describe('suspendUser', () => {
 
   it('uses default reason when not provided', () => {
     suspendUser('user1');
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      'User suspended manually',
-      { userId: 'user1', reason: 'admin_action' }
-    );
+    expect(mockLogger.warn).toHaveBeenCalledWith('User suspended manually', {
+      userId: 'user1',
+      reason: 'admin_action',
+    });
   });
 });
 

@@ -205,6 +205,106 @@ To export the game for a specific platform:
 | `npm run format:check` | Check code formatting |
 | `npm run docs` | Generate TypeDoc documentation |
 
+### Running CI Locally
+
+You can run GitHub Actions workflows locally using `act` before pushing to remote. This is highly recommended for catching issues early.
+
+#### Installation
+
+```bash
+# macOS
+brew install act
+
+# Linux
+curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+
+# Windows
+choco install act-cli
+```
+
+#### Initial Setup
+
+Build the custom Nakama Docker image required for CI (first time only):
+
+```bash
+docker build -t armored-archer/nakama-postgres:3.21.1 -f .docker/nakama-postgres/Dockerfile .
+```
+
+#### Running Jobs
+
+The project's `.actrc` file contains default configuration, so you can run jobs directly:
+
+```bash
+# Run a specific job
+act -j backend-lint
+act -j backend-test
+act -j gdscript-lint
+
+# List all available jobs
+act -l
+
+# Run all jobs (may have cache contention issues)
+act
+
+# Run jobs sequentially (recommended for full CI run)
+./scripts/run-ci-locally.sh
+```
+
+#### Common Issues and Solutions
+
+**Cache contention when running full workflow:**
+
+If you see `archive/tar: write too long` errors when running the full workflow, it's due to multiple jobs accessing the npm cache simultaneously.
+
+**Solutions:**
+
+1. Run jobs individually (most reliable):
+   ```bash
+   act -j backend-lint
+   act -j backend-test
+   # ... run each job separately
+   ```
+
+2. Use the sequential runner script (recommended):
+   ```bash
+   ./scripts/run-ci-locally.sh
+   ```
+
+3. Use `--reuse` flag to reuse containers:
+   ```bash
+   act --reuse
+   ```
+
+**Expected behaviors (not errors):**
+
+- Artifact uploads fail: `Unable to get the ACTIONS_RUNTIME_TOKEN env variable` - This is expected with act (no GitHub context)
+- Codecov upload is skipped: Intentionally skipped for git worktrees and local runs
+- SonarCloud scan is skipped: Requires GitHub secrets not available locally
+
+#### Available CI Jobs
+
+| Job | Description |
+|-----|-------------|
+| `backend-lint` | ESLint for TypeScript backend |
+| `backend-typecheck` | TypeScript type checking |
+| `backend-test` | Jest tests with coverage (requires services) |
+| `backend-complexity` | Cyclomatic complexity analysis |
+| `n-plus-one-detection` | Detect N+1 query patterns |
+| `backend-dead-flags` | Detect unused feature flags |
+| `security-audit` | npm audit for vulnerabilities |
+| `duplicate-code-detection` | Detect duplicate code |
+| `dependency-check` | Detect unused dependencies |
+| `bundle-size-check` | Analyze bundle size |
+| `python-lint` | Ruff for Python scripts |
+| `gdscript-lint` | gdlint for GDScript |
+| `tech-debt-tracking` | Technical debt report |
+| `dead-code-detection` | Detect dead code |
+| `godot-validate` | Validate Godot project structure |
+| `schema-validation` | Database schema tests (requires services) |
+| `agents-md-validation` | Validate AGENTS.md documentation |
+
+**Note:** The project uses a custom Nakama Docker image configured for PostgreSQL. See [docs/ACT_CI_SUMMARY.md](docs/ACT_CI_SUMMARY.md) and [.docker/nakama-postgres/README.md](.docker/nakama-postgres/README.md) for details.
+
 ### Database
 
 PostgreSQL is managed via Docker Compose:

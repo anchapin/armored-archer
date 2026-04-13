@@ -44,6 +44,8 @@ func run_benchmarks() -> void:
 func _create_profiler() -> Node:
 	var profiler = load("res://autoloads/PerformanceProfiler.gd").new()
 	add_child(profiler)
+	# Wait for _ready() to complete
+	await get_tree().process_frame
 	return profiler
 
 func _pass(test_name: String) -> void:

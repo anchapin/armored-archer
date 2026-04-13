@@ -43,10 +43,12 @@ func _fail(test_name: String, message: String) -> void:
 func test_initial_state() -> void:
 	var arrow = _create_arrow()
 
-	if arrow.speed == 800.0 and arrow.damage == 25 and arrow.direction == Vector2.RIGHT and arrow.lifetime == 5.0 and not arrow.is_active:
+	# Note: damage initial value is 50 (see arrow.gd)
+	# pooled state resets damage to 25, tested separately
+	if arrow.speed == 800.0 and arrow.damage == 50 and arrow.direction == Vector2.RIGHT and arrow.lifetime == 5.0 and not arrow.is_active:
 		_pass("test_initial_state")
 	else:
-		_fail("test_initial_state", "Initial state should have default values")
+		_fail("test_initial_state", "Initial state should have default values (speed=800, damage=50, direction=RIGHT, lifetime=5, is_active=false)")
 
 	arrow.queue_free()
 
@@ -103,12 +105,13 @@ func test_lifetime_timer() -> void:
 	arrow.is_active = true
 	arrow.lifetime = 2.0
 
+	# Call _physics_process directly to test timer tracking
 	arrow._physics_process(0.5)
 
 	if arrow._lifetime_timer == 0.5:
 		_pass("test_lifetime_timer")
 	else:
-		_fail("test_lifetime_timer", "Lifetime timer should track delta")
+		_fail("test_lifetime_timer", "Lifetime timer should track delta (got %f, expected 0.5)" % arrow._lifetime_timer)
 
 	arrow.queue_free()
 

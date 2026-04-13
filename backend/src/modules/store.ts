@@ -14,6 +14,7 @@ import { config } from '../config';
 import { logAudit } from './audit';
 import { isPII } from './privacy_compliance';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { logger } from '../config/logger';
 
 /**
  * Maximum gem balance allowed to prevent overflow exploits.
@@ -46,9 +47,9 @@ export enum RefundReason {
  */
 function mapWebhookReasonToRefundReason(reason: string | undefined): RefundReason {
   if (!reason) return RefundReason.OTHER;
-  
+
   const normalizedReason = reason.toLowerCase().replace(/\s+/g, '_');
-  
+
   switch (normalizedReason) {
     case 'customer_support':
       return RefundReason.CUSTOMER_SUPPORT;
@@ -199,12 +200,16 @@ async function markReceiptAsUsed(
  * This prevents collision attacks and replay attack manipulation.
  */
 if (!process.env.RECEIPT_HASH_SALT) {
-  console.warn('[SECURITY] RECEIPT_HASH_SALT not set - using fallback. Set this env var in production.');
+  logger.warn(
+    '[SECURITY] RECEIPT_HASH_SALT not set - using fallback. Set this env var in production.'
+  );
 }
 
 function hashReceipt(receipt: string): string {
   const salt = process.env.RECEIPT_HASH_SALT || 'armored_archer_secure_iap_salt_2024';
-  return createHash('sha256').update(receipt + salt).digest('hex');
+  return createHash('sha256')
+    .update(receipt + salt)
+    .digest('hex');
 }
 
 /**
@@ -216,7 +221,11 @@ function hashReceipt(receipt: string): string {
  * @param logger - Optional Nakama logger
  * @returns true if the refund was already processed
  */
-async function isRefundAlreadyProcessed(userId: string, refundTransactionId: string, logger?: Runtime.Logger): Promise<boolean> {
+async function isRefundAlreadyProcessed(
+  userId: string,
+  refundTransactionId: string,
+  logger?: Runtime.Logger
+): Promise<boolean> {
   const redis = getRedisClient(logger);
   if (redis) {
     try {
@@ -226,7 +235,7 @@ async function isRefundAlreadyProcessed(userId: string, refundTransactionId: str
       if (logger) logger.error('Redis error in isRefundAlreadyProcessed: %s', e);
     }
   }
-  
+
   // For now we primarily use Redis for this, or you could add a Nakama storage check
   return false;
 }
@@ -239,7 +248,11 @@ async function isRefundAlreadyProcessed(userId: string, refundTransactionId: str
  * @param refundTransactionId - Unique refund transaction identifier
  * @param logger - Optional Nakama logger
  */
-async function markRefundAsProcessed(userId: string, refundTransactionId: string, logger?: Runtime.Logger): Promise<void> {
+async function markRefundAsProcessed(
+  userId: string,
+  refundTransactionId: string,
+  logger?: Runtime.Logger
+): Promise<void> {
   const redis = getRedisClient(logger);
   if (redis) {
     try {
@@ -1504,7 +1517,9 @@ export async function rpcCheckRefunds(
 
   let processedCount = 0;
   for (const refund of refunds) {
-    if (!(await isRefundAlreadyProcessed(validation.data.app_user_id, refund.refunded_at, logger))) {
+    if (
+      !(await isRefundAlreadyProcessed(validation.data.app_user_id, refund.refunded_at, logger))
+    ) {
       // Get product info to determine gem amount
       const catalog = getStoreCatalog(logger);
       const productInfo = catalog[refund.product_id];
@@ -1706,15 +1721,30 @@ export async function rpcAppLaunchCheck(
 
   // Process pending purchases
   const pendingResultRaw = await rpcProcessPendingPurchases(ctx, logger, nk, '{}');
-  const pendingResult = safeParse<Record<string, unknown>>(pendingResultRaw, null, logger, 'app_launch_check:pendingPurchases');
+  const pendingResult = safeParse<Record<string, unknown>>(
+    pendingResultRaw,
+    null,
+    logger,
+    'app_launch_check:pendingPurchases'
+  );
 
   // Check for refunds
   const refundResultRaw = await rpcCheckRefunds(ctx, logger, nk, '{}');
-  const refundResult = safeParse<Record<string, unknown>>(refundResultRaw, null, logger, 'app_launch_check:refunds');
+  const refundResult = safeParse<Record<string, unknown>>(
+    refundResultRaw,
+    null,
+    logger,
+    'app_launch_check:refunds'
+  );
 
   // Check subscriptions
   const subscriptionResultRaw = await rpcCheckSubscriptions(ctx, logger, nk, '{}');
-  const subscriptionResult = safeParse<Record<string, unknown>>(subscriptionResultRaw, null, logger, 'app_launch_check:subscriptions');
+  const subscriptionResult = safeParse<Record<string, unknown>>(
+    subscriptionResultRaw,
+    null,
+    logger,
+    'app_launch_check:subscriptions'
+  );
 
   return JSON.stringify({
     success: true,
@@ -1744,7 +1774,11 @@ function getRevenueCatWebhookSecret(): string | undefined {
  * Verify RevenueCat webhook signature (HMAC-SHA256).
  * This ensures the webhook request actually came from RevenueCat.
  */
-function verifyWebhookSignature(payload: string, signature: string | undefined, secret: string): boolean {
+function verifyWebhookSignature(
+  payload: string,
+  signature: string | undefined,
+  secret: string
+): boolean {
   if (!signature) {
     return false;
   }
@@ -1782,7 +1816,13 @@ async function handleInitialPurchase(
   productId: string,
   logger: Runtime.Logger,
   eventType: string = 'initial_purchase'
-): Promise<{ success: boolean; message: string; gems_awarded?: number; new_balance?: number; event_type?: string }> {
+): Promise<{
+  success: boolean;
+  message: string;
+  gems_awarded?: number;
+  new_balance?: number;
+  event_type?: string;
+}> {
   const gemAmount = getGemAmountForProduct(productId, logger);
 
   if (!gemAmount) {
@@ -1828,7 +1868,13 @@ async function handleInitialPurchase(
 
   logger.info('Webhook: Awarded %d gems to user %s for product %s', gemAmount, userId, productId);
 
-  return { success: true, message: 'Gems awarded', gems_awarded: gemAmount, new_balance: playerCurrency.gems, event_type: eventType };
+  return {
+    success: true,
+    message: 'Gems awarded',
+    gems_awarded: gemAmount,
+    new_balance: playerCurrency.gems,
+    event_type: eventType,
+  };
 }
 
 /**
@@ -1851,18 +1897,24 @@ function handleSubscriptionCancelled(
 
   // Mark subscription as cancelled in storage
   const subscriptionKey = userId;
-  const existingData = nk.storageRead([{
-    collection: 'player_subscription',
-    key: subscriptionKey,
-    userId: userId,
-  }]);
+  const existingData = nk.storageRead([
+    {
+      collection: 'player_subscription',
+      key: subscriptionKey,
+      userId: userId,
+    },
+  ]);
 
   if (existingData && existingData.length > 0) {
     const value = existingData[0].value;
     // Handle empty or non-JSON values
     if (!value || typeof value !== 'string') {
       logger.warn('No valid subscription data found for user %s', userId);
-      return { success: true, message: 'Cancellation noted (no subscription found)', event_type: eventType };
+      return {
+        success: true,
+        message: 'Cancellation noted (no subscription found)',
+        event_type: eventType,
+      };
     }
     let subscription: Record<string, unknown>;
     try {
@@ -1876,12 +1928,14 @@ function handleSubscriptionCancelled(
     subscription.cancelled_at = new Date().toISOString();
     subscription.cancel_reason = reason || 'user_cancelled';
 
-    nk.storageWrite([{
-      collection: 'player_subscription',
-      key: subscriptionKey,
-      value: JSON.stringify(subscription),
-      userId: userId,
-    }]);
+    nk.storageWrite([
+      {
+        collection: 'player_subscription',
+        key: subscriptionKey,
+        value: JSON.stringify(subscription),
+        userId: userId,
+      },
+    ]);
   }
 
   return { success: true, message: 'Cancellation noted', event_type: eventType };
@@ -1897,26 +1951,28 @@ function handleBillingIssue(
   logger: Runtime.Logger,
   eventType: string = 'billing_issue'
 ): { success: boolean; message?: string; event_type?: string; error?: string } {
-  logger.info(
-    'Webhook: Billing issue for user %s, product %s',
-    userId,
-    productId
-  );
+  logger.info('Webhook: Billing issue for user %s, product %s', userId, productId);
 
   // Mark subscription as having billing issues
   const subscriptionKey = userId;
-  const existingData = nk.storageRead([{
-    collection: 'player_subscription',
-    key: subscriptionKey,
-    userId: userId,
-  }]);
+  const existingData = nk.storageRead([
+    {
+      collection: 'player_subscription',
+      key: subscriptionKey,
+      userId: userId,
+    },
+  ]);
 
   if (existingData && existingData.length > 0) {
     const value = existingData[0].value;
     // Handle empty or non-JSON values
     if (!value || typeof value !== 'string') {
       logger.warn('No valid subscription data found for user %s', userId);
-      return { success: true, message: 'Billing issue recorded (no subscription found)', event_type: eventType };
+      return {
+        success: true,
+        message: 'Billing issue recorded (no subscription found)',
+        event_type: eventType,
+      };
     }
     let subscription: Record<string, unknown>;
     try {
@@ -1928,12 +1984,14 @@ function handleBillingIssue(
     subscription.billing_issue = true;
     subscription.billing_issue_at = new Date().toISOString();
 
-    nk.storageWrite([{
-      collection: 'player_subscription',
-      key: subscriptionKey,
-      value: JSON.stringify(subscription),
-      userId: userId,
-    }]);
+    nk.storageWrite([
+      {
+        collection: 'player_subscription',
+        key: subscriptionKey,
+        value: JSON.stringify(subscription),
+        userId: userId,
+      },
+    ]);
   }
 
   return { success: true, message: 'Billing issue recorded', event_type: eventType };
@@ -2035,7 +2093,8 @@ export async function rpcRevenueCatWebhook(
 
   // Extract event type (check top-level first for test payloads, then nested under "event")
   const eventObj = webhookData.event as Record<string, unknown> | undefined;
-  const eventType = (webhookData.event_type as string) ||
+  const eventType =
+    (webhookData.event_type as string) ||
     (webhookData.eventType as string) ||
     (eventObj?.event_type as string) ||
     (eventObj?.type as string) ||
@@ -2046,14 +2105,16 @@ export async function rpcRevenueCatWebhook(
   const normalizedEventType = eventType.toLowerCase();
 
   // Extract common fields (check top-level first for test payloads, then nested under "event")
-  const appUserId = (webhookData.app_user_id as string) ||   // Check top-level first (test payloads)
+  const appUserId =
+    (webhookData.app_user_id as string) || // Check top-level first (test payloads)
     (webhookData.appUserId as string) ||
     (webhookData.user_id as string) ||
     (webhookData.userId as string) ||
     (eventObj?.app_user_id as string) ||
     (eventObj?.appUserId as string) ||
     '';
-  const productId = (webhookData.product_id as string) ||   // Check top-level first (test payloads)
+  const productId =
+    (webhookData.product_id as string) || // Check top-level first (test payloads)
     (webhookData.productId as string) ||
     (eventObj?.product_id as string) ||
     (eventObj?.productId as string) ||
@@ -2064,7 +2125,14 @@ export async function rpcRevenueCatWebhook(
     return JSON.stringify({ success: false, error: 'Missing app_user_id' });
   }
 
-  let result: { success: boolean; message?: string; event_type?: string; error?: string; gems_awarded?: number; new_balance?: number };
+  let result: {
+    success: boolean;
+    message?: string;
+    event_type?: string;
+    error?: string;
+    gems_awarded?: number;
+    new_balance?: number;
+  };
 
   switch (normalizedEventType) {
     case 'initial_purchase':
@@ -2074,17 +2142,37 @@ export async function rpcRevenueCatWebhook(
     case 'cancellation':
     case 'uncancellation':
     case 'non_renewing_purchase_cancelled':
-      result = handleSubscriptionCancelled(nk, appUserId, productId, webhookData.reason as string, logger, normalizedEventType);
+      result = handleSubscriptionCancelled(
+        nk,
+        appUserId,
+        productId,
+        webhookData.reason as string,
+        logger,
+        normalizedEventType
+      );
       break;
     case 'billing_issue':
       result = handleBillingIssue(nk, appUserId, productId, logger, normalizedEventType);
       break;
     case 'expiration':
-      result = handleSubscriptionExpired(nk, appUserId, productId, webhookData.reason as string, logger, normalizedEventType);
+      result = handleSubscriptionExpired(
+        nk,
+        appUserId,
+        productId,
+        webhookData.reason as string,
+        logger,
+        normalizedEventType
+      );
       break;
     case 'transfer':
     case 'product_change':
-      result = await handleProductChange(nk, appUserId, webhookData.transferred_from as string, productId, logger);
+      result = await handleProductChange(
+        nk,
+        appUserId,
+        webhookData.transferred_from as string,
+        productId,
+        logger
+      );
       break;
     case 'refund':
       const refundAmount = getGemAmountForProduct(productId, logger) || 0;
@@ -2094,7 +2182,9 @@ export async function rpcRevenueCatWebhook(
         nk,
         appUserId,
         refundAmount,
-        webhookData.transaction_id as string || webhookData.refund_transaction_id as string || '',
+        (webhookData.transaction_id as string) ||
+          (webhookData.refund_transaction_id as string) ||
+          '',
         refundReason,
         logger
       );
@@ -2102,7 +2192,11 @@ export async function rpcRevenueCatWebhook(
       break;
     default:
       logger.info('Webhook: Received unhandled event type: %s', eventType);
-      result = { success: true, message: `Event ${eventType} noted but not processed`, event_type: normalizedEventType };
+      result = {
+        success: true,
+        message: `Event ${eventType} noted but not processed`,
+        event_type: normalizedEventType,
+      };
   }
 
   return JSON.stringify(result);

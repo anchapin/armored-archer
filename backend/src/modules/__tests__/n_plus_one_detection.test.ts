@@ -147,12 +147,11 @@ describe('n_plus_one_detection', () => {
     });
 
     it('should track query options', () => {
-      trackQuery(
-        'options_test',
-        'storage',
-        () => 'result',
-        { collection: 'test_collection', key: 'test_key', userId: 'test_user' }
-      );
+      trackQuery('options_test', 'storage', () => 'result', {
+        collection: 'test_collection',
+        key: 'test_key',
+        userId: 'test_user',
+      });
 
       const stats = getQueryStats('options_test');
       expect(stats?.totalQueries).toBe(1);
@@ -392,9 +391,7 @@ describe('n_plus_one_detection', () => {
         contentType: 'text/plain',
       };
 
-      expect(() =>
-        initializeNPlusOneDetectionWithMetrics(mockRegistry as any)
-      ).not.toThrow();
+      expect(() => initializeNPlusOneDetectionWithMetrics(mockRegistry as any)).not.toThrow();
     });
 
     it('should initialize with metrics registry and logger', () => {
@@ -434,7 +431,12 @@ describe('n_plus_one_detection', () => {
       const mockHandler = jest.fn().mockResolvedValue('ok');
       const wrapped = wrapRpcWithNPlusOneTracking('disabled_rpc', mockHandler);
 
-      const result = await wrapped({} as any, { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } as any, {} as any, '{}');
+      const result = await wrapped(
+        {} as any,
+        { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } as any,
+        {} as any,
+        '{}'
+      );
 
       expect(result).toBe('ok');
     });
@@ -450,10 +452,7 @@ describe('n_plus_one_detection', () => {
         mockHandler as any
       );
 
-      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-        'test.rpc',
-        expect.any(Function)
-      );
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith('test.rpc', expect.any(Function));
     });
   });
 
