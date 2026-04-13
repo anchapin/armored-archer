@@ -214,24 +214,18 @@ services:
       - "/bin/sh"
       - "-ecx"
       - >
-        echo "Starting Nakama with environment validation..." &&
-        /nakama/nakama migrate up --database.address ${DATABASE_ADDRESS:-postgres://postgres:changeme@postgres:5432/nakama} &&
-        exec /nakama/nakama --config /nakama/data/nakama.yml --database.address ${DATABASE_ADDRESS:-postgres://postgres:changeme@postgres:5432/nakama}
+        /nakama/nakama migrate up --database.address postgres://postgres:changeme@postgres:5432/nakama &&
+        exec /nakama/nakama --database.address postgres://postgres:changeme@postgres:5432/nakama
     restart: always
     environment:
       - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-defaultkey}
       - NAKAMA_SERVER_PORT=${NAKAMA_SERVER_PORT:-7350}
-      - NAKAMA_CONSOLE_PORT=${NAKAMA_CONSOLE_PORT:-7351}
-      - DATABASE_ADDRESS=${DATABASE_ADDRESS:-postgres://postgres:changeme@postgres:5432/nakama}
-      - SESSION_ENCRYPTION_KEY=${SESSION_ENCRYPTION_KEY:-default-token-key}
-      - REFRESH_ENCRYPTION_KEY=${REFRESH_ENCRYPTION_KEY:-default-refresh-key}
     links:
       - "postgres:db"
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
-      - ./nakama.yml:/nakama/data/nakama.yml
       - ./data/modules:/nakama/data/modules
       - ./data:/nakama/data/migrations
     expose:
