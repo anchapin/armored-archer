@@ -32,14 +32,24 @@ jobs:
       - name: Run Godot Tests
         run: |
           # Run headless tests using the test runner scene
-          # Note: This requires a test scene or headless mode
-          # Capture output and check for test failures
-          TEST_OUTPUT=$(./godot4 --headless --script test/run_all_tests.gd 2>&1)
-          echo "$TEST_OUTPUT"
-          
+          # Use timeout to prevent indefinite hangs in Docker
+          # Use proper flags for headless operation
+          set -o pipefail
+          timeout 120s ./godot4 --headless --quit --script test/run_all_tests.gd 2>&1 | tee /tmp/godot_test_output.txt || {
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 124 ]; then
+              echo "❌ Godot tests timed out after 120 seconds"
+              exit 1
+            else
+              echo "❌ Godot tests failed with exit code: $EXIT_CODE"
+              exit 1
+            fi
+          }
+
           # Check for test failures in output
-          if echo "$TEST_OUTPUT" | grep -q "Failed: [1-9]"; then
+          if grep -q "Failed: [1-9]" /tmp/godot_test_output.txt 2>/dev/null; then
             echo "❌ Godot tests failed!"
+            grep "Failed:" /tmp/godot_test_output.txt || true
             exit 1
           fi
           echo "✅ All Godot tests passed"
@@ -132,23 +142,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      # Nakama game server service
-      nakama:
-        image: heroiclabs/nakama:3.21.1
-        env:
-          NAKAMA_SERVER_KEY: defaultkey
-          NAKAMA_SERVER_PORT: 7350
-          DATABASE_ADDRESS: postgres://postgres:changeme@localhost:5432/nakama?sslmode=disable
-        ports:
-          - 7350:7350
-        options: >-
-          --health-cmd "/nakama/nakama healthcheck"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-        volumes:
-          - ./backend/nakama.yml:/nakama/data/nakama.yml:ro
-    
     steps:
       - uses: actions/checkout@v4
       
@@ -182,24 +175,9 @@ jobs:
             PGPASSWORD=changeme psql -h localhost -U postgres -d nakama -f "$migration" || true
           done
       
-      - name: Wait for Nakama to be ready
-        run: |
-          echo "Waiting for Nakama to be ready..."
-          for i in {1..60}; do
-            if curl -s http://localhost:7350/ 2>/dev/null || curl -s http://localhost:7351/ 2>/dev/null; then
-              echo "Nakama is ready"
-              break
-            fi
-            echo "Waiting for Nakama... ($i/60)"
-            sleep 2
-          done
-      
       - name: Run tests with coverage
         working-directory: ./backend
         env:
-          NAKAMA_HOST: localhost
-          NAKAMA_PORT: 7350
-          NAKAMA_SERVER_KEY: defaultkey
           TEST_DB_HOST: localhost
           TEST_DB_PORT: 5432
           TEST_DB_USER: postgres
