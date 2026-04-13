@@ -66,7 +66,10 @@ const mockCtx = {
 } as any;
 
 const mockNk = {
-  storageRead: jest.fn().mockResolvedValue([]),
+  storageRead: jest.fn().mockImplementation((requests: any) => {
+    // Default empty response for unrecognized requests
+    return Promise.resolve([]);
+  }),
   storageWrite: jest.fn().mockResolvedValue(undefined),
   storageDelete: jest.fn().mockResolvedValue(undefined),
 } as any;
@@ -74,7 +77,10 @@ const mockNk = {
 describe('Matchmaking Analytics Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockNk.storageRead.mockResolvedValue([]);
+    // Reset mock to default implementation that returns empty array
+    mockNk.storageRead.mockImplementation((requests: any) => {
+      return Promise.resolve([]);
+    });
     mockNk.storageWrite.mockResolvedValue(undefined);
   });
 
@@ -187,21 +193,27 @@ describe('Matchmaking Analytics Module', () => {
 
   describe('detectBalanceIssues', () => {
     it('should detect high win rate issue', async () => {
-      mockNk.storageRead
-        .mockResolvedValue([
-          {
-            value: {
-              weapon_id: 'op_weapon',
-              matches_played: 20,
-              wins: 16,
-              losses: 4,
-              win_rate: 0.8,
-              avg_rating_diff: 50,
-              last_updated: Date.now(),
+      let callCount = 0;
+      mockNk.storageRead.mockImplementation((requests: any) => {
+        callCount++;
+        // First call is for weapon stats
+        if (callCount === 1) {
+          return Promise.resolve([
+            {
+              value: {
+                weapon_id: 'op_weapon',
+                matches_played: 20,
+                wins: 16,
+                losses: 4,
+                avg_rating_diff: 50,
+                last_updated: Date.now(),
+              },
             },
-          },
-        ])
-        .mockResolvedValue([]);
+          ]);
+        }
+        // Subsequent calls are for match data and queue times (empty)
+        return Promise.resolve([]);
+      });
 
       const issues = await detectBalanceIssues(mockNk);
 
@@ -212,19 +224,27 @@ describe('Matchmaking Analytics Module', () => {
     });
 
     it('should detect low win rate issue', async () => {
-      mockNk.storageRead.mockResolvedValue([
-        {
-          value: {
-            weapon_id: 'weak_weapon',
-            matches_played: 20,
-            wins: 4,
-            losses: 16,
-            win_rate: 0.2,
-            avg_rating_diff: 50,
-            last_updated: Date.now(),
-          },
-        },
-      ]);
+      let callCount = 0;
+      mockNk.storageRead.mockImplementation((requests: any) => {
+        callCount++;
+        // First call is for weapon stats
+        if (callCount === 1) {
+          return Promise.resolve([
+            {
+              value: {
+                weapon_id: 'weak_weapon',
+                matches_played: 20,
+                wins: 4,
+                losses: 16,
+                avg_rating_diff: 50,
+                last_updated: Date.now(),
+              },
+            },
+          ]);
+        }
+        // Subsequent calls are for match data and queue times (empty)
+        return Promise.resolve([]);
+      });
 
       const issues = await detectBalanceIssues(mockNk);
 
@@ -235,20 +255,27 @@ describe('Matchmaking Analytics Module', () => {
     });
 
     it('should skip weapons with insufficient data', async () => {
-      mockNk.storageRead
-        .mockResolvedValue([
-          {
-            value: {
-              weapon_id: 'new_weapon',
-              matches_played: 5,
-              wins: 4,
-              losses: 1,
-              win_rate: 0.8,
-              avg_rating_diff: 50,
-              last_updated: Date.now(),
+      let callCount = 0;
+      mockNk.storageRead.mockImplementation((requests: any) => {
+        callCount++;
+        // First call is for weapon stats
+        if (callCount === 1) {
+          return Promise.resolve([
+            {
+              value: {
+                weapon_id: 'new_weapon',
+                matches_played: 5,
+                wins: 4,
+                losses: 1,
+                avg_rating_diff: 50,
+                last_updated: Date.now(),
+              },
             },
-          },
-        ]);
+          ]);
+        }
+        // Subsequent calls are for match data and queue times (empty)
+        return Promise.resolve([]);
+      });
 
       const issues = await detectBalanceIssues(mockNk);
 

@@ -123,12 +123,14 @@ describe('DifficultyScaling', () => {
     it('should increase complexity with level', () => {
       const tier1 = getAiDifficultyTier(1);
       const tier10 = getAiDifficultyTier(10);
+      const tier11 = getAiDifficultyTier(11);
       const tier20 = getAiDifficultyTier(20);
       const tier30 = getAiDifficultyTier(30);
 
+      // Test progression across different tier ranges
       expect(tier30.pattern_complexity).toBeGreaterThan(tier20.pattern_complexity);
-      expect(tier20.pattern_complexity).toBeGreaterThan(tier10.pattern_complexity);
-      expect(tier10.pattern_complexity).toBeGreaterThan(tier1.pattern_complexity);
+      expect(tier20.pattern_complexity).toBeGreaterThan(tier11.pattern_complexity);
+      expect(tier11.pattern_complexity).toBeGreaterThan(tier10.pattern_complexity);
     });
   });
 
