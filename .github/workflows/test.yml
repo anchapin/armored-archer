@@ -16,12 +16,22 @@ jobs:
     strategy:
       matrix:
         godot-version: ['4.6']
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
+      - name: Skip for act (OOM issue)
+        if: env.ACT == 'true'
+        run: |
+          echo "⚠️  Skipping Godot tests for act (ACT environment detected)"
+          echo "❌ Godot tests cause OOM in Docker containers with act"
+          echo "✅ Tests must be run with Godot Editor or on GitHub Actions CI"
+          echo "::warning::Godot tests skipped for act - run 'godot --headless --script test/run_all_tests.gd' locally instead"
+          exit 0
+
       - name: Setup Godot
+        if: env.ACT != 'true'
         run: |
           # Download Godot headless binary directly
           wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
@@ -30,6 +40,7 @@ jobs:
           mv Godot_v4.6-stable_linux.x86_64 godot4
 
       - name: Import Godot Assets
+        if: env.ACT != 'true'
         run: |
           # Import assets (images, sounds, etc.) before running tests
           # This creates the .godot/imported/ directory with .ctex and other imported files
@@ -39,6 +50,7 @@ jobs:
           ls -la .godot/imported/ | head -10 || echo "Import directory created"
 
       - name: Run Godot Tests
+        if: env.ACT != 'true'
         run: |
           # Run headless tests using the test runner scene
           # Capture output and check for test failures
@@ -64,8 +76,9 @@ jobs:
           fi
 
           echo "✅ All Godot tests passed"
-          
+
       - name: Check test coverage
+        if: env.ACT != 'true'
         run: |
           # Count test files and estimate coverage
           echo "=== Test Coverage Summary ==="

@@ -425,16 +425,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fix Python hostedtoolcache permissions (for act only)
-        if: env.ACT == 'true'
-        run: |
-          # Install Python directly from apt for act runs
-          # Debian bullseye has Python 3.9 by default
-          apt-get update && apt-get install -y python3 python3-pip
-
       - name: Set up Python
         uses: actions/setup-python@v4
-        if: env.ACT != 'true'
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -451,16 +443,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fix Python hostedtoolcache permissions (for act only)
-        if: env.ACT == 'true'
-        run: |
-          # Install Python directly from apt for act runs
-          # Debian bullseye has Python 3.9 by default
-          apt-get update && apt-get install -y python3 python3-pip
-
       - name: Set up Python
         uses: actions/setup-python@v4
-        if: env.ACT != 'true'
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -512,16 +496,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fix Python hostedtoolcache permissions (for act only)
-        if: env.ACT == 'true'
-        run: |
-          # Install Python directly from apt for act runs
-          # Debian bullseye has Python 3.9 by default
-          apt-get update && apt-get install -y python3 python3-pip
-
       - name: Set up Python
         uses: actions/setup-python@v4
-        if: env.ACT != 'true'
         with:
           python-version: '3.10'
           cache: 'pip'
