@@ -125,6 +125,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       # PostgreSQL database service
+      # Note: Using port 5432 (container) mapped to host port 5432
+      # For act local testing, use: act -j backend-test --job-timeout=30m
       postgres:
         image: postgres:14-alpine
         env:
@@ -214,19 +216,44 @@ jobs:
           TEST_DB_NAME: nakama
         run: npm run test:coverage
 
-      - name: Upload coverage to Codecov
+      - name: Detect git worktree environment
+        id: detect-worktree
         if: success()
+        run: |
+          # Detect if we're in a git worktree (e.g., /var/tmp/vibe-kanban/worktrees/)
+          GIT_DIR=$(git rev-parse --git-dir 2>/dev/null || echo "")
+          IS_WORKTREE=0
+
+          if [[ "$GIT_DIR" == *"/.git/worktrees/"* ]] || [[ "$PWD" == *"/worktrees/"* ]]; then
+            echo "::warning title=Git Worktree Detected::Running in a git worktree. Codecov has issues with worktrees."
+            IS_WORKTREE=1
+          fi
+
+          # Also check for act environment variable
+          if [ "${{ env.ACT }}" == "true" ]; then
+            echo "::warning title=Act Environment Detected::Running with act. Skipping Codecov upload."
+            IS_WORKTREE=1
+          fi
+
+          echo "is_worktree=$IS_WORKTREE" >> $GITHUB_OUTPUT
+          echo "Git directory: $GIT_DIR"
+          echo "Working directory: $PWD"
+
+      - name: Upload coverage to Codecov
+        if: success() && steps.detect-worktree.outputs.is_worktree == '0'
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
-        continue-on-error: true
-        env:
-          # Skip Codecov for act environment - git worktrees cause issues
-          CODECOV_SKIP: ${{ env.ACT == 'true' && 'true' || '' }}
         with:
           file: ./backend/coverage/lcov.info
           flags: backend
           fail_ci_if_error: false
           git_service_name: github
           verbose: true
+
+      - name: Skip Codecov (worktree/act detected)
+        if: success() && steps.detect-worktree.outputs.is_worktree == '1'
+        run: |
+          echo "⚠️  Skipping Codecov upload due to git worktree or act environment"
+          echo "This is expected behavior - Codecov has issues with worktrees and local testing"
 
   security-audit:
     name: Security Audit
@@ -392,6 +419,7 @@ jobs:
           path: |
             backend/.bundle-size-history.json
           retention-days: 30
+          if-no-files-found: ignore
 
   godot-validate:
     name: Godot Project Validation
@@ -489,6 +517,7 @@ jobs:
           path: |
             backend/tech-debt-report.json
           retention-days: 30
+          if-no-files-found: ignore
 
   dead-code-detection:
     name: Dead Code Detection
@@ -529,6 +558,8 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     services:
       # PostgreSQL database service
+      # Note: Using unique port 5434 to avoid conflicts with backend-test job (5432) when running act in parallel
+      # For act local testing, use: act -j sonarcloud --job-timeout=30m
       postgres:
         image: postgres:14-alpine
         env:
@@ -536,7 +567,7 @@ jobs:
           POSTGRES_DB: nakama
           POSTGRES_PASSWORD: changeme
         ports:
-          - 5432:5432
+          - 5434:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -545,10 +576,11 @@ jobs:
           --health-start-period 30s
 
       # Nakama game server service (custom image with PostgreSQL config)
+      # Note: Using unique port 7351 to avoid conflicts with backend-test job (7350) when running act in parallel
       nakama:
         image: armored-archer/nakama-postgres:3.21.1
         ports:
-          - 7350:7350
+          - 7351:7350
         options: >-
           --health-cmd "/nakama/nakama healthcheck"
           --health-interval 10s
@@ -587,7 +619,7 @@ jobs:
           # For act local testing, use direct pg_isready connection
           # For GitHub Actions, this also works with the service container
           for i in {1..30}; do
-            if PGPASSWORD=changeme pg_isready -h localhost -p 5432 -U postgres 2>/dev/null; then
+            if PGPASSWORD=changeme pg_isready -h localhost -p 5434 -U postgres 2>/dev/null; then
               echo "PostgreSQL is ready"
               break
             fi
@@ -602,14 +634,14 @@ jobs:
           # For GitHub Actions, this also works with the service container
           for migration in $(ls -1 *.sql 2>/dev/null | sort); do
             echo "Running migration: $migration"
-            PGPASSWORD=changeme psql -h localhost -p 5432 -U postgres -d nakama -f "$migration" || true
+            PGPASSWORD=changeme psql -h localhost -p 5434 -U postgres -d nakama -f "$migration" || true
           done
 
       - name: Wait for Nakama to be ready
         run: |
           echo "Waiting for Nakama to be ready..."
           for i in {1..60}; do
-            if curl -s http://localhost:7350/ 2>/dev/null || curl -s http://localhost:7351/ 2>/dev/null; then
+            if curl -s http://localhost:7351/ 2>/dev/null; then
               echo "Nakama is ready"
               break
             fi
@@ -621,10 +653,10 @@ jobs:
         working-directory: ./backend
         env:
           NAKAMA_HOST: localhost
-          NAKAMA_PORT: 7350
+          NAKAMA_PORT: 7351
           NAKAMA_SERVER_KEY: defaultkey
           TEST_DB_HOST: localhost
-          TEST_DB_PORT: 5432
+          TEST_DB_PORT: 5434
           TEST_DB_USER: postgres
           TEST_DB_PASSWORD: changeme
           TEST_DB_NAME: nakama
@@ -753,6 +785,7 @@ jobs:
           name: schema-test-results
           path: backend/test-results/
           retention-days: 7
+          if-no-files-found: ignore
 
   agents-md-validation:
     name: AGENTS.md Validation
@@ -784,3 +817,4 @@ jobs:
           path: |
             backend/agents-md-validation-report.json
           retention-days: 7
+          if-no-files-found: ignore

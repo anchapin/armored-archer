@@ -386,12 +386,31 @@ jobs:
             " 2>/dev/null || echo "⚠️ Could not parse coverage details, but Jest threshold check will enforce requirements"
           fi
       
-      - name: Upload coverage to Codecov
+      - name: Detect git worktree environment
+        id: detect-worktree
         if: success()
-        continue-on-error: true
-        env:
-          # Skip Codecov for act environment - git worktrees cause issues
-          CODECOV_SKIP: ${{ env.ACT == 'true' && 'true' || '' }}
+        run: |
+          # Detect if we're in a git worktree (e.g., /var/tmp/vibe-kanban/worktrees/)
+          GIT_DIR=$(git rev-parse --git-dir 2>/dev/null || echo "")
+          IS_WORKTREE=0
+
+          if [[ "$GIT_DIR" == *"/.git/worktrees/"* ]] || [[ "$PWD" == *"/worktrees/"* ]]; then
+            echo "::warning title=Git Worktree Detected::Running in a git worktree. Codecov has issues with worktrees."
+            IS_WORKTREE=1
+          fi
+
+          # Also check for act environment variable
+          if [ "${{ env.ACT }}" == "true" ]; then
+            echo "::warning title=Act Environment Detected::Running with act. Skipping Codecov upload."
+            IS_WORKTREE=1
+          fi
+
+          echo "is_worktree=$IS_WORKTREE" >> $GITHUB_OUTPUT
+          echo "Git directory: $GIT_DIR"
+          echo "Working directory: $PWD"
+
+      - name: Upload coverage to Codecov
+        if: success() && steps.detect-worktree.outputs.is_worktree == '0'
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         with:
           file: ./backend/coverage/lcov.info
@@ -399,6 +418,12 @@ jobs:
           fail_ci_if_error: false
           git_service_name: github
           verbose: true
+
+      - name: Skip Codecov (worktree/act detected)
+        if: success() && steps.detect-worktree.outputs.is_worktree == '1'
+        run: |
+          echo "⚠️  Skipping Codecov upload due to git worktree or act environment"
+          echo "This is expected behavior - Codecov has issues with worktrees and local testing"
       
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -407,6 +432,7 @@ jobs:
           name: backend-test-results
           path: backend/test-results/
           retention-days: 30
+          if-no-files-found: ignore
 
   require-tests:
     name: All Tests Must Pass
@@ -478,3 +504,4 @@ jobs:
           name: flaky-test-report
           path: docs/flaky-tests-report.md
           retention-days: 7
+          if-no-files-found: ignore
