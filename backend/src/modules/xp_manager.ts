@@ -103,7 +103,7 @@ const XP_CURVE: Record<number, number> = {
 export function getXpForLevel(level: number): number {
   if (level < 1) return 0;
   if (level > 50) level = 50;
-  return XP_CURVE[level] || 100 * level * level;
+  return XP_CURVE[level] ?? 100 * level * level;
 }
 
 /**
@@ -182,6 +182,41 @@ export function validateXpGain(request: unknown): {
     return {
       valid: false,
       error: result.error.message,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Validates XP gain (simplified version for tests).
+ *
+ * @param xpAmount - XP amount to validate
+ * @param level - Player level
+ * @returns Validation result with reason
+ */
+export function validateXpGainSimple(xpAmount: number, level: number): {
+  valid: boolean;
+  reason?: string;
+} {
+  if (xpAmount < 0) {
+    return {
+      valid: false,
+      reason: 'negative XP values are not allowed',
+    };
+  }
+
+  if (xpAmount === 0) {
+    return {
+      valid: false,
+      reason: 'zero XP values are not allowed',
+    };
+  }
+
+  if (level < 1 || level > 50) {
+    return {
+      valid: false,
+      reason: 'level must be between 1 and 50',
     };
   }
 

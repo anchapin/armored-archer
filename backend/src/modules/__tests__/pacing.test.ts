@@ -7,6 +7,8 @@ import {
   classifyEncounter,
   trackPacingState,
   getPacingMetrics,
+  getPacingState,
+  getPacingTargets,
   getFatigueLevel,
   suggestBreak,
   getRecommendedEncounterType,

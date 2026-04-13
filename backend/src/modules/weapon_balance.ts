@@ -113,16 +113,16 @@ export function calculatePvpDamage(
   const tierMultiplier = TIER_MULTIPLIERS[tier] || TIER_MULTIPLIERS[WeaponTier.COMMON];
   pvpDamage *= tierMultiplier;
 
-  // Apply damage curve with diminishing returns
-  pvpDamage = applyDamageCurve(pvpDamage, tier);
-
-  // Add stat-based damage
+  // Add stat-based damage BEFORE the curve (so stats aren't negated by diminishing returns)
   if (weapon_stats.attack) {
     pvpDamage += weapon_stats.attack * 0.5;
   }
   if (weapon_stats.ability_power) {
     pvpDamage += weapon_stats.ability_power * 0.3;
   }
+
+  // Apply damage curve with diminishing returns
+  pvpDamage = applyDamageCurve(pvpDamage, tier);
 
   // Apply PvP damage reduction
   pvpDamage *= PVP_DAMAGE_REDUCTION;
