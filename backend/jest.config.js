@@ -162,7 +162,8 @@ module.exports = {
         module: 'commonjs',
         target: 'ES2020',
         esModuleInterop: true,
-        allowSyntheticDefaultImports: true
+        allowSyntheticDefaultImports: true,
+        moduleResolution: 'bundler'
       }
     }],
     // Transform JS files with Babel for ES module support
