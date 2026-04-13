@@ -158,6 +158,6 @@ def image_to_glb(
     print(f"  Tripo3D task: {task_id} (model={model_version}, geo={geometry_quality})")
 
     result = poll_task(task_id, timeout=timeout)
-    print(f"  Tripo3D completed")
+    print("  Tripo3D completed")
 
     return download_model(result, output_path)

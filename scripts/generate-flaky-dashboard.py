@@ -4,15 +4,15 @@ Generate flaky test dashboard from JSON results
 Reads go-flaky-tests.json and godot-flaky-tests.json and creates markdown dashboard
 """
 
-import json
 import datetime
-import sys
+import json
 import os
+
 
 def load_json(filepath):
     """Load JSON file if exists, return empty dict otherwise"""
     try:
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             return json.load(f)
     except FileNotFoundError:
         return {}

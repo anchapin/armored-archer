@@ -11,8 +11,8 @@ Requirements:
 import os
 import sys
 import time
+
 import requests
-from typing import Dict, List, Tuple
 
 # Configuration
 ELEVENLABS_KEY = os.environ.get("ELEVENLABS_KEY")
@@ -78,7 +78,7 @@ SOUND_LIBRARY = {
 }
 
 
-def generate_sound(name: str, prompt: str, duration: float, category: str) -> Tuple[bool, str]:
+def generate_sound(name: str, prompt: str, duration: float, category: str) -> tuple[bool, str]:
     """Generate a single sound effect."""
     try:
         response = requests.post(
@@ -136,7 +136,7 @@ def main():
     print("Available categories:")
     for i, category in enumerate(SOUND_LIBRARY.keys(), 1):
         print(f"  {i}. {category}")
-    print(f"  all. Generate all categories")
+    print("  all. Generate all categories")
 
     choice = input("\nSelect category (or 'all'): ").strip().lower()
 

@@ -8,12 +8,9 @@ Fixes:
 3. Syntax errors in GDScript files
 """
 
-import os
 import re
 import sys
-import subprocess
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
 
 PROJECT_ROOT = Path(__file__).parent.parent
 SCENES_DIR = PROJECT_ROOT / "scenes"
@@ -33,7 +30,7 @@ class GodotAutoFixer:
         prefix = {"INFO": "  ✓", "WARN": "  ⚠", "ERROR": "  ✗", "FIX": "  🔧"}
         print(f"{prefix.get(level, '  •')} {message}")
 
-    def scan_scene_uids(self) -> List[Tuple[str, str, str, str]]:
+    def scan_scene_uids(self) -> list[tuple[str, str, str, str]]:
         """
         Scan for invalid UID references in scene files
         Returns: List of (scene_file, invalid_uid, path, correct_uid)
@@ -66,7 +63,7 @@ class GodotAutoFixer:
 
         return issues
 
-    def _get_file_uid(self, file_path: Path) -> Optional[str]:
+    def _get_file_uid(self, file_path: Path) -> str | None:
         """Extract the UID from a .tscn or .gd file"""
         try:
             first_line = file_path.read_text().split("\n")[0]
@@ -93,7 +90,7 @@ class GodotAutoFixer:
             self.log(f"Failed to fix {scene_file}: {e}", "ERROR")
             return False
 
-    def check_missing_uid_files(self) -> List[Path]:
+    def check_missing_uid_files(self) -> list[Path]:
         """Find .gd/.tscn files that have .uid files missing or outdated"""
         missing = []
 
@@ -126,7 +123,7 @@ class GodotAutoFixer:
         self.log(f"Generated UID file: {uid_file}", "FIX")
         return True
 
-    def validate_gdscript_syntax(self) -> List[Path]:
+    def validate_gdscript_syntax(self) -> list[Path]:
         """Check for syntax errors in GDScript files"""
         errors = []
 

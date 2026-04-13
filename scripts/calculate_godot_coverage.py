@@ -6,16 +6,15 @@ Note: This uses pass rate as a coverage proxy because GDScript/Godot
 does not provide line coverage instrumentation. This is documented as
 acceptable in REQUIREMENTS.md.
 """
-import xml.etree.ElementTree as ET
-import sys
 import json
-import os
+import sys
+import xml.etree.ElementTree as ET
 
 
 def load_autoload_mapping(mapping_path="data/autoload-to-test-mapping.json"):
     """Load autoload-to-test mapping configuration."""
     try:
-        with open(mapping_path, 'r') as f:
+        with open(mapping_path) as f:
             return json.load(f)
     except FileNotFoundError:
         return {"autoloads": {}, "version": "1.0.0"}
@@ -136,7 +135,7 @@ def main():
         sys.exit(1)
     except ET.ParseError as e:
         print(json.dumps({
-            'error': f'Invalid XML: {str(e)}',
+            'error': f'Invalid XML: {e!s}',
             'pass_rate': 0.0,
             'total_tests': 0,
             'failures': 0,

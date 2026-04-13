@@ -29,6 +29,7 @@ ignore = [
     "B008",   # do not perform function call in argument defaults
 ]
 
+[tool.ruff.lint.mccabe]
 # Maximum complexity before Ruff reports an error
 # See: https://docs.astral.sh/ruff/settings/#lint_mccabe
 max-complexity = 15

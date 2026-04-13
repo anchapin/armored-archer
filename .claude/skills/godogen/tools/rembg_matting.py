@@ -20,7 +20,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
-from rembg import remove, new_session
+from rembg import new_session, remove
 
 # Mask coverage thresholds for regime auto-detection
 MASK_MIN_PCT = 5.0    # below this % → mask failed

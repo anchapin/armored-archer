@@ -5,8 +5,8 @@ Generates high-quality equipment and enhanced character sprites
 """
 
 import os
+
 from PIL import Image
-from pathlib import Path
 
 # Enhanced 16-color palettes
 PALETTES = {
@@ -106,35 +106,35 @@ class AdvancedSpriteGenerator:
     def __init__(self):
         self.generated = []
         self.failed = []
-    
+
     def create_image(self, size=32):
         """Create transparent PNG"""
         return Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    
+
     def set_pixel(self, img, x, y, palette, color_idx):
         """Set pixel with palette color"""
         if 0 <= x < img.width and 0 <= y < img.height and 0 <= color_idx < len(palette):
             c = palette[color_idx]
             img.putpixel((x, y), c + (255,))
-    
+
     def fill_rect(self, img, x, y, w, h, palette, color_idx):
         """Draw filled rectangle"""
         for py in range(max(0, y), min(img.height, y + h)):
             for px in range(max(0, x), min(img.width, x + w)):
                 self.set_pixel(img, px, py, palette, color_idx)
-    
+
     def fill_circle(self, img, cx, cy, r, palette, color_idx):
         """Draw filled circle"""
         for dy in range(-r, r + 1):
             for dx in range(-r, r + 1):
                 if dx*dx + dy*dy <= r*r:
                     self.set_pixel(img, cx + dx, cy + dy, palette, color_idx)
-    
+
     def generate_bow(self, bow_type, palette_name):
         """Generate 48x48 bow sprite"""
         img = self.create_image(48)
         palette = PALETTES[palette_name]
-        
+
         if bow_type == 'wooden':
             # Bow limbs (curved)
             self.fill_rect(img, 22, 4, 4, 40, palette, 1)
@@ -142,7 +142,7 @@ class AdvancedSpriteGenerator:
             self.fill_rect(img, 24, 6, 1, 36, palette, 12)
             # Grip
             self.fill_circle(img, 24, 22, 3, palette, 2)
-        
+
         elif bow_type == 'composite':
             # Layered bow
             self.fill_rect(img, 21, 4, 6, 40, palette, 1)
@@ -151,7 +151,7 @@ class AdvancedSpriteGenerator:
             self.fill_rect(img, 24, 6, 1, 36, palette, 8)
             # Grip accent
             self.fill_circle(img, 24, 22, 4, palette, 3)
-        
+
         elif bow_type == 'elven':
             # Graceful elven bow
             for y in range(4, 44):
@@ -160,7 +160,7 @@ class AdvancedSpriteGenerator:
                 self.set_pixel(img, 26 - offset, y, palette, 2)
             # Glowing string
             self.fill_rect(img, 24, 6, 1, 36, palette, 4)
-        
+
         elif bow_type == 'dragon':
             # Dragon-themed bow
             self.fill_rect(img, 20, 4, 8, 40, palette, 0)  # Red body
@@ -168,14 +168,14 @@ class AdvancedSpriteGenerator:
             self.fill_circle(img, 24, 8, 3, palette, 4)  # Dragon head
             # String
             self.fill_rect(img, 24, 6, 1, 36, palette, 12)
-        
+
         return img
-    
+
     def generate_arrow(self, arrow_type):
         """Generate 32x32 arrow sprite"""
         img = self.create_image(32)
         palette = PALETTES['bow_wooden']
-        
+
         arrow_colors = {
             'wooden': (2, 12),    # Brown shaft, black tip
             'iron': (11, 14),     # Gray shaft, dark gray tip
@@ -183,36 +183,36 @@ class AdvancedSpriteGenerator:
             'silver': (12, 11),   # White shaft, gray tip
             'enchanted': (6, 4),  # Gold shaft, blue tip
         }
-        
+
         shaft_c, tip_c = arrow_colors.get(arrow_type, (2, 12))
-        
+
         # Arrow shaft
         self.fill_rect(img, 4, 14, 20, 4, palette, shaft_c)
         # Arrowhead
         triangle_points = [(24, 15), (28, 16), (24, 17)]
         for x in range(24, 29):
             self.set_pixel(img, x, 16, palette, tip_c)
-        
+
         # Fletching
         self.fill_rect(img, 4, 10, 4, 2, palette, 4)
         self.fill_rect(img, 4, 18, 4, 2, palette, 4)
-        
+
         return img
-    
+
     def generate_armor(self, armor_type):
         """Generate 32x32 armor icon"""
         img = self.create_image(32)
         palette = PALETTES['bow_wooden']
-        
+
         armor_colors = {
             'leather': (2, 5),     # Brown
             'chain': (11, 9),      # Gray, dark gray
             'plate': (9, 11),      # Dark gray, gray
             'dragon': (0, 4),      # Red, orange
         }
-        
+
         main_c, accent_c = armor_colors.get(armor_type, (2, 5))
-        
+
         # Chest plate
         self.fill_rect(img, 8, 6, 16, 14, palette, main_c)
         # Shoulder pieces
@@ -220,23 +220,23 @@ class AdvancedSpriteGenerator:
         self.fill_circle(img, 26, 10, 3, palette, main_c)
         # Detail lines
         self.fill_rect(img, 10, 12, 12, 2, palette, accent_c)
-        
+
         return img
-    
+
     def generate_helm(self, helm_type):
         """Generate 32x32 helmet icon"""
         img = self.create_image(32)
         palette = PALETTES['bow_wooden']
-        
+
         helm_colors = {
             'leather': (2, 5),
             'chain': (11, 9),
             'plate': (9, 11),
             'dragon': (0, 4),
         }
-        
+
         main_c, accent_c = helm_colors.get(helm_type, (2, 5))
-        
+
         # Dome
         self.fill_circle(img, 16, 12, 7, palette, main_c)
         # Face guard
@@ -244,32 +244,32 @@ class AdvancedSpriteGenerator:
         # Eyes
         self.set_pixel(img, 13, 17, palette, 4)
         self.set_pixel(img, 19, 17, palette, 4)
-        
+
         return img
-    
+
     def generate_amulet(self, amulet_type):
         """Generate 32x32 amulet sprite"""
         img = self.create_image(32)
         palette = PALETTES['ui_icons']
-        
+
         amulet_colors = {
             'health': 2,      # Red
             'mana': 3,        # Blue
             'speed': 4,       # Yellow
             'strength': 5,    # Orange
         }
-        
+
         color_idx = amulet_colors.get(amulet_type, 2)
-        
+
         # Gem
         self.fill_circle(img, 16, 15, 6, palette, color_idx)
         # Glow
         self.fill_circle(img, 16, 15, 4, palette, 1)
         # Chain
         self.fill_rect(img, 15, 4, 2, 8, palette, 11)
-        
+
         return img
-    
+
     def save(self, img, path):
         """Save sprite"""
         try:
@@ -280,7 +280,7 @@ class AdvancedSpriteGenerator:
         except Exception as e:
             self.failed.append((path, str(e)))
             return False
-    
+
     def generate_all_equipment(self):
         """Generate all equipment sprites"""
         # Bows (48x48)
@@ -294,22 +294,22 @@ class AdvancedSpriteGenerator:
             palette_name = bow_palette_map[bow_type]
             img = self.generate_bow(bow_type, palette_name)
             self.save(img, f'/home/alex/armored-archer/assets/sprites/equipment/bows/{bow_type}.png')
-        
+
         # Arrows (32x32)
         for arrow_type in ['wooden', 'iron', 'steel', 'silver', 'enchanted']:
             img = self.generate_arrow(arrow_type)
             self.save(img, f'/home/alex/armored-archer/assets/sprites/equipment/arrows/{arrow_type}.png')
-        
+
         # Armor (32x32)
         for armor_type in ['leather', 'chain', 'plate', 'dragon']:
             img = self.generate_armor(armor_type)
             self.save(img, f'/home/alex/armored-archer/assets/sprites/equipment/armor/{armor_type}.png')
-        
+
         # Helms (32x32)
         for helm_type in ['leather', 'chain', 'plate', 'dragon']:
             img = self.generate_helm(helm_type)
             self.save(img, f'/home/alex/armored-archer/assets/sprites/equipment/helms/{helm_type}.png')
-        
+
         # Amulets (32x32)
         for amulet_type in ['health', 'mana', 'speed', 'strength']:
             img = self.generate_amulet(amulet_type)
@@ -318,21 +318,21 @@ class AdvancedSpriteGenerator:
 def main():
     print("🎨 Advanced Equipment Sprite Generator")
     print("=" * 50)
-    
+
     gen = AdvancedSpriteGenerator()
-    
+
     print("\n🏹 Generating bows...")
     print("🏹 Generating arrows...")
     print("🛡️  Generating armor...")
     print("⚔️  Generating helms...")
     print("✨ Generating amulets...")
-    
+
     gen.generate_all_equipment()
-    
+
     print("\n" + "=" * 50)
     print(f"✅ Generated: {len(gen.generated)} equipment sprites")
     print(f"❌ Failed: {len(gen.failed)}")
-    
+
     if gen.failed:
         for path, error in gen.failed:
             print(f"  {path}: {error}")
