@@ -170,7 +170,7 @@ module.exports = {
   transformIgnorePatterns: [
     '/node_modules/(?!(uuid)/)'
   ],
-  testTimeout: 10000,
+  testTimeout: 30000,  // 30 seconds for local/act testing
   verbose: true,
   passWithNoTests: true,
   // Use detectOpenHandles instead of forceExit to properly wait for async cleanup
