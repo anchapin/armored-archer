@@ -271,7 +271,7 @@ describe('matchmaking_pool', () => {
               {
                 user_id: 'user_456',
                 mode: '1v1',
-                rating: 1250,
+                rating: 1350, // Outside 100-point bracket from 1200
                 joined_at: Date.now() - 10000,
                 bracket_size: 100,
               },
@@ -373,7 +373,7 @@ describe('matchmaking_pool', () => {
 
       expect(response.success).toBe(true);
       expect(response.match_found).toBe(true);
-      expect(response.opponent_id).toBe('user_123' || 'user_456');
+      expect(response.opponent_id).toBe('user_456');
     });
 
     it('should prioritize closest rating when multiple matches', () => {
@@ -439,7 +439,7 @@ describe('matchmaking_pool', () => {
               {
                 user_id: 'user_456',
                 mode: '1v1',
-                rating: 1600,
+                rating: 1450, // Within 300-point bracket from 1200
                 joined_at: now - 10000,
                 bracket_size: 100,
               },
@@ -464,7 +464,7 @@ describe('matchmaking_pool', () => {
 
       mockNk.storageRead.mockImplementation((requests) => {
         const mode = requests[0].key.includes('1v1') ? '1v1' : '2v2';
-        return Promise.resolve([
+        return [
           {
             value: JSON.stringify({
               players: [
@@ -486,7 +486,7 @@ describe('matchmaking_pool', () => {
               last_match_time: Date.now(),
             }),
           },
-        ]);
+        ];
       });
 
       processMatchmaking(mockLogger, mockNk);
@@ -560,9 +560,14 @@ describe('matchmaking_pool', () => {
         },
       ]);
 
+      // Use a user ID not in the pool
+      const largePoolCtx = {
+        userId: 'user_1001', // Not in the pool
+      } as any;
+
       const request: JoinPoolRequest = { mode: '1v1', rating: 1200 };
       const payload = JSON.stringify(request);
-      const result = rpcJoinPool(mockCtx, mockLogger, mockNk, payload);
+      const result = rpcJoinPool(largePoolCtx, mockLogger, mockNk, payload);
       const response = JSON.parse(result);
 
       expect(response.queue_position).toBe(1001); // After existing 1000 players
