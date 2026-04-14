@@ -266,7 +266,7 @@ describe('Pacing', () => {
 
     it('should track session encounters separately', () => {
       const metrics = getPacingMetrics(mockCtx, testUserId);
-      expect(metrics.session_encounters).toBeGreaterThanOrEqual(10);
+      expect(metrics.total_encounters).toBeGreaterThanOrEqual(10);
     });
 
     it('should include fatigue level in metrics', () => {
@@ -316,13 +316,20 @@ describe('Pacing', () => {
       const recommendation = suggestBreak(mockCtx, testUserId);
       expect(recommendation.should_break).toBe(true);
       expect(recommendation.suggested_next_type).toBe('exploration');
-      expect(recommendation.reason).toContain('combat streak');
+      expect(recommendation.reason).toBe('Combat streak too long');
     });
 
     it('should suggest exploration after combat streak', () => {
+      resetPacingState(mockCtx, testUserId);
+
+      // Track 6 combat encounters (exceeds max of 5)
+      for (let i = 0; i < 6; i++) {
+        trackPacingState(mockCtx, testUserId, ContentType.COMBAT, 30.0);
+      }
+
       const recommendation = suggestBreak(mockCtx, testUserId);
       expect(recommendation.should_break).toBe(true);
-      expect(recommendation.reason.includes('combat streak')).toBe(true);
+      expect(recommendation.reason.includes('Combat streak too long')).toBe(true);
       expect(recommendation.suggested_next_type).toBe('exploration');
     });
 
@@ -403,7 +410,7 @@ describe('Pacing', () => {
       resetPacingState(mockCtx, testUserId);
 
       const metrics = getPacingMetrics(mockCtx, testUserId);
-      expect(metrics.session_encounters).toBe(0);
+      expect(metrics.total_encounters).toBe(0);
     });
   });
 
@@ -412,10 +419,12 @@ describe('Pacing', () => {
       trackPacingState(mockCtx, testUserId, ContentType.COMBAT, 60.0);
 
       expect(mockCtx.storageWrite).toHaveBeenCalledWith(
-        'pacing_state',
-        expect.objectContaining({
-          player_id: testUserId,
-        })
+        expect.arrayContaining([
+          expect.objectContaining({
+            collection: 'pacing_state',
+            key: testUserId,
+          }),
+        ])
       );
     });
 
@@ -431,7 +440,8 @@ describe('Pacing', () => {
         updated_at: Date.now(),
       };
 
-      mockCtx.storageRead.mockResolvedValueOnce(savedState);
+      // Set the saved state in the storage map as a JSON string
+      storage.set(`pacing_state:${testUserId}`, JSON.stringify(savedState));
 
       const state = getPacingState(mockCtx, testUserId);
       expect(state.combat_streak).toBe(3);

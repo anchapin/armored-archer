@@ -563,7 +563,7 @@ export function trackPacingState(
     type,
     duration,
     timestamp: Math.floor(Date.now() / 1000),
-    intensity: type === ContentType.COMBAT ? 0.7 : 0.3,
+    intensity: type === ContentType.COMBAT ? 1.0 : 0.3,
   };
 
   // Update streaks
@@ -593,7 +593,15 @@ export function trackPacingState(
 
   // Update fatigue based on duration and intensity
   const fatigueIncrease = duration * 0.1 * (1 + pacingEntry.intensity * 0.5);
-  state.current_fatigue = Math.min(state.current_fatigue + fatigueIncrease, 100);
+
+  // Apply 1.5x fatigue multiplier if combat streak exceeds max
+  const streakMultiplier =
+    type === ContentType.COMBAT && state.combat_streak > MAX_COMBAT_STREAK ? 1.5 : 1.0;
+
+  state.current_fatigue = Math.min(
+    state.current_fatigue + fatigueIncrease * streakMultiplier,
+    100
+  );
 
   state.session_encounters += 1;
   state.updated_at = Math.floor(Date.now() / 1000);
@@ -642,7 +650,8 @@ export function getPacingMetrics(ctx: TestContext, userId: string): PacingMetric
 export function getFatigueLevel(intensity: number, duration: number): number {
   const baseFatigue = duration * 0.1;
   const intensityMultiplier = 1.0 + intensity * 0.5;
-  return baseFatigue * intensityMultiplier;
+  const fatigue = baseFatigue * intensityMultiplier;
+  return Math.max(0, Math.min(100, fatigue));
 }
 
 /**
@@ -655,7 +664,7 @@ export function getFatigueLevel(intensity: number, duration: number): number {
 export function suggestBreak(
   ctx: TestContext,
   userId: string
-): { should_break: boolean; break_duration: number; reason: string } {
+): { should_break: boolean; break_duration: number; reason: string; suggested_next_type?: string } {
   const metrics = getPacingMetrics(ctx, userId);
 
   if (metrics.current_fatigue >= FATIGUE_THRESHOLD_CRITICAL) {
@@ -663,18 +672,21 @@ export function suggestBreak(
       should_break: true,
       break_duration: 300, // 5 minutes
       reason: 'Critical fatigue detected',
+      suggested_next_type: 'narrative',
     };
   } else if (metrics.current_fatigue >= FATIGUE_THRESHOLD_HIGH) {
     return {
       should_break: true,
       break_duration: 120, // 2 minutes
       reason: 'High fatigue detected',
+      suggested_next_type: 'exploration',
     };
   } else if (metrics.combat_streak > MAX_COMBAT_STREAK) {
     return {
       should_break: true,
       break_duration: 60, // 1 minute
       reason: 'Combat streak too long',
+      suggested_next_type: 'exploration',
     };
   }
 
