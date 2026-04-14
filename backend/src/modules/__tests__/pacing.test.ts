@@ -20,14 +20,42 @@ import { ContentType } from '../encounter_pacing';
 describe('Pacing', () => {
   let mockCtx: Partial<Runtime>;
   let testUserId = 'test-user-123';
+  // In-memory storage for testing
+  const storage = new Map();
 
   beforeEach(() => {
+    // Clear storage before each test
+    storage.clear();
+
+    // Create mock that maintains state (pattern from combat_system.test.ts)
+    const mockStorageRead = jest.fn((objects: any) => {
+      return objects
+        .map((obj: any) => {
+          const val = storage.get(`${obj.collection}:${obj.key}`);
+          if (!val) return null;
+          return {
+            collection: obj.collection,
+            key: obj.key,
+            value: val,
+          };
+        })
+        .filter(Boolean);
+    });
+
+    const mockStorageWrite = jest.fn((objects: any) => {
+      objects.forEach((obj: any) => {
+        storage.set(`${obj.collection}:${obj.key}`, obj.value);
+      });
+      return Promise.resolve(undefined);
+    });
+
     mockCtx = {
-      storageWrite: jest.fn().mockResolvedValue(undefined),
-      storageRead: jest.fn().mockResolvedValue([]),
+      storageWrite: mockStorageWrite,
+      storageRead: mockStorageRead,
       storageList: jest.fn().mockResolvedValue([]),
       env: {},
-    };
+    } as any;
+
     resetPacingState(mockCtx, testUserId);
   });
 
@@ -293,9 +321,9 @@ describe('Pacing', () => {
 
     it('should suggest exploration after combat streak', () => {
       const recommendation = suggestBreak(mockCtx, testUserId);
-      if (recommendation.should_break && recommendation.reason.includes('combat streak')) {
-        expect(recommendation.suggested_next_type).toBe('exploration');
-      }
+      expect(recommendation.should_break).toBe(true);
+      expect(recommendation.reason.includes('combat streak')).toBe(true);
+      expect(recommendation.suggested_next_type).toBe('exploration');
     });
 
     it('should provide break duration', () => {
