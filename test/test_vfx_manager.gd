@@ -3,6 +3,9 @@ extends Node
 var _tests_passed: int = 0
 var _tests_failed: int = 0
 
+# Preload VFXManager class to avoid duplicate loads
+const VFXManagerClass = preload("res://autoloads/VFXManager.gd")
+
 signal test_completed(test_name: String, passed: bool)
 
 func _ready() -> void:
@@ -30,7 +33,7 @@ func run_tests() -> void:
 	queue_free()
 
 func _create_vfx_manager() -> Node:
-	var vfx = load("res://autoloads/VFXManager.gd").new()
+	var vfx = VFXManagerClass.new()
 	add_child(vfx)
 	await get_tree().process_frame
 	return vfx
@@ -136,7 +139,6 @@ func test_singleton_instance() -> void:
 	vfx.queue_free()
 
 	# Access static instance through the loaded class
-	var VFXManagerClass = load("res://autoloads/VFXManager.gd")
 	if VFXManagerClass.instance == null:
 		_pass("test_singleton_clears_on_exit")
 	else:

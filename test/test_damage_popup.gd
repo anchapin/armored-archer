@@ -26,7 +26,7 @@ func run_tests() -> void:
 	queue_free()
 
 func _create_damage_popup() -> Label:
-	var dp_script = load("res://scripts/damage_popup.gd")
+	var dp_script = DamagePopup
 	var dp = Label.new()
 	dp.set_script(dp_script)
 	add_child(dp)

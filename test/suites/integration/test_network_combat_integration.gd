@@ -1,7 +1,13 @@
 extends GutTest
 
-var NetworkManagerClass = load("res://autoloads/NetworkManager.gd")
-var CombatManagerClass = load("res://autoloads/CombatManager.gd")
+# Preload manager classes to avoid duplicate loads
+const NetworkManagerClass = preload("res://autoloads/NetworkManager.gd")
+const CombatManagerClass = preload("res://autoloads/CombatManager.gd")
+const MatchmakerManagerClass = preload("res://autoloads/MatchmakerManager.gd")
+const CombatSyncManagerClass = preload("res://autoloads/CombatSyncManager.gd")
+const GemManagerClass = preload("res://autoloads/GemManager.gd")
+const PlayerStatsManagerClass = preload("res://autoloads/PlayerStatsManager.gd")
+const CampaignManagerClass = preload("res://autoloads/CampaignManager.gd")
 
 func before_each():
 	Engine.time_scale = 1.0
@@ -12,8 +18,7 @@ func after_each():
 func test_network_connect_and_combat_flow():
 	var net_mgr = NetworkManagerClass.new()
 	add_child_autofree(net_mgr)
-	
-	var CombatManagerClass = load("res://autoloads/CombatManager.gd")
+
 	var combat_mgr = CombatManagerClass.new()
 	add_child_autofree(combat_mgr)
 	combat_mgr.network_manager = net_mgr
@@ -21,11 +26,9 @@ func test_network_connect_and_combat_flow():
 	assert_true(net_mgr.is_server_connected, "Network should be connected")
 
 func test_matchmaking_manager_integration():
-	var MatchmakerManagerClass = load("res://autoloads/MatchmakerManager.gd")
 	var mm_mgr = MatchmakerManagerClass.new()
 	add_child_autofree(mm_mgr)
-	
-	var NetworkManagerClass = load("res://autoloads/NetworkManager.gd")
+
 	var net_mgr = NetworkManagerClass.new()
 	add_child_autofree(net_mgr)
 	mm_mgr.network_manager = net_mgr
@@ -35,11 +38,9 @@ func test_matchmaking_manager_integration():
 	assert_true(mm_mgr.is_in_queue(), "Should be in matchmaking queue")
 
 func test_combat_sync_integration():
-	var CombatSyncManagerClass = load("res://autoloads/CombatSyncManager.gd")
 	var sync_mgr = CombatSyncManagerClass.new()
 	add_child_autofree(sync_mgr)
-	
-	var CombatManagerClass = load("res://autoloads/CombatManager.gd")
+
 	var combat_mgr = CombatManagerClass.new()
 	add_child_autofree(combat_mgr)
 	
@@ -54,11 +55,9 @@ func test_combat_sync_integration():
 	assert_eq(sync_mgr.get_match_id(), "test_match", "Sync manager should track match")
 
 func test_gem_manager_with_player_stats():
-	var GemManagerClass = load("res://autoloads/GemManager.gd")
 	var gem_mgr = GemManagerClass.new()
 	add_child_autofree(gem_mgr)
-	
-	var PlayerStatsManagerClass = load("res://autoloads/PlayerStatsManager.gd")
+
 	var player_mgr = PlayerStatsManagerClass.new()
 	add_child_autofree(player_mgr)
 	
@@ -69,7 +68,6 @@ func test_gem_manager_with_player_stats():
 	assert_true(total_value > 0, "Should have gems from both systems")
 
 func test_campaign_manager_with_combat():
-	var CampaignManagerClass = load("res://autoloads/CampaignManager.gd")
 	var campaign_mgr = CampaignManagerClass.new()
 	add_child_autofree(campaign_mgr)
 	

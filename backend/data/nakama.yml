@@ -1,0 +1,16 @@
+name: Nakama
+console:
+  port: 7351
+  username: admin
+  password: password
+  read_timeout: 10s
+  write_timeout: 10s
+
+database:
+  address:
+    postgres: "postgres://postgres:changeme@postgres:5432/nakama?sslmode=disable"
+
+runtime:
+  http_key: "defaultkey"
+  console_read_timeout: 5s
+  console_write_timeout: 5s

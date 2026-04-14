@@ -90,23 +90,41 @@ describe('notification_scheduler', () => {
 
   describe('startNotificationScheduler', () => {
     it('should start the scheduler', () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startNotificationScheduler(mockNakama, 60000);
       const status = getSchedulerStatus();
       expect(status.running).toBe(true);
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('should not start if already running', () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startNotificationScheduler(mockNakama);
       startNotificationScheduler(mockNakama);
       expect(getSchedulerStatus().running).toBe(true);
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
   });
 
   describe('stopNotificationScheduler', () => {
     it('should stop the scheduler', () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startNotificationScheduler(mockNakama);
       stopNotificationScheduler();
       expect(getSchedulerStatus().running).toBe(false);
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('should handle stop when not running', () => {
@@ -121,9 +139,15 @@ describe('notification_scheduler', () => {
     });
 
     it('should return true when scheduler is running', () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startNotificationScheduler(mockNakama, 9999999);
       const status = getSchedulerStatus();
       expect(status.running).toBe(true);
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
   });
 
@@ -135,6 +159,10 @@ describe('notification_scheduler', () => {
         failed: 1,
       });
 
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startNotificationScheduler(mockNakama, 9999999);
 
       // Wait for the initial processing
@@ -142,6 +170,8 @@ describe('notification_scheduler', () => {
 
       // The scheduler should have called processScheduledNotifications
       expect(notifications.processScheduledNotifications).toHaveBeenCalled();
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('should handle errors during scheduled notification processing', async () => {
@@ -150,11 +180,17 @@ describe('notification_scheduler', () => {
         new Error('Processing error')
       );
 
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       // Should not throw
       startNotificationScheduler(mockNakama, 9999999);
 
       // Wait for the initial processing
       await new Promise((resolve) => setTimeout(resolve, 100));
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('should prevent concurrent processing with isRunning guard', async () => {
@@ -168,6 +204,10 @@ describe('notification_scheduler', () => {
         () => processingPromise
       );
 
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       // Start scheduler - first call is processing
       startNotificationScheduler(mockNakama, 50);
 
@@ -180,6 +220,8 @@ describe('notification_scheduler', () => {
 
       // The guard should prevent concurrent calls
       expect(notifications.processScheduledNotifications).toHaveBeenCalled();
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
   });
 
@@ -202,6 +244,10 @@ describe('notification_scheduler', () => {
 
   describe('processPendingNotifications detailed logging', () => {
     it('should log when both sent and failed are greater than zero', async () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       const { logger } = require('../../config/logger');
       (notifications.processScheduledNotifications as jest.Mock).mockResolvedValue({
         sent: 3,
@@ -215,9 +261,15 @@ describe('notification_scheduler', () => {
         'Processed scheduled notifications',
         expect.objectContaining({ sent: 3, failed: 2 })
       );
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('should not log when sent and failed are both zero', async () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       const { logger } = require('../../config/logger');
       logger.info.mockClear();
       (notifications.processScheduledNotifications as jest.Mock).mockResolvedValue({
@@ -232,9 +284,15 @@ describe('notification_scheduler', () => {
         'Processed scheduled notifications',
         expect.anything()
       );
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('should log when only sent is greater than zero', async () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       const { logger } = require('../../config/logger');
       (notifications.processScheduledNotifications as jest.Mock).mockResolvedValue({
         sent: 5,
@@ -248,9 +306,15 @@ describe('notification_scheduler', () => {
         'Processed scheduled notifications',
         expect.objectContaining({ sent: 5, failed: 0 })
       );
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('should log when only failed is greater than zero', async () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       const { logger } = require('../../config/logger');
       (notifications.processScheduledNotifications as jest.Mock).mockResolvedValue({
         sent: 0,
@@ -264,11 +328,17 @@ describe('notification_scheduler', () => {
         'Processed scheduled notifications',
         expect.objectContaining({ sent: 0, failed: 3 })
       );
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
   });
 
   describe('sendDailyRewardReminders via module internals', () => {
     it('should send reminders to users with daily rewards enabled', async () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       const { logger } = require('../../config/logger');
       mockNakama.dbQuery = jest.fn().mockResolvedValue([
         { id: 'user1', username: 'Player1' },
@@ -286,9 +356,15 @@ describe('notification_scheduler', () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(notifications.processScheduledNotifications).toHaveBeenCalled();
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('should handle mixed success and failure for daily reward notifications', async () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       (notifications.sendDailyRewardNotification as jest.Mock)
         .mockResolvedValueOnce({ success: true })
         .mockResolvedValueOnce({ success: false });
@@ -302,16 +378,24 @@ describe('notification_scheduler', () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(notifications.processScheduledNotifications).toHaveBeenCalled();
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('should handle errors in daily reward reminders', async () => {
       mockNakama.dbQuery = jest.fn().mockRejectedValue(new Error('Query failed'));
+
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
 
       startNotificationScheduler(mockNakama, 9999999);
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Should not throw
       expect(notifications.processScheduledNotifications).toHaveBeenCalled();
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
   });
 
@@ -417,6 +501,10 @@ describe('notification_scheduler', () => {
 
   describe('startNotificationScheduler with custom interval', () => {
     it('should accept custom intervalMs', () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       const { logger } = require('../../config/logger');
       logger.info.mockClear();
       startNotificationScheduler(mockNakama, 5000);
@@ -427,28 +515,46 @@ describe('notification_scheduler', () => {
     });
 
     it('should use default interval when not specified', () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startNotificationScheduler(mockNakama);
       expect(getSchedulerStatus().running).toBe(true);
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('should log warning when scheduler already running', () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       const { logger } = require('../../config/logger');
       logger.warn.mockClear();
       startNotificationScheduler(mockNakama, 9999999);
       startNotificationScheduler(mockNakama, 9999999);
 
       expect(logger.warn).toHaveBeenCalledWith('Notification scheduler already running');
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
   });
 
   describe('stopNotificationScheduler edge cases', () => {
     it('should log when scheduler is stopped', () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       const { logger } = require('../../config/logger');
       logger.info.mockClear();
       startNotificationScheduler(mockNakama, 9999999);
       stopNotificationScheduler();
 
       expect(logger.info).toHaveBeenCalledWith('Notification scheduler stopped');
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('should not log when stopping already stopped scheduler', () => {
@@ -460,10 +566,16 @@ describe('notification_scheduler', () => {
     });
 
     it('should allow restarting after stop', () => {
+      // Temporarily override NODE_ENV to test actual scheduler behavior
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       startNotificationScheduler(mockNakama, 9999999);
       stopNotificationScheduler();
       startNotificationScheduler(mockNakama, 9999999);
       expect(getSchedulerStatus().running).toBe(true);
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
   });
 });

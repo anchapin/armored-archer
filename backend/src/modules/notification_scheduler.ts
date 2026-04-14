@@ -152,6 +152,11 @@ export async function notifyUserAboutPvpChallenge(
  * @param intervalMs - How often to check for pending notifications (default: 1 minute)
  */
 export function startNotificationScheduler(nk: Runtime.Nakama, intervalMs: number = 60000): void {
+  if (process.env.NODE_ENV === 'test') {
+    logger.info('Skipping notification scheduler in test mode');
+    return;
+  }
+
   if (schedulerInterval) {
     logger.warn('Notification scheduler already running');
     return;

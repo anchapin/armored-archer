@@ -13,7 +13,6 @@
  */
 
 import { TSESTree, AST_NODE_TYPES } from '@typescript-eslint/utils';
-import type { RuleModule } from '@typescript-eslint/utils/dist/ts-eslint/Rule';
 
 // Database method patterns
 const DB_METHOD_PATTERNS = [
@@ -43,10 +42,7 @@ interface RuleOptions {
 }
 
 // Create the rule
-export const NPlusOneDetectionRule: RuleModule<
-  'nPlusOneQuery' | 'nPlusOneIteration',
-  [RuleOptions?]
-> = {
+export const NPlusOneDetectionRule = {
   meta: {
     type: 'problem' as const,
     docs: {

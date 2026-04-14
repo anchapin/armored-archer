@@ -12,6 +12,8 @@ import {
   calculateTargetDifficulty,
   getEncounterRewardModifier,
   resetDifficulty,
+  setDifficultyModifier,
+  getDifficultyState,
 } from '../dynamic_difficulty';
 import { Runtime } from '../../types/nakama';
 import { DifficultyLevel } from '../dynamic_difficulty';

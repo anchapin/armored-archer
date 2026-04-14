@@ -33,7 +33,8 @@ describe('weapon_balance', () => {
     });
 
     it('should apply stat bonuses correctly', () => {
-      const baseDamage = 50;
+      // Use lower base damage to avoid hitting max damage cap
+      const baseDamage = 10;
       const tier = WeaponTier.RARE;
       const stats = { attack: 20, ability_power: 10 };
 
@@ -219,7 +220,8 @@ describe('weapon_balance', () => {
 
   describe('validateWeaponPower', () => {
     it('should validate reasonable weapon damage', () => {
-      const result = validateWeaponPower(100, WeaponTier.COMMON);
+      // Common tier max allowed is 15 (7.5 avg * 2.0 max percentage)
+      const result = validateWeaponPower(10, WeaponTier.COMMON);
       expect(result).toBe(true);
     });
 
@@ -235,10 +237,15 @@ describe('weapon_balance', () => {
     });
 
     it('should validate for each tier', () => {
-      const tiers = [WeaponTier.COMMON, WeaponTier.RARE, WeaponTier.EPIC, WeaponTier.LEGENDARY];
+      const tiers = [
+        { tier: WeaponTier.COMMON, maxAllowed: 15 },
+        { tier: WeaponTier.RARE, maxAllowed: 19.5 },
+        { tier: WeaponTier.EPIC, maxAllowed: 24 },
+        { tier: WeaponTier.LEGENDARY, maxAllowed: 30 },
+      ];
 
-      for (const tier of tiers) {
-        const reasonableDamage = 50;
+      for (const { tier, maxAllowed } of tiers) {
+        const reasonableDamage = Math.floor(maxAllowed * 0.5); // Use 50% of max as reasonable
         const result = validateWeaponPower(reasonableDamage, tier);
         expect(result).toBe(true);
       }

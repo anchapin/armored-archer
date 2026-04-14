@@ -83,12 +83,16 @@ function cleanupOldReceipts(): void {
   }
 }
 
-// Run cleanup every hour
-const _receiptCleanupInterval = setInterval(cleanupOldReceipts, 60 * 60 * 1000);
+// Run cleanup every hour (only in production, not during tests)
+const _receiptCleanupInterval = process.env.NODE_ENV !== 'test'
+  ? setInterval(cleanupOldReceipts, 60 * 60 * 1000)
+  : null as unknown as NodeJS.Timeout;
 
 /** Clear the receipt cleanup interval (for test teardown). */
 export function stopReceiptCleanup(): void {
-  clearInterval(_receiptCleanupInterval);
+  if (_receiptCleanupInterval) {
+    clearInterval(_receiptCleanupInterval);
+  }
 }
 
 /**

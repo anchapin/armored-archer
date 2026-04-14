@@ -35,7 +35,7 @@ func run_tests() -> void:
 	queue_free()
 
 func _create_accessibility_manager() -> Node:
-	var a11y = load("res://autoloads/AccessibilityManager.gd").new()
+	var a11y = AccessibilityManager.new()
 	add_child(a11y)
 	await get_tree().process_frame
 	return a11y

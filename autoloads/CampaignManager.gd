@@ -42,7 +42,6 @@ func _ready() -> void:
 		network_manager = get_node_or_null("/root/NetworkManager")
 	if difficulty_manager == null:
 		difficulty_manager = get_node_or_null("/root/DynamicDifficultyManager")
-
 		# Connect to difficulty changes
 		if difficulty_manager and difficulty_manager.has_signal("difficulty_changed"):
 			difficulty_manager.difficulty_changed.connect(_on_difficulty_changed)

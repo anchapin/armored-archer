@@ -149,7 +149,7 @@ def should_skip_class(name: str) -> bool:
     return False
 
 
-def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:
+def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:  # noqa: C901
     """Parse a single XML class file and return markdown string."""
     try:
         tree = ET.parse(xml_path)
@@ -353,7 +353,7 @@ def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:
 
                 # Add descriptions if enabled
                 if config.constant_descriptions != DescriptionMode.NONE:
-                    for cname, cvalue, cdesc_raw in values:
+                    for cname, _cvalue, cdesc_raw in values:
                         cdesc = get_description(cdesc_raw, config.constant_descriptions)
                         if cdesc:
                             lines.append(f"  - {cname}: {cdesc}")

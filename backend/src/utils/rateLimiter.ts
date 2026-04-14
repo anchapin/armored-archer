@@ -126,7 +126,10 @@ export function cleanupExpiredEntries(): void {
   updateActiveUsersCount(rateLimitStore.size);
 }
 
-setInterval(cleanupExpiredEntries, 60000);
+// Only create cleanup interval in production, not during tests
+if (process.env.NODE_ENV !== 'test') {
+  setInterval(cleanupExpiredEntries, 60000);
+}
 
 export function getRateLimitStats(): {
   totalEntries: number;

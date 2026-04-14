@@ -342,6 +342,11 @@ function runHealthCheck(): void {
  * Start the health monitoring loop
  */
 export function startHealthMonitoring(intervalMs: number = 60000): void {
+  if (process.env.NODE_ENV === 'test') {
+    logger.info('Skipping health monitoring in test mode');
+    return;
+  }
+
   if (isMonitoring) {
     logger.warn('Health monitoring already running');
     return;

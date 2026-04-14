@@ -8,7 +8,7 @@ import {
   calculateXpGain,
   getProgressPercentage,
   getLevelCurveType,
-  validateXpGain,
+  validateXpGainSimpleSimple,
 } from '../xp_manager';
 import { Runtime } from '../../types/nakama';
 
@@ -145,27 +145,27 @@ describe('XPManager', () => {
     });
   });
 
-  describe('validateXpGain', () => {
+  describe('validateXpGainSimple', () => {
     it('should accept positive XP gains', () => {
-      const result = validateXpGain(100, 10);
+      const result = validateXpGainSimple(100, 10);
       expect(result.valid).toBe(true);
       expect(result.reason).toBeUndefined();
     });
 
     it('should reject negative XP gains', () => {
-      const result = validateXpGain(-100, 10);
+      const result = validateXpGainSimple(-100, 10);
       expect(result.valid).toBe(false);
       expect(result.reason).toContain('negative');
     });
 
     it('should reject zero XP gains', () => {
-      const result = validateXpGain(0, 10);
+      const result = validateXpGainSimple(0, 10);
       expect(result.valid).toBe(false);
       expect(result.reason).toContain('zero');
     });
 
     it('should reject invalid level', () => {
-      const result = validateXpGain(100, 0);
+      const result = validateXpGainSimple(100, 0);
       expect(result.valid).toBe(false);
       expect(result.reason).toContain('level');
     });

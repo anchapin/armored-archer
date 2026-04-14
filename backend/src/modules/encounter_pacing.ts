@@ -11,6 +11,14 @@ import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, createValidationErrorResponse } from './validation';
 
 /**
+ * Test context interface that combines Runtime.Context with storage methods for testing.
+ */
+interface TestContext extends Partial<Runtime.Context> {
+  storageRead?: Runtime.Nakama['storageRead'];
+  storageWrite?: Runtime.Nakama['storageWrite'];
+}
+
+/**
  * Content type enum for encounters.
  */
 export enum ContentType {
@@ -443,15 +451,15 @@ function loadPacingState(
   nk: Runtime.Nakama,
   userId: string
 ): { success: boolean; data?: PacingState } {
-  const objects = nk.storageRead([
+  const objects = nk.storageRead?.([
     {
       collection: 'pacing_state',
       key: userId,
       userId: userId,
     },
-  ]);
+  ]) ?? [];
 
-  if (objects.length === 0) {
+  if (!objects || objects.length === 0) {
     return { success: false };
   }
 
@@ -475,3 +483,254 @@ const logger = {
   error: (_message: string, ..._args: any[]) => {},
   debug: (_message: string, ..._args: any[]) => {},
 };
+
+/**
+ * Classifies an encounter based on its properties (test helper).
+ *
+ * @param encounter - Encounter data
+ * @returns Content type of the encounter
+ */
+export function classifyEncounter(encounter: {
+  id: string;
+  biome: string;
+  difficulty: number;
+  is_boss: boolean;
+}): ContentType {
+  if (encounter.is_boss) {
+    return ContentType.COMBAT;
+  }
+
+  // Boss encounters are always combat
+  // Non-boss encounters based on biome and difficulty
+  switch (encounter.biome) {
+    case 'forest':
+    case 'sky':
+      return ContentType.COMBAT;
+    case 'cavern':
+      // Cavern encounters can be combat or puzzle based on difficulty
+      return encounter.difficulty > 1 ? ContentType.PUZZLE : ContentType.COMBAT;
+    default:
+      return ContentType.COMBAT;
+  }
+}
+
+/**
+ * Gets pacing target constants (test helper).
+ *
+ * @returns Pacing target configuration
+ */
+export function getPacingTargets(): {
+  TARGET_COMBAT_RATIO: number;
+  TARGET_EXPLORATION_RATIO: number;
+  TARGET_NARRATIVE_RATIO: number;
+  MAX_COMBAT_STREAK: number;
+  MIN_EXPLORATION_STREAK: number;
+  FATIGUE_THRESHOLD_HIGH: number;
+  FATIGUE_THRESHOLD_CRITICAL: number;
+} {
+  return {
+    TARGET_COMBAT_RATIO,
+    TARGET_EXPLORATION_RATIO,
+    TARGET_NARRATIVE_RATIO,
+    MAX_COMBAT_STREAK,
+    MIN_EXPLORATION_STREAK,
+    FATIGUE_THRESHOLD_HIGH,
+    FATIGUE_THRESHOLD_CRITICAL,
+  };
+}
+
+/**
+ * Tracks a pacing entry (test helper).
+ *
+ * @param ctx - Nakama runtime context
+ * @param userId - User ID to track pacing for
+ * @param type - Content type of the encounter
+ * @param duration - Duration in seconds
+ */
+export function trackPacingState(
+  ctx: TestContext,
+  userId: string,
+  type: ContentType,
+  duration: number
+): void {
+  const stateResult = loadPacingState((ctx as unknown) as Runtime.Nakama, userId);
+  const state = stateResult.success ? stateResult.data! : createDefaultPacingState(userId);
+
+  // Create pacing entry
+  const pacingEntry: PacingEntry = {
+    player_id: userId,
+    type,
+    duration,
+    timestamp: Math.floor(Date.now() / 1000),
+    intensity: type === ContentType.COMBAT ? 0.7 : 0.3,
+  };
+
+  // Update streaks
+  if (type === ContentType.COMBAT) {
+    state.combat_streak += 1;
+    state.exploration_streak = 0;
+  } else if (type === ContentType.EXPLORATION) {
+    state.exploration_streak += 1;
+    state.combat_streak = 0;
+  } else {
+    state.combat_streak = 0;
+    state.exploration_streak = 0;
+  }
+
+  // Add entry to recent encounters
+  state.recent_encounters.push(pacingEntry);
+
+  // Keep only last 10 encounters
+  if (state.recent_encounters.length > 10) {
+    state.recent_encounters.splice(0, state.recent_encounters.length - 10);
+  }
+
+  // Update combat time
+  if (type === ContentType.COMBAT) {
+    state.combat_time_accumulated += duration;
+  }
+
+  // Update fatigue based on duration and intensity
+  const fatigueIncrease = duration * 0.1 * (1 + pacingEntry.intensity * 0.5);
+  state.current_fatigue = Math.min(state.current_fatigue + fatigueIncrease, 100);
+
+  state.session_encounters += 1;
+  state.updated_at = Math.floor(Date.now() / 1000);
+
+  ctx.storageWrite?.([
+    {
+      collection: 'pacing_state',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(state),
+    },
+  ]);
+}
+
+/**
+ * Gets pacing state for a player (test helper).
+ *
+ * @param ctx - Nakama runtime context
+ * @param userId - User ID to get state for
+ * @returns Pacing state
+ */
+export function getPacingState(ctx: TestContext, userId: string): PacingState {
+  const stateResult = loadPacingState((ctx as unknown) as Runtime.Nakama, userId);
+  return stateResult.success ? stateResult.data! : createDefaultPacingState(userId);
+}
+
+/**
+ * Gets pacing metrics for a player (test helper).
+ *
+ * @param ctx - Nakama runtime context
+ * @param userId - User ID to get metrics for
+ * @returns Pacing metrics
+ */
+export function getPacingMetrics(ctx: TestContext, userId: string): PacingMetrics {
+  const state = getPacingState(ctx, userId);
+  return calculateMetrics(state);
+}
+
+/**
+ * Calculates fatigue level based on intensity and duration (test helper).
+ *
+ * @param intensity - Encounter intensity (0-1)
+ * @param duration - Duration in seconds
+ * @returns Fatigue value (0-100)
+ */
+export function getFatigueLevel(intensity: number, duration: number): number {
+  const baseFatigue = duration * 0.1;
+  const intensityMultiplier = 1.0 + intensity * 0.5;
+  return baseFatigue * intensityMultiplier;
+}
+
+/**
+ * Suggests whether the player should take a break (test helper).
+ *
+ * @param ctx - Nakama runtime context
+ * @param userId - User ID to check
+ * @returns Break recommendation
+ */
+export function suggestBreak(
+  ctx: TestContext,
+  userId: string
+): { should_break: boolean; break_duration: number; reason: string } {
+  const metrics = getPacingMetrics(ctx, userId);
+
+  if (metrics.current_fatigue >= FATIGUE_THRESHOLD_CRITICAL) {
+    return {
+      should_break: true,
+      break_duration: 300, // 5 minutes
+      reason: 'Critical fatigue detected',
+    };
+  } else if (metrics.current_fatigue >= FATIGUE_THRESHOLD_HIGH) {
+    return {
+      should_break: true,
+      break_duration: 120, // 2 minutes
+      reason: 'High fatigue detected',
+    };
+  } else if (metrics.combat_streak > MAX_COMBAT_STREAK) {
+    return {
+      should_break: true,
+      break_duration: 60, // 1 minute
+      reason: 'Combat streak too long',
+    };
+  }
+
+  return {
+    should_break: false,
+    break_duration: 0,
+    reason: '',
+  };
+}
+
+/**
+ * Gets the recommended encounter type for next encounter (test helper).
+ *
+ * @param ctx - Nakama runtime context
+ * @param userId - User ID to get recommendation for
+ * @returns Recommended content type
+ */
+export function getRecommendedEncounterType(
+  ctx: TestContext,
+  userId: string
+): ContentType {
+  const metrics = getPacingMetrics(ctx, userId);
+
+  // If high fatigue, recommend narrative
+  if (metrics.current_fatigue >= FATIGUE_THRESHOLD_HIGH) {
+    return ContentType.NARRATIVE;
+  }
+
+  // If combat streak too long, recommend exploration
+  if (metrics.combat_streak > MAX_COMBAT_STREAK) {
+    return ContentType.EXPLORATION;
+  }
+
+  // If combat ratio too high, recommend exploration
+  if (metrics.combat_ratio > TARGET_COMBAT_RATIO) {
+    return ContentType.EXPLORATION;
+  }
+
+  // Default to combat
+  return ContentType.COMBAT;
+}
+
+/**
+ * Resets the pacing state for a player (test helper).
+ *
+ * @param ctx - Nakama runtime context
+ * @param userId - User ID to reset state for
+ */
+export function resetPacingState(ctx: TestContext, userId: string): void {
+  const defaultState = createDefaultPacingState(userId);
+
+  ctx.storageWrite?.([
+    {
+      collection: 'pacing_state',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(defaultState),
+    },
+  ]);
+}
