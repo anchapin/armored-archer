@@ -166,6 +166,69 @@ make services-health   # Check service health
 make services-logs     # View service logs
 ```
 
+### CI Workflows with Act
+
+Run GitHub Actions workflows locally using the `act` CLI tool.
+
+#### Installing Act
+
+```bash
+# Linux (Homebrew)
+brew install act
+
+# Linux (manual download)
+wget -qO- https://github.com/nektos/act/releases/latest/download/act_Linux_x86_64.tar.gz
+tar -xzf act_Linux_x86_64.tar.gz
+sudo mv act /usr/local/bin/
+```
+
+#### Running CI Jobs Locally
+
+```bash
+# Run backend linting and type checking
+act -j backend-lint --no-cache-server
+act -j backend-typecheck --no-cache-server
+
+# Run all CI jobs from ci.yml
+act --no-cache-server
+
+# Run specific workflow
+act -W .github/workflows/ci.yml --no-cache-server
+```
+
+#### Running Godot Tests with Act
+
+Godot tests require significant memory. To run them locally with `act`, create a `.actrc` file in the project root:
+
+```bash
+cat > .actrc << 'EOF'
+{
+  "container-daemon-socket": "unix:///var/run/docker.sock",
+  "container-options": [
+    "--memory=8g",
+    "--memory-swap=4g"
+  ],
+  "bind": false
+}
+EOF
+```
+
+Then run Godot tests:
+
+```bash
+act -j godot-tests
+```
+
+**Note**: Without `.actrc`, Godot tests are automatically skipped to avoid OOM issues.
+
+#### Troubleshooting
+
+| Issue | Solution |
+|--------|----------|
+| npm cache integrity errors | Use `--no-cache-server` flag |
+| Godot tests cause OOM | Create `.actrc` with increased memory |
+| Container network issues | Ensure Docker daemon is running |
+
 ## Key Files
 - `project.godot` - Godot project configuration (autoloads, input map)
 - `Makefile` - Development commands

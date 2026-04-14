@@ -558,15 +558,16 @@ function loadDifficultyState(
   nk: Runtime.Nakama,
   userId: string
 ): { success: boolean; data?: DifficultyState } {
-  const objects = nk.storageRead?.([
-    {
-      collection: 'difficulty_state',
-      key: userId,
-      userId: userId,
-    },
-  ]) ?? [];
+  const objects =
+    nk.storageRead?.([
+      {
+        collection: 'difficulty_state',
+        key: userId,
+        userId: userId,
+      },
+    ]) ?? [];
 
-  if (!objects || objects.length === 0) {
+  if (!objects || objects.length === 0 || !objects[0]) {
     return { success: false };
   }
 
@@ -590,15 +591,16 @@ function loadMatchHistory(
   nk: Runtime.Nakama,
   userId: string
 ): { success: boolean; data?: MatchEntry[] } {
-  const objects = nk.storageRead?.([
-    {
-      collection: 'match_history',
-      key: userId,
-      userId: userId,
-    },
-  ]) ?? [];
+  const objects =
+    nk.storageRead?.([
+      {
+        collection: 'match_history',
+        key: userId,
+        userId: userId,
+      },
+    ]) ?? [];
 
-  if (!objects || objects.length === 0) {
+  if (!objects || objects.length === 0 || !objects[0]) {
     return { success: true, data: [] };
   }
 
@@ -630,7 +632,7 @@ function loadMatchHistory(
  * @returns Current difficulty modifier
  */
 export function getDifficultyModifier(ctx: TestContext, userId: string): number {
-  const stateResult = loadDifficultyState((ctx as unknown) as Runtime.Nakama, userId);
+  const stateResult = loadDifficultyState(ctx as unknown as Runtime.Nakama, userId);
   return stateResult.success ? stateResult.data!.current_modifier : 0.0;
 }
 
@@ -645,8 +647,8 @@ export function getDifficultyState(
   ctx: TestContext,
   userId: string
 ): DifficultyState & { match_history: MatchEntry[] } {
-  const stateResult = loadDifficultyState((ctx as unknown) as Runtime.Nakama, userId);
-  const historyResult = loadMatchHistory((ctx as unknown) as Runtime.Nakama, userId);
+  const stateResult = loadDifficultyState(ctx as unknown as Runtime.Nakama, userId);
+  const historyResult = loadMatchHistory(ctx as unknown as Runtime.Nakama, userId);
 
   const state = stateResult.success
     ? stateResult.data!
@@ -673,12 +675,8 @@ export function getDifficultyState(
  * @param userId - User ID to set modifier for
  * @param modifier - New difficulty modifier
  */
-export function setDifficultyModifier(
-  ctx: TestContext,
-  userId: string,
-  modifier: number
-): void {
-  const stateResult = loadDifficultyState((ctx as unknown) as Runtime.Nakama, userId);
+export function setDifficultyModifier(ctx: TestContext, userId: string, modifier: number): void {
+  const stateResult = loadDifficultyState(ctx as unknown as Runtime.Nakama, userId);
   const state = stateResult.success
     ? stateResult.data!
     : {
@@ -714,7 +712,7 @@ export function trackMatchOutcome(
   userId: string,
   data: { won: boolean; match_type: 'pve' | 'pvp' }
 ): void {
-  const stateResult = loadDifficultyState((ctx as unknown) as Runtime.Nakama, userId);
+  const stateResult = loadDifficultyState(ctx as unknown as Runtime.Nakama, userId);
   const state = stateResult.success
     ? stateResult.data!
     : {
@@ -766,7 +764,7 @@ export function trackMatchOutcome(
     base_difficulty: state.current_modifier,
   };
 
-  const historyResult = loadMatchHistory((ctx as unknown) as Runtime.Nakama, userId);
+  const historyResult = loadMatchHistory(ctx as unknown as Runtime.Nakama, userId);
   const history = historyResult.success ? historyResult.data! : [];
   history.push(matchEntry);
 
@@ -856,7 +854,7 @@ export function getPerformanceRating(ctx: TestContext, userId: string): string {
  * @returns Win rate (0-1)
  */
 export function getWinRate(ctx: TestContext, userId: string, windowSize: number = 10): number {
-  const historyResult = loadMatchHistory((ctx as unknown) as Runtime.Nakama, userId);
+  const historyResult = loadMatchHistory(ctx as unknown as Runtime.Nakama, userId);
   const history = historyResult.success ? historyResult.data! : [];
 
   if (history.length === 0) {
@@ -885,7 +883,8 @@ export function calculateTargetDifficulty(
   baseDifficulty: number,
   customModifier?: number
 ): number {
-  const modifier = customModifier !== undefined ? customModifier : getDifficultyModifier(ctx, userId);
+  const modifier =
+    customModifier !== undefined ? customModifier : getDifficultyModifier(ctx, userId);
   const target = baseDifficulty * (1 + modifier);
 
   // Clamp to [0, 1.5]

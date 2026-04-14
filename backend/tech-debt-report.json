@@ -1,12 +1,241 @@
 {
-  "timestamp": "2026-03-31T12:59:45.025Z",
+  "timestamp": "2026-04-14T00:14:00.055Z",
   "summary": {
-    "total": 0,
+    "total": 25,
     "critical": 0,
     "high": 0,
     "medium": 0,
-    "low": 0,
-    "byCategory": {}
+    "low": 25,
+    "byCategory": {
+      "type-safety": 7,
+      "logging": 18
+    }
   },
-  "issues": []
+  "issues": [
+    {
+      "file": "src/modules/dynamic_difficulty.ts",
+      "line": 614,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "info: (_message: string, ..._args: any[]) => {},",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/dynamic_difficulty.ts",
+      "line": 615,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "warn: (_message: string, ..._args: any[]) => {},",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/dynamic_difficulty.ts",
+      "line": 616,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "error: (_message: string, ..._args: any[]) => {},",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/encounter_pacing.ts",
+      "line": 482,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "info: (_message: string, ..._args: any[]) => {},",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/encounter_pacing.ts",
+      "line": 483,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "warn: (_message: string, ..._args: any[]) => {},",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/encounter_pacing.ts",
+      "line": 484,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "error: (_message: string, ..._args: any[]) => {},",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/encounter_pacing.ts",
+      "line": 485,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "debug: (_message: string, ..._args: any[]) => {},",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/gear_balance.ts",
+      "line": 233,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error(`Failed to track gear usage: ${error}`);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/gear_balance.ts",
+      "line": 264,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error(`Failed to get gear usage stats: ${error}`);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/gear_balance.ts",
+      "line": 316,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error(`Failed to record balance adjustment: ${error}`);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/matchmaking_analytics.ts",
+      "line": 184,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to aggregate match metrics:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/matchmaking_analytics.ts",
+      "line": 228,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to generate weapon stats:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/matchmaking_analytics.ts",
+      "line": 322,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to detect balance issues:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/matchmaking_analytics.ts",
+      "line": 348,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to export analytics report:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/matchmaking_analytics.ts",
+      "line": 398,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to calculate rating diff distribution:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/matchmaking_analytics.ts",
+      "line": 465,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to log match data:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/matchmaking_analytics.ts",
+      "line": 521,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to log abandonment:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/matchmaking_analytics.ts",
+      "line": 587,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to log weapon result:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/matchmaking_analytics.ts",
+      "line": 637,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to log queue time:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/weapon_balance.ts",
+      "line": 212,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error(",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/weapon_balance.ts",
+      "line": 305,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to apply balance adjustment:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/weapon_balance.ts",
+      "line": 340,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to check admin authorization:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/weapon_balance.ts",
+      "line": 407,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to track weapon usage:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/weapon_balance.ts",
+      "line": 440,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to get balance adjustments:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/weapon_balance.ts",
+      "line": 505,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to get weapon stats:', error);",
+      "details": "console.error used"
+    }
+  ]
 }

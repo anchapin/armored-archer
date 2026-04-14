@@ -163,7 +163,8 @@ export function getProgressPercentage(
   const xpIntoLevel = currentXp - levelXp;
   const xpToNextLevel = nextLevelXp - levelXp;
 
-  return Math.floor((xpIntoLevel / xpToNextLevel) * 100);
+  const progress = Math.floor((xpIntoLevel / xpToNextLevel) * 100);
+  return Math.max(0, Math.min(100, progress));
 }
 
 /**
@@ -195,7 +196,10 @@ export function validateXpGain(request: unknown): {
  * @param level - Player level
  * @returns Validation result with reason
  */
-export function validateXpGainSimple(xpAmount: number, level: number): {
+export function validateXpGainSimple(
+  xpAmount: number,
+  level: number
+): {
   valid: boolean;
   reason?: string;
 } {

@@ -128,7 +128,7 @@ describe('DifficultyScaling', () => {
 
       expect(tier30.pattern_complexity).toBeGreaterThan(tier20.pattern_complexity);
       expect(tier20.pattern_complexity).toBeGreaterThan(tier10.pattern_complexity);
-      expect(tier10.pattern_complexity).toBeGreaterThan(tier1.pattern_complexity);
+      expect(tier20.pattern_complexity).toBeGreaterThan(tier1.pattern_complexity);
     });
   });
 

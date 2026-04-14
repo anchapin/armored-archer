@@ -1,6 +1,6 @@
 {
   "statistics": {
-    "detectionDate": "2026-04-13T01:11:59.941Z",
+    "detectionDate": "2026-04-14T00:15:32.822Z",
     "formats": {
       "gdscript": {
         "sources": {
@@ -31,6 +31,18 @@
           "../scenes/ui/components/theme_toggle.gd": {
             "lines": 115,
             "tokens": 644,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../scenes/ui/components/rarity_pillar.gd": {
+            "lines": 152,
+            "tokens": 1039,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -77,8 +89,8 @@
             "newClones": 0
           },
           "../scenes/ui/components/base_panel.gd": {
-            "lines": 86,
-            "tokens": 618,
+            "lines": 130,
+            "tokens": 898,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -89,8 +101,8 @@
             "newClones": 0
           },
           "../scenes/ui/components/base_label.gd": {
-            "lines": 87,
-            "tokens": 567,
+            "lines": 160,
+            "tokens": 997,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -113,8 +125,8 @@
             "newClones": 0
           },
           "../scenes/ui/components/base_container.gd": {
-            "lines": 195,
-            "tokens": 1586,
+            "lines": 205,
+            "tokens": 1653,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -127,6 +139,18 @@
           "../scenes/ui/components/base_button.gd": {
             "lines": 265,
             "tokens": 1853,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../scenes/ui/components/ambient_glow_panel.gd": {
+            "lines": 119,
+            "tokens": 740,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -185,14 +209,14 @@
             "newClones": 0
           },
           "../scenes/enemies/bosses/boss_wind.gd": {
-            "lines": 177,
-            "tokens": 1427,
+            "lines": 315,
+            "tokens": 2310,
             "sources": 1,
-            "clones": 6,
-            "duplicatedLines": 81,
-            "duplicatedTokens": 783,
-            "percentage": 45.76,
-            "percentageTokens": 54.87,
+            "clones": 8,
+            "duplicatedLines": 214,
+            "duplicatedTokens": 1516,
+            "percentage": 67.94,
+            "percentageTokens": 65.63,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -200,23 +224,23 @@
             "lines": 301,
             "tokens": 2399,
             "sources": 1,
-            "clones": 7,
-            "duplicatedLines": 103,
-            "duplicatedTokens": 926,
-            "percentage": 34.22,
-            "percentageTokens": 38.6,
+            "clones": 2,
+            "duplicatedLines": 26,
+            "duplicatedTokens": 288,
+            "percentage": 8.64,
+            "percentageTokens": 12.01,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
           "../scenes/enemies/bosses/boss_fire.gd": {
-            "lines": 257,
-            "tokens": 2006,
+            "lines": 274,
+            "tokens": 2015,
             "sources": 1,
-            "clones": 4,
-            "duplicatedLines": 59,
-            "duplicatedTokens": 487,
-            "percentage": 22.96,
-            "percentageTokens": 24.28,
+            "clones": 5,
+            "duplicatedLines": 117,
+            "duplicatedTokens": 864,
+            "percentage": 42.7,
+            "percentageTokens": 42.88,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -225,22 +249,22 @@
             "tokens": 2192,
             "sources": 1,
             "clones": 3,
-            "duplicatedLines": 40,
-            "duplicatedTokens": 400,
-            "percentage": 14.55,
-            "percentageTokens": 18.25,
+            "duplicatedLines": 45,
+            "duplicatedTokens": 418,
+            "percentage": 16.36,
+            "percentageTokens": 19.07,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
           "../scenes/enemies/bosses/boss_earth.gd": {
-            "lines": 300,
-            "tokens": 2353,
+            "lines": 256,
+            "tokens": 1818,
             "sources": 1,
             "clones": 4,
-            "duplicatedLines": 62,
-            "duplicatedTokens": 507,
-            "percentage": 20.67,
-            "percentageTokens": 21.55,
+            "duplicatedLines": 117,
+            "duplicatedTokens": 838,
+            "percentage": 45.7,
+            "percentageTokens": 46.09,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -248,11 +272,11 @@
             "lines": 106,
             "tokens": 839,
             "sources": 1,
-            "clones": 5,
-            "duplicatedLines": 78,
-            "duplicatedTokens": 644,
-            "percentage": 73.58,
-            "percentageTokens": 76.76,
+            "clones": 3,
+            "duplicatedLines": 43,
+            "duplicatedTokens": 395,
+            "percentage": 40.57,
+            "percentageTokens": 47.08,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -280,15 +304,27 @@
             "newDuplicatedLines": 0,
             "newClones": 0
           },
+          "../scenes/ui/stat_allocation_ui.gd": {
+            "lines": 466,
+            "tokens": 4258,
+            "sources": 1,
+            "clones": 7,
+            "duplicatedLines": 97,
+            "duplicatedTokens": 1070,
+            "percentage": 20.82,
+            "percentageTokens": 25.13,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
           "../scenes/ui/stat_allocation.gd": {
             "lines": 166,
             "tokens": 1614,
             "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
+            "clones": 7,
+            "duplicatedLines": 97,
+            "duplicatedTokens": 1070,
+            "percentage": 58.43,
+            "percentageTokens": 66.29,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -304,9 +340,33 @@
             "newDuplicatedLines": 0,
             "newClones": 0
           },
+          "../scenes/ui/quest_tracker.gd": {
+            "lines": 378,
+            "tokens": 2572,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 21,
+            "duplicatedTokens": 112,
+            "percentage": 5.56,
+            "percentageTokens": 4.35,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../scenes/ui/quest_objective_display.gd": {
+            "lines": 175,
+            "tokens": 1133,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 21,
+            "duplicatedTokens": 112,
+            "percentage": 12,
+            "percentageTokens": 9.89,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
           "../scenes/ui/matchmaking_menu.gd": {
-            "lines": 295,
-            "tokens": 2482,
+            "lines": 325,
+            "tokens": 2733,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -317,8 +377,8 @@
             "newClones": 0
           },
           "../scenes/ui/main_menu.gd": {
-            "lines": 206,
-            "tokens": 1919,
+            "lines": 255,
+            "tokens": 2116,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -353,14 +413,26 @@
             "newClones": 0
           },
           "../scenes/ui/loadout.gd": {
-            "lines": 234,
-            "tokens": 1952,
+            "lines": 273,
+            "tokens": 2321,
             "sources": 1,
             "clones": 1,
             "duplicatedLines": 25,
             "duplicatedTokens": 182,
-            "percentage": 10.68,
-            "percentageTokens": 9.32,
+            "percentage": 9.16,
+            "percentageTokens": 7.84,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../scenes/ui/level_requirement_gate.gd": {
+            "lines": 225,
+            "tokens": 1509,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -424,6 +496,30 @@
             "newDuplicatedLines": 0,
             "newClones": 0
           },
+          "../scenes/ui/fatigue_indicator.gd": {
+            "lines": 311,
+            "tokens": 1869,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../scenes/ui/difficulty_adjustment.gd": {
+            "lines": 164,
+            "tokens": 1138,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
           "../scenes/ui/cosmetic_shop.gd": {
             "lines": 226,
             "tokens": 1822,
@@ -461,14 +557,14 @@
             "newClones": 0
           },
           "../scenes/ui/campaign_map.gd": {
-            "lines": 269,
-            "tokens": 2212,
+            "lines": 299,
+            "tokens": 2527,
             "sources": 1,
             "clones": 1,
             "duplicatedLines": 19,
             "duplicatedTokens": 115,
-            "percentage": 7.06,
-            "percentageTokens": 5.2,
+            "percentage": 6.35,
+            "percentageTokens": 4.55,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -484,27 +580,63 @@
             "newDuplicatedLines": 0,
             "newClones": 0
           },
+          "../scenes/pvp/pvp_menu.gd": {
+            "lines": 226,
+            "tokens": 1456,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 15,
+            "duplicatedTokens": 87,
+            "percentage": 6.64,
+            "percentageTokens": 5.98,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../scenes/pvp/matchmaking_queue.gd": {
+            "lines": 174,
+            "tokens": 1380,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../scenes/pvp/leaderboard_ui.gd": {
+            "lines": 440,
+            "tokens": 3139,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 15,
+            "duplicatedTokens": 87,
+            "percentage": 3.41,
+            "percentageTokens": 2.77,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
           "../scenes/enemies/tank_enemy.gd": {
             "lines": 150,
             "tokens": 1116,
             "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 30,
-            "duplicatedTokens": 236,
-            "percentage": 20,
-            "percentageTokens": 21.15,
+            "clones": 3,
+            "duplicatedLines": 44,
+            "duplicatedTokens": 342,
+            "percentage": 29.33,
+            "percentageTokens": 30.65,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
           "../scenes/enemies/swarmer_enemy.gd": {
-            "lines": 145,
-            "tokens": 1158,
+            "lines": 260,
+            "tokens": 1665,
             "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 15,
-            "duplicatedTokens": 112,
-            "percentage": 10.34,
-            "percentageTokens": 9.67,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -580,9 +712,33 @@
             "newDuplicatedLines": 0,
             "newClones": 0
           },
+          "../scenes/enemies/flying_enemy.gd": {
+            "lines": 220,
+            "tokens": 1400,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
           "../scenes/enemies/enemy_spawner.gd": {
             "lines": 255,
             "tokens": 2146,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../scenes/enemies/elemental_enemy.gd": {
+            "lines": 231,
+            "tokens": 1445,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -605,8 +761,8 @@
             "newClones": 0
           },
           "../scenes/enemies/base_enemy.gd": {
-            "lines": 156,
-            "tokens": 1196,
+            "lines": 205,
+            "tokens": 1529,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -749,14 +905,14 @@
             "newClones": 0
           },
           "../scripts/character_body_2d.gd": {
-            "lines": 186,
-            "tokens": 1298,
+            "lines": 403,
+            "tokens": 2461,
             "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
+            "clones": 1,
+            "duplicatedLines": 18,
+            "duplicatedTokens": 118,
+            "percentage": 4.47,
+            "percentageTokens": 4.79,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -787,6 +943,18 @@
           "../autoloads/const.gd": {
             "lines": 40,
             "tokens": 300,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../autoloads/WeaponBalanceManager.gd": {
+            "lines": 415,
+            "tokens": 2224,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -868,6 +1036,18 @@
             "newDuplicatedLines": 0,
             "newClones": 0
           },
+          "../autoloads/StatAllocationManager.gd": {
+            "lines": 358,
+            "tokens": 2345,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
           "../autoloads/ShootingManager.gd": {
             "lines": 260,
             "tokens": 1717,
@@ -881,14 +1061,14 @@
             "newClones": 0
           },
           "../autoloads/SeasonManager.gd": {
-            "lines": 294,
-            "tokens": 1901,
+            "lines": 533,
+            "tokens": 3456,
             "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
+            "clones": 1,
+            "duplicatedLines": 13,
+            "duplicatedTokens": 127,
+            "percentage": 2.44,
+            "percentageTokens": 3.67,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -901,6 +1081,18 @@
             "duplicatedTokens": 0,
             "percentage": 0,
             "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../autoloads/ProgressionIndicatorManager.gd": {
+            "lines": 539,
+            "tokens": 3814,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 14,
+            "duplicatedTokens": 206,
+            "percentage": 2.6,
+            "percentageTokens": 5.4,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -917,8 +1109,20 @@
             "newClones": 0
           },
           "../autoloads/PlayerStatsManager.gd": {
-            "lines": 225,
-            "tokens": 1293,
+            "lines": 369,
+            "tokens": 2345,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../autoloads/PlayerRatingManager.gd": {
+            "lines": 155,
+            "tokens": 1320,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -931,6 +1135,18 @@
           "../autoloads/PerformanceProfiler.gd": {
             "lines": 416,
             "tokens": 2922,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../autoloads/PacingManager.gd": {
+            "lines": 497,
+            "tokens": 3014,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -964,9 +1180,33 @@
             "newDuplicatedLines": 0,
             "newClones": 0
           },
+          "../autoloads/MatchmakingPoolManager.gd": {
+            "lines": 201,
+            "tokens": 1737,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
           "../autoloads/MatchmakingManager.gd": {
             "lines": 170,
             "tokens": 1097,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../autoloads/MatchmakingAnalyticsManager.gd": {
+            "lines": 490,
+            "tokens": 2907,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -980,17 +1220,29 @@
             "lines": 345,
             "tokens": 2512,
             "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 16,
-            "duplicatedTokens": 200,
-            "percentage": 4.64,
-            "percentageTokens": 7.96,
+            "clones": 3,
+            "duplicatedLines": 29,
+            "duplicatedTokens": 327,
+            "percentage": 8.41,
+            "percentageTokens": 13.02,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
           "../autoloads/InventoryManager.gd": {
             "lines": 224,
             "tokens": 1491,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../autoloads/ImpactManager.gd": {
+            "lines": 113,
+            "tokens": 772,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -1013,8 +1265,20 @@
             "newClones": 0
           },
           "../autoloads/GearRegistry.gd": {
-            "lines": 162,
-            "tokens": 1673,
+            "lines": 288,
+            "tokens": 2632,
+            "sources": 1,
+            "clones": 4,
+            "duplicatedLines": 76,
+            "duplicatedTokens": 639,
+            "percentage": 26.39,
+            "percentageTokens": 24.28,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../autoloads/GearManager.gd": {
+            "lines": 420,
+            "tokens": 3258,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -1024,15 +1288,15 @@
             "newDuplicatedLines": 0,
             "newClones": 0
           },
-          "../autoloads/GearManager.gd": {
-            "lines": 372,
-            "tokens": 2846,
+          "../autoloads/GearBalanceCalculator.gd": {
+            "lines": 294,
+            "tokens": 2313,
             "sources": 1,
-            "clones": 0,
-            "duplicatedLines": 0,
-            "duplicatedTokens": 0,
-            "percentage": 0,
-            "percentageTokens": 0,
+            "clones": 4,
+            "duplicatedLines": 76,
+            "duplicatedTokens": 639,
+            "percentage": 25.85,
+            "percentageTokens": 27.63,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -1048,9 +1312,21 @@
             "newDuplicatedLines": 0,
             "newClones": 0
           },
+          "../autoloads/EnemyFactory.gd": {
+            "lines": 223,
+            "tokens": 1537,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
           "../autoloads/EnemyAIManager.gd": {
-            "lines": 149,
-            "tokens": 973,
+            "lines": 349,
+            "tokens": 2222,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -1061,8 +1337,8 @@
             "newClones": 0
           },
           "../autoloads/EncounterData.gd": {
-            "lines": 231,
-            "tokens": 1281,
+            "lines": 307,
+            "tokens": 1641,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -1075,6 +1351,30 @@
           "../autoloads/EffectsManager.gd": {
             "lines": 163,
             "tokens": 783,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../autoloads/DynamicDifficultyManager.gd": {
+            "lines": 332,
+            "tokens": 1979,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../autoloads/DamageIndicatorManager.gd": {
+            "lines": 77,
+            "tokens": 482,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -1097,20 +1397,44 @@
             "newClones": 0
           },
           "../autoloads/CombatManager.gd": {
-            "lines": 159,
-            "tokens": 1211,
+            "lines": 241,
+            "tokens": 1602,
             "sources": 1,
             "clones": 2,
             "duplicatedLines": 18,
             "duplicatedTokens": 190,
-            "percentage": 11.32,
-            "percentageTokens": 15.69,
+            "percentage": 7.47,
+            "percentageTokens": 11.86,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../autoloads/CombatJuiceManager.gd": {
+            "lines": 237,
+            "tokens": 1377,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
           "../autoloads/CampaignManager.gd": {
-            "lines": 498,
-            "tokens": 3102,
+            "lines": 802,
+            "tokens": 4848,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 18,
+            "duplicatedTokens": 118,
+            "percentage": 2.24,
+            "percentageTokens": 2.43,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "../autoloads/BossManager.gd": {
+            "lines": 363,
+            "tokens": 2320,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -1182,14 +1506,14 @@
           }
         },
         "total": {
-          "lines": 18515,
-          "tokens": 136493,
-          "sources": 98,
-          "clones": 33,
-          "duplicatedLines": 466,
-          "duplicatedTokens": 4129,
-          "percentage": 2.52,
-          "percentageTokens": 3.03,
+          "lines": 28076,
+          "tokens": 199705,
+          "sources": 125,
+          "clones": 47,
+          "duplicatedLines": 782,
+          "duplicatedTokens": 6668,
+          "percentage": 2.79,
+          "percentageTokens": 3.34,
           "newDuplicatedLines": 0,
           "newClones": 0
         }
@@ -1548,6 +1872,18 @@
             "newDuplicatedLines": 0,
             "newClones": 0
           },
+          "../scripts/local-test-with-services.sh": {
+            "lines": 158,
+            "tokens": 890,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
           "../scripts/local-godot-tests.sh": {
             "lines": 275,
             "tokens": 1093,
@@ -1694,14 +2030,14 @@
           }
         },
         "total": {
-          "lines": 4745,
-          "tokens": 22839,
-          "sources": 27,
+          "lines": 4903,
+          "tokens": 23729,
+          "sources": 28,
           "clones": 3,
           "duplicatedLines": 35,
           "duplicatedTokens": 225,
-          "percentage": 0.74,
-          "percentageTokens": 0.99,
+          "percentage": 0.71,
+          "percentageTokens": 0.95,
           "newDuplicatedLines": 0,
           "newClones": 0
         }
@@ -1733,17 +2069,45 @@
           "newDuplicatedLines": 0,
           "newClones": 0
         }
+      },
+      "markdown": {
+        "sources": {
+          "../scripts/README.md": {
+            "lines": 88,
+            "tokens": 637,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 88,
+          "tokens": 637,
+          "sources": 1,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
       }
     },
     "total": {
-      "lines": 26517,
-      "tokens": 185049,
-      "sources": 139,
-      "clones": 41,
-      "duplicatedLines": 568,
-      "duplicatedTokens": 5093,
-      "percentage": 2.14,
-      "percentageTokens": 2.75,
+      "lines": 36324,
+      "tokens": 249788,
+      "sources": 168,
+      "clones": 55,
+      "duplicatedLines": 884,
+      "duplicatedTokens": 7632,
+      "percentage": 2.43,
+      "percentageTokens": 3.06,
       "newDuplicatedLines": 0,
       "newClones": 0
     }
@@ -1751,10 +2115,169 @@
   "duplicates": [
     {
       "format": "gdscript",
-      "lines": 15,
-      "fragment": "func find_player() -> void:\n\tvar players: Array[Node] = get_tree().get_nodes_in_group(\"Player\")\n\tif players.size() > 0:\n\t\tplayer_ref = players[0] as CharacterBody2D\n\nfunc chase_player() -> void:\n\tif not player_ref:\n\t\treturn\n\n\tvar direction: Vector2 = (player_ref.global_position - global_position).normalized()\n\tvelocity = direction * move_speed\n\tif sprite:\n\t\tsprite.flip_h = direction.x < 0\n\nfunc apply_slow_aura",
+      "lines": 30,
+      "fragment": "move_speed = base_move_speed\n\tcurrent_health = max_health\n\tadd_to_group(\"Boss\")\n\tsuper._ready()\n\n\t_boss_manager = get_node_or_null(\"/root/BossManager\")\n\n\thealth_changed.emit(current_health, max_health)\n\nfunc _physics_process(delta: float) -> void:\n\tif is_dead:\n\t\treturn\n\n\tif not player_ref:\n\t\tfind_player()\n\n\t# Update attack cooldowns\n\tif attack_timer > 0:\n\t\tattack_timer -= delta\n\tif current_special_cooldown > 0:\n\t\tcurrent_special_cooldown -= delta\n\n\t# Update BossManager cooldowns\n\tif _boss_manager:\n\t\t_boss_manager.update_attack_cooldowns(delta)\n\n\tif player_ref:\n\t\tvar distance_to_player = global_position.distance_to(player_ref.global_position)\n\n\t\tif distance_to_player",
       "tokens": 0,
       "firstFile": {
+        "name": "../scenes/enemies/bosses/boss_fire.gd",
+        "start": 46,
+        "end": 75,
+        "startLoc": {
+          "line": 46,
+          "column": 2,
+          "position": 241
+        },
+        "endLoc": {
+          "line": 75,
+          "column": 19,
+          "position": 412
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/enemies/bosses/boss_wind.gd",
+        "start": 47,
+        "end": 76,
+        "startLoc": {
+          "line": 47,
+          "column": 2,
+          "position": 252
+        },
+        "endLoc": {
+          "line": 76,
+          "column": 12,
+          "position": 423
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 36,
+      "fragment": "distance_to_player > attack_range:\n\t\t\t\tchase_player()\n\t\t\telse:\n\t\t\t\thandle_attacks()\n\t\telse:\n\t\t\tvelocity = Vector2.ZERO\n\n\tvar _moved = move_and_slide()\n\nfunc find_player() -> void:\n\tvar players = get_tree().get_nodes_in_group(\"Player\")\n\tif players.size() > 0:\n\t\tplayer_ref = players[0]\n\nfunc chase_player() -> void:\n\tif not player_ref:\n\t\treturn\n\n\tvar direction = (player_ref.global_position - global_position).normalized()\n\tvelocity = direction * move_speed\n\tif sprite:\n\t\tsprite.flip_h = direction.x < 0\n\nfunc handle_attacks() -> void:\n\tvelocity = Vector2.ZERO\n\n\t# Use special attack from BossManager if available\n\tif _boss_manager and current_special_cooldown <= 0:\n\t\tvar special_attack = _boss_manager.get_special_attack()\n\t\tif not special_attack.is_empty():\n\t\t\t_perform_special_attack(special_attack)\n\t\t\treturn\n\n\t# Shadow bolt attack\n\tif attack_timer <= 0:\n\t\tfire_shadow_bolt",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/enemies/bosses/boss_fire.gd",
+        "start": 79,
+        "end": 114,
+        "startLoc": {
+          "line": 79,
+          "column": 2,
+          "position": 440
+        },
+        "endLoc": {
+          "line": 114,
+          "column": 17,
+          "position": 703
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/enemies/bosses/boss_wind.gd",
+        "start": 79,
+        "end": 114,
+        "startLoc": {
+          "line": 79,
+          "column": 2,
+          "position": 445
+        },
+        "endLoc": {
+          "line": 114,
+          "column": 21,
+          "position": 708
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 20,
+      "fragment": "func take_damage(amount: int) -> void:\n\tsuper.take_damage(amount)\n\thealth_changed.emit(current_health, max_health)\n\n\t# Check phase transitions via BossManager\n\tif _boss_manager:\n\t\tvar new_phase = _boss_manager.check_phase_transition(current_health, max_health)\n\t\tif new_phase != current_phase:\n\t\t\ttransition_to_phase(new_phase)\n\n\tif current_health <= 0:\n\t\tdie()\n\nfunc transition_to_phase(phase_num: int) -> void:\n\tcurrent_phase = phase_num\n\n\tmatch phase_num:\n\t\t0:  # Phase 1\n\t\t\tmove_speed = base_move_speed\n\t\t\tdamage = 18",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/enemies/bosses/boss_fire.gd",
+        "start": 223,
+        "end": 242,
+        "startLoc": {
+          "line": 223,
+          "column": 1,
+          "position": 1611
+        },
+        "endLoc": {
+          "line": 242,
+          "column": 3,
+          "position": 1752
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/enemies/bosses/boss_wind.gd",
+        "start": 267,
+        "end": 286,
+        "startLoc": {
+          "line": 267,
+          "column": 1,
+          "position": 1929
+        },
+        "endLoc": {
+          "line": 286,
+          "column": 3,
+          "position": 2070
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 18,
+      "fragment": ", 1)\n\t\tawait get_tree().create_timer(0.5).timeout\n\t\tsprite.modulate = Color(1, 1, 1, 1)\n\nfunc die() -> void:\n\tboss_defeated.emit(boss_name)\n\n\t# Trigger BossManager defeat\n\tif _boss_manager:\n\t\t_boss_manager.end_boss_encounter(true)\n\n\tsuper.die()\n\nfunc _on_hurt_area_body_entered(body: Node2D) -> void:\n\tif body and body.is_in_group(\"Player\"):\n\t\tvar dmg = damage\n\t\tif is_enraged:\n\t\t\tdmg = int(dmg * 1.3",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/enemies/bosses/boss_fire.gd",
+        "start": 256,
+        "end": 273,
+        "startLoc": {
+          "line": 256,
+          "column": 4,
+          "position": 1852
+        },
+        "endLoc": {
+          "line": 273,
+          "column": 4,
+          "position": 1995
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/enemies/bosses/boss_wind.gd",
+        "start": 297,
+        "end": 314,
+        "startLoc": {
+          "line": 297,
+          "column": 4,
+          "position": 2147
+        },
+        "endLoc": {
+          "line": 314,
+          "column": 4,
+          "position": 2290
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 14,
+      "fragment": "func find_player() -> void:\n\tvar players: Array[Node] = get_tree().get_nodes_in_group(\"Player\")\n\tif players.size() > 0:\n\t\tplayer_ref = players[0] as CharacterBody2D\n\nfunc chase_player() -> void:\n\tif not player_ref:\n\t\treturn\n\tvar direction: Vector2 = (player_ref.global_position - global_position).normalized()\n\tvelocity = direction * move_speed\n\tif sprite:\n\t\tsprite.flip_h = direction.x < 0\n\nfunc attack_player",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/enemies/bosses/boss_electric.gd",
+        "start": 102,
+        "end": 115,
+        "startLoc": {
+          "line": 102,
+          "column": 1,
+          "position": 655
+        },
+        "endLoc": {
+          "line": 115,
+          "column": 14,
+          "position": 798
+        }
+      },
+      "secondFile": {
         "name": "../scenes/enemies/bosses/boss_ice.gd",
         "start": 100,
         "end": 114,
@@ -1768,344 +2291,149 @@
           "column": 16,
           "position": 774
         }
-      },
-      "secondFile": {
-        "name": "../scenes/enemies/bosses/boss_wind.gd",
-        "start": 79,
-        "end": 92,
-        "startLoc": {
-          "line": 79,
-          "column": 1,
-          "position": 523
-        },
-        "endLoc": {
-          "line": 92,
-          "column": 14,
-          "position": 666
-        }
       }
     },
     {
       "format": "gdscript",
-      "lines": 17,
-      "fragment": "+= _delta\n\nfunc find_player() -> void:\n\tvar players: Array[Node] = get_tree().get_nodes_in_group(\"Player\")\n\tif players.size() > 0:\n\t\tplayer_ref = players[0] as CharacterBody2D\n\nfunc chase_player() -> void:\n\tif not player_ref:\n\t\treturn\n\n\tvar direction: Vector2 = (player_ref.global_position - global_position).normalized()\n\tvelocity = direction * move_speed\n\tif sprite:\n\t\tsprite.flip_h = direction.x < 0\n\nfunc handle_attacks",
+      "lines": 31,
+      "fragment": "move_speed = base_move_speed\n\tcurrent_health = max_health\n\tadd_to_group(\"Boss\")\n\tsuper._ready()\n\n\t_boss_manager = get_node_or_null(\"/root/BossManager\")\n\n\thealth_changed.emit(current_health, max_health)\n\nfunc _physics_process(delta: float) -> void:\n\tif is_dead:\n\t\treturn\n\n\tif not player_ref:\n\t\tfind_player()\n\n\t# Update attack cooldowns\n\tif attack_timer > 0:\n\t\tattack_timer -= delta\n\tif current_special_cooldown > 0:\n\t\tcurrent_special_cooldown -= delta\n\n\t# Update BossManager cooldowns\n\tif _boss_manager:\n\t\t_boss_manager.update_attack_cooldowns(delta)\n\n\tif player_ref:\n\t\tvar distance_to_player = global_position.distance_to(player_ref.global_position)\n\n\t\tif distance_to_player <= detection_range:\n\t\t\tif distance_to_player >",
       "tokens": 0,
       "firstFile": {
-        "name": "../scenes/enemies/bosses/boss_fire.gd",
-        "start": 87,
-        "end": 103,
+        "name": "../scenes/enemies/bosses/boss_earth.gd",
+        "start": 47,
+        "end": 77,
         "startLoc": {
-          "line": 87,
+          "line": 47,
           "column": 2,
-          "position": 569
+          "position": 252
         },
         "endLoc": {
-          "line": 103,
-          "column": 15,
-          "position": 718
-        }
-      },
-      "secondFile": {
-        "name": "../scenes/enemies/bosses/boss_ice.gd",
-        "start": 98,
-        "end": 92,
-        "startLoc": {
-          "line": 98,
-          "column": 2,
-          "position": 625
-        },
-        "endLoc": {
-          "line": 92,
-          "column": 14,
-          "position": 666
-        }
-      }
-    },
-    {
-      "format": "gdscript",
-      "lines": 20,
-      "fragment": ")  # Takes 20% more damage when enraged\n\n\tcurrent_health -= actual_damage\n\thealth_changed.emit(current_health, max_health)\n\n\tvar health_percentage = float(current_health) / float(max_health)\n\n\t# Phase transitions\n\tif health_percentage <= 0.25 and phase == 2:\n\t\tenter_phase_3()\n\telif health_percentage <= 0.5 and phase == 1:\n\t\tenter_phase_2()\n\n\tif current_health <= 0:\n\t\tdie()\n\nfunc enter_phase_2() -> void:\n\tphase = 2\n\tmove_speed = phase2_speed\n\tdamage = 35",
-      "tokens": 0,
-      "firstFile": {
-        "name": "../scenes/enemies/bosses/boss_fire.gd",
-        "start": 201,
-        "end": 220,
-        "startLoc": {
-          "line": 201,
-          "column": 4,
-          "position": 1519
-        },
-        "endLoc": {
-          "line": 220,
-          "column": 3,
-          "position": 1659
-        }
-      },
-      "secondFile": {
-        "name": "../scenes/enemies/bosses/boss_ice.gd",
-        "start": 246,
-        "end": 265,
-        "startLoc": {
-          "line": 246,
-          "column": 5,
-          "position": 1903
-        },
-        "endLoc": {
-          "line": 265,
-          "column": 3,
-          "position": 2041
-        }
-      }
-    },
-    {
-      "format": "gdscript",
-      "lines": 9,
-      "fragment": ", 1)\n\t\tawait get_tree().create_timer(0.5).timeout\n\t\tsprite.modulate = Color(1, 1, 1, 1)\n\nfunc die() -> void:\n\tboss_defeated.emit(boss_name)\n\tvar campaign_mgr = get_node_or_null(\"/root/CampaignManager\")\n\tif campaign_mgr and campaign_mgr.has_method(\"unlock_modifier_pool\"):\n\t\tcampaign_mgr.unlock_modifier_pool(\"fire_arrow\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "../scenes/enemies/bosses/boss_fire.gd",
-        "start": 240,
-        "end": 248,
-        "startLoc": {
-          "line": 240,
-          "column": 4,
-          "position": 1811
-        },
-        "endLoc": {
-          "line": 248,
-          "column": 13,
-          "position": 1903
-        }
-      },
-      "secondFile": {
-        "name": "../scenes/enemies/bosses/boss_ice.gd",
-        "start": 282,
-        "end": 290,
-        "startLoc": {
-          "line": 282,
-          "column": 4,
-          "position": 2182
-        },
-        "endLoc": {
-          "line": 290,
-          "column": 12,
-          "position": 2274
-        }
-      }
-    },
-    {
-      "format": "gdscript",
-      "lines": 17,
-      "fragment": "+= delta\n\nfunc find_player() -> void:\n\tvar players: Array[Node] = get_tree().get_nodes_in_group(\"Player\")\n\tif players.size() > 0:\n\t\tplayer_ref = players[0] as CharacterBody2D\n\nfunc chase_player() -> void:\n\tif not player_ref:\n\t\treturn\n\tvar direction: Vector2 = (player_ref.global_position - global_position).normalized()\n\tvelocity = direction * move_speed\n\tif sprite:\n\t\tsprite.flip_h = direction.x < 0\n\nfunc attack_player(_delta: float) -> void:\n\tvelocity",
-      "tokens": 0,
-      "firstFile": {
-        "name": "../scenes/enemies/bosses/boss_electric.gd",
-        "start": 100,
-        "end": 116,
-        "startLoc": {
-          "line": 100,
-          "column": 2,
-          "position": 650
-        },
-        "endLoc": {
-          "line": 116,
-          "column": 9,
-          "position": 812
-        }
-      },
-      "secondFile": {
-        "name": "../scenes/enemies/bosses/boss_wind.gd",
-        "start": 77,
-        "end": 93,
-        "startLoc": {
           "line": 77,
           "column": 2,
-          "position": 518
-        },
-        "endLoc": {
-          "line": 93,
-          "column": 47,
-          "position": 680
-        }
-      }
-    },
-    {
-      "format": "gdscript",
-      "lines": 6,
-      "fragment": "var projectile: Node = projectile_scene.instantiate()\n\tvar direction: Vector2 = (player_ref.global_position - global_position).normalized()\n\n\tprojectile.global_position = global_position + direction * 50.0\n\tprojectile.rotation = direction.angle()\n\tprojectile.scale = Vector2(1.4",
-      "tokens": 0,
-      "firstFile": {
-        "name": "../scenes/enemies/bosses/boss_electric.gd",
-        "start": 157,
-        "end": 162,
-        "startLoc": {
-          "line": 157,
-          "column": 2,
-          "position": 1162
-        },
-        "endLoc": {
-          "line": 162,
-          "column": 4,
-          "position": 1241
+          "position": 435
         }
       },
       "secondFile": {
         "name": "../scenes/enemies/bosses/boss_wind.gd",
-        "start": 138,
-        "end": 143,
+        "start": 47,
+        "end": 77,
         "startLoc": {
-          "line": 138,
-          "column": 3,
-          "position": 1055
+          "line": 47,
+          "column": 2,
+          "position": 252
         },
         "endLoc": {
-          "line": 143,
-          "column": 4,
-          "position": 1134
+          "line": 77,
+          "column": 2,
+          "position": 427
         }
       }
     },
     {
       "format": "gdscript",
-      "lines": 17,
-      "fragment": "move_speed = base_move_speed\n\tcurrent_health = max_health\n\tadd_to_group(\"Boss\")\n\tsuper._ready()\n\n\thealth_changed.emit(current_health, max_health)\n\nfunc _physics_process(delta: float) -> void:\n\tif not player_ref:\n\t\tfind_player()\n\n\tupdate_timers(delta)\n\n\tif player_ref:\n\t\tvar distance_to_player: float = global_position.distance_to(player_ref.global_position)\n\n\t\tif not is_earthquake_active",
+      "lines": 46,
+      "fragment": "distance_to_player <= detection_range:\n\t\t\tif distance_to_player > attack_range:\n\t\t\t\tchase_player()\n\t\t\telse:\n\t\t\t\thandle_attacks()\n\t\telse:\n\t\t\tvelocity = Vector2.ZERO\n\n\tvar _moved = move_and_slide()\n\nfunc find_player() -> void:\n\tvar players = get_tree().get_nodes_in_group(\"Player\")\n\tif players.size() > 0:\n\t\tplayer_ref = players[0]\n\nfunc chase_player() -> void:\n\tif not player_ref:\n\t\treturn\n\n\tvar direction = (player_ref.global_position - global_position).normalized()\n\tvelocity = direction * move_speed\n\tif sprite:\n\t\tsprite.flip_h = direction.x < 0\n\nfunc handle_attacks() -> void:\n\tvelocity = Vector2.ZERO\n\n\t# Use special attack from BossManager if available\n\tif _boss_manager and current_special_cooldown <= 0:\n\t\tvar special_attack = _boss_manager.get_special_attack()\n\t\tif not special_attack.is_empty():\n\t\t\t_perform_special_attack(special_attack)\n\t\t\treturn\n\n\t# Basic melee attack\n\tif attack_timer <= 0:\n\t\tperform_basic_attack()\n\t\tattack_timer = attack_cooldown\n\nfunc perform_basic_attack() -> void:\n\tif not player_ref:\n\t\treturn\n\n\tvar attack_damage = damage\n\tif is_enraged:\n\t\tattack_damage = int(damage * 1.2",
       "tokens": 0,
       "firstFile": {
         "name": "../scenes/enemies/bosses/boss_earth.gd",
-        "start": 63,
-        "end": 79,
+        "start": 76,
+        "end": 121,
         "startLoc": {
-          "line": 63,
+          "line": 76,
           "column": 2,
-          "position": 400
+          "position": 423
         },
         "endLoc": {
-          "line": 79,
-          "column": 21,
-          "position": 506
+          "line": 121,
+          "column": 4,
+          "position": 757
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/enemies/bosses/boss_wind.gd",
+        "start": 78,
+        "end": 123,
+        "startLoc": {
+          "line": 78,
+          "column": 2,
+          "position": 435
+        },
+        "endLoc": {
+          "line": 123,
+          "column": 4,
+          "position": 769
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 26,
+      "fragment": ")\n\n\t# Reset visual\n\tif sprite:\n\t\tsprite.modulate = Color(1, 1, 1, 1)\n\nfunc take_damage(amount: int) -> void:\n\tsuper.take_damage(amount)\n\thealth_changed.emit(current_health, max_health)\n\n\t# Check phase transitions via BossManager\n\tif _boss_manager:\n\t\tvar new_phase = _boss_manager.check_phase_transition(current_health, max_health)\n\t\tif new_phase != current_phase:\n\t\t\ttransition_to_phase(new_phase)\n\n\tif current_health <= 0:\n\t\tdie()\n\nfunc transition_to_phase(phase_num: int) -> void:\n\tcurrent_phase = phase_num\n\n\tmatch phase_num:\n\t\t0:  # Phase 1\n\t\t\tmove_speed = base_move_speed\n\t\t\tdamage = 15",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/enemies/bosses/boss_earth.gd",
+        "start": 202,
+        "end": 227,
+        "startLoc": {
+          "line": 202,
+          "column": 14,
+          "position": 1405
+        },
+        "endLoc": {
+          "line": 227,
+          "column": 3,
+          "position": 1580
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/enemies/bosses/boss_wind.gd",
+        "start": 261,
+        "end": 286,
+        "startLoc": {
+          "line": 261,
+          "column": 6,
+          "position": 1895
+        },
+        "endLoc": {
+          "line": 286,
+          "column": 3,
+          "position": 2070
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 18,
+      "fragment": ", 0.6, 1)\n\t\tawait get_tree().create_timer(0.5).timeout\n\t\tsprite.modulate = Color(1, 1, 1, 1)\n\nfunc die() -> void:\n\tboss_defeated.emit(boss_name)\n\n\t# Trigger BossManager defeat\n\tif _boss_manager:\n\t\t_boss_manager.end_boss_encounter(true)\n\n\tsuper.die()\n\nfunc _on_hurt_area_body_entered(body: Node2D) -> void:\n\tif body and body.is_in_group(\"Player\"):\n\t\tvar dmg = damage\n\t\tif is_enraged:\n\t\t\tdmg = int(dmg * 1.2",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/enemies/bosses/boss_earth.gd",
+        "start": 238,
+        "end": 255,
+        "startLoc": {
+          "line": 238,
+          "column": 4,
+          "position": 1652
+        },
+        "endLoc": {
+          "line": 255,
+          "column": 4,
+          "position": 1798
         }
       },
       "secondFile": {
         "name": "../scenes/enemies/bosses/boss_fire.gd",
-        "start": 56,
-        "end": 72,
+        "start": 256,
+        "end": 314,
         "startLoc": {
-          "line": 56,
-          "column": 2,
-          "position": 361
-        },
-        "endLoc": {
-          "line": 72,
-          "column": 20,
-          "position": 467
-        }
-      }
-    },
-    {
-      "format": "gdscript",
-      "lines": 20,
-      "fragment": "+= _delta\n\nfunc find_player() -> void:\n\tvar players: Array[Node] = get_tree().get_nodes_in_group(\"Player\")\n\tif players.size() > 0:\n\t\tplayer_ref = players[0] as CharacterBody2D\n\nfunc chase_player() -> void:\n\tif not player_ref:\n\t\treturn\n\n\tvar direction: Vector2 = (player_ref.global_position - global_position).normalized()\n\tvelocity = direction * move_speed\n\tif sprite:\n\t\tsprite.flip_h = direction.x < 0\n\nfunc handle_attacks() -> void:\n\tvelocity = Vector2.ZERO\n\n\tcheck_rock_projectile",
-      "tokens": 0,
-      "firstFile": {
-        "name": "../scenes/enemies/bosses/boss_earth.gd",
-        "start": 98,
-        "end": 117,
-        "startLoc": {
-          "line": 98,
-          "column": 2,
-          "position": 627
-        },
-        "endLoc": {
-          "line": 117,
-          "column": 22,
-          "position": 796
-        }
-      },
-      "secondFile": {
-        "name": "../scenes/enemies/bosses/boss_ice.gd",
-        "start": 98,
-        "end": 107,
-        "startLoc": {
-          "line": 98,
-          "column": 2,
-          "position": 625
-        },
-        "endLoc": {
-          "line": 107,
-          "column": 22,
-          "position": 741
-        }
-      }
-    },
-    {
-      "format": "gdscript",
-      "lines": 20,
-      "fragment": ")  # Always deal at least 1 damage\n\n\tcurrent_health -= actual_damage\n\thealth_changed.emit(current_health, max_health)\n\n\tvar health_percentage = float(current_health) / float(max_health)\n\n\t# Phase transitions\n\tif health_percentage <= 0.25 and phase == 2:\n\t\tenter_phase_3()\n\telif health_percentage <= 0.5 and phase == 1:\n\t\tenter_phase_2()\n\n\tif current_health <= 0:\n\t\tdie()\n\nfunc enter_phase_2() -> void:\n\tphase = 2\n\tmove_speed = phase2_speed\n\tdamage = 30",
-      "tokens": 0,
-      "firstFile": {
-        "name": "../scenes/enemies/bosses/boss_earth.gd",
-        "start": 240,
-        "end": 259,
-        "startLoc": {
-          "line": 240,
-          "column": 14,
-          "position": 1840
-        },
-        "endLoc": {
-          "line": 259,
-          "column": 3,
-          "position": 1980
-        }
-      },
-      "secondFile": {
-        "name": "../scenes/enemies/bosses/boss_ice.gd",
-        "start": 246,
-        "end": 265,
-        "startLoc": {
-          "line": 246,
-          "column": 5,
-          "position": 1903
-        },
-        "endLoc": {
-          "line": 265,
-          "column": 3,
-          "position": 2041
-        }
-      }
-    },
-    {
-      "format": "gdscript",
-      "lines": 9,
-      "fragment": ", 1)\n\t\tawait get_tree().create_timer(0.5).timeout\n\t\tsprite.modulate = Color(1, 1, 1, 1)\n\nfunc die() -> void:\n\tboss_defeated.emit(boss_name)\n\tvar campaign_mgr = get_node_or_null(\"/root/CampaignManager\")\n\tif campaign_mgr and campaign_mgr.has_method(\"unlock_modifier_pool\"):\n\t\tcampaign_mgr.unlock_modifier_pool(\"earth_arrow\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "../scenes/enemies/bosses/boss_earth.gd",
-        "start": 283,
-        "end": 291,
-        "startLoc": {
-          "line": 283,
+          "line": 256,
           "column": 4,
-          "position": 2158
+          "position": 1849
         },
         "endLoc": {
-          "line": 291,
-          "column": 14,
-          "position": 2250
-        }
-      },
-      "secondFile": {
-        "name": "../scenes/enemies/bosses/boss_ice.gd",
-        "start": 282,
-        "end": 290,
-        "startLoc": {
-          "line": 282,
+          "line": 314,
           "column": 4,
-          "position": 2182
-        },
-        "endLoc": {
-          "line": 290,
-          "column": 12,
-          "position": 2274
+          "position": 2290
         }
       }
     },
@@ -2130,54 +2458,306 @@
         }
       },
       "secondFile": {
-        "name": "../scenes/enemies/bosses/boss_wind.gd",
-        "start": 79,
-        "end": 92,
+        "name": "../scenes/enemies/bosses/boss_ice.gd",
+        "start": 100,
+        "end": 115,
         "startLoc": {
-          "line": 79,
+          "line": 100,
           "column": 1,
-          "position": 523
+          "position": 630
         },
         "endLoc": {
-          "line": 92,
+          "line": 115,
           "column": 7,
-          "position": 668
+          "position": 800
         }
       }
     },
     {
       "format": "gdscript",
-      "lines": 21,
-      "fragment": ")\n\nfunc take_damage(amount: int) -> void:\n\tcurrent_health -= amount\n\thealth_changed.emit(current_health, max_health)\n\n\tvar health_percentage = float(current_health) / float(max_health)\n\n\tif health_percentage <= 0.5 and phase == 1:\n\t\tenter_phase_2()\n\n\tif current_health <= 0:\n\t\tdie()\n\nfunc enter_phase_2() -> void:\n\tphase = 2\n\tmove_speed = phase2_speed\n\tdamage = phase2_damage\n\tattack_cooldown = phase2_attack_cooldown\n\nfunc",
+      "lines": 22,
+      "fragment": "extends Control\n\n# --- Node References ---\n@onready var level_label: Label = $VBoxContainer/StatsContainer/LevelContainer/LevelLabel\n@onready var xp_label: Label = $VBoxContainer/StatsContainer/XPContainer/XPLabel\n@onready var ability_points_label: Label = $VBoxContainer/AbilityPointsLabel\n\n@onready var attack_value: Label = $VBoxContainer/StatsContainer/AttackContainer/AttackValue\n@onready var attack_plus: Button = $VBoxContainer/StatsContainer/AttackContainer/AttackPlus\n@onready var defense_value: Label = $VBoxContainer/StatsContainer/DefenseContainer/DefenseValue\n@onready var defense_plus: Button = $VBoxContainer/StatsContainer/DefenseContainer/DefensePlus\n@onready var dodge_value: Label = $VBoxContainer/StatsContainer/DodgeContainer/DodgeValue\n@onready var dodge_plus: Button = $VBoxContainer/StatsContainer/DodgeContainer/DodgePlus\n@onready var crit_rate_value: Label = $VBoxContainer/StatsContainer/CritRateContainer/CritRateValue\n@onready var crit_rate_plus: Button = $VBoxContainer/StatsContainer/CritRateContainer/CritRatePlus\n\n@onready var xp_progress_bar: ProgressBar = $VBoxContainer/XPProgressBar\n@onready var back_button: Button = $VBoxContainer/BackButton\n@onready var loading_indicator: Control = $LoadingIndicator\n\n# --- PlayerStatsManager Reference ---\n@onready var player_stats_manager",
       "tokens": 0,
       "firstFile": {
-        "name": "../scenes/enemies/bosses/boss_basic.gd",
-        "start": 79,
-        "end": 99,
+        "name": "../scenes/ui/stat_allocation.gd",
+        "start": 1,
+        "end": 22,
         "startLoc": {
-          "line": 79,
-          "column": 7,
-          "position": 612
+          "line": 1,
+          "column": 1,
+          "position": 0
         },
         "endLoc": {
-          "line": 99,
-          "column": 5,
-          "position": 749
+          "line": 22,
+          "column": 21,
+          "position": 264
         }
       },
       "secondFile": {
-        "name": "../scenes/enemies/bosses/boss_wind.gd",
-        "start": 145,
+        "name": "../scenes/ui/stat_allocation_ui.gd",
+        "start": 1,
+        "end": 22,
+        "startLoc": {
+          "line": 1,
+          "column": 1,
+          "position": 0
+        },
+        "endLoc": {
+          "line": 22,
+          "column": 14,
+          "position": 264
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 15,
+      "fragment": ")\n\n\tlevel_label.text = \"Level: %d\" % current_level\n\txp_label.text = \"XP: %d\" % current_xp\n\tability_points_label.text = \"Ability Points: %d\" % current_ability_points\n\n\tattack_value.text = str(current_stats.get(\"attack\", 10))\n\tdefense_value.text = str(current_stats.get(\"defense\", 10))\n\tdodge_value.text = str(current_stats.get(\"dodge\", 10))\n\tcrit_rate_value.text = str(current_stats.get(\"crit_rate\", 5))\n\n\t_update_button_states()\n\t_update_xp_progress()\n\nfunc",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/ui/stat_allocation.gd",
+        "start": 72,
+        "end": 86,
+        "startLoc": {
+          "line": 72,
+          "column": 2,
+          "position": 620
+        },
+        "endLoc": {
+          "line": 86,
+          "column": 5,
+          "position": 755
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/ui/stat_allocation_ui.gd",
+        "start": 151,
         "end": 164,
         "startLoc": {
-          "line": 145,
-          "column": 11,
-          "position": 1151
+          "line": 151,
+          "column": 2,
+          "position": 1272
         },
         "endLoc": {
           "line": 164,
-          "column": 14,
-          "position": 1288
+          "column": 18,
+          "position": 1407
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 9,
+      "fragment": "var xp_for_current_level: int = _get_xp_for_level(current_level)\n\tvar xp_for_next_level: int = _get_xp_for_level(current_level + 1)\n\tvar xp_in_current_level: int = current_xp - xp_for_current_level\n\tvar xp_needed_for_next_level: int = xp_for_next_level - xp_for_current_level\n\n\tvar progress: float = float(xp_in_current_level) / float(xp_needed_for_next_level)\n\txp_progress_bar.value = progress * 100.0\n\nfunc _get_xp_for_level",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/ui/stat_allocation.gd",
+        "start": 93,
+        "end": 101,
+        "startLoc": {
+          "line": 93,
+          "column": 2,
+          "position": 831
+        },
+        "endLoc": {
+          "line": 101,
+          "column": 18,
+          "position": 935
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/ui/stat_allocation_ui.gd",
+        "start": 202,
+        "end": 210,
+        "startLoc": {
+          "line": 202,
+          "column": 2,
+          "position": 1740
+        },
+        "endLoc": {
+          "line": 210,
+          "column": 23,
+          "position": 1844
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 13,
+      "fragment": "func _on_stats_updated( _stats: Dictionary) -> void:\n\trefresh_ui()\n\nfunc _on_level_up(new_level: int, ability_points_gained: int) -> void:\n\tshow_level_up_effect(new_level, ability_points_gained)\n\nfunc _on_xp_gained(amount: int, _total_xp: int) -> void:\n\tshow_xp_gained_effect(amount)\n\nfunc _on_stat_allocated(stat_name: String, amount: int) -> void:\n\tshow_stat_allocated_effect(stat_name, amount)\n\nfunc _on_attack_plus_pressed",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/ui/stat_allocation.gd",
+        "start": 113,
+        "end": 125,
+        "startLoc": {
+          "line": 113,
+          "column": 1,
+          "position": 1041
+        },
+        "endLoc": {
+          "line": 125,
+          "column": 24,
+          "position": 1155
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/ui/stat_allocation_ui.gd",
+        "start": 367,
+        "end": 379,
+        "startLoc": {
+          "line": 367,
+          "column": 1,
+          "position": 3207
+        },
+        "endLoc": {
+          "line": 379,
+          "column": 17,
+          "position": 3320
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 17,
+      "fragment": "func _on_attack_plus_pressed() -> void:\n\tif player_stats_manager and current_ability_points > 0:\n\t\tplayer_stats_manager.allocate_stat(\"attack\", 1)\n\nfunc _on_defense_plus_pressed() -> void:\n\tif player_stats_manager and current_ability_points > 0:\n\t\tplayer_stats_manager.allocate_stat(\"defense\", 1)\n\nfunc _on_dodge_plus_pressed() -> void:\n\tif player_stats_manager and current_ability_points > 0:\n\t\tplayer_stats_manager.allocate_stat(\"dodge\", 1)\n\nfunc _on_crit_rate_plus_pressed() -> void:\n\tif player_stats_manager and current_ability_points > 0:\n\t\tplayer_stats_manager.allocate_stat(\"crit_rate\", 1)\n\nfunc _on_back_pressed",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/ui/stat_allocation.gd",
+        "start": 125,
+        "end": 141,
+        "startLoc": {
+          "line": 125,
+          "column": 1,
+          "position": 1153
+        },
+        "endLoc": {
+          "line": 141,
+          "column": 17,
+          "position": 1303
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/ui/stat_allocation_ui.gd",
+        "start": 244,
+        "end": 260,
+        "startLoc": {
+          "line": 244,
+          "column": 1,
+          "position": 2127
+        },
+        "endLoc": {
+          "line": 260,
+          "column": 19,
+          "position": 2277
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 19,
+      "fragment": ")\n\nfunc _on_back_pressed() -> void:\n\tqueue_free()\n\nfunc show_level_up_effect(new_level: int, ability_points_gained: int) -> void:\n\tvar tween = create_tween()\n\tvar _t1 = tween.tween_property(ability_points_label, \"modulate\", Color.YELLOW, 0.2)\n\tvar _t2 = tween.tween_property(ability_points_label, \"modulate\", Color.WHITE, 0.2)\n\nfunc show_xp_gained_effect(amount: int) -> void:\n\tvar tween = create_tween()\n\tvar _t1 = tween.tween_property(xp_label, \"modulate\", Color.GREEN, 0.2)\n\tvar _t2 = tween.tween_property(xp_label, \"modulate\", Color.WHITE, 0.2)\n\nfunc show_stat_allocated_effect( _stat_name: String, _amount: int) -> void:\n\tpass\n\nfunc _exit_tree",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/ui/stat_allocation.gd",
+        "start": 139,
+        "end": 157,
+        "startLoc": {
+          "line": 139,
+          "column": 2,
+          "position": 1298
+        },
+        "endLoc": {
+          "line": 157,
+          "column": 11,
+          "position": 1506
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/ui/stat_allocation_ui.gd",
+        "start": 414,
+        "end": 434,
+        "startLoc": {
+          "line": 414,
+          "column": 2,
+          "position": 3650
+        },
+        "endLoc": {
+          "line": 434,
+          "column": 19,
+          "position": 3860
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 9,
+      "fragment": "if player_stats_manager:\n\t\tif player_stats_manager.stats_updated.is_connected(_on_stats_updated):\n\t\t\tplayer_stats_manager.stats_updated.disconnect(_on_stats_updated)\n\t\tif player_stats_manager.level_up.is_connected(_on_level_up):\n\t\t\tplayer_stats_manager.level_up.disconnect(_on_level_up)\n\t\tif player_stats_manager.xp_gained.is_connected(_on_xp_gained):\n\t\t\tplayer_stats_manager.xp_gained.disconnect(_on_xp_gained)\n\t\tif player_stats_manager.stat_allocated.is_connected(_on_stat_allocated):\n\t\t\tplayer_stats_manager.stat_allocated.disconnect(_on_stat_allocated)",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/ui/stat_allocation.gd",
+        "start": 159,
+        "end": 167,
+        "startLoc": {
+          "line": 159,
+          "column": 2,
+          "position": 1519
+        },
+        "endLoc": {
+          "line": 167,
+          "column": 2,
+          "position": 1614
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/ui/stat_allocation_ui.gd",
+        "start": 449,
+        "end": 457,
+        "startLoc": {
+          "line": 449,
+          "column": 2,
+          "position": 4064
+        },
+        "endLoc": {
+          "line": 457,
+          "column": 2,
+          "position": 4159
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 22,
+      "fragment": "func _ready() -> void:\n\t# Get DesignTokens reference\n\tdesign_tokens = get_node_or_null(\"/root/DesignTokens\")\n\n\t# Get ProgressionIndicatorManager reference\n\tprogression_manager = get_node_or_null(\"/root/ProgressionIndicatorManager\")\n\n\t# Get ThemeManager reference\n\ttheme_manager = get_node_or_null(\"/root/ThemeManager\")\n\n\t# Apply theme if available\n\tif theme_manager:\n\t\t_apply_theme()\n\t\ttheme_manager.theme_changed.connect(_on_theme_changed)\n\n\t# Connect to progression manager signals\n\tif progression_manager:\n\t\tprogression_manager.quest_updated.connect(_on_quest_updated)\n\t\tprogression_manager.objective_completed.connect(_on_objective_completed)\n\n\t# Initial update\n\trefresh_objectives",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/ui/quest_objective_display.gd",
+        "start": 23,
+        "end": 44,
+        "startLoc": {
+          "line": 23,
+          "column": 1,
+          "position": 97
+        },
+        "endLoc": {
+          "line": 44,
+          "column": 19,
+          "position": 209
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/ui/quest_tracker.gd",
+        "start": 33,
+        "end": 52,
+        "startLoc": {
+          "line": 33,
+          "column": 1,
+          "position": 135
+        },
+        "endLoc": {
+          "line": 52,
+          "column": 20,
+          "position": 243
         }
       }
     },
@@ -2203,17 +2783,17 @@
       },
       "secondFile": {
         "name": "../scenes/ui/loadout.gd",
-        "start": 210,
-        "end": 235,
+        "start": 249,
+        "end": 274,
         "startLoc": {
-          "line": 210,
+          "line": 249,
           "column": 1,
-          "position": 1744
+          "position": 2113
         },
         "endLoc": {
-          "line": 235,
+          "line": 274,
           "column": 16,
-          "position": 1926
+          "position": 2295
         }
       }
     },
@@ -2327,6 +2907,78 @@
     },
     {
       "format": "gdscript",
+      "lines": 16,
+      "fragment": ")\n\n## Handle decay info updated\nfunc _on_decay_info_updated(decay_info: Dictionary) -> void:\n\t\"\"\"Called when player's decay information is updated.\n\n\tParameters:\n\t\tdecay_info: Dictionary with decay data\n\t\"\"\"\n\t# Update UI to show decay warning if applicable\n\tif decay_info.get(\"can_decay\", false):\n\t\tvar points_at_risk: int = decay_info.get(\"points_at_risk\", 0)\n\t\tvar days_inactive: int = decay_info.get(\"days_inactive\", 0)\n\n\t\t# Show decay warning (could be implemented as toast/badge)\n\t\tprint(\"Decay warning: %d points at risk after %d days inactive\"",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/pvp/leaderboard_ui.gd",
+        "start": 375,
+        "end": 390,
+        "startLoc": {
+          "line": 375,
+          "column": 5,
+          "position": 2750
+        },
+        "endLoc": {
+          "line": 390,
+          "column": 58,
+          "position": 2837
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/pvp/pvp_menu.gd",
+        "start": 143,
+        "end": 157,
+        "startLoc": {
+          "line": 143,
+          "column": 2,
+          "position": 921
+        },
+        "endLoc": {
+          "line": 157,
+          "column": 55,
+          "position": 1005
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 15,
+      "fragment": ")\n\t\telse:\n\t\t\tvelocity = Vector2.ZERO\n\n\tvar _moved = move_and_slide()\n\nfunc find_player() -> void:\n\tvar players = get_tree().get_nodes_in_group(\"Player\")\n\tif players.size() > 0:\n\t\tplayer_ref = players[0]\n\nfunc chase_player() -> void:\n\tif not player_ref:\n\t\treturn\n\tvar direction:",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../scenes/enemies/tank_enemy.gd",
+        "start": 62,
+        "end": 76,
+        "startLoc": {
+          "line": 62,
+          "column": 6,
+          "position": 397
+        },
+        "endLoc": {
+          "line": 76,
+          "column": 2,
+          "position": 503
+        }
+      },
+      "secondFile": {
+        "name": "../scenes/enemies/bosses/boss_wind.gd",
+        "start": 82,
+        "end": 97,
+        "startLoc": {
+          "line": 82,
+          "column": 2,
+          "position": 464
+        },
+        "endLoc": {
+          "line": 97,
+          "column": 2,
+          "position": 572
+        }
+      }
+    },
+    {
+      "format": "gdscript",
       "lines": 14,
       "fragment": "func attack_player(delta: float) -> void:\n\tvelocity = Vector2.ZERO\n\tattack_timer += delta\n\n\tif attack_timer >= attack_cooldown:\n\t\tattack_timer = 0.0\n\t\tperform_attack()\n\nfunc perform_attack() -> void:\n\tvar game_manager = get_node_or_null(\"/root/GameManager\")\n\tif game_manager and game_manager.has_method(\"take_player_damage\"):\n\t\tgame_manager.take_player_damage(damage)\n\nfunc perform_charge",
       "tokens": 0,
@@ -2353,42 +3005,6 @@
           "line": 68,
           "column": 1,
           "position": 513
-        },
-        "endLoc": {
-          "line": 81,
-          "column": 12,
-          "position": 617
-        }
-      }
-    },
-    {
-      "format": "gdscript",
-      "lines": 16,
-      "fragment": ".x < 0\n\nfunc attack_player(delta: float) -> void:\n\tvelocity = Vector2.ZERO\n\tattack_timer += delta\n\n\tif attack_timer >= attack_cooldown:\n\t\tattack_timer = 0.0\n\t\tperform_attack()\n\nfunc perform_attack() -> void:\n\tvar game_manager = get_node_or_null(\"/root/GameManager\")\n\tif game_manager and game_manager.has_method(\"take_player_damage\"):\n\t\tgame_manager.take_player_damage(damage)\n\nfunc wander",
-      "tokens": 0,
-      "firstFile": {
-        "name": "../scenes/enemies/swarmer_enemy.gd",
-        "start": 108,
-        "end": 123,
-        "startLoc": {
-          "line": 108,
-          "column": 16,
-          "position": 830
-        },
-        "endLoc": {
-          "line": 123,
-          "column": 7,
-          "position": 942
-        }
-      },
-      "secondFile": {
-        "name": "../scenes/enemies/bosses/boss_basic.gd",
-        "start": 66,
-        "end": 81,
-        "startLoc": {
-          "line": 66,
-          "column": 10,
-          "position": 505
         },
         "endLoc": {
           "line": 81,
@@ -2706,13 +3322,13 @@
         }
       },
       "secondFile": {
-        "name": "../scenes/enemies/bosses/boss_wind.gd",
-        "start": 84,
+        "name": "../scenes/enemies/bosses/boss_electric.gd",
+        "start": 107,
         "end": 119,
         "startLoc": {
-          "line": 84,
+          "line": 107,
           "column": 1,
-          "position": 585
+          "position": 717
         },
         "endLoc": {
           "line": 119,
@@ -3119,6 +3735,42 @@
     },
     {
       "format": "gdscript",
+      "lines": 8,
+      "fragment": "for chapter in campaign_manager.campaigns_data.get(\"campaigns\", []):\n\t\tvar stages = chapter.get(\"stages\", [])\n\t\tfor stage_data in stages:\n\t\t\tvar stage_id = stage_data.get(\"id\", \"\")\n\t\t\tif campaign_manager.is_stage_unlocked(stage_id) and not campaign_manager.is_stage_completed(stage_id):\n\t\t\t\t# Check level requirement\n\t\t\t\tvar reqs = get_level_requirements(stage_id)\n\t\t\t\tvar",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../autoloads/ProgressionIndicatorManager.gd",
+        "start": 188,
+        "end": 195,
+        "startLoc": {
+          "line": 188,
+          "column": 2,
+          "position": 1133
+        },
+        "endLoc": {
+          "line": 195,
+          "column": 4,
+          "position": 1236
+        }
+      },
+      "secondFile": {
+        "name": "../autoloads/ProgressionIndicatorManager.gd",
+        "start": 129,
+        "end": 136,
+        "startLoc": {
+          "line": 129,
+          "column": 3,
+          "position": 682
+        },
+        "endLoc": {
+          "line": 136,
+          "column": 3,
+          "position": 785
+        }
+      }
+    },
+    {
+      "format": "gdscript",
       "lines": 11,
       "fragment": "% base_url\n\t\n\t# Use Basic auth with server key for session refresh (required by Nakama)\n\tvar auth_string: String = Marshalls.utf8_to_base64(\"%s:\" % server_key)\n\tvar headers: PackedStringArray = [\n\t\t\"Content-Type: application/json\",\n\t\t\"Accept: application/json\",\n\t\t\"Authorization: Basic %s\" % auth_string\n\t]\n\tvar body: Dictionary = {\n\t\t\"token\"",
       "tokens": 0,
@@ -3150,6 +3802,42 @@
           "line": 252,
           "column": 5,
           "position": 1875
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 14,
+      "fragment": "if not network_manager or not network_manager.is_connected:\n\t\tpush_error(\"Not connected to server\")\n\t\treturn\n\n\tvar json: JSON = JSON.new()\n\tvar response: Dictionary = await network_manager.send_rpc(RPC_GET_PLAYER_RANK, json.stringify({}))\n\n\tif response.has(\"error\"):\n\t\tpush_error(\"Failed to get player rank: %s\" % response.error)\n\t\treturn\n\n\tif response.get(\"success\", false):\n\t\tplayer_rank = response.get(\"rank\", 0)\n\t\trank_retrieved",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../autoloads/MatchmakerManager.gd",
+        "start": 157,
+        "end": 170,
+        "startLoc": {
+          "line": 157,
+          "column": 2,
+          "position": 1154
+        },
+        "endLoc": {
+          "line": 170,
+          "column": 15,
+          "position": 1281
+        }
+      },
+      "secondFile": {
+        "name": "../autoloads/SeasonManager.gd",
+        "start": 509,
+        "end": 522,
+        "startLoc": {
+          "line": 509,
+          "column": 2,
+          "position": 3224
+        },
+        "endLoc": {
+          "line": 522,
+          "column": 13,
+          "position": 3351
         }
       }
     },
@@ -3191,37 +3879,217 @@
     },
     {
       "format": "gdscript",
+      "lines": 25,
+      "fragment": "const MAX_STATS: Dictionary = {\n\t\"helm\": {\n\t\t\"defense\": 100,\n\t\t\"health\": 500\n\t},\n\t\"armor\": {\n\t\t\"defense\": 150,\n\t\t\"health\": 600\n\t},\n\t\"bow\": {\n\t\t\"attack\": 150,\n\t\t\"crit_rate\": 30\n\t},\n\t\"arrow\": {\n\t\t\"attack\": 100,\n\t\t\"crit_rate\": 25\n\t},\n\t\"amulet\": {\n\t\t\"dodge\": 30,\n\t\t\"crit_rate\": 20\n\t}\n}\n\n# Synergy groups for set bonuses\nconst",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../autoloads/GearBalanceCalculator.gd",
+        "start": 17,
+        "end": 41,
+        "startLoc": {
+          "line": 17,
+          "column": 1,
+          "position": 54
+        },
+        "endLoc": {
+          "line": 41,
+          "column": 6,
+          "position": 184
+        }
+      },
+      "secondFile": {
+        "name": "../autoloads/GearRegistry.gd",
+        "start": 46,
+        "end": 54,
+        "startLoc": {
+          "line": 46,
+          "column": 1,
+          "position": 397
+        },
+        "endLoc": {
+          "line": 54,
+          "column": 5,
+          "position": 500
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 27,
+      "fragment": "}\n}\n\n# Synergy groups for set bonuses\nconst SYNERGY_GROUPS: Dictionary = {\n\t\"dragon_set\": {\n\t\t\"pieces\": [\"helm_dragon\", \"armor_plate\", \"bow_crossbow\", \"arrow_dragon\", \"amulet_dragon\"],\n\t\t\"bonuses\": {\n\t\t\t2: {\"stat\": \"attack\", \"value\": 5},\n\t\t\t3: {\"stat\": \"crit_rate\", \"value\": 3},\n\t\t\t4: {\"stat\": \"health\", \"value\": 50},\n\t\t\t5: {\"stat\": \"all\", \"value\": 10}  # +10% to all stats\n\t\t}\n\t},\n\t\"iron_set\": {\n\t\t\"pieces\": [\"helm_iron\", \"armor_chain\", \"bow_composite\", \"arrow_iron\", \"amulet_power\"],\n\t\t\"bonuses\": {\n\t\t\t2: {\"stat\": \"defense\", \"value\": 5},\n\t\t\t3: {\"stat\": \"health\", \"value\": 30},\n\t\t\t4: {\"stat\": \"dodge\", \"value\": 2},\n\t\t\t5: {\"stat\": \"defense\", \"value\": 15}\n\t\t}\n\t}\n}\n\n# Power rating multipliers by rarity\nconst RARITY_MULTIPLIERS",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../autoloads/GearBalanceCalculator.gd",
+        "start": 37,
+        "end": 63,
+        "startLoc": {
+          "line": 37,
+          "column": 2,
+          "position": 177
+        },
+        "endLoc": {
+          "line": 63,
+          "column": 19,
+          "position": 425
+        }
+      },
+      "secondFile": {
+        "name": "../autoloads/GearRegistry.gd",
+        "start": 20,
+        "end": 46,
+        "startLoc": {
+          "line": 20,
+          "column": 3,
+          "position": 153
+        },
+        "endLoc": {
+          "line": 46,
+          "column": 10,
+          "position": 399
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 10,
+      "fragment": "var bonuses: Dictionary = {}\n\n\tfor synergy_name in SYNERGY_GROUPS.keys():\n\t\tvar synergy_data: Dictionary = SYNERGY_GROUPS[synergy_name]\n\t\tvar pieces: Array = synergy_data[\"pieces\"]\n\t\tvar bonus_tiers: Dictionary = synergy_data[\"bonuses\"]\n\n\t\t# Count how many pieces from this set are equipped\n\t\tvar equipped_count: int = 0\n\t\tfor gear_id in gear_set",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../autoloads/GearBalanceCalculator.gd",
+        "start": 193,
+        "end": 202,
+        "startLoc": {
+          "line": 193,
+          "column": 2,
+          "position": 1418
+        },
+        "endLoc": {
+          "line": 202,
+          "column": 9,
+          "position": 1513
+        }
+      },
+      "secondFile": {
+        "name": "../autoloads/GearRegistry.gd",
+        "start": 265,
+        "end": 274,
+        "startLoc": {
+          "line": 265,
+          "column": 2,
+          "position": 2371
+        },
+        "endLoc": {
+          "line": 274,
+          "column": 18,
+          "position": 2466
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 18,
+      "fragment": "pieces.has(gear_id):\n\t\t\t\tequipped_count += 1\n\n\t\t# Apply bonuses based on count\n\t\tfor tier_count in bonus_tiers.keys():\n\t\t\tif equipped_count >= tier_count:\n\t\t\t\tvar bonus: Dictionary = bonus_tiers[tier_count]\n\t\t\t\tvar stat: String = bonus[\"stat\"]\n\t\t\t\tvar value: float = float(bonus[\"value\"])\n\n\t\t\t\tif stat == \"all\":\n\t\t\t\t\t# Apply bonus to all stats\n\t\t\t\t\tbonuses[\"all_multiplier\"] = max(bonuses.get(\"all_multiplier\", 0.0), value / 100.0)\n\t\t\t\telse:\n\t\t\t\t\t# Stack with existing bonus\n\t\t\t\t\tbonuses[stat] = bonuses.get(stat, 0.0) + value\n\n\treturn bonuses",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../autoloads/GearBalanceCalculator.gd",
+        "start": 203,
+        "end": 220,
+        "startLoc": {
+          "line": 203,
+          "column": 2,
+          "position": 1527
+        },
+        "endLoc": {
+          "line": 220,
+          "column": 8,
+          "position": 1693
+        }
+      },
+      "secondFile": {
+        "name": "../autoloads/GearRegistry.gd",
+        "start": 275,
+        "end": 292,
+        "startLoc": {
+          "line": 275,
+          "column": 2,
+          "position": 2472
+        },
+        "endLoc": {
+          "line": 292,
+          "column": 8,
+          "position": 2638
+        }
+      }
+    },
+    {
+      "format": "gdscript",
       "lines": 10,
       "fragment": "var is_creator: bool = current_match_state.get(\"creator_id\") == NetworkManager.user_id\n\n\tif is_creator:\n\t\tmy_health = current_match_state.get(\"creator_health\", 100)\n\t\topponent_health = current_match_state.get(\"opponent_health\", 100)\n\telse:\n\t\tmy_health = current_match_state.get(\"opponent_health\", 100)\n\t\topponent_health = current_match_state.get(\"creator_health\", 100)\n\n\tturn_changed",
       "tokens": 0,
       "firstFile": {
         "name": "../autoloads/CombatManager.gd",
-        "start": 129,
-        "end": 138,
+        "start": 134,
+        "end": 143,
         "startLoc": {
-          "line": 129,
+          "line": 134,
           "column": 2,
-          "position": 967
+          "position": 997
         },
         "endLoc": {
-          "line": 138,
+          "line": 143,
           "column": 13,
-          "position": 1062
+          "position": 1092
         }
       },
       "secondFile": {
         "name": "../autoloads/CombatManager.gd",
-        "start": 113,
-        "end": 122,
+        "start": 118,
+        "end": 127,
         "startLoc": {
-          "line": 113,
+          "line": 118,
           "column": 3,
-          "position": 811
+          "position": 841
         },
         "endLoc": {
-          "line": 122,
+          "line": 127,
           "column": 5,
-          "position": 905
+          "position": 935
+        }
+      }
+    },
+    {
+      "format": "gdscript",
+      "lines": 19,
+      "fragment": ")\n\tif objectives.is_empty():\n\t\treturn 0.0\n\n\tvar total = objectives.size()\n\tvar completed = 0\n\n\tfor objective in objectives:\n\t\tif objective.get(\"state\") == ProgressionIndicatorManager.ObjectiveState.COMPLETED:\n\t\t\tcompleted += 1\n\n\treturn float(completed) / float(total) if total > 0 else 0.0\n\n## Handles quest updated signal from ProgressionIndicatorManager.\n##\n## Parameters:\n##   quest_id: ID of the updated quest\n##   progress: Progress percentage (0.0 to 1.0)\nfunc _on_quest_updated",
+      "tokens": 0,
+      "firstFile": {
+        "name": "../autoloads/CampaignManager.gd",
+        "start": 749,
+        "end": 767,
+        "startLoc": {
+          "line": 749,
+          "column": 9,
+          "position": 4433
+        },
+        "endLoc": {
+          "line": 767,
+          "column": 18,
+          "position": 4551
+        }
+      },
+      "secondFile": {
+        "name": "../scripts/character_body_2d.gd",
+        "start": 369,
+        "end": 386,
+        "startLoc": {
+          "line": 369,
+          "column": 2,
+          "position": 2242
+        },
+        "endLoc": {
+          "line": 386,
+          "column": 19,
+          "position": 2358
         }
       }
     }

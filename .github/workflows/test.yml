@@ -21,11 +21,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Skip for act (OOM issue)
+      - name: Skip for act (OOM issue without .actrc)
         if: env.ACT == 'true'
         run: |
           echo "⚠️  Skipping Godot tests for act (ACT environment detected)"
-          echo "❌ Godot tests cause OOM in Docker containers with act"
+          echo "❌ Godot tests cause OOM in Docker containers with act (default memory limits)"
+          echo ""
+          echo "💡 To run Godot tests locally with act, create a .actrc file with:"
+          echo '   {'
+          echo '     "container-options": ["--memory=8g", "--memory-swap=4g"]'
+          echo '   }'
+          echo ""
           echo "✅ Tests must be run with Godot Editor or on GitHub Actions CI"
           echo "::warning::Godot tests skipped for act - run 'godot --headless --script test/run_all_tests.gd' locally instead"
           exit 0

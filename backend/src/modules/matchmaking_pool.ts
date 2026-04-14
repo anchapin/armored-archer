@@ -80,15 +80,16 @@ const POOL_STORAGE_KEY = 'matchmaking_pool';
  */
 function getPool(nk: Runtime.Nakama, mode: '1v1' | '2v2'): MatchmakingPool {
   const poolKey = `${POOL_STORAGE_KEY}_${mode}`;
-  const objects = nk.storageRead([
-    {
-      collection: 'matchmaking',
-      key: poolKey,
-      userId: 'system',
-    },
-  ]);
+  const objects =
+    nk.storageRead?.([
+      {
+        collection: 'matchmaking',
+        key: poolKey,
+        userId: 'system',
+      },
+    ]) ?? [];
 
-  if (objects.length === 0) {
+  if (!objects || objects.length === 0 || !objects[0]) {
     return { players: [], last_match_time: Date.now() };
   }
 
@@ -375,6 +376,8 @@ export function rpcGetQueueStatus(
       match_found: true,
       opponent_id: matchedPlayer.user_id,
       opponent_rating: matchedPlayer.rating,
+      queue_position: queuePosition,
+      estimated_wait: Math.min(queuePosition * 30, MAX_WAIT_TIME / 1000),
     });
   }
 

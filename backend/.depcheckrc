@@ -1,6 +1,9 @@
 {
   "ignores": [
     "@types/jest",
+    "@babel/runtime",
+    "buffer",
+    "process",
     "husky",
     "lint-staged",
     "webpack*",

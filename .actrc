@@ -1,29 +1,5 @@
-# Godot Environment Variables
---env GODOT_HEADLESS=true
---env DISPLAY=:99
-
-# Container architecture
---container-architecture linux/amd64
-
-# Docker container options for Godot (volumes and shm-size)
---container-options --volume=/home/runner/.local/share/godot:/root/.local/share/godot
---container-options --volume=/home/runner/.config/godot:/root/.config/godot
---container-options --shm-size=2gb
-
-# IMPORTANT: For workflows using custom Docker images (like armored-archer/nakama-postgres),
-# use --pull=false to use locally built images instead of trying to pull from registry.
-# Example: act -j backend-test --pull=false
-# Build the image first: docker build -t armored-archer/nakama-postgres:3.21.1 -f .docker/nakama-postgres/Dockerfile .
+# Act configuration for local CI testing
+# Use local images instead of pulling from registry
+-P ubuntu-latest=catthehacker/ubuntu:full-latest
+# Don't force pull images - use local cache
 --pull=false
-
-# NOTE: Running the full workflow with 'act' may encounter cache contention errors
-# ('archive/tar: write too long') due to multiple jobs accessing npm cache simultaneously.
-#
-# Workarounds:
-# 1. Run jobs individually: act -j <job-name>
-# 2. Use sequential runner: ./scripts/run-ci-locally.sh
-# 3. Use --reuse flag: act --reuse (experimental)
-# 4. Run without cache: act --no-cache-cache
-#
-# The project is configured to work correctly with GitHub Actions CI.
-# Local testing is primarily for individual job validation.

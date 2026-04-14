@@ -111,8 +111,8 @@ export interface PacingReportResponse {
 export interface PacingRecommendation {
   should_break: boolean;
   break_duration: number;
-  suggested_next_type: ContentType;
   reason: string;
+  suggested_next_type: ContentType;
 }
 
 // Pacing targets
@@ -451,15 +451,16 @@ function loadPacingState(
   nk: Runtime.Nakama,
   userId: string
 ): { success: boolean; data?: PacingState } {
-  const objects = nk.storageRead?.([
-    {
-      collection: 'pacing_state',
-      key: userId,
-      userId: userId,
-    },
-  ]) ?? [];
+  const objects =
+    nk.storageRead?.([
+      {
+        collection: 'pacing_state',
+        key: userId,
+        userId: userId,
+      },
+    ]) ?? [];
 
-  if (!objects || objects.length === 0) {
+  if (!objects || objects.length === 0 || !objects[0]) {
     return { success: false };
   }
 
@@ -553,7 +554,7 @@ export function trackPacingState(
   type: ContentType,
   duration: number
 ): void {
-  const stateResult = loadPacingState((ctx as unknown) as Runtime.Nakama, userId);
+  const stateResult = loadPacingState(ctx as unknown as Runtime.Nakama, userId);
   const state = stateResult.success ? stateResult.data! : createDefaultPacingState(userId);
 
   // Create pacing entry
@@ -615,7 +616,7 @@ export function trackPacingState(
  * @returns Pacing state
  */
 export function getPacingState(ctx: TestContext, userId: string): PacingState {
-  const stateResult = loadPacingState((ctx as unknown) as Runtime.Nakama, userId);
+  const stateResult = loadPacingState(ctx as unknown as Runtime.Nakama, userId);
   return stateResult.success ? stateResult.data! : createDefaultPacingState(userId);
 }
 
@@ -641,7 +642,9 @@ export function getPacingMetrics(ctx: TestContext, userId: string): PacingMetric
 export function getFatigueLevel(intensity: number, duration: number): number {
   const baseFatigue = duration * 0.1;
   const intensityMultiplier = 1.0 + intensity * 0.5;
-  return baseFatigue * intensityMultiplier;
+  const fatigue = baseFatigue * intensityMultiplier;
+  // Clamp to 0-100 range
+  return Math.max(0, Math.min(100, fatigue));
 }
 
 /**
@@ -654,7 +657,7 @@ export function getFatigueLevel(intensity: number, duration: number): number {
 export function suggestBreak(
   ctx: TestContext,
   userId: string
-): { should_break: boolean; break_duration: number; reason: string } {
+): { should_break: boolean; break_duration: number; reason: string; suggested_next_type: string } {
   const metrics = getPacingMetrics(ctx, userId);
 
   if (metrics.current_fatigue >= FATIGUE_THRESHOLD_CRITICAL) {
@@ -662,18 +665,21 @@ export function suggestBreak(
       should_break: true,
       break_duration: 300, // 5 minutes
       reason: 'Critical fatigue detected',
+      suggested_next_type: ContentType.NARRATIVE,
     };
   } else if (metrics.current_fatigue >= FATIGUE_THRESHOLD_HIGH) {
     return {
       should_break: true,
       break_duration: 120, // 2 minutes
       reason: 'High fatigue detected',
+      suggested_next_type: ContentType.EXPLORATION,
     };
   } else if (metrics.combat_streak > MAX_COMBAT_STREAK) {
     return {
       should_break: true,
       break_duration: 60, // 1 minute
       reason: 'Combat streak too long',
+      suggested_next_type: ContentType.EXPLORATION,
     };
   }
 
@@ -681,6 +687,7 @@ export function suggestBreak(
     should_break: false,
     break_duration: 0,
     reason: '',
+    suggested_next_type: ContentType.COMBAT,
   };
 }
 
@@ -691,10 +698,7 @@ export function suggestBreak(
  * @param userId - User ID to get recommendation for
  * @returns Recommended content type
  */
-export function getRecommendedEncounterType(
-  ctx: TestContext,
-  userId: string
-): ContentType {
+export function getRecommendedEncounterType(ctx: TestContext, userId: string): ContentType {
   const metrics = getPacingMetrics(ctx, userId);
 
   // If high fatigue, recommend narrative

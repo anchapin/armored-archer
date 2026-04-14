@@ -7,6 +7,7 @@ import {
   number,
   string,
   boolean,
+  object,
   optional,
   pipe,
   integer,
@@ -557,15 +558,15 @@ function validateRespecRequest(
 } {
   // Validate payload
   const validation = validatePayload(
-    {
-      new_allocation: {
+    object({
+      new_allocation: object({
         attack: pipe(number(), integer(), minValue(0)),
         defense: pipe(number(), integer(), minValue(0)),
         dodge: pipe(number(), integer(), minValue(0)),
         crit_rate: pipe(number(), integer(), minValue(0)),
-      },
+      }),
       use_free_respec: optional(boolean()),
-    },
+    }),
     payload,
     'respec_stats'
   );
@@ -683,7 +684,7 @@ export function rpcRespecStats(
   const useFreeRespec = canUseFreeRespec(respecData, request.use_free_respec || false);
 
   // Calculate and validate cost
-  const costResult = calculateAndValidateCost(playerStats, useFreeRespec);
+  const costResult = calculateAndValidateCost(nk, ctx.userId, useFreeRespec);
   if (costResult.error) {
     logAudit(
       nk,
@@ -793,17 +794,17 @@ export function rpcSaveBuild(
   logger.info('Save build called for user: %s', ctx.userId);
 
   const validation = validatePayload(
-    {
+    object({
       build_slot: pipe(number(), integer(), minValue(1), maxValue(MAX_BUILD_SLOTS)),
       build_name: pipe(string(), minLength(1), maxLength(50)),
-      stats: {
+      stats: object({
         attack: pipe(number(), integer(), minValue(0)),
         defense: pipe(number(), integer(), minValue(0)),
         dodge: pipe(number(), integer(), minValue(0)),
         crit_rate: pipe(number(), integer(), minValue(0)),
-      },
+      }),
       level: pipe(number(), integer(), minValue(1)),
-    },
+    }),
     payload,
     'save_build'
   );
@@ -863,9 +864,9 @@ export function rpcLoadBuild(
   logger.info('Load build called for user: %s', ctx.userId);
 
   const validation = validatePayload(
-    {
+    object({
       build_slot: pipe(number(), integer(), minValue(1), maxValue(MAX_BUILD_SLOTS)),
-    },
+    }),
     payload,
     'load_build'
   );
@@ -958,6 +959,8 @@ export function rpcGetBuilds(
 
   const builds: Record<number, BuildData> = {};
   objects.forEach((obj) => {
+    if (!obj) return;
+
     const key = obj.key;
     const match = key.match(/slot_(\d+)$/);
     if (match) {
@@ -1034,16 +1037,34 @@ function canUseFreeRespec(respecData: RespecData, useFreeRespec: boolean): boole
  * Calculates the respec cost and validates player has enough gems.
  */
 function calculateAndValidateCost(
-  playerStats: PlayerStats,
+  nk: Runtime.Nakama,
+  userId: string,
   useFreeRespec: boolean
 ): { costPaid: number; error?: string } {
   if (useFreeRespec) {
     return { costPaid: 0 };
   }
 
-  // Use gem balance from player stats (already loaded)
-  const statsWithGems = playerStats.stats as Record<string, number>;
-  const gemBalance = statsWithGems.gems || 0;
+  // Get gem balance from player_currency storage
+  const currencyObjects = nk.storageRead([
+    {
+      collection: 'player_currency',
+      key: userId,
+      userId: userId,
+    },
+  ]);
+
+  let gemBalance = 0;
+  if (currencyObjects.length > 0 && currencyObjects[0].value) {
+    const parseResult = safeParse<{ gems?: number }>(
+      currencyObjects[0].value,
+      null,
+      { error: () => {}, warn: () => {}, debug: () => {}, info: () => {} } as any,
+      'player_currency'
+    );
+    gemBalance = parseResult.success && parseResult.data?.gems ? parseResult.data.gems : 0;
+  }
+
   let costPaid = Math.floor(gemBalance * RESPEC_COST_PERCENT);
   costPaid = Math.max(RESPEC_MIN_COST, Math.min(RESPEC_MAX_COST, costPaid));
 
