@@ -298,7 +298,7 @@ describe('matchmaking_pool', () => {
             {
               user_id: 'user_456',
               mode: '1v1',
-              rating: 1250,
+              rating: 1500,
               joined_at: Date.now() - 10000,
               bracket_size: 100,
             },
@@ -595,11 +595,18 @@ describe('matchmaking_pool', () => {
         })
       );
 
+      // Create a context with a user not in the pool
+      const newMockCtx = {
+        userId: 'user_1001',
+        nk: (mockCtx as any).nk,
+      } as any;
+
       const request: JoinPoolRequest = { mode: '1v1', rating: 1200 };
       const payload = JSON.stringify(request);
-      const result = rpcJoinPool(mockCtx, mockLogger, (mockCtx as any).nk, payload);
+      const result = rpcJoinPool(newMockCtx, mockLogger, (newMockCtx as any).nk, payload);
       const response = JSON.parse(result);
 
+      expect(response.success).toBe(true);
       expect(response.queue_position).toBe(1001); // After existing 1000 players
     });
   });
