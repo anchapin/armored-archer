@@ -109,7 +109,7 @@
     "@opentelemetry/resources": "2.6.1",
     "@opentelemetry/sdk-node": "^0.214.0",
     "@opentelemetry/semantic-conventions": "1.40.0",
-    "@sentry/node": "^10.40.0",
+    "@sentry/node": "^10.48.0",
     "@types/ioredis": "^5.0.0",
     "buffer": "^6.0.3",
     "ioredis": "^5.10.0",
