@@ -598,10 +598,7 @@ export function trackPacingState(
   const streakMultiplier =
     type === ContentType.COMBAT && state.combat_streak > MAX_COMBAT_STREAK ? 1.5 : 1.0;
 
-  state.current_fatigue = Math.min(
-    state.current_fatigue + fatigueIncrease * streakMultiplier,
-    100
-  );
+  state.current_fatigue = Math.min(state.current_fatigue + fatigueIncrease * streakMultiplier, 100);
 
   state.session_encounters += 1;
   state.updated_at = Math.floor(Date.now() / 1000);
