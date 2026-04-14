@@ -451,13 +451,14 @@ function loadPacingState(
   nk: Runtime.Nakama,
   userId: string
 ): { success: boolean; data?: PacingState } {
-  const objects = nk.storageRead?.([
-    {
-      collection: 'pacing_state',
-      key: userId,
-      userId: userId,
-    },
-  ]) ?? [];
+  const objects =
+    nk.storageRead?.([
+      {
+        collection: 'pacing_state',
+        key: userId,
+        userId: userId,
+      },
+    ]) ?? [];
 
   if (!objects || objects.length === 0) {
     return { success: false };
@@ -553,7 +554,7 @@ export function trackPacingState(
   type: ContentType,
   duration: number
 ): void {
-  const stateResult = loadPacingState((ctx as unknown) as Runtime.Nakama, userId);
+  const stateResult = loadPacingState(ctx as unknown as Runtime.Nakama, userId);
   const state = stateResult.success ? stateResult.data! : createDefaultPacingState(userId);
 
   // Create pacing entry
@@ -615,7 +616,7 @@ export function trackPacingState(
  * @returns Pacing state
  */
 export function getPacingState(ctx: TestContext, userId: string): PacingState {
-  const stateResult = loadPacingState((ctx as unknown) as Runtime.Nakama, userId);
+  const stateResult = loadPacingState(ctx as unknown as Runtime.Nakama, userId);
   return stateResult.success ? stateResult.data! : createDefaultPacingState(userId);
 }
 
@@ -691,10 +692,7 @@ export function suggestBreak(
  * @param userId - User ID to get recommendation for
  * @returns Recommended content type
  */
-export function getRecommendedEncounterType(
-  ctx: TestContext,
-  userId: string
-): ContentType {
+export function getRecommendedEncounterType(ctx: TestContext, userId: string): ContentType {
   const metrics = getPacingMetrics(ctx, userId);
 
   // If high fatigue, recommend narrative

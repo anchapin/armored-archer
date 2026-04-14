@@ -24,7 +24,7 @@ describe('Pacing', () => {
   beforeEach(() => {
     mockCtx = {
       storageWrite: jest.fn().mockResolvedValue(undefined),
-      storageRead: jest.fn().mockResolvedValue(undefined),
+      storageRead: jest.fn().mockResolvedValue([]),
       storageList: jest.fn().mockResolvedValue([]),
       env: {},
     };

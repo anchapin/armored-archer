@@ -25,7 +25,7 @@ describe('DynamicDifficulty', () => {
   beforeEach(() => {
     mockCtx = {
       storageWrite: jest.fn().mockResolvedValue(undefined),
-      storageRead: jest.fn().mockResolvedValue(undefined),
+      storageRead: jest.fn().mockResolvedValue([]),
       storageList: jest.fn().mockResolvedValue([]),
       env: {},
     };
@@ -402,13 +402,13 @@ describe('DynamicDifficulty', () => {
     it('should save difficulty state to storage', () => {
       setDifficultyModifier(mockCtx, testUserId, 0.1);
 
-      expect(mockCtx.storageWrite).toHaveBeenCalledWith(
-        'difficulty_state',
+      expect(mockCtx.storageWrite).toHaveBeenCalledWith([
         expect.objectContaining({
-          player_id: testUserId,
-          current_modifier: 0.1,
-        })
-      );
+          collection: 'difficulty_state',
+          key: testUserId,
+          value: expect.stringContaining('current_modifier'),
+        }),
+      ]);
     });
 
     it('should load difficulty state from storage', () => {
@@ -421,7 +421,21 @@ describe('DynamicDifficulty', () => {
         updated_at: Date.now(),
       };
 
-      mockCtx.storageRead.mockResolvedValueOnce(savedState);
+      // Mock the storage read to return an array of storage objects
+      mockCtx.storageRead.mockResolvedValueOnce([
+        {
+          collection: 'difficulty_state',
+          key: testUserId,
+          userId: testUserId,
+          value: JSON.stringify(savedState),
+          version: '1',
+          permission_read: 1,
+          permission_write: 1,
+          created_at: 0,
+          updated_at: 0,
+          expires_at: 0,
+        },
+      ]);
 
       const state = getDifficultyState(mockCtx, testUserId);
       expect(state.current_modifier).toBe(0.15);

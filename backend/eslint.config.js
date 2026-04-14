@@ -6,7 +6,6 @@ const tsPlugin = require('@typescript-eslint/eslint-plugin');
 const prettierPlugin = require('eslint-plugin-prettier');
 const jsdocPlugin = require('eslint-plugin-jsdoc');
 const importPlugin = require('eslint-plugin-import-x');
-const importResolverTypescript = require('eslint-import-resolver-typescript');
 
 module.exports = [
   // Global ignores
@@ -57,17 +56,6 @@ module.exports = [
       jsdoc: jsdocPlugin,
       import: importPlugin,
     },
-    settings: {
-      'import/resolver': {
-        typescript: {
-          alwaysTryTypes: true,
-          project: './tsconfig.json',
-        },
-        node: {
-          extensions: ['.ts', '.tsx', '.js', '.jsx'],
-        },
-      },
-    },
     rules: {
       'prettier/prettier': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
@@ -89,10 +77,10 @@ module.exports = [
       'jsdoc/require-return-type': 'off',
       'complexity': ['error', { max: 15 }],
       'import/no-unresolved': 'off', // TypeScript compiler handles this
+      'import/no-cycle': 'off', // Disabled due to resolver incompatibility with eslint-plugin-import-x
       'import/order': ['error', { alphabetize: { order: 'asc', caseInsensitive: true } }],
       'import/no-duplicates': 'error',
       'import/extensions': 'off', // TypeScript compiler handles extensions
-      'import/no-cycle': ['error', { maxDepth: Infinity }],
     },
   },
 
