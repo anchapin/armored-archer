@@ -145,7 +145,17 @@ run_act_job() {
 # Service-dependent test runner
 run_service_job() {
     local job="$1"
-    local test_cmd="$2"
+    local test_cmd=""
+
+    # Map job name to npm command
+    case "${job}" in
+        "schema-validation")
+            test_cmd="test:schema"
+            ;;
+        "backend-test")
+            test_cmd="test"
+            ;;
+    esac
 
     echo -e "${BLUE}Running service job: ${job}${NC}"
 
