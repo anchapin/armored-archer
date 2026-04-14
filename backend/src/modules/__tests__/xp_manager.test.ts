@@ -8,7 +8,7 @@ import {
   calculateXpGain,
   getProgressPercentage,
   getLevelCurveType,
-  validateXpGainSimpleSimple,
+  validateXpGainSimple,
 } from '../xp_manager';
 import { Runtime } from '../../types/nakama';
 

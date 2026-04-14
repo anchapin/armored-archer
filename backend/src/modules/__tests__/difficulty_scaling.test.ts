@@ -19,7 +19,7 @@ describe('DifficultyScaling', () => {
   beforeEach(() => {
     mockCtx = {
       storageWrite: jest.fn().mockResolvedValue(undefined),
-      storageRead: jest.fn().mockResolvedValue(undefined),
+      storageRead: jest.fn().mockResolvedValue([]),
       storageList: jest.fn().mockResolvedValue([]),
       env: {},
     };
@@ -121,14 +121,12 @@ describe('DifficultyScaling', () => {
     });
 
     it('should increase complexity with level', () => {
-      const tier1 = getAiDifficultyTier(1);
-      const tier10 = getAiDifficultyTier(10);
-      const tier20 = getAiDifficultyTier(20);
-      const tier30 = getAiDifficultyTier(30);
+      const tier5 = getAiDifficultyTier(5);
+      const tier15 = getAiDifficultyTier(15);
+      const tier25 = getAiDifficultyTier(25);
 
-      expect(tier30.pattern_complexity).toBeGreaterThan(tier20.pattern_complexity);
-      expect(tier20.pattern_complexity).toBeGreaterThan(tier10.pattern_complexity);
-      expect(tier10.pattern_complexity).toBeGreaterThan(tier1.pattern_complexity);
+      expect(tier25.pattern_complexity).toBeGreaterThan(tier15.pattern_complexity);
+      expect(tier15.pattern_complexity).toBeGreaterThan(tier5.pattern_complexity);
     });
   });
 

@@ -191,8 +191,9 @@ describe('Matchmaking Analytics Module', () => {
 
   describe('detectBalanceIssues', () => {
     it('should detect high win rate issue', async () => {
+      // First call returns weapon stats, second call returns empty for match data
       mockNk.storageRead
-        .mockResolvedValue([
+        .mockResolvedValueOnce([
           {
             value: {
               weapon_id: 'op_weapon',
@@ -205,7 +206,7 @@ describe('Matchmaking Analytics Module', () => {
             },
           },
         ])
-        .mockResolvedValue([]);
+        .mockResolvedValueOnce([]);
 
       const issues = await detectBalanceIssues(mockNk);
 
@@ -217,7 +218,7 @@ describe('Matchmaking Analytics Module', () => {
 
     it('should detect low win rate issue', async () => {
       mockNk.storageRead
-        .mockResolvedValue([
+        .mockResolvedValueOnce([
           {
             value: {
               weapon_id: 'weak_weapon',
@@ -230,7 +231,7 @@ describe('Matchmaking Analytics Module', () => {
             },
           },
         ])
-        .mockResolvedValue([]);
+        .mockResolvedValueOnce([]);
 
       const issues = await detectBalanceIssues(mockNk);
 
@@ -242,7 +243,7 @@ describe('Matchmaking Analytics Module', () => {
 
     it('should skip weapons with insufficient data', async () => {
       mockNk.storageRead
-        .mockResolvedValue([
+        .mockResolvedValueOnce([
           {
             value: {
               weapon_id: 'new_weapon',
@@ -255,7 +256,7 @@ describe('Matchmaking Analytics Module', () => {
             },
           },
         ])
-        .mockResolvedValue([]);
+        .mockResolvedValueOnce([]);
 
       const issues = await detectBalanceIssues(mockNk);
 
@@ -263,8 +264,11 @@ describe('Matchmaking Analytics Module', () => {
     });
 
     it('should detect high abandonment rate', async () => {
+      // detectBalanceIssues calls generateWeaponStats (first storageRead), then aggregateMatchMetrics (second and third storageRead)
+      // We need 2/3 abandonment rate = 0.667, which exceeds 5% * 1.5 = 7.5%
       mockNk.storageRead
-        .mockResolvedValue([
+        .mockResolvedValueOnce([]) // No weapon stats
+        .mockResolvedValueOnce([ // Match data with high abandonment rate
           {
             value: {
               match_id: 'match1',
@@ -284,7 +288,7 @@ describe('Matchmaking Analytics Module', () => {
             },
           },
         ])
-        .mockResolvedValue([]);
+        .mockResolvedValueOnce([]); // No queue times
 
       const issues = await detectBalanceIssues(mockNk);
 
@@ -318,12 +322,13 @@ describe('Matchmaking Analytics Module', () => {
 
       await logMatchData(mockNk, requestData);
 
+      // The implementation stores value as a JSON string
       expect(mockNk.storageWrite).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
             collection: 'matchmaking_match_data',
             key: 'match_123',
-            value: requestData,
+            value: JSON.stringify(requestData),
           }),
         ])
       );
@@ -391,11 +396,12 @@ describe('Matchmaking Analytics Module', () => {
         timestamp: Date.now(),
       });
 
+      // The implementation stores value as a JSON string
       expect(mockNk.storageWrite).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
             collection: 'matchmaking_queue_times',
-            value: expect.objectContaining({ queue_time: 45 }),
+            value: expect.stringContaining('"queue_time":45'),
           }),
         ])
       );
@@ -407,7 +413,11 @@ describe('Matchmaking Analytics Module', () => {
         value: { queue_time: 30, timestamp: Date.now() - i * 1000 },
       }));
 
-      mockNk.storageRead.mockResolvedValueOnce([]).mockResolvedValueOnce(mockQueueObjects);
+      // First read returns empty (checking existing queue times),
+      // Second read returns the 10001 queue objects
+      mockNk.storageRead
+        .mockResolvedValueOnce(mockQueueObjects)
+        .mockResolvedValueOnce([]);
 
       await logQueueTime(mockNk, {
         queue_time: 45,

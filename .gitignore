@@ -40,6 +40,9 @@ jest_rs/
 # Eforge
 .eforge/
 
+# Local binaries and downloads
+.bin/
+
 # CI-generated reports
 *.jscpd-report.json
 tech-debt-report.json
