@@ -9,7 +9,9 @@ console:
 runtime:
   env: []
   path: /nakama/data
-  # Go backend disabled - built with incompatible Go version
+  # TypeScript is the authoritative backend runtime
+  # Go backend migration was abandoned (see MIGRATION_SUMMARY.md)
+  # To use Go: Uncomment go_entrypoint and comment js_entrypoint after fixing compatibility issues
   # go_entrypoint: "modules/server.so"
   js_entrypoint: "modules/index.js"
 
