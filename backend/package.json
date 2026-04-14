@@ -70,7 +70,7 @@
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.0",
     "@heroiclabs/nakama-js": "2.8.0",
-    "@stryker-mutator/core": "^9.6.0",
+    "@stryker-mutator/core": "^9.6.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.5.2",
     "@types/opossum": "^8.1.9",
