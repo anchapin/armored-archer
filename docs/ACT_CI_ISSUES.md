@@ -153,3 +153,33 @@ The project includes `.actrc` with configuration for local testing:
 - [act GitHub repository](https://github.com/nektos/act)
 - [actions/setup-node documentation](https://github.com/actions/setup-node)
 - [PostgreSQL service containers](https://docs.github.com/en/actions/using-containerized-services/creating-postgresql-service-containers)
+
+---
+
+## UPDATE: April 14, 2026
+
+### New Feature: Local CI Runner Script
+
+Created `scripts/ci-local.sh` - A comprehensive script for running all CI locally:
+
+**Features:**
+- Sequential job execution (avoids act cache corruption)
+- Service management via docker compose (PostgreSQL, Nakama, Redis)
+- Colored output for better readability
+- Service status checking
+- Targeted job running
+
+**Usage:**
+```bash
+./scripts/ci-local.sh              # Run all checks and tests
+./scripts/ci-local.sh <job>         # Run specific CI job
+./scripts/ci-local.sh --services     # Start/stop only services (no tests)
+./scripts/ci-local.sh --clean       # Stop services and cleanup
+./scripts/ci-local.sh --status        # Show service status
+```
+
+**Job Categories:**
+- **Act Jobs (no services)**: backend-lint, backend-typecheck, backend-complexity, security-audit, python-lint, gdscript-lint, log-scrubbing, dependency-check, bundle-size-check, godot-validate, n-plus-one-detection, duplicate-code-detection, tech-debt-tracking, dead-code-detection, agents-md-validation
+- **Service Jobs (need services)**: backend-test, schema-validation
+
+This script provides a complete local CI testing solution\!
