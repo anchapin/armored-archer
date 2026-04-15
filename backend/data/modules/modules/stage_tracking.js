@@ -7,16 +7,17 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerRpcCompleteStage = registerRpcCompleteStage;
 exports.registerRpcGetCompletedStages = registerRpcGetCompletedStages;
+exports.registerRpcGetCampaignProgress = registerRpcGetCampaignProgress;
 exports.rpcCompleteStage = rpcCompleteStage;
 exports.rpcGetCompletedStages = rpcGetCompletedStages;
-var tslib_1 = require("tslib");
-var audit_1 = require("./audit");
-var gear_system_1 = require("./gear_system");
-var validation_1 = require("./validation");
+exports.rpcGetCampaignProgress = rpcGetCampaignProgress;
+const audit_1 = require("./audit");
+const gear_system_1 = require("./gear_system");
+const validation_1 = require("./validation");
 /**
  * Storage collection name for stage completions.
  */
-var STAGE_COMPLETION_COLLECTION = 'stage_completion';
+const STAGE_COMPLETION_COLLECTION = 'stage_completion';
 /**
  * Registers the complete_stage RPC endpoint.
  *
@@ -34,6 +35,14 @@ function registerRpcGetCompletedStages(initializer) {
     initializer.registerRpc('armored_archer/get_completed_stages', rpcGetCompletedStages);
 }
 /**
+ * Registers the get_campaign_progress RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+function registerRpcGetCampaignProgress(initializer) {
+    initializer.registerRpc('armored_archer/get_campaign_progress', rpcGetCampaignProgress);
+}
+/**
  * Determines if new completion is better than existing one
  */
 function isBetterCompletion(newStars, newScore, existingStars, existingScore) {
@@ -43,14 +52,14 @@ function isBetterCompletion(newStars, newScore, existingStars, existingScore) {
  * Creates a new completion record
  */
 function createCompletionRecord(stageId, stagePrefix, starsEarned, score) {
-    var now = new Date().toISOString();
+    const now = new Date().toISOString();
     return {
         id: '',
         user_id: '',
         stage_id: stageId,
         stage_prefix: stagePrefix,
         stars_earned: starsEarned,
-        score: score,
+        score,
         completed_at: now,
         updated_at: now,
     };
@@ -59,7 +68,14 @@ function createCompletionRecord(stageId, stagePrefix, starsEarned, score) {
  * Updates an existing completion record
  */
 function updateCompletionRecord(stageId, stagePrefix, starsEarned, score, existingCompletion) {
-    return tslib_1.__assign(tslib_1.__assign({}, existingCompletion), { stage_id: stageId, stage_prefix: stagePrefix, stars_earned: starsEarned, score: score, updated_at: new Date().toISOString() });
+    return {
+        ...existingCompletion,
+        stage_id: stageId,
+        stage_prefix: stagePrefix,
+        stars_earned: starsEarned,
+        score,
+        updated_at: new Date().toISOString(),
+    };
 }
 /**
  * Handles stage completion requests from players.
@@ -73,7 +89,6 @@ function updateCompletionRecord(stageId, stagePrefix, starsEarned, score, existi
  * @returns JSON string with completion result
  */
 function rpcCompleteStage(ctx, logger, nk, payload) {
-    var _a, _b, _c;
     logger.info('Complete stage called for user: %s', ctx.userId);
     // Validate authentication
     if (!ctx.userId) {
@@ -85,22 +100,22 @@ function rpcCompleteStage(ctx, logger, nk, payload) {
         });
     }
     // Validate payload
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.complete_stage, payload, 'complete_stage');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.complete_stage, payload, 'complete_stage');
     if (!validation.success) {
-        (0, audit_1.logAudit)(nk, ctx.userId, (_a = ctx.ipAddress) !== null && _a !== void 0 ? _a : null, 'complete_stage', 'stage_completion', { stage_id: 'unknown' }, 'failure', validation.error);
+        (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'complete_stage', 'stage_completion', { stage_id: 'unknown' }, 'failure', validation.error);
         return (0, validation_1.createValidationErrorResponse)('complete_stage', validation.error);
     }
-    var request = validation.data;
-    var stage_id = request.stage_id, stage_prefix = request.stage_prefix, stars_earned = request.stars_earned, score = request.score;
+    const request = validation.data;
+    const { stage_id, stage_prefix, stars_earned, score } = request;
     logger.info('Processing stage completion: user=%s stage=%s stars=%d score=%d', ctx.userId, stage_id, stars_earned, score);
     try {
         // Read and process stage completion data
-        var completionResult = readAndProcessStageCompletion(nk, ctx.userId, stage_id, stage_prefix, stars_earned, score, logger);
+        const completionResult = readAndProcessStageCompletion(nk, ctx.userId, stage_id, stage_prefix, stars_earned, score, logger);
         // Handle case where replay didn't improve
         if (completionResult.noImprovement) {
             return JSON.stringify({
                 success: true,
-                stage_id: stage_id,
+                stage_id,
                 stars_earned: completionResult.existingCompletion.stars_earned,
                 score: completionResult.existingCompletion.score,
                 is_new_completion: false,
@@ -108,27 +123,27 @@ function rpcCompleteStage(ctx, logger, nk, payload) {
                 message: 'No improvement over previous completion',
             });
         }
-        var isNewCompletion = completionResult.isNewCompletion;
-        var previousBest = completionResult.previousBest;
+        const isNewCompletion = completionResult.isNewCompletion;
+        const previousBest = completionResult.previousBest;
         // Server-side loot generation (only if difficulty is provided)
-        var lootResult = { dropped: false, gear: null };
-        var dropRate = 0;
-        var unlockedModifierPools = [];
+        const lootResult = { dropped: false, gear: null };
+        let dropRate = 0;
+        let unlockedModifierPools = [];
         if (request.difficulty) {
             // Process loot generation
-            var lootProcessingResult = processStageLoot(nk, ctx.userId, request, stage_id, logger);
+            const lootProcessingResult = processStageLoot(nk, ctx.userId, request, stage_id, logger);
             lootResult.dropped = lootProcessingResult.lootResult.dropped;
             lootResult.gear = lootProcessingResult.lootResult.gear;
             dropRate = lootProcessingResult.dropRate;
             unlockedModifierPools = lootProcessingResult.unlockedModifierPools;
         }
         // Log audit event
-        (0, audit_1.logAudit)(nk, ctx.userId, (_b = ctx.ipAddress) !== null && _b !== void 0 ? _b : null, 'complete_stage', 'stage_completion', { stage_id: stage_id, stage_prefix: stage_prefix, stars_earned: stars_earned, score: score }, isNewCompletion ? 'success' : 'success', isNewCompletion ? 'New completion' : 'Updated completion');
-        var response = {
+        (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'complete_stage', 'stage_completion', { stage_id, stage_prefix, stars_earned, score }, isNewCompletion ? 'success' : 'success', isNewCompletion ? 'New completion' : 'Updated completion');
+        const response = {
             success: true,
-            stage_id: stage_id,
-            stars_earned: stars_earned,
-            score: score,
+            stage_id,
+            stars_earned,
+            score,
             is_new_completion: isNewCompletion,
         };
         if (previousBest) {
@@ -144,7 +159,7 @@ function rpcCompleteStage(ctx, logger, nk, payload) {
     }
     catch (error) {
         logger.error('Error processing stage completion: %s', String(error));
-        (0, audit_1.logAudit)(nk, ctx.userId, (_c = ctx.ipAddress) !== null && _c !== void 0 ? _c : null, 'complete_stage', 'stage_completion', { stage_id: stage_id }, 'failure', String(error));
+        (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'complete_stage', 'stage_completion', { stage_id }, 'failure', String(error));
         return JSON.stringify({
             success: false,
             error: 'Failed to process stage completion',
@@ -173,9 +188,9 @@ function rpcGetCompletedStages(ctx, logger, nk, payload) {
         });
     }
     // Handle empty payload - return all completions
-    var request = {};
+    let request = {};
     if (payload && payload.trim()) {
-        var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_all_stage_completions, payload, 'get_completed_stages');
+        const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_all_stage_completions, payload, 'get_completed_stages');
         if (!validation.success) {
             return (0, validation_1.createValidationErrorResponse)('get_completed_stages', validation.error);
         }
@@ -183,14 +198,14 @@ function rpcGetCompletedStages(ctx, logger, nk, payload) {
     }
     try {
         // Read stage completions from storage
-        var storageObjects = nk.storageRead([
+        const storageObjects = nk.storageRead([
             {
                 collection: STAGE_COMPLETION_COLLECTION,
                 key: ctx.userId,
                 userId: ctx.userId,
             },
         ]);
-        var storageData = {
+        let storageData = {
             user_id: ctx.userId,
             completions: {},
         };
@@ -204,22 +219,22 @@ function rpcGetCompletedStages(ctx, logger, nk, payload) {
             }
         }
         // Filter completions by prefix if specified
-        var completions = Object.values(storageData.completions);
+        let completions = Object.values(storageData.completions);
         if (request.stage_prefix) {
-            completions = completions.filter(function (c) { return c.stage_prefix === request.stage_prefix; });
+            completions = completions.filter((c) => c.stage_prefix === request.stage_prefix);
         }
         // Sort by completion date (most recent first)
-        completions.sort(function (a, b) { return new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime(); });
+        completions.sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime());
         logger.info('Retrieved %d completed stages for user: %s (filter: %s)', completions.length, ctx.userId, request.stage_prefix || 'none');
         return JSON.stringify({
             success: true,
-            stages: completions.map(function (c) { return ({
+            stages: completions.map((c) => ({
                 stage_id: c.stage_id,
                 stage_prefix: c.stage_prefix,
                 stars_earned: c.stars_earned,
                 score: c.score,
                 completed_at: c.completed_at,
-            }); }),
+            })),
             count: completions.length,
         });
     }
@@ -233,46 +248,143 @@ function rpcGetCompletedStages(ctx, logger, nk, payload) {
     }
 }
 /**
+ * Derives the next stage ID in sequence.
+ * e.g., "1_1" -> "1_2", "2_3" -> "2_4"
+ */
+function deriveNextStageId(stageId) {
+    const parts = stageId.split('_');
+    if (parts.length !== 2)
+        return null;
+    const chapter = parts[0];
+    const stageNum = parseInt(parts[1], 10);
+    if (isNaN(stageNum))
+        return null;
+    return `${chapter}_${stageNum + 1}`;
+}
+/**
+ * Handles requests to get campaign progress for a player.
+ * Returns completed stages, unlocked stages, and defeated bosses.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (empty or unused)
+ * @returns JSON string with campaign progress
+ */
+function rpcGetCampaignProgress(ctx, logger, nk, _payload) {
+    logger.info('Get campaign progress called for user: %s', ctx.userId);
+    // Validate authentication
+    if (!ctx.userId) {
+        logger.warn('get_campaign_progress attempted without authentication');
+        return JSON.stringify({
+            success: false,
+            error: 'Authentication required',
+            error_code: 'UNAUTHORIZED',
+        });
+    }
+    try {
+        // Read stage completions from storage
+        const storageObjects = nk.storageRead([
+            {
+                collection: STAGE_COMPLETION_COLLECTION,
+                key: ctx.userId,
+                userId: ctx.userId,
+            },
+        ]);
+        let storageData = {
+            user_id: ctx.userId,
+            completions: {},
+        };
+        // Parse existing data if it exists
+        if (storageObjects.length > 0 && storageObjects[0].value) {
+            try {
+                storageData = JSON.parse(storageObjects[0].value);
+            }
+            catch (e) {
+                logger.warn('Failed to parse stage completion storage: %s', String(e));
+            }
+        }
+        // Build completed_stages array from completion keys
+        const completedStages = Object.keys(storageData.completions);
+        // Derive unlocked_stages: for each completed stage, the next stage is unlocked
+        const unlockedSet = new Set();
+        for (const stageId of completedStages) {
+            const nextStage = deriveNextStageId(stageId);
+            if (nextStage) {
+                unlockedSet.add(nextStage);
+            }
+        }
+        // Always ensure first stage is available
+        unlockedSet.add('1_1');
+        const unlockedStages = Array.from(unlockedSet);
+        // Extract bosses defeated from completions (boss stages typically have boss data)
+        // We read from the gear_system inventory for boss defeats
+        const bossesDefeated = [];
+        try {
+            const inventoryObjects = nk.storageRead([
+                {
+                    collection: 'player_inventory',
+                    key: ctx.userId,
+                    userId: ctx.userId,
+                },
+            ]);
+            if (inventoryObjects.length > 0 && inventoryObjects[0].value) {
+                const inventory = JSON.parse(inventoryObjects[0].value);
+                if (Array.isArray(inventory.unlocked_modifier_pools)) {
+                    // Modifier pools unlocked by bosses indicate boss defeats
+                    bossesDefeated.push(...inventory.unlocked_modifier_pools);
+                }
+            }
+        }
+        catch (e) {
+            logger.warn('Failed to read boss defeats from inventory: %s', String(e));
+        }
+        logger.info('Campaign progress for user %s: completed=%d, unlocked=%d, bosses=%d', ctx.userId, completedStages.length, unlockedStages.length, bossesDefeated.length);
+        return JSON.stringify({
+            success: true,
+            completed_stages: completedStages,
+            unlocked_stages: unlockedStages,
+            bosses_defeated: bossesDefeated,
+        });
+    }
+    catch (error) {
+        logger.error('Error retrieving campaign progress: %s', String(error));
+        return JSON.stringify({
+            success: false,
+            error: 'Failed to retrieve campaign progress',
+            error_code: 'INTERNAL_ERROR',
+        });
+    }
+}
+/**
  * Process stage completion loot generation
  */
 function processStageLoot(nk, userId, request, stageId, logger) {
-    var e_1, _a;
-    var _b, _c, _d, _e, _f;
-    var lootResult = {
+    const lootResult = {
         lootResult: { dropped: false, gear: null },
         dropRate: 0,
         unlockedModifierPools: [],
     };
     // Calculate drop rate server-side
     lootResult.dropRate = (0, gear_system_1.calculateDropRate)(request.difficulty, request.boss_defeated || false);
-    var roll = Math.random();
+    const roll = Math.random();
     logger.info('Loot roll for user %s: roll=%f, dropRate=%f, difficulty=%s, bossDefeated=%s', userId, roll, lootResult.dropRate, request.difficulty, request.boss_defeated);
     // Get player inventory using helper function
-    var inventory = (0, gear_system_1.getPlayerInventory)(nk, userId, logger);
+    const inventory = (0, gear_system_1.getPlayerInventory)(nk, userId, logger);
     // Unlock modifier pools when boss is defeated
     if (request.boss_defeated && request.boss_id) {
-        var modifiersToUnlock = (0, gear_system_1.getModifiersUnlockedByBoss)(request.boss_id);
-        try {
-            for (var modifiersToUnlock_1 = tslib_1.__values(modifiersToUnlock), modifiersToUnlock_1_1 = modifiersToUnlock_1.next(); !modifiersToUnlock_1_1.done; modifiersToUnlock_1_1 = modifiersToUnlock_1.next()) {
-                var modifierId = modifiersToUnlock_1_1.value;
-                if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
-                    inventory.unlocked_modifier_pools.push(modifierId);
-                    logger.info('Unlocked modifier pool %s for user %s after defeating boss %s', modifierId, userId, request.boss_id);
-                }
+        const modifiersToUnlock = (0, gear_system_1.getModifiersUnlockedByBoss)(request.boss_id);
+        for (const modifierId of modifiersToUnlock) {
+            if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
+                inventory.unlocked_modifier_pools.push(modifierId);
+                logger.info('Unlocked modifier pool %s for user %s after defeating boss %s', modifierId, userId, request.boss_id);
             }
-        }
-        catch (e_1_1) { e_1 = { error: e_1_1 }; }
-        finally {
-            try {
-                if (modifiersToUnlock_1_1 && !modifiersToUnlock_1_1.done && (_a = modifiersToUnlock_1.return)) _a.call(modifiersToUnlock_1);
-            }
-            finally { if (e_1) throw e_1.error; }
         }
     }
     lootResult.unlockedModifierPools = inventory.unlocked_modifier_pools;
     // Roll for loot
     if (roll < lootResult.dropRate) {
-        var gear = (0, gear_system_1.generateGearItem)(stageId, inventory.unlocked_modifier_pools, logger);
+        const gear = (0, gear_system_1.generateGearItem)(stageId, inventory.unlocked_modifier_pools, logger);
         inventory.gear.push(gear);
         lootResult.lootResult.dropped = true;
         lootResult.lootResult.gear = gear;
@@ -292,10 +404,10 @@ function processStageLoot(nk, userId, request, stageId, logger) {
         stage_id: stageId,
         difficulty: request.difficulty,
         boss_defeated: request.boss_defeated,
-        boss_id: (_b = request.boss_id) !== null && _b !== void 0 ? _b : null,
+        boss_id: request.boss_id ?? null,
         loot_dropped: lootResult.lootResult.dropped,
-        loot_gear_id: (_d = (_c = lootResult.lootResult.gear) === null || _c === void 0 ? void 0 : _c.id) !== null && _d !== void 0 ? _d : null,
-        loot_gear_rarity: (_f = (_e = lootResult.lootResult.gear) === null || _e === void 0 ? void 0 : _e.rarity) !== null && _f !== void 0 ? _f : null,
+        loot_gear_id: lootResult.lootResult.gear?.id ?? null,
+        loot_gear_rarity: lootResult.lootResult.gear?.rarity ?? null,
         drop_rate_used: lootResult.dropRate,
         roll_value: roll,
     }, 'success');
@@ -306,14 +418,14 @@ function processStageLoot(nk, userId, request, stageId, logger) {
  */
 function readAndProcessStageCompletion(nk, userId, stageId, stagePrefix, starsEarned, score, logger) {
     // Read existing stage completions from storage
-    var storageObjects = nk.storageRead([
+    const storageObjects = nk.storageRead([
         {
             collection: STAGE_COMPLETION_COLLECTION,
             key: userId,
             userId: userId,
         },
     ]);
-    var storageData = {
+    let storageData = {
         user_id: userId,
         completions: {},
     };
@@ -327,9 +439,9 @@ function readAndProcessStageCompletion(nk, userId, stageId, stagePrefix, starsEa
         }
     }
     // Check for existing completion of this stage
-    var existingCompletion = storageData.completions[stageId];
-    var result = {
-        storageData: storageData,
+    const existingCompletion = storageData.completions[stageId];
+    const result = {
+        storageData,
         isNewCompletion: true,
         noImprovement: false,
         previousBest: undefined,

@@ -1,9 +1,29 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ZodSchemas = exports.ValibotSchemas = void 0;
+exports.ZodSchemas = exports.ValibotSchemas = exports.enumType = exports.unknown = exports.safeParse = exports.integer = exports.pipe = exports.optional = exports.regex = exports.length = exports.maxLength = exports.minLength = exports.maxValue = exports.minValue = exports.record = exports.array = exports.boolean = exports.string = exports.number = exports.object = void 0;
 exports.validatePayload = validatePayload;
 exports.createValidationErrorResponse = createValidationErrorResponse;
-var valibot_1 = require("valibot");
+const valibot_1 = require("valibot");
+Object.defineProperty(exports, "object", { enumerable: true, get: function () { return valibot_1.object; } });
+Object.defineProperty(exports, "number", { enumerable: true, get: function () { return valibot_1.number; } });
+Object.defineProperty(exports, "string", { enumerable: true, get: function () { return valibot_1.string; } });
+Object.defineProperty(exports, "boolean", { enumerable: true, get: function () { return valibot_1.boolean; } });
+Object.defineProperty(exports, "array", { enumerable: true, get: function () { return valibot_1.array; } });
+Object.defineProperty(exports, "record", { enumerable: true, get: function () { return valibot_1.record; } });
+Object.defineProperty(exports, "minValue", { enumerable: true, get: function () { return valibot_1.minValue; } });
+Object.defineProperty(exports, "maxValue", { enumerable: true, get: function () { return valibot_1.maxValue; } });
+Object.defineProperty(exports, "minLength", { enumerable: true, get: function () { return valibot_1.minLength; } });
+Object.defineProperty(exports, "maxLength", { enumerable: true, get: function () { return valibot_1.maxLength; } });
+Object.defineProperty(exports, "length", { enumerable: true, get: function () { return valibot_1.length; } });
+Object.defineProperty(exports, "regex", { enumerable: true, get: function () { return valibot_1.regex; } });
+Object.defineProperty(exports, "optional", { enumerable: true, get: function () { return valibot_1.optional; } });
+Object.defineProperty(exports, "pipe", { enumerable: true, get: function () { return valibot_1.pipe; } });
+Object.defineProperty(exports, "integer", { enumerable: true, get: function () { return valibot_1.integer; } });
+Object.defineProperty(exports, "safeParse", { enumerable: true, get: function () { return valibot_1.safeParse; } });
+Object.defineProperty(exports, "unknown", { enumerable: true, get: function () { return valibot_1.unknown; } });
+// Re-export enum with a different name to avoid reserved keyword conflict
+var valibot_2 = require("valibot");
+Object.defineProperty(exports, "enumType", { enumerable: true, get: function () { return valibot_2.enum; } });
 // Type assertion helper for enum schemas
 function createEnum(values) {
     return (0, valibot_1.enum)(values);
@@ -17,7 +37,7 @@ exports.ValibotSchemas = {
         stage_prefix: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(50)),
         stars_earned: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0), (0, valibot_1.maxValue)(3)),
         score: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
-        difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare']),
+        difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare', 'normal']),
         boss_defeated: (0, valibot_1.optional)((0, valibot_1.boolean)()),
         boss_id: (0, valibot_1.optional)((0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100))),
     }),
@@ -35,6 +55,30 @@ exports.ValibotSchemas = {
         stat_name: createEnum(['attack', 'defense', 'dodge', 'crit_rate']),
         points: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(1), (0, valibot_1.maxValue)(1000)),
     }),
+    respec_stats: (0, valibot_1.object)({
+        new_allocation: (0, valibot_1.object)({
+            attack: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+            defense: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+            dodge: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+            crit_rate: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+        }),
+        use_free_respec: (0, valibot_1.optional)((0, valibot_1.boolean)()),
+    }),
+    save_build: (0, valibot_1.object)({
+        build_slot: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(1), (0, valibot_1.maxValue)(3)),
+        build_name: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(50)),
+        stats: (0, valibot_1.object)({
+            attack: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+            defense: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+            dodge: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+            crit_rate: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+        }),
+        level: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(1)),
+    }),
+    load_build: (0, valibot_1.object)({
+        build_slot: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(1), (0, valibot_1.maxValue)(3)),
+    }),
+    get_builds: (0, valibot_1.object)({}),
     generate_gear: (0, valibot_1.object)({
         stage_id: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100)),
         boss_defeated: (0, valibot_1.boolean)(),
@@ -43,16 +87,16 @@ exports.ValibotSchemas = {
     stage_complete: (0, valibot_1.object)({
         stage_id: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100)),
         boss_defeated: (0, valibot_1.boolean)(),
-        difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare']),
+        difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare', 'normal']),
         boss_id: (0, valibot_1.optional)((0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100))),
         enemy_type: (0, valibot_1.optional)((0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100))),
     }),
     equip_gear: (0, valibot_1.object)({
         gear_id: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100)),
-        slot: createEnum(['weapon', 'armor', 'accessory']),
+        slot: createEnum(['helm', 'armor', 'bow', 'arrow', 'amulet']),
     }),
     unequip_gear: (0, valibot_1.object)({
-        slot: createEnum(['weapon', 'armor', 'accessory']),
+        slot: createEnum(['helm', 'armor', 'bow', 'arrow', 'amulet']),
     }),
     get_inventory: (0, valibot_1.object)({}),
     unlock_modifier_pool: (0, valibot_1.object)({
@@ -74,6 +118,16 @@ exports.ValibotSchemas = {
         match_id: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100)),
     }),
     get_player_rank: (0, valibot_1.object)({}),
+    join_pool: (0, valibot_1.object)({
+        mode: createEnum(['1v1', '2v2']),
+        rating: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(1000), (0, valibot_1.maxValue)(3000)),
+    }),
+    leave_pool: (0, valibot_1.object)({
+        mode: createEnum(['1v1', '2v2']),
+    }),
+    get_queue_status: (0, valibot_1.object)({
+        mode: createEnum(['1v1', '2v2']),
+    }),
     submit_combat_action: (0, valibot_1.object)({
         match_id: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100)),
         action_type: createEnum(['shoot']),
@@ -287,29 +341,67 @@ exports.ValibotSchemas = {
     classify_data: (0, valibot_1.object)({
         data: (0, valibot_1.record)((0, valibot_1.string)(), (0, valibot_1.unknown)()),
     }),
+    // Weapon balance schemas
+    apply_balance_adjustment: (0, valibot_1.object)({
+        weapon_id: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100)),
+        multiplier: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.minValue)(0.1), (0, valibot_1.maxValue)(10.0)),
+        reason: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(500)),
+    }),
+    get_balance_metrics: (0, valibot_1.optional)((0, valibot_1.object)({
+        weapon_id: (0, valibot_1.optional)((0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100))),
+    })),
+    // Weapon usage tracking for balance tuning
+    track_weapon_usage: (0, valibot_1.object)({
+        weapon_id: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100)),
+        match_id: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100)),
+        match_result: createEnum(['win', 'loss']),
+        rating_diff: (0, valibot_1.number)(),
+    }),
+    // Matchmaking analytics schemas
+    log_match_data: (0, valibot_1.object)({
+        match_id: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100)),
+        timestamp: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+        rating_diff: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+        weapons: (0, valibot_1.array)((0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100))),
+        duration: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.minValue)(0)),
+    }),
+    log_abandonment: (0, valibot_1.object)({
+        match_id: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100)),
+        reason: (0, valibot_1.optional)((0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(500))),
+        timestamp: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+    }),
+    log_weapon_result: (0, valibot_1.object)({
+        weapon_id: (0, valibot_1.pipe)((0, valibot_1.string)(), (0, valibot_1.minLength)(1), (0, valibot_1.maxLength)(100)),
+        is_win: (0, valibot_1.boolean)(),
+        timestamp: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+    }),
+    log_queue_time: (0, valibot_1.object)({
+        queue_time: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.minValue)(0)),
+        timestamp: (0, valibot_1.pipe)((0, valibot_1.number)(), (0, valibot_1.integer)(), (0, valibot_1.minValue)(0)),
+    }),
 };
 // Export with Zod-like names for backward compatibility
 exports.ZodSchemas = exports.ValibotSchemas;
 function validatePayload(schema, payload, rpcName) {
     try {
-        var parsed = void 0;
+        let parsed;
         if (payload === '') {
             parsed = {};
         }
         else {
             parsed = JSON.parse(payload);
         }
-        var result = (0, valibot_1.safeParse)(schema, parsed);
+        const result = (0, valibot_1.safeParse)(schema, parsed);
         if (!result.success) {
-            var errorMessages = result.issues
-                .map(function (issue) { var _a; return "".concat(((_a = issue.path) === null || _a === void 0 ? void 0 : _a.map(function (p) { return p.key; }).join('.')) || 'root', ": ").concat(issue.message); })
+            const errorMessages = result.issues
+                .map((issue) => `${issue.path?.map((p) => p.key).join('.') || 'root'}: ${issue.message}`)
                 .join(', ');
-            return { success: false, error: "Validation failed for ".concat(rpcName, ": ").concat(errorMessages) };
+            return { success: false, error: `Validation failed for ${rpcName}: ${errorMessages}` };
         }
         return { success: true, data: result.output };
     }
     catch (error) {
-        return { success: false, error: "Invalid JSON in ".concat(rpcName, ": ").concat(error) };
+        return { success: false, error: `Invalid JSON in ${rpcName}: ${error}` };
     }
 }
 function createValidationErrorResponse(rpcName, error) {

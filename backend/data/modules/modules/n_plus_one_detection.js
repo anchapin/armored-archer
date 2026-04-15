@@ -52,10 +52,9 @@ exports.registerRpcWithNPlusOneTracking = registerRpcWithNPlusOneTracking;
 exports.wrapStorageRead = wrapStorageRead;
 exports.wrapStorageWrite = wrapStorageWrite;
 exports.wrapStorageList = wrapStorageList;
-var tslib_1 = require("tslib");
-var prom_client_1 = require("prom-client");
-var logger_1 = require("../config/logger");
-var defaultConfig = {
+const prom_client_1 = require("prom-client");
+const logger_1 = require("../config/logger");
+const defaultConfig = {
     enabled: process.env.N_PLUS_ONE_ENABLED === 'true',
     threshold: parseInt(process.env.N_PLUS_ONE_THRESHOLD || '3', 10),
     logEnabled: process.env.N_PLUS_ONE_LOG_ENABLED !== 'false',
@@ -63,18 +62,18 @@ var defaultConfig = {
     slowQueryThresholdMs: parseInt(process.env.N_PLUS_ONE_SLOW_QUERY_MS || '100', 10),
     autoTrackStorage: process.env.N_PLUS_ONE_AUTO_TRACK_STORAGE !== 'false',
 };
-var nPlusOneConfig = tslib_1.__assign({}, defaultConfig);
+let nPlusOneConfig = { ...defaultConfig };
 // Track queries per operation context
-var operationContexts = new Map();
-var queryStats = new Map();
+const operationContexts = new Map();
+const queryStats = new Map();
 // Global query counter
-var globalQueryCount = 0;
-var globalNPlusOneCount = 0;
+let globalQueryCount = 0;
+let globalNPlusOneCount = 0;
 // --- Prometheus Metrics ---
-var nPlusOneDetectedCounter = null;
-var queryDurationHistogram = null;
-var activeOperationsGauge = null;
-var nPlusOneAlertsGauge = null;
+let nPlusOneDetectedCounter = null;
+let queryDurationHistogram = null;
+let activeOperationsGauge = null;
+let nPlusOneAlertsGauge = null;
 function initializeMetrics(registry) {
     if (!nPlusOneConfig.metricsEnabled)
         return;
@@ -115,18 +114,18 @@ function initializeMetrics(registry) {
  */
 function recordQueryMetrics(operationName, queryType, durationMs, success, options) {
     // Record the query
-    var record = {
+    const record = {
         operation: operationName,
-        queryType: queryType,
+        queryType,
         timestamp: Date.now(),
-        durationMs: durationMs,
-        collection: options === null || options === void 0 ? void 0 : options.collection,
-        key: options === null || options === void 0 ? void 0 : options.key,
-        userId: options === null || options === void 0 ? void 0 : options.userId,
-        success: success,
+        durationMs,
+        collection: options?.collection,
+        key: options?.key,
+        userId: options?.userId,
+        success,
     };
     // Add to current operation context
-    var context = operationContexts.get(operationName);
+    const context = operationContexts.get(operationName);
     if (context && context.isActive) {
         context.queries.push(record);
     }
@@ -138,7 +137,7 @@ function recordQueryMetrics(operationName, queryType, durationMs, success, optio
     }
     // Log slow queries
     if (nPlusOneConfig.logEnabled && durationMs > nPlusOneConfig.slowQueryThresholdMs) {
-        logger_1.logger.info("Slow query detected: ".concat(operationName, " (").concat(queryType, ") took ").concat(durationMs.toFixed(2), "ms"));
+        logger_1.logger.info(`Slow query detected: ${operationName} (${queryType}) took ${durationMs.toFixed(2)}ms`);
     }
 }
 /**
@@ -148,8 +147,8 @@ function trackQuery(operationName, queryType, fn, options) {
     if (!nPlusOneConfig.enabled) {
         return fn();
     }
-    var startTime = performance.now();
-    var success = true;
+    const startTime = performance.now();
+    let success = true;
     try {
         return fn();
     }
@@ -158,7 +157,7 @@ function trackQuery(operationName, queryType, fn, options) {
         throw error;
     }
     finally {
-        var durationMs = performance.now() - startTime;
+        const durationMs = performance.now() - startTime;
         globalQueryCount++;
         recordQueryMetrics(operationName, queryType, durationMs, success, options);
     }
@@ -166,41 +165,30 @@ function trackQuery(operationName, queryType, fn, options) {
 /**
  * Track an async database query operation
  */
-function trackQueryAsync(operationName, queryType, fn, options) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var startTime, success, error_1, durationMs;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    if (!nPlusOneConfig.enabled) {
-                        return [2 /*return*/, fn()];
-                    }
-                    startTime = performance.now();
-                    success = true;
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 3, 4, 5]);
-                    return [4 /*yield*/, fn()];
-                case 2: return [2 /*return*/, _a.sent()];
-                case 3:
-                    error_1 = _a.sent();
-                    success = false;
-                    throw error_1;
-                case 4:
-                    durationMs = performance.now() - startTime;
-                    globalQueryCount++;
-                    recordQueryMetrics(operationName, queryType, durationMs, success, options);
-                    return [7 /*endfinally*/];
-                case 5: return [2 /*return*/];
-            }
-        });
-    });
+async function trackQueryAsync(operationName, queryType, fn, options) {
+    if (!nPlusOneConfig.enabled) {
+        return fn();
+    }
+    const startTime = performance.now();
+    let success = true;
+    try {
+        return await fn();
+    }
+    catch (error) {
+        success = false;
+        throw error;
+    }
+    finally {
+        const durationMs = performance.now() - startTime;
+        globalQueryCount++;
+        recordQueryMetrics(operationName, queryType, durationMs, success, options);
+    }
 }
 /**
  * Update query statistics
  */
 function updateQueryStats(operationName, queryType, durationMs) {
-    var stats = queryStats.get(operationName);
+    let stats = queryStats.get(operationName);
     if (!stats) {
         stats = {
             totalQueries: 0,
@@ -225,8 +213,8 @@ function updateQueryStats(operationName, queryType, durationMs) {
 function startOperationTracking(operationName) {
     if (!nPlusOneConfig.enabled)
         return;
-    var context = {
-        operationName: operationName,
+    const context = {
+        operationName,
         queries: [],
         startTime: Date.now(),
         isActive: true,
@@ -243,33 +231,33 @@ function stopOperationTracking(operationName, _logger) {
     if (!nPlusOneConfig.enabled) {
         return { queryCount: 0, nPlusOneDetected: false, warnings: [] };
     }
-    var context = operationContexts.get(operationName);
+    const context = operationContexts.get(operationName);
     if (!context) {
         return { queryCount: 0, nPlusOneDetected: false, warnings: [] };
     }
     context.isActive = false;
-    var queryCount = context.queries.length;
-    var warnings = [];
+    const queryCount = context.queries.length;
+    const warnings = [];
     // Detect N+1 patterns
-    var nPlusOneResult = detectNPlusOnePatterns(context.queries, operationName);
+    const nPlusOneResult = detectNPlusOnePatterns(context.queries, operationName);
     if (nPlusOneResult.detected) {
         globalNPlusOneCount++;
-        var severity = queryCount > nPlusOneConfig.threshold * 3 ? 'critical' : 'warning';
-        warnings.push.apply(warnings, tslib_1.__spreadArray([], tslib_1.__read(nPlusOneResult.warnings), false));
+        const severity = queryCount > nPlusOneConfig.threshold * 3 ? 'critical' : 'warning';
+        warnings.push(...nPlusOneResult.warnings);
         if (nPlusOneConfig.logEnabled) {
-            var logMessage = "N+1 ".concat(severity.toUpperCase(), ": ").concat(operationName, " - ").concat(nPlusOneResult.summary);
+            const logMessage = `N+1 ${severity.toUpperCase()}: ${operationName} - ${nPlusOneResult.summary}`;
             logger_1.logger.warn(logMessage);
         }
         // Emit metrics
         if (nPlusOneConfig.metricsEnabled && nPlusOneDetectedCounter) {
-            nPlusOneDetectedCounter.inc({ operation: operationName, severity: severity });
+            nPlusOneDetectedCounter.inc({ operation: operationName, severity });
         }
         if (nPlusOneAlertsGauge) {
             nPlusOneAlertsGauge.set({ operation: operationName }, queryCount);
         }
     }
     // Update stats with operation name
-    var stats = queryStats.get(operationName);
+    const stats = queryStats.get(operationName);
     if (stats) {
         stats.nPlusOneDetected = nPlusOneResult.detected;
         stats.operationName = operationName;
@@ -280,61 +268,40 @@ function stopOperationTracking(operationName, _logger) {
         activeOperationsGauge.set(operationContexts.size);
     }
     return {
-        queryCount: queryCount,
+        queryCount,
         nPlusOneDetected: nPlusOneResult.detected,
-        warnings: warnings,
+        warnings,
     };
 }
 /**
  * Detect N+1 patterns in query records
  */
 function detectNPlusOnePatterns(queries, operationName) {
-    var e_1, _a, e_2, _b;
     if (queries.length < nPlusOneConfig.threshold) {
         return { detected: false, warnings: [], summary: '' };
     }
-    var warnings = [];
+    const warnings = [];
     // Group queries by type and collection
-    var byCollection = new Map();
-    var byType = new Map();
-    try {
-        for (var queries_1 = tslib_1.__values(queries), queries_1_1 = queries_1.next(); !queries_1_1.done; queries_1_1 = queries_1.next()) {
-            var query = queries_1_1.value;
-            var collectionKey = query.collection || query.key || 'unknown';
-            byCollection.set(collectionKey, (byCollection.get(collectionKey) || 0) + 1);
-            byType.set(query.queryType, (byType.get(query.queryType) || 0) + 1);
-        }
+    const byCollection = new Map();
+    const byType = new Map();
+    for (const query of queries) {
+        const collectionKey = query.collection || query.key || 'unknown';
+        byCollection.set(collectionKey, (byCollection.get(collectionKey) || 0) + 1);
+        byType.set(query.queryType, (byType.get(query.queryType) || 0) + 1);
     }
-    catch (e_1_1) { e_1 = { error: e_1_1 }; }
-    finally {
-        try {
-            if (queries_1_1 && !queries_1_1.done && (_a = queries_1.return)) _a.call(queries_1);
+    // Check for N+1 pattern: same collection queried multiple times
+    for (const [collection, count] of byCollection) {
+        if (count >= nPlusOneConfig.threshold) {
+            warnings.push(`Potential N+1: ${count} queries to collection/key "${collection}" in ${operationName}`);
         }
-        finally { if (e_1) throw e_1.error; }
-    }
-    try {
-        // Check for N+1 pattern: same collection queried multiple times
-        for (var byCollection_1 = tslib_1.__values(byCollection), byCollection_1_1 = byCollection_1.next(); !byCollection_1_1.done; byCollection_1_1 = byCollection_1.next()) {
-            var _c = tslib_1.__read(byCollection_1_1.value, 2), collection = _c[0], count = _c[1];
-            if (count >= nPlusOneConfig.threshold) {
-                warnings.push("Potential N+1: ".concat(count, " queries to collection/key \"").concat(collection, "\" in ").concat(operationName));
-            }
-        }
-    }
-    catch (e_2_1) { e_2 = { error: e_2_1 }; }
-    finally {
-        try {
-            if (byCollection_1_1 && !byCollection_1_1.done && (_b = byCollection_1.return)) _b.call(byCollection_1);
-        }
-        finally { if (e_2) throw e_2.error; }
     }
     // Check for high query count
     if (queries.length >= nPlusOneConfig.threshold * 2) {
-        warnings.push("High query count: ".concat(queries.length, " total queries in ").concat(operationName, " (threshold: ").concat(nPlusOneConfig.threshold, ")"));
+        warnings.push(`High query count: ${queries.length} total queries in ${operationName} (threshold: ${nPlusOneConfig.threshold})`);
     }
-    var detected = warnings.length > 0;
-    var summary = detected ? "Found ".concat(queries.length, " queries with potential N+1 pattern") : '';
-    return { detected: detected, warnings: warnings, summary: summary };
+    const detected = warnings.length > 0;
+    const summary = detected ? `Found ${queries.length} queries with potential N+1 pattern` : '';
+    return { detected, warnings, summary };
 }
 // --- Wrapper Functions ---
 /**
@@ -352,37 +319,27 @@ function withNPlusOneTracking(operationName, fn, logger) {
 /**
  * Wrap an async function with N+1 query tracking
  */
-function withNPlusOneTrackingAsync(operationName, fn, logger) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    startOperationTracking(operationName);
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, , 3, 4]);
-                    return [4 /*yield*/, fn()];
-                case 2: return [2 /*return*/, _a.sent()];
-                case 3:
-                    stopOperationTracking(operationName, logger);
-                    return [7 /*endfinally*/];
-                case 4: return [2 /*return*/];
-            }
-        });
-    });
+async function withNPlusOneTrackingAsync(operationName, fn, logger) {
+    startOperationTracking(operationName);
+    try {
+        return await fn();
+    }
+    finally {
+        stopOperationTracking(operationName, logger);
+    }
 }
 // --- Configuration Functions ---
 /**
  * Set N+1 detection configuration
  */
 function setNPlusOneConfig(config) {
-    nPlusOneConfig = tslib_1.__assign(tslib_1.__assign({}, nPlusOneConfig), config);
+    nPlusOneConfig = { ...nPlusOneConfig, ...config };
 }
 /**
  * Get current N+1 detection configuration
  */
 function getNPlusOneConfig() {
-    return tslib_1.__assign({}, nPlusOneConfig);
+    return { ...nPlusOneConfig };
 }
 /**
  * Enable or disable N+1 detection
@@ -413,69 +370,47 @@ function getAllQueryStats() {
  * Get N+1 detection report
  */
 function getNPlusOneReport() {
-    var e_3, _a;
-    var operations = [];
-    try {
-        for (var queryStats_1 = tslib_1.__values(queryStats), queryStats_1_1 = queryStats_1.next(); !queryStats_1_1.done; queryStats_1_1 = queryStats_1.next()) {
-            var _b = tslib_1.__read(queryStats_1_1.value, 2), name = _b[0], stats = _b[1];
-            operations.push({
-                name: name,
-                totalQueries: stats.totalQueries,
-                totalDurationMs: stats.totalDurationMs,
-                nPlusOneDetected: stats.nPlusOneDetected,
-                avgQueriesPerCall: stats.totalQueries, // Simplified - could track call count separately
-            });
-        }
-    }
-    catch (e_3_1) { e_3 = { error: e_3_1 }; }
-    finally {
-        try {
-            if (queryStats_1_1 && !queryStats_1_1.done && (_a = queryStats_1.return)) _a.call(queryStats_1);
-        }
-        finally { if (e_3) throw e_3.error; }
+    const operations = [];
+    for (const [name, stats] of queryStats) {
+        operations.push({
+            name,
+            totalQueries: stats.totalQueries,
+            totalDurationMs: stats.totalDurationMs,
+            nPlusOneDetected: stats.nPlusOneDetected,
+            avgQueriesPerCall: stats.totalQueries, // Simplified - could track call count separately
+        });
     }
     // Sort by total queries descending
-    operations.sort(function (a, b) { return b.totalQueries - a.totalQueries; });
+    operations.sort((a, b) => b.totalQueries - a.totalQueries);
     return {
-        globalQueryCount: globalQueryCount,
-        globalNPlusOneCount: globalNPlusOneCount,
-        operations: operations,
-        config: tslib_1.__assign({}, nPlusOneConfig),
+        globalQueryCount,
+        globalNPlusOneCount,
+        operations,
+        config: { ...nPlusOneConfig },
     };
 }
 /**
  * Get formatted N+1 report for logging
  */
 function getFormattedNPlusOneReport() {
-    var e_4, _a;
-    var report = getNPlusOneReport();
-    var lines = [];
+    const report = getNPlusOneReport();
+    const lines = [];
     lines.push('=== N+1 Query Detection Report ===');
-    lines.push("Detection Enabled: ".concat(report.config.enabled));
-    lines.push("Threshold: ".concat(report.config.threshold, " queries"));
+    lines.push(`Detection Enabled: ${report.config.enabled}`);
+    lines.push(`Threshold: ${report.config.threshold} queries`);
     lines.push('');
-    lines.push("Global Query Count: ".concat(report.globalQueryCount));
-    lines.push("Global N+1 Count: ".concat(report.globalNPlusOneCount));
+    lines.push(`Global Query Count: ${report.globalQueryCount}`);
+    lines.push(`Global N+1 Count: ${report.globalNPlusOneCount}`);
     lines.push('');
     if (report.operations.length === 0) {
         lines.push('No operations tracked.');
         return lines.join('\n');
     }
     lines.push('Top Operations (by query count):');
-    lines.push("".concat('Operation'.padEnd(40), " ").concat('Queries'.padEnd(10), " ").concat('Duration(ms)'.padEnd(15), " ").concat('N+1'.padEnd(6)));
+    lines.push(`${'Operation'.padEnd(40)} ${'Queries'.padEnd(10)} ${'Duration(ms)'.padEnd(15)} ${'N+1'.padEnd(6)}`);
     lines.push('-'.repeat(80));
-    try {
-        for (var _b = tslib_1.__values(report.operations.slice(0, 20)), _c = _b.next(); !_c.done; _c = _b.next()) {
-            var op = _c.value;
-            lines.push("".concat(op.name.substring(0, 40).padEnd(40), " ").concat(op.totalQueries.toString().padEnd(10), " ").concat(op.totalDurationMs.toFixed(2).padEnd(15), " ").concat(op.nPlusOneDetected ? 'YES' : 'no'.padEnd(6)));
-        }
-    }
-    catch (e_4_1) { e_4 = { error: e_4_1 }; }
-    finally {
-        try {
-            if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-        }
-        finally { if (e_4) throw e_4.error; }
+    for (const op of report.operations.slice(0, 20)) {
+        lines.push(`${op.name.substring(0, 40).padEnd(40)} ${op.totalQueries.toString().padEnd(10)} ${op.totalDurationMs.toFixed(2).padEnd(15)} ${op.nPlusOneDetected ? 'YES' : 'no'.padEnd(6)}`);
     }
     return lines.join('\n');
 }
@@ -494,10 +429,10 @@ function initializeNPlusOneDetection(logger, _appConfig) {
     // the metrics module has its own registry. The integration should be done
     // by calling initializeMetrics with the metrics registry from the metrics module.
     if (logger) {
-        logger.info("N+1 detection initialized - Enabled: ".concat(nPlusOneConfig.enabled, ", Threshold: ").concat(nPlusOneConfig.threshold, ", Log: ").concat(nPlusOneConfig.logEnabled, ", Metrics: ").concat(nPlusOneConfig.metricsEnabled));
+        logger.info(`N+1 detection initialized - Enabled: ${nPlusOneConfig.enabled}, Threshold: ${nPlusOneConfig.threshold}, Log: ${nPlusOneConfig.logEnabled}, Metrics: ${nPlusOneConfig.metricsEnabled}`);
     }
     // Also log using the app logger
-    logger_1.logger.info("Detection initialized - Enabled: ".concat(nPlusOneConfig.enabled, ", Threshold: ").concat(nPlusOneConfig.threshold));
+    logger_1.logger.info(`Detection initialized - Enabled: ${nPlusOneConfig.enabled}, Threshold: ${nPlusOneConfig.threshold}`);
 }
 /**
  * Initialize N+1 detection with metrics registry
@@ -522,68 +457,51 @@ function resetNPlusOneDetection() {
  * Wrap an RPC handler with N+1 query tracking
  */
 function wrapRpcWithNPlusOneTracking(rpcName, handler) {
-    return function (ctx, logger, nk, payload) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var operationName, result;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        operationName = "rpc.".concat(rpcName);
-                        if (nPlusOneConfig.enabled) {
-                            startOperationTracking(operationName);
-                        }
-                        _a.label = 1;
-                    case 1:
-                        _a.trys.push([1, , 3, 4]);
-                        return [4 /*yield*/, handler(ctx, logger, nk, payload)];
-                    case 2:
-                        result = _a.sent();
-                        return [2 /*return*/, result];
-                    case 3:
-                        if (nPlusOneConfig.enabled) {
-                            stopOperationTracking(operationName, logger);
-                        }
-                        return [7 /*endfinally*/];
-                    case 4: return [2 /*return*/];
-                }
-            });
-        });
+    return async function (ctx, logger, nk, payload) {
+        const operationName = `rpc.${rpcName}`;
+        if (nPlusOneConfig.enabled) {
+            startOperationTracking(operationName);
+        }
+        try {
+            const result = await handler(ctx, logger, nk, payload);
+            return result;
+        }
+        finally {
+            if (nPlusOneConfig.enabled) {
+                stopOperationTracking(operationName, logger);
+            }
+        }
     };
 }
 /**
  * Register an RPC with N+1 query tracking
  */
 function registerRpcWithNPlusOneTracking(initializer, rpcId, rpcName, handler) {
-    var wrappedHandler = wrapRpcWithNPlusOneTracking(rpcName, handler);
+    const wrappedHandler = wrapRpcWithNPlusOneTracking(rpcName, handler);
     initializer.registerRpc(rpcId, wrappedHandler);
 }
 // --- Storage Operation Wrappers ---
 /**
  * Wrap storageRead with N+1 tracking
  */
-function wrapStorageRead(nk, objects, operationName) {
-    var _a, _b;
-    if (operationName === void 0) { operationName = 'storage_read'; }
-    return trackQuery(operationName, 'storage', function () { return nk.storageRead(objects); }, {
-        collection: (_a = objects[0]) === null || _a === void 0 ? void 0 : _a.collection,
-        key: (_b = objects[0]) === null || _b === void 0 ? void 0 : _b.key,
+function wrapStorageRead(nk, objects, operationName = 'storage_read') {
+    return trackQuery(operationName, 'storage', () => nk.storageRead(objects), {
+        collection: objects[0]?.collection,
+        key: objects[0]?.key,
     });
 }
 /**
  * Wrap storageWrite with N+1 tracking
  */
-function wrapStorageWrite(nk, objects, operationName) {
-    var _a, _b;
-    if (operationName === void 0) { operationName = 'storage_write'; }
-    trackQuery(operationName, 'storage', function () { return nk.storageWrite(objects); }, {
-        collection: (_a = objects[0]) === null || _a === void 0 ? void 0 : _a.collection,
-        key: (_b = objects[0]) === null || _b === void 0 ? void 0 : _b.key,
+function wrapStorageWrite(nk, objects, operationName = 'storage_write') {
+    trackQuery(operationName, 'storage', () => nk.storageWrite(objects), {
+        collection: objects[0]?.collection,
+        key: objects[0]?.key,
     });
 }
 /**
  * Wrap storageList with N+1 tracking
  */
-function wrapStorageList(nk, userId, collection, limit, cursor, operationName) {
-    if (operationName === void 0) { operationName = 'storage_list'; }
-    return trackQuery(operationName, 'storage', function () { return nk.storageList(userId, collection, limit, cursor, ''); }, { collection: collection, userId: userId });
+function wrapStorageList(nk, userId, collection, limit, cursor, operationName = 'storage_list') {
+    return trackQuery(operationName, 'storage', () => nk.storageList(userId, collection, limit, cursor, ''), { collection, userId });
 }

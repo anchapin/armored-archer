@@ -16,66 +16,66 @@ exports.startHealthMonitoring = startHealthMonitoring;
 exports.stopHealthMonitoring = stopHealthMonitoring;
 exports.getHealthStatus = getHealthStatus;
 exports.initializeHealthMonitoring = initializeHealthMonitoring;
-var tslib_1 = require("tslib");
-var os = tslib_1.__importStar(require("os"));
-var prom_client_1 = require("prom-client");
-var alerting_1 = require("../config/alerting");
-var alerting_2 = require("./alerting");
-var logger_1 = require("../config/logger");
+const tslib_1 = require("tslib");
+const os = tslib_1.__importStar(require("os"));
+const prom_client_1 = require("prom-client");
+const alerting_1 = require("../config/alerting");
+const alerting_2 = require("./alerting");
+const logger_1 = require("../config/logger");
 // Create a dedicated registry for health metrics
-var healthRegistry = new prom_client_1.Registry();
+const healthRegistry = new prom_client_1.Registry();
 /**
  * Health metrics
  */
-var healthCheckCpuUsage = new prom_client_1.Gauge({
+const healthCheckCpuUsage = new prom_client_1.Gauge({
     name: 'armored_archer_health_cpu_usage_percent',
     help: 'Current CPU usage percentage',
     registers: [healthRegistry],
 });
-var healthCheckMemoryUsage = new prom_client_1.Gauge({
+const healthCheckMemoryUsage = new prom_client_1.Gauge({
     name: 'armored_archer_health_memory_usage_percent',
     help: 'Current memory usage percentage',
     registers: [healthRegistry],
 });
-var healthCheckDiskUsage = new prom_client_1.Gauge({
+const healthCheckDiskUsage = new prom_client_1.Gauge({
     name: 'armored_archer_health_disk_usage_percent',
     help: 'Current disk usage percentage',
     registers: [healthRegistry],
 });
-var healthCheckDbConnections = new prom_client_1.Gauge({
+const healthCheckDbConnections = new prom_client_1.Gauge({
     name: 'armored_archer_health_db_connections_percent',
     help: 'Current database connection usage percentage',
     registers: [healthRegistry],
 });
-var healthCheckResponseTime = new prom_client_1.Gauge({
+const healthCheckResponseTime = new prom_client_1.Gauge({
     name: 'armored_archer_health_response_time_ms',
     help: 'Current average response time in milliseconds',
     registers: [healthRegistry],
 });
-var healthCheckErrorRate = new prom_client_1.Gauge({
+const healthCheckErrorRate = new prom_client_1.Gauge({
     name: 'armored_archer_health_error_rate_percent',
     help: 'Current error rate percentage',
     registers: [healthRegistry],
 });
-var healthCheckActiveConnections = new prom_client_1.Gauge({
+const healthCheckActiveConnections = new prom_client_1.Gauge({
     name: 'armored_archer_health_active_connections',
     help: 'Current number of active connections',
     registers: [healthRegistry],
 });
-var healthCheckMatchQueue = new prom_client_1.Gauge({
+const healthCheckMatchQueue = new prom_client_1.Gauge({
     name: 'armored_archer_health_match_queue_size',
     help: 'Current match queue size',
     registers: [healthRegistry],
 });
-var healthStatus = new prom_client_1.Gauge({
+const healthStatus = new prom_client_1.Gauge({
     name: 'armored_archer_health_status',
     help: 'Overall health status (1=healthy, 0=unhealthy)',
     labelNames: ['component'],
     registers: [healthRegistry],
 });
 // Health monitoring state
-var healthMonitorInterval = null;
-var isMonitoring = false;
+let healthMonitorInterval = null;
+let isMonitoring = false;
 /**
  * Get the health metrics registry
  */
@@ -86,38 +86,27 @@ function getHealthRegistry() {
  * Get current CPU usage percentage
  */
 function getCpuUsage() {
-    var e_1, _a;
-    var cpus = os.cpus();
-    var totalIdle = 0;
-    var totalTick = 0;
-    try {
-        for (var cpus_1 = tslib_1.__values(cpus), cpus_1_1 = cpus_1.next(); !cpus_1_1.done; cpus_1_1 = cpus_1.next()) {
-            var cpu = cpus_1_1.value;
-            for (var type in cpu.times) {
-                totalTick += cpu.times[type];
-            }
-            totalIdle += cpu.times.idle;
+    const cpus = os.cpus();
+    let totalIdle = 0;
+    let totalTick = 0;
+    for (const cpu of cpus) {
+        for (const type in cpu.times) {
+            totalTick += cpu.times[type];
         }
+        totalIdle += cpu.times.idle;
     }
-    catch (e_1_1) { e_1 = { error: e_1_1 }; }
-    finally {
-        try {
-            if (cpus_1_1 && !cpus_1_1.done && (_a = cpus_1.return)) _a.call(cpus_1);
-        }
-        finally { if (e_1) throw e_1.error; }
-    }
-    var idle = totalIdle / cpus.length;
-    var total = totalTick / cpus.length;
-    var usage = 100 - (100 * idle) / total;
+    const idle = totalIdle / cpus.length;
+    const total = totalTick / cpus.length;
+    const usage = 100 - (100 * idle) / total;
     return Math.round(usage * 100) / 100;
 }
 /**
  * Get current memory usage percentage
  */
 function getMemoryUsage() {
-    var totalMemory = os.totalmem();
-    var freeMemory = os.freemem();
-    var usedMemory = totalMemory - freeMemory;
+    const totalMemory = os.totalmem();
+    const freeMemory = os.freemem();
+    const usedMemory = totalMemory - freeMemory;
     return Math.round((usedMemory / totalMemory) * 100 * 100) / 100;
 }
 /**
@@ -168,14 +157,14 @@ function getErrorRate() {
  * Perform health check and update metrics
  */
 function performHealthCheck() {
-    var cpuUsage = getCpuUsage();
-    var memoryUsage = getMemoryUsage();
-    var diskUsage = getDiskUsage();
-    var dbConnections = getDbConnectionUsage();
-    var activeConnections = getActiveConnections();
-    var matchQueue = getMatchQueueSize();
-    var responseTime = getResponseTime();
-    var errorRate = getErrorRate();
+    const cpuUsage = getCpuUsage();
+    const memoryUsage = getMemoryUsage();
+    const diskUsage = getDiskUsage();
+    const dbConnections = getDbConnectionUsage();
+    const activeConnections = getActiveConnections();
+    const matchQueue = getMatchQueueSize();
+    const responseTime = getResponseTime();
+    const errorRate = getErrorRate();
     // Update Prometheus metrics
     healthCheckCpuUsage.set(cpuUsage);
     healthCheckMemoryUsage.set(memoryUsage);
@@ -186,8 +175,8 @@ function performHealthCheck() {
     healthCheckActiveConnections.set(activeConnections);
     healthCheckMatchQueue.set(matchQueue);
     // Determine overall health
-    var healthAlerts = alerting_1.alertingConfig.healthAlerts;
-    var overallHealthy = true;
+    const healthAlerts = alerting_1.alertingConfig.healthAlerts;
+    let overallHealthy = true;
     if (cpuUsage >= healthAlerts.cpuCriticalPercent) {
         overallHealthy = false;
     }
@@ -206,14 +195,14 @@ function performHealthCheck() {
     healthStatus.set({ component: 'disk' }, diskUsage < healthAlerts.diskCriticalPercent ? 1 : 0);
     healthStatus.set({ component: 'database' }, dbConnections < healthAlerts.dbConnectionsCriticalPercent ? 1 : 0);
     return {
-        cpuUsage: cpuUsage,
-        memoryUsage: memoryUsage,
-        diskUsage: diskUsage,
-        dbConnections: dbConnections,
-        activeConnections: activeConnections,
-        matchQueue: matchQueue,
-        responseTime: responseTime,
-        errorRate: errorRate,
+        cpuUsage,
+        memoryUsage,
+        diskUsage,
+        dbConnections,
+        activeConnections,
+        matchQueue,
+        responseTime,
+        errorRate,
     };
 }
 /**
@@ -223,8 +212,8 @@ function checkHealthThresholds(metrics) {
     if (!(0, alerting_1.isAlertingEnabled)()) {
         return;
     }
-    var healthAlerts = alerting_1.alertingConfig.healthAlerts;
-    var currentMetrics = metrics;
+    const healthAlerts = alerting_1.alertingConfig.healthAlerts;
+    const currentMetrics = metrics;
     // Check CPU
     if (metrics.cpuUsage >= healthAlerts.cpuCriticalPercent) {
         (0, alerting_2.triggerHealthAlert)('cpuCriticalPercent', metrics.cpuUsage, currentMetrics);
@@ -275,7 +264,7 @@ function checkMetricThresholds(metrics) {
     if (!(0, alerting_1.isAlertingEnabled)()) {
         return;
     }
-    var metricAlerts = alerting_1.alertingConfig.metricAlerts;
+    const metricAlerts = alerting_1.alertingConfig.metricAlerts;
     // Check Active Connections
     if (metrics.activeConnections >= metricAlerts.activeConnectionsCritical) {
         (0, alerting_2.triggerMetricAlert)('activeConnections', metrics.activeConnections, metricAlerts.activeConnectionsCritical, 'critical');
@@ -296,7 +285,7 @@ function checkMetricThresholds(metrics) {
  */
 function runHealthCheck() {
     try {
-        var metrics = performHealthCheck();
+        const metrics = performHealthCheck();
         checkHealthThresholds(metrics);
         checkMetricThresholds(metrics);
     }
@@ -307,8 +296,11 @@ function runHealthCheck() {
 /**
  * Start the health monitoring loop
  */
-function startHealthMonitoring(intervalMs) {
-    if (intervalMs === void 0) { intervalMs = 60000; }
+function startHealthMonitoring(intervalMs = 60000) {
+    if (process.env.NODE_ENV === 'test') {
+        logger_1.logger.info('Skipping health monitoring in test mode');
+        return;
+    }
     if (isMonitoring) {
         logger_1.logger.warn('Health monitoring already running');
         return;
@@ -319,7 +311,7 @@ function startHealthMonitoring(intervalMs) {
     }
     isMonitoring = true;
     healthMonitorInterval = setInterval(runHealthCheck, intervalMs);
-    logger_1.logger.info("Started health monitoring (interval: ".concat(intervalMs, "ms)"));
+    logger_1.logger.info(`Started health monitoring (interval: ${intervalMs}ms)`);
     // Run initial health check
     runHealthCheck();
 }
@@ -338,16 +330,16 @@ function stopHealthMonitoring() {
  * Get current health status
  */
 function getHealthStatus() {
-    var metrics = performHealthCheck();
-    var healthAlerts = alerting_1.alertingConfig.healthAlerts;
-    var healthy = metrics.cpuUsage < healthAlerts.cpuCriticalPercent &&
+    const metrics = performHealthCheck();
+    const healthAlerts = alerting_1.alertingConfig.healthAlerts;
+    const healthy = metrics.cpuUsage < healthAlerts.cpuCriticalPercent &&
         metrics.memoryUsage < healthAlerts.memoryCriticalPercent &&
         metrics.diskUsage < healthAlerts.diskCriticalPercent &&
         metrics.dbConnections < healthAlerts.dbConnectionsCriticalPercent;
     return {
-        healthy: healthy,
-        metrics: metrics,
-        isMonitoring: isMonitoring,
+        healthy,
+        metrics,
+        isMonitoring,
     };
 }
 /**

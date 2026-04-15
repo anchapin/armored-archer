@@ -12,12 +12,12 @@ exports.registerRpcReportPlayer = registerRpcReportPlayer;
 exports.rpcReportPlayer = rpcReportPlayer;
 exports.registerRpcGetPlayerReports = registerRpcGetPlayerReports;
 exports.rpcGetPlayerReports = rpcGetPlayerReports;
-var index_1 = require("../index");
-var cache_1 = require("../utils/cache");
-var anti_cheat_1 = require("./anti_cheat");
-var metrics_1 = require("./metrics");
-var validation_1 = require("./validation");
-var player_data_helpers_1 = require("../utils/player-data-helpers");
+const index_1 = require("../index");
+const cache_1 = require("../utils/cache");
+const anti_cheat_1 = require("./anti_cheat");
+const metrics_1 = require("./metrics");
+const validation_1 = require("./validation");
+const player_data_helpers_1 = require("../utils/player-data-helpers");
 /**
  * Helper to get structured logger for this module
  */
@@ -56,7 +56,7 @@ function rpcHealthCheck(ctx, logger, _nk, payload) {
     getLogger().info('Armored Archer health check called', {
         rpcName: 'armored_archer/health_check',
     });
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.health_check, payload, 'health_check');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.health_check, payload, 'health_check');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('health_check', validation.error);
     }
@@ -99,11 +99,11 @@ function rpcGetPlayerStats(ctx, logger, nk, payload) {
         rpcName: 'armored_archer/get_player_stats',
         userId: ctx.userId,
     });
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_player_stats, payload, 'get_player_stats');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_player_stats, payload, 'get_player_stats');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('get_player_stats', validation.error);
     }
-    var cacheManager = (0, cache_1.getCacheManager)(logger);
+    const cacheManager = (0, cache_1.getCacheManager)(logger);
     return (0, player_data_helpers_1.getPlayerStatsWithCache)(nk, logger, ctx, cacheManager);
 }
 /**
@@ -128,12 +128,12 @@ function rpcReportPlayer(ctx, logger, _nk, payload) {
         rpcName: 'armored_archer/report_player',
         userId: ctx.userId,
     });
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.report_player, payload, 'report_player');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.report_player, payload, 'report_player');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('report_player', validation.error);
     }
-    var _a = validation.data, reported_user_id = _a.reported_user_id, reason = _a.reason, match_id = _a.match_id, additional_info = _a.additional_info;
-    var result = (0, anti_cheat_1.submitPlayerReport)(ctx.userId, reported_user_id, reason, match_id, additional_info);
+    const { reported_user_id, reason, match_id, additional_info } = validation.data;
+    const result = (0, anti_cheat_1.submitPlayerReport)(ctx.userId, reported_user_id, reason, match_id, additional_info);
     if (!result.success) {
         return JSON.stringify({
             success: false,
@@ -167,16 +167,16 @@ function rpcGetPlayerReports(ctx, logger, _nk, payload) {
         rpcName: 'armored_archer/get_player_reports',
         userId: ctx.userId,
     });
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_player_reports, payload, 'get_player_reports');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_player_reports, payload, 'get_player_reports');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('get_player_reports', validation.error);
     }
-    var user_id = validation.data.user_id;
+    const { user_id } = validation.data;
     // If user_id provided, get reports for that user (admin view)
     // Otherwise, get reports filed by current user
-    var reports = user_id ? (0, anti_cheat_1.getReportsForUser)(user_id) : (0, anti_cheat_1.getReportsForUser)(ctx.userId);
+    const reports = user_id ? (0, anti_cheat_1.getReportsForUser)(user_id) : (0, anti_cheat_1.getReportsForUser)(ctx.userId);
     return JSON.stringify({
         success: true,
-        reports: reports,
+        reports,
     });
 }

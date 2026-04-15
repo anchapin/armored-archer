@@ -14,21 +14,21 @@ exports.isUserSuspended = isUserSuspended;
 exports.clearUserFlag = clearUserFlag;
 exports.suspendUser = suspendUser;
 exports.getAuditStats = getAuditStats;
-var tslib_1 = require("tslib");
-var defaultConfig = {
+exports.resetAuditState = resetAuditState;
+const defaultConfig = {
     enablePersistence: true,
     highRiskThreshold: 50,
     suspensionThreshold: 15,
     violationRetentionDays: 30,
     replayWindowMs: 300000,
 };
-var config = tslib_1.__assign({}, defaultConfig);
-var nk;
-var logger;
+let config = { ...defaultConfig };
+let nk;
+let logger;
 // In-memory storage for user risk profiles
-var userRiskProfiles = new Map();
+const userRiskProfiles = new Map();
 // Violation type weights for risk scoring
-var VIOLATION_WEIGHTS = {
+const VIOLATION_WEIGHTS = {
     replay_attack: 20,
     invalid_signature: 18,
     timing_attack: 12,
@@ -42,7 +42,7 @@ var VIOLATION_WEIGHTS = {
  * Initialize the audit logging system.
  */
 function initializeAuditLogging(cfg, nakama, runtimeLogger) {
-    config = tslib_1.__assign(tslib_1.__assign({}, config), cfg);
+    config = { ...config, ...cfg };
     nk = nakama;
     logger = runtimeLogger;
     logger.info('Audit logging system initialized with config: %O', {
@@ -54,21 +54,20 @@ function initializeAuditLogging(cfg, nakama, runtimeLogger) {
 /**
  * Record a violation for a user.
  */
-function recordViolation(userId, type, details) {
-    if (details === void 0) { details = {}; }
-    var timestamp = Date.now();
-    var severity = getSeverity(type);
-    var violation = {
-        userId: userId,
-        type: type,
-        timestamp: timestamp,
-        details: details,
-        severity: severity,
+function recordViolation(userId, type, details = {}) {
+    const timestamp = Date.now();
+    const severity = getSeverity(type);
+    const violation = {
+        userId,
+        type,
+        timestamp,
+        details,
+        severity,
     };
-    var profile = userRiskProfiles.get(userId);
+    let profile = userRiskProfiles.get(userId);
     if (!profile) {
         profile = {
-            userId: userId,
+            userId,
             violations: [],
             riskScore: 0,
             isSuspended: false,
@@ -86,7 +85,7 @@ function recordViolation(userId, type, details) {
     if (profile.riskScore >= config.suspensionThreshold && !profile.isSuspended) {
         profile.isSuspended = true;
         logger.warn('User auto-suspended due to high risk score', {
-            userId: userId,
+            userId,
             riskScore: profile.riskScore,
             violationCount: profile.violationCount,
         });
@@ -94,24 +93,24 @@ function recordViolation(userId, type, details) {
     // Log to storage if enabled
     if (config.enablePersistence && nk) {
         try {
-            var storageKey = "anti_cheat:violation:".concat(userId, ":").concat(timestamp);
+            const storageKey = `anti_cheat:violation:${userId}:${timestamp}`;
             nk.storageWrite([
                 {
                     collection: 'anti_cheat_violations',
                     key: storageKey,
-                    userId: userId,
+                    userId,
                     value: JSON.stringify(violation),
                 },
             ]);
         }
         catch (err) {
-            logger.error('Failed to persist violation', { error: err, userId: userId });
+            logger.error('Failed to persist violation', { error: err, userId });
         }
     }
     logger.info('Anti-cheat violation recorded', {
-        userId: userId,
-        type: type,
-        severity: severity,
+        userId,
+        type,
+        severity,
         riskScore: profile.riskScore,
     });
 }
@@ -119,7 +118,7 @@ function recordViolation(userId, type, details) {
  * Get the severity level for a violation type.
  */
 function getSeverity(type) {
-    var weights = {
+    const weights = {
         replay_attack: 20,
         invalid_signature: 18,
         timing_attack: 12,
@@ -129,7 +128,7 @@ function getSeverity(type) {
         stat_manipulation: 25,
         inventory_tampering: 20,
     };
-    var weight = weights[type] || 5;
+    const weight = weights[type] || 5;
     if (weight >= 20)
         return 'critical';
     if (weight >= 15)
@@ -147,21 +146,19 @@ function getUserViolationSummary(userId) {
 /**
  * Get top violators by risk score.
  */
-function getTopViolators(limit) {
-    if (limit === void 0) { limit = 10; }
-    var profiles = Array.from(userRiskProfiles.values());
-    return profiles.sort(function (a, b) { return b.riskScore - a.riskScore; }).slice(0, limit);
+function getTopViolators(limit = 10) {
+    const profiles = Array.from(userRiskProfiles.values());
+    return profiles.sort((a, b) => b.riskScore - a.riskScore).slice(0, limit);
 }
 /**
  * Generate an audit report for a user.
  */
 function generateAuditReport(userId) {
-    var e_1, _a;
-    var profile = userRiskProfiles.get(userId);
+    const profile = userRiskProfiles.get(userId);
     if (!profile) {
         return null;
     }
-    var violationsByType = {
+    const violationsByType = {
         replay_attack: 0,
         invalid_signature: 0,
         timing_attack: 0,
@@ -171,39 +168,29 @@ function generateAuditReport(userId) {
         stat_manipulation: 0,
         inventory_tampering: 0,
     };
-    var critical = 0;
-    var high = 0;
-    var medium = 0;
-    var low = 0;
-    try {
-        for (var _b = tslib_1.__values(profile.violations), _c = _b.next(); !_c.done; _c = _b.next()) {
-            var v = _c.value;
-            violationsByType[v.type]++;
-            switch (v.severity) {
-                case 'critical':
-                    critical++;
-                    break;
-                case 'high':
-                    high++;
-                    break;
-                case 'medium':
-                    medium++;
-                    break;
-                case 'low':
-                    low++;
-                    break;
-            }
+    let critical = 0;
+    let high = 0;
+    let medium = 0;
+    let low = 0;
+    for (const v of profile.violations) {
+        violationsByType[v.type]++;
+        switch (v.severity) {
+            case 'critical':
+                critical++;
+                break;
+            case 'high':
+                high++;
+                break;
+            case 'medium':
+                medium++;
+                break;
+            case 'low':
+                low++;
+                break;
         }
     }
-    catch (e_1_1) { e_1 = { error: e_1_1 }; }
-    finally {
-        try {
-            if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-        }
-        finally { if (e_1) throw e_1.error; }
-    }
-    var riskLevel = 'low';
-    var recommendedAction = 'none';
+    let riskLevel = 'low';
+    let recommendedAction = 'none';
     if (profile.riskScore >= config.suspensionThreshold) {
         riskLevel = 'critical';
         recommendedAction = 'suspend';
@@ -217,17 +204,17 @@ function generateAuditReport(userId) {
         recommendedAction = 'monitor';
     }
     return {
-        userId: userId,
-        profile: profile,
+        userId,
+        profile,
         report: {
             totalViolations: profile.violationCount,
             criticalViolations: critical,
             highViolations: high,
             mediumViolations: medium,
             lowViolations: low,
-            violationsByType: violationsByType,
-            riskLevel: riskLevel,
-            recommendedAction: recommendedAction,
+            violationsByType,
+            riskLevel,
+            recommendedAction,
         },
     };
 }
@@ -235,32 +222,31 @@ function generateAuditReport(userId) {
  * Check if a user is currently suspended.
  */
 function isUserSuspended(userId) {
-    var profile = userRiskProfiles.get(userId);
-    return (profile === null || profile === void 0 ? void 0 : profile.isSuspended) || false;
+    const profile = userRiskProfiles.get(userId);
+    return profile?.isSuspended || false;
 }
 /**
  * Clear a user's flag (admin action).
  */
 function clearUserFlag(userId) {
-    var profile = userRiskProfiles.get(userId);
+    const profile = userRiskProfiles.get(userId);
     if (!profile) {
         return false;
     }
     profile.isSuspended = false;
     profile.riskScore = 0;
     profile.violations = [];
-    logger.info('User flag cleared', { userId: userId });
+    logger.info('User flag cleared', { userId });
     return true;
 }
 /**
  * Suspend a user (admin action).
  */
-function suspendUser(userId, reason) {
-    if (reason === void 0) { reason = 'admin_action'; }
-    var profile = userRiskProfiles.get(userId);
+function suspendUser(userId, reason = 'admin_action') {
+    const profile = userRiskProfiles.get(userId);
     if (!profile) {
         userRiskProfiles.set(userId, {
-            userId: userId,
+            userId,
             violations: [],
             riskScore: config.suspensionThreshold,
             isSuspended: true,
@@ -273,16 +259,15 @@ function suspendUser(userId, reason) {
         profile.isSuspended = true;
         profile.riskScore = Math.max(profile.riskScore, config.suspensionThreshold);
     }
-    logger.warn('User suspended manually', { userId: userId, reason: reason });
+    logger.warn('User suspended manually', { userId, reason });
     return true;
 }
 /**
  * Get audit statistics.
  */
 function getAuditStats() {
-    var e_2, _a, e_3, _b;
-    var profiles = Array.from(userRiskProfiles.values());
-    var violationsByType = {
+    const profiles = Array.from(userRiskProfiles.values());
+    const violationsByType = {
         replay_attack: 0,
         invalid_signature: 0,
         timing_attack: 0,
@@ -292,38 +277,27 @@ function getAuditStats() {
         stat_manipulation: 0,
         inventory_tampering: 0,
     };
-    var totalViolations = 0;
-    try {
-        for (var profiles_1 = tslib_1.__values(profiles), profiles_1_1 = profiles_1.next(); !profiles_1_1.done; profiles_1_1 = profiles_1.next()) {
-            var profile = profiles_1_1.value;
-            totalViolations += profile.violations.length;
-            try {
-                for (var _c = (e_3 = void 0, tslib_1.__values(profile.violations)), _d = _c.next(); !_d.done; _d = _c.next()) {
-                    var v = _d.value;
-                    violationsByType[v.type]++;
-                }
-            }
-            catch (e_3_1) { e_3 = { error: e_3_1 }; }
-            finally {
-                try {
-                    if (_d && !_d.done && (_b = _c.return)) _b.call(_c);
-                }
-                finally { if (e_3) throw e_3.error; }
-            }
+    let totalViolations = 0;
+    for (const profile of profiles) {
+        totalViolations += profile.violations.length;
+        for (const v of profile.violations) {
+            violationsByType[v.type]++;
         }
-    }
-    catch (e_2_1) { e_2 = { error: e_2_1 }; }
-    finally {
-        try {
-            if (profiles_1_1 && !profiles_1_1.done && (_a = profiles_1.return)) _a.call(profiles_1);
-        }
-        finally { if (e_2) throw e_2.error; }
     }
     return {
-        totalViolations: totalViolations,
+        totalViolations,
         uniqueUsers: profiles.length,
-        suspendedUsers: profiles.filter(function (p) { return p.isSuspended; }).length,
-        highRiskUsers: profiles.filter(function (p) { return p.riskScore >= config.highRiskThreshold; }).length,
-        violationsByType: violationsByType,
+        suspendedUsers: profiles.filter((p) => p.isSuspended).length,
+        highRiskUsers: profiles.filter((p) => p.riskScore >= config.highRiskThreshold).length,
+        violationsByType,
     };
+}
+/**
+ * Reset module state (for testing)
+ */
+function resetAuditState() {
+    userRiskProfiles.clear();
+    config = { ...defaultConfig };
+    nk = undefined;
+    logger = undefined;
 }

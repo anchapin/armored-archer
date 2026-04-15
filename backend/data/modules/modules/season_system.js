@@ -23,16 +23,16 @@ exports.calculateRewards = calculateRewards;
 exports.recordPlayerActivity = recordPlayerActivity;
 exports.applyRankDecay = applyRankDecay;
 exports.getRankDecayInfo = getRankDecayInfo;
-var anti_cheat_1 = require("./anti_cheat");
-var validation_1 = require("./validation");
-var SEASON_DURATION_WEEKS = 4;
-var SEASON_DURATION_MS = SEASON_DURATION_WEEKS * 7 * 24 * 60 * 60 * 1000;
+const anti_cheat_1 = require("./anti_cheat");
+const validation_1 = require("./validation");
+const SEASON_DURATION_WEEKS = 4;
+const SEASON_DURATION_MS = SEASON_DURATION_WEEKS * 7 * 24 * 60 * 60 * 1000;
 // Rank decay configuration
-var RANK_DECAY_DAYS = 7; // Days of inactivity before decay starts
-var RANK_DECAY_AMOUNT = 25; // Points lost per decay period
-var RANK_DECAY_MAX_LOSS = 100; // Maximum points that can be lost per decay
-var RANK_DECAY_MIN_SCORE = 800; // Minimum score after decay
-var RANK_DECAY_CHECK_MS = 24 * 60 * 60 * 1000; // Check every 24 hours
+const RANK_DECAY_DAYS = 7; // Days of inactivity before decay starts
+const RANK_DECAY_AMOUNT = 25; // Points lost per decay period
+const RANK_DECAY_MAX_LOSS = 100; // Maximum points that can be lost per decay
+const RANK_DECAY_MIN_SCORE = 800; // Minimum score after decay
+const RANK_DECAY_CHECK_MS = 24 * 60 * 60 * 1000; // Check every 24 hours
 /**
  * Registers the get season info RPC endpoint.
  *
@@ -65,12 +65,12 @@ function registerRpcGetSeasonInfo(initializer) {
  */
 function rpcGetSeasonInfo(ctx, logger, nk, payload) {
     logger.info('Get season info called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_season_info, payload, 'get_season_info');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_season_info, payload, 'get_season_info');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('get_season_info', validation.error);
     }
-    var currentSeason = getCurrentSeason();
-    var playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
+    const currentSeason = getCurrentSeason();
+    const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
     return JSON.stringify({
         success: true,
         season: currentSeason,
@@ -110,21 +110,21 @@ function registerRpcGetLeaderboard(initializer) {
  */
 function rpcGetLeaderboard(ctx, logger, nk, payload) {
     logger.info('Get leaderboard called for user: %s', ctx.userId);
-    var currentSeason = getCurrentSeason();
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_leaderboard, payload, 'get_leaderboard');
+    const currentSeason = getCurrentSeason();
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_leaderboard, payload, 'get_leaderboard');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('get_leaderboard', validation.error);
     }
-    var request = validation.data || {};
-    var limit = request.limit || 50;
-    var records = nk.leaderboardRecordList(currentSeason.season_id, [], limit, '', 0);
-    var entries = records.map(function (record) { return ({
+    const request = validation.data || {};
+    const limit = request.limit || 50;
+    const records = nk.leaderboardRecordList(currentSeason.season_id, [], limit, '', 0);
+    const entries = records.map((record) => ({
         owner_id: record.ownerId,
         username: record.username,
         rank: record.rank,
         score: record.score,
         meta: JSON.parse(record.metadata || '{}'),
-    }); });
+    }));
     return JSON.stringify({
         success: true,
         season: currentSeason,
@@ -167,9 +167,9 @@ function registerRpcUpdateRank(initializer) {
 function checkPlayerFlagged(logger, playerId, playerType) {
     if ((0, anti_cheat_1.isPlayerFlagged)(playerId)) {
         logger.warn('Update rank blocked - %s flagged: %s reason: %s', playerType, playerId, (0, anti_cheat_1.getFlagReason)(playerId));
-        var errorMsg = playerType === 'winner'
-            ? "Player is flagged for review: ".concat((0, anti_cheat_1.getFlagReason)(playerId))
-            : "Opponent is flagged for review: ".concat((0, anti_cheat_1.getFlagReason)(playerId));
+        const errorMsg = playerType === 'winner'
+            ? `Player is flagged for review: ${(0, anti_cheat_1.getFlagReason)(playerId)}`
+            : `Opponent is flagged for review: ${(0, anti_cheat_1.getFlagReason)(playerId)}`;
         return JSON.stringify({
             success: false,
             error_code: 'PLAYER_FLAGGED',
@@ -183,13 +183,13 @@ function checkPlayerFlagged(logger, playerId, playerType) {
  */
 function validateRankUpdateSignature(ctx, logger, request) {
     if (request.requestId && request.timestamp && request.signature && request.nonce) {
-        var signatureData = {
+        const signatureData = {
             requestId: request.requestId,
             timestamp: request.timestamp,
             signature: request.signature,
             nonce: request.nonce,
         };
-        var payloadForSig = JSON.stringify({
+        const payloadForSig = JSON.stringify({
             match_id: request.match_id,
             winner_id: request.winner_id,
             loser_id: request.loser_id,
@@ -199,7 +199,7 @@ function validateRankUpdateSignature(ctx, logger, request) {
             loser_new_rank: request.loser_new_rank,
             is_punch_up: request.is_punch_up,
         });
-        var sigResult = (0, anti_cheat_1.verifyRequestSignature)(ctx, payloadForSig, signatureData, 'update_rank');
+        const sigResult = (0, anti_cheat_1.verifyRequestSignature)(ctx, payloadForSig, signatureData, 'update_rank');
         if (!sigResult.valid) {
             logger.warn('Invalid signature for update_rank: %s', sigResult.violations.join(', '));
             return JSON.stringify({
@@ -216,13 +216,13 @@ function validateRankUpdateSignature(ctx, logger, request) {
  * Applies Elo rating updates to both players
  */
 function applyEloUpdates(nk, ctx, currentSeason, winnerId, loserId, winnerOldElo, loserOldElo, isPunchUp, winnerEntry, loserEntry) {
-    var K = isPunchUp ? 60 : 32;
-    var expectedWinner = 1 / (1 + Math.pow(10, (loserOldElo - winnerOldElo) / 400));
-    var expectedLoser = 1 - expectedWinner;
-    var winnerNewElo = Math.round(winnerOldElo + K * (1 - expectedWinner));
-    var loserNewElo = Math.round(loserOldElo + K * (0 - expectedLoser));
+    const K = isPunchUp ? 60 : 32;
+    const expectedWinner = 1 / (1 + Math.pow(10, (loserOldElo - winnerOldElo) / 400));
+    const expectedLoser = 1 - expectedWinner;
+    const winnerNewElo = Math.round(winnerOldElo + K * (1 - expectedWinner));
+    const loserNewElo = Math.round(loserOldElo + K * (0 - expectedLoser));
     // Update winner
-    var winnerMeta = winnerEntry
+    const winnerMeta = winnerEntry
         ? winnerEntry.meta
         : { wins: 0, losses: 0, win_rate: 0, punch_up_wins: 0 };
     winnerMeta.wins++;
@@ -235,7 +235,7 @@ function applyEloUpdates(nk, ctx, currentSeason, winnerId, loserId, winnerOldElo
         punch_up_wins: String(winnerMeta.punch_up_wins),
     });
     // Update loser
-    var loserMeta = loserEntry
+    const loserMeta = loserEntry
         ? loserEntry.meta
         : { wins: 0, losses: 0, win_rate: 0, punch_up_wins: 0 };
     loserMeta.losses++;
@@ -246,24 +246,24 @@ function applyEloUpdates(nk, ctx, currentSeason, winnerId, loserId, winnerOldElo
         win_rate: String(loserMeta.win_rate),
         punch_up_wins: String(loserMeta.punch_up_wins),
     });
-    return { winnerNewElo: winnerNewElo, loserNewElo: loserNewElo };
+    return { winnerNewElo, loserNewElo };
 }
 function rpcUpdateRank(ctx, logger, nk, payload) {
     logger.info('Update rank called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.update_rank, payload, 'update_rank');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.update_rank, payload, 'update_rank');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('update_rank', validation.error);
     }
-    var request = validation.data;
+    const request = validation.data;
     // Anti-cheat: Check if players are flagged
-    var winnerFlagged = checkPlayerFlagged(logger, request.winner_id, 'winner');
+    const winnerFlagged = checkPlayerFlagged(logger, request.winner_id, 'winner');
     if (winnerFlagged)
         return winnerFlagged;
-    var loserFlagged = checkPlayerFlagged(logger, request.loser_id, 'loser');
+    const loserFlagged = checkPlayerFlagged(logger, request.loser_id, 'loser');
     if (loserFlagged)
         return loserFlagged;
     // Anti-cheat: Verify request signature
-    var signatureError = validateRankUpdateSignature(ctx, logger, request);
+    const signatureError = validateRankUpdateSignature(ctx, logger, request);
     if (signatureError)
         return signatureError;
     // Anti-cheat: Detect timing attacks
@@ -275,13 +275,13 @@ function rpcUpdateRank(ctx, logger, nk, payload) {
             error: 'Suspicious request pattern detected',
         });
     }
-    var currentSeason = getCurrentSeason();
-    var winnerEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
-    var loserEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
-    var winnerOldElo = winnerEntry ? winnerEntry.score : 1000;
-    var loserOldElo = loserEntry ? loserEntry.score : 1000;
+    const currentSeason = getCurrentSeason();
+    const winnerEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
+    const loserEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
+    const winnerOldElo = winnerEntry ? winnerEntry.score : 1000;
+    const loserOldElo = loserEntry ? loserEntry.score : 1000;
     // Apply Elo updates
-    var _a = applyEloUpdates(nk, ctx, currentSeason, request.winner_id, request.loser_id, winnerOldElo, loserOldElo, request.is_punch_up, winnerEntry, loserEntry), winnerNewElo = _a.winnerNewElo, loserNewElo = _a.loserNewElo;
+    const { winnerNewElo, loserNewElo } = applyEloUpdates(nk, ctx, currentSeason, request.winner_id, request.loser_id, winnerOldElo, loserOldElo, request.is_punch_up, winnerEntry, loserEntry);
     // Record match results for anti-cheat analysis
     (0, anti_cheat_1.recordMatchResult)(request.winner_id, request.match_id, request.loser_id, 'win', true, winnerOldElo, winnerNewElo);
     (0, anti_cheat_1.recordMatchResult)(request.loser_id, request.match_id, request.winner_id, 'loss', true, loserOldElo, loserNewElo);
@@ -332,19 +332,19 @@ function registerRpcGetSeasonRewards(initializer) {
  */
 function rpcGetSeasonRewards(ctx, logger, nk, payload) {
     logger.info('Get season rewards called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_season_rewards, payload, 'get_season_rewards');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_season_rewards, payload, 'get_season_rewards');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('get_season_rewards', validation.error);
     }
-    var currentSeason = getCurrentSeason();
-    var playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
+    const currentSeason = getCurrentSeason();
+    const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
     if (!playerEntry) {
         return JSON.stringify({
             success: true,
             rewards: null,
         });
     }
-    var rewards = calculateRewards(playerEntry.rank, currentSeason.season_number);
+    const rewards = calculateRewards(playerEntry.rank, currentSeason.season_number);
     return JSON.stringify({
         success: true,
         rank: playerEntry.rank,
@@ -381,15 +381,15 @@ function registerRpcClaimSeasonRewards(initializer) {
  */
 function rpcClaimSeasonRewards(ctx, logger, nk, payload) {
     logger.info('Claim season rewards called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.claim_season_rewards, payload, 'claim_season_rewards');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.claim_season_rewards, payload, 'claim_season_rewards');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('claim_season_rewards', validation.error);
     }
-    var currentSeason = getCurrentSeason();
-    var objects = nk.storageRead([
+    const currentSeason = getCurrentSeason();
+    const objects = nk.storageRead([
         {
             collection: 'season_rewards_claimed',
-            key: "".concat(currentSeason.season_id, "_").concat(ctx.userId),
+            key: `${currentSeason.season_id}_${ctx.userId}`,
             userId: ctx.userId,
         },
     ]);
@@ -398,18 +398,18 @@ function rpcClaimSeasonRewards(ctx, logger, nk, payload) {
             error: 'Rewards already claimed for this season',
         });
     }
-    var playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
+    const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
     if (!playerEntry) {
         return JSON.stringify({
             error: 'No leaderboard entry found',
         });
     }
-    var rewards = calculateRewards(playerEntry.rank, currentSeason.season_number);
+    const rewards = calculateRewards(playerEntry.rank, currentSeason.season_number);
     // Mark rewards as claimed
     nk.storageWrite([
         {
             collection: 'season_rewards_claimed',
-            key: "".concat(currentSeason.season_id, "_").concat(ctx.userId),
+            key: `${currentSeason.season_id}_${ctx.userId}`,
             userId: ctx.userId,
             value: JSON.stringify({
                 season_id: currentSeason.season_id,
@@ -421,7 +421,7 @@ function rpcClaimSeasonRewards(ctx, logger, nk, payload) {
         },
     ]);
     // Give rewards (coins, cosmetics)
-    var rewardChanges = {};
+    const rewardChanges = {};
     if (rewards.coins) {
         rewardChanges['coins'] = rewards.coins;
     }
@@ -467,17 +467,17 @@ function registerRpcEndSeason(initializer) {
  */
 function rpcEndSeason(ctx, logger, nk, payload) {
     logger.info('End season called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.end_season, payload, 'end_season');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.end_season, payload, 'end_season');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('end_season', validation.error);
     }
-    var currentSeason = getCurrentSeason();
+    const currentSeason = getCurrentSeason();
     // Create new season
-    var nextSeasonNumber = currentSeason.season_number + 1;
-    var nextSeasonStartTime = Date.now();
-    var nextSeasonEndTime = nextSeasonStartTime + SEASON_DURATION_MS;
-    var nextSeason = {
-        season_id: "season_".concat(nextSeasonNumber),
+    const nextSeasonNumber = currentSeason.season_number + 1;
+    const nextSeasonStartTime = Date.now();
+    const nextSeasonEndTime = nextSeasonStartTime + SEASON_DURATION_MS;
+    const nextSeason = {
+        season_id: `season_${nextSeasonNumber}`,
         season_number: nextSeasonNumber,
         start_time: nextSeasonStartTime,
         end_time: nextSeasonEndTime,
@@ -494,7 +494,7 @@ function rpcEndSeason(ctx, logger, nk, payload) {
         },
     ]);
     // Update current season status
-    var oldSeason = currentSeason;
+    const oldSeason = currentSeason;
     oldSeason.status = 'ended';
     nk.storageWrite([
         {
@@ -520,12 +520,12 @@ function rpcEndSeason(ctx, logger, nk, payload) {
  * @returns Current season data
  */
 function getCurrentSeason() {
-    var now = Date.now();
-    var seasonNumber = Math.floor(now / SEASON_DURATION_MS) + 1;
-    var seasonStartTime = (seasonNumber - 1) * SEASON_DURATION_MS;
-    var seasonEndTime = seasonStartTime + SEASON_DURATION_MS;
+    const now = Date.now();
+    const seasonNumber = Math.floor(now / SEASON_DURATION_MS) + 1;
+    const seasonStartTime = (seasonNumber - 1) * SEASON_DURATION_MS;
+    const seasonEndTime = seasonStartTime + SEASON_DURATION_MS;
     return {
-        season_id: "season_".concat(seasonNumber),
+        season_id: `season_${seasonNumber}`,
         season_number: seasonNumber,
         start_time: seasonStartTime,
         end_time: seasonEndTime,
@@ -542,11 +542,11 @@ function getCurrentSeason() {
  * @returns Leaderboard entry or null if not found
  */
 function getLeaderboardEntry(nk, userId, leaderboardId) {
-    var records = nk.leaderboardRecordList(leaderboardId, [userId], 1, '', 0);
+    const records = nk.leaderboardRecordList(leaderboardId, [userId], 1, '', 0);
     if (records.length === 0) {
         return null;
     }
-    var record = records[0];
+    const record = records[0];
     return {
         owner_id: record.ownerId,
         username: record.username,
@@ -569,7 +569,7 @@ function calculateRewards(rank, seasonNumber) {
             coins: 10000,
             gems: 500,
             cosmetics: {
-                title: "Season ".concat(seasonNumber, " Champion"),
+                title: `Season ${seasonNumber} Champion`,
                 aura: 'legendary_aura',
             },
         };
@@ -580,7 +580,7 @@ function calculateRewards(rank, seasonNumber) {
             coins: 5000,
             gems: 200,
             cosmetics: {
-                title: "Season ".concat(seasonNumber, " Elite"),
+                title: `Season ${seasonNumber} Elite`,
                 aura: 'epic_aura',
             },
         };
@@ -591,7 +591,7 @@ function calculateRewards(rank, seasonNumber) {
             coins: 2000,
             gems: 100,
             cosmetics: {
-                title: "Season ".concat(seasonNumber, " Veteran"),
+                title: `Season ${seasonNumber} Veteran`,
                 aura: 'rare_aura',
             },
         };
@@ -618,7 +618,7 @@ function calculateRewards(rank, seasonNumber) {
  * @param userId - ID of the player
  */
 function recordPlayerActivity(nk, userId) {
-    var now = Date.now();
+    const now = Date.now();
     nk.storageWrite([
         {
             collection: 'player_activity',
@@ -637,7 +637,7 @@ function recordPlayerActivity(nk, userId) {
  */
 function getLastMatchTime(nk, userId) {
     try {
-        var records = nk.storageRead([
+        const records = nk.storageRead([
             {
                 collection: 'player_activity',
                 key: userId,
@@ -645,7 +645,7 @@ function getLastMatchTime(nk, userId) {
             },
         ]);
         if (records.length > 0 && records[0].value) {
-            var data = JSON.parse(records[0].value);
+            const data = JSON.parse(records[0].value);
             return data.last_match_time || 0;
         }
     }
@@ -667,18 +667,18 @@ function applyRankDecay(nk, userId, currentScore) {
     if (currentScore < RANK_DECAY_MIN_SCORE) {
         return currentScore;
     }
-    var lastMatchTime = getLastMatchTime(nk, userId);
-    var now = Date.now();
-    var inactiveMs = now - lastMatchTime;
-    var inactiveDays = Math.floor(inactiveMs / (24 * 60 * 60 * 1000));
+    const lastMatchTime = getLastMatchTime(nk, userId);
+    const now = Date.now();
+    const inactiveMs = now - lastMatchTime;
+    const inactiveDays = Math.floor(inactiveMs / (24 * 60 * 60 * 1000));
     // No decay if player has been active within the decay period
     if (inactiveDays < RANK_DECAY_DAYS) {
         return currentScore;
     }
     // Calculate decay periods
-    var decayPeriods = Math.floor((inactiveDays - RANK_DECAY_DAYS) / RANK_DECAY_DAYS);
-    var decayLoss = Math.min(decayPeriods * RANK_DECAY_AMOUNT, RANK_DECAY_MAX_LOSS);
-    var newScore = Math.max(currentScore - decayLoss, RANK_DECAY_MIN_SCORE);
+    const decayPeriods = Math.floor((inactiveDays - RANK_DECAY_DAYS) / RANK_DECAY_DAYS);
+    const decayLoss = Math.min(decayPeriods * RANK_DECAY_AMOUNT, RANK_DECAY_MAX_LOSS);
+    const newScore = Math.max(currentScore - decayLoss, RANK_DECAY_MIN_SCORE);
     return newScore;
 }
 /**
@@ -690,14 +690,14 @@ function applyRankDecay(nk, userId, currentScore) {
  * @returns Decay information including days inactive and points at risk
  */
 function getRankDecayInfo(nk, userId, currentScore) {
-    var lastMatchTime = getLastMatchTime(nk, userId);
-    var now = Date.now();
-    var inactiveMs = now - lastMatchTime;
-    var daysInactive = Math.floor(inactiveMs / (24 * 60 * 60 * 1000));
+    const lastMatchTime = getLastMatchTime(nk, userId);
+    const now = Date.now();
+    const inactiveMs = now - lastMatchTime;
+    const daysInactive = Math.floor(inactiveMs / (24 * 60 * 60 * 1000));
     // Calculate points at risk
-    var pointsAtRisk = 0;
+    let pointsAtRisk = 0;
     if (currentScore >= RANK_DECAY_MIN_SCORE && daysInactive >= RANK_DECAY_DAYS) {
-        var decayPeriods = Math.floor((daysInactive - RANK_DECAY_DAYS) / RANK_DECAY_DAYS);
+        const decayPeriods = Math.floor((daysInactive - RANK_DECAY_DAYS) / RANK_DECAY_DAYS);
         pointsAtRisk = Math.min(decayPeriods * RANK_DECAY_AMOUNT, RANK_DECAY_MAX_LOSS);
     }
     return {

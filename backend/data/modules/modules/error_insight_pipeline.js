@@ -16,16 +16,15 @@ exports.collectError = collectError;
 exports.registerErrorInsightRpcs = registerErrorInsightRpcs;
 exports.initializeErrorInsightsPipeline = initializeErrorInsightsPipeline;
 exports.getErrorStore = getErrorStore;
-var tslib_1 = require("tslib");
-var crypto_1 = require("crypto");
-var config_1 = require("../config");
-var logger_1 = require("../config/logger");
-var validation_1 = require("./validation");
+const crypto_1 = require("crypto");
+const config_1 = require("../config");
+const logger_1 = require("../config/logger");
+const validation_1 = require("./validation");
 /**
  * In-memory error data store
  */
-var ErrorInsightStore = /** @class */ (function () {
-    function ErrorInsightStore() {
+class ErrorInsightStore {
+    constructor() {
         this.errors = [];
         this.patterns = new Map();
         this.insights = [];
@@ -34,127 +33,114 @@ var ErrorInsightStore = /** @class */ (function () {
     /**
      * Add an error to the store
      */
-    ErrorInsightStore.prototype.addError = function (error) {
+    addError(error) {
         this.errors.push(error);
         this.lastErrorProcessed = new Date();
         // Trim old errors if needed (keep last 10000)
         if (this.errors.length > 10000) {
             this.errors = this.errors.slice(-10000);
         }
-    };
+    }
     /**
      * Get all errors within a time range
      */
-    ErrorInsightStore.prototype.getErrorsInRange = function (startTime, endTime) {
-        return this.errors.filter(function (e) { return new Date(e.timestamp) >= startTime && new Date(e.timestamp) <= endTime; });
-    };
+    getErrorsInRange(startTime, endTime) {
+        return this.errors.filter((e) => new Date(e.timestamp) >= startTime && new Date(e.timestamp) <= endTime);
+    }
     /**
      * Get all patterns
      */
-    ErrorInsightStore.prototype.getPatterns = function () {
+    getPatterns() {
         return Array.from(this.patterns.values());
-    };
+    }
     /**
      * Add or update a pattern
      */
-    ErrorInsightStore.prototype.upsertPattern = function (pattern) {
+    upsertPattern(pattern) {
         this.patterns.set(pattern.patternId, pattern);
-    };
+    }
     /**
      * Get all insights
      */
-    ErrorInsightStore.prototype.getInsights = function () {
+    getInsights() {
         return this.insights;
-    };
+    }
     /**
      * Add an insight
      */
-    ErrorInsightStore.prototype.addInsight = function (insight) {
+    addInsight(insight) {
         this.insights.unshift(insight);
         // Keep only maxInsights
-        var maxInsights = config_1.config.errorInsights.maxInsights;
+        const maxInsights = config_1.config.errorInsights.maxInsights;
         if (this.insights.length > maxInsights) {
             this.insights = this.insights.slice(0, maxInsights);
         }
-    };
+    }
     /**
      * Get pipeline statistics
      */
-    ErrorInsightStore.prototype.getStats = function () {
-        var _a;
-        var now = new Date();
-        var uptimeMs = now.getTime() - this.startTime.getTime();
-        var uptimeSec = Math.floor(uptimeMs / 1000);
+    getStats() {
+        const now = new Date();
+        const uptimeMs = now.getTime() - this.startTime.getTime();
+        const uptimeSec = Math.floor(uptimeMs / 1000);
         // Calculate errors per minute
-        var recentErrors = this.getErrorsInRange(new Date(now.getTime() - 5 * 60 * 1000), now);
-        var errorsPerMinute = recentErrors.length / 5;
+        const recentErrors = this.getErrorsInRange(new Date(now.getTime() - 5 * 60 * 1000), now);
+        const errorsPerMinute = recentErrors.length / 5;
         return {
             totalErrorsProcessed: this.errors.length,
             totalPatternsIdentified: this.patterns.size,
             totalInsightsGenerated: this.insights.length,
             uptime: this.formatUptime(uptimeSec),
-            lastErrorProcessed: (_a = this.lastErrorProcessed) === null || _a === void 0 ? void 0 : _a.toISOString(),
+            lastErrorProcessed: this.lastErrorProcessed?.toISOString(),
             errorsPerMinute: Math.round(errorsPerMinute * 10) / 10,
         };
-    };
+    }
     /**
      * Format uptime string
      */
-    ErrorInsightStore.prototype.formatUptime = function (seconds) {
-        var days = Math.floor(seconds / 86400);
-        var hours = Math.floor((seconds % 86400) / 3600);
-        var minutes = Math.floor((seconds % 3600) / 60);
+    formatUptime(seconds) {
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
         if (days > 0) {
-            return "".concat(days, "d ").concat(hours, "h ").concat(minutes, "m");
+            return `${days}d ${hours}h ${minutes}m`;
         }
         if (hours > 0) {
-            return "".concat(hours, "h ").concat(minutes, "m");
+            return `${hours}h ${minutes}m`;
         }
-        return "".concat(minutes, "m");
-    };
+        return `${minutes}m`;
+    }
     /**
      * Clear old patterns that have expired TTL
      */
-    ErrorInsightStore.prototype.cleanupExpiredPatterns = function () {
-        var e_1, _a;
-        var ttlMs = config_1.config.errorInsights.patternTtlDays * 24 * 60 * 60 * 1000;
-        var cutoffTime = new Date(Date.now() - ttlMs);
-        try {
-            for (var _b = tslib_1.__values(this.patterns), _c = _b.next(); !_c.done; _c = _b.next()) {
-                var _d = tslib_1.__read(_c.value, 2), patternId = _d[0], pattern = _d[1];
-                if (new Date(pattern.lastSeen) < cutoffTime) {
-                    this.patterns.delete(patternId);
-                }
+    cleanupExpiredPatterns() {
+        const ttlMs = config_1.config.errorInsights.patternTtlDays * 24 * 60 * 60 * 1000;
+        const cutoffTime = new Date(Date.now() - ttlMs);
+        for (const [patternId, pattern] of this.patterns) {
+            if (new Date(pattern.lastSeen) < cutoffTime) {
+                this.patterns.delete(patternId);
             }
         }
-        catch (e_1_1) { e_1 = { error: e_1_1 }; }
-        finally {
-            try {
-                if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-            }
-            finally { if (e_1) throw e_1.error; }
-        }
-    };
+    }
     /**
      * Clear all data (for testing)
      */
-    ErrorInsightStore.prototype.clear = function () {
+    clear() {
         this.errors = [];
         this.patterns.clear();
         this.insights = [];
-    };
-    return ErrorInsightStore;
-}());
+    }
+}
 // Global store instance
-var errorStore = new ErrorInsightStore();
+const errorStore = new ErrorInsightStore();
 /**
  * Generate a signature for an error to identify patterns
  */
 function generateErrorSignature(error) {
     // Create a signature based on error type, RPC, and normalized message
-    var parts = [error.errorType, error.rpcName || 'unknown', error.source];
+    const parts = [error.errorType, error.rpcName || 'unknown', error.source];
     // Normalize message by removing specific values
-    var normalizedMessage = error.message;
+    let normalizedMessage = error.message;
     // Remove UUIDs
     normalizedMessage = normalizedMessage.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<UUID>');
     // Remove numbers
@@ -163,10 +149,10 @@ function generateErrorSignature(error) {
     normalizedMessage = normalizedMessage.replace(/\/[\w/.-]+/g, '<PATH>');
     parts.push(normalizedMessage.substring(0, 100));
     // Simple hash
-    var hash = 0;
-    var str = parts.join('|');
-    for (var i = 0; i < str.length; i++) {
-        var char = str.charCodeAt(i);
+    let hash = 0;
+    const str = parts.join('|');
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
         hash = (hash << 5) - hash + char;
         hash = hash & hash;
     }
@@ -176,12 +162,11 @@ function generateErrorSignature(error) {
  * Detect error source from error characteristics
  */
 function detectErrorSource(error) {
-    var _a;
     if (error.source !== 'unknown') {
         return error.source;
     }
-    var message = error.message.toLowerCase();
-    var stack = ((_a = error.stack) === null || _a === void 0 ? void 0 : _a.toLowerCase()) || '';
+    const message = error.message.toLowerCase();
+    const stack = error.stack?.toLowerCase() || '';
     if (message.includes('database') || message.includes('postgres') || stack.includes('db_')) {
         return 'database';
     }
@@ -206,8 +191,8 @@ function determineSeverity(error) {
     if (error.severity !== 'info') {
         return error.severity;
     }
-    var message = error.message.toLowerCase();
-    var stack = error.stack || '';
+    const message = error.message.toLowerCase();
+    const stack = error.stack || '';
     // Critical patterns
     if (message.includes('fatal') ||
         message.includes('crash') ||
@@ -229,67 +214,46 @@ function determineSeverity(error) {
  * Analyze errors and identify patterns
  */
 function analyzePatterns(errors) {
-    var e_2, _a, e_3, _b;
-    var patternMap = new Map();
-    try {
-        for (var errors_1 = tslib_1.__values(errors), errors_1_1 = errors_1.next(); !errors_1_1.done; errors_1_1 = errors_1.next()) {
-            var error = errors_1_1.value;
-            var signature = generateErrorSignature(error);
-            var existingPattern = patternMap.get(signature);
-            if (existingPattern) {
-                // Update existing pattern
-                existingPattern.count++;
-                existingPattern.lastSeen = error.timestamp;
-                if (error.rpcName && !existingPattern.affectedRpcs.includes(error.rpcName)) {
-                    existingPattern.affectedRpcs.push(error.rpcName);
-                }
-                if (error.userId && !existingPattern.affectedUsers.includes(error.userId)) {
-                    existingPattern.affectedUsers.push(error.userId);
-                }
+    const patternMap = new Map();
+    for (const error of errors) {
+        const signature = generateErrorSignature(error);
+        const existingPattern = patternMap.get(signature);
+        if (existingPattern) {
+            // Update existing pattern
+            existingPattern.count++;
+            existingPattern.lastSeen = error.timestamp;
+            if (error.rpcName && !existingPattern.affectedRpcs.includes(error.rpcName)) {
+                existingPattern.affectedRpcs.push(error.rpcName);
             }
-            else {
-                // Create new pattern
-                var pattern = {
-                    patternId: (0, crypto_1.randomUUID)(),
-                    signature: signature,
-                    count: 1,
-                    firstSeen: error.timestamp,
-                    lastSeen: error.timestamp,
-                    errorType: error.errorType,
-                    messageTemplate: error.message.substring(0, 200),
-                    affectedRpcs: error.rpcName ? [error.rpcName] : [],
-                    affectedUsers: error.userId ? [error.userId] : [],
-                    occurrencesPerHour: 0,
-                    severity: determineSeverity(error),
-                    source: detectErrorSource(error),
-                };
-                patternMap.set(signature, pattern);
+            if (error.userId && !existingPattern.affectedUsers.includes(error.userId)) {
+                existingPattern.affectedUsers.push(error.userId);
             }
         }
-    }
-    catch (e_2_1) { e_2 = { error: e_2_1 }; }
-    finally {
-        try {
-            if (errors_1_1 && !errors_1_1.done && (_a = errors_1.return)) _a.call(errors_1);
+        else {
+            // Create new pattern
+            const pattern = {
+                patternId: (0, crypto_1.randomUUID)(),
+                signature,
+                count: 1,
+                firstSeen: error.timestamp,
+                lastSeen: error.timestamp,
+                errorType: error.errorType,
+                messageTemplate: error.message.substring(0, 200),
+                affectedRpcs: error.rpcName ? [error.rpcName] : [],
+                affectedUsers: error.userId ? [error.userId] : [],
+                occurrencesPerHour: 0,
+                severity: determineSeverity(error),
+                source: detectErrorSource(error),
+            };
+            patternMap.set(signature, pattern);
         }
-        finally { if (e_2) throw e_2.error; }
     }
     // Calculate occurrences per hour
-    var now = new Date();
-    try {
-        for (var _c = tslib_1.__values(patternMap.values()), _d = _c.next(); !_d.done; _d = _c.next()) {
-            var pattern = _d.value;
-            var firstSeen = new Date(pattern.firstSeen);
-            var hoursDiff = Math.max(1, (now.getTime() - firstSeen.getTime()) / (1000 * 60 * 60));
-            pattern.occurrencesPerHour = Math.round((pattern.count / hoursDiff) * 10) / 10;
-        }
-    }
-    catch (e_3_1) { e_3 = { error: e_3_1 }; }
-    finally {
-        try {
-            if (_d && !_d.done && (_b = _c.return)) _b.call(_c);
-        }
-        finally { if (e_3) throw e_3.error; }
+    const now = new Date();
+    for (const pattern of patternMap.values()) {
+        const firstSeen = new Date(pattern.firstSeen);
+        const hoursDiff = Math.max(1, (now.getTime() - firstSeen.getTime()) / (1000 * 60 * 60));
+        pattern.occurrencesPerHour = Math.round((pattern.count / hoursDiff) * 10) / 10;
     }
     return Array.from(patternMap.values());
 }
@@ -297,27 +261,16 @@ function analyzePatterns(errors) {
  * Generate insights from patterns
  */
 function generateInsights(patterns) {
-    var e_4, _a;
-    var insights = [];
-    var minOccurrences = config_1.config.errorInsights.minOccurrencesForInsight;
-    try {
-        for (var patterns_1 = tslib_1.__values(patterns), patterns_1_1 = patterns_1.next(); !patterns_1_1.done; patterns_1_1 = patterns_1.next()) {
-            var pattern = patterns_1_1.value;
-            if (pattern.count < minOccurrences) {
-                continue;
-            }
-            var insight = createInsightFromPattern(pattern);
-            if (insight) {
-                insights.push(insight);
-            }
+    const insights = [];
+    const minOccurrences = config_1.config.errorInsights.minOccurrencesForInsight;
+    for (const pattern of patterns) {
+        if (pattern.count < minOccurrences) {
+            continue;
         }
-    }
-    catch (e_4_1) { e_4 = { error: e_4_1 }; }
-    finally {
-        try {
-            if (patterns_1_1 && !patterns_1_1.done && (_a = patterns_1.return)) _a.call(patterns_1);
+        const insight = createInsightFromPattern(pattern);
+        if (insight) {
+            insights.push(insight);
         }
-        finally { if (e_4) throw e_4.error; }
     }
     return insights;
 }
@@ -325,10 +278,10 @@ function generateInsights(patterns) {
  * Create an insight from a pattern
  */
 function createInsightFromPattern(pattern) {
-    var recommendations = generateRecommendations(pattern);
-    var impact = assessImpact(pattern);
+    const recommendations = generateRecommendations(pattern);
+    const impact = assessImpact(pattern);
     // Determine priority based on severity and count
-    var priority;
+    let priority;
     if (pattern.severity === 'critical' || pattern.count > 100) {
         priority = 'critical';
     }
@@ -341,15 +294,15 @@ function createInsightFromPattern(pattern) {
     else {
         priority = 'low';
     }
-    var insight = {
+    const insight = {
         id: (0, crypto_1.randomUUID)(),
         generatedAt: new Date().toISOString(),
         patternId: pattern.patternId,
         title: generateInsightTitle(pattern),
         description: generateInsightDescription(pattern),
-        priority: priority,
-        recommendations: recommendations,
-        impact: impact,
+        priority,
+        recommendations,
+        impact,
         actionable: recommendations.length > 0,
         errorCount: pattern.count,
         affectedUserCount: pattern.affectedUsers.length,
@@ -360,64 +313,64 @@ function createInsightFromPattern(pattern) {
  * Generate insight title
  */
 function generateInsightTitle(pattern) {
-    var sourceLabel = pattern.source.charAt(0).toUpperCase() + pattern.source.slice(1);
+    const sourceLabel = pattern.source.charAt(0).toUpperCase() + pattern.source.slice(1);
     switch (pattern.source) {
         case 'database':
-            return "Database Errors in ".concat(pattern.affectedRpcs.join(', ') || 'operations');
+            return `Database Errors in ${pattern.affectedRpcs.join(', ') || 'operations'}`;
         case 'cache':
-            return "Cache Issues Affecting ".concat(pattern.affectedRpcs.join(', ') || 'operations');
+            return `Cache Issues Affecting ${pattern.affectedRpcs.join(', ') || 'operations'}`;
         case 'validation':
-            return "Validation Errors in ".concat(pattern.affectedRpcs.join(', ') || 'input processing');
+            return `Validation Errors in ${pattern.affectedRpcs.join(', ') || 'input processing'}`;
         case 'nakama':
-            return "Server Errors in ".concat(pattern.affectedRpcs.join(', ') || 'RPC calls');
+            return `Server Errors in ${pattern.affectedRpcs.join(', ') || 'RPC calls'}`;
         case 'external':
-            return "External Service Errors (".concat(sourceLabel, ")");
+            return `External Service Errors (${sourceLabel})`;
         default:
-            return "Recurring Error: ".concat(pattern.errorType);
+            return `Recurring Error: ${pattern.errorType}`;
     }
 }
 /**
  * Generate insight description
  */
 function generateInsightDescription(pattern) {
-    var timeSpan = getTimeSpanDescription(pattern.firstSeen, pattern.lastSeen);
-    var userCount = pattern.affectedUsers.length;
-    var description = "This error pattern has occurred ".concat(pattern.count, " times over ").concat(timeSpan, ".");
+    const timeSpan = getTimeSpanDescription(pattern.firstSeen, pattern.lastSeen);
+    const userCount = pattern.affectedUsers.length;
+    let description = `This error pattern has occurred ${pattern.count} times over ${timeSpan}.`;
     if (userCount > 0) {
-        description += " Affecting approximately ".concat(userCount, " unique user(s).");
+        description += ` Affecting approximately ${userCount} unique user(s).`;
     }
     if (pattern.affectedRpcs.length > 0) {
-        description += " Primarily affecting: ".concat(pattern.affectedRpcs.join(', '), ".");
+        description += ` Primarily affecting: ${pattern.affectedRpcs.join(', ')}.`;
     }
-    description += "\n\nError type: ".concat(pattern.errorType);
-    description += "\nSource: ".concat(pattern.source);
+    description += `\n\nError type: ${pattern.errorType}`;
+    description += `\nSource: ${pattern.source}`;
     return description;
 }
 /**
  * Get time span description
  */
 function getTimeSpanDescription(firstSeen, lastSeen) {
-    var start = new Date(firstSeen);
-    var end = new Date(lastSeen);
-    var diffMs = end.getTime() - start.getTime();
-    var diffMins = Math.floor(diffMs / (1000 * 60));
-    var diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    var diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const start = new Date(firstSeen);
+    const end = new Date(lastSeen);
+    const diffMs = end.getTime() - start.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     if (diffMins < 60) {
-        return "".concat(diffMins, " minute(s)");
+        return `${diffMins} minute(s)`;
     }
     if (diffHours < 24) {
-        return "".concat(diffHours, " hour(s)");
+        return `${diffHours} hour(s)`;
     }
-    return "".concat(diffDays, " day(s)");
+    return `${diffDays} day(s)`;
 }
 /**
  * Assess impact of a pattern
  */
 function assessImpact(pattern) {
-    var userPercentage = Math.min(100, Math.round((pattern.affectedUsers.length / 1000) * 100));
-    var userImpact = 'Minimal user impact';
-    var systemImpact = 'Low system impact';
+    const userPercentage = Math.min(100, Math.round((pattern.affectedUsers.length / 1000) * 100));
+    let userImpact = 'Minimal user impact';
+    let systemImpact = 'Low system impact';
     if (pattern.severity === 'critical') {
         userImpact = 'Users experiencing service disruption or crashes';
         systemImpact = 'Potential service degradation or outage';
@@ -431,8 +384,8 @@ function assessImpact(pattern) {
         systemImpact = 'Minor performance degradation';
     }
     return {
-        userImpact: userImpact,
-        systemImpact: systemImpact,
+        userImpact,
+        systemImpact,
         affectedPercentage: pattern.affectedUsers.length > 0 ? userPercentage : undefined,
     };
 }
@@ -440,7 +393,7 @@ function assessImpact(pattern) {
  * Generate recommendations based on pattern
  */
 function generateRecommendations(pattern) {
-    var recommendations = [];
+    const recommendations = [];
     switch (pattern.source) {
         case 'database':
             recommendations.push('Review database query performance and add indexes where needed');
@@ -465,7 +418,7 @@ function generateRecommendations(pattern) {
             recommendations.push('Review RPC handler implementation');
             recommendations.push('Check for race conditions in state management');
             if (pattern.affectedRpcs.length > 0) {
-                recommendations.push("Focus on fixing: ".concat(pattern.affectedRpcs.join(', ')));
+                recommendations.push(`Focus on fixing: ${pattern.affectedRpcs.join(', ')}`);
             }
             break;
         case 'external':
@@ -487,73 +440,51 @@ function generateRecommendations(pattern) {
  * Calculate error trend data
  */
 function calculateTrendData(errors, hours) {
-    var e_5, _a, e_6, _b;
-    var now = new Date();
-    var startTime = new Date(now.getTime() - hours * 60 * 60 * 1000);
-    var trendMap = new Map();
+    const now = new Date();
+    const startTime = new Date(now.getTime() - hours * 60 * 60 * 1000);
+    const trendMap = new Map();
     // Initialize all hours with 0
-    for (var i = 0; i < hours; i++) {
-        var hourTime = new Date(startTime.getTime() + i * 60 * 60 * 1000);
-        var key = hourTime.toISOString().substring(0, 13); // YYYY-MM-DDTHH
+    for (let i = 0; i < hours; i++) {
+        const hourTime = new Date(startTime.getTime() + i * 60 * 60 * 1000);
+        const key = hourTime.toISOString().substring(0, 13); // YYYY-MM-DDTHH
         trendMap.set(key, 0);
     }
-    try {
-        // Count errors per hour
-        for (var errors_2 = tslib_1.__values(errors), errors_2_1 = errors_2.next(); !errors_2_1.done; errors_2_1 = errors_2.next()) {
-            var error = errors_2_1.value;
-            var errorTime = new Date(error.timestamp);
-            if (errorTime >= startTime && errorTime <= now) {
-                var key = errorTime.toISOString().substring(0, 13);
-                trendMap.set(key, (trendMap.get(key) || 0) + 1);
-            }
+    // Count errors per hour
+    for (const error of errors) {
+        const errorTime = new Date(error.timestamp);
+        if (errorTime >= startTime && errorTime <= now) {
+            const key = errorTime.toISOString().substring(0, 13);
+            trendMap.set(key, (trendMap.get(key) || 0) + 1);
         }
-    }
-    catch (e_5_1) { e_5 = { error: e_5_1 }; }
-    finally {
-        try {
-            if (errors_2_1 && !errors_2_1.done && (_a = errors_2.return)) _a.call(errors_2);
-        }
-        finally { if (e_5) throw e_5.error; }
     }
     // Convert to array
-    var trends = [];
-    try {
-        for (var trendMap_1 = tslib_1.__values(trendMap), trendMap_1_1 = trendMap_1.next(); !trendMap_1_1.done; trendMap_1_1 = trendMap_1.next()) {
-            var _c = tslib_1.__read(trendMap_1_1.value, 2), timestamp = _c[0], count = _c[1];
-            trends.push({
-                timestamp: timestamp + ':00:00Z',
-                count: count,
-            });
-        }
+    const trends = [];
+    for (const [timestamp, count] of trendMap) {
+        trends.push({
+            timestamp: timestamp + ':00:00Z',
+            count,
+        });
     }
-    catch (e_6_1) { e_6 = { error: e_6_1 }; }
-    finally {
-        try {
-            if (trendMap_1_1 && !trendMap_1_1.done && (_b = trendMap_1.return)) _b.call(trendMap_1);
-        }
-        finally { if (e_6) throw e_6.error; }
-    }
-    return trends.sort(function (a, b) { return a.timestamp.localeCompare(b.timestamp); });
+    return trends.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 /**
  * Get error summary
  */
 function getErrorSummary(timeRange) {
-    var e_7, _a;
-    var startTime = new Date(timeRange.startTime);
-    var endTime = new Date(timeRange.endTime);
-    var errors = errorStore.getErrorsInRange(startTime, endTime);
-    var patterns = errorStore.getPatterns();
-    var insights = errorStore.getInsights();
+    const startTime = new Date(timeRange.startTime);
+    const endTime = new Date(timeRange.endTime);
+    const errors = errorStore.getErrorsInRange(startTime, endTime);
+    const patterns = errorStore.getPatterns();
+    const insights = errorStore.getInsights();
     // Calculate errors by severity
-    var errorsBySeverity = {
+    const errorsBySeverity = {
         critical: 0,
         error: 0,
         warning: 0,
         info: 0,
     };
     // Calculate errors by source
-    var errorsBySource = {
+    const errorsBySource = {
         nakama: 0,
         database: 0,
         cache: 0,
@@ -561,45 +492,35 @@ function getErrorSummary(timeRange) {
         validation: 0,
         unknown: 0,
     };
-    try {
-        for (var errors_3 = tslib_1.__values(errors), errors_3_1 = errors_3.next(); !errors_3_1.done; errors_3_1 = errors_3.next()) {
-            var error = errors_3_1.value;
-            errorsBySeverity[error.severity]++;
-            errorsBySource[error.source]++;
-        }
-    }
-    catch (e_7_1) { e_7 = { error: e_7_1 }; }
-    finally {
-        try {
-            if (errors_3_1 && !errors_3_1.done && (_a = errors_3.return)) _a.call(errors_3);
-        }
-        finally { if (e_7) throw e_7.error; }
+    for (const error of errors) {
+        errorsBySeverity[error.severity]++;
+        errorsBySource[error.source]++;
     }
     // Sort patterns by count
-    var topPatterns = tslib_1.__spreadArray([], tslib_1.__read(patterns), false).sort(function (a, b) { return b.count - a.count; }).slice(0, 10);
+    const topPatterns = [...patterns].sort((a, b) => b.count - a.count).slice(0, 10);
     // Recent insights
-    var recentInsights = insights.slice(0, 5);
+    const recentInsights = insights.slice(0, 5);
     // Calculate trend (last 24 hours)
-    var hours = Math.min(24, Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)));
-    var errorTrend = calculateTrendData(errors, hours);
+    const hours = Math.min(24, Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)));
+    const errorTrend = calculateTrendData(errors, hours);
     return {
         totalErrors: errors.length,
-        errorsBySeverity: errorsBySeverity,
-        errorsBySource: errorsBySource,
-        topPatterns: topPatterns,
-        recentInsights: recentInsights,
-        errorTrend: errorTrend,
-        timeRange: timeRange,
+        errorsBySeverity,
+        errorsBySource,
+        topPatterns,
+        recentInsights,
+        errorTrend,
+        timeRange,
     };
 }
 /**
  * Get dashboard data
  */
 function getDashboardData() {
-    var now = new Date();
-    var hours = config_1.config.errorInsights.insightWindowHours;
-    var startTime = new Date(now.getTime() - hours * 60 * 60 * 1000);
-    var timeRange = {
+    const now = new Date();
+    const hours = config_1.config.errorInsights.insightWindowHours;
+    const startTime = new Date(now.getTime() - hours * 60 * 60 * 1000);
+    const timeRange = {
         startTime: startTime.toISOString(),
         endTime: now.toISOString(),
     };
@@ -615,84 +536,49 @@ function getDashboardData() {
  * Process errors and update patterns/insights
  */
 function processErrors() {
-    var e_8, _a, e_9, _b;
     if (!config_1.config.errorInsights.enabled) {
         return;
     }
-    var now = new Date();
-    var windowMs = config_1.config.errorInsights.aggregationWindowMinutes * 60 * 1000;
-    var startTime = new Date(now.getTime() - windowMs);
+    const now = new Date();
+    const windowMs = config_1.config.errorInsights.aggregationWindowMinutes * 60 * 1000;
+    const startTime = new Date(now.getTime() - windowMs);
     // Get errors in current window
-    var recentErrors = errorStore.getErrorsInRange(startTime, now);
+    const recentErrors = errorStore.getErrorsInRange(startTime, now);
     if (recentErrors.length === 0) {
         return;
     }
     // Analyze patterns
-    var patterns = analyzePatterns(recentErrors);
-    var _loop_1 = function (pattern) {
-        var e_10, _c, e_11, _d;
-        var existingPatterns = errorStore.getPatterns();
-        var existing = existingPatterns.find(function (p) { return p.signature === pattern.signature; });
+    const patterns = analyzePatterns(recentErrors);
+    // Update patterns in store
+    for (const pattern of patterns) {
+        const existingPatterns = errorStore.getPatterns();
+        const existing = existingPatterns.find((p) => p.signature === pattern.signature);
         if (existing) {
             // Merge with existing
             existing.count += pattern.count;
             existing.lastSeen = pattern.lastSeen;
-            try {
-                for (var _e = (e_10 = void 0, tslib_1.__values(pattern.affectedRpcs)), _f = _e.next(); !_f.done; _f = _e.next()) {
-                    var rpc = _f.value;
-                    if (!existing.affectedRpcs.includes(rpc)) {
-                        existing.affectedRpcs.push(rpc);
-                    }
+            for (const rpc of pattern.affectedRpcs) {
+                if (!existing.affectedRpcs.includes(rpc)) {
+                    existing.affectedRpcs.push(rpc);
                 }
             }
-            catch (e_10_1) { e_10 = { error: e_10_1 }; }
-            finally {
-                try {
-                    if (_f && !_f.done && (_c = _e.return)) _c.call(_e);
+            for (const user of pattern.affectedUsers) {
+                if (!existing.affectedUsers.includes(user)) {
+                    existing.affectedUsers.push(user);
                 }
-                finally { if (e_10) throw e_10.error; }
-            }
-            try {
-                for (var _g = (e_11 = void 0, tslib_1.__values(pattern.affectedUsers)), _h = _g.next(); !_h.done; _h = _g.next()) {
-                    var user = _h.value;
-                    if (!existing.affectedUsers.includes(user)) {
-                        existing.affectedUsers.push(user);
-                    }
-                }
-            }
-            catch (e_11_1) { e_11 = { error: e_11_1 }; }
-            finally {
-                try {
-                    if (_h && !_h.done && (_d = _g.return)) _d.call(_g);
-                }
-                finally { if (e_11) throw e_11.error; }
             }
             errorStore.upsertPattern(existing);
         }
         else {
             errorStore.upsertPattern(pattern);
         }
-    };
-    try {
-        // Update patterns in store
-        for (var patterns_2 = tslib_1.__values(patterns), patterns_2_1 = patterns_2.next(); !patterns_2_1.done; patterns_2_1 = patterns_2.next()) {
-            var pattern = patterns_2_1.value;
-            _loop_1(pattern);
-        }
-    }
-    catch (e_8_1) { e_8 = { error: e_8_1 }; }
-    finally {
-        try {
-            if (patterns_2_1 && !patterns_2_1.done && (_a = patterns_2.return)) _a.call(patterns_2);
-        }
-        finally { if (e_8) throw e_8.error; }
     }
     // Generate insights
-    var newInsights = generateInsights(patterns);
-    var _loop_2 = function (insight) {
+    const newInsights = generateInsights(patterns);
+    for (const insight of newInsights) {
         // Check if similar insight already exists
-        var existingInsights = errorStore.getInsights();
-        var exists = existingInsights.some(function (i) { return i.patternId === insight.patternId; });
+        const existingInsights = errorStore.getInsights();
+        const exists = existingInsights.some((i) => i.patternId === insight.patternId);
         if (!exists) {
             errorStore.addInsight(insight);
             // Log new insight
@@ -704,19 +590,6 @@ function processErrors() {
                 operation: 'error_insight_generated',
             });
         }
-    };
-    try {
-        for (var newInsights_1 = tslib_1.__values(newInsights), newInsights_1_1 = newInsights_1.next(); !newInsights_1_1.done; newInsights_1_1 = newInsights_1.next()) {
-            var insight = newInsights_1_1.value;
-            _loop_2(insight);
-        }
-    }
-    catch (e_9_1) { e_9 = { error: e_9_1 }; }
-    finally {
-        try {
-            if (newInsights_1_1 && !newInsights_1_1.done && (_b = newInsights_1.return)) _b.call(newInsights_1);
-        }
-        finally { if (e_9) throw e_9.error; }
     }
     // Cleanup expired patterns
     errorStore.cleanupExpiredPatterns();
@@ -728,7 +601,7 @@ function collectError(error, context) {
     if (!config_1.config.errorInsights.enabled) {
         return;
     }
-    var rawError = {
+    const rawError = {
         id: (0, crypto_1.randomUUID)(),
         timestamp: new Date().toISOString(),
         message: error.message,
@@ -752,7 +625,7 @@ function collectError(error, context) {
  * Determine severity from error
  */
 function determineSeverityFromError(error) {
-    var message = error.message.toLowerCase();
+    const message = error.message.toLowerCase();
     if (message.includes('fatal') || message.includes('crash')) {
         return 'critical';
     }
@@ -777,115 +650,93 @@ function registerErrorInsightRpcs(initializer) {
 /**
  * RPC: Get error dashboard data
  */
-function rpcGetErrorDashboard(ctx, logger, _nk, payload) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var validation, dashboardData;
-        return tslib_1.__generator(this, function (_a) {
-            logger.info('Error insights dashboard requested by user: %s', ctx.userId);
-            validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.health_check, payload, 'error_insights_dashboard');
-            if (!validation.success && payload) {
-                return [2 /*return*/, (0, validation_1.createValidationErrorResponse)('error_insights_dashboard', validation.error)];
-            }
-            dashboardData = getDashboardData();
-            return [2 /*return*/, JSON.stringify(dashboardData)];
-        });
-    });
+async function rpcGetErrorDashboard(ctx, logger, _nk, payload) {
+    logger.info('Error insights dashboard requested by user: %s', ctx.userId);
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.health_check, payload, 'error_insights_dashboard');
+    if (!validation.success && payload) {
+        return (0, validation_1.createValidationErrorResponse)('error_insights_dashboard', validation.error);
+    }
+    const dashboardData = getDashboardData();
+    return JSON.stringify(dashboardData);
 }
 /**
  * RPC: Get error summary
  */
-function rpcGetErrorSummary(ctx, logger, _nk, payload) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var timeRange, parsed, hours, hours, summary;
-        return tslib_1.__generator(this, function (_a) {
-            logger.info('Error insights summary requested by user: %s', ctx.userId);
-            try {
-                if (payload) {
-                    parsed = JSON.parse(payload);
-                    timeRange = {
-                        startTime: parsed.startTime || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-                        endTime: parsed.endTime || new Date().toISOString(),
-                    };
-                }
-                else {
-                    hours = config_1.config.errorInsights.insightWindowHours;
-                    timeRange = {
-                        startTime: new Date(Date.now() - hours * 60 * 60 * 1000).toISOString(),
-                        endTime: new Date().toISOString(),
-                    };
-                }
-            }
-            catch (_b) {
-                hours = config_1.config.errorInsights.insightWindowHours;
-                timeRange = {
-                    startTime: new Date(Date.now() - hours * 60 * 60 * 1000).toISOString(),
-                    endTime: new Date().toISOString(),
-                };
-            }
-            summary = getErrorSummary(timeRange);
-            return [2 /*return*/, JSON.stringify(summary)];
-        });
-    });
+async function rpcGetErrorSummary(ctx, logger, _nk, payload) {
+    logger.info('Error insights summary requested by user: %s', ctx.userId);
+    // Parse time range from payload if provided
+    let timeRange;
+    try {
+        if (payload) {
+            const parsed = JSON.parse(payload);
+            timeRange = {
+                startTime: parsed.startTime || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+                endTime: parsed.endTime || new Date().toISOString(),
+            };
+        }
+        else {
+            const hours = config_1.config.errorInsights.insightWindowHours;
+            timeRange = {
+                startTime: new Date(Date.now() - hours * 60 * 60 * 1000).toISOString(),
+                endTime: new Date().toISOString(),
+            };
+        }
+    }
+    catch {
+        const hours = config_1.config.errorInsights.insightWindowHours;
+        timeRange = {
+            startTime: new Date(Date.now() - hours * 60 * 60 * 1000).toISOString(),
+            endTime: new Date().toISOString(),
+        };
+    }
+    const summary = getErrorSummary(timeRange);
+    return JSON.stringify(summary);
 }
 /**
  * RPC: Get error patterns
  */
-function rpcGetErrorPatterns(ctx, logger, _nk, _payload) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var patterns, sorted, limit;
-        return tslib_1.__generator(this, function (_a) {
-            logger.info('Error insights patterns requested by user: %s', ctx.userId);
-            patterns = errorStore.getPatterns();
-            sorted = tslib_1.__spreadArray([], tslib_1.__read(patterns), false).sort(function (a, b) { return b.count - a.count; });
-            limit = config_1.config.errorInsights.maxPatterns;
-            return [2 /*return*/, JSON.stringify(sorted.slice(0, limit))];
-        });
-    });
+async function rpcGetErrorPatterns(ctx, logger, _nk, _payload) {
+    logger.info('Error insights patterns requested by user: %s', ctx.userId);
+    const patterns = errorStore.getPatterns();
+    // Sort by count descending
+    const sorted = [...patterns].sort((a, b) => b.count - a.count);
+    // Limit results
+    const limit = config_1.config.errorInsights.maxPatterns;
+    return JSON.stringify(sorted.slice(0, limit));
 }
 /**
  * RPC: Get pipeline statistics
  */
-function rpcGetErrorStats(ctx, logger, _nk, _payload) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var stats;
-        return tslib_1.__generator(this, function (_a) {
-            logger.info('Error insights stats requested by user: %s', ctx.userId);
-            stats = errorStore.getStats();
-            return [2 /*return*/, JSON.stringify(stats)];
-        });
-    });
+async function rpcGetErrorStats(ctx, logger, _nk, _payload) {
+    logger.info('Error insights stats requested by user: %s', ctx.userId);
+    const stats = errorStore.getStats();
+    return JSON.stringify(stats);
 }
 /**
  * RPC: Dismiss an insight
  */
-function rpcDismissInsight(ctx, logger, _nk, payload) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var insightId_1, insights, index;
-        return tslib_1.__generator(this, function (_a) {
-            logger.info('Error insight dismiss requested by user: %s', ctx.userId);
-            if (!payload) {
-                return [2 /*return*/, JSON.stringify({ success: false, error: 'Missing insight ID' })];
-            }
-            try {
-                insightId_1 = JSON.parse(payload).insightId;
-                if (!insightId_1) {
-                    return [2 /*return*/, JSON.stringify({ success: false, error: 'Missing insight ID' })];
-                }
-                insights = errorStore.getInsights();
-                index = insights.findIndex(function (i) { return i.id === insightId_1; });
-                if (index === -1) {
-                    return [2 /*return*/, JSON.stringify({ success: false, error: 'Insight not found' })];
-                }
-                // Remove the insight
-                insights.splice(index, 1);
-                return [2 /*return*/, JSON.stringify({ success: true })];
-            }
-            catch (_b) {
-                return [2 /*return*/, JSON.stringify({ success: false, error: 'Invalid payload' })];
-            }
-            return [2 /*return*/];
-        });
-    });
+async function rpcDismissInsight(ctx, logger, _nk, payload) {
+    logger.info('Error insight dismiss requested by user: %s', ctx.userId);
+    if (!payload) {
+        return JSON.stringify({ success: false, error: 'Missing insight ID' });
+    }
+    try {
+        const { insightId } = JSON.parse(payload);
+        if (!insightId) {
+            return JSON.stringify({ success: false, error: 'Missing insight ID' });
+        }
+        const insights = errorStore.getInsights();
+        const index = insights.findIndex((i) => i.id === insightId);
+        if (index === -1) {
+            return JSON.stringify({ success: false, error: 'Insight not found' });
+        }
+        // Remove the insight
+        insights.splice(index, 1);
+        return JSON.stringify({ success: true });
+    }
+    catch {
+        return JSON.stringify({ success: false, error: 'Invalid payload' });
+    }
 }
 /**
  * Initialize the error insight pipeline
