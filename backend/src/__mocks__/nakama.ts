@@ -102,7 +102,7 @@ export const createMockNakama = (): Runtime.Nakama => {
       }
       return [];
     }
-    if (query.includes('player_loadout') && query.includes('SELECT')) {
+    if (query.includes('loadout') && query.includes('SELECT')) {
       if (testStorage.has(inventoryKey)) {
         try {
           const inventoryValue = testStorage.get(inventoryKey);
@@ -131,7 +131,7 @@ export const createMockNakama = (): Runtime.Nakama => {
       }];
     }
     // Handle INSERT ... ON CONFLICT UPDATE (upsert) - check for ON CONFLICT first
-    if (query.includes('player_loadout') && query.includes('ON CONFLICT') && query.includes('INSERT') && params) {
+    if (query.includes('loadout') && query.includes('ON CONFLICT') && query.includes('INSERT') && params) {
       const paramsArray = Array.isArray(params) ? params : [params];
       if (testStorage.has(inventoryKey)) {
         try {
@@ -160,7 +160,7 @@ export const createMockNakama = (): Runtime.Nakama => {
       }
       return [];
     }
-    if (query.includes('player_loadout') && query.includes('INSERT') && !query.includes('ON CONFLICT') && params) {
+    if (query.includes('loadout') && query.includes('INSERT') && !query.includes('ON CONFLICT') && params) {
       // Handle INSERT for new loadout (without ON CONFLICT)
       const paramsArray = Array.isArray(params) ? params : [params];
       const userId = paramsArray[1];
@@ -183,7 +183,7 @@ export const createMockNakama = (): Runtime.Nakama => {
       }
       return [];
     }
-    if (query.includes('player_loadout') && (query.includes('UPDATE') || query.includes('ON CONFLICT')) && params) {
+    if (query.includes('loadout') && (query.includes('UPDATE') || query.includes('ON CONFLICT')) && params) {
       // Handle UPDATE for existing loadout (including INSERT ... ON CONFLICT UPDATE)
       const paramsArray = Array.isArray(params) ? params : [params];
       if (testStorage.has(inventoryKey)) {
@@ -259,7 +259,7 @@ export const createMockNakama = (): Runtime.Nakama => {
     if (query.includes('inventory_items')) {
       return [];
     }
-    if (query.includes('player_loadout')) {
+    if (query.includes('loadout')) {
       return [];
     }
     return [];

@@ -74,12 +74,12 @@ describe('matchmaker', () => {
 
   beforeEach(() => {
     mockLogger = createMockLogger();
-    mockCtx = createMockContext();
+    mockCtx = createMockContext({ userId: 'test-user-123' });
     mockNk = createMockNakama();
     jest.clearAllMocks();
   });
 
-  xdescribe('rpcCreateMatch', () => {
+  describe('rpcCreateMatch', () => {
     it('should create a match with target opponent', () => {
       const playerStats = createPlayerStats();
       const targetPlayerStats = createPlayerStats({
@@ -248,7 +248,7 @@ describe('matchmaker', () => {
       expect(parsed.error).toBe('Player stats not found');
     });
 
-    it.skip('should return validation error for invalid payload', () => {
+    it('should return validation error for invalid payload', () => {
       const payload = JSON.stringify({ match_type: 123 });
       const result = rpcCreateMatch(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
@@ -256,7 +256,7 @@ describe('matchmaker', () => {
     });
   });
 
-  xdescribe('rpcAcceptMatch', () => {
+  describe('rpcAcceptMatch', () => {
     it('should accept pending match successfully', () => {
       const match = createMatch();
       const playerStats = {
@@ -346,7 +346,7 @@ describe('matchmaker', () => {
       expect(parsed.error).toBe('Player stats not found');
     });
 
-    it.skip('should return validation error for invalid payload', () => {
+    it('should return validation error for invalid payload', () => {
       const payload = JSON.stringify({ match_id: 123 });
       const result = rpcAcceptMatch(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
@@ -354,7 +354,7 @@ describe('matchmaker', () => {
     });
   });
 
-  xdescribe('rpcListMatches', () => {
+  describe('rpcListMatches', () => {
     it('should list pending matches excluding own', () => {
       const playerStats = {
         level: 5,
@@ -493,7 +493,7 @@ describe('matchmaker', () => {
       expect(parsed.error).toBe('Player stats not found');
     });
 
-    it.skip('should return validation error for invalid payload', () => {
+    it('should return validation error for invalid payload', () => {
       const payload = JSON.stringify({ limit: -1 });
       const result = rpcListMatches(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
@@ -589,7 +589,7 @@ describe('matchmaker', () => {
     });
   });
 
-  xdescribe('rpcCompleteMatch', () => {
+  describe('rpcCompleteMatch', () => {
     const createActiveMatch = (overrides = {}): PvPMatch => ({
       match_id: 'match_completion_test',
       creator_id: 'test-user-123',
@@ -807,7 +807,7 @@ describe('matchmaker', () => {
       expect(parsed.error).toBe('Winner and loser must be different');
     });
 
-    it.skip('should return validation error for invalid payload', () => {
+    it('should return validation error for invalid payload', () => {
       const payload = JSON.stringify({ match_id: 123 });
 
       const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
@@ -938,7 +938,7 @@ describe('matchmaker', () => {
       expect(recordPlayerActivity).toHaveBeenCalledWith(mockNk, 'opponent-user');
     });
 
-    it.skip('should record match result for anti-cheat analysis', () => {
+    it('should record match result for anti-cheat analysis', () => {
       const match = createActiveMatch();
 
       mockNk.storageRead = jest.fn((objects) => {
@@ -959,7 +959,7 @@ describe('matchmaker', () => {
       expect(recordMatchResult).toHaveBeenCalledTimes(2);
     });
 
-    it.skip('should log audit event on match completion', () => {
+    it('should log audit event on match completion', () => {
       const match = createActiveMatch();
 
       mockNk.storageRead = jest.fn((objects) => {
