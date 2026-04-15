@@ -57,6 +57,10 @@ export const createMockNakama = (): Runtime.Nakama => {
         })
         .filter(Boolean);
     }),
+    dbQuery: jest.fn((_query: string, _params?: unknown[]) => {
+      // Default empty result for dbQuery
+      return [];
+    }),
     notificationSend: jest.fn(),
     storageWrite: jest.fn(
       (objects: { collection: string; key: string; userId?: string; value: string }[]) => {
