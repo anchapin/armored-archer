@@ -230,9 +230,42 @@ func _on_turn_changed(is_my_turn: bool) -> void:
 		_refresh_match_state()
 
 func _on_pvp_combat_ended(winner: String) -> void:
+	# For vertical slice, show match results screen instead of simple dialog
+	# Get match result data from CombatManager
+	var result_data: Dictionary = {}
+
+	if combat_manager:
+		# Build comprehensive result data
+		var is_victory: bool = winner == NetworkManager.user_id
+		var my_user_id: String = NetworkManager.user_id
+
+		result_data = {
+			"is_victory": is_victory,
+			"match_type": current_match.get("match_type", "ranked") if not current_match.is_empty() else "ranked",
+			"is_punch_up": current_match.get("is_punch_up", false) if not current_match.is_empty() else false,
+			"xp_gained": 150 if is_victory else 50,  # Base XP reward
+			"old_rank": 0,  # Will be filled by MatchmakerManager response
+			"new_rank": 0,
+			"rank_delta": 0,
+			"season_position": 0,
+			"season_delta": 0,
+			"match_duration": 120.0,  # 2 minutes default
+			"rewards": []
+		}
+
+		# Load and show match results scene
+		var match_results_scene = load("res://scenes/ui/pvp/match_results.tscn")
+		if match_results_scene:
+			match_results_scene.show_match_results(result_data)
+			get_tree().change_scene_to_packed(match_results_scene)
+		else:
+			# Fallback to dialog if scene not available
+			_show_fallback_dialog(is_victory)
+
+func _show_fallback_dialog(is_victory: bool) -> void:
 	var dialog: AcceptDialog = AcceptDialog.new()
 
-	if winner == NetworkManager.user_id:
+	if is_victory:
 		dialog.title = "Victory!"
 		dialog.dialog_text = "You won the match!"
 	else:
