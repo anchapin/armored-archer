@@ -45,6 +45,7 @@ import {
   registerRpcAcceptMatch,
   registerRpcGetPlayerRank,
   registerRpcCompleteMatch,
+  registerRpcGetMatchHistory,
 } from './modules/matchmaker';
 import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
 import {
@@ -429,6 +430,7 @@ const InitModule: InitModule = function (
     registerRpcAcceptMatch(initializer);
     registerRpcGetPlayerRank(initializer);
     registerRpcCompleteMatch(initializer);
+    registerRpcGetMatchHistory(initializer);
     registerRpcSubmitCombatAction(initializer);
     registerRpcGetMatchState(initializer);
     registerRpcPlayerDisconnect(initializer);

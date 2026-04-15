@@ -1211,3 +1211,148 @@ function updatePlayerXP(nk: Runtime.Nakama, userId: string, xpGained: number): v
     },
   ]);
 }
+
+/**
+ * Request payload for getting match history.
+ *
+ * @property match_type - Optional filter by match type
+ * @property limit - Maximum number of matches to return
+ * @property offset - Offset for pagination
+ */
+export interface GetMatchHistoryRequest {
+  match_type?: 'ranked' | 'casual';
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * Registers get match history RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcGetMatchHistory(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_match_history', rpcGetMatchHistory);
+}
+
+/**
+ * Retrieves a player's match history with optional filtering.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string containing optional filter parameters
+ * @returns JSON string with match history
+ *
+ * @example
+ * // Request payload
+ * { "match_type": "ranked", "limit": 10, "offset": 0 }
+ *
+ * // Response
+ * {
+ *   "success": true,
+ *   "matches": [ ... ],
+ *   "total": 25,
+ *   "stats": { "wins": 15, "losses": 10, "win_rate": 0.6 }
+ * }
+ */
+export function rpcGetMatchHistory(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get match history called for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_match_history, payload, 'get_match_history');
+  if (!validation.success) {
+    return createValidationErrorResponse('get_match_history', validation.error);
+  }
+
+  const request = validation.data || {};
+  const limit = request.limit || 20;
+  const offset = request.offset || 0;
+
+  const objects = nk.storageRead([
+    {
+      collection: 'player_stats',
+      key: ctx.userId,
+      userId: ctx.userId,
+    },
+  ]);
+
+  if (objects.length === 0) {
+    return JSON.stringify({
+      error: 'Player stats not found',
+    });
+  }
+
+  const matches = nk.storageList(ctx.userId, 'pvp_matches', limit, '', '');
+
+  const filteredMatches: Array<{
+    match_id: string;
+    match_type: 'ranked' | 'casual';
+    is_punch_up: boolean;
+    status: 'completed';
+    created_at: number;
+    updated_at: number;
+    winner?: string;
+    creator_id: string;
+    opponent_id: string;
+    creator_rank: number;
+    opponent_rank: number;
+    is_victory: boolean;
+  }> = [];
+
+  for (const object of matches) {
+    const matchResult = safeParse<PvPMatch>(object.value, null, logger, 'rpcGetMatchHistory:match');
+    if (!matchResult.success || !matchResult.data) {
+      logger.warn('Skipping corrupted match record for user: %s', ctx.userId);
+      continue;
+    }
+    const match = matchResult.data;
+
+    if (match.status !== 'completed') {
+      continue;
+    }
+
+    if (request.match_type && match.match_type !== request.match_type) {
+      continue;
+    }
+
+    const isVictory = match.winner === ctx.userId;
+
+    filteredMatches.push({
+      match_id: match.match_id,
+      match_type: match.match_type,
+      is_punch_up: match.is_punch_up,
+      status: match.status,
+      created_at: match.created_at,
+      updated_at: match.updated_at,
+      winner: match.winner,
+      creator_id: match.creator_id,
+      opponent_id: match.opponent_id,
+      creator_rank: match.creator_rank,
+      opponent_rank: match.opponent_rank,
+      is_victory: isVictory,
+    });
+  }
+
+  filteredMatches.sort((a, b) => b.updated_at - a.updated_at);
+
+  const paginatedMatches = filteredMatches.slice(offset, offset + limit);
+
+  const wins = filteredMatches.filter((m) => m.is_victory).length;
+  const losses = filteredMatches.filter((m) => !m.is_victory).length;
+  const winRate = wins + losses > 0 ? wins / (wins + losses) : 0;
+
+  return JSON.stringify({
+    success: true,
+    matches: paginatedMatches,
+    total: filteredMatches.length,
+    stats: {
+      wins: wins,
+      losses: losses,
+      win_rate: Math.round(winRate * 100) / 100,
+    },
+  });
+}

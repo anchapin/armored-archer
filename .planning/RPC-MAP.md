@@ -57,6 +57,7 @@ This document provides a complete mapping of all RPC endpoints in the Armored Ar
 | `armored_archer/create_match` | `create_match` | MatchmakerManager | `matchmaker.ts:rpcCreateMatch` | Nakama storage + Redis | P1 | 50/1m |
 | `armored_archer/accept_match` | `accept_match` | MatchmakerManager | `matchmaker.ts:rpcAcceptMatch` | Nakama storage + Redis | P1 | 50/1m |
 | `armored_archer/get_player_rank` | `get_player_rank` | SeasonManager | `matchmaker.ts:rpcGetPlayerRank` | Nakama leaderboard | P1 | 100/1m |
+| `armored_archer/get_match_history` | `get_match_history` | MatchmakerManager | `matchmaker.ts:rpcGetMatchHistory` | Nakama storage | P1 | 100/1m |
 | `armored_archer/complete_match` | `complete_match` | MatchmakingManager | `matchmaker.ts:rpcCompleteMatch` | Nakama storage + leaderboard | P1 | 50/1m |
 
 **Purpose:** Asynchronous turn-based PvP matchmaking
