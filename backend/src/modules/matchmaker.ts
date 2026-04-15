@@ -15,6 +15,7 @@ import {
   getLeaderboardEntry,
   recordPlayerActivity,
   applyRankDecay,
+  SeasonInfo,
 } from './season_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -679,6 +680,19 @@ export function registerRpcCompleteMatch(initializer: Runtime.Initializer): void
 }
 
 /**
+ * Match result reward data structure.
+ *
+ * @property name - Name of the reward
+ * @property quantity - Quantity of the reward
+ * @property type - Type of reward (coin, gem, etc.)
+ */
+export interface MatchReward {
+  name: string;
+  quantity: number;
+  type: 'coin' | 'gem' | 'xp';
+}
+
+/**
  * Completes a PvP match and updates player ranks using Elo rating system.
  *
  * @param ctx - Nakama runtime context
@@ -695,8 +709,9 @@ export function registerRpcCompleteMatch(initializer: Runtime.Initializer): void
  * {
  *   "success": true,
  *   "match": { ... },
- *   "winner": { "user_id": "user_1", "old_rank": 1200, "new_rank": 1220, "rank_change": 20 },
- *   "loser": { "user_id": "user_2", "old_rank": 1200, "new_rank": 1180, "rank_change": -20 }
+ *   "winner": { "user_id": "user_1", "old_rank": 1200, "new_rank": 1220, "rank_change": 20, "xp_gained": 150, "old_season_position": 42, "new_season_position": 40, "rewards": [...] },
+ *   "loser": { "user_id": "user_2", "old_rank": 1200, "new_rank": 1180, "rank_change": -20, "xp_gained": 50, "old_season_position": 43, "new_season_position": 44, "rewards": [...] },
+ *   "is_punch_up": false
  * }
  */
 export function rpcCompleteMatch(
@@ -812,6 +827,66 @@ function validateMatchParticipants(
 }
 
 /**
+ * Calculate old rank for a player from match data
+ */
+function calculateOldRank(match: PvPMatch, userId: string, matchType: string): number {
+  if (matchType !== 'ranked') {
+    return 0;
+  }
+  return userId === match.creator_id ? match.creator_rank : match.opponent_rank;
+}
+
+/**
+ * Process ranked match updates (Elo, records, anti-cheat)
+ */
+function processRankedMatchUpdates(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  winnerId: string,
+  loserId: string,
+  matchId: string,
+  currentSeason: SeasonInfo,
+  isPunchUp: boolean
+): {
+  winnerNewRank: number;
+  loserNewRank: number;
+  winnerRankChange: number;
+  loserRankChange: number;
+} {
+  // Get current Elo ratings from leaderboard
+  const winnerEntry = getLeaderboardEntry(nk, winnerId, currentSeason.season_id);
+  const loserEntry = getLeaderboardEntry(nk, loserId, currentSeason.season_id);
+
+  const winnerOldElo = winnerEntry ? winnerEntry.score : 1000;
+  const loserOldElo = loserEntry ? loserEntry.score : 1000;
+
+  // Apply Elo updates
+  const { winnerNewElo, loserNewElo } = applyEloUpdates(
+    nk,
+    ctx,
+    currentSeason,
+    winnerId,
+    loserId,
+    winnerOldElo,
+    loserOldElo,
+    isPunchUp,
+    winnerEntry,
+    loserEntry
+  );
+
+  // Record match results for anti-cheat analysis
+  recordMatchResult(winnerId, matchId, loserId, 'win', true, winnerOldElo, winnerNewElo);
+  recordMatchResult(loserId, matchId, winnerId, 'loss', true, loserOldElo, loserNewElo);
+
+  return {
+    winnerNewRank: winnerNewElo,
+    loserNewRank: loserNewElo,
+    winnerRankChange: winnerNewElo - winnerOldElo,
+    loserRankChange: loserNewElo - loserOldElo,
+  };
+}
+
+/**
  * Process the match result, calculate ranks, and update storage
  */
 function processMatchResult(
@@ -822,60 +897,28 @@ function processMatchResult(
   match: PvPMatch,
   isPunchUp: boolean
 ): string {
-  // Only process rank changes for ranked matches
+  // Initialize ranks for ranked matches
   let winnerNewRank = match.creator_rank;
   let loserNewRank = match.opponent_rank;
   let winnerRankChange = 0;
   let loserRankChange = 0;
 
+  // Process ranked match Elo and record updates
   if (match.match_type === 'ranked') {
     const currentSeason = getCurrentSeason();
-
-    // Get current Elo ratings from leaderboard
-    const winnerEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
-    const loserEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
-
-    const winnerOldElo = winnerEntry ? winnerEntry.score : 1000;
-    const loserOldElo = loserEntry ? loserEntry.score : 1000;
-
-    // Apply Elo updates
-    const { winnerNewElo, loserNewElo } = applyEloUpdates(
+    const rankedUpdates = processRankedMatchUpdates(
       nk,
       ctx,
+      request.winner_id,
+      request.loser_id,
+      request.match_id,
       currentSeason,
-      request.winner_id,
-      request.loser_id,
-      winnerOldElo,
-      loserOldElo,
-      isPunchUp,
-      winnerEntry,
-      loserEntry
+      isPunchUp
     );
-
-    winnerNewRank = winnerNewElo;
-    loserNewRank = loserNewElo;
-    winnerRankChange = winnerNewElo - winnerOldElo;
-    loserRankChange = loserNewElo - loserOldElo;
-
-    // Record match results for anti-cheat analysis
-    recordMatchResult(
-      request.winner_id,
-      request.match_id,
-      request.loser_id,
-      'win',
-      true,
-      winnerOldElo,
-      winnerNewElo
-    );
-    recordMatchResult(
-      request.loser_id,
-      request.match_id,
-      request.winner_id,
-      'loss',
-      true,
-      loserOldElo,
-      loserNewElo
-    );
+    winnerNewRank = rankedUpdates.winnerNewRank;
+    loserNewRank = rankedUpdates.loserNewRank;
+    winnerRankChange = rankedUpdates.winnerRankChange;
+    loserRankChange = rankedUpdates.loserRankChange;
   }
 
   // Record player activity for rank decay tracking
@@ -894,6 +937,30 @@ function processMatchResult(
 
   winnerNewRank = winnerDecayedRank;
   loserNewRank = loserDecayedRank;
+
+  // Get season information for position tracking
+  const currentSeason = getCurrentSeason();
+  const winnerOldSeasonEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
+  const loserOldSeasonEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
+
+  const winnerOldSeasonPosition = winnerOldSeasonEntry ? winnerOldSeasonEntry.rank : 0;
+  const loserOldSeasonPosition = loserOldSeasonEntry ? loserOldSeasonEntry.rank : 0;
+
+  // Calculate XP gains
+  const winnerXPGained = calculateXPGain(true, isPunchUp);
+  const loserXPGained = calculateXPGain(false, isPunchUp);
+
+  // Calculate per-match rewards
+  const winnerRewards = calculateMatchRewards(true, isPunchUp, winnerXPGained);
+  const loserRewards = calculateMatchRewards(false, isPunchUp, loserXPGained);
+
+  // Award rewards to players (coins, gems)
+  awardMatchRewards(nk, request.winner_id, winnerRewards);
+  awardMatchRewards(nk, request.loser_id, loserRewards);
+
+  // Update player XP
+  updatePlayerXP(nk, request.winner_id, winnerXPGained);
+  updatePlayerXP(nk, request.loser_id, loserXPGained);
 
   // Update match status to completed
   const now = Date.now();
@@ -939,30 +1006,47 @@ function processMatchResult(
     winnerRankChange
   );
 
+  // Get new season positions after rank updates
+  const winnerNewSeasonEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
+  const loserNewSeasonEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
+
+  const winnerNewSeasonPosition = winnerNewSeasonEntry ? winnerNewSeasonEntry.rank : 0;
+  const loserNewSeasonPosition = loserNewSeasonEntry ? loserNewSeasonEntry.rank : 0;
+
+  // Calculate season position delta (negative means moved up in rank)
+  const winnerSeasonDelta =
+    winnerOldSeasonPosition > 0 && winnerNewSeasonPosition > 0
+      ? winnerNewSeasonPosition - winnerOldSeasonPosition
+      : 0;
+  const loserSeasonDelta =
+    loserOldSeasonPosition > 0 && loserNewSeasonPosition > 0
+      ? loserNewSeasonPosition - loserOldSeasonPosition
+      : 0;
+
   return JSON.stringify({
     success: true,
     match: match,
     winner: {
       user_id: request.winner_id,
-      old_rank:
-        match.match_type === 'ranked'
-          ? request.winner_id === match.creator_id
-            ? match.creator_rank
-            : match.opponent_rank
-          : 0,
+      old_rank: calculateOldRank(match, request.winner_id, match.match_type),
       new_rank: winnerNewRank,
       rank_change: winnerRankChange,
+      xp_gained: winnerXPGained,
+      old_season_position: winnerOldSeasonPosition,
+      new_season_position: winnerNewSeasonPosition,
+      season_position_delta: winnerSeasonDelta,
+      rewards: winnerRewards,
     },
     loser: {
       user_id: request.loser_id,
-      old_rank:
-        match.match_type === 'ranked'
-          ? request.loser_id === match.creator_id
-            ? match.creator_rank
-            : match.opponent_rank
-          : 0,
+      old_rank: calculateOldRank(match, request.loser_id, match.match_type),
       new_rank: loserNewRank,
       rank_change: loserRankChange,
+      xp_gained: loserXPGained,
+      old_season_position: loserOldSeasonPosition,
+      new_season_position: loserNewSeasonPosition,
+      season_position_delta: loserSeasonDelta,
+      rewards: loserRewards,
     },
     is_punch_up: isPunchUp,
   });
@@ -995,4 +1079,135 @@ function applyMatchRankDecay(
   }
 
   return { winnerNewRank: winnerDecayedRank, loserNewRank: loserDecayedRank };
+}
+
+/**
+ * Calculates XP gain based on match result and type.
+ *
+ * @param isWinner - Whether the player won the match
+ * @param isPunchUp - Whether this was a punch-up match
+ * @returns XP gained
+ */
+function calculateXPGain(isWinner: boolean, isPunchUp: boolean): number {
+  const baseXP = isWinner ? 100 : 25;
+  const punchUpMultiplier = isPunchUp ? 1.5 : 1.0;
+  return Math.round(baseXP * punchUpMultiplier);
+}
+
+/**
+ * Calculates per-match rewards based on result and type.
+ *
+ * @param isWinner - Whether the player won the match
+ * @param isPunchUp - Whether this was a punch-up match
+ * @param xpGained - XP gained in the match
+ * @returns Array of match rewards
+ */
+function calculateMatchRewards(
+  isWinner: boolean,
+  isPunchUp: boolean,
+  xpGained: number
+): MatchReward[] {
+  const rewards: MatchReward[] = [];
+
+  // XP is always awarded as a reward
+  rewards.push({
+    name: 'XP',
+    quantity: xpGained,
+    type: 'xp',
+  });
+
+  // Coins awarded based on result
+  const coins = isWinner ? 50 : 10;
+  rewards.push({
+    name: 'Coins',
+    quantity: coins,
+    type: 'coin',
+  });
+
+  // Bonus gems for punch-up wins
+  if (isWinner && isPunchUp) {
+    rewards.push({
+      name: 'Gems',
+      quantity: 5,
+      type: 'gem',
+    });
+  }
+
+  return rewards;
+}
+
+/**
+ * Awards match rewards to a player.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player to award rewards to
+ * @param rewards - Array of rewards to award
+ */
+function awardMatchRewards(nk: Runtime.Nakama, userId: string, rewards: MatchReward[]): void {
+  const walletChanges: { [key: string]: number } = {};
+
+  for (const reward of rewards) {
+    if (reward.type === 'coin') {
+      walletChanges['coins'] = (walletChanges['coins'] || 0) + reward.quantity;
+    } else if (reward.type === 'gem') {
+      walletChanges['gems'] = (walletChanges['gems'] || 0) + reward.quantity;
+    }
+    // XP is handled separately
+  }
+
+  if (Object.keys(walletChanges).length > 0) {
+    nk.walletUpdate(userId, walletChanges);
+  }
+}
+
+/**
+ * Updates player XP in storage.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param xpGained - XP to add
+ */
+function updatePlayerXP(nk: Runtime.Nakama, userId: string, xpGained: number): void {
+  const objects = nk.storageRead([
+    {
+      collection: 'player_stats',
+      key: userId,
+      userId: userId,
+    },
+  ]);
+
+  if (objects.length === 0) {
+    return;
+  }
+
+  const playerStatsResult = safeParse<PlayerStats>(
+    objects[0].value,
+    'updatePlayerXP',
+    undefined,
+    'updatePlayerXP'
+  );
+  if (!playerStatsResult.success || !playerStatsResult.data) {
+    return;
+  }
+
+  const playerStats = playerStatsResult.data;
+  playerStats.xp += xpGained;
+
+  // Check for level up (simple formula: level * 100 XP required for next level)
+  const xpForNextLevel = playerStats.level * 100;
+  if (playerStats.xp >= xpForNextLevel) {
+    playerStats.level += 1;
+    playerStats.xp -= xpForNextLevel;
+    // Award ability point on level up
+    playerStats.ability_points = (playerStats.ability_points || 0) + 1;
+  }
+
+  nk.storageWrite([
+    {
+      collection: 'player_stats',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(playerStats),
+    },
+  ]);
 }

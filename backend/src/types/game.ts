@@ -3,11 +3,13 @@
  *
  * @property level - Current player level
  * @property xp - Current experience points
+ * @property ability_points - Available ability points for stat upgrades
  * @property stats - Player combat statistics
  */
 export interface PlayerStats {
   level: number;
   xp: number;
+  ability_points?: number;
   stats: {
     attack: number;
     defense: number;
