@@ -255,8 +255,8 @@ Allow players to spend ability points earned from leveling up to boost their bas
 Create a script or manual checklist to validate the complete vertical slice works end-to-end.
 
 **Acceptance Criteria:**
-- [ ] Automated test script can run locally
-- [ ] Script tests: auth → load stage → complete stage → receive loot → equip gear
+- [x] Automated test script can run locally
+- [x] Script tests: auth → load stage → complete stage → receive loot → equip gear
 - [ ] All validation points pass
 - [ ] Test results are logged/recorded
 - [ ] Manual checklist exists for human testing
@@ -264,11 +264,11 @@ Create a script or manual checklist to validate the complete vertical slice work
 - [ ] Test can be run before code commits
 
 **Technical Tasks:**
-1. Create smoke test script (Godot headless or backend test)
-2. Implement test steps matching user flow
-3. Add validation assertions at each step
-4. Create markdown manual checklist
-5. Integrate smoke test into CI/CD pipeline
+1. [x] Create smoke test script (Godot headless or backend test)
+2. [x] Implement test steps matching user flow
+3. [x] Add validation assertions at each step
+4. [x] Create markdown manual checklist
+5. [ ] Integrate smoke test into CI/CD pipeline
 
 **Dependencies:**
 - VS-1 through VS-5 (all core stories must be complete)
@@ -277,7 +277,38 @@ Create a script or manual checklist to validate the complete vertical slice work
 
 **Blocks:** None
 
+**Status:** ✅ **IMPLEMENTED** - Smoke test suite created (2026-04-15)
+
 ---
+
+---
+
+**Implementation Details:**
+
+**Files Created:**
+1. `backend/tests/integration/vertical_slice_smoke.test.ts` - Backend RPC validation tests
+2. `test/e2e_vertical_slice.gd` - Godot E2E test script
+3. `.planning/VERTICAL_SLICE_SMOKE_TEST.md` - Manual testing checklist
+
+**How to Run:**
+
+**Backend Smoke Test:**
+```bash
+cd backend
+npm run test:integration -- vertical_slice_smoke
+```
+
+**Godot E2E Test:**
+```bash
+# Headless mode (recommended for CI)
+godot --headless --script res://test/e2e_vertical_slice.gd
+
+# Or open in editor for interactive testing
+# Open res://test/e2e_vertical_slice_test.tscn in Godot Editor
+```
+
+**Manual Testing:**
+See `VERTICAL_SLICE_SMOKE_TEST.md` for complete checklist covering all stories.
 
 ## Story Statistics
 
