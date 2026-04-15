@@ -26,6 +26,8 @@ export declare enum AnalyticsEventType {
     SUBSCRIPTION_STARTED = "subscription_started",
     GEAR_OBTAINED = "gear_obtained",
     GEAR_EQUIPPED = "gear_equipped",
+    GEAR_UNEQUIPPED = "gear_unequipped",
+    LOADOUT_VIEWED = "loadout_viewed",
     TRANSMOG_APPLIED = "transmog_applied",
     LEVEL_UP = "level_up",
     ABILITY_UNLOCKED = "ability_unlocked",

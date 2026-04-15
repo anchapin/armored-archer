@@ -163,13 +163,35 @@ func start_game() -> void:
 	# Sync health to CharacterBody2D
 	_sync_health_to_player()
 
-	# Track game start in analytics
+	# Track game start in analytics with proper context data
 	if analytics and analytics.has_method("log_pve_stage_started"):
+		# Get stage data for accurate analytics context
+		var stage_name: String = "Stage " + str(current_stage)
+		var difficulty_str: String = "normal"
+		var chapter_num: int = 1
+
+		# Try to get stage data from CampaignManager
+		if current_stage_id != "" and CampaignManager and CampaignManager.has_method("get_stage_data"):
+			var stage_data: Dictionary = CampaignManager.get_stage_data(current_stage_id)
+			if not stage_data.is_empty():
+				stage_name = stage_data.get("name", stage_name)
+				# Get difficulty string from tier
+				var difficulty_tier: int = stage_data.get("difficulty", 1)
+				if CampaignManager.has_method("_get_difficulty_string"):
+					difficulty_str = CampaignManager._get_difficulty_string(difficulty_tier)
+				# Extract chapter number from stage_id (format: "chapter_stage")
+				var parts: Array = current_stage_id.split("_")
+				if parts.size() >= 2:
+					chapter_num = int(parts[0])
+				elif current_difficulty > 0:
+					# Fallback: use current_difficulty tier for chapter
+					chapter_num = current_difficulty
+
 		analytics.log_pve_stage_started(
 			current_stage_id if current_stage_id != "" else "campaign_" + str(current_stage),
-			"Stage " + str(current_stage),
-			"normal",
-			1
+			stage_name,
+			difficulty_str,
+			chapter_num
 		)
 	elif analytics and analytics.has_method("log_custom_event"):
 		analytics.log_custom_event("game_started", {

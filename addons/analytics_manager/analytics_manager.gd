@@ -87,6 +87,8 @@ const EVENT_SUBSCRIPTION_STARTED := "subscription_started"
 
 const EVENT_GEAR_OBTAINED := "gear_obtained"
 const EVENT_GEAR_EQUIPPED := "gear_equipped"
+const EVENT_GEAR_UNEQUIPPED := "gear_unequipped"
+const EVENT_LOADOUT_VIEWED := "loadout_viewed"
 const EVENT_TRANSMOG_APPLIED := "transmog_applied"
 
 const EVENT_LEVEL_UP := "level_up"
@@ -700,6 +702,20 @@ func log_gear_equipped(gear_id: String, gear_name: String, gear_type: String, sl
 		"gear_name": gear_name,
 		"gear_type": gear_type,
 		"slot": slot,
+		"platform": platform
+	})
+
+func log_gear_unequipped(gear_id: String, gear_name: String, gear_type: String, slot: String) -> void:
+	_log_event(EVENT_GEAR_UNEQUIPPED, {
+		"gear_id": gear_id,
+		"gear_name": gear_name,
+		"gear_type": gear_type,
+		"slot": slot,
+		"platform": platform
+	})
+
+func log_loadout_viewed() -> void:
+	_log_event(EVENT_LOADOUT_VIEWED, {
 		"platform": platform
 	})
 

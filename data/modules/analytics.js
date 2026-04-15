@@ -51,6 +51,8 @@ var AnalyticsEventType;
     // Progression events
     AnalyticsEventType["GEAR_OBTAINED"] = "gear_obtained";
     AnalyticsEventType["GEAR_EQUIPPED"] = "gear_equipped";
+    AnalyticsEventType["GEAR_UNEQUIPPED"] = "gear_unequipped";
+    AnalyticsEventType["LOADOUT_VIEWED"] = "loadout_viewed";
     AnalyticsEventType["TRANSMOG_APPLIED"] = "transmog_applied";
     AnalyticsEventType["LEVEL_UP"] = "level_up";
     AnalyticsEventType["ABILITY_UNLOCKED"] = "ability_unlocked";
