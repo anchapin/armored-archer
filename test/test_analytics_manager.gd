@@ -38,6 +38,8 @@ func run_tests() -> void:
 	await test_log_subscription_started()
 	await test_log_gear_obtained()
 	await test_log_gear_equipped()
+	await test_log_gear_unequipped()
+	await test_log_loadout_viewed()
 	await test_log_transmog_applied()
 	await test_log_level_up()
 	await test_log_ability_unlocked()
@@ -384,6 +386,28 @@ func test_log_gear_equipped() -> void:
 		return
 
 	analytics.log_gear_equipped("sword_001", "Flame Sword", "weapon", "main_hand")
+	_pass(test_name)
+
+func test_log_gear_unequipped() -> void:
+	var test_name = "test_log_gear_unequipped"
+	"""Test logging gear unequipped event"""
+	var analytics = _get_analytics_manager()
+	if not analytics:
+		_fail(test_name, "AnalyticsManager not available")
+		return
+
+	analytics.log_gear_unequipped("sword_001", "Flame Sword", "weapon", "main_hand")
+	_pass(test_name)
+
+func test_log_loadout_viewed() -> void:
+	var test_name = "test_log_loadout_viewed"
+	"""Test logging loadout viewed event"""
+	var analytics = _get_analytics_manager()
+	if not analytics:
+		_fail(test_name, "AnalyticsManager not available")
+		return
+
+	analytics.log_loadout_viewed()
 	_pass(test_name)
 
 func test_log_transmog_applied() -> void:

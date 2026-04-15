@@ -354,10 +354,14 @@ func handle_boss_defeat(boss_id: String) -> void:
 	# Track boss defeated in analytics
 	if analytics and analytics.has_method("log_pve_boss_defeated"):
 		var stage_data = _get_stage_with_boss(boss_id)
+		var difficulty_str: String = "normal"
+		# Convert numeric difficulty tier to string
+		var difficulty_tier: int = stage_data.get("difficulty", 1)
+		difficulty_str = _get_difficulty_string(difficulty_tier)
 		analytics.log_pve_boss_defeated(
 			stage_data.get("id", ""),
 			boss_id,
-			stage_data.get("difficulty", "normal"),
+			difficulty_str,
 			1  # attempts - could track multiple attempts
 		)
 

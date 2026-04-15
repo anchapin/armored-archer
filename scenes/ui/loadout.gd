@@ -65,6 +65,11 @@ func _ready() -> void:
 	gear_balance_calculator = get_node_or_null("/root/GearBalanceCalculator")
 	combined_stats_manager = get_node_or_null("/root/CombinedStatsManager")
 
+	# Track loadout screen viewed in analytics
+	var analytics = get_node_or_null("/root/AnalyticsManager")
+	if analytics and analytics.has_method("log_loadout_viewed"):
+		analytics.log_loadout_viewed()
+
 	_setup_button_connections()
 	_create_slot_nodes()
 
