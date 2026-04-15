@@ -9,6 +9,9 @@
 ##
 extends Node
 
+# --- References ---
+var combined_stats_manager: Node
+
 # --- Signals ---
 signal arrow_fired(position: Vector2, direction: Vector2)
 signal ammo_changed(current_ammo: int, max_ammo: int)
@@ -37,6 +40,7 @@ const RELOAD_TIME: float = 2.0  # Seconds to reload
 const SETTINGS_FILE = "user://shooting_settings.json"
 
 func _ready() -> void:
+	combined_stats_manager = get_node_or_null("/root/CombinedStatsManager")
 	_load_settings()
 	ammo_changed.emit(_current_ammo, MAX_AMMO)
 
@@ -54,9 +58,12 @@ func shoot_arrow(from_position: Vector2, direction: Vector2) -> void:
 	# Get arrow from object pool
 	var arrow = ObjectPool.get_arrow()
 	if arrow:
+		# Calculate damage from combined stats (base + gear)
+		var damage: int = _get_arrow_damage()
+
 		# Setup arrow with position and direction
 		if arrow.has_method("setup"):
-			arrow.setup(from_position, direction, 50, 800.0)
+			arrow.setup(from_position, direction, damage, 800.0)
 		else:
 			# Fallback for arrows without setup method
 			arrow.position = from_position
@@ -252,6 +259,19 @@ func _load_settings() -> void:
 				_shooting_mode = settings["shooting_mode"] as ShootingMode
 
 # --- Public Getters ---
+
+## Gets the current arrow damage based on player stats.
+## Calculates damage from combined attack power (base + gear).
+## Returns:
+##   int: Current arrow damage
+func _get_arrow_damage() -> int:
+	"""Gets current arrow damage from combined stats."""
+	if combined_stats_manager and combined_stats_manager.has_method("get_attack_power"):
+		var attack_power: float = combined_stats_manager.get_attack_power()
+		# Base damage is 10, plus attack power
+		var damage: int = int(10 + attack_power)
+		return max(damage, 5)  # Minimum 5 damage
+	return 50  # Fallback to default damage
 
 ## Check if currently reloading
 func is_reloading() -> bool:
