@@ -3,6 +3,7 @@
  * @fileoverview Manages weapon balance data, validation, and admin adjustments for PvP.
  */
 
+import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
 import { validatePayload, ZodSchemas } from './validation';
@@ -209,9 +210,7 @@ export function validateWeaponPower(baseDamage: number, tier: WeaponTier): boole
   const maxAllowed = getTierAverageDamage(tier) * MAX_DAMAGE_PERCENTAGE;
 
   if (baseDamage > maxAllowed) {
-    console.error(
-      `Weapon damage ${baseDamage} exceeds maximum allowed ${maxAllowed} for tier ${tier}`
-    );
+    logger.warn('Weapon damage exceeds maximum allowed', { baseDamage, maxAllowed, tier });
     return false;
   }
 
@@ -302,7 +301,7 @@ export async function applyBalanceAdjustment(
       adjustment,
     };
   } catch (error) {
-    console.error('Failed to apply balance adjustment:', error);
+    logger.error('Failed to apply balance adjustment', { error, userId, request });
     return {
       success: false,
       error: 'Failed to store balance adjustment',
@@ -337,7 +336,7 @@ async function checkAdminAuthorization(nk: Runtime.Nakama, userId: string): Prom
 
     return false;
   } catch (error) {
-    console.error('Failed to check admin authorization:', error);
+    logger.error('Failed to check admin authorization', { error, userId });
     return false;
   }
 }
@@ -404,7 +403,7 @@ export async function trackWeaponUsage(
       },
     ]);
   } catch (error) {
-    console.error('Failed to track weapon usage:', error);
+    logger.error('Failed to track weapon usage', { error, weaponId, matchResult });
   }
 }
 
@@ -437,7 +436,7 @@ export async function getBalanceAdjustments(nk: Runtime.Nakama): Promise<Record<
 
     return adjustments;
   } catch (error) {
-    console.error('Failed to get balance adjustments:', error);
+    logger.error('Failed to get balance adjustments', { error });
     return {};
   }
 }
@@ -502,7 +501,7 @@ export async function getWeaponStats(
 
     return null;
   } catch (error) {
-    console.error('Failed to get weapon stats:', error);
+    logger.error('Failed to get weapon stats', { error, weaponId });
     return null;
   }
 }

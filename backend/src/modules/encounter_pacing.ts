@@ -479,10 +479,10 @@ function loadPacingState(
 
 // Dummy logger for compatibility
 const logger = {
-  info: (_message: string, ..._args: any[]) => {},
-  warn: (_message: string, ..._args: any[]) => {},
-  error: (_message: string, ..._args: any[]) => {},
-  debug: (_message: string, ..._args: any[]) => {},
+  info: (_message: string, ..._args: unknown[]) => {},
+  warn: (_message: string, ..._args: unknown[]) => {},
+  error: (_message: string, ..._args: unknown[]) => {},
+  debug: (_message: string, ..._args: unknown[]) => {},
 };
 
 /**

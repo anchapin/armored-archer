@@ -46,7 +46,7 @@ function savePlayerStats(
 
   invalidatePlayerStatsCache(ctx.userId, logger);
 
-  logAudit(nk, ctx.userId, ctx.ipAddress ?? null, action, 'player_stats', playerStats, 'success');
+  logAudit(nk, ctx.userId, ctx.ipAddress ?? null, action, 'player_stats', playerStats as unknown as Record<string, unknown>, 'success');
 }
 
 /**

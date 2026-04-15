@@ -3,6 +3,7 @@
  * @fileoverview Manages gear stat validation, power calculations, and balance tracking.
  */
 
+import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
 import { GearItem } from './gear_system';
@@ -62,6 +63,15 @@ const MAX_POWER_THRESHOLDS: { [key: string]: number } = {
   epic: 60.0,
   legendary: 100.0,
 };
+
+/**
+ * Gear usage data stored for balance analytics.
+ */
+interface GearUsageData {
+  count: number;
+  lastAction: string;
+  lastTimestamp: number;
+}
 
 /**
  * Validates gear stats to prevent overpowered items.
@@ -230,7 +240,7 @@ export async function trackGearUsage(
     );
   } catch (error) {
     // Log error but don't fail the operation
-    console.error(`Failed to track gear usage: ${error}`);
+    logger.error('Failed to track gear usage', { error, userId, gearId, action });
   }
 }
 
@@ -244,8 +254,8 @@ export async function trackGearUsage(
 export async function getGearUsageStats(
   nk: Runtime.Nakama,
   userId: string
-): Promise<{ [key: string]: any }> {
-  const stats: { [key: string]: any } = {};
+): Promise<{ [key: string]: GearUsageData }> {
+  const stats: { [key: string]: GearUsageData } = {};
 
   try {
     // Read all gear balance objects for this user
@@ -261,7 +271,7 @@ export async function getGearUsageStats(
       }
     }
   } catch (error) {
-    console.error(`Failed to get gear usage stats: ${error}`);
+    logger.error('Failed to get gear usage stats', { error, userId });
   }
 
   return stats;
@@ -313,7 +323,7 @@ export async function recordBalanceAdjustment(
       'success'
     );
   } catch (error) {
-    console.error(`Failed to record balance adjustment: ${error}`);
+    logger.error('Failed to record balance adjustment', { error, adjustment });
   }
 }
 
