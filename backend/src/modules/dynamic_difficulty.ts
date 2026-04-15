@@ -614,9 +614,10 @@ function loadMatchHistory(
     info: (_message: string, ..._args: unknown[]) => {},
     warn: (_message: string, ..._args: unknown[]) => {},
     error: (_message: string, ..._args: unknown[]) => {},
+    debug: (_message: string, ..._args: unknown[]) => {},
   };
 
-  const parseResult = safeParse<MatchEntry[]>(value, null, dummyLogger as unknown, 'match_history');
+  const parseResult = safeParse<MatchEntry[]>(value, null, dummyLogger, 'match_history');
   if (!parseResult.success || !parseResult.data) {
     return { success: true, data: [] };
   }

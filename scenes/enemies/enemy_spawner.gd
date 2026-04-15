@@ -251,7 +251,33 @@ func spawn_boss() -> void:
 	if game_mgr and game_mgr.has_method("spawn_boss"):
 		game_mgr.spawn_boss(boss_id)
 
+		# Wait for boss to spawn, then connect its defeat signal
+		await get_tree().process_frame
+		await get_tree().process_frame  # Double frame to ensure boss is fully initialized
+
+		var bosses: Array[Node] = get_tree().get_nodes_in_group("Boss")
+		if bosses.size() > 0:
+			var boss = bosses[0]
+			if boss.has_signal("boss_defeated"):
+				boss.boss_defeated.connect(_on_boss_defeated)
+				print("DEBUG: Connected to boss_defeated signal for %s" % boss.name)
+
 func is_boss_alive() -> bool:
 	var bosses: Array[Node] = get_tree().get_nodes_in_group("Boss")
 	return bosses.size() > 0
+
+func _on_boss_defeated(_boss_name: String) -> void:
+	"""Handle boss defeat - complete the stage with victory."""
+	print("DEBUG: Boss %s defeated, ending game with victory" % _boss_name)
+
+	# Mark wave as complete since all waves and boss are done
+	wave_complete = true
+
+	# Wait a moment for boss death effects, then trigger victory
+	await get_tree().create_timer(1.0).timeout
+
+	var game_mgr = get_node_or_null("/root/GameManager")
+	if game_mgr and game_mgr.has_method("end_game"):
+		game_mgr.end_game(true)
+
 # gdlint-ignore-file
