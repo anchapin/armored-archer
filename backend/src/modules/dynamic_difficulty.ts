@@ -610,7 +610,7 @@ function loadMatchHistory(
   }
 
   // Create a dummy logger for safeParse
-  const dummyLogger = {
+  const dummyLogger: Runtime.Logger = {
     info: (_message: string, ..._args: unknown[]) => {},
     warn: (_message: string, ..._args: unknown[]) => {},
     error: (_message: string, ..._args: unknown[]) => {},

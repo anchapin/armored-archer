@@ -7,6 +7,14 @@ import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
+import {
+  insertGearItem,
+  getPlayerGearFromDB,
+  getPlayerLoadoutFromDB,
+  equipItemInDB,
+  unequipItemInDB,
+  getFullInventoryFromDB,
+} from './gear_db';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
@@ -847,42 +855,24 @@ export function rpcEquipGear(
 
   const request = validation.data;
 
-  const inventoryObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
+  // Get gear from database
+  const gear = getPlayerGearFromDB(nk, ctx.userId).find((g) => g.id === request.gear_id);
 
-  if (inventoryObjects.length === 0) {
-    return JSON.stringify({
-      error: 'Player inventory not found',
-    });
-  }
-
-  const value = inventoryObjects[0].value;
-  if (!value) {
-    return JSON.stringify({
-      error: 'Invalid inventory data',
-    });
-  }
-
-  const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
-  if (!parseResult.success || !parseResult.data) {
-    logger.error('Failed to parse data');
-    return createErrorResponse('INVALID_DATA', 'Failed to parse data');
-  }
-  const inventory: PlayerInventory = parseResult.data;
-
-  const gearIndex = inventory.gear.findIndex((g) => g.id === request.gear_id);
-  if (gearIndex === -1) {
+  if (!gear) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'equip_gear',
+      'player_inventory',
+      { gear_id: request.gear_id, slot: request.slot, error: 'not_found' },
+      'failure',
+      'Gear not found in inventory'
+    );
     return JSON.stringify({
       error: 'Gear not found in inventory',
     });
   }
-
-  const gear = inventory.gear[gearIndex];
 
   if (gear.type !== request.slot) {
     logAudit(
@@ -900,16 +890,36 @@ export function rpcEquipGear(
     });
   }
 
-  inventory.equipped_gear[request.slot] = gear.id;
+  // Equip item in database
+  const equipResult = equipItemInDB(nk, ctx.userId, request.gear_id, request.slot);
 
-  nk.storageWrite([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-      value: JSON.stringify(inventory),
-    },
-  ]);
+  if (!equipResult.success) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'equip_gear',
+      'player_inventory',
+      { gear_id: request.gear_id, slot: request.slot, error: equipResult.error },
+      'failure',
+      equipResult.error || 'Failed to equip gear'
+    );
+    return JSON.stringify({
+      error: equipResult.error || 'Failed to equip gear',
+    });
+  }
+
+  // Get updated loadout from database
+  const updatedLoadout = getPlayerLoadoutFromDB(nk, ctx.userId);
+
+  // Convert to equipped_gear format
+  const equipped_gear: { [slot: string]: string | null } = {
+    helm: updatedLoadout.helm_item_id,
+    armor: updatedLoadout.armor_item_id,
+    bow: updatedLoadout.bow_item_id,
+    arrow: updatedLoadout.arrow_item_id,
+    amulet: updatedLoadout.amulet_item_id,
+  };
 
   logAudit(
     nk,
@@ -929,7 +939,7 @@ export function rpcEquipGear(
 
   return JSON.stringify({
     success: true,
-    equipped_gear: inventory.equipped_gear,
+    equipped_gear: equipped_gear,
     gear: gear,
   });
 }
@@ -977,35 +987,11 @@ export function rpcUnequipGear(
 
   const request = validation.data;
 
-  const inventoryObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
+  // Check if gear is equipped in the slot
+  const currentLoadout = getPlayerLoadoutFromDB(nk, ctx.userId);
+  const slotItemKey = `${request.slot}_item_id` as keyof typeof currentLoadout;
 
-  if (inventoryObjects.length === 0) {
-    return JSON.stringify({
-      error: 'Player inventory not found',
-    });
-  }
-
-  const value = inventoryObjects[0].value;
-  if (!value) {
-    return JSON.stringify({
-      error: 'Invalid inventory data',
-    });
-  }
-
-  const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
-  if (!parseResult.success || !parseResult.data) {
-    logger.error('Failed to parse data');
-    return createErrorResponse('INVALID_DATA', 'Failed to parse data');
-  }
-  const inventory: PlayerInventory = parseResult.data;
-
-  if (!inventory.equipped_gear[request.slot]) {
+  if (!currentLoadout[slotItemKey]) {
     logAudit(
       nk,
       ctx.userId,
@@ -1021,17 +1007,36 @@ export function rpcUnequipGear(
     });
   }
 
-  const slotToUnequip = request.slot;
-  delete inventory.equipped_gear[request.slot];
+  // Unequip item from database
+  const unequipResult = unequipItemInDB(nk, ctx.userId, request.slot);
 
-  nk.storageWrite([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-      value: JSON.stringify(inventory),
-    },
-  ]);
+  if (!unequipResult.success) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'unequip_gear',
+      'player_inventory',
+      { slot: request.slot, error: unequipResult.error },
+      'failure',
+      unequipResult.error || 'Failed to unequip gear'
+    );
+    return JSON.stringify({
+      error: unequipResult.error || 'Failed to unequip gear',
+    });
+  }
+
+  // Get updated loadout from database
+  const updatedLoadout = getPlayerLoadoutFromDB(nk, ctx.userId);
+
+  // Convert to equipped_gear format
+  const equipped_gear: { [slot: string]: string | null } = {
+    helm: updatedLoadout.helm_item_id,
+    armor: updatedLoadout.armor_item_id,
+    bow: updatedLoadout.bow_item_id,
+    arrow: updatedLoadout.arrow_item_id,
+    amulet: updatedLoadout.amulet_item_id,
+  };
 
   logAudit(
     nk,
@@ -1039,13 +1044,13 @@ export function rpcUnequipGear(
     ctx.ipAddress ?? null,
     'unequip_gear',
     'player_inventory',
-    { slot: slotToUnequip },
+    { slot: request.slot },
     'success'
   );
 
   return JSON.stringify({
     success: true,
-    equipped_gear: inventory.equipped_gear,
+    equipped_gear: equipped_gear,
   });
 }
 
@@ -1079,7 +1084,7 @@ export function registerRpcGetInventory(initializer: Runtime.Initializer): void 
  * }
  */
 /**
- * Retrieves player inventory from storage.
+ * Retrieves player inventory from database.
  * Exported for use by combat_system module.
  *
  * @param nk - Nakama server interface
@@ -1092,6 +1097,34 @@ export function getPlayerInventory(
   userId: string,
   logger: Runtime.Logger
 ): PlayerInventory {
+  // Get gear and loadout from database
+  const dbInventory = getFullInventoryFromDB(nk, userId);
+
+  // Get unlocked modifier pools from Nakama storage (for backwards compatibility)
+  const modifierPools = getUnlockedModifierPoolsFromStorage(nk, userId, logger);
+
+  return {
+    user_id: userId,
+    gear: dbInventory.gear,
+    equipped_gear: dbInventory.equipped_gear,
+    unlocked_modifier_pools: modifierPools,
+  };
+}
+
+/**
+ * Retrieves unlocked modifier pools from Nakama storage.
+ * This is kept for backwards compatibility with existing data.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param logger - Nakama logger instance
+ * @returns Array of unlocked modifier pool IDs
+ */
+function getUnlockedModifierPoolsFromStorage(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): string[] {
   const inventoryObjects = nk.storageRead([
     {
       collection: 'player_inventory',
@@ -1100,33 +1133,32 @@ export function getPlayerInventory(
     },
   ]);
 
-  if (inventoryObjects.length === 0) {
-    return {
-      user_id: userId,
-      gear: [],
-      equipped_gear: {},
-      unlocked_modifier_pools: [],
-    };
+  if (inventoryObjects.length === 0 || !inventoryObjects[0].value) {
+    return [];
   }
 
-  const value = inventoryObjects[0].value;
-  if (value) {
-    const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
-    if (parseResult.success && parseResult.data) {
-      return parseResult.data;
-    }
+  const parseResult = safeParse<PlayerInventory>(
+    inventoryObjects[0].value,
+    null,
+    logger,
+    'storage_data'
+  );
+  if (parseResult.success && parseResult.data) {
+    return parseResult.data.unlocked_modifier_pools || [];
   }
 
-  return {
-    user_id: userId,
-    gear: [],
-    equipped_gear: {},
-    unlocked_modifier_pools: [],
-  };
+  return [];
 }
 
 /**
+ * Retrieves player's inventory from database and Nakama storage.
+ * Returns gear items, equipped loadout, and unlocked modifier pools.
  *
+ * @param ctx - Runtime context
+ * @param logger - Logger instance
+ * @param nk - Nakama instance
+ * @param payload - Request payload (empty)
+ * @returns Inventory response with gear, equipped_gear, and unlocked_modifier_pools
  */
 export function rpcGetInventory(
   ctx: Runtime.Context,
@@ -1141,31 +1173,16 @@ export function rpcGetInventory(
     return createValidationErrorResponse('get_inventory', validation.error);
   }
 
-  const inventoryObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
+  // Get gear and loadout from database
+  const dbInventory = getFullInventoryFromDB(nk, ctx.userId);
 
-  if (inventoryObjects.length === 0) {
-    return JSON.stringify({
-      gear: [],
-      equipped_gear: {},
-      unlocked_modifier_pools: [],
-    });
-  }
-
-  const value = inventoryObjects[0].value;
-  if (value) {
-    return value;
-  }
+  // Get unlocked modifier pools from Nakama storage
+  const unlockedModifierPools = getUnlockedModifierPoolsFromStorage(nk, ctx.userId, logger);
 
   return JSON.stringify({
-    gear: [],
-    equipped_gear: {},
-    unlocked_modifier_pools: [],
+    gear: dbInventory.gear,
+    equipped_gear: dbInventory.equipped_gear,
+    unlocked_modifier_pools: unlockedModifierPools,
   });
 }
 
@@ -1793,20 +1810,11 @@ function processStageCompletion(
   // Roll for loot
   const lootResult =
     roll < dropRate
-      ? generateLootResult(request.stage_id, inventory, logger)
+      ? generateLootResult(nk, ctx.userId, request.stage_id, inventory, logger)
       : { dropped: false, gear: null };
 
-  // Save inventory with new gear (if any)
-  if (lootResult.gear) {
-    nk.storageWrite([
-      {
-        collection: 'player_inventory',
-        key: ctx.userId,
-        userId: ctx.userId,
-        value: JSON.stringify(inventory),
-      },
-    ]);
-  }
+  // Save unlocked modifier pools to storage (for backwards compatibility)
+  saveUnlockedModifierPools(nk, ctx.userId, inventory.unlocked_modifier_pools, logger);
 
   return {
     inventory,
@@ -1853,20 +1861,105 @@ function buildAuditData(
 }
 
 /**
- * Generate loot result for stage completion
+ * Generate loot result for stage completion and persist to database
  *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
  * @param stageId - Stage identifier
  * @param inventory - Player inventory
  * @param logger - Logger instance
  * @returns Loot result
  */
 function generateLootResult(
+  nk: Runtime.Nakama,
+  userId: string,
   stageId: string,
   inventory: PlayerInventory,
   logger: Runtime.Logger
 ): LootResult {
   const gear = generateGearItem(stageId, inventory.unlocked_modifier_pools, logger);
-  inventory.gear.push(gear);
-  logger.info('Loot dropped for user: %s (%s)', gear.name, gear.rarity);
-  return { dropped: true, gear };
+
+  // Persist gear to database
+  const insertResult = insertGearItem(nk, userId, gear);
+
+  if (insertResult.success && insertResult.item_id) {
+    // Update gear ID with the database-generated ID
+    gear.id = insertResult.item_id;
+    inventory.gear.push(gear);
+    logger.info(
+      'Loot dropped and persisted for user %s: %s (%s) [DB ID: %s]',
+      userId,
+      gear.name,
+      gear.rarity,
+      insertResult.item_id
+    );
+    return { dropped: true, gear };
+  } else {
+    logger.error('Failed to persist gear to database: %s', insertResult.error);
+    // Still return the gear even if persistence failed (data is lost but client receives it)
+    inventory.gear.push(gear);
+    return { dropped: true, gear };
+  }
+}
+
+/**
+ * Save unlocked modifier pools to Nakama storage.
+ * This is kept for backwards compatibility with existing data.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param pools - Array of unlocked modifier pool IDs
+ * @param logger - Logger instance
+ */
+function saveUnlockedModifierPools(
+  nk: Runtime.Nakama,
+  userId: string,
+  pools: string[],
+  logger: Runtime.Logger
+): void {
+  const inventoryObjects = nk.storageRead([
+    {
+      collection: 'player_inventory',
+      key: userId,
+      userId: userId,
+    },
+  ]);
+
+  let inventory: PlayerInventory;
+
+  if (inventoryObjects.length === 0 || !inventoryObjects[0].value) {
+    inventory = {
+      user_id: userId,
+      gear: [],
+      equipped_gear: {},
+      unlocked_modifier_pools: pools,
+    };
+  } else {
+    const parseResult = safeParse<PlayerInventory>(
+      inventoryObjects[0].value,
+      null,
+      logger,
+      'storage_data'
+    );
+    if (parseResult.success && parseResult.data) {
+      inventory = parseResult.data;
+      inventory.unlocked_modifier_pools = pools;
+    } else {
+      inventory = {
+        user_id: userId,
+        gear: [],
+        equipped_gear: {},
+        unlocked_modifier_pools: pools,
+      };
+    }
+  }
+
+  nk.storageWrite([
+    {
+      collection: 'player_inventory',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(inventory),
+    },
+  ]);
 }

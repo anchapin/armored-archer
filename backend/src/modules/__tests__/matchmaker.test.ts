@@ -74,7 +74,7 @@ describe('matchmaker', () => {
 
   beforeEach(() => {
     mockLogger = createMockLogger();
-    mockCtx = createMockContext();
+    mockCtx = createMockContext({ userId: 'test-user-123' });
     mockNk = createMockNakama();
     jest.clearAllMocks();
   });
