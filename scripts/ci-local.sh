@@ -6,7 +6,7 @@
 # - act for act-compatible jobs
 #
 # Usage:
-#   ./scripts/ci-local.sh              # Run all checks and tests
+#   ./scripts/ci-local.sh              # Run all checks and tests (auto-cleans services)
 #   ./scripts/ci-local.sh <job>         # Run specific job
 #   ./scripts/ci-local.sh --clean       # Stop services and cleanup
 #   ./scripts/ci-local.sh --services     # Start only services (no tests)
@@ -183,15 +183,16 @@ run_service_job() {
 # Main CLI
 show_usage() {
     cat << 'EOF'
-${BLUE}Local CI Runner for Armored Archer${NC}
+Local CI Runner for Armored Archer
 
-${GREEN}Usage:${NC}  ${0}./scripts/ci-local.sh [${YELLOW}<options>${NC}           Run all checks and tests
-  ${0}./scripts/ci-local.sh ${YELLOW}<job>${NC}            Run specific CI job
-  ${0}./scripts/ci-local.sh ${YELLOW}--clean${NC}          Stop services and cleanup
-  ${0}./scripts/ci-local.sh ${YELLOW}--services${NC}       Start/stop only services (no tests)
-  ${0}./scripts/ci-local.sh ${YELLOW}--status${NC}        Show service status
+Usage:
+  ./scripts/ci-local.sh              Run all checks and tests (auto-cleans services)
+  ./scripts/ci-local.sh <job>        Run specific CI job
+  ./scripts/ci-local.sh --clean      Stop services and cleanup
+  ./scripts/ci-local.sh --services   Start/stop only services (no tests)
+  ./scripts/ci-local.sh --status     Show service status
 
-${GREEN}Act-compatible jobs (no services required):${NC}
+Act-compatible jobs (no services required):
 EOF
 
     # List act jobs
@@ -284,6 +285,13 @@ main() {
         else
             echo -e "${RED}✗ Some jobs failed${NC}"
         fi
+
+        # Cleanup services after running all jobs
+        if [[ "$command" == "all" ]]; then
+            echo -e "${BLUE}Cleaning up services...${NC}"
+            stop_services
+        fi
+
         exit $failed
     else
         show_usage
