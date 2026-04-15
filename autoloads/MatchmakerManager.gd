@@ -209,19 +209,68 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 		return
 
 	if response.get("success", false):
-		var match_result: Dictionary = {
-			"match": response.get("match", {}),
-			"winner": response.get("winner", {}),
-			"loser": response.get("loser", {}),
-			"is_punch_up": response.get("is_punch_up", false)
-		}
+		var match: Dictionary = response.get("match", {})
+		var winner_data: Dictionary = response.get("winner", {})
+		var loser_data: Dictionary = response.get("loser", {})
 
 		# Update cached player rank
 		var my_user_id: String = NetworkManager.user_id
+		var my_player_data: Dictionary = {}
+		var is_victory: bool = false
+		var old_rank: int = 0
+		var new_rank: int = 0
+		var rank_delta: int = 0
+		var xp_gained: int = 0
+		var old_season_position: int = 0
+		var new_season_position: int = 0
+		var season_delta: int = 0
+		var rewards: Array = []
+
 		if my_user_id == winner_id:
-			player_rank = response.get("winner", {}).get("new_rank", player_rank)
+			my_player_data = winner_data
+			is_victory = true
+			player_rank = winner_data.get("new_rank", player_rank)
 		elif my_user_id == loser_id:
-			player_rank = response.get("loser", {}).get("new_rank", player_rank)
+			my_player_data = loser_data
+			is_victory = false
+			player_rank = loser_data.get("new_rank", player_rank)
+		else:
+			# Not a participant, use winner data as fallback
+			my_player_data = winner_data
+
+		# Extract player result data
+		old_rank = my_player_data.get("old_rank", 0)
+		new_rank = my_player_data.get("new_rank", 0)
+		rank_delta = my_player_data.get("rank_change", 0)
+		xp_gained = my_player_data.get("xp_gained", 0)
+		old_season_position = my_player_data.get("old_season_position", 0)
+		new_season_position = my_player_data.get("new_season_position", 0)
+		season_delta = my_player_data.get("season_position_delta", 0)
+		rewards = my_player_data.get("rewards", [])
+
+		# Calculate match duration
+		var match_duration: float = 0.0
+		var created_at: int = match.get("created_at", 0)
+		var completed_at: int = match.get("updated_at", 0)
+		if created_at > 0 and completed_at > 0:
+			match_duration = float(completed_at - created_at) / 1000.0
+
+		# Create UI-compatible result data
+		var ui_result_data: Dictionary = {
+			"winner_id": winner_id,
+			"loser_id": loser_id,
+			"is_victory": is_victory,
+			"match_type": match.get("match_type", "ranked"),
+			"is_punch_up": response.get("is_punch_up", false),
+			"xp_gained": xp_gained,
+			"old_rank": old_rank,
+			"new_rank": new_rank,
+			"rank_delta": rank_delta,
+			"season_position": new_season_position if new_season_position > 0 else old_season_position,
+			"season_delta": season_delta,
+			"match_duration": match_duration,
+			"rewards": rewards
+		}
 
 		# Update Punch Up statistics
 		if is_punch_up:
@@ -240,26 +289,9 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 			if season_manager and season_manager.current_season.has("season_id"):
 				season_id = season_manager.current_season.get("season_id")
 
-			var result: String = "loss"
-			var my_score: int = 0
-			var opponent_score: int = 0
-			var rank_change: int = 0
-
-			if my_user_id == winner_id:
-				result = "win"
-				my_score = response.get("winner", {}).get("score", 0)
-				opponent_score = response.get("loser", {}).get("score", 0)
-				rank_change = response.get("winner", {}).get("rank_change", 0)
-			elif my_user_id == loser_id:
-				result = "loss"
-				my_score = response.get("loser", {}).get("score", 0)
-				opponent_score = response.get("winner", {}).get("score", 0)
-				rank_change = response.get("loser", {}).get("rank_change", 0)
-
-			# Calculate match duration (assuming match_start_time is stored)
-			var match_duration: float = 0.0
-			if current_match.has("match_start_time"):
-				match_duration = (Time.get_unix_time_from_system() - current_match.match_start_time)
+			var result: String = "win" if is_victory else "loss"
+			var my_score: int = winner_data.get("new_rank", 0) if is_victory else loser_data.get("new_rank", 0)
+			var opponent_score: int = loser_data.get("new_rank", 0) if is_victory else winner_data.get("new_rank", 0)
 
 			analytics.log_pvp_match_completed(
 				match_id,
@@ -269,13 +301,14 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 				match_duration,
 				my_score,
 				opponent_score,
-				rank_change
+				rank_delta
 			)
 
 		# Clear current match
 		current_match = {}
 
-		match_completed.emit(match_result)
+		# Emit UI-compatible result data
+		match_completed.emit(ui_result_data)
 
 # --- Utility Methods ---
 func get_available_matches() -> Array:
