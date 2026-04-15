@@ -246,6 +246,7 @@ main() {
                     shift
                 else
                     command="$1"
+                    shift
                 fi
                 ;;
         esac
