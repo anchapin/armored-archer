@@ -48,3 +48,6 @@ jest_rs/
 tech-debt-report.json
 .bundle-size-history.json
 agents-md-validation-report.json
+
+# Smoke test reports
+reports/smoke-tests/

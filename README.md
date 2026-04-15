@@ -75,6 +75,32 @@ make dev
 | `make backend-stop` | Stop backend services |
 | `make clean` | Clean build artifacts |
 
+### Smoke Tests (End-to-End)
+
+The project includes comprehensive smoke tests that validate the complete vertical slice flow: **login → PvE stage → boss → loot → equip**.
+
+**Issue:** [#684](https://github.com/anchapin/armored-archer/issues/684) - [Sprint 1] Create end-to-end smoke test script
+
+| Command | Description |
+|---------|-------------|
+| `make smoke-test` | Run all smoke tests (backend + client) |
+| `make smoke-test-backend` | Run backend smoke tests only |
+| `make smoke-test-client` | Run Godot client E2E tests only |
+| `make smoke-test-quick` | Run quick smoke tests (skip performance) |
+| `make smoke-test-verbose` | Run smoke tests with verbose output |
+| `make smoke-test-ci` | Run smoke tests in CI mode (exit on failure) |
+| `make smoke-test-report` | View latest smoke test report |
+
+**Test Coverage:**
+- Backend RPC validation (authentication, stats, loot, inventory, equipment)
+- Client E2E flow (account bootstrap, stage configuration, combat, boss encounters)
+- Automated reporting with HTML summary
+- Clear pass/fail indicators with detailed logs
+
+**Reports Location:** `reports/smoke-tests/`
+
+For detailed documentation, see [`.planning/VERTICAL_SLICE_SMOKE_TEST.md`](.planning/VERTICAL_SLICE_SMOKE_TEST.md).
+
 ---
 
 ## 🚀 Quick Start

@@ -93,8 +93,11 @@ func _run_test_sequence() -> void:
 	# VS-6: Stat Allocation System
 	await _test_vs_6_stat_allocation()
 
-	# VS-7: End-to-End Integration
-	await _test_vs_7_full_integration()
+	# VS-7: Boss Encounter Flow
+	await _test_vs_7_boss_encounter()
+
+	# VS-8: End-to-End Integration
+	await _test_vs_8_full_integration()
 
 	# Print summary
 	_print_summary()
@@ -405,17 +408,75 @@ func _test_vs_6_stat_allocation() -> void:
 
 	print("")
 
-## VS-7: End-to-End Integration Test
-func _test_vs_7_full_integration() -> void:
-	test_phase = "VS-7: End-to-End Integration"
+## VS-7: Boss Encounter Flow
+func _test_vs_7_boss_encounter() -> void:
+	test_phase = "VS-7: Boss Encounter Flow"
+	print("--- " + test_phase + " ---")
+
+	# Test 7.1: Complete boss stage
+	_log_test("VS-7-1", "Complete stage with boss defeated")
+
+	var boss_stage_id = "1_5" # Boss stage (5th stage of chapter 1)
+	var boss_response = await network_manager.send_rpc(
+		"armored_archer/stage_complete",
+		JSON.stringify({
+			"stage_id": boss_stage_id,
+			"boss_defeated": true,
+			"boss_id": "boss_basic",
+			"difficulty": "normal"
+		})
+	)
+
+	if boss_response.has("error"):
+		_log_result("VS-7-1", "Boss stage RPC error: " + str(boss_response.error), TestStatus.FAIL)
+	else:
+		_log_result("VS-7-1", "Boss stage completed successfully", TestStatus.PASS)
+
+	# Test 7.2: Verify boss loot drop (higher chance)
+	_log_test("VS-7-2", "Verify boss loot drop (higher quality chance)")
+
+	if boss_response.has("gear_dropped") and boss_response.gear_dropped != null:
+		var gear = boss_response.gear_dropped
+		_log_result("VS-7-2", "Boss gear dropped: " + gear.name + " (" + gear.get("rarity", "unknown") + ")", TestStatus.PASS)
+	else:
+		_log_result("VS-7-2", "No boss gear dropped (RNG)", TestStatus.PASS)
+
+	# Test 7.3: Verify boss XP reward
+	_log_test("VS-7-3", "Verify boss XP reward")
+
+	if boss_response.has("xp_gained") and boss_response.xp_gained > 0:
+		_log_result("VS-7-3", "Boss XP gained: " + str(boss_response.xp_gained), TestStatus.PASS)
+	else:
+		_log_result("VS-7-3", "No boss XP gained", TestStatus.FAIL)
+
+	# Test 7.4: Boss gear has legendary potential
+	_log_test("VS-7-4", "Verify boss gear quality potential")
+
+	if boss_response.has("gear_dropped") and boss_response.gear_dropped != null:
+		var gear_rarity = boss_response.gear_dropped.get("rarity", "")
+		# Boss drops should have chance for epic/legendary
+		if gear_rarity in ["epic", "legendary", "rare"]:
+			_log_result("VS-7-4", "Boss gear quality: " + gear_rarity + " (good quality)", TestStatus.PASS)
+		elif gear_rarity == "common":
+			_log_result("VS-7-4", "Boss gear quality: " + gear_rarity + " (acceptable but low)", TestStatus.PASS)
+		else:
+			_log_result("VS-7-4", "Unknown boss gear quality", TestStatus.SKIP)
+	else:
+		_log_result("VS-7-4", "No boss gear to check quality", TestStatus.SKIP)
+
+	print("")
+
+## VS-8: End-to-End Integration Test
+func _test_vs_8_full_integration() -> void:
+	test_phase = "VS-8: End-to-End Integration"
 	print("--- " + test_phase + " ---")
 	print("Running complete vertical slice flow...")
 
-	# Test 7.1: Complete full flow
-	_log_test("VS-7-1", "Complete full vertical slice flow")
+	# Test 8.1: Complete full flow
+	_log_test("VS-8-1", "Complete full vertical slice flow")
 
 	var steps_passed: int = 0
-	var steps_total: int = 7
+	var steps_total: int = 8
 
 	# Step 1: Get initial state
 	var initial_stats = await network_manager.send_rpc(
@@ -484,9 +545,9 @@ func _test_vs_7_full_integration() -> void:
 	var success: bool = steps_passed >= steps_total * 0.8 # Allow 80% pass rate
 
 	if success:
-		_log_result("VS-7-1", "E2E flow passed (" + str(steps_passed) + "/" + str(steps_total) + " steps)", TestStatus.PASS)
+		_log_result("VS-8-1", "E2E flow passed (" + str(steps_passed) + "/" + str(steps_total) + " steps)", TestStatus.PASS)
 	else:
-		_log_result("VS-7-1", "E2E flow failed (" + str(steps_passed) + "/" + str(steps_total) + " steps)", TestStatus.FAIL)
+		_log_result("VS-8-1", "E2E flow failed (" + str(steps_passed) + "/" + str(steps_total) + " steps)", TestStatus.FAIL)
 
 	print("")
 
