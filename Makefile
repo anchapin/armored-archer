@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart serve-burndown
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report
 
 # Default target
 all: help
@@ -31,6 +31,15 @@ help:
 	@echo "  make backend-build      Build TypeScript backend"
 	@echo "  make backend-lint       Lint TypeScript backend code"
 	@echo "  make backend-check      Run TypeScript linting and type checking"
+	@echo ""
+	@echo "$(GREEN)Smoke Tests$(RESET)"
+	@echo "  make smoke-test        Run all smoke tests (backend + client)"
+	@echo "  make smoke-test-backend Run backend smoke tests only"
+	@echo "  make smoke-test-client  Run Godot client E2E tests only"
+	@echo "  make smoke-test-quick   Run quick smoke tests (skip performance)"
+	@echo "  make smoke-test-verbose Run smoke tests with verbose output"
+	@echo "  make smoke-test-ci      Run smoke tests in CI mode (exit on failure)"
+	@echo "  make smoke-test-report  View latest smoke test report"
 	@echo ""
 	@echo "$(GREEN)Flaky Test Detection$(RESET)"
 	@echo "  make test-flaky-backend Run flaky test detection for backend"
@@ -435,3 +444,48 @@ ci-services-restart:
 	@echo "$(BLUE)Restarting CI services...$(RESET)"
 	@docker compose -f .github/docker-compose.yml -p ci-armored-archer restart
 	@echo "$(GREEN)✓ CI services restarted$(RESET)"
+
+## Smoke Tests (End-to-End Vertical Slice)
+# Issue: #684 - [Sprint 1] Create end-to-end smoke test script
+smoke-test:
+	@echo "$(BLUE)Running complete smoke test suite...$(RESET)"
+	@./scripts/run-smoke-tests.sh
+
+smoke-test-backend:
+	@echo "$(BLUE)Running backend smoke tests only...$(RESET)"
+	@./scripts/run-smoke-tests.sh --backend
+
+smoke-test-client:
+	@echo "$(BLUE)Running client E2E smoke tests only...$(RESET)"
+	@./scripts/run-smoke-tests.sh --client
+
+smoke-test-quick:
+	@echo "$(BLUE)Running quick smoke tests (skip performance)...$(RESET)"
+	@./scripts/run-smoke-tests.sh --quick
+
+smoke-test-verbose:
+	@echo "$(BLUE)Running smoke tests with verbose output...$(RESET)"
+	@./scripts/run-smoke-tests.sh --verbose
+
+smoke-test-ci:
+	@echo "$(BLUE)Running smoke tests in CI mode (exit on first failure)...$(RESET)"
+	@./scripts/run-smoke-tests.sh --ci
+
+smoke-test-report:
+	@echo "$(BLUE)Opening latest smoke test report...$(RESET)"
+	@if [ -d reports/smoke-tests ]; then \
+		LATEST_REPORT=$$(ls -t reports/smoke-tests/*.html 2>/dev/null | head -1); \
+		if [ -n "$$LATEST_REPORT" ]; then \
+			if command -v xdg-open >/dev/null 2>&1; then \
+				xdg-open "$$LATEST_REPORT"; \
+			elif command -v open >/dev/null 2>&1; then \
+				open "$$LATEST_REPORT"; \
+			else \
+				echo "$(YELLOW)Report: $$LATEST_REPORT$(RESET)"; \
+			fi; \
+		else \
+			echo "$(YELLOW)No smoke test reports found. Run: make smoke-test$(RESET)"; \
+		fi; \
+	else \
+		echo "$(YELLOW)Smoke test reports directory not found. Run: make smoke-test$(RESET)"; \
+	fi
