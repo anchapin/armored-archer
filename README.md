@@ -391,6 +391,21 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our development wo
 
 ## 🗺️ Roadmap
 
+### MVP v1.0.0 Scope (Frozen)
+
+The MVP scope has been frozen around four core features. See [`.planning/MVP-SCOPE.md`](.planning/MVP-SCOPE.md) for complete details.
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| PvE Progression | Auto-shooter combat with stage-based campaign | In Progress |
+| Async PvP | Turn-based asynchronous matches against other players | Planned |
+| Seasonal Rank | Leaderboards with seasonal reset and rewards | Planned |
+| Cosmetic Monetization | Non-pay-to-win cosmetic items only | Planned |
+
+**Out of Scope for MVP:** Subscriptions, push notifications, guilds/clans, real-time PvP, trading, player reporting, analytics dashboard. See [MVP-SCOPE.md](.planning/MVP-SCOPE.md#what-mvp-excludes-out-of-scope) for details.
+
+### Development Phases
+
 | Phase | Timeline | Focus Area | Key Deliverables |
 |-------|----------|------------|------------------|
 | 1 | Weeks 1-3 | Godot Engine Setup & Physics | Touch controls (virtual joysticks), character movement, arrow trajectory physics, and hitbox collisions. |
@@ -398,6 +413,10 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our development wo
 | 3 | Weeks 7-9 | Backend & Database Setup | Local Nakama Docker setup, user authentication, database schemas (catalog, inventory, loadout). |
 | 4 | Weeks 10-13 | UI, IAP, & Turn-Based PvP | Modular sprite system, cosmetic shop UI, RevenueCat integration, Nakama matchmaker, and turn-based RPCs. |
 | 5 | Weeks 14-16 | Polish & App Store Submission | Safe-area UI adjustments, analytics (Crashlytics), TestFlight (iOS) / Play Console (Android) beta distribution. |
+
+### Current Sprint
+
+**Sprint 1: Vertical Slice Foundation** - Implementing the end-to-end flow from account creation → PvE stage completion → loot drop → equipment equip. See [`.planning/VERTICAL_SLICE_STORIES.md`](.planning/VERTICAL_SLICE_STORIES.md) for details.
 
 ---
 
