@@ -55,12 +55,7 @@ func _ready() -> void:
 	if continue_button:
 		continue_button.pressed.connect(_on_continue_pressed)
 
-	# Listen for match completion from MatchmakerManager
-	var matchmaker_manager = get_node_or_null("/root/MatchmakerManager")
-	if matchmaker_manager and matchmaker_manager.has_signal("match_completed"):
-		matchmaker_manager.match_completed.connect(_on_match_completed)
-
-	# Hide initially
+	# Hide initially - MatchResultsManager will show this scene
 	visible = false
 
 ## Display match results with comprehensive data
@@ -280,18 +275,8 @@ func _play_rank_arrow_down() -> void:
 func _on_continue_pressed() -> void:
 	print("MatchResults: Continue pressed")
 
-	# Clear any pending PvP state
-	var transition_manager = get_node_or_null("/root/MatchTransitionManager")
-	if transition_manager:
-		transition_manager.clear_pending_state()
-
 	# Hide screen with animation
 	_play_disappear_animation()
-
-## Handle match completion signal from MatchmakerManager
-func _on_match_completed(result_data: Dictionary) -> void:
-	print("MatchResults: Match completed signal received")
-	show_match_results(result_data)
 
 ## Play disappear animation and close screen
 func _play_disappear_animation() -> void:
