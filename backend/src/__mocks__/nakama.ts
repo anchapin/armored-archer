@@ -130,15 +130,45 @@ export const createMockNakama = (): Runtime.Nakama => {
         amulet_item_id: null,
       }];
     }
-    if (query.includes('player_loadout') && query.includes('INSERT') && params) {
-      // Handle INSERT for new loadout
+    // Handle INSERT ... ON CONFLICT UPDATE (upsert) - check for ON CONFLICT first
+    if (query.includes('player_loadout') && query.includes('ON CONFLICT') && query.includes('INSERT') && params) {
+      const paramsArray = Array.isArray(params) ? params : [params];
+      if (testStorage.has(inventoryKey)) {
+        try {
+          const inventoryValue = testStorage.get(inventoryKey);
+          const inventory = JSON.parse(inventoryValue as string);
+          // Determine which slot to update based on the query
+          let slot: string | null = null;
+          if (query.includes('helm_item_id')) slot = 'helm';
+          else if (query.includes('armor_item_id')) slot = 'armor';
+          else if (query.includes('bow_item_id')) slot = 'bow';
+          else if (query.includes('arrow_item_id')) slot = 'arrow';
+          else if (query.includes('amulet_item_id')) slot = 'amulet';
+
+          if (slot) {
+            // For upsert: INSERT ... ON CONFLICT UPDATE
+            // params are [userId, itemId] where itemId is paramsArray[1]
+            inventory.equipped_gear = {
+              ...(inventory.equipped_gear || {}),
+              [slot]: paramsArray[1] || null,
+            };
+          }
+          testStorage.set(inventoryKey, JSON.stringify(inventory));
+        } catch {
+          // Ignore parse errors
+        }
+      }
+      return [];
+    }
+    if (query.includes('player_loadout') && query.includes('INSERT') && !query.includes('ON CONFLICT') && params) {
+      // Handle INSERT for new loadout (without ON CONFLICT)
       const paramsArray = Array.isArray(params) ? params : [params];
       const userId = paramsArray[1];
       if (userId === 'test-user' && testStorage.has(inventoryKey)) {
         try {
           const inventoryValue = testStorage.get(inventoryKey);
           const inventory = JSON.parse(inventoryValue as string);
-          // Update the inventory with the new loadout
+          // Update inventory with new loadout
           inventory.equipped_gear = {
             helm: paramsArray[2] || null,
             armor: paramsArray[3] || null,
