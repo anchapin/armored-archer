@@ -5,13 +5,16 @@ class_name CharacterBody2DScript
 ## Handles movement, physics, and basic character behavior
 
 # --- Health Stats ---
-@export var max_health: int = 500
+var max_health: int = 100  # Will be set from CombinedStatsManager
 var current_health: int
 
 # --- Movement Stats ---
-@export var move_speed: float = 200.0
+var move_speed: float = 200.0  # Will be set from CombinedStatsManager
 @export var acceleration: float = 800.0
 @export var friction: float = 1000.0
+
+# --- Stats Manager ---
+var combined_stats_manager: Node
 
 # --- State ---
 var is_moving: bool = false
@@ -42,10 +45,21 @@ var quest_objectives_tracked: Dictionary = {}
 
 
 func _ready() -> void:
+	# Get combined stats manager reference
+	combined_stats_manager = get_node_or_null("/root/CombinedStatsManager")
+
+	# Connect to stats update signal
+	if combined_stats_manager and combined_stats_manager.has_signal("combined_stats_updated"):
+		combined_stats_manager.combined_stats_updated.connect(_on_combined_stats_updated)
+
 	# Initialize character state
 	is_moving = false
 	is_aiming = false
+
+	# Initialize stats from CombinedStatsManager
+	_update_stats_from_manager()
 	current_health = max_health
+
 	# Add player to group for ShootingManager
 	add_to_group("Player")
 
@@ -176,7 +190,20 @@ func is_player_aiming() -> bool:
 
 ## Handle taking damage from enemies
 func take_damage(amount: int) -> void:
-	current_health -= amount
+	# Apply damage reduction from defense if available
+	var actual_damage: int = amount
+	if combined_stats_manager and combined_stats_manager.has_method("get_defense"):
+		var defense: float = combined_stats_manager.get_defense()
+		# Simple damage reduction: 1 damage reduced per 5 defense points
+		var damage_reduction: int = int(defense / 5.0)
+		actual_damage = max(1, amount - damage_reduction)
+
+	current_health -= actual_damage
+
+	# Sync with GameManager
+	var game_mgr = get_node_or_null("/root/GameManager")
+	if game_mgr and game_mgr.has_method("take_player_damage"):
+		game_mgr.take_player_damage(actual_damage)
 
 	# Track combat engagement for pacing
 	if not in_combat:
@@ -185,6 +212,15 @@ func take_damage(amount: int) -> void:
 	if current_health <= 0:
 		_end_combat_encounter()
 		die()
+
+## Handle healing the player
+func heal(amount: int) -> void:
+	current_health = min(max_health, current_health + amount)
+
+	# Sync with GameManager
+	var game_mgr = get_node_or_null("/root/GameManager")
+	if game_mgr and game_mgr.has_method("heal_player"):
+		game_mgr.heal_player(amount)
 
 
 ## Handle player death
@@ -402,3 +438,32 @@ func get_next_objective() -> Dictionary:
 func reset_quest_tracking() -> void:
 	"""Resets quest tracking for the current stage."""
 	quest_objectives_tracked.clear()
+
+# --- Stats Integration ---
+
+## Updates character stats from CombinedStatsManager.
+func _update_stats_from_manager() -> void:
+	"""Updates max_health and move_speed from combined stats."""
+	if not combined_stats_manager:
+		return
+
+	# Get max health from stats
+	if combined_stats_manager.has_method("get_max_health"):
+		var new_max_health: int = combined_stats_manager.get_max_health()
+		if max_health == 100:  # Only update if still at default
+			max_health = max(new_max_health, 50)  # Minimum 50 health
+
+	# Get movement speed from stats
+	if combined_stats_manager.has_method("get_speed"):
+		move_speed = combined_stats_manager.get_speed()
+
+## Handles combined stats update signal.
+func _on_combined_stats_updated(stats: Dictionary) -> void:
+	"""Called when combined stats change."""
+	var health_ratio: float = float(current_health) / float(max_health) if max_health > 0 else 1.0
+
+	# Update stats from manager
+	_update_stats_from_manager()
+
+	# Preserve health percentage after stats update
+	current_health = int(max_health * health_ratio)

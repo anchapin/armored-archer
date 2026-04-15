@@ -19,6 +19,7 @@ signal stage_completed(stage_id: String)
 
 # --- References ---
 @onready var analytics: Node = $"/root/AnalyticsManager" if has_node("/root/AnalyticsManager") else null
+var combined_stats_manager: Node
 
 # --- Boss Scenes ---
 const BOSS_BASIC_SCENE = preload("res://scenes/enemies/bosses/boss_basic.tscn")
@@ -44,6 +45,34 @@ var current_difficulty: int = 1
 # --- Health Management ---
 var damage_cooldown: float = 0.0
 
+func _ready() -> void:
+	"""Initialize manager references and connect to stat updates."""
+	combined_stats_manager = get_node_or_null("/root/CombinedStatsManager")
+
+	# Connect to stats update signal
+	if combined_stats_manager and combined_stats_manager.has_signal("combined_stats_updated"):
+		combined_stats_manager.combined_stats_updated.connect(_on_combined_stats_updated)
+
+	# Initialize max health from stats
+	_update_max_health_from_stats()
+
+func _update_max_health_from_stats() -> void:
+	"""Updates player_max_health from CombinedStatsManager."""
+	if combined_stats_manager and combined_stats_manager.has_method("get_max_health"):
+		var new_max_health: int = combined_stats_manager.get_max_health()
+		if new_max_health > 0:
+			player_max_health = new_max_health
+
+func _on_combined_stats_updated(stats: Dictionary) -> void:
+	"""Called when combined stats change."""
+	var health_ratio: float = float(player_current_health) / float(player_max_health) if player_max_health > 0 else 1.0
+
+	_update_max_health_from_stats()
+
+	# Preserve health percentage after stats update
+	player_current_health = int(player_max_health * health_ratio)
+	health_changed.emit(player_current_health, player_max_health)
+
 func take_player_damage(damage: int) -> void:
 	"""Applies damage to the player.
 
@@ -61,6 +90,9 @@ func take_player_damage(damage: int) -> void:
 	var previous_health := player_current_health
 	player_current_health = max(0, player_current_health - damage)
 	health_changed.emit(player_current_health, player_max_health)
+
+	# Sync health to CharacterBody2D
+	_sync_health_to_player()
 
 	# Update damage overlay through EffectsManager
 	var effects_manager: Node = get_node_or_null("/root/EffectsManager")
@@ -103,6 +135,9 @@ func heal_player(amount: int) -> void:
 	player_current_health = min(player_max_health, player_current_health + amount)
 	health_changed.emit(player_current_health, player_max_health)
 
+	# Sync health to CharacterBody2D
+	_sync_health_to_player()
+
 	# Update damage overlay through EffectsManager
 	var effects_manager: Node = get_node_or_null("/root/EffectsManager")
 	if effects_manager and effects_manager.has_method("on_player_heal"):
@@ -124,6 +159,9 @@ func start_game() -> void:
 	is_game_active = true
 	game_start_time = Time.get_unix_time_from_system()
 	health_changed.emit(player_current_health, player_max_health)
+
+	# Sync health to CharacterBody2D
+	_sync_health_to_player()
 
 	# Track game start in analytics
 	if analytics and analytics.has_method("log_pve_stage_started"):
@@ -216,6 +254,9 @@ func reset_stage() -> void:
 	is_game_active = true
 	health_changed.emit(player_current_health, player_max_health)
 
+	# Sync health to CharacterBody2D
+	_sync_health_to_player()
+
 # --- Boss Management ---
 func spawn_boss(boss_name: String) -> void:
 	"""Instantiates and spawns a boss enemy.
@@ -262,3 +303,20 @@ func spawn_boss(boss_name: String) -> void:
 				"stage": current_stage,
 				"stage_id": current_stage_id
 			})
+
+# --- Health Synchronization ---
+
+## Synchronizes GameManager's health to CharacterBody2D.
+func _sync_health_to_player() -> void:
+	"""Syncs health to the player CharacterBody2D."""
+	var player = get_tree().get_first_node_in_group("Player")
+	if player and player.has_method("heal"):
+		# Calculate health difference and apply as heal/damage
+		var health_diff: int = player_current_health - (player.current_health if "current_health" in player else 0)
+		if health_diff > 0:
+			player.heal(health_diff)
+		elif health_diff < 0 and player.has_method("take_damage"):
+			# Don't apply damage through sync to avoid loops
+			# Just update the character's health directly
+			if "current_health" in player:
+				player.current_health = max(0, player.current_health + health_diff)
