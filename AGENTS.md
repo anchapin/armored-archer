@@ -139,7 +139,7 @@ npm run test:schema
 ```
 
 ### Database Schema Documentation
-- **Schema Reference**: [backend/DATABASE_SCHEMA.md](./backend/DATABASE_SCHEMA.md)
+- **Schema Reference**: [backend/DATABASE_SCHEMA.md](backend/DATABASE_SCHEMA.md)
 - **Migration Files**: `backend/data/*.sql`
 
 ### Key Tables
@@ -743,7 +743,7 @@ The project includes a technical debt tracking system to identify, document, and
 
 ### Tech Debt Documentation
 
-All technical debt items are documented in [TECH_DEBT.md](./TECH_DEBT.md), which includes:
+All technical debt items are documented in [TECH_DEBT.md](TECH_DEBT.md), which includes:
 - Active debt items with severity, status, and estimated effort
 - Historical debt that has been resolved
 - Categories for classification (Deprecated APIs, Code Quality, Testing, etc.)
