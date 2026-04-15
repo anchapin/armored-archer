@@ -19,7 +19,7 @@ import { profileFunction } from './profiling';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { getPlayerInventory, getEquippedGearModifierBonuses, PlayerInventory } from './gear_system';
 import { safeParse } from '../utils/safeParse';
-import { getCurrentSeason, getLeaderboardEntry } from './season_system.js';
+import { getCurrentSeason, getLeaderboardEntry } from './season_system';
 
 // Match-level inactivity timeout: 2 minutes of inactivity results in auto-forfeit
 const MATCH_INACTIVE_TIMEOUT_MS = 2 * 60 * 1000;
