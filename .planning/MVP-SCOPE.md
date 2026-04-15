@@ -1,8 +1,9 @@
 # MVP Scope: Armored Archer v1.0.0
 
 **Status:** Frozen
-**Date:** 2026-04-13
+**Date:** 2026-04-15
 **Sprint:** Sprint 0 — Architecture Decision and Backlog Lock (GitHub #672)
+**Issue:** #675 - Freeze MVP scope around core features
 
 ---
 
@@ -263,13 +264,14 @@ There is **one backend of record**, **one deployment path**, and **one approved 
 
 ## Sign-off
 
-**Product Owner:** ____________________  Date: _______
+**Product Owner:** @anchapin  Date: 2026-04-15
 
-**Tech Lead:** ____________________  Date: _______
+**Tech Lead:** @anchapin  Date: 2026-04-15
 
-**Stakeholders:** ____________________  Date: _______
+**Stakeholders:** N/A (single developer project)  Date: 2026-04-15
 
 ---
 
-*Last Updated:* 2026-04-13
-*Next Review:* Pre-Alpha (2 weeks from now)
+*Last Updated:* 2026-04-15
+*Next Review:* Sprint 1 planning
+*Related Issues:* #672 (Sprint 0), #675 (Freeze MVP scope), #676 (Vertical slice stories)
