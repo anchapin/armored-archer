@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MVP Release Burndown Dashboard - Armored Archer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            color: #00d4ff;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #a0a0a0;
+            font-size: 1.1em;
+        }
+
+        .last-updated {
+            color: #808080;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2);
+        }
+
+        .card-title {
+            color: #a0a0a0;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .card-value {
+            font-size: 3em;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .card-value.total { color: #00d4ff; }
+        .card-value.open { color: #ff6b6b; }
+        .card-value.closed { color: #51cf66; }
+        .card-value.progress { color: #ffd43b; }
+
+        .card-trend {
+            font-size: 0.9em;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .trend-up { color: #51cf66; }
+        .trend-down { color: #ff6b6b; }
+        .trend-neutral { color: #ffd43b; }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 1.3em;
+            color: #e0e0e0;
+        }
+
+        .refresh-btn {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #00b8e6;
+            transform: scale(1.05);
+        }
+
+        .refresh-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .sprint-breakdown {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .sprint-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sprint-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .sprint-name {
+            font-size: 1.2em;
+            color: #e0e0e0;
+            font-weight: bold;
+        }
+
+        .sprint-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .badge-danger { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; }
+        .badge-warning { background: rgba(255, 212, 59, 0.2); color: #ffd43b; }
+        .badge-success { background: rgba(81, 207, 102, 0.2); color: #51cf66; }
+        .badge-neutral { background: rgba(160, 160, 160, 0.2); color: #a0a0a0; }
+
+        .sprint-progress {
+            margin-top: 15px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            font-size: 0.9em;
+            color: #a0a0a0;
+        }
+
+        .issue-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .issue-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.85em;
+        }
+
+        .issue-item:last-child {
+            border-bottom: none;
+        }
+
+        .issue-number {
+            color: #00d4ff;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .issue-title {
+            flex: 1;
+            color: #e0e0e0;
+        }
+
+        .issue-status {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            margin-left: 10px;
+        }
+
+        .status-open { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; }
+        .status-closed { background: rgba(81, 207, 102, 0.2); color: #51cf66; }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .control-label {
+            color: #a0a0a0;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 0.9em;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #a0a0a0;
+        }
+
+        .error {
+            background: rgba(255, 107, 107, 0.2);
+            border: 1px solid #ff6b6b;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+        }
+
+        .demo-mode {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 212, 59, 0.1);
+            border: 1px solid rgba(255, 212, 59, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .demo-mode-label {
+            color: #ffd43b;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #444;
+            transition: .4s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #00d4ff;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8em; }
+            .card-value { font-size: 2em; }
+            .sprint-breakdown { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1> MVP Release Burndown Dashboard</h1>
+            <div class="subtitle">Armored Archer v1.0.0 Blocker Tracking</div>
+            <div class="last-updated" id="lastUpdated">Loading...</div>
+        </header>
+
+        <div id="loading" class="loading">Loading blocker data from GitHub...</div>
+        <div id="error" style="display: none;"></div>
+
+        <div id="dashboard" style="display: none;">
+            <div class="demo-mode">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="demoMode" onchange="toggleDemoMode()">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="demo-mode-label">Demo Mode (use mock data)</span>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Repository (owner/repo)</label>
+                    <input type="text" class="control-input" id="repoInput" value="anchapin/armored-archer">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Blocker Label Filter (comma-separated)</label>
+                    <input type="text" class="control-input" id="labelsInput" value="blocker,P0,P1,critical">
+                </div>
+            </div>
+
+            <div class="summary-cards">
+                <div class="card">
+                    <div class="card-title">Total Blockers</div>
+                    <div class="card-value total" id="totalBlockers">0</div>
+                    <div class="card-trend" id="totalTrend">-</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Open Blockers</div>
+                    <div class="card-value open" id="openBlockers">0</div>
+                    <div class="card-trend" id="openTrend">-</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Closed Blockers</div>
+                    <div class="card-value closed" id="closedBlockers">0</div>
+                    <div class="card-trend" id="closedTrend">-</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Completion</div>
+                    <div class="card-value progress" id="completionPercent">0%</div>
+                    <div class="card-trend" id="completionTrend">-</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">Blocker Burndown Over Time</div>
+                    <button class="refresh-btn" id="refreshBtn" onclick="loadData()">Refresh Data</button>
+                </div>
+                <canvas id="burndownChart"></canvas>
+            </div>
+
+            <div class="sprint-breakdown" id="sprintBreakdown"></div>
+        </div>
+    </div>
+
+    <script>
+        let chart = null;
+        let historicalData = [];
+
+        // Load historical data from localStorage
+        function loadHistoricalData() {
+            const stored = localStorage.getItem('mvpBurndownHistory');
+            if (stored) {
+                historicalData = JSON.parse(stored);
+            }
+        }
+
+        // Save historical data to localStorage
+        function saveHistoricalData() {
+            localStorage.setItem('mvpBurndownHistory', JSON.stringify(historicalData));
+        }
+
+        // Toggle demo mode
+        function toggleDemoMode() {
+            const isDemo = document.getElementById('demoMode').checked;
+            const controls = document.querySelectorAll('.control-group input');
+            controls.forEach(input => input.disabled = isDemo);
+
+            if (isDemo) {
+                loadDemoData();
+            } else {
+                loadData();
+            }
+        }
+
+        // Load demo/mock data
+        function loadDemoData() {
+            const now = new Date();
+            const mockIssues = [
+                // Sprint 0 blockers
+                { number: 677, title: '[Sprint 0] Create lightweight release burndown dashboard', state: 'closed', created_at: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(), closed_at: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+                { number: 675, title: '[Sprint 0] Freeze MVP scope around core features', state: 'open', created_at: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString() },
+                // Sprint 2 blockers
+                { number: 692, title: '[Sprint 2] Fix client/server contract blockers from vertical slice demo', state: 'open', created_at: new Date(now.getTime() - 25 * 24 * 60 * 60 * 1000).toISOString() },
+                // Sprint 6 blockers
+                { number: 720, title: '[Sprint 6] Finalize RevenueCat integration on production backend', state: 'closed', created_at: new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000).toISOString(), closed_at: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+                { number: 722, title: '[Sprint 6] Ensure gems only purchase cosmetics with zero combat impact', state: 'open', created_at: new Date(now.getTime() - 19 * 24 * 60 * 60 * 1000).toISOString() },
+                { number: 724, title: '[Sprint 6] Add audit logging for purchases and entitlements', state: 'open', created_at: new Date(now.getTime() - 18 * 24 * 60 * 60 * 1000).toISOString() },
+                // Sprint 7 blockers
+                { number: 730, title: '[Sprint 7] Complete app-store operational needs', state: 'open', created_at: new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000).toISOString() },
+                { number: 732, title: '[Sprint 7] Assemble closed-beta checklist with owners and criteria', state: 'open', created_at: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString() },
+                // Sprint 8 blockers
+                { number: 738, title: '[Sprint 8] Fix all P0 and P1 trust-system blockers', state: 'open', created_at: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString() },
+                { number: 739, title: '[Sprint 8] Produce release candidate checklist and sign-off package', state: 'open', created_at: new Date(now.getTime() - 9 * 24 * 60 * 60 * 1000).toISOString() },
+            ];
+
+            // Generate mock historical data
+            historicalData = [];
+            const days = 30;
+            for (let i = days; i >= 0; i--) {
+                const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+                const dateStr = date.toISOString().split('T')[0];
+                const progress = 1 - (i / days);
+                const baseOpen = 8;
+                const baseClosed = 2;
+
+                historicalData.push({
+                    date: dateStr,
+                    open: Math.max(0, Math.round(baseOpen * (1 - progress * 0.8))),
+                    closed: Math.round(baseClosed + (baseOpen * 0.8 * progress)),
+                    total: baseOpen + baseClosed
+                });
+            }
+
+            document.getElementById('lastUpdated').textContent = `Demo Mode | Last updated: ${now.toLocaleString()}`;
+            processIssues(mockIssues);
+        }
+
+        // Parse sprint/phase from issue title
+        function parseSprint(title) {
+            const sprintMatch = title.match(/\[Sprint\s+(\d+)\]/i);
+            if (sprintMatch) {
+                return { number: parseInt(sprintMatch[1]), isSprint: true };
+            }
+            return { number: null, isSprint: false };
+        }
+
+        // Get sprint color based on number
+        function getSprintColor(sprintNum) {
+            const colors = [
+                '#ff6b6b', // Sprint 0 - Red
+                '#ffd43b', // Sprint 1 - Yellow
+                '#51cf66', // Sprint 2 - Green
+                '#00d4ff', // Sprint 3 - Cyan
+                '#845ef7', // Sprint 4 - Purple
+                '#f783ac', // Sprint 5 - Pink
+                '#20c997', // Sprint 6 - Teal
+                '#ff922b', // Sprint 7 - Orange
+                '#3bc9db', // Sprint 8 - Light Blue
+                '#e599f7', // Sprint 9+ - Lavender
+            ];
+            return colors[Math.min(sprintNum || 0, colors.length - 1)];
+        }
+
+        // Load data from GitHub API
+        async function loadData() {
+            const repo = document.getElementById('repoInput').value;
+            const labels = document.getElementById('labelsInput').value.split(',').map(l => l.trim());
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('refreshBtn').disabled = true;
+
+            try {
+                const query = `repo:${repo} ${labels.map(l => `label:"${l}"`).join(' ')}`;
+                const response = await fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(query)}&per_page=100&sort=created&order=asc`, {
+                    headers: {
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.message) {
+                    throw new Error(data.message);
+                }
+
+                processIssues(data.items);
+            } catch (error) {
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').innerHTML = `
+                    <strong>Error loading data:</strong><br>
+                    ${error.message}<br><br>
+                    <small>
+                        Make sure the repository exists and is public. If rate limited, wait a few minutes.<br><br>
+                        <strong>Want to test the dashboard?</strong> Enable <strong>Demo Mode</strong> above to use mock data.
+                    </small>
+                `;
+                document.getElementById('loading').style.display = 'none';
+            } finally {
+                document.getElementById('refreshBtn').disabled = false;
+            }
+        }
+
+        // Process issues and update dashboard
+        function processIssues(issues) {
+            const now = new Date();
+            const total = issues.length;
+            const open = issues.filter(i => i.state === 'open').length;
+            const closed = issues.filter(i => i.state === 'closed').length;
+            const completion = total > 0 ? Math.round((closed / total) * 100) : 0;
+
+            // Update summary cards
+            document.getElementById('totalBlockers').textContent = total;
+            document.getElementById('openBlockers').textContent = open;
+            document.getElementById('closedBlockers').textContent = closed;
+            document.getElementById('completionPercent').textContent = `${completion}%`;
+
+            // Add current snapshot to history
+            const today = now.toISOString().split('T')[0];
+            const existingSnapshot = historicalData.find(h => h.date === today);
+
+            if (existingSnapshot) {
+                existingSnapshot.open = open;
+                existingSnapshot.closed = closed;
+                existingSnapshot.total = total;
+            } else {
+                historicalData.push({
+                    date: today,
+                    open: open,
+                    closed: closed,
+                    total: total
+                });
+            }
+
+            // Keep only last 90 days
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - 90);
+            historicalData = historicalData.filter(h => new Date(h.date) >= cutoffDate);
+
+            // Save to localStorage
+            saveHistoricalData();
+
+            // Update last updated time
+            document.getElementById('lastUpdated').textContent = `Last updated: ${now.toLocaleString()}`;
+
+            // Update trends (compare to previous snapshot)
+            if (historicalData.length > 1) {
+                const prev = historicalData[historicalData.length - 2];
+                updateTrend('totalTrend', total, prev.total, true);
+                updateTrend('openTrend', open, prev.open, false);
+                updateTrend('closedTrend', closed, prev.closed, true);
+                updateTrend('completionTrend', completion, Math.round((prev.closed / prev.total) * 100), true);
+            }
+
+            // Update chart
+            updateChart();
+
+            // Update sprint breakdown
+            updateSprintBreakdown(issues);
+
+            // Show dashboard
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+        }
+
+        function updateTrend(elementId, current, previous, lowerIsBetter) {
+            const diff = current - previous;
+            const element = document.getElementById(elementId);
+
+            if (diff === 0) {
+                element.innerHTML = '<span class="trend-neutral">No change</span>';
+            } else {
+                const icon = diff > 0 ? (lowerIsBetter ? '↑' : '↓') : (lowerIsBetter ? '↓' : '↑');
+                const colorClass = (diff > 0 && lowerIsBetter) || (diff < 0 && !lowerIsBetter) ? 'trend-down' : 'trend-up';
+                element.innerHTML = `<span class="${colorClass}">${icon} ${Math.abs(diff)} (vs yesterday)</span>`;
+            }
+        }
+
+        function updateChart() {
+            const ctx = document.getElementById('burndownChart').getContext('2d');
+
+            const sortedData = [...historicalData].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sortedData.map(h => {
+                        const date = new Date(h.date);
+                        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }),
+                    datasets: [
+                        {
+                            label: 'Open Blockers',
+                            data: sortedData.map(h => h.open),
+                            borderColor: '#ff6b6b',
+                            backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Closed Blockers',
+                            data: sortedData.map(h => h.closed),
+                            borderColor: '#51cf66',
+                            backgroundColor: 'rgba(81, 207, 102, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e0e0e0',
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a0a0a0'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a0a0a0',
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        function updateSprintBreakdown(issues) {
+            const container = document.getElementById('sprintBreakdown');
+            container.innerHTML = '';
+
+            // Group by sprint
+            const sprintGroups = {};
+
+            issues.forEach(issue => {
+                const sprintInfo = parseSprint(issue.title);
+                const sprintKey = sprintInfo.isSprint ? `Sprint ${sprintInfo.number}` : 'No Sprint';
+                const sprintNum = sprintInfo.isSprint ? sprintInfo.number : -1;
+
+                if (!sprintGroups[sprintKey]) {
+                    sprintGroups[sprintKey] = {
+                        number: sprintNum,
+                        name: sprintKey,
+                        issues: []
+                    };
+                }
+                sprintGroups[sprintKey].issues.push(issue);
+            });
+
+            // Sort by sprint number
+            const sortedSprints = Object.values(sprintGroups).sort((a, b) => a.number - b.number);
+
+            sortedSprints.forEach(sprint => {
+                const total = sprint.issues.length;
+                const open = sprint.issues.filter(i => i.state === 'open').length;
+                const closed = sprint.issues.filter(i => i.state === 'closed').length;
+                const progress = total > 0 ? Math.round((closed / total) * 100) : 0;
+
+                let badgeClass = 'badge-neutral';
+                if (total === 0) {
+                    badgeClass = 'badge-neutral';
+                } else if (progress === 100) {
+                    badgeClass = 'badge-success';
+                } else if (progress >= 50) {
+                    badgeClass = 'badge-warning';
+                } else {
+                    badgeClass = 'badge-danger';
+                }
+
+                const card = document.createElement('div');
+                card.className = 'sprint-card';
+                card.style.borderLeft = `3px solid ${getSprintColor(sprint.number)}`;
+
+                const issuesHtml = sprint.issues.map(issue => `
+                    <div class="issue-item">
+                        <span class="issue-number">#${issue.number}</span>
+                        <span class="issue-title">${issue.title.replace(/\[.*?\]\s*/, '')}</span>
+                        <span class="issue-status ${issue.state === 'open' ? 'status-open' : 'status-closed'}">
+                            ${issue.state === 'open' ? 'Open' : 'Closed'}
+                        </span>
+                    </div>
+                `).join('');
+
+                card.innerHTML = `
+                    <div class="sprint-header">
+                        <div class="sprint-name">${sprint.name}</div>
+                        <div class="sprint-badge ${badgeClass}">${total} ${total === 1 ? 'item' : 'items'}</div>
+                    </div>
+                    <div class="sprint-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%; background: ${getSprintColor(sprint.number)};"></div>
+                        </div>
+                        <div class="progress-text">${closed}/${total} completed (${progress}%)</div>
+                    </div>
+                    <div class="issue-list">
+                        ${issuesHtml}
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        // Initialize
+        loadHistoricalData();
+
+        // Check for GitHub token in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('token')) {
+            localStorage.setItem('githubToken', urlParams.get('token'));
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // Load data on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            // Auto-refresh every 5 minutes
+            setInterval(loadData, 300000);
+        });
+    </script>
+</body>
+</html>

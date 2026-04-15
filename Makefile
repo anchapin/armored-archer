@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart serve-burndown
 
 # Default target
 all: help
@@ -40,6 +40,9 @@ help:
 	@echo ""
 	@echo "$(GREEN)Build Performance$(RESET)"
 	@echo "  make build-perf-track   View build performance metrics"
+	@echo ""
+	@echo "$(GREEN)Dashboard$(RESET)"
+	@echo "  make serve-burndown   Serve MVP Burndown Dashboard locally"
 	@echo ""
 	@echo "$(GREEN)Deployment$(RESET)"
 	@echo "  make rollback          Show rollback automation help"
@@ -225,6 +228,22 @@ rollback:
 	@echo "  - full: Rollback all components (database, nakama, godot)"
 	@echo "  - database: Rollback database migrations only"
 	@echo "  - nakama: Rollback Nakama server only"
+
+## MVP Burndown Dashboard
+serve-burndown:
+	@echo "$(BLUE)Serving MVP Burndown Dashboard...$(RESET)"
+	@echo ""
+	@echo "Dashboard URL: $(YELLOW)http://localhost:8080/docs/mvp-burndown-dashboard.html$(RESET)"
+	@echo "Press Ctrl+C to stop the server"
+	@echo ""
+	@if command -v python3 &> /dev/null; then \
+		python3 -m http.server 8080; \
+	elif command -v python &> /dev/null; then \
+		python -m SimpleHTTPServer 8080; \
+	else \
+		echo "$(YELLOW)Error: Python is not installed$(RESET)"; \
+		echo "Install Python or use 'npx http-server -p 8080'"; \
+	fi
 
 ## Local Services Management
 services-start:
