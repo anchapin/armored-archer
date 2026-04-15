@@ -162,6 +162,13 @@ export const ValibotSchemas = {
 
   get_player_rank: object({}),
 
+  get_match_history: optional(
+    object({
+      match_type: optional(createEnum(['ranked', 'casual'])),
+      limit: optional(pipe(number(), integer(), minValue(1), maxValue(100))),
+      offset: optional(pipe(number(), integer(), minValue(0))),
+    })
+  ),
   join_pool: object({
     mode: createEnum(['1v1', '2v2']),
     rating: pipe(number(), integer(), minValue(1000), maxValue(3000)),

@@ -15,6 +15,7 @@ const RPC_CREATE_MATCH = "armored_archer/create_match"
 const RPC_ACCEPT_MATCH = "armored_archer/accept_match"
 const RPC_GET_PLAYER_RANK = "armored_archer/get_player_rank"
 const RPC_COMPLETE_MATCH = "armored_archer/complete_match"
+const RPC_GET_MATCH_HISTORY = "armored_archer/get_match_history"
 
 # --- Match Data ---
 var available_matches: Array = []
@@ -34,6 +35,7 @@ signal match_created(match: Dictionary)
 signal match_accepted(match: Dictionary)
 signal rank_retrieved(rank: int)
 signal match_completed(match_result: Dictionary)
+signal match_history_loaded(matches: Array, total: int, stats: Dictionary)
 signal punch_up_stats_updated(wins: int, losses: int, win_rate: float)
 
 # --- Network Reference ---
@@ -168,6 +170,40 @@ func get_player_rank() -> void:
 	if response.get("success", false):
 		player_rank = response.get("rank", 0)
 		rank_retrieved.emit(player_rank)
+
+# --- Match History ---
+func get_match_history(match_type: String = "", limit: int = 20, offset: int = 0) -> void:
+	"""Retrieves the player's match history.
+
+	Parameters:
+		match_type: Filter by match type ("ranked" or "casual"), empty for all
+		limit: Maximum number of matches to return
+		offset: Offset for pagination
+	"""
+	if not network_manager or not network_manager.is_connected:
+		push_error("Not connected to server")
+		return
+
+	var payload: Dictionary = {}
+	if not match_type.is_empty():
+		payload["match_type"] = match_type
+	if limit > 0:
+		payload["limit"] = limit
+	if offset > 0:
+		payload["offset"] = offset
+
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_MATCH_HISTORY, json.stringify(payload))
+
+	if response.has("error"):
+		push_error("Failed to get match history: %s" % response.error)
+		return
+
+	if response.get("success", false):
+		var matches: Array = response.get("matches", [])
+		var total: int = response.get("total", 0)
+		var stats: Dictionary = response.get("stats", {})
+		match_history_loaded.emit(matches, total, stats)
 
 # --- Match Completion ---
 func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = false) -> void:
