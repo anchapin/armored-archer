@@ -7,7 +7,6 @@ import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import {
   insertGearItem,
   getPlayerGearFromDB,
@@ -16,6 +15,7 @@ import {
   unequipItemInDB,
   getFullInventoryFromDB,
 } from './gear_db';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Gear rarity data structure.
@@ -1886,7 +1886,13 @@ function generateLootResult(
     // Update gear ID with the database-generated ID
     gear.id = insertResult.item_id;
     inventory.gear.push(gear);
-    logger.info('Loot dropped and persisted for user %s: %s (%s) [DB ID: %s]', userId, gear.name, gear.rarity, insertResult.item_id);
+    logger.info(
+      'Loot dropped and persisted for user %s: %s (%s) [DB ID: %s]',
+      userId,
+      gear.name,
+      gear.rarity,
+      insertResult.item_id
+    );
     return { dropped: true, gear };
   } else {
     logger.error('Failed to persist gear to database: %s', insertResult.error);

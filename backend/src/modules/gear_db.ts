@@ -5,7 +5,7 @@
  */
 
 import { Runtime } from '../types/nakama';
-import { GearItem, GearStat, GearModifier } from './gear_system';
+import { GearItem } from './gear_system';
 
 /**
  * Result of inserting a gear item into the database.
@@ -44,11 +44,13 @@ export function insertGearItem(
 
   try {
     // Convert stats array to JSONB
-    const statsJson = JSON.stringify(gear.stats.map((stat) => ({
-      name: stat.name,
-      base_value: stat.base_value,
-      value: stat.value,
-    })));
+    const statsJson = JSON.stringify(
+      gear.stats.map((stat) => ({
+        name: stat.name,
+        base_value: stat.base_value,
+        value: stat.value,
+      }))
+    );
 
     // Convert modifiers array to JSONB
     const modifiersJson = JSON.stringify(gear.modifiers);
@@ -89,10 +91,7 @@ export function insertGearItem(
  * @param userId - ID of the player
  * @returns Array of gear items
  */
-export function getPlayerGearFromDB(
-  nk: Runtime.Nakama,
-  userId: string
-): GearItem[] {
+export function getPlayerGearFromDB(nk: Runtime.Nakama, userId: string): GearItem[] {
   const query = `
     SELECT
       item_id,
@@ -152,10 +151,7 @@ export interface Loadout {
   amulet_item_id: string | null;
 }
 
-export function getPlayerLoadoutFromDB(
-  nk: Runtime.Nakama,
-  userId: string
-): Loadout {
+export function getPlayerLoadoutFromDB(nk: Runtime.Nakama, userId: string): Loadout {
   const query = `
     SELECT
       helm_item_id,
@@ -321,10 +317,7 @@ export interface FullInventoryData {
   unlocked_modifier_pools: string[];
 }
 
-export function getFullInventoryFromDB(
-  nk: Runtime.Nakama,
-  userId: string
-): FullInventoryData {
+export function getFullInventoryFromDB(nk: Runtime.Nakama, userId: string): FullInventoryData {
   const gear = getPlayerGearFromDB(nk, userId);
   const loadout = getPlayerLoadoutFromDB(nk, userId);
 
@@ -336,6 +329,15 @@ export function getFullInventoryFromDB(
     arrow: loadout.arrow_item_id,
     amulet: loadout.amulet_item_id,
   };
+
+  // Return empty object if all slots are null (new player with no loadout)
+  if (Object.values(equipped_gear).every((value) => value === null)) {
+    return {
+      gear,
+      equipped_gear: {},
+      unlocked_modifier_pools: [],
+    };
+  }
 
   // Note: unlocked_modifier_pools is stored in Nakama storage for now
   // This can be migrated to a database table in a future update
