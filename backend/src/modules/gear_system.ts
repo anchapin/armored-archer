@@ -1586,6 +1586,26 @@ const BOSS_DROP_BONUS = 0.25;
 const BASE_DROP_RATE = 0.3;
 
 /**
+ * XP gain constants for stage completion.
+ */
+const BASE_STAGE_XP = 50;
+const BOSS_XP_BONUS = 25;
+
+/**
+ * Calculates XP gain for stage completion.
+ *
+ * @param bossDefeated - Whether a boss was defeated
+ * @param difficulty - Difficulty of the stage
+ * @returns XP gained
+ */
+function calculateStageXPGain(bossDefeated: boolean, difficulty: string): number {
+  const baseXP = BASE_STAGE_XP;
+  const bossBonus = bossDefeated ? BOSS_XP_BONUS : 0;
+  const difficultyMultiplier = DIFFICULTY_DROP_MULTIPLIERS[difficulty] || 1.0;
+  return Math.round((baseXP + bossBonus) * difficultyMultiplier);
+}
+
+/**
  * Calculates the drop rate based on stage difficulty and boss defeat.
  *
  * @param difficulty - Stage difficulty level
@@ -1726,6 +1746,9 @@ export function rpcStageComplete(
     'success'
   );
 
+  // Calculate XP gained for stage completion
+  const xpGained = calculateStageXPGain(request.boss_defeated, request.difficulty);
+
   return JSON.stringify({
     success: true,
     stage_id: request.stage_id,
@@ -1734,6 +1757,9 @@ export function rpcStageComplete(
     unlocked_modifier_pools: result.inventory.unlocked_modifier_pools,
     boss_defeat_count: result.bossDefeatResult?.defeat_count,
     newly_unlocked_modifiers: result.allUnlockedModifiers,
+    // Client expects these fields at top level for contract compatibility
+    xp_gained: xpGained,
+    gear_dropped: result.lootResult.gear,
   });
 }
 
