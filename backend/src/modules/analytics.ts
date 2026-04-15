@@ -39,6 +39,13 @@ export enum AnalyticsEventType {
   PVP_MATCH_ABANDONED = 'pvp_match_abandoned',
   PVP_DISCONNECT = 'pvp_disconnect',
 
+  // Fairness telemetry events
+  FAIRNESS_HIT_RESOLUTION = 'fairness_hit_resolution',
+  FAIRNESS_DISCONNECT = 'fairness_disconnect',
+  FAIRNESS_TIMEOUT = 'fairness_timeout',
+  FAIRNESS_RANKING_DELTA = 'fairness_ranking_delta',
+  FAIRNESS_SUMMARY = 'fairness_summary',
+
   // Store events
   STORE_OPENED = 'store_opened',
   PURCHASE_INITIATED = 'purchase_initiated',

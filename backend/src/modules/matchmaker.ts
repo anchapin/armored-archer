@@ -18,6 +18,10 @@ import {
   SeasonInfo,
 } from './season_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import {
+  logRankingDelta,
+  type RankingDeltaEvent,
+} from './fairness_telemetry';
 
 /**
  * PvP match data structure.
@@ -1022,6 +1026,33 @@ function processMatchResult(
     loserOldSeasonPosition > 0 && loserNewSeasonPosition > 0
       ? loserNewSeasonPosition - loserOldSeasonPosition
       : 0;
+
+  // Log ranking delta for fairness telemetry (non-blocking)
+  if (match.match_type === 'ranked') {
+    const rankingDeltaEvent: RankingDeltaEvent = {
+      event_id: `rank_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      match_id: match.match_id,
+      timestamp: Date.now(),
+      winner_id: request.winner_id,
+      loser_id: request.loser_id,
+      winner_old_rank: calculateOldRank(match, request.winner_id, match.match_type),
+      winner_new_rank: winnerNewRank,
+      winner_rank_change: winnerRankChange,
+      loser_old_rank: calculateOldRank(match, request.loser_id, match.match_type),
+      loser_new_rank: loserNewRank,
+      loser_rank_change: loserRankChange,
+      match_type: match.match_type,
+      is_punch_up: isPunchUp,
+      winner_old_season_position: winnerOldSeasonPosition,
+      winner_new_season_position: winnerNewSeasonPosition,
+      loser_old_season_position: loserOldSeasonPosition,
+      loser_new_season_position: loserNewSeasonPosition,
+      season_id: currentSeason.season_id,
+    };
+
+    // Non-blocking: log to telemetry but don't wait
+    void logRankingDelta(nk, rankingDeltaEvent);
+  }
 
   return JSON.stringify({
     success: true,
