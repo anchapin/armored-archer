@@ -28,12 +28,8 @@ help:
 	@echo "  make backend-stop        Stop backend services"
 	@echo "  make backend-dev        Start backend with auto-reload"
 	@echo "  make backend-test       Run TypeScript backend tests"
-	@echo "  make backend-test-go    Run Go backend tests"
 	@echo "  make backend-build      Build TypeScript backend"
-	@echo "  make backend-build-go   Build Go backend"
 	@echo "  make backend-lint       Lint TypeScript backend code"
-	@echo "  make backend-lint-go    Lint Go backend code"
-	@echo "  make backend-fmt-go     Format Go code"
 	@echo "  make backend-check      Run TypeScript linting and type checking"
 	@echo ""
 	@echo "$(GREEN)Flaky Test Detection$(RESET)"
@@ -128,29 +124,20 @@ backend-test:
 	@echo "$(BLUE)Running TypeScript backend tests...$(RESET)"
 	cd $(BACKEND_DIR) && npm test
 
-backend-test-go:
-	@echo "$(BLUE)Running Go backend tests...$(RESET)"
-	cd $(BACKEND_DIR) && go test ./...
+# DEPRECATED: Go backend commands - Go migration was abandoned
+# See backend/.deprecated/ for Go backend artifacts
+# backend-test-go: $(info $(YELLOW)Go backend is deprecated - use TypeScript$(RESET))
+# backend-build-go: $(info $(YELLOW)Go backend is deprecated - use TypeScript$(RESET))
+# backend-lint-go: $(info $(YELLOW)Go backend is deprecated - use TypeScript$(RESET))
+# backend-fmt-go: $(info $(YELLOW)Go backend is deprecated - use TypeScript$(RESET))
 
 backend-build:
 	@echo "$(BLUE)Building TypeScript backend...$(RESET)"
 	cd $(BACKEND_DIR) && npm run build
 
-backend-build-go:
-	@echo "$(BLUE)Building Go backend...$(RESET)"
-	cd $(BACKEND_DIR) && ./build-go.sh
-
 backend-lint:
 	@echo "$(BLUE)Linting TypeScript backend code...$(RESET)"
 	cd $(BACKEND_DIR) && npm run lint
-
-backend-lint-go:
-	@echo "$(BLUE)Linting Go backend code...$(RESET)"
-	cd $(BACKEND_DIR) && golangci-lint run || echo "$(YELLOW)golangci-lint not installed. Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest$(RESET)"
-
-backend-fmt-go:
-	@echo "$(BLUE)Formatting Go code...$(RESET)"
-	cd $(BACKEND_DIR) && go fmt ./...
 
 backend-check:
 	@echo "$(BLUE)Running linting and type checking...$(RESET)"

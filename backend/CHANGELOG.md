@@ -1,100 +1,37 @@
 # Changelog
 
-All notable changes to the Armored Archer Backend will be documented in this file.
+All notable changes to Armored Archer Backend will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2026-03-15
+## [1.1.0] - 2026-04-14
 
-### 🎉 Major Changes - Go Backend Migration
+### 🔄 Changed - Backend Runtime Decision
 
-**MIGRATED FROM TYPESCRIPT TO GO**
+**TypeScript Confirmed as Authoritative Backend**
 
-This release marks the complete migration of the Nakama backend from TypeScript to Go.
-The Go backend provides better performance, type safety, and native Nakama support.
+After attempting a migration to Go, TypeScript has been confirmed as the authoritative backend runtime for Armored Archer.
 
-### ✨ Added
+### 🗑️ Removed - Go Backend Artifacts
 
-#### Core Systems
-- **Player Module** (`internal/player/`) - Player stats, XP, level progression, stat allocation
-- **Combat Module** (`internal/combat/`) - Combat actions, match state, hit/damage calculation, anti-cheat
-- **Gear Module** (`internal/gear/`) - Gear generation, inventory management, loadout system, modifiers
-- **Matchmaking Module** (`internal/matchmaking/`) - PvP matches, Elo ranking, leaderboards
-- **RPG Module** (`internal/rpg/`) - XP system, level-up logic, stat point allocation
-- **Season Module** (`internal/season/`) - Seasonal content, rewards, rank decay
-- **Store Module** (`internal/store/`) - Currency management, IAP validation, refunds, subscriptions
-- **Notifications Module** (`internal/notifications/`) - Push notifications, scheduling, preferences
-
-#### Infrastructure
-- **Circuit Breaker** (`internal/circuitbreaker/`) - Fault tolerance with configurable thresholds
-- **Error Handling** (`internal/errors/`) - Custom error types with error codes
-- **Session Management** (`internal/session/`) - Session validation, token handling
-- **Structured Logger** (`internal/logger/`) - JSON logging with context
-- **Analytics** (`internal/analytics/`) - Event tracking for product analytics
-- **Database Helpers** (`internal/database/`) - Connection pooling, retry logic
-- **Storage Helpers** (`internal/storage/`) - Nakama storage API wrappers
-- **Reports System** (`internal/reports/`) - Player reporting with moderation
-- **Anti-Cheat** (`internal/anticheat/`) - Signature validation, timing checks, stat validation
-- **Observability** (`internal/observability/`) - Health checks, metrics, alerts, profiling
-
-#### Testing
-- **Test Framework** - Comprehensive test helper library with assertions
-- **234 Integration Tests** - Full test coverage for all modules
-- **Test Packages** - Organized by module (player, combat, gear, matchmaking, etc.)
-
-### 🔧 Changed
-
-#### Build System
-- **Build Time**: 67% faster (15s → 5s)
-- **Bundle Size**: 16% smaller (11.2MB → 9.4MB)
-- **Cold Start**: 90% faster (~500ms → ~50ms)
-- **Memory Usage**: 50% less (~200MB → ~100MB)
-
-#### Architecture
-- Migrated from TypeScript/JavaScript to Go 1.21
-- Replaced ES5 polyfills with native Go code
-- Eliminated Nakama JS runtime compatibility issues
-- Implemented proper error handling with error codes
-- Added comprehensive type safety at compile time
-
-### 🗑️ Removed
-
-- TypeScript source files (`src/`)
-- JavaScript bundle (`build/index.js`)
-- Webpack configuration
-- Babel transpilation
-- ES5 polyfills
-- npm dependencies
-
-### 📦 Dependencies
-
-#### Added (Go Modules)
-- `github.com/heroiclabs/nakama-common` - Nakama Go SDK
-- `github.com/lib/pq` - PostgreSQL driver
-
-#### Removed (npm)
-- All npm packages (no longer needed)
+- Moved `README_GO.md` to `.deprecated/` (Go backend documentation)
+- Updated `MIGRATION_SUMMARY.md` with deprecation notice
 
 ### 📝 Documentation
 
-- Added `README_GO.md` - Complete Go backend documentation
-- Added `MIGRATION_SUMMARY.md` - Migration completion summary
-- Updated build instructions for Go
-- Added Go-specific troubleshooting guide
+- Updated `README.md` to remove misleading migration notice
+- Added deprecation section documenting the abandoned Go migration
+- Confirmed TypeScript as the active, running backend
 
-### 🧪 Testing
+### 💬 Context
 
-- 234 integration tests created
-- Test helper library with assertions
-- 95% test pass rate (gear system tests)
-- Organized test structure by module
+The Go migration (started 2026-03-15) was abandoned due to:
+- Incompatible Go version issues (disabled in nakama.yml)
+- Incomplete migration (Phases 14-15 pending)
+- TypeScript backend remains fully functional and actively developed
 
-### 🚀 Migration Progress
-
-- **Phase 1-13**: ✅ Complete (87%)
-- **Phase 14**: 🔄 In Progress (Documentation)
-- **Phase 15**: ⏳ Pending (Alpha Readiness)
+See `MIGRATION_SUMMARY.md` for full details on the abandoned migration.
 
 ---
 
@@ -103,15 +40,15 @@ The Go backend provides better performance, type safety, and native Nakama suppo
 ### ✨ Added
 
 - Initial TypeScript backend implementation
-- Nakama server integration
-- PostgreSQL database
-- Redis caching
+- Nakama server integration with ES5 JavaScript runtime
+- PostgreSQL database with migrations
+- Redis caching layer
 - Player stats system
 - Combat system
-- Gear system
-- Matchmaking
-- Season system
-- Store/IAP integration
+- Gear generation and inventory
+- Matchmaking (PvP)
+- Seasonal system and leaderboards
+- Store and IAP integration
 - Push notifications
 - Analytics tracking
 - Circuit breaker pattern
@@ -120,79 +57,55 @@ The Go backend provides better performance, type safety, and native Nakama suppo
 - Prometheus metrics
 - Grafana dashboards
 
-### 🔧 Changed
+### 🔧 Build System
 
-- [Previous TypeScript-based changes]
+- TypeScript compilation with tsc
+- Webpack bundling for Nakama runtime
+- Babel transpilation to ES5
+- Bundle validation scripts
+- npm-based development workflow
 
----
+### 🧪 Testing
 
-## Migration Notes
-
-### For Developers
-
-1. **Build Command Changed**:
-   ```bash
-   # Old (TypeScript)
-   npm run build
-   
-   # New (Go)
-   CGO_ENABLED=1 go build -buildmode=plugin -o build/server.so ./cmd/server
-   ```
-
-2. **Test Command Changed**:
-   ```bash
-   # Old (TypeScript/Jest)
-   npm test
-   
-   # New (Go)
-   go test ./internal/... -v
-   ```
-
-3. **Module Import Paths**:
-   ```go
-   // Go imports
-   import "github.com/anchapin/armored-archer/backend/internal/player"
-   import "github.com/anchapin/armored-archer/backend/internal/combat"
-   ```
-
-4. **Environment Variables**: Same as before, no changes needed
-
-### For Operations
-
-1. **Docker Image**: No changes - Nakama container remains the same
-2. **Plugin Path**: Updated to `modules/server.so` (was `modules/index.js`)
-3. **Build Requirements**: Go 1.21+ required (was Node.js 18+)
-4. **Memory Requirements**: Reduced by 50%
-
-### Breaking Changes
-
-- TypeScript RPC handlers replaced with Go functions
-- JavaScript bundle replaced with Go plugin
-- Build pipeline changed from npm to Go
-- Test framework changed from Jest to Go testing
+- Jest test framework
+- Integration tests
+- Unit tests
+- Code coverage reporting
+- CI/CD integration
 
 ---
 
-## [Unreleased]
+## Deprecated: Go Migration (Abandoned)
 
-### Planned
+### Original Plan (Abandoned 2026-04-14)
 
-- Phase 15: Alpha Readiness
-  - Performance benchmarking
-  - Load testing (1000 concurrent users)
-  - Security review
-  - Alpha deployment
-  - Monitoring setup
+A Go backend migration was attempted in 2026-03-15 but was never completed. The following was planned but never integrated:
 
-- Go Idioms Refactoring
-  - More idiomatic Go patterns
-  - Performance optimizations
-  - Code cleanup
+### Planned but Never Released
+
+- Go backend (internal/ packages)
+- Go plugin system
+- 234 integration tests (not integrated into CI)
+
+### Reasons for Abandonment
+
+1. **Incompatible Go Version**: Go backend disabled in nakama.yml
+2. **Incomplete Migration**: Phases 14-15 (cleanup, alpha) never completed
+3. **TypeScript Never Removed**: Source and build pipeline still active
+4. **No Integration**: Never added to CI/CD or production
+
+### Files from Abandoned Migration
+
+The following files exist but are NOT active:
+- `backend/internal/` - Go source code (deprecated)
+- `backend/cmd/` - Go entry point (deprecated)
+- `backend/go.mod`, `backend/go.sum` - Go modules (deprecated)
+- `.deprecated/README_GO.md` - Go documentation (deprecated)
+
+These can be removed if the team confirms TypeScript is the definitive choice.
 
 ---
 
-**Migration Date**: 2026-03-15
-**Migration Team**: AI Coding Agents
-**Lines of Go Code**: ~6,440
-**Test Coverage**: 234 tests
-**Build Status**: ✅ Passing
+**Current Runtime**: TypeScript (Nakama JS runtime)
+**Backend Status**: TypeScript is authoritative and active
+**Go Migration Status**: Abandoned

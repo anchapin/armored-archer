@@ -1,68 +1,48 @@
 # Armored Archer Backend
 
-> **⚠️ MIGRATION NOTICE (2026-03-15)**: This backend has been migrated from TypeScript to Go!
-> See [README_GO.md](README_GO.md) for the new Go-based documentation.
-> See [CHANGELOG.md](CHANGELOG.md) for migration details.
-> See [MIGRATION_SUMMARY.md](MIGRATION_SUMMARY.md) for the complete migration summary.
+Backend server for Armored Archer game built with Nakama (TypeScript) and PostgreSQL.
 
-Backend server for Armored Archer game built with Nakama and PostgreSQL.
+**Current Status**: TypeScript is the authoritative backend runtime.
 
-## 🚀 Quick Start (Go)
+## 🚀 Quick Start
 
 ```bash
-# Install Go dependencies
-go mod download
+# Install dependencies
+npm install
 
-# Build Go plugin
-CGO_ENABLED=1 go build -buildmode=plugin -o build/server.so ./cmd/server
+# Build TypeScript
+npm run build
 
 # Start services
 docker compose up -d
 
 # Run tests
-go test ./internal/... -v
+npm test
 ```
-
-For complete Go documentation, see [README_GO.md](README_GO.md).
 
 ---
 
-## Legacy TypeScript Documentation
-
-The following documentation is for the original TypeScript implementation.
-
 ## Directory Structure
-
-### Go Backend (Current)
 
 ```
 backend/
-├── cmd/
-│   └── server/
-│       └── main.go              # Nakama module entry point
-├── internal/                     # Internal Go packages
-│   ├── player/                  # Player stats & progression
-│   ├── combat/                  # Combat system logic
-│   ├── gear/                    # Gear generation & inventory
-│   ├── matchmaking/             # PvP matchmaking & rankings
-│   ├── rpg/                     # XP, levels, stat allocation
-│   ├── season/                  # Seasonal content & leaderboards
-│   ├── store/                   # IAP & currency management
-│   ├── notifications/           # Push notifications
-│   ├── observability/           # Metrics, health, monitoring
-│   └── ...                      # Other modules
-├── tests/                        # Integration tests
-│   ├── testhelpers/             # Test helper library
-│   └── ...                      # Module tests
-├── build/
-│   └── server.so                # Compiled Go plugin
-├── go.mod                        # Go module definition
-├── go.sum                        # Go dependency lockfile
-├── docker-compose.yml            # Docker Compose configuration
-└── nakama.yml                    # Nakama server configuration
+├── src/                          # TypeScript source code
+│   ├── modules/                   # Nakama RPC handlers
+│   ├── utils/                     # Utility functions
+│   ├── config/                    # Configuration
+│   └── types/                    # TypeScript type definitions
+├── data/                         # Nakama data & migrations
+├── scripts/                      # Build & utility scripts
+├── build/                        # Compiled JavaScript output
+├── node_modules/                 # npm dependencies
+├── package.json                  # npm configuration
+├── tsconfig.json                 # TypeScript configuration
+├── webpack.nakama.config.js      # Webpack bundle config
+├── docker-compose.yml             # Docker Compose configuration
+└── nakama.yml                   # Nakama server configuration
 ```
 
-### TypeScript Backend (Legacy)
+---
 
 ## Environment Configuration
 
@@ -289,3 +269,23 @@ For information about rotating secrets and secure configuration, see:
 - Rotate secrets regularly (see SECRETS_ROTATION.md)
 - Use strong, randomly generated values for all secrets
 - Limit access to production secrets to authorized personnel only
+
+---
+
+## Deprecated: Go Backend
+
+A Go backend implementation exists in `internal/` and `cmd/` directories but is **NOT actively used**.
+
+**Status**: The Go backend is disabled in `nakama.yml` due to incompatible Go version issues.
+
+**Reason for deprecation**:
+- TypeScript backend is fully functional and actively maintained
+- Go backend integration has compatibility issues
+- The migration was never completed (Phases 14-15 pending)
+- All active development targets TypeScript
+
+**To remove Go backend** (optional, if you want to reclaim space):
+```bash
+# Remove Go source files (after ensuring TypeScript works for your needs)
+rm -rf backend/internal backend/cmd backend/go.mod backend/go.sum backend/build-go.sh
+```
