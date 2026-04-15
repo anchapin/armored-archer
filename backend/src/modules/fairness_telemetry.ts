@@ -245,10 +245,7 @@ export async function logHitResolution(
  * @param nk - Nakama runtime module
  * @param event - Disconnect event data
  */
-export async function logDisconnect(
-  nk: Runtime.Nakama,
-  event: DisconnectEvent
-): Promise<void> {
+export async function logDisconnect(nk: Runtime.Nakama, event: DisconnectEvent): Promise<void> {
   try {
     await nk.storageWrite([
       {
@@ -294,10 +291,7 @@ export async function logDisconnect(
  * @param nk - Nakama runtime module
  * @param event - Timeout event data
  */
-export async function logTimeout(
-  nk: Runtime.Nakama,
-  event: TimeoutEvent
-): Promise<void> {
+export async function logTimeout(nk: Runtime.Nakama, event: TimeoutEvent): Promise<void> {
   try {
     await nk.storageWrite([
       {
@@ -343,10 +337,7 @@ export async function logTimeout(
  * @param nk - Nakama runtime module
  * @param event - Ranking delta event data
  */
-export async function logRankingDelta(
-  nk: Runtime.Nakama,
-  event: RankingDeltaEvent
-): Promise<void> {
+export async function logRankingDelta(nk: Runtime.Nakama, event: RankingDeltaEvent): Promise<void> {
   try {
     await nk.storageWrite([
       {
@@ -413,9 +404,7 @@ export async function getFairnessSummary(
   const startTime = query.start_date
     ? new Date(query.start_date).getTime()
     : Date.now() - 7 * 24 * 60 * 60 * 1000; // Default to 7 days ago
-  const endTime = query.end_date
-    ? new Date(query.end_date).getTime()
-    : Date.now();
+  const endTime = query.end_date ? new Date(query.end_date).getTime() : Date.now();
 
   // Fetch hit resolution data
   const hitObjects = await nk.storageRead([
@@ -498,8 +487,7 @@ export async function getFairnessSummary(
   const timeoutsByType: Record<string, number> = {};
   let totalConsecutiveTimeouts = 0;
   for (const to of filteredTimeouts) {
-    timeoutsByType[to.timeout_type] =
-      (timeoutsByType[to.timeout_type] || 0) + 1;
+    timeoutsByType[to.timeout_type] = (timeoutsByType[to.timeout_type] || 0) + 1;
     totalConsecutiveTimeouts += to.consecutive_timeouts;
   }
 
@@ -507,9 +495,7 @@ export async function getFairnessSummary(
     total_timeouts: filteredTimeouts.length,
     timeouts_by_type: timeoutsByType,
     avg_consecutive_timeouts:
-      filteredTimeouts.length > 0
-        ? totalConsecutiveTimeouts / filteredTimeouts.length
-        : 0,
+      filteredTimeouts.length > 0 ? totalConsecutiveTimeouts / filteredTimeouts.length : 0,
   };
 
   // Calculate ranking stats
@@ -527,7 +513,8 @@ export async function getFairnessSummary(
 
   const rankingStats = {
     total_matches: filteredRankings.length,
-    avg_rank_change: filteredRankings.length > 0 ? totalRankChange / (filteredRankings.length * 2) : 0,
+    avg_rank_change:
+      filteredRankings.length > 0 ? totalRankChange / (filteredRankings.length * 2) : 0,
     max_positive_change: maxPositiveChange,
     max_negative_change: maxNegativeChange,
   };
@@ -745,9 +732,7 @@ export async function rpcGetFairnessSummary(
  *
  * @param initializer - Nakama runtime initializer
  */
-export function registerFairnessTelemetryEndpoints(
-  initializer: Runtime.Initializer
-): void {
+export function registerFairnessTelemetryEndpoints(initializer: Runtime.Initializer): void {
   // Event logging endpoints
   registerRpcWithMetrics(
     initializer,
@@ -761,12 +746,7 @@ export function registerFairnessTelemetryEndpoints(
     'log_disconnect',
     rpcLogDisconnect
   );
-  registerRpcWithMetrics(
-    initializer,
-    'armored_archer/log_timeout',
-    'log_timeout',
-    rpcLogTimeout
-  );
+  registerRpcWithMetrics(initializer, 'armored_archer/log_timeout', 'log_timeout', rpcLogTimeout);
   registerRpcWithMetrics(
     initializer,
     'armored_archer/log_ranking_delta',

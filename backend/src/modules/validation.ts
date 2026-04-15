@@ -513,11 +513,7 @@ export const ValibotSchemas = {
     timestamp: pipe(number(), integer(), minValue(0)),
     user_id: pipe(string(), minLength(1), maxLength(100)),
     opponent_id: pipe(string(), minLength(1), maxLength(100)),
-    disconnect_reason: pipe(
-      string(),
-      minLength(1),
-      maxLength(100)
-    ),
+    disconnect_reason: pipe(string(), minLength(1), maxLength(100)),
     match_status: pipe(string(), minLength(1), maxLength(50)),
     match_type: createEnum(['ranked', 'casual']),
     current_turn_user_id: pipe(string(), minLength(1), maxLength(100)),

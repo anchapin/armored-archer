@@ -9,6 +9,7 @@ import { safeParse } from '../utils/safeParse';
 import { readAndParseStorage } from '../utils/storage-helpers';
 import { isPlayerFlagged, getFlagReason, recordMatchResult } from './anti_cheat';
 import { logAudit } from './audit';
+import { logRankingDelta, type RankingDeltaEvent } from './fairness_telemetry';
 import {
   getCurrentSeason,
   applyEloUpdates,
@@ -18,10 +19,6 @@ import {
   SeasonInfo,
 } from './season_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import {
-  logRankingDelta,
-  type RankingDeltaEvent,
-} from './fairness_telemetry';
 
 /**
  * PvP match data structure.
