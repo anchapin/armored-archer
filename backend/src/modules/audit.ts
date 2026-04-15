@@ -10,7 +10,7 @@ export interface AuditLogDetails {
   ip_address: string | null;
   action: string;
   resource: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   result: 'success' | 'failure';
   error?: string;
 }
@@ -34,7 +34,7 @@ export function logAudit(
   ipAddress: string | null,
   action: string,
   resource: string,
-  details: Record<string, any>,
+  details: Record<string, unknown>,
   result: 'success' | 'failure',
   error?: string
 ): void {

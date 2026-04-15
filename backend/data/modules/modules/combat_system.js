@@ -10,17 +10,17 @@ exports.registerRpcGetMatchState = registerRpcGetMatchState;
 exports.rpcGetMatchState = rpcGetMatchState;
 exports.rpcPlayerDisconnect = rpcPlayerDisconnect;
 exports.registerRpcPlayerDisconnect = registerRpcPlayerDisconnect;
-var tslib_1 = require("tslib");
-var logger_1 = require("../config/logger");
-var tracing_1 = require("../utils/tracing");
-var anti_cheat_1 = require("./anti_cheat");
-var profiling_1 = require("./profiling");
-var validation_1 = require("./validation");
-var gear_system_1 = require("./gear_system");
+const logger_1 = require("../config/logger");
+const tracing_1 = require("../utils/tracing");
+const anti_cheat_1 = require("./anti_cheat");
+const profiling_1 = require("./profiling");
+const validation_1 = require("./validation");
+const gear_system_1 = require("./gear_system");
+const safeParse_1 = require("../utils/safeParse");
 // Match-level inactivity timeout: 2 minutes of inactivity results in auto-forfeit
-var MATCH_INACTIVE_TIMEOUT_MS = 2 * 60 * 1000;
+const MATCH_INACTIVE_TIMEOUT_MS = 2 * 60 * 1000;
 // Maximum consecutive turn timeouts before auto-forfeit
-var MAX_CONSECUTIVE_TIMEOUTS = 2;
+const MAX_CONSECUTIVE_TIMEOUTS = 2;
 /**
  * Registers the submit combat action RPC endpoint.
  *
@@ -57,7 +57,7 @@ function registerRpcSubmitCombatAction(initializer) {
  * Validates match is valid and active for combat
  */
 function validateMatchForCombat(nk, matchId, userId, span) {
-    var matchObjects = nk.storageRead([
+    const matchObjects = nk.storageRead([
         {
             collection: 'pvp_matches',
             key: matchId,
@@ -69,7 +69,13 @@ function validateMatchForCombat(nk, matchId, userId, span) {
         span.setAttribute('error.message', 'Match not found');
         return { valid: false, error: 'Match not found' };
     }
-    var match = JSON.parse(matchObjects[0].value);
+    const matchResult = (0, safeParse_1.safeParse)(matchObjects[0].value, null, logger_1.logger, 'validateMatch:match');
+    if (!matchResult.success || !matchResult.data) {
+        span.setAttribute('error', true);
+        span.setAttribute('error.message', 'Failed to parse match data');
+        return { valid: false, error: 'Failed to parse match data' };
+    }
+    const match = matchResult.data;
     if (isMatchExpired(match)) {
         span.setAttribute('error', true);
         span.setAttribute('error.message', 'Match has expired');
@@ -85,15 +91,15 @@ function validateMatchForCombat(nk, matchId, userId, span) {
         span.setAttribute('error.message', 'Not a participant in this match');
         return { valid: false, error: 'Not a participant in this match' };
     }
-    return { valid: true, match: match };
+    return { valid: true, match };
 }
 /**
  * Handles turn timeout by switching to opponent's turn
  * Returns true if match was forfeited due to consecutive timeouts
  */
 function handleTurnTimeout(nk, matchState, logger) {
-    var timedOutUserId = matchState.current_turn_user_id;
-    var opponentId = timedOutUserId === matchState.creator_id ? matchState.opponent_id : matchState.creator_id;
+    const timedOutUserId = matchState.current_turn_user_id;
+    const opponentId = timedOutUserId === matchState.creator_id ? matchState.opponent_id : matchState.creator_id;
     logger.info('Turn timed out for user: %s in match: %s (consecutive timeouts: %d)', timedOutUserId, matchState.match_id, matchState.consecutive_timeouts + 1);
     // Increment consecutive timeouts
     matchState.consecutive_timeouts++;
@@ -101,14 +107,14 @@ function handleTurnTimeout(nk, matchState, logger) {
     if (matchState.consecutive_timeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
         logger.info('Auto-forfeit triggered for match: %s due to consecutive timeouts', matchState.match_id);
         // Determine winner (the player who didn't timeout)
-        var winnerId = opponentId;
-        var loserId = timedOutUserId;
+        const winnerId = opponentId;
+        const loserId = timedOutUserId;
         // Update match state
         matchState.status = 'completed';
         matchState.winner = winnerId;
         matchState.forfeit_reason = 'timeout';
         // Add forfeit entry to log
-        var forfeitLogEntry = {
+        const forfeitLogEntry = {
             turn: matchState.turn,
             attacker_id: loserId,
             action: 'forfeit',
@@ -121,7 +127,7 @@ function handleTurnTimeout(nk, matchState, logger) {
         // Save match state
         saveMatchState(nk, matchState);
         // Get the match and update its status
-        var matchObjects = nk.storageRead([
+        const matchObjects = nk.storageRead([
             {
                 collection: 'pvp_matches',
                 key: matchState.match_id,
@@ -129,8 +135,10 @@ function handleTurnTimeout(nk, matchState, logger) {
             },
         ]);
         if (matchObjects.length > 0) {
-            var match = JSON.parse(matchObjects[0].value);
-            updateMatchStatus(nk, match, winnerId);
+            const matchResult = (0, safeParse_1.safeParse)(matchObjects[0].value, null, logger, 'handleTimeoutForfeit:match');
+            if (matchResult.success && matchResult.data) {
+                updateMatchStatus(nk, matchResult.data, winnerId);
+            }
         }
         // Notify opponent of forfeit
         notifyOpponentOfForfeit(nk, matchState, opponentId, 'timeout');
@@ -148,29 +156,29 @@ function handleTurnTimeout(nk, matchState, logger) {
 function validateAntiCheat(ctx, action, matchState, logger) {
     // 1. Verify request signature if anti-cheat fields are provided
     if (action.requestId && action.timestamp && action.signature && action.nonce) {
-        var signatureData = {
+        const signatureData = {
             requestId: action.requestId,
             timestamp: action.timestamp,
             signature: action.signature,
             nonce: action.nonce,
         };
-        var payloadForSig = JSON.stringify({
+        const payloadForSig = JSON.stringify({
             match_id: action.match_id,
             action_type: action.action_type,
             angle: action.angle,
             power: action.power,
         });
-        var sigResult = (0, anti_cheat_1.verifyRequestSignature)(ctx, payloadForSig, signatureData, 'submit_combat_action');
+        const sigResult = (0, anti_cheat_1.verifyRequestSignature)(ctx, payloadForSig, signatureData, 'submit_combat_action');
         if (!sigResult.valid) {
             logger.warn('Anti-cheat signature verification failed for user: %s', ctx.userId);
             return 'ANTI_CHEAT_VIOLATION: Invalid request signature';
         }
     }
     // 2. Validate combat action parameters (angle, power)
-    var requestId = action.requestId || "req_".concat(Date.now(), "_").concat(Math.random().toString(36).substring(7));
-    var paramValidation = (0, anti_cheat_1.validateCombatActionParameters)(action.angle, action.power, matchState.current_turn_user_id, ctx.userId, 'submit_combat_action', requestId);
+    const requestId = action.requestId || `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const paramValidation = (0, anti_cheat_1.validateCombatActionParameters)(action.angle, action.power, matchState.current_turn_user_id, ctx.userId, 'submit_combat_action', requestId);
     if (!paramValidation.valid) {
-        var outOfTurnViolation = paramValidation.violations.some(function (v) { return v.violationType === 'out_of_turn'; });
+        const outOfTurnViolation = paramValidation.violations.some((v) => v.violationType === 'out_of_turn');
         if (outOfTurnViolation) {
             logger.warn('Out of turn action from user: %s', ctx.userId);
             return 'Not your turn';
@@ -185,84 +193,77 @@ function validateAntiCheat(ctx, action, matchState, logger) {
     }
     return null;
 }
-function rpcSubmitCombatAction(ctx, logger, nk, payload) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var _this = this;
-        return tslib_1.__generator(this, function (_a) {
-            return [2 /*return*/, (0, tracing_1.traceAsync)('rpc.submit_combat_action', function (span) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                    return tslib_1.__generator(this, function (_a) {
-                        span.setAttribute('user.id', ctx.userId || 'anonymous');
-                        return [2 /*return*/, (0, profiling_1.profileFunction)('combat.submit_combat_action', function () {
-                                logger.info('Submit combat action called for user: %s', ctx.userId);
-                                (0, tracing_1.setTracingAttribute)('rpc.payload_size', payload.length);
-                                var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.submit_combat_action, payload, 'submit_combat_action');
-                                if (!validation.success) {
-                                    span.setAttribute('validation.error', true);
-                                    return (0, validation_1.createValidationErrorResponse)('submit_combat_action', validation.error);
-                                }
-                                var action = validation.data;
-                                span.setAttribute('match.id', action.match_id);
-                                span.setAttribute('combat.action_type', action.action_type);
-                                (0, tracing_1.setTracingAttribute)('combat.angle', action.angle);
-                                if (action.power !== undefined) {
-                                    (0, tracing_1.setTracingAttribute)('combat.power', action.power);
-                                }
-                                // Validate match
-                                var matchValidation = validateMatchForCombat(nk, action.match_id, ctx.userId, span);
-                                if (!matchValidation.valid) {
-                                    return JSON.stringify({ error: matchValidation.error });
-                                }
-                                var match = matchValidation.match;
-                                var matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
-                                // Handle turn timeout
-                                if (isTurnTimedOut(matchState)) {
-                                    var wasForfeited = handleTurnTimeout(nk, matchState, logger);
-                                    span.setAttribute('combat.turn_timeout', true);
-                                    if (wasForfeited) {
-                                        return JSON.stringify({
-                                            error: 'Match forfeited due to consecutive timeouts',
-                                            forfeit: true,
-                                            winner: matchState.winner,
-                                        });
-                                    }
-                                    return JSON.stringify({
-                                        error: 'Your previous turn timed out, opponent now has their turn',
-                                    });
-                                }
-                                // Reset consecutive timeouts when player successfully takes a turn
-                                matchState.consecutive_timeouts = 0;
-                                // Anti-cheat validations
-                                var antiCheatError = validateAntiCheat(ctx, action, matchState, logger);
-                                if (antiCheatError) {
-                                    var response = { error: antiCheatError };
-                                    if (antiCheatError.startsWith('ANTI_CHEAT') ||
-                                        antiCheatError.startsWith('INVALID') ||
-                                        antiCheatError.startsWith('TIMING')) {
-                                        response.error_code = antiCheatError.split(':')[0];
-                                    }
-                                    return JSON.stringify(response);
-                                }
-                                // Final turn check
-                                if (matchState.current_turn_user_id !== ctx.userId) {
-                                    return JSON.stringify({ error: 'Not your turn' });
-                                }
-                                var result = processCombatAction(ctx.userId, action, match, matchState, nk, logger);
-                                saveMatchState(nk, matchState);
-                                if (result.winner) {
-                                    updateMatchStatus(nk, match, result.winner);
-                                }
-                                span.setAttribute('combat.result.hit', result.hit);
-                                (0, tracing_1.setTracingAttribute)('combat.result.damage', result.damage);
-                                if (result.is_crit) {
-                                    span.setAttribute('combat.result.critical', true);
-                                }
-                                return JSON.stringify({
-                                    success: true,
-                                    result: result,
-                                });
-                            })];
+async function rpcSubmitCombatAction(ctx, logger, nk, payload) {
+    return (0, tracing_1.traceAsync)('rpc.submit_combat_action', async (span) => {
+        span.setAttribute('user.id', ctx.userId || 'anonymous');
+        return (0, profiling_1.profileFunction)('combat.submit_combat_action', () => {
+            logger.info('Submit combat action called for user: %s', ctx.userId);
+            (0, tracing_1.setTracingAttribute)('rpc.payload_size', payload.length);
+            const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.submit_combat_action, payload, 'submit_combat_action');
+            if (!validation.success) {
+                span.setAttribute('validation.error', true);
+                return (0, validation_1.createValidationErrorResponse)('submit_combat_action', validation.error);
+            }
+            const action = validation.data;
+            span.setAttribute('match.id', action.match_id);
+            span.setAttribute('combat.action_type', action.action_type);
+            (0, tracing_1.setTracingAttribute)('combat.angle', action.angle);
+            if (action.power !== undefined) {
+                (0, tracing_1.setTracingAttribute)('combat.power', action.power);
+            }
+            // Validate match
+            const matchValidation = validateMatchForCombat(nk, action.match_id, ctx.userId, span);
+            if (!matchValidation.valid) {
+                return JSON.stringify({ error: matchValidation.error });
+            }
+            const match = matchValidation.match;
+            const matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
+            // Handle turn timeout
+            if (isTurnTimedOut(matchState)) {
+                const wasForfeited = handleTurnTimeout(nk, matchState, logger);
+                span.setAttribute('combat.turn_timeout', true);
+                if (wasForfeited) {
+                    return JSON.stringify({
+                        error: 'Match forfeited due to consecutive timeouts',
+                        forfeit: true,
+                        winner: matchState.winner,
                     });
-                }); })];
+                }
+                return JSON.stringify({
+                    error: 'Your previous turn timed out, opponent now has their turn',
+                });
+            }
+            // Reset consecutive timeouts when player successfully takes a turn
+            matchState.consecutive_timeouts = 0;
+            // Anti-cheat validations
+            const antiCheatError = validateAntiCheat(ctx, action, matchState, logger);
+            if (antiCheatError) {
+                const response = { error: antiCheatError };
+                if (antiCheatError.startsWith('ANTI_CHEAT') ||
+                    antiCheatError.startsWith('INVALID') ||
+                    antiCheatError.startsWith('TIMING')) {
+                    response.error_code = antiCheatError.split(':')[0];
+                }
+                return JSON.stringify(response);
+            }
+            // Final turn check
+            if (matchState.current_turn_user_id !== ctx.userId) {
+                return JSON.stringify({ error: 'Not your turn' });
+            }
+            const result = processCombatAction(ctx.userId, action, match, matchState, nk, logger);
+            saveMatchState(nk, matchState);
+            if (result.winner) {
+                updateMatchStatus(nk, match, result.winner);
+            }
+            span.setAttribute('combat.result.hit', result.hit);
+            (0, tracing_1.setTracingAttribute)('combat.result.damage', result.damage);
+            if (result.is_crit) {
+                span.setAttribute('combat.result.critical', true);
+            }
+            return JSON.stringify({
+                success: true,
+                result,
+            });
         });
     });
 }
@@ -297,31 +298,27 @@ function registerRpcGetMatchState(initializer) {
  *   ...
  * }
  */
-function rpcGetMatchState(ctx, logger, nk, payload) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        return tslib_1.__generator(this, function (_a) {
-            return [2 /*return*/, (0, profiling_1.profileFunction)('combat.get_match_state', function () {
-                    logger.info('Get match state called for user: %s', ctx.userId);
-                    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_match_state, payload, 'get_match_state');
-                    if (!validation.success) {
-                        return (0, validation_1.createValidationErrorResponse)('get_match_state', validation.error);
-                    }
-                    var request = validation.data;
-                    var stateObjects = nk.storageRead([
-                        {
-                            collection: 'pvp_match_states',
-                            key: request.match_id,
-                            userId: ctx.userId,
-                        },
-                    ]);
-                    if (stateObjects.length === 0) {
-                        return JSON.stringify({
-                            error: 'Match state not found',
-                        });
-                    }
-                    return stateObjects[0].value;
-                })];
-        });
+async function rpcGetMatchState(ctx, logger, nk, payload) {
+    return (0, profiling_1.profileFunction)('combat.get_match_state', () => {
+        logger.info('Get match state called for user: %s', ctx.userId);
+        const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_match_state, payload, 'get_match_state');
+        if (!validation.success) {
+            return (0, validation_1.createValidationErrorResponse)('get_match_state', validation.error);
+        }
+        const request = validation.data;
+        const stateObjects = nk.storageRead([
+            {
+                collection: 'pvp_match_states',
+                key: request.match_id,
+                userId: ctx.userId,
+            },
+        ]);
+        if (stateObjects.length === 0) {
+            return JSON.stringify({
+                error: 'Match state not found',
+            });
+        }
+        return stateObjects[0].value;
     });
 }
 /**
@@ -334,7 +331,7 @@ function rpcGetMatchState(ctx, logger, nk, payload) {
  * @returns Current match state
  */
 function getOrCreateMatchState(nk, matchId, match, logger) {
-    var stateObjects = nk.storageRead([
+    const stateObjects = nk.storageRead([
         {
             collection: 'pvp_match_states',
             key: matchId,
@@ -347,17 +344,21 @@ function getOrCreateMatchState(nk, matchId, match, logger) {
             // Fall through to create new state
         }
         else {
-            return JSON.parse(stateObjects[0].value);
+            const stateResult = (0, safeParse_1.safeParse)(stateObjects[0].value, null, logger, 'getOrCreateMatchState');
+            if (stateResult.success && stateResult.data) {
+                return stateResult.data;
+            }
+            logger.warn('Failed to parse match state, creating new state');
         }
     }
-    var creatorStats = getPlayerStats(nk, match.creator_id, logger);
-    var opponentStats = getPlayerStats(nk, match.opponent_id, logger);
-    var baseHealth = 100;
-    var maxHealth = baseHealth + creatorStats.level * 10;
-    var now = Date.now();
+    const creatorStats = getPlayerStats(nk, match.creator_id, logger);
+    const opponentStats = getPlayerStats(nk, match.opponent_id, logger);
+    const baseHealth = 100;
+    const maxHealth = baseHealth + creatorStats.level * 10;
+    const now = Date.now();
     // Each turn has a 5-minute timeout
-    var TURN_TIMEOUT_MS = 5 * 60 * 1000;
-    var matchState = {
+    const TURN_TIMEOUT_MS = 5 * 60 * 1000;
+    const matchState = {
         match_id: matchId,
         turn: 1,
         current_turn_user_id: match.creator_id,
@@ -387,10 +388,10 @@ function getOrCreateMatchState(nk, matchId, match, logger) {
  * @returns Combat result with hit/miss and damage calculations
  */
 function processCombatAction(userId, action, match, matchState, _nk, _logger) {
-    var isCreator = userId === matchState.creator_id;
-    var attackerStats = isCreator ? matchState.creator_stats : matchState.opponent_stats;
-    var defenderStats = isCreator ? matchState.opponent_stats : matchState.creator_stats;
-    var result = {
+    const isCreator = userId === matchState.creator_id;
+    const attackerStats = isCreator ? matchState.creator_stats : matchState.opponent_stats;
+    const defenderStats = isCreator ? matchState.opponent_stats : matchState.creator_stats;
+    const result = {
         success: true,
         hit: false,
         damage: 0,
@@ -400,11 +401,11 @@ function processCombatAction(userId, action, match, matchState, _nk, _logger) {
         match_status: 'active',
     };
     if (action.action_type === 'shoot') {
-        var hit = calculateHit(attackerStats, defenderStats);
+        const hit = calculateHit(attackerStats, defenderStats);
         if (hit) {
-            var damage = calculateDamage(attackerStats, defenderStats);
-            var isCrit = calculateCrit(attackerStats.stats.crit_rate);
-            var finalDamage = isCrit ? damage * 2 : damage;
+            const damage = calculateDamage(attackerStats, defenderStats);
+            const isCrit = calculateCrit(attackerStats.stats.crit_rate);
+            const finalDamage = isCrit ? damage * 2 : damage;
             result.hit = true;
             result.damage = finalDamage;
             result.is_crit = isCrit;
@@ -414,7 +415,7 @@ function processCombatAction(userId, action, match, matchState, _nk, _logger) {
             else {
                 matchState.creator_health = Math.max(0, matchState.creator_health - finalDamage);
             }
-            var logEntry = {
+            const logEntry = {
                 turn: matchState.turn,
                 attacker_id: userId,
                 action: action.action_type,
@@ -438,7 +439,7 @@ function processCombatAction(userId, action, match, matchState, _nk, _logger) {
             }
         }
         else {
-            var logEntry = {
+            const logEntry = {
                 turn: matchState.turn,
                 attacker_id: userId,
                 action: action.action_type,
@@ -462,9 +463,9 @@ function processCombatAction(userId, action, match, matchState, _nk, _logger) {
  * @returns True if attack hits, false if it misses
  */
 function calculateHit(attackerStats, defenderStats) {
-    var dodgeChance = defenderStats.stats.dodge / 100.0;
-    var hitChance = 1.0 - dodgeChance;
-    var roll = Math.random();
+    const dodgeChance = defenderStats.stats.dodge / 100.0;
+    const hitChance = 1.0 - dodgeChance;
+    const roll = Math.random();
     return roll <= hitChance;
 }
 /**
@@ -475,9 +476,9 @@ function calculateHit(attackerStats, defenderStats) {
  * @returns Calculated damage amount
  */
 function calculateDamage(attackerStats, defenderStats) {
-    var baseDamage = 10 + attackerStats.stats.attack * 0.5;
-    var defenseReduction = defenderStats.stats.defense * 0.3;
-    var finalDamage = Math.max(1, baseDamage - defenseReduction);
+    const baseDamage = 10 + attackerStats.stats.attack * 0.5;
+    const defenseReduction = defenderStats.stats.defense * 0.3;
+    const finalDamage = Math.max(1, baseDamage - defenseReduction);
     return Math.floor(finalDamage);
 }
 /**
@@ -487,8 +488,8 @@ function calculateDamage(attackerStats, defenderStats) {
  * @returns True if attack is critical, false otherwise
  */
 function calculateCrit(critRate) {
-    var critChance = critRate / 100.0;
-    var roll = Math.random();
+    const critChance = critRate / 100.0;
+    const roll = Math.random();
     return roll <= critChance;
 }
 /**
@@ -501,14 +502,14 @@ function calculateCrit(critRate) {
  * @returns Player stats with gear modifier bonuses applied
  */
 function getPlayerStats(nk, userId, logger) {
-    var objects = nk.storageRead([
+    const objects = nk.storageRead([
         {
             collection: 'player_stats',
             key: userId,
             userId: userId,
         },
     ]);
-    var baseStats;
+    let baseStats;
     if (objects.length === 0) {
         baseStats = {
             level: 1,
@@ -522,18 +523,37 @@ function getPlayerStats(nk, userId, logger) {
         };
     }
     else {
-        baseStats = JSON.parse(objects[0].value);
+        const statsResult = (0, safeParse_1.safeParse)(objects[0].value, null, logger, 'getPlayerStats');
+        if (!statsResult.success || !statsResult.data) {
+            logger.warn('Failed to parse player stats for user %s, using defaults', userId);
+            baseStats = {
+                level: 1,
+                xp: 0,
+                stats: {
+                    attack: 10,
+                    defense: 10,
+                    dodge: 10,
+                    crit_rate: 5,
+                },
+            };
+        }
+        else {
+            baseStats = statsResult.data;
+        }
     }
     // Apply gear modifier bonuses from equipped gear
-    var inventory = (0, gear_system_1.getPlayerInventory)(nk, userId, logger);
-    var gearBonuses = (0, gear_system_1.getEquippedGearModifierBonuses)(inventory);
+    const inventory = (0, gear_system_1.getPlayerInventory)(nk, userId, logger);
+    const gearBonuses = (0, gear_system_1.getEquippedGearModifierBonuses)(inventory);
     // Return stats with gear bonuses applied
-    return tslib_1.__assign(tslib_1.__assign({}, baseStats), { stats: {
+    return {
+        ...baseStats,
+        stats: {
             attack: baseStats.stats.attack + (gearBonuses['attack'] || 0),
             defense: baseStats.stats.defense + (gearBonuses['defense'] || 0),
             dodge: baseStats.stats.dodge + (gearBonuses['dodge'] || 0),
             crit_rate: baseStats.stats.crit_rate + (gearBonuses['crit_rate'] || 0),
-        } });
+        },
+    };
 }
 /**
  * Saves the current match state to storage.
@@ -587,7 +607,7 @@ function isMatchExpired(match) {
  * @returns True if turn has timed out, false otherwise
  */
 function isTurnTimedOut(matchState) {
-    var timeSinceLastTurn = Date.now() - matchState.last_turn_timestamp;
+    const timeSinceLastTurn = Date.now() - matchState.last_turn_timestamp;
     return timeSinceLastTurn > matchState.turn_timeout_ms;
 }
 /**
@@ -600,14 +620,14 @@ function isTurnTimedOut(matchState) {
  */
 function notifyOpponentOfForfeit(nk, matchState, opponentId, forfeitReason) {
     try {
-        var winnerId = matchState.winner || opponentId;
-        var loserId = winnerId === matchState.creator_id ? matchState.opponent_id : matchState.creator_id;
+        const winnerId = matchState.winner || opponentId;
+        const loserId = winnerId === matchState.creator_id ? matchState.opponent_id : matchState.creator_id;
         nk.notificationSend(opponentId, 'Match Forfeited', {
             match_id: matchState.match_id,
             forfeit_reason: forfeitReason,
             winner_id: winnerId,
             loser_id: loserId,
-            message: "Your opponent has forfeited the match. You win!",
+            message: `Your opponent has forfeited the match. You win!`,
         }, 2, // Custom notification code for match forfeit
         true, // persist
         '' // senderId (empty for server)
@@ -619,7 +639,7 @@ function notifyOpponentOfForfeit(nk, matchState, opponentId, forfeitReason) {
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,
             matchId: matchState.match_id,
-            opponentId: opponentId,
+            opponentId,
         });
     }
 }
@@ -627,90 +647,91 @@ function notifyOpponentOfForfeit(nk, matchState, opponentId, forfeitReason) {
  * Handles a player disconnect/leave match request.
  * This allows graceful handling of disconnections.
  */
-function rpcPlayerDisconnect(ctx, logger, nk, payload) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var _this = this;
-        return tslib_1.__generator(this, function (_a) {
-            return [2 /*return*/, (0, tracing_1.traceAsync)('rpc.player_disconnect', function (span) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                    return tslib_1.__generator(this, function (_a) {
-                        span.setAttribute('user.id', ctx.userId || 'anonymous');
-                        return [2 /*return*/, (0, profiling_1.profileFunction)('combat.player_disconnect', function () {
-                                logger.info('Player disconnect called for user: %s', ctx.userId);
-                                var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.player_disconnect, payload, 'player_disconnect');
-                                if (!validation.success) {
-                                    span.setAttribute('validation.error', true);
-                                    return (0, validation_1.createValidationErrorResponse)('player_disconnect', validation.error);
-                                }
-                                var _a = validation.data, match_id = _a.match_id, reason = _a.reason;
-                                // Read match
-                                var matchObjects = nk.storageRead([
-                                    {
-                                        collection: 'pvp_matches',
-                                        key: match_id,
-                                        userId: ctx.userId,
-                                    },
-                                ]);
-                                if (matchObjects.length === 0) {
-                                    span.setAttribute('error', true);
-                                    span.setAttribute('error.message', 'Match not found');
-                                    return JSON.stringify({ error: 'Match not found' });
-                                }
-                                var match = JSON.parse(matchObjects[0].value);
-                                if (match.status !== 'active') {
-                                    return JSON.stringify({ error: 'Match is not active' });
-                                }
-                                if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
-                                    return JSON.stringify({ error: 'Not a participant in this match' });
-                                }
-                                // Read match state
-                                var stateObjects = nk.storageRead([
-                                    {
-                                        collection: 'pvp_match_states',
-                                        key: match_id,
-                                        userId: match.creator_id,
-                                    },
-                                ]);
-                                if (stateObjects.length === 0) {
-                                    return JSON.stringify({ error: 'Match state not found' });
-                                }
-                                // Handle case where value exists but is empty (corrupted data)
-                                if (!stateObjects[0].value) {
-                                    return JSON.stringify({ error: 'Match state not found' });
-                                }
-                                var matchState = JSON.parse(stateObjects[0].value);
-                                // Determine winner (opponent)
-                                var winnerId = ctx.userId === match.creator_id ? match.opponent_id : match.creator_id;
-                                var loserId = ctx.userId;
-                                // Update match state
-                                matchState.status = 'completed';
-                                matchState.winner = winnerId;
-                                matchState.forfeit_reason = reason || 'disconnect';
-                                // Add forfeit entry to log
-                                var forfeitLogEntry = {
-                                    turn: matchState.turn,
-                                    attacker_id: loserId,
-                                    action: 'forfeit',
-                                    hit: false,
-                                    damage: 0,
-                                    is_crit: false,
-                                    timestamp: Date.now(),
-                                };
-                                matchState.log.push(forfeitLogEntry);
-                                // Save match state
-                                saveMatchState(nk, matchState);
-                                // Update match status
-                                updateMatchStatus(nk, match, winnerId);
-                                // Notify opponent
-                                notifyOpponentOfForfeit(nk, matchState, winnerId, reason || 'disconnect');
-                                return JSON.stringify({
-                                    success: true,
-                                    forfeit: true,
-                                    winner: winnerId,
-                                    reason: reason || 'disconnect',
-                                });
-                            })];
-                    });
-                }); })];
+async function rpcPlayerDisconnect(ctx, logger, nk, payload) {
+    return (0, tracing_1.traceAsync)('rpc.player_disconnect', async (span) => {
+        span.setAttribute('user.id', ctx.userId || 'anonymous');
+        return (0, profiling_1.profileFunction)('combat.player_disconnect', () => {
+            logger.info('Player disconnect called for user: %s', ctx.userId);
+            const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.player_disconnect, payload, 'player_disconnect');
+            if (!validation.success) {
+                span.setAttribute('validation.error', true);
+                return (0, validation_1.createValidationErrorResponse)('player_disconnect', validation.error);
+            }
+            const { match_id, reason } = validation.data;
+            // Read match
+            const matchObjects = nk.storageRead([
+                {
+                    collection: 'pvp_matches',
+                    key: match_id,
+                    userId: ctx.userId,
+                },
+            ]);
+            if (matchObjects.length === 0) {
+                span.setAttribute('error', true);
+                span.setAttribute('error.message', 'Match not found');
+                return JSON.stringify({ error: 'Match not found' });
+            }
+            const matchResult = (0, safeParse_1.safeParse)(matchObjects[0].value, null, logger, 'rpcForfeitMatch:match');
+            if (!matchResult.success || !matchResult.data) {
+                return JSON.stringify({ error: 'Failed to parse match data' });
+            }
+            const match = matchResult.data;
+            if (match.status !== 'active') {
+                return JSON.stringify({ error: 'Match is not active' });
+            }
+            if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
+                return JSON.stringify({ error: 'Not a participant in this match' });
+            }
+            // Read match state
+            const stateObjects = nk.storageRead([
+                {
+                    collection: 'pvp_match_states',
+                    key: match_id,
+                    userId: match.creator_id,
+                },
+            ]);
+            if (stateObjects.length === 0) {
+                return JSON.stringify({ error: 'Match state not found' });
+            }
+            // Handle case where value exists but is empty (corrupted data)
+            if (!stateObjects[0].value) {
+                return JSON.stringify({ error: 'Match state not found' });
+            }
+            const stateResult = (0, safeParse_1.safeParse)(stateObjects[0].value, null, logger, 'rpcForfeitMatch:matchState');
+            if (!stateResult.success || !stateResult.data) {
+                return JSON.stringify({ error: 'Failed to parse match state' });
+            }
+            const matchState = stateResult.data;
+            // Determine winner (opponent)
+            const winnerId = ctx.userId === match.creator_id ? match.opponent_id : match.creator_id;
+            const loserId = ctx.userId;
+            // Update match state
+            matchState.status = 'completed';
+            matchState.winner = winnerId;
+            matchState.forfeit_reason = reason || 'disconnect';
+            // Add forfeit entry to log
+            const forfeitLogEntry = {
+                turn: matchState.turn,
+                attacker_id: loserId,
+                action: 'forfeit',
+                hit: false,
+                damage: 0,
+                is_crit: false,
+                timestamp: Date.now(),
+            };
+            matchState.log.push(forfeitLogEntry);
+            // Save match state
+            saveMatchState(nk, matchState);
+            // Update match status
+            updateMatchStatus(nk, match, winnerId);
+            // Notify opponent
+            notifyOpponentOfForfeit(nk, matchState, winnerId, reason || 'disconnect');
+            return JSON.stringify({
+                success: true,
+                forfeit: true,
+                winner: winnerId,
+                reason: reason || 'disconnect',
+            });
         });
     });
 }

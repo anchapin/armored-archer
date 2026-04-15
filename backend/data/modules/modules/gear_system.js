@@ -28,47 +28,60 @@ exports.recordBossDefeat = recordBossDefeat;
 exports.calculateDropRate = calculateDropRate;
 exports.registerRpcStageComplete = registerRpcStageComplete;
 exports.rpcStageComplete = rpcStageComplete;
-var tslib_1 = require("tslib");
-var cache_1 = require("../utils/cache");
-var safeParse_1 = require("../utils/safeParse");
-var audit_1 = require("./audit");
-var validation_1 = require("./validation");
-var RARITIES = {
+const cache_1 = require("../utils/cache");
+const safeParse_1 = require("../utils/safeParse");
+const audit_1 = require("./audit");
+const validation_1 = require("./validation");
+const RARITIES = {
     common: {
         name: 'Common',
         stat_multiplier: 1.0,
-        drop_chance: 0.7,
+        drop_chance: 0.6,
         color: '#ffffff',
     },
     rare: {
         name: 'Rare',
         stat_multiplier: 1.5,
         drop_chance: 0.25,
-        color: '#0070dd',
+        color: '#00ff00',
+    },
+    epic: {
+        name: 'Epic',
+        stat_multiplier: 1.8,
+        drop_chance: 0.1,
+        color: '#9b30ff',
     },
     legendary: {
         name: 'Legendary',
         stat_multiplier: 2.0,
         drop_chance: 0.05,
-        color: '#ff8000',
+        color: '#ffa500',
     },
 };
-var GEAR_TYPES = ['weapon', 'armor', 'accessory'];
-var BASE_STATS = {
-    weapon: [
-        { name: 'attack', base_value: 10 },
-        { name: 'crit_rate', base_value: 5 },
+const GEAR_TYPES = ['helm', 'armor', 'bow', 'arrow', 'amulet'];
+const BASE_STATS = {
+    helm: [
+        { name: 'defense', base_value: 10 },
+        { name: 'health', base_value: 50 },
     ],
     armor: [
         { name: 'defense', base_value: 10 },
         { name: 'health', base_value: 50 },
     ],
-    accessory: [
+    bow: [
+        { name: 'attack', base_value: 10 },
+        { name: 'crit_rate', base_value: 5 },
+    ],
+    arrow: [
+        { name: 'attack', base_value: 10 },
+        { name: 'crit_rate', base_value: 5 },
+    ],
+    amulet: [
         { name: 'dodge', base_value: 5 },
         { name: 'crit_rate', base_value: 3 },
     ],
 };
-var MODIFIER_POOLS = [
+const MODIFIER_POOLS = [
     {
         id: 'piercing_arrow',
         name: 'Piercing Arrow',
@@ -191,7 +204,7 @@ var MODIFIER_POOLS = [
  * Maps boss IDs to their unlocked modifier pool IDs.
  * When a boss is defeated, all modifiers associated with that boss are unlocked.
  */
-var BOSS_MODIFIER_UNLOCKS = {
+const BOSS_MODIFIER_UNLOCKS = {
     boss_basic: ['heavy_impact'],
     boss_wind: ['piercing_arrow', 'wind_fury'],
     boss_fire: ['fire_arrow'],
@@ -209,7 +222,7 @@ var BOSS_MODIFIER_UNLOCKS = {
  * @param enemyId - The ID of the defeated enemy
  * @returns Array of modifier IDs unlocked by the enemy
  */
-var ENEMY_MODIFIER_UNLOCKS = {
+const ENEMY_MODIFIER_UNLOCKS = {
     goblin: ['vitality_boost'],
     skeleton: ['fortification'],
     orc: ['heavy_impact'],
@@ -242,23 +255,12 @@ function getModifiersUnlockedByEnemy(enemyId) {
  * @returns The final stat value after applying all modifiers
  */
 function applyModifiersToStat(baseValue, modifiers, statName) {
-    var e_1, _a;
-    var finalValue = baseValue;
-    try {
-        for (var modifiers_1 = tslib_1.__values(modifiers), modifiers_1_1 = modifiers_1.next(); !modifiers_1_1.done; modifiers_1_1 = modifiers_1.next()) {
-            var modifier = modifiers_1_1.value;
-            if (modifier.stat === statName && modifier.value_range) {
-                // value_range is already resolved to a single value when gear is generated
-                finalValue += modifier.value_range[0];
-            }
+    let finalValue = baseValue;
+    for (const modifier of modifiers) {
+        if (modifier.stat === statName && modifier.value_range) {
+            // value_range is already resolved to a single value when gear is generated
+            finalValue += modifier.value_range[0];
         }
-    }
-    catch (e_1_1) { e_1 = { error: e_1_1 }; }
-    finally {
-        try {
-            if (modifiers_1_1 && !modifiers_1_1.done && (_a = modifiers_1.return)) _a.call(modifiers_1);
-        }
-        finally { if (e_1) throw e_1.error; }
     }
     return finalValue;
 }
@@ -270,7 +272,10 @@ function applyModifiersToStat(baseValue, modifiers, statName) {
  * @returns Modified gear stats with applied modifiers
  */
 function applyModifiersToGearStats(stats, modifiers) {
-    return stats.map(function (stat) { return (tslib_1.__assign(tslib_1.__assign({}, stat), { value: applyModifiersToStat(stat.value, modifiers, stat.name) })); });
+    return stats.map((stat) => ({
+        ...stat,
+        value: applyModifiersToStat(stat.value, modifiers, stat.name),
+    }));
 }
 /**
  * Calculates total stat bonuses from all equipped gear modifiers.
@@ -279,47 +284,22 @@ function applyModifiersToGearStats(stats, modifiers) {
  * @returns Object with stat name as key and total bonus as value
  */
 function getEquippedGearModifierBonuses(inventory) {
-    var e_2, _a;
-    var bonuses = {};
+    const bonuses = {};
     // Safety check: Ensure inventory and equipped_gear exist
     if (!inventory || !inventory.equipped_gear) {
         return bonuses;
     }
     // Get equipped gear items
-    var equippedGearIds = Object.values(inventory.equipped_gear).filter(function (id) { return id !== null; });
-    var _loop_1 = function (gearId) {
-        var e_3, _b;
-        var gear = inventory.gear.find(function (g) { return g.id === gearId; });
+    const equippedGearIds = Object.values(inventory.equipped_gear).filter((id) => id !== null);
+    for (const gearId of equippedGearIds) {
+        const gear = inventory.gear.find((g) => g.id === gearId);
         if (gear && gear.modifiers) {
-            try {
-                for (var _c = (e_3 = void 0, tslib_1.__values(gear.modifiers)), _d = _c.next(); !_d.done; _d = _c.next()) {
-                    var modifier = _d.value;
-                    if (modifier.value_range && modifier.value_range[0]) {
-                        bonuses[modifier.stat] = (bonuses[modifier.stat] || 0) + modifier.value_range[0];
-                    }
+            for (const modifier of gear.modifiers) {
+                if (modifier.value_range && modifier.value_range[0]) {
+                    bonuses[modifier.stat] = (bonuses[modifier.stat] || 0) + modifier.value_range[0];
                 }
             }
-            catch (e_3_1) { e_3 = { error: e_3_1 }; }
-            finally {
-                try {
-                    if (_d && !_d.done && (_b = _c.return)) _b.call(_c);
-                }
-                finally { if (e_3) throw e_3.error; }
-            }
         }
-    };
-    try {
-        for (var equippedGearIds_1 = tslib_1.__values(equippedGearIds), equippedGearIds_1_1 = equippedGearIds_1.next(); !equippedGearIds_1_1.done; equippedGearIds_1_1 = equippedGearIds_1.next()) {
-            var gearId = equippedGearIds_1_1.value;
-            _loop_1(gearId);
-        }
-    }
-    catch (e_2_1) { e_2 = { error: e_2_1 }; }
-    finally {
-        try {
-            if (equippedGearIds_1_1 && !equippedGearIds_1_1.done && (_a = equippedGearIds_1.return)) _a.call(equippedGearIds_1);
-        }
-        finally { if (e_2) throw e_2.error; }
     }
     return bonuses;
 }
@@ -332,7 +312,7 @@ function getEquippedGearModifierBonuses(inventory) {
  * @returns Modified stats with gear bonuses applied
  */
 function applyGearModifiersToPlayerStats(baseStats, inventory) {
-    var bonuses = getEquippedGearModifierBonuses(inventory);
+    const bonuses = getEquippedGearModifierBonuses(inventory);
     return {
         attack: baseStats.attack + (bonuses.attack || 0),
         defense: baseStats.defense + (bonuses.defense || 0),
@@ -340,10 +320,12 @@ function applyGearModifiersToPlayerStats(baseStats, inventory) {
         crit_rate: baseStats.crit_rate + (bonuses.crit_rate || 0),
     };
 }
-var GEAR_NAMES = {
-    weapon: ['Iron Sword', 'Steel Blade', 'Ancient Bow', 'Staff of Elements', 'Battle Axe'],
+const GEAR_NAMES = {
+    helm: ['Iron Helm', 'Steel Casque', 'Ancient Crown', 'Dragon Helm', 'Shadow Hood'],
     armor: ['Leather Vest', 'Chainmail', 'Plate Armor', 'Dragon Scale', 'Shadow Cloak'],
-    accessory: ['Wooden Ring', 'Silver Amulet', 'Golden Charm', 'Mystic Stone', 'Spirit Orb'],
+    bow: ['Short Bow', 'Long Bow', 'Composite Bow', 'Dragon Bow', 'Shadow Arc'],
+    arrow: ['Iron Arrow', 'Steel Bolt', 'Flame Arrow', 'Dragon Fang', 'Shadow Spike'],
+    amulet: ['Wooden Charm', 'Silver Amulet', 'Golden Pendant', 'Dragon Eye', 'Shadow Gem'],
 };
 /**
  * Generates a unique gear ID.
@@ -351,7 +333,7 @@ var GEAR_NAMES = {
  * @returns Unique gear identifier string
  */
 function generateGearId() {
-    return "gear_".concat(Date.now(), "_").concat(Math.random().toString(36).substr(2, 9));
+    return `gear_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 /**
  * Rolls a random gear rarity based on drop chances.
@@ -359,11 +341,15 @@ function generateGearId() {
  * @returns Randomly selected rarity string
  */
 function rollRarity() {
-    var roll = Math.random();
+    const roll = Math.random();
     if (roll < RARITIES.legendary.drop_chance) {
         return 'legendary';
     }
-    else if (roll < RARITIES.legendary.drop_chance + RARITIES.rare.drop_chance) {
+    else if (roll < RARITIES.legendary.drop_chance + RARITIES.epic.drop_chance) {
+        return 'epic';
+    }
+    else if (roll <
+        RARITIES.legendary.drop_chance + RARITIES.epic.drop_chance + RARITIES.rare.drop_chance) {
         return 'rare';
     }
     else {
@@ -386,12 +372,12 @@ function getRandomItem(array) {
  * @returns Gear definitions object
  */
 function getGearDefinitions(logger) {
-    var cacheManager = (0, cache_1.getCacheManager)(logger);
-    var cachedDefinitions = cacheManager.get('gear_definitions', 'all');
+    const cacheManager = (0, cache_1.getCacheManager)(logger);
+    const cachedDefinitions = cacheManager.get('gear_definitions', 'all');
     if (cachedDefinitions !== undefined) {
         return cachedDefinitions;
     }
-    var definitions = {
+    const definitions = {
         rarities: RARITIES,
         gearTypes: GEAR_TYPES,
         baseStats: BASE_STATS,
@@ -404,15 +390,15 @@ function getGearDefinitions(logger) {
 /**
  * Generates a name for a gear item based on type and rarity.
  *
- * @param type - Type of gear (weapon, armor, accessory)
+ * @param type - Type of gear (helm, armor, bow, arrow, amulet)
  * @param rarity - Rarity of the gear
  * @param logger - Nakama logger instance
  * @returns Generated gear name
  */
 function getGearName(type, rarity, logger) {
-    var definitions = getGearDefinitions(logger);
-    var names = definitions.gearNames[type];
-    var baseName = getRandomItem(names);
+    const definitions = getGearDefinitions(logger);
+    const names = definitions.gearNames[type];
+    const baseName = getRandomItem(names);
     if (rarity === 'legendary') {
         return baseName + ' of Legend';
     }
@@ -430,14 +416,14 @@ function getGearName(type, rarity, logger) {
  * @returns Array of generated gear stats
  */
 function generateGearStats(type, rarity, logger) {
-    var definitions = getGearDefinitions(logger);
-    var rarityMultiplier = definitions.rarities[rarity].stat_multiplier;
-    var baseStats = definitions.baseStats[type];
-    return baseStats.map(function (stat) { return ({
+    const definitions = getGearDefinitions(logger);
+    const rarityMultiplier = definitions.rarities[rarity].stat_multiplier;
+    const baseStats = definitions.baseStats[type];
+    return baseStats.map((stat) => ({
         name: stat.name,
         base_value: stat.base_value,
         value: Math.floor(stat.base_value * rarityMultiplier),
-    }); });
+    }));
 }
 /**
  * Generates gear modifiers based on rarity and unlocked pools.
@@ -448,8 +434,8 @@ function generateGearStats(type, rarity, logger) {
  * @returns Array of generated gear modifiers
  */
 function generateModifiers(rarity, unlockedPools, logger) {
-    var definitions = getGearDefinitions(logger);
-    var availableModifiers = definitions.modifierPools.filter(function (mod) {
+    const definitions = getGearDefinitions(logger);
+    const availableModifiers = definitions.modifierPools.filter((mod) => {
         if (mod.boss_unlock && !unlockedPools.includes(mod.boss_unlock)) {
             return false;
         }
@@ -461,18 +447,18 @@ function generateModifiers(rarity, unlockedPools, logger) {
     if (availableModifiers.length === 0) {
         return [];
     }
-    var numModifiers = rarity === 'legendary' ? 2 : rarity === 'rare' ? 1 : 0;
-    var modifiers = [];
-    var _loop_2 = function (i) {
-        var mod = getRandomItem(availableModifiers);
-        if (!modifiers.find(function (m) { return m.id === mod.id; })) {
-            var valueRange = mod.value_range;
-            var value = Math.floor(Math.random() * (valueRange[1] - valueRange[0] + 1)) + valueRange[0];
-            modifiers.push(tslib_1.__assign(tslib_1.__assign({}, mod), { value_range: [value, value] }));
+    const numModifiers = rarity === 'legendary' ? 2 : rarity === 'epic' ? 2 : rarity === 'rare' ? 1 : 0;
+    const modifiers = [];
+    for (let i = 0; i < numModifiers; i++) {
+        const mod = getRandomItem(availableModifiers);
+        if (!modifiers.find((m) => m.id === mod.id)) {
+            const valueRange = mod.value_range;
+            const value = Math.floor(Math.random() * (valueRange[1] - valueRange[0] + 1)) + valueRange[0];
+            modifiers.push({
+                ...mod,
+                value_range: [value, value],
+            });
         }
-    };
-    for (var i = 0; i < numModifiers; i++) {
-        _loop_2(i);
     }
     return modifiers;
 }
@@ -486,17 +472,17 @@ function generateModifiers(rarity, unlockedPools, logger) {
  * @returns Generated gear item
  */
 function generateGearItem(stageId, unlockedPools, logger) {
-    var definitions = getGearDefinitions(logger);
-    var rarity = rollRarity();
-    var type = getRandomItem(definitions.gearTypes);
-    var name = getGearName(type, rarity, logger);
+    const definitions = getGearDefinitions(logger);
+    const rarity = rollRarity();
+    const type = getRandomItem(definitions.gearTypes);
+    const name = getGearName(type, rarity, logger);
     // Generate modifiers first (before applying to stats)
-    var modifiers = generateModifiers(rarity, unlockedPools, logger);
+    const modifiers = generateModifiers(rarity, unlockedPools, logger);
     // Generate base stats
-    var stats = generateGearStats(type, rarity, logger);
+    const stats = generateGearStats(type, rarity, logger);
     // Apply modifiers to stats
-    var modifiedStats = applyModifiersToGearStats(stats, modifiers);
-    var gear = {
+    const modifiedStats = applyModifiersToGearStats(stats, modifiers);
+    const gear = {
         id: generateGearId(),
         name: name,
         rarity: rarity,
@@ -537,22 +523,21 @@ function registerRpcGenerateGear(initializer) {
  * }
  */
 function rpcGenerateGear(ctx, logger, nk, payload) {
-    var _a, _b, _c;
     logger.info('Generate gear called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.generate_gear, payload, 'generate_gear');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.generate_gear, payload, 'generate_gear');
     if (!validation.success) {
-        (0, audit_1.logAudit)(nk, ctx.userId, (_a = ctx.ipAddress) !== null && _a !== void 0 ? _a : null, 'generate_gear', 'player_inventory', { stage_id: 'unknown' }, 'failure', validation.error);
+        (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'generate_gear', 'player_inventory', { stage_id: 'unknown' }, 'failure', validation.error);
         return (0, validation_1.createValidationErrorResponse)('generate_gear', validation.error);
     }
-    var request = validation.data;
-    var inventoryObjects = nk.storageRead([
+    const request = validation.data;
+    const inventoryObjects = nk.storageRead([
         {
             collection: 'player_inventory',
             key: ctx.userId,
             userId: ctx.userId,
         },
     ]);
-    var inventory;
+    let inventory;
     if (inventoryObjects.length === 0) {
         inventory = {
             user_id: ctx.userId,
@@ -562,12 +547,12 @@ function rpcGenerateGear(ctx, logger, nk, payload) {
         };
     }
     else {
-        var value = inventoryObjects[0].value;
+        const value = inventoryObjects[0].value;
         if (value) {
-            var parseResult = (0, safeParse_1.safeParse)(value, null, logger, 'storage_data');
+            const parseResult = (0, safeParse_1.safeParse)(value, null, logger, 'storage_data');
             if (!parseResult.success || !parseResult.data) {
                 logger.error('Failed to parse data');
-                (0, audit_1.logAudit)(nk, ctx.userId, (_b = ctx.ipAddress) !== null && _b !== void 0 ? _b : null, 'generate_gear', 'player_inventory', { stage_id: request.stage_id }, 'failure', 'Failed to parse inventory data');
+                (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'generate_gear', 'player_inventory', { stage_id: request.stage_id }, 'failure', 'Failed to parse inventory data');
                 return (0, safeParse_1.createErrorResponse)('INVALID_DATA', 'Failed to parse data');
             }
             inventory = parseResult.data;
@@ -581,7 +566,7 @@ function rpcGenerateGear(ctx, logger, nk, payload) {
             };
         }
     }
-    var gear = generateGearItem(request.stage_id, inventory.unlocked_modifier_pools, logger);
+    const gear = generateGearItem(request.stage_id, inventory.unlocked_modifier_pools, logger);
     inventory.gear.push(gear);
     nk.storageWrite([
         {
@@ -592,7 +577,7 @@ function rpcGenerateGear(ctx, logger, nk, payload) {
         },
     ]);
     logger.info('Generated gear %s (%s) for user %s', gear.name, gear.rarity, ctx.userId);
-    (0, audit_1.logAudit)(nk, ctx.userId, (_c = ctx.ipAddress) !== null && _c !== void 0 ? _c : null, 'generate_gear', 'player_inventory', {
+    (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'generate_gear', 'player_inventory', {
         stage_id: request.stage_id,
         gear_id: gear.id,
         gear_rarity: gear.rarity,
@@ -627,7 +612,7 @@ function registerRpcEquipGear(initializer) {
  *
  * @example
  * // Request payload
- * { "gear_id": "gear_123", "slot": "weapon" }
+ * { "gear_id": "gear_123", "slot": "helm" }
  *
  * // Response
  * {
@@ -637,14 +622,13 @@ function registerRpcEquipGear(initializer) {
  * }
  */
 function rpcEquipGear(ctx, logger, nk, payload) {
-    var _a, _b;
     logger.info('Equip gear called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.equip_gear, payload, 'equip_gear');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.equip_gear, payload, 'equip_gear');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('equip_gear', validation.error);
     }
-    var request = validation.data;
-    var inventoryObjects = nk.storageRead([
+    const request = validation.data;
+    const inventoryObjects = nk.storageRead([
         {
             collection: 'player_inventory',
             key: ctx.userId,
@@ -656,27 +640,27 @@ function rpcEquipGear(ctx, logger, nk, payload) {
             error: 'Player inventory not found',
         });
     }
-    var value = inventoryObjects[0].value;
+    const value = inventoryObjects[0].value;
     if (!value) {
         return JSON.stringify({
             error: 'Invalid inventory data',
         });
     }
-    var parseResult = (0, safeParse_1.safeParse)(value, null, logger, 'storage_data');
+    const parseResult = (0, safeParse_1.safeParse)(value, null, logger, 'storage_data');
     if (!parseResult.success || !parseResult.data) {
         logger.error('Failed to parse data');
         return (0, safeParse_1.createErrorResponse)('INVALID_DATA', 'Failed to parse data');
     }
-    var inventory = parseResult.data;
-    var gearIndex = inventory.gear.findIndex(function (g) { return g.id === request.gear_id; });
+    const inventory = parseResult.data;
+    const gearIndex = inventory.gear.findIndex((g) => g.id === request.gear_id);
     if (gearIndex === -1) {
         return JSON.stringify({
             error: 'Gear not found in inventory',
         });
     }
-    var gear = inventory.gear[gearIndex];
+    const gear = inventory.gear[gearIndex];
     if (gear.type !== request.slot) {
-        (0, audit_1.logAudit)(nk, ctx.userId, (_a = ctx.ipAddress) !== null && _a !== void 0 ? _a : null, 'equip_gear', 'player_inventory', { gear_id: request.gear_id, slot: request.slot, error: 'type_mismatch' }, 'failure', 'Gear type does not match slot');
+        (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'equip_gear', 'player_inventory', { gear_id: request.gear_id, slot: request.slot, error: 'type_mismatch' }, 'failure', 'Gear type does not match slot');
         return JSON.stringify({
             error: 'Gear type does not match slot',
         });
@@ -690,7 +674,7 @@ function rpcEquipGear(ctx, logger, nk, payload) {
             value: JSON.stringify(inventory),
         },
     ]);
-    (0, audit_1.logAudit)(nk, ctx.userId, (_b = ctx.ipAddress) !== null && _b !== void 0 ? _b : null, 'equip_gear', 'player_inventory', {
+    (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'equip_gear', 'player_inventory', {
         gear_id: gear.id,
         gear_name: gear.name,
         gear_type: gear.type,
@@ -722,7 +706,7 @@ function registerRpcUnequipGear(initializer) {
  *
  * @example
  * // Request payload
- * { "slot": "weapon" }
+ * { "slot": "helm" }
  *
  * // Response
  * {
@@ -731,14 +715,13 @@ function registerRpcUnequipGear(initializer) {
  * }
  */
 function rpcUnequipGear(ctx, logger, nk, payload) {
-    var _a, _b;
     logger.info('Unequip gear called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.unequip_gear, payload, 'unequip_gear');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.unequip_gear, payload, 'unequip_gear');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('unequip_gear', validation.error);
     }
-    var request = validation.data;
-    var inventoryObjects = nk.storageRead([
+    const request = validation.data;
+    const inventoryObjects = nk.storageRead([
         {
             collection: 'player_inventory',
             key: ctx.userId,
@@ -750,25 +733,25 @@ function rpcUnequipGear(ctx, logger, nk, payload) {
             error: 'Player inventory not found',
         });
     }
-    var value = inventoryObjects[0].value;
+    const value = inventoryObjects[0].value;
     if (!value) {
         return JSON.stringify({
             error: 'Invalid inventory data',
         });
     }
-    var parseResult = (0, safeParse_1.safeParse)(value, null, logger, 'storage_data');
+    const parseResult = (0, safeParse_1.safeParse)(value, null, logger, 'storage_data');
     if (!parseResult.success || !parseResult.data) {
         logger.error('Failed to parse data');
         return (0, safeParse_1.createErrorResponse)('INVALID_DATA', 'Failed to parse data');
     }
-    var inventory = parseResult.data;
+    const inventory = parseResult.data;
     if (!inventory.equipped_gear[request.slot]) {
-        (0, audit_1.logAudit)(nk, ctx.userId, (_a = ctx.ipAddress) !== null && _a !== void 0 ? _a : null, 'unequip_gear', 'player_inventory', { slot: request.slot, error: 'no_gear_equipped' }, 'failure', 'No gear equipped in this slot');
+        (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'unequip_gear', 'player_inventory', { slot: request.slot, error: 'no_gear_equipped' }, 'failure', 'No gear equipped in this slot');
         return JSON.stringify({
             error: 'No gear equipped in this slot',
         });
     }
-    var slotToUnequip = request.slot;
+    const slotToUnequip = request.slot;
     delete inventory.equipped_gear[request.slot];
     nk.storageWrite([
         {
@@ -778,7 +761,7 @@ function rpcUnequipGear(ctx, logger, nk, payload) {
             value: JSON.stringify(inventory),
         },
     ]);
-    (0, audit_1.logAudit)(nk, ctx.userId, (_b = ctx.ipAddress) !== null && _b !== void 0 ? _b : null, 'unequip_gear', 'player_inventory', { slot: slotToUnequip }, 'success');
+    (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'unequip_gear', 'player_inventory', { slot: slotToUnequip }, 'success');
     return JSON.stringify({
         success: true,
         equipped_gear: inventory.equipped_gear,
@@ -822,7 +805,7 @@ function registerRpcGetInventory(initializer) {
  * @returns Player inventory or default inventory if not found
  */
 function getPlayerInventory(nk, userId, logger) {
-    var inventoryObjects = nk.storageRead([
+    const inventoryObjects = nk.storageRead([
         {
             collection: 'player_inventory',
             key: userId,
@@ -837,9 +820,9 @@ function getPlayerInventory(nk, userId, logger) {
             unlocked_modifier_pools: [],
         };
     }
-    var value = inventoryObjects[0].value;
+    const value = inventoryObjects[0].value;
     if (value) {
-        var parseResult = (0, safeParse_1.safeParse)(value, null, logger, 'storage_data');
+        const parseResult = (0, safeParse_1.safeParse)(value, null, logger, 'storage_data');
         if (parseResult.success && parseResult.data) {
             return parseResult.data;
         }
@@ -856,11 +839,11 @@ function getPlayerInventory(nk, userId, logger) {
  */
 function rpcGetInventory(ctx, logger, nk, payload) {
     logger.info('Get inventory called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_inventory, payload, 'get_inventory');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_inventory, payload, 'get_inventory');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('get_inventory', validation.error);
     }
-    var inventoryObjects = nk.storageRead([
+    const inventoryObjects = nk.storageRead([
         {
             collection: 'player_inventory',
             key: ctx.userId,
@@ -874,7 +857,7 @@ function rpcGetInventory(ctx, logger, nk, payload) {
             unlocked_modifier_pools: [],
         });
     }
-    var value = inventoryObjects[0].value;
+    const value = inventoryObjects[0].value;
     if (value) {
         return value;
     }
@@ -912,22 +895,21 @@ function registerRpcUnlockModifierPool(initializer) {
  * }
  */
 function rpcUnlockModifierPool(ctx, logger, nk, payload) {
-    var _a, _b;
     logger.info('Unlock modifier pool called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.unlock_modifier_pool, payload, 'unlock_modifier_pool');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.unlock_modifier_pool, payload, 'unlock_modifier_pool');
     if (!validation.success) {
-        (0, audit_1.logAudit)(nk, ctx.userId, (_a = ctx.ipAddress) !== null && _a !== void 0 ? _a : null, 'unlock_modifier_pool', 'modifiers', { modifier_id: 'unknown' }, 'failure', validation.error);
+        (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'unlock_modifier_pool', 'modifiers', { modifier_id: 'unknown' }, 'failure', validation.error);
         return (0, validation_1.createValidationErrorResponse)('unlock_modifier_pool', validation.error);
     }
-    var modifierId = validation.data.modifier_id;
-    var inventoryObjects = nk.storageRead([
+    const modifierId = validation.data.modifier_id;
+    const inventoryObjects = nk.storageRead([
         {
             collection: 'player_inventory',
             key: ctx.userId,
             userId: ctx.userId,
         },
     ]);
-    var inventory;
+    let inventory;
     if (inventoryObjects.length === 0) {
         inventory = {
             user_id: ctx.userId,
@@ -937,9 +919,9 @@ function rpcUnlockModifierPool(ctx, logger, nk, payload) {
         };
     }
     else {
-        var value = inventoryObjects[0].value;
+        const value = inventoryObjects[0].value;
         if (value) {
-            var parseResult = (0, safeParse_1.safeParse)(value, null, logger, 'storage_data');
+            const parseResult = (0, safeParse_1.safeParse)(value, null, logger, 'storage_data');
             if (!parseResult.success || !parseResult.data) {
                 logger.error('Failed to parse data');
                 return (0, safeParse_1.createErrorResponse)('INVALID_DATA', 'Failed to parse data');
@@ -967,7 +949,7 @@ function rpcUnlockModifierPool(ctx, logger, nk, payload) {
         },
     ]);
     logger.info('Unlocked modifier pool %s for user %s', modifierId, ctx.userId);
-    (0, audit_1.logAudit)(nk, ctx.userId, (_b = ctx.ipAddress) !== null && _b !== void 0 ? _b : null, 'unlock_modifier_pool', 'modifiers', { modifier_id: modifierId, unlocked_pools: inventory.unlocked_modifier_pools }, 'success');
+    (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'unlock_modifier_pool', 'modifiers', { modifier_id: modifierId, unlocked_pools: inventory.unlocked_modifier_pools }, 'success');
     return JSON.stringify({
         success: true,
         unlocked_modifier_pools: inventory.unlocked_modifier_pools,
@@ -1007,14 +989,14 @@ function registerRpcGetUnlockedModifiers(initializer) {
  */
 function rpcGetUnlockedModifiers(ctx, logger, nk, payload) {
     logger.info('Get unlocked modifiers called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_unlocked_modifiers, payload, 'get_unlocked_modifiers');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_unlocked_modifiers, payload, 'get_unlocked_modifiers');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('get_unlocked_modifiers', validation.error);
     }
     // Get player inventory to retrieve unlocked modifier pools
-    var inventory = getPlayerInventory(nk, ctx.userId, logger);
+    const inventory = getPlayerInventory(nk, ctx.userId, logger);
     // Get boss defeat tracking data
-    var bossDefeatData = getBossDefeatData(nk, ctx.userId, logger);
+    const bossDefeatData = getBossDefeatData(nk, ctx.userId, logger);
     return JSON.stringify({
         success: true,
         unlocked_modifier_pools: inventory.unlocked_modifier_pools,
@@ -1030,7 +1012,7 @@ function rpcGetUnlockedModifiers(ctx, logger, nk, payload) {
  * @returns Boss defeat data with defeat counts and unlocked modifiers
  */
 function getBossDefeatData(nk, userId, logger) {
-    var objects = nk.storageRead([
+    const objects = nk.storageRead([
         {
             collection: 'boss_defeat_tracking',
             key: userId,
@@ -1044,9 +1026,9 @@ function getBossDefeatData(nk, userId, logger) {
             unlocked_modifiers: [],
         };
     }
-    var value = objects[0].value;
+    const value = objects[0].value;
     if (value) {
-        var parseResult = (0, safeParse_1.safeParse)(value, null, logger, 'boss_defeat_data');
+        const parseResult = (0, safeParse_1.safeParse)(value, null, logger, 'boss_defeat_data');
         if (parseResult.success && parseResult.data) {
             return parseResult.data;
         }
@@ -1087,35 +1069,23 @@ function saveBossDefeatData(nk, userId, data, logger) {
  * @returns Object containing defeat count and newly unlocked modifiers
  */
 function recordBossDefeat(nk, ctx, logger, bossId) {
-    var e_4, _a;
-    var _b;
-    var bossDefeatData = getBossDefeatData(nk, ctx.userId, logger);
-    var inventory = getPlayerInventory(nk, ctx.userId, logger);
+    const bossDefeatData = getBossDefeatData(nk, ctx.userId, logger);
+    const inventory = getPlayerInventory(nk, ctx.userId, logger);
     // Increment defeat count for this boss
-    var previousDefeatCount = bossDefeatData.defeats[bossId] || 0;
+    const previousDefeatCount = bossDefeatData.defeats[bossId] || 0;
     bossDefeatData.defeats[bossId] = previousDefeatCount + 1;
     // Get modifiers unlocked by this boss
-    var modifiersToUnlock = getModifiersUnlockedByBoss(bossId);
-    var newlyUnlockedModifiers = [];
-    try {
-        // Unlock any new modifier pools
-        for (var modifiersToUnlock_1 = tslib_1.__values(modifiersToUnlock), modifiersToUnlock_1_1 = modifiersToUnlock_1.next(); !modifiersToUnlock_1_1.done; modifiersToUnlock_1_1 = modifiersToUnlock_1.next()) {
-            var modifierId = modifiersToUnlock_1_1.value;
-            if (!bossDefeatData.unlocked_modifiers.includes(modifierId)) {
-                bossDefeatData.unlocked_modifiers.push(modifierId);
-                newlyUnlockedModifiers.push(modifierId);
-            }
-            if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
-                inventory.unlocked_modifier_pools.push(modifierId);
-            }
+    const modifiersToUnlock = getModifiersUnlockedByBoss(bossId);
+    const newlyUnlockedModifiers = [];
+    // Unlock any new modifier pools
+    for (const modifierId of modifiersToUnlock) {
+        if (!bossDefeatData.unlocked_modifiers.includes(modifierId)) {
+            bossDefeatData.unlocked_modifiers.push(modifierId);
+            newlyUnlockedModifiers.push(modifierId);
         }
-    }
-    catch (e_4_1) { e_4 = { error: e_4_1 }; }
-    finally {
-        try {
-            if (modifiersToUnlock_1_1 && !modifiersToUnlock_1_1.done && (_a = modifiersToUnlock_1.return)) _a.call(modifiersToUnlock_1);
+        if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
+            inventory.unlocked_modifier_pools.push(modifierId);
         }
-        finally { if (e_4) throw e_4.error; }
     }
     // Save updated data
     saveBossDefeatData(nk, ctx.userId, bossDefeatData, logger);
@@ -1130,7 +1100,7 @@ function recordBossDefeat(nk, ctx, logger, bossId) {
     ]);
     logger.info('User %s defeated boss %s (total: %d), unlocked modifiers: %s', ctx.userId, bossId, bossDefeatData.defeats[bossId], newlyUnlockedModifiers.join(', '));
     // Audit the boss defeat
-    (0, audit_1.logAudit)(nk, ctx.userId, (_b = ctx.ipAddress) !== null && _b !== void 0 ? _b : null, 'boss_defeat', 'boss_defeat_tracking', {
+    (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'boss_defeat', 'boss_defeat_tracking', {
         boss_id: bossId,
         defeat_count: bossDefeatData.defeats[bossId],
         newly_unlocked_modifiers: newlyUnlockedModifiers,
@@ -1144,7 +1114,7 @@ function recordBossDefeat(nk, ctx, logger, bossId) {
 /**
  * Drop rate multipliers by difficulty.
  */
-var DIFFICULTY_DROP_MULTIPLIERS = {
+const DIFFICULTY_DROP_MULTIPLIERS = {
     easy: 0.5,
     medium: 1.0,
     hard: 1.5,
@@ -1153,11 +1123,11 @@ var DIFFICULTY_DROP_MULTIPLIERS = {
 /**
  * Boss drop rate bonus.
  */
-var BOSS_DROP_BONUS = 0.25;
+const BOSS_DROP_BONUS = 0.25;
 /**
  * Base drop rate for any stage completion.
  */
-var BASE_DROP_RATE = 0.3;
+const BASE_DROP_RATE = 0.3;
 /**
  * Calculates the drop rate based on stage difficulty and boss defeat.
  *
@@ -1166,8 +1136,8 @@ var BASE_DROP_RATE = 0.3;
  * @returns Calculated drop rate between 0 and 1
  */
 function calculateDropRate(difficulty, bossDefeated) {
-    var multiplier = DIFFICULTY_DROP_MULTIPLIERS[difficulty] || 1.0;
-    var dropRate = BASE_DROP_RATE * multiplier;
+    const multiplier = DIFFICULTY_DROP_MULTIPLIERS[difficulty] || 1.0;
+    let dropRate = BASE_DROP_RATE * multiplier;
     if (bossDefeated) {
         dropRate += BOSS_DROP_BONUS;
     }
@@ -1211,48 +1181,27 @@ function registerRpcStageComplete(initializer) {
  * Returns the list of newly unlocked modifier IDs.
  */
 function unlockModifierPools(inventory, logger, ctxUserId, bossId, enemyType) {
-    var e_5, _a, e_6, _b;
-    var newlyUnlocked = [];
+    const newlyUnlocked = [];
     // Unlock modifier pools when boss is defeated
     if (bossId) {
-        var modifiersToUnlock = getModifiersUnlockedByBoss(bossId);
-        try {
-            for (var modifiersToUnlock_2 = tslib_1.__values(modifiersToUnlock), modifiersToUnlock_2_1 = modifiersToUnlock_2.next(); !modifiersToUnlock_2_1.done; modifiersToUnlock_2_1 = modifiersToUnlock_2.next()) {
-                var modifierId = modifiersToUnlock_2_1.value;
-                if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
-                    inventory.unlocked_modifier_pools.push(modifierId);
-                    newlyUnlocked.push(modifierId);
-                    logger.info('Unlocked modifier pool %s for user %s after defeating boss %s', modifierId, ctxUserId, bossId);
-                }
+        const modifiersToUnlock = getModifiersUnlockedByBoss(bossId);
+        for (const modifierId of modifiersToUnlock) {
+            if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
+                inventory.unlocked_modifier_pools.push(modifierId);
+                newlyUnlocked.push(modifierId);
+                logger.info('Unlocked modifier pool %s for user %s after defeating boss %s', modifierId, ctxUserId, bossId);
             }
-        }
-        catch (e_5_1) { e_5 = { error: e_5_1 }; }
-        finally {
-            try {
-                if (modifiersToUnlock_2_1 && !modifiersToUnlock_2_1.done && (_a = modifiersToUnlock_2.return)) _a.call(modifiersToUnlock_2);
-            }
-            finally { if (e_5) throw e_5.error; }
         }
     }
     // Unlock modifier pools when enemy is defeated (for future drop chances)
     if (enemyType) {
-        var enemyModifiersToUnlock = getModifiersUnlockedByEnemy(enemyType);
-        try {
-            for (var enemyModifiersToUnlock_1 = tslib_1.__values(enemyModifiersToUnlock), enemyModifiersToUnlock_1_1 = enemyModifiersToUnlock_1.next(); !enemyModifiersToUnlock_1_1.done; enemyModifiersToUnlock_1_1 = enemyModifiersToUnlock_1.next()) {
-                var modifierId = enemyModifiersToUnlock_1_1.value;
-                if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
-                    inventory.unlocked_modifier_pools.push(modifierId);
-                    newlyUnlocked.push(modifierId);
-                    logger.info('Unlocked modifier pool %s for user %s after defeating enemy type %s', modifierId, ctxUserId, enemyType);
-                }
+        const enemyModifiersToUnlock = getModifiersUnlockedByEnemy(enemyType);
+        for (const modifierId of enemyModifiersToUnlock) {
+            if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
+                inventory.unlocked_modifier_pools.push(modifierId);
+                newlyUnlocked.push(modifierId);
+                logger.info('Unlocked modifier pool %s for user %s after defeating enemy type %s', modifierId, ctxUserId, enemyType);
             }
-        }
-        catch (e_6_1) { e_6 = { error: e_6_1 }; }
-        finally {
-            try {
-                if (enemyModifiersToUnlock_1_1 && !enemyModifiersToUnlock_1_1.done && (_b = enemyModifiersToUnlock_1.return)) _b.call(enemyModifiersToUnlock_1);
-            }
-            finally { if (e_6) throw e_6.error; }
         }
     }
     return newlyUnlocked;
@@ -1267,25 +1216,24 @@ function unlockModifierPools(inventory, logger, ctxUserId, bossId, enemyType) {
  * @returns Stage completion response
  */
 function rpcStageComplete(ctx, logger, nk, payload) {
-    var _a, _b;
     logger.info('Stage complete called for user: %s', ctx.userId);
     // Validate payload
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.stage_complete, payload, 'stage_complete');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.stage_complete, payload, 'stage_complete');
     if (!validation.success) {
         return handleValidationFailure(nk, ctx, validation.error);
     }
-    var request = validation.data;
+    const request = validation.data;
     // Process stage completion
-    var result = processStageCompletion(nk, ctx, logger, request);
+    const result = processStageCompletion(nk, ctx, logger, request);
     // Audit the stage completion
-    (0, audit_1.logAudit)(nk, ctx.userId, (_a = ctx.ipAddress) !== null && _a !== void 0 ? _a : null, 'stage_complete', 'stage_progression', buildAuditData(request, result), 'success');
+    (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'stage_complete', 'stage_progression', buildAuditData(request, result), 'success');
     return JSON.stringify({
         success: true,
         stage_id: request.stage_id,
         loot: result.lootResult,
         drop_rate: result.dropRate,
         unlocked_modifier_pools: result.inventory.unlocked_modifier_pools,
-        boss_defeat_count: (_b = result.bossDefeatResult) === null || _b === void 0 ? void 0 : _b.defeat_count,
+        boss_defeat_count: result.bossDefeatResult?.defeat_count,
         newly_unlocked_modifiers: result.allUnlockedModifiers,
     });
 }
@@ -1293,8 +1241,7 @@ function rpcStageComplete(ctx, logger, nk, payload) {
  * Handle validation failure
  */
 function handleValidationFailure(nk, ctx, error) {
-    var _a;
-    (0, audit_1.logAudit)(nk, ctx.userId, (_a = ctx.ipAddress) !== null && _a !== void 0 ? _a : null, 'stage_complete', 'stage_progression', { stage_id: 'unknown' }, 'failure', error);
+    (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'stage_complete', 'stage_progression', { stage_id: 'unknown' }, 'failure', error);
     return (0, validation_1.createValidationErrorResponse)('stage_complete', error);
 }
 /**
@@ -1302,21 +1249,24 @@ function handleValidationFailure(nk, ctx, error) {
  */
 function processStageCompletion(nk, ctx, logger, request) {
     // Calculate drop rate and roll for loot
-    var dropRate = calculateDropRate(request.difficulty, request.boss_defeated);
-    var roll = Math.random();
+    const dropRate = calculateDropRate(request.difficulty, request.boss_defeated);
+    const roll = Math.random();
     logger.info('Loot roll for user %s: roll=%f, dropRate=%f, difficulty=%s, bossDefeated=%s', ctx.userId, roll, dropRate, request.difficulty, request.boss_defeated);
     // Process boss defeat if applicable
-    var bossDefeatResult = request.boss_defeated && request.boss_id
+    const bossDefeatResult = request.boss_defeated && request.boss_id
         ? recordBossDefeat(nk, ctx, logger, request.boss_id)
         : undefined;
     // Get player inventory (after boss defeat to get updated modifier pools)
-    var inventory = getPlayerInventory(nk, ctx.userId, logger);
+    const inventory = getPlayerInventory(nk, ctx.userId, logger);
     // Unlock modifier pools
-    var newlyUnlockedModifiers = unlockModifierPools(inventory, logger, ctx.userId, undefined, request.enemy_type);
+    const newlyUnlockedModifiers = unlockModifierPools(inventory, logger, ctx.userId, undefined, request.enemy_type);
     // Combine modifiers
-    var allUnlockedModifiers = tslib_1.__spreadArray(tslib_1.__spreadArray([], tslib_1.__read(((bossDefeatResult === null || bossDefeatResult === void 0 ? void 0 : bossDefeatResult.newly_unlocked_modifiers) || [])), false), tslib_1.__read(newlyUnlockedModifiers), false);
+    const allUnlockedModifiers = [
+        ...(bossDefeatResult?.newly_unlocked_modifiers || []),
+        ...newlyUnlockedModifiers,
+    ];
     // Roll for loot
-    var lootResult = roll < dropRate
+    const lootResult = roll < dropRate
         ? generateLootResult(request.stage_id, inventory, logger)
         : { dropped: false, gear: null };
     // Save inventory with new gear (if any)
@@ -1331,33 +1281,30 @@ function processStageCompletion(nk, ctx, logger, request) {
         ]);
     }
     return {
-        inventory: inventory,
-        lootResult: lootResult,
-        dropRate: dropRate,
-        bossDefeatResult: bossDefeatResult,
-        allUnlockedModifiers: allUnlockedModifiers,
-        roll: roll,
+        inventory,
+        lootResult,
+        dropRate,
+        bossDefeatResult,
+        allUnlockedModifiers,
+        roll,
     };
 }
 /**
  * Build audit data object
  */
 function buildAuditData(request, result) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
     return {
         stage_id: request.stage_id,
         difficulty: request.difficulty,
         boss_defeated: request.boss_defeated,
-        boss_id: (_a = request.boss_id) !== null && _a !== void 0 ? _a : null,
-        boss_defeat_count: (_c = (_b = result.bossDefeatResult) === null || _b === void 0 ? void 0 : _b.defeat_count) !== null && _c !== void 0 ? _c : null,
-        enemy_type: (_d = request.enemy_type) !== null && _d !== void 0 ? _d : null,
+        boss_id: request.boss_id ?? null,
+        boss_defeat_count: result.bossDefeatResult?.defeat_count ?? null,
+        enemy_type: request.enemy_type ?? null,
         loot_dropped: result.lootResult.dropped,
-        loot_gear_id: (_f = (_e = result.lootResult.gear) === null || _e === void 0 ? void 0 : _e.id) !== null && _f !== void 0 ? _f : null,
-        loot_gear_rarity: (_h = (_g = result.lootResult.gear) === null || _g === void 0 ? void 0 : _g.rarity) !== null && _h !== void 0 ? _h : null,
-        unlocked_modifiers_from_boss: (_k = (_j = result.bossDefeatResult) === null || _j === void 0 ? void 0 : _j.newly_unlocked_modifiers) !== null && _k !== void 0 ? _k : [],
-        unlocked_modifiers_from_enemy: result.allUnlockedModifiers.filter(function (m) {
-            return request.enemy_type ? getModifiersUnlockedByEnemy(request.enemy_type).includes(m) : false;
-        }),
+        loot_gear_id: result.lootResult.gear?.id ?? null,
+        loot_gear_rarity: result.lootResult.gear?.rarity ?? null,
+        unlocked_modifiers_from_boss: result.bossDefeatResult?.newly_unlocked_modifiers ?? [],
+        unlocked_modifiers_from_enemy: result.allUnlockedModifiers.filter((m) => request.enemy_type ? getModifiersUnlockedByEnemy(request.enemy_type).includes(m) : false),
         all_unlocked_modifiers: result.inventory.unlocked_modifier_pools,
         drop_rate_used: result.dropRate,
         roll_value: result.roll,
@@ -1372,8 +1319,8 @@ function buildAuditData(request, result) {
  * @returns Loot result
  */
 function generateLootResult(stageId, inventory, logger) {
-    var gear = generateGearItem(stageId, inventory.unlocked_modifier_pools, logger);
+    const gear = generateGearItem(stageId, inventory.unlocked_modifier_pools, logger);
     inventory.gear.push(gear);
     logger.info('Loot dropped for user: %s (%s)', gear.name, gear.rarity);
-    return { dropped: true, gear: gear };
+    return { dropped: true, gear };
 }

@@ -16,11 +16,12 @@ exports.calculateRank = calculateRank;
 exports.generateMatchId = generateMatchId;
 exports.registerRpcCompleteMatch = registerRpcCompleteMatch;
 exports.rpcCompleteMatch = rpcCompleteMatch;
-var tslib_1 = require("tslib");
-var anti_cheat_1 = require("./anti_cheat");
-var audit_1 = require("./audit");
-var season_system_1 = require("./season_system");
-var validation_1 = require("./validation");
+const safeParse_1 = require("../utils/safeParse");
+const storage_helpers_1 = require("../utils/storage-helpers");
+const anti_cheat_1 = require("./anti_cheat");
+const audit_1 = require("./audit");
+const season_system_1 = require("./season_system");
+const validation_1 = require("./validation");
 /**
  * Registers the list matches RPC endpoint.
  *
@@ -28,6 +29,27 @@ var validation_1 = require("./validation");
  */
 function registerRpcListMatches(initializer) {
     initializer.registerRpc('armored_archer/list_matches', rpcListMatches);
+}
+/**
+ * Checks whether a match passes the listing filter criteria.
+ *
+ * @param match - The PvP match to check
+ * @param userId - The requesting user's ID (to exclude own matches)
+ * @param request - The filter parameters from the list request
+ * @returns True if the match should be included in results
+ */
+function matchPassesFilter(match, userId, request) {
+    if (match.status !== 'pending')
+        return false;
+    if (request.match_type && match.match_type !== request.match_type)
+        return false;
+    if (match.creator_id === userId)
+        return false;
+    if (request.min_rank !== undefined && match.creator_rank < request.min_rank)
+        return false;
+    if (request.max_rank !== undefined && match.creator_rank > request.max_rank)
+        return false;
+    return true;
 }
 /**
  * Lists available PvP matches with filtering options.
@@ -51,15 +73,14 @@ function registerRpcListMatches(initializer) {
  * }
  */
 function rpcListMatches(ctx, logger, nk, payload) {
-    var e_1, _a;
     logger.info('List matches called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.list_matches, payload, 'list_matches');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.list_matches, payload, 'list_matches');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('list_matches', validation.error);
     }
-    var request = validation.data || {};
-    var limit = request.limit || 20;
-    var objects = nk.storageRead([
+    const request = validation.data || {};
+    const limit = request.limit || 20;
+    const objects = nk.storageRead([
         {
             collection: 'player_stats',
             key: ctx.userId,
@@ -71,40 +92,26 @@ function rpcListMatches(ctx, logger, nk, payload) {
             error: 'Player stats not found',
         });
     }
-    var playerStats = JSON.parse(objects[0].value);
-    var playerRank = calculateRank(playerStats);
-    var matches = nk.storageList(ctx.userId, 'pvp_matches', limit, '', '');
-    var filteredMatches = [];
-    try {
-        for (var matches_1 = tslib_1.__values(matches), matches_1_1 = matches_1.next(); !matches_1_1.done; matches_1_1 = matches_1.next()) {
-            var object = matches_1_1.value;
-            var match = JSON.parse(object.value);
-            if (match.status !== 'pending') {
-                continue;
-            }
-            if (request.match_type && match.match_type !== request.match_type) {
-                continue;
-            }
-            if (match.creator_id === ctx.userId) {
-                continue;
-            }
-            if (request.min_rank !== undefined && match.creator_rank < request.min_rank) {
-                continue;
-            }
-            if (request.max_rank !== undefined && match.creator_rank > request.max_rank) {
-                continue;
-            }
+    const playerStatsResult = (0, safeParse_1.safeParse)(objects[0].value, null, logger, 'rpcListMatches:playerStats');
+    if (!playerStatsResult.success || !playerStatsResult.data) {
+        return JSON.stringify({ error: 'Failed to parse player stats' });
+    }
+    const playerStats = playerStatsResult.data;
+    const playerRank = calculateRank(playerStats);
+    const matches = nk.storageList(ctx.userId, 'pvp_matches', limit, '', '');
+    const filteredMatches = [];
+    for (const object of matches) {
+        const matchResult = (0, safeParse_1.safeParse)(object.value, null, logger, 'rpcListMatches:match');
+        if (!matchResult.success || !matchResult.data) {
+            logger.warn('Skipping corrupted match record for user: %s', ctx.userId);
+            continue;
+        }
+        const match = matchResult.data;
+        if (matchPassesFilter(match, ctx.userId, request)) {
             filteredMatches.push(match);
         }
     }
-    catch (e_1_1) { e_1 = { error: e_1_1 }; }
-    finally {
-        try {
-            if (matches_1_1 && !matches_1_1.done && (_a = matches_1.return)) _a.call(matches_1);
-        }
-        finally { if (e_1) throw e_1.error; }
-    }
-    filteredMatches.sort(function (a, b) { return b.created_at - a.created_at; });
+    filteredMatches.sort((a, b) => b.created_at - a.created_at);
     return JSON.stringify({
         success: true,
         matches: filteredMatches.slice(0, limit),
@@ -140,15 +147,14 @@ function registerRpcCreateMatch(initializer) {
  * }
  */
 function rpcCreateMatch(ctx, logger, nk, payload) {
-    var _a;
     logger.info('Create match called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.create_match, payload, 'create_match');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.create_match, payload, 'create_match');
     if (!validation.success) {
-        (0, audit_1.logAudit)(nk, ctx.userId, (_a = ctx.ipAddress) !== null && _a !== void 0 ? _a : null, 'create_match', 'pvp_matches', { match_type: 'unknown', is_punch_up: false, target_opponent_id: 'none' }, 'failure', validation.error);
+        (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'create_match', 'pvp_matches', { match_type: 'unknown', is_punch_up: false, target_opponent_id: 'none' }, 'failure', validation.error);
         return (0, validation_1.createValidationErrorResponse)('create_match', validation.error);
     }
-    var request = validation.data;
-    var objects = nk.storageRead([
+    const request = validation.data;
+    const objects = nk.storageRead([
         {
             collection: 'player_stats',
             key: ctx.userId,
@@ -160,10 +166,14 @@ function rpcCreateMatch(ctx, logger, nk, payload) {
             error: 'Player stats not found',
         });
     }
-    var playerStats = JSON.parse(objects[0].value);
-    var playerRank = calculateRank(playerStats);
+    const playerStatsResult = (0, safeParse_1.safeParse)(objects[0].value, null, logger, 'rpcCreateMatch:playerStats');
+    if (!playerStatsResult.success || !playerStatsResult.data) {
+        return JSON.stringify({ error: 'Failed to parse player stats' });
+    }
+    const playerStats = playerStatsResult.data;
+    const playerRank = calculateRank(playerStats);
     if (request.target_opponent_id) {
-        var targetStats = nk.storageRead([
+        const targetStats = nk.storageRead([
             {
                 collection: 'player_stats',
                 key: request.target_opponent_id,
@@ -175,14 +185,18 @@ function rpcCreateMatch(ctx, logger, nk, payload) {
                 error: 'Target player not found',
             });
         }
-        var targetPlayerStats = JSON.parse(targetStats[0].value);
-        var targetRank = calculateRank(targetPlayerStats);
+        const targetPlayerStatsResult = (0, safeParse_1.safeParse)(targetStats[0].value, null, logger, 'rpcCreateMatch:targetStats');
+        if (!targetPlayerStatsResult.success || !targetPlayerStatsResult.data) {
+            return JSON.stringify({ error: 'Failed to parse target player stats' });
+        }
+        const targetPlayerStats = targetPlayerStatsResult.data;
+        const targetRank = calculateRank(targetPlayerStats);
         if (!request.is_punch_up && Math.abs(playerRank - targetRank) > 3) {
             return JSON.stringify({
                 error: 'Rank difference too large for direct challenge',
             });
         }
-        var match = {
+        const match = {
             match_id: generateMatchId(),
             creator_id: ctx.userId,
             opponent_id: request.target_opponent_id,
@@ -210,10 +224,10 @@ function rpcCreateMatch(ctx, logger, nk, payload) {
         });
     }
     else {
-        var now = Date.now();
+        const now = Date.now();
         // Pending matches expire after 24 hours
-        var PENDING_MATCH_EXPIRY_MS = 24 * 60 * 60 * 1000;
-        var match = {
+        const PENDING_MATCH_EXPIRY_MS = 24 * 60 * 60 * 1000;
+        const match = {
             match_id: generateMatchId(),
             creator_id: ctx.userId,
             opponent_id: '',
@@ -269,15 +283,14 @@ function registerRpcAcceptMatch(initializer) {
  * }
  */
 function rpcAcceptMatch(ctx, logger, nk, payload) {
-    var _a, _b;
     logger.info('Accept match called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.accept_match, payload, 'accept_match');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.accept_match, payload, 'accept_match');
     if (!validation.success) {
-        (0, audit_1.logAudit)(nk, ctx.userId, (_a = ctx.ipAddress) !== null && _a !== void 0 ? _a : null, 'accept_match', 'pvp_matches', { match_id: 'unknown' }, 'failure', validation.error);
+        (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'accept_match', 'pvp_matches', { match_id: 'unknown' }, 'failure', validation.error);
         return (0, validation_1.createValidationErrorResponse)('accept_match', validation.error);
     }
-    var request = validation.data;
-    var objects = nk.storageRead([
+    const request = validation.data;
+    const objects = nk.storageRead([
         {
             collection: 'pvp_matches',
             key: request.match_id,
@@ -289,7 +302,11 @@ function rpcAcceptMatch(ctx, logger, nk, payload) {
             error: 'Match not found',
         });
     }
-    var match = JSON.parse(objects[0].value);
+    const matchResult = (0, safeParse_1.safeParse)(objects[0].value, null, logger, 'rpcAcceptMatch:match');
+    if (!matchResult.success || !matchResult.data) {
+        return JSON.stringify({ error: 'Failed to parse match data' });
+    }
+    const match = matchResult.data;
     if (match.creator_id === ctx.userId) {
         return JSON.stringify({
             error: 'Cannot accept your own match',
@@ -300,7 +317,7 @@ function rpcAcceptMatch(ctx, logger, nk, payload) {
             error: 'Match is no longer available',
         });
     }
-    var playerObjects = nk.storageRead([
+    const playerObjects = nk.storageRead([
         {
             collection: 'player_stats',
             key: ctx.userId,
@@ -312,10 +329,14 @@ function rpcAcceptMatch(ctx, logger, nk, payload) {
             error: 'Player stats not found',
         });
     }
-    var playerStats = JSON.parse(playerObjects[0].value);
-    var now = Date.now();
+    const playerStatsResult = (0, safeParse_1.safeParse)(playerObjects[0].value, null, logger, 'rpcAcceptMatch:playerStats');
+    if (!playerStatsResult.success || !playerStatsResult.data) {
+        return JSON.stringify({ error: 'Failed to parse player stats' });
+    }
+    const playerStats = playerStatsResult.data;
+    const now = Date.now();
     // Active matches expire after 7 days of inactivity
-    var ACTIVE_MATCH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+    const ACTIVE_MATCH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
     match.opponent_id = ctx.userId;
     match.opponent_rank = calculateRank(playerStats);
     match.status = 'active';
@@ -330,7 +351,7 @@ function rpcAcceptMatch(ctx, logger, nk, payload) {
             value: JSON.stringify(match),
         },
     ]);
-    (0, audit_1.logAudit)(nk, ctx.userId, (_b = ctx.ipAddress) !== null && _b !== void 0 ? _b : null, 'accept_match', 'pvp_matches', {
+    (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'accept_match', 'pvp_matches', {
         match_id: match.match_id,
         creator_id: match.creator_id,
         match_type: match.match_type,
@@ -372,26 +393,18 @@ function registerRpcGetPlayerRank(initializer) {
  */
 function rpcGetPlayerRank(ctx, logger, nk, payload) {
     logger.info('Get player rank called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_player_rank, payload, 'get_player_rank');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.get_player_rank, payload, 'get_player_rank');
     if (!validation.success) {
         return (0, validation_1.createValidationErrorResponse)('get_player_rank', validation.error);
     }
-    var objects = nk.storageRead([
-        {
-            collection: 'player_stats',
-            key: ctx.userId,
-            userId: ctx.userId,
-        },
-    ]);
-    if (objects.length === 0) {
-        return JSON.stringify({
-            error: 'Player stats not found',
-        });
+    const statsResult = (0, storage_helpers_1.readAndParseStorage)(nk, 'player_stats', ctx.userId, ctx.userId, logger, 'rpcGetPlayerRank');
+    if (statsResult.error) {
+        return JSON.stringify({ error: 'Player stats not found' });
     }
-    var playerStats = JSON.parse(objects[0].value);
-    var rank = calculateRank(playerStats);
+    const playerStats = statsResult.data;
+    const rank = calculateRank(playerStats);
     // Apply rank decay check - this updates the player's rank if they've been inactive
-    var decayedRank = (0, season_system_1.applyRankDecay)(nk, ctx.userId, rank);
+    const decayedRank = (0, season_system_1.applyRankDecay)(nk, ctx.userId, rank);
     return JSON.stringify({
         success: true,
         rank: decayedRank,
@@ -406,8 +419,8 @@ function rpcGetPlayerRank(ctx, logger, nk, payload) {
  * @returns Calculated player rank
  */
 function calculateRank(playerStats) {
-    var baseRank = playerStats.level * 10;
-    var statsTotal = playerStats.stats.attack +
+    const baseRank = playerStats.level * 10;
+    const statsTotal = playerStats.stats.attack +
         playerStats.stats.defense +
         playerStats.stats.dodge +
         playerStats.stats.crit_rate;
@@ -427,9 +440,9 @@ function generateMatchId() {
 function checkPlayerFlagged(logger, playerId, playerType) {
     if ((0, anti_cheat_1.isPlayerFlagged)(playerId)) {
         logger.warn('Complete match blocked - %s flagged: %s reason: %s', playerType, playerId, (0, anti_cheat_1.getFlagReason)(playerId));
-        var errorMsg = playerType === 'winner'
-            ? "Player is flagged for review: ".concat((0, anti_cheat_1.getFlagReason)(playerId))
-            : "Opponent is flagged for review: ".concat((0, anti_cheat_1.getFlagReason)(playerId));
+        const errorMsg = playerType === 'winner'
+            ? `Player is flagged for review: ${(0, anti_cheat_1.getFlagReason)(playerId)}`
+            : `Opponent is flagged for review: ${(0, anti_cheat_1.getFlagReason)(playerId)}`;
         return JSON.stringify({
             success: false,
             error_code: 'PLAYER_FLAGGED',
@@ -468,41 +481,40 @@ function registerRpcCompleteMatch(initializer) {
  * }
  */
 function rpcCompleteMatch(ctx, logger, nk, payload) {
-    var _a;
     logger.info('Complete match called for user: %s', ctx.userId);
-    var validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.complete_match, payload, 'complete_match');
+    const validation = (0, validation_1.validatePayload)(validation_1.ZodSchemas.complete_match, payload, 'complete_match');
     if (!validation.success) {
-        (0, audit_1.logAudit)(nk, ctx.userId, (_a = ctx.ipAddress) !== null && _a !== void 0 ? _a : null, 'complete_match', 'pvp_matches', { match_id: 'unknown', winner_id: 'unknown', loser_id: 'unknown' }, 'failure', validation.error);
+        (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'complete_match', 'pvp_matches', { match_id: 'unknown', winner_id: 'unknown', loser_id: 'unknown' }, 'failure', validation.error);
         return (0, validation_1.createValidationErrorResponse)('complete_match', validation.error);
     }
-    var request = validation.data;
+    const request = validation.data;
     // Anti-cheat: Check if players are flagged
-    var winnerFlagged = checkPlayerFlagged(logger, request.winner_id, 'winner');
+    const winnerFlagged = checkPlayerFlagged(logger, request.winner_id, 'winner');
     if (winnerFlagged)
         return winnerFlagged;
-    var loserFlagged = checkPlayerFlagged(logger, request.loser_id, 'loser');
+    const loserFlagged = checkPlayerFlagged(logger, request.loser_id, 'loser');
     if (loserFlagged)
         return loserFlagged;
     // Fetch and validate the match
-    var matchResult = getAndValidateMatch(nk, ctx, request);
+    const matchResult = getAndValidateMatch(nk, ctx, request, logger);
     if (matchResult.error || !matchResult.match) {
         return JSON.stringify({ error: matchResult.error || 'Match not found' });
     }
-    var match = matchResult.match;
+    const match = matchResult.match;
     // Validate winner/loser are valid participants
-    var participantError = validateMatchParticipants(match, request);
+    const participantError = validateMatchParticipants(match, request);
     if (participantError) {
         return JSON.stringify({ error: participantError });
     }
-    var isPunchUp = request.is_punch_up || match.is_punch_up;
+    const isPunchUp = request.is_punch_up || match.is_punch_up;
     // Process match result
     return processMatchResult(ctx, logger, nk, request, match, isPunchUp);
 }
 /**
  * Fetch and validate the match from storage
  */
-function getAndValidateMatch(nk, ctx, request) {
-    var objects = nk.storageRead([
+function getAndValidateMatch(nk, ctx, request, logger) {
+    const objects = nk.storageRead([
         {
             collection: 'pvp_matches',
             key: request.match_id,
@@ -512,14 +524,18 @@ function getAndValidateMatch(nk, ctx, request) {
     if (objects.length === 0) {
         return { error: 'Match not found' };
     }
-    var match = JSON.parse(objects[0].value);
+    const matchResult = (0, safeParse_1.safeParse)(objects[0].value, null, logger, 'rpcForfeitMatch:match');
+    if (!matchResult.success || !matchResult.data) {
+        return { error: 'Failed to parse match data' };
+    }
+    const match = matchResult.data;
     if (match.status !== 'active') {
         return { error: 'Match is not active' };
     }
     if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
         return { error: 'Not authorized to complete this match' };
     }
-    return { match: match };
+    return { match };
 }
 /**
  * Validate that winner and loser are valid match participants
@@ -540,21 +556,20 @@ function validateMatchParticipants(match, request) {
  * Process the match result, calculate ranks, and update storage
  */
 function processMatchResult(ctx, logger, nk, request, match, isPunchUp) {
-    var _a;
     // Only process rank changes for ranked matches
-    var winnerNewRank = match.creator_rank;
-    var loserNewRank = match.opponent_rank;
-    var winnerRankChange = 0;
-    var loserRankChange = 0;
+    let winnerNewRank = match.creator_rank;
+    let loserNewRank = match.opponent_rank;
+    let winnerRankChange = 0;
+    let loserRankChange = 0;
     if (match.match_type === 'ranked') {
-        var currentSeason = (0, season_system_1.getCurrentSeason)();
+        const currentSeason = (0, season_system_1.getCurrentSeason)();
         // Get current Elo ratings from leaderboard
-        var winnerEntry = (0, season_system_1.getLeaderboardEntry)(nk, request.winner_id, currentSeason.season_id);
-        var loserEntry = (0, season_system_1.getLeaderboardEntry)(nk, request.loser_id, currentSeason.season_id);
-        var winnerOldElo = winnerEntry ? winnerEntry.score : 1000;
-        var loserOldElo = loserEntry ? loserEntry.score : 1000;
+        const winnerEntry = (0, season_system_1.getLeaderboardEntry)(nk, request.winner_id, currentSeason.season_id);
+        const loserEntry = (0, season_system_1.getLeaderboardEntry)(nk, request.loser_id, currentSeason.season_id);
+        const winnerOldElo = winnerEntry ? winnerEntry.score : 1000;
+        const loserOldElo = loserEntry ? loserEntry.score : 1000;
         // Apply Elo updates
-        var _b = (0, season_system_1.applyEloUpdates)(nk, ctx, currentSeason, request.winner_id, request.loser_id, winnerOldElo, loserOldElo, isPunchUp, winnerEntry, loserEntry), winnerNewElo = _b.winnerNewElo, loserNewElo = _b.loserNewElo;
+        const { winnerNewElo, loserNewElo } = (0, season_system_1.applyEloUpdates)(nk, ctx, currentSeason, request.winner_id, request.loser_id, winnerOldElo, loserOldElo, isPunchUp, winnerEntry, loserEntry);
         winnerNewRank = winnerNewElo;
         loserNewRank = loserNewElo;
         winnerRankChange = winnerNewElo - winnerOldElo;
@@ -567,11 +582,11 @@ function processMatchResult(ctx, logger, nk, request, match, isPunchUp) {
     (0, season_system_1.recordPlayerActivity)(nk, request.winner_id);
     (0, season_system_1.recordPlayerActivity)(nk, request.loser_id);
     // Apply rank decay if applicable (for inactive players)
-    var _c = applyMatchRankDecay(nk, request.winner_id, request.loser_id, winnerNewRank, loserNewRank, logger), winnerDecayedRank = _c.winnerNewRank, loserDecayedRank = _c.loserNewRank;
+    const { winnerNewRank: winnerDecayedRank, loserNewRank: loserDecayedRank } = applyMatchRankDecay(nk, request.winner_id, request.loser_id, winnerNewRank, loserNewRank, logger);
     winnerNewRank = winnerDecayedRank;
     loserNewRank = loserDecayedRank;
     // Update match status to completed
-    var now = Date.now();
+    const now = Date.now();
     match.status = 'completed';
     match.winner = request.winner_id;
     match.updated_at = now;
@@ -585,7 +600,7 @@ function processMatchResult(ctx, logger, nk, request, match, isPunchUp) {
         },
     ]);
     // Log audit event
-    (0, audit_1.logAudit)(nk, ctx.userId, (_a = ctx.ipAddress) !== null && _a !== void 0 ? _a : null, 'complete_match', 'pvp_matches', {
+    (0, audit_1.logAudit)(nk, ctx.userId, ctx.ipAddress ?? null, 'complete_match', 'pvp_matches', {
         match_id: match.match_id,
         winner_id: request.winner_id,
         loser_id: request.loser_id,
@@ -625,8 +640,8 @@ function processMatchResult(ctx, logger, nk, request, match, isPunchUp) {
  * Apply rank decay to match participants
  */
 function applyMatchRankDecay(nk, winnerId, loserId, winnerRank, loserRank, logger) {
-    var winnerDecayedRank = (0, season_system_1.applyRankDecay)(nk, winnerId, winnerRank);
-    var loserDecayedRank = (0, season_system_1.applyRankDecay)(nk, loserId, loserRank);
+    const winnerDecayedRank = (0, season_system_1.applyRankDecay)(nk, winnerId, winnerRank);
+    const loserDecayedRank = (0, season_system_1.applyRankDecay)(nk, loserId, loserRank);
     if (winnerDecayedRank !== winnerRank) {
         logger.info('Rank decay applied for winner %s: %d -> %d', winnerId, winnerRank, winnerDecayedRank);
     }

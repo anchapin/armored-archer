@@ -17,12 +17,12 @@ exports.sendEconomyMetricsToDataDog = sendEconomyMetricsToDataDog;
 exports.sendHealthMetricsToDataDog = sendHealthMetricsToDataDog;
 exports.isDataDogEnabled = isDataDogEnabled;
 exports.getDataDogConfig = getDataDogConfig;
-var tslib_1 = require("tslib");
-var dgram = tslib_1.__importStar(require("dgram"));
-var config_1 = require("../config");
-var logger_1 = require("../config/logger");
+const tslib_1 = require("tslib");
+const dgram = tslib_1.__importStar(require("dgram"));
+const config_1 = require("../config");
+const logger_1 = require("../config/logger");
 // Default DataDog configuration
-var dataDogConfig = {
+let dataDogConfig = {
     enabled: false,
     port: 8125,
     prefix: 'armed_archer',
@@ -32,119 +32,111 @@ var dataDogConfig = {
     },
 };
 // StatsD-like interface for metrics (simplified implementation)
-var DataDogMetricsClient = /** @class */ (function () {
-    function DataDogMetricsClient(config) {
+class DataDogMetricsClient {
+    constructor(config) {
         this.socket = null;
         this.enabled = config.enabled;
         this.host = config.host || 'localhost';
         this.port = config.port;
         this.prefix = config.prefix;
-        this.defaultTags = Object.entries(config.tags).map(function (_a) {
-            var _b = tslib_1.__read(_a, 2), key = _b[0], value = _b[1];
-            return "".concat(key, ":").concat(value);
-        });
+        this.defaultTags = Object.entries(config.tags).map(([key, value]) => `${key}:${value}`);
     }
     /**
      * Initialize the UDP socket for sending metrics
      */
-    DataDogMetricsClient.prototype.initialize = function () {
+    initialize() {
         if (!this.enabled) {
             logger_1.logger.info('DataDog metrics disabled');
             return;
         }
         try {
             this.socket = dgram.createSocket('udp4');
-            logger_1.logger.info("Initialized DataDog metrics client: ".concat(this.host, ":").concat(this.port));
+            logger_1.logger.info(`Initialized DataDog metrics client: ${this.host}:${this.port}`);
         }
         catch (error) {
             logger_1.logger.error('Failed to initialize DataDog metrics client:', error);
             this.enabled = false;
         }
-    };
+    }
     /**
      * Close the UDP socket
      */
-    DataDogMetricsClient.prototype.close = function () {
+    close() {
         if (this.socket) {
             this.socket.close();
             this.socket = null;
         }
-    };
+    }
     /**
      * Send a counter metric
      */
-    DataDogMetricsClient.prototype.increment = function (metric, value, tags) {
-        if (value === void 0) { value = 1; }
+    increment(metric, value = 1, tags) {
         if (!this.enabled || !this.socket)
             return;
-        var allTags = tslib_1.__spreadArray(tslib_1.__spreadArray([], tslib_1.__read(this.defaultTags), false), tslib_1.__read(this.formatTags(tags)), false);
-        var message = "".concat(this.prefix, ".").concat(metric, ":").concat(value, "|c|").concat(allTags.join(','));
+        const allTags = [...this.defaultTags, ...this.formatTags(tags)];
+        const message = `${this.prefix}.${metric}:${value}|c|${allTags.join(',')}`;
         this.send(message);
-    };
+    }
     /**
      * Send a gauge metric
      */
-    DataDogMetricsClient.prototype.gauge = function (metric, value, tags) {
+    gauge(metric, value, tags) {
         if (!this.enabled || !this.socket)
             return;
-        var allTags = tslib_1.__spreadArray(tslib_1.__spreadArray([], tslib_1.__read(this.defaultTags), false), tslib_1.__read(this.formatTags(tags)), false);
-        var message = "".concat(this.prefix, ".").concat(metric, ":").concat(value, "|g|").concat(allTags.join(','));
+        const allTags = [...this.defaultTags, ...this.formatTags(tags)];
+        const message = `${this.prefix}.${metric}:${value}|g|${allTags.join(',')}`;
         this.send(message);
-    };
+    }
     /**
      * Send a histogram metric
      */
-    DataDogMetricsClient.prototype.histogram = function (metric, value, tags) {
+    histogram(metric, value, tags) {
         if (!this.enabled || !this.socket)
             return;
-        var allTags = tslib_1.__spreadArray(tslib_1.__spreadArray([], tslib_1.__read(this.defaultTags), false), tslib_1.__read(this.formatTags(tags)), false);
-        var message = "".concat(this.prefix, ".").concat(metric, ":").concat(value, "|h|").concat(allTags.join(','));
+        const allTags = [...this.defaultTags, ...this.formatTags(tags)];
+        const message = `${this.prefix}.${metric}:${value}|h|${allTags.join(',')}`;
         this.send(message);
-    };
+    }
     /**
      * Send a timing metric
      */
-    DataDogMetricsClient.prototype.timing = function (metric, value, tags) {
+    timing(metric, value, tags) {
         if (!this.enabled || !this.socket)
             return;
-        var allTags = tslib_1.__spreadArray(tslib_1.__spreadArray([], tslib_1.__read(this.defaultTags), false), tslib_1.__read(this.formatTags(tags)), false);
-        var message = "".concat(this.prefix, ".").concat(metric, ":").concat(value, "|ms|").concat(allTags.join(','));
+        const allTags = [...this.defaultTags, ...this.formatTags(tags)];
+        const message = `${this.prefix}.${metric}:${value}|ms|${allTags.join(',')}`;
         this.send(message);
-    };
+    }
     /**
      * Format tags for DataDog
      */
-    DataDogMetricsClient.prototype.formatTags = function (tags) {
+    formatTags(tags) {
         if (!tags)
             return [];
-        return Object.entries(tags).map(function (_a) {
-            var _b = tslib_1.__read(_a, 2), key = _b[0], value = _b[1];
-            return "".concat(key, ":").concat(value);
-        });
-    };
+        return Object.entries(tags).map(([key, value]) => `${key}:${value}`);
+    }
     /**
      * Send message via UDP
      */
-    DataDogMetricsClient.prototype.send = function (message) {
+    send(message) {
         if (!this.socket)
             return;
-        var buffer = Buffer.from(message);
-        this.socket.send(buffer, 0, buffer.length, this.port, this.host, function (err) {
+        const buffer = Buffer.from(message);
+        this.socket.send(buffer, 0, buffer.length, this.port, this.host, (err) => {
             if (err) {
                 logger_1.logger.error('Error sending DataDog metric:', err);
             }
         });
-    };
-    return DataDogMetricsClient;
-}());
+    }
+}
 // DataDog client instance
-var dataDogClient = null;
+let dataDogClient = null;
 /**
  * Initialize DataDog integration
  */
 function initializeDataDog() {
-    var ddConfig = config_1.config.datadog;
-    if (!(ddConfig === null || ddConfig === void 0 ? void 0 : ddConfig.enabled)) {
+    const ddConfig = config_1.config.datadog;
+    if (!ddConfig?.enabled) {
         logger_1.logger.info('DataDog integration disabled');
         return;
     }
@@ -155,11 +147,15 @@ function initializeDataDog() {
         host: ddConfig.host,
         port: ddConfig.port || 8125,
         prefix: ddConfig.prefix || 'armed_archer',
-        tags: tslib_1.__assign({ environment: config_1.config.environment, service: 'armored-archer-backend' }, ddConfig.tags),
+        tags: {
+            environment: config_1.config.environment,
+            service: 'armored-archer-backend',
+            ...ddConfig.tags,
+        },
     };
     dataDogClient = new DataDogMetricsClient(dataDogConfig);
     dataDogClient.initialize();
-    logger_1.logger.info("DataDog initialized with prefix: ".concat(dataDogConfig.prefix));
+    logger_1.logger.info(`DataDog initialized with prefix: ${dataDogConfig.prefix}`);
 }
 /**
  * Get DataDog client for custom metrics
@@ -173,7 +169,7 @@ function getDataDogClient() {
 function sendRpcMetricsToDataDog(rpcName, durationMs, success) {
     if (!dataDogClient)
         return;
-    var tags = {
+    const tags = {
         rpc: rpcName,
         status: success ? 'success' : 'error',
     };
@@ -194,7 +190,7 @@ function sendPlayerMetricsToDataDog(activeSessions) {
 function sendMatchMetricsToDataDog(matchType, queueSize, waitTimeMs) {
     if (!dataDogClient)
         return;
-    var tags = { match_type: matchType };
+    const tags = { match_type: matchType };
     dataDogClient.gauge('match.queue_size', queueSize, tags);
     dataDogClient.histogram('match.wait_time', waitTimeMs, tags);
 }
@@ -204,14 +200,14 @@ function sendMatchMetricsToDataDog(matchType, queueSize, waitTimeMs) {
 function sendEconomyMetricsToDataDog(productType, amount, currency, success) {
     if (!dataDogClient)
         return;
-    var tags = {
+    const tags = {
         product_type: productType,
-        currency: currency,
+        currency,
         status: success ? 'success' : 'failure',
     };
     dataDogClient.increment('economy.purchases', 1, tags);
     if (success) {
-        dataDogClient.increment('economy.revenue', amount, tslib_1.__assign(tslib_1.__assign({}, tags), { currency: currency }));
+        dataDogClient.increment('economy.revenue', amount, { ...tags, currency });
     }
 }
 /**
@@ -234,5 +230,5 @@ function isDataDogEnabled() {
  * Get DataDog configuration
  */
 function getDataDogConfig() {
-    return tslib_1.__assign({}, dataDogConfig);
+    return { ...dataDogConfig };
 }

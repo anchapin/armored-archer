@@ -3,6 +3,7 @@
  * @fileoverview Handles analytics collection for matchmaking quality monitoring and balance tuning.
  */
 
+import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
@@ -181,7 +182,7 @@ export async function aggregateMatchMetrics(nk: Runtime.Nakama): Promise<MatchQu
       last_updated: Date.now(),
     };
   } catch (error) {
-    console.error('Failed to aggregate match metrics:', error);
+    logger.error('Failed to aggregate match metrics', { error });
     return {
       total_matches: 0,
       completed_matches: 0,
@@ -225,7 +226,7 @@ export async function generateWeaponStats(
 
     return weaponStats;
   } catch (error) {
-    console.error('Failed to generate weapon stats:', error);
+    logger.error('Failed to generate weapon stats', { error });
     return {};
   }
 }
@@ -319,7 +320,7 @@ export async function detectBalanceIssues(nk: Runtime.Nakama): Promise<BalanceIs
 
     return issues;
   } catch (error) {
-    console.error('Failed to detect balance issues:', error);
+    logger.error('Failed to detect balance issues', { error });
     return [];
   }
 }
@@ -345,7 +346,7 @@ export async function exportAnalyticsReport(nk: Runtime.Nakama): Promise<Analyti
       export_timestamp: Date.now(),
     };
   } catch (error) {
-    console.error('Failed to export analytics report:', error);
+    logger.error('Failed to export analytics report', { error });
     throw error;
   }
 }
@@ -395,7 +396,7 @@ async function calculateRatingDiffDistribution(
 
     return distribution;
   } catch (error) {
-    console.error('Failed to calculate rating diff distribution:', error);
+    logger.error('Failed to calculate rating diff distribution', { error });
     return {
       '0-50': 0,
       '51-100': 0,
@@ -462,7 +463,7 @@ export async function logMatchData(
       'success'
     );
   } catch (error) {
-    console.error('Failed to log match data:', error);
+    logger.error('Failed to log match data', { error, matchId: request.match_id });
   }
 }
 
@@ -518,7 +519,7 @@ export async function logAbandonment(
       'success'
     );
   } catch (error) {
-    console.error('Failed to log abandonment:', error);
+    logger.error('Failed to log abandonment', { error, matchId: request.match_id });
   }
 }
 
@@ -584,7 +585,7 @@ export async function logWeaponResult(
       },
     ]);
   } catch (error) {
-    console.error('Failed to log weapon result:', error);
+    logger.error('Failed to log weapon result', { error, weaponId });
   }
 }
 
@@ -634,7 +635,7 @@ export async function logQueueTime(
       }
     }
   } catch (error) {
-    console.error('Failed to log queue time:', error);
+    logger.error('Failed to log queue time', { error });
   }
 }
 

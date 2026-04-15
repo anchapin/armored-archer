@@ -51,21 +51,20 @@ exports.initializeProfiling = initializeProfiling;
 exports.logProfileReport = logProfileReport;
 exports.profileMethod = profileMethod;
 exports.profileCriticalPath = profileCriticalPath;
-var tslib_1 = require("tslib");
-var logger_1 = require("../config/logger");
-var defaultConfig = {
+const logger_1 = require("../config/logger");
+const defaultConfig = {
     enabled: process.env.PROFILING_ENABLED === 'true',
     slowThresholdMs: parseInt(process.env.PROFILING_SLOW_THRESHOLD_MS || '100', 10),
     logSlowOperations: process.env.PROFILING_LOG_SLOW !== 'false',
 };
-var profilingConfig = tslib_1.__assign({}, defaultConfig);
-var profileData = new Map();
+let profilingConfig = { ...defaultConfig };
+const profileData = new Map();
 // --- Profiling Utilities ---
 /**
  * Get or create profile data for a given name
  */
 function getOrCreateProfileData(name) {
-    var data = profileData.get(name);
+    let data = profileData.get(name);
     if (!data) {
         data = {
             callCount: 0,
@@ -86,9 +85,9 @@ function profileSync(name, fn) {
     if (!profilingConfig.enabled) {
         return fn();
     }
-    var startTime = hrtimeMs();
-    var result;
-    var error = null;
+    const startTime = hrtimeMs();
+    let result;
+    let error = null;
     try {
         result = fn();
     }
@@ -97,7 +96,7 @@ function profileSync(name, fn) {
         throw e;
     }
     finally {
-        var duration = hrtimeMs() - startTime;
+        const duration = hrtimeMs() - startTime;
         recordProfileData(name, duration, error);
     }
     return result;
@@ -105,87 +104,71 @@ function profileSync(name, fn) {
 /**
  * Profile an async function
  */
-function profileAsync(name, fn) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var startTime, result, error, e_1, duration;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    if (!profilingConfig.enabled) {
-                        return [2 /*return*/, fn()];
-                    }
-                    startTime = hrtimeMs();
-                    error = null;
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 3, 4, 5]);
-                    return [4 /*yield*/, fn()];
-                case 2:
-                    result = _a.sent();
-                    return [3 /*break*/, 5];
-                case 3:
-                    e_1 = _a.sent();
-                    error = e_1;
-                    throw e_1;
-                case 4:
-                    duration = hrtimeMs() - startTime;
-                    recordProfileData(name, duration, error);
-                    return [7 /*endfinally*/];
-                case 5: return [2 /*return*/, result];
-            }
-        });
-    });
+async function profileAsync(name, fn) {
+    if (!profilingConfig.enabled) {
+        return fn();
+    }
+    const startTime = hrtimeMs();
+    let result;
+    let error = null;
+    try {
+        result = await fn();
+    }
+    catch (e) {
+        error = e;
+        throw e;
+    }
+    finally {
+        const duration = hrtimeMs() - startTime;
+        recordProfileData(name, duration, error);
+    }
+    return result;
 }
 /**
  * Profile a function (works with both sync and async)
  * Detects the type automatically
  */
-function profileFunction(name, fn) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var isAsync;
-        return tslib_1.__generator(this, function (_a) {
-            if (!profilingConfig.enabled) {
-                return [2 /*return*/, fn()];
-            }
-            isAsync = fn.constructor.name === 'AsyncFunction';
-            if (isAsync) {
-                return [2 /*return*/, profileAsync(name, fn)];
-            }
-            else {
-                return [2 /*return*/, profileSync(name, fn)];
-            }
-            return [2 /*return*/];
-        });
-    });
+async function profileFunction(name, fn) {
+    if (!profilingConfig.enabled) {
+        return fn();
+    }
+    // Check if function returns a promise
+    const isAsync = fn.constructor.name === 'AsyncFunction';
+    if (isAsync) {
+        return profileAsync(name, fn);
+    }
+    else {
+        return profileSync(name, fn);
+    }
 }
 /**
  * Create a profile block that automatically records timing
  * when the returned function is called and completes
  */
 function createProfileBlock(name) {
-    var startTime = hrtimeMs();
+    const startTime = hrtimeMs();
     return {
-        end: function () {
+        end: () => {
             if (profilingConfig.enabled) {
-                var duration = hrtimeMs() - startTime;
+                const duration = hrtimeMs() - startTime;
                 recordProfileData(name, duration, null);
             }
         },
-        getDuration: function () { return hrtimeMs() - startTime; },
+        getDuration: () => hrtimeMs() - startTime,
     };
 }
 /**
  * High-resolution time in milliseconds
  */
 function hrtimeMs() {
-    var _a = tslib_1.__read(process.hrtime(), 2), seconds = _a[0], nanoseconds = _a[1];
+    const [seconds, nanoseconds] = process.hrtime();
     return seconds * 1000 + nanoseconds / 1e6;
 }
 /**
  * Record profiling data
  */
 function recordProfileData(name, durationMs, error) {
-    var data = getOrCreateProfileData(name);
+    const data = getOrCreateProfileData(name);
     data.callCount++;
     data.totalTimeMs += durationMs;
     data.minTimeMs = Math.min(data.minTimeMs, durationMs);
@@ -196,7 +179,7 @@ function recordProfileData(name, durationMs, error) {
     }
     // Log slow operations
     if (profilingConfig.logSlowOperations && durationMs > profilingConfig.slowThresholdMs) {
-        logger_1.logger.info("Slow operation: ".concat(name, " took ").concat(durationMs.toFixed(2), "ms (threshold: ").concat(profilingConfig.slowThresholdMs, "ms)"));
+        logger_1.logger.info(`Slow operation: ${name} took ${durationMs.toFixed(2)}ms (threshold: ${profilingConfig.slowThresholdMs}ms)`);
     }
 }
 // --- Profiling Configuration ---
@@ -204,13 +187,13 @@ function recordProfileData(name, durationMs, error) {
  * Update profiling configuration
  */
 function setProfilingConfig(config) {
-    profilingConfig = tslib_1.__assign(tslib_1.__assign({}, profilingConfig), config);
+    profilingConfig = { ...profilingConfig, ...config };
 }
 /**
  * Get current profiling configuration
  */
 function getProfilingConfig() {
-    return tslib_1.__assign({}, profilingConfig);
+    return { ...profilingConfig };
 }
 /**
  * Enable or disable profiling
@@ -241,65 +224,43 @@ function getAllProfileData() {
  * Get profile report as array sorted by total time
  */
 function getProfileReport() {
-    var e_2, _a;
-    var report = [];
-    try {
-        for (var profileData_1 = tslib_1.__values(profileData), profileData_1_1 = profileData_1.next(); !profileData_1_1.done; profileData_1_1 = profileData_1.next()) {
-            var _b = tslib_1.__read(profileData_1_1.value, 2), name = _b[0], data = _b[1];
-            report.push({
-                name: name,
-                callCount: data.callCount,
-                totalTimeMs: data.totalTimeMs,
-                avgTimeMs: data.callCount > 0 ? data.totalTimeMs / data.callCount : 0,
-                minTimeMs: data.minTimeMs === Number.MAX_SAFE_INTEGER ? 0 : data.minTimeMs,
-                maxTimeMs: data.maxTimeMs,
-                errors: data.errors,
-                errorRate: data.callCount > 0 ? data.errors / data.callCount : 0,
-                lastCalled: data.lastCalled,
-            });
-        }
-    }
-    catch (e_2_1) { e_2 = { error: e_2_1 }; }
-    finally {
-        try {
-            if (profileData_1_1 && !profileData_1_1.done && (_a = profileData_1.return)) _a.call(profileData_1);
-        }
-        finally { if (e_2) throw e_2.error; }
+    const report = [];
+    for (const [name, data] of profileData) {
+        report.push({
+            name,
+            callCount: data.callCount,
+            totalTimeMs: data.totalTimeMs,
+            avgTimeMs: data.callCount > 0 ? data.totalTimeMs / data.callCount : 0,
+            minTimeMs: data.minTimeMs === Number.MAX_SAFE_INTEGER ? 0 : data.minTimeMs,
+            maxTimeMs: data.maxTimeMs,
+            errors: data.errors,
+            errorRate: data.callCount > 0 ? data.errors / data.callCount : 0,
+            lastCalled: data.lastCalled,
+        });
     }
     // Sort by total time descending
-    report.sort(function (a, b) { return b.totalTimeMs - a.totalTimeMs; });
+    report.sort((a, b) => b.totalTimeMs - a.totalTimeMs);
     return report;
 }
 /**
  * Get formatted profile report for logging
  */
 function getFormattedProfileReport() {
-    var e_3, _a;
-    var report = getProfileReport();
+    const report = getProfileReport();
     if (report.length === 0) {
         return 'No profiling data recorded.';
     }
-    var lines = [];
+    const lines = [];
     lines.push('=== Profiling Report ===');
-    lines.push("Profiling Enabled: ".concat(profilingConfig.enabled));
-    lines.push("Slow Threshold: ".concat(profilingConfig.slowThresholdMs, "ms"));
+    lines.push(`Profiling Enabled: ${profilingConfig.enabled}`);
+    lines.push(`Slow Threshold: ${profilingConfig.slowThresholdMs}ms`);
     lines.push('');
     lines.push('Top Operations (by total time):');
-    lines.push("".concat('Operation'.padEnd(40), " ").concat('Calls'.padEnd(8), " ").concat('Total(ms)'.padEnd(12), " ").concat('Avg(ms)'.padEnd(12), " ").concat('Max(ms)'.padEnd(12), " ").concat('Errors'.padEnd(8)));
+    lines.push(`${'Operation'.padEnd(40)} ${'Calls'.padEnd(8)} ${'Total(ms)'.padEnd(12)} ${'Avg(ms)'.padEnd(12)} ${'Max(ms)'.padEnd(12)} ${'Errors'.padEnd(8)}`);
     lines.push('-'.repeat(100));
-    try {
-        // Show top 20 operations
-        for (var _b = tslib_1.__values(report.slice(0, 20)), _c = _b.next(); !_c.done; _c = _b.next()) {
-            var op = _c.value;
-            lines.push("".concat(op.name.substring(0, 40).padEnd(40), " ").concat(op.callCount.toString().padEnd(8), " ").concat(op.totalTimeMs.toFixed(2).padEnd(12), " ").concat(op.avgTimeMs.toFixed(2).padEnd(12), " ").concat(op.maxTimeMs.toFixed(2).padEnd(12), " ").concat(op.errors.toString().padEnd(8), " ").concat((op.errorRate * 100).toFixed(1).padEnd(8)));
-        }
-    }
-    catch (e_3_1) { e_3 = { error: e_3_1 }; }
-    finally {
-        try {
-            if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-        }
-        finally { if (e_3) throw e_3.error; }
+    // Show top 20 operations
+    for (const op of report.slice(0, 20)) {
+        lines.push(`${op.name.substring(0, 40).padEnd(40)} ${op.callCount.toString().padEnd(8)} ${op.totalTimeMs.toFixed(2).padEnd(12)} ${op.avgTimeMs.toFixed(2).padEnd(12)} ${op.maxTimeMs.toFixed(2).padEnd(12)} ${op.errors.toString().padEnd(8)} ${(op.errorRate * 100).toFixed(1).padEnd(8)}`);
     }
     return lines.join('\n');
 }
@@ -322,39 +283,29 @@ function resetProfiling(newConfig) {
  * Wrap an RPC handler with profiling
  */
 function wrapRpcWithProfiling(rpcName, handler) {
-    return function (ctx, logger, nk, payload) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var profileBlock, result, error_1, data;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        profileBlock = createProfileBlock("rpc.".concat(rpcName));
-                        _a.label = 1;
-                    case 1:
-                        _a.trys.push([1, 3, 4, 5]);
-                        return [4 /*yield*/, handler(ctx, logger, nk, payload)];
-                    case 2:
-                        result = _a.sent();
-                        return [2 /*return*/, result];
-                    case 3:
-                        error_1 = _a.sent();
-                        data = getOrCreateProfileData("rpc.".concat(rpcName));
-                        data.errors++;
-                        throw error_1;
-                    case 4:
-                        profileBlock.end();
-                        return [7 /*endfinally*/];
-                    case 5: return [2 /*return*/];
-                }
-            });
-        });
+    return async function (ctx, logger, nk, payload) {
+        // Create profile block for the RPC
+        const profileBlock = createProfileBlock(`rpc.${rpcName}`);
+        try {
+            const result = await handler(ctx, logger, nk, payload);
+            return result;
+        }
+        catch (error) {
+            // Record the error in profile data
+            const data = getOrCreateProfileData(`rpc.${rpcName}`);
+            data.errors++;
+            throw error;
+        }
+        finally {
+            profileBlock.end();
+        }
     };
 }
 /**
  * Register an RPC with profiling
  */
 function registerRpcWithProfiling(initializer, rpcId, rpcName, handler) {
-    var wrappedHandler = wrapRpcWithProfiling(rpcName, handler);
+    const wrappedHandler = wrapRpcWithProfiling(rpcName, handler);
     initializer.registerRpc(rpcId, wrappedHandler);
 }
 // --- Integration with Existing Systems ---
@@ -362,13 +313,13 @@ function registerRpcWithProfiling(initializer, rpcId, rpcName, handler) {
  * Initialize profiling module
  */
 function initializeProfiling(_logger) {
-    logger_1.logger.info("Profiling initialized - Enabled: ".concat(profilingConfig.enabled, ", Slow Threshold: ").concat(profilingConfig.slowThresholdMs, "ms"));
+    logger_1.logger.info(`Profiling initialized - Enabled: ${profilingConfig.enabled}, Slow Threshold: ${profilingConfig.slowThresholdMs}ms`);
 }
 /**
  * Log profiling report (useful for debugging)
  */
 function logProfileReport(_logger) {
-    var report = getFormattedProfileReport();
+    const report = getFormattedProfileReport();
     logger_1.logger.info(report);
 }
 // --- Decorator-style Profiling (for TypeScript) ---
@@ -384,22 +335,11 @@ function logProfileReport(_logger) {
  */
 function profileMethod(name) {
     return function (target, propertyKey, descriptor) {
-        var originalMethod = descriptor.value;
-        descriptor.value = function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i] = arguments[_i];
-            }
-            return tslib_1.__awaiter(this, void 0, void 0, function () {
-                var targetObj, fullName;
-                var _this = this;
-                var _a;
-                return tslib_1.__generator(this, function (_b) {
-                    targetObj = target;
-                    fullName = "".concat(((_a = targetObj.constructor) === null || _a === void 0 ? void 0 : _a.name) || 'unknown', ".").concat(name);
-                    return [2 /*return*/, profileAsync(fullName, function () { return originalMethod.apply(_this, args); })];
-                });
-            });
+        const originalMethod = descriptor.value;
+        descriptor.value = async function (...args) {
+            const targetObj = target;
+            const fullName = `${targetObj.constructor?.name || 'unknown'}.${name}`;
+            return profileAsync(fullName, () => originalMethod.apply(this, args));
         };
         return descriptor;
     };
@@ -409,21 +349,21 @@ function profileMethod(name) {
  * This is a simpler alternative to the decorator for manual profiling
  */
 function profileCriticalPath(pathName) {
-    var startTime = hrtimeMs();
-    var ended = false;
+    const startTime = hrtimeMs();
+    let ended = false;
     return {
-        start: function () {
+        start: () => {
             if (!profilingConfig.enabled || ended)
                 return;
             // Already started, get current time
         },
-        end: function () {
+        end: () => {
             if (!profilingConfig.enabled || ended)
                 return;
             ended = true;
-            var duration = hrtimeMs() - startTime;
-            recordProfileData("critical.".concat(pathName), duration, null);
+            const duration = hrtimeMs() - startTime;
+            recordProfileData(`critical.${pathName}`, duration, null);
         },
-        getDuration: function () { return hrtimeMs() - startTime; },
+        getDuration: () => hrtimeMs() - startTime,
     };
 }

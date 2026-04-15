@@ -20,11 +20,10 @@ exports.processScheduledNotifications = processScheduledNotifications;
 exports.sendDailyRewardNotification = sendDailyRewardNotification;
 exports.sendEventNotification = sendEventNotification;
 exports.sendPvpChallengeNotification = sendPvpChallengeNotification;
-var tslib_1 = require("tslib");
-var config_1 = require("../config");
-var logger_1 = require("../config/logger");
+const config_1 = require("../config");
+const logger_1 = require("../config/logger");
 // Notification templates for different types
-var NOTIFICATION_TEMPLATES = {
+const NOTIFICATION_TEMPLATES = {
     daily_reward: {
         title: '🎁 Daily Rewards Await!',
         body: 'Your daily rewards are ready to claim. Come back and collect your gems!',
@@ -47,9 +46,9 @@ var NOTIFICATION_TEMPLATES = {
     },
 };
 // Firebase Admin SDK instance
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-var firebaseMessaging = null;
-var firebaseInitialized = false;
+// Using unknown type - Firebase is optional and loaded dynamically via require
+let firebaseMessaging = null;
+let firebaseInitialized = false;
 /**
  * Initialize Firebase Admin SDK for Cloud Messaging
  */
@@ -68,9 +67,8 @@ function initializeFirebase() {
     }
     try {
         // Dynamic import to avoid issues when Firebase is not configured
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        var admin = require('firebase-admin');
-        var serviceAccount = {
+        const admin = require('firebase-admin');
+        const serviceAccount = {
             type: 'service_account',
             project_id: config_1.config.firebase.projectId,
             private_key: config_1.config.firebase.privateKey.replace(/\\n/g, '\n'),
@@ -102,155 +100,96 @@ function isFirebaseInitialized() {
 /**
  * Send a push notification to a device token
  */
-function sendPushNotification(deviceToken_1, title_1, body_1) {
-    return tslib_1.__awaiter(this, arguments, void 0, function (deviceToken, title, body, data, platform) {
-        var payload, messageId, error_1, errorMessage;
-        if (data === void 0) { data = {}; }
-        if (platform === void 0) { platform = 'android'; }
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    if (!firebaseInitialized || !firebaseMessaging) {
-                        return [2 /*return*/, { success: false, error: 'Firebase not initialized' }];
-                    }
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    payload = {
-                        notification: { title: title, body: body },
-                        data: data,
-                    };
-                    // Platform-specific configuration
-                    if (platform === 'android') {
-                        payload.android = {
-                            priority: 'high',
-                            notification: {
-                                channel_id: 'armored_archer_notifications',
-                                title: title,
-                                body: body,
-                            },
-                        };
-                    }
-                    else if (platform === 'ios') {
-                        payload.apns = {
-                            payload: {
-                                aps: {
-                                    sound: 'default',
-                                    badge: 1,
-                                },
-                            },
-                        };
-                    }
-                    return [4 /*yield*/, firebaseMessaging.send(tslib_1.__assign({ token: deviceToken }, payload))];
-                case 2:
-                    messageId = _a.sent();
-                    logger_1.logger.info('Push notification sent successfully', { messageId: messageId, platform: platform });
-                    return [2 /*return*/, { success: true, messageId: messageId }];
-                case 3:
-                    error_1 = _a.sent();
-                    errorMessage = error_1 instanceof Error ? error_1.message : String(error_1);
-                    logger_1.logger.error('Failed to send push notification', { error: errorMessage, platform: platform });
-                    return [2 /*return*/, { success: false, error: errorMessage }];
-                case 4: return [2 /*return*/];
-            }
+async function sendPushNotification(deviceToken, title, body, data = {}, platform = 'android') {
+    if (!firebaseInitialized || !firebaseMessaging) {
+        return { success: false, error: 'Firebase not initialized' };
+    }
+    try {
+        const payload = {
+            notification: { title, body },
+            data,
+        };
+        // Platform-specific configuration
+        if (platform === 'android') {
+            payload.android = {
+                priority: 'high',
+                notification: {
+                    channel_id: 'armored_archer_notifications',
+                    title,
+                    body,
+                },
+            };
+        }
+        else if (platform === 'ios') {
+            payload.apns = {
+                payload: {
+                    aps: {
+                        sound: 'default',
+                        badge: 1,
+                    },
+                },
+            };
+        }
+        const messageId = await firebaseMessaging.send({
+            token: deviceToken,
+            ...payload,
         });
-    });
+        logger_1.logger.info('Push notification sent successfully', { messageId, platform });
+        return { success: true, messageId };
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger_1.logger.error('Failed to send push notification', { error: errorMessage, platform });
+        return { success: false, error: errorMessage };
+    }
 }
 /**
  * Send notification to multiple device tokens (batch)
  */
-function sendBatchNotifications(deviceTokens_1, title_1, body_1) {
-    return tslib_1.__awaiter(this, arguments, void 0, function (deviceTokens, title, body, data) {
-        var errors, successCount, failedCount, BATCH_SIZE, batches, i, _loop_1, batches_1, batches_1_1, batch, e_1_1;
-        var e_1, _a;
-        if (data === void 0) { data = {}; }
-        return tslib_1.__generator(this, function (_b) {
-            switch (_b.label) {
-                case 0:
-                    if (!firebaseInitialized || !firebaseMessaging) {
-                        return [2 /*return*/, { success: 0, failed: deviceTokens.length, errors: ['Firebase not initialized'] }];
-                    }
-                    errors = [];
-                    successCount = 0;
-                    failedCount = 0;
-                    BATCH_SIZE = 500;
-                    batches = [];
-                    for (i = 0; i < deviceTokens.length; i += BATCH_SIZE) {
-                        batches.push(deviceTokens.slice(i, i + BATCH_SIZE));
-                    }
-                    _loop_1 = function (batch) {
-                        var response, error_2, errorMessage;
-                        return tslib_1.__generator(this, function (_c) {
-                            switch (_c.label) {
-                                case 0:
-                                    _c.trys.push([0, 2, , 3]);
-                                    return [4 /*yield*/, firebaseMessaging.sendEachForMulticast({
-                                            tokens: batch,
-                                            notification: { title: title, body: body },
-                                            data: data,
-                                            android: {
-                                                priority: 'high',
-                                                notification: { channel_id: 'armored_archer_notifications' },
-                                            },
-                                            apns: {
-                                                payload: { aps: { sound: 'default' } },
-                                            },
-                                        })];
-                                case 1:
-                                    response = _c.sent();
-                                    successCount += response.successCount;
-                                    failedCount += response.failureCount;
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    response.responses.forEach(function (resp, idx) {
-                                        var _a;
-                                        if (!resp.success) {
-                                            var errorMsg = ((_a = resp.error) === null || _a === void 0 ? void 0 : _a.message) || 'Unknown error';
-                                            errors.push("Token ".concat(batch[idx], ": ").concat(errorMsg));
-                                        }
-                                    });
-                                    return [3 /*break*/, 3];
-                                case 2:
-                                    error_2 = _c.sent();
-                                    errorMessage = error_2 instanceof Error ? error_2.message : String(error_2);
-                                    errors.push("Batch error: ".concat(errorMessage));
-                                    failedCount += batch.length;
-                                    return [3 /*break*/, 3];
-                                case 3: return [2 /*return*/];
-                            }
-                        });
-                    };
-                    _b.label = 1;
-                case 1:
-                    _b.trys.push([1, 6, 7, 8]);
-                    batches_1 = tslib_1.__values(batches), batches_1_1 = batches_1.next();
-                    _b.label = 2;
-                case 2:
-                    if (!!batches_1_1.done) return [3 /*break*/, 5];
-                    batch = batches_1_1.value;
-                    return [5 /*yield**/, _loop_1(batch)];
-                case 3:
-                    _b.sent();
-                    _b.label = 4;
-                case 4:
-                    batches_1_1 = batches_1.next();
-                    return [3 /*break*/, 2];
-                case 5: return [3 /*break*/, 8];
-                case 6:
-                    e_1_1 = _b.sent();
-                    e_1 = { error: e_1_1 };
-                    return [3 /*break*/, 8];
-                case 7:
-                    try {
-                        if (batches_1_1 && !batches_1_1.done && (_a = batches_1.return)) _a.call(batches_1);
-                    }
-                    finally { if (e_1) throw e_1.error; }
-                    return [7 /*endfinally*/];
-                case 8:
-                    logger_1.logger.info('Batch notifications sent', { success: successCount, failed: failedCount });
-                    return [2 /*return*/, { success: successCount, failed: failedCount, errors: errors }];
-            }
-        });
-    });
+async function sendBatchNotifications(deviceTokens, title, body, data = {}) {
+    if (!firebaseInitialized || !firebaseMessaging) {
+        return { success: 0, failed: deviceTokens.length, errors: ['Firebase not initialized'] };
+    }
+    const errors = [];
+    let successCount = 0;
+    let failedCount = 0;
+    // Firebase allows sending to up to 500 tokens at once
+    const BATCH_SIZE = 500;
+    const batches = [];
+    for (let i = 0; i < deviceTokens.length; i += BATCH_SIZE) {
+        batches.push(deviceTokens.slice(i, i + BATCH_SIZE));
+    }
+    for (const batch of batches) {
+        try {
+            const response = await firebaseMessaging.sendEachForMulticast({
+                tokens: batch,
+                notification: { title, body },
+                data,
+                android: {
+                    priority: 'high',
+                    notification: { channel_id: 'armored_archer_notifications' },
+                },
+                apns: {
+                    payload: { aps: { sound: 'default' } },
+                },
+            });
+            successCount += response.successCount;
+            failedCount += response.failureCount;
+            response.responses.forEach((resp, idx) => {
+                if (!resp.success) {
+                    const errorMsg = resp.error?.message || 'Unknown error';
+                    errors.push(`Token ${batch[idx]}: ${errorMsg}`);
+                }
+            });
+        }
+        catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            errors.push(`Batch error: ${errorMessage}`);
+            failedCount += batch.length;
+        }
+    }
+    logger_1.logger.info('Batch notifications sent', { success: successCount, failed: failedCount });
+    return { success: successCount, failed: failedCount, errors };
 }
 /**
  * Get notification template for a type
@@ -261,557 +200,357 @@ function getNotificationTemplate(type) {
 /**
  * Register a device token for a user
  */
-function registerDeviceToken(nk, userId, deviceToken, platform, appVersion, fcmToken) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var error_3, errorMessage;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    // Use raw SQL for device tokens table
-                    return [4 /*yield*/, nk.dbQuery("INSERT INTO device_tokens (user_id, device_token, platform, app_version, fcm_token, updated_at, last_used_at)\n       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())\n       ON CONFLICT (device_token) DO UPDATE SET\n         user_id = EXCLUDED.user_id,\n         platform = EXCLUDED.platform,\n         app_version = EXCLUDED.app_version,\n         fcm_token = EXCLUDED.fcm_token,\n         updated_at = NOW(),\n         last_used_at = NOW()\n       RETURNING token_id", [userId, deviceToken, platform, appVersion || null, fcmToken || null])];
-                case 1:
-                    // Use raw SQL for device tokens table
-                    _a.sent();
-                    logger_1.logger.info('Device token registered', { userId: userId, platform: platform });
-                    return [2 /*return*/, { success: true }];
-                case 2:
-                    error_3 = _a.sent();
-                    errorMessage = error_3 instanceof Error ? error_3.message : String(error_3);
-                    logger_1.logger.error('Failed to register device token', { error: errorMessage });
-                    return [2 /*return*/, { success: false, error: errorMessage }];
-                case 3: return [2 /*return*/];
-            }
-        });
-    });
+async function registerDeviceToken(nk, userId, deviceToken, platform, appVersion, fcmToken) {
+    try {
+        // Use raw SQL for device tokens table
+        await nk.dbQuery(`INSERT INTO device_tokens (user_id, device_token, platform, app_version, fcm_token, updated_at, last_used_at)
+       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+       ON CONFLICT (device_token) DO UPDATE SET
+         user_id = EXCLUDED.user_id,
+         platform = EXCLUDED.platform,
+         app_version = EXCLUDED.app_version,
+         fcm_token = EXCLUDED.fcm_token,
+         updated_at = NOW(),
+         last_used_at = NOW()
+       RETURNING token_id`, [userId, deviceToken, platform, appVersion || null, fcmToken || null]);
+        logger_1.logger.info('Device token registered', { userId, platform });
+        return { success: true };
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger_1.logger.error('Failed to register device token', { error: errorMessage });
+        return { success: false, error: errorMessage };
+    }
 }
 /**
  * Remove a device token
  */
-function removeDeviceToken(nk, deviceToken) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var error_4, errorMessage;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, nk.dbQuery("DELETE FROM device_tokens WHERE device_token = $1", [deviceToken])];
-                case 1:
-                    _a.sent();
-                    logger_1.logger.info('Device token removed', { deviceToken: deviceToken });
-                    return [2 /*return*/, { success: true }];
-                case 2:
-                    error_4 = _a.sent();
-                    errorMessage = error_4 instanceof Error ? error_4.message : String(error_4);
-                    logger_1.logger.error('Failed to remove device token', { error: errorMessage });
-                    return [2 /*return*/, { success: false, error: errorMessage }];
-                case 3: return [2 /*return*/];
-            }
-        });
-    });
+async function removeDeviceToken(nk, deviceToken) {
+    try {
+        await nk.dbQuery(`DELETE FROM device_tokens WHERE device_token = $1`, [deviceToken]);
+        logger_1.logger.info('Device token removed', { deviceToken });
+        return { success: true };
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger_1.logger.error('Failed to remove device token', { error: errorMessage });
+        return { success: false, error: errorMessage };
+    }
 }
 /**
  * Get device tokens for a user
  */
-function getUserDeviceTokens(nk, userId) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var result, error_5;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, nk.dbQuery("SELECT device_token, platform, fcm_token FROM device_tokens WHERE user_id = $1", [userId])];
-                case 1:
-                    result = _a.sent();
-                    return [2 /*return*/, result.map(function (row) { return ({
-                            deviceToken: row.device_token,
-                            platform: row.platform,
-                            fcmToken: row.fcm_token,
-                        }); })];
-                case 2:
-                    error_5 = _a.sent();
-                    logger_1.logger.error('Failed to get user device tokens', { error: String(error_5), userId: userId });
-                    return [2 /*return*/, []];
-                case 3: return [2 /*return*/];
-            }
-        });
-    });
+async function getUserDeviceTokens(nk, userId) {
+    try {
+        const result = await nk.dbQuery(`SELECT device_token, platform, fcm_token FROM device_tokens WHERE user_id = $1`, [userId]);
+        return result.map((row) => ({
+            deviceToken: row.device_token,
+            platform: row.platform,
+            fcmToken: row.fcm_token,
+        }));
+    }
+    catch (error) {
+        logger_1.logger.error('Failed to get user device tokens', { error: String(error), userId });
+        return [];
+    }
 }
 /**
  * Get user notification preferences
  */
-function getNotificationPreferences(nk, userId) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var result, insertResult, error_6;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 4, , 5]);
-                    return [4 /*yield*/, nk.dbQuery("SELECT * FROM notification_preferences WHERE user_id = $1", [
-                            userId,
-                        ])];
-                case 1:
-                    result = _a.sent();
-                    if (!(result.length === 0)) return [3 /*break*/, 3];
-                    return [4 /*yield*/, nk.dbQuery("INSERT INTO notification_preferences (user_id) VALUES ($1) RETURNING *", [userId])];
-                case 2:
-                    insertResult = _a.sent();
-                    return [2 /*return*/, insertResult[0]];
-                case 3: return [2 /*return*/, result[0]];
-                case 4:
-                    error_6 = _a.sent();
-                    logger_1.logger.error('Failed to get notification preferences', { error: String(error_6), userId: userId });
-                    return [2 /*return*/, null];
-                case 5: return [2 /*return*/];
-            }
-        });
-    });
+async function getNotificationPreferences(nk, userId) {
+    try {
+        const result = await nk.dbQuery(`SELECT * FROM notification_preferences WHERE user_id = $1`, [
+            userId,
+        ]);
+        if (result.length === 0) {
+            // Create default preferences
+            const insertResult = await nk.dbQuery(`INSERT INTO notification_preferences (user_id) VALUES ($1) RETURNING *`, [userId]);
+            return insertResult[0];
+        }
+        return result[0];
+    }
+    catch (error) {
+        logger_1.logger.error('Failed to get notification preferences', { error: String(error), userId });
+        return null;
+    }
 }
 /**
  * Update user notification preferences
  */
-function updateNotificationPreferences(nk, userId, preferences) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var updates, values, paramIndex, error_7, errorMessage;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    updates = [];
-                    values = [];
-                    paramIndex = 1;
-                    if (preferences.dailyRewardsEnabled !== undefined) {
-                        updates.push("daily_rewards_enabled = $".concat(paramIndex++));
-                        values.push(preferences.dailyRewardsEnabled);
-                    }
-                    if (preferences.eventsEnabled !== undefined) {
-                        updates.push("events_enabled = $".concat(paramIndex++));
-                        values.push(preferences.eventsEnabled);
-                    }
-                    if (preferences.pvpChallengesEnabled !== undefined) {
-                        updates.push("pvp_challenges_enabled = $".concat(paramIndex++));
-                        values.push(preferences.pvpChallengesEnabled);
-                    }
-                    if (preferences.promotionsEnabled !== undefined) {
-                        updates.push("promotions_enabled = $".concat(paramIndex++));
-                        values.push(preferences.promotionsEnabled);
-                    }
-                    if (preferences.notificationsEnabled !== undefined) {
-                        updates.push("notifications_enabled = $".concat(paramIndex++));
-                        values.push(preferences.notificationsEnabled);
-                    }
-                    if (preferences.quietHoursEnabled !== undefined) {
-                        updates.push("quiet_hours_enabled = $".concat(paramIndex++));
-                        values.push(preferences.quietHoursEnabled);
-                    }
-                    if (preferences.quietHoursStart !== undefined) {
-                        updates.push("quiet_hours_start = $".concat(paramIndex++));
-                        values.push(preferences.quietHoursStart);
-                    }
-                    if (preferences.quietHoursEnd !== undefined) {
-                        updates.push("quiet_hours_end = $".concat(paramIndex++));
-                        values.push(preferences.quietHoursEnd);
-                    }
-                    if (preferences.timezone !== undefined) {
-                        updates.push("timezone = $".concat(paramIndex++));
-                        values.push(preferences.timezone);
-                    }
-                    if (updates.length === 0) {
-                        return [2 /*return*/, { success: false, error: 'No preferences to update' }];
-                    }
-                    updates.push("updated_at = NOW()");
-                    values.push(userId);
-                    return [4 /*yield*/, nk.dbQuery("UPDATE notification_preferences SET ".concat(updates.join(', '), " WHERE user_id = $").concat(paramIndex), values)];
-                case 1:
-                    _a.sent();
-                    logger_1.logger.info('Notification preferences updated', { userId: userId });
-                    return [2 /*return*/, { success: true }];
-                case 2:
-                    error_7 = _a.sent();
-                    errorMessage = error_7 instanceof Error ? error_7.message : String(error_7);
-                    logger_1.logger.error('Failed to update notification preferences', { error: errorMessage, userId: userId });
-                    return [2 /*return*/, { success: false, error: errorMessage }];
-                case 3: return [2 /*return*/];
-            }
-        });
-    });
+async function updateNotificationPreferences(nk, userId, preferences) {
+    try {
+        const updates = [];
+        const values = [];
+        let paramIndex = 1;
+        if (preferences.dailyRewardsEnabled !== undefined) {
+            updates.push(`daily_rewards_enabled = $${paramIndex++}`);
+            values.push(preferences.dailyRewardsEnabled);
+        }
+        if (preferences.eventsEnabled !== undefined) {
+            updates.push(`events_enabled = $${paramIndex++}`);
+            values.push(preferences.eventsEnabled);
+        }
+        if (preferences.pvpChallengesEnabled !== undefined) {
+            updates.push(`pvp_challenges_enabled = $${paramIndex++}`);
+            values.push(preferences.pvpChallengesEnabled);
+        }
+        if (preferences.promotionsEnabled !== undefined) {
+            updates.push(`promotions_enabled = $${paramIndex++}`);
+            values.push(preferences.promotionsEnabled);
+        }
+        if (preferences.notificationsEnabled !== undefined) {
+            updates.push(`notifications_enabled = $${paramIndex++}`);
+            values.push(preferences.notificationsEnabled);
+        }
+        if (preferences.quietHoursEnabled !== undefined) {
+            updates.push(`quiet_hours_enabled = $${paramIndex++}`);
+            values.push(preferences.quietHoursEnabled);
+        }
+        if (preferences.quietHoursStart !== undefined) {
+            updates.push(`quiet_hours_start = $${paramIndex++}`);
+            values.push(preferences.quietHoursStart);
+        }
+        if (preferences.quietHoursEnd !== undefined) {
+            updates.push(`quiet_hours_end = $${paramIndex++}`);
+            values.push(preferences.quietHoursEnd);
+        }
+        if (preferences.timezone !== undefined) {
+            updates.push(`timezone = $${paramIndex++}`);
+            values.push(preferences.timezone);
+        }
+        if (updates.length === 0) {
+            return { success: false, error: 'No preferences to update' };
+        }
+        updates.push(`updated_at = NOW()`);
+        values.push(userId);
+        await nk.dbQuery(`UPDATE notification_preferences SET ${updates.join(', ')} WHERE user_id = $${paramIndex}`, values);
+        logger_1.logger.info('Notification preferences updated', { userId });
+        return { success: true };
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger_1.logger.error('Failed to update notification preferences', { error: errorMessage, userId });
+        return { success: false, error: errorMessage };
+    }
 }
 /**
  * Schedule a notification for a user
  */
-function scheduleNotification(nk_1, userId_1, type_1, title_1, body_1, scheduledFor_1) {
-    return tslib_1.__awaiter(this, arguments, void 0, function (nk, userId, type, title, body, scheduledFor, data) {
-        var result, error_8, errorMessage;
-        var _a;
-        if (data === void 0) { data = {}; }
-        return tslib_1.__generator(this, function (_b) {
-            switch (_b.label) {
-                case 0:
-                    _b.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, nk.dbQuery("INSERT INTO scheduled_notifications (user_id, notification_type, title, body, data, scheduled_for, status)\n       VALUES ($1, $2, $3, $4, $5, $6, 'pending')\n       RETURNING notification_id", [userId, type, title, body, JSON.stringify(data), scheduledFor.toISOString()])];
-                case 1:
-                    result = (_b.sent());
-                    logger_1.logger.info('Notification scheduled', { userId: userId, type: type, scheduledFor: scheduledFor });
-                    return [2 /*return*/, { success: true, notificationId: (_a = result[0]) === null || _a === void 0 ? void 0 : _a.notification_id }];
-                case 2:
-                    error_8 = _b.sent();
-                    errorMessage = error_8 instanceof Error ? error_8.message : String(error_8);
-                    logger_1.logger.error('Failed to schedule notification', { error: errorMessage, userId: userId });
-                    return [2 /*return*/, { success: false, error: errorMessage }];
-                case 3: return [2 /*return*/];
-            }
-        });
-    });
+async function scheduleNotification(nk, userId, type, title, body, scheduledFor, data = {}) {
+    try {
+        const result = (await nk.dbQuery(`INSERT INTO scheduled_notifications (user_id, notification_type, title, body, data, scheduled_for, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+       RETURNING notification_id`, [userId, type, title, body, JSON.stringify(data), scheduledFor.toISOString()]));
+        logger_1.logger.info('Notification scheduled', { userId, type, scheduledFor });
+        return { success: true, notificationId: result[0]?.notification_id };
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger_1.logger.error('Failed to schedule notification', { error: errorMessage, userId });
+        return { success: false, error: errorMessage };
+    }
 }
 /**
  * Cancel a scheduled notification
  */
-function cancelScheduledNotification(nk, notificationId) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var error_9, errorMessage;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, nk.dbQuery("UPDATE scheduled_notifications SET status = 'cancelled', updated_at = NOW() \n       WHERE notification_id = $1 AND status = 'pending'", [notificationId])];
-                case 1:
-                    _a.sent();
-                    logger_1.logger.info('Scheduled notification cancelled', { notificationId: notificationId });
-                    return [2 /*return*/, { success: true }];
-                case 2:
-                    error_9 = _a.sent();
-                    errorMessage = error_9 instanceof Error ? error_9.message : String(error_9);
-                    logger_1.logger.error('Failed to cancel notification', { error: errorMessage, notificationId: notificationId });
-                    return [2 /*return*/, { success: false, error: errorMessage }];
-                case 3: return [2 /*return*/];
-            }
-        });
-    });
+async function cancelScheduledNotification(nk, notificationId) {
+    try {
+        await nk.dbQuery(`UPDATE scheduled_notifications SET status = 'cancelled', updated_at = NOW() 
+       WHERE notification_id = $1 AND status = 'pending'`, [notificationId]);
+        logger_1.logger.info('Scheduled notification cancelled', { notificationId });
+        return { success: true };
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger_1.logger.error('Failed to cancel notification', { error: errorMessage, notificationId });
+        return { success: false, error: errorMessage };
+    }
 }
 /**
  * Get pending scheduled notifications to send
  */
-function getPendingNotifications(nk_1) {
-    return tslib_1.__awaiter(this, arguments, void 0, function (nk, limit) {
-        var result, error_10;
-        if (limit === void 0) { limit = 100; }
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, nk.dbQuery("SELECT * FROM scheduled_notifications \n       WHERE status = 'pending' AND scheduled_for <= NOW()\n       ORDER BY scheduled_for ASC\n       LIMIT $1", [limit])];
-                case 1:
-                    result = _a.sent();
-                    return [2 /*return*/, result];
-                case 2:
-                    error_10 = _a.sent();
-                    logger_1.logger.error('Failed to get pending notifications', { error: String(error_10) });
-                    return [2 /*return*/, []];
-                case 3: return [2 /*return*/];
-            }
-        });
-    });
+async function getPendingNotifications(nk, limit = 100) {
+    try {
+        const result = await nk.dbQuery(`SELECT * FROM scheduled_notifications 
+       WHERE status = 'pending' AND scheduled_for <= NOW()
+       ORDER BY scheduled_for ASC
+       LIMIT $1`, [limit]);
+        return result;
+    }
+    catch (error) {
+        logger_1.logger.error('Failed to get pending notifications', { error: String(error) });
+        return [];
+    }
 }
 /**
  * Mark notification as sent
  */
-function markNotificationSent(nk, notificationId, success, errorMessage) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var error_11;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, nk.dbQuery("UPDATE scheduled_notifications \n       SET status = $1, sent_at = NOW(), error_message = $2, updated_at = NOW()\n       WHERE notification_id = $3", [success ? 'sent' : 'failed', errorMessage || null, notificationId])];
-                case 1:
-                    _a.sent();
-                    return [3 /*break*/, 3];
-                case 2:
-                    error_11 = _a.sent();
-                    logger_1.logger.error('Failed to mark notification sent', { error: String(error_11), notificationId: notificationId });
-                    return [3 /*break*/, 3];
-                case 3: return [2 /*return*/];
-            }
-        });
-    });
+async function markNotificationSent(nk, notificationId, success, errorMessage) {
+    try {
+        await nk.dbQuery(`UPDATE scheduled_notifications 
+       SET status = $1, sent_at = NOW(), error_message = $2, updated_at = NOW()
+       WHERE notification_id = $3`, [success ? 'sent' : 'failed', errorMessage || null, notificationId]);
+    }
+    catch (error) {
+        logger_1.logger.error('Failed to mark notification sent', { error: String(error), notificationId });
+    }
 }
 /**
  * Log notification to history
  */
-function logNotificationHistory(nk, notificationId, userId, notificationType, title, body, deviceToken, status, errorMessage) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var error_12;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, nk.dbQuery("INSERT INTO notification_history \n       (notification_id, user_id, notification_type, title, body, device_token, status, error_message)\n       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [
-                            notificationId,
-                            userId,
-                            notificationType,
-                            title,
-                            body,
-                            deviceToken,
-                            status,
-                            errorMessage || null,
-                        ])];
-                case 1:
-                    _a.sent();
-                    return [3 /*break*/, 3];
-                case 2:
-                    error_12 = _a.sent();
-                    logger_1.logger.error('Failed to log notification history', { error: String(error_12) });
-                    return [3 /*break*/, 3];
-                case 3: return [2 /*return*/];
-            }
-        });
-    });
+async function logNotificationHistory(nk, notificationId, userId, notificationType, title, body, deviceToken, status, errorMessage) {
+    try {
+        await nk.dbQuery(`INSERT INTO notification_history 
+       (notification_id, user_id, notification_type, title, body, device_token, status, error_message)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [
+            notificationId,
+            userId,
+            notificationType,
+            title,
+            body,
+            deviceToken,
+            status,
+            errorMessage || null,
+        ]);
+    }
+    catch (error) {
+        logger_1.logger.error('Failed to log notification history', { error: String(error) });
+    }
 }
 /**
  * Check if user should receive notification based on preferences
  */
-function shouldSendNotification(nk, userId, notificationType) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var prefs, error_13;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, getNotificationPreferences(nk, userId)];
-                case 1:
-                    prefs = _a.sent();
-                    if (!prefs) {
-                        return [2 /*return*/, true]; // Default to sending if no preferences
-                    }
-                    // Check master toggle
-                    if (!prefs.notifications_enabled) {
-                        return [2 /*return*/, false];
-                    }
-                    // Check type-specific preferences
-                    switch (notificationType) {
-                        case 'daily_reward':
-                            return [2 /*return*/, !!prefs.daily_rewards_enabled];
-                        case 'event':
-                            return [2 /*return*/, !!prefs.events_enabled];
-                        case 'pvp_challenge':
-                            return [2 /*return*/, !!prefs.pvp_challenges_enabled];
-                        case 'promotion':
-                            return [2 /*return*/, !!prefs.promotions_enabled];
-                        default:
-                            return [2 /*return*/, true];
-                    }
-                    return [3 /*break*/, 3];
-                case 2:
-                    error_13 = _a.sent();
-                    logger_1.logger.error('Error checking notification preferences', { error: String(error_13), userId: userId });
-                    return [2 /*return*/, true]; // Default to sending on error
-                case 3: return [2 /*return*/];
-            }
-        });
-    });
+async function shouldSendNotification(nk, userId, notificationType) {
+    try {
+        const prefs = await getNotificationPreferences(nk, userId);
+        if (!prefs) {
+            return true; // Default to sending if no preferences
+        }
+        // Check master toggle
+        if (!prefs.notifications_enabled) {
+            return false;
+        }
+        // Check type-specific preferences
+        switch (notificationType) {
+            case 'daily_reward':
+                return !!prefs.daily_rewards_enabled;
+            case 'event':
+                return !!prefs.events_enabled;
+            case 'pvp_challenge':
+                return !!prefs.pvp_challenges_enabled;
+            case 'promotion':
+                return !!prefs.promotions_enabled;
+            default:
+                return true;
+        }
+    }
+    catch (error) {
+        logger_1.logger.error('Error checking notification preferences', { error: String(error), userId });
+        return true; // Default to sending on error
+    }
 }
 /**
  * Process and send pending scheduled notifications
  */
-function processScheduledNotifications(nk) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var pending, sent, failed, pending_1, pending_1_1, notification, shouldSend, deviceTokens, tokens, result, tokens_1, tokens_1_1, token, e_2_1, e_3_1;
-        var e_3, _a, e_2, _b;
-        return tslib_1.__generator(this, function (_c) {
-            switch (_c.label) {
-                case 0: return [4 /*yield*/, getPendingNotifications(nk, 100)];
-                case 1:
-                    pending = _c.sent();
-                    sent = 0;
-                    failed = 0;
-                    _c.label = 2;
-                case 2:
-                    _c.trys.push([2, 22, 23, 24]);
-                    pending_1 = tslib_1.__values(pending), pending_1_1 = pending_1.next();
-                    _c.label = 3;
-                case 3:
-                    if (!!pending_1_1.done) return [3 /*break*/, 21];
-                    notification = pending_1_1.value;
-                    return [4 /*yield*/, shouldSendNotification(nk, notification.user_id, notification.notification_type)];
-                case 4:
-                    shouldSend = _c.sent();
-                    if (!!shouldSend) return [3 /*break*/, 6];
-                    return [4 /*yield*/, markNotificationSent(nk, notification.notification_id, true)];
-                case 5:
-                    _c.sent();
-                    sent++;
-                    return [3 /*break*/, 20];
-                case 6: return [4 /*yield*/, getUserDeviceTokens(nk, notification.user_id)];
-                case 7:
-                    deviceTokens = _c.sent();
-                    if (!(deviceTokens.length === 0)) return [3 /*break*/, 9];
-                    return [4 /*yield*/, markNotificationSent(nk, notification.notification_id, false, 'No device tokens')];
-                case 8:
-                    _c.sent();
-                    failed++;
-                    return [3 /*break*/, 20];
-                case 9:
-                    tokens = deviceTokens.map(function (t) { return t.fcmToken || t.deviceToken; });
-                    return [4 /*yield*/, sendBatchNotifications(tokens, notification.title, notification.body, notification.data || {})];
-                case 10:
-                    result = _c.sent();
-                    _c.label = 11;
-                case 11:
-                    _c.trys.push([11, 16, 17, 18]);
-                    tokens_1 = (e_2 = void 0, tslib_1.__values(tokens)), tokens_1_1 = tokens_1.next();
-                    _c.label = 12;
-                case 12:
-                    if (!!tokens_1_1.done) return [3 /*break*/, 15];
-                    token = tokens_1_1.value;
-                    return [4 /*yield*/, logNotificationHistory(nk, notification.notification_id, notification.user_id, notification.notification_type, notification.title, notification.body, token, result.failed > 0 ? 'failed' : 'sent', result.errors[0])];
-                case 13:
-                    _c.sent();
-                    _c.label = 14;
-                case 14:
-                    tokens_1_1 = tokens_1.next();
-                    return [3 /*break*/, 12];
-                case 15: return [3 /*break*/, 18];
-                case 16:
-                    e_2_1 = _c.sent();
-                    e_2 = { error: e_2_1 };
-                    return [3 /*break*/, 18];
-                case 17:
-                    try {
-                        if (tokens_1_1 && !tokens_1_1.done && (_b = tokens_1.return)) _b.call(tokens_1);
-                    }
-                    finally { if (e_2) throw e_2.error; }
-                    return [7 /*endfinally*/];
-                case 18: return [4 /*yield*/, markNotificationSent(nk, notification.notification_id, result.success > 0, result.errors.join('; '))];
-                case 19:
-                    _c.sent();
-                    sent += result.success;
-                    failed += result.failed;
-                    _c.label = 20;
-                case 20:
-                    pending_1_1 = pending_1.next();
-                    return [3 /*break*/, 3];
-                case 21: return [3 /*break*/, 24];
-                case 22:
-                    e_3_1 = _c.sent();
-                    e_3 = { error: e_3_1 };
-                    return [3 /*break*/, 24];
-                case 23:
-                    try {
-                        if (pending_1_1 && !pending_1_1.done && (_a = pending_1.return)) _a.call(pending_1);
-                    }
-                    finally { if (e_3) throw e_3.error; }
-                    return [7 /*endfinally*/];
-                case 24: return [2 /*return*/, { sent: sent, failed: failed }];
-            }
-        });
-    });
+async function processScheduledNotifications(nk) {
+    const pending = await getPendingNotifications(nk, 100);
+    let sent = 0;
+    let failed = 0;
+    for (const notification of pending) {
+        // Check user preferences
+        const shouldSend = await shouldSendNotification(nk, notification.user_id, notification.notification_type);
+        if (!shouldSend) {
+            await markNotificationSent(nk, notification.notification_id, true);
+            sent++;
+            continue;
+        }
+        // Get user's device tokens
+        const deviceTokens = await getUserDeviceTokens(nk, notification.user_id);
+        if (deviceTokens.length === 0) {
+            await markNotificationSent(nk, notification.notification_id, false, 'No device tokens');
+            failed++;
+            continue;
+        }
+        // Send to all devices
+        const tokens = deviceTokens.map((t) => t.fcmToken || t.deviceToken);
+        const result = await sendBatchNotifications(tokens, notification.title, notification.body, notification.data || {});
+        // Log to history
+        for (const token of tokens) {
+            await logNotificationHistory(nk, notification.notification_id, notification.user_id, notification.notification_type, notification.title, notification.body, token, result.failed > 0 ? 'failed' : 'sent', result.errors[0]);
+        }
+        await markNotificationSent(nk, notification.notification_id, result.success > 0, result.errors.join('; '));
+        sent += result.success;
+        failed += result.failed;
+    }
+    return { sent, failed };
 }
 /**
  * Send daily reward notification to a user
  */
-function sendDailyRewardNotification(nk, userId) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var shouldSend, template, deviceTokens, tokens, result;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, shouldSendNotification(nk, userId, 'daily_reward')];
-                case 1:
-                    shouldSend = _a.sent();
-                    if (!shouldSend) {
-                        return [2 /*return*/, { success: false, error: 'User disabled daily reward notifications' }];
-                    }
-                    template = getNotificationTemplate('daily_reward');
-                    return [4 /*yield*/, getUserDeviceTokens(nk, userId)];
-                case 2:
-                    deviceTokens = _a.sent();
-                    if (deviceTokens.length === 0) {
-                        return [2 /*return*/, { success: false, error: 'No device tokens' }];
-                    }
-                    tokens = deviceTokens.map(function (t) { return t.fcmToken || t.deviceToken; });
-                    return [4 /*yield*/, sendBatchNotifications(tokens, template.title, template.body, {
-                            type: 'daily_reward',
-                            action: 'claim_rewards',
-                        })];
-                case 3:
-                    result = _a.sent();
-                    return [2 /*return*/, {
-                            success: result.success > 0,
-                            error: result.errors.join('; '),
-                        }];
-            }
-        });
+async function sendDailyRewardNotification(nk, userId) {
+    const shouldSend = await shouldSendNotification(nk, userId, 'daily_reward');
+    if (!shouldSend) {
+        return { success: false, error: 'User disabled daily reward notifications' };
+    }
+    const template = getNotificationTemplate('daily_reward');
+    const deviceTokens = await getUserDeviceTokens(nk, userId);
+    if (deviceTokens.length === 0) {
+        return { success: false, error: 'No device tokens' };
+    }
+    const tokens = deviceTokens.map((t) => t.fcmToken || t.deviceToken);
+    const result = await sendBatchNotifications(tokens, template.title, template.body, {
+        type: 'daily_reward',
+        action: 'claim_rewards',
     });
+    return {
+        success: result.success > 0,
+        error: result.errors.join('; '),
+    };
 }
 /**
  * Send event notification to a user
  */
-function sendEventNotification(nk, userId, eventName, eventId) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var shouldSend, template, deviceTokens, tokens, result;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, shouldSendNotification(nk, userId, 'event')];
-                case 1:
-                    shouldSend = _a.sent();
-                    if (!shouldSend) {
-                        return [2 /*return*/, { success: false, error: 'User disabled event notifications' }];
-                    }
-                    template = getNotificationTemplate('event');
-                    return [4 /*yield*/, getUserDeviceTokens(nk, userId)];
-                case 2:
-                    deviceTokens = _a.sent();
-                    if (deviceTokens.length === 0) {
-                        return [2 /*return*/, { success: false, error: 'No device tokens' }];
-                    }
-                    tokens = deviceTokens.map(function (t) { return t.fcmToken || t.deviceToken; });
-                    return [4 /*yield*/, sendBatchNotifications(tokens, "\uD83C\uDF89 ".concat(eventName), template.body, {
-                            type: 'event',
-                            eventId: eventId,
-                            action: 'view_event',
-                        })];
-                case 3:
-                    result = _a.sent();
-                    return [2 /*return*/, {
-                            success: result.success > 0,
-                            error: result.errors.join('; '),
-                        }];
-            }
-        });
+async function sendEventNotification(nk, userId, eventName, eventId) {
+    const shouldSend = await shouldSendNotification(nk, userId, 'event');
+    if (!shouldSend) {
+        return { success: false, error: 'User disabled event notifications' };
+    }
+    const template = getNotificationTemplate('event');
+    const deviceTokens = await getUserDeviceTokens(nk, userId);
+    if (deviceTokens.length === 0) {
+        return { success: false, error: 'No device tokens' };
+    }
+    const tokens = deviceTokens.map((t) => t.fcmToken || t.deviceToken);
+    const result = await sendBatchNotifications(tokens, `🎉 ${eventName}`, template.body, {
+        type: 'event',
+        eventId,
+        action: 'view_event',
     });
+    return {
+        success: result.success > 0,
+        error: result.errors.join('; '),
+    };
 }
 /**
  * Send PvP challenge notification to a user
  */
-function sendPvpChallengeNotification(nk, userId, opponentName) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var shouldSend, template, deviceTokens, tokens, result;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, shouldSendNotification(nk, userId, 'pvp_challenge')];
-                case 1:
-                    shouldSend = _a.sent();
-                    if (!shouldSend) {
-                        return [2 /*return*/, { success: false, error: 'User disabled PvP challenge notifications' }];
-                    }
-                    template = getNotificationTemplate('pvp_challenge');
-                    return [4 /*yield*/, getUserDeviceTokens(nk, userId)];
-                case 2:
-                    deviceTokens = _a.sent();
-                    if (deviceTokens.length === 0) {
-                        return [2 /*return*/, { success: false, error: 'No device tokens' }];
-                    }
-                    tokens = deviceTokens.map(function (t) { return t.fcmToken || t.deviceToken; });
-                    return [4 /*yield*/, sendBatchNotifications(tokens, template.title, "".concat(opponentName, " is waiting for you in the arena!"), {
-                            type: 'pvp_challenge',
-                            action: 'join_arena',
-                        })];
-                case 3:
-                    result = _a.sent();
-                    return [2 /*return*/, {
-                            success: result.success > 0,
-                            error: result.errors.join('; '),
-                        }];
-            }
-        });
+async function sendPvpChallengeNotification(nk, userId, opponentName) {
+    const shouldSend = await shouldSendNotification(nk, userId, 'pvp_challenge');
+    if (!shouldSend) {
+        return { success: false, error: 'User disabled PvP challenge notifications' };
+    }
+    const template = getNotificationTemplate('pvp_challenge');
+    const deviceTokens = await getUserDeviceTokens(nk, userId);
+    if (deviceTokens.length === 0) {
+        return { success: false, error: 'No device tokens' };
+    }
+    const tokens = deviceTokens.map((t) => t.fcmToken || t.deviceToken);
+    const result = await sendBatchNotifications(tokens, template.title, `${opponentName} is waiting for you in the arena!`, {
+        type: 'pvp_challenge',
+        action: 'join_arena',
     });
+    return {
+        success: result.success > 0,
+        error: result.errors.join('; '),
+    };
 }
