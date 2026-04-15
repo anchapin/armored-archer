@@ -27,31 +27,54 @@ Password: localdbpassword
 │   username      │     │ experience       │     │ name            │
 │   email         │     │ ability_points  │     │ rarity          │
 │   ...           │     │ stats (JSONB)   │     │ base_stats      │
-└─────────────────┘     └─────────────────┘     │ modifiers (JSONB│
-                                                  │ icon_url        │
-                                                  │ description     │
-                                                  └────────┬────────┘
-                                                           │
-                          ┌─────────────────┐              │
-                          │    loadout      │◀─────────────┘
-                          │                 │
-                          │ user_id (PK/FK) │
-            ┌─────────────│ helm_gear_id   │
-            │             │ armor_gear_id  │
-            │             │ bow_gear_id    │
-            │             │ arrow_gear_id  │
-            │             │ amulet_gear_id │
-            └─────────────┴─────────────────┘
-                          │
-                          ▼
-                  ┌─────────────────┐
-                  │    inventory    │
-                  │                 │
-                  │ inventory_id(PK)│
-                  │ user_id (FK)    │────▶ users
-                  │ gear_id (FK)    │────▶ catalog
-                  │ acquired_at     │
-                  └─────────────────┘
+└────────┬────────┘     └─────────────────┘     │ modifiers (JSONB│
+         │                                            │ icon_url        │
+         │                                            │ description     │
+         │                                            └────────┬────────┘
+         │                                                     │
+         │              ┌─────────────────┐                      │
+         │              │    loadout      │◀─────────────────────┘
+         │              │                 │
+         │              │ user_id (PK/FK) │
+         │    ┌─────────│ helm_gear_id   │
+         │    │         │ armor_gear_id  │
+         │    │         │ bow_gear_id    │
+         │    │         │ arrow_gear_id  │
+         │    │         │ amulet_gear_id │
+         │    └─────────┴─────────────────┘
+         │              │
+         │              ▼
+         │      ┌─────────────────┐
+         │      │    inventory    │
+         │      │                 │
+         │      │ inventory_id(PK)│
+         │      │ user_id (FK)    │────▶ users
+         │      │ gear_id (FK)    │────▶ catalog
+         │      │ acquired_at     │
+         │      └─────────────────┘
+         │
+         │
+         ▼
+┌────────────────────┐
+│   match_results   │
+│                  │
+│ result_id (PK)   │
+│ match_id         │
+│ creator_id (FK)   │◀─────────────┐
+│ opponent_id (FK)   │              │
+│ winner_id (FK)     │              │
+│ loser_id (FK)      │              │
+│ match_type        │              │
+│ ...              │              │
+└────────────────────┘              │
+                                  │
+                                  ▼
+                           ┌─────────────────┐
+                           │      users      │
+                           │   (Nakama)      │
+                           │                 │
+                           │   id (UUID)     │
+                           └─────────────────┘
 ```
 
 ## Tables
@@ -231,6 +254,92 @@ WHERE user_id = '550e8400-e29b-41d4-a716-446655440000';
 
 ---
 
+### 5. match_results
+
+Stores completed PvP match results for historical tracking and analytics.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `result_id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique match result identifier |
+| `match_id` | TEXT | NOT NULL | ID of the match from matchmaker system |
+| `creator_id` | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | User ID of the player who created the match |
+| `opponent_id` | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | User ID of the player who accepted the match |
+| `winner_id` | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | User ID of the match winner |
+| `loser_id` | UUID | NOT NULL, REFERENCES users(id) ON DELETE CASCADE | User ID of the match loser |
+| `match_type` | TEXT | NOT NULL, CHECK (match_type IN ('ranked', 'casual')) | Type of match (ranked or casual) |
+| `is_punch_up` | BOOLEAN | NOT NULL, DEFAULT false | Whether this was a punch-up match (high risk/reward) |
+| `creator_rank` | INTEGER | NOT NULL | Creator's rank at match start |
+| `opponent_rank` | INTEGER | NOT NULL | Opponent's rank at match start |
+| `creator_old_elo` | INTEGER | NULLABLE | Creator's Elo rating before the match |
+| `creator_new_elo` | INTEGER | NULLABLE | Creator's Elo rating after the match |
+| `opponent_old_elo` | INTEGER | NULLABLE | Opponent's Elo rating before the match |
+| `opponent_new_elo` | INTEGER | NULLABLE | Opponent's Elo rating after the match |
+| `total_turns` | INTEGER | NOT NULL, DEFAULT 0 | Total number of turns played |
+| `duration_seconds` | INTEGER | NOT NULL, DEFAULT 0 | Duration of the match in seconds |
+| `end_reason` | TEXT | NOT NULL, CHECK (end_reason IN ('health_zero', 'forfeit', 'timeout', 'disconnect')) | Reason match ended |
+| `combat_log` | JSONB | NOT NULL, DEFAULT '[]' | Full combat log as JSONB array |
+| `creator_health_remaining` | INTEGER | NOT NULL, DEFAULT 0 | Creator's health at match end |
+| `opponent_health_remaining` | INTEGER | NOT NULL, DEFAULT 0 | Opponent's health at match end |
+| `creator_stats_at_match` | JSONB | NOT NULL, DEFAULT '{}' | Creator's stats at match start as JSONB |
+| `opponent_stats_at_match` | JSONB | NOT NULL, DEFAULT '{}' | Opponent's stats at match start as JSONB |
+| `season_id` | TEXT | NULLABLE | Season ID for seasonal ranking |
+| `created_at` | TIMESTAMP WITH TIME ZONE | NOT NULL, DEFAULT NOW() | Timestamp when match result was created |
+| `updated_at` | TIMESTAMP WITH TIME ZONE | NOT NULL, DEFAULT NOW() | Timestamp when match result was last updated |
+
+**Indexes:**
+- `idx_match_results_match_id` ON `match_results(match_id)`
+- `idx_match_results_creator_id` ON `match_results(creator_id)`
+- `idx_match_results_opponent_id` ON `match_results(opponent_id)`
+- `idx_match_results_winner_id` ON `match_results(winner_id)`
+- `idx_match_results_match_type` ON `match_results(match_type)`
+- `idx_match_results_created_at` ON `match_results(created_at DESC)`
+- `idx_match_results_season_id` ON `match_results(season_id)`
+- `idx_match_results_user_history` ON `match_results(GREATEST(creator_id, opponent_id), created_at DESC)`
+
+**Triggers:**
+- `match_results_updated_at_trigger` - Updates `updated_at` on row modification
+
+**Comments:**
+- Table: 'Stores completed PvP match results for historical data and analytics'
+- Column `end_reason`: 'Reason match ended (health_zero, forfeit, timeout, disconnect)'
+- Column `combat_log`: 'Full combat log as JSONB array'
+- Column `season_id`: 'Season ID for seasonal ranking'
+
+**Usage Example:**
+```sql
+-- Get a user's match history
+SELECT
+  mr.*,
+  u1.username as creator_name,
+  u2.username as opponent_name
+FROM match_results mr
+JOIN users u1 ON mr.creator_id = u1.id
+JOIN users u2 ON mr.opponent_id = u2.id
+WHERE mr.creator_id = $1 OR mr.opponent_id = $1
+ORDER BY mr.created_at DESC
+LIMIT 20;
+
+-- Get match statistics for analytics
+SELECT
+  match_type,
+  AVG(total_turns) as avg_turns,
+  AVG(duration_seconds) as avg_duration,
+  COUNT(*) as total_matches
+FROM match_results
+WHERE created_at > NOW() - INTERVAL '7 days'
+GROUP BY match_type;
+
+-- Get win rate for a player
+SELECT
+  COUNT(*) as total_matches,
+  SUM(CASE WHEN winner_id = $1 THEN 1 ELSE 0 END) as wins,
+  ROUND(SUM(CASE WHEN winner_id = $1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as win_rate
+FROM match_results
+WHERE creator_id = $1 OR opponent_id = $1;
+```
+
+---
+
 ## Migration Files
 
 | File | Description |
@@ -239,6 +348,7 @@ WHERE user_id = '550e8400-e29b-41d4-a716-446655440000';
 | `002_create_catalog.sql` | Creates catalog table with gear types and rarities |
 | `003_create_inventory.sql` | Creates inventory table for player gear ownership |
 | `004_create_loadout.sql` | Creates loadout table with 5 equipment slots |
+| `014_create_match_results.sql` | Creates match_results table for PvP match history |
 
 ## Running Migrations
 
@@ -313,6 +423,7 @@ The database schema is versioned using migration files. Each migration has an in
 | 2 | `002_create_catalog.sql` | Creates catalog table with enums | 2024-02-28 |
 | 3 | `003_create_inventory.sql` | Creates inventory table | 2024-02-28 |
 | 4 | `004_create_loadout.sql` | Creates loadout table | 2024-02-28 |
+| 14 | `014_create_match_results.sql` | Creates match_results table for PvP match history | 2026-04-15 |
 
 ### CI/CD Schema Validation
 

@@ -19,6 +19,7 @@ import { profileFunction } from './profiling';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { getPlayerInventory, getEquippedGearModifierBonuses, PlayerInventory } from './gear_system';
 import { safeParse } from '../utils/safeParse';
+import { getCurrentSeason, getLeaderboardEntry } from './season_system';
 
 // Match-level inactivity timeout: 2 minutes of inactivity results in auto-forfeit
 const MATCH_INACTIVE_TIMEOUT_MS = 2 * 60 * 1000;
@@ -226,11 +227,11 @@ function validateMatchForCombat(
  * Handles turn timeout by switching to opponent's turn
  * Returns true if match was forfeited due to consecutive timeouts
  */
-function handleTurnTimeout(
+async function handleTurnTimeout(
   nk: Runtime.Nakama,
   matchState: MatchState,
   logger: Runtime.Logger
-): boolean {
+): Promise<boolean> {
   const timedOutUserId = matchState.current_turn_user_id;
   const opponentId =
     timedOutUserId === matchState.creator_id ? matchState.opponent_id : matchState.creator_id;
@@ -294,11 +295,17 @@ function handleTurnTimeout(
       );
       if (matchResult.success && matchResult.data) {
         updateMatchStatus(nk, matchResult.data, winnerId);
+
+        // Persist match result to database
+        await persistMatchResult(nk, matchResult.data, matchState, 'timeout');
       }
     }
 
     // Notify opponent of forfeit
     notifyOpponentOfForfeit(nk, matchState, opponentId, 'timeout');
+
+    // Notify both players of match completion
+    notifyMatchStateUpdate(nk, matchState, undefined, 'match_completed');
 
     return true;
   }
@@ -390,7 +397,7 @@ export async function rpcSubmitCombatAction(
   return traceAsync('rpc.submit_combat_action', async (span) => {
     span.setAttribute('user.id', ctx.userId || 'anonymous');
 
-    return profileFunction<string>('combat.submit_combat_action', () => {
+    return profileFunction<string>('combat.submit_combat_action', async () => {
       logger.info('Submit combat action called for user: %s', ctx.userId);
 
       setTracingAttribute('rpc.payload_size', payload.length);
@@ -424,7 +431,7 @@ export async function rpcSubmitCombatAction(
 
       // Handle turn timeout
       if (isTurnTimedOut(matchState)) {
-        const wasForfeited = handleTurnTimeout(nk, matchState, logger);
+        const wasForfeited = await handleTurnTimeout(nk, matchState, logger);
         span.setAttribute('combat.turn_timeout', true);
 
         if (wasForfeited) {
@@ -466,8 +473,17 @@ export async function rpcSubmitCombatAction(
 
       saveMatchState(nk, matchState);
 
+      // Notify both players of the turn result
+      notifyMatchStateUpdate(nk, matchState, result, 'turn_taken');
+
       if (result.winner) {
         updateMatchStatus(nk, match, result.winner);
+
+        // Persist match result to database
+        await persistMatchResult(nk, match, matchState, 'health_zero');
+
+        // Notify both players that match is complete
+        notifyMatchStateUpdate(nk, matchState, result, 'match_completed');
       }
 
       span.setAttribute('combat.result.hit', result.hit);
@@ -929,6 +945,146 @@ function notifyOpponentOfForfeit(
 }
 
 /**
+ * Notifies both players of match state updates.
+ *
+ * @param nk - Nakama server interface
+ * @param matchState - Current match state
+ * @param result - Combat result from the action
+ * @param reason - Reason for notification (turn_taken, match_completed, etc.)
+ */
+function notifyMatchStateUpdate(
+  nk: Runtime.Nakama,
+  matchState: MatchState,
+  result?: CombatResult,
+  reason: 'turn_taken' | 'match_completed' | 'health_update' = 'turn_taken'
+): void {
+  try {
+    const creatorId = matchState.creator_id;
+    const opponentId = matchState.opponent_id;
+
+    // Determine who took the last action
+    const lastActionTakerId = matchState.current_turn_user_id === creatorId ? opponentId : creatorId;
+
+    const notificationData = {
+      match_id: matchState.match_id,
+      turn: matchState.turn,
+      current_turn_user_id: matchState.current_turn_user_id,
+      creator_health: matchState.creator_health,
+      opponent_health: matchState.opponent_health,
+      status: matchState.status,
+      reason,
+      timestamp: Date.now(),
+    };
+
+    // If result provided, include combat data
+    if (result) {
+      Object.assign(notificationData, {
+        hit: result.hit,
+        damage: result.damage,
+        is_crit: result.is_crit,
+        attacker_id: lastActionTakerId,
+      });
+    }
+
+    // If match completed, include winner
+    if (matchState.status === 'completed' && matchState.winner) {
+      Object.assign(notificationData, {
+        winner_id: matchState.winner,
+        winner_name: matchState.winner === creatorId ? 'You (Creator)' : 'Opponent',
+      });
+    }
+
+    // Send to creator
+    const creatorMessage = buildNotificationMessage(creatorId, matchState, result, reason);
+    nk.notificationSend(
+      creatorId,
+      'PvP Match Update',
+      {
+        ...notificationData,
+        message: creatorMessage,
+      },
+      3, // Custom notification code for match state update
+      false, // don't persist (transient game state)
+      '' // senderId (empty for server)
+    );
+
+    // Send to opponent
+    const opponentMessage = buildNotificationMessage(opponentId, matchState, result, reason);
+    nk.notificationSend(
+      opponentId,
+      'PvP Match Update',
+      {
+        ...notificationData,
+        message: opponentMessage,
+      },
+      3, // Custom notification code for match state update
+      false, // don't persist (transient game state)
+      '' // senderId (empty for server)
+    );
+
+    logger.info('Match state update notification sent', {
+      matchId: matchState.match_id,
+      reason,
+      creatorId,
+      opponentId,
+    });
+  } catch (error) {
+    logger.error('Failed to send match state update notification', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      matchId: matchState.match_id,
+      reason,
+    });
+  }
+}
+
+/**
+ * Builds a user-friendly notification message based on match state.
+ */
+function buildNotificationMessage(
+  userId: string,
+  matchState: MatchState,
+  result?: CombatResult,
+  reason: string = 'turn_taken'
+): string {
+  const isCreator = userId === matchState.creator_id;
+  const opponentId = isCreator ? matchState.opponent_id : matchState.creator_id;
+  const myHealth = isCreator ? matchState.creator_health : matchState.opponent_health;
+  const opponentHealth = isCreator ? matchState.opponent_health : matchState.creator_health;
+  const isMyTurn = matchState.current_turn_user_id === userId;
+
+  if (reason === 'match_completed') {
+    if (matchState.winner === userId) {
+      return '🎉 Victory! You won the match!';
+    } else {
+      return '😔 Defeat! You lost the match.';
+    }
+  }
+
+  if (reason === 'turn_taken') {
+    if (result) {
+      if (result.hit) {
+        const critText = result.is_crit ? ' (CRITICAL!)' : '';
+        if (isCreator) {
+          return result.attacker_stats === matchState.creator_stats
+            ? `Your shot hit! Dealt ${result.damage} damage.${critText} Health: You ${myHealth} - Opponent ${opponentHealth}`
+            : `Opponent hit you! Took ${result.damage} damage.${critText} Health: You ${myHealth} - Opponent ${opponentHealth}`;
+        } else {
+          return result.attacker_stats === matchState.opponent_stats
+            ? `Your shot hit! Dealt ${result.damage} damage.${critText} Health: You ${myHealth} - Opponent ${opponentHealth}`
+            : `Opponent hit you! Took ${result.damage} damage.${critText} Health: You ${myHealth} - Opponent ${opponentHealth}`;
+        }
+      } else {
+        return `Shot missed! Health: You ${myHealth} - Opponent ${opponentHealth}`;
+      }
+    }
+  }
+
+  // Default message
+  return isMyTurn ? "It's your turn!" : 'Opponent is playing...';
+}
+
+/**
  * Handles a player disconnect/leave match request.
  * This allows graceful handling of disconnections.
  */
@@ -941,7 +1097,7 @@ export async function rpcPlayerDisconnect(
   return traceAsync('rpc.player_disconnect', async (span) => {
     span.setAttribute('user.id', ctx.userId || 'anonymous');
 
-    return profileFunction<string>('combat.player_disconnect', () => {
+    return profileFunction<string>('combat.player_disconnect', async () => {
       logger.info('Player disconnect called for user: %s', ctx.userId);
 
       const validation = validatePayload(
@@ -1046,8 +1202,19 @@ export async function rpcPlayerDisconnect(
       // Update match status
       updateMatchStatus(nk, match, winnerId);
 
+      // Persist match result to database
+      await persistMatchResult(
+        nk,
+        match,
+        matchState,
+        reason === 'timeout' ? 'timeout' : 'disconnect'
+      );
+
       // Notify opponent
       notifyOpponentOfForfeit(nk, matchState, winnerId, reason || 'disconnect');
+
+      // Notify both players of match completion
+      notifyMatchStateUpdate(nk, matchState, undefined, 'match_completed');
 
       return JSON.stringify({
         success: true,
@@ -1057,6 +1224,119 @@ export async function rpcPlayerDisconnect(
       });
     });
   });
+}
+
+/**
+ * Persists match result to the database for historical tracking.
+ *
+ * @param nk - Nakama server interface
+ * @param match - PvP match data
+ * @param matchState - Final match state
+ * @param endReason - Reason match ended (health_zero, forfeit, timeout, disconnect)
+ * @returns Promise resolving to success or error
+ */
+async function persistMatchResult(
+  nk: Runtime.Nakama,
+  match: PvPMatch,
+  matchState: MatchState,
+  endReason: 'health_zero' | 'forfeit' | 'timeout' | 'disconnect'
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const winnerId = matchState.winner || match.winner;
+    if (!winnerId) {
+      return { success: false, error: 'No winner determined' };
+    }
+
+    const loserId = winnerId === match.creator_id ? match.opponent_id : match.creator_id;
+    const currentSeason = getCurrentSeason();
+
+    // Calculate match duration
+    const durationSeconds = Math.floor((Date.now() - match.created_at) / 1000);
+
+    // Get Elo ratings from leaderboard (if ranked match)
+    let creatorOldElo: number | undefined;
+    let creatorNewElo: number | undefined;
+    let opponentOldElo: number | undefined;
+    let opponentNewElo: number | undefined;
+
+    if (match.match_type === 'ranked') {
+      try {
+        const winnerEntry = getLeaderboardEntry(nk, winnerId, currentSeason.season_id);
+        const loserEntry = getLeaderboardEntry(nk, loserId, currentSeason.season_id);
+
+        if (winnerId === match.creator_id) {
+          creatorOldElo = winnerEntry ? winnerEntry.score : undefined;
+          opponentOldElo = loserEntry ? loserEntry.score : undefined;
+        } else {
+          creatorOldElo = loserEntry ? loserEntry.score : undefined;
+          opponentOldElo = winnerEntry ? winnerEntry.score : undefined;
+        }
+
+        // New Elo is calculated after the match, so we need to store it
+        // This will be updated in a separate call from matchmaker
+      } catch (e) {
+        logger.warn('Failed to get Elo ratings for match result', {
+          error: e instanceof Error ? e.message : String(e),
+          matchId: match.match_id,
+        });
+      }
+    }
+
+    await nk.dbQuery(
+      `INSERT INTO match_results (
+        match_id, creator_id, opponent_id, winner_id, loser_id,
+        match_type, is_punch_up, creator_rank, opponent_rank,
+        creator_old_elo, creator_new_elo, opponent_old_elo, opponent_new_elo,
+        total_turns, duration_seconds, end_reason, combat_log,
+        creator_health_remaining, opponent_health_remaining,
+        creator_stats_at_match, opponent_stats_at_match, season_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+      [
+        match.match_id,
+        match.creator_id,
+        match.opponent_id,
+        winnerId,
+        loserId,
+        match.match_type,
+        match.is_punch_up,
+        match.creator_rank,
+        match.opponent_rank,
+        creatorOldElo || null,
+        creatorNewElo || null,
+        opponentOldElo || null,
+        opponentNewElo || null,
+        matchState.turn,
+        durationSeconds,
+        endReason,
+        JSON.stringify(matchState.log),
+        matchState.creator_health,
+        matchState.opponent_health,
+        JSON.stringify(matchState.creator_stats),
+        JSON.stringify(matchState.opponent_stats),
+        currentSeason.season_id,
+      ]
+    );
+
+    logger.info('Match result persisted to database', {
+      matchId: match.match_id,
+      winnerId,
+      loserId,
+      matchType: match.match_type,
+      endReason,
+      turns: matchState.turn,
+      durationSeconds,
+    });
+
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error('Failed to persist match result', {
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      matchId: match.match_id,
+    });
+    return { success: false, error: errorMessage };
+  }
 }
 
 /**
