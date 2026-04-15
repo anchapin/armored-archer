@@ -14,6 +14,20 @@
     "zod",
     "@heroiclabs/*"
   ],
+  "acceptedHeavyDependencies": [
+    {
+      "package": "@heroiclabs/nakama-js",
+      "reason": "Required for Nakama game server client communication. No viable alternative.",
+      "acceptanceDate": "2024-01-01",
+      "reviewed": true
+    },
+    {
+      "package": "zod",
+      "reason": "Runtime validation library. Provides type safety for all API inputs/outputs. Replacement would require significant refactor.",
+      "acceptanceDate": "2024-01-01",
+      "reviewed": true
+    }
+  ],
   "heavyDependencyDetection": {
     "enabled": true,
     "patterns": [

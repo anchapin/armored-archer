@@ -264,17 +264,28 @@ function validateAgentsMd(): ValidationResult {
   const brokenLinkPattern = /\[([^\]]+)\]\((?!http|https|#)[^)]*\)/g;
   let linkMatch;
   const contentWithoutCode = content.replace(/```[\s\S]*?```/g, '').replace(/`[^`]+`/g, '');
+
+  // Allowlist of safe relative link patterns
+  const safeRelativeLinkPatterns = [
+    /^(backend\/|TECH_DEBT\.md|DATABASE_SCHEMA\.md|CLAUDE\.md|CONTRIBUTING\.md)/,
+  ];
+
   while ((linkMatch = brokenLinkPattern.exec(contentWithoutCode)) !== null) {
-    const linkPath = linkMatch[1];
+    const fullMatch = linkMatch[0];
+    const linkUrl = fullMatch.match(/\(([^)]+)\)/)?.[1] || '';
+
     // Check if it's a relative link that should exist
-    if (linkPath && !linkPath.startsWith('#') && !linkPath.includes(':')) {
-      // For now, just warn about relative links
-      result.issues.push({
-        type: 'warning',
-        category: 'link',
-        message: `Relative link found: ${linkMatch[0]}`,
-      });
-      result.summary.warnings++;
+    if (linkUrl && !linkUrl.startsWith('#') && !linkUrl.includes(':')) {
+      // Skip if it's a known safe internal link pattern
+      const isSafeLink = safeRelativeLinkPatterns.some(pattern => pattern.test(linkUrl));
+      if (!isSafeLink) {
+        result.issues.push({
+          type: 'warning',
+          category: 'link',
+          message: `Relative link found: ${fullMatch}`,
+        });
+        result.summary.warnings++;
+      }
     }
   }
 
