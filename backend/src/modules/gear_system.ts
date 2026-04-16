@@ -3,12 +3,12 @@
  * @fileoverview Manages equipment generation, modification, and inventory.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
-import * as fs from 'fs';
-import * as path from 'path';
 import {
   insertGearItem,
   getPlayerGearFromDB,
@@ -484,7 +484,9 @@ function generateGearId(): string {
  * Stage-specific rarity weights from campaigns.json
  * Used to scale drop chances based on stage progression
  */
-const STAGE_RARITY_WEIGHTS: { [stageId: string]: { common: number; rare: number; epic: number; legendary: number } } = {};
+const STAGE_RARITY_WEIGHTS: {
+  [stageId: string]: { common: number; rare: number; epic: number; legendary: number };
+} = {};
 
 /**
  * Loads stage-specific rarity weights from campaigns.json
@@ -528,9 +530,9 @@ function rollRarity(stageId?: string): string {
   if (stageId && STAGE_RARITY_WEIGHTS[stageId]) {
     const weights = STAGE_RARITY_WEIGHTS[stageId];
     const commonThreshold = weights.common / 100;
-    const epicThreshold = commonThreshold + (weights.epic / 100);
-    const rareThreshold = epicThreshold + (weights.rare / 100);
-    const legendaryThreshold = rareThreshold + (weights.legendary / 100);
+    const epicThreshold = commonThreshold + weights.epic / 100;
+    const rareThreshold = epicThreshold + weights.rare / 100;
+    const legendaryThreshold = rareThreshold + weights.legendary / 100;
 
     if (roll < legendaryThreshold) {
       return 'legendary';
