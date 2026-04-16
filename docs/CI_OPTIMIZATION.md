@@ -46,7 +46,7 @@ Optimized docker-compose file for CI services.
 - PostgreSQL: Ready in ~5-10s (vs 30-60s)
 - Nakama: Ready in ~20-40s (vs 60-120s)
 
-### 3. `scripts/ci-local-fast.sh`
+### 3. `scripts/ci-local.sh`
 New fast CI runner with advanced features.
 
 **Features:**
@@ -63,47 +63,47 @@ New fast CI runner with advanced features.
 
 ```bash
 # Run all jobs with default settings
-./scripts/ci-local-fast.sh
+./scripts/ci-local.sh
 
 # Run specific job
-./scripts/ci-local-fast.sh backend-lint
+./scripts/ci-local.sh backend-lint
 
 # Show help
-./scripts/ci-local-fast.sh --help
+./scripts/ci-local.sh --help
 ```
 
 ### Fast Mode (Recommended for Development)
 
 ```bash
 # Use fast docker-compose with optimized health checks
-./scripts/ci-local-fast.sh --fast
+./scripts/ci-local.sh --fast
 
 # Combine with parallel execution for maximum speed
-./scripts/ci-local-fast.sh --fast --parallel
+./scripts/ci-local.sh --fast --parallel
 ```
 
 ### Service Persistence
 
 ```bash
 # Keep services running after completion (useful for multiple runs)
-./scripts/ci-local-fast.sh --fast --persist
+./scripts/ci-local.sh --fast --persist
 
 # Now run individual jobs without startup overhead
-./scripts/ci-local-fast.sh backend-test
-./scripts/ci-local-fast.sh schema-validation
+./scripts/ci-local.sh backend-test
+./scripts/ci-local.sh schema-validation
 
 # Stop services when done
-./scripts/ci-local-fast.sh --clean
+./scripts/ci-local.sh --clean
 ```
 
 ### Service Management
 
 ```bash
 # Check service status
-./scripts/ci-local-fast.sh --status
+./scripts/ci-local.sh --status
 
 # Stop and cleanup
-./scripts/ci-local-fast.sh --clean
+./scripts/ci-local.sh --clean
 ```
 
 ## Comparison: Before vs After
@@ -179,8 +179,8 @@ Edit `.actrc-local` to customize:
 docker compose -f .github/docker-compose-ci-fast.yml -p ci-fast logs
 
 # Reset services
-./scripts/ci-local-fast.sh --clean
-./scripts/ci-local-fast.sh --fast
+./scripts/ci-local.sh --clean
+./scripts/ci-local.sh --fast
 ```
 
 ### Port conflicts

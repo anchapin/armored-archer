@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart ci-fast ci-fast-parallel ci-fast-persist ci-fast-clean ci ci-fast-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report
 
 # Default target
 all: help
@@ -77,13 +77,12 @@ help:
 	@echo "  make ci-services-status Show CI services status"
 	@echo "  make ci-services-restart Restart CI services"
 	@echo ""
-	@echo "$(GREEN)Fast Local CI (optimized)$(RESET)"
-	@echo "  make ci                Run all CI jobs (fast mode, sequential)"
-	@echo "  make ci-fast           Run all CI jobs (fast mode, optimized)"
-	@echo "  make ci-fast-parallel  Run all CI jobs in parallel (4 workers)"
-	@echo "  make ci-fast-persist   Run CI and keep services running"
-	@echo "  make ci-fast-clean     Stop and cleanup fast CI services"
-	@echo "  make ci-fast-status    Show fast CI services status"
+	@echo "$(GREEN)Local CI (optimized for speed)$(RESET)"
+	@echo "  make ci                Run all CI jobs sequentially"
+	@echo "  make ci-parallel       Run all CI jobs in parallel (4 workers)"
+	@echo "  make ci-persist        Run CI and keep services running"
+	@echo "  make ci-clean          Stop and cleanup CI services"
+	@echo "  make ci-status         Show CI services status"
 	@echo ""
 	@echo "$(GREEN)Development$(RESET)"
 	@echo "  make dev                Start development (backend with auto-reload)"
@@ -453,31 +452,27 @@ ci-services-restart:
 	@docker compose -f .github/docker-compose.yml -p ci-armored-archer restart
 	@echo "$(GREEN)✓ CI services restarted$(RESET)"
 
-## Fast Local CI (optimized for development)
-# Uses scripts/ci-local-fast.sh with parallel execution and fast docker-compose
+## Local CI (optimized for speed)
+# Uses scripts/ci-local.sh with parallel execution and fast docker-compose
 ci:
-	@echo "$(BLUE)Running fast local CI...$(RESET)"
-	@./scripts/ci-local-fast.sh --fast
+	@echo "$(BLUE)Running local CI...$(RESET)"
+	@./scripts/ci-local.sh --fast
 
-ci-fast:
-	@echo "$(BLUE)Running fast local CI...$(RESET)"
-	@./scripts/ci-local-fast.sh --fast
+ci-parallel:
+	@echo "$(BLUE)Running local CI in parallel...$(RESET)"
+	@./scripts/ci-local.sh --fast --parallel
 
-ci-fast-parallel:
-	@echo "$(BLUE)Running fast local CI in parallel...$(RESET)"
-	@./scripts/ci-local-fast.sh --fast --parallel
+ci-persist:
+	@echo "$(BLUE)Running local CI with service persistence...$(RESET)"
+	@./scripts/ci-local.sh --fast --persist
 
-ci-fast-persist:
-	@echo "$(BLUE)Running fast local CI with service persistence...$(RESET)"
-	@./scripts/ci-local-fast.sh --fast --persist
+ci-clean:
+	@echo "$(BLUE)Cleaning up CI services...$(RESET)"
+	@./scripts/ci-local.sh --clean
 
-ci-fast-clean:
-	@echo "$(BLUE)Cleaning up fast CI services...$(RESET)"
-	@./scripts/ci-local-fast.sh --clean
-
-ci-fast-status:
-	@echo "$(BLUE)Fast CI Services Status:$(RESET)"
-	@./scripts/ci-local-fast.sh --status
+ci-status:
+	@echo "$(BLUE)CI Services Status:$(RESET)"
+	@./scripts/ci-local.sh --status
 
 ## Smoke Tests (End-to-End Vertical Slice)
 # Issue: #684 - [Sprint 1] Create end-to-end smoke test script
