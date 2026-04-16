@@ -262,6 +262,107 @@ export const createMockNakama = (): Runtime.Nakama => {
     if (query.includes('loadout')) {
       return [];
     }
+
+    // Handle boss_defeats table queries
+    if (query.includes('boss_defeats')) {
+      const userId = params && params.length > 0 ? params[0] as string : 'test-user';
+      const bossDefeatsKey = 'boss_defeats:' + userId;
+      const bossDefeatsData: { [bossId: string]: { defeat_count: number; first_defeated_at: number } } = {};
+
+      if (testStorage.has(bossDefeatsKey)) {
+        try {
+          const stored = JSON.parse(testStorage.get(bossDefeatsKey) as string);
+          Object.assign(bossDefeatsData, stored);
+        } catch {
+          // Ignore parse errors
+        }
+      }
+
+      // SELECT defeat_count FROM boss_defeats WHERE user_id = $1 AND boss_id = $2
+      if (query.includes('defeat_count') && query.includes('WHERE') && params && params.length >= 2) {
+        const bossId = params[1] as string;
+        if (bossDefeatsData[bossId]) {
+          return [{ defeat_count: bossDefeatsData[bossId].defeat_count }];
+        }
+        return [];
+      }
+
+      // SELECT boss_id FROM boss_defeats WHERE user_id = $1
+      if (query.includes('boss_id') && query.includes('ORDER BY')) {
+        return Object.keys(bossDefeatsData).map((bossId) => ({ boss_id: bossId }));
+      }
+
+      // INSERT ... ON CONFLICT UPDATE for boss_defeats
+      if (query.includes('INSERT') && query.includes('ON CONFLICT')) {
+        const bossId = params && params[1] ? params[1] as string : 'unknown';
+        const now = Date.now();
+        if (bossDefeatsData[bossId]) {
+          bossDefeatsData[bossId].defeat_count++;
+          bossDefeatsData[bossId].first_defeated_at = now;
+        } else {
+          bossDefeatsData[bossId] = { defeat_count: 1, first_defeated_at: now };
+        }
+        testStorage.set(bossDefeatsKey, JSON.stringify(bossDefeatsData));
+        return [{ defeat_count: bossDefeatsData[bossId].defeat_count }];
+      }
+
+      return [];
+    }
+
+    // Handle unlocked_modifier_pools table queries
+    if (query.includes('unlocked_modifier_pools')) {
+      const userId = params && params.length > 0 ? params[0] as string : 'test-user';
+      const unlockedPoolsKey = 'unlocked_modifier_pools:' + userId;
+      const unlockedPools: string[] = [];
+
+      if (testStorage.has(unlockedPoolsKey)) {
+        try {
+          const stored = JSON.parse(testStorage.get(unlockedPoolsKey) as string);
+          if (Array.isArray(stored)) {
+            unlockedPools.push(...stored);
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
+
+      // SELECT modifier_id FROM unlocked_modifier_pools WHERE user_id = $1
+      if (query.includes('modifier_id') && query.includes('ORDER BY')) {
+        return unlockedPools.map((modifierId) => ({ modifier_id: modifierId }));
+      }
+
+      // SELECT modifier_id FROM unlocked_modifier_pools WHERE user_id = $1 AND modifier_id = $2
+      // This is used to check if a modifier is already unlocked
+      if (query.includes('SELECT modifier_id') && query.includes('WHERE user_id =') && query.includes('AND modifier_id =') && params && params.length >= 2) {
+        const modifierId = params[1] as string;
+        if (unlockedPools.includes(modifierId)) {
+          return [{ modifier_id: modifierId }];
+        }
+        return [];
+      }
+
+      // SELECT 1 FROM unlocked_modifier_pools WHERE user_id = $1 AND modifier_id = $2
+      if (query.includes('SELECT 1') && query.includes('modifier_id') && params && params.length >= 2) {
+        const modifierId = params[1] as string;
+        if (unlockedPools.includes(modifierId)) {
+          return [1];
+        }
+        return [];
+      }
+
+      // INSERT INTO unlocked_modifier_pools
+      if (query.includes('INSERT') && query.includes('unlocked_modifier_pools')) {
+        const modifierId = params && params[1] ? params[1] as string : 'unknown';
+        if (!unlockedPools.includes(modifierId)) {
+          unlockedPools.push(modifierId);
+          testStorage.set(unlockedPoolsKey, JSON.stringify(unlockedPools));
+        }
+        return [];
+      }
+
+      return [];
+    }
+
     return [];
   });
 

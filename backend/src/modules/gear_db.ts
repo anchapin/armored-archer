@@ -320,6 +320,7 @@ export interface FullInventoryData {
 export function getFullInventoryFromDB(nk: Runtime.Nakama, userId: string): FullInventoryData {
   const gear = getPlayerGearFromDB(nk, userId);
   const loadout = getPlayerLoadoutFromDB(nk, userId);
+  const unlockedModifierPools = getUnlockedModifierPoolsFromDB(nk, userId);
 
   // Convert loadout to equipped_gear mapping
   const equipped_gear: { [slot: string]: string | null } = {
@@ -335,15 +336,247 @@ export function getFullInventoryFromDB(nk: Runtime.Nakama, userId: string): Full
     return {
       gear,
       equipped_gear: {},
-      unlocked_modifier_pools: [],
+      unlocked_modifier_pools: unlockedModifierPools,
     };
   }
 
-  // Note: unlocked_modifier_pools is stored in Nakama storage for now
-  // This can be migrated to a database table in a future update
   return {
     gear,
     equipped_gear,
-    unlocked_modifier_pools: [],
+    unlocked_modifier_pools: unlockedModifierPools,
   };
+}
+
+/**
+ * Records a boss defeat for a player in the database.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param bossId - ID of the defeated boss
+ * @returns Object with defeat count, whether it was a first defeat, and error if any
+ */
+export interface RecordBossDefeatResult {
+  success: boolean;
+  defeat_count: number;
+  first_defeat: boolean;
+  error?: string;
+}
+
+export function recordBossDefeatInDB(
+  nk: Runtime.Nakama,
+  userId: string,
+  bossId: string
+): RecordBossDefeatResult {
+  // Check if this is the first defeat
+  const checkQuery = `
+    SELECT defeat_count FROM boss_defeats
+    WHERE user_id = $1 AND boss_id = $2
+  `;
+
+  let isFirstDefeat = false;
+  let defeatCount = 1;
+
+  try {
+    const checkResult = nk.dbQuery(checkQuery, [userId, bossId]) as any[];
+
+    if (checkResult && checkResult.length > 0) {
+      defeatCount = checkResult[0].defeat_count + 1;
+    } else {
+      isFirstDefeat = true;
+    }
+
+    // Upsert the boss defeat record
+    const upsertQuery = `
+      INSERT INTO boss_defeats (user_id, boss_id, defeat_count, first_defeated_at, last_defeated_at)
+      VALUES ($1, $2, 1, NOW(), NOW())
+      ON CONFLICT (user_id, boss_id) DO UPDATE
+      SET defeat_count = boss_defeats.defeat_count + 1,
+          last_defeated_at = NOW(),
+          updated_at = NOW()
+      RETURNING defeat_count
+    `;
+
+    const upsertResult = nk.dbQuery(upsertQuery, [userId, bossId]) as any[];
+    if (upsertResult && upsertResult.length > 0) {
+      defeatCount = upsertResult[0].defeat_count;
+    }
+
+    return {
+      success: true,
+      defeat_count: defeatCount,
+      first_defeat: isFirstDefeat,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      defeat_count: 0,
+      first_defeat: false,
+      error: `Failed to record boss defeat: ${String(error)}`,
+    };
+  }
+}
+
+/**
+ * Gets the list of boss IDs that a player has defeated.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @returns Array of boss IDs that have been defeated
+ */
+export function getDefeatedBossesFromDB(nk: Runtime.Nakama, userId: string): string[] {
+  const query = `
+    SELECT boss_id FROM boss_defeats
+    WHERE user_id = $1
+    ORDER BY first_defeated_at ASC
+  `;
+
+  try {
+    const result = nk.dbQuery(query, [userId]) as any[];
+    if (!result || result.length === 0) {
+      return [];
+    }
+    return result.map((row: any) => row.boss_id);
+  } catch (error) {
+    console.error('Failed to retrieve defeated bosses:', error);
+    return [];
+  }
+}
+
+/**
+ * Gets the defeat count for a specific boss.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param bossId - ID of the boss to check
+ * @returns Number of times the boss has been defeated, or 0 if never defeated
+ */
+export function getBossDefeatCount(nk: Runtime.Nakama, userId: string, bossId: string): number {
+  const query = `
+    SELECT defeat_count FROM boss_defeats
+    WHERE user_id = $1 AND boss_id = $2
+  `;
+
+  try {
+    const result = nk.dbQuery(query, [userId, bossId]) as any[];
+    if (result && result.length > 0) {
+      return result[0].defeat_count;
+    }
+    return 0;
+  } catch (error) {
+    console.error('Failed to retrieve boss defeat count:', error);
+    return 0;
+  }
+}
+
+/**
+ * Unlocks a modifier pool for a player in the database.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param modifierId - ID of the modifier pool to unlock
+ * @param unlockReason - Reason for unlocking (boss_defeat, enemy_defeat, purchase, event)
+ * @param sourceBossId - Optional ID of the boss that unlocked this modifier
+ * @returns Success status, whether it was newly unlocked, and error if any
+ */
+export interface UnlockModifierPoolResult {
+  success: boolean;
+  newly_unlocked: boolean;
+  error?: string;
+}
+
+export function unlockModifierPoolInDB(
+  nk: Runtime.Nakama,
+  userId: string,
+  modifierId: string,
+  unlockReason: string = 'boss_defeat',
+  sourceBossId?: string
+): UnlockModifierPoolResult {
+  // Check if already unlocked
+  const checkQuery = `
+    SELECT modifier_id FROM unlocked_modifier_pools
+    WHERE user_id = $1 AND modifier_id = $2
+  `;
+
+  try {
+    const checkResult = nk.dbQuery(checkQuery, [userId, modifierId]) as any[];
+
+    if (checkResult && checkResult.length > 0) {
+      return {
+        success: true,
+        newly_unlocked: false,
+      };
+    }
+
+    // Insert new unlock record
+    const insertQuery = `
+      INSERT INTO unlocked_modifier_pools (user_id, modifier_id, unlock_reason, source_boss_id)
+      VALUES ($1, $2, $3, $4)
+    `;
+
+    nk.dbQuery(insertQuery, [userId, modifierId, unlockReason, sourceBossId || null]);
+
+    return {
+      success: true,
+      newly_unlocked: true,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      newly_unlocked: false,
+      error: `Failed to unlock modifier pool: ${String(error)}`,
+    };
+  }
+}
+
+/**
+ * Gets the list of unlocked modifier pools for a player.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @returns Array of unlocked modifier pool IDs
+ */
+export function getUnlockedModifierPoolsFromDB(nk: Runtime.Nakama, userId: string): string[] {
+  const query = `
+    SELECT modifier_id FROM unlocked_modifier_pools
+    WHERE user_id = $1
+    ORDER BY unlocked_at ASC
+  `;
+
+  try {
+    const result = nk.dbQuery(query, [userId]) as any[];
+    if (!result || result.length === 0) {
+      return [];
+    }
+    return result.map((row: any) => row.modifier_id);
+  } catch (error) {
+    console.error('Failed to retrieve unlocked modifier pools:', error);
+    return [];
+  }
+}
+
+/**
+ * Checks if a modifier pool is unlocked for a player.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param modifierId - ID of the modifier pool to check
+ * @returns True if the modifier pool is unlocked
+ */
+export function isModifierPoolUnlocked(
+  nk: Runtime.Nakama,
+  userId: string,
+  modifierId: string
+): boolean {
+  const query = `
+    SELECT 1 FROM unlocked_modifier_pools
+    WHERE user_id = $1 AND modifier_id = $2
+  `;
+
+  try {
+    const result = nk.dbQuery(query, [userId, modifierId]) as any[];
+    return result && result.length > 0;
+  } catch (error) {
+    console.error('Failed to check if modifier pool is unlocked:', error);
+    return false;
+  }
 }
