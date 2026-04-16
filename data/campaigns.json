@@ -21,6 +21,12 @@
       "required_chapter": "chapter_2",
       "required_stage": "2_4",
       "description": "Complete Chapter 2: The Fortress"
+    },
+    "chapter_4": {
+      "type": "chapter_completion",
+      "required_chapter": "chapter_3",
+      "required_stage": "3_4",
+      "description": "Complete Chapter 3: The Dark Forest"
     }
   },
   "campaigns": [
@@ -293,6 +299,118 @@
             "xp": 400,
             "gold": 230,
             "rarity_weights": {"common": 5, "rare": 40, "epic": 35, "legendary": 20}
+          }
+        }
+      ]
+    },
+    {
+      "id": "chapter_4",
+      "name": "The Void",
+      "level_requirement": 8,
+      "stages": [
+        {
+          "id": "4_1",
+          "name": "Cracked Earth",
+          "waves": 5,
+          "boss": null,
+          "level_requirement": 8,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Earth Golem",
+            "health": 130,
+            "attack": 38,
+            "defense": 18,
+            "speed": 4
+          },
+          "loot": {
+            "xp": 450,
+            "gold": 260,
+            "rarity_weights": {"common": 5, "rare": 35, "epic": 40, "legendary": 20}
+          }
+        },
+        {
+          "id": "4_2",
+          "name": "Iron Fortress",
+          "waves": 6,
+          "boss": "boss_earth",
+          "level_requirement": 9,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Titan Guardian",
+            "health": 140,
+            "attack": 40,
+            "defense": 20,
+            "speed": 4
+          },
+          "loot": {
+            "xp": 500,
+            "gold": 290,
+            "rarity_weights": {"common": 3, "rare": 30, "epic": 42, "legendary": 25}
+          }
+        },
+        {
+          "id": "4_3",
+          "name": "Shadow Realm",
+          "waves": 6,
+          "boss": "boss_iron",
+          "level_requirement": 10,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Shadow Knight",
+            "health": 150,
+            "attack": 45,
+            "defense": 22,
+            "speed": 5
+          },
+          "loot": {
+            "xp": 550,
+            "gold": 320,
+            "rarity_weights": {"common": 2, "rare": 25, "epic": 45, "legendary": 28}
+          }
+        },
+        {
+          "id": "4_4",
+          "name": "Nightmare's End",
+          "waves": 7,
+          "boss": "boss_nightmare",
+          "level_requirement": 11,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Nightmare Walker",
+            "health": 160,
+            "attack": 50,
+            "defense": 25,
+            "speed": 5
+          },
+          "loot": {
+            "xp": 600,
+            "gold": 350,
+            "rarity_weights": {"common": 0, "rare": 20, "epic": 50, "legendary": 30}
+          }
+        },
+        {
+          "id": "4_5",
+          "name": "Shadow Ascension",
+          "waves": 8,
+          "boss": "boss_shadow",
+          "level_requirement": 12,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Shadow Lord",
+            "health": 180,
+            "attack": 55,
+            "defense": 28,
+            "speed": 6
+          },
+          "loot": {
+            "xp": 700,
+            "gold": 400,
+            "rarity_weights": {"common": 0, "rare": 15, "epic": 45, "legendary": 40}
           }
         }
       ]
