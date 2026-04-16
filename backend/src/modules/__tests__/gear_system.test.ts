@@ -245,7 +245,10 @@ describe('gear_system', () => {
     });
 
     it('should add to existing unlocked pools', () => {
-      const inventory = createMockInventory({ unlocked_modifier_pools: ['boss_basic'] });
+      const inventory = createMockInventory();
+
+      // Set up existing unlocked modifier pools in database mock
+      testStorage.set('unlocked_modifier_pools:test-user', JSON.stringify(['boss_basic']));
 
       mockNk.storageRead = jest.fn().mockReturnValue([
         {
@@ -770,7 +773,12 @@ describe('gear_system', () => {
       expect(mockNk.storageWrite).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle corrupted inventory on unlock', () => {
+    // SKIP: This test is no longer applicable to the database-backed implementation.
+    // The rpcUnlockModifierPool function now uses database functions (unlockModifierPoolInDB)
+    // which don't read from storage, so corrupted JSON in storage is not a valid test case.
+    // The original storage-based implementation would read and parse inventory data,
+    // but the new implementation uses direct database queries.
+    it.skip('should handle corrupted inventory on unlock', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([
         {
           collection: 'player_inventory',
@@ -889,56 +897,21 @@ describe('gear_system', () => {
         equipped_gear: {},
         unlocked_modifier_pools: ['heavy_impact'],
       };
-      const existingBossDefeatData = {
-        user_id: 'test-user',
-        defeats: { boss_basic: 2 },
-        unlocked_modifiers: ['heavy_impact'],
-      };
+      // Set up existing boss defeat data in database mock (2 previous defeats)
+      testStorage.set('boss_defeats:test-user', JSON.stringify({
+        boss_basic: { defeat_count: 2, first_defeated_at: Date.now() }
+      }));
+      // Set up existing unlocked modifier pools in database mock
+      testStorage.set('unlocked_modifier_pools:test-user', JSON.stringify(['heavy_impact']));
 
-      let callCount = 0;
-      mockNk.storageRead = jest.fn(
-        (objects: { collection: string; key: string; userId?: string }[]) => {
-          callCount++;
-          if (callCount <= 2) {
-            return objects.map((obj) => {
-              if (obj.collection === 'player_inventory') {
-                return {
-                  collection: 'player_inventory',
-                  key: 'test-user',
-                  value: JSON.stringify(existingInventory),
-                  version: '1',
-                };
-              } else if (obj.collection === 'boss_defeat_tracking') {
-                return {
-                  collection: 'boss_defeat_tracking',
-                  key: 'test-user',
-                  value: JSON.stringify(existingBossDefeatData),
-                  version: '1',
-                };
-              }
-              return { collection: obj.collection, key: obj.key, value: '' };
-            });
-          }
-          return objects.map((obj) => {
-            if (obj.collection === 'player_inventory') {
-              return {
-                collection: 'player_inventory',
-                key: 'test-user',
-                value: JSON.stringify(existingInventory),
-                version: '1',
-              };
-            } else if (obj.collection === 'boss_defeat_tracking') {
-              return {
-                collection: 'boss_defeat_tracking',
-                key: 'test-user',
-                value: JSON.stringify({ ...existingBossDefeatData, defeats: { boss_basic: 3 } }),
-                version: '1',
-              };
-            }
-            return { collection: obj.collection, key: obj.key, value: '' };
-          });
-        }
-      );
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: JSON.stringify(existingInventory),
+          version: '1',
+        },
+      ]);
       jest.spyOn(Math, 'random').mockReturnValue(0.9);
 
       const payload = JSON.stringify({
