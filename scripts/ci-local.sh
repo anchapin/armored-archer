@@ -26,6 +26,7 @@ readonly YELLOW='\033[1;33m'
 readonly BLUE='\033[0;34m'
 readonly MAGENTA='\033[0;35m'
 readonly CYAN='\033[0;36m'
+readonly GRAY='\033[0;90m'
 readonly NC='\033[0m'
 
 # Project root directory
@@ -218,9 +219,6 @@ run_act_job() {
     if [ -f "${PROJECT_ROOT}/.actrc-local" ]; then
         act_opts="-P .actrc-local ${act_opts}"
     fi
-
-    # Set timeout for jobs (15 minutes default)
-    act_opts="${act_opts} --job-timeout=15m"
 
     if act -j "${job}" ${act_opts} 2>&1; then
         JOB_STATUS[$job]="pass"
@@ -464,7 +462,7 @@ EOF
 }
 
 main() {
-    local command="${1:-all}"
+    local command="all"
     local job=""
 
     # Parse arguments
