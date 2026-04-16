@@ -27,6 +27,10 @@ const BOSS_WIND_SCENE = preload("res://scenes/enemies/bosses/boss_wind.tscn")
 const BOSS_FIRE_SCENE = preload("res://scenes/enemies/bosses/boss_fire.tscn")
 const BOSS_ICE_SCENE = preload("res://scenes/enemies/bosses/boss_ice.tscn")
 const BOSS_ELECTRIC_SCENE = preload("res://scenes/enemies/bosses/boss_electric.tscn")
+const BOSS_IRON_SCENE = preload("res://scenes/enemies/bosses/boss_iron.tscn")
+const BOSS_KING_SCENE = preload("res://scenes/enemies/bosses/boss_king.tscn")
+const BOSS_NIGHTMARE_SCENE = preload("res://scenes/enemies/bosses/boss_nightmare.tscn")
+const BOSS_SHADOW_SCENE = preload("res://scenes/enemies/bosses/boss_shadow.tscn")
 
 # --- Game State ---
 var player_current_health: int = 100
@@ -300,17 +304,13 @@ func spawn_boss(boss_name: String) -> void:
 		"boss_electric":
 			boss_scene = BOSS_ELECTRIC_SCENE
 		"boss_iron":
-			# boss_iron - Use boss_basic as placeholder
-			boss_scene = BOSS_BASIC_SCENE
+			boss_scene = BOSS_IRON_SCENE
 		"boss_king":
-			# boss_king - Use boss_wind as placeholder
-			boss_scene = BOSS_WIND_SCENE
+			boss_scene = BOSS_KING_SCENE
 		"boss_nightmare":
-			# boss_nightmare - Use boss_basic as placeholder
-			boss_scene = BOSS_BASIC_SCENE
+			boss_scene = BOSS_NIGHTMARE_SCENE
 		"boss_shadow":
-			# boss_shadow - Use boss_wind as placeholder
-			boss_scene = BOSS_WIND_SCENE
+			boss_scene = BOSS_SHADOW_SCENE
 
 	if boss_scene:
 		var boss_instance = boss_scene.instantiate() as CharacterBody2D
