@@ -110,3 +110,80 @@ visible = false
 layout_mode = 2
 text = "Loading matches..."
 horizontal_alignment = 1
+
+[node name="RewardInfoPanel" type="PanelContainer" parent="SafeAreaContainer/VBoxContainer"]
+unique_id=9876543210
+layout_mode = 2
+
+[node name="RewardInfoVBox" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel"]
+unique_id=1234567890
+layout_mode = 2
+
+[node name="RewardInfoTitle" type="Label" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox"]
+unique_id=1111111111
+layout_mode = 2
+text = "REWARD COMPARISON"
+horizontal_alignment = 1
+
+[node name="RewardComparisonHBox" type="HBoxContainer" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox"]
+unique_id=2222222222
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="RankedRewards" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox/RewardComparisonHBox"]
+unique_id=3333333333
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RankedTitle" type="Label" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox/RewardComparisonHBox/RankedRewards"]
+unique_id=4444444444
+layout_mode = 2
+text = "RANKED"
+horizontal_alignment = 1
+
+[node name="RankedWinLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox/RewardComparisonHBox/RankedRewards"]
+unique_id=5555555555
+layout_mode = 2
+text = "Win: 100 XP, 50 Coins"
+horizontal_alignment = 1
+
+[node name="RankedLoseLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox/RewardComparisonHBox/RankedRewards"]
+unique_id=6666666666
+layout_mode = 2
+text = "Lose: 25 XP, 10 Coins"
+horizontal_alignment = 1
+
+[node name="RankedPunchUpLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox/RewardComparisonHBox/RankedRewards"]
+unique_id=7777777777
+layout_mode = 2
+text = "Punch Up Win: +50% XP, +5 Gems"
+horizontal_alignment = 1
+
+[node name="CasualRewards" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox/RewardComparisonHBox"]
+unique_id=8888888888
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CasualTitle" type="Label" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox/RewardComparisonHBox/CasualRewards"]
+unique_id=9999999999
+layout_mode = 2
+text = "CASUAL"
+horizontal_alignment = 1
+
+[node name="CasualWinLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox/RewardComparisonHBox/CasualRewards"]
+unique_id=0000000001
+layout_mode = 2
+text = "Win: 50 XP, 25 Coins"
+horizontal_alignment = 1
+
+[node name="CasualLoseLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox/RewardComparisonHBox/CasualRewards"]
+unique_id=0000000002
+layout_mode = 2
+text = "Lose: 15 XP, 5 Coins"
+horizontal_alignment = 1
+
+[node name="CasualNoteLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox/RewardComparisonHBox/CasualRewards"]
+unique_id=0000000003
+layout_mode = 2
+text = "No rank change or gems"
+horizontal_alignment = 1
