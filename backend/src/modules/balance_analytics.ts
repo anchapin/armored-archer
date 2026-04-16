@@ -7,8 +7,8 @@
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { registerRpcWithMetrics } from './metrics';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 // ==========================================
 // Data Structures
@@ -166,17 +166,17 @@ const MAX_RECENT_ATTEMPTS = 100000;
 const recentDrops: DropRecord[] = [];
 const recentStageAttempts: StageAttemptRecord[] = [];
 const dropStatsCache: Map<string, { data: DropStatistics; timestamp: number }> = new Map();
-const stageStatsCache: Map<string, { data: StageCompletionStatistics; timestamp: number }> = new Map();
-const CACHE_TTL_MS = 300000; // 5 minutes
+const stageStatsCache: Map<string, { data: StageCompletionStatistics; timestamp: number }> =
+  new Map();
 
 // ==========================================
 // Expected Drop Rates (from gear_system.ts)
 // ==========================================
 
 const EXPECTED_DROP_RATES: { [rarity: string]: number } = {
-  common: 0.60,
+  common: 0.6,
   rare: 0.25,
-  epic: 0.10,
+  epic: 0.1,
   legendary: 0.05,
 };
 
@@ -185,12 +185,7 @@ const EXPECTED_DROP_RATES: { [rarity: string]: number } = {
 // ==========================================
 
 export function registerBalanceAnalyticsEndpoints(initializer: Runtime.Initializer): void {
-  registerRpcWithMetrics(
-    initializer,
-    'armored_archer/record_drop',
-    'record_drop',
-    rpcRecordDrop
-  );
+  registerRpcWithMetrics(initializer, 'armored_archer/record_drop', 'record_drop', rpcRecordDrop);
 
   registerRpcWithMetrics(
     initializer,
@@ -343,9 +338,7 @@ export function calculateDropStatistics(startTime?: number, endTime?: number): D
   const end = endTime ?? now;
 
   // Filter drops by time range
-  const filteredDrops = recentDrops.filter(
-    (d) => d.timestamp >= start && d.timestamp <= end
-  );
+  const filteredDrops = recentDrops.filter((d) => d.timestamp >= start && d.timestamp <= end);
 
   // Also load from storage if needed for longer time ranges
   // (simplified for this implementation - in production, use proper database queries)
@@ -376,7 +369,6 @@ export function calculateDropStatistics(startTime?: number, endTime?: number): D
   }
 
   // Process drops
-  const totalRolls = new Map<string, number>(); // Count total rolls (drops + non-drops)
   const difficultyStats: Map<string, { attempts: number; drops: number }> = new Map();
   const stageStats: Map<
     string,
@@ -389,35 +381,8 @@ export function calculateDropStatistics(startTime?: number, endTime?: number): D
       stats.byRarity[drop.gearRarity].count++;
     }
 
-    // Count by difficulty
-    if (!difficultyStats.has(drop.difficulty)) {
-      difficultyStats.set(drop.difficulty, { attempts: 0, drops: 0 });
-    }
-    const diffStat = difficultyStats.get(drop.difficulty)!;
-    diffStat.attempts++;
-    diffStat.drops++;
-
-    // Count by stage
-    if (!stageStats.has(drop.stageId)) {
-      stageStats.set(drop.stageId, {
-        attempts: 0,
-        drops: 0,
-        byRarity: new Map(),
-      });
-    }
-    const stageStat = stageStats.get(drop.stageId)!;
-    stageStat.attempts++;
-    stageStat.drops++;
-    if (!stageStat.byRarity.has(drop.gearRarity)) {
-      stageStat.byRarity.set(drop.gearRarity, 0);
-    }
-    stageStat.byRarity.set(drop.gearRarity, stageStat.byRarity.get(drop.gearRarity)! + 1);
-
-    // Boss bonus tracking
-    if (drop.bossDefeated) {
-      stats.bossBonusDrops.attempts++;
-      stats.bossBonusDrops.drops++;
-    }
+    // Process drop record using helper
+    processDropRecord(drop, difficultyStats, stageStats, stats.bossBonusDrops);
   }
 
   // Calculate total attempts from stage attempts (for non-dropped rolls)
@@ -430,7 +395,7 @@ export function calculateDropStatistics(startTime?: number, endTime?: number): D
 
   // Calculate rarity percentages and deviations
   if (stats.totalDrops > 0) {
-    for (const [rarity, data] of Object.entries(stats.byRarity)) {
+    for (const data of Object.values(stats.byRarity)) {
       data.percentage = (data.count / stats.totalDrops) * 100;
       data.deviation = data.percentage - data.expectedPercentage;
     }
@@ -458,8 +423,7 @@ export function calculateDropStatistics(startTime?: number, endTime?: number): D
 
   // Calculate boss bonus drop rate
   if (stats.bossBonusDrops.attempts > 0) {
-    stats.bossBonusDrops.dropRate =
-      stats.bossBonusDrops.drops / stats.bossBonusDrops.attempts;
+    stats.bossBonusDrops.dropRate = stats.bossBonusDrops.drops / stats.bossBonusDrops.attempts;
   }
 
   return stats;
@@ -502,64 +466,25 @@ export function calculateStageCompletionStatistics(
   > = new Map();
   const difficultyData: Map<string, { attempts: number; completions: number; stars: number[] }> =
     new Map();
-  const chapterData: Map<string, { totalStages: Set<string>; attempts: number; completions: number }> =
-    new Map();
+  const chapterData: Map<
+    string,
+    { totalStages: Set<string>; attempts: number; completions: number }
+  > = new Map();
+
+  const totalCompletionsRef = { value: 0 };
 
   for (const attempt of filteredAttempts) {
-    // Track by stage
-    if (!stageData.has(attempt.stageId)) {
-      stageData.set(attempt.stageId, {
-        attempts: 0,
-        completions: 0,
-        stars: [],
-        scores: [],
-        difficulty: attempt.difficulty,
-      });
-    }
-    const stage = stageData.get(attempt.stageId)!;
-    stage.attempts++;
-    if (attempt.completed) {
-      stage.completions++;
-      stage.stars.push(attempt.starsEarned);
-      stage.scores.push(attempt.score);
-      stats.totalCompletions++;
-    }
-
-    // Track by difficulty
-    if (!difficultyData.has(attempt.difficulty)) {
-      difficultyData.set(attempt.difficulty, { attempts: 0, completions: 0, stars: [] });
-    }
-    const diff = difficultyData.get(attempt.difficulty)!;
-    diff.attempts++;
-    if (attempt.completed) {
-      diff.completions++;
-      diff.stars.push(attempt.starsEarned);
-    }
-
-    // Track by chapter (derived from stage prefix)
-    const chapterId = attempt.stagePrefix;
-    if (!chapterData.has(chapterId)) {
-      chapterData.set(chapterId, {
-        totalStages: new Set(),
-        attempts: 0,
-        completions: 0,
-      });
-    }
-    const chapter = chapterData.get(chapterId)!;
-    chapter.totalStages.add(attempt.stageId);
-    chapter.attempts++;
-    if (attempt.completed) {
-      chapter.completions++;
-    }
-
-    // Track boss stages
-    if (attempt.bossDefeated && attempt.completed) {
-      stats.bossStages.attempts++;
-      stats.bossStages.completions++;
-    } else if (attempt.bossDefeated) {
-      stats.bossStages.attempts++;
-    }
+    processStageAttempt(
+      attempt,
+      stageData,
+      difficultyData,
+      chapterData,
+      stats.bossStages,
+      totalCompletionsRef
+    );
   }
+
+  stats.totalCompletions = totalCompletionsRef.value;
 
   // Calculate overall completion rate
   stats.overallCompletionRate =
@@ -567,14 +492,8 @@ export function calculateStageCompletionStatistics(
 
   // Populate stage stats
   for (const [stageId, data] of stageData) {
-    const avgStars =
-      data.stars.length > 0
-        ? data.stars.reduce((a, b) => a + b, 0) / data.stars.length
-        : 0;
-    const avgScore =
-      data.scores.length > 0
-        ? data.scores.reduce((a, b) => a + b, 0) / data.scores.length
-        : 0;
+    const avgStars = calculateAverage(data.stars);
+    const avgScore = calculateAverage(data.scores);
 
     stats.byStage[stageId] = {
       attempts: data.attempts,
@@ -588,10 +507,7 @@ export function calculateStageCompletionStatistics(
 
   // Populate difficulty stats
   for (const [difficulty, data] of difficultyData) {
-    const avgStars =
-      data.stars.length > 0
-        ? data.stars.reduce((a, b) => a + b, 0) / data.stars.length
-        : 0;
+    const avgStars = calculateAverage(data.stars);
 
     stats.byDifficulty[difficulty] = {
       attempts: data.attempts,
@@ -614,20 +530,236 @@ export function calculateStageCompletionStatistics(
 
   // Calculate boss completion rate
   if (stats.bossStages.attempts > 0) {
-    stats.bossStages.completionRate =
-      stats.bossStages.completions / stats.bossStages.attempts;
+    stats.bossStages.completionRate = stats.bossStages.completions / stats.bossStages.attempts;
   }
 
   return stats;
 }
 
+// ==========================================
+// Helper Functions for Complexity Reduction
+// ==========================================
+
+/**
+ * Processes a single stage attempt into intermediate stats.
+ */
+function processStageAttempt(
+  attempt: StageAttemptRecord,
+  stageData: Map<
+    string,
+    { attempts: number; completions: number; stars: number[]; scores: number[]; difficulty: string }
+  >,
+  difficultyData: Map<string, { attempts: number; completions: number; stars: number[] }>,
+  chapterData: Map<string, { totalStages: Set<string>; attempts: number; completions: number }>,
+  bossStages: { attempts: number; completions: number },
+  totalCompletionsRef: { value: number }
+): void {
+  // Track by stage
+  if (!stageData.has(attempt.stageId)) {
+    stageData.set(attempt.stageId, {
+      attempts: 0,
+      completions: 0,
+      stars: [],
+      scores: [],
+      difficulty: attempt.difficulty,
+    });
+  }
+  const stage = stageData.get(attempt.stageId)!;
+  stage.attempts++;
+  if (attempt.completed) {
+    stage.completions++;
+    stage.stars.push(attempt.starsEarned);
+    stage.scores.push(attempt.score);
+    totalCompletionsRef.value++;
+  }
+
+  // Track by difficulty
+  if (!difficultyData.has(attempt.difficulty)) {
+    difficultyData.set(attempt.difficulty, { attempts: 0, completions: 0, stars: [] });
+  }
+  const diff = difficultyData.get(attempt.difficulty)!;
+  diff.attempts++;
+  if (attempt.completed) {
+    diff.completions++;
+    diff.stars.push(attempt.starsEarned);
+  }
+
+  // Track by chapter
+  const chapterId = attempt.stagePrefix;
+  if (!chapterData.has(chapterId)) {
+    chapterData.set(chapterId, { totalStages: new Set(), attempts: 0, completions: 0 });
+  }
+  const chapter = chapterData.get(chapterId)!;
+  chapter.totalStages.add(attempt.stageId);
+  chapter.attempts++;
+  if (attempt.completed) {
+    chapter.completions++;
+  }
+
+  // Track boss stages
+  if (attempt.bossDefeated && attempt.completed) {
+    bossStages.attempts++;
+    bossStages.completions++;
+  } else if (attempt.bossDefeated) {
+    bossStages.attempts++;
+  }
+}
+
+/**
+ * Processes a single drop record into intermediate stats.
+ */
+function processDropRecord(
+  drop: DropRecord,
+  difficultyStats: Map<string, { attempts: number; drops: number }>,
+  stageStats: Map<string, { attempts: number; drops: number; byRarity: Map<string, number> }>,
+  bossBonusDrops: { attempts: number; drops: number }
+): void {
+  // Update difficulty stats
+  if (!difficultyStats.has(drop.difficulty)) {
+    difficultyStats.set(drop.difficulty, { attempts: 0, drops: 0 });
+  }
+  const diffStat = difficultyStats.get(drop.difficulty)!;
+  diffStat.attempts++;
+  diffStat.drops++;
+
+  // Update stage stats
+  if (!stageStats.has(drop.stageId)) {
+    stageStats.set(drop.stageId, { attempts: 0, drops: 0, byRarity: new Map() });
+  }
+  const stageStat = stageStats.get(drop.stageId)!;
+  stageStat.attempts++;
+  stageStat.drops++;
+  if (!stageStat.byRarity.has(drop.gearRarity)) {
+    stageStat.byRarity.set(drop.gearRarity, 0);
+  }
+  stageStat.byRarity.set(drop.gearRarity, stageStat.byRarity.get(drop.gearRarity)! + 1);
+
+  // Update boss bonus tracking
+  if (drop.bossDefeated) {
+    bossBonusDrops.attempts++;
+    bossBonusDrops.drops++;
+  }
+}
+
+/**
+ * Calculates average from an array of numbers.
+ */
+function calculateAverage(values: number[]): number {
+  return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+}
+
+/**
+ * Analyzes drop distribution for insights.
+ */
+function analyzeDropDistribution(dropStats: DropStatistics, insights: BalanceInsights): void {
+  for (const [rarity, data] of Object.entries(dropStats.byRarity)) {
+    if (dropStats.totalDrops > 0) {
+      const deviationPercent = Math.abs(data.deviation);
+      if (deviationPercent > 10) {
+        insights.drops.issues.push(
+          `${rarity} drop rate is ${data.deviation > 0 ? 'above' : 'below'} expected by ${deviationPercent.toFixed(1)}%`
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Analyzes drop rate by difficulty for insights.
+ */
+function analyzeDifficultyDropRates(dropStats: DropStatistics, insights: BalanceInsights): void {
+  for (const [difficulty, data] of Object.entries(dropStats.byDifficulty)) {
+    if (data.attempts > 50) {
+      if (data.dropRate < 0.1) {
+        insights.drops.issues.push(
+          `${difficulty} difficulty has very low drop rate (${(data.dropRate * 100).toFixed(1)}%)`
+        );
+        insights.drops.recommendations.push(
+          `Consider increasing drop rates for ${difficulty} difficulty`
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Analyzes stage completion rates for insights.
+ */
+function analyzeStageCompletionRates(
+  stageStats: StageCompletionStatistics,
+  insights: BalanceInsights
+): void {
+  for (const [stageId, data] of Object.entries(stageStats.byStage)) {
+    if (data.attempts > 20) {
+      if (data.completionRate < 0.2) {
+        insights.stages.issues.push(
+          `${stageId} has very low completion rate (${(data.completionRate * 100).toFixed(1)}%)`
+        );
+        insights.stages.recommendations.push(
+          `Consider lowering ${stageId} difficulty or adjusting rewards`
+        );
+      } else if (data.completionRate > 0.95) {
+        insights.stages.issues.push(
+          `${stageId} has very high completion rate (${(data.completionRate * 100).toFixed(1)}%) - may be too easy`
+        );
+        insights.stages.recommendations.push(`Consider increasing ${stageId} difficulty`);
+      }
+    }
+  }
+}
+
+/**
+ * Analyzes chapter progression for insights.
+ */
+function analyzeChapterProgression(
+  stageStats: StageCompletionStatistics,
+  insights: BalanceInsights
+): void {
+  const chapterCompletionRates = Object.entries(stageStats.byChapter).map(([chapterId, data]) => ({
+    chapterId,
+    rate: data.completionRate,
+  }));
+  chapterCompletionRates.sort((a, b) => a.rate - b.rate);
+
+  if (chapterCompletionRates.length > 1) {
+    const lowestRateChapter = chapterCompletionRates[0];
+    const highestRateChapter = chapterCompletionRates[chapterCompletionRates.length - 1];
+    const rateGap = highestRateChapter.rate - lowestRateChapter.rate;
+
+    if (rateGap > 0.5) {
+      insights.stages.issues.push(
+        `Large progression gap: ${lowestRateChapter.chapterId} (${(lowestRateChapter.rate * 100).toFixed(1)}%) vs ${highestRateChapter.chapterId} (${(highestRateChapter.rate * 100).toFixed(1)}%)`
+      );
+      insights.stages.recommendations.push(
+        'Consider adding progression bridges or difficulty scaling between chapters'
+      );
+    }
+  }
+}
+
+/**
+ * Analyzes boss completion rates for insights.
+ */
+function analyzeBossCompletionRates(
+  stageStats: StageCompletionStatistics,
+  insights: BalanceInsights
+): void {
+  if (stageStats.bossStages.attempts > 10) {
+    if (stageStats.bossStages.completionRate < 0.3) {
+      insights.stages.issues.push(
+        `Boss stages have low completion rate (${(stageStats.bossStages.completionRate * 100).toFixed(1)}%)`
+      );
+      insights.stages.recommendations.push(
+        'Consider reducing boss difficulty or improving player tools'
+      );
+    }
+  }
+}
+
 /**
  * Generates balance insights and recommendations.
  */
-export function generateBalanceInsights(
-  startTime?: number,
-  endTime?: number
-): BalanceInsights {
+export function generateBalanceInsights(startTime?: number, endTime?: number): BalanceInsights {
   const dropStats = calculateDropStatistics(startTime, endTime);
   const stageStats = calculateStageCompletionStatistics(startTime, endTime);
 
@@ -651,86 +783,19 @@ export function generateBalanceInsights(
   };
 
   // Analyze drop distribution
-  for (const [rarity, data] of Object.entries(dropStats.byRarity)) {
-    if (dropStats.totalDrops > 0) {
-      const deviationPercent = Math.abs(data.deviation);
-      if (deviationPercent > 10) {
-        insights.drops.issues.push(
-          `${rarity} drop rate is ${data.deviation > 0 ? 'above' : 'below'} expected by ${deviationPercent.toFixed(1)}%`
-        );
-      }
-    }
-  }
+  analyzeDropDistribution(dropStats, insights);
 
   // Check for drop rate issues by difficulty
-  for (const [difficulty, data] of Object.entries(dropStats.byDifficulty)) {
-    if (data.attempts > 50) {
-      // Minimum sample size
-      if (data.dropRate < 0.1) {
-        insights.drops.issues.push(
-          `${difficulty} difficulty has very low drop rate (${(data.dropRate * 100).toFixed(1)}%)`
-        );
-        insights.drops.recommendations.push(
-          `Consider increasing drop rates for ${difficulty} difficulty`
-        );
-      }
-    }
-  }
+  analyzeDifficultyDropRates(dropStats, insights);
 
   // Analyze stage completion rates
-  for (const [stageId, data] of Object.entries(stageStats.byStage)) {
-    if (data.attempts > 20) {
-      // Minimum sample size
-      if (data.completionRate < 0.2) {
-        insights.stages.issues.push(
-          `${stageId} has very low completion rate (${(data.completionRate * 100).toFixed(1)}%)`
-        );
-        insights.stages.recommendations.push(
-          `Consider lowering ${stageId} difficulty or adjusting rewards`
-        );
-      } else if (data.completionRate > 0.95) {
-        insights.stages.issues.push(
-          `${stageId} has very high completion rate (${(data.completionRate * 100).toFixed(1)}%) - may be too easy`
-        );
-        insights.stages.recommendations.push(
-          `Consider increasing ${stageId} difficulty`
-        );
-      }
-    }
-  }
+  analyzeStageCompletionRates(stageStats, insights);
 
   // Analyze chapter progression
-  const chapterCompletionRates = Object.entries(stageStats.byChapter).map(
-    ([chapterId, data]) => ({ chapterId, rate: data.completionRate })
-  );
-  chapterCompletionRates.sort((a, b) => a.rate - b.rate);
-
-  if (chapterCompletionRates.length > 1) {
-    const lowestRateChapter = chapterCompletionRates[0];
-    const highestRateChapter = chapterCompletionRates[chapterCompletionRates.length - 1];
-    const rateGap = highestRateChapter.rate - lowestRateChapter.rate;
-
-    if (rateGap > 0.5) {
-      insights.stages.issues.push(
-        `Large progression gap: ${lowestRateChapter.chapterId} (${(lowestRateChapter.rate * 100).toFixed(1)}%) vs ${highestRateChapter.chapterId} (${(highestRateChapter.rate * 100).toFixed(1)}%)`
-      );
-      insights.stages.recommendations.push(
-        'Consider adding progression bridges or difficulty scaling between chapters'
-      );
-    }
-  }
+  analyzeChapterProgression(stageStats, insights);
 
   // Analyze boss completion rates
-  if (stageStats.bossStages.attempts > 10) {
-    if (stageStats.bossStages.completionRate < 0.3) {
-      insights.stages.issues.push(
-        `Boss stages have low completion rate (${(stageStats.bossStages.completionRate * 100).toFixed(1)}%)`
-      );
-      insights.stages.recommendations.push(
-        'Consider reducing boss difficulty or improving player tools'
-      );
-    }
-  }
+  analyzeBossCompletionRates(stageStats, insights);
 
   return insights;
 }
