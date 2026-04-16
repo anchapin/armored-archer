@@ -13,6 +13,12 @@ import {
   registerRpcAcceptMatch,
   registerRpcGetPlayerRank,
   registerRpcCompleteMatch,
+  rpcSubmitTurn,
+  rpcGetAsyncMatchState,
+  rpcForfeitMatch,
+  registerRpcSubmitTurn,
+  registerRpcGetAsyncMatchState,
+  registerRpcForfeitMatch,
 } from '../matchmaker';
 
 // Mock anti_cheat module
@@ -1016,6 +1022,417 @@ describe('matchmaker', () => {
         'armored_archer/complete_match',
         rpcCompleteMatch
       );
+    });
+  });
+
+  // ==================== ASYNC DUEL LIFECYCLE TESTS ====================
+
+  describe('Async Duel Lifecycle', () => {
+    describe('rpcSubmitTurn', () => {
+      it('should submit a turn successfully', () => {
+        const match: PvPMatch = {
+          match_id: 'match_123',
+          creator_id: 'creator-user',
+          opponent_id: 'opponent-user',
+          creator_rank: 15,
+          opponent_rank: 14,
+          match_type: 'ranked',
+          is_punch_up: false,
+          status: 'active',
+          created_at: Date.now() - 60000,
+          updated_at: Date.now(),
+          creator_turn_data: undefined,
+          opponent_turn_data: undefined,
+          winner: undefined,
+          expires_at: Date.now() + 86400000,
+          last_turn_timestamp: Date.now() - 30000,
+          // Async duel fields
+          current_turn: 1,
+          current_player: 'creator-user',
+          turn_time_limit_ms: 86400000,
+          creator_health: 100,
+          opponent_health: 100,
+          max_turns: 10,
+          creator_consecutive_timeouts: 0,
+          opponent_consecutive_timeouts: 0,
+        };
+
+        mockNk.storageRead = jest.fn(() => [
+          {
+            collection: 'pvp_matches',
+            key: 'match_123',
+            userId: 'test-user-123',
+            value: JSON.stringify(match),
+          },
+        ]);
+
+        const payload = JSON.stringify({
+          match_id: 'match_123',
+          action_type: 'shoot',
+          angle: 1.57,
+          power: 0.9,
+        });
+
+        mockCtx.userId = 'creator-user';
+
+        const result = rpcSubmitTurn(mockCtx, mockLogger, mockNk, payload);
+        const response = JSON.parse(result);
+
+        expect(response.success).toBe(true);
+        expect(response.turn_submitted).toBe(true);
+        expect(response.match.creator_turn_data).toBeDefined();
+        expect(response.match.creator_turn_data.action_type).toBe('shoot');
+        expect(mockNk.storageWrite).toHaveBeenCalled();
+      });
+
+      it('should reject turn submission when not player\'s turn', () => {
+        const match: PvPMatch = {
+          match_id: 'match_123',
+          creator_id: 'creator-user',
+          opponent_id: 'opponent-user',
+          creator_rank: 15,
+          opponent_rank: 14,
+          match_type: 'ranked',
+          is_punch_up: false,
+          status: 'active',
+          created_at: Date.now() - 60000,
+          updated_at: Date.now(),
+          creator_turn_data: undefined,
+          opponent_turn_data: undefined,
+          winner: undefined,
+          expires_at: Date.now() + 86400000,
+          last_turn_timestamp: Date.now() - 30000,
+          current_turn: 1,
+          current_player: 'opponent-user', // Not creator's turn
+          turn_time_limit_ms: 86400000,
+          creator_health: 100,
+          opponent_health: 100,
+          max_turns: 10,
+          creator_consecutive_timeouts: 0,
+          opponent_consecutive_timeouts: 0,
+        };
+
+        mockNk.storageRead = jest.fn(() => [
+          {
+            collection: 'pvp_matches',
+            key: 'match_123',
+            userId: 'test-user-123',
+            value: JSON.stringify(match),
+          },
+        ]);
+
+        const payload = JSON.stringify({
+          match_id: 'match_123',
+          action_type: 'shoot',
+          angle: 1.57,
+        });
+
+        mockCtx.userId = 'creator-user';
+
+        const result = rpcSubmitTurn(mockCtx, mockLogger, mockNk, payload);
+        const response = JSON.parse(result);
+
+        expect(response.success).toBeUndefined();
+        expect(response.error).toBe('It is not your turn');
+        expect(response.current_player).toBe('opponent-user');
+      });
+
+      it('should reject turn submission for non-active match', () => {
+        const match: PvPMatch = {
+          match_id: 'match_123',
+          creator_id: 'creator-user',
+          opponent_id: 'opponent-user',
+          creator_rank: 15,
+          opponent_rank: 14,
+          match_type: 'ranked',
+          is_punch_up: false,
+          status: 'pending', // Not active
+          created_at: Date.now() - 60000,
+          updated_at: Date.now(),
+          creator_turn_data: undefined,
+          opponent_turn_data: undefined,
+          winner: undefined,
+          expires_at: Date.now() + 86400000,
+          last_turn_timestamp: Date.now() - 30000,
+          current_turn: 1,
+          current_player: 'creator-user',
+          turn_time_limit_ms: 86400000,
+          creator_health: 100,
+          opponent_health: 100,
+          max_turns: 10,
+          creator_consecutive_timeouts: 0,
+          opponent_consecutive_timeouts: 0,
+        };
+
+        mockNk.storageRead = jest.fn(() => [
+          {
+            collection: 'pvp_matches',
+            key: 'match_123',
+            userId: 'test-user-123',
+            value: JSON.stringify(match),
+          },
+        ]);
+
+        const payload = JSON.stringify({
+          match_id: 'match_123',
+          action_type: 'shoot',
+          angle: 1.57,
+        });
+
+        mockCtx.userId = 'creator-user';
+
+        const result = rpcSubmitTurn(mockCtx, mockLogger, mockNk, payload);
+        const response = JSON.parse(result);
+
+        expect(response.success).toBeUndefined();
+        expect(response.error).toBe('Match is not active');
+        expect(response.match_status).toBe('pending');
+      });
+    });
+
+    describe('rpcGetAsyncMatchState', () => {
+      it('should return match state with player-specific information', () => {
+        const match: PvPMatch = {
+          match_id: 'match_123',
+          creator_id: 'creator-user',
+          opponent_id: 'opponent-user',
+          creator_rank: 15,
+          opponent_rank: 14,
+          match_type: 'ranked',
+          is_punch_up: false,
+          status: 'active',
+          created_at: Date.now() - 60000,
+          updated_at: Date.now(),
+          creator_turn_data: undefined,
+          opponent_turn_data: undefined,
+          winner: undefined,
+          expires_at: Date.now() + 86400000,
+          last_turn_timestamp: Date.now() - 30000,
+          current_turn: 1,
+          current_player: 'creator-user',
+          turn_time_limit_ms: 86400000,
+          creator_health: 85,
+          opponent_health: 92,
+          max_turns: 10,
+          creator_consecutive_timeouts: 0,
+          opponent_consecutive_timeouts: 0,
+        };
+
+        mockNk.storageRead = jest.fn(() => [
+          {
+            collection: 'pvp_matches',
+            key: 'match_123',
+            userId: 'test-user-123',
+            value: JSON.stringify(match),
+          },
+        ]);
+
+        const payload = JSON.stringify({ match_id: 'match_123' });
+        mockCtx.userId = 'creator-user';
+
+        const result = rpcGetAsyncMatchState(mockCtx, mockLogger, mockNk, payload);
+        const response = JSON.parse(result);
+
+        expect(response.success).toBe(true);
+        expect(response.is_my_turn).toBe(true);
+        expect(response.my_health).toBe(85);
+        expect(response.opponent_health).toBe(92);
+        expect(response.time_remaining_ms).toBeGreaterThan(0);
+      });
+
+      it('should correctly identify opponent\'s turn', () => {
+        const match: PvPMatch = {
+          match_id: 'match_123',
+          creator_id: 'creator-user',
+          opponent_id: 'opponent-user',
+          creator_rank: 15,
+          opponent_rank: 14,
+          match_type: 'ranked',
+          is_punch_up: false,
+          status: 'active',
+          created_at: Date.now() - 60000,
+          updated_at: Date.now(),
+          creator_turn_data: undefined,
+          opponent_turn_data: undefined,
+          winner: undefined,
+          expires_at: Date.now() + 86400000,
+          last_turn_timestamp: Date.now() - 30000,
+          current_turn: 1,
+          current_player: 'opponent-user', // Opponent's turn
+          turn_time_limit_ms: 86400000,
+          creator_health: 85,
+          opponent_health: 92,
+          max_turns: 10,
+          creator_consecutive_timeouts: 0,
+          opponent_consecutive_timeouts: 0,
+        };
+
+        mockNk.storageRead = jest.fn(() => [
+          {
+            collection: 'pvp_matches',
+            key: 'match_123',
+            userId: 'test-user-123',
+            value: JSON.stringify(match),
+          },
+        ]);
+
+        const payload = JSON.stringify({ match_id: 'match_123' });
+        mockCtx.userId = 'creator-user';
+
+        const result = rpcGetAsyncMatchState(mockCtx, mockLogger, mockNk, payload);
+        const response = JSON.parse(result);
+
+        expect(response.success).toBe(true);
+        expect(response.is_my_turn).toBe(false);
+      });
+
+      it('should return error for non-existent match', () => {
+        mockNk.storageRead = jest.fn(() => []);
+
+        const payload = JSON.stringify({ match_id: 'nonexistent' });
+        mockCtx.userId = 'creator-user';
+
+        const result = rpcGetAsyncMatchState(mockCtx, mockLogger, mockNk, payload);
+        const response = JSON.parse(result);
+
+        expect(response.success).toBeUndefined();
+        expect(response.error).toBe('Match not found');
+      });
+    });
+
+    describe('rpcForfeitMatch', () => {
+      it('should forfeit match successfully', () => {
+        const match: PvPMatch = {
+          match_id: 'match_123',
+          creator_id: 'creator-user',
+          opponent_id: 'opponent-user',
+          creator_rank: 15,
+          opponent_rank: 14,
+          match_type: 'ranked',
+          is_punch_up: false,
+          status: 'active',
+          created_at: Date.now() - 60000,
+          updated_at: Date.now(),
+          creator_turn_data: undefined,
+          opponent_turn_data: undefined,
+          winner: undefined,
+          expires_at: Date.now() + 86400000,
+          last_turn_timestamp: Date.now() - 30000,
+          current_turn: 1,
+          current_player: 'creator-user',
+          turn_time_limit_ms: 86400000,
+          creator_health: 85,
+          opponent_health: 92,
+          max_turns: 10,
+          creator_consecutive_timeouts: 0,
+          opponent_consecutive_timeouts: 0,
+        };
+
+        mockNk.storageRead = jest.fn(() => [
+          {
+            collection: 'pvp_matches',
+            key: 'match_123',
+            userId: 'test-user-123',
+            value: JSON.stringify(match),
+          },
+        ]);
+
+        const payload = JSON.stringify({ match_id: 'match_123' });
+        mockCtx.userId = 'creator-user';
+
+        // Mock complete match process
+        (applyEloUpdates as jest.Mock).mockReturnValue({
+          winnerNewElo: 1220,
+          loserNewElo: 1180,
+        });
+
+        (getLeaderboardEntry as jest.Mock).mockReturnValue({ score: 1200 });
+
+        const result = rpcForfeitMatch(mockCtx, mockLogger, mockNk, payload);
+        const response = JSON.parse(result);
+
+        expect(response.success).toBe(true);
+        expect(response.forfeited_by).toBe('creator-user');
+        expect(response.forfeit_reason).toBe('voluntary');
+        expect(response.match.winner).toBe('opponent-user');
+      });
+
+      it('should reject forfeit for non-active match', () => {
+        const match: PvPMatch = {
+          match_id: 'match_123',
+          creator_id: 'creator-user',
+          opponent_id: 'opponent-user',
+          creator_rank: 15,
+          opponent_rank: 14,
+          match_type: 'ranked',
+          is_punch_up: false,
+          status: 'pending', // Not active
+          created_at: Date.now() - 60000,
+          updated_at: Date.now(),
+          creator_turn_data: undefined,
+          opponent_turn_data: undefined,
+          winner: undefined,
+          expires_at: Date.now() + 86400000,
+          last_turn_timestamp: Date.now() - 30000,
+          current_turn: 1,
+          current_player: 'creator-user',
+          turn_time_limit_ms: 86400000,
+          creator_health: 100,
+          opponent_health: 100,
+          max_turns: 10,
+          creator_consecutive_timeouts: 0,
+          opponent_consecutive_timeouts: 0,
+        };
+
+        mockNk.storageRead = jest.fn(() => [
+          {
+            collection: 'pvp_matches',
+            key: 'match_123',
+            userId: 'creator-user',
+            value: JSON.stringify(match),
+          },
+        ]);
+
+        const payload = JSON.stringify({ match_id: 'match_123' });
+        mockCtx.userId = 'creator-user';
+
+        const result = rpcForfeitMatch(mockCtx, mockLogger, mockNk, payload);
+        const response = JSON.parse(result);
+
+        expect(response.error).toBe('Match is not active');
+      });
+    });
+
+    describe('RPC Registration', () => {
+      it('should register submit_turn RPC', () => {
+        const mockInitializer = { registerRpc: jest.fn() };
+
+        registerRpcSubmitTurn(mockInitializer as any);
+        expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+          'armored_archer/submit_turn',
+          rpcSubmitTurn
+        );
+      });
+
+      it('should register get_async_match_state RPC', () => {
+        const mockInitializer = { registerRpc: jest.fn() };
+
+        registerRpcGetAsyncMatchState(mockInitializer as any);
+        expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+          'armored_archer/get_async_match_state',
+          rpcGetAsyncMatchState
+        );
+      });
+
+      it('should register forfeit_match RPC', () => {
+        const mockInitializer = { registerRpc: jest.fn() };
+
+        registerRpcForfeitMatch(mockInitializer as any);
+        expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+          'armored_archer/forfeit_match',
+          rpcForfeitMatch
+        );
+      });
     });
   });
 });

@@ -46,6 +46,9 @@ import {
   registerRpcGetPlayerRank,
   registerRpcCompleteMatch,
   registerRpcGetMatchHistory,
+  registerRpcSubmitTurn,
+  registerRpcGetAsyncMatchState,
+  registerRpcForfeitMatch,
 } from './modules/matchmaker';
 import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
 import {
@@ -290,6 +293,24 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/submit_turn',
+      'submit_turn',
+      rpcSubmitTurnWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/get_async_match_state',
+      'get_async_match_state',
+      rpcGetAsyncMatchStateWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/forfeit_match',
+      'forfeit_match',
+      rpcForfeitMatchWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/get_leaderboard',
       'get_leaderboard',
       rpcGetLeaderboardWrapper
@@ -435,6 +456,9 @@ const InitModule: InitModule = function (
     registerRpcGetPlayerRank(initializer);
     registerRpcCompleteMatch(initializer);
     registerRpcGetMatchHistory(initializer);
+    registerRpcSubmitTurn(initializer);
+    registerRpcGetAsyncMatchState(initializer);
+    registerRpcForfeitMatch(initializer);
     registerRpcSubmitCombatAction(initializer);
     registerRpcGetMatchState(initializer);
     registerRpcPlayerDisconnect(initializer);
@@ -763,6 +787,36 @@ function rpcGetPlayerPerformanceWrapper(
 ): string {
   const { rpcGetPlayerPerformance } = require('./modules/dynamic_difficulty');
   return rpcGetPlayerPerformance(ctx, logger, nk, payload);
+}
+
+function rpcSubmitTurnWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcSubmitTurn } = require('./modules/matchmaker');
+  return rpcSubmitTurn(ctx, logger, nk, payload);
+}
+
+function rpcGetAsyncMatchStateWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcGetAsyncMatchState } = require('./modules/matchmaker');
+  return rpcGetAsyncMatchState(ctx, logger, nk, payload);
+}
+
+function rpcForfeitMatchWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcForfeitMatch } = require('./modules/matchmaker');
+  return rpcForfeitMatch(ctx, logger, nk, payload);
 }
 
 // Register RPC to start notification scheduler (can be called externally)
