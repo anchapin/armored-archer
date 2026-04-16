@@ -167,6 +167,26 @@ export const ValibotSchemas = {
       match_type: optional(createEnum(['ranked', 'casual'])),
       limit: optional(pipe(number(), integer(), minValue(1), maxValue(100))),
       offset: optional(pipe(number(), integer(), minValue(0))),
+      start_date: optional(string()), // ISO date string
+      end_date: optional(string()), // ISO date string
+    })
+  ),
+
+  get_match_details: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+  }),
+
+  admin_query_matches: optional(
+    object({
+      user_id: optional(pipe(string(), minLength(1))),
+      match_type: optional(createEnum(['ranked', 'casual'])),
+      end_reason: optional(createEnum(['health_zero', 'forfeit', 'timeout', 'disconnect'])),
+      season_id: optional(string()),
+      is_punch_up: optional(boolean()),
+      start_date: optional(string()), // ISO date string
+      end_date: optional(string()), // ISO date string
+      limit: optional(pipe(number(), integer(), minValue(1), maxValue(200))),
+      offset: optional(pipe(number(), integer(), minValue(0))),
     })
   ),
   join_pool: object({

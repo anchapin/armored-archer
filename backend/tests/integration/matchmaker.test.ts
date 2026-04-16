@@ -311,6 +311,184 @@ describe('Matchmaker Integration Tests', () => {
       expect(result.error).toBe('Player stats not found');
     });
   });
+
+  describe('Match History and Debug Tools (Issue 707)', () => {
+    let testMatchId: string;
+
+    beforeAll(async () => {
+      // Create a completed match in the database for testing
+      testMatchId = `test_match_${Date.now()}`;
+      const admin = await testHelper.getAdminClient();
+      await admin.rpc(
+        await testHelper.getServerSession(),
+        'sql',
+        `
+        INSERT INTO match_results (
+          match_id, creator_id, opponent_id, winner_id, loser_id,
+          match_type, is_punch_up, creator_rank, opponent_rank,
+          total_turns, duration_seconds, end_reason, combat_log,
+          creator_health_remaining, opponent_health_remaining,
+          creator_stats_at_match, opponent_stats_at_match, season_id
+        ) VALUES (
+          $1, $2, $3, $2, $3,
+          'ranked', false, 10, 10,
+          5, 120, 'health_zero', '[]',
+          30, 0,
+          '{"attack": 25, "defense": 20}', '{"attack": 25, "defense": 20}',
+          'season_1'
+        )
+      `,
+        [testMatchId, playerA.userId, playerB.userId]
+      );
+    });
+
+    test('should get match history from database', async () => {
+      const result = await rpcCall(playerA, 'armored_archer/get_match_history', {
+        limit: 10,
+      });
+
+      expect(result.success).toBe(true);
+      expect(Array.isArray(result.matches)).toBe(true);
+      expect(result.total).toBeGreaterThan(0);
+      expect(result.stats).toBeDefined();
+      expect(result.stats.wins).toBeDefined();
+      expect(result.stats.losses).toBeDefined();
+      expect(result.stats.win_rate).toBeDefined();
+    });
+
+    test('should get match history with filters', async () => {
+      const result = await rpcCall(playerA, 'armored_archer/get_match_history', {
+        match_type: 'ranked',
+        limit: 10,
+      });
+
+      expect(result.success).toBe(true);
+      expect(Array.isArray(result.matches)).toBe(true);
+      if (result.matches.length > 0) {
+        expect(result.matches[0].match_type).toBe('ranked');
+      }
+    });
+
+    test('should get match details by match_id', async () => {
+      const result = await rpcCall(playerA, 'armored_archer/get_match_details', {
+        match_id: testMatchId,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.match).toBeDefined();
+      expect(result.match.match_id).toBe(testMatchId);
+      expect(result.match.creator_id).toBe(playerA.userId);
+      expect(result.match.opponent_id).toBe(playerB.userId);
+      expect(result.match.winner_id).toBe(playerA.userId);
+      expect(result.match.loser_id).toBe(playerB.userId);
+      expect(result.match.combat_log).toBeDefined();
+      expect(Array.isArray(result.match.combat_log)).toBe(true);
+      expect(result.match.creator_stats_at_match).toBeDefined();
+      expect(result.match.opponent_stats_at_match).toBeDefined();
+    });
+
+    test('should return error for non-existent match details', async () => {
+      const result = await rpcCall(playerA, 'armored_archer/get_match_details', {
+        match_id: 'non_existent_match_id',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Match not found');
+    });
+
+    test('should validate match_id format', async () => {
+      const result = await rpcCall(playerA, 'armored_archer/get_match_details', {
+        match_id: '', // Empty string should fail validation
+      });
+
+      expect(result.error).toBeDefined();
+      expect(result.success).toBeUndefined();
+    });
+
+    test('should query matches with admin endpoint', async () => {
+      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+        user_id: playerA.userId,
+        limit: 10,
+      });
+
+      expect(result.success).toBe(true);
+      expect(Array.isArray(result.matches)).toBe(true);
+      expect(result.total).toBeGreaterThan(0);
+      expect(result.page).toBe(1);
+      expect(result.per_page).toBe(10);
+      expect(result.total_pages).toBeGreaterThan(0);
+    });
+
+    test('should filter admin query by match type', async () => {
+      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+        match_type: 'ranked',
+        limit: 10,
+      });
+
+      expect(result.success).toBe(true);
+      expect(Array.isArray(result.matches)).toBe(true);
+      if (result.matches.length > 0) {
+        result.matches.forEach((match: any) => {
+          expect(match.match_type).toBe('ranked');
+        });
+      }
+    });
+
+    test('should filter admin query by end reason', async () => {
+      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+        end_reason: 'health_zero',
+        limit: 10,
+      });
+
+      expect(result.success).toBe(true);
+      expect(Array.isArray(result.matches)).toBe(true);
+      if (result.matches.length > 0) {
+        result.matches.forEach((match: any) => {
+          expect(match.end_reason).toBe('health_zero');
+        });
+      }
+    });
+
+    test('should handle pagination in admin query', async () => {
+      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+        limit: 5,
+        offset: 0,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.matches.length).toBeLessThanOrEqual(5);
+      expect(result.page).toBe(1);
+    });
+
+    test('should include usernames in admin query results', async () => {
+      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+        user_id: playerA.userId,
+        limit: 10,
+      });
+
+      expect(result.success).toBe(true);
+      if (result.matches.length > 0) {
+        const match = result.matches[0];
+        expect(match.creator_username).toBeDefined();
+        expect(match.opponent_username).toBeDefined();
+      }
+    });
+
+    afterAll(async () => {
+      // Clean up the test match
+      const admin = await testHelper.getAdminClient();
+      try {
+        await admin.rpc(
+          await testHelper.getServerSession(),
+          'sql',
+          `DELETE FROM match_results WHERE match_id = $1`,
+          [testMatchId]
+        );
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    });
+  });
 });
 
 // Helper function to create a match as a specific user (used in beforeAll)

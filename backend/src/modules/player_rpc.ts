@@ -207,16 +207,19 @@ export function registerRpcGetPlayerReports(initializer: Runtime.Initializer): v
 /**
  * Retrieves reports for a player (admin/reporter view).
  *
+ * Enhances reports with match details from the database when match_id is present.
+ * This is useful for dispute resolution and QA debugging.
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
- * @param _nk - Nakama server interface
+ * @param nk - Nakama server interface
  * @param payload - JSON string with optional user_id filter
- * @returns JSON string with reports
+ * @returns JSON string with reports and match details
  */
 export function rpcGetPlayerReports(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  _nk: Runtime.Nakama,
+  nk: Runtime.Nakama,
   payload: string
 ): string {
   getLogger().info('Get player reports requested', {
@@ -235,8 +238,67 @@ export function rpcGetPlayerReports(
   // Otherwise, get reports filed by current user
   const reports = user_id ? getReportsForUser(user_id) : getReportsForUser(ctx.userId);
 
+  // Enhance reports with match details when available
+  const enhancedReports = reports.map((report: any) => {
+    if (!report.match_id) {
+      return report;
+    }
+
+    try {
+      // Try to fetch match details from the database
+      const matchResult = nk.dbQuery(
+        `
+        SELECT
+          match_id,
+          creator_id,
+          opponent_id,
+          winner_id,
+          loser_id,
+          match_type,
+          is_punch_up,
+          end_reason,
+          created_at,
+          creator_health_remaining,
+          opponent_health_remaining
+        FROM match_results
+        WHERE match_id = $1
+        LIMIT 1
+      `,
+        [report.match_id]
+      ) as any[];
+
+      if (matchResult && matchResult.length > 0) {
+        const match = matchResult[0];
+        return {
+          ...report,
+          match_details: {
+            match_id: match.match_id,
+            creator_id: match.creator_id,
+            opponent_id: match.opponent_id,
+            winner_id: match.winner_id,
+            loser_id: match.loser_id,
+            match_type: match.match_type,
+            is_punch_up: match.is_punch_up,
+            end_reason: match.end_reason,
+            created_at: match.created_at,
+            creator_health_remaining: match.creator_health_remaining,
+            opponent_health_remaining: match.opponent_health_remaining,
+          },
+        };
+      }
+    } catch (error) {
+      getLogger().warn('Failed to fetch match details for report', {
+        error: error instanceof Error ? error.message : String(error),
+        matchId: report.match_id,
+      });
+    }
+
+    return report;
+  });
+
   return JSON.stringify({
     success: true,
-    reports,
+    reports: enhancedReports,
+    total: enhancedReports.length,
   });
 }

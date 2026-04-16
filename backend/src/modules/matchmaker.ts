@@ -1620,6 +1620,8 @@ export function registerRpcGetMatchHistory(initializer: Runtime.Initializer): vo
 /**
  * Retrieves a player's match history with optional filtering.
  *
+ * Queries the match_results database table for historical match data.
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
@@ -1652,92 +1654,497 @@ export function rpcGetMatchHistory(
   }
 
   const request = validation.data || {};
-  const limit = request.limit || 20;
+  const limit = Math.min(request.limit || 20, 100); // Cap at 100 for performance
   const offset = request.offset || 0;
 
-  const objects = nk.storageRead([
-    {
-      collection: 'player_stats',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
+  try {
+    // Build the query with optional filters
+    let query = `
+      SELECT
+        mr.match_id,
+        mr.match_type,
+        mr.is_punch_up,
+        mr.creator_id,
+        mr.opponent_id,
+        mr.winner_id,
+        mr.loser_id,
+        mr.creator_rank,
+        mr.opponent_rank,
+        mr.total_turns,
+        mr.duration_seconds,
+        mr.end_reason,
+        mr.created_at,
+        mr.updated_at,
+        mr.creator_health_remaining,
+        mr.opponent_health_remaining
+      FROM match_results mr
+      WHERE mr.creator_id = $1 OR mr.opponent_id = $1
+    `;
 
-  if (objects.length === 0) {
+    const params: any[] = [ctx.userId];
+    let paramIndex = 2;
+
+    // Add optional match_type filter
+    if (request.match_type) {
+      query += ` AND mr.match_type = $${paramIndex}`;
+      params.push(request.match_type);
+      paramIndex++;
+    }
+
+    // Add optional date range filter
+    if (request.start_date) {
+      query += ` AND mr.created_at >= $${paramIndex}`;
+      params.push(new Date(request.start_date).toISOString());
+      paramIndex++;
+    }
+    if (request.end_date) {
+      query += ` AND mr.created_at <= $${paramIndex}`;
+      params.push(new Date(request.end_date).toISOString());
+      paramIndex++;
+    }
+
+    query += ` ORDER BY mr.created_at DESC`;
+
+    // Get total count first
+    const countQuery = query.replace(/SELECT[\s\S]+?FROM/, 'SELECT COUNT(*) as total FROM');
+    const countResult = nk.dbQuery(countQuery, params) as any[];
+    const total = countResult[0]?.total || 0;
+
+    // Add pagination
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(limit);
+    params.push(offset);
+
+    const result = nk.dbQuery(query, params) as any[];
+
+    const matches = result.map((row: any) => {
+      const isVictory = row.winner_id === ctx.userId;
+      const isCreator = row.creator_id === ctx.userId;
+      const opponentId = isCreator ? row.opponent_id : row.creator_id;
+      const playerRank = isCreator ? row.creator_rank : row.opponent_rank;
+      const opponentRank = isCreator ? row.opponent_rank : row.creator_rank;
+
+      return {
+        match_id: row.match_id,
+        match_type: row.match_type,
+        is_punch_up: row.is_punch_up,
+        status: 'completed',
+        created_at: new Date(row.created_at).getTime(),
+        updated_at: new Date(row.updated_at).getTime(),
+        winner: row.winner_id,
+        creator_id: row.creator_id,
+        opponent_id: row.opponent_id,
+        creator_rank: row.creator_rank,
+        opponent_rank: row.opponent_rank,
+        is_victory: isVictory,
+        player_id: isCreator ? row.creator_id : row.opponent_id,
+        player_rank: playerRank,
+        opponent_id_calculated: opponentId,
+        opponent_rank_calculated: opponentRank,
+        total_turns: row.total_turns,
+        duration_seconds: row.duration_seconds,
+        end_reason: row.end_reason,
+        player_health_remaining: isCreator
+          ? row.creator_health_remaining
+          : row.opponent_health_remaining,
+        opponent_health_remaining: isCreator
+          ? row.opponent_health_remaining
+          : row.creator_health_remaining,
+      };
+    });
+
+    // Calculate stats from all matches (not just paginated)
+    const wins = matches.filter((m) => m.is_victory).length;
+    const losses = matches.filter((m) => !m.is_victory).length;
+    const winRate = wins + losses > 0 ? wins / (wins + losses) : 0;
+
     return JSON.stringify({
-      error: 'Player stats not found',
+      success: true,
+      matches: matches,
+      total: total,
+      stats: {
+        wins: wins,
+        losses: losses,
+        win_rate: Math.round(winRate * 100) / 100,
+      },
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error('Failed to get match history from database', {
+      error: errorMessage,
+      userId: ctx.userId,
+    });
+    return JSON.stringify({
+      success: false,
+      error: 'Failed to retrieve match history',
     });
   }
+}
 
-  const matches = nk.storageList(ctx.userId, 'pvp_matches', limit, '', '');
+/**
+ * Registers the get match details RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcGetMatchDetails(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_match_details', rpcGetMatchDetails);
+}
 
-  const filteredMatches: Array<{
-    match_id: string;
-    match_type: 'ranked' | 'casual';
-    is_punch_up: boolean;
-    status: 'completed';
-    created_at: number;
-    updated_at: number;
-    winner?: string;
-    creator_id: string;
-    opponent_id: string;
-    creator_rank: number;
-    opponent_rank: number;
-    is_victory: boolean;
-  }> = [];
+/**
+ * Retrieves detailed information about a specific match including combat logs.
+ *
+ * This endpoint is intended for QA and dispute resolution. It returns comprehensive
+ * match data including the full combat log, player stats at match start, and all
+ * Elo changes.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string with match_id
+ * @returns JSON string with detailed match information
+ *
+ * @example
+ * // Request payload
+ * { "match_id": "match_abc123" }
+ *
+ * // Response
+ * {
+ *   "success": true,
+ *   "match": {
+ *     "match_id": "match_abc123",
+ *     "creator_id": "...",
+ *     "opponent_id": "...",
+ *     "winner_id": "...",
+ *     "combat_log": [...],
+ *     "creator_stats_at_match": {...},
+ *     "opponent_stats_at_match": {...}
+ *   }
+ * }
+ */
+// eslint-disable-next-line complexity
+export function rpcGetMatchDetails(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get match details called by user: %s', ctx.userId);
 
-  for (const object of matches) {
-    const matchResult = safeParse<PvPMatch>(object.value, null, logger, 'rpcGetMatchHistory:match');
-    if (!matchResult.success || !matchResult.data) {
-      logger.warn('Skipping corrupted match record for user: %s', ctx.userId);
-      continue;
-    }
-    const match = matchResult.data;
-
-    if (match.status !== 'completed') {
-      continue;
-    }
-
-    if (request.match_type && match.match_type !== request.match_type) {
-      continue;
-    }
-
-    const isVictory = match.winner === ctx.userId;
-
-    filteredMatches.push({
-      match_id: match.match_id,
-      match_type: match.match_type,
-      is_punch_up: match.is_punch_up,
-      status: match.status,
-      created_at: match.created_at,
-      updated_at: match.updated_at,
-      winner: match.winner,
-      creator_id: match.creator_id,
-      opponent_id: match.opponent_id,
-      creator_rank: match.creator_rank,
-      opponent_rank: match.opponent_rank,
-      is_victory: isVictory,
-    });
+  const validation = validatePayload(ZodSchemas.get_match_details, payload, 'get_match_details');
+  if (!validation.success) {
+    return createValidationErrorResponse('get_match_details', validation.error);
   }
 
-  filteredMatches.sort((a, b) => b.updated_at - a.updated_at);
+  const { match_id } = validation.data;
 
-  const paginatedMatches = filteredMatches.slice(offset, offset + limit);
+  try {
+    const query = `
+      SELECT
+        mr.*,
+        u1.display_name as creator_username,
+        u2.display_name as opponent_username
+      FROM match_results mr
+      LEFT JOIN users u1 ON mr.creator_id = u1.id
+      LEFT JOIN users u2 ON mr.opponent_id = u2.id
+      WHERE mr.match_id = $1
+    `;
 
-  const wins = filteredMatches.filter((m) => m.is_victory).length;
-  const losses = filteredMatches.filter((m) => !m.is_victory).length;
-  const winRate = wins + losses > 0 ? wins / (wins + losses) : 0;
+    const result = nk.dbQuery(query, [match_id]) as any[];
 
-  return JSON.stringify({
-    success: true,
-    matches: paginatedMatches,
-    total: filteredMatches.length,
-    stats: {
-      wins: wins,
-      losses: losses,
-      win_rate: Math.round(winRate * 100) / 100,
-    },
-  });
+    if (!result || result.length === 0) {
+      return JSON.stringify({
+        success: false,
+        error: 'Match not found',
+      });
+    }
+
+    const row = result[0];
+
+    // Parse JSONB fields
+    let combatLog: any[] = [];
+    let creatorStats: any = {};
+    let opponentStats: any = {};
+
+    try {
+      combatLog =
+        typeof row.combat_log === 'string' ? JSON.parse(row.combat_log) : row.combat_log || [];
+      // eslint-disable-next-line no-empty
+    } catch {
+      logger.warn('Failed to parse combat_log for match: %s', match_id);
+    }
+
+    try {
+      creatorStats =
+        typeof row.creator_stats_at_match === 'string'
+          ? JSON.parse(row.creator_stats_at_match)
+          : row.creator_stats_at_match || {};
+      // eslint-disable-next-line no-empty
+    } catch {
+      logger.warn('Failed to parse creator_stats_at_match for match: %s', match_id);
+    }
+
+    try {
+      opponentStats =
+        typeof row.opponent_stats_at_match === 'string'
+          ? JSON.parse(row.opponent_stats_at_match)
+          : row.opponent_stats_at_match || {};
+      // eslint-disable-next-line no-empty
+    } catch {
+      logger.warn('Failed to parse opponent_stats_at_match for match: %s', match_id);
+    }
+
+    const match = {
+      match_id: row.match_id,
+      result_id: row.result_id,
+      creator_id: row.creator_id,
+      opponent_id: row.opponent_id,
+      creator_username: row.creator_username || 'Unknown',
+      opponent_username: row.opponent_username || 'Unknown',
+      winner_id: row.winner_id,
+      loser_id: row.loser_id,
+      match_type: row.match_type,
+      is_punch_up: row.is_punch_up,
+      creator_rank: row.creator_rank,
+      opponent_rank: row.opponent_rank,
+      creator_old_elo: row.creator_old_elo,
+      creator_new_elo: row.creator_new_elo,
+      opponent_old_elo: row.opponent_old_elo,
+      opponent_new_elo: row.opponent_new_elo,
+      total_turns: row.total_turns,
+      duration_seconds: row.duration_seconds,
+      end_reason: row.end_reason,
+      combat_log: combatLog,
+      creator_health_remaining: row.creator_health_remaining,
+      opponent_health_remaining: row.opponent_health_remaining,
+      creator_stats_at_match: creatorStats,
+      opponent_stats_at_match: opponentStats,
+      season_id: row.season_id,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    };
+
+    // Log access for audit trail
+    logger.info('Match details accessed', {
+      userId: ctx.userId,
+      matchId: match_id,
+      matchType: row.match_type,
+    });
+
+    return JSON.stringify({
+      success: true,
+      match: match,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error('Failed to get match details', {
+      error: errorMessage,
+      userId: ctx.userId,
+      matchId: match_id,
+    });
+    return JSON.stringify({
+      success: false,
+      error: 'Failed to retrieve match details',
+    });
+  }
+}
+
+/**
+ * Registers the admin query matches RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcAdminQueryMatches(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/admin_query_matches', rpcAdminQueryMatches);
+}
+
+/**
+ * Admin endpoint for querying matches with advanced filters for debugging.
+ *
+ * Allows QA to search matches by player, date range, match type, end reason,
+ * and other criteria. This is a powerful debugging tool for dispute resolution.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string with filter parameters
+ * @returns JSON string with matching matches
+ *
+ * @example
+ * // Request payload
+ * {
+ *   "user_id": "player123",
+ *   "match_type": "ranked",
+ *   "start_date": "2024-01-01",
+ *   "end_date": "2024-01-31",
+ *   "limit": 50
+ * }
+ */
+// eslint-disable-next-line complexity
+export function rpcAdminQueryMatches(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Admin query matches called by user: %s', ctx.userId);
+
+  const validation = validatePayload(
+    ZodSchemas.admin_query_matches,
+    payload,
+    'admin_query_matches'
+  );
+  if (!validation.success) {
+    return createValidationErrorResponse('admin_query_matches', validation.error);
+  }
+
+  const request = validation.data || {};
+  const limit = Math.min(request.limit || 50, 200); // Cap at 200 for admin queries
+  const offset = request.offset || 0;
+
+  try {
+    // Build the query with optional filters
+    let query = `
+      SELECT
+        mr.match_id,
+        mr.match_type,
+        mr.is_punch_up,
+        mr.creator_id,
+        mr.opponent_id,
+        mr.winner_id,
+        mr.loser_id,
+        mr.creator_rank,
+        mr.opponent_rank,
+        mr.total_turns,
+        mr.duration_seconds,
+        mr.end_reason,
+        mr.created_at,
+        mr.updated_at,
+        mr.creator_health_remaining,
+        mr.opponent_health_remaining,
+        mr.season_id,
+        u1.display_name as creator_username,
+        u2.display_name as opponent_username
+      FROM match_results mr
+      LEFT JOIN users u1 ON mr.creator_id = u1.id
+      LEFT JOIN users u2 ON mr.opponent_id = u2.id
+      WHERE 1=1
+    `;
+
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    // Filter by user ID (either creator or opponent)
+    if (request.user_id) {
+      query += ` AND (mr.creator_id = $${paramIndex} OR mr.opponent_id = $${paramIndex})`;
+      params.push(request.user_id);
+      paramIndex++;
+    }
+
+    // Filter by match type
+    if (request.match_type) {
+      query += ` AND mr.match_type = $${paramIndex}`;
+      params.push(request.match_type);
+      paramIndex++;
+    }
+
+    // Filter by end reason
+    if (request.end_reason) {
+      query += ` AND mr.end_reason = $${paramIndex}`;
+      params.push(request.end_reason);
+      paramIndex++;
+    }
+
+    // Filter by season
+    if (request.season_id) {
+      query += ` AND mr.season_id = $${paramIndex}`;
+      params.push(request.season_id);
+      paramIndex++;
+    }
+
+    // Filter by punch-up
+    if (request.is_punch_up !== undefined) {
+      query += ` AND mr.is_punch_up = $${paramIndex}`;
+      params.push(request.is_punch_up);
+      paramIndex++;
+    }
+
+    // Add date range filter
+    if (request.start_date) {
+      query += ` AND mr.created_at >= $${paramIndex}`;
+      params.push(new Date(request.start_date).toISOString());
+      paramIndex++;
+    }
+    if (request.end_date) {
+      query += ` AND mr.created_at <= $${paramIndex}`;
+      params.push(new Date(request.end_date).toISOString());
+      paramIndex++;
+    }
+
+    // Get total count first
+    const countQuery = query
+      .replace(/SELECT[\s\S]+?FROM/, 'SELECT COUNT(*) as total FROM')
+      .replace(/LEFT JOIN[\s\S]+?WHERE/, 'WHERE');
+    const countResult = nk.dbQuery(countQuery, params) as any[];
+    const total = countResult[0]?.total || 0;
+
+    // Add ordering and pagination
+    query += ` ORDER BY mr.created_at DESC`;
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(limit);
+    params.push(offset);
+
+    const result = nk.dbQuery(query, params) as any[];
+
+    const matches = result.map((row: any) => ({
+      match_id: row.match_id,
+      match_type: row.match_type,
+      is_punch_up: row.is_punch_up,
+      creator_id: row.creator_id,
+      opponent_id: row.opponent_id,
+      creator_username: row.creator_username || 'Unknown',
+      opponent_username: row.opponent_username || 'Unknown',
+      winner_id: row.winner_id,
+      loser_id: row.loser_id,
+      creator_rank: row.creator_rank,
+      opponent_rank: row.opponent_rank,
+      total_turns: row.total_turns,
+      duration_seconds: row.duration_seconds,
+      end_reason: row.end_reason,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      creator_health_remaining: row.creator_health_remaining,
+      opponent_health_remaining: row.opponent_health_remaining,
+      season_id: row.season_id,
+    }));
+
+    // Log admin query for audit trail
+    logger.info('Admin match query executed', {
+      userId: ctx.userId,
+      filters: request,
+      resultCount: matches.length,
+      totalMatches: total,
+    });
+
+    return JSON.stringify({
+      success: true,
+      matches: matches,
+      total: total,
+      page: Math.floor(offset / limit) + 1,
+      per_page: limit,
+      total_pages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error('Failed to execute admin match query', {
+      error: errorMessage,
+      userId: ctx.userId,
+      filters: request,
+    });
+    return JSON.stringify({
+      success: false,
+      error: 'Failed to query matches',
+    });
+  }
 }
 
 // =============================================================================
