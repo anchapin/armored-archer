@@ -562,7 +562,11 @@ export function getUnlockedModifierPoolsFromDB(nk: Runtime.Nakama, userId: strin
  * @param modifierId - ID of the modifier pool to check
  * @returns True if the modifier pool is unlocked
  */
-export function isModifierPoolUnlocked(nk: Runtime.Nakama, userId: string, modifierId: string): boolean {
+export function isModifierPoolUnlocked(
+  nk: Runtime.Nakama,
+  userId: string,
+  modifierId: string
+): boolean {
   const query = `
     SELECT 1 FROM unlocked_modifier_pools
     WHERE user_id = $1 AND modifier_id = $2

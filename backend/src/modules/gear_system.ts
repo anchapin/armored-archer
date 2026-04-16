@@ -19,7 +19,6 @@ import {
   getBossDefeatCount,
   unlockModifierPoolInDB,
   getUnlockedModifierPoolsFromDB,
-  isModifierPoolUnlocked,
 } from './gear_db';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -1101,7 +1100,7 @@ export function registerRpcGetInventory(initializer: Runtime.Initializer): void 
 export function getPlayerInventory(
   nk: Runtime.Nakama,
   userId: string,
-  logger: Runtime.Logger
+  _logger: Runtime.Logger
 ): PlayerInventory {
   // Get gear, loadout, and unlocked modifier pools from database
   const dbInventory = getFullInventoryFromDB(nk, userId);
@@ -1126,7 +1125,7 @@ export function getPlayerInventory(
 function getUnlockedModifierPoolsFromStorage(
   nk: Runtime.Nakama,
   userId: string,
-  logger: Runtime.Logger
+  _logger: Runtime.Logger
 ): string[] {
   // Now delegates to database function for consistency
   return getUnlockedModifierPoolsFromDB(nk, userId);
@@ -1354,10 +1353,11 @@ export function rpcGetUnlockedModifiers(
  * @param logger - Nakama logger instance
  * @returns Boss defeat data with defeat counts and unlocked modifiers
  */
-function getBossDefeatData(
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _getBossDefeatData(
   nk: Runtime.Nakama,
   userId: string,
-  logger: Runtime.Logger
+  _logger: Runtime.Logger
 ): BossDefeatData {
   const defeatedBosses = getDefeatedBossesFromDB(nk, userId);
   const defeats: { [bossId: string]: number } = {};
@@ -1383,7 +1383,8 @@ function getBossDefeatData(
  * @param data - Boss defeat data to save (unused)
  * @param logger - Nakama logger instance
  */
-function saveBossDefeatData(
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _saveBossDefeatData(
   nk: Runtime.Nakama,
   userId: string,
   data: BossDefeatData,
@@ -1427,13 +1428,7 @@ export function recordBossDefeat(
 
   // Unlock modifier pools using database functions
   for (const modifierId of modifiersToUnlock) {
-    const unlockResult = unlockModifierPoolInDB(
-      nk,
-      ctx.userId,
-      modifierId,
-      'boss_defeat',
-      bossId
-    );
+    const unlockResult = unlockModifierPoolInDB(nk, ctx.userId, modifierId, 'boss_defeat', bossId);
 
     if (unlockResult.success && unlockResult.newly_unlocked) {
       newlyUnlockedModifiers.push(modifierId);
@@ -1751,12 +1746,7 @@ function processStageCompletion(
   const inventory = getPlayerInventory(nk, ctx.userId, logger);
 
   // Unlock modifier pools from enemy defeats
-  const newlyUnlockedModifiers = unlockModifierPools(
-    nk,
-    ctx.userId,
-    logger,
-    request.enemy_type
-  );
+  const newlyUnlockedModifiers = unlockModifierPools(nk, ctx.userId, logger, request.enemy_type);
 
   // Combine modifiers
   const allUnlockedModifiers = [
@@ -1866,7 +1856,8 @@ function generateLootResult(
  * @param pools - Array of unlocked modifier pool IDs (unused)
  * @param logger - Logger instance
  */
-function saveUnlockedModifierPools(
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _saveUnlockedModifierPools(
   nk: Runtime.Nakama,
   userId: string,
   pools: string[],
