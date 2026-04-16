@@ -11,6 +11,9 @@ var theme_manager: Node
 # --- Design Tokens Reference ---
 var design_tokens: Node
 
+# --- Player Stats Reference ---
+var player_stats: Node
+
 # --- Node References ---
 @onready var chapter_title: Label = $ChapterTitle
 @onready var stages_container: VBoxContainer = $StagesContainer
@@ -36,6 +39,9 @@ func _ready() -> void:
 	# Get DesignTokens reference
 	design_tokens = get_node_or_null("/root/DesignTokens")
 
+	# Get PlayerStatsManager reference
+	player_stats = get_node_or_null("/root/PlayerStatsManager")
+
 	# Apply theme if available
 	if theme_manager:
 		_apply_theme()
@@ -44,9 +50,9 @@ func _ready() -> void:
 	# Get available chapters from CampaignManager
 	load_available_chapters()
 
-	# Set initial chapter to first available
+	# Set initial chapter to first unlocked or first available
 	if not available_chapters.is_empty():
-		current_chapter = available_chapters[0]
+		current_chapter = _get_first_unlocked_chapter()
 
 	update_chapter_display()
 	build_stage_buttons()
@@ -55,6 +61,7 @@ func _ready() -> void:
 	CampaignManager.stage_unlocked.connect(_on_stage_unlocked)
 	CampaignManager.stage_completed.connect(_on_stage_completed)
 	CampaignManager.campaign_progress_updated.connect(_on_progress_updated)
+	CampaignManager.chapter_unlocked.connect(_on_chapter_unlocked)
 
 	# Connect back button
 	$BackButton.pressed.connect(_on_back_button_pressed)
@@ -62,6 +69,17 @@ func _ready() -> void:
 	# Connect chapter navigation buttons
 	prev_chapter_button.pressed.connect(_on_prev_chapter_pressed)
 	next_chapter_button.pressed.connect(_on_next_chapter_pressed)
+
+## Gets the first unlocked chapter from the available chapters.
+##
+## Returns:
+## 	String: First unlocked chapter ID
+func _get_first_unlocked_chapter() -> String:
+	"""Gets the first unlocked chapter from available chapters."""
+	for chapter_id in available_chapters:
+		if CampaignManager.is_chapter_unlocked(chapter_id):
+			return chapter_id
+	return available_chapters[0] if not available_chapters.is_empty() else "chapter_1"
 
 func load_available_chapters() -> void:
 	"""Loads the list of available chapters from CampaignManager."""
@@ -78,19 +96,37 @@ func update_chapter_display() -> void:
 	"""Updates the chapter title, label, progress, and navigation buttons."""
 	var chapter_data = get_campaign_data(current_chapter)
 	if chapter_data:
-		chapter_title.text = chapter_data.get("name", "Campaign")
+		var chapter_name = chapter_data.get("name", "Campaign")
+		var is_unlocked = CampaignManager.is_chapter_unlocked(current_chapter)
+
+		if is_unlocked:
+			chapter_title.text = chapter_name
+		else:
+			# Show locked chapter with requirements
+			var req_data = CampaignManager.get_chapter_unlock_requirement(current_chapter)
+			var description = req_data.get("description", "Locked")
+			chapter_title.text = "%s \u1F512 (%s)" % [chapter_name, description]
 
 	# Update chapter label with chapter number
 	var chapter_index = available_chapters.find(current_chapter)
 	if chapter_index >= 0:
 		chapter_label.text = "Chapter %d / %d" % [chapter_index + 1, available_chapters.size()]
 
-	# Update progress display
-	update_progress_display()
+	# Update progress display (only for unlocked chapters)
+	if CampaignManager.is_chapter_unlocked(current_chapter):
+		update_progress_display()
+	else:
+		progress_label.text = "Locked - Complete previous chapter to unlock"
 
 	# Update navigation buttons
 	prev_chapter_button.disabled = chapter_index <= 0
-	next_chapter_button.disabled = chapter_index >= available_chapters.size() - 1
+
+	# Disable next chapter button if locked
+	var is_next_locked = false
+	if chapter_index < available_chapters.size() - 1:
+		var next_chapter = available_chapters[chapter_index + 1]
+		is_next_locked = not CampaignManager.is_chapter_unlocked(next_chapter)
+	next_chapter_button.disabled = is_next_locked
 
 func update_progress_display() -> void:
 	"""Updates the progress label showing completed stages."""
@@ -107,6 +143,19 @@ func update_progress_display() -> void:
 func build_stage_buttons() -> void:
 	for child in stages_container.get_children():
 		child.queue_free()
+
+	# Check if chapter is unlocked
+	var is_chapter_unlocked = CampaignManager.is_chapter_unlocked(current_chapter)
+
+	if not is_chapter_unlocked:
+		# Show chapter locked message instead of stages
+		var locked_label = Label.new()
+		locked_label.text = "Chapter locked"
+		locked_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		locked_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		locked_label.modulate = Color.GRAY
+		stages_container.add_child(locked_label)
+		return
 
 	var stages = get_campaign_stages(current_chapter)
 	var stage_markers = {}
@@ -136,6 +185,11 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 	var is_unlocked = CampaignManager.is_stage_unlocked(stage_id)
 	var is_completed = CampaignManager.is_stage_completed(stage_id)
 
+	# Get level requirement for stage
+	var level_req = stage_data.get("level_requirement", 1)
+	var player_level = player_stats.get_level() if player_stats else 1
+	var level_met = player_level >= level_req
+
 	# Get stage marker info
 	var marker_info = stage_markers.get(stage_id, {})
 	var has_quest = marker_info.get("has_quest", false)
@@ -159,6 +213,13 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 	if enemy_type != "":
 		button.tooltip_text = "Enemy: %s" % enemy_type
 
+	# Add level requirement info to tooltip
+	if level_req > 1:
+		if not level_met:
+			button.tooltip_text += "\nRequires Level %d" % level_req
+		else:
+			button.tooltip_text += "\nLevel %d" % level_req
+
 	if not is_unlocked:
 		button.disabled = true
 		button.text = button_text + " (Locked)"
@@ -171,8 +232,17 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 		button.text = "\u2713 " + button_text
 		button.modulate = success_color
 	else:
-		button.text = button_text
-		button.modulate = diff_color
+		# Check if level requirement is met
+		if not level_met:
+			button.disabled = true
+			button.text = button_text + " (Lvl %d required)" % level_req
+			if theme_manager:
+				button.modulate = theme_manager.get_text_disabled_color()
+			else:
+				button.modulate = Color(1, 1, 1, 0.5)
+		else:
+			button.text = button_text
+			button.modulate = diff_color
 
 	if stage_data.get("boss"):
 		button.text += " [BOSS]"
@@ -180,7 +250,7 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 			button.modulate = warning_color
 
 	# Add quest marker if active quest
-	if has_quest and is_unlocked and not is_completed:
+	if has_quest and is_unlocked and not is_completed and level_met:
 		button.text += " \u25CF"  # Bullet point for quest marker
 		if quest_description != "":
 			button.tooltip_text += "\nQuest: " + quest_description
@@ -188,16 +258,14 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 	# Add locked marker if stage has level requirement not met
 	if is_marker_locked and not is_unlocked:
 		button.text += " \u1F512"  # Lock emoji
-		if CampaignManager and CampaignManager.has_method("get_stage_with_progression"):
-			var stage_progression = CampaignManager.get_stage_with_progression(stage_id)
-			var level_req = stage_progression.get("level_requirement", 1)
-			button.tooltip_text = "Requires Level %d" % level_req
+		button.tooltip_text = "Requires Level %d" % level_req
 
 	# Add available marker for new content
-	if is_marker_available and is_unlocked and not is_completed:
+	if is_marker_available and is_unlocked and not is_completed and level_met:
 		button.text += " \u2713"  # Checkmark
 
-	if is_unlocked:
+	# Only enable button press if unlocked and level requirement is met
+	if is_unlocked and level_met:
 		button.pressed.connect(_on_stage_pressed.bind(stage_id))
 
 	return button
@@ -245,7 +313,9 @@ func _exit_tree() -> void:
 			CampaignManager.stage_completed.disconnect(_on_stage_completed)
 		if CampaignManager.campaign_progress_updated.is_connected(_on_progress_updated):
 			CampaignManager.campaign_progress_updated.disconnect(_on_progress_updated)
-	
+		if CampaignManager.chapter_unlocked.is_connected(_on_chapter_unlocked):
+			CampaignManager.chapter_unlocked.disconnect(_on_chapter_unlocked)
+
 	# Disconnect theme manager
 	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
 		theme_manager.theme_changed.disconnect(_on_theme_changed)
@@ -285,9 +355,20 @@ func _on_prev_chapter_pressed() -> void:
 func _on_next_chapter_pressed() -> void:
 	var chapter_index = available_chapters.find(current_chapter)
 	if chapter_index < available_chapters.size() - 1:
-		current_chapter = available_chapters[chapter_index + 1]
-		update_chapter_display()
+		var next_chapter = available_chapters[chapter_index + 1]
+		# Only allow navigation to unlocked chapters
+		if CampaignManager.is_chapter_unlocked(next_chapter):
+			current_chapter = next_chapter
+			update_chapter_display()
+			build_stage_buttons()
+
+func _on_chapter_unlocked(chapter_id: String) -> void:
+	"""Handles chapter unlock event and updates navigation."""
+	# Rebuild the stage buttons if current chapter was unlocked
+	if chapter_id == current_chapter:
 		build_stage_buttons()
+	# Also rebuild the chapter display to update navigation
+	update_chapter_display()
 
 func get_campaign_data(chapter_id: String) -> Dictionary:
 	for campaign in CampaignManager.campaigns_data.get("campaigns", []):
