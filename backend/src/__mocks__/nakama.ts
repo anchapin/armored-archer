@@ -326,11 +326,6 @@ export const createMockNakama = (): Runtime.Nakama => {
         }
       }
 
-      // SELECT modifier_id FROM unlocked_modifier_pools WHERE user_id = $1
-      if (query.includes('modifier_id') && query.includes('ORDER BY')) {
-        return unlockedPools.map((modifierId) => ({ modifier_id: modifierId }));
-      }
-
       // SELECT modifier_id FROM unlocked_modifier_pools WHERE user_id = $1 AND modifier_id = $2
       // This is used to check if a modifier is already unlocked
       if (query.includes('SELECT modifier_id') && query.includes('WHERE user_id =') && query.includes('AND modifier_id =') && params && params.length >= 2) {
@@ -342,12 +337,18 @@ export const createMockNakama = (): Runtime.Nakama => {
       }
 
       // SELECT 1 FROM unlocked_modifier_pools WHERE user_id = $1 AND modifier_id = $2
-      if (query.includes('SELECT 1') && query.includes('modifier_id') && params && params.length >= 2) {
+      if (query.includes('SELECT 1') && query.includes('modifier_id') && query.includes('AND modifier_id =') && params && params.length >= 2) {
         const modifierId = params[1] as string;
         if (unlockedPools.includes(modifierId)) {
           return [1];
         }
         return [];
+      }
+
+      // SELECT modifier_id FROM unlocked_modifier_pools WHERE user_id = $1 ORDER BY unlocked_at ASC
+      // This is used to get all unlocked modifier pools for a user
+      if (query.includes('SELECT modifier_id') && query.includes('FROM unlocked_modifier_pools') && query.includes('ORDER BY')) {
+        return unlockedPools.map((modifierId) => ({ modifier_id: modifierId }));
       }
 
       // INSERT INTO unlocked_modifier_pools

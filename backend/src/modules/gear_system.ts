@@ -1803,11 +1803,11 @@ function processStageCompletion(
       ? recordBossDefeat(nk, ctx, logger, request.boss_id)
       : undefined;
 
-  // Get player inventory (after boss defeat to get updated modifier pools)
-  const inventory = getPlayerInventory(nk, ctx.userId, logger);
-
   // Unlock modifier pools from enemy defeats
   const newlyUnlockedModifiers = unlockModifierPools(nk, ctx.userId, logger, request.enemy_type);
+
+  // Get player inventory (after unlocking modifier pools to get updated pools)
+  const inventory = getPlayerInventory(nk, ctx.userId, logger);
 
   // Combine modifiers
   const allUnlockedModifiers = [

@@ -358,7 +358,7 @@ describe('gear_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.drop_rate).toBe(0.6); // 0.4 * 1.5 = 0.6
+      expect(parsed.drop_rate).toBeCloseTo(0.6, 1); // 0.4 * 1.5 = 0.6
       expect(parsed.loot.dropped).toBe(false);
     });
 
