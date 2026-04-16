@@ -9,6 +9,7 @@ import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
+import { recordStageAttempt, recordDrop } from './balance_analytics';
 import {
   insertGearItem,
   getPlayerGearFromDB,
@@ -1822,6 +1823,43 @@ function processStageCompletion(
     roll < dropRate
       ? generateLootResult(nk, ctx.userId, request.stage_id, inventory, logger)
       : { dropped: false, gear: null };
+
+  // Record stage attempt for balance analytics (non-blocking)
+  recordStageAttempt(nk, {
+    userId: ctx.userId,
+    timestamp: Date.now(),
+    stageId: request.stage_id,
+    stagePrefix: request.stage_id.split('_')[0], // Extract chapter prefix
+    difficulty: request.difficulty,
+    bossDefeated: request.boss_defeated,
+    completed: true, // This is called only on successful completion
+    starsEarned: 3, // Default to 3 stars for completion (can be enhanced later)
+    score: 0, // Score tracking not currently implemented in request
+    attemptNumber: 1, // Simple tracking for now
+  }).catch((error) => {
+    logger.warn('Failed to record stage attempt for balance analytics: %s', String(error));
+    // Don't fail the main flow if analytics recording fails
+  });
+
+  // Record drop if gear was dropped for balance analytics (non-blocking)
+  if (lootResult.dropped && lootResult.gear) {
+    recordDrop(nk, {
+      userId: ctx.userId,
+      timestamp: Date.now(),
+      stageId: request.stage_id,
+      stagePrefix: request.stage_id.split('_')[0], // Extract chapter prefix
+      difficulty: request.difficulty,
+      bossDefeated: request.boss_defeated,
+      gearRarity: lootResult.gear.rarity,
+      gearType: lootResult.gear.type,
+      gearId: lootResult.gear.id,
+      dropRateUsed: dropRate,
+      rollValue: roll,
+    }).catch((error) => {
+      logger.warn('Failed to record drop for balance analytics: %s', String(error));
+      // Don't fail the main flow if analytics recording fails
+    });
+  }
 
   return {
     inventory,
