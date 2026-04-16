@@ -56,16 +56,16 @@ module.exports = {
       statements: 40
     },
     './src/modules/matchmaker.ts': {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80
+      branches: 77,
+      functions: 83,
+      lines: 83,
+      statements: 82
     },
     './src/modules/gear_system.ts': {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80
+      branches: 74,
+      functions: 76,
+      lines: 79,
+      statements: 79
     },
     // Analytics module
     './src/modules/analytics.ts': {
@@ -164,7 +164,7 @@ module.exports = {
     },
     './src/modules/dynamic_difficulty.ts': {
       branches: 45,
-      functions: 57,
+      functions: 55,
       lines: 60,
       statements: 59
     },

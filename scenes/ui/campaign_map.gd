@@ -16,9 +16,17 @@ var player_stats: Node
 
 # --- Node References ---
 @onready var chapter_title: Label = $ChapterTitle
+@onready var progress_message_label: Label = $ProgressMessageLabel
 @onready var stages_container: VBoxContainer = $StagesContainer
 @onready var chapter_label: Label = $ChapterLabel
 @onready var progress_label: Label = $ProgressLabel
+@onready var progress_bar_background: ColorRect = $ProgressBarContainer/ProgressBarBackground
+@onready var progress_bar_fill: ColorRect = $ProgressBarContainer/ProgressBarFill
+@onready var progress_percent: Label = $ProgressBarContainer/ProgressPercent
+@onready var boss_unlock_info: Panel = $BossUnlockInfo
+@onready var boss_unlock_label: Label = $BossUnlockInfo/BossUnlockLabel
+@onready var boss_requirements_panel: Panel = $BossRequirementsPanel
+@onready var boss_requirements_label: Label = $BossRequirementsPanel/BossRequirementsLabel
 @onready var prev_chapter_button: Button = $ChapterNav/PrevChapterButton
 @onready var next_chapter_button: Button = $ChapterNav/NextChapterButton
 
@@ -53,6 +61,9 @@ func _ready() -> void:
 	# Set initial chapter to first unlocked or first available
 	if not available_chapters.is_empty():
 		current_chapter = _get_first_unlocked_chapter()
+
+	# Hide boss unlock feedback initially
+	_hide_boss_unlock_feedback()
 
 	update_chapter_display()
 	build_stage_buttons()
@@ -118,6 +129,9 @@ func update_chapter_display() -> void:
 	else:
 		progress_label.text = "Locked - Complete previous chapter to unlock"
 
+	# Show motivating progress message
+	_show_progress_message()
+
 	# Update navigation buttons
 	prev_chapter_button.disabled = chapter_index <= 0
 
@@ -129,20 +143,92 @@ func update_chapter_display() -> void:
 	next_chapter_button.disabled = is_next_locked
 
 func update_progress_display() -> void:
-	"""Updates the progress label showing completed stages."""
+	"""Updates the progress label and visual progress bar."""
 	var stages = get_campaign_stages(current_chapter)
 	var completed_count = 0
+	var boss_count = 0
+	var boss_defeated_count = 0
 
 	for stage_data in stages:
 		var stage_id = stage_data.get("id")
 		if CampaignManager.is_stage_completed(stage_id):
 			completed_count += 1
+		if stage_data.get("boss"):
+			boss_count += 1
+			if CampaignManager.has_defeated_boss(stage_data.get("boss")):
+				boss_defeated_count += 1
 
 	progress_label.text = "Progress: %d / %d stages completed" % [completed_count, stages.size()]
+
+	# Update visual progress bar
+	var progress_ratio = float(completed_count) / float(stages.size()) if stages.size() > 0 else 0.0
+	var progress_percentage = int(progress_ratio * 100)
+
+	# Animate progress bar fill
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.tween_property(progress_bar_fill, "size:x", progress_bar_background.size.x * progress_ratio, 0.3)
+
+	# Update percentage label with counting animation
+	_tween_counter(progress_percent, progress_percentage, 0.3)
+
+	# Update progress bar color based on completion
+	if progress_ratio >= 1.0:
+		progress_bar_fill.color = ArcherDesignTokens.COLOR_SECONDARY if ArcherDesignTokens else Color("#FFD700")  # Gold for complete
+	elif progress_ratio >= 0.75:
+		progress_bar_fill.color = ArcherDesignTokens.COLOR_TERTIARY if ArcherDesignTokens else Color("#22C55E")  # Green for near complete
+	elif progress_ratio >= 0.5:
+		progress_bar_fill.color = ArcherDesignTokens.COLOR_PRIMARY if ArcherDesignTokens else Color("#4A90D9")  # Blue for halfway
+	else:
+		progress_bar_fill.color = Color("#888888")  # Gray for early progress
+
+	# Check if all bosses in chapter are defeated and show unlock feedback
+	if boss_count > 0 and boss_defeated_count == boss_count:
+		_show_boss_unlock_feedback(boss_count)
+		# Hide requirements panel when chapter is complete
+		boss_requirements_panel.modulate.a = 0
+	else:
+		# Show boss unlock requirements
+		_update_boss_requirements(boss_defeated_count, completed_count, stages.size())
+
+func _update_boss_requirements(defeated: int, completed: int, total_stages: int) -> void:
+	"""Updates the boss unlock requirements panel."""
+	var stages = get_campaign_stages(current_chapter)
+	var boss_stage_index = -1
+	var stages_until_boss = 0
+
+	# Find the next boss stage
+	for i in range(stages.size()):
+		var stage_data = stages[i]
+		if stage_data.get("boss"):
+			if not CampaignManager.has_defeated_boss(stage_data.get("boss")):
+				boss_stage_index = i
+				stages_until_boss = stage_data.get("level_requirement", 1)
+				break
+
+	if boss_stage_index >= 0:
+		var boss_stage = stages[boss_stage_index]
+		var boss_name = boss_stage.get("name", "Boss")
+		var level_req = boss_stage.get("level_requirement", 1)
+
+		boss_requirements_label.text = "Next Boss: %s (Level %d)\nComplete %d more stage%s to unlock" % [
+			boss_name,
+			level_req,
+			max(0, boss_stage_index - completed),
+			"" if (boss_stage_index - completed) == 1 else "s"
+		]
+		boss_requirements_panel.modulate.a = 1
+	else:
+		# No boss remaining in this chapter
+		boss_requirements_panel.modulate.a = 0
 
 func build_stage_buttons() -> void:
 	for child in stages_container.get_children():
 		child.queue_free()
+
+	# Hide boss unlock feedback when rebuilding
+	_hide_boss_unlock_feedback()
 
 	# Check if chapter is unlocked
 	var is_chapter_unlocked = CampaignManager.is_chapter_unlocked(current_chapter)
@@ -155,6 +241,8 @@ func build_stage_buttons() -> void:
 		locked_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		locked_label.modulate = Color.GRAY
 		stages_container.add_child(locked_label)
+		# Hide progress elements for locked chapters
+		boss_requirements_panel.modulate.a = 0
 		return
 
 	var stages = get_campaign_stages(current_chapter)
@@ -264,11 +352,36 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 	if is_marker_available and is_unlocked and not is_completed and level_met:
 		button.text += " \u2713"  # Checkmark
 
+	# Add visual progress indicator - status circle
+	var status_icon = _create_status_icon(is_completed, is_unlocked, level_met, stage_data.get("boss"))
+	button.add_child(status_icon)
+	status_icon.position = Vector2(button.custom_minimum_size.x - 25, 10)
+
 	# Only enable button press if unlocked and level requirement is met
 	if is_unlocked and level_met:
 		button.pressed.connect(_on_stage_pressed.bind(stage_id))
 
 	return button
+
+func _create_status_icon(is_completed: bool, is_unlocked: bool, level_met: bool, is_boss: bool) -> Control:
+	"""Creates a visual status icon for the stage button."""
+	var icon = ColorRect.new()
+	icon.custom_minimum_size = Vector2(16, 16)
+
+	if is_completed:
+		# Completed - green checkmark circle
+		icon.color = ArcherDesignTokens.COLOR_SUCCESS if ArcherDesignTokens else Color("#22C55E")
+	elif is_boss and is_unlocked and level_met:
+		# Boss stage - orange warning circle
+		icon.color = ArcherDesignTokens.COLOR_WARNING if ArcherDesignTokens else Color("#F59E0B")
+	elif is_unlocked and level_met:
+		# Available but not completed - blue play circle
+		icon.color = ArcherDesignTokens.COLOR_PRIMARY if ArcherDesignTokens else Color("#4A90D9")
+	else:
+		# Locked - gray circle
+		icon.color = Color("#888888")
+
+	return icon
 
 func _on_stage_pressed(stage_id: String) -> void:
 	if not CampaignManager.is_stage_unlocked(stage_id):
@@ -324,21 +437,36 @@ func _exit_tree() -> void:
 func _apply_theme() -> void:
 	if not theme_manager:
 		return
-	
+
 	var colors = theme_manager.get_theme_colors()
 	var is_dark = theme_manager.is_dark_mode()
-	
+
 	# Apply background color
 	theme_manager.apply_background(self)
-	
+
 	# Apply colors to labels if they exist
 	if chapter_title:
 		chapter_title.modulate = colors["on_surface"]
+	if progress_message_label:
+		progress_message_label.modulate = colors["on_surface_variant"]
 	if chapter_label:
 		chapter_label.modulate = colors["on_surface"]
 	if progress_label:
 		progress_label.modulate = colors["on_surface"]
-	
+	if progress_percent:
+		progress_percent.modulate = colors["on_surface"]
+
+	# Style progress bar background
+	if progress_bar_background:
+		progress_bar_background.color = colors["surface_container_high"]
+
+	# Style boss unlock panel
+	if boss_unlock_info:
+		boss_unlock_info.modulate = Color(1, 1, 1, 0)  # Initially hidden
+		boss_unlock_info.self_modulate = colors["surface_container_lowest"]
+	if boss_unlock_label:
+		boss_unlock_label.modulate = colors["on_surface"]
+
 	# Rebuild stage buttons to apply new theme colors
 	build_stage_buttons()
 
@@ -361,6 +489,99 @@ func _on_next_chapter_pressed() -> void:
 			current_chapter = next_chapter
 			update_chapter_display()
 			build_stage_buttons()
+
+func _tween_counter(label: Label, target_value: int, duration: float) -> void:
+	"""Animates a counter label from current to target value."""
+	var current_value = int(label.text)
+	if current_value == target_value:
+		return
+
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.tween_method(_update_counter.bind(label), current_value, target_value, duration)
+
+func _update_counter(label: Label, value: int) -> void:
+	"""Updates the counter label with formatted value."""
+	label.text = "%d%%" % value
+
+func _show_boss_unlock_feedback(boss_count: int) -> void:
+	"""Shows satisfying boss unlock feedback with animation."""
+	# Set unlock message
+	boss_unlock_label.text = "%d Boss%s Defeated! Chapter Complete!" % [boss_count, "es" if boss_count > 1 else ""]
+
+	# Animate panel in with scale and opacity
+	boss_unlock_info.modulate = Color(1, 1, 1, 1)
+	boss_unlock_info.pivot_offset = boss_unlock_info.size / 2
+	boss_unlock_info.scale = Vector2.ZERO
+
+	var tween = create_tween()
+	tween.set_parallel(true)
+
+	# Scale in with bounce effect
+	tween.tween_property(boss_unlock_info, "scale", Vector2.ONE, 0.5)\
+		.set_ease(Tween.EASE_OUT)\
+		.set_trans(Tween.TRANS_SINE)
+
+	# Fade in
+	tween.tween_property(boss_unlock_info, "modulate", Color(1, 1, 1, 1), 0.2)
+
+	# Auto-hide after 3 seconds
+	tween.tween_interval(3.0)
+	tween.tween_property(boss_unlock_info, "modulate", Color(1, 1, 1, 0), 0.3)
+	tween.tween_property(boss_unlock_info, "scale", Vector2(1.1, 1.1), 0.3)
+	tween.tween_callback(func(): boss_unlock_info.modulate.a = 0)
+
+func _hide_boss_unlock_feedback() -> void:
+	"""Hides the boss unlock feedback panel."""
+	boss_unlock_info.modulate.a = 0
+
+func _show_progress_message() -> void:
+	"""Shows a motivating message based on chapter progress."""
+	var stages = get_campaign_stages(current_chapter)
+	var completed_count = 0
+
+	for stage_data in stages:
+		var stage_id = stage_data.get("id")
+		if CampaignManager.is_stage_completed(stage_id):
+			completed_count += 1
+
+	var progress_ratio = float(completed_count) / float(stages.size()) if stages.size() > 0 else 0.0
+	var progress_percentage = int(progress_ratio * 100)
+
+	var message = ""
+	var message_color = Color(0.7, 0.7, 0.7, 1)
+
+	match progress_percentage:
+		0:
+			message = "Your journey begins! Complete the first stage."
+		25:
+			message = "Off to a great start! Keep pushing forward!"
+		50:
+			message = "Halfway there! You're making excellent progress!"
+			message_color = ArcherDesignTokens.COLOR_PRIMARY if ArcherDesignTokens else Color("#4A90D9")
+		75:
+			message = "Almost done! The boss awaits your challenge!"
+			message_color = ArcherDesignTokens.COLOR_WARNING if ArcherDesignTokens else Color("#F59E0B")
+		100:
+			message = "Chapter complete! You've proven your worth!"
+			message_color = ArcherDesignTokens.COLOR_SECONDARY if ArcherDesignTokens else Color("#FFD700")
+		_:
+			if progress_percentage < 25:
+				message = "Every hero starts somewhere. Take it one step at a time!"
+			elif progress_percentage < 50:
+				message = "You're gaining momentum! Keep up the good work!"
+			elif progress_percentage < 75:
+				message = "The finish line is in sight! Don't give up now!"
+			else:
+				message = "Victory is within your grasp!"
+
+	progress_message_label.text = message
+	progress_message_label.modulate = message_color
+
+	# Animate message fade in
+	var tween = create_tween()
+	tween.tween_property(progress_message_label, "modulate", message_color, 0.3).set_trans(Tween.TRANS_SINE)
 
 func _on_chapter_unlocked(chapter_id: String) -> void:
 	"""Handles chapter unlock event and updates navigation."""

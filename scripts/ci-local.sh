@@ -254,7 +254,12 @@ main() {
 
     # If specific job requested
     if [[ -n "$job" ]]; then
-        run_act_job "$job"
+        # Check if it's a service-dependent job first
+        if [[ " ${SERVICE_JOBS[@]} " =~ " $job " ]]; then
+            run_service_job "$job"
+        else
+            run_act_job "$job"
+        fi
     # If running service-dependent job
     elif [[ " ${SERVICE_JOBS[@]}" =~ " $command " ]]; then
         run_service_job "$command"
