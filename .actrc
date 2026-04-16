@@ -21,9 +21,12 @@
 #
 # Workarounds:
 # 1. Run jobs individually: act -j <job-name>
-# 2. Use sequential runner: ./scripts/run-ci-locally.sh
+# 2. Use optimized local CI runner: ./scripts/ci-local.sh
 # 3. Use --reuse flag: act --reuse (experimental)
 # 4. Run without cache: act --no-cache-cache
 #
 # The project is configured to work correctly with GitHub Actions CI.
-# Local testing is primarily for individual job validation.
+# For local testing, use the optimized ci-local.sh script:
+#   - make ci (sequential)
+#   - make ci-parallel (fastest)
+#   - ./scripts/ci-local.sh --help (for options)

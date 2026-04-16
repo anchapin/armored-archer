@@ -20,13 +20,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - ci-network
 
-  # Nakama game server - matches CI configuration
+  # Nakama game server - uses custom PostgreSQL image
   nakama:
     image: armored-archer/nakama-postgres:3.21.1
     container_name: ci_nakama
     ports:
       - "7350:7350"
+      - "7351:7351"
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,6 +41,8 @@ services:
       start_period: 60s
     environment:
       NAKAMA_SERVER_KEY: defaultkey
+    networks:
+      - ci-network
 
 networks:
   ci-network:

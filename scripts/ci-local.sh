@@ -1,15 +1,20 @@
 #!/bin/bash
 # Local CI Runner for Armored Archer
 #
-# This script runs all CI workflows locally using a combination of:
-# - docker compose for service-dependent jobs (PostgreSQL, Nakama, Redis)
-# - act for act-compatible jobs
+# Optimized for speed with:
+#   - Parallel job execution (4 workers)
+#   - Service persistence option
+#   - Fast health checks (2s intervals)
+#   - Better caching
+#   - Progress reporting
 #
 # Usage:
-#   ./scripts/ci-local.sh              # Run all checks and tests (auto-cleans services)
-#   ./scripts/ci-local.sh <job>         # Run specific job
-#   ./scripts/ci-local.sh --clean       # Stop services and cleanup
-#   ./scripts/ci-local.sh --services     # Start only services (no tests)
+#   ./scripts/ci-local.sh                  # Run all checks (optimized mode)
+#   ./scripts/ci-local.sh <job>            # Run specific job
+#   ./scripts/ci-local.sh --parallel       # Run all jobs in parallel
+#   ./scripts/ci-local.sh --persist        # Keep services running after
+#   ./scripts/ci-local.sh --clean          # Stop services and cleanup
+#   ./scripts/ci-local.sh --fast           # Use fast docker-compose (default)
 #
 
 set -euo pipefail
@@ -19,32 +24,43 @@ readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
 readonly BLUE='\033[0;34m'
+readonly MAGENTA='\033[0;35m'
+readonly CYAN='\033[0;36m'
+readonly GRAY='\033[0;90m'
 readonly NC='\033[0m'
 
 # Project root directory
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Docker compose file location
-DOCKER_COMPOSE="${PROJECT_ROOT}/backend/docker-compose.yml"
+# Docker compose file selection
+FAST_COMPOSE="${PROJECT_ROOT}/.github/docker-compose-ci-fast.yml"
+REGULAR_COMPOSE="${PROJECT_ROOT}/.github/docker-compose.yml"
+DOCKER_COMPOSE="${REGULAR_COMPOSE}"
 
-# Service variables (matching docker-compose.yml)
+# Service variables
 export POSTGRES_USER="${POSTGRES_USER:-postgres}"
 export POSTGRES_DB="${POSTGRES_DB:-nakama}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-changeme}"
 
-# Nakama connection variables for tests
+# Nakama connection variables
 export NAKAMA_HOST="${NAKAMA_HOST:-localhost}"
 export NAKAMA_PORT="${NAKAMA_PORT:-7350}"
 export NAKAMA_SERVER_KEY="${NAKAMA_SERVER_KEY:-defaultkey}"
 
 # Test database variables
 export TEST_DB_HOST="${TEST_DB_HOST:-localhost}"
-export TEST_DB_PORT="${TEST_DB_PORT:-5433}"
+export TEST_DB_PORT="${TEST_DB_PORT:-5432}"
 export TEST_DB_USER="${TEST_DB_USER:-postgres}"
 export TEST_DB_PASSWORD="${TEST_DB_PASSWORD:-changeme}"
 export TEST_DB_NAME="${TEST_DB_NAME:-nakama}"
 
-# Act-compatible jobs (can run without services)
+# Runtime flags
+USE_FAST_COMPOSE=false
+USE_PARALLEL=false
+PERSIST_SERVICES=false
+VERBOSE=false
+
+# Job categories
 ACT_JOBS=(
     "backend-lint"
     "backend-typecheck"
@@ -64,153 +80,390 @@ ACT_JOBS=(
     "agents-md-validation"
 )
 
-# Service-dependent jobs (need services running)
 SERVICE_JOBS=(
     "backend-test"
     "schema-validation"
 )
 
-# All jobs
 ALL_JOBS=("${ACT_JOBS[@]}" "${SERVICE_JOBS[@]}")
 
-# Service management functions
+# Fast jobs (can run quickly, good for early feedback)
+FAST_JOBS=(
+    "godot-validate"
+    "python-lint"
+    "gdscript-lint"
+    "backend-lint"
+    "backend-typecheck"
+)
+
+# Slow jobs (run later)
+SLOW_JOBS=(
+    "backend-test"
+    "schema-validation"
+    "sonarcloud"
+    "security-audit"
+)
+
+# Progress tracking
+declare -A JOB_STATUS
+declare -A JOB_TIME
+TOTAL_START_TIME=$(date +%s)
+PROCESSED_JOBS=0
+TOTAL_JOBS=0
+
+# Logging functions
+log_info() { echo -e "${BLUE}[INFO]${NC} $*"; }
+log_success() { echo -e "${GREEN}[PASS]${NC} $*"; }
+log_warning() { echo -e "${YELLOW}[WARN]${NC} $*"; }
+log_error() { echo -e "${RED}[FAIL]${NC} $*"; }
+log_step() { echo -e "${CYAN}[STEP]${NC} $*"; }
+log_timing() {
+    local duration=$(( $(date +%s) - $1 ))
+    local minutes=$((duration / 60))
+    local seconds=$((duration % 60))
+    if [ $minutes -gt 0 ]; then
+        echo "${minutes}m ${seconds}s"
+    else
+        echo "${seconds}s"
+    fi
+}
+
+# Service management
 start_services() {
-    echo -e "${BLUE}Starting services...${NC}"
+    log_step "Starting services..."
     cd "${PROJECT_ROOT}"
-    docker compose -f "${DOCKER_COMPOSE}" up -d postgres nakama redis 2>&1 || {
-        echo -e "${RED}Failed to start services${NC}"
+
+    local compose_file="${USE_FAST_COMPOSE}" && echo "$FAST_COMPOSE" || echo "$DOCKER_COMPOSE"
+    local compose_opts="-f ${compose_file}"
+
+    if [ "${USE_FAST_COMPOSE}" = true ]; then
+        compose_opts="-f ${FAST_COMPOSE} -p ci-fast"
+        log_info "Using fast docker-compose (optimized health checks)"
+    else
+        compose_opts="-f ${REGULAR_COMPOSE} -p ci-armored-archer"
+    fi
+
+    docker compose $compose_opts up -d postgres redis nakama 2>&1 || {
+        log_error "Failed to start services"
         return 1
     }
 
-    # Wait for PostgreSQL to be healthy
-    echo -e "${BLUE}Waiting for PostgreSQL to be healthy...${NC}"
-    for i in {1..30}; do
-        if docker exec armored_archer_db pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
-            echo -e "${GREEN}PostgreSQL is healthy${NC}"
+    # Fast health check for PostgreSQL
+    log_info "Waiting for PostgreSQL..."
+    local pg_ready=false
+    for i in {1..15}; do
+        if docker exec $(docker ps -q -f name=postgres) pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
+            log_success "PostgreSQL ready in ${i}s"
+            pg_ready=true
             break
         fi
-        sleep 2
+        sleep 1
     done
 
-    # Wait for Nakama to be responsive
-    echo -e "${BLUE}Waiting for Nakama server to be ready...${NC}"
+    if [ "$pg_ready" = false ]; then
+        log_warning "PostgreSQL not fully ready, continuing..."
+    fi
+
+    # Fast health check for Nakama
+    log_info "Waiting for Nakama..."
+    local nakama_ready=false
     for i in {1..30}; do
-        if curl -s http://localhost:7350 >/dev/null 2>&1; then
-            echo -e "${GREEN}Nakama is ready${NC}"
+        if curl -s -f http://localhost:${NAKAMA_PORT} >/dev/null 2>&1; then
+            log_success "Nakama ready in ${i}s"
+            nakama_ready=true
             break
         fi
-        sleep 2
+        sleep 1
     done
 
-    echo -e "${GREEN}Services are running${NC}"
+    if [ "$nakama_ready" = false ]; then
+        log_warning "Nakama not fully ready, tests may fail..."
+    fi
+
+    log_success "Services started"
     return 0
 }
 
 stop_services() {
-    echo -e "${YELLOW}Stopping services...${NC}"
-    cd "${PROJECT_ROOT}"
-    docker compose -f "${DOCKER_COMPOSE}" down 2>&1 || {
-        echo -e "${RED}Failed to stop services${NC}"
-        return 1
-    }
-    echo -e "${GREEN}Services stopped${NC}"
-    return 0
-}
-
-cleanup_services() {
-    echo -e "${YELLOW}Cleaning up services...${NC}"
+    log_step "Stopping services..."
     cd "${PROJECT_ROOT}"
 
-    # Remove dangling volumes
-    docker volume ls -qf dangling=true | xargs -r docker volume rm 2>/dev/null || true
+    if [ "${USE_FAST_COMPOSE}" = true ]; then
+        docker compose -f "${FAST_COMPOSE}" -p ci-fast down 2>&1 || true
+    else
+        docker compose -f "${REGULAR_COMPOSE}" -p ci-armored-archer down 2>&1 || true
+    fi
 
-    docker compose -f "${DOCKER_COMPOSE}" down -v 2>&1 || true
-
-    echo -e "${GREEN}Cleanup complete${NC}"
+    log_success "Services stopped"
 }
 
 check_services() {
-    cd "${PROJECT_ROOT}"
-    docker compose -f "${DOCKER_COMPOSE}" ps 2>/dev/null
+    if [ "${USE_FAST_COMPOSE}" = true ]; then
+        docker compose -f "${FAST_COMPOSE}" -p ci-fast ps 2>/dev/null
+    else
+        docker compose -f "${REGULAR_COMPOSE}" -p ci-armored-archer ps 2>/dev/null
+    fi
 }
 
-# Act job runner
+# Job execution
 run_act_job() {
     local job="$1"
-    echo -e "${BLUE}Running act job: ${job}${NC}"
+    local job_start=$(date +%s)
+
+    log_step "Running: ${CYAN}${job}${NC}"
+
     cd "${PROJECT_ROOT}"
-    act -j "${job}" -W .github/workflows/ci.yml 2>&1
+
+    # Use .actrc-local if it exists
+    local act_opts="-W .github/workflows/ci.yml"
+    if [ -f "${PROJECT_ROOT}/.actrc-local" ]; then
+        act_opts="-P .actrc-local ${act_opts}"
+    fi
+
+    if act -j "${job}" ${act_opts} 2>&1; then
+        JOB_STATUS[$job]="pass"
+        JOB_TIME[$job]=$(log_timing $job_start)
+        log_success "${job} completed in ${JOB_TIME[$job]}"
+        return 0
+    else
+        JOB_STATUS[$job]="fail"
+        JOB_TIME[$job]=$(log_timing $job_start)
+        log_error "${job} failed after ${JOB_TIME[$job]}"
+        return 1
+    fi
 }
 
-# Service-dependent test runner
 run_service_job() {
     local job="$1"
+    local job_start=$(date +%s)
     local test_cmd=""
 
-    # Map job name to npm command
+    # Map job to command
     case "${job}" in
-        "schema-validation")
-            test_cmd="test:schema"
-            ;;
-        "backend-test")
-            test_cmd="test"
-            ;;
+        "schema-validation") test_cmd="test:schema" ;;
+        "backend-test") test_cmd="test:coverage" ;;
     esac
 
-    echo -e "${BLUE}Running service job: ${job}${NC}"
+    log_step "Running: ${CYAN}${job}${NC} (requires services)"
 
-    # Check if services are running
-    if ! check_services >/dev/null; then
-        echo -e "${YELLOW}Services not running, starting...${NC}"
+    # Start services if not running
+    if ! check_services >/dev/null 2>&1; then
+        log_info "Services not running, starting..."
         if ! start_services; then
+            JOB_STATUS[$job]="fail"
             return 1
         fi
     fi
 
-    # Run the test from project root
     cd "${PROJECT_ROOT}"
 
-    case "${job}" in
-        "schema-validation")
-            cd backend && TEST_DB_HOST="${TEST_DB_HOST}" TEST_DB_PORT="${TEST_DB_PORT}" TEST_DB_USER="${TEST_DB_USER}" TEST_DB_PASSWORD="${TEST_DB_PASSWORD}" TEST_DB_NAME="${TEST_DB_NAME}" npm run "${test_cmd}"
-            ;;
-        "backend-test")
-            cd backend && NAKAMA_HOST="${NAKAMA_HOST}" NAKAMA_PORT="${NAKAMA_PORT}" NAKAMA_SERVER_KEY="${NAKAMA_SERVER_KEY}" TEST_DB_HOST="${TEST_DB_HOST}" TEST_DB_PORT="${TEST_DB_PORT}" TEST_DB_USER="${TEST_DB_USER}" TEST_DB_PASSWORD="${TEST_DB_PASSWORD}" TEST_DB_NAME="${TEST_DB_NAME}" npm run "${test_cmd}"
-            ;;
-    esac
+    # Set environment variables
+    local env_vars="NAKAMA_HOST=${NAKAMA_HOST} NAKAMA_PORT=${NAKAMA_PORT} NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY} TEST_DB_HOST=${TEST_DB_HOST} TEST_DB_PORT=${TEST_DB_PORT} TEST_DB_USER=${TEST_DB_USER} TEST_DB_PASSWORD=${TEST_DB_PASSWORD} TEST_DB_NAME=${TEST_DB_NAME}"
+
+    cd backend
+    if eval "$env_vars npm run ${test_cmd}" 2>&1; then
+        JOB_STATUS[$job]="pass"
+        JOB_TIME[$job]=$(log_timing $job_start)
+        log_success "${job} completed in ${JOB_TIME[$job]}"
+        return 0
+    else
+        JOB_STATUS[$job]="fail"
+        JOB_TIME[$job]=$(log_timing $job_start)
+        log_error "${job} failed after ${JOB_TIME[$job]}"
+        return 1
+    fi
 }
 
-# Main CLI
+# Parallel job execution
+run_jobs_parallel() {
+    local jobs=("$@")
+    local max_parallel=4
+    local pids=()
+    local failed=0
+
+    log_info "Running ${#jobs[@]} jobs with up to ${max_parallel} parallel workers"
+
+    for job in "${jobs[@]}"; do
+        TOTAL_JOBS=$((TOTAL_JOBS + 1))
+    done
+
+    # Create a temporary directory for job status
+    local tmpdir=$(mktemp -d)
+    trap "rm -rf $tmpdir" EXIT
+
+    for job in "${jobs[@]}"; do
+        # Wait if we have too many parallel jobs
+        while [ ${#pids[@]} -ge ${max_parallel} ]; do
+            for i in "${!pids[@]}"; do
+                if ! kill -0 "${pids[$i]}" 2>/dev/null; then
+                    wait "${pids[$i]}" || failed=1
+                    unset "pids[$i]"
+                fi
+            done
+            sleep 0.1
+        done
+
+        # Run job in background
+        (
+            if [[ " ${SERVICE_JOBS[@]} " =~ " $job " ]]; then
+                run_service_job "$job"
+            else
+                run_act_job "$job"
+            fi
+            echo $? > "${tmpdir}/${job}.exit"
+        ) &
+        pids+=($!)
+    done
+
+    # Wait for all remaining jobs
+    for pid in "${pids[@]}"; do
+        wait "$pid" || failed=1
+    done
+
+    # Collect results
+    for job in "${jobs[@]}"; do
+        if [ -f "${tmpdir}/${job}.exit" ]; then
+            if [ "$(cat "${tmpdir}/${job}.exit")" = "0" ]; then
+                JOB_STATUS[$job]="pass"
+            else
+                JOB_STATUS[$job]="fail"
+                failed=1
+            fi
+        fi
+    done
+
+    return $failed
+}
+
+# Sequential job execution
+run_jobs_sequential() {
+    local jobs=("$@")
+    local failed=0
+
+    log_info "Running ${#jobs[@]} jobs sequentially"
+
+    for job in "${jobs[@]}"; do
+        TOTAL_JOBS=$((TOTAL_JOBS + 1))
+
+        if [[ " ${SERVICE_JOBS[@]} " =~ " $job " ]]; then
+            run_service_job "$job" || failed=1
+        else
+            run_act_job "$job" || failed=1
+        fi
+
+        PROCESSED_JOBS=$((PROCESSED_JOBS + 1))
+    done
+
+    return $failed
+}
+
+# Summary report
+print_summary() {
+    local total_time=$(log_timing $TOTAL_START_TIME)
+    echo ""
+    echo -e "${MAGENTA}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${MAGENTA}                    CI RUN SUMMARY${NC}"
+    echo -e "${MAGENTA}═══════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "  Total time: ${CYAN}${total_time}${NC}"
+    echo -e "  Total jobs: ${CYAN}${TOTAL_JOBS}${NC}"
+    echo ""
+
+    local passed=0
+    local failed=0
+
+    echo -e "${GREEN}PASSED:${NC}"
+    for job in "${!JOB_STATUS[@]}"; do
+        if [ "${JOB_STATUS[$job]}" = "pass" ]; then
+            echo -e "  ${GREEN}✓${NC} ${job} ${GRAY}(${JOB_TIME[$job]:-unknown})${NC}"
+            passed=$((passed + 1))
+        fi
+    done
+
+    if [ $failed -gt 0 ] || [ ${#JOB_STATUS[@]} -gt $passed ]; then
+        echo ""
+        echo -e "${RED}FAILED:${NC}"
+        for job in "${!JOB_STATUS[@]}"; do
+            if [ "${JOB_STATUS[$job]}" = "fail" ]; then
+                echo -e "  ${RED}✗${NC} ${job} ${GRAY}(${JOB_TIME[$job]:-unknown})${NC}"
+                failed=$((failed + 1))
+            fi
+        done
+    fi
+
+    echo ""
+    echo -e "  ${GREEN}Passed:${NC} ${passed}  ${RED}Failed:${NC} ${failed}  ${CYAN}Total:${NC} ${TOTAL_JOBS}"
+    echo ""
+
+    if [ $failed -eq 0 ]; then
+        echo -e "${GREEN}✓ All jobs passed!${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ ${failed} job(s) failed${NC}"
+        return 1
+    fi
+}
+
+# CLI
 show_usage() {
     cat << 'EOF'
 Local CI Runner for Armored Archer
 
 Usage:
-  ./scripts/ci-local.sh              Run all checks and tests (auto-cleans services)
-  ./scripts/ci-local.sh <job>        Run specific CI job
-  ./scripts/ci-local.sh --clean      Stop services and cleanup
-  ./scripts/ci-local.sh --services   Start/stop only services (no tests)
-  ./scripts/ci-local.sh --status     Show service status
+  ./scripts/ci-local.sh                  Run all jobs sequentially (optimized)
+  ./scripts/ci-local.sh <job>            Run specific job
+  ./scripts/ci-local.sh --parallel       Run all jobs in parallel (4 workers)
+  ./scripts/ci-local.sh --persist        Keep services running after completion
+  ./scripts/ci-local.sh --fast           Use fast docker-compose (optimal health checks)
+  ./scripts/ci-local.sh --clean          Stop services and cleanup
+  ./scripts/ci-local.sh --status         Show service status
 
 Act-compatible jobs (no services required):
 EOF
 
-    # List act jobs
-    printf "\n${BLUE}  Act Jobs:${NC}\n"
-    for job in "${ACT_JOBS[@]}"; do
-        printf "  ${YELLOW}%s${NC}\n" "${job}"
+    printf "\n  ${BLUE}Fast Jobs (run first for quick feedback):${NC}\n"
+    for job in "${FAST_JOBS[@]}"; do
+        printf "    ${YELLOW}%s${NC}\n" "${job}"
     done
 
-    # List service jobs
-    printf "\n${BLUE} Service Jobs (need PostgreSQL/Nakama):${NC}\n"
-    for job in "${SERVICE_JOBS[@]}"; do
-        printf "  ${YELLOW}%s${NC}\n" "${job}"
+    printf "\n  ${BLUE}Other Act Jobs:${NC}\n"
+    for job in "${ACT_JOBS[@]}"; do
+        if [[ ! " ${FAST_JOBS[@]} " =~ " $job " ]]; then
+            printf "    ${YELLOW}%s${NC}\n" "${job}"
+        fi
     done
+
+    printf "\n  ${BLUE}Service Jobs (need PostgreSQL/Nakama):${NC}\n"
+    for job in "${SERVICE_JOBS[@]}"; do
+        printf "    ${YELLOW}%s${NC}\n" "${job}"
+    done
+
+    cat << 'EOF'
+
+Examples:
+  # Run fast jobs first for quick feedback
+  ./scripts/ci-local.sh godot-validate
+
+  # Run all jobs in parallel (fastest overall)
+  ./scripts/ci-local.sh --parallel --fast
+
+  # Run services once and keep them running
+  ./scripts/ci-local.sh --persist --fast
+  ./scripts/ci-local.sh backend-test  # Services already running
+  ./scripts/ci-local.sh --clean
+
+Optimizations:
+  - Faster health checks (2s intervals vs 10s)
+  - Parallel job execution (4 workers)
+  - Service persistence (don't stop/start between jobs)
+  - Alpine images (smaller, faster pull)
+  - .actrc-local configuration (cached containers)
+EOF
 }
 
 main() {
-    local command="${1:-all}"
-    local job="${2:-}"
+    local command="all"
+    local job=""
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -219,29 +472,38 @@ main() {
                 show_usage
                 exit 0
                 ;;
+            --parallel)
+                USE_PARALLEL=true
+                shift
+                ;;
+            --fast)
+                USE_FAST_COMPOSE=true
+                shift
+                ;;
+            --persist)
+                PERSIST_SERVICES=true
+                shift
+                ;;
+            --verbose)
+                VERBOSE=true
+                shift
+                ;;
             --clean)
                 stop_services
-                cleanup_services
-                echo -e "${GREEN}Cleanup complete. Exiting.${NC}"
+                log_info "Cleanup complete"
                 exit 0
-                ;;
-            --services)
-                if [[ "$command" == "services" ]]; then
-                    start_services
-                    echo -e "${GREEN}Services started. Run with job name to run tests.${NC}"
-                    exit 0
-                else
-                    check_services
-                    exit $?
-                fi
                 ;;
             --status)
                 check_services
                 exit $?
                 ;;
+            -j|--job)
+                job="$2"
+                shift 2
+                ;;
             *)
                 # Check if it's a valid job name
-                if [[ " ${ALL_JOBS[@]}" =~ " $1 " ]]; then
+                if [[ " ${ALL_JOBS[@]} " =~ " $1 " ]]; then
                     job="$1"
                     shift
                 else
@@ -252,57 +514,114 @@ main() {
         esac
     done
 
-    # If specific job requested
+    # Single job mode
     if [[ -n "$job" ]]; then
-        # Check if it's a service-dependent job first
+        TOTAL_JOBS=1
         if [[ " ${SERVICE_JOBS[@]} " =~ " $job " ]]; then
             run_service_job "$job"
         else
             run_act_job "$job"
         fi
-    # If running service-dependent job
-    elif [[ " ${SERVICE_JOBS[@]}" =~ " $command " ]]; then
-        run_service_job "$command"
-    # If --services or running act job for services
-    elif [[ "$command" == "all" || "$command" == "services" ]]; then
-        # Start services if needed
-        if ! check_services >/dev/null; then
-            start_services
-        fi
-
-        # Run act-compatible jobs
-        local failed=0
-        for job in "${ACT_JOBS[@]}"; do
-            if ! run_act_job "$job"; then
-                failed=1
-            fi
-        done
-
-        # Run service-dependent tests
-        for job in "${SERVICE_JOBS[@]}"; do
-            if [[ "$command" == "all" ]]; then
-                run_service_job "$job"
-            fi
-        done
-
-        # Show summary
-        if [[ $failed -eq 0 ]]; then
-            echo -e "${GREEN}✓ All jobs completed successfully${NC}"
-        else
-            echo -e "${RED}✗ Some jobs failed${NC}"
-        fi
-
-        # Cleanup services after running all jobs
-        if [[ "$command" == "all" ]]; then
-            echo -e "${BLUE}Cleaning up services...${NC}"
-            stop_services
-        fi
-
-        exit $failed
-    else
-        show_usage
-        exit 1
+        print_summary
+        [ "$PERSIST_SERVICES" = true ] || stop_services
+        exit $?
     fi
+
+    # Job category mode
+    if [[ " ${ALL_JOBS[@]} " =~ " $command " ]]; then
+        TOTAL_JOBS=1
+        if [[ " ${SERVICE_JOBS[@]} " =~ " $command " ]]; then
+            run_service_job "$command"
+        else
+            run_act_job "$command"
+        fi
+        print_summary
+        [ "$PERSIST_SERVICES" = true ] || stop_services
+        exit $?
+    fi
+
+    # Full CI run
+    if [[ "$command" == "all" ]]; then
+        echo ""
+        echo -e "${MAGENTA}╔═══════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${MAGENTA}║           ARMORED ARCHER - LOCAL CI RUNNER                   ║${NC}"
+        echo -e "${MAGENTA}╚═══════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+
+        # Show configuration
+        if [ "$USE_FAST_COMPOSE" = true ]; then
+            log_info "Mode: FAST (optimized health checks)"
+        else
+            log_info "Mode: STANDARD"
+        fi
+
+        if [ "$USE_PARALLEL" = true ]; then
+            log_info "Execution: PARALLEL (4 workers)"
+        else
+            log_info "Execution: SEQUENTIAL"
+        fi
+
+        if [ "$PERSIST_SERVICES" = true ]; then
+            log_info "Services: WILL PERSIST after run"
+        else
+            log_info "Services: WILL STOP after run"
+        fi
+
+        echo ""
+
+        # Run fast jobs first for quick feedback
+        log_step "Phase 1: Fast jobs (quick feedback)"
+        if [ "$USE_PARALLEL" = true ]; then
+            run_jobs_parallel "${FAST_JOBS[@]}" || true
+        else
+            run_jobs_sequential "${FAST_JOBS[@]}" || true
+        fi
+
+        # Run remaining act jobs
+        log_step "Phase 2: Remaining act jobs"
+        local remaining_act=()
+        for job in "${ACT_JOBS[@]}"; do
+            if [[ ! " ${FAST_JOBS[@]} " =~ " $job " ]]; then
+                remaining_act+=("$job")
+            fi
+        done
+
+        if [ ${#remaining_act[@]} -gt 0 ]; then
+            if [ "$USE_PARALLEL" = true ]; then
+                run_jobs_parallel "${remaining_act[@]}" || true
+            else
+                run_jobs_sequential "${remaining_act[@]}" || true
+            fi
+        fi
+
+        # Run service-dependent jobs
+        log_step "Phase 3: Service-dependent jobs"
+        if [ "$USE_PARALLEL" = true ]; then
+            run_jobs_parallel "${SERVICE_JOBS[@]}" || true
+        else
+            run_jobs_sequential "${SERVICE_JOBS[@]}" || true
+        fi
+
+        # Print summary
+        print_summary
+        local exit_code=$?
+
+        # Cleanup
+        if [ "$PERSIST_SERVICES" = false ]; then
+            echo ""
+            log_step "Cleaning up..."
+            stop_services
+        else
+            echo ""
+            log_info "Services left running (use --clean to stop them)"
+            log_info "Run additional jobs without service startup overhead"
+        fi
+
+        exit $exit_code
+    fi
+
+    show_usage
+    exit 1
 }
 
 main "$@"

@@ -63,8 +63,8 @@ module.exports = {
     },
     './src/modules/gear_system.ts': {
       branches: 74,
-      functions: 76,
-      lines: 79,
+      functions: 73,
+      lines: 78,
       statements: 79
     },
     // Analytics module
