@@ -120,6 +120,7 @@ export function getLevelCurveType(level: number): LevelCurveType {
 
 /**
  * Calculates XP gain with level-based modifiers.
+ * Tuned for more balanced progression curve.
  *
  * @param baseXp - Base XP amount
  * @param level - Current player level
@@ -134,10 +135,10 @@ export function calculateXpGain(baseXp: number, level: number): number {
       multiplier = 1.0;
       break;
     case LevelCurveType.MID:
-      multiplier = 1.1;
+      multiplier = 1.05;
       break;
     case LevelCurveType.LATE:
-      multiplier = 1.2;
+      multiplier = 1.1;
       break;
   }
 
