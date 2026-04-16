@@ -2,31 +2,35 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://spacegroteskbold"
+uid="uid://cwlqm55r8dma8"
+path="res://.godot/imported/SpaceGrotesk-Bold.ttf-5f27404ba293b529ed8fb35a7200544c.fontdata"
 
 [deps]
 
 source_file="res://fonts/SpaceGrotesk-Bold.ttf"
-dest_files=["res://.godot/imported/SpaceGrotesk-Bold.ttf-xxxxx.fontdata"]
+dest_files=["res://.godot/imported/SpaceGrotesk-Bold.ttf-5f27404ba293b529ed8fb35a7200544c.fontdata"]
 
 [params]
 
 Rendering=null
-Antialiasing=1
-Hinting=2
-SubpixelPositioning=1
-Oversampling=0.0
+antialiasing=1
+generate_mipmaps=false
+disable_embedded_bitmaps=true
+multichannel_signed_distance_field=false
+msdf_pixel_range=8
+msdf_size=48
+allow_system_fallback=true
+force_autohinter=false
+modulate_color_glyphs=false
+hinting=1
+subpixel_positioning=4
+keep_rounding_remainders=true
+oversampling=0.0
 Fallbacks=[]
-FallbackToSystem=false
-ForceAutohinter=false
-Bitmap=false
-MultichannelSignedDistanceField=false
-MSDFPixelRange=8
-MSDFSize=48
-UseMipmaps=false
+fallbacks=[]
 Compress=true
+compress=true
 preload={}
 language_support={}
 script_support=[]
 opentype_features={}
-preload_glyph_ranges=[ ]

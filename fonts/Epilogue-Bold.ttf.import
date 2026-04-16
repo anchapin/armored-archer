@@ -3,30 +3,34 @@
 importer="font_data_dynamic"
 type="FontFile"
 uid="uid://epiloguebold"
+path="res://.godot/imported/Epilogue-Bold.ttf-523e40b7870b9cb8151326d0c6b59842.fontdata"
 
 [deps]
 
 source_file="res://fonts/Epilogue-Bold.ttf"
-dest_files=["res://.godot/imported/Epilogue-Bold.ttf-xxxxx.fontdata"]
+dest_files=["res://.godot/imported/Epilogue-Bold.ttf-523e40b7870b9cb8151326d0c6b59842.fontdata"]
 
 [params]
 
 Rendering=null
-Antialiasing=1
-Hinting=2
-SubpixelPositioning=1
-Oversampling=0.0
+antialiasing=1
+generate_mipmaps=false
+disable_embedded_bitmaps=true
+multichannel_signed_distance_field=false
+msdf_pixel_range=8
+msdf_size=48
+allow_system_fallback=true
+force_autohinter=false
+modulate_color_glyphs=false
+hinting=1
+subpixel_positioning=4
+keep_rounding_remainders=true
+oversampling=0.0
 Fallbacks=[]
-FallbackToSystem=false
-ForceAutohinter=false
-Bitmap=false
-MultichannelSignedDistanceField=false
-MSDFPixelRange=8
-MSDFSize=48
-UseMipmaps=false
+fallbacks=[]
 Compress=true
+compress=true
 preload={}
 language_support={}
 script_support=[]
 opentype_features={}
-preload_glyph_ranges=[ ]
