@@ -993,12 +993,12 @@ function processMatchResult(
   const loserOldSeasonPosition = loserOldSeasonEntry ? loserOldSeasonEntry.rank : 0;
 
   // Calculate XP gains
-  const winnerXPGained = calculateXPGain(true, isPunchUp);
-  const loserXPGained = calculateXPGain(false, isPunchUp);
+  const winnerXPGained = calculateXPGain(true, isPunchUp, match.match_type);
+  const loserXPGained = calculateXPGain(false, isPunchUp, match.match_type);
 
   // Calculate per-match rewards
-  const winnerRewards = calculateMatchRewards(true, isPunchUp, winnerXPGained);
-  const loserRewards = calculateMatchRewards(false, isPunchUp, loserXPGained);
+  const winnerRewards = calculateMatchRewards(true, isPunchUp, match.match_type, winnerXPGained);
+  const loserRewards = calculateMatchRewards(false, isPunchUp, match.match_type, loserXPGained);
 
   // Award rewards to players (coins, gems)
   awardMatchRewards(nk, request.winner_id, winnerRewards);
@@ -1157,12 +1157,24 @@ function applyMatchRankDecay(
 /**
  * Calculates XP gain based on match result and type.
  *
+ * Ranked matches offer 100% XP rewards, casual matches offer 50% XP rewards.
+ * Punch-up matches provide a 1.5x multiplier bonus.
+ *
  * @param isWinner - Whether the player won the match
  * @param isPunchUp - Whether this was a punch-up match
+ * @param matchType - Type of match ("ranked" or "casual")
  * @returns XP gained
  */
-function calculateXPGain(isWinner: boolean, isPunchUp: boolean): number {
-  const baseXP = isWinner ? 100 : 25;
+function calculateXPGain(
+  isWinner: boolean,
+  isPunchUp: boolean,
+  matchType: 'ranked' | 'casual'
+): number {
+  const rankedBaseXP = isWinner ? 100 : 25;
+  const casualBaseXP = isWinner ? 50 : 15;
+
+  // Casual matches award 50% of ranked XP
+  const baseXP = matchType === 'ranked' ? rankedBaseXP : casualBaseXP;
   const punchUpMultiplier = isPunchUp ? 1.5 : 1.0;
   return Math.round(baseXP * punchUpMultiplier);
 }
@@ -1170,14 +1182,19 @@ function calculateXPGain(isWinner: boolean, isPunchUp: boolean): number {
 /**
  * Calculates per-match rewards based on result and type.
  *
+ * Ranked matches offer higher rewards and include punch-up gem bonuses.
+ * Casual matches offer 50% coin rewards and no gem bonuses.
+ *
  * @param isWinner - Whether the player won the match
  * @param isPunchUp - Whether this was a punch-up match
+ * @param matchType - Type of match ("ranked" or "casual")
  * @param xpGained - XP gained in the match
  * @returns Array of match rewards
  */
 function calculateMatchRewards(
   isWinner: boolean,
   isPunchUp: boolean,
+  matchType: 'ranked' | 'casual',
   xpGained: number
 ): MatchReward[] {
   const rewards: MatchReward[] = [];
@@ -1189,16 +1206,23 @@ function calculateMatchRewards(
     type: 'xp',
   });
 
-  // Coins awarded based on result
-  const coins = isWinner ? 50 : 10;
+  // Coins awarded based on result and match type
+  // Ranked: 50 coins for win, 10 for loss
+  // Casual: 25 coins for win, 5 for loss (50% of ranked)
+  let coins: number;
+  if (matchType === 'ranked') {
+    coins = isWinner ? 50 : 10;
+  } else {
+    coins = isWinner ? 25 : 5;
+  }
   rewards.push({
     name: 'Coins',
     quantity: coins,
     type: 'coin',
   });
 
-  // Bonus gems for punch-up wins
-  if (isWinner && isPunchUp) {
+  // Bonus gems for punch-up wins (ranked only)
+  if (isWinner && isPunchUp && matchType === 'ranked') {
     rewards.push({
       name: 'Gems',
       quantity: 5,

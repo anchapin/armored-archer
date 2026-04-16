@@ -80,24 +80,34 @@ func _ready() -> void:
 func show_match_results(result_data: Dictionary) -> void:
 	_match_result_data = result_data
 
+	var match_type: String = result_data.get("match_type", "ranked")
+
 	# Set outcome
 	_set_outcome(result_data.get("is_victory", false))
 
 	# Set XP gained
 	_set_xp_gained(result_data.get("xp_gained", 0))
 
-	# Set rank change
-	_set_rank_change(
-		result_data.get("old_rank", 0),
-		result_data.get("new_rank", 0),
-		result_data.get("rank_delta", 0)
-	)
+	# Only show rank/season info for ranked matches
+	if match_type == "ranked":
+		# Set rank change
+		_set_rank_change(
+			result_data.get("old_rank", 0),
+			result_data.get("new_rank", 0),
+			result_data.get("rank_delta", 0)
+		)
 
-	# Set season position
-	_set_season_position(
-		result_data.get("season_position", 0),
-		result_data.get("season_delta", 0)
-	)
+		# Set season position
+		_set_season_position(
+			result_data.get("season_position", 0),
+			result_data.get("season_delta", 0)
+		)
+	else:
+		# Hide rank change for casual matches
+		if rank_change_container:
+			rank_change_container.visible = false
+		if season_position_label:
+			season_position_label.text = "Casual Match - No rank changes"
 
 	# Set rewards
 	_set_rewards(result_data.get("rewards", []))
@@ -211,13 +221,13 @@ func _set_match_details(data: Dictionary) -> void:
 
 	var details: Array = []
 
-	# Match type
-	var match_type: String = data.get("match_type", "Ranked")
-	details.append(match_type.capitalize())
+	# Match type - highlight it clearly
+	var match_type: String = data.get("match_type", "Ranked").to_upper()
+	details.append(match_type)
 
 	# Punch-up status
 	if data.get("is_punch_up", false):
-		details.append("Punch-Up")
+		details.append("PUNCH-UP")
 
 	# Duration
 	var duration: float = data.get("match_duration", 0.0)
