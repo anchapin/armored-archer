@@ -5,6 +5,7 @@
 ## - stage_unlocked(stage_id: String): Emitted when a new stage becomes available
 ## - stage_completed(stage_id: String): Emitted when a stage is finished
 ## - campaign_progress_updated(chapter_id: String, progress: float): Emitted when overall progress changes
+## - chapter_unlocked(chapter_id: String): Emitted when a chapter becomes available
 ##
 extends Node
 
@@ -15,6 +16,7 @@ var campaigns_data: Dictionary = {}
 var unlocked_stages: Array = []
 var completed_stages: Array = []
 var bosses_defeated: Array = []
+var unlocked_chapters: Array = []
 
 # --- Modifier Pool Unlocks ---
 var unlocked_modifier_pools: Array = []
@@ -31,6 +33,7 @@ var progression_manager: Node
 signal stage_unlocked(stage_id: String)
 signal stage_completed(stage_id: String)
 signal campaign_progress_updated(chapter_id: String, progress: float)
+signal chapter_unlocked(chapter_id: String)
 signal modifier_pool_unlocked(modifier_id: String)
 signal difficulty_display_changed(difficulty_level: String)
 
@@ -56,9 +59,11 @@ func _ready() -> void:
 	load_campaigns_data()
 	load_progress()
 
-	# If no saved progress, initialize with first stage unlocked
+	# If no saved progress, initialize with first stage and chapter unlocked
 	if unlocked_stages.is_empty():
 		unlocked_stages = ["1_1"]
+	if unlocked_chapters.is_empty():
+		unlocked_chapters = ["chapter_1"]
 		save_progress()
 
 	# Connect to network for sync
@@ -89,6 +94,12 @@ func sync_campaign_progress() -> void:
 	if response.has("error"):
 		push_warning("Failed to sync campaign progress: " + str(response.error))
 		return
+
+	# Merge server chapter unlocks with local (union)
+	var server_chapters: Array = response.get("unlocked_chapters", [])
+	for chapter_id in server_chapters:
+		if not chapter_id in unlocked_chapters:
+			unlocked_chapters.append(chapter_id)
 
 	# Merge server completions with local (union)
 	var server_completed: Array = response.get("completed_stages", [])
@@ -241,7 +252,7 @@ func complete_stage(stage_id: String) -> void:
 		var stage_data = get_stage_data(stage_id)
 		var boss_value = stage_data.get("boss")
 		var boss_id: String = boss_value if boss_value != null else ""
-	
+
 		# Send stage completion to server with boss defeat info
 		_notify_server_stage_complete(stage_id, boss_id)
 
@@ -249,6 +260,10 @@ func complete_stage(stage_id: String) -> void:
 			handle_boss_defeat(boss_id)
 
 		unlock_next_stage(stage_id)
+
+		# Check for chapter unlocks after completing a stage
+		check_and_unlock_chapters()
+
 		save_progress()
 		update_campaign_progress()
 
@@ -297,6 +312,97 @@ func is_stage_completed(stage_id: String) -> bool:
 	"""
 	return stage_id in completed_stages
 
+## Checks if a chapter is available to play.
+
+## Parameters:
+## 	chapter_id: Chapter identifier to check
+
+## Returns:
+## 	bool: True if chapter is unlocked
+func is_chapter_unlocked(chapter_id: String) -> bool:
+	"""Checks if a chapter is available to play."""
+	return chapter_id in unlocked_chapters
+
+## Gets the chapter unlock requirement data.
+
+## Parameters:
+## 	chapter_id: Chapter identifier to check
+
+## Returns:
+## 	Dictionary: Unlock requirement data with type, required_chapter, required_stage, description
+func get_chapter_unlock_requirement(chapter_id: String) -> Dictionary:
+	"""Gets the chapter unlock requirement data."""
+	return campaigns_data.get("chapter_unlock_requirements", {}).get(chapter_id, {})
+
+## Gets the level requirement for a chapter.
+
+## Parameters:
+## 	chapter_id: Chapter identifier to check
+
+## Returns:
+## 	int: Minimum level required to access this chapter
+func get_chapter_level_requirement(chapter_id: String) -> int:
+	"""Gets the level requirement for a chapter."""
+	for chapter in campaigns_data.get("campaigns", []):
+		if chapter.get("id") == chapter_id:
+			return chapter.get("level_requirement", 1)
+	return 1
+
+## Gets the level requirement for a stage.
+
+## Parameters:
+## 	stage_id: Stage identifier to check
+
+## Returns:
+## 	int: Minimum level required to play this stage
+func get_stage_level_requirement(stage_id: String) -> int:
+	"""Gets the level requirement for a stage."""
+	var stage_data = get_stage_data(stage_id)
+	return stage_data.get("level_requirement", 1)
+
+## Unlocks a chapter and emits the chapter_unlocked signal.
+
+## Parameters:
+## 	chapter_id: ID of the chapter to unlock
+func unlock_chapter(chapter_id: String) -> void:
+	"""Unlocks a chapter and emits the chapter_unlocked signal."""
+	if not chapter_id in unlocked_chapters:
+		unlocked_chapters.append(chapter_id)
+		chapter_unlocked.emit(chapter_id)
+
+		# Track chapter unlocked in analytics
+		if analytics and analytics.has_method("log_custom_event"):
+			analytics.log_custom_event("chapter_unlocked", {
+				"chapter_id": chapter_id
+			})
+
+		save_progress()
+
+## Checks and unlocks chapters based on completion criteria.
+
+## This is called when a stage is completed to see if any new chapters should unlock.
+func check_and_unlock_chapters() -> void:
+	"""Checks and unlocks chapters based on completion criteria."""
+	var unlock_reqs = campaigns_data.get("chapter_unlock_requirements", {})
+
+	for chapter_id in unlock_reqs:
+		if chapter_id in unlocked_chapters:
+			continue  # Already unlocked
+
+		var req_data = unlock_reqs[chapter_id]
+		var req_type = req_data.get("type", "")
+
+		match req_type:
+			"default":
+				# Default chapters are always unlocked
+				unlock_chapter(chapter_id)
+
+			"chapter_completion":
+				# Unlock if required chapter/stage is completed
+				var required_stage = req_data.get("required_stage", "")
+				if required_stage != "" and is_stage_completed(required_stage):
+					unlock_chapter(chapter_id)
+
 func unlock_next_stage(stage_id: String) -> void:
 	"""Unlocks the next stage in sequence after completing current one.
 
@@ -310,17 +416,19 @@ func unlock_next_stage(stage_id: String) -> void:
 	var next_stage_id = "%s_%d" % [current_chapter, current_stage_num + 1]
 
 	if get_stage_data(next_stage_id):
-		if not next_stage_id in unlocked_stages:
-			unlocked_stages.append(next_stage_id)
-			stage_unlocked.emit(next_stage_id)
+		# Check if the chapter is unlocked before unlocking the stage
+		if current_chapter in unlocked_chapters:
+			if not next_stage_id in unlocked_stages:
+				unlocked_stages.append(next_stage_id)
+				stage_unlocked.emit(next_stage_id)
 
-			# Track stage unlocked in analytics
-			if analytics and analytics.has_method("log_custom_event"):
-				analytics.log_custom_event("stage_unlocked", {
-					"stage_id": next_stage_id,
-					"unlocked_from": stage_id,
-					"chapter": int(current_chapter)
-				})
+				# Track stage unlocked in analytics
+				if analytics and analytics.has_method("log_custom_event"):
+					analytics.log_custom_event("stage_unlocked", {
+						"stage_id": next_stage_id,
+						"unlocked_from": stage_id,
+						"chapter": int(current_chapter)
+					})
 
 func get_chapter_progress(chapter_id: String) -> float:
 	"""Calculates progress for a chapter based on completed stages.
@@ -456,6 +564,7 @@ func update_campaign_progress() -> void:
 func save_progress() -> void:
 	"""Saves campaign progress to user://campaign_progress.json."""
 	var save_data = {
+		"unlocked_chapters": unlocked_chapters,
 		"unlocked_stages": unlocked_stages,
 		"completed_stages": completed_stages,
 		"unlocked_modifier_pools": unlocked_modifier_pools,
@@ -476,6 +585,7 @@ func load_progress() -> void:
 		var parse_result = json.parse(json_string)
 		if parse_result == OK:
 			var save_data = json.data
+			unlocked_chapters = save_data.get("unlocked_chapters", [])
 			unlocked_stages = save_data.get("unlocked_stages", [])
 			completed_stages = save_data.get("completed_stages", [])
 			unlocked_modifier_pools = save_data.get("unlocked_modifier_pools", [])

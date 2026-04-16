@@ -5,16 +5,36 @@
     "3": {"name": "Endgame", "color": "#EF4444"}
   },
   "biomes": ["forest", "cavern", "mountain"],
+  "chapter_unlock_requirements": {
+    "chapter_1": {
+      "type": "default",
+      "description": "Starting chapter"
+    },
+    "chapter_2": {
+      "type": "chapter_completion",
+      "required_chapter": "chapter_1",
+      "required_stage": "1_4",
+      "description": "Complete Chapter 1: The Awakening"
+    },
+    "chapter_3": {
+      "type": "chapter_completion",
+      "required_chapter": "chapter_2",
+      "required_stage": "2_4",
+      "description": "Complete Chapter 2: The Fortress"
+    }
+  },
   "campaigns": [
     {
       "id": "chapter_1",
       "name": "The Awakening",
+      "level_requirement": 1,
       "stages": [
         {
           "id": "1_1",
           "name": "Forest Edge",
           "waves": 3,
           "boss": null,
+          "level_requirement": 1,
           "difficulty": 1,
           "biome": "forest",
           "enemy": {
@@ -35,6 +55,7 @@
           "name": "Ambush",
           "waves": 4,
           "boss": null,
+          "level_requirement": 1,
           "difficulty": 1,
           "biome": "forest",
           "enemy": {
@@ -55,6 +76,7 @@
           "name": "First Blood",
           "waves": 5,
           "boss": "boss_basic",
+          "level_requirement": 2,
           "difficulty": 1,
           "biome": "forest",
           "enemy": {
@@ -75,6 +97,7 @@
           "name": "Wind Passage",
           "waves": 4,
           "boss": "boss_wind",
+          "level_requirement": 3,
           "difficulty": 1,
           "biome": "forest",
           "enemy": {
@@ -95,12 +118,14 @@
     {
       "id": "chapter_2",
       "name": "The Fortress",
+      "level_requirement": 3,
       "stages": [
         {
           "id": "2_1",
           "name": "Outer Walls",
           "waves": 4,
           "boss": null,
+          "level_requirement": 3,
           "difficulty": 2,
           "biome": "cavern",
           "enemy": {
@@ -121,6 +146,7 @@
           "name": "The Courtyard",
           "waves": 5,
           "boss": null,
+          "level_requirement": 3,
           "difficulty": 2,
           "biome": "cavern",
           "enemy": {
@@ -141,6 +167,7 @@
           "name": "The Armory",
           "waves": 5,
           "boss": "boss_fire",
+          "level_requirement": 4,
           "difficulty": 2,
           "biome": "cavern",
           "enemy": {
@@ -161,6 +188,7 @@
           "name": "Throne Room",
           "waves": 6,
           "boss": "boss_ice",
+          "level_requirement": 5,
           "difficulty": 2,
           "biome": "cavern",
           "enemy": {
@@ -181,12 +209,14 @@
     {
       "id": "chapter_3",
       "name": "The Dark Forest",
+      "level_requirement": 5,
       "stages": [
         {
           "id": "3_1",
           "name": "Twisted Paths",
           "waves": 4,
           "boss": null,
+          "level_requirement": 5,
           "difficulty": 3,
           "biome": "mountain",
           "enemy": {
@@ -207,6 +237,7 @@
           "name": "The Hollow",
           "waves": 5,
           "boss": null,
+          "level_requirement": 6,
           "difficulty": 3,
           "biome": "mountain",
           "enemy": {
@@ -227,6 +258,7 @@
           "name": "Cursed Grove",
           "waves": 5,
           "boss": "boss_electric",
+          "level_requirement": 7,
           "difficulty": 3,
           "biome": "mountain",
           "enemy": {
@@ -247,6 +279,7 @@
           "name": "Ancient Shrine",
           "waves": 6,
           "boss": "boss_king",
+          "level_requirement": 8,
           "difficulty": 3,
           "biome": "mountain",
           "enemy": {
