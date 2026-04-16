@@ -9,6 +9,7 @@ import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
+import { recordStageAttempt, recordDrop } from './balance_analytics';
 import {
   insertGearItem,
   getPlayerGearFromDB,
@@ -23,7 +24,6 @@ import {
   getUnlockedModifierPoolsFromDB,
 } from './gear_db';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { recordStageAttempt, recordDrop } from './balance_analytics';
 
 /**
  * Gear rarity data structure.
