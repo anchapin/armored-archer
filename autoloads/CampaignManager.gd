@@ -474,8 +474,11 @@ func handle_boss_defeat(boss_id: String) -> void:
 		)
 
 	match boss_id:
+		"boss_basic":
+			unlock_modifier_pool("heavy_impact")
 		"boss_wind":
 			unlock_modifier_pool("piercing_arrow")
+			unlock_modifier_pool("wind_fury")
 		"boss_fire":
 			unlock_modifier_pool("fire_arrow")
 		"boss_electric":

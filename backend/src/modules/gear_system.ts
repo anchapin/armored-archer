@@ -14,6 +14,12 @@ import {
   equipItemInDB,
   unequipItemInDB,
   getFullInventoryFromDB,
+  recordBossDefeatInDB,
+  getDefeatedBossesFromDB,
+  getBossDefeatCount,
+  unlockModifierPoolInDB,
+  getUnlockedModifierPoolsFromDB,
+  isModifierPoolUnlocked,
 } from './gear_db';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -1097,23 +1103,20 @@ export function getPlayerInventory(
   userId: string,
   logger: Runtime.Logger
 ): PlayerInventory {
-  // Get gear and loadout from database
+  // Get gear, loadout, and unlocked modifier pools from database
   const dbInventory = getFullInventoryFromDB(nk, userId);
-
-  // Get unlocked modifier pools from Nakama storage (for backwards compatibility)
-  const modifierPools = getUnlockedModifierPoolsFromStorage(nk, userId, logger);
 
   return {
     user_id: userId,
     gear: dbInventory.gear,
     equipped_gear: dbInventory.equipped_gear,
-    unlocked_modifier_pools: modifierPools,
+    unlocked_modifier_pools: dbInventory.unlocked_modifier_pools,
   };
 }
 
 /**
  * Retrieves unlocked modifier pools from Nakama storage.
- * This is kept for backwards compatibility with existing data.
+ * This function is kept for backwards compatibility but now delegates to database.
  *
  * @param nk - Nakama server interface
  * @param userId - ID of the player
@@ -1125,29 +1128,8 @@ function getUnlockedModifierPoolsFromStorage(
   userId: string,
   logger: Runtime.Logger
 ): string[] {
-  const inventoryObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: userId,
-      userId: userId,
-    },
-  ]);
-
-  if (inventoryObjects.length === 0 || !inventoryObjects[0].value) {
-    return [];
-  }
-
-  const parseResult = safeParse<PlayerInventory>(
-    inventoryObjects[0].value,
-    null,
-    logger,
-    'storage_data'
-  );
-  if (parseResult.success && parseResult.data) {
-    return parseResult.data.unlocked_modifier_pools || [];
-  }
-
-  return [];
+  // Now delegates to database function for consistency
+  return getUnlockedModifierPoolsFromDB(nk, userId);
 }
 
 /**
@@ -1243,54 +1225,26 @@ export function rpcUnlockModifierPool(
 
   const modifierId = validation.data.modifier_id;
 
-  const inventoryObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
+  // Unlock modifier pool using database function
+  const unlockResult = unlockModifierPoolInDB(nk, ctx.userId, modifierId, 'manual');
 
-  let inventory: PlayerInventory;
-
-  if (inventoryObjects.length === 0) {
-    inventory = {
-      user_id: ctx.userId,
-      gear: [],
-      equipped_gear: {},
-      unlocked_modifier_pools: [modifierId],
-    };
-  } else {
-    const value = inventoryObjects[0].value;
-    if (value) {
-      const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
-      if (!parseResult.success || !parseResult.data) {
-        logger.error('Failed to parse data');
-        return createErrorResponse('INVALID_DATA', 'Failed to parse data');
-      }
-      inventory = parseResult.data;
-    } else {
-      inventory = {
-        user_id: ctx.userId,
-        gear: [],
-        equipped_gear: {},
-        unlocked_modifier_pools: [modifierId],
-      };
-    }
+  if (!unlockResult.success) {
+    logger.error('Failed to unlock modifier pool: %s', unlockResult.error);
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'unlock_modifier_pool',
+      'modifiers',
+      { modifier_id: modifierId },
+      'failure',
+      unlockResult.error
+    );
+    return createErrorResponse('INTERNAL_ERROR', 'Failed to unlock modifier pool');
   }
 
-  if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
-    inventory.unlocked_modifier_pools.push(modifierId);
-  }
-
-  nk.storageWrite([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-      value: JSON.stringify(inventory),
-    },
-  ]);
+  // Get all unlocked modifier pools from database
+  const unlockedPools = getUnlockedModifierPoolsFromDB(nk, ctx.userId);
 
   logger.info('Unlocked modifier pool %s for user %s', modifierId, ctx.userId);
 
@@ -1300,13 +1254,13 @@ export function rpcUnlockModifierPool(
     ctx.ipAddress ?? null,
     'unlock_modifier_pool',
     'modifiers',
-    { modifier_id: modifierId, unlocked_pools: inventory.unlocked_modifier_pools },
+    { modifier_id: modifierId, unlocked_pools: unlockedPools },
     'success'
   );
 
   return JSON.stringify({
     success: true,
-    unlocked_modifier_pools: inventory.unlocked_modifier_pools,
+    unlocked_modifier_pools: unlockedPools,
   });
 }
 
@@ -1373,21 +1327,27 @@ export function rpcGetUnlockedModifiers(
     return createValidationErrorResponse('get_unlocked_modifiers', validation.error);
   }
 
-  // Get player inventory to retrieve unlocked modifier pools
-  const inventory = getPlayerInventory(nk, ctx.userId, logger);
+  // Get unlocked modifier pools from database
+  const unlockedModifierPools = getUnlockedModifierPoolsFromDB(nk, ctx.userId);
 
-  // Get boss defeat tracking data
-  const bossDefeatData = getBossDefeatData(nk, ctx.userId, logger);
+  // Get defeated bosses from database
+  const defeatedBosses = getDefeatedBossesFromDB(nk, ctx.userId);
+
+  // Build boss defeat count object
+  const bossDefeats: { [bossId: string]: number } = {};
+  for (const bossId of defeatedBosses) {
+    bossDefeats[bossId] = getBossDefeatCount(nk, ctx.userId, bossId);
+  }
 
   return JSON.stringify({
     success: true,
-    unlocked_modifier_pools: inventory.unlocked_modifier_pools,
-    boss_defeats: bossDefeatData.defeats,
+    unlocked_modifier_pools: unlockedModifierPools,
+    boss_defeats: bossDefeats,
   });
 }
 
 /**
- * Retrieves boss defeat data for a player from storage.
+ * Retrieves boss defeat data for a player from database.
  *
  * @param nk - Nakama server interface
  * @param userId - ID of the player
@@ -1399,43 +1359,28 @@ function getBossDefeatData(
   userId: string,
   logger: Runtime.Logger
 ): BossDefeatData {
-  const objects = nk.storageRead([
-    {
-      collection: 'boss_defeat_tracking',
-      key: userId,
-      userId: userId,
-    },
-  ]);
+  const defeatedBosses = getDefeatedBossesFromDB(nk, userId);
+  const defeats: { [bossId: string]: number } = {};
 
-  if (objects.length === 0) {
-    return {
-      user_id: userId,
-      defeats: {},
-      unlocked_modifiers: [],
-    };
-  }
-
-  const value = objects[0].value;
-  if (value) {
-    const parseResult = safeParse<BossDefeatData>(value, null, logger, 'boss_defeat_data');
-    if (parseResult.success && parseResult.data) {
-      return parseResult.data;
-    }
+  for (const bossId of defeatedBosses) {
+    defeats[bossId] = getBossDefeatCount(nk, userId, bossId);
   }
 
   return {
     user_id: userId,
-    defeats: {},
-    unlocked_modifiers: [],
+    defeats: defeats,
+    unlocked_modifiers: getUnlockedModifierPoolsFromDB(nk, userId),
   };
 }
 
 /**
- * Saves boss defeat data for a player to storage.
+ * Saves boss defeat data for a player to database.
+ * This function is kept for backward compatibility but does nothing
+ * since boss defeats are now tracked directly in the database.
  *
  * @param nk - Nakama server interface
  * @param userId - ID of the player
- * @param data - Boss defeat data to save
+ * @param data - Boss defeat data to save (unused)
  * @param logger - Nakama logger instance
  */
 function saveBossDefeatData(
@@ -1444,16 +1389,9 @@ function saveBossDefeatData(
   data: BossDefeatData,
   logger: Runtime.Logger
 ): void {
-  nk.storageWrite([
-    {
-      collection: 'boss_defeat_tracking',
-      key: userId,
-      userId: userId,
-      value: JSON.stringify(data),
-    },
-  ]);
-
-  logger.debug('Saved boss defeat data for user: %s', userId);
+  // This function is kept for backward compatibility
+  // Boss defeats are now tracked directly in the database via recordBossDefeatInDB
+  logger.debug('saveBossDefeatData called (deprecated, no-op)');
 }
 
 /**
@@ -1472,48 +1410,52 @@ export function recordBossDefeat(
   logger: Runtime.Logger,
   bossId: string
 ): { defeat_count: number; newly_unlocked_modifiers: string[] } {
-  const bossDefeatData = getBossDefeatData(nk, ctx.userId, logger);
-  const inventory = getPlayerInventory(nk, ctx.userId, logger);
+  // Record the boss defeat in the database
+  const defeatResult = recordBossDefeatInDB(nk, ctx.userId, bossId);
 
-  // Increment defeat count for this boss
-  const previousDefeatCount = bossDefeatData.defeats[bossId] || 0;
-  bossDefeatData.defeats[bossId] = previousDefeatCount + 1;
+  if (!defeatResult.success) {
+    logger.error('Failed to record boss defeat: %s', defeatResult.error);
+    return {
+      defeat_count: 0,
+      newly_unlocked_modifiers: [],
+    };
+  }
 
   // Get modifiers unlocked by this boss
   const modifiersToUnlock = getModifiersUnlockedByBoss(bossId);
   const newlyUnlockedModifiers: string[] = [];
 
-  // Unlock any new modifier pools
+  // Unlock modifier pools using database functions
   for (const modifierId of modifiersToUnlock) {
-    if (!bossDefeatData.unlocked_modifiers.includes(modifierId)) {
-      bossDefeatData.unlocked_modifiers.push(modifierId);
+    const unlockResult = unlockModifierPoolInDB(
+      nk,
+      ctx.userId,
+      modifierId,
+      'boss_defeat',
+      bossId
+    );
+
+    if (unlockResult.success && unlockResult.newly_unlocked) {
       newlyUnlockedModifiers.push(modifierId);
-    }
-    if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
-      inventory.unlocked_modifier_pools.push(modifierId);
+      logger.info(
+        'Unlocked modifier pool %s for user %s after defeating boss %s',
+        modifierId,
+        ctx.userId,
+        bossId
+      );
     }
   }
-
-  // Save updated data
-  saveBossDefeatData(nk, ctx.userId, bossDefeatData, logger);
-
-  // Save inventory with new modifiers
-  nk.storageWrite([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-      value: JSON.stringify(inventory),
-    },
-  ]);
 
   logger.info(
     'User %s defeated boss %s (total: %d), unlocked modifiers: %s',
     ctx.userId,
     bossId,
-    bossDefeatData.defeats[bossId],
+    defeatResult.defeat_count,
     newlyUnlockedModifiers.join(', ')
   );
+
+  // Get all unlocked modifiers for audit
+  const allUnlockedModifiers = getUnlockedModifierPoolsFromDB(nk, ctx.userId);
 
   // Audit the boss defeat
   logAudit(
@@ -1524,15 +1466,16 @@ export function recordBossDefeat(
     'boss_defeat_tracking',
     {
       boss_id: bossId,
-      defeat_count: bossDefeatData.defeats[bossId],
+      defeat_count: defeatResult.defeat_count,
+      first_defeat: defeatResult.first_defeat,
       newly_unlocked_modifiers: newlyUnlockedModifiers,
-      all_unlocked_modifiers: bossDefeatData.unlocked_modifiers,
+      all_unlocked_modifiers: allUnlockedModifiers,
     },
     'success'
   );
 
   return {
-    defeat_count: bossDefeatData.defeats[bossId],
+    defeat_count: defeatResult.defeat_count,
     newly_unlocked_modifiers: newlyUnlockedModifiers,
   };
 }
@@ -1662,42 +1605,31 @@ export function registerRpcStageComplete(initializer: Runtime.Initializer): void
  * Returns the list of newly unlocked modifier IDs.
  */
 function unlockModifierPools(
-  inventory: PlayerInventory,
+  nk: Runtime.Nakama,
+  userId: string,
   logger: Runtime.Logger,
-  ctxUserId: string,
-  bossId?: string,
   enemyType?: string
 ): string[] {
   const newlyUnlocked: string[] = [];
-
-  // Unlock modifier pools when boss is defeated
-  if (bossId) {
-    const modifiersToUnlock = getModifiersUnlockedByBoss(bossId);
-    for (const modifierId of modifiersToUnlock) {
-      if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
-        inventory.unlocked_modifier_pools.push(modifierId);
-        newlyUnlocked.push(modifierId);
-        logger.info(
-          'Unlocked modifier pool %s for user %s after defeating boss %s',
-          modifierId,
-          ctxUserId,
-          bossId
-        );
-      }
-    }
-  }
 
   // Unlock modifier pools when enemy is defeated (for future drop chances)
   if (enemyType) {
     const enemyModifiersToUnlock = getModifiersUnlockedByEnemy(enemyType);
     for (const modifierId of enemyModifiersToUnlock) {
-      if (!inventory.unlocked_modifier_pools.includes(modifierId)) {
-        inventory.unlocked_modifier_pools.push(modifierId);
+      const unlockResult = unlockModifierPoolInDB(
+        nk,
+        userId,
+        modifierId,
+        'enemy_defeat',
+        undefined
+      );
+
+      if (unlockResult.success && unlockResult.newly_unlocked) {
         newlyUnlocked.push(modifierId);
         logger.info(
           'Unlocked modifier pool %s for user %s after defeating enemy type %s',
           modifierId,
-          ctxUserId,
+          userId,
           enemyType
         );
       }
@@ -1818,12 +1750,11 @@ function processStageCompletion(
   // Get player inventory (after boss defeat to get updated modifier pools)
   const inventory = getPlayerInventory(nk, ctx.userId, logger);
 
-  // Unlock modifier pools
+  // Unlock modifier pools from enemy defeats
   const newlyUnlockedModifiers = unlockModifierPools(
-    inventory,
-    logger,
+    nk,
     ctx.userId,
-    undefined,
+    logger,
     request.enemy_type
   );
 
@@ -1838,9 +1769,6 @@ function processStageCompletion(
     roll < dropRate
       ? generateLootResult(nk, ctx.userId, request.stage_id, inventory, logger)
       : { dropped: false, gear: null };
-
-  // Save unlocked modifier pools to storage (for backwards compatibility)
-  saveUnlockedModifierPools(nk, ctx.userId, inventory.unlocked_modifier_pools, logger);
 
   return {
     inventory,
@@ -1930,11 +1858,12 @@ function generateLootResult(
 
 /**
  * Save unlocked modifier pools to Nakama storage.
- * This is kept for backwards compatibility with existing data.
+ * This function is kept for backward compatibility but does nothing
+ * since modifier pools are now tracked directly in the database.
  *
  * @param nk - Nakama server interface
  * @param userId - ID of the player
- * @param pools - Array of unlocked modifier pool IDs
+ * @param pools - Array of unlocked modifier pool IDs (unused)
  * @param logger - Logger instance
  */
 function saveUnlockedModifierPools(
@@ -1943,49 +1872,7 @@ function saveUnlockedModifierPools(
   pools: string[],
   logger: Runtime.Logger
 ): void {
-  const inventoryObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: userId,
-      userId: userId,
-    },
-  ]);
-
-  let inventory: PlayerInventory;
-
-  if (inventoryObjects.length === 0 || !inventoryObjects[0].value) {
-    inventory = {
-      user_id: userId,
-      gear: [],
-      equipped_gear: {},
-      unlocked_modifier_pools: pools,
-    };
-  } else {
-    const parseResult = safeParse<PlayerInventory>(
-      inventoryObjects[0].value,
-      null,
-      logger,
-      'storage_data'
-    );
-    if (parseResult.success && parseResult.data) {
-      inventory = parseResult.data;
-      inventory.unlocked_modifier_pools = pools;
-    } else {
-      inventory = {
-        user_id: userId,
-        gear: [],
-        equipped_gear: {},
-        unlocked_modifier_pools: pools,
-      };
-    }
-  }
-
-  nk.storageWrite([
-    {
-      collection: 'player_inventory',
-      key: userId,
-      userId: userId,
-      value: JSON.stringify(inventory),
-    },
-  ]);
+  // This function is kept for backward compatibility
+  // Modifier pools are now tracked directly in the database via unlockModifierPoolInDB
+  logger.debug('saveUnlockedModifierPools called (deprecated, no-op)');
 }
