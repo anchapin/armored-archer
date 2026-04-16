@@ -94,6 +94,7 @@ import {
   registerRpcGetCompletedStages,
   registerRpcGetCampaignProgress,
 } from './modules/stage_tracking';
+import { registerBalanceAnalyticsEndpoints } from './modules/balance_analytics';
 import {
   registerRpcValidatePurchase,
   registerRpcGetCurrency,
@@ -217,6 +218,7 @@ const InitModule: InitModule = function (
   registerErrorInsightRpcs(initializer);
   registerNotificationEndpoints(initializer);
   registerFairnessTelemetryEndpoints(initializer);
+  registerBalanceAnalyticsEndpoints(initializer);
 
   if (config.rateLimit.enabled) {
     registerRpcWithRateLimit(

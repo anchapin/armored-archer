@@ -436,3 +436,8 @@ export const createMockNakama = (): Runtime.Nakama => {
     }),
   } as unknown as Runtime.Nakama;
 };
+
+// Simple exported mocks for convenience in tests
+export const mockLogger = createMockLogger;
+export const mockContext = createMockContext;
+export const mockNakama = createMockNakama;

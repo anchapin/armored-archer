@@ -563,6 +563,35 @@ export const ValibotSchemas = {
     user_id: optional(pipe(string(), minLength(1), maxLength(100))),
     limit: optional(pipe(number(), integer(), minValue(1), maxValue(10000))),
   }),
+
+  // Balance analytics schemas
+  record_drop: object({
+    stage_id: pipe(string(), minLength(1), maxLength(100)),
+    stage_prefix: pipe(string(), minLength(1), maxLength(50)),
+    difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare', 'normal']),
+    boss_defeated: boolean(),
+    gear_rarity: createEnum(['common', 'rare', 'epic', 'legendary']),
+    gear_type: createEnum(['helm', 'armor', 'bow', 'arrow', 'amulet']),
+    gear_id: pipe(string(), minLength(1), maxLength(200)),
+    drop_rate_used: pipe(number(), minValue(0), maxValue(1)),
+    roll_value: pipe(number(), minValue(0), maxValue(1)),
+  }),
+
+  record_stage_attempt: object({
+    stage_id: pipe(string(), minLength(1), maxLength(100)),
+    stage_prefix: pipe(string(), minLength(1), maxLength(50)),
+    difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare', 'normal']),
+    boss_defeated: boolean(),
+    completed: boolean(),
+    stars_earned: pipe(number(), integer(), minValue(0), maxValue(3)),
+    score: pipe(number(), integer(), minValue(0)),
+    attempt_number: pipe(number(), integer(), minValue(1)),
+  }),
+
+  get_balance_statistics: object({
+    start_date: optional(pipe(string(), regex(/^\d{4}-\d{2}-\d{2}$/))),
+    end_date: optional(pipe(string(), regex(/^\d{4}-\d{2}-\d{2}$/))),
+  }),
 } as const;
 
 // Export with Zod-like names for backward compatibility
