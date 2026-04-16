@@ -16,7 +16,7 @@ var current_notification: Dictionary = {}
 var is_displaying: bool = false
 
 # Modifier pool names for display
-var MODIFIER_NAMES: Dictionary = {
+const MODIFIER_NAMES: Dictionary = {
 	"piercing_arrow": "Piercing Arrow",
 	"heavy_impact": "Heavy Impact",
 	"vitality_boost": "Vitality Boost",

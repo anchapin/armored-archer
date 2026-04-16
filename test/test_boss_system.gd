@@ -134,7 +134,8 @@ func test_guardian_phases() -> void:
 
 func test_guardian_special_attacks() -> void:
 	# Test: Guardian boss uses ground slam and shield bash
-	var guardian: GuardianBoss = load("res://scenes/enemies/bosses/boss_earth.tscn").instantiate()
+	var guardian_scene = load("res://scenes/enemies/bosses/boss_earth.tscn")
+	var guardian: GuardianBoss = guardian_scene.instantiate()
 	if guardian:
 		get_tree().root.add_child(guardian)
 
@@ -170,7 +171,8 @@ func test_warlock_minion_spawning() -> void:
 
 func test_warlock_teleport() -> void:
 	# Test: Warlock boss uses teleport to dodge
-	var warlock: WarlockBoss = load("res://scenes/enemies/bosses/boss_fire.tscn").instantiate()
+	var warlock_scene = load("res://scenes/enemies/bosses/boss_fire.tscn")
+	var warlock: WarlockBoss = warlock_scene.instantiate()
 	if warlock:
 		get_tree().root.add_child(warlock)
 
@@ -206,7 +208,8 @@ func test_titan_enrage() -> void:
 
 func test_titan_special_attacks() -> void:
 	# Test: Titan boss uses stomp, roar, and charge
-	var titan: TitanBoss = load("res://scenes/enemies/bosses/boss_wind.tscn").instantiate()
+	var titan_scene = load("res://scenes/enemies/bosses/boss_wind.tscn")
+	var titan: TitanBoss = titan_scene.instantiate()
 	if titan:
 		get_tree().root.add_child(titan)
 
