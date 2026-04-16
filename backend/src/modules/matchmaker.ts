@@ -1506,6 +1506,119 @@ export function registerRpcSubmitTurn(initializer: Runtime.Initializer): void {
  *   "turn_completed": true
  * }
  */
+
+/**
+ * Stores turn data for a player.
+ */
+function storePlayerTurnData(match: PvPMatch, isCreator: boolean, turnData: TurnData): void {
+  if (isCreator) {
+    match.creator_turn_data = turnData;
+  } else {
+    match.opponent_turn_data = turnData;
+  }
+}
+
+/**
+ * Resets consecutive timeout counters for the submitting player.
+ */
+function resetConsecutiveTimeouts(match: PvPMatch, isCreator: boolean): void {
+  if (isCreator && match.creator_consecutive_timeouts > 0) {
+    match.creator_consecutive_timeouts = 0;
+  } else if (!isCreator && match.opponent_consecutive_timeouts > 0) {
+    match.opponent_consecutive_timeouts = 0;
+  }
+}
+
+/**
+ * Saves match state to storage.
+ */
+function saveMatchState(nk: Runtime.Nakama, match: PvPMatch): void {
+  nk.storageWrite([
+    {
+      collection: 'pvp_matches',
+      key: match.match_id,
+      userId: match.creator_id,
+      value: JSON.stringify(match),
+    },
+  ]);
+}
+
+/**
+ * Processes turn when both players have submitted.
+ */
+function processCompleteTurn(
+  match: PvPMatch,
+  isCreator: boolean,
+  now: number,
+  logger: Runtime.Logger
+): { turnResult: ReturnType<typeof calculateTurnResults>; shouldContinue: boolean } {
+  const turnResult = calculateTurnResults(
+    match.creator_turn_data!,
+    match.opponent_turn_data!,
+    match,
+    logger
+  );
+
+  // Apply damage
+  match.creator_health = Math.max(0, match.creator_health - turnResult.opponent_damage);
+  match.opponent_health = Math.max(0, match.opponent_health - turnResult.creator_damage);
+
+  // Clear turn data for next round
+  match.creator_turn_data = undefined;
+  match.opponent_turn_data = undefined;
+
+  // Check for match end conditions
+  const matchEndResult = checkMatchEndConditions(match, logger);
+
+  if (matchEndResult.shouldEnd) {
+    return { turnResult, shouldContinue: false };
+  }
+
+  // Advance to next turn
+  match.current_turn += 1;
+  match.current_player = isCreator ? match.opponent_id : match.creator_id;
+  match.updated_at = now;
+
+  return { turnResult, shouldContinue: true };
+}
+
+/**
+ * Registers the submit turn RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcSubmitTurn(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/submit_turn', rpcSubmitTurn);
+}
+
+/**
+ * Handles turn submission for asynchronous PvP matches.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string containing turn data
+ * @returns JSON string with updated match state
+ *
+ * @example
+ * // Request payload
+ * { "match_id": "match_123", "action_type": "shoot", "angle": 1.57, "power": 0.9 }
+ *
+ * // Response (waiting for opponent)
+ * {
+ *   "success": true,
+ *   "match": { ... },
+ *   "turn_submitted": true
+ * }
+ *
+ * // Response (both turns submitted, results calculated)
+ * {
+ *   "success": true,
+ *   "match": { ... },
+ *   "turn_result": { ... },
+ *   "turn_completed": true
+ * }
+ */
 export function rpcSubmitTurn(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -1566,12 +1679,8 @@ export function rpcSubmitTurn(
   // Determine which player is submitting
   const isCreator = ctx.userId === match.creator_id;
 
-  // Check for consecutive timeout reset on successful submission
-  if (isCreator && match.creator_consecutive_timeouts > 0) {
-    match.creator_consecutive_timeouts = 0;
-  } else if (!isCreator && match.opponent_consecutive_timeouts > 0) {
-    match.opponent_consecutive_timeouts = 0;
-  }
+  // Reset consecutive timeout counters
+  resetConsecutiveTimeouts(match, isCreator);
 
   // Store the turn data
   const turnData: TurnData = {
@@ -1579,54 +1688,21 @@ export function rpcSubmitTurn(
     angle: request.angle,
     power: request.power ?? 1.0,
   };
-
-  if (isCreator) {
-    match.creator_turn_data = turnData;
-  } else {
-    match.opponent_turn_data = turnData;
-  }
+  storePlayerTurnData(match, isCreator, turnData);
 
   // Update timestamp
   match.last_turn_timestamp = now;
 
   // Check if both players have submitted turns
   if (match.creator_turn_data && match.opponent_turn_data) {
-    // Calculate turn results
-    const turnResult = calculateTurnResults(
-      match.creator_turn_data,
-      match.opponent_turn_data,
-      match,
-      logger
-    );
+    const { turnResult, shouldContinue } = processCompleteTurn(match, isCreator, now, logger);
 
-    // Apply damage
-    match.creator_health = Math.max(0, match.creator_health - turnResult.opponent_damage);
-    match.opponent_health = Math.max(0, match.opponent_health - turnResult.creator_damage);
-
-    // Clear turn data for next round
-    match.creator_turn_data = undefined;
-    match.opponent_turn_data = undefined;
-
-    // Check for match end conditions
-    const matchEndResult = checkMatchEndConditions(match, logger);
-    if (matchEndResult.shouldEnd) {
+    if (!shouldContinue) {
+      const matchEndResult = checkMatchEndConditions(match, logger);
       return completeMatchFromTurn(nk, ctx, logger, match, matchEndResult);
     }
 
-    // Advance to next turn
-    match.current_turn += 1;
-    match.current_player = isCreator ? match.opponent_id : match.creator_id;
-    match.updated_at = now;
-
-    // Save match state
-    nk.storageWrite([
-      {
-        collection: 'pvp_matches',
-        key: match.match_id,
-        userId: match.creator_id,
-        value: JSON.stringify(match),
-      },
-    ]);
+    saveMatchState(nk, match);
 
     logAudit(
       nk,
@@ -1645,36 +1721,27 @@ export function rpcSubmitTurn(
       turn_result: turnResult,
       turn_completed: true,
     });
-  } else {
-    // Only one turn submitted, waiting for opponent
-    match.updated_at = now;
-
-    // Save match state
-    nk.storageWrite([
-      {
-        collection: 'pvp_matches',
-        key: match.match_id,
-        userId: match.creator_id,
-        value: JSON.stringify(match),
-      },
-    ]);
-
-    logAudit(
-      nk,
-      ctx.userId,
-      ctx.ipAddress ?? null,
-      'submit_turn',
-      'pvp_matches',
-      { match_id: match.match_id, turn: match.current_turn },
-      'success'
-    );
-
-    return JSON.stringify({
-      success: true,
-      match: match,
-      turn_submitted: true,
-    });
   }
+
+  // Only one turn submitted, waiting for opponent
+  match.updated_at = now;
+  saveMatchState(nk, match);
+
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'submit_turn',
+    'pvp_matches',
+    { match_id: match.match_id, turn: match.current_turn },
+    'success'
+  );
+
+  return JSON.stringify({
+    success: true,
+    match: match,
+    turn_submitted: true,
+  });
 }
 
 /**
@@ -1703,11 +1770,7 @@ export function rpcGetAsyncMatchState(
 ): string {
   logger.info('Get async match state called for user: %s', ctx.userId);
 
-  const validation = validatePayload(
-    ZodSchemas.get_match_state,
-    payload,
-    'get_async_match_state'
-  );
+  const validation = validatePayload(ZodSchemas.get_match_state, payload, 'get_async_match_state');
   if (!validation.success) {
     return createValidationErrorResponse('get_async_match_state', validation.error);
   }
@@ -1726,10 +1789,7 @@ export function rpcGetAsyncMatchState(
   const timeoutCheck = checkTurnTimeout(match, now);
 
   // Calculate time remaining for current turn
-  const timeRemainingMs = Math.max(
-    0,
-    match.turn_time_limit_ms - (now - match.last_turn_timestamp)
-  );
+  const timeRemainingMs = Math.max(0, match.turn_time_limit_ms - (now - match.last_turn_timestamp));
 
   // Determine player-specific information
   const isCreator = ctx.userId === match.creator_id;
@@ -1741,13 +1801,7 @@ export function rpcGetAsyncMatchState(
   if (timeoutCheck.hasTimedOut) {
     if (timeoutCheck.shouldForfeit) {
       // Auto-forfeit due to consecutive timeouts
-      const forfeitResult = handleTimeoutForfeit(
-        nk,
-        ctx,
-        logger,
-        match,
-        match.current_player
-      );
+      const forfeitResult = handleTimeoutForfeit(nk, ctx, logger, match, match.current_player);
       // Return forfeit result
       return forfeitResult;
     } else {
@@ -1793,11 +1847,7 @@ export function rpcForfeitMatch(
 ): string {
   logger.info('Forfeit match called for user: %s', ctx.userId);
 
-  const validation = validatePayload(
-    ZodSchemas.forfeit_match,
-    payload,
-    'forfeit_match'
-  );
+  const validation = validatePayload(ZodSchemas.forfeit_match, payload, 'forfeit_match');
   if (!validation.success) {
     logAudit(
       nk,
@@ -1903,7 +1953,12 @@ function getMatchForTurnSubmission(
     }
   }
 
-  const matchResult = safeParse<PvPMatch>(objects[0].value, null, logger, 'getMatchForTurnSubmission:match');
+  const matchResult = safeParse<PvPMatch>(
+    objects[0].value,
+    null,
+    logger,
+    'getMatchForTurnSubmission:match'
+  );
   if (!matchResult.success || !matchResult.data) {
     return { error: 'Failed to parse match data' };
   }
@@ -1920,7 +1975,10 @@ function getMatchForTurnSubmission(
 /**
  * Checks if the current turn has timed out.
  */
-function checkTurnTimeout(match: PvPMatch, now: number): {
+function checkTurnTimeout(
+  match: PvPMatch,
+  now: number
+): {
   hasTimedOut: boolean;
   shouldForfeit: boolean;
 } {
@@ -1951,11 +2009,7 @@ function handleFirstTimeout(
   match: PvPMatch,
   timedOutPlayerId: string
 ): void {
-  logger.warn(
-    'Player %s timed out in match %s (first timeout)',
-    timedOutPlayerId,
-    match.match_id
-  );
+  logger.warn('Player %s timed out in match %s (first timeout)', timedOutPlayerId, match.match_id);
 
   // Generate default turn data
   const defaultTurnData: TurnData = {
@@ -2090,7 +2144,10 @@ function calculateTurnResults(
 /**
  * Checks if the match should end.
  */
-function checkMatchEndConditions(match: PvPMatch, logger: Runtime.Logger): {
+function checkMatchEndConditions(
+  match: PvPMatch,
+  _logger: Runtime.Logger
+): {
   shouldEnd: boolean;
   winner?: string;
   reason?: string;
