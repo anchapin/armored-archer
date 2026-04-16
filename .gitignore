@@ -51,3 +51,11 @@ agents-md-validation-report.json
 
 # Smoke test reports
 reports/smoke-tests/
+
+# Local CI optimization files (user-specific)
+.actrc-local
+.act-logs/
+act-cache/
+
+# Local docker-compose files for CI
+.docker/docker-compose-ci-local.yml

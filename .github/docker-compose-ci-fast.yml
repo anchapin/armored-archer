@@ -1,0 +1,82 @@
+# Fast CI Docker Compose for Local Act Testing
+# Optimized for speed with reduced health check times and minimal services
+#
+# Usage:
+#   docker compose -f .github/docker-compose-ci-fast.yml -p ci-fast up -d
+#
+# Key optimizations:
+#   - Faster health checks (2s interval vs 10s)
+#   - Fewer retries (3 vs 5-60)
+#   - No data volumes (faster startup, stateless)
+#   - Alpine images for smaller size
+
+services:
+  # PostgreSQL database - optimized for fast startup
+  postgres:
+    image: postgres:14-alpine
+    container_name: ci_fast_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: nakama
+      POSTGRES_PASSWORD: changeme
+      # PostgreSQL tuning for CI
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+      # Disable sync for faster CI (NOT for production!)
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    # Optimized health check for fast startup
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "nakama"]
+      interval: 2s      # Check every 2s instead of 10s
+      timeout: 2s       # Fail fast
+      retries: 10       # Total wait: ~20s max
+      start_period: 5s  # Assume ready after 5s
+    networks:
+      - ci-fast-network
+
+  # Redis (optional - only if needed)
+  redis:
+    image: redis:7-alpine
+    container_name: ci_fast_redis
+    command: redis-server --save "" --appendonly no --loglevel warning
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 1s
+      retries: 5
+      start_period: 3s
+    networks:
+      - ci-fast-network
+
+  # Nakama game server - optimized image
+  nakama:
+    image: heroiclabs/nakama:3.21.1
+    container_name: ci_fast_nakama
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "7350:7350"
+      - "7351:7351"
+    environment:
+      NAKAMA_SERVER_KEY: defaultkey
+      # Connect to PostgreSQL without auth (faster)
+      NAKAMA_DATABASE_ADDRESS: postgres://postgres@postgres:5432/nakama
+    # Faster health check
+    healthcheck:
+      test: ["CMD", "/nakama/nakama", "healthcheck"]
+      interval: 3s      # Check every 3s
+      timeout: 3s
+      retries: 20       # Total wait: ~60s max
+      start_period: 10s # Assume ready after 10s
+    networks:
+      - ci-fast-network
+
+networks:
+  ci-fast-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: ci-fast-br0
