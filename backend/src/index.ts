@@ -62,6 +62,7 @@ import {
   initializeNotifications,
   registerNotificationEndpoints,
 } from './modules/notifications_rpc';
+import { registerFairnessTelemetryEndpoints } from './modules/fairness_telemetry';
 import {
   registerRpcHealthCheck,
   registerRpcReportPlayer,
@@ -215,6 +216,7 @@ const InitModule: InitModule = function (
   registerMatchmakingAnalyticsEndpoints(initializer);
   registerErrorInsightRpcs(initializer);
   registerNotificationEndpoints(initializer);
+  registerFairnessTelemetryEndpoints(initializer);
 
   if (config.rateLimit.enabled) {
     registerRpcWithRateLimit(

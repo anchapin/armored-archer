@@ -20,6 +20,13 @@ import { validatePayload, ZodSchemas, createValidationErrorResponse } from './va
 import { getPlayerInventory, getEquippedGearModifierBonuses, PlayerInventory } from './gear_system';
 import { safeParse } from '../utils/safeParse';
 import { getCurrentSeason, getLeaderboardEntry } from './season_system';
+import {
+  logHitResolution,
+  logTimeout,
+  logDisconnect,
+  type HitResolutionEvent,
+  type TimeoutEvent,
+} from './fairness_telemetry';
 
 // Match-level inactivity timeout: 2 minutes of inactivity results in auto-forfeit
 const MATCH_INACTIVE_TIMEOUT_MS = 2 * 60 * 1000;
@@ -294,6 +301,23 @@ async function handleTurnTimeout(
         'handleTimeoutForfeit:match'
       );
       if (matchResult.success && matchResult.data) {
+        // Log timeout event for fairness telemetry before persisting
+        const timeoutEvent: TimeoutEvent = {
+          event_id: `timeout_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          match_id: matchState.match_id,
+          timestamp: Date.now(),
+          timed_out_user_id: loserId,
+          opponent_id: winnerId,
+          timeout_type: 'consecutive_timeouts',
+          consecutive_timeouts: matchState.consecutive_timeouts,
+          match_type: matchResult.data.match_type,
+          turn: matchState.turn,
+          turn_duration_ms: Date.now() - matchState.last_turn_timestamp,
+        };
+
+        // Non-blocking: log to telemetry
+        void logTimeout(nk, timeoutEvent);
+
         updateMatchStatus(nk, matchResult.data, winnerId);
 
         // Persist match result to database
@@ -314,6 +338,23 @@ async function handleTurnTimeout(
   matchState.current_turn_user_id = opponentId;
   matchState.last_turn_timestamp = Date.now();
   saveMatchState(nk, matchState);
+
+  // Log turn timeout event for fairness telemetry
+  const timeoutEvent: TimeoutEvent = {
+    event_id: `timeout_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    match_id: matchState.match_id,
+    timestamp: Date.now(),
+    timed_out_user_id: timedOutUserId,
+    opponent_id: opponentId,
+    timeout_type: 'turn_timeout',
+    consecutive_timeouts: matchState.consecutive_timeouts,
+    match_type: 'ranked', // Default to ranked, will be updated when match is loaded
+    turn: matchState.turn,
+    turn_duration_ms: Date.now() - matchState.last_turn_timestamp,
+  };
+
+  // Non-blocking: log to telemetry
+  void logTimeout(nk, timeoutEvent);
 
   return false;
 }
@@ -699,6 +740,26 @@ function processCombatAction(
 
       matchState.log.push(logEntry);
 
+      // Log hit resolution for fairness telemetry
+      const hitResolutionEvent: HitResolutionEvent = {
+        event_id: `hit_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        match_id: match.match_id,
+        timestamp: Date.now(),
+        attacker_id: userId,
+        defender_id: isCreator ? matchState.opponent_id : matchState.creator_id,
+        hit: true,
+        damage: finalDamage,
+        is_crit: isCrit,
+        angle: action.angle,
+        power: action.power,
+        attacker_health: isCreator ? matchState.creator_health : matchState.opponent_health,
+        defender_health: isCreator ? matchState.opponent_health : matchState.creator_health,
+        turn: matchState.turn,
+      };
+
+      // Non-blocking: log to telemetry but don't wait
+      void logHitResolution(_nk, hitResolutionEvent);
+
       if (matchState.creator_health <= 0) {
         result.winner = matchState.opponent_id;
         result.match_status = 'completed';
@@ -722,6 +783,26 @@ function processCombatAction(
       };
 
       matchState.log.push(logEntry);
+
+      // Log miss for fairness telemetry
+      const hitResolutionEvent: HitResolutionEvent = {
+        event_id: `miss_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        match_id: match.match_id,
+        timestamp: Date.now(),
+        attacker_id: userId,
+        defender_id: isCreator ? matchState.opponent_id : matchState.creator_id,
+        hit: false,
+        damage: 0,
+        is_crit: false,
+        angle: action.angle,
+        power: action.power,
+        attacker_health: isCreator ? matchState.creator_health : matchState.opponent_health,
+        defender_health: isCreator ? matchState.opponent_health : matchState.creator_health,
+        turn: matchState.turn,
+      };
+
+      // Non-blocking: log to telemetry but don't wait
+      void logHitResolution(_nk, hitResolutionEvent);
     }
   }
 
@@ -1209,6 +1290,35 @@ export async function rpcPlayerDisconnect(
         matchState,
         reason === 'timeout' ? 'timeout' : 'disconnect'
       );
+
+      // Log disconnect event for fairness telemetry (if not a timeout)
+      if (reason !== 'timeout') {
+        const disconnectEvent = {
+          event_id: `dc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          match_id: match.match_id,
+          timestamp: Date.now(),
+          user_id: ctx.userId,
+          opponent_id: winnerId,
+          disconnect_reason: reason || 'disconnect',
+          match_status: match.status,
+          match_type: match.match_type,
+          current_turn_user_id: matchState.current_turn_user_id,
+          was_winning: ctx.userId === matchState.creator_id
+            ? matchState.creator_health > matchState.opponent_health
+            : matchState.opponent_health > matchState.creator_health,
+          health_before_disconnect:
+            ctx.userId === matchState.creator_id
+              ? matchState.creator_health
+              : matchState.opponent_health,
+          opponent_health_before_disconnect:
+            ctx.userId === matchState.creator_id
+              ? matchState.opponent_health
+              : matchState.creator_health,
+        };
+
+        // Non-blocking: log to telemetry
+        void logDisconnect(nk, disconnectEvent);
+      }
 
       // Notify opponent
       notifyOpponentOfForfeit(nk, matchState, winnerId, reason || 'disconnect');
