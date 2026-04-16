@@ -592,6 +592,18 @@ export const ValibotSchemas = {
     start_date: optional(pipe(string(), regex(/^\d{4}-\d{2}-\d{2}$/))),
     end_date: optional(pipe(string(), regex(/^\d{4}-\d{2}-\d{2}$/))),
   }),
+
+  // Async duel lifecycle schemas
+  submit_turn: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    action_type: createEnum(['shoot']),
+    angle: pipe(number(), minValue(0), maxValue(6.28318530718)),
+    power: optional(pipe(number(), minValue(0), maxValue(1))),
+  }),
+
+  forfeit_match: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+  }),
 } as const;
 
 // Export with Zod-like names for backward compatibility
