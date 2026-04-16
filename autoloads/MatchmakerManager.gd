@@ -42,7 +42,7 @@ signal match_history_loaded(matches: Array, total: int, stats: Dictionary)
 signal punch_up_stats_updated(wins: int, losses: int, win_rate: float)
 
 # --- Async Duel Signals ---
-signal turn_submitted(match: Dictionary, turn_result: Dictionary = {})
+signal turn_submitted(match: Dictionary, turn_result: Dictionary)
 signal match_state_loaded(match: Dictionary, is_my_turn: bool, my_health: int, opponent_health: int, time_remaining_ms: int)
 signal match_reconnected(match: Dictionary)
 signal match_reconnect_failed(error: String)

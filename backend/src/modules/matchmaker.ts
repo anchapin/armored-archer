@@ -1607,15 +1607,6 @@ function processCompleteTurn(
 }
 
 /**
- * Registers the submit turn RPC endpoint.
- *
- * @param initializer - Nakama runtime initializer
- */
-export function registerRpcSubmitTurn(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/submit_turn', rpcSubmitTurn);
-}
-
-/**
  * Handles turn submission for asynchronous PvP matches.
  *
  * @param ctx - Nakama runtime context
@@ -2254,23 +2245,22 @@ function sendTimeoutNotification(
   consecutiveCount: number
 ): void {
   try {
-    nk.notificationsSend(userId, [
+    nk.notificationSend(
+      userId,
+      'Your turn has timed out',
       {
-        code: 1001, // Timeout notification
-        subject: 'Your turn has timed out',
-        content: JSON.stringify({
-          match_id: matchId,
-          event: 'turn_timeout',
-          consecutive_count: consecutiveCount,
-          message:
-            consecutiveCount >= MAX_CONSECUTIVE_TIMEOUTS
-              ? 'You have forfeited the match due to consecutive timeouts.'
-              : 'A default turn was submitted. Please submit your next turn promptly.',
-        }),
-        senderId: 'system',
-        persistent: true,
+        match_id: matchId,
+        event: 'turn_timeout',
+        consecutive_count: consecutiveCount,
+        message:
+          consecutiveCount >= MAX_CONSECUTIVE_TIMEOUTS
+            ? 'You have forfeited the match due to consecutive timeouts.'
+            : 'A default turn was submitted. Please submit your next turn promptly.',
       },
-    ]);
+      1001, // Timeout notification code
+      true, // persistent
+      'system' // senderId
+    );
   } catch (error) {
     // Non-blocking: notification failure should not affect match logic
     console.error('Failed to send timeout notification:', error);

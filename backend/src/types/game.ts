@@ -19,10 +19,16 @@ export interface PlayerStats {
 }
 
 /**
- * Generic turn data structure for match state.
+ * Turn data structure for match state.
  *
- * @property [key: string] - Dynamic properties for turn-specific data
+ * @property action_type - Type of action (e.g., "shoot")
+ * @property angle - Shot angle in radians
+ * @property power - Shot power (0-1)
+ * @property [key: string] - Additional dynamic properties for turn-specific data
  */
 export interface TurnData {
+  action_type: string;
+  angle: number;
+  power: number;
   [key: string]: unknown;
 }
