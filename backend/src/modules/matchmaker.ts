@@ -348,11 +348,29 @@ export function rpcCreateMatch(
     const targetPlayerStats = targetPlayerStatsResult.data;
     const targetRank = calculateRank(targetPlayerStats);
 
-    if (!request.is_punch_up && Math.abs(playerRank - targetRank) > 3) {
-      return JSON.stringify({
-        error: 'Rank difference too large for direct challenge',
-      });
+    // Auto-detect punch-up eligibility
+    const punchUpInfo = isPunchUpMatch(
+      playerRank,
+      targetRank,
+      ctx.userId,
+      request.target_opponent_id
+    );
+
+    // Validate punch-up eligibility
+    const validationError = validatePunchUpEligibility(
+      playerRank,
+      targetRank,
+      punchUpInfo,
+      request.is_punch_up || false
+    );
+    if (validationError) {
+      return validationError;
     }
+
+    const rankDiff = Math.abs(playerRank - targetRank);
+
+    // Use auto-detected punch-up status or explicitly requested
+    const isPunchUp = punchUpInfo.is_punch_up || request.is_punch_up || false;
 
     const match: PvPMatch = {
       match_id: generateMatchId(),
@@ -361,7 +379,7 @@ export function rpcCreateMatch(
       creator_rank: playerRank,
       opponent_rank: targetRank,
       match_type: request.match_type,
-      is_punch_up: request.is_punch_up || false,
+      is_punch_up: isPunchUp,
       status: 'pending',
       created_at: Date.now(),
       updated_at: Date.now(),
@@ -390,6 +408,17 @@ export function rpcCreateMatch(
     return JSON.stringify({
       success: true,
       match: match,
+      punch_up_info: isPunchUp
+        ? {
+            is_punch_up: true,
+            rank_difference: rankDiff,
+            underdog_id: punchUpInfo.underdog_id,
+            underdog_rank: punchUpInfo.underdog_rank,
+            favorite_rank: punchUpInfo.favorite_rank,
+            reward_multiplier: punchUpInfo.reward_multiplier,
+            description: generatePunchUpDescription(punchUpInfo),
+          }
+        : null,
     });
   } else {
     const now = Date.now();
@@ -677,6 +706,206 @@ export function calculateRank(playerStats: PlayerStats): number {
     playerStats.stats.crit_rate;
 
   return Math.floor(baseRank + statsTotal / 4);
+}
+
+/**
+ * Punch-up eligibility result.
+ */
+export interface PunchUpInfo {
+  is_punch_up: boolean;
+  rank_difference: number;
+  underdog_rank: number;
+  favorite_rank: number;
+  underdog_id: string;
+  reward_multiplier: number;
+}
+
+/**
+ * Determines if a match is a punch-up and calculates the reward multiplier.
+ * A punch-up occurs when a lower-ranked player challenges a higher-ranked opponent
+ * with a significant rank difference.
+ *
+ * Punch-up rules:
+ * - Minimum rank difference of 5 to qualify
+ * - Maximum rank difference of 15 (to prevent abuse)
+ * - Both players must be above minimum rank threshold (20)
+ * - Reward multiplier scales with rank difference (1.2x to 2.0x)
+ *
+ * @param rank1 - Rank of player 1
+ * @param rank2 - Rank of player 2
+ * @param playerId1 - ID of player 1
+ * @param playerId2 - ID of player 2
+ * @returns Punch-up information including whether it's a punch-up and reward multiplier
+ */
+export function isPunchUpMatch(
+  rank1: number,
+  rank2: number,
+  playerId1: string,
+  playerId2: string
+): PunchUpInfo {
+  const rankDiff = Math.abs(rank1 - rank2);
+
+  // Not a punch-up if rank difference is too small or too large
+  if (rankDiff < PUNCH_UP_RANK_DIFF_THRESHOLD || rankDiff > PUNCH_UP_MAX_RANK_DIFF) {
+    return {
+      is_punch_up: false,
+      rank_difference: rankDiff,
+      underdog_rank: Math.min(rank1, rank2),
+      favorite_rank: Math.max(rank1, rank2),
+      underdog_id: rank1 < rank2 ? playerId1 : playerId2,
+      reward_multiplier: 1.0,
+    };
+  }
+
+  // Both players must be above minimum rank to prevent low-level abuse
+  if (Math.min(rank1, rank2) < PUNCH_UP_MIN_RANK) {
+    return {
+      is_punch_up: false,
+      rank_difference: rankDiff,
+      underdog_rank: Math.min(rank1, rank2),
+      favorite_rank: Math.max(rank1, rank2),
+      underdog_id: rank1 < rank2 ? playerId1 : playerId2,
+      reward_multiplier: 1.0,
+    };
+  }
+
+  // Calculate reward multiplier based on rank difference
+  // Interpolate between min and max multipliers
+  const multiplierRange = PUNCH_UP_XP_MULTIPLIER_MAX - PUNCH_UP_XP_MULTIPLIER_MIN;
+  const rankDiffRange = PUNCH_UP_MAX_RANK_DIFF - PUNCH_UP_RANK_DIFF_THRESHOLD;
+  const normalizedDiff = (rankDiff - PUNCH_UP_RANK_DIFF_THRESHOLD) / rankDiffRange;
+  const rewardMultiplier = PUNCH_UP_XP_MULTIPLIER_MIN + multiplierRange * normalizedDiff;
+
+  return {
+    is_punch_up: true,
+    rank_difference: rankDiff,
+    underdog_rank: Math.min(rank1, rank2),
+    favorite_rank: Math.max(rank1, rank2),
+    underdog_id: rank1 < rank2 ? playerId1 : playerId2,
+    reward_multiplier: parseFloat(rewardMultiplier.toFixed(2)),
+  };
+}
+
+/**
+ * Calculates the reward penalty for a favorite player in a punch-up match.
+ * Favorites receive reduced rewards proportional to the rank difference.
+ *
+ * @param isPunchUp - Whether this is a punch-up match
+ * @param rankDifference - The absolute difference in ranks
+ * @returns Multiplier to apply to favorite's rewards (0.5 to 1.0)
+ */
+export function calculateFavoritePenalty(isPunchUp: boolean, rankDifference: number): number {
+  if (!isPunchUp) {
+    return 1.0; // No penalty for normal matches
+  }
+
+  // Calculate penalty based on rank difference
+  // Larger rank difference = harsher penalty
+  const penaltyRange = FAVORITE_REWARD_PENALTY_MIN - FAVORITE_REWARD_PENALTY_MAX;
+  const rankDiffRange = PUNCH_UP_MAX_RANK_DIFF - PUNCH_UP_RANK_DIFF_THRESHOLD;
+  const normalizedDiff = Math.min(
+    (rankDifference - PUNCH_UP_RANK_DIFF_THRESHOLD) / rankDiffRange,
+    1.0
+  );
+  const penalty = FAVORITE_REWARD_PENALTY_MIN - penaltyRange * normalizedDiff;
+
+  return parseFloat(penalty.toFixed(2));
+}
+
+/**
+ * Calculates gem bonus for punch-up wins.
+ * Scales with rank difference to incentivize challenging stronger opponents.
+ *
+ * @param rankDifference - The absolute difference in ranks
+ * @returns Number of gems to award
+ */
+export function calculatePunchUpGemBonus(rankDifference: number): number {
+  // Interpolate between min and max gem bonus
+  const gemRange = PUNCH_UP_GEM_BONUS_MAX - PUNCH_UP_GEM_BONUS_MIN;
+  const rankDiffRange = PUNCH_UP_MAX_RANK_DIFF - PUNCH_UP_RANK_DIFF_THRESHOLD;
+  const normalizedDiff = Math.min(
+    (rankDifference - PUNCH_UP_RANK_DIFF_THRESHOLD) / rankDiffRange,
+    1.0
+  );
+  const gemBonus = PUNCH_UP_GEM_BONUS_MIN + Math.floor(gemRange * normalizedDiff);
+
+  return gemBonus;
+}
+
+/**
+ * Generates a player-friendly description of punch-up mechanics.
+ *
+ * @param punchUpInfo - Punch-up information
+ * @returns Human-readable description
+ */
+export function generatePunchUpDescription(punchUpInfo: PunchUpInfo): string {
+  const { rank_difference, reward_multiplier } = punchUpInfo;
+
+  // Determine intensity level
+  let intensity = 'moderate';
+  if (rank_difference >= 12) intensity = 'extreme';
+  else if (rank_difference >= 8) intensity = 'high';
+  else if (rank_difference <= 6) intensity = 'slight';
+
+  // Calculate gem bonus
+  const gemBonus = calculatePunchUpGemBonus(rank_difference);
+
+  // Format multiplier to always show decimal places
+  const formattedMultiplier = reward_multiplier.toFixed(1);
+
+  return (
+    `Punch-up match (${intensity} difference of ${rank_difference} ranks). ` +
+    `Underdogs receive ${formattedMultiplier}x XP bonus and ${gemBonus} bonus gems on win. ` +
+    `Favorites receive reduced rewards (${Math.round((1 - calculateFavoritePenalty(true, rank_difference)) * 100)}% penalty).`
+  );
+}
+
+/**
+ * Validates punch-up eligibility and returns error response if invalid.
+ *
+ * @param playerRank - The challenger's rank
+ * @param targetRank - The target's rank
+ * @param punchUpInfo - Pre-calculated punch-up information
+ * @param requestedPunchUp - Whether punch-up was explicitly requested
+ * @returns Error JSON string if invalid, null if valid
+ */
+function validatePunchUpEligibility(
+  playerRank: number,
+  targetRank: number,
+  punchUpInfo: PunchUpInfo,
+  requestedPunchUp: boolean
+): string | null {
+  const rankDiff = Math.abs(playerRank - targetRank);
+
+  // Validate rank difference constraints
+  if (rankDiff > PUNCH_UP_MAX_RANK_DIFF) {
+    return JSON.stringify({
+      error: `Rank difference too large. Maximum allowed is ${PUNCH_UP_MAX_RANK_DIFF}.`,
+      rank_difference: rankDiff,
+      max_allowed: PUNCH_UP_MAX_RANK_DIFF,
+    });
+  }
+
+  // If punch-up is explicitly requested but not valid, return error
+  if (requestedPunchUp && !punchUpInfo.is_punch_up) {
+    if (rankDiff < PUNCH_UP_RANK_DIFF_THRESHOLD) {
+      return JSON.stringify({
+        error: `Rank difference too small for punch-up. Minimum required is ${PUNCH_UP_RANK_DIFF_THRESHOLD}.`,
+        rank_difference: rankDiff,
+        min_required: PUNCH_UP_RANK_DIFF_THRESHOLD,
+      });
+    }
+    if (Math.min(playerRank, targetRank) < PUNCH_UP_MIN_RANK) {
+      return JSON.stringify({
+        error: `Both players must be rank ${PUNCH_UP_MIN_RANK} or higher for punch-up.`,
+        player_rank: playerRank,
+        target_rank: targetRank,
+        min_rank: PUNCH_UP_MIN_RANK,
+      });
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -992,13 +1221,46 @@ function processMatchResult(
   const winnerOldSeasonPosition = winnerOldSeasonEntry ? winnerOldSeasonEntry.rank : 0;
   const loserOldSeasonPosition = loserOldSeasonEntry ? loserOldSeasonEntry.rank : 0;
 
-  // Calculate XP gains
-  const winnerXPGained = calculateXPGain(true, isPunchUp, match.match_type);
-  const loserXPGained = calculateXPGain(false, isPunchUp, match.match_type);
+  // Calculate punch-up info for reward scaling
+  const winnerOldRank =
+    match.winner === match.creator_id ? match.creator_rank : match.opponent_rank;
+  const loserOldRank =
+    match.winner === match.opponent_id ? match.creator_rank : match.opponent_rank;
+  const punchUpInfo = isPunchUpMatch(
+    winnerOldRank,
+    loserOldRank,
+    request.winner_id,
+    request.loser_id
+  );
+
+  // Determine if winner and loser are underdogs or favorites
+  const winnerIsUnderdog = request.winner_id === punchUpInfo.underdog_id;
+  const loserIsUnderdog = request.loser_id === punchUpInfo.underdog_id;
+
+  // Calculate XP gains with punch-up scaling
+  const winnerXPParams: RewardCalculationParams = {
+    isWinner: true,
+    isPunchUp,
+    matchType: match.match_type,
+    isUnderdog: winnerIsUnderdog,
+    rankDifference: punchUpInfo.rank_difference,
+    rewardMultiplier: punchUpInfo.reward_multiplier,
+  };
+  const loserXPParams: RewardCalculationParams = {
+    isWinner: false,
+    isPunchUp,
+    matchType: match.match_type,
+    isUnderdog: loserIsUnderdog,
+    rankDifference: punchUpInfo.rank_difference,
+    rewardMultiplier: punchUpInfo.reward_multiplier,
+  };
+
+  const winnerXPGained = calculateXPGain(winnerXPParams);
+  const loserXPGained = calculateXPGain(loserXPParams);
 
   // Calculate per-match rewards
-  const winnerRewards = calculateMatchRewards(true, isPunchUp, match.match_type, winnerXPGained);
-  const loserRewards = calculateMatchRewards(false, isPunchUp, match.match_type, loserXPGained);
+  const winnerRewards = calculateMatchRewards(winnerXPParams, winnerXPGained);
+  const loserRewards = calculateMatchRewards(loserXPParams, loserXPGained);
 
   // Award rewards to players (coins, gems)
   awardMatchRewards(nk, request.winner_id, winnerRewards);
@@ -1155,28 +1417,46 @@ function applyMatchRankDecay(
 }
 
 /**
+ * Parameters for calculating match rewards.
+ */
+interface RewardCalculationParams {
+  isWinner: boolean;
+  isPunchUp: boolean;
+  matchType: 'ranked' | 'casual';
+  isUnderdog: boolean;
+  rankDifference: number;
+  rewardMultiplier: number;
+}
+
+/**
  * Calculates XP gain based on match result and type.
  *
  * Ranked matches offer 100% XP rewards, casual matches offer 50% XP rewards.
- * Punch-up matches provide a 1.5x multiplier bonus.
+ * Punch-up matches provide scaled multiplier bonuses (1.2x to 2.0x) based on rank difference.
+ * Favorites in punch-up matches receive reduced rewards (50% to 70% of normal).
  *
- * @param isWinner - Whether the player won the match
- * @param isPunchUp - Whether this was a punch-up match
- * @param matchType - Type of match ("ranked" or "casual")
+ * @param params - Reward calculation parameters
  * @returns XP gained
  */
-function calculateXPGain(
-  isWinner: boolean,
-  isPunchUp: boolean,
-  matchType: 'ranked' | 'casual'
-): number {
-  const rankedBaseXP = isWinner ? 100 : 25;
-  const casualBaseXP = isWinner ? 50 : 15;
+function calculateXPGain(params: RewardCalculationParams): number {
+  const rankedBaseXP = params.isWinner ? 100 : 25;
+  const casualBaseXP = params.isWinner ? 50 : 15;
 
   // Casual matches award 50% of ranked XP
-  const baseXP = matchType === 'ranked' ? rankedBaseXP : casualBaseXP;
-  const punchUpMultiplier = isPunchUp ? 1.5 : 1.0;
-  return Math.round(baseXP * punchUpMultiplier);
+  let baseXP = params.matchType === 'ranked' ? rankedBaseXP : casualBaseXP;
+
+  if (params.isPunchUp) {
+    if (params.isUnderdog) {
+      // Underdog gets bonus based on rank difference
+      baseXP = Math.round(baseXP * params.rewardMultiplier);
+    } else {
+      // Favorite gets penalty based on rank difference
+      const penalty = calculateFavoritePenalty(params.isPunchUp, params.rankDifference);
+      baseXP = Math.round(baseXP * penalty);
+    }
+  }
+
+  return baseXP;
 }
 
 /**
@@ -1185,18 +1465,15 @@ function calculateXPGain(
  * Ranked matches offer higher rewards and include punch-up gem bonuses.
  * Casual matches offer 50% coin rewards and no gem bonuses.
  *
- * @param isWinner - Whether the player won the match
- * @param isPunchUp - Whether this was a punch-up match
- * @param matchType - Type of match ("ranked" or "casual")
+ * Punch-up mechanics:
+ * - Underdogs: Scaled XP multiplier, bonus gems for wins
+ * - Favorites: Reduced rewards (50-70% of normal), harsher penalties for losses
+ *
+ * @param params - Reward calculation parameters
  * @param xpGained - XP gained in the match
  * @returns Array of match rewards
  */
-function calculateMatchRewards(
-  isWinner: boolean,
-  isPunchUp: boolean,
-  matchType: 'ranked' | 'casual',
-  xpGained: number
-): MatchReward[] {
+function calculateMatchRewards(params: RewardCalculationParams, xpGained: number): MatchReward[] {
   const rewards: MatchReward[] = [];
 
   // XP is always awarded as a reward
@@ -1210,22 +1487,31 @@ function calculateMatchRewards(
   // Ranked: 50 coins for win, 10 for loss
   // Casual: 25 coins for win, 5 for loss (50% of ranked)
   let coins: number;
-  if (matchType === 'ranked') {
-    coins = isWinner ? 50 : 10;
+  if (params.matchType === 'ranked') {
+    coins = params.isWinner ? 50 : 10;
   } else {
-    coins = isWinner ? 25 : 5;
+    coins = params.isWinner ? 25 : 5;
   }
+
+  // Apply favorite penalty for punch-up matches
+  if (params.isPunchUp && !params.isUnderdog) {
+    const penalty = calculateFavoritePenalty(params.isPunchUp, params.rankDifference);
+    coins = Math.round(coins * penalty);
+  }
+
   rewards.push({
     name: 'Coins',
     quantity: coins,
     type: 'coin',
   });
 
-  // Bonus gems for punch-up wins (ranked only)
-  if (isWinner && isPunchUp && matchType === 'ranked') {
+  // Bonus gems for punch-up underdog wins (ranked only)
+  // Scale gem bonus based on rank difference
+  if (params.isWinner && params.isPunchUp && params.isUnderdog && params.matchType === 'ranked') {
+    const gemBonus = calculatePunchUpGemBonus(params.rankDifference);
     rewards.push({
       name: 'Gems',
-      quantity: 5,
+      quantity: gemBonus,
       type: 'gem',
     });
   }
@@ -1465,6 +1751,21 @@ const TURN_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours per turn
 const MAX_CONSECUTIVE_TIMEOUTS = 2; // Auto-forfeit after 2 consecutive timeouts
 const DEFAULT_MAX_TURNS = 10; // Maximum number of turns before forced end
 const BASE_HEALTH = 100; // Base health for both players
+
+/**
+ * Punch-up configuration constants.
+ * Punch-up allows lower-ranked players to challenge higher-ranked opponents
+ * with enhanced rewards for winning and reduced rewards for the favorite.
+ */
+const PUNCH_UP_RANK_DIFF_THRESHOLD = 5; // Minimum rank difference to qualify as punch-up
+const PUNCH_UP_MAX_RANK_DIFF = 15; // Maximum allowed rank difference for punch-up
+const PUNCH_UP_MIN_RANK = 20; // Minimum rank to be eligible for punch-up (prevents low-level abuse)
+const PUNCH_UP_XP_MULTIPLIER_MIN = 1.2; // Minimum XP multiplier for punch-up (small diff)
+const PUNCH_UP_XP_MULTIPLIER_MAX = 2.0; // Maximum XP multiplier for punch-up (large diff)
+const PUNCH_UP_GEM_BONUS_MIN = 3; // Minimum gems for punch-up win
+const PUNCH_UP_GEM_BONUS_MAX = 10; // Maximum gems for punch-up win
+const FAVORITE_REWARD_PENALTY_MIN = 0.7; // Minimum reward multiplier for favorites (30% reduction)
+const FAVORITE_REWARD_PENALTY_MAX = 0.5; // Maximum reward multiplier for favorites (50% reduction)
 
 /**
  * Turn result data structure.

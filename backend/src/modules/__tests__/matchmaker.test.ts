@@ -19,6 +19,11 @@ import {
   registerRpcSubmitTurn,
   registerRpcGetAsyncMatchState,
   registerRpcForfeitMatch,
+  isPunchUpMatch,
+  calculateFavoritePenalty,
+  calculatePunchUpGemBonus,
+  generatePunchUpDescription,
+  type PunchUpInfo,
 } from '../matchmaker';
 
 // Mock anti_cheat module
@@ -129,8 +134,49 @@ describe('matchmaker', () => {
     });
 
     it('should allow punch-up when flag set', () => {
-      const playerStats = createPlayerStats({ level: 10 });
-      const targetPlayerStats = createPlayerStats({ level: 1 });
+      // Use ranks within valid punch-up range (5-15 difference)
+      // Level 3 gives rank ~30, Level 6 gives rank ~60, difference of 30 (too high)
+      // Let's use level 3 (~30) and level 5 (~50), difference of 20 (still too high)
+      // We need ranks between 20+ with 5-15 difference
+      // Level 3: rank = 3*10 + (20+15+10+8)/4 = 30 + 53/4 = 43
+      // Level 5: rank = 5*10 + (20+15+10+8)/4 = 50 + 53/4 = 63, diff = 20 (too high)
+      // Let's create stats with different values to get valid ranks
+      const playerStats = createPlayerStats({
+        level: 3,
+        stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 8 }, // rank ~43
+      });
+      const targetPlayerStats = createPlayerStats({
+        level: 5,
+        stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 8 }, // rank ~63, diff = 20 (too high)
+      });
+
+      // Use lower ranks for valid punch-up
+      // Level 2: rank = 20 + 53/4 = 33
+      // Level 4: rank = 40 + 53/4 = 53, diff = 20 (still too high)
+      // We need to adjust stats to get closer ranks
+      const validPlayerStats = createPlayerStats({
+        level: 4,
+        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 }, // rank = 40 + 35/4 = 49
+      });
+      const validTargetStats = createPlayerStats({
+        level: 2,
+        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 }, // rank = 20 + 35/4 = 29, diff = 20 (still too high)
+      });
+
+      // Let me calculate more carefully
+      // We need both ranks >= 20 and diff between 5-15
+      // If player rank = 40 and target rank = 50, diff = 10 (valid)
+      // Player: level 4 gives base 40, need 0 additional from stats
+      // Target: level 5 gives base 50, need 0 additional from stats
+
+      const punchUpPlayerStats = createPlayerStats({
+        level: 4,
+        stats: { attack: 0, defense: 0, dodge: 0, crit_rate: 0 }, // rank = 40
+      });
+      const punchUpTargetStats = createPlayerStats({
+        level: 5,
+        stats: { attack: 0, defense: 0, dodge: 0, crit_rate: 0 }, // rank = 50, diff = 10
+      });
 
       mockNk.storageRead = jest.fn((objects) => {
         if (objects[0].key === 'test-user-123') {
@@ -139,7 +185,7 @@ describe('matchmaker', () => {
               collection: 'player_stats',
               key: 'test-user-123',
               userId: 'test-user-123',
-              value: JSON.stringify(playerStats),
+              value: JSON.stringify(punchUpPlayerStats),
             },
           ];
         } else if (objects[0].key === 'target-user') {
@@ -148,7 +194,7 @@ describe('matchmaker', () => {
               collection: 'player_stats',
               key: 'target-user',
               userId: 'target-user',
-              value: JSON.stringify(targetPlayerStats),
+              value: JSON.stringify(punchUpTargetStats),
             },
           ];
         }
@@ -165,6 +211,8 @@ describe('matchmaker', () => {
 
       expect(parsed.success).toBe(true);
       expect(parsed.match.is_punch_up).toBe(true);
+      expect(parsed.punch_up_info).toBeTruthy();
+      expect(parsed.punch_up_info.rank_difference).toBe(10);
     });
 
     it('should return error when target player not found', () => {
@@ -221,7 +269,8 @@ describe('matchmaker', () => {
       const result = rpcCreateMatch(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
-      expect(parsed.error).toBe('Rank difference too large for direct challenge');
+      expect(parsed.error).toContain('Rank difference too large');
+      expect(parsed.max_allowed).toBe(15);
     });
 
     it('should create open match when no target opponent', () => {
@@ -1432,6 +1481,164 @@ describe('matchmaker', () => {
           'armored_archer/forfeit_match',
           rpcForfeitMatch
         );
+      });
+    });
+
+    describe('Punch-up Mechanics', () => {
+      describe('isPunchUpMatch', () => {
+        it('should detect punch-up with minimum rank difference', () => {
+          const result = isPunchUpMatch(25, 30, 'player1', 'player2');
+
+          expect(result.is_punch_up).toBe(true);
+          expect(result.rank_difference).toBe(5);
+          expect(result.underdog_rank).toBe(25);
+          expect(result.favorite_rank).toBe(30);
+          expect(result.underdog_id).toBe('player1');
+          expect(result.reward_multiplier).toBeGreaterThan(1.0);
+        });
+
+        it('should detect punch-up with maximum rank difference', () => {
+          const result = isPunchUpMatch(25, 40, 'player1', 'player2');
+
+          expect(result.is_punch_up).toBe(true);
+          expect(result.rank_difference).toBe(15);
+          expect(result.reward_multiplier).toBe(2.0);
+        });
+
+        it('should not detect punch-up with rank difference below threshold', () => {
+          const result = isPunchUpMatch(25, 29, 'player1', 'player2');
+
+          expect(result.is_punch_up).toBe(false);
+          expect(result.reward_multiplier).toBe(1.0);
+        });
+
+        it('should not detect punch-up with rank difference above maximum', () => {
+          const result = isPunchUpMatch(25, 41, 'player1', 'player2');
+
+          expect(result.is_punch_up).toBe(false);
+          expect(result.reward_multiplier).toBe(1.0);
+        });
+
+        it('should not detect punch-up when both players are below minimum rank', () => {
+          const result = isPunchUpMatch(15, 20, 'player1', 'player2');
+
+          expect(result.is_punch_up).toBe(false);
+          expect(result.reward_multiplier).toBe(1.0);
+        });
+
+        it('should correctly identify underdog and favorite', () => {
+          // Note: variable names are intentionally misleading - 'high_ranker' has rank 30,
+          // 'low_ranker' has rank 40, so 'high_ranker' is actually the underdog
+          const result = isPunchUpMatch(30, 40, 'high_ranker', 'low_ranker');
+
+          expect(result.is_punch_up).toBe(true);
+          expect(result.underdog_id).toBe('high_ranker'); // The player with rank 30
+          expect(result.underdog_rank).toBe(30);
+          expect(result.favorite_rank).toBe(40);
+        });
+
+        it('should scale reward multiplier with rank difference', () => {
+          const smallDiff = isPunchUpMatch(25, 30, 'p1', 'p2');
+          const mediumDiff = isPunchUpMatch(25, 35, 'p1', 'p2');
+          const largeDiff = isPunchUpMatch(25, 40, 'p1', 'p2');
+
+          expect(smallDiff.reward_multiplier).toBeLessThan(mediumDiff.reward_multiplier);
+          expect(mediumDiff.reward_multiplier).toBeLessThan(largeDiff.reward_multiplier);
+        });
+      });
+
+      describe('calculateFavoritePenalty', () => {
+        it('should return no penalty for non-punch-up matches', () => {
+          const penalty = calculateFavoritePenalty(false, 10);
+          expect(penalty).toBe(1.0);
+        });
+
+        it('should calculate minimum penalty for smallest punch-up', () => {
+          const penalty = calculateFavoritePenalty(true, 5);
+          expect(penalty).toBe(0.7);
+        });
+
+        it('should calculate maximum penalty for largest punch-up', () => {
+          const penalty = calculateFavoritePenalty(true, 15);
+          expect(penalty).toBe(0.5);
+        });
+
+        it('should scale penalty with rank difference', () => {
+          const smallPenalty = calculateFavoritePenalty(true, 5);
+          const mediumPenalty = calculateFavoritePenalty(true, 10);
+          const largePenalty = calculateFavoritePenalty(true, 15);
+
+          expect(smallPenalty).toBeGreaterThan(mediumPenalty);
+          expect(mediumPenalty).toBeGreaterThan(largePenalty);
+        });
+      });
+
+      describe('calculatePunchUpGemBonus', () => {
+        it('should return minimum gems for smallest punch-up', () => {
+          const bonus = calculatePunchUpGemBonus(5);
+          expect(bonus).toBe(3);
+        });
+
+        it('should return maximum gems for largest punch-up', () => {
+          const bonus = calculatePunchUpGemBonus(15);
+          expect(bonus).toBe(10);
+        });
+
+        it('should scale gem bonus with rank difference', () => {
+          const smallBonus = calculatePunchUpGemBonus(5);
+          const mediumBonus = calculatePunchUpGemBonus(10);
+          const largeBonus = calculatePunchUpGemBonus(15);
+
+          expect(smallBonus).toBeLessThan(mediumBonus);
+          expect(mediumBonus).toBeLessThan(largeBonus);
+        });
+      });
+
+      describe('generatePunchUpDescription', () => {
+        it('should generate description for slight punch-up', () => {
+          const info: PunchUpInfo = {
+            is_punch_up: true,
+            rank_difference: 6,
+            underdog_rank: 25,
+            favorite_rank: 31,
+            underdog_id: 'player1',
+            reward_multiplier: 1.25,
+          };
+
+          const description = generatePunchUpDescription(info);
+          expect(description).toContain('slight difference of 6 ranks');
+          expect(description).toContain('1.3x XP bonus'); // Formatted to 1 decimal place
+        });
+
+        it('should generate description for extreme punch-up', () => {
+          const info: PunchUpInfo = {
+            is_punch_up: true,
+            rank_difference: 15,
+            underdog_rank: 25,
+            favorite_rank: 40,
+            underdog_id: 'player1',
+            reward_multiplier: 2.0,
+          };
+
+          const description = generatePunchUpDescription(info);
+          expect(description).toContain('extreme difference of 15 ranks');
+          expect(description).toContain('2.0x XP bonus');
+          expect(description).toContain('10 bonus gems');
+        });
+
+        it('should mention favorite penalty', () => {
+          const info: PunchUpInfo = {
+            is_punch_up: true,
+            rank_difference: 10,
+            underdog_rank: 25,
+            favorite_rank: 35,
+            underdog_id: 'player1',
+            reward_multiplier: 1.6,
+          };
+
+          const description = generatePunchUpDescription(info);
+          expect(description).toContain('Favorites receive reduced rewards');
+        });
       });
     });
   });
