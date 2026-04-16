@@ -3,6 +3,8 @@
  * @fileoverview Manages equipment generation, modification, and inventory.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
@@ -479,13 +481,71 @@ function generateGearId(): string {
 }
 
 /**
+ * Stage-specific rarity weights from campaigns.json
+ * Used to scale drop chances based on stage progression
+ */
+const STAGE_RARITY_WEIGHTS: {
+  [stageId: string]: { common: number; rare: number; epic: number; legendary: number };
+} = {};
+
+/**
+ * Loads stage-specific rarity weights from campaigns.json
+ * Maps campaigns.json rarity_weights to our internal rarity format
+ */
+function loadStageRarityWeights(): void {
+  const campaignsPath = path.join(__dirname, '../../data/campaigns.json');
+  try {
+    const campaignsData = JSON.parse(fs.readFileSync(campaignsPath, 'utf8'));
+
+    if (campaignsData.campaigns) {
+      for (const campaign of campaignsData.campaigns) {
+        for (const stage of campaign.stages || []) {
+          const stageId = stage.id;
+          const lootWeights = stage.loot?.rarity_weights || {};
+          const weights = {
+            common: (lootWeights.common || 0) / 100,
+            rare: (lootWeights.rare || 0) / 100,
+            epic: (lootWeights.epic || 0) / 100,
+            legendary: (lootWeights.legendary || 0) / 100,
+          };
+          STAGE_RARITY_WEIGHTS[stageId] = weights;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load stage rarity weights:', error);
+  }
+}
+
+/**
  * Rolls a random gear rarity based on drop chances.
  *
+ * @param stageId - Optional stage ID to use stage-specific weights
  * @returns Randomly selected rarity string
  */
-function rollRarity(): string {
+function rollRarity(stageId?: string): string {
   const roll = Math.random();
 
+  // If stage-specific weights are provided, use those
+  if (stageId && STAGE_RARITY_WEIGHTS[stageId]) {
+    const weights = STAGE_RARITY_WEIGHTS[stageId];
+    const commonThreshold = weights.common / 100;
+    const epicThreshold = commonThreshold + weights.epic / 100;
+    const rareThreshold = epicThreshold + weights.rare / 100;
+    const legendaryThreshold = rareThreshold + weights.legendary / 100;
+
+    if (roll < legendaryThreshold) {
+      return 'legendary';
+    } else if (roll < rareThreshold) {
+      return 'rare';
+    } else if (roll < epicThreshold) {
+      return 'epic';
+    } else {
+      return 'common';
+    }
+  }
+
+  // Fall back to default rarity weights
   if (roll < RARITIES.legendary.drop_chance) {
     return 'legendary';
   } else if (roll < RARITIES.legendary.drop_chance + RARITIES.epic.drop_chance) {
@@ -649,7 +709,7 @@ export function generateGearItem(
   logger: Runtime.Logger
 ): GearItem {
   const definitions = getGearDefinitions(logger);
-  const rarity = rollRarity();
+  const rarity = rollRarity(stageId);
   const type = getRandomItem(definitions.gearTypes);
   const name = getGearName(type, rarity, logger);
 
@@ -682,6 +742,8 @@ export function generateGearItem(
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcGenerateGear(initializer: Runtime.Initializer): void {
+  // Load stage-specific rarity weights on module registration
+  loadStageRarityWeights();
   initializer.registerRpc('armored_archer/generate_gear', rpcGenerateGear);
 }
 
@@ -1520,14 +1582,15 @@ const BOSS_DROP_BONUS = 0.25;
 
 /**
  * Base drop rate for any stage completion.
+ * Tuned to provide better early progression experience.
  */
-const BASE_DROP_RATE = 0.3;
+const BASE_DROP_RATE = 0.4;
 
 /**
  * XP gain constants for stage completion.
  */
 const BASE_STAGE_XP = 50;
-const BOSS_XP_BONUS = 25;
+const BOSS_XP_BONUS = 50;
 
 /**
  * Calculates XP gain for stage completion.
@@ -1742,11 +1805,11 @@ function processStageCompletion(
       ? recordBossDefeat(nk, ctx, logger, request.boss_id)
       : undefined;
 
-  // Get player inventory (after boss defeat to get updated modifier pools)
-  const inventory = getPlayerInventory(nk, ctx.userId, logger);
-
   // Unlock modifier pools from enemy defeats
   const newlyUnlockedModifiers = unlockModifierPools(nk, ctx.userId, logger, request.enemy_type);
+
+  // Get player inventory (after unlocking modifier pools to get updated pools)
+  const inventory = getPlayerInventory(nk, ctx.userId, logger);
 
   // Combine modifiers
   const allUnlockedModifiers = [

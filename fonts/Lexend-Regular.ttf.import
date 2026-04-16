@@ -2,31 +2,35 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://lexendregular"
+uid="uid://dn4ng8wvcgtq8"
+path="res://.godot/imported/Lexend-Regular.ttf-b99fb13888db7ed663482f1dba5c1b13.fontdata"
 
 [deps]
 
 source_file="res://fonts/Lexend-Regular.ttf"
-dest_files=["res://.godot/imported/Lexend-Regular.ttf-xxxxx.fontdata"]
+dest_files=["res://.godot/imported/Lexend-Regular.ttf-b99fb13888db7ed663482f1dba5c1b13.fontdata"]
 
 [params]
 
 Rendering=null
-Antialiasing=1
-Hinting=2
-SubpixelPositioning=1
-Oversampling=0.0
+antialiasing=1
+generate_mipmaps=false
+disable_embedded_bitmaps=true
+multichannel_signed_distance_field=false
+msdf_pixel_range=8
+msdf_size=48
+allow_system_fallback=true
+force_autohinter=false
+modulate_color_glyphs=false
+hinting=1
+subpixel_positioning=4
+keep_rounding_remainders=true
+oversampling=0.0
 Fallbacks=[]
-FallbackToSystem=false
-ForceAutohinter=false
-Bitmap=false
-MultichannelSignedDistanceField=false
-MSDFPixelRange=8
-MSDFSize=48
-UseMipmaps=false
+fallbacks=[]
 Compress=true
+compress=true
 preload={}
 language_support={}
 script_support=[]
 opentype_features={}
-preload_glyph_ranges=[ ]

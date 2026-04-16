@@ -115,7 +115,8 @@ func test_elemental_attacks() -> void:
 
 func test_elemental_weakness() -> void:
 	# Test: Elemental weakness deals 2x damage
-	var elemental: ElementalEnemy = load("res://scenes/enemies/elemental_enemy.tscn").instantiate()
+	var elemental_scene = load("res://scenes/enemies/elemental_enemy.tscn")
+	var elemental: ElementalEnemy = elemental_scene.instantiate()
 	if elemental:
 		get_tree().root.add_child(elemental)
 

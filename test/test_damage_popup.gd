@@ -31,7 +31,8 @@ func _create_damage_popup() -> Label:
 	dp.set_script(dp_script)
 	add_child(dp)
 	# Wait for _ready() to complete so position offset is applied
-	await dp.process_mode != Node.PROCESS_MODE_DISABLED
+	while dp.process_mode == Node.PROCESS_MODE_DISABLED:
+		await get_tree().process_frame
 	await get_tree().process_frame
 	return dp
 

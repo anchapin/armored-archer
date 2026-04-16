@@ -3,6 +3,9 @@ extends Node
 var _tests_passed: int = 0
 var _tests_failed: int = 0
 
+# Preload gear enums for access to SlotType
+const GearEnums = preload("res://scripts/gear_enums.gd")
+
 signal test_completed(test_name: String, passed: bool)
 
 func _ready() -> void:
@@ -101,14 +104,14 @@ func test_get_gear_by_slot() -> void:
 	var reg = _create_gear_registry()
 	await get_tree().process_frame
 
-	var helms = reg.get_gear_by_slot(GearSlot.SlotType.HELM)
+	var helms = reg.get_gear_by_slot(GearEnums.SlotType.HELM)
 
 	if helms.size() >= 3:
 		_pass("test_get_gear_by_slot_helm")
 	else:
 		_fail("test_get_gear_by_slot_helm", "Should have multiple helm options")
 
-	var bows = reg.get_gear_by_slot(GearSlot.SlotType.BOW)
+	var bows = reg.get_gear_by_slot(GearEnums.SlotType.BOW)
 	if bows.size() >= 3:
 		_pass("test_get_gear_by_slot_bow")
 	else:
@@ -120,14 +123,14 @@ func test_get_skins_by_slot() -> void:
 	var reg = _create_gear_registry()
 	await get_tree().process_frame
 
-	var helm_skins = reg.get_skins_by_slot(GearSlot.SlotType.HELM)
+	var helm_skins = reg.get_skins_by_slot(GearEnums.SlotType.HELM)
 
 	if helm_skins.size() >= 3:
 		_pass("test_get_skins_by_slot_helm")
 	else:
 		_fail("test_get_skins_by_slot_helm", "Should have multiple helm skins")
 
-	var bow_skins = reg.get_skins_by_slot(GearSlot.SlotType.BOW)
+	var bow_skins = reg.get_skins_by_slot(GearEnums.SlotType.BOW)
 	if bow_skins.size() >= 3:
 		_pass("test_get_skins_by_slot_bow")
 	else:

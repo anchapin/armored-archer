@@ -4,14 +4,14 @@ extends GutTest
 ## Tests leaderboard retrieval, rating decay, and season transitions
 
 var season_manager: Node
-var SeasonManager_script
+var _season_script
 
 func before_each():
 	# Load SeasonManager script
-	SeasonManager_script = preload("res://autoloads/SeasonManager.gd")
+	_season_script = preload("res://autoloads/SeasonManager.gd")
 
 	# Create SeasonManager instance
-	season_manager = SeasonManager_script.new()
+	season_manager = _season_script.new()
 	# Set up as if it were autoload
 	season_manager.name = "SeasonManager"
 	# Set up mock network manager

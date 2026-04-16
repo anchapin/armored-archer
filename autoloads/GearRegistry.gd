@@ -58,21 +58,21 @@ func _ready() -> void:
 
 func _initialize_base_gear() -> void:
 	"""Populates the base gear database with all available gear items."""
-	_register_base_gear("helm_basic", "Basic Helm", GearEnums.GearType.HELM, 0, 0, 0, 5, "common", "")
-	_register_base_gear("helm_iron", "Iron Helm", GearEnums.GearType.HELM, 0, 5, 0, 10, "uncommon", "")
-	_register_base_gear("helm_dragon", "Dragon Helm", GearEnums.GearType.HELM, 5, 10, 0, 20, "legendary", "")
-	_register_base_gear("armor_leather", "Leather Armor", GearEnums.GearType.ARMOR, 0, 5, 0, 0, "common", "")
-	_register_base_gear("armor_chain", "Chain Mail", GearEnums.GearType.ARMOR, 0, 15, 0, 10, "uncommon", "")
-	_register_base_gear("armor_plate", "Plate Armor", GearEnums.GearType.ARMOR, 0, 30, 0, 25, "rare", "")
-	_register_base_gear("bow_wooden", "Wooden Bow", GearEnums.GearType.BOW, 5, 0, 0, 0, "common", "")
-	_register_base_gear("bow_composite", "Composite Bow", GearEnums.GearType.BOW, 15, 0, 0, 0, "uncommon", "")
-	_register_base_gear("bow_crossbow", "Crossbow", GearEnums.GearType.BOW, 25, 0, 0, 0, "rare", "")
-	_register_base_gear("arrow_wooden", "Wooden Arrows", GearEnums.GearType.ARROW, 0, 0, 5, 0, "common", "")
-	_register_base_gear("arrow_iron", "Iron Arrows", GearEnums.GearType.ARROW, 5, 0, 0, 0, "uncommon", "")
-	_register_base_gear("arrow_dragon", "Dragon Arrows", GearEnums.GearType.ARROW, 15, 0, 10, 0, "legendary", "")
-	_register_base_gear("amulet_protection", "Protection Amulet", GearEnums.GearType.AMULET, 0, 10, 0, 10, "common", "")
-	_register_base_gear("amulet_power", "Power Amulet", GearEnums.GearType.AMULET, 10, 0, 0, 5, "uncommon", "")
-	_register_base_gear("amulet_dragon", "Dragon Amulet", GearEnums.GearType.AMULET, 15, 5, 5, 15, "legendary", "")
+	_register_base_gear("helm_basic", "Basic Helm", GearEnums.GearType.HELM, 0, 0, 0, 5, "common", "res://assets/sprites/equipment/helms/leather.png")
+	_register_base_gear("helm_iron", "Iron Helm", GearEnums.GearType.HELM, 0, 5, 0, 10, "uncommon", "res://assets/sprites/equipment/helms/chain.png")
+	_register_base_gear("helm_dragon", "Dragon Helm", GearEnums.GearType.HELM, 5, 10, 0, 20, "legendary", "res://assets/sprites/equipment/helms/dragon.png")
+	_register_base_gear("armor_leather", "Leather Armor", GearEnums.GearType.ARMOR, 0, 5, 0, 0, "common", "res://assets/sprites/equipment/armor/leather.png")
+	_register_base_gear("armor_chain", "Chain Mail", GearEnums.GearType.ARMOR, 0, 15, 0, 10, "uncommon", "res://assets/sprites/equipment/armor/chain.png")
+	_register_base_gear("armor_plate", "Plate Armor", GearEnums.GearType.ARMOR, 0, 30, 0, 25, "rare", "res://assets/sprites/equipment/armor/plate.png")
+	_register_base_gear("bow_wooden", "Wooden Bow", GearEnums.GearType.BOW, 5, 0, 0, 0, "common", "res://assets/sprites/equipment/bows/wooden.png")
+	_register_base_gear("bow_composite", "Composite Bow", GearEnums.GearType.BOW, 15, 0, 0, 0, "uncommon", "res://assets/sprites/equipment/bows/composite.png")
+	_register_base_gear("bow_crossbow", "Crossbow", GearEnums.GearType.BOW, 25, 0, 0, 0, "rare", "res://assets/sprites/equipment/bows/elven.png")
+	_register_base_gear("arrow_wooden", "Wooden Arrows", GearEnums.GearType.ARROW, 0, 0, 5, 0, "common", "res://assets/sprites/equipment/arrows/wooden.png")
+	_register_base_gear("arrow_iron", "Iron Arrows", GearEnums.GearType.ARROW, 5, 0, 0, 0, "uncommon", "res://assets/sprites/equipment/arrows/iron.png")
+	_register_base_gear("arrow_dragon", "Dragon Arrows", GearEnums.GearType.ARROW, 15, 0, 10, 0, "legendary", "res://assets/sprites/equipment/arrows/enchanted.png")
+	_register_base_gear("amulet_protection", "Protection Amulet", GearEnums.GearType.AMULET, 0, 10, 0, 10, "common", "res://assets/sprites/equipment/amulets/health.png")
+	_register_base_gear("amulet_power", "Power Amulet", GearEnums.GearType.AMULET, 10, 0, 0, 5, "uncommon", "res://assets/sprites/equipment/amulets/strength.png")
+	_register_base_gear("amulet_dragon", "Dragon Amulet", GearEnums.GearType.AMULET, 15, 5, 5, 15, "legendary", "res://assets/sprites/equipment/amulets/speed.png")
 
 func _initialize_skins() -> void:
 	"""Populates the skin database with all available cosmetic skins."""
@@ -92,7 +92,7 @@ func _initialize_skins() -> void:
 	_register_skin("skin_amulet_crystal", "Crystal Amulet", GearEnums.GearType.AMULET, "amulet_power", 600, false, "")
 	_register_skin("skin_amulet_legendary", "Legendary Amulet", GearEnums.GearType.AMULET, "amulet_dragon", 1200, true, "")
 
-func _register_base_gear(gear_id: String, gear_name: String, slot: GearEnums.GearType, attack: int, defense: int, speed: int, health: int, rarity: String, _texture_path: String) -> void:
+func _register_base_gear(gear_id: String, gear_name: String, slot: GearEnums.GearType, attack: int, defense: int, speed: int, health: int, rarity: String, texture_path: String) -> void:
 	"""Registers a base gear item in the database (internal).
 
 	Parameters:
@@ -104,7 +104,7 @@ func _register_base_gear(gear_id: String, gear_name: String, slot: GearEnums.Gea
 		speed: Speed stat value
 		health: Health stat bonus
 		rarity: Rarity tier (common, uncommon, rare, legendary)
-		texture_path: Path to texture resource (currently unused)
+		texture_path: Path to texture resource
 	"""
 	var gear_data = GearData.new()
 	gear_data.gear_id = gear_id
@@ -112,6 +112,13 @@ func _register_base_gear(gear_id: String, gear_name: String, slot: GearEnums.Gea
 	gear_data.slot_type = slot
 	gear_data.stats = { "attack": attack, "defense": defense, "speed": speed, "health": health }
 	gear_data.rarity = rarity
+
+	# Load texture if path is provided
+	if not texture_path.is_empty():
+		var texture = load(texture_path)
+		if texture is Texture2D:
+			gear_data.base_texture = texture
+
 	base_gear_db[gear_id] = gear_data
 
 func _register_skin(skin_id: String, skin_name: String, slot: GearEnums.GearType, base_required: String, price: int, is_premium: bool, _texture_path: String) -> void:
@@ -220,6 +227,21 @@ func get_gear_soft_caps() -> Dictionary:
 		Dictionary: Soft caps by gear type and stat
 	"""
 	return GEAR_SOFT_CAPS
+
+func get_gear_texture(gear_id: String, slot_type: GearSlot.SlotType) -> Texture2D:
+	"""Gets the texture for a specific gear item.
+
+	Parameters:
+		gear_id: Gear identifier to look up
+		slot_type: GearSlot.SlotType (for future use, filtering)
+
+	Returns:
+		Texture2D: Gear texture or null if not found
+	"""
+	var gear_data: GearData = base_gear_db.get(gear_id, null)
+	if gear_data:
+		return gear_data.base_texture
+	return null
 
 func get_max_stats() -> Dictionary:
 	"""Returns maximum stat values for gear validation.

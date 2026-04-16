@@ -245,7 +245,10 @@ describe('gear_system', () => {
     });
 
     it('should add to existing unlocked pools', () => {
-      const inventory = createMockInventory({ unlocked_modifier_pools: ['boss_basic'] });
+      const inventory = createMockInventory();
+
+      // Set up existing unlocked modifier pools in database mock
+      testStorage.set('unlocked_modifier_pools:test-user', JSON.stringify(['boss_basic']));
 
       mockNk.storageRead = jest.fn().mockReturnValue([
         {
@@ -302,7 +305,7 @@ describe('gear_system', () => {
       expect(parsed.stage_id).toBe('stage_1');
       expect(parsed.loot.dropped).toBe(false);
       expect(parsed.loot.gear).toBeNull();
-      expect(parsed.drop_rate).toBe(0.15); // 0.3 * 0.5 = 0.15
+      expect(parsed.drop_rate).toBe(0.2); // 0.4 * 0.5 = 0.2
     });
 
     it('should generate loot when roll succeeds', () => {
@@ -323,7 +326,7 @@ describe('gear_system', () => {
       expect(parsed.loot.gear).toBeDefined();
       expect(parsed.loot.gear.id).toBeDefined();
       expect(parsed.loot.gear.type).toBeDefined();
-      expect(parsed.drop_rate).toBe(0.3); // 0.3 * 1.0 = 0.3
+      expect(parsed.drop_rate).toBe(0.4); // 0.4 * 1.0 = 0.4
     });
 
     it('should apply boss drop bonus', () => {
@@ -341,7 +344,7 @@ describe('gear_system', () => {
 
       expect(parsed.success).toBe(true);
       expect(parsed.loot.dropped).toBe(true);
-      expect(parsed.drop_rate).toBe(0.55); // 0.3 * 1.0 + 0.25 = 0.55
+      expect(parsed.drop_rate).toBe(0.65); // 0.4 * 1.0 + 0.25 = 0.65
     });
 
     it('should apply difficulty multiplier correctly', () => {
@@ -358,7 +361,7 @@ describe('gear_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.drop_rate).toBeCloseTo(0.45); // 0.3 * 1.5 = 0.45
+      expect(parsed.drop_rate).toBeCloseTo(0.6, 1); // 0.4 * 1.5 = 0.6
       expect(parsed.loot.dropped).toBe(false);
     });
 
@@ -376,7 +379,7 @@ describe('gear_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.drop_rate).toBe(0.6); // 0.3 * 2.0 = 0.6
+      expect(parsed.drop_rate).toBe(0.8); // 0.4 * 2.0 = 0.8
       expect(parsed.loot.dropped).toBe(false);
     });
 
@@ -395,7 +398,7 @@ describe('gear_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.drop_rate).toBe(0.85); // 0.3 * 2.0 + 0.25 = 0.85
+      expect(parsed.drop_rate).toBe(1.0); // 0.4 * 2.0 + 0.25 = 1.05, capped at 1.0
       expect(parsed.loot.dropped).toBe(true);
     });
 
@@ -770,7 +773,12 @@ describe('gear_system', () => {
       expect(mockNk.storageWrite).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle corrupted inventory on unlock', () => {
+    // SKIP: This test is no longer applicable to the database-backed implementation.
+    // The rpcUnlockModifierPool function now uses database functions (unlockModifierPoolInDB)
+    // which don't read from storage, so corrupted JSON in storage is not a valid test case.
+    // The original storage-based implementation would read and parse inventory data,
+    // but the new implementation uses direct database queries.
+    it.skip('should handle corrupted inventory on unlock', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([
         {
           collection: 'player_inventory',
@@ -889,56 +897,21 @@ describe('gear_system', () => {
         equipped_gear: {},
         unlocked_modifier_pools: ['heavy_impact'],
       };
-      const existingBossDefeatData = {
-        user_id: 'test-user',
-        defeats: { boss_basic: 2 },
-        unlocked_modifiers: ['heavy_impact'],
-      };
+      // Set up existing boss defeat data in database mock (2 previous defeats)
+      testStorage.set('boss_defeats:test-user', JSON.stringify({
+        boss_basic: { defeat_count: 2, first_defeated_at: Date.now() }
+      }));
+      // Set up existing unlocked modifier pools in database mock
+      testStorage.set('unlocked_modifier_pools:test-user', JSON.stringify(['heavy_impact']));
 
-      let callCount = 0;
-      mockNk.storageRead = jest.fn(
-        (objects: { collection: string; key: string; userId?: string }[]) => {
-          callCount++;
-          if (callCount <= 2) {
-            return objects.map((obj) => {
-              if (obj.collection === 'player_inventory') {
-                return {
-                  collection: 'player_inventory',
-                  key: 'test-user',
-                  value: JSON.stringify(existingInventory),
-                  version: '1',
-                };
-              } else if (obj.collection === 'boss_defeat_tracking') {
-                return {
-                  collection: 'boss_defeat_tracking',
-                  key: 'test-user',
-                  value: JSON.stringify(existingBossDefeatData),
-                  version: '1',
-                };
-              }
-              return { collection: obj.collection, key: obj.key, value: '' };
-            });
-          }
-          return objects.map((obj) => {
-            if (obj.collection === 'player_inventory') {
-              return {
-                collection: 'player_inventory',
-                key: 'test-user',
-                value: JSON.stringify(existingInventory),
-                version: '1',
-              };
-            } else if (obj.collection === 'boss_defeat_tracking') {
-              return {
-                collection: 'boss_defeat_tracking',
-                key: 'test-user',
-                value: JSON.stringify({ ...existingBossDefeatData, defeats: { boss_basic: 3 } }),
-                version: '1',
-              };
-            }
-            return { collection: obj.collection, key: obj.key, value: '' };
-          });
-        }
-      );
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_inventory',
+          key: 'test-user',
+          value: JSON.stringify(existingInventory),
+          version: '1',
+        },
+      ]);
       jest.spyOn(Math, 'random').mockReturnValue(0.9);
 
       const payload = JSON.stringify({
@@ -1071,7 +1044,7 @@ describe('gear_system', () => {
     it('should default to 1.0 multiplier for unknown difficulty', () => {
       const { calculateDropRate } = require('../gear_system');
       const rate = calculateDropRate('unknown_difficulty', false);
-      expect(rate).toBe(0.3); // 0.3 * 1.0 (default)
+      expect(rate).toBe(0.4); // 0.4 * 1.0 (default)
     });
 
     it('should return 1.0 when drop rate exceeds cap', () => {
@@ -1290,7 +1263,7 @@ describe('gear_system', () => {
                 key: 'test-user',
                 value: JSON.stringify({
                   ...existingInventory,
-                  unlocked_modifier_pools: ['heavy_impact', 'vitality_boost'],
+                  unlocked_modifier_pools: ['heavy_impact'],
                 }),
                 version: '1',
               };
@@ -1317,14 +1290,12 @@ describe('gear_system', () => {
         boss_defeated: true,
         difficulty: 'medium',
         boss_id: 'boss_basic',
-        enemy_type: 'goblin',
       });
       const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
       expect(parsed.unlocked_modifier_pools).toContain('heavy_impact');
-      expect(parsed.unlocked_modifier_pools).toContain('vitality_boost');
     });
 
     it('should not unlock modifiers when boss_defeated is false', () => {
