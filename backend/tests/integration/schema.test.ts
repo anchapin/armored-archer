@@ -305,11 +305,11 @@ describe('Database Schema Migration Tests', () => {
 
       expect(columns).toContain('loadout_id');
       expect(columns).toContain('user_id');
-      expect(columns).toContain('helm_gear_id');
-      expect(columns).toContain('armor_gear_id');
-      expect(columns).toContain('bow_gear_id');
-      expect(columns).toContain('arrow_gear_id');
-      expect(columns).toContain('amulet_gear_id');
+      expect(columns).toContain('helm_item_id');
+      expect(columns).toContain('armor_item_id');
+      expect(columns).toContain('bow_item_id');
+      expect(columns).toContain('arrow_item_id');
+      expect(columns).toContain('amulet_item_id');
       expect(columns).toContain('created_at');
       expect(columns).toContain('updated_at');
     });
@@ -328,7 +328,7 @@ describe('Database Schema Migration Tests', () => {
       expect(result.rows).toHaveLength(1);
     });
 
-    it('should have foreign keys to catalog for all gear slots', async () => {
+    it('should have foreign keys to inventory_items for all gear slots', async () => {
       const result = await pool.query(`
         SELECT
           kcu.column_name,
@@ -340,12 +340,12 @@ describe('Database Schema Migration Tests', () => {
           ON ccu.constraint_name = tc.constraint_name
         WHERE tc.table_name = 'loadout'
           AND tc.constraint_type = 'FOREIGN KEY'
-          AND kcu.column_name IN ('helm_gear_id', 'armor_gear_id', 'bow_gear_id', 'arrow_gear_id', 'amulet_gear_id')
+          AND kcu.column_name IN ('helm_item_id', 'armor_item_id', 'bow_item_id', 'arrow_item_id', 'amulet_item_id')
       `);
 
       const foreignTables = result.rows.map((r) => r.foreign_table_name);
-      // All gear slot foreign keys should reference catalog
-      expect(foreignTables.every((t) => t === 'catalog')).toBe(true);
+      // All gear slot foreign keys should reference inventory_items
+      expect(foreignTables.every((t) => t === 'inventory_items')).toBe(true);
     });
   });
 
