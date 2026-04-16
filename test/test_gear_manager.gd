@@ -144,15 +144,21 @@ func test_inventory_sync() -> void:
 	var gm = _create_gear_manager()
 
 	# Set inventory directly
-	gm.player_inventory = {"weapon": "bow1", "armor": "plate1"}
+	gm.player_inventory = {"gear": [{"id": "bow1"}, {"id": "plate1"}]}
 	gm.equipped_gear = {"weapon": "bow1"}
 	gm.unlocked_modifier_pools = ["pool1", "pool2"]
 
-	var inv = gm.get_inventory_sync()
-	var eq = gm.get_equipped_gear_sync()
-	var pools = gm.get_unlocked_modifier_pools_sync()
+	# Use actual methods from GearManager
+	var inv = gm.get_full_inventory()
+	var eq_gear = gm.get_equipped_gear("weapon")
+	# unlocked_modifier_pools is not directly accessible, test through full_inventory
 
-	if inv == gm.player_inventory and eq == gm.equipped_gear and pools == gm.unlocked_modifier_pools:
+	var expected_gear_ids = ["bow1", "plate1"]
+	var actual_gear_ids = []
+	for gear in inv.get("gear", []):
+		actual_gear_ids.append(gear.get("id", ""))
+
+	if actual_gear_ids == expected_gear_ids and inv.get("equipped_gear", {}).get("weapon") == "bow1" and inv.get("unlocked_modifier_pools", []) == ["pool1", "pool2"]:
 		_pass("test_inventory_sync")
 	else:
 		_fail("test_inventory_sync", "Sync methods should return current state")

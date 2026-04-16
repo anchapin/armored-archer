@@ -131,7 +131,7 @@ func unequip_gear(slot: String) -> void:
 
 	if response.get("success", false):
 		# Track gear unequipped in analytics before emitting signal
-		var old_gear_id: String = old_equipped_gear.get(slot, "")
+		var old_gear_id: String = equipped_gear.get(slot, "")
 		if not old_gear_id.is_empty() and analytics and analytics.has_method("log_gear_unequipped"):
 			var old_gear_data: Dictionary = get_gear_by_id(old_gear_id)
 			if not old_gear_data.is_empty():
