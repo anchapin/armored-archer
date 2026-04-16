@@ -82,8 +82,10 @@ func _on_connection_status_changed(is_online: bool) -> void:
 func sync_campaign_progress() -> void:
 	"""Fetches campaign progress from server and merges with local state."""
 	if not network_manager or not network_manager.has_method("send_rpc"):
+		push_warning("Cannot sync campaign progress: NetworkManager not available")
 		return
 	if not network_manager.is_session_valid():
+		push_warning("Cannot sync campaign progress: Session not valid")
 		return
 
 	var response: Dictionary = await network_manager.send_rpc(
@@ -92,10 +94,16 @@ func sync_campaign_progress() -> void:
 	)
 
 	if response.has("error"):
-		push_warning("Failed to sync campaign progress: " + str(response.error))
+		push_error("Failed to sync campaign progress: " + str(response.error))
+		# TODO: Implement retry logic with exponential backoff
 		return
 
-	# Merge server chapter unlocks with local (union)
+	if not response.get("success", false):
+		push_warning("Server rejected campaign progress sync: %s" % str(response.get("message", "Unknown error")))
+		return
+
+	# Server is authoritative - use server data and merge local-only items
+	# Merge server chapter unlocks with local (union - take all unique chapters)
 	var server_chapters: Array = response.get("unlocked_chapters", [])
 	for chapter_id in server_chapters:
 		if not chapter_id in unlocked_chapters:
@@ -124,6 +132,13 @@ func sync_campaign_progress() -> void:
 
 	# Save merged state locally
 	save_progress()
+
+	if analytics and analytics.has_method("log_custom_event"):
+		analytics.log_custom_event("campaign_progress_synced", {
+			"chapters_received": server_chapters.size(),
+			"stages_received": server_completed.size(),
+			"bosses_received": server_bosses.size()
+		})
 
 func _on_difficulty_changed(new_level: String, modifier: float) -> void:
 	"""Handles difficulty level changes and updates display.
@@ -275,6 +290,7 @@ func _notify_server_stage_complete(stage_id: String, boss_id: String) -> void:
 		boss_id: ID of the boss defeated (empty string if no boss)
 	"""
 	if not network_manager or not network_manager.has_method("send_rpc"):
+		push_warning("Cannot notify server: NetworkManager not available")
 		return
 
 	var tier: int = 1
@@ -287,8 +303,28 @@ func _notify_server_stage_complete(stage_id: String, boss_id: String) -> void:
 		"difficulty": _get_difficulty_string(tier)
 	}
 
-	# Send async RPC to server
-	network_manager.send_rpc_async("armored_archer/stage_complete", JSON.stringify(payload), 10.0)
+	# Send RPC to server and handle response
+	var response: Dictionary = await network_manager.send_rpc(
+		"armored_archer/stage_complete",
+		JSON.stringify(payload)
+	)
+
+	if response.has("error"):
+		push_error("Failed to notify server of stage completion: %s" % str(response.error))
+		# TODO: Queue for retry or mark as pending sync
+		return
+
+	if not response.get("success", false):
+		push_warning("Server rejected stage completion: %s" % str(response.get("message", "Unknown error")))
+		# TODO: Queue for retry or mark as pending sync
+		return
+
+	# Successfully synced to server
+	if analytics and analytics.has_method("log_custom_event"):
+		analytics.log_custom_event("stage_synced_to_server", {
+			"stage_id": stage_id,
+			"boss_defeated": boss_id != ""
+		})
 
 func is_stage_unlocked(stage_id: String) -> bool:
 	"""Checks if a stage is available to play.

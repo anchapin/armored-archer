@@ -470,6 +470,36 @@ function deriveNextStageId(stageId: string): string | null {
 }
 
 /**
+ * Derives unlocked chapters from completed stages.
+ * Chapter unlock requirements:
+ * - chapter_1: default (always unlocked)
+ * - chapter_2: requires completing 1_4
+ * - chapter_3: requires completing 2_4
+ */
+function deriveUnlockedChapters(completedStages: string[]): string[] {
+  const unlockedChapters: string[] = [];
+  const chapterUnlockRequirements: Record<string, { type: string; requiredStage: string }> = {
+    chapter_1: { type: 'default', requiredStage: '' },
+    chapter_2: { type: 'chapter_completion', requiredStage: '1_4' },
+    chapter_3: { type: 'chapter_completion', requiredStage: '2_4' },
+  };
+
+  for (const [chapterId, req] of Object.entries(chapterUnlockRequirements)) {
+    if (req.type === 'default') {
+      // Default chapters are always unlocked
+      unlockedChapters.push(chapterId);
+    } else if (req.type === 'chapter_completion') {
+      // Unlock if required stage is completed
+      if (completedStages.includes(req.requiredStage)) {
+        unlockedChapters.push(chapterId);
+      }
+    }
+  }
+
+  return unlockedChapters;
+}
+
+/**
  * Handles requests to get campaign progress for a player.
  * Returns completed stages, unlocked stages, and defeated bosses.
  *
@@ -558,12 +588,16 @@ export function rpcGetCampaignProgress(
       logger.warn('Failed to read boss defeats from inventory: %s', String(e));
     }
 
+    // Derive unlocked chapters from completed stages
+    const unlockedChapters = deriveUnlockedChapters(completedStages);
+
     logger.info(
-      'Campaign progress for user %s: completed=%d, unlocked=%d, bosses=%d',
+      'Campaign progress for user %s: completed=%d, unlocked=%d, bosses=%d, chapters=%d',
       ctx.userId,
       completedStages.length,
       unlockedStages.length,
-      bossesDefeated.length
+      bossesDefeated.length,
+      unlockedChapters.length
     );
 
     return JSON.stringify({
@@ -571,6 +605,7 @@ export function rpcGetCampaignProgress(
       completed_stages: completedStages,
       unlocked_stages: unlockedStages,
       bosses_defeated: bossesDefeated,
+      unlocked_chapters: unlockedChapters,
     });
   } catch (error) {
     logger.error('Error retrieving campaign progress: %s', String(error));
