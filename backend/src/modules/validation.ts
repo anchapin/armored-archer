@@ -668,6 +668,48 @@ export const ValibotSchemas = {
     match_id: pipe(string(), minLength(1), maxLength(100)),
     turn: pipe(number(), minValue(1), maxValue(1000)),
   }),
+
+  // Season telemetry schemas
+  season_telemetry_query: object({
+    season_id: optional(pipe(string(), minLength(1), maxLength(50))),
+    start_date: optional(pipe(string(), regex(/^\d{4}-\d{2}-\d{2}$/))),
+    end_date: optional(pipe(string(), regex(/^\d{4}-\d{2}-\d{2}$/))),
+    limit: optional(pipe(number(), integer(), minValue(1), maxValue(10000))),
+  }),
+
+  season_telemetry_rank_change: object({
+    event_id: optional(pipe(string(), minLength(1), maxLength(100))),
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    season_id: pipe(string(), minLength(1), maxLength(50)),
+    timestamp: pipe(number(), integer(), minValue(0)),
+    winner_id: pipe(string(), minLength(1), maxLength(100)),
+    loser_id: pipe(string(), minLength(1), maxLength(100)),
+    winner_old_elo: pipe(number(), integer()),
+    winner_new_elo: pipe(number(), integer()),
+    winner_rank_delta: pipe(number(), integer()),
+    loser_old_elo: pipe(number(), integer()),
+    loser_new_elo: pipe(number(), integer()),
+    loser_rank_delta: pipe(number(), integer()),
+    is_punch_up: boolean(),
+    k_factor: pipe(number(), integer(), minValue(1), maxValue(100)),
+    days_into_season: pipe(number(), integer(), minValue(0)),
+  }),
+
+  season_telemetry_reward_claim: object({
+    event_id: optional(pipe(string(), minLength(1), maxLength(100))),
+    season_id: pipe(string(), minLength(1), maxLength(50)),
+    user_id: pipe(string(), minLength(1), maxLength(100)),
+    timestamp: pipe(number(), integer(), minValue(0)),
+    rank: pipe(number(), integer(), minValue(1)),
+    rank_tier: createEnum(['legendary', 'epic', 'rare', 'uncommon', 'common']),
+    coins_awarded: pipe(number(), integer(), minValue(0)),
+    gems_awarded: pipe(number(), integer(), minValue(0)),
+    had_cosmetics: boolean(),
+  }),
+
+  capture_rating_snapshot: object({
+    season_id: optional(pipe(string(), minLength(1), maxLength(50))),
+  }),
 } as const;
 
 // Export with Zod-like names for backward compatibility
