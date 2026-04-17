@@ -93,6 +93,13 @@ import {
   registerRpcGetAsyncMatchState,
   registerRpcForfeitMatch,
 } from './modules/matchmaker';
+import {
+  registerRpcGetMatchReplay,
+  registerRpcListMatchReplays,
+  registerRpcFlagMatchForQa,
+  registerRpcAddDebugNotes,
+  registerRpcReconstructMatchState,
+} from './modules/match_replay';
 import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
 import {
   registerRpcJoinPool,
@@ -499,6 +506,15 @@ const InitModule: InitModule = function (
     registerRpcTrackMatchOutcome(initializer);
     registerRpcGetPlayerPerformance(initializer);
   }
+
+  // Register replay RPC endpoints (always available for debugging/QA)
+  registerRpcGetMatchReplay(initializer);
+  registerRpcListMatchReplays(initializer);
+  registerRpcFlagMatchForQa(initializer);
+  registerRpcAddDebugNotes(initializer);
+  registerRpcReconstructMatchState(initializer);
+
+  logSystemEvent('info', 'Armored Archer server module initialized');
 
   logSystemEvent('info', 'Armored Archer server module initialized');
 };
