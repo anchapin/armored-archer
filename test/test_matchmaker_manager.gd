@@ -23,6 +23,11 @@ func run_tests() -> void:
 	await test_punch_up_stats_initial()
 	await test_punch_up_win_rate_calculation()
 	await test_punch_up_total_matches()
+	# Punch-up warning tests
+	await test_is_punch_up_match()
+	await test_calculate_punch_up_risk_level()
+	await test_should_show_punch_up_warning()
+	await test_get_punch_up_risk_details()
 
 	print("\n=== MatchmakerManager Test Results ===")
 	print("Passed: %d" % _tests_passed)
@@ -226,5 +231,193 @@ func test_punch_up_total_matches() -> void:
 		_pass("test_punch_up_total_matches")
 	else:
 		_fail("test_punch_up_total_matches", "Total should be 15")
+
+	mm.queue_free()
+
+# --- Punch Up Warning Tests ---
+func test_is_punch_up_match() -> void:
+	var mm = _create_matchmaker_manager()
+
+	# Test punch-up match
+	var punch_up_match = {
+		"match_id": "match1",
+		"is_punch_up": true,
+		"creator_rank": 20
+	}
+	if mm.is_punch_up_match(punch_up_match):
+		_pass("test_is_punch_up_match_true")
+	else:
+		_fail("test_is_punch_up_match_true", "Should identify punch-up match")
+
+	# Test normal match
+	var normal_match = {
+		"match_id": "match2",
+		"is_punch_up": false,
+		"creator_rank": 20
+	}
+	if not mm.is_punch_up_match(normal_match):
+		_pass("test_is_punch_up_match_false")
+	else:
+		_fail("test_is_punch_up_match_false", "Should not identify normal match as punch-up")
+
+	# Test match without is_punch_up key
+	var missing_key_match = {
+		"match_id": "match3",
+		"creator_rank": 20
+	}
+	if not mm.is_punch_up_match(missing_key_match):
+		_pass("test_is_punch_up_match_missing_key")
+	else:
+		_fail("test_is_punch_up_match_missing_key", "Should handle missing key gracefully")
+
+	mm.queue_free()
+
+func test_calculate_punch_up_risk_level() -> void:
+	var mm = _create_matchmaker_manager()
+	mm.player_rank = 10
+
+	# Test low risk (rank diff 6)
+	var low_risk_match = {
+		"match_id": "match1",
+		"is_punch_up": true,
+		"creator_rank": 16  # Diff of 6
+	}
+	if mm.calculate_punch_up_risk_level(low_risk_match) == "low":
+		_pass("test_calculate_punch_up_risk_level_low")
+	else:
+		_fail("test_calculate_punch_up_risk_level_low", "Should return 'low' for rank diff 6")
+
+	# Test medium risk (rank diff 10)
+	var medium_risk_match = {
+		"match_id": "match2",
+		"is_punch_up": true,
+		"creator_rank": 20  # Diff of 10
+	}
+	if mm.calculate_punch_up_risk_level(medium_risk_match) == "medium":
+		_pass("test_calculate_punch_up_risk_level_medium")
+	else:
+		_fail("test_calculate_punch_up_risk_level_medium", "Should return 'medium' for rank diff 10")
+
+	# Test high risk (rank diff 14)
+	var high_risk_match = {
+		"match_id": "match3",
+		"is_punch_up": true,
+		"creator_rank": 24  # Diff of 14
+	}
+	if mm.calculate_punch_up_risk_level(high_risk_match) == "high":
+		_pass("test_calculate_punch_up_risk_level_high")
+	else:
+		_fail("test_calculate_punch_up_risk_level_high", "Should return 'high' for rank diff 14")
+
+	# Test non-punch-up match
+	var normal_match = {
+		"match_id": "match4",
+		"is_punch_up": false,
+		"creator_rank": 20
+	}
+	if mm.calculate_punch_up_risk_level(normal_match) == "none":
+		_pass("test_calculate_punch_up_risk_level_none")
+	else:
+		_fail("test_calculate_punch_up_risk_level_none", "Should return 'none' for non-punch-up")
+
+	mm.queue_free()
+
+func test_should_show_punch_up_warning() -> void:
+	var mm = _create_matchmaker_manager()
+	mm.player_rank = 10
+
+	# Test high risk should show warning
+	var high_risk_match = {
+		"match_id": "match1",
+		"is_punch_up": true,
+		"creator_rank": 24  # Diff of 14 (high risk)
+	}
+	if mm.should_show_punch_up_warning(high_risk_match):
+		_pass("test_should_show_punch_up_warning_high_risk")
+	else:
+		_fail("test_should_show_punch_up_warning_high_risk", "Should show warning for high risk")
+
+	# Test medium risk should show warning
+	var medium_risk_match = {
+		"match_id": "match2",
+		"is_punch_up": true,
+		"creator_rank": 20  # Diff of 10 (medium risk)
+	}
+	if mm.should_show_punch_up_warning(medium_risk_match):
+		_pass("test_should_show_punch_up_warning_medium_risk")
+	else:
+		_fail("test_should_show_punch_up_warning_medium_risk", "Should show warning for medium risk")
+
+	# Test low risk should NOT show warning
+	var low_risk_match = {
+		"match_id": "match3",
+		"is_punch_up": true,
+		"creator_rank": 16  # Diff of 6 (low risk)
+	}
+	if not mm.should_show_punch_up_warning(low_risk_match):
+		_pass("test_should_show_punch_up_warning_low_risk")
+	else:
+		_fail("test_should_show_punch_up_warning_low_risk", "Should not show warning for low risk")
+
+	# Test non-punch-up should NOT show warning
+	var normal_match = {
+		"match_id": "match4",
+		"is_punch_up": false,
+		"creator_rank": 20
+	}
+	if not mm.should_show_punch_up_warning(normal_match):
+		_pass("test_should_show_punch_up_warning_normal")
+	else:
+		_fail("test_should_show_punch_up_warning_normal", "Should not show warning for normal match")
+
+	mm.queue_free()
+
+func test_get_punch_up_risk_details() -> void:
+	var mm = _create_matchmaker_manager()
+	mm.player_rank = 10
+
+	# Test high risk match details
+	var high_risk_match = {
+		"match_id": "match1",
+		"is_punch_up": true,
+		"creator_rank": 24  # Diff of 14 (high risk)
+	}
+	var details = mm.get_punch_up_risk_details(high_risk_match)
+
+	if details.get("is_punch_up") == true and \
+	   details.get("risk_level") == "high" and \
+	   details.get("rank_difference") == 14 and \
+	   details.get("opponent_rank") == 24:
+		_pass("test_get_punch_up_risk_details_high_risk")
+	else:
+		_fail("test_get_punch_up_risk_details_high_risk", "Risk details incorrect for high risk: %s" % str(details))
+
+	# Verify reward calculations
+	var xp_multiplier: float = details.get("xp_multiplier", 0.0)
+	var gem_bonus: int = details.get("gem_bonus", 0)
+	var rank_penalty: int = details.get("rank_penalty", 0)
+
+	# High risk should have higher rewards and penalties
+	if xp_multiplier > 1.5 and gem_bonus >= 8 and rank_penalty >= 15:
+		_pass("test_get_punch_up_risk_details_rewards")
+	else:
+		_fail("test_get_punch_up_risk_details_rewards",
+			"Reward calculations incorrect: xp=%f, gems=%d, penalty=%d" % [xp_multiplier, gem_bonus, rank_penalty])
+
+	# Test non-punch-up match details
+	var normal_match = {
+		"match_id": "match2",
+		"is_punch_up": false,
+		"creator_rank": 15
+	}
+	var normal_details = mm.get_punch_up_risk_details(normal_match)
+
+	if normal_details.get("is_punch_up") == false and \
+	   normal_details.get("risk_level") == "none" and \
+	   normal_details.get("xp_multiplier") == 1.0 and \
+	   normal_details.get("gem_bonus") == 0:
+		_pass("test_get_punch_up_risk_details_normal")
+	else:
+		_fail("test_get_punch_up_risk_details_normal", "Risk details incorrect for normal match: %s" % str(normal_details))
 
 	mm.queue_free()

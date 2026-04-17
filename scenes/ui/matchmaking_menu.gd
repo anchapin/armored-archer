@@ -216,7 +216,22 @@ func _on_accept_match(match_id: String) -> void:
 	if not matchmaker_manager:
 		return
 
-	matchmaker_manager.accept_match(match_id)
+	# Find the match data from current matches
+	var match_data: Dictionary = {}
+	for match in current_matches:
+		if match.get("match_id", "") == match_id:
+			match_data = match
+			break
+
+	if match_data.is_empty():
+		push_error("Match data not found for match_id: %s" % match_id)
+		return
+
+	# Check if this is a punch-up match that requires a warning
+	if matchmaker_manager.should_show_punch_up_warning(match_data):
+		_show_punch_up_warning(match_data)
+	else:
+		matchmaker_manager.accept_match(match_id)
 
 func _on_leaderboard_pressed() -> void:
 	var result = get_tree().change_scene_to_file("res://scenes/ui/leaderboard_menu.tscn")
@@ -257,6 +272,48 @@ func _show_match_accepted_dialog(match_data: Dictionary) -> void:
 
 	dialog.confirmed.connect(_on_match_accepted_dialog_confirmed.bind(match_data))
 	back_button.pressed.connect(dialog.queue_free.unbind(1), CONNECT_DEFERRED)
+
+func _show_punch_up_warning(match_data: Dictionary) -> void:
+	"""Shows the punch-up warning dialog for high-risk matches.
+
+	Parameters:
+		match_data: Dictionary containing match information
+	"""
+	var warning_scene = load("res://scenes/ui/punch_up_warning_dialog.tscn")
+	var warning_dialog = warning_scene.instantiate()
+
+	# Set the match data and player rank
+	var player_rank_val: int = matchmaker_manager.get_player_rank_sync() if matchmaker_manager else 0
+	warning_dialog.set_match_data(match_data, player_rank_val)
+
+	# Connect signals
+	warning_dialog.warning_accepted.connect(_on_punch_up_warning_accepted)
+	warning_dialog.warning_declined.connect(_on_punch_up_warning_declined)
+
+	# Add and show the dialog
+	get_tree().current_scene.add_child(warning_dialog)
+	warning_dialog.show()
+
+	# Auto-close dialog if back button is pressed
+	back_button.pressed.connect(warning_dialog.queue_free.unbind(1), CONNECT_DEFERRED)
+
+func _on_punch_up_warning_accepted(match_data: Dictionary) -> void:
+	"""Called when the player accepts a punch-up challenge after seeing the warning.
+
+	Parameters:
+		match_data: Dictionary containing match information
+	"""
+	if matchmaker_manager:
+		matchmaker_manager.accept_match(match_data.get("match_id", ""))
+
+func _on_punch_up_warning_declined(match_data: Dictionary) -> void:
+	"""Called when the player declines a punch-up challenge.
+
+	Parameters:
+		match_data: Dictionary containing match information
+	"""
+	# Show a brief confirmation that the challenge was declined
+	print("Punch-up challenge declined for match: %s" % match_data.get("match_id", ""))
 
 # --- Navigation ---
 func _on_back_pressed() -> void:

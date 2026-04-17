@@ -29,6 +29,14 @@ var current_match: Dictionary = {}
 var punch_up_wins: int = 0
 var punch_up_losses: int = 0
 
+# --- Punch Up Risk Constants (matching backend) ---
+const PUNCH_UP_RANK_DIFF_THRESHOLD = 5
+const PUNCH_UP_MAX_RANK_DIFF = 15
+const PUNCH_UP_MIN_RANK = 20
+const RISK_LEVEL_LOW_THRESHOLD = 7
+const RISK_LEVEL_MEDIUM_THRESHOLD = 11
+const RISK_LEVEL_HIGH_THRESHOLD = 15
+
 # --- Analytics Reference ---
 @onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
 
@@ -434,6 +442,152 @@ func get_punch_up_total_matches() -> int:
 		int: Total Punch Up matches
 	"""
 	return punch_up_wins + punch_up_losses
+
+# ==================== PUNCH UP RISK ASSESSMENT ====================
+
+func is_punch_up_match(match_data: Dictionary) -> bool:
+	"""Checks if a match is a punch-up match.
+
+	Parameters:
+		match_data: Dictionary containing match information
+
+	Returns:
+		bool: True if this is a punch-up match
+	"""
+	return match_data.get("is_punch_up", false)
+
+func calculate_punch_up_risk_level(match_data: Dictionary) -> String:
+	"""Calculates the risk level of a punch-up match.
+
+	Parameters:
+		match_data: Dictionary containing match information
+
+	Returns:
+		String: Risk level ("low", "medium", "high", or "none")
+	"""
+	if not is_punch_up_match(match_data):
+		return "none"
+
+	var opponent_rank: int = match_data.get("creator_rank", 0)
+	var rank_diff: int = abs(opponent_rank - player_rank)
+
+	if rank_diff >= RISK_LEVEL_HIGH_THRESHOLD:
+		return "high"
+	elif rank_diff >= RISK_LEVEL_MEDIUM_THRESHOLD:
+		return "medium"
+	else:
+		return "low"
+
+func get_punch_up_risk_details(match_data: Dictionary) -> Dictionary:
+	"""Gets detailed risk information for a punch-up match.
+
+	Parameters:
+		match_data: Dictionary containing match information
+
+	Returns:
+		Dictionary: Risk details including:
+			- is_punch_up: bool - Whether this is a punch-up
+			- risk_level: String - "low", "medium", "high", or "none"
+			- rank_difference: int - Absolute rank difference
+			- opponent_rank: int - Opponent's rank
+			- xp_multiplier: float - XP multiplier if won
+			- gem_bonus: int - Gem bonus if won
+			- rank_penalty: int - Rank penalty if lost
+	"""
+	var is_punch_up: bool = is_punch_up_match(match_data)
+	var risk_level: String = calculate_punch_up_risk_level(match_data)
+	var opponent_rank: int = match_data.get("creator_rank", 0)
+	var rank_diff: int = abs(opponent_rank - player_rank)
+
+	# Calculate rewards based on rank difference
+	var xp_multiplier: float = 1.0
+	var gem_bonus: int = 0
+	var rank_penalty: int = 0
+
+	if is_punch_up:
+		xp_multiplier = _calculate_xp_multiplier(rank_diff)
+		gem_bonus = _calculate_gem_bonus(rank_diff)
+		rank_penalty = _calculate_rank_penalty(rank_diff)
+
+	return {
+		"is_punch_up": is_punch_up,
+		"risk_level": risk_level,
+		"rank_difference": rank_diff,
+		"opponent_rank": opponent_rank,
+		"xp_multiplier": xp_multiplier,
+		"gem_bonus": gem_bonus,
+		"rank_penalty": rank_penalty
+	}
+
+func should_show_punch_up_warning(match_data: Dictionary) -> bool:
+	"""Determines if a punch-up warning should be shown for this match.
+
+	Parameters:
+		match_data: Dictionary containing match information
+
+	Returns:
+		bool: True if a warning should be shown
+	"""
+	if not is_punch_up_match(match_data):
+		return false
+
+	# Always show warning for medium and high risk
+	var risk_level: String = calculate_punch_up_risk_level(match_data)
+	return risk_level in ["medium", "high"]
+
+func _calculate_xp_multiplier(rank_diff: int) -> float:
+	"""Calculates XP multiplier based on rank difference.
+
+	Parameters:
+		rank_diff: Absolute difference in ranks
+
+	Returns:
+		float: XP multiplier (1.0 = normal, higher = bonus)
+	"""
+	var multiplier_min: float = 1.2
+	var multiplier_max: float = 2.0
+	var multiplier_range: float = multiplier_max - multiplier_min
+	var rank_diff_range: float = float(PUNCH_UP_MAX_RANK_DIFF - PUNCH_UP_RANK_DIFF_THRESHOLD)
+	var normalized_diff: float = clampf(
+		(float(rank_diff) - float(PUNCH_UP_RANK_DIFF_THRESHOLD)) / rank_diff_range,
+		0.0,
+		1.0
+	)
+	return multiplier_min + multiplier_range * normalized_diff
+
+func _calculate_gem_bonus(rank_diff: int) -> int:
+	"""Calculates gem bonus based on rank difference.
+
+	Parameters:
+		rank_diff: Absolute difference in ranks
+
+	Returns:
+		int: Number of bonus gems
+	"""
+	var gem_min: int = 3
+	var gem_max: int = 10
+	var gem_range: float = float(gem_max - gem_min)
+	var rank_diff_range: float = float(PUNCH_UP_MAX_RANK_DIFF - PUNCH_UP_RANK_DIFF_THRESHOLD)
+	var normalized_diff: float = clampf(
+		(float(rank_diff) - float(PUNCH_UP_RANK_DIFF_THRESHOLD)) / rank_diff_range,
+		0.0,
+		1.0
+	)
+	return int(gem_min + gem_range * normalized_diff)
+
+func _calculate_rank_penalty(rank_diff: int) -> int:
+	"""Calculates rank penalty for losing a punch-up.
+
+	Parameters:
+		rank_diff: Absolute difference in ranks
+
+	Returns:
+		int: Rank points to lose
+	"""
+	# Penalty scales with rank difference
+	# Minimum penalty of 5, maximum of 25
+	var normalized_diff: float = clampf(float(rank_diff) / float(PUNCH_UP_MAX_RANK_DIFF), 0.0, 1.0)
+	return int(5.0 + 20.0 * normalized_diff)
 
 # ==================== ASYNC DUEL LIFECYCLE METHODS ====================
 
