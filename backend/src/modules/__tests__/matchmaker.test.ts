@@ -19,6 +19,12 @@ import {
   registerRpcSubmitTurn,
   registerRpcGetAsyncMatchState,
   registerRpcForfeitMatch,
+  rpcGetMatchHistory,
+  rpcGetMatchDetails,
+  rpcAdminQueryMatches,
+  registerRpcGetMatchHistory,
+  registerRpcGetMatchDetails,
+  registerRpcAdminQueryMatches,
   isPunchUpMatch,
   calculateFavoritePenalty,
   calculatePunchUpGemBonus,
@@ -1646,6 +1652,510 @@ describe('matchmaker', () => {
           expect(description).toContain('Favorites receive reduced rewards');
         });
       });
+    });
+  });
+
+  describe('rpcGetMatchHistory', () => {
+    it('should return match history from database', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      const matchRows = [
+        {
+          match_id: 'match_1',
+          match_type: 'ranked',
+          is_punch_up: false,
+          creator_id: 'test-user',
+          opponent_id: 'opponent1',
+          winner_id: 'test-user',
+          loser_id: 'opponent1',
+          creator_rank: 100,
+          opponent_rank: 95,
+          total_turns: 5,
+          duration_seconds: 120,
+          end_reason: 'health_zero',
+          created_at: new Date('2024-01-15').toISOString(),
+          updated_at: new Date('2024-01-15').toISOString(),
+          creator_health_remaining: 50,
+          opponent_health_remaining: 0,
+        },
+      ];
+
+      (nk.dbQuery as jest.Mock)
+        .mockReturnValueOnce([{ total: 1 }])
+        .mockReturnValueOnce(matchRows);
+
+      const result = rpcGetMatchHistory(ctx, logger, nk, JSON.stringify({}));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.matches).toHaveLength(1);
+      expect(parsed.total).toBe(1);
+      expect(parsed.stats.wins).toBe(1);
+      expect(parsed.stats.losses).toBe(0);
+      expect(parsed.matches[0].is_victory).toBe(true);
+      expect(parsed.matches[0].player_rank).toBe(100);
+      expect(parsed.matches[0].opponent_rank_calculated).toBe(95);
+    });
+
+    it('should filter by match_type', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      (nk.dbQuery as jest.Mock)
+        .mockReturnValueOnce([{ total: 0 }])
+        .mockReturnValueOnce([]);
+
+      const result = rpcGetMatchHistory(ctx, logger, nk, JSON.stringify({ match_type: 'ranked' }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.matches).toHaveLength(0);
+    });
+
+    it('should return validation error for invalid payload', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      const result = rpcGetMatchHistory(ctx, logger, nk, JSON.stringify({ match_type: 'invalid' }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBeDefined();
+    });
+
+    it('should handle database errors gracefully', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      (nk.dbQuery as jest.Mock).mockImplementation(() => {
+        throw new Error('Database connection failed');
+      });
+
+      const result = rpcGetMatchHistory(ctx, logger, nk, JSON.stringify({}));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBe('Failed to retrieve match history');
+    });
+
+    it('should identify losses correctly when opponent wins', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      const matchRows = [
+        {
+          match_id: 'match_2',
+          match_type: 'ranked',
+          is_punch_up: false,
+          creator_id: 'opponent1',
+          opponent_id: 'test-user',
+          winner_id: 'opponent1',
+          loser_id: 'test-user',
+          creator_rank: 95,
+          opponent_rank: 100,
+          total_turns: 3,
+          duration_seconds: 60,
+          end_reason: 'health_zero',
+          created_at: new Date('2024-01-15').toISOString(),
+          updated_at: new Date('2024-01-15').toISOString(),
+          creator_health_remaining: 30,
+          opponent_health_remaining: 0,
+        },
+      ];
+
+      (nk.dbQuery as jest.Mock)
+        .mockReturnValueOnce([{ total: 1 }])
+        .mockReturnValueOnce(matchRows);
+
+      const result = rpcGetMatchHistory(ctx, logger, nk, JSON.stringify({}));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.matches[0].is_victory).toBe(false);
+      expect(parsed.stats.losses).toBe(1);
+      expect(parsed.matches[0].player_rank).toBe(100);
+      expect(parsed.matches[0].player_health_remaining).toBe(0);
+    });
+
+    it('should apply date range filters', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      (nk.dbQuery as jest.Mock)
+        .mockReturnValueOnce([{ total: 0 }])
+        .mockReturnValueOnce([]);
+
+      const result = rpcGetMatchHistory(
+        ctx,
+        logger,
+        nk,
+        JSON.stringify({ start_date: '2024-01-01', end_date: '2024-01-31' })
+      );
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+    });
+  });
+
+  describe('rpcGetMatchDetails', () => {
+    it('should return match details with combat log', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      const matchRow = {
+        match_id: 'match_detail_1',
+        result_id: 'result_1',
+        creator_id: 'test-user',
+        opponent_id: 'opponent1',
+        creator_username: 'TestPlayer',
+        opponent_username: 'Opponent1',
+        winner_id: 'test-user',
+        loser_id: 'opponent1',
+        match_type: 'ranked',
+        is_punch_up: false,
+        creator_rank: 100,
+        opponent_rank: 95,
+        creator_old_elo: 1000,
+        creator_new_elo: 1020,
+        opponent_old_elo: 1000,
+        opponent_new_elo: 980,
+        total_turns: 5,
+        duration_seconds: 120,
+        end_reason: 'health_zero',
+        combat_log: JSON.stringify([{ turn: 1, action: 'attack', damage: 20 }]),
+        creator_health_remaining: 50,
+        opponent_health_remaining: 0,
+        creator_stats_at_match: JSON.stringify({ level: 10, strength: 5 }),
+        opponent_stats_at_match: JSON.stringify({ level: 8, strength: 4 }),
+        season_id: 'season_1',
+        created_at: new Date('2024-01-15').toISOString(),
+        updated_at: new Date('2024-01-15').toISOString(),
+      };
+
+      (nk.dbQuery as jest.Mock).mockReturnValue([matchRow]);
+
+      const result = rpcGetMatchDetails(ctx, logger, nk, JSON.stringify({ match_id: 'match_detail_1' }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.match.match_id).toBe('match_detail_1');
+      expect(parsed.match.creator_username).toBe('TestPlayer');
+      expect(parsed.match.combat_log).toEqual([{ turn: 1, action: 'attack', damage: 20 }]);
+      expect(parsed.match.creator_stats_at_match).toEqual({ level: 10, strength: 5 });
+    });
+
+    it('should return error when match not found', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      (nk.dbQuery as jest.Mock).mockReturnValue([]);
+
+      const result = rpcGetMatchDetails(ctx, logger, nk, JSON.stringify({ match_id: 'nonexistent' }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBe('Match not found');
+    });
+
+    it('should return validation error for invalid payload', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      const result = rpcGetMatchDetails(ctx, logger, nk, JSON.stringify({}));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBeDefined();
+    });
+
+    it('should handle database errors gracefully', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      (nk.dbQuery as jest.Mock).mockImplementation(() => {
+        throw new Error('Database error');
+      });
+
+      const result = rpcGetMatchDetails(ctx, logger, nk, JSON.stringify({ match_id: 'match_1' }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBe('Failed to retrieve match details');
+    });
+
+    it('should handle unparsable combat_log gracefully', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      const matchRow = {
+        match_id: 'match_detail_2',
+        result_id: 'result_2',
+        creator_id: 'test-user',
+        opponent_id: 'opponent1',
+        creator_username: 'TestPlayer',
+        opponent_username: 'Opponent1',
+        winner_id: 'test-user',
+        loser_id: 'opponent1',
+        match_type: 'ranked',
+        is_punch_up: false,
+        creator_rank: 100,
+        opponent_rank: 95,
+        creator_old_elo: 1000,
+        creator_new_elo: 1020,
+        opponent_old_elo: 1000,
+        opponent_new_elo: 980,
+        total_turns: 5,
+        duration_seconds: 120,
+        end_reason: 'health_zero',
+        combat_log: 'invalid-json{{{',
+        creator_health_remaining: 50,
+        opponent_health_remaining: 0,
+        creator_stats_at_match: null,
+        opponent_stats_at_match: null,
+        season_id: 'season_1',
+        created_at: new Date('2024-01-15').toISOString(),
+        updated_at: new Date('2024-01-15').toISOString(),
+      };
+
+      (nk.dbQuery as jest.Mock).mockReturnValue([matchRow]);
+
+      const result = rpcGetMatchDetails(ctx, logger, nk, JSON.stringify({ match_id: 'match_detail_2' }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.match.combat_log).toEqual([]);
+    });
+  });
+
+  describe('rpcAdminQueryMatches', () => {
+    it('should query matches with no filters', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      const matchRows = [
+        {
+          match_id: 'admin_match_1',
+          match_type: 'ranked',
+          is_punch_up: false,
+          creator_id: 'player1',
+          opponent_id: 'player2',
+          creator_username: 'Player1',
+          opponent_username: 'Player2',
+          winner_id: 'player1',
+          loser_id: 'player2',
+          creator_rank: 100,
+          opponent_rank: 95,
+          total_turns: 5,
+          duration_seconds: 120,
+          end_reason: 'health_zero',
+          created_at: new Date('2024-01-15').toISOString(),
+          updated_at: new Date('2024-01-15').toISOString(),
+          creator_health_remaining: 50,
+          opponent_health_remaining: 0,
+          season_id: 'season_1',
+        },
+      ];
+
+      (nk.dbQuery as jest.Mock)
+        .mockReturnValueOnce([{ total: 1 }])
+        .mockReturnValueOnce(matchRows);
+
+      const result = rpcAdminQueryMatches(ctx, logger, nk, JSON.stringify({}));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.matches).toHaveLength(1);
+      expect(parsed.total).toBe(1);
+      expect(parsed.page).toBe(1);
+      expect(parsed.total_pages).toBe(1);
+      expect(parsed.matches[0].creator_username).toBe('Player1');
+    });
+
+    it('should filter by user_id', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      (nk.dbQuery as jest.Mock)
+        .mockReturnValueOnce([{ total: 0 }])
+        .mockReturnValueOnce([]);
+
+      const result = rpcAdminQueryMatches(ctx, logger, nk, JSON.stringify({ user_id: 'player1' }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.matches).toHaveLength(0);
+    });
+
+    it('should filter by match_type and end_reason', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      (nk.dbQuery as jest.Mock)
+        .mockReturnValueOnce([{ total: 0 }])
+        .mockReturnValueOnce([]);
+
+      const result = rpcAdminQueryMatches(
+        ctx,
+        logger,
+        nk,
+        JSON.stringify({ match_type: 'ranked', end_reason: 'health_zero' })
+      );
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+    });
+
+    it('should filter by is_punch_up and season_id', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      (nk.dbQuery as jest.Mock)
+        .mockReturnValueOnce([{ total: 0 }])
+        .mockReturnValueOnce([]);
+
+      const result = rpcAdminQueryMatches(
+        ctx,
+        logger,
+        nk,
+        JSON.stringify({ is_punch_up: true, season_id: 'season_1' })
+      );
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+    });
+
+    it('should return validation error for invalid payload', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      const result = rpcAdminQueryMatches(ctx, logger, nk, JSON.stringify({ match_type: 'invalid' }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBeDefined();
+    });
+
+    it('should handle database errors gracefully', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      (nk.dbQuery as jest.Mock).mockImplementation(() => {
+        throw new Error('Database connection failed');
+      });
+
+      const result = rpcAdminQueryMatches(ctx, logger, nk, JSON.stringify({}));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBe('Failed to query matches');
+    });
+
+    it('should apply date range filters', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      (nk.dbQuery as jest.Mock)
+        .mockReturnValueOnce([{ total: 0 }])
+        .mockReturnValueOnce([]);
+
+      const result = rpcAdminQueryMatches(
+        ctx,
+        logger,
+        nk,
+        JSON.stringify({ start_date: '2024-01-01', end_date: '2024-01-31' })
+      );
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+    });
+
+    it('should apply pagination correctly', () => {
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+
+      const matchRows = Array.from({ length: 5 }, (_, i) => ({
+        match_id: `match_${i}`,
+        match_type: 'ranked',
+        is_punch_up: false,
+        creator_id: `player_${i}`,
+        opponent_id: `player_${i + 1}`,
+        creator_username: `Player${i}`,
+        opponent_username: `Player${i + 1}`,
+        winner_id: `player_${i}`,
+        loser_id: `player_${i + 1}`,
+        creator_rank: 100 + i,
+        opponent_rank: 95 + i,
+        total_turns: 5,
+        duration_seconds: 120,
+        end_reason: 'health_zero',
+        created_at: new Date('2024-01-15').toISOString(),
+        updated_at: new Date('2024-01-15').toISOString(),
+        creator_health_remaining: 50,
+        opponent_health_remaining: 0,
+        season_id: 'season_1',
+      }));
+
+      (nk.dbQuery as jest.Mock)
+        .mockReturnValueOnce([{ total: 15 }])
+        .mockReturnValueOnce(matchRows);
+
+      const result = rpcAdminQueryMatches(ctx, logger, nk, JSON.stringify({ limit: 5, offset: 10 }));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.total).toBe(15);
+      expect(parsed.page).toBe(3);
+      expect(parsed.per_page).toBe(5);
+      expect(parsed.total_pages).toBe(3);
+    });
+  });
+
+  describe('registerRpc for history/details/admin', () => {
+    it('should register get_match_history RPC', () => {
+      const initializer = { registerRpc: jest.fn() };
+      registerRpcGetMatchHistory(initializer as any);
+      expect(initializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_match_history',
+        expect.any(Function)
+      );
+    });
+
+    it('should register get_match_details RPC', () => {
+      const initializer = { registerRpc: jest.fn() };
+      registerRpcGetMatchDetails(initializer as any);
+      expect(initializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_match_details',
+        expect.any(Function)
+      );
+    });
+
+    it('should register admin_query_matches RPC', () => {
+      const initializer = { registerRpc: jest.fn() };
+      registerRpcAdminQueryMatches(initializer as any);
+      expect(initializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/admin_query_matches',
+        expect.any(Function)
+      );
     });
   });
 });
