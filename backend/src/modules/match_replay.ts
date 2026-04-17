@@ -3,9 +3,8 @@
  * @fileoverview Implements replay system for debugging and QA investigation of PvP matches.
  */
 
-import { logger } from '../config/logger';
-import { Runtime } from '../types/nakama';
 import { PlayerStats } from '../types/game';
+import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -195,6 +194,148 @@ export interface ReconstructedMatchState {
 }
 
 // ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Default player stats fallback when parsing fails.
+ */
+const DEFAULT_STATS: PlayerStats = {
+  level: 1,
+  xp: 0,
+  stats: { attack: 0, defense: 0, dodge: 0, crit_rate: 0 },
+};
+
+/**
+ * Parses combat log from match data.
+ */
+function parseCombatLog(combatLogData: unknown, logger: Runtime.Logger): CombatLogEntry[] {
+  const parseResult = safeParse<CombatLogEntry[]>(
+    String(combatLogData || '[]'),
+    null,
+    logger,
+    'parseCombatLog'
+  );
+  return parseResult.success && parseResult.data ? parseResult.data : [];
+}
+
+/**
+ * Parses replay data from match data.
+ */
+function parseReplayData(
+  replayDataRaw: unknown,
+  logger: Runtime.Logger,
+  context: string
+): Record<string, unknown> {
+  const parseResult = safeParse<Record<string, unknown>>(
+    String(replayDataRaw || '{}'),
+    null,
+    logger,
+    context
+  );
+  return parseResult.success && parseResult.data ? parseResult.data : {};
+}
+
+/**
+ * Parses turn snapshots from replay data.
+ */
+function parseTurnSnapshots(
+  replayData: Record<string, unknown>,
+  logger: Runtime.Logger,
+  context: string
+): TurnStateSnapshot[] {
+  const parseResult = safeParse<TurnStateSnapshot[]>(
+    JSON.stringify(replayData.turn_snapshots || []),
+    null,
+    logger,
+    context
+  );
+  return parseResult.success && parseResult.data ? parseResult.data : [];
+}
+
+/**
+ * Parses player stats from match data.
+ */
+function parsePlayerStats(
+  statsData: unknown,
+  logger: Runtime.Logger,
+  context: string
+): PlayerStats {
+  const parseResult = safeParse<PlayerStats>(String(statsData || '{}'), null, logger, context);
+  return parseResult.success && parseResult.data ? parseResult.data : DEFAULT_STATS;
+}
+
+/**
+ * Builds match replay data response from database row.
+ */
+function buildMatchReplayData(
+  match: Record<string, unknown>,
+  replayData: Record<string, unknown>,
+  combatLog: CombatLogEntry[],
+  turnSnapshots: TurnStateSnapshot[],
+  creatorStats: PlayerStats,
+  opponentStats: PlayerStats
+): MatchReplayData {
+  return {
+    match_id: String(match.match_id),
+    creator_id: String(match.creator_id),
+    opponent_id: String(match.opponent_id),
+    match_type: match.match_type as 'ranked' | 'casual',
+    created_at: String(match.created_at),
+    completed_at: String(match.updated_at),
+    total_turns: Number(match.total_turns || 0),
+    duration_seconds: Number(match.duration_seconds || 0),
+    winner_id: String(match.winner_id),
+    loser_id: String(match.loser_id),
+    end_reason: String(match.end_reason),
+    combat_log: combatLog,
+    turn_snapshots: turnSnapshots,
+    creator_stats_at_match: creatorStats,
+    opponent_stats_at_match: opponentStats,
+    creator_final_health: Number(match.creator_health_remaining || 0),
+    opponent_final_health: Number(match.opponent_health_remaining || 0),
+    replay_data: replayData,
+    debug_notes: match.debug_notes as string | null,
+    qa_flagged: Boolean(match.qa_flagged),
+    qa_flagged_reason: match.qa_flagged_reason as string | null,
+  };
+}
+
+/**
+ * Finds snapshot at or before requested turn.
+ */
+function findTargetSnapshot(
+  turnSnapshots: TurnStateSnapshot[],
+  turn: number
+): TurnStateSnapshot | undefined {
+  return (
+    turnSnapshots.find((s) => s.turn === turn) || turnSnapshots.filter((s) => s.turn <= turn).pop()
+  );
+}
+
+/**
+ * Builds last action from combat log.
+ */
+function buildLastAction(
+  combatLog: CombatLogEntry[],
+  turn: number
+): ReconstructedMatchState['last_action'] {
+  const lastActionLog = combatLog.filter((entry) => entry.turn <= turn).pop();
+  if (!lastActionLog) {
+    return null;
+  }
+  return {
+    player_id: lastActionLog.attacker_id,
+    action: lastActionLog.action,
+    result: {
+      hit: lastActionLog.hit,
+      damage: lastActionLog.damage,
+      is_crit: lastActionLog.is_crit,
+    },
+  };
+}
+
+// ============================================
 // RPC Handlers
 // ============================================
 
@@ -230,7 +371,6 @@ export async function rpcGetMatchReplay(
 
     const request = validation.data;
 
-    // Query the match result
     const result = await nk.dbQuery(
       `SELECT
         match_id, creator_id, opponent_id, winner_id, loser_id,
@@ -252,78 +392,23 @@ export async function rpcGetMatchReplay(
     }
 
     const match = result[0] as Record<string, unknown>;
+    const replayData = parseReplayData(match.replay_data, logger, 'rpcGetMatchReplay');
 
-    // Parse combat log
-    const combatLogParse = safeParse<CombatLogEntry[]>(
-      String(match.combat_log || '[]'),
-      null,
-      logger,
-      'rpcGetMatchReplay:combat_log'
-    );
-    const combatLog = combatLogParse.success && combatLogParse.data ? combatLogParse.data : [];
+    const combatLog = parseCombatLog(match.combat_log, logger);
+    const turnSnapshots = parseTurnSnapshots(replayData, logger, 'rpcGetMatchReplay');
+    const creatorStats = parsePlayerStats(match.creator_stats_at_match, logger, 'creator_stats');
+    const opponentStats = parsePlayerStats(match.opponent_stats_at_match, logger, 'opponent_stats');
 
-    // Parse replay data for turn snapshots
-    const replayDataParse = safeParse<Record<string, unknown>>(
-      String(match.replay_data || '{}'),
-      null,
-      logger,
-      'rpcGetMatchReplay:replay_data'
-    );
-    const replayData = replayDataParse.success && replayDataParse.data ? replayDataParse.data : {};
-
-    // Parse turn snapshots from replay data
-    const turnSnapshotsParse = safeParse<TurnStateSnapshot[]>(
-      JSON.stringify(replayData.turn_snapshots || []),
-      null,
-      logger,
-      'rpcGetMatchReplay:turn_snapshots'
-    );
-    const turnSnapshots = turnSnapshotsParse.success && turnSnapshotsParse.data ? turnSnapshotsParse.data : [];
-
-    // Parse player stats
-    const creatorStatsParse = safeParse<PlayerStats>(
-      String(match.creator_stats_at_match || '{}'),
-      null,
-      logger,
-      'creator_stats'
-    );
-    const creatorStats = creatorStatsParse.success && creatorStatsParse.data ? creatorStatsParse.data : { level: 1, xp: 0, stats: { attack: 0, defense: 0, dodge: 0, crit_rate: 0 } };
-
-    const opponentStatsParse = safeParse<PlayerStats>(
-      String(match.opponent_stats_at_match || '{}'),
-      null,
-      logger,
-      'opponent_stats'
-    );
-    const opponentStats = opponentStatsParse.success && opponentStatsParse.data ? opponentStatsParse.data : { level: 1, xp: 0, stats: { attack: 0, defense: 0, dodge: 0, crit_rate: 0 } };
-
-    // Increment replay access count
     await nk.dbQuery('SELECT increment_replay_access($1)', [request.match_id]);
 
-    // Build replay data response
-    const replayDataResponse: MatchReplayData = {
-      match_id: String(match.match_id),
-      creator_id: String(match.creator_id),
-      opponent_id: String(match.opponent_id),
-      match_type: match.match_type as 'ranked' | 'casual',
-      created_at: String(match.created_at),
-      completed_at: String(match.updated_at),
-      total_turns: Number(match.total_turns || 0),
-      duration_seconds: Number(match.duration_seconds || 0),
-      winner_id: String(match.winner_id),
-      loser_id: String(match.loser_id),
-      end_reason: String(match.end_reason),
-      combat_log: combatLog,
-      turn_snapshots: turnSnapshots,
-      creator_stats_at_match: creatorStats,
-      opponent_stats_at_match: opponentStats,
-      creator_final_health: Number(match.creator_health_remaining || 0),
-      opponent_final_health: Number(match.opponent_health_remaining || 0),
-      replay_data: replayData,
-      debug_notes: match.debug_notes as string | null,
-      qa_flagged: Boolean(match.qa_flagged),
-      qa_flagged_reason: match.qa_flagged_reason as string | null,
-    };
+    const replayDataResponse = buildMatchReplayData(
+      match,
+      replayData,
+      combatLog,
+      turnSnapshots,
+      creatorStats,
+      opponentStats
+    );
 
     logger.info('Match replay retrieved', {
       matchId: request.match_id,
@@ -373,7 +458,11 @@ export async function rpcListMatchReplays(
   payload: string
 ): Promise<string> {
   try {
-    const validation = validatePayload(ZodSchemas.list_match_replays, payload, 'list_match_replays');
+    const validation = validatePayload(
+      ZodSchemas.list_match_replays,
+      payload,
+      'list_match_replays'
+    );
     if (!validation.success) {
       return createValidationErrorResponse('list_match_replays', validation.error);
     }
@@ -428,20 +517,22 @@ export async function rpcListMatchReplays(
       [...params, limit, offset]
     );
 
-    const summaries: MatchReplaySummary[] = (result as Record<string, unknown>[]).map((row: Record<string, unknown>) => ({
-      match_id: String(row.match_id),
-      creator_id: String(row.creator_id),
-      opponent_id: String(row.opponent_id),
-      match_type: row.match_type as 'ranked' | 'casual',
-      created_at: String(row.created_at),
-      total_turns: Number(row.total_turns),
-      duration_seconds: Number(row.duration_seconds),
-      winner_id: String(row.winner_id),
-      end_reason: String(row.end_reason),
-      qa_flagged: Boolean(row.qa_flagged),
-      qa_flagged_reason: row.qa_flagged_reason as string | null,
-      replay_access_count: Number(row.replay_access_count || 0),
-    }));
+    const summaries: MatchReplaySummary[] = (result as Record<string, unknown>[]).map(
+      (row: Record<string, unknown>) => ({
+        match_id: String(row.match_id),
+        creator_id: String(row.creator_id),
+        opponent_id: String(row.opponent_id),
+        match_type: row.match_type as 'ranked' | 'casual',
+        created_at: String(row.created_at),
+        total_turns: Number(row.total_turns),
+        duration_seconds: Number(row.duration_seconds),
+        winner_id: String(row.winner_id),
+        end_reason: String(row.end_reason),
+        qa_flagged: Boolean(row.qa_flagged),
+        qa_flagged_reason: row.qa_flagged_reason as string | null,
+        replay_access_count: Number(row.replay_access_count || 0),
+      })
+    );
 
     logger.info('Match replays listed', {
       userId: ctx.userId,
@@ -577,10 +668,7 @@ export async function rpcAddDebugNotes(
            updated_at = NOW()
        WHERE match_id = $2
        RETURNING match_id`,
-      [
-        (request.notes || '').trim() + '\n---\n',
-        request.match_id,
-      ]
+      [(request.notes || '').trim() + '\n---\n', request.match_id]
     );
 
     if (result.length === 0) {
@@ -637,14 +725,17 @@ export async function rpcReconstructMatchState(
   payload: string
 ): Promise<string> {
   try {
-    const validation = validatePayload(ZodSchemas.reconstruct_match_state, payload, 'reconstruct_match_state');
+    const validation = validatePayload(
+      ZodSchemas.reconstruct_match_state,
+      payload,
+      'reconstruct_match_state'
+    );
     if (!validation.success) {
       return createValidationErrorResponse('reconstruct_match_state', validation.error);
     }
 
     const request = validation.data;
 
-    // Get match replay data
     const result = await nk.dbQuery(
       `SELECT
         match_id, creator_id, opponent_id, winner_id, match_type,
@@ -662,38 +753,14 @@ export async function rpcReconstructMatchState(
     }
 
     const match = result[0] as Record<string, unknown>;
+    const replayData = parseReplayData(match.replay_data, logger, 'rpcReconstructMatchState');
 
-    // Parse combat log
-    const combatLogParse = safeParse<CombatLogEntry[]>(
-      String(match.combat_log || '[]'),
-      null,
-      logger,
-      'rpcReconstructMatchState:combat_log'
-    );
-    const combatLog = combatLogParse.success && combatLogParse.data ? combatLogParse.data : [];
+    const combatLog = parseCombatLog(match.combat_log, logger);
+    const turnSnapshots = parseTurnSnapshots(replayData, logger, 'rpcReconstructMatchState');
+    const creatorStats = parsePlayerStats(match.creator_stats_at_match, logger, 'creator_stats');
+    const opponentStats = parsePlayerStats(match.opponent_stats_at_match, logger, 'opponent_stats');
 
-    // Parse replay data for turn snapshots
-    const replayDataParse = safeParse<Record<string, unknown>>(
-      String(match.replay_data || '{}'),
-      null,
-      logger,
-      'rpcReconstructMatchState:replay_data'
-    );
-    const replayData = replayDataParse.success && replayDataParse.data ? replayDataParse.data : {};
-
-    // Parse turn snapshots from replay data
-    const turnSnapshotsParse = safeParse<TurnStateSnapshot[]>(
-      JSON.stringify(replayData.turn_snapshots || []),
-      null,
-      logger,
-      'rpcReconstructMatchState:turn_snapshots'
-    );
-    const turnSnapshots = turnSnapshotsParse.success && turnSnapshotsParse.data ? turnSnapshotsParse.data : [];
-
-    // Find the snapshot at or before the requested turn
-    const targetSnapshot = turnSnapshots.find(s => s.turn === request.turn) ||
-                          turnSnapshots.filter(s => s.turn <= request.turn).pop();
-
+    const targetSnapshot = findTargetSnapshot(turnSnapshots, request.turn);
     if (!targetSnapshot) {
       return JSON.stringify({
         success: false,
@@ -701,39 +768,8 @@ export async function rpcReconstructMatchState(
       });
     }
 
-    // Find the last action before or at this turn
-    const lastActionLog = combatLog
-      .filter(entry => entry.turn <= request.turn)
-      .pop();
+    const lastAction = buildLastAction(combatLog, request.turn);
 
-    const lastAction = lastActionLog ? {
-      player_id: lastActionLog.attacker_id,
-      action: lastActionLog.action,
-      result: {
-        hit: lastActionLog.hit,
-        damage: lastActionLog.damage,
-        is_crit: lastActionLog.is_crit,
-      },
-    } : null;
-
-    // Parse player stats
-    const creatorStatsParse = safeParse<PlayerStats>(
-      String(match.creator_stats_at_match || '{}'),
-      null,
-      logger,
-      'creator_stats'
-    );
-    const creatorStats = creatorStatsParse.success && creatorStatsParse.data ? creatorStatsParse.data : { level: 1, xp: 0, stats: { attack: 0, defense: 0, dodge: 0, crit_rate: 0 } };
-
-    const opponentStatsParse = safeParse<PlayerStats>(
-      String(match.opponent_stats_at_match || '{}'),
-      null,
-      logger,
-      'opponent_stats'
-    );
-    const opponentStats = opponentStatsParse.success && opponentStatsParse.data ? opponentStatsParse.data : { level: 1, xp: 0, stats: { attack: 0, defense: 0, dodge: 0, crit_rate: 0 } };
-
-    // Build reconstructed state
     const reconstructedState: ReconstructedMatchState = {
       turn: targetSnapshot.turn,
       creator_health: targetSnapshot.creator_health,
