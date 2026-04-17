@@ -45,7 +45,12 @@ import {
   registerRpcGetSeasonRewards,
   registerRpcClaimSeasonRewards,
   registerRpcEndSeason,
+  registerRpcGetPlayerCosmetics,
 } from './modules/season_system';
+import {
+  registerRpcGetSeasonHistory,
+  registerRpcGetPlayerSeasonRank,
+} from './modules/season_leaderboard';
 import {
   registerRpcCompleteStage,
   registerRpcGetCompletedStages,
@@ -479,6 +484,9 @@ const InitModule: InitModule = function (
     registerRpcGetSeasonRewards(initializer);
     registerRpcClaimSeasonRewards(initializer);
     registerRpcEndSeason(initializer);
+    registerRpcGetSeasonHistory(initializer);
+    registerRpcGetPlayerSeasonRank(initializer);
+    registerRpcGetPlayerCosmetics(initializer);
     registerRpcValidatePurchase(initializer);
     registerRpcGetCurrency(initializer);
     registerRpcSpendGems(initializer);

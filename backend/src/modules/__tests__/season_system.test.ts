@@ -748,4 +748,136 @@ describe('season_system', () => {
       );
     });
   });
+
+  describe('rpcGetPlayerCosmetics', () => {
+    it('should return empty cosmetics for new player', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+
+      const { rpcGetPlayerCosmetics } = require('../season_system');
+      const payload = JSON.stringify({});
+      const result = rpcGetPlayerCosmetics(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.cosmetics).toBeDefined();
+      expect(parsed.cosmetics.titles).toEqual([]);
+      expect(parsed.cosmetics.auras).toEqual([]);
+    });
+
+    it('should return player cosmetics when available', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          value: JSON.stringify({
+            titles: ['Season 5 Champion', 'Season 4 Elite'],
+            auras: ['legendary_aura'],
+          }),
+        },
+      ]);
+
+      const { rpcGetPlayerCosmetics } = require('../season_system');
+      const payload = JSON.stringify({});
+      const result = rpcGetPlayerCosmetics(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.cosmetics.titles).toHaveLength(2);
+      expect(parsed.cosmetics.titles[0]).toBe('Season 5 Champion');
+      expect(parsed.cosmetics.auras).toHaveLength(1);
+    });
+  });
+
+  describe('getPlayerCosmetics', () => {
+    it('should return empty cosmetics when storage has no data', () => {
+      const { getPlayerCosmetics } = require('../season_system');
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+
+      const cosmetics = getPlayerCosmetics(mockNk, 'user-123');
+
+      expect(cosmetics.titles).toEqual([]);
+      expect(cosmetics.auras).toEqual([]);
+    });
+
+    it('should return cosmetics from storage', () => {
+      const { getPlayerCosmetics } = require('../season_system');
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          value: JSON.stringify({
+            titles: ['Test Title'],
+            auras: ['test_aura'],
+          }),
+        },
+      ]);
+
+      const cosmetics = getPlayerCosmetics(mockNk, 'user-456');
+
+      expect(cosmetics.titles).toEqual(['Test Title']);
+      expect(cosmetics.auras).toEqual(['test_aura']);
+    });
+  });
+
+  describe('addPlayerCosmetic', () => {
+    it('should add title to player cosmetics', () => {
+      const { addPlayerCosmetic } = require('../season_system');
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      mockNk.storageWrite = jest.fn();
+
+      addPlayerCosmetic(mockNk, 'user-123', 'New Title');
+
+      expect(mockNk.storageWrite).toHaveBeenCalledWith([
+        expect.objectContaining({
+          collection: 'player_cosmetics',
+          key: 'user-123',
+        }),
+      ]);
+    });
+
+    it('should add aura to player cosmetics', () => {
+      const { addPlayerCosmetic } = require('../season_system');
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      mockNk.storageWrite = jest.fn();
+
+      addPlayerCosmetic(mockNk, 'user-123', null, 'new_aura');
+
+      expect(mockNk.storageWrite).toHaveBeenCalledWith([
+        expect.objectContaining({
+          collection: 'player_cosmetics',
+        }),
+      ]);
+    });
+
+    it('should prevent duplicate cosmetics', () => {
+      const { addPlayerCosmetic } = require('../season_system');
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          value: JSON.stringify({
+            titles: ['Existing Title'],
+            auras: [],
+          }),
+        },
+      ]);
+      mockNk.storageWrite = jest.fn();
+
+      addPlayerCosmetic(mockNk, 'user-123', 'Existing Title');
+
+      const writeCall = mockNk.storageWrite.mock.calls[0][0][0];
+      const writtenData = JSON.parse(writeCall.value);
+      expect(writtenData.titles).toEqual(['Existing Title']); // Not added twice
+    });
+  });
+
+  describe('registerRpcGetPlayerCosmetics', () => {
+    it('should register the RPC endpoint', () => {
+      const { registerRpcGetPlayerCosmetics } = require('../season_system');
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      } as unknown as Runtime.Initializer;
+
+      registerRpcGetPlayerCosmetics(mockInitializer);
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_player_cosmetics',
+        expect.any(Function)
+      );
+    });
+  });
 });

@@ -49,6 +49,7 @@ func _ready() -> void:
 		season_manager.season_info_loaded.connect(_on_season_info_loaded)
 		season_manager.leaderboard_loaded.connect(_on_leaderboard_loaded)
 		season_manager.rewards_claimed.connect(_on_rewards_claimed)
+		season_manager.season_transitioned.connect(_on_season_transitioned)
 
 	refresh_leaderboard()
 
@@ -197,6 +198,39 @@ func _show_rewards_dialog(rewards: Dictionary) -> void:
 
 	get_tree().current_scene.add_child(dialog)
 	dialog.show()
+
+# --- Season Transition Handler ---
+func _on_season_transitioned(old_season: Dictionary, new_season: Dictionary) -> void:
+	"""Handle season end and new season start."""
+	print("Season transitioned from %s to %s" % [old_season, new_season])
+
+	# Update season display
+	var old_season_number: int = old_season.get("season_number", 0)
+	var new_season_number: int = new_season.get("season_number", 0)
+
+	if season_label:
+		season_label.text = "Season %d" % new_season_number
+
+	if time_label:
+		time_label.text = "Season just started!"
+
+	# Show transition dialog
+	var dialog: AcceptDialog = AcceptDialog.new()
+	dialog.title = "Season Complete!"
+	dialog.unresizable = true
+
+	var dialog_text: String = "Season %d has ended!\n\n" % old_season_number
+	dialog_text += "Season %d has begun.\n\n" % new_season_number
+	dialog_text += "Your rank has been reset.\n\n"
+	dialog_text += "Play matches to climb the new leaderboard!"
+
+	dialog.dialog_text = dialog_text
+
+	get_tree().current_scene.add_child(dialog)
+	dialog.show()
+
+	# Refresh leaderboard for new season
+	refresh_leaderboard()
 
 # --- Navigation ---
 func _on_back_pressed() -> void:
