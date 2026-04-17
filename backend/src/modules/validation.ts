@@ -624,6 +624,36 @@ export const ValibotSchemas = {
   forfeit_match: object({
     match_id: pipe(string(), minLength(1), maxLength(100)),
   }),
+
+  // Match replay schemas for debugging and QA
+  get_match_replay: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+  }),
+
+  list_match_replays: object({
+    limit: optional(pipe(number(), minValue(1), maxValue(100))),
+    offset: optional(pipe(number(), minValue(0))),
+    match_type: optional(string()),
+    qa_flagged_only: optional(boolean()),
+    player_id: optional(string()),
+    date_from: optional(string()),
+    date_to: optional(string()),
+  }),
+
+  flag_match_for_qa: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    reason: pipe(string(), minLength(1), maxLength(1000)),
+  }),
+
+  add_debug_notes: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    notes: pipe(string(), minLength(1), maxLength(5000)),
+  }),
+
+  reconstruct_match_state: object({
+    match_id: pipe(string(), minLength(1), maxLength(100)),
+    turn: pipe(number(), minValue(1), maxValue(1000)),
+  }),
 } as const;
 
 // Export with Zod-like names for backward compatibility

@@ -314,5 +314,136 @@ describe('Matchmaker', () => {
       expect(found?.mode).toBe('pvp');
       expect(found?.status).toBe('active');
     });
+
+    describe('matchPassesFilter', () => {
+      const mockMatch: any = {
+        match_id: 'match1',
+        creator_id: 'user1',
+        opponent_id: 'user2',
+        creator_rank: 100,
+        opponent_rank: 105,
+        match_type: 'ranked',
+        status: 'pending',
+        created_at: Date.now(),
+        updated_at: Date.now(),
+      };
+
+      it('should exclude own matches', () => {
+        const passes = (matchmaker as any).matchPassesFilter(mockMatch, 'user1', {});
+        expect(passes).toBe(false);
+      });
+
+      it('should exclude non-pending matches', () => {
+        const activeMatch = { ...mockMatch, status: 'active' };
+        const passes = (matchmaker as any).matchPassesFilter(activeMatch, 'user2', {});
+        expect(passes).toBe(false);
+      });
+
+      it('should respect match_type filter', () => {
+        const passes = (matchmaker as any).matchPassesFilter(
+          mockMatch,
+          'user2',
+          { match_type: 'casual' }
+        );
+        expect(passes).toBe(false);
+      });
+
+      it('should respect min_rank filter', () => {
+        const passes = (matchmaker as any).matchPassesFilter(
+          mockMatch,
+          'user2',
+          { min_rank: 150 }
+        );
+        expect(passes).toBe(false);
+      });
+
+      it('should respect max_rank filter', () => {
+        const passes = (matchmaker as any).matchPassesFilter(
+          mockMatch,
+          'user2',
+          { max_rank: 50 }
+        );
+        expect(passes).toBe(false);
+      });
+
+      it('should pass with no filters', () => {
+        const passes = (matchmaker as any).matchPassesFilter(mockMatch, 'user2', {});
+        expect(passes).toBe(true);
+      });
+    });
+
+    describe('clearQueue', () => {
+      it('should clear all queued users', () => {
+        matchmaker.addToQueue({ user_id: 'user1', preferred_mode: 'pvp', skill_rating: 1000 });
+        matchmaker.addToQueue({ user_id: 'user2', preferred_mode: 'pvp', skill_rating: 1000 });
+
+        matchmaker.clearQueue();
+
+        expect(matchmaker.getWaitingCount()).toBe(0);
+        expect(matchmaker.getQueuePosition('user1')).toBe(-1);
+        expect(matchmaker.getQueuePosition('user2')).toBe(-1);
+      });
+
+      it('should handle empty queue', () => {
+        matchmaker.clearQueue();
+        expect(matchmaker.getWaitingCount()).toBe(0);
+      });
+    });
+
+    describe('getMatches', () => {
+      it('should return empty array when no matches exist', () => {
+        const matches = (matchmaker as any).getMatches('user1');
+        expect(matches).toEqual([]);
+      });
+
+      it('should return matches excluding user\'s own', () => {
+        matchmaker.createPvPMatch('user1', 'user2');
+        const matches = (matchmaker as any).getMatches('user1');
+        expect(matches).toHaveLength(1);
+        expect(matches[0].creator_id).not.toBe('user1');
+      });
+    });
+
+    describe('cancelMatch', () => {
+      it('should cancel pending match', () => {
+        const match = matchmaker.createPvPMatch('player1', 'player2');
+        const result = matchmaker.cancelMatch(match.match_id);
+        expect(result).toBe(true);
+      });
+
+      it('should handle cancelling non-existent match', () => {
+        const result = matchmaker.cancelMatch('nonexistent');
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('getMatchHistory', () => {
+      it('should return empty array initially', () => {
+        const history = (matchmaker as any).getMatchHistory('user1');
+        expect(history).toEqual([]);
+      });
+
+      it('should track completed matches', () => {
+        const match = matchmaker.createPvPMatch('player1', 'player2');
+        const history = (matchmaker as any).getMatchHistory('player1');
+        expect(history).toHaveLength(1);
+      });
+    });
+
+    describe('updateMatch', () => {
+      it('should update match status', () => {
+        const match = matchmaker.createPvPMatch('player1', 'player2');
+        const result = (matchmaker as any).updateMatch(match.match_id, { status: 'completed' });
+        expect(result).toBe(true);
+
+        const updated = matchmaker.getMatch(match.match_id);
+        expect(updated?.status).toBe('completed');
+      });
+
+      it('should return false for non-existent match', () => {
+        const result = (matchmaker as any).updateMatch('nonexistent', { status: 'completed' });
+        expect(result).toBe(false);
+      });
+    });
   });
 });
