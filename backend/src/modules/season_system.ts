@@ -590,6 +590,81 @@ export function registerRpcClaimSeasonRewards(initializer: Runtime.Initializer):
 }
 
 /**
+ * Gets player's claimed cosmetics from storage.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - Player ID
+ * @returns Player's claimed cosmetics object
+ */
+export function getPlayerCosmetics(
+  nk: Runtime.Nakama,
+  userId: string
+): { titles: string[]; auras: string[] } {
+  try {
+    const storage = nk.storageRead([
+      {
+        collection: 'player_cosmetics',
+        key: userId,
+        userId: userId,
+      },
+    ]);
+
+    if (storage.length > 0 && storage[0].value) {
+      const data = JSON.parse(storage[0].value) as {
+        titles?: string[];
+        auras?: string[];
+      };
+      return {
+        titles: data.titles || [],
+        auras: data.auras || [],
+      };
+    }
+  } catch {
+    // Silently return empty if storage read fails
+  }
+
+  return { titles: [], auras: [] };
+}
+
+/**
+ * Adds cosmetics to player's collection.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - Player ID
+ * @param title - Title to add (optional)
+ * @param aura - Aura to add (optional)
+ */
+export function addPlayerCosmetic(
+  nk: Runtime.Nakama,
+  userId: string,
+  title?: string,
+  aura?: string
+): void {
+  const currentCosmetics = getPlayerCosmetics(nk, userId);
+  const updatedCosmetics = {
+    titles: [...currentCosmetics.titles],
+    auras: [...currentCosmetics.auras],
+  };
+
+  if (title && !updatedCosmetics.titles.includes(title)) {
+    updatedCosmetics.titles.push(title);
+  }
+
+  if (aura && !updatedCosmetics.auras.includes(aura)) {
+    updatedCosmetics.auras.push(aura);
+  }
+
+  nk.storageWrite([
+    {
+      collection: 'player_cosmetics',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(updatedCosmetics),
+    },
+  ]);
+}
+
+/**
  * Claims season rewards for a player.
  *
  * @param ctx - Nakama runtime context
@@ -681,6 +756,16 @@ export function rpcClaimSeasonRewards(
 
   if (Object.keys(rewardChanges).length > 0) {
     nk.walletUpdate(ctx.userId, rewardChanges);
+  }
+
+  // Store cosmetic rewards (titles, auras)
+  if (rewards.cosmetics) {
+    addPlayerCosmetic(
+      nk,
+      ctx.userId,
+      rewards.cosmetics.title,
+      rewards.cosmetics.aura
+    );
   }
 
   return JSON.stringify({
@@ -993,4 +1078,51 @@ export function getRankDecayInfo(
     points_at_risk: pointsAtRisk,
     can_decay: pointsAtRisk > 0,
   };
+}
+
+/**
+ * Registers the get player cosmetics RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcGetPlayerCosmetics(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_player_cosmetics', rpcGetPlayerCosmetics);
+}
+
+/**
+ * Gets a player's claimed cosmetics (titles, auras).
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (unused, required for RPC format)
+ * @returns JSON string with player's cosmetics
+ *
+ * @example
+ * // Request payload
+ * { }
+ *
+ * // Response
+ * {
+ *   "success": true,
+ *   "cosmetics": {
+ *     "titles": ["Season 5 Champion", "Season 4 Elite"],
+ *     "auras": ["legendary_aura"]
+ *   }
+ * }
+ */
+export function rpcGetPlayerCosmetics(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get player cosmetics called for user: %s', ctx.userId);
+
+  const cosmetics = getPlayerCosmetics(nk, ctx.userId);
+
+  return JSON.stringify({
+    success: true,
+    cosmetics: cosmetics,
+  });
 }

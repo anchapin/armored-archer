@@ -40,6 +40,7 @@ var leaderboard_data: Array = []
 var my_player_id: String = ""
 var is_loading: bool = false
 var countdown_timer: Timer
+var auto_refresh_timer: Timer
 
 # --- Constants ---
 const REFRESH_INTERVAL_SEC: int = 30  # Auto-refresh every 30 seconds
@@ -130,6 +131,13 @@ func _setup_countdown_timer() -> void:
 	countdown_timer.autostart = true
 	countdown_timer.timeout.connect(_update_countdown)
 	add_child(countdown_timer)
+
+	# Create auto-refresh timer
+	auto_refresh_timer = Timer.new()
+	auto_refresh_timer.wait_time = float(REFRESH_INTERVAL_SEC)  # Refresh every 30 seconds
+	auto_refresh_timer.autostart = true
+	auto_refresh_timer.timeout.connect(refresh_leaderboard)
+	add_child(auto_refresh_timer)
 
 # --- Leaderboard Loading ---
 
@@ -452,3 +460,6 @@ func _exit_tree() -> void:
 	if countdown_timer:
 		countdown_timer.stop()
 		countdown_timer.queue_free()
+	if auto_refresh_timer:
+		auto_refresh_timer.stop()
+		auto_refresh_timer.queue_free()

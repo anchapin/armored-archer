@@ -281,6 +281,20 @@ export const ValibotSchemas = {
 
   end_season: object({}),
 
+  get_season_history: optional(
+    object({
+      limit: optional(pipe(number(), integer(), minValue(1), maxValue(50))),
+    })
+  ),
+
+  get_player_season_rank: optional(
+    object({
+      season_id: optional(string()),
+    })
+  ),
+
+  get_player_cosmetics: object({}),
+
   validate_purchase: object({
     product_id: createEnum([
       'com.armoredarcher.gems.small',

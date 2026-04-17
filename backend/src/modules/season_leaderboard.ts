@@ -5,6 +5,7 @@
 
 import { Runtime } from '../types/nakama';
 import { SeasonInfo } from './season_system';
+import { validatePayload, createValidationErrorResponse, ZodSchemas } from './validation';
 
 // --- Types ---
 
@@ -568,4 +569,157 @@ async function getPlayerUsername(nk: Runtime.Nakama, playerId: string): Promise<
   }
 
   return 'Unknown';
+}
+
+// --- RPC Registration Functions ---
+
+/**
+ * Registers the get season history RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcGetSeasonHistory(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_season_history', rpcGetSeasonHistory);
+}
+
+/**
+ * Registers the get player rank RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcGetPlayerSeasonRank(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_player_rank', rpcGetPlayerRank);
+}
+
+// --- RPC Handlers ---
+
+/**
+ * RPC handler for getting season history.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string containing limit parameter
+ * @returns JSON string with season history
+ *
+ * @example
+ * // Request payload
+ * { "limit": 10 }
+ *
+ * // Response
+ * {
+ *   "success": true,
+ *   "history": [ ... ],
+ *   "total": 5
+ * }
+ */
+export async function rpcGetSeasonHistory(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): Promise<string> {
+  logger.info('Get season history called for user: %s', ctx.userId);
+
+  // Validate payload
+  const validation = validatePayload(ZodSchemas.get_season_history, payload, 'get_season_history');
+  if (!validation.success) {
+    return createValidationErrorResponse('get_season_history', validation.error);
+  }
+
+  try {
+    const parsed = validation.data || { limit: 10 };
+    const limit = parsed.limit || 10;
+
+    const history = await getSeasonHistory(nk, limit);
+
+    return JSON.stringify({
+      success: true,
+      history: history,
+      total: history.length,
+    });
+  } catch (error) {
+    logger.error('Error in get_season_history: %s', error);
+    return JSON.stringify({
+      success: false,
+      error: 'Failed to retrieve season history',
+    });
+  }
+}
+
+/**
+ * RPC handler for getting player rank with decay info.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (can be empty object)
+ * @returns JSON string with player rank info
+ *
+ * @example
+ * // Request payload
+ * { }
+ *
+ * // Response
+ * {
+ *   "success": true,
+ *   "rank": 15,
+ *   "rating": 1450,
+ *   "decayed_rating": 1425,
+ *   "days_inactive": 3,
+ *   "time_remaining": 1234567
+ * }
+ */
+export async function rpcGetPlayerRank(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): Promise<string> {
+  logger.info('Get player rank called for user: %s', ctx.userId);
+
+  // Validate payload (using schema from validation module)
+  // Note: This uses get_player_season_rank schema to avoid conflict with matchmaker's get_player_rank
+  const validation = validatePayload(
+    ZodSchemas.get_player_season_rank,
+    payload,
+    'get_player_season_rank'
+  );
+  if (!validation.success) {
+    return createValidationErrorResponse('get_player_season_rank', validation.error);
+  }
+
+  try {
+    const currentSeason = getCurrentSeasonInfo(nk);
+    const rankResult = await getPlayerRank(nk, currentSeason.season_id, ctx.userId);
+
+    if (!rankResult) {
+      return JSON.stringify({
+        success: true,
+        rank: 0,
+        rating: 0,
+        decayed_rating: 0,
+        days_inactive: 0,
+        time_remaining: Math.max(0, currentSeason.end_time - Date.now()),
+      });
+    }
+
+    return JSON.stringify({
+      success: true,
+      rank: rankResult.rank,
+      rating: rankResult.entry.rating,
+      decayed_rating: rankResult.entry.decayed_rating,
+      days_inactive: rankResult.entry.days_inactive,
+      time_remaining: Math.max(0, currentSeason.end_time - Date.now()),
+      wins: rankResult.entry.wins,
+      losses: rankResult.entry.losses,
+      win_rate: rankResult.entry.win_rate,
+    });
+  } catch (error) {
+    logger.error('Error in get_player_rank: %s', error);
+    return JSON.stringify({
+      success: false,
+      error: 'Failed to retrieve player rank',
+    });
+  }
 }

@@ -20,6 +20,7 @@ const RPC_GET_SEASON_REWARDS = "armored_archer/get_season_rewards"
 const RPC_CLAIM_SEASON_REWARDS = "armored_archer/claim_season_rewards"
 const RPC_GET_SEASON_HISTORY = "armored_archer/get_season_history"
 const RPC_GET_PLAYER_RANK = "armored_archer/get_player_rank"
+const RPC_GET_PLAYER_COSMETICS = "armored_archer/get_player_cosmetics"
 
 # --- Season Duration ---
 const SEASON_DURATION_DAYS: int = 30  # 30 days per season
@@ -62,6 +63,7 @@ signal rewards_claimed_signal(rewards: Dictionary)
 signal season_transitioned(old_season: Dictionary, new_season: Dictionary)
 signal decay_info_updated(decay_info: Dictionary)
 signal season_history_loaded(history: Array)
+signal player_cosmetics_loaded(cosmetics: Dictionary)
 
 # --- Network Reference ---
 @onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
@@ -528,6 +530,28 @@ func get_player_rank() -> void:
 			"player_score": player_score,
 			"time_remaining": time_remaining
 		})
+
+# --- Get Player Cosmetics ---
+func get_player_cosmetics() -> void:
+	"""Retrieves player's claimed cosmetics (titles, auras).
+
+	Returns:
+		Dictionary: Player's cosmetics with 'titles' and 'auras' arrays
+	"""
+	if not network_manager or not network_manager.is_connected:
+		push_error("Not connected to server")
+		return
+
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_PLAYER_COSMETICS, json.stringify({}))
+
+	if response.has("error"):
+		push_error("Failed to get player cosmetics: %s" % response.error)
+		return
+
+	if response.get("success", false):
+		var cosmetics: Dictionary = response.get("cosmetics", {})
+		player_cosmetics_loaded.emit(cosmetics)
 
 # --- Season Transition ---
 
