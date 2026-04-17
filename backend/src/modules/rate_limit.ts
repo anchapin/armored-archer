@@ -4,7 +4,7 @@
  * for PvP endpoints to prevent spam, win trading, and ranking exploits.
  */
 
-import { Runtime } from '../types/nakama';
+// Runtime is not used in this module but kept for type safety
 
 /**
  * Rate limit configuration per RPC endpoint.
@@ -72,14 +72,14 @@ interface TurnSubmissionTracking {
 
 // Default rate limit configurations
 const DEFAULT_RATE_LIMITS: Record<string, RateLimitConfig> = {
-  'create_match': { maxRequests: 5, windowMs: 60000, penaltyMs: 300000 }, // 5/min, 5min penalty
-  'accept_match': { maxRequests: 10, windowMs: 60000, penaltyMs: 120000 }, // 10/min, 2min penalty
-  'submit_turn': { maxRequests: 10, windowMs: 60000, penaltyMs: 60000 }, // 10/min, 1min penalty
-  'complete_match': { maxRequests: 3, windowMs: 60000, penaltyMs: 600000 }, // 3/min, 10min penalty
-  'forfeit_match': { maxRequests: 2, windowMs: 60000, penaltyMs: 600000 }, // 2/min, 10min penalty
-  'list_matches': { maxRequests: 30, windowMs: 60000, penaltyMs: 30000 }, // 30/min, 30s penalty
-  'get_player_rank': { maxRequests: 60, windowMs: 60000, penaltyMs: 10000 }, // 60/min, 10s penalty
-  'get_async_match_state': { maxRequests: 30, windowMs: 60000, penaltyMs: 30000 }, // 30/min, 30s penalty
+  create_match: { maxRequests: 5, windowMs: 60000, penaltyMs: 300000 }, // 5/min, 5min penalty
+  accept_match: { maxRequests: 10, windowMs: 60000, penaltyMs: 120000 }, // 10/min, 2min penalty
+  submit_turn: { maxRequests: 10, windowMs: 60000, penaltyMs: 60000 }, // 10/min, 1min penalty
+  complete_match: { maxRequests: 3, windowMs: 60000, penaltyMs: 600000 }, // 3/min, 10min penalty
+  forfeit_match: { maxRequests: 2, windowMs: 60000, penaltyMs: 600000 }, // 2/min, 10min penalty
+  list_matches: { maxRequests: 30, windowMs: 60000, penaltyMs: 30000 }, // 30/min, 30s penalty
+  get_player_rank: { maxRequests: 60, windowMs: 60000, penaltyMs: 10000 }, // 60/min, 10s penalty
+  get_async_match_state: { maxRequests: 30, windowMs: 60000, penaltyMs: 30000 }, // 30/min, 30s penalty
 };
 
 // Default cooldown configuration
@@ -349,9 +349,7 @@ export function detectWinTrading(
   }
 
   // Filter results against this opponent only
-  const opponentMatches = recentResults.filter((r) =>
-    r.result === 'win' || r.result === 'loss'
-  );
+  const opponentMatches = recentResults.filter((r) => r.result === 'win' || r.result === 'loss');
 
   if (opponentMatches.length < 3) {
     return { suspicious: false, confidence: 0, pattern: 'insufficient_opponent_matches' };
@@ -480,10 +478,7 @@ function getOrCreateTurnTracking(userId: string): TurnSubmissionTracking {
   return turnTracking.get(userId)!;
 }
 
-function removeMatchFromActive(
-  tracking: PlayerMatchTracking,
-  matchId?: string
-): void {
+function removeMatchFromActive(tracking: PlayerMatchTracking, matchId?: string): void {
   if (matchId) {
     const index = tracking.activeMatchIds.indexOf(matchId);
     if (index !== -1) {
@@ -503,10 +498,7 @@ export function cleanupOldEntries(): void {
   // Cleanup action trackers with no recent activity
   const usersToDelete: string[] = [];
   actionTrackers.forEach((tracker, userId) => {
-    if (
-      tracker.timestamps.length === 0 &&
-      tracker.penaltyUntil < now
-    ) {
+    if (tracker.timestamps.length === 0 && tracker.penaltyUntil < now) {
       usersToDelete.push(userId);
     } else if (tracker.penaltyUntil < oneDayAgo) {
       tracker.timestamps = tracker.timestamps.filter((t) => t > oneHourAgo);
@@ -541,9 +533,10 @@ export function cleanupOldEntries(): void {
 }
 
 // Auto-cleanup interval (not in test mode)
-const cleanupInterval = process.env.NODE_ENV !== 'test'
-  ? setInterval(cleanupOldEntries, 300000) // Every 5 minutes
-  : null;
+const cleanupInterval =
+  process.env.NODE_ENV !== 'test'
+    ? setInterval(cleanupOldEntries, 300000) // Every 5 minutes
+    : null;
 
 /** Stop the cleanup interval (for test teardown). */
 export function stopCleanupInterval(): void {

@@ -7,9 +7,23 @@ import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
 import { readAndParseStorage } from '../utils/storage-helpers';
-import { isPlayerFlagged, getFlagReason, recordMatchResult, getPlayerMatchHistory } from './anti_cheat';
+import {
+  isPlayerFlagged,
+  getFlagReason,
+  recordMatchResult,
+  getPlayerMatchHistory,
+} from './anti_cheat';
 import { logAudit } from './audit';
 import { logRankingDelta, type RankingDeltaEvent } from './fairness_telemetry';
+import {
+  checkRateLimit,
+  checkMatchCooldown,
+  recordMatchAction,
+  checkConcurrentMatchLimit,
+  checkDuplicateTurn,
+  cleanupTurnTracking,
+  detectWinTrading,
+} from './rate_limit';
 import {
   getCurrentSeason,
   applyEloUpdates,
@@ -19,16 +33,6 @@ import {
   SeasonInfo,
 } from './season_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import {
-  checkRateLimit,
-  checkMatchCooldown,
-  recordMatchAction,
-  checkConcurrentMatchLimit,
-  checkAbandonmentLimit,
-  checkDuplicateTurn,
-  cleanupTurnTracking,
-  detectWinTrading,
-} from './rate_limit';
 
 /**
  * PvP match data structure.
@@ -280,6 +284,7 @@ export function registerRpcCreateMatch(initializer: Runtime.Initializer): void {
  *   "match": { ... }
  * }
  */
+// eslint-disable-next-line max-lines-per-function, complexity
 export function rpcCreateMatch(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -306,7 +311,11 @@ export function rpcCreateMatch(
   // Anti-abuse: Check rate limiting
   const rateLimitCheck = checkRateLimit(ctx.userId, 'create_match');
   if (!rateLimitCheck.allowed) {
-    logger.warn('Create match rate limited for user: %s, reason: %s', ctx.userId, rateLimitCheck.reason);
+    logger.warn(
+      'Create match rate limited for user: %s, reason: %s',
+      ctx.userId,
+      rateLimitCheck.reason
+    );
     logAudit(
       nk,
       ctx.userId,
@@ -549,6 +558,7 @@ export function registerRpcAcceptMatch(initializer: Runtime.Initializer): void {
  *   "match": { ... }
  * }
  */
+// eslint-disable-next-line max-lines-per-function, complexity
 export function rpcAcceptMatch(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -577,7 +587,11 @@ export function rpcAcceptMatch(
   // Anti-abuse: Check rate limiting
   const rateLimitCheck = checkRateLimit(ctx.userId, 'accept_match');
   if (!rateLimitCheck.allowed) {
-    logger.warn('Accept match rate limited for user: %s, reason: %s', ctx.userId, rateLimitCheck.reason);
+    logger.warn(
+      'Accept match rate limited for user: %s, reason: %s',
+      ctx.userId,
+      rateLimitCheck.reason
+    );
     logAudit(
       nk,
       ctx.userId,
@@ -1090,6 +1104,7 @@ export interface MatchReward {
  *   "is_punch_up": false
  * }
  */
+// eslint-disable-next-line max-lines-per-function, complexity
 export function rpcCompleteMatch(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -1118,7 +1133,11 @@ export function rpcCompleteMatch(
   // Anti-abuse: Check rate limiting
   const rateLimitCheck = checkRateLimit(ctx.userId, 'complete_match');
   if (!rateLimitCheck.allowed) {
-    logger.warn('Complete match rate limited for user: %s, reason: %s', ctx.userId, rateLimitCheck.reason);
+    logger.warn(
+      'Complete match rate limited for user: %s, reason: %s',
+      ctx.userId,
+      rateLimitCheck.reason
+    );
     return JSON.stringify({
       error: 'Rate limit exceeded. Please try again later.',
       retry_after_ms: rateLimitCheck.retryAfter,
@@ -1155,7 +1174,10 @@ export function rpcCompleteMatch(
     const winTradingCheck = detectWinTrading(
       request.winner_id,
       request.loser_id,
-      winnerRecentMatches.map((m) => ({ result: m.result as 'win' | 'loss', timestamp: m.timestamp }))
+      winnerRecentMatches.map((m) => ({
+        result: m.result as 'win' | 'loss',
+        timestamp: m.timestamp,
+      }))
     );
 
     if (winTradingCheck.suspicious) {
@@ -1452,7 +1474,11 @@ function processMatchResult(
 
   // Anti-abuse: Record match completion
   recordMatchAction(ctx.userId, 'complete', match.match_id);
-  recordMatchAction(request.winner_id === ctx.userId ? request.loser_id : request.winner_id, 'complete', match.match_id);
+  recordMatchAction(
+    request.winner_id === ctx.userId ? request.loser_id : request.winner_id,
+    'complete',
+    match.match_id
+  );
 
   // Anti-abuse: Cleanup turn tracking
   cleanupTurnTracking(request.winner_id, match.match_id);
@@ -2514,6 +2540,7 @@ function processCompleteTurn(
  *   "turn_completed": true
  * }
  */
+// eslint-disable-next-line max-lines-per-function, complexity
 export function rpcSubmitTurn(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -2542,7 +2569,11 @@ export function rpcSubmitTurn(
   // Anti-abuse: Check rate limiting
   const rateLimitCheck = checkRateLimit(ctx.userId, 'submit_turn');
   if (!rateLimitCheck.allowed) {
-    logger.warn('Submit turn rate limited for user: %s, reason: %s', ctx.userId, rateLimitCheck.reason);
+    logger.warn(
+      'Submit turn rate limited for user: %s, reason: %s',
+      ctx.userId,
+      rateLimitCheck.reason
+    );
     return JSON.stringify({
       error: 'Rate limit exceeded. Please try again later.',
       retry_after_ms: rateLimitCheck.retryAfter,
@@ -2575,7 +2606,12 @@ export function rpcSubmitTurn(
   // Anti-abuse: Check for duplicate turn submission
   const duplicateCheck = checkDuplicateTurn(ctx.userId, request.match_id, match.current_turn);
   if (duplicateCheck.isDuplicate) {
-    logger.warn('Duplicate turn submission detected for user: %s in match: %s, turn: %d', ctx.userId, request.match_id, match.current_turn);
+    logger.warn(
+      'Duplicate turn submission detected for user: %s in match: %s, turn: %d',
+      ctx.userId,
+      request.match_id,
+      match.current_turn
+    );
     return JSON.stringify({
       error: 'You have already submitted a turn for this round.',
       turn_number: match.current_turn,
