@@ -680,7 +680,11 @@ export async function rpcGetPlayerRank(
 
   // Validate payload (using schema from validation module)
   // Note: This uses get_player_season_rank schema to avoid conflict with matchmaker's get_player_rank
-  const validation = validatePayload(ZodSchemas.get_player_season_rank, payload, 'get_player_season_rank');
+  const validation = validatePayload(
+    ZodSchemas.get_player_season_rank,
+    payload,
+    'get_player_season_rank'
+  );
   if (!validation.success) {
     return createValidationErrorResponse('get_player_season_rank', validation.error);
   }
