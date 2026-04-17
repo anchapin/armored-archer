@@ -416,6 +416,7 @@ Usage:
   ./scripts/ci-local.sh --persist        Keep services running after completion
   ./scripts/ci-local.sh --fast           Use fast docker-compose (optimal health checks)
   ./scripts/ci-local.sh --clean          Stop services and cleanup
+  ./scripts/ci-local.sh --clear-cache   Clear act action cache (fixes git clone errors)
   ./scripts/ci-local.sh --status         Show service status
 
 Act-compatible jobs (no services required):
@@ -451,6 +452,9 @@ Examples:
   ./scripts/ci-local.sh --persist --fast
   ./scripts/ci-local.sh backend-test  # Services already running
   ./scripts/ci-local.sh --clean
+
+  # Fix corrupted act cache (git clone errors)
+  ./scripts/ci-local.sh --clear-cache
 
 Optimizations:
   - Faster health checks (2s intervals vs 10s)
@@ -491,6 +495,12 @@ main() {
             --clean)
                 stop_services
                 log_info "Cleanup complete"
+                exit 0
+                ;;
+            --clear-cache)
+                log_step "Clearing act cache..."
+                rm -rf ~/.cache/act/* 2>/dev/null || rm -rf ~/Library/Caches/act/* 2>/dev/null || true
+                log_success "Act cache cleared"
                 exit 0
                 ;;
             --status)

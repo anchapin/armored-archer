@@ -82,6 +82,7 @@ help:
 	@echo "  make ci-parallel       Run all CI jobs in parallel (4 workers)"
 	@echo "  make ci-persist        Run CI and keep services running"
 	@echo "  make ci-clean          Stop and cleanup CI services"
+	@echo "  make ci-clear-cache    Clear act action cache (fixes git clone errors)"
 	@echo "  make ci-status         Show CI services status"
 	@echo ""
 	@echo "$(GREEN)Development$(RESET)"
@@ -473,6 +474,10 @@ ci-clean:
 ci-status:
 	@echo "$(BLUE)CI Services Status:$(RESET)"
 	@./scripts/ci-local.sh --status
+
+ci-clear-cache:
+	@echo "$(BLUE)Clearing act action cache...$(RESET)"
+	@./scripts/ci-local.sh --clear-cache
 
 ## Smoke Tests (End-to-End Vertical Slice)
 # Issue: #684 - [Sprint 1] Create end-to-end smoke test script
