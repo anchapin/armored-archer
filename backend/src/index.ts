@@ -12,52 +12,6 @@ import { initializeTracing } from './config/tracing';
 import { initializeAlerting } from './modules/alerting';
 import { registerAnalyticsEndpoints } from './modules/analytics';
 import {
-  registerRpcSubmitCombatAction,
-  registerRpcGetMatchState,
-  registerRpcPlayerDisconnect,
-} from './modules/combat_system';
-import {
-  registerDeploymentObservability,
-  initializeDeploymentObservability,
-} from './modules/deployment_observability';
-import {
-  registerRpcSyncDifficulty,
-  registerRpcTrackMatchOutcome,
-  registerRpcGetPlayerPerformance,
-} from './modules/dynamic_difficulty';
-import {
-  registerErrorInsightRpcs,
-  initializeErrorInsightsPipeline,
-} from './modules/error_insight_pipeline';
-import {
-  registerRpcGenerateGear,
-  registerRpcEquipGear,
-  registerRpcUnequipGear,
-  registerRpcGetInventory,
-  registerRpcUnlockModifierPool,
-  registerRpcStageComplete,
-  registerRpcGetUnlockedModifiers,
-} from './modules/gear_system';
-import { initializeHealthMonitoring } from './modules/health_monitor';
-import {
-  registerRpcListMatches,
-  registerRpcCreateMatch,
-  registerRpcAcceptMatch,
-  registerRpcGetPlayerRank,
-  registerRpcCompleteMatch,
-  registerRpcGetMatchHistory,
-  registerRpcSubmitTurn,
-  registerRpcGetAsyncMatchState,
-  registerRpcForfeitMatch,
-} from './modules/matchmaker';
-import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
-import {
-  registerRpcJoinPool,
-  registerRpcLeavePool,
-  registerRpcGetQueueStatus,
-} from './modules/matchmaking_pool';
-import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
-import {
   startNotificationScheduler,
   stopNotificationScheduler,
 } from './modules/notification_scheduler';
@@ -98,6 +52,54 @@ import {
   registerRpcGetCampaignProgress,
 } from './modules/stage_tracking';
 import { registerBalanceAnalyticsEndpoints } from './modules/balance_analytics';
+import {
+  registerRpcSubmitCombatAction,
+  registerRpcGetMatchState,
+  registerRpcPlayerDisconnect,
+} from './modules/combat_system';
+import {
+  registerDeploymentObservability,
+  initializeDeploymentObservability,
+} from './modules/deployment_observability';
+import {
+  registerRpcSyncDifficulty,
+  registerRpcTrackMatchOutcome,
+  registerRpcGetPlayerPerformance,
+} from './modules/dynamic_difficulty';
+import {
+  registerErrorInsightRpcs,
+  initializeErrorInsightsPipeline,
+} from './modules/error_insight_pipeline';
+import {
+  registerRpcGenerateGear,
+  registerRpcEquipGear,
+  registerRpcUnequipGear,
+  registerRpcGetInventory,
+  registerRpcUnlockModifierPool,
+  registerRpcStageComplete,
+  registerRpcGetUnlockedModifiers,
+} from './modules/gear_system';
+import { initializeHealthMonitoring } from './modules/health_monitor';
+import {
+  registerRpcListMatches,
+  registerRpcCreateMatch,
+  registerRpcAcceptMatch,
+  registerRpcGetPlayerRank,
+  registerRpcCompleteMatch,
+  registerRpcGetMatchHistory,
+  registerRpcGetMatchDetails,
+  registerRpcAdminQueryMatches,
+  registerRpcSubmitTurn,
+  registerRpcGetAsyncMatchState,
+  registerRpcForfeitMatch,
+} from './modules/matchmaker';
+import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
+import {
+  registerRpcJoinPool,
+  registerRpcLeavePool,
+  registerRpcGetQueueStatus,
+} from './modules/matchmaking_pool';
+import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
 import {
   registerRpcValidatePurchase,
   registerRpcGetCurrency,
@@ -456,6 +458,8 @@ const InitModule: InitModule = function (
     registerRpcGetPlayerRank(initializer);
     registerRpcCompleteMatch(initializer);
     registerRpcGetMatchHistory(initializer);
+    registerRpcGetMatchDetails(initializer);
+    registerRpcAdminQueryMatches(initializer);
     registerRpcSubmitTurn(initializer);
     registerRpcGetAsyncMatchState(initializer);
     registerRpcForfeitMatch(initializer);
