@@ -7,9 +7,23 @@ import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
 import { readAndParseStorage } from '../utils/storage-helpers';
-import { isPlayerFlagged, getFlagReason, recordMatchResult } from './anti_cheat';
+import {
+  isPlayerFlagged,
+  getFlagReason,
+  recordMatchResult,
+  getPlayerMatchHistory,
+} from './anti_cheat';
 import { logAudit } from './audit';
 import { logRankingDelta, type RankingDeltaEvent } from './fairness_telemetry';
+import {
+  checkRateLimit,
+  checkMatchCooldown,
+  recordMatchAction,
+  checkConcurrentMatchLimit,
+  checkDuplicateTurn,
+  cleanupTurnTracking,
+  detectWinTrading,
+} from './rate_limit';
 import {
   getCurrentSeason,
   applyEloUpdates,
@@ -270,6 +284,7 @@ export function registerRpcCreateMatch(initializer: Runtime.Initializer): void {
  *   "match": { ... }
  * }
  */
+// eslint-disable-next-line max-lines-per-function, complexity
 export function rpcCreateMatch(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -291,6 +306,51 @@ export function rpcCreateMatch(
       validation.error
     );
     return createValidationErrorResponse('create_match', validation.error);
+  }
+
+  // Anti-abuse: Check rate limiting
+  const rateLimitCheck = checkRateLimit(ctx.userId, 'create_match');
+  if (!rateLimitCheck.allowed) {
+    logger.warn(
+      'Create match rate limited for user: %s, reason: %s',
+      ctx.userId,
+      rateLimitCheck.reason
+    );
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'create_match',
+      'pvp_matches',
+      { reason: rateLimitCheck.reason },
+      'failure',
+      'rate_limit'
+    );
+    return JSON.stringify({
+      error: 'Rate limit exceeded. Please try again later.',
+      retry_after_ms: rateLimitCheck.retryAfter,
+    });
+  }
+
+  // Anti-abuse: Check cooldown
+  const cooldownCheck = checkMatchCooldown(ctx.userId, 'create');
+  if (!cooldownCheck.allowed) {
+    logger.warn('Create match cooldown for user: %s', ctx.userId);
+    return JSON.stringify({
+      error: 'Please wait before creating another match.',
+      retry_after_ms: cooldownCheck.retryAfter,
+    });
+  }
+
+  // Anti-abuse: Check concurrent match limit
+  const concurrentCheck = checkConcurrentMatchLimit(ctx.userId);
+  if (!concurrentCheck.allowed) {
+    logger.warn('Concurrent match limit reached for user: %s', ctx.userId);
+    return JSON.stringify({
+      error: `You have ${concurrentCheck.activeCount} active matches. Maximum is ${concurrentCheck.limit}. Complete or abandon some matches first.`,
+      active_matches: concurrentCheck.activeCount,
+      limit: concurrentCheck.limit,
+    });
   }
 
   const request = validation.data;
@@ -405,6 +465,9 @@ export function rpcCreateMatch(
       },
     ]);
 
+    // Anti-abuse: Record match creation
+    recordMatchAction(ctx.userId, 'create', match.match_id);
+
     return JSON.stringify({
       success: true,
       match: match,
@@ -457,6 +520,9 @@ export function rpcCreateMatch(
       },
     ]);
 
+    // Anti-abuse: Record match creation
+    recordMatchAction(ctx.userId, 'create', match.match_id);
+
     return JSON.stringify({
       success: true,
       match: match,
@@ -492,6 +558,7 @@ export function registerRpcAcceptMatch(initializer: Runtime.Initializer): void {
  *   "match": { ... }
  * }
  */
+// eslint-disable-next-line max-lines-per-function, complexity
 export function rpcAcceptMatch(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -516,6 +583,51 @@ export function rpcAcceptMatch(
   }
 
   const request = validation.data;
+
+  // Anti-abuse: Check rate limiting
+  const rateLimitCheck = checkRateLimit(ctx.userId, 'accept_match');
+  if (!rateLimitCheck.allowed) {
+    logger.warn(
+      'Accept match rate limited for user: %s, reason: %s',
+      ctx.userId,
+      rateLimitCheck.reason
+    );
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'accept_match',
+      'pvp_matches',
+      { reason: rateLimitCheck.reason },
+      'failure',
+      'rate_limit'
+    );
+    return JSON.stringify({
+      error: 'Rate limit exceeded. Please try again later.',
+      retry_after_ms: rateLimitCheck.retryAfter,
+    });
+  }
+
+  // Anti-abuse: Check cooldown
+  const cooldownCheck = checkMatchCooldown(ctx.userId, 'accept');
+  if (!cooldownCheck.allowed) {
+    logger.warn('Accept match cooldown for user: %s', ctx.userId);
+    return JSON.stringify({
+      error: 'Please wait before accepting another match.',
+      retry_after_ms: cooldownCheck.retryAfter,
+    });
+  }
+
+  // Anti-abuse: Check concurrent match limit
+  const concurrentCheck = checkConcurrentMatchLimit(ctx.userId);
+  if (!concurrentCheck.allowed) {
+    logger.warn('Concurrent match limit reached for user: %s', ctx.userId);
+    return JSON.stringify({
+      error: `You have ${concurrentCheck.activeCount} active matches. Complete or abandon some matches first.`,
+      active_matches: concurrentCheck.activeCount,
+      limit: concurrentCheck.limit,
+    });
+  }
 
   const objects = nk.storageRead([
     {
@@ -601,6 +713,9 @@ export function rpcAcceptMatch(
       value: JSON.stringify(match),
     },
   ]);
+
+  // Anti-abuse: Record match acceptance
+  recordMatchAction(ctx.userId, 'accept', match.match_id);
 
   logAudit(
     nk,
@@ -989,6 +1104,7 @@ export interface MatchReward {
  *   "is_punch_up": false
  * }
  */
+// eslint-disable-next-line max-lines-per-function, complexity
 export function rpcCompleteMatch(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -1014,12 +1130,82 @@ export function rpcCompleteMatch(
 
   const request = validation.data;
 
+  // Anti-abuse: Check rate limiting
+  const rateLimitCheck = checkRateLimit(ctx.userId, 'complete_match');
+  if (!rateLimitCheck.allowed) {
+    logger.warn(
+      'Complete match rate limited for user: %s, reason: %s',
+      ctx.userId,
+      rateLimitCheck.reason
+    );
+    return JSON.stringify({
+      error: 'Rate limit exceeded. Please try again later.',
+      retry_after_ms: rateLimitCheck.retryAfter,
+    });
+  }
+
+  // Anti-abuse: Check cooldown
+  const cooldownCheck = checkMatchCooldown(ctx.userId, 'complete');
+  if (!cooldownCheck.allowed) {
+    logger.warn('Complete match cooldown for user: %s', ctx.userId);
+    return JSON.stringify({
+      error: 'Please wait before completing another match.',
+      retry_after_ms: cooldownCheck.retryAfter,
+    });
+  }
+
   // Anti-cheat: Check if players are flagged
   const winnerFlagged = checkPlayerFlagged(logger, request.winner_id, 'winner');
   if (winnerFlagged) return winnerFlagged;
 
   const loserFlagged = checkPlayerFlagged(logger, request.loser_id, 'loser');
   if (loserFlagged) return loserFlagged;
+
+  // Anti-abuse: Win trading detection
+  const winnerHistory = getPlayerMatchHistory(request.winner_id);
+  const loserHistory = getPlayerMatchHistory(request.loser_id);
+
+  if (winnerHistory && loserHistory) {
+    const winnerRecentMatches = winnerHistory.matches
+      .filter((m) => m.opponentId === request.loser_id)
+      .filter((m) => m.result === 'win' || m.result === 'loss')
+      .slice(-10);
+
+    const winTradingCheck = detectWinTrading(
+      request.winner_id,
+      request.loser_id,
+      winnerRecentMatches.map((m) => ({
+        result: m.result as 'win' | 'loss',
+        timestamp: m.timestamp,
+      }))
+    );
+
+    if (winTradingCheck.suspicious) {
+      logger.warn(
+        'Potential win trading detected between %s and %s: pattern=%s, confidence=%.2f',
+        request.winner_id,
+        request.loser_id,
+        winTradingCheck.pattern,
+        winTradingCheck.confidence
+      );
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'complete_match',
+        'pvp_matches',
+        {
+          match_id: request.match_id,
+          winner_id: request.winner_id,
+          loser_id: request.loser_id,
+          win_trading_pattern: winTradingCheck.pattern,
+          confidence: winTradingCheck.confidence,
+        },
+        'failure',
+        'win_trading_suspicion'
+      );
+    }
+  }
 
   // Fetch and validate the match
   const matchResult = getAndValidateMatch(nk, ctx, request, logger);
@@ -1285,6 +1471,18 @@ function processMatchResult(
       value: JSON.stringify(match),
     },
   ]);
+
+  // Anti-abuse: Record match completion
+  recordMatchAction(ctx.userId, 'complete', match.match_id);
+  recordMatchAction(
+    request.winner_id === ctx.userId ? request.loser_id : request.winner_id,
+    'complete',
+    match.match_id
+  );
+
+  // Anti-abuse: Cleanup turn tracking
+  cleanupTurnTracking(request.winner_id, match.match_id);
+  cleanupTurnTracking(request.loser_id, match.match_id);
 
   // Log audit event
   logAudit(
@@ -2342,6 +2540,7 @@ function processCompleteTurn(
  *   "turn_completed": true
  * }
  */
+// eslint-disable-next-line max-lines-per-function, complexity
 export function rpcSubmitTurn(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -2367,6 +2566,20 @@ export function rpcSubmitTurn(
 
   const request = validation.data;
 
+  // Anti-abuse: Check rate limiting
+  const rateLimitCheck = checkRateLimit(ctx.userId, 'submit_turn');
+  if (!rateLimitCheck.allowed) {
+    logger.warn(
+      'Submit turn rate limited for user: %s, reason: %s',
+      ctx.userId,
+      rateLimitCheck.reason
+    );
+    return JSON.stringify({
+      error: 'Rate limit exceeded. Please try again later.',
+      retry_after_ms: rateLimitCheck.retryAfter,
+    });
+  }
+
   // Fetch the match
   const matchResult = getMatchForTurnSubmission(nk, ctx, request.match_id, logger);
   if (matchResult.error || !matchResult.match) {
@@ -2387,6 +2600,21 @@ export function rpcSubmitTurn(
     return JSON.stringify({
       error: 'It is not your turn',
       current_player: match.current_player,
+    });
+  }
+
+  // Anti-abuse: Check for duplicate turn submission
+  const duplicateCheck = checkDuplicateTurn(ctx.userId, request.match_id, match.current_turn);
+  if (duplicateCheck.isDuplicate) {
+    logger.warn(
+      'Duplicate turn submission detected for user: %s in match: %s, turn: %d',
+      ctx.userId,
+      request.match_id,
+      match.current_turn
+    );
+    return JSON.stringify({
+      error: 'You have already submitted a turn for this round.',
+      turn_number: match.current_turn,
     });
   }
 

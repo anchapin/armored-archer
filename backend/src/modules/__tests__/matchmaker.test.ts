@@ -25,12 +25,14 @@ import {
   generatePunchUpDescription,
   type PunchUpInfo,
 } from '../matchmaker';
+import { resetRateLimiting, initializeRateLimiting } from '../rate_limit';
 
 // Mock anti_cheat module
 jest.mock('../anti_cheat', () => ({
   isPlayerFlagged: jest.fn(),
   getFlagReason: jest.fn(),
   recordMatchResult: jest.fn(),
+  getPlayerMatchHistory: jest.fn(),
 }));
 
 // Mock season_system module
@@ -84,6 +86,10 @@ describe('matchmaker', () => {
   });
 
   beforeEach(() => {
+    // Reset rate limiting state before each test to prevent interference
+    resetRateLimiting();
+    initializeRateLimiting();
+
     mockLogger = createMockLogger();
     mockCtx = createMockContext({ userId: 'test-user-123' });
     mockNk = createMockNakama();
