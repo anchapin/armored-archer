@@ -365,15 +365,8 @@ export function detectWinTrading(
 
   const alternatingRatio = alternatingCount / (opponentMatches.length - 1);
 
-  if (alternatingRatio >= 0.8 && opponentMatches.length >= 5) {
-    return {
-      suspicious: true,
-      confidence: Math.min(alternatingRatio + 0.1, 1.0),
-      pattern: 'alternating_wins_losses',
-    };
-  }
-
   // Check for rapid match completions against same opponent
+  let rapidConfidence = 0;
   if (opponentMatches.length >= 3) {
     const timeSpans: number[] = [];
     for (let i = 1; i < opponentMatches.length; i++) {
@@ -384,12 +377,36 @@ export function detectWinTrading(
 
     if (avgTimeBetween < 120000) {
       // Less than 2 minutes between matches
+      // Calculate confidence based on how rapid the matches are
+      // Scale confidence so very rapid matches (e.g., 30s avg) have higher confidence
+      // than alternating patterns (max 1.0)
+      rapidConfidence = Math.max(0.5, Math.min(1.5, 1.5 - avgTimeBetween / 120000));
+    }
+  }
+
+  // Return the pattern with highest confidence
+  if (alternatingRatio >= 0.8 && opponentMatches.length >= 5) {
+    const alternatingConfidence = Math.min(alternatingRatio + 0.1, 1.0);
+    if (rapidConfidence > alternatingConfidence) {
       return {
         suspicious: true,
-        confidence: Math.max(0.5, 1.0 - avgTimeBetween / 120000),
+        confidence: rapidConfidence,
         pattern: 'rapid_repeated_opponents',
       };
     }
+    return {
+      suspicious: true,
+      confidence: alternatingConfidence,
+      pattern: 'alternating_wins_losses',
+    };
+  }
+
+  if (rapidConfidence > 0.5) {
+    return {
+      suspicious: true,
+      confidence: rapidConfidence,
+      pattern: 'rapid_repeated_opponents',
+    };
   }
 
   return { suspicious: false, confidence: 0, pattern: 'normal' };

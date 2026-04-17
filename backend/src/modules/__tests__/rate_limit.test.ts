@@ -198,7 +198,8 @@ describe('Rate Limiting Module', () => {
     test('allows creating matches under limit', () => {
       const userId = 'user_123';
 
-      for (let i = 0; i < 3; i++) {
+      // Create 2 matches (under the limit of 3)
+      for (let i = 0; i < 2; i++) {
         recordMatchAction(userId, 'create', `match_${i}`);
         const result = checkConcurrentMatchLimit(userId);
         expect(result.allowed).toBe(true);
