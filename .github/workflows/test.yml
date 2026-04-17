@@ -280,40 +280,36 @@ jobs:
         id: coverage-summary
         run: |
           echo "=== Backend Coverage Analysis ==="
-          
-          # Parse coverage from JSON
-          if [ -f coverage/coverage-final.json ]; then
+
+          # Parse coverage from coverage-summary.json (has 'total' key)
+          if [ -f coverage/coverage-summary.json ]; then
             # Get overall coverage percentages
             echo "Overall Coverage:"
             node -e "
-              const fs = require('fs');
-              const data = JSON.parse(fs.readFileSync('coverage/coverage-final.json', 'utf8'));
+              const data = require('./coverage/coverage-summary.json');
               const totals = data.total;
-              console.log('  Statements: ' + totals.stmts.pct + '%');
+              console.log('  Statements: ' + totals.statements.pct + '%');
               console.log('  Branches: ' + totals.branches.pct + '%');
               console.log('  Functions: ' + totals.functions.pct + '%');
               console.log('  Lines: ' + totals.lines.pct + '%');
             "
-            
+
             echo ""
             echo "Critical Systems Coverage:"
-            
-            # Check combat_system.ts
-            if [ -f coverage/src/modules/combat_system.ts ]; then
-              echo "  combat_system: $(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('coverage/src/modules/combat_system.ts'));console.log(d.stmts.pct+'%')")"
-            else
-              echo "  combat_system: (not tracked)"
-            fi
-            
-            # Check rpg_system.ts (PlayerStatsManager backend)
-            if [ -f coverage/src/modules/rpg_system.ts ]; then
-              echo "  rpg_system (PlayerStats): $(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('coverage/src/modules/rpg_system.ts'));console.log(d.stmts.pct+'%')")"
-            fi
-            
-            # Check matchmaker.ts (Network auth related)
-            if [ -f coverage/src/modules/matchmaker.ts ]; then
-              echo "  matchmaker (Network): $(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('coverage/src/modules/matchmaker.ts'));console.log(d.stmts.pct+'%')")"
-            fi
+
+            node -e "
+              const data = require('./coverage/coverage-summary.json');
+              const critical = ['combat_system', 'rpg_system', 'matchmaker'];
+              Object.entries(data).forEach(([path, info]) => {
+                critical.forEach(name => {
+                  if (path.includes(name)) {
+                    console.log('  ' + name + ': ' + info.lines.pct + '%');
+                  }
+                });
+              });
+            "
+          else
+            echo "coverage-summary.json not found, skipping coverage summary"
           fi
       
       - name: Check coverage thresholds
