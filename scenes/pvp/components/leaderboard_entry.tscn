@@ -1,0 +1,64 @@
+[gd_scene format=3]
+
+[node name="LeaderboardEntry" type="HBoxContainer"]
+custom_minimum_size = Vector2(0, 72)
+theme_override_constants/separation = 8
+
+[node name="RankLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(60, 0)
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlayerInfoContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="UsernameLabel" type="Label" parent="PlayerInfoContainer"]
+layout_mode = 2
+text = "PlayerName"
+size_flags_vertical = 3
+
+[node name="ModeLabel" type="Label" parent="PlayerInfoContainer"]
+layout_mode = 2
+text = "1v1"
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+
+[node name="RatingContainer" type="VBoxContainer" parent="."]
+custom_minimum_size = Vector2(100, 0)
+
+[node name="RatingLabel" type="Label" parent="RatingContainer"]
+layout_mode = 2
+text = "1500"
+horizontal_alignment = 1
+
+[node name="OriginalRatingLabel" type="Label" parent="RatingContainer"]
+layout_mode = 2
+text = "(original)"
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+horizontal_alignment = 1
+
+[node name="StatsContainer" type="HBoxContainer" parent="."]
+custom_minimum_size = Vector2(120, 0)
+theme_override_constants/separation = 16
+
+[node name="WinsLabel" type="Label" parent="StatsContainer"]
+text = "45W"
+
+[node name="LossesLabel" type="Label" parent="StatsContainer"]
+text = "5L"
+
+[node name="WinRateLabel" type="Label" parent="StatsContainer"]
+text = "90%"
+horizontal_alignment = 2
+
+[node name="TierBadge" type="Label" parent="."]
+custom_minimum_size = Vector2(100, 0)
+text = "Legendary"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HighlightRect" type="ColorRect" parent="."]
+visible = false
+layout_mode = 2
+color = Color(1, 0.8, 0.4, 0.2)

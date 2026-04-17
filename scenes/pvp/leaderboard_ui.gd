@@ -33,6 +33,7 @@ extends Control
 
 # --- UI Component References ---
 var _player_entry_scene: PackedScene = preload("res://scenes/pvp/components/leaderboard_entry.tscn")
+var history_dialog: Control
 
 # --- State ---
 var current_mode: String = "1v1"  # "1v1", "2v2", "all"
@@ -83,6 +84,16 @@ func _setup_ui() -> void:
 	if empty_state:
 		empty_state.visible = false
 
+	# Create season history dialog
+	_create_history_dialog()
+
+func _create_history_dialog() -> void:
+	"""Create the season history dialog."""
+	var dialog_scene = preload("res://scenes/ui/season_history_dialog.tscn")
+	history_dialog = dialog_scene.instantiate()
+	add_child(history_dialog)
+	history_dialog.visible = false
+
 func _setup_mode_filter() -> void:
 	"""Create mode filter buttons (1v1, 2v2, All)."""
 	if not mode_filter_container:
@@ -117,6 +128,7 @@ func _connect_signals() -> void:
 	if season_manager:
 		season_manager.leaderboard_loaded.connect(_on_leaderboard_loaded)
 		season_manager.decay_info_updated.connect(_on_decay_info_updated)
+		season_manager.season_history_loaded.connect(_on_season_history_loaded)
 
 	if refresh_button:
 		refresh_button.pressed.connect(refresh_leaderboard)
@@ -428,7 +440,16 @@ func _show_season_history() -> void:
 	"""Displays historical season data."""
 	if season_manager:
 		season_manager.get_season_history()
-		# TODO: Show season history dialog/modal
+
+## Handle season history loaded
+func _on_season_history_loaded(history: Array) -> void:
+	"""Called when season history data is received from server.
+
+	Parameters:
+		history: Array of historical season data
+	"""
+	if history_dialog:
+		history_dialog.show_history(history)
 
 # --- Loading States ---
 

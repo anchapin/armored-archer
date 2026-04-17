@@ -13,6 +13,7 @@ import {
   RequestSignature,
 } from './anti_cheat';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { recordSeasonCompletion } from './season_leaderboard';
 
 /**
  * Season rewards data structure.
@@ -703,6 +704,13 @@ export function rpcClaimSeasonRewards(
 
   const currentSeason = getCurrentSeason();
 
+  // Allow claiming during active season (preview mode) OR after season ends
+  // This lets players preview their rewards before season ends
+  const isSeasonActive = Date.now() < currentSeason.end_time;
+  if (isSeasonActive) {
+    logger.info('Claiming rewards in preview mode for active season');
+  }
+
   const objects = nk.storageRead([
     {
       collection: 'season_rewards_claimed',
@@ -713,6 +721,7 @@ export function rpcClaimSeasonRewards(
 
   if (objects.length > 0) {
     return JSON.stringify({
+      success: false,
       error: 'Rewards already claimed for this season',
     });
   }
@@ -721,6 +730,7 @@ export function rpcClaimSeasonRewards(
 
   if (!playerEntry) {
     return JSON.stringify({
+      success: false,
       error: 'No leaderboard entry found',
     });
   }
