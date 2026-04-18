@@ -33,6 +33,7 @@ import {
   SeasonInfo,
 } from './season_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { getLevelForXp } from './xp_manager';
 
 /**
  * PvP match data structure.
@@ -1774,13 +1775,11 @@ function updatePlayerXP(nk: Runtime.Nakama, userId: string, xpGained: number): v
   const playerStats = playerStatsResult.data;
   playerStats.xp += xpGained;
 
-  // Check for level up (simple formula: level * 100 XP required for next level)
-  const xpForNextLevel = playerStats.level * 100;
-  if (playerStats.xp >= xpForNextLevel) {
-    playerStats.level += 1;
-    playerStats.xp -= xpForNextLevel;
-    // Award ability point on level up
-    playerStats.ability_points = (playerStats.ability_points || 0) + 1;
+  const oldLevel = playerStats.level;
+  const newLevel = getLevelForXp(playerStats.xp);
+  if (newLevel > oldLevel) {
+    playerStats.level = newLevel;
+    playerStats.ability_points = (playerStats.ability_points || 0) + (newLevel - oldLevel);
   }
 
   nk.storageWrite([

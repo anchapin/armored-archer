@@ -24,6 +24,7 @@ import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { getLevelForXp } from './xp_manager';
 
 /**
  * Helper function to save player stats to storage and invalidate cache.
@@ -516,18 +517,7 @@ export function rpcGetPlayerStats(
  * calculateLevel(450); // returns 5
  */
 export function calculateLevel(xp: number): number {
-  const baseXP = 100;
-  const growthFactor = 1.5;
-  let level = 1;
-  let xpForNextLevel = baseXP;
-
-  while (xp >= xpForNextLevel) {
-    xp -= xpForNextLevel;
-    level++;
-    xpForNextLevel = Math.floor(xpForNextLevel * growthFactor);
-  }
-
-  return level;
+  return getLevelForXp(xp);
 }
 
 // --- Respec System ---

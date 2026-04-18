@@ -107,6 +107,44 @@ export function getXpForLevel(level: number): number {
 }
 
 /**
+ * Derives the player level from total accumulated XP using the lookup table.
+ * This is the single source of truth for level-from-XP conversion.
+ *
+ * @param totalXp - Total accumulated XP
+ * @returns Current level (1-50)
+ */
+export function getLevelForXp(totalXp: number): number {
+  if (totalXp <= 0) return 1;
+  for (let level = 50; level >= 2; level--) {
+    if (XP_CURVE[level] <= totalXp) return level;
+  }
+  return 1;
+}
+
+/**
+ * Gets full level progress info from total XP.
+ *
+ * @param totalXp - Total accumulated XP
+ * @returns Level, XP thresholds, and progress percentage
+ */
+export function getLevelProgress(totalXp: number): {
+  level: number;
+  currentLevelXp: number;
+  nextLevelXp: number;
+  progress: number;
+} {
+  const level = getLevelForXp(totalXp);
+  const currentLevelXp = getXpForLevel(level);
+  const nextLevelXp = getXpForLevel(level + 1);
+  return {
+    level,
+    currentLevelXp,
+    nextLevelXp,
+    progress: getProgressPercentage(totalXp, currentLevelXp, nextLevelXp),
+  };
+}
+
+/**
  * Gets the level curve type for a given level.
  *
  * @param level - Level to classify
