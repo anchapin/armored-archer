@@ -360,6 +360,16 @@ export const ValibotSchemas = {
     platform: createEnum(['ios', 'android']),
   }),
 
+  query_audit_logs: object({
+    user_id: optional(pipe(string(), minLength(1), maxLength(100))),
+    action: optional(pipe(string(), minLength(1), maxLength(100))),
+    result: optional(createEnum(['success', 'failure'])),
+    from_timestamp: optional(pipe(number(), integer(), minValue(0))),
+    to_timestamp: optional(pipe(number(), integer(), minValue(0))),
+    limit: optional(pipe(number(), integer(), minValue(1), maxValue(100))),
+    cursor: optional(pipe(string(), minLength(1), maxLength(200))),
+  }),
+
   // Deployment observability
   deployment_record: object({
     environment: createEnum(['development', 'staging', 'production']),

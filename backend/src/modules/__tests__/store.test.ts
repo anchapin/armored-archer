@@ -5042,4 +5042,126 @@ describe('store', () => {
       );
     });
   });
+
+  // Audit logging coverage tests
+  describe('audit logging for monetization events', () => {
+    function getAuditLogs(nk: Runtime.Nakama): Array<Record<string, unknown>> {
+      const writeCalls = (nk.storageWrite as jest.Mock).mock.calls;
+      return writeCalls
+        .flatMap((call: any) => call[0] as any[])
+        .filter((obj: any) => obj.collection === 'audit_logs')
+        .map((obj: any) => JSON.parse(obj.value));
+    }
+
+    describe('webhook audit logging', () => {
+      it('logs audit for successful webhook purchase', async () => {
+        testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 0, gold: 0 }));
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ status: 'active', valid: true, subscriber: { entitlements: { 'com.armoredarcher.gems.small': { product_id: 'com.armoredarcher.gems.small' } } } }),
+          text: async () => '',
+        });
+
+        const payload = JSON.stringify({
+          event_type: 'initial_purchase',
+          app_user_id: 'test-user',
+          product_id: 'com.armoredarcher.gems.small',
+        });
+
+        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
+
+        const audits = getAuditLogs(mockNk);
+        const purchaseAudits = audits.filter((a) => a.action === 'webhook_purchase' && a.result === 'success');
+        expect(purchaseAudits.length).toBeGreaterThanOrEqual(1);
+        expect(purchaseAudits[0].details.product_id).toBe('com.armoredarcher.gems.small');
+      });
+
+      it('logs audit for invalid webhook signature', async () => {
+        process.env.REVENUECAT_WEBHOOK_SECRET = 'test-secret';
+        mockCtx = createMockContext({ variables: { 'x-revenuecat-signature': 'wrong-signature' } });
+
+        const payload = JSON.stringify({ event_type: 'test', app_user_id: 'test-user' });
+        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
+
+        const audits = getAuditLogs(mockNk);
+        const sigAudits = audits.filter((a) => a.action === 'webhook_invalid_signature');
+        expect(sigAudits).toHaveLength(1);
+        expect(sigAudits[0].result).toBe('failure');
+
+        delete process.env.REVENUECAT_WEBHOOK_SECRET;
+      });
+
+      it('logs audit for missing app_user_id in webhook', async () => {
+        const payload = JSON.stringify({ event_type: 'initial_purchase' });
+        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
+
+        const audits = getAuditLogs(mockNk);
+        const missingUserAudits = audits.filter((a) => a.action === 'webhook_missing_user');
+        expect(missingUserAudits).toHaveLength(1);
+        expect(missingUserAudits[0].result).toBe('failure');
+      });
+
+      it('logs audit for billing issue event', async () => {
+        testStorage.set('player_subscription:test-user', JSON.stringify({ active: true }));
+        const payload = JSON.stringify({
+          event_type: 'billing_issue',
+          app_user_id: 'test-user',
+          product_id: 'premium_sub',
+        });
+
+        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
+
+        const audits = getAuditLogs(mockNk);
+        const billingAudits = audits.filter((a) => a.action === 'billing_issue');
+        expect(billingAudits.length).toBeGreaterThanOrEqual(1);
+      });
+
+      it('logs audit for subscription cancelled event', async () => {
+        testStorage.set('player_subscription:test-user', JSON.stringify({ active: true }));
+        const payload = JSON.stringify({
+          event_type: 'cancellation',
+          app_user_id: 'test-user',
+          product_id: 'premium_sub',
+          reason: 'user_cancelled',
+        });
+
+        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
+
+        const audits = getAuditLogs(mockNk);
+        const cancelAudits = audits.filter((a) => a.action === 'subscription_cancelled');
+        expect(cancelAudits.length).toBeGreaterThanOrEqual(1);
+      });
+
+      it('logs audit for subscription expired event', async () => {
+        const payload = JSON.stringify({
+          event_type: 'expiration',
+          app_user_id: 'test-user',
+          product_id: 'premium_sub',
+        });
+
+        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
+
+        const audits = getAuditLogs(mockNk);
+        const expiredAudits = audits.filter((a) => a.action === 'subscription_expired');
+        expect(expiredAudits).toHaveLength(1);
+        expect(expiredAudits[0].result).toBe('success');
+      });
+
+      it('logs audit for product change event', async () => {
+        const payload = JSON.stringify({
+          event_type: 'product_change',
+          app_user_id: 'test-user',
+          product_id: 'premium_sub',
+          transferred_from: 'old-user',
+        });
+
+        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
+
+        const audits = getAuditLogs(mockNk);
+        const changeAudits = audits.filter((a) => a.action === 'product_change');
+        expect(changeAudits).toHaveLength(1);
+        expect(changeAudits[0].details.transferred_from).toBe('old-user');
+      });
+    });
+  });
 });
