@@ -1203,6 +1203,275 @@ export function registerRpcGetCosmeticCatalog(initializer: Runtime.Initializer):
 }
 
 // ============================================================
+// CROSS-DEVICE COSMETIC SYNC
+// ============================================================
+
+/**
+ * Returns the player's owned cosmetic skin items.
+ * Used for cross-device sync — a new device fetches this to restore purchases.
+ */
+export function rpcGetOwnedCosmetics(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Getting owned cosmetics for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_owned_cosmetics, payload, 'get_owned_cosmetics');
+  if (!validation.success) {
+    return createValidationErrorResponse('get_owned_cosmetics', validation.error);
+  }
+
+  const ownedResult = nk.storageRead([
+    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId },
+  ]);
+
+  let items: string[] = [];
+  if (ownedResult.length > 0 && ownedResult[0].value) {
+    const parsed = safeParse<{ items: string[] }>(ownedResult[0].value, null, logger, 'player_cosmetics_owned');
+    if (parsed.success && parsed.data) {
+      items = parsed.data.items ?? [];
+    }
+  }
+
+  return JSON.stringify({ success: true, items });
+}
+
+export function registerRpcGetOwnedCosmetics(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_owned_cosmetics', rpcGetOwnedCosmetics);
+}
+
+/**
+ * Returns the player's currently equipped cosmetic skins per slot.
+ * Used for cross-device sync — a new device fetches this to restore loadout.
+ */
+export function rpcGetEquippedCosmetics(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Getting equipped cosmetics for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_equipped_cosmetics, payload, 'get_equipped_cosmetics');
+  if (!validation.success) {
+    return createValidationErrorResponse('get_equipped_cosmetics', validation.error);
+  }
+
+  const equipped = _readEquippedCosmetics(nk, ctx.userId, logger);
+
+  return JSON.stringify({ success: true, equipped });
+}
+
+export function registerRpcGetEquippedCosmetics(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_equipped_cosmetics', rpcGetEquippedCosmetics);
+}
+
+/**
+ * Equips a cosmetic skin to a specific slot.
+ * Validates ownership and slot compatibility before persisting.
+ */
+export function rpcEquipCosmetic(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Equip cosmetic request from user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.equip_cosmetic, payload, 'equip_cosmetic');
+  if (!validation.success) {
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'equip_cosmetic', 'player_cosmetics_equipped', { slot: 'unknown', skin_id: 'unknown' }, 'failure', validation.error);
+    return createValidationErrorResponse('equip_cosmetic', validation.error);
+  }
+
+  const { slot, skin_id } = validation.data;
+
+  // Validate skin exists in catalog
+  const cosmeticItem = COSMETIC_CATALOG[skin_id];
+  if (!cosmeticItem) {
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'equip_cosmetic', 'player_cosmetics_equipped', { slot, skin_id }, 'failure', 'Invalid cosmetic item');
+    return JSON.stringify({ success: false, error: 'Invalid cosmetic item' });
+  }
+
+  // Validate slot matches
+  if (cosmeticItem.slot !== slot) {
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'equip_cosmetic', 'player_cosmetics_equipped', { slot, skin_id, expected_slot: cosmeticItem.slot }, 'failure', 'Slot mismatch');
+    return JSON.stringify({ success: false, error: `Skin belongs to slot ${cosmeticItem.slot}, not ${slot}` });
+  }
+
+  // Validate ownership
+  const ownedResult = nk.storageRead([
+    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId },
+  ]);
+  let ownedItems: string[] = [];
+  if (ownedResult.length > 0 && ownedResult[0].value) {
+    const parsed = safeParse<{ items: string[] }>(ownedResult[0].value, null, logger, 'player_cosmetics_owned');
+    if (parsed.success && parsed.data) {
+      ownedItems = parsed.data.items ?? [];
+    }
+  }
+
+  if (!ownedItems.includes(skin_id)) {
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'equip_cosmetic', 'player_cosmetics_equipped', { slot, skin_id }, 'failure', 'Not owned');
+    return JSON.stringify({ success: false, error: 'You do not own this cosmetic item' });
+  }
+
+  // Update equipped state
+  const equipped = _readEquippedCosmetics(nk, ctx.userId, logger);
+  equipped[slot] = skin_id;
+  _writeEquippedCosmetics(nk, ctx.userId, equipped, logger);
+
+  logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'equip_cosmetic', 'player_cosmetics_equipped', { slot, skin_id }, 'success');
+  logger.info('User %s equipped %s in slot %s', ctx.userId, skin_id, slot);
+
+  return JSON.stringify({ success: true, slot, skin_id });
+}
+
+export function registerRpcEquipCosmetic(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/equip_cosmetic', rpcEquipCosmetic);
+}
+
+/**
+ * Removes a cosmetic skin from a specific slot.
+ */
+export function rpcUnequipCosmetic(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Unequip cosmetic request from user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.unequip_cosmetic, payload, 'unequip_cosmetic');
+  if (!validation.success) {
+    return createValidationErrorResponse('unequip_cosmetic', validation.error);
+  }
+
+  const { slot } = validation.data;
+
+  const equipped = _readEquippedCosmetics(nk, ctx.userId, logger);
+  equipped[slot] = '';
+  _writeEquippedCosmetics(nk, ctx.userId, equipped, logger);
+
+  logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'unequip_cosmetic', 'player_cosmetics_equipped', { slot }, 'success');
+  logger.info('User %s unequipped slot %s', ctx.userId, slot);
+
+  return JSON.stringify({ success: true, slot });
+}
+
+export function registerRpcUnequipCosmetic(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/unequip_cosmetic', rpcUnequipCosmetic);
+}
+
+/**
+ * Saves the full cosmetic loadout in one batch operation.
+ * Validates all non-empty slots against ownership and catalog.
+ * Used for cross-device sync when restoring loadout from another device.
+ */
+export function rpcSaveCosmeticLoadout(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Save cosmetic loadout request from user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.save_cosmetic_loadout, payload, 'save_cosmetic_loadout');
+  if (!validation.success) {
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'save_cosmetic_loadout', 'player_cosmetics_equipped', {}, 'failure', validation.error);
+    return createValidationErrorResponse('save_cosmetic_loadout', validation.error);
+  }
+
+  const { equipped } = validation.data;
+
+  // Read current ownership for validation
+  const ownedResult = nk.storageRead([
+    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId },
+  ]);
+  let ownedItems: string[] = [];
+  if (ownedResult.length > 0 && ownedResult[0].value) {
+    const parsed = safeParse<{ items: string[] }>(ownedResult[0].value, null, logger, 'player_cosmetics_owned');
+    if (parsed.success && parsed.data) {
+      ownedItems = parsed.data.items ?? [];
+    }
+  }
+
+  // Validate each non-empty slot
+  for (const [slot, skinId] of Object.entries(equipped)) {
+    if (!skinId || (skinId as string).trim() === '') continue;
+
+    const cosmeticItem = COSMETIC_CATALOG[skinId as string];
+    if (!cosmeticItem) {
+      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'save_cosmetic_loadout', 'player_cosmetics_equipped', { slot, skin_id: skinId }, 'failure', 'Invalid cosmetic item');
+      return JSON.stringify({ success: false, error: `Invalid cosmetic item: ${skinId}` });
+    }
+
+    if (cosmeticItem.slot !== slot) {
+      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'save_cosmetic_loadout', 'player_cosmetics_equipped', { slot, skin_id: skinId }, 'failure', 'Slot mismatch');
+      return JSON.stringify({ success: false, error: `Skin ${skinId} belongs to slot ${cosmeticItem.slot}, not ${slot}` });
+    }
+
+    if (!ownedItems.includes(skinId as string)) {
+      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'save_cosmetic_loadout', 'player_cosmetics_equipped', { slot, skin_id: skinId }, 'failure', 'Not owned');
+      return JSON.stringify({ success: false, error: `You do not own ${skinId}` });
+    }
+  }
+
+  // All validated — persist
+  _writeEquippedCosmetics(nk, ctx.userId, equipped as Record<string, string>, logger);
+
+  logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'save_cosmetic_loadout', 'player_cosmetics_equipped', equipped, 'success');
+  logger.info('User %s saved cosmetic loadout', ctx.userId);
+
+  return JSON.stringify({ success: true, equipped });
+}
+
+export function registerRpcSaveCosmeticLoadout(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/save_cosmetic_loadout', rpcSaveCosmeticLoadout);
+}
+
+// --- Helper functions for equipped cosmetics storage ---
+
+function _readEquippedCosmetics(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): Record<string, string> {
+  const defaults: Record<string, string> = { helm: '', armor: '', bow: '', arrow: '', amulet: '' };
+
+  const result = nk.storageRead([
+    { collection: 'player_cosmetics_equipped', key: userId, userId: userId },
+  ]);
+
+  if (result.length === 0 || !result[0].value) return defaults;
+
+  const parsed = safeParse<Record<string, string>>(result[0].value, null, logger, 'player_cosmetics_equipped');
+  if (!parsed.success || !parsed.data) return defaults;
+
+  return { ...defaults, ...parsed.data };
+}
+
+function _writeEquippedCosmetics(
+  nk: Runtime.Nakama,
+  userId: string,
+  equipped: Record<string, string>,
+  _logger: Runtime.Logger
+): void {
+  nk.storageWrite([
+    {
+      collection: 'player_cosmetics_equipped',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(equipped),
+      permissionRead: 0,
+      permissionWrite: 0,
+    },
+  ]);
+}
+
+// ============================================================
 // PENDING PURCHASE QUEUE HANDLING
 // ============================================================
 

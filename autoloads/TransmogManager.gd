@@ -40,6 +40,11 @@ func _ready() -> void:
 	if not gear_registry_instance:
 		push_warning("[TransmogManager] GearRegistry not found")
 
+	# Listen for cross-device sync from GemManager
+	var gem_manager = get_node_or_null("/root/GemManager")
+	if gem_manager:
+		gem_manager.sync_completed.connect(_on_cosmetics_synced)
+
 func set_character_sprite(sprite: ModularCharacterSprite) -> void:
 	"""Sets the character sprite to apply transmog visuals to.
 
@@ -223,3 +228,29 @@ func get_available_skins_for_slot(slot: String) -> Array:
 		if skin_data.base_gear_required == current_base_gear:
 			available_skins.append(skin_data)
 	return available_skins
+
+func _on_cosmetics_synced(owned: Array, equipped: Dictionary) -> void:
+	"""Applies equipped skins from server sync to visual loadout."""
+	for slot in ["helm", "armor", "bow", "arrow"]:
+		var skin_id = equipped.get(slot, "")
+		current_loadout.skins[slot] = skin_id
+
+		if character_sprite:
+			if skin_id != "":
+				var skin_data = gear_registry_instance.get_skin(skin_id)
+				if skin_data:
+					character_sprite.equip_skin(slot, skin_id, skin_data.skin_texture)
+				else:
+					character_sprite.unequip_skin(slot)
+			else:
+				character_sprite.unequip_skin(slot)
+
+	# Handle amulet slot
+	if equipped.has("amulet"):
+		current_loadout.skins["amulet"] = equipped.get("amulet", "")
+
+func save_loadout() -> void:
+	"""Persists current skin loadout to server for cross-device sync."""
+	var gem_manager = get_node_or_null("/root/GemManager")
+	if gem_manager and gem_manager.has_method("save_equipped_to_server"):
+		gem_manager.save_equipped_to_server(current_loadout.skins)

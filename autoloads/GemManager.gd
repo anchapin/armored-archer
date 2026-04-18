@@ -1,10 +1,12 @@
 ## Manages cosmetic skin ownership and equipment.
 ## Handles skin purchases, equipment, and integration with Store and Gear systems.
+## Syncs ownership and equipped state to server for cross-device consistency.
 ##
 ## Signals:
 ## - skin_purchased(skin_id: String): Emitted when a skin is bought
 ## - skin_equipped(skin_id: String, slot: String): Emitted when a skin is equipped
 ## - skin_unequipped(slot: String): Emitted when a skin is removed
+## - sync_completed(owned: Array, equipped: Dictionary): Emitted after server sync
 ##
 extends Node
 
@@ -14,6 +16,9 @@ extends Node
 
 # --- Analytics Reference ---
 @onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
+
+# --- Network Reference ---
+@onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
 
 # --- Skin Ownership & Equipment ---
 var owned_skins: Array = []
@@ -25,8 +30,10 @@ var slot_type_mapping: Dictionary = {}
 # Import gear enums for GearType enum
 const GearEnums = preload("res://scripts/gear_enums.gd")
 
+# --- Sync State ---
+var _sync_in_progress: bool = false
+
 func _ready() -> void:
-	# Initialize slot_type_mapping after GearRegistry is ready
 	slot_type_mapping = {
 		"helm": GearEnums.GearType.HELM,
 		"armor": GearEnums.GearType.ARMOR,
@@ -38,12 +45,17 @@ func _ready() -> void:
 	if store_manager:
 		store_manager.currency_updated.connect(_on_currency_updated)
 
+	# Hook into login for cross-device sync
+	if network_manager and network_manager.has_signal("session_created"):
+		network_manager.session_created.connect(_on_session_created)
+
 	load_data()
 
 # --- Signals ---
 signal skin_purchased(skin_id: String)
 signal skin_equipped(skin_id: String, slot: String)
 signal skin_unequipped(slot: String)
+signal sync_completed(owned: Array, equipped: Dictionary)
 
 # --- Save Data Path ---
 const SAVE_FILE_PATH = "user://cosmetic_data.save"
@@ -62,34 +74,65 @@ const ACHIEVEMENT_GEM_REWARDS: Dictionary = {
 }
 
 # --- Tracked Achievements ---
-var completed_achievements: Array = []  # Track completed achievements for one-time rewards
+var completed_achievements: Array = []
+
+# --- Cross-Device Sync ---
+
+func _on_session_created(success: bool, _error_message: String) -> void:
+	if success:
+		sync_with_server()
+
+func sync_with_server() -> void:
+	if _sync_in_progress:
+		return
+	if not network_manager or not NetworkManager.is_session_valid():
+		return
+
+	_sync_in_progress = true
+
+	# Fetch owned cosmetics from server
+	var owned_response: Dictionary = await NetworkManager.send_rpc("armored_archer/get_owned_cosmetics", "{}")
+	if owned_response.get("success", false):
+		var server_owned: Array = owned_response.get("items", [])
+		# Merge: add any server-known items missing locally
+		for skin_id in server_owned:
+			if not skin_id in owned_skins:
+				owned_skins.append(skin_id)
+
+	# Fetch equipped cosmetics from server
+	var equipped_response: Dictionary = await NetworkManager.send_rpc("armored_archer/get_equipped_cosmetics", "{}")
+	if equipped_response.get("success", false):
+		var server_equipped: Dictionary = equipped_response.get("equipped", {})
+		# Server is authoritative for equipped state
+		equipped_skins = server_equipped
+
+	save_data()
+	_sync_in_progress = false
+	sync_completed.emit(owned_skins, equipped_skins)
+
+func save_equipped_to_server(skins: Dictionary) -> void:
+	if not network_manager or not NetworkManager.is_session_valid():
+		return
+
+	var payload = JSON.stringify({"equipped": skins})
+	var response: Dictionary = await NetworkManager.send_rpc("armored_archer/save_cosmetic_loadout", payload)
+	if not response.get("success", false):
+		push_error("Failed to save loadout to server: %s" % response.get("error", "unknown"))
 
 # --- Achievement Rewards ---
 func claim_achievement_reward(achievement_id: String) -> int:
-	"""Claims gem reward for completing an achievement (one-time only).
-
-	Parameters:
-		achievement_id: The achievement identifier
-
-	Returns:
-		int: Number of gems awarded (0 if already claimed or invalid)
-	"""
-	# Check if already claimed
 	if achievement_id in completed_achievements:
 		return 0
 
-	# Check if achievement exists in rewards
 	if not ACHIEVEMENT_GEM_REWARDS.has(achievement_id):
 		push_error("Unknown achievement: %s" % achievement_id)
 		return 0
 
 	var reward = ACHIEVEMENT_GEM_REWARDS[achievement_id]
 
-	# Mark as completed and award gems
 	completed_achievements.append(achievement_id)
 	add_gems(reward, "achievement:" + achievement_id)
 
-	# Track gem reward in analytics
 	if analytics and analytics.has_method("log_custom_event"):
 		analytics.log_custom_event("achievement_completed", {
 			"achievement_id": achievement_id,
@@ -100,49 +143,22 @@ func claim_achievement_reward(achievement_id: String) -> int:
 	return reward
 
 func get_achievement_reward(achievement_id: String) -> int:
-	"""Gets the gem reward amount for an achievement without claiming it.
-
-	Parameters:
-		achievement_id: The achievement identifier
-
-	Returns:
-		int: Number of gems the achievement awards (0 if invalid)
-	"""
 	return ACHIEVEMENT_GEM_REWARDS.get(achievement_id, 0)
 
 func is_achievement_completed(achievement_id: String) -> bool:
-	"""Checks if an achievement has been completed (reward claimed).
-
-	Parameters:
-		achievement_id: The achievement identifier
-
-	Returns:
-		bool: True if the achievement reward has been claimed
-	"""
 	return achievement_id in completed_achievements
 
 # --- Gem Management (Delegates to StoreManager) ---
 signal gems_updated(new_balance: int)
 
-var _local_gems: int = 0  # Local cache for gems when server unavailable
+var _local_gems: int = 0
 
 func get_gem_balance() -> int:
-	"""Gets current gem balance from StoreManager or local cache.
-
-	Returns:
-		int: Number of gems available
-	"""
 	if store_manager:
 		return store_manager.get_gems()
 	return _local_gems
 
 func add_gems(amount: int, reason: String = "") -> void:
-	"""Adds gems to player's balance.
-
-	Parameters:
-		amount: Number of gems to add (must be positive)
-		reason: Reason for adding gems (achievement, quest_reward, etc.)
-	"""
 	if amount <= 0:
 		push_error("Invalid gem amount to add")
 		return
@@ -156,12 +172,6 @@ func add_gems(amount: int, reason: String = "") -> void:
 	save_data()
 
 func remove_gems(amount: int, reason: String = "") -> void:
-	"""Removes gems from player's balance.
-
-	Parameters:
-		amount: Number of gems to remove (must be positive)
-		reason: Reason for removing gems
-	"""
 	if amount <= 0:
 		push_error("Invalid gem amount to remove")
 		return
@@ -179,19 +189,10 @@ func remove_gems(amount: int, reason: String = "") -> void:
 	save_data()
 
 func _on_currency_updated(_gems: int, _gold: int) -> void:
-	"""Handles currency updates (placeholder for future functionality)."""
 	pass
 
 # --- Skin Catalog (Delegates to GearRegistry) ---
 func get_skins_by_slot(slot_name: String) -> Array:
-	"""Gets all available skins for a specific slot.
-
-	Parameters:
-		slot_name: Equipment slot name ("helm", "armor", "bow", "arrow")
-
-	Returns:
-		Array: List of skin data dictionaries
-	"""
 	if not gear_registry or not slot_type_mapping.has(slot_name):
 		return []
 
@@ -199,47 +200,16 @@ func get_skins_by_slot(slot_name: String) -> Array:
 	return gear_registry.get_skins_by_slot(slot_type)
 
 func get_skin_info(skin_id: String):
-	"""Retrieves information about a specific skin.
-
-	Parameters:
-		skin_id: Unique skin identifier
-
-	Returns:
-		Skin data dictionary or null if not found
-	"""
 	if not gear_registry:
 		return null
 
 	return gear_registry.get_skin(skin_id)
 
 func is_skin_owned(skin_id: String) -> bool:
-	"""Checks if the player owns a specific skin.
-
-	Parameters:
-		skin_id: Skin identifier to check
-
-	Returns:
-		bool: True if skin is owned
-	"""
 	return skin_id in owned_skins
-
-# --- Network Reference ---
-@onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
 
 # --- Skin Purchase ---
 func purchase_skin(skin_id: String) -> bool:
-	"""Purchases a skin using gems via server-authoritative validation.
-
-	The server validates that the item is cosmetic-only (zero combat stats)
-	before deducting gems. The client only marks the skin as owned if the
-	server confirms success.
-
-	Parameters:
-		skin_id: ID of the skin to purchase
-
-	Returns:
-		bool: True if purchase succeeded, false otherwise
-	"""
 	if is_skin_owned(skin_id):
 		push_error("Skin already owned: %s" % skin_id)
 		return false
@@ -298,15 +268,6 @@ func purchase_skin(skin_id: String) -> bool:
 
 # --- Skin Equipment ---
 func equip_skin(slot_name: String, skin_id: String) -> bool:
-	"""Equips a skin to the specified slot.
-
-	Parameters:
-		slot_name: Equipment slot name
-		skin_id: ID of the skin to equip
-
-	Returns:
-		bool: True if equip succeeded, false otherwise
-	"""
 	if not is_skin_owned(skin_id):
 		push_error("Skin not owned: %s" % skin_id)
 		return false
@@ -320,6 +281,14 @@ func equip_skin(slot_name: String, skin_id: String) -> bool:
 	if slot_type == -1 or skin_info.slot_type != slot_type:
 		push_error("Skin %s does not belong to slot %s" % [skin_id, slot_name])
 		return false
+
+	# Server-authoritative equip when online
+	if network_manager and NetworkManager.is_session_valid():
+		var payload = JSON.stringify({"slot": slot_name, "skin_id": skin_id})
+		var response: Dictionary = await NetworkManager.send_rpc("armored_archer/equip_cosmetic", payload)
+		if not response.get("success", false):
+			push_error("Server rejected equip: %s" % response.get("error", "unknown"))
+			return false
 
 	equipped_skins[slot_name] = skin_id
 	skin_equipped.emit(skin_id, slot_name)
@@ -336,30 +305,24 @@ func equip_skin(slot_name: String, skin_id: String) -> bool:
 	return true
 
 func unequip_skin(slot_name: String) -> void:
-	"""Removes skin from slot, showing only base gear.
+	# Server-authoritative unequip when online
+	if network_manager and NetworkManager.is_session_valid() and equipped_skins.has(slot_name):
+		var payload = JSON.stringify({"slot": slot_name})
+		var response: Dictionary = await NetworkManager.send_rpc("armored_archer/unequip_cosmetic", payload)
+		if not response.get("success", false):
+			push_error("Server rejected unequip: %s" % response.get("error", "unknown"))
+			return
 
-	Parameters:
-		slot_name: Equipment slot to unequip skin from
-	"""
 	if equipped_skins.has(slot_name):
 		var _err = equipped_skins.erase(slot_name)
 		skin_unequipped.emit(slot_name)
 		save_data()
 
 func get_equipped_skin(slot_name: String) -> String:
-	"""Gets the skin ID equipped in a slot.
-
-	Parameters:
-		slot_name: Equipment slot to query
-
-	Returns:
-		String: Skin identifier or empty string if none equipped
-	"""
 	return equipped_skins.get(slot_name, "")
 
 # --- Save/Load Data ---
 func save_data() -> void:
-	"""Saves skin ownership, equipment, and gem data to disk."""
 	var config = ConfigFile.new()
 
 	config.set_value("skins", "owned", owned_skins)
@@ -372,7 +335,6 @@ func save_data() -> void:
 		push_error("Failed to save cosmetic data: %s" % error)
 
 func load_data() -> void:
-	"""Loads skin ownership, equipment, and gem data from disk."""
 	var config = ConfigFile.new()
 	var error = config.load(SAVE_FILE_PATH)
 
@@ -385,7 +347,6 @@ func load_data() -> void:
 		initialize_default_data()
 
 func initialize_default_data() -> void:
-	"""Initializes with default empty data."""
 	owned_skins = []
 	equipped_skins = {}
 	_local_gems = 0

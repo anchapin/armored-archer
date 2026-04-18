@@ -179,7 +179,7 @@ func _on_purchase_confirmed() -> void:
 	if selected_skin_id.is_empty():
 		return
 
-	if gem_manager.purchase_skin(selected_skin_id):
+	if await gem_manager.purchase_skin(selected_skin_id):
 		_show_skin_preview(selected_skin_id)
 		_load_slot(current_slot)
 	else:
@@ -196,7 +196,8 @@ func _on_equip_button_pressed() -> void:
 	if selected_skin_id.is_empty():
 		return
 
-	if gem_manager.equip_skin(current_slot, selected_skin_id):
+	var result = await gem_manager.equip_skin(current_slot, selected_skin_id)
+	if result:
 		_show_skin_preview(selected_skin_id)
 		_load_slot(current_slot)
 	else:

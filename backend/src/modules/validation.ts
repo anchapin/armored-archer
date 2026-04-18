@@ -321,6 +321,29 @@ export const ValibotSchemas = {
 
   get_cosmetic_catalog: object({}),
 
+  get_owned_cosmetics: object({}),
+
+  equip_cosmetic: object({
+    slot: createEnum(['helm', 'armor', 'bow', 'arrow', 'amulet']),
+    skin_id: pipe(string(), minLength(1), maxLength(100)),
+  }),
+
+  unequip_cosmetic: object({
+    slot: createEnum(['helm', 'armor', 'bow', 'arrow', 'amulet']),
+  }),
+
+  get_equipped_cosmetics: object({}),
+
+  save_cosmetic_loadout: object({
+    equipped: object({
+      helm: pipe(string(), maxLength(100)),
+      armor: pipe(string(), maxLength(100)),
+      bow: pipe(string(), maxLength(100)),
+      arrow: pipe(string(), maxLength(100)),
+      amulet: pipe(string(), maxLength(100)),
+    }),
+  }),
+
   check_refunds: object({
     app_user_id: optional(string()),
   }),
