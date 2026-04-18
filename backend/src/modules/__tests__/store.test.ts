@@ -21,7 +21,7 @@ jest.mock('../../utils/cache', () => ({
   resetCacheManager: jest.fn(),
 }));
 
-import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
+import { createMockLogger, createMockContext, createMockNakama, testStorage } from '../../__mocks__/nakama';
 import {
   rpcValidatePurchase,
   rpcGetCurrency,
@@ -34,6 +34,11 @@ import {
   rpcAppLaunchCheck,
   rpcPurchaseCosmetic,
   rpcGetCosmeticCatalog,
+  rpcGetOwnedCosmetics,
+  rpcGetEquippedCosmetics,
+  rpcEquipCosmetic,
+  rpcUnequipCosmetic,
+  rpcSaveCosmeticLoadout,
   registerRpcValidatePurchase,
   registerRpcGetCurrency,
   registerRpcSpendGems,
@@ -44,6 +49,11 @@ import {
   registerRpcAppLaunchCheck,
   registerRpcPurchaseCosmetic,
   registerRpcGetCosmeticCatalog,
+  registerRpcGetOwnedCosmetics,
+  registerRpcGetEquippedCosmetics,
+  registerRpcEquipCosmetic,
+  registerRpcUnequipCosmetic,
+  registerRpcSaveCosmeticLoadout,
   PlayerCurrency,
   GEM_BUNDLES,
   COSMETIC_CATALOG,
@@ -62,6 +72,9 @@ describe('store', () => {
   let mockFetch: jest.Mock;
 
   beforeEach(() => {
+    // Clear test storage to prevent data leaking between tests
+    testStorage.clear();
+
     // Restore env before each test
     process.env = { ...originalEnv, REVENUECAT_SECRET_KEY: 'test-api-key' };
 
@@ -4777,6 +4790,254 @@ describe('store', () => {
       registerRpcGetCosmeticCatalog(mockInitializer as unknown as Runtime.Initializer);
       expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
         'armored_archer/get_cosmetic_catalog',
+        expect.any(Function)
+      );
+    });
+  });
+
+  // ============================================================
+  // Cross-device sync RPC tests
+  // ============================================================
+
+  describe('rpcGetOwnedCosmetics', () => {
+    it('should return owned cosmetics for a user', () => {
+      mockNk.storageWrite([
+        { collection: 'player_cosmetics_owned', key: 'test-user', userId: 'test-user', value: JSON.stringify({ items: ['skin_helm_golden', 'skin_bow_fire'] }) },
+      ]);
+
+      const result = rpcGetOwnedCosmetics(mockCtx, mockLogger, mockNk, '{}');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.items).toEqual(['skin_helm_golden', 'skin_bow_fire']);
+    });
+
+    it('should return empty list when no cosmetics owned', () => {
+      const result = rpcGetOwnedCosmetics(mockCtx, mockLogger, mockNk, '{}');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.items).toEqual([]);
+    });
+
+    it('should return validation error for invalid payload', () => {
+      const result = rpcGetOwnedCosmetics(mockCtx, mockLogger, mockNk, 'not json');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBeDefined();
+    });
+  });
+
+  describe('rpcGetEquippedCosmetics', () => {
+    it('should return equipped cosmetics for a user', () => {
+      mockNk.storageWrite([
+        { collection: 'player_cosmetics_equipped', key: 'test-user', userId: 'test-user', value: JSON.stringify({ helm: 'skin_helm_golden', armor: '', bow: 'skin_bow_fire', arrow: '', amulet: '' }) },
+      ]);
+
+      const result = rpcGetEquippedCosmetics(mockCtx, mockLogger, mockNk, '{}');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.equipped.helm).toBe('skin_helm_golden');
+      expect(parsed.equipped.bow).toBe('skin_bow_fire');
+    });
+
+    it('should return default empty slots when no cosmetics equipped', () => {
+      const result = rpcGetEquippedCosmetics(mockCtx, mockLogger, mockNk, '{}');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.equipped).toEqual({ helm: '', armor: '', bow: '', arrow: '', amulet: '' });
+    });
+
+    it('should return validation error for invalid payload', () => {
+      const result = rpcGetEquippedCosmetics(mockCtx, mockLogger, mockNk, 'not json');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBeDefined();
+    });
+  });
+
+  describe('rpcEquipCosmetic', () => {
+    it('should equip an owned cosmetic to the correct slot', () => {
+      mockNk.storageWrite([
+        { collection: 'player_cosmetics_owned', key: 'test-user', userId: 'test-user', value: JSON.stringify({ items: ['skin_helm_golden'] }) },
+      ]);
+
+      const payload = JSON.stringify({ slot: 'helm', skin_id: 'skin_helm_golden' });
+      const result = rpcEquipCosmetic(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.slot).toBe('helm');
+      expect(parsed.skin_id).toBe('skin_helm_golden');
+    });
+
+    it('should reject equipping cosmetic not in catalog', () => {
+      const payload = JSON.stringify({ slot: 'helm', skin_id: 'nonexistent_skin' });
+      const result = rpcEquipCosmetic(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toMatch(/Invalid cosmetic/i);
+    });
+
+    it('should reject slot mismatch', () => {
+      mockNk.storageWrite([
+        { collection: 'player_cosmetics_owned', key: 'test-user', userId: 'test-user', value: JSON.stringify({ items: ['skin_helm_golden'] }) },
+      ]);
+
+      const payload = JSON.stringify({ slot: 'armor', skin_id: 'skin_helm_golden' });
+      const result = rpcEquipCosmetic(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toMatch(/slot/i);
+    });
+
+    it('should reject equipping unowned cosmetic', () => {
+      const payload = JSON.stringify({ slot: 'helm', skin_id: 'skin_helm_golden' });
+      const result = rpcEquipCosmetic(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toMatch(/do not own/i);
+    });
+
+    it('should return validation error for invalid payload', () => {
+      const result = rpcEquipCosmetic(mockCtx, mockLogger, mockNk, 'not json');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBeDefined();
+    });
+  });
+
+  describe('rpcUnequipCosmetic', () => {
+    it('should unequip a cosmetic slot', () => {
+      mockNk.storageWrite([
+        { collection: 'player_cosmetics_equipped', key: 'test-user', userId: 'test-user', value: JSON.stringify({ helm: 'skin_helm_golden', armor: '', bow: '', arrow: '', amulet: '' }) },
+      ]);
+
+      const payload = JSON.stringify({ slot: 'helm' });
+      const result = rpcUnequipCosmetic(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.slot).toBe('helm');
+    });
+
+    it('should return validation error for invalid payload', () => {
+      const result = rpcUnequipCosmetic(mockCtx, mockLogger, mockNk, 'not json');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBeDefined();
+    });
+  });
+
+  describe('rpcSaveCosmeticLoadout', () => {
+    it('should save a valid cosmetic loadout', () => {
+      mockNk.storageWrite([
+        { collection: 'player_cosmetics_owned', key: 'test-user', userId: 'test-user', value: JSON.stringify({ items: ['skin_helm_golden', 'skin_bow_fire'] }) },
+      ]);
+
+      const payload = JSON.stringify({ equipped: { helm: 'skin_helm_golden', armor: '', bow: 'skin_bow_fire', arrow: '', amulet: '' } });
+      const result = rpcSaveCosmeticLoadout(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.equipped.helm).toBe('skin_helm_golden');
+      expect(parsed.equipped.bow).toBe('skin_bow_fire');
+    });
+
+    it('should reject loadout with unowned cosmetic', () => {
+      const payload = JSON.stringify({ equipped: { helm: 'skin_helm_golden', armor: '', bow: '', arrow: '', amulet: '' } });
+      const result = rpcSaveCosmeticLoadout(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toMatch(/do not own/i);
+    });
+
+    it('should reject loadout with invalid cosmetic', () => {
+      const payload = JSON.stringify({ equipped: { helm: 'nonexistent_skin', armor: '', bow: '', arrow: '', amulet: '' } });
+      const result = rpcSaveCosmeticLoadout(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toMatch(/Invalid cosmetic/i);
+    });
+
+    it('should reject loadout with slot mismatch', () => {
+      mockNk.storageWrite([
+        { collection: 'player_cosmetics_owned', key: 'test-user', userId: 'test-user', value: JSON.stringify({ items: ['skin_helm_golden'] }) },
+      ]);
+
+      const payload = JSON.stringify({ equipped: { helm: '', armor: 'skin_helm_golden', bow: '', arrow: '', amulet: '' } });
+      const result = rpcSaveCosmeticLoadout(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toMatch(/slot/i);
+    });
+
+    it('should return validation error for invalid payload', () => {
+      const result = rpcSaveCosmeticLoadout(mockCtx, mockLogger, mockNk, 'not json');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBeDefined();
+    });
+  });
+
+  describe('registerRpcGetOwnedCosmetics', () => {
+    it('should register the get_owned_cosmetics RPC', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcGetOwnedCosmetics(mockInitializer as unknown as Runtime.Initializer);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_owned_cosmetics',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('registerRpcGetEquippedCosmetics', () => {
+    it('should register the get_equipped_cosmetics RPC', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcGetEquippedCosmetics(mockInitializer as unknown as Runtime.Initializer);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_equipped_cosmetics',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('registerRpcEquipCosmetic', () => {
+    it('should register the equip_cosmetic RPC', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcEquipCosmetic(mockInitializer as unknown as Runtime.Initializer);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/equip_cosmetic',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('registerRpcUnequipCosmetic', () => {
+    it('should register the unequip_cosmetic RPC', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcUnequipCosmetic(mockInitializer as unknown as Runtime.Initializer);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/unequip_cosmetic',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('registerRpcSaveCosmeticLoadout', () => {
+    it('should register the save_cosmetic_loadout RPC', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcSaveCosmeticLoadout(mockInitializer as unknown as Runtime.Initializer);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/save_cosmetic_loadout',
         expect.any(Function)
       );
     });
