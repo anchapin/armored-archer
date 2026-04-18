@@ -19,18 +19,18 @@ describe('Utility Functions', () => {
     });
 
     it('should handle multiple level ups', () => {
-      expect(calculateLevel(250)).toBe(3);
-      expect(calculateLevel(500)).toBe(4);
+      expect(calculateLevel(250)).toBe(2);
+      expect(calculateLevel(500)).toBe(3);
     });
 
     it('should scale XP requirements correctly', () => {
       expect(calculateLevel(100)).toBe(2);
-      expect(calculateLevel(250)).toBe(3);
-      expect(calculateLevel(475)).toBe(4);
+      expect(calculateLevel(250)).toBe(2);
+      expect(calculateLevel(475)).toBe(3);
     });
 
     it('should handle high XP values', () => {
-      expect(calculateLevel(10000)).toBe(10);
+      expect(calculateLevel(10000)).toBe(14);
     });
   });
 

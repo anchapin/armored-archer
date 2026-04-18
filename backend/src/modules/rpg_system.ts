@@ -3,18 +3,6 @@
  * @fileoverview Handles XP gains and stat allocation.
  */
 
-import {
-  number,
-  string,
-  boolean,
-  optional,
-  pipe,
-  integer,
-  minValue,
-  maxValue,
-  minLength,
-  maxLength,
-} from 'valibot';
 import { Runtime } from '../types/nakama';
 
 import { getCacheManager } from '../utils/cache';
@@ -24,6 +12,7 @@ import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { getLevelForXp } from './xp_manager';
 
 /**
  * Helper function to save player stats to storage and invalidate cache.
@@ -516,18 +505,7 @@ export function rpcGetPlayerStats(
  * calculateLevel(450); // returns 5
  */
 export function calculateLevel(xp: number): number {
-  const baseXP = 100;
-  const growthFactor = 1.5;
-  let level = 1;
-  let xpForNextLevel = baseXP;
-
-  while (xp >= xpForNextLevel) {
-    xp -= xpForNextLevel;
-    level++;
-    xpForNextLevel = Math.floor(xpForNextLevel * growthFactor);
-  }
-
-  return level;
+  return getLevelForXp(xp);
 }
 
 // --- Respec System ---
@@ -564,19 +542,7 @@ function validateRespecRequest(
   data?: { playerStats: PlayerStats; respecData: RespecData; request: RespecRequest };
 } {
   // Validate payload
-  const validation = validatePayload(
-    {
-      new_allocation: {
-        attack: pipe(number(), integer(), minValue(0)),
-        defense: pipe(number(), integer(), minValue(0)),
-        dodge: pipe(number(), integer(), minValue(0)),
-        crit_rate: pipe(number(), integer(), minValue(0)),
-      },
-      use_free_respec: optional(boolean()),
-    },
-    payload,
-    'respec_stats'
-  );
+  const validation = validatePayload(ZodSchemas.respec_stats, payload, 'respec_stats');
   if (!validation.success) {
     return {
       error: {
@@ -754,8 +720,6 @@ export function rpcRespecStats(
 
 // --- Build Save/Load System ---
 
-const MAX_BUILD_SLOTS = 3;
-
 /**
  * Registers the save build RPC endpoint.
  *
@@ -800,21 +764,7 @@ export function rpcSaveBuild(
 ): string {
   logger.info('Save build called for user: %s', ctx.userId);
 
-  const validation = validatePayload(
-    {
-      build_slot: pipe(number(), integer(), minValue(1), maxValue(MAX_BUILD_SLOTS)),
-      build_name: pipe(string(), minLength(1), maxLength(50)),
-      stats: {
-        attack: pipe(number(), integer(), minValue(0)),
-        defense: pipe(number(), integer(), minValue(0)),
-        dodge: pipe(number(), integer(), minValue(0)),
-        crit_rate: pipe(number(), integer(), minValue(0)),
-      },
-      level: pipe(number(), integer(), minValue(1)),
-    },
-    payload,
-    'save_build'
-  );
+  const validation = validatePayload(ZodSchemas.save_build, payload, 'save_build');
   if (!validation.success) {
     return createValidationErrorResponse('save_build', validation.error);
   }
@@ -870,13 +820,7 @@ export function rpcLoadBuild(
 ): string {
   logger.info('Load build called for user: %s', ctx.userId);
 
-  const validation = validatePayload(
-    {
-      build_slot: pipe(number(), integer(), minValue(1), maxValue(MAX_BUILD_SLOTS)),
-    },
-    payload,
-    'load_build'
-  );
+  const validation = validatePayload(ZodSchemas.load_build, payload, 'load_build');
   if (!validation.success) {
     return createValidationErrorResponse('load_build', validation.error);
   }

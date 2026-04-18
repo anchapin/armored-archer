@@ -2,9 +2,17 @@ import { createMockLogger, createMockContext, createMockNakama } from '../../__m
 import {
   rpcGainXP,
   rpcAllocateStats,
+  rpcRespecStats,
+  rpcSaveBuild,
+  rpcLoadBuild,
+  rpcGetBuilds,
   registerRpcAllocateStats,
   registerRpcGainXP,
   registerRpcGetPlayerStats,
+  registerRpcRespecStats,
+  registerRpcSaveBuild,
+  registerRpcLoadBuild,
+  registerRpcGetBuilds,
   PlayerStats,
 } from '../rpg_system';
 import { rpcGetPlayerStats } from '../player_rpc';
@@ -386,6 +394,306 @@ describe('rpg_system', () => {
 
       expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
         'armored_archer/get_player_stats',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('rpcSaveBuild', () => {
+    it('should save a build to a valid slot', () => {
+      const payload = JSON.stringify({
+        build_slot: 1,
+        build_name: 'Warrior',
+        stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 5 },
+        level: 5,
+      });
+      const result = rpcSaveBuild(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.build_data.name).toBe('Warrior');
+      expect(parsed.build_data.stats.attack).toBe(20);
+      expect(parsed.build_data.level).toBe(5);
+      expect(mockNk.storageWrite).toHaveBeenCalled();
+    });
+
+    it('should reject invalid build slot', () => {
+      const payload = JSON.stringify({
+        build_slot: 5,
+        build_name: 'Test',
+        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+        level: 1,
+      });
+      const result = rpcSaveBuild(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should reject empty build name', () => {
+      const payload = JSON.stringify({
+        build_slot: 1,
+        build_name: '',
+        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+        level: 1,
+      });
+      const result = rpcSaveBuild(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('rpcLoadBuild', () => {
+    it('should load an existing build', () => {
+      const buildData = {
+        name: 'Tank',
+        stats: { attack: 10, defense: 25, dodge: 10, crit_rate: 5 },
+        level: 8,
+        timestamp: 1700000000,
+      };
+
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_builds',
+          key: 'test-user-123_slot_1',
+          userId: 'test-user-123',
+          value: JSON.stringify(buildData),
+        },
+      ]);
+
+      const payload = JSON.stringify({ build_slot: 1 });
+      const result = rpcLoadBuild(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.build_data.name).toBe('Tank');
+      expect(parsed.build_data.stats.defense).toBe(25);
+    });
+
+    it('should return error for missing build', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+
+      const payload = JSON.stringify({ build_slot: 1 });
+      const result = rpcLoadBuild(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Build not found');
+    });
+
+    it('should return error for corrupted build data', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_builds',
+          key: 'test-user-123_slot_1',
+          userId: 'test-user-123',
+          value: null,
+        },
+      ]);
+
+      const payload = JSON.stringify({ build_slot: 1 });
+      const result = rpcLoadBuild(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Build data corrupted');
+    });
+
+    it('should reject invalid build slot', () => {
+      const payload = JSON.stringify({ build_slot: 0 });
+      const result = rpcLoadBuild(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('rpcGetBuilds', () => {
+    it('should return all saved builds', () => {
+      const build1 = {
+        name: 'Warrior',
+        stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 5 },
+        level: 5,
+        timestamp: 1700000000,
+      };
+      const build2 = {
+        name: 'Archer',
+        stats: { attack: 15, defense: 10, dodge: 15, crit_rate: 10 },
+        level: 6,
+        timestamp: 1700000001,
+      };
+
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_builds',
+          key: 'test-user-123_slot_1',
+          userId: 'test-user-123',
+          value: JSON.stringify(build1),
+        },
+        {
+          collection: 'player_builds',
+          key: 'test-user-123_slot_2',
+          userId: 'test-user-123',
+          value: JSON.stringify(build2),
+        },
+      ]);
+
+      const result = rpcGetBuilds(mockCtx, mockLogger, mockNk, '');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(Object.keys(parsed.builds).length).toBe(2);
+      expect(parsed.builds[1].name).toBe('Warrior');
+      expect(parsed.builds[2].name).toBe('Archer');
+    });
+
+    it('should return empty builds when none saved', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+
+      const result = rpcGetBuilds(mockCtx, mockLogger, mockNk, '');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(Object.keys(parsed.builds).length).toBe(0);
+    });
+  });
+
+  describe('rpcRespecStats', () => {
+    const existingStats: PlayerStats = {
+      user_id: 'test-user-123',
+      level: 5,
+      xp: 500,
+      ability_points: 4,
+      stats: { attack: 15, defense: 12, dodge: 10, crit_rate: 5 },
+    };
+
+    it('should reject invalid payload', () => {
+      const payload = JSON.stringify({ bad_field: true });
+      const result = rpcRespecStats(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBeDefined();
+    });
+
+    it('should reject when player stats not found', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+
+      const payload = JSON.stringify({
+        new_allocation: { attack: 15, defense: 12, dodge: 10, crit_rate: 5 },
+        use_free_respec: false,
+      });
+      const result = rpcRespecStats(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toBe('Player stats not found');
+    });
+
+    it('should reject when allocation total does not match', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_stats',
+          key: 'test-user-123',
+          userId: 'test-user-123',
+          value: JSON.stringify(existingStats),
+        },
+      ]);
+
+      const payload = JSON.stringify({
+        new_allocation: { attack: 50, defense: 12, dodge: 10, crit_rate: 5 },
+        use_free_respec: false,
+      });
+      const result = rpcRespecStats(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.error).toContain('Total stat points must match');
+    });
+
+    it('should perform free respec successfully', () => {
+      const respecData = {
+        last_respec_time: 0,
+        free_respecs_used: 0,
+        current_season_id: 'season1',
+      };
+
+      mockNk.storageRead = jest.fn().mockImplementation((keys: any[]) => {
+        const collection = keys[0].collection;
+        if (collection === 'player_stats') {
+          return [{ collection, key: 'test-user-123', userId: 'test-user-123', value: JSON.stringify(existingStats) }];
+        }
+        if (collection === 'respec_data') {
+          return [{ collection, key: 'test-user-123', userId: 'test-user-123', value: JSON.stringify(respecData) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        new_allocation: { attack: 20, defense: 12, dodge: 10, crit_rate: 0 },
+        use_free_respec: true,
+      });
+      const result = rpcRespecStats(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.used_free_respec).toBe(true);
+      expect(parsed.cost_paid).toBe(0);
+      expect(parsed.player_stats.stats.attack).toBe(20);
+    });
+  });
+
+  describe('registerRpcRespecStats', () => {
+    it('should register the respec_stats RPC endpoint', () => {
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      } as unknown as Runtime.Initializer;
+
+      registerRpcRespecStats(mockInitializer);
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/respec_stats',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('registerRpcSaveBuild', () => {
+    it('should register the save_build RPC endpoint', () => {
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      } as unknown as Runtime.Initializer;
+
+      registerRpcSaveBuild(mockInitializer);
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/save_build',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('registerRpcLoadBuild', () => {
+    it('should register the load_build RPC endpoint', () => {
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      } as unknown as Runtime.Initializer;
+
+      registerRpcLoadBuild(mockInitializer);
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/load_build',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('registerRpcGetBuilds', () => {
+    it('should register the get_builds RPC endpoint', () => {
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      } as unknown as Runtime.Initializer;
+
+      registerRpcGetBuilds(mockInitializer);
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_builds',
         expect.any(Function)
       );
     });

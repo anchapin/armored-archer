@@ -2,6 +2,7 @@ import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
 import { PlayerInventory } from './gear_system';
 import { PlayerStats } from './rpg_system';
+import { getLevelForXp } from './xp_manager';
 
 export interface ValidationResult {
   is_valid: boolean;
@@ -196,7 +197,7 @@ export function validateFullProgression(
 }
 
 function calculateLevelFromXP(xp: number): number {
-  return Math.floor(Math.sqrt(Math.max(0, xp) / 100)) + 1;
+  return getLevelForXp(xp);
 }
 
 export const ProgressionValidation = {

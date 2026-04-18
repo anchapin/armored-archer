@@ -5,6 +5,8 @@
 
 import {
   getXpForLevel,
+  getLevelForXp,
+  getLevelProgress,
   calculateXpGain,
   getProgressPercentage,
   getLevelCurveType,
@@ -168,6 +170,84 @@ describe('XPManager', () => {
       const result = validateXpGainSimple(100, 0);
       expect(result.valid).toBe(false);
       expect(result.reason).toContain('level');
+    });
+  });
+
+  describe('getLevelForXp', () => {
+    it('should return level 1 for 0 XP', () => {
+      expect(getLevelForXp(0)).toBe(1);
+    });
+
+    it('should return level 1 for negative XP', () => {
+      expect(getLevelForXp(-100)).toBe(1);
+    });
+
+    it('should return level 1 below threshold', () => {
+      expect(getLevelForXp(99)).toBe(1);
+    });
+
+    it('should return level 2 at exactly 100 XP', () => {
+      expect(getLevelForXp(100)).toBe(2);
+    });
+
+    it('should return level 3 at 300 XP', () => {
+      expect(getLevelForXp(300)).toBe(3);
+    });
+
+    it('should return level 2 for 250 XP (between level 2 and 3)', () => {
+      expect(getLevelForXp(250)).toBe(2);
+    });
+
+    it('should return level 3 for 500 XP (between level 3 and 4)', () => {
+      expect(getLevelForXp(500)).toBe(3);
+    });
+
+    it('should return correct level for high XP values', () => {
+      expect(getLevelForXp(10000)).toBe(14);
+    });
+
+    it('should return level 50 at max XP', () => {
+      expect(getLevelForXp(122500)).toBe(50);
+    });
+
+    it('should cap at level 50 beyond max XP', () => {
+      expect(getLevelForXp(999999)).toBe(50);
+    });
+
+    it('should round-trip with getXpForLevel for all levels', () => {
+      for (let level = 1; level <= 50; level++) {
+        const xp = getXpForLevel(level);
+        expect(getLevelForXp(xp)).toBe(level);
+      }
+    });
+
+    it('should return N-1 for XP just below level N threshold', () => {
+      for (let level = 2; level <= 50; level++) {
+        const xp = getXpForLevel(level) - 1;
+        expect(getLevelForXp(xp)).toBe(level - 1);
+      }
+    });
+  });
+
+  describe('getLevelProgress', () => {
+    it('should return correct progress info at level boundary', () => {
+      const progress = getLevelProgress(100);
+      expect(progress.level).toBe(2);
+      expect(progress.currentLevelXp).toBe(100);
+      expect(progress.nextLevelXp).toBe(300);
+      expect(progress.progress).toBe(0);
+    });
+
+    it('should return correct progress mid-level', () => {
+      const progress = getLevelProgress(200);
+      expect(progress.level).toBe(2);
+      expect(progress.progress).toBe(50);
+    });
+
+    it('should handle max level', () => {
+      const progress = getLevelProgress(122500);
+      expect(progress.level).toBe(50);
+      expect(progress.progress).toBe(100);
     });
   });
 

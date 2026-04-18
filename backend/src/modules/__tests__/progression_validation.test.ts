@@ -20,7 +20,7 @@ describe('Progression Validation', () => {
       validStats = {
         user_id: 'test_user',
         level: 5,
-        xp: 1600,
+        xp: 1200,
         ability_points: 4,
         stats: {
           attack: 15,
@@ -44,7 +44,7 @@ describe('Progression Validation', () => {
     });
 
     it('should detect XP decrease', () => {
-      const prevStats = { ...validStats, xp: 3000 };
+      const prevStats = { ...validStats, xp: 2000 };
       const result = validatePlayerStats(validStats, prevStats);
       expect(result.is_valid).toBe(false);
     });
@@ -217,7 +217,7 @@ describe('Progression Validation', () => {
       const validStats: PlayerStats = {
         user_id: 'test_user',
         level: 5,
-        xp: 1600,
+        xp: 1200,
         ability_points: 4,
         stats: { attack: 15, defense: 15, dodge: 12, crit_rate: 8 },
       };
@@ -259,7 +259,7 @@ describe('Progression Validation', () => {
       const invalidStats: PlayerStats = {
         user_id: 'test_user',
         level: 5,
-        xp: 1600,
+        xp: 1200,
         ability_points: -1,
         stats: { attack: -5, defense: 15, dodge: 12, crit_rate: 8 },
       };
