@@ -206,7 +206,7 @@ jobs:
       - name: Run database migrations
         working-directory: ./backend/data
         run: |
-          for migration in $(ls -1 *.sql 2>/dev/null | sort); do
+          for migration in $(ls -1 *.sql 2>/dev/null | sort -V); do
             echo "Running migration: $migration"
             PGPASSWORD=changeme psql -h localhost -U postgres -d nakama -f "$migration" || true
           done

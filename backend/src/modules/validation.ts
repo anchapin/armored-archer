@@ -722,6 +722,49 @@ export const ValibotSchemas = {
   capture_rating_snapshot: object({
     season_id: optional(pipe(string(), minLength(1), maxLength(50))),
   }),
+
+  admin_get_season_state: optional(
+    object({
+      season_id: optional(pipe(string(), minLength(1), maxLength(50))),
+    })
+  ),
+
+  admin_get_player_season: object({
+    user_id: pipe(string(), minLength(1), maxLength(100)),
+    season_id: optional(pipe(string(), minLength(1), maxLength(50))),
+  }),
+
+  admin_validate_season: optional(
+    object({
+      season_id: optional(pipe(string(), minLength(1), maxLength(50))),
+      checks: optional(
+        array(
+          createEnum([
+            'orphaned_rewards',
+            'missing_prestige',
+            'decay_consistency',
+            'leaderboard_integrity',
+            'reward_distribution',
+          ])
+        )
+      ),
+      auto_fix: optional(boolean()),
+    })
+  ),
+
+  admin_trigger_season_event: object({
+    action: createEnum([
+      'end_season',
+      'recalculate_ratings',
+      'recalculate_decay',
+      'fix_missing_rewards',
+      'rebuild_prestige',
+    ]),
+    season_id: optional(pipe(string(), minLength(1), maxLength(50))),
+    dry_run: optional(boolean()),
+    player_ids: optional(array(pipe(string(), minLength(1), maxLength(100)))),
+    confirmation_token: optional(pipe(string(), minLength(1), maxLength(128))),
+  }),
 } as const;
 
 // Export with Zod-like names for backward compatibility

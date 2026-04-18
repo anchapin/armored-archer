@@ -112,6 +112,12 @@ import {
 } from './modules/season_system';
 import { registerSeasonTelemetryEndpoints } from './modules/season_telemetry';
 import {
+  registerRpcAdminGetSeasonState,
+  registerRpcAdminGetPlayerSeason,
+  registerRpcAdminValidateSeason,
+  registerRpcAdminTriggerSeasonEvent,
+} from './modules/season_admin';
+import {
   registerRpcCompleteStage,
   registerRpcGetCompletedStages,
   registerRpcGetCampaignProgress,
@@ -529,6 +535,12 @@ const InitModule: InitModule = function (
   registerRpcFlagMatchForQa(initializer);
   registerRpcAddDebugNotes(initializer);
   registerRpcReconstructMatchState(initializer);
+
+  // Register admin season tools (always available for debugging/QA)
+  registerRpcAdminGetSeasonState(initializer);
+  registerRpcAdminGetPlayerSeason(initializer);
+  registerRpcAdminValidateSeason(initializer);
+  registerRpcAdminTriggerSeasonEvent(initializer);
 
   logSystemEvent('info', 'Armored Archer server module initialized');
 
