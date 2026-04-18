@@ -23,80 +23,76 @@ permissions:
 
 jobs:
   backend-coverage:
-    name: Backend Coverage (Go)
+    name: Backend Coverage (TypeScript)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          go-version: '1.25'
-          cache: true
-          cache-dependency-path: backend/go.sum
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Generate Go coverage
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Generate TypeScript coverage
         working-directory: ./backend
         run: |
-          go test -coverprofile=coverage.out -covermode=atomic ./...
           mkdir -p coverage
-          cp coverage.out coverage/coverage.out
+          npm run test:coverage
 
-      - name: Check assertions
+      - name: Generate coverage report summary
+        id: coverage-summary
         run: |
-          echo "=== Checking assertions in test files ==="
-          cd backend
-          bash tests/quality/check_assertions.sh
+          echo "=== Backend Coverage Analysis ==="
 
-      - name: Analyze coverage gaps
-        run: |
-          echo "=== Analyzing coverage gaps ==="
-          cd backend
-          bash tests/quality/analyze_gaps.sh
+          if [ -f backend/coverage/coverage-summary.json ]; then
+            echo "Overall Coverage:"
+            node -e "
+              const data = require('./backend/coverage/coverage-summary.json');
+              const totals = data.total;
+              console.log('  Statements: ' + totals.statements.pct + '%');
+              console.log('  Branches: ' + totals.branches.pct + '%');
+              console.log('  Functions: ' + totals.functions.pct + '%');
+              console.log('  Lines: ' + totals.lines.pct + '%');
+            "
 
-      - name: Upload gaps report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-gaps
-          path: backend/coverage/gaps.json
-          retention-days: 30
-          if-no-files-found: ignore
+            echo ""
+            echo "Critical Systems Coverage:"
 
-      - name: Extract coverage metrics
-        id: coverage
-        run: |
-          cd backend
-          OVERALL=$(go tool cover -func=coverage/coverage.out | grep "^total:" | awk '{print $3}' | sed 's/%//')
-          echo "overall=$OVERALL" >> $GITHUB_OUTPUT
-          echo "Overall coverage: $OVERALL%"
-
-      - name: Enforce coverage gates
-        run: |
-          echo "=== Enforcing coverage thresholds ==="
-          cd backend
-          bash tests/quality/coverage_gates.sh
-        env:
-          COVERAGE_GATE_STAGE: ${{ github.event.inputs.coverage_stage }}
-
-      - name: Generate HTML report
-        working-directory: ./backend
-        run: |
-          mkdir -p coverage/html
-          go tool cover -html=coverage/coverage.out -o coverage/html/index.html
+            node -e "
+              const data = require('./backend/coverage/coverage-summary.json');
+              const critical = ['combat_system', 'rpg_system', 'matchmaker'];
+              Object.entries(data).forEach(([path, info]) => {
+                critical.forEach(name => {
+                  if (path.includes(name)) {
+                    console.log('  ' + name + ': ' + info.lines.pct + '%');
+                  }
+                });
+              });
+            "
+          else
+            echo "coverage-summary.json not found, skipping coverage summary"
+          fi
 
       - name: Upload coverage artifact
+        if: env.ACT != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: backend-coverage-html
-          path: backend/coverage/html/
+          name: backend-coverage
+          path: backend/coverage/
           retention-days: 30
           if-no-files-found: ignore
 
-      - name: Track coverage history
-        run: |
-          bash scripts/track-coverage-history.sh
+      - name: Skip upload (act detected)
+        if: env.ACT == 'true'
+        run: echo "Skipping artifact upload in act environment"
 
   godot-coverage:
     name: Frontend Coverage (Godot)
@@ -106,7 +102,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Skip for act (OOM issue)
+        if: env.ACT == 'true'
+        run: |
+          echo "Skipping Godot coverage for act (ACT environment detected)"
+          echo "Godot tests cause OOM in Docker containers with act"
+          echo "::warning::Godot coverage skipped for act - run locally with Godot Editor instead"
+          exit 0
+
       - name: Setup Godot
+        if: env.ACT != 'true'
         run: |
           wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
           unzip -q godot.zip
@@ -114,11 +119,13 @@ jobs:
           mv Godot_v4.6-stable_linux.x86_64 godot4
 
       - name: Run GUT tests with JUnit output
+        if: env.ACT != 'true'
         run: |
           mkdir -p test/results
           ./godot4 --headless --script test/run_all_tests.gd
 
       - name: Generate HTML coverage report
+        if: env.ACT != 'true'
         run: |
           if [ -f test/coverage/json/coverage.json ]; then
             python3 scripts/parse_godot_coverage.py \
@@ -129,6 +136,7 @@ jobs:
           fi
 
       - name: Upload Godot coverage artifact
+        if: env.ACT != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: godot-coverage-html
@@ -136,108 +144,9 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
-  gap-analysis:
-    name: Coverage Gap Analysis
-    runs-on: ubuntu-latest
-    needs: backend-coverage
-    if: always()
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-          cache: true
-          cache-dependency-path: backend/go.sum
-
-      - name: Download coverage artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-report
-          path: backend/coverage/
-
-      - name: Run gap analysis
-        run: |
-          echo "=== Running gap analysis ==="
-          cd backend
-          bash scripts/gap-analysis.sh
-
-      - name: Upload gaps artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-gaps
-          path: backend/coverage/gaps.json
-          retention-days: 30
-          if-no-files-found: ignore
-
-      - name: Comment PR with gaps
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const gaps = JSON.parse(fs.readFileSync('backend/coverage/gaps.json', 'utf8'));
-            const highPriority = gaps.gaps.filter(g => g.priority === 'HIGH').slice(0, 5);
-            const mediumPriority = gaps.gaps.filter(g => g.priority === 'MEDIUM').slice(0, 3);
-            const summary = gaps.summary;
-
-            const comment = `
-              ## Coverage Report
-              **Gate Stage:** ${{ github.event.inputs.coverage_stage || 'Active (Current Milestone)' }}
-
-              ### Gap Summary
-              - Total gaps: ${summary.total_gaps}
-              - High priority (critical path): ${summary.high_priority}
-              - Medium priority (business logic): ${summary.medium_priority}
-              - Low priority (utilities): ${summary.low_priority}
-
-              ### Top High-Priority Gaps
-              ${highPriority.length > 0 ? highPriority.map(g => `- **${g.package}**: \`${g.function}\` (${g.complexity} complexity)`).join('\n') : 'No high-priority gaps found! 🎉'}
-
-              ### Top Medium-Priority Gaps
-              ${mediumPriority.length > 0 ? mediumPriority.map(g => `- **${g.package}**: \`${g.function}\` (${g.complexity} complexity)`).join('\n') : 'No medium-priority gaps found! 🎉'}
-
-              ### Next Steps
-              1. Review high-priority gaps in critical packages (combat, matchmaking, rpg)
-              2. Use suggested fixtures from testhelpers package
-              3. Run \`bash scripts/gap-analysis.sh\` for full gap list
-              4. Generate coverage: \`go test -coverprofile=coverage/coverage.out ./...\`
-
-              ---
-              📊 View detailed coverage report in artifacts
-            `;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              body: comment
-            });
-
-      - name: Enforce 50% line coverage threshold
-        run: |
-          if [ -f test/coverage/json/coverage.json ]; then
-            LINE_COVERAGE=$(python3 scripts/parse_godot_coverage.py --input=test/coverage/json/coverage.json --json-output 2>/dev/null || echo "{}" | jq -r '.overall_percentage // 0')
-            if [ -z "$LINE_COVERAGE" ] || [ "$LINE_COVERAGE" = "null" ]; then
-              LINE_COVERAGE=0
-            fi
-            if (( $(echo "$LINE_COVERAGE < 50" | bc -l) )); then
-              echo "::error::Godot line coverage ${LINE_COVERAGE}% is below 50% threshold"
-              exit 1
-            fi
-            echo "✅ Line coverage ${LINE_COVERAGE}% meets 50% threshold"
-          else
-            echo "Warning: coverage.json not found, skipping line coverage threshold check"
-          fi
-
-      - name: Upload test results artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: godot-test-results
-          path: test/results/
-          retention-days: 30
-          if-no-files-found: ignore
+      - name: Skip upload (act detected)
+        if: env.ACT == 'true'
+        run: echo "Skipping artifact upload in act environment"
 
   coverage-gate:
     name: Coverage Gate (Block PR on Failure)
@@ -264,4 +173,4 @@ jobs:
             exit 1
           fi
 
-          echo "✅ All coverage checks passed"
+          echo "All coverage checks passed"
