@@ -11,51 +11,6 @@ import { createStructuredLogger, StructuredLogger } from './config/structuredLog
 import { initializeTracing } from './config/tracing';
 import { initializeAlerting } from './modules/alerting';
 import { registerAnalyticsEndpoints } from './modules/analytics';
-import {
-  startNotificationScheduler,
-  stopNotificationScheduler,
-} from './modules/notification_scheduler';
-import {
-  initializeNotifications,
-  registerNotificationEndpoints,
-} from './modules/notifications_rpc';
-import { registerFairnessTelemetryEndpoints } from './modules/fairness_telemetry';
-import {
-  registerRpcHealthCheck,
-  registerRpcReportPlayer,
-  registerRpcGetPlayerReports,
-  registerRpcGetPlayerStats,
-} from './modules/player_rpc';
-import {
-  registerProgressiveRollout,
-  initializeProgressiveRollout,
-} from './modules/progressive_rollout';
-import {
-  registerRpcGainXP,
-  registerRpcAllocateStats,
-  registerRpcRespecStats,
-  registerRpcSaveBuild,
-  registerRpcLoadBuild,
-  registerRpcGetBuilds,
-} from './modules/rpg_system';
-import {
-  registerRpcGetSeasonInfo,
-  registerRpcGetLeaderboard,
-  registerRpcUpdateRank,
-  registerRpcGetSeasonRewards,
-  registerRpcClaimSeasonRewards,
-  registerRpcEndSeason,
-  registerRpcGetPlayerCosmetics,
-} from './modules/season_system';
-import {
-  registerRpcGetSeasonHistory,
-  registerRpcGetPlayerSeasonRank,
-} from './modules/season_leaderboard';
-import {
-  registerRpcCompleteStage,
-  registerRpcGetCompletedStages,
-  registerRpcGetCampaignProgress,
-} from './modules/stage_tracking';
 import { registerBalanceAnalyticsEndpoints } from './modules/balance_analytics';
 import {
   registerRpcSubmitCombatAction,
@@ -75,6 +30,7 @@ import {
   registerErrorInsightRpcs,
   initializeErrorInsightsPipeline,
 } from './modules/error_insight_pipeline';
+import { registerFairnessTelemetryEndpoints } from './modules/fairness_telemetry';
 import {
   registerRpcGenerateGear,
   registerRpcEquipGear,
@@ -85,6 +41,13 @@ import {
   registerRpcGetUnlockedModifiers,
 } from './modules/gear_system';
 import { initializeHealthMonitoring } from './modules/health_monitor';
+import {
+  registerRpcGetMatchReplay,
+  registerRpcListMatchReplays,
+  registerRpcFlagMatchForQa,
+  registerRpcAddDebugNotes,
+  registerRpcReconstructMatchState,
+} from './modules/match_replay';
 import {
   registerRpcListMatches,
   registerRpcCreateMatch,
@@ -98,13 +61,6 @@ import {
   registerRpcGetAsyncMatchState,
   registerRpcForfeitMatch,
 } from './modules/matchmaker';
-import {
-  registerRpcGetMatchReplay,
-  registerRpcListMatchReplays,
-  registerRpcFlagMatchForQa,
-  registerRpcAddDebugNotes,
-  registerRpcReconstructMatchState,
-} from './modules/match_replay';
 import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
 import {
   registerRpcJoinPool,
@@ -112,6 +68,51 @@ import {
   registerRpcGetQueueStatus,
 } from './modules/matchmaking_pool';
 import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
+import {
+  startNotificationScheduler,
+  stopNotificationScheduler,
+} from './modules/notification_scheduler';
+import {
+  initializeNotifications,
+  registerNotificationEndpoints,
+} from './modules/notifications_rpc';
+import {
+  registerRpcHealthCheck,
+  registerRpcReportPlayer,
+  registerRpcGetPlayerReports,
+  registerRpcGetPlayerStats,
+} from './modules/player_rpc';
+import {
+  registerProgressiveRollout,
+  initializeProgressiveRollout,
+} from './modules/progressive_rollout';
+import {
+  registerRpcGainXP,
+  registerRpcAllocateStats,
+  registerRpcRespecStats,
+  registerRpcSaveBuild,
+  registerRpcLoadBuild,
+  registerRpcGetBuilds,
+} from './modules/rpg_system';
+import {
+  registerRpcGetSeasonHistory,
+  registerRpcGetPlayerSeasonRank,
+} from './modules/season_leaderboard';
+import {
+  registerRpcGetSeasonInfo,
+  registerRpcGetLeaderboard,
+  registerRpcUpdateRank,
+  registerRpcGetSeasonRewards,
+  registerRpcClaimSeasonRewards,
+  registerRpcEndSeason,
+  registerRpcGetPlayerCosmetics,
+} from './modules/season_system';
+import { registerSeasonTelemetryEndpoints } from './modules/season_telemetry';
+import {
+  registerRpcCompleteStage,
+  registerRpcGetCompletedStages,
+  registerRpcGetCampaignProgress,
+} from './modules/stage_tracking';
 import {
   registerRpcValidatePurchase,
   registerRpcGetCurrency,
@@ -236,6 +237,7 @@ const InitModule: InitModule = function (
   registerNotificationEndpoints(initializer);
   registerFairnessTelemetryEndpoints(initializer);
   registerBalanceAnalyticsEndpoints(initializer);
+  registerSeasonTelemetryEndpoints(initializer);
 
   if (config.rateLimit.enabled) {
     registerRpcWithRateLimit(

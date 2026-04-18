@@ -220,6 +220,60 @@ const seasonParticipation = new Counter({
 });
 
 // ==========================================
+// Season Telemetry Metrics
+// ==========================================
+
+const seasonAvgEloGauge = new Gauge({
+  name: 'armored_archer_season_avg_elo',
+  help: 'Current average ELO across active season players',
+  labelNames: ['season_id'] as const,
+  registers: [register],
+});
+
+const seasonEloDriftGauge = new Gauge({
+  name: 'armored_archer_season_elo_drift',
+  help: 'Drift of average ELO from the base 1000, positive = inflation',
+  labelNames: ['season_id'] as const,
+  registers: [register],
+});
+
+const seasonRewardClaimsTotal = new Counter({
+  name: 'armored_archer_season_reward_claims_total',
+  help: 'Total season reward claims',
+  labelNames: ['season_id', 'tier'] as const,
+  registers: [register],
+});
+
+const seasonCurrencyInjectedTotal = new Counter({
+  name: 'armored_archer_season_currency_injected_total',
+  help: 'Total in-game currency injected via season rewards',
+  labelNames: ['season_id', 'currency_type'] as const,
+  registers: [register],
+});
+
+const seasonRankChangesTotal = new Counter({
+  name: 'armored_archer_season_rank_changes_total',
+  help: 'Total rank changes in current season',
+  labelNames: ['season_id', 'is_punch_up'] as const,
+  registers: [register],
+});
+
+const seasonRankChangeDelta = new Histogram({
+  name: 'armored_archer_season_rank_change_delta',
+  help: 'Distribution of rank change deltas per match',
+  labelNames: ['season_id'] as const,
+  buckets: [-60, -40, -32, -20, -10, 0, 10, 20, 32, 40, 60],
+  registers: [register],
+});
+
+const seasonActivePlayersGauge = new Gauge({
+  name: 'armored_archer_season_active_players',
+  help: 'Number of players with leaderboard entries in current season',
+  labelNames: ['season_id'] as const,
+  registers: [register],
+});
+
+// ==========================================
 // Analytics Event Metrics
 // ==========================================
 
@@ -487,4 +541,37 @@ export function recordDatabaseQueryDuration(queryType: string, durationSeconds: 
 
 export function setCacheHitRatio(cacheType: string, ratio: number): void {
   cacheHitRatio.set({ cache_type: cacheType }, ratio);
+}
+
+// ==========================================
+// Season Telemetry Metric Functions
+// ==========================================
+
+export function setSeasonAvgElo(seasonId: string, avgElo: number): void {
+  seasonAvgEloGauge.set({ season_id: seasonId }, avgElo);
+  seasonEloDriftGauge.set({ season_id: seasonId }, avgElo - 1000);
+}
+
+export function incrementSeasonRewardClaims(seasonId: string, tier: string): void {
+  seasonRewardClaimsTotal.inc({ season_id: seasonId, tier });
+}
+
+export function recordSeasonCurrencyInjected(
+  seasonId: string,
+  currencyType: string,
+  amount: number
+): void {
+  seasonCurrencyInjectedTotal.inc({ season_id: seasonId, currency_type: currencyType }, amount);
+}
+
+export function incrementSeasonRankChanges(seasonId: string, isPunchUp: boolean): void {
+  seasonRankChangesTotal.inc({ season_id: seasonId, is_punch_up: String(isPunchUp) });
+}
+
+export function recordSeasonRankChangeDelta(seasonId: string, delta: number): void {
+  seasonRankChangeDelta.observe({ season_id: seasonId }, delta);
+}
+
+export function setSeasonActivePlayers(seasonId: string, count: number): void {
+  seasonActivePlayersGauge.set({ season_id: seasonId }, count);
 }

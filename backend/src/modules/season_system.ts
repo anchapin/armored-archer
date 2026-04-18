@@ -14,6 +14,11 @@ import {
 } from './anti_cheat';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { recordSeasonCompletion } from './season_leaderboard';
+import { logRankChange, logRewardClaim, recordSeasonEndSnapshot } from './season_telemetry';
+import {
+  incrementSeasonRankChanges,
+  recordSeasonRankChangeDelta,
+} from './metrics';
 
 /**
  * Season rewards data structure.
@@ -502,6 +507,32 @@ export function rpcUpdateRank(
     loserNewElo
   );
 
+  // Season telemetry: log rank change and update Prometheus metrics
+  const daysIntoSeason = Math.floor((Date.now() - currentSeason.start_time) / (24 * 60 * 60 * 1000));
+  const kFactor = request.is_punch_up ? 60 : 32;
+
+  logRankChange(nk, {
+    event_id: '',
+    match_id: request.match_id,
+    season_id: currentSeason.season_id,
+    timestamp: Date.now(),
+    winner_id: request.winner_id,
+    loser_id: request.loser_id,
+    winner_old_elo: winnerOldElo,
+    winner_new_elo: winnerNewElo,
+    winner_rank_delta: winnerNewElo - winnerOldElo,
+    loser_old_elo: loserOldElo,
+    loser_new_elo: loserNewElo,
+    loser_rank_delta: loserNewElo - loserOldElo,
+    is_punch_up: request.is_punch_up,
+    k_factor: kFactor,
+    days_into_season: daysIntoSeason,
+  });
+
+  incrementSeasonRankChanges(currentSeason.season_id, request.is_punch_up);
+  recordSeasonRankChangeDelta(currentSeason.season_id, winnerNewElo - winnerOldElo);
+  recordSeasonRankChangeDelta(currentSeason.season_id, loserNewElo - loserOldElo);
+
   return JSON.stringify({
     success: true,
     winner: {
@@ -778,6 +809,19 @@ export function rpcClaimSeasonRewards(
     );
   }
 
+  // Season telemetry: log reward claim
+  logRewardClaim(nk, {
+    event_id: '',
+    season_id: currentSeason.season_id,
+    user_id: ctx.userId,
+    timestamp: Date.now(),
+    rank: playerEntry.rank,
+    rank_tier: rewards.rank_tier,
+    coins_awarded: rewards.coins,
+    gems_awarded: rewards.gems,
+    had_cosmetics: !!rewards.cosmetics,
+  });
+
   return JSON.stringify({
     success: true,
     rewards: rewards,
@@ -870,6 +914,9 @@ export function rpcEndSeason(
   nk.leaderboardCreate(nextSeason.season_id, true, 'desc', 'best', '', {
     season_number: String(nextSeasonNumber),
   });
+
+  // Season telemetry: capture final season snapshot
+  recordSeasonEndSnapshot(nk, oldSeason.season_id, oldSeason.start_time);
 
   return JSON.stringify({
     success: true,
