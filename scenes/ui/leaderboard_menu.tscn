@@ -1,7 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://leaderboard_menu"]
+[gd_scene load_steps=5 format=3 uid="uid://leaderboard_menu"]
 
 [ext_resource type="Script" path="res://scenes/ui/leaderboard_menu.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://safe_area_container" path="res://scenes/ui/safe_area_container.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://bq7s3nmessagepanel" path="res://scenes/ui/season_message_panel.tscn" id="3"]
+[ext_resource type="PackedScene" uid="uid://bq7r3rewardpreview" path="res://scenes/ui/reward_preview_panel.tscn" id="4"]
 
 [node name="LeaderboardMenu" type="Control"]
 layout_mode = 3
@@ -64,6 +66,32 @@ layout_mode = 2
 text = "Tier: Play PvP to get ranked!"
 horizontal_alignment = 1
 
+[node name="MotivationalLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 2
+visible = false
+
+[node name="TierProgressBar" type="ProgressBar" parent="SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox"]
+layout_mode = 2
+max_value = 100.0
+value = 0.0
+show_percentage = false
+visible = false
+
+[node name="TierProgressLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+visible = false
+
+[node name="DecayWarningLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+visible = false
+
 [node name="ScrollContainer" type="ScrollContainer" parent="SafeAreaContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -80,6 +108,10 @@ alignment = 1
 layout_mode = 2
 text = "Claim Rewards"
 
+[node name="PreviewRewardsButton" type="Button" parent="SafeAreaContainer/VBoxContainer/BottomPanel"]
+layout_mode = 2
+text = "Preview Rewards"
+
 [node name="BackButton" type="Button" parent="SafeAreaContainer/VBoxContainer/BottomPanel"]
 layout_mode = 2
 text = "Back"
@@ -88,4 +120,10 @@ text = "Back"
 layout_mode = 2
 text = "Loading leaderboard..."
 horizontal_alignment = 1
+visible = false
+
+[node name="SeasonMessagePanel" parent="." instance=ExtResource("3")]
+visible = false
+
+[node name="RewardPreviewPanel" parent="." instance=ExtResource("4")]
 visible = false

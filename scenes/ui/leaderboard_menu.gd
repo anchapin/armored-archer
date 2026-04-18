@@ -10,6 +10,15 @@ extends Control
 @onready var back_button: Button = $VBoxContainer/BottomPanel/BackButton
 @onready var loading_label: Label = $VBoxContainer/LoadingLabel
 
+# --- New UI References (added in enhanced scene) ---
+@onready var motivational_label: Label = $VBoxContainer/YourRankPanel/MotivationalLabel
+@onready var tier_progress_bar: ProgressBar = $VBoxContainer/YourRankPanel/TierProgressBar
+@onready var tier_progress_label: Label = $VBoxContainer/YourRankPanel/TierProgressLabel
+@onready var decay_warning_label: Label = $VBoxContainer/YourRankPanel/DecayWarningLabel
+@onready var season_message_panel: Control = $SeasonMessagePanel
+@onready var reward_preview_panel: Control = $RewardPreviewPanel
+@onready var preview_rewards_button: Button = $VBoxContainer/BottomPanel/PreviewRewardsButton
+
 # --- Theme Manager Reference ---
 var theme_manager: Node
 
@@ -18,6 +27,7 @@ var design_tokens: Node
 
 # --- State ---
 var season_manager: Node = null
+var season_messenger: Node = null
 var is_initialized: bool = false
 
 # --- Rank Colors ---
@@ -27,29 +37,47 @@ const RANK_COLORS = {
 	3: Color("#CD7F32"),   # Bronze for 3rd
 }
 
+# --- Tier Boundaries for Progress ---
+const TIER_BOUNDARIES: Dictionary = {
+	"Legendary": 10,
+	"Epic": 50,
+	"Rare": 100,
+	"Uncommon": 500,
+	"Common": 99999,
+}
+
 # --- Initialization ---
 func _ready() -> void:
-	# Get ThemeManager reference
 	theme_manager = get_node_or_null("/root/ThemeManager")
-	
-	# Get DesignTokens reference
-	design_tokens = get_node_or_null("/root/DesignTokens")
-	
-	# Apply theme if available
+	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
+
 	if theme_manager:
 		_apply_theme()
 		theme_manager.theme_changed.connect(_on_theme_changed)
-	
+
 	season_manager = get_node_or_null("/root/SeasonManager")
+	season_messenger = get_node_or_null("/root/SeasonMessenger")
 
 	rewards_button.pressed.connect(_on_rewards_pressed)
 	back_button.pressed.connect(_on_back_pressed)
+
+	if preview_rewards_button:
+		preview_rewards_button.pressed.connect(_on_preview_rewards_pressed)
+
+	# Hide optional UI elements until data is loaded
+	if decay_warning_label:
+		decay_warning_label.visible = false
+	if tier_progress_bar:
+		tier_progress_bar.visible = false
+	if tier_progress_label:
+		tier_progress_label.visible = false
 
 	if season_manager:
 		season_manager.season_info_loaded.connect(_on_season_info_loaded)
 		season_manager.leaderboard_loaded.connect(_on_leaderboard_loaded)
 		season_manager.rewards_claimed.connect(_on_rewards_claimed)
 		season_manager.season_transitioned.connect(_on_season_transitioned)
+		season_manager.decay_info_updated.connect(_on_decay_info_updated)
 
 	refresh_leaderboard()
 
@@ -79,9 +107,87 @@ func _on_season_info_loaded(data: Dictionary) -> void:
 		var tier: String = season_manager.get_rank_tier(player_rank)
 		your_tier_label.text = "Tier: %s" % tier
 		your_tier_label.modulate = season_manager.get_rank_color(player_rank)
+		_update_motivational_message(player_rank)
+		_update_tier_progress(player_rank)
 	else:
 		your_rank_label.text = "Not ranked yet"
 		your_tier_label.text = "Play PvP to get ranked!"
+		if motivational_label:
+			motivational_label.text = "Play PvP matches to earn your rank!"
+		if tier_progress_bar:
+			tier_progress_bar.visible = false
+		if tier_progress_label:
+			tier_progress_label.visible = false
+
+# --- Motivational Messaging ---
+func _update_motivational_message(player_rank: int) -> void:
+	if not motivational_label:
+		return
+
+	if season_messenger:
+		motivational_label.text = season_messenger.get_motivational_message(player_rank)
+	else:
+		if player_rank <= 10:
+			motivational_label.text = "Top 10! Defend your Legendary position!"
+		elif player_rank <= 50:
+			motivational_label.text = "Rank %d! Push for Legendary!" % player_rank
+		else:
+			motivational_label.text = "Rank %d. Keep climbing!" % player_rank
+
+# --- Tier Progress Bar ---
+func _update_tier_progress(player_rank: int) -> void:
+	if not tier_progress_bar or not tier_progress_label or not season_manager:
+		return
+
+	var current_tier: String = season_manager.get_rank_tier(player_rank)
+	var threshold: int = TIER_BOUNDARIES.get(current_tier, 99999)
+
+	if current_tier == "Legendary":
+		tier_progress_bar.visible = false
+		tier_progress_label.visible = true
+		tier_progress_label.text = "Max tier reached!"
+		return
+
+	# Find the current tier's upper bound and next tier's threshold
+	var tier_order: Array = ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+	var current_idx: int = tier_order.find(current_tier)
+	if current_idx < 0:
+		return
+
+	# Calculate progress to next tier
+	var next_tier: String = tier_order[current_idx + 1] if current_idx + 1 < tier_order.size() else ""
+	var next_threshold: int = TIER_BOUNDARIES.get(next_tier, 0)
+
+	if next_threshold <= 0:
+		return
+
+	# Progress: higher rank = closer to next tier
+	# Player needs to reach next_threshold rank to advance
+	var spots_needed: int = player_rank - next_threshold
+	var current_tier_upper: int = TIER_BOUNDARIES.get(current_tier, 99999)
+	var tier_range: int = current_tier_upper - next_threshold
+	var progress_in_tier: int = current_tier_upper - player_rank
+
+	if tier_range > 0:
+		var progress_pct: float = clampf(float(progress_in_tier) / float(tier_range), 0.0, 1.0)
+		tier_progress_bar.value = progress_pct * 100.0
+		tier_progress_bar.visible = true
+
+	tier_progress_label.visible = true
+	tier_progress_label.text = "%d spots to %s tier" % [spots_needed, next_tier]
+
+# --- Decay Warning ---
+func _on_decay_info_updated(info: Dictionary) -> void:
+	if not decay_warning_label:
+		return
+
+	if info.get("can_decay", false):
+		var points_at_risk: int = info.get("points_at_risk", 0)
+		decay_warning_label.text = "Rating decaying! %d pts at risk" % points_at_risk
+		decay_warning_label.modulate = Color("#FF7351")
+		decay_warning_label.visible = true
+	else:
+		decay_warning_label.visible = false
 
 # --- Leaderboard Handler ---
 func _on_leaderboard_loaded(leaderboard: Array) -> void:
@@ -112,7 +218,6 @@ func _create_leaderboard_entry(entry: Dictionary) -> Control:
 	rank_label.text = "#%d" % rank_value
 	rank_label.custom_minimum_size = Vector2(80, 0)
 
-	# Use DesignTokens for rank colors
 	if rank_value <= 3:
 		rank_label.modulate = RANK_COLORS.get(rank_value, Color.WHITE)
 	elif rank_value <= 10:
@@ -120,23 +225,30 @@ func _create_leaderboard_entry(entry: Dictionary) -> Control:
 	elif rank_value <= 50:
 		rank_label.modulate = Color.SILVER
 	elif rank_value <= 100:
-		rank_label.modulate = Color("#CD7F32")  # Bronze
+		rank_label.modulate = Color("#CD7F32")
 
 	rank_container.add_child(rank_label)
+
+	# Tier badge next to rank for top tiers
+	if rank_value <= 100 and season_manager:
+		var tier_badge: Label = Label.new()
+		var tier: String = season_manager.get_rank_tier(rank_value)
+		tier_badge.text = "[%s]" % tier.left(1).to_upper()
+		tier_badge.modulate = season_manager.get_rank_color(rank_value)
+		tier_badge.custom_minimum_size = Vector2(30, 0)
+		rank_container.add_child(tier_badge)
 
 	var username_label: Label = Label.new()
 	username_label.text = entry.get("username", "Unknown")
 	username_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	
-	# Apply theme text color
+
 	if theme_manager:
 		username_label.modulate = theme_manager.get_text_color()
 
 	var score_label: Label = Label.new()
 	score_label.text = str(entry.get("score", 0))
 	score_label.custom_minimum_size = Vector2(100, 0)
-	
-	# Apply theme text color
+
 	if theme_manager:
 		score_label.modulate = theme_manager.get_text_color()
 
@@ -148,8 +260,7 @@ func _create_leaderboard_entry(entry: Dictionary) -> Control:
 	var stats_label: Label = Label.new()
 	stats_label.text = "%dW-%dL (%.1f%%)" % [wins, losses, win_rate * 100]
 	stats_label.custom_minimum_size = Vector2(120, 0)
-	
-	# Apply theme secondary text color
+
 	if theme_manager:
 		stats_label.modulate = theme_manager.get_text_color()
 
@@ -199,12 +310,16 @@ func _show_rewards_dialog(rewards: Dictionary) -> void:
 	get_tree().current_scene.add_child(dialog)
 	dialog.show()
 
+# --- Reward Preview ---
+func _on_preview_rewards_pressed() -> void:
+	if not reward_preview_panel or not season_manager:
+		return
+
+	var player_rank: int = season_manager.get_player_rank_sync()
+	reward_preview_panel.show_for_rank(player_rank)
+
 # --- Season Transition Handler ---
 func _on_season_transitioned(old_season: Dictionary, new_season: Dictionary) -> void:
-	"""Handle season end and new season start."""
-	print("Season transitioned from %s to %s" % [old_season, new_season])
-
-	# Update season display
 	var old_season_number: int = old_season.get("season_number", 0)
 	var new_season_number: int = new_season.get("season_number", 0)
 
@@ -214,7 +329,6 @@ func _on_season_transitioned(old_season: Dictionary, new_season: Dictionary) -> 
 	if time_label:
 		time_label.text = "Season just started!"
 
-	# Show transition dialog
 	var dialog: AcceptDialog = AcceptDialog.new()
 	dialog.title = "Season Complete!"
 	dialog.unresizable = true
@@ -229,7 +343,6 @@ func _on_season_transitioned(old_season: Dictionary, new_season: Dictionary) -> 
 	get_tree().current_scene.add_child(dialog)
 	dialog.show()
 
-	# Refresh leaderboard for new season
 	refresh_leaderboard()
 
 # --- Navigation ---
@@ -238,7 +351,6 @@ func _on_back_pressed() -> void:
 
 
 func _exit_tree() -> void:
-	# Disconnect signals to prevent memory leaks
 	if season_manager:
 		if season_manager.season_info_loaded.is_connected(_on_season_info_loaded):
 			season_manager.season_info_loaded.disconnect(_on_season_info_loaded)
@@ -246,8 +358,9 @@ func _exit_tree() -> void:
 			season_manager.leaderboard_loaded.disconnect(_on_leaderboard_loaded)
 		if season_manager.rewards_claimed.is_connected(_on_rewards_claimed):
 			season_manager.rewards_claimed.disconnect(_on_rewards_claimed)
-	
-	# Disconnect theme manager
+		if season_manager.decay_info_updated.is_connected(_on_decay_info_updated):
+			season_manager.decay_info_updated.disconnect(_on_decay_info_updated)
+
 	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
 		theme_manager.theme_changed.disconnect(_on_theme_changed)
 
@@ -255,13 +368,11 @@ func _exit_tree() -> void:
 func _apply_theme() -> void:
 	if not theme_manager:
 		return
-	
+
 	var colors = theme_manager.get_theme_colors()
-	
-	# Apply background color
+
 	theme_manager.apply_background(self)
-	
-	# Apply colors to labels
+
 	if season_label:
 		season_label.modulate = colors["on_surface"]
 	if time_label:
@@ -272,8 +383,13 @@ func _apply_theme() -> void:
 		your_tier_label.modulate = colors["on_surface"]
 	if loading_label:
 		loading_label.modulate = colors["on_surface"]
-	
-	# Refresh leaderboard to apply theme to entries
+	if motivational_label:
+		motivational_label.modulate = colors["on_surface_variant"]
+	if tier_progress_label:
+		tier_progress_label.modulate = colors["on_surface"]
+	if decay_warning_label:
+		decay_warning_label.modulate = colors.get("error", Color.RED)
+
 	if is_initialized:
 		refresh_leaderboard()
 
