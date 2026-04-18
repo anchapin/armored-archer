@@ -12,6 +12,7 @@ import { initializeTracing } from './config/tracing';
 import { initializeAlerting } from './modules/alerting';
 import { registerAnalyticsEndpoints } from './modules/analytics';
 import { registerBalanceAnalyticsEndpoints } from './modules/balance_analytics';
+import { registerRpcRunBalanceSession } from './modules/balance_session';
 import {
   registerRpcSubmitCombatAction,
   registerRpcGetMatchState,
@@ -239,6 +240,7 @@ const InitModule: InitModule = function (
   registerNotificationEndpoints(initializer);
   registerFairnessTelemetryEndpoints(initializer);
   registerBalanceAnalyticsEndpoints(initializer);
+  registerRpcRunBalanceSession(initializer);
   registerSeasonTelemetryEndpoints(initializer);
 
   if (config.rateLimit.enabled) {

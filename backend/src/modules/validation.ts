@@ -631,6 +631,14 @@ export const ValibotSchemas = {
     end_date: optional(pipe(string(), regex(/^\d{4}-\d{2}-\d{2}$/))),
   }),
 
+  run_balance_session: object({
+    cohort_size: optional(pipe(number(), integer(), minValue(10), maxValue(500))),
+    pve_iterations: optional(pipe(number(), integer(), minValue(1), maxValue(100))),
+    pvp_iterations: optional(pipe(number(), integer(), minValue(10), maxValue(1000))),
+    seed: optional(number()),
+    difficulties: optional(array(string())),
+  }),
+
   // Async duel lifecycle schemas
   submit_turn: object({
     match_id: pipe(string(), minLength(1), maxLength(100)),
