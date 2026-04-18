@@ -75,7 +75,8 @@ describe('config/index branch coverage', () => {
   it('validateRequiredConfig throws when required config is missing in production', () => {
     // Set production environment
     process.env.NODE_ENV = 'production';
-    process.env.REVENUECAT_PUBLIC_KEY = '';
+    process.env.REVENUECAT_SECRET_KEY = '';
+    process.env.REVENUECAT_WEBHOOK_SECRET = '';
     process.env.DATABASE_ADDRESS = '';
     jest.resetModules();
 

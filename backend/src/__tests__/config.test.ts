@@ -127,12 +127,13 @@ describe('config module', () => {
   });
 
   describe('validateRequiredConfig', () => {
-    it('throws when RevenueCat public key is missing', () => {
+    it('throws when database address is missing (RevenueCat not required in non-production)', () => {
       delete process.env.REVENUECAT_PUBLIC_KEY;
+      delete process.env.REVENUECAT_SECRET_KEY;
       delete process.env.DATABASE_ADDRESS;
       delete process.env.NAKAMA_DATABASE_ADDRESS;
       const { validateRequiredConfig } = require('../config');
-      expect(() => validateRequiredConfig()).toThrow('REVENUECAT_PUBLIC_KEY is required');
+      expect(() => validateRequiredConfig()).toThrow('DATABASE_ADDRESS or NAKAMA_DATABASE_ADDRESS is required');
     });
 
     it('throws when database address is missing', () => {
@@ -148,7 +149,8 @@ describe('config module', () => {
     it('throws when server key is missing in production', () => {
       process.env.NODE_ENV = 'production';
       delete process.env.NAKAMA_SERVER_KEY;
-      process.env.REVENUECAT_PUBLIC_KEY = 'pk_test_123';
+      process.env.REVENUECAT_SECRET_KEY = 'sk_test_123';
+      process.env.REVENUECAT_WEBHOOK_SECRET = 'wh_test_123';
       process.env.DATABASE_ADDRESS = 'postgres://user:pass@localhost:5432/nakama';
       process.env.SESSION_ENCRYPTION_KEY = 'test-key-12345678';
       process.env.REFRESH_ENCRYPTION_KEY = 'test-key-12345678';
@@ -160,7 +162,8 @@ describe('config module', () => {
     it('throws when session encryption keys are missing in production', () => {
       process.env.NODE_ENV = 'production';
       process.env.NAKAMA_SERVER_KEY = 'server-key-12345';
-      process.env.REVENUECAT_PUBLIC_KEY = 'pk_test_123';
+      process.env.REVENUECAT_SECRET_KEY = 'sk_test_123';
+      process.env.REVENUECAT_WEBHOOK_SECRET = 'wh_test_123';
       process.env.DATABASE_ADDRESS = 'postgres://user:pass@localhost:5432/nakama';
       delete process.env.SESSION_ENCRYPTION_KEY;
       const { validateRequiredConfig } = require('../config');
@@ -169,7 +172,7 @@ describe('config module', () => {
 
     it('throws when server port is invalid', () => {
       process.env.NAKAMA_PORT = '99999';
-      process.env.REVENUECAT_PUBLIC_KEY = 'pk_test_123';
+      process.env.REVENUECAT_SECRET_KEY = 'sk_test_123';
       process.env.DATABASE_ADDRESS = 'postgres://user:pass@localhost:5432/nakama';
       process.env.SESSION_ENCRYPTION_KEY = 'test-key-12345678';
       process.env.REFRESH_ENCRYPTION_KEY = 'test-key-12345678';

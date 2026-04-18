@@ -315,9 +315,13 @@ export const ValibotSchemas = {
     amount: pipe(number(), integer(), minValue(1), maxValue(1000000)),
   }),
 
-  check_refunds: object({}),
+  check_refunds: object({
+    app_user_id: optional(string()),
+  }),
 
-  check_subscriptions: object({}),
+  check_subscriptions: object({
+    app_user_id: optional(string()),
+  }),
 
   process_pending_purchases: object({}),
 
