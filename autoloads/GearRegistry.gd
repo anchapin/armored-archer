@@ -91,6 +91,11 @@ func _initialize_skins() -> void:
 	_register_skin("skin_amulet_golden", "Golden Amulet", GearEnums.GearType.AMULET, "amulet_protection", 400, false, "")
 	_register_skin("skin_amulet_crystal", "Crystal Amulet", GearEnums.GearType.AMULET, "amulet_power", 600, false, "")
 	_register_skin("skin_amulet_legendary", "Legendary Amulet", GearEnums.GearType.AMULET, "amulet_dragon", 1200, true, "")
+	_register_skin("skin_helm_founders", "Founder's Helm", GearEnums.GearType.HELM, "helm_basic", 400, false, "")
+	_register_skin("skin_armor_founders", "Founder's Armor", GearEnums.GearType.ARMOR, "armor_leather", 500, false, "")
+	_register_skin("skin_bow_founders", "Founder's Bow", GearEnums.GearType.BOW, "bow_wooden", 450, false, "")
+	_register_skin("skin_arrow_founders", "Founder's Arrows", GearEnums.GearType.ARROW, "arrow_wooden", 250, false, "")
+	_register_skin("skin_amulet_founders", "Founder's Amulet", GearEnums.GearType.AMULET, "amulet_protection", 350, false, "")
 
 func _register_base_gear(gear_id: String, gear_name: String, slot: GearEnums.GearType, attack: int, defense: int, speed: int, health: int, rarity: String, texture_path: String) -> void:
 	"""Registers a base gear item in the database (internal).

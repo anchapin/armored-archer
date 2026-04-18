@@ -24,6 +24,9 @@ extends Node
 var owned_skins: Array = []
 var equipped_skins: Dictionary = {}
 
+# --- Bundle State ---
+var owned_bundles: Array = []
+
 # --- Slot Type Mapping ---
 var slot_type_mapping: Dictionary = {}
 
@@ -56,6 +59,7 @@ signal skin_purchased(skin_id: String)
 signal skin_equipped(skin_id: String, slot: String)
 signal skin_unequipped(slot: String)
 signal sync_completed(owned: Array, equipped: Dictionary)
+signal bundle_purchased(bundle_id: String, items: Array)
 
 # --- Save Data Path ---
 const SAVE_FILE_PATH = "user://cosmetic_data.save"
@@ -321,6 +325,56 @@ func unequip_skin(slot_name: String) -> void:
 func get_equipped_skin(slot_name: String) -> String:
 	return equipped_skins.get(slot_name, "")
 
+func is_bundle_owned(bundle_id: String) -> bool:
+	return bundle_id in owned_bundles
+
+func purchase_bundle(bundle_id: String) -> bool:
+	if is_bundle_owned(bundle_id):
+		push_error("Bundle already owned: %s" % bundle_id)
+		return false
+
+	# Server-authoritative purchase via RPC
+	if network_manager and NetworkManager.is_session_valid():
+		var payload = JSON.stringify({"bundle_id": bundle_id})
+		var response: Dictionary = await NetworkManager.send_rpc("armored_archer/purchase_bundle", payload)
+
+		if not response.get("success", false):
+			push_error("Server rejected bundle purchase: %s" % response.get("error", "unknown"))
+			return false
+
+		var server_balance = response.get("new_balance", -1)
+		if server_balance >= 0:
+			_local_gems = int(server_balance)
+			gems_updated.emit(_local_gems)
+
+		var items_granted: Array = response.get("items_granted", [])
+		for item_id in items_granted:
+			if not item_id in owned_skins:
+				owned_skins.append(item_id)
+
+		owned_bundles.append(bundle_id)
+		bundle_purchased.emit(bundle_id, items_granted)
+		save_data()
+	else:
+		push_error("Bundle purchases require network connection")
+		return false
+
+	return true
+
+func get_bundle_catalog() -> Array:
+	if not network_manager or not NetworkManager.is_session_valid():
+		return []
+
+	var response: Dictionary = await NetworkManager.send_rpc("armored_archer/get_bundle_catalog", "{}")
+	if response.get("success", false):
+		var bundles: Array = response.get("bundles", [])
+		for bundle in bundles:
+			if bundle.get("is_owned", false) and not bundle.bundle_id in owned_bundles:
+				owned_bundles.append(bundle.bundle_id)
+		save_data()
+		return bundles
+	return []
+
 # --- Save/Load Data ---
 func save_data() -> void:
 	var config = ConfigFile.new()
@@ -343,6 +397,7 @@ func load_data() -> void:
 		equipped_skins = config.get_value("skins", "equipped", {})
 		_local_gems = config.get_value("gems", "balance", 0)
 		completed_achievements = config.get_value("achievements", "completed", [])
+		owned_bundles = config.get_value("bundles", "owned", [])
 	else:
 		initialize_default_data()
 
@@ -351,4 +406,5 @@ func initialize_default_data() -> void:
 	equipped_skins = {}
 	_local_gems = 0
 	completed_achievements = []
+	owned_bundles = []
 	save_data()

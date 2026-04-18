@@ -8,6 +8,7 @@ extends Control
 @onready var armor_button: Button = $MainContainer/SlotTabs/ArmorButton
 @onready var bow_button: Button = $MainContainer/SlotTabs/BowButton
 @onready var arrow_button: Button = $MainContainer/SlotTabs/ArrowButton
+@onready var amulet_button: Button = $MainContainer/SlotTabs/AmuletButton
 
 @onready var skin_grid: GridContainer = $MainContainer/SkinCatalog/SkinGrid
 @onready var preview_name_label: Label = $MainContainer/PreviewContainer/PreviewNameLabel
@@ -15,6 +16,13 @@ extends Control
 @onready var preview_owned_label: Label = $MainContainer/PreviewContainer/PreviewOwnedLabel
 @onready var purchase_button: Button = $MainContainer/PreviewContainer/PurchaseButton
 @onready var equip_button: Button = $MainContainer/PreviewContainer/EquipButton
+
+@onready var bundle_container: PanelContainer = $MainContainer/BundleContainer
+@onready var bundle_name_label: Label = $MainContainer/BundleContainer/BundleNameLabel
+@onready var bundle_description_label: Label = $MainContainer/BundleContainer/BundleDescriptionLabel
+@onready var bundle_price_label: Label = $MainContainer/BundleContainer/BundlePriceLabel
+@onready var bundle_save_label: Label = $MainContainer/BundleContainer/BundleSaveLabel
+@onready var bundle_purchase_button: Button = $MainContainer/BundleContainer/BundlePurchaseButton
 
 @onready var purchase_confirmation_dialog: ConfirmationDialog = $PurchaseConfirmationDialog
 @onready var confirmation_label: Label = $PurchaseConfirmationDialog/ConfirmationLabel
@@ -28,6 +36,7 @@ extends Control
 # --- Shop State ---
 var current_slot: String = "helm"
 var selected_skin_id: String = ""
+var available_bundles: Array = []
 
 # --- Skin Buttons Dictionary ---
 var skin_buttons: Dictionary = {}
@@ -40,10 +49,12 @@ func _ready() -> void:
 	if gem_manager:
 		gem_manager.skin_purchased.connect(_on_skin_purchased)
 		gem_manager.skin_equipped.connect(_on_skin_equipped)
+		gem_manager.bundle_purchased.connect(_on_bundle_purchased)
 
 	_setup_button_connections()
 	_update_gem_display()
 	_load_slot(current_slot)
+	_load_bundles()
 
 func _setup_button_connections() -> void:
 	back_button.pressed.connect(_on_back_pressed)
@@ -52,12 +63,16 @@ func _setup_button_connections() -> void:
 	armor_button.pressed.connect(func(): _on_slot_button_pressed("armor"))
 	bow_button.pressed.connect(func(): _on_slot_button_pressed("bow"))
 	arrow_button.pressed.connect(func(): _on_slot_button_pressed("arrow"))
+	amulet_button.pressed.connect(func(): _on_slot_button_pressed("amulet"))
 
 	purchase_button.pressed.connect(_on_purchase_button_pressed)
 	equip_button.pressed.connect(_on_equip_button_pressed)
 
 	yes_button.pressed.connect(_on_purchase_confirmed)
 	no_button.pressed.connect(_on_purchase_canceled)
+
+	if bundle_purchase_button:
+		bundle_purchase_button.pressed.connect(_on_bundle_purchase_pressed)
 
 # --- Gem Display ---
 func _update_gem_display() -> void:
@@ -67,6 +82,7 @@ func _update_gem_display() -> void:
 func _on_currency_updated( _gems: int, _gold: int) -> void:
 	_update_gem_display()
 	_update_preview_buttons()
+	_update_bundle_display()
 
 # --- Slot Management ---
 func _on_slot_button_pressed(slot: String) -> void:
@@ -93,7 +109,10 @@ func _clear_skin_grid() -> void:
 func _create_skin_button(skin_data) -> Button:
 	var button = Button.new()
 	button.custom_minimum_size = Vector2(100, 100)
-	button.text = skin_data.skin_name
+	var display_name = skin_data.skin_name
+	if skin_data.get("is_launch_exclusive"):
+		display_name += " [LAUNCH]"
+	button.text = display_name
 
 	if gem_manager.is_skin_owned(skin_data.skin_id):
 		button.modulate = Color(1, 1, 1, 1)
@@ -120,7 +139,10 @@ func _show_skin_preview(skin_id: String) -> void:
 		_clear_preview()
 		return
 
-	preview_name_label.text = skin_info.skin_name
+	var display_name = skin_info.skin_name
+	if skin_info.get("is_launch_exclusive"):
+		display_name += " [LAUNCH]"
+	preview_name_label.text = display_name
 	preview_price_label.text = "Price: %d gems" % skin_info.price
 
 	var is_owned = gem_manager.is_skin_owned(skin_id)
@@ -207,6 +229,77 @@ func _on_skin_equipped(skin_id: String, slot: String) -> void:
 	if slot == current_slot:
 		_show_skin_preview(skin_id)
 
+# --- Bundle Section ---
+func _load_bundles() -> void:
+	if not bundle_container:
+		return
+
+	if gem_manager and gem_manager.has_method("get_bundle_catalog"):
+		available_bundles = await gem_manager.get_bundle_catalog()
+		_update_bundle_display()
+
+func _update_bundle_display() -> void:
+	if not bundle_container or available_bundles.is_empty():
+		return
+
+	var bundle = available_bundles[0]
+	if not bundle:
+		return
+
+	var is_owned = gem_manager.is_bundle_owned(bundle.get("bundle_id", ""))
+	if is_owned:
+		bundle_container.visible = false
+		return
+
+	bundle_container.visible = true
+	bundle_name_label.text = bundle.get("name", "Bundle")
+	bundle_description_label.text = bundle.get("description", "")
+
+	var price: int = bundle.get("price", 0)
+	var original: int = bundle.get("original_total", 0)
+	bundle_price_label.text = "%d gems" % price
+
+	if original > price:
+		var save_percent = int((1.0 - float(price) / float(original)) * 100)
+		bundle_save_label.text = "SAVE %d%%" % save_percent
+	else:
+		bundle_save_label.text = ""
+
+	bundle_purchase_button.disabled = gem_manager.get_gem_balance() < price
+	bundle_purchase_button.text = "Purchase Bundle (%d gems)" % price
+
+func _on_bundle_purchase_pressed() -> void:
+	if available_bundles.is_empty():
+		return
+
+	var bundle = available_bundles[0]
+	var bundle_id: String = bundle.get("bundle_id", "")
+	var price: int = bundle.get("price", 0)
+
+	confirmation_label.text = "Purchase %s for %d gems?\nIncludes %d cosmetic items." % [bundle.get("name", "Bundle"), price, bundle.get("item_ids", []).size()]
+	purchase_confirmation_dialog.popup_centered()
+
+	# Temporarily override the confirmation handler
+	yes_button.pressed.disconnect(_on_purchase_confirmed)
+	yes_button.pressed.connect(func(): _on_bundle_purchase_confirmed(bundle_id))
+
+func _on_bundle_purchase_confirmed(bundle_id: String) -> void:
+	purchase_confirmation_dialog.hide()
+
+	# Restore the normal confirmation handler
+	yes_button.pressed.disconnect(func(): _on_bundle_purchase_confirmed(bundle_id))
+	yes_button.pressed.connect(_on_purchase_confirmed)
+
+	if await gem_manager.purchase_bundle(bundle_id):
+		_update_bundle_display()
+		_load_slot(current_slot)
+	else:
+		push_error("Failed to purchase bundle")
+
+func _on_bundle_purchased(bundle_id: String, _items: Array) -> void:
+	_update_bundle_display()
+	_load_slot(current_slot)
+
 # --- Navigation ---
 func _on_back_pressed() -> void:
 	# Show the main menu again
@@ -226,3 +319,5 @@ func _exit_tree() -> void:
 			gem_manager.skin_purchased.disconnect(_on_skin_purchased)
 		if gem_manager.skin_equipped.is_connected(_on_skin_equipped):
 			gem_manager.skin_equipped.disconnect(_on_skin_equipped)
+		if gem_manager.bundle_purchased.is_connected(_on_bundle_purchased):
+			gem_manager.bundle_purchased.disconnect(_on_bundle_purchased)

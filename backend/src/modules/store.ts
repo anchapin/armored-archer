@@ -548,6 +548,7 @@ export interface CosmeticItem {
   base_gear_required: string;
   price: number;
   is_premium: boolean;
+  is_launch_exclusive?: boolean;
 }
 
 /**
@@ -571,6 +572,53 @@ export const COSMETIC_CATALOG: Record<string, CosmeticItem> = {
   skin_amulet_golden: { item_id: 'skin_amulet_golden', name: 'Golden Amulet', slot: 'amulet', base_gear_required: 'amulet_protection', price: 400, is_premium: false },
   skin_amulet_crystal: { item_id: 'skin_amulet_crystal', name: 'Crystal Amulet', slot: 'amulet', base_gear_required: 'amulet_power', price: 600, is_premium: false },
   skin_amulet_legendary: { item_id: 'skin_amulet_legendary', name: 'Legendary Amulet', slot: 'amulet', base_gear_required: 'amulet_dragon', price: 1200, is_premium: true },
+  // Founder's Arsenal — launch exclusive cosmetic set (zero combat stats)
+  skin_helm_founders: { item_id: 'skin_helm_founders', name: "Founder's Helm", slot: 'helm', base_gear_required: 'helm_basic', price: 400, is_premium: false, is_launch_exclusive: true },
+  skin_armor_founders: { item_id: 'skin_armor_founders', name: "Founder's Armor", slot: 'armor', base_gear_required: 'armor_leather', price: 500, is_premium: false, is_launch_exclusive: true },
+  skin_bow_founders: { item_id: 'skin_bow_founders', name: "Founder's Bow", slot: 'bow', base_gear_required: 'bow_wooden', price: 450, is_premium: false, is_launch_exclusive: true },
+  skin_arrow_founders: { item_id: 'skin_arrow_founders', name: "Founder's Arrows", slot: 'arrow', base_gear_required: 'arrow_wooden', price: 250, is_premium: false, is_launch_exclusive: true },
+  skin_amulet_founders: { item_id: 'skin_amulet_founders', name: "Founder's Amulet", slot: 'amulet', base_gear_required: 'amulet_protection', price: 350, is_premium: false, is_launch_exclusive: true },
+};
+
+/**
+ * Cosmetic bundle definition.
+ * Bundles package multiple cosmetic items at a discounted price.
+ *
+ * @property bundle_id - Unique bundle identifier
+ * @property name - Display name
+ * @property description - Short description
+ * @property item_ids - Cosmetic item IDs included in the bundle
+ * @property price - Discounted bundle price in gems
+ * @property original_total - Sum of individual item prices
+ * @property is_one_time - Whether the bundle can only be purchased once
+ * @property is_launch_exclusive - Whether this is a launch-time offer
+ */
+export interface BundleDefinition {
+  bundle_id: string;
+  name: string;
+  description: string;
+  item_ids: string[];
+  price: number;
+  original_total: number;
+  is_one_time: boolean;
+  is_launch_exclusive: boolean;
+}
+
+/**
+ * Bundle catalog — discounted cosmetic bundles.
+ * All items in bundles are from COSMETIC_CATALOG (zero combat stats).
+ */
+export const BUNDLE_DEFINITIONS: Record<string, BundleDefinition> = {
+  bundle_starter_founders: {
+    bundle_id: 'bundle_starter_founders',
+    name: "Founder's Starter Bundle",
+    description: "The complete Founder's collection at a special launch price.",
+    item_ids: ['skin_helm_founders', 'skin_armor_founders', 'skin_bow_founders', 'skin_arrow_founders', 'skin_amulet_founders'],
+    price: 1200,
+    original_total: 1950,
+    is_one_time: true,
+    is_launch_exclusive: true,
+  },
 };
 
 /**
@@ -1430,6 +1478,186 @@ export function rpcSaveCosmeticLoadout(
 
 export function registerRpcSaveCosmeticLoadout(initializer: Runtime.Initializer): void {
   initializer.registerRpc('armored_archer/save_cosmetic_loadout', rpcSaveCosmeticLoadout);
+}
+
+// ============================================================
+// COSMETIC BUNDLE PURCHASE
+// ============================================================
+
+/**
+ * Purchases a cosmetic bundle — awards all items at a discounted price.
+ * Validates bundle existence, one-time purchase restrictions, ownership,
+ * and gem balance before granting items.
+ */
+export function rpcPurchaseBundle(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Bundle purchase request from user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.purchase_bundle, payload, 'purchase_bundle');
+  if (!validation.success) {
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id: 'unknown' }, 'failure', validation.error);
+    return createValidationErrorResponse('purchase_bundle', validation.error);
+  }
+
+  const { bundle_id } = validation.data;
+
+  // Validate bundle exists
+  const bundle = BUNDLE_DEFINITIONS[bundle_id];
+  if (!bundle) {
+    logger.warn('Bundle purchase rejected — bundle not found: %s', bundle_id);
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id }, 'failure', 'Bundle not found');
+    return JSON.stringify({ success: false, error: 'Invalid bundle', error_code: 'INVALID_BUNDLE' });
+  }
+
+  // Check one-time purchase restriction
+  if (bundle.is_one_time) {
+    const bundleOwnedResult = nk.storageRead([
+      { collection: 'player_bundles_owned', key: ctx.userId, userId: ctx.userId },
+    ]);
+    let ownedBundles: string[] = [];
+    if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
+      const parsed = safeParse<{ bundles: string[] }>(bundleOwnedResult[0].value, null, logger, 'player_bundles_owned');
+      if (parsed.success && parsed.data) {
+        ownedBundles = parsed.data.bundles ?? [];
+      }
+    }
+
+    if (ownedBundles.includes(bundle_id)) {
+      logger.warn('Bundle purchase rejected — already purchased: %s', bundle_id);
+      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id }, 'failure', 'Bundle already purchased');
+      return JSON.stringify({ success: false, error: 'Bundle already purchased', error_code: 'ALREADY_OWNED' });
+    }
+  }
+
+  // Validate all items exist in cosmetic catalog
+  for (const itemId of bundle.item_ids) {
+    if (!COSMETIC_CATALOG[itemId]) {
+      logger.error('Bundle %s contains invalid item: %s', bundle_id, itemId);
+      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id, invalid_item: itemId }, 'failure', 'Invalid item in bundle');
+      return JSON.stringify({ success: false, error: 'Bundle contains invalid item', error_code: 'INVALID_BUNDLE_ITEM' });
+    }
+  }
+
+  // Check if player already owns any item in the bundle
+  const ownedResult = nk.storageRead([
+    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId },
+  ]);
+  let ownedItems: string[] = [];
+  if (ownedResult.length > 0 && ownedResult[0].value) {
+    const parsed = safeParse<{ items: string[] }>(ownedResult[0].value, null, logger, 'player_cosmetics_owned');
+    if (parsed.success && parsed.data) {
+      ownedItems = parsed.data.items ?? [];
+    }
+  }
+
+  for (const itemId of bundle.item_ids) {
+    if (ownedItems.includes(itemId)) {
+      logger.warn('Bundle purchase rejected — player already owns item %s in bundle', itemId);
+      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id, owned_item: itemId }, 'failure', 'Player already owns bundle item');
+      return JSON.stringify({ success: false, error: 'You already own an item in this bundle', error_code: 'ITEM_ALREADY_OWNED' });
+    }
+  }
+
+  // Check gem balance
+  const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
+  if (playerCurrency.gems < bundle.price) {
+    logger.warn('Bundle purchase rejected — insufficient gems: need %d, have %d', bundle.price, playerCurrency.gems);
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id, price: bundle.price, balance: playerCurrency.gems }, 'failure', 'Insufficient gems');
+    return JSON.stringify({ success: false, error: 'Insufficient gems', error_code: 'INSUFFICIENT_GEMS' });
+  }
+
+  // Deduct gems
+  playerCurrency.gems -= bundle.price;
+  nk.storageWrite([
+    { collection: 'player_currency', key: ctx.userId, userId: ctx.userId, value: JSON.stringify(playerCurrency) },
+  ]);
+  nk.walletUpdate(ctx.userId, { gems: -bundle.price });
+  invalidateCurrencyCache(ctx.userId, logger);
+
+  // Grant all bundle items
+  for (const itemId of bundle.item_ids) {
+    ownedItems.push(itemId);
+  }
+  nk.storageWrite([
+    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId, value: JSON.stringify({ items: ownedItems }) },
+  ]);
+
+  // Record bundle ownership (for one-time enforcement)
+  if (bundle.is_one_time) {
+    const bundleOwnedResult = nk.storageRead([
+      { collection: 'player_bundles_owned', key: ctx.userId, userId: ctx.userId },
+    ]);
+    let ownedBundles: string[] = [];
+    if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
+      const parsed = safeParse<{ bundles: string[] }>(bundleOwnedResult[0].value, null, logger, 'player_bundles_owned');
+      if (parsed.success && parsed.data) {
+        ownedBundles = parsed.data.bundles ?? [];
+      }
+    }
+    ownedBundles.push(bundle_id);
+    nk.storageWrite([
+      { collection: 'player_bundles_owned', key: ctx.userId, userId: ctx.userId, value: JSON.stringify({ bundles: ownedBundles }) },
+    ]);
+  }
+
+  logger.info('Bundle purchased: user %s bought %s for %d gems (new balance: %d)', ctx.userId, bundle_id, bundle.price, playerCurrency.gems);
+  logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id, price: bundle.price, items_granted: bundle.item_ids, new_balance: playerCurrency.gems }, 'success');
+
+  return JSON.stringify({
+    success: true,
+    bundle_id,
+    price: bundle.price,
+    items_granted: bundle.item_ids,
+    new_balance: playerCurrency.gems,
+  });
+}
+
+export function registerRpcPurchaseBundle(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/purchase_bundle', rpcPurchaseBundle);
+}
+
+/**
+ * Returns the bundle catalog with ownership status for the current player.
+ */
+export function rpcGetBundleCatalog(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get bundle catalog request from user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.get_bundle_catalog, payload, 'get_bundle_catalog');
+  if (!validation.success) {
+    return createValidationErrorResponse('get_bundle_catalog', validation.error);
+  }
+
+  // Read owned bundles
+  const bundleOwnedResult = nk.storageRead([
+    { collection: 'player_bundles_owned', key: ctx.userId, userId: ctx.userId },
+  ]);
+  let ownedBundles: string[] = [];
+  if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
+    const parsed = safeParse<{ bundles: string[] }>(bundleOwnedResult[0].value, null, logger, 'player_bundles_owned');
+    if (parsed.success && parsed.data) {
+      ownedBundles = parsed.data.bundles ?? [];
+    }
+  }
+
+  const bundlesWithOwnership = Object.values(BUNDLE_DEFINITIONS).map(bundle => ({
+    ...bundle,
+    is_owned: ownedBundles.includes(bundle.bundle_id),
+  }));
+
+  return JSON.stringify({ success: true, bundles: bundlesWithOwnership });
+}
+
+export function registerRpcGetBundleCatalog(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_bundle_catalog', rpcGetBundleCatalog);
 }
 
 // --- Helper functions for equipped cosmetics storage ---
