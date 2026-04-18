@@ -52,6 +52,20 @@ horizontal_alignment = 1
 [node name="HSeparator" type="HSeparator" parent="DialogPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 
+[node name="PrestigeSection" type="VBoxContainer" parent="DialogPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="PrestigeTitle" type="Label" parent="DialogPanel/MarginContainer/VBoxContainer/PrestigeSection"]
+layout_mode = 2
+text = "Prestige Progress"
+horizontal_alignment = 1
+
+[node name="PrestigeContainer" type="VBoxContainer" parent="DialogPanel/MarginContainer/VBoxContainer/PrestigeSection"]
+layout_mode = 2
+
+[node name="HSeparator3" type="HSeparator" parent="DialogPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
 [node name="SeasonScrollContainer" type="ScrollContainer" parent="DialogPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3

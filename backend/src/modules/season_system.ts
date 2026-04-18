@@ -126,12 +126,246 @@ export interface RankChange {
 const SEASON_DURATION_WEEKS = 4;
 const SEASON_DURATION_MS = SEASON_DURATION_WEEKS * 7 * 24 * 60 * 60 * 1000;
 
+// --- Prestige Tier Definitions ---
+export type PrestigeTierName = 'bronze' | 'silver' | 'gold' | 'diamond';
+
+export interface PrestigeTierConfig {
+  tier: PrestigeTierName;
+  required_rank_threshold: number;
+  required_seasons: number;
+  title: string;
+  aura: string;
+}
+
+export const PRESTIGE_TIERS: PrestigeTierConfig[] = [
+  {
+    tier: 'bronze',
+    required_rank_threshold: 100,
+    required_seasons: 2,
+    title: 'Steadfast Archer',
+    aura: 'bronze_aura',
+  },
+  {
+    tier: 'silver',
+    required_rank_threshold: 50,
+    required_seasons: 3,
+    title: 'Elite Marksman',
+    aura: 'silver_aura',
+  },
+  {
+    tier: 'gold',
+    required_rank_threshold: 10,
+    required_seasons: 3,
+    title: 'Legendary Sharpshooter',
+    aura: 'gold_aura',
+  },
+  {
+    tier: 'diamond',
+    required_rank_threshold: 10,
+    required_seasons: 5,
+    title: 'Eternal Champion',
+    aura: 'diamond_aura',
+  },
+];
+
+export interface PlayerPrestigeRecord {
+  player_id: string;
+  season_finishes: { season_id: string; rank: number }[];
+  prestige_tiers_earned: PrestigeTierName[];
+  last_updated: number;
+}
+
+// --- Soft Reset ELO Mapping ---
+const SOFT_RESET_TIERS: { max_rank: number; starting_elo: number }[] = [
+  { max_rank: 10, starting_elo: 1300 },
+  { max_rank: 50, starting_elo: 1200 },
+  { max_rank: 100, starting_elo: 1150 },
+  { max_rank: 500, starting_elo: 1100 },
+  { max_rank: Infinity, starting_elo: 1000 },
+];
+
 // Rank decay configuration
 const RANK_DECAY_DAYS = 7; // Days of inactivity before decay starts
 const RANK_DECAY_AMOUNT = 25; // Points lost per decay period
 const RANK_DECAY_MAX_LOSS = 100; // Maximum points that can be lost per decay
 const RANK_DECAY_MIN_SCORE = 800; // Minimum score after decay
 const RANK_DECAY_CHECK_MS = 24 * 60 * 60 * 1000; // Check every 24 hours
+
+/**
+ * Calculates the starting ELO for a player after a season soft reset.
+ *
+ * @param rank - Player's final rank in the ending season
+ * @returns Starting ELO for the new season
+ */
+export function calculateSoftResetElo(rank: number): number {
+  for (const tier of SOFT_RESET_TIERS) {
+    if (rank <= tier.max_rank) {
+      return tier.starting_elo;
+    }
+  }
+  return 1000;
+}
+
+/**
+ * Evaluates which prestige tiers a player qualifies for based on season finishes.
+ *
+ * @param seasonFinishes - Array of qualifying season finishes (rank <= 100)
+ * @returns Array of earned prestige tier names
+ */
+export function evaluatePrestigeTiers(
+  seasonFinishes: { season_id: string; rank: number }[]
+): PrestigeTierName[] {
+  const earned: PrestigeTierName[] = [];
+
+  for (const tierConfig of PRESTIGE_TIERS) {
+    const qualifyingSeasons = new Set(
+      seasonFinishes
+        .filter((f) => f.rank <= tierConfig.required_rank_threshold)
+        .map((f) => f.season_id)
+    );
+    if (qualifyingSeasons.size >= tierConfig.required_seasons) {
+      earned.push(tierConfig.tier);
+    }
+  }
+
+  return earned;
+}
+
+/**
+ * Gets a player's prestige record from storage.
+ *
+ * @param nk - Nakama server interface
+ * @param playerId - Player ID
+ * @returns Player prestige record or default empty record
+ */
+export function getPlayerPrestigeRecord(
+  nk: Runtime.Nakama,
+  playerId: string
+): PlayerPrestigeRecord {
+  try {
+    const storage = nk.storageRead([
+      {
+        collection: 'player_prestige',
+        key: playerId,
+        userId: playerId,
+      },
+    ]);
+    if (storage.length > 0 && storage[0].value) {
+      return JSON.parse(storage[0].value) as PlayerPrestigeRecord;
+    }
+  } catch {
+    // Return default if storage read fails
+  }
+
+  return {
+    player_id: playerId,
+    season_finishes: [],
+    prestige_tiers_earned: [],
+    last_updated: 0,
+  };
+}
+
+/**
+ * Updates a player's prestige record with a new season finish.
+ *
+ * @param nk - Nakama server interface
+ * @param playerId - Player ID
+ * @param seasonId - Season ID that just ended
+ * @param finalRank - Player's final rank in the season
+ * @returns Updated prestige record with newly earned tiers
+ */
+export function updatePlayerPrestigeRecord(
+  nk: Runtime.Nakama,
+  playerId: string,
+  seasonId: string,
+  finalRank: number
+): { record: PlayerPrestigeRecord; new_tiers: PrestigeTierName[] } {
+  const record = getPlayerPrestigeRecord(nk, playerId);
+  const previouslyEarned = new Set(record.prestige_tiers_earned);
+
+  // Only record finishes within top 100 (max threshold for any prestige tier)
+  if (finalRank <= 100) {
+    const existingIdx = record.season_finishes.findIndex(
+      (f) => f.season_id === seasonId
+    );
+    if (existingIdx >= 0) {
+      record.season_finishes[existingIdx].rank = Math.min(
+        record.season_finishes[existingIdx].rank,
+        finalRank
+      );
+    } else {
+      record.season_finishes.push({ season_id: seasonId, rank: finalRank });
+    }
+  }
+
+  const allEarned = evaluatePrestigeTiers(record.season_finishes);
+  const newTiers = allEarned.filter((t) => !previouslyEarned.has(t));
+
+  record.prestige_tiers_earned = allEarned;
+  record.last_updated = Date.now();
+
+  nk.storageWrite([
+    {
+      collection: 'player_prestige',
+      key: playerId,
+      userId: playerId,
+      value: JSON.stringify(record),
+    },
+  ]);
+
+  return { record, new_tiers: newTiers };
+}
+
+/**
+ * Grants cosmetic rewards for newly earned prestige tiers.
+ *
+ * @param nk - Nakama server interface
+ * @param playerId - Player ID
+ * @param newTiers - Newly earned prestige tiers
+ */
+export function grantPrestigeRewards(
+  nk: Runtime.Nakama,
+  playerId: string,
+  newTiers: PrestigeTierName[]
+): void {
+  for (const tierName of newTiers) {
+    const tierConfig = PRESTIGE_TIERS.find((t) => t.tier === tierName);
+    if (tierConfig) {
+      addPlayerCosmetic(nk, playerId, tierConfig.title, tierConfig.aura);
+    }
+  }
+}
+
+/**
+ * Calculates progress toward each prestige tier for a player.
+ *
+ * @param seasonFinishes - Player's qualifying season finishes
+ * @returns Progress info for each tier
+ */
+export function calculatePrestigeProgress(
+  seasonFinishes: { season_id: string; rank: number }[]
+): {
+  tier: PrestigeTierName;
+  earned: boolean;
+  qualifying_seasons: number;
+  required_seasons: number;
+  title: string;
+}[] {
+  return PRESTIGE_TIERS.map((tierConfig) => {
+    const qualifyingSeasons = new Set(
+      seasonFinishes
+        .filter((f) => f.rank <= tierConfig.required_rank_threshold)
+        .map((f) => f.season_id)
+    );
+    return {
+      tier: tierConfig.tier,
+      earned: qualifyingSeasons.size >= tierConfig.required_seasons,
+      qualifying_seasons: qualifyingSeasons.size,
+      required_seasons: tierConfig.required_seasons,
+      title: tierConfig.title,
+    };
+  });
+}
 
 /**
  * Registers the get season info RPC endpoint.
@@ -873,6 +1107,69 @@ export function rpcEndSeason(
 
   const currentSeason = getCurrentSeason();
 
+  // Fetch all players from ending season leaderboard (paginated)
+  const BATCH_SIZE = 500;
+  let allRecords: LeaderboardRecord[] = [];
+  let cursor = '';
+  do {
+    const batch = nk.leaderboardRecordList(
+      currentSeason.season_id,
+      [],
+      BATCH_SIZE,
+      cursor,
+      0
+    );
+    allRecords = allRecords.concat(batch);
+    cursor = batch.length >= BATCH_SIZE ? String(batch[batch.length - 1]?.rank || '') : '';
+  } while (cursor !== '');
+
+  // Auto-distribute rewards and seed players into new season
+  for (const record of allRecords) {
+    const playerRank = record.rank;
+    const rewards = calculateRewards(playerRank, currentSeason.season_number);
+
+    // Auto-grant currency rewards
+    const rewardChanges: { [key: string]: number } = {};
+    if (rewards.coins) rewardChanges['coins'] = rewards.coins;
+    if (rewards.gems) rewardChanges['gems'] = rewards.gems;
+    if (Object.keys(rewardChanges).length > 0) {
+      nk.walletUpdate(record.ownerId, rewardChanges);
+    }
+
+    // Auto-grant cosmetic rewards (titles, auras)
+    if (rewards.cosmetics) {
+      addPlayerCosmetic(nk, record.ownerId, rewards.cosmetics.title, rewards.cosmetics.aura);
+    }
+
+    // Mark rewards as auto-distributed
+    nk.storageWrite([
+      {
+        collection: 'season_rewards_claimed',
+        key: `${currentSeason.season_id}_${record.ownerId}`,
+        userId: record.ownerId,
+        value: JSON.stringify({
+          season_id: currentSeason.season_id,
+          user_id: record.ownerId,
+          claimed_at: Date.now(),
+          rank: playerRank,
+          rewards: rewards,
+          auto_distributed: true,
+        }),
+      },
+    ]);
+
+    // Update prestige record and grant prestige cosmetics
+    const { new_tiers } = updatePlayerPrestigeRecord(
+      nk,
+      record.ownerId,
+      currentSeason.season_id,
+      playerRank
+    );
+    if (new_tiers.length > 0) {
+      grantPrestigeRewards(nk, record.ownerId, new_tiers);
+    }
+  }
+
   // Create new season
   const nextSeasonNumber = currentSeason.season_number + 1;
   const nextSeasonStartTime = Date.now();
@@ -915,13 +1212,38 @@ export function rpcEndSeason(
     season_number: String(nextSeasonNumber),
   });
 
+  // Seed all players into new season with soft-reset ELO
+  for (const record of allRecords) {
+    const softResetElo = calculateSoftResetElo(record.rank);
+    const metadata = record.metadata ? JSON.parse(record.metadata) : {};
+    nk.leaderboardRecordWrite(
+      nextSeason.season_id,
+      record.ownerId,
+      record.username,
+      softResetElo,
+      0,
+      {
+        wins: '0',
+        losses: '0',
+        win_rate: '0',
+        punch_up_wins: '0',
+        previous_season_rank: String(record.rank),
+        soft_reset_elo: String(softResetElo),
+        ...{ mode: metadata.mode || '1v1' },
+      }
+    );
+  }
+
   // Season telemetry: capture final season snapshot
   recordSeasonEndSnapshot(nk, oldSeason.season_id, oldSeason.start_time);
+
+  logger.info('Season ended: %s, players processed: %d', oldSeason.season_id, allRecords.length);
 
   return JSON.stringify({
     success: true,
     old_season: oldSeason,
     new_season: nextSeason,
+    players_processed: allRecords.length,
   });
 }
 
@@ -1181,5 +1503,122 @@ export function rpcGetPlayerCosmetics(
   return JSON.stringify({
     success: true,
     cosmetics: cosmetics,
+  });
+}
+
+/**
+ * Registers the get prestige progress RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcGetPrestigeProgress(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_prestige_progress', rpcGetPrestigeProgress);
+}
+
+/**
+ * Gets a player's prestige progress across seasons.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (unused)
+ * @returns JSON string with prestige progress
+ */
+export function rpcGetPrestigeProgress(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get prestige progress called for user: %s', ctx.userId);
+
+  const validation = validatePayload(
+    ZodSchemas.get_prestige_progress,
+    payload,
+    'get_prestige_progress'
+  );
+  if (!validation.success) {
+    return createValidationErrorResponse('get_prestige_progress', validation.error);
+  }
+
+  const record = getPlayerPrestigeRecord(nk, ctx.userId);
+  const progress = calculatePrestigeProgress(record.season_finishes);
+
+  return JSON.stringify({
+    success: true,
+    prestige: {
+      tiers_earned: record.prestige_tiers_earned,
+      season_finishes: record.season_finishes,
+      tier_progress: progress,
+    },
+  });
+}
+
+/**
+ * Registers the get projected next season ELO RPC endpoint.
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcGetProjectedNextSeasonElo(
+  initializer: Runtime.Initializer
+): void {
+  initializer.registerRpc(
+    'armored_archer/get_projected_next_season_elo',
+    rpcGetProjectedNextSeasonElo
+  );
+}
+
+/**
+ * Gets the player's projected starting ELO for the next season.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string (unused)
+ * @returns JSON string with projected ELO
+ */
+export function rpcGetProjectedNextSeasonElo(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get projected next season ELO called for user: %s', ctx.userId);
+
+  const validation = validatePayload(
+    ZodSchemas.get_projected_next_season_elo,
+    payload,
+    'get_projected_next_season_elo'
+  );
+  if (!validation.success) {
+    return createValidationErrorResponse('get_projected_next_season_elo', validation.error);
+  }
+
+  const currentSeason = getCurrentSeason();
+  const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
+
+  if (!playerEntry) {
+    return JSON.stringify({
+      success: true,
+      current_rank: 0,
+      projected_elo: 1000,
+      tier_name: 'Unranked',
+    });
+  }
+
+  const projectedElo = calculateSoftResetElo(playerEntry.rank);
+  const tierName =
+    playerEntry.rank <= 10 ? 'Legendary' :
+    playerEntry.rank <= 50 ? 'Epic' :
+    playerEntry.rank <= 100 ? 'Rare' :
+    playerEntry.rank <= 500 ? 'Uncommon' : 'Common';
+
+  return JSON.stringify({
+    success: true,
+    current_rank: playerEntry.rank,
+    current_rating: playerEntry.score,
+    projected_elo: projectedElo,
+    tier_name: tierName,
+    time_remaining: Math.max(0, currentSeason.end_time - Date.now()),
   });
 }

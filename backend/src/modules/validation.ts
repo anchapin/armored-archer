@@ -295,6 +295,10 @@ export const ValibotSchemas = {
 
   get_player_cosmetics: object({}),
 
+  get_prestige_progress: object({}),
+
+  get_projected_next_season_elo: object({}),
+
   validate_purchase: object({
     product_id: createEnum([
       'com.armoredarcher.gems.small',
