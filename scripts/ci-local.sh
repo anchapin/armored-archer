@@ -220,6 +220,12 @@ run_act_job() {
         act_opts="-P .actrc-local ${act_opts}"
     fi
 
+    # Disable cache server in parallel mode to prevent npm cache corruption
+    # when multiple act instances run simultaneously
+    if [ "${USE_PARALLEL}" = true ]; then
+        act_opts="${act_opts} --no-cache-server"
+    fi
+
     if act -j "${job}" ${act_opts} 2>&1; then
         JOB_STATUS[$job]="pass"
         JOB_TIME[$job]=$(log_timing $job_start)
@@ -275,62 +281,94 @@ run_service_job() {
 }
 
 # Parallel job execution
+# Note: act (Docker) jobs run sequentially to avoid container conflicts.
+# Service jobs run in parallel since they execute directly on the host.
 run_jobs_parallel() {
     local jobs=("$@")
-    local max_parallel=4
+    local max_service_parallel=4
     local pids=()
     local failed=0
-
-    log_info "Running ${#jobs[@]} jobs with up to ${max_parallel} parallel workers"
 
     for job in "${jobs[@]}"; do
         TOTAL_JOBS=$((TOTAL_JOBS + 1))
     done
 
-    # Create a temporary directory for job status
-    local tmpdir=$(mktemp -d)
-    trap "rm -rf $tmpdir" EXIT
-
+    # Separate act jobs (sequential) from service jobs (parallel)
+    local act_jobs=()
+    local svc_jobs=()
     for job in "${jobs[@]}"; do
-        # Wait if we have too many parallel jobs
-        while [ ${#pids[@]} -ge ${max_parallel} ]; do
-            for i in "${!pids[@]}"; do
-                if ! kill -0 "${pids[$i]}" 2>/dev/null; then
-                    wait "${pids[$i]}" || failed=1
-                    unset "pids[$i]"
-                fi
-            done
-            sleep 0.1
-        done
+        if [[ " ${SERVICE_JOBS[@]} " =~ " $job " ]]; then
+            svc_jobs+=("$job")
+        else
+            act_jobs+=("$job")
+        fi
+    done
 
-        # Run job in background
+    log_info "Running ${#act_jobs[@]} act jobs (sequential) + ${#svc_jobs[@]} service jobs (parallel)"
+
+    # Create a temporary directory for job exit codes and timing
+    local tmpdir=$(mktemp -d)
+
+    # Start service jobs in background (parallel)
+    for job in "${svc_jobs[@]}"; do
+        echo "$(date +%s)" > "${tmpdir}/${job}.start"
         (
-            if [[ " ${SERVICE_JOBS[@]} " =~ " $job " ]]; then
-                run_service_job "$job"
-            else
-                run_act_job "$job"
-            fi
-            echo $? > "${tmpdir}/${job}.exit"
+            local _rc=0
+            run_service_job "$job" || _rc=$?
+            echo "$_rc" > "${tmpdir}/${job}.exit"
+            echo "$(date +%s)" > "${tmpdir}/${job}.end"
         ) &
         pids+=($!)
     done
 
-    # Wait for all remaining jobs
-    for pid in "${pids[@]}"; do
-        wait "$pid" || failed=1
+    # Run act jobs sequentially (Docker containers conflict when parallel)
+    for job in "${act_jobs[@]}"; do
+        local job_start=$(date +%s)
+        echo "$job_start" > "${tmpdir}/${job}.start"
+        local _rc=0
+        run_act_job "$job" || _rc=$?
+        echo "$_rc" > "${tmpdir}/${job}.exit"
+        echo "$(date +%s)" > "${tmpdir}/${job}.end"
     done
 
-    # Collect results
+    # Wait for all service jobs
+    for pid in "${pids[@]}"; do
+        wait "$pid" || true
+    done
+
+    # Collect results from temp files
     for job in "${jobs[@]}"; do
-        if [ -f "${tmpdir}/${job}.exit" ]; then
-            if [ "$(cat "${tmpdir}/${job}.exit")" = "0" ]; then
+        local exit_file="${tmpdir}/${job}.exit"
+        if [ -f "$exit_file" ]; then
+            local exit_code=$(cat "$exit_file")
+            if [ "$exit_code" = "0" ]; then
                 JOB_STATUS[$job]="pass"
             else
                 JOB_STATUS[$job]="fail"
                 failed=1
             fi
+            if [ -f "${tmpdir}/${job}.start" ] && [ -f "${tmpdir}/${job}.end" ]; then
+                local _start=$(cat "${tmpdir}/${job}.start")
+                local _end=$(cat "${tmpdir}/${job}.end")
+                local _duration=$(( _end - _start ))
+                local _minutes=$(( _duration / 60 ))
+                local _seconds=$(( _duration % 60 ))
+                if [ $_minutes -gt 0 ]; then
+                    JOB_TIME[$job]="${_minutes}m ${_seconds}s"
+                else
+                    JOB_TIME[$job]="${_seconds}s"
+                fi
+            else
+                JOB_TIME[$job]="unknown"
+            fi
+        else
+            JOB_STATUS[$job]="fail"
+            JOB_TIME[$job]="unknown"
+            failed=1
         fi
     done
+
+    rm -rf "$tmpdir"
 
     return $failed
 }
