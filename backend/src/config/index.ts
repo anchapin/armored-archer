@@ -810,9 +810,13 @@ export function validateRequiredConfig(): void {
     throw new Error('NAKAMA_SERVER_KEY must be set in production');
   }
 
-  // Validate required config values
-  if (!config.revenuecat.publicKey) {
-    throw new Error('REVENUECAT_PUBLIC_KEY is required');
+  // Validate RevenueCat config in production
+  if (config.environment === 'production' && !config.revenuecat.secretKey) {
+    throw new Error('REVENUECAT_SECRET_KEY is required in production');
+  }
+
+  if (config.environment === 'production' && !config.revenuecat.webhookSecret) {
+    throw new Error('REVENUECAT_WEBHOOK_SECRET is required in production');
   }
 
   if (!config.database.address) {

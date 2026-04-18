@@ -1076,11 +1076,12 @@ const PENDING_PURCHASE_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const REVENUECAT_API_BASE = 'https://api.revenuecat.com/v1';
 
 /**
- * Gets the RevenueCat API key from environment.
+ * Gets the RevenueCat API key from environment/config.
+ * Checks process.env directly for runtime reactivity (test compatibility).
  * Returns undefined if not configured.
  */
 function getRevenueCatApiKey(): string | undefined {
-  return process.env.REVENUECAT_API_KEY || process.env.REVENUECAT_SECRET_KEY;
+  return process.env.REVENUECAT_SECRET_KEY || config.revenuecat.secretKey || undefined;
 }
 
 /**
@@ -1426,6 +1427,8 @@ export async function rpcCheckRefunds(
     });
   }
 
+  const appUserId = validation.data.app_user_id || ctx.userId;
+
   // Call RevenueCat API to get refund history
   // RevenueCat API endpoint: GET /subscribers/{app_user_id}
   // Wrap external API call with circuit breaker for resilience
@@ -1433,7 +1436,7 @@ export async function rpcCheckRefunds(
     'revenuecat',
     async () => {
       const response = await fetch(
-        `${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(validation.data.app_user_id)}`,
+        `${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(appUserId)}`,
         {
           method: 'GET',
           headers: {
@@ -1518,7 +1521,7 @@ export async function rpcCheckRefunds(
   let processedCount = 0;
   for (const refund of refunds) {
     if (
-      !(await isRefundAlreadyProcessed(validation.data.app_user_id, refund.refunded_at, logger))
+      !(await isRefundAlreadyProcessed(appUserId, refund.refunded_at, logger))
     ) {
       // Get product info to determine gem amount
       const catalog = getStoreCatalog(logger);
@@ -1527,7 +1530,7 @@ export async function rpcCheckRefunds(
       if (productInfo) {
         await processRefund(
           nk,
-          validation.data.app_user_id,
+          appUserId,
           productInfo.gem_amount,
           refund.refunded_at,
           RefundReason.CHARGEBACK,
@@ -1540,7 +1543,7 @@ export async function rpcCheckRefunds(
 
   logger.info(
     'Refund check complete for user %s: found %d refunds',
-    validation.data.app_user_id,
+    appUserId,
     refunds.length
   );
 
@@ -1591,6 +1594,8 @@ export async function rpcCheckSubscriptions(
     });
   }
 
+  const appUserId = validation.data.app_user_id || ctx.userId;
+
   // Call RevenueCat API to get subscription status
   // RevenueCat API endpoint: GET /subscribers/{app_user_id}
   // Wrap external API call with circuit breaker for resilience
@@ -1598,7 +1603,7 @@ export async function rpcCheckSubscriptions(
     'revenuecat',
     async () => {
       const response = await fetch(
-        `${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(validation.data.app_user_id)}`,
+        `${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(appUserId)}`,
         {
           method: 'GET',
           headers: {
@@ -1685,7 +1690,7 @@ export async function rpcCheckSubscriptions(
 
   logger.info(
     'Subscription check complete for user %s: %d active',
-    validation.data.app_user_id,
+    appUserId,
     subscriptionResult.active_subscriptions.length
   );
 

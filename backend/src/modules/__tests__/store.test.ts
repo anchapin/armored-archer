@@ -58,7 +58,7 @@ describe('store', () => {
 
   beforeEach(() => {
     // Restore env before each test
-    process.env = { ...originalEnv, REVENUECAT_API_KEY: 'test-api-key' };
+    process.env = { ...originalEnv, REVENUECAT_SECRET_KEY: 'test-api-key' };
 
     // Mock fetch for RevenueCat API calls
     mockFetch = jest.fn();
@@ -1887,17 +1887,14 @@ describe('store', () => {
     });
 
     it('should skip refund check when API key is not configured', async () => {
-      const originalKey = process.env.REVENUECAT_API_KEY;
-      const originalSecret = process.env.REVENUECAT_SECRET_KEY;
-      delete process.env.REVENUECAT_API_KEY;
+      const originalKey = process.env.REVENUECAT_SECRET_KEY;
       delete process.env.REVENUECAT_SECRET_KEY;
 
       const ctx = createMockContext({ userId: 'test-user' });
       const result = await rpcCheckRefunds(ctx, mockLogger, mockNk, '{}');
       const parsed = JSON.parse(result);
 
-      process.env.REVENUECAT_API_KEY = originalKey;
-      process.env.REVENUECAT_SECRET_KEY = originalSecret;
+      process.env.REVENUECAT_SECRET_KEY = originalKey;
 
       expect(parsed.success).toBe(true);
       expect(parsed.refunds_found).toBe(0);
@@ -1997,17 +1994,14 @@ describe('store', () => {
     });
 
     it('should skip subscription check when API key is not configured', async () => {
-      const originalKey = process.env.REVENUECAT_API_KEY;
-      const originalSecret = process.env.REVENUECAT_SECRET_KEY;
-      delete process.env.REVENUECAT_API_KEY;
+      const originalKey = process.env.REVENUECAT_SECRET_KEY;
       delete process.env.REVENUECAT_SECRET_KEY;
 
       const ctx = createMockContext({ userId: 'test-user' });
       const result = await rpcCheckSubscriptions(ctx, mockLogger, mockNk, '{}');
       const parsed = JSON.parse(result);
 
-      process.env.REVENUECAT_API_KEY = originalKey;
-      process.env.REVENUECAT_SECRET_KEY = originalSecret;
+      process.env.REVENUECAT_SECRET_KEY = originalKey;
 
       expect(parsed.success).toBe(true);
       expect(parsed.active_subscriptions).toEqual([]);
@@ -2151,9 +2145,7 @@ describe('store', () => {
 
   describe('rpcValidatePurchase - RevenueCat validation failures', () => {
     it('should return error when RevenueCat API key is not configured', async () => {
-      const originalKey = process.env.REVENUECAT_API_KEY;
-      const originalSecret = process.env.REVENUECAT_SECRET_KEY;
-      delete process.env.REVENUECAT_API_KEY;
+      const originalKey = process.env.REVENUECAT_SECRET_KEY;
       delete process.env.REVENUECAT_SECRET_KEY;
 
       const payload = JSON.stringify({
@@ -2165,8 +2157,7 @@ describe('store', () => {
       const result = await rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
-      process.env.REVENUECAT_API_KEY = originalKey;
-      process.env.REVENUECAT_SECRET_KEY = originalSecret;
+      process.env.REVENUECAT_SECRET_KEY = originalKey;
 
       expect(parsed.error_code).toBe('VALIDATION_FAILED');
     });
@@ -3452,9 +3443,7 @@ describe('store', () => {
     });
 
     it('should skip refund check when RevenueCat API key not configured', async () => {
-      const savedKey = process.env.REVENUECAT_API_KEY;
-      const savedSecret = process.env.REVENUECAT_SECRET_KEY;
-      delete process.env.REVENUECAT_API_KEY;
+      const savedKey = process.env.REVENUECAT_SECRET_KEY;
       delete process.env.REVENUECAT_SECRET_KEY;
 
       const result = await rpcCheckRefunds(
@@ -3464,8 +3453,7 @@ describe('store', () => {
         JSON.stringify({ app_user_id: 'test-user' })
       );
 
-      process.env.REVENUECAT_API_KEY = savedKey;
-      process.env.REVENUECAT_SECRET_KEY = savedSecret;
+      process.env.REVENUECAT_SECRET_KEY = savedKey;
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
@@ -3520,9 +3508,8 @@ describe('store', () => {
     });
 
     it('should skip subscription check when RevenueCat API key not configured', async () => {
-      const savedKey = process.env.REVENUECAT_API_KEY;
+      const savedKey = process.env.REVENUECAT_SECRET_KEY;
       const savedSecret = process.env.REVENUECAT_SECRET_KEY;
-      delete process.env.REVENUECAT_API_KEY;
       delete process.env.REVENUECAT_SECRET_KEY;
 
       const result = await rpcCheckSubscriptions(
@@ -3532,7 +3519,6 @@ describe('store', () => {
         JSON.stringify({ app_user_id: 'test-user' })
       );
 
-      process.env.REVENUECAT_API_KEY = savedKey;
       process.env.REVENUECAT_SECRET_KEY = savedSecret;
 
       const parsed = JSON.parse(result);
