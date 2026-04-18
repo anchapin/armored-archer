@@ -12,6 +12,7 @@ var current_health: int
 var move_speed: float = 200.0  # Will be set from CombinedStatsManager
 @export var acceleration: float = 800.0
 @export var friction: float = 1000.0
+@export var aim_smoothing: float = 15.0
 
 # --- Stats Manager ---
 var combined_stats_manager: Node
@@ -22,6 +23,7 @@ var is_aiming: bool = false
 var aim_direction: Vector2 = Vector2.RIGHT
 var virtual_move_direction: Vector2 = Vector2.ZERO
 var virtual_aim_direction: Vector2 = Vector2.ZERO
+var _smoothed_aim_direction: Vector2 = Vector2.RIGHT
 
 # --- Signals ---
 signal movement_started
