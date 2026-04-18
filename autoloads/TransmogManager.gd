@@ -247,10 +247,6 @@ func _on_cosmetics_synced(owned: Array, equipped: Dictionary) -> void:
 			else:
 				character_sprite.unequip_skin(slot)
 
-	# Handle amulet slot
-	if equipped.has("amulet"):
-		current_loadout.skins["amulet"] = equipped.get("amulet", "")
-
 func save_loadout() -> void:
 	"""Persists current skin loadout to server for cross-device sync."""
 	var gem_manager = get_node_or_null("/root/GemManager")
