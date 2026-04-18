@@ -422,6 +422,7 @@ jobs:
           echo "This is expected behavior - Codecov has issues with worktrees and local testing"
       
       - name: Upload test results
+        if: env.ACT != 'true'
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
@@ -429,6 +430,10 @@ jobs:
           path: backend/test-results/
           retention-days: 30
           if-no-files-found: ignore
+
+      - name: Skip upload (act detected)
+        if: env.ACT == 'true'
+        run: echo "Skipping artifact upload in act environment"
 
   require-tests:
     name: All Tests Must Pass
@@ -494,6 +499,7 @@ jobs:
         continue-on-error: true
       
       - name: Upload report
+        if: env.ACT != 'true'
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
@@ -501,3 +507,7 @@ jobs:
           path: docs/flaky-tests-report.md
           retention-days: 7
           if-no-files-found: ignore
+
+      - name: Skip upload (act detected)
+        if: env.ACT == 'true'
+        run: echo "Skipping artifact upload in act environment"

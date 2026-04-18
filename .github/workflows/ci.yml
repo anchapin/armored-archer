@@ -412,7 +412,7 @@ jobs:
           GIT_COMMIT: ${{ github.sha }}
       
       - name: Upload bundle report
-        if: always()
+        if: always() && env.ACT != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: bundle-report
@@ -420,6 +420,10 @@ jobs:
             backend/.bundle-size-history.json
           retention-days: 30
           if-no-files-found: ignore
+
+      - name: Skip upload (act detected)
+        if: always() && env.ACT == 'true'
+        run: echo "Skipping artifact upload in act environment"
 
   godot-validate:
     name: Godot Project Validation
@@ -509,7 +513,7 @@ jobs:
         run: npm run tech-debt:report:ci
       
       - name: Upload Tech Debt Report
-        if: always()
+        if: always() && env.ACT != 'true'
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
@@ -518,6 +522,10 @@ jobs:
             backend/tech-debt-report.json
           retention-days: 30
           if-no-files-found: ignore
+
+      - name: Skip upload (act detected)
+        if: always() && env.ACT == 'true'
+        run: echo "Skipping artifact upload in act environment"
 
   dead-code-detection:
     name: Dead Code Detection
@@ -778,7 +786,7 @@ jobs:
         run: npm run test:schema
 
       - name: Upload schema test results
-        if: always()
+        if: always() && env.ACT != 'true'
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
@@ -786,6 +794,10 @@ jobs:
           path: backend/test-results/
           retention-days: 7
           if-no-files-found: ignore
+
+      - name: Skip upload (act detected)
+        if: always() && env.ACT == 'true'
+        run: echo "Skipping artifact upload in act environment"
 
   agents-md-validation:
     name: AGENTS.md Validation
@@ -809,7 +821,7 @@ jobs:
         run: npm run validate:agents-md:ci
       
       - name: Upload validation report
-        if: always()
+        if: always() && env.ACT != 'true'
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
@@ -818,3 +830,7 @@ jobs:
             backend/agents-md-validation-report.json
           retention-days: 7
           if-no-files-found: ignore
+
+      - name: Skip upload (act detected)
+        if: always() && env.ACT == 'true'
+        run: echo "Skipping artifact upload in act environment"

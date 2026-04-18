@@ -1,0 +1,86 @@
+[gd_scene load_steps=2 format=3 uid="uid://bq7r3rewardpreview"]
+
+[ext_resource type="Script" path="res://scenes/ui/reward_preview_panel.gd" id="1"]
+
+[node name="RewardPreviewPanel" type="PanelContainer"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -200.0
+offset_right = 180.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "Season Reward Preview"
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="CurrentSection" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="SectionLabel" type="Label" parent="VBoxContainer/CurrentSection"]
+layout_mode = 2
+text = "Your Projected Rewards"
+
+[node name="TierLabel" type="Label" parent="VBoxContainer/CurrentSection"]
+layout_mode = 2
+text = "Current Tier: Common"
+
+[node name="CoinsLabel" type="Label" parent="VBoxContainer/CurrentSection"]
+layout_mode = 2
+text = "Coins: 500"
+
+[node name="GemsLabel" type="Label" parent="VBoxContainer/CurrentSection"]
+layout_mode = 2
+text = "Gems: 25"
+
+[node name="CosmeticsLabel" type="Label" parent="VBoxContainer/CurrentSection"]
+layout_mode = 2
+text = ""
+
+[node name="HSeparator2" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="NextSection" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="NextSectionLabel" type="Label" parent="VBoxContainer/NextSection"]
+layout_mode = 2
+text = "Next Tier Rewards"
+
+[node name="NextTierLabel" type="Label" parent="VBoxContainer/NextSection"]
+layout_mode = 2
+text = "Next Tier: Uncommon"
+
+[node name="NextCoinsLabel" type="Label" parent="VBoxContainer/NextSection"]
+layout_mode = 2
+text = "Coins: 1000"
+
+[node name="NextGemsLabel" type="Label" parent="VBoxContainer/NextSection"]
+layout_mode = 2
+text = "Gems: 50"
+
+[node name="NextCosmeticsLabel" type="Label" parent="VBoxContainer/NextSection"]
+layout_mode = 2
+text = ""
+
+[node name="NextMessageLabel" type="Label" parent="VBoxContainer/NextSection"]
+layout_mode = 2
+autowrap_mode = 2
+text = "Climb to rank 500 for Uncommon tier!"
+
+[node name="CloseButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Close"
