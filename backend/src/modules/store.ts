@@ -1737,6 +1737,7 @@ export async function rpcProcessPendingPurchases(
     // Skip expired
     if (now - purchase.timestamp >= PENDING_PURCHASE_EXPIRY_MS) {
       results.push({ product_id: purchase.product_id, success: false, error: 'Expired' });
+      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'process_pending_purchase', 'player_currency', { product_id: purchase.product_id }, 'failure', 'Expired');
       continue;
     }
 
@@ -1747,6 +1748,7 @@ export async function rpcProcessPendingPurchases(
         success: false,
         error: 'Max retries exceeded',
       });
+      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'process_pending_purchase', 'player_currency', { product_id: purchase.product_id, retry_count: purchase.retry_count }, 'failure', 'Max retries exceeded');
       continue;
     }
 
@@ -1758,6 +1760,7 @@ export async function rpcProcessPendingPurchases(
         success: false,
         error: 'Invalid product ID',
       });
+      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'process_pending_purchase', 'player_currency', { product_id: purchase.product_id }, 'failure', 'Invalid product ID');
       continue;
     }
 
@@ -1767,6 +1770,7 @@ export async function rpcProcessPendingPurchases(
     // Check for duplicate receipt
     if (await isReceiptAlreadyUsed(nk, ctx.userId, receiptHash, logger)) {
       results.push({ product_id: purchase.product_id, success: true, error: 'Already processed' });
+      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'process_pending_purchase', 'player_currency', { product_id: purchase.product_id }, 'success', 'Already processed');
       continue;
     }
 
@@ -1781,6 +1785,7 @@ export async function rpcProcessPendingPurchases(
         success: false,
         error: 'Would exceed max balance',
       });
+      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'process_pending_purchase', 'player_currency', { product_id: purchase.product_id, gem_amount: gemBundle.gem_amount }, 'failure', 'Would exceed max balance');
       continue;
     }
 
@@ -1801,6 +1806,7 @@ export async function rpcProcessPendingPurchases(
     invalidateCurrencyCache(ctx.userId, logger);
 
     results.push({ product_id: purchase.product_id, success: true });
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'process_pending_purchase', 'player_currency', { product_id: purchase.product_id, gems_awarded: gemBundle.gem_amount }, 'success');
     logger.info(
       'Processed pending purchase for user %s: %s (%d gems)',
       ctx.userId,
@@ -2299,6 +2305,8 @@ export async function rpcRestorePurchases(
               nk.walletUpdate(ctx.userId, { gems: bundle.gem_amount });
               invalidateCurrencyCache(ctx.userId, logger);
 
+              logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'restore_purchase_grant', 'player_currency', { product_id: productId, gems_awarded: bundle.gem_amount, new_balance: playerCurrency.gems, source: 'non_subscription' }, 'success');
+
               restoredPurchases.push({
                 product_id: productId,
                 gems_awarded: bundle.gem_amount,
@@ -2349,6 +2357,8 @@ export async function rpcRestorePurchases(
 
             nk.walletUpdate(ctx.userId, { gems: bundle.gem_amount });
             invalidateCurrencyCache(ctx.userId, logger);
+
+            logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'restore_purchase_grant', 'player_currency', { product_id: productId, gems_awarded: bundle.gem_amount, new_balance: playerCurrency.gems, source: 'entitlement' }, 'success');
 
             restoredPurchases.push({
               product_id: productId,
@@ -2461,6 +2471,7 @@ async function handleInitialPurchase(
 
   if (!gemAmount) {
     logger.error('Unknown product ID in webhook: %s', productId);
+    logAudit(nk, userId, null, 'webhook_purchase', 'player_currency', { product_id: productId, event_type: eventType }, 'failure', 'Unknown product ID');
     return { success: false, message: 'Unknown product ID', event_type: eventType };
   }
 
@@ -2470,6 +2481,7 @@ async function handleInitialPurchase(
   // Check for max balance
   if (wouldExceedMaxBalance(playerCurrency.gems, gemAmount)) {
     logger.warn('Purchase would exceed max balance for user %s', userId);
+    logAudit(nk, userId, null, 'webhook_purchase', 'player_currency', { product_id: productId, gems_awarded: 0, new_balance: playerCurrency.gems, event_type: eventType }, 'failure', 'Gem balance would exceed maximum');
     return {
       success: false,
       message: 'Gem balance would exceed maximum',
@@ -2501,6 +2513,8 @@ async function handleInitialPurchase(
   invalidateCurrencyCache(userId, logger);
 
   logger.info('Webhook: Awarded %d gems to user %s for product %s', gemAmount, userId, productId);
+
+  logAudit(nk, userId, null, 'webhook_purchase', 'player_currency', { product_id: productId, gems_awarded: gemAmount, new_balance: playerCurrency.gems, event_type: eventType }, 'success');
 
   return {
     success: true,
@@ -2544,6 +2558,7 @@ function handleSubscriptionCancelled(
     // Handle empty or non-JSON values
     if (!value || typeof value !== 'string') {
       logger.warn('No valid subscription data found for user %s', userId);
+      logAudit(nk, userId, null, 'subscription_cancelled', 'player_subscription', { product_id: productId, reason: reason || 'not specified', event_type: eventType }, 'failure', 'No valid subscription data found');
       return {
         success: true,
         message: 'Cancellation noted (no subscription found)',
@@ -2555,6 +2570,7 @@ function handleSubscriptionCancelled(
       subscription = JSON.parse(value);
     } catch (e) {
       logger.error('Failed to parse subscription data for user %s: %s', userId, e);
+      logAudit(nk, userId, null, 'subscription_cancelled', 'player_subscription', { product_id: productId, event_type: eventType }, 'failure', 'Invalid subscription data');
       return { success: false, error: 'Invalid subscription data' };
     }
     subscription.active = false;
@@ -2572,6 +2588,7 @@ function handleSubscriptionCancelled(
     ]);
   }
 
+  logAudit(nk, userId, null, 'subscription_cancelled', 'player_subscription', { product_id: productId, reason: reason || 'not specified', event_type: eventType }, 'success');
   return { success: true, message: 'Cancellation noted', event_type: eventType };
 }
 
@@ -2602,6 +2619,7 @@ function handleBillingIssue(
     // Handle empty or non-JSON values
     if (!value || typeof value !== 'string') {
       logger.warn('No valid subscription data found for user %s', userId);
+      logAudit(nk, userId, null, 'billing_issue', 'player_subscription', { product_id: productId, event_type: eventType }, 'failure', 'No valid subscription data found');
       return {
         success: true,
         message: 'Billing issue recorded (no subscription found)',
@@ -2613,6 +2631,7 @@ function handleBillingIssue(
       subscription = JSON.parse(value);
     } catch (e) {
       logger.error('Failed to parse subscription data for user %s: %s', userId, e);
+      logAudit(nk, userId, null, 'billing_issue', 'player_subscription', { product_id: productId, event_type: eventType }, 'failure', 'Invalid subscription data');
       return { success: false, error: 'Invalid subscription data' };
     }
     subscription.billing_issue = true;
@@ -2628,6 +2647,7 @@ function handleBillingIssue(
     ]);
   }
 
+  logAudit(nk, userId, null, 'billing_issue', 'player_subscription', { product_id: productId, event_type: eventType }, 'success');
   return { success: true, message: 'Billing issue recorded', event_type: eventType };
 }
 
@@ -2635,7 +2655,7 @@ function handleBillingIssue(
  * Handle subscription expiration.
  */
 function handleSubscriptionExpired(
-  _nk: Runtime.Nakama,
+  nk: Runtime.Nakama,
   userId: string,
   productId: string,
   reason: string | undefined,
@@ -2649,6 +2669,7 @@ function handleSubscriptionExpired(
     reason || 'not specified'
   );
 
+  logAudit(nk, userId, null, 'subscription_expired', 'player_subscription', { product_id: productId, reason: reason || 'not specified', event_type: eventType }, 'success');
   return { success: true, message: 'Expiration noted', event_type: eventType };
 }
 
@@ -2671,6 +2692,7 @@ async function handleProductChange(
 
   // For subscription product changes, just record the change without awarding gems
   // (premium subscriptions don't award gems, only consumable gem packs do)
+  logAudit(nk, userId, null, 'product_change', 'player_subscription', { product_id: productId, transferred_from: transferredFrom, event_type: 'product_change' }, 'success');
   return { success: true, message: 'Product change noted', event_type: 'product_change' };
 }
 
@@ -2695,6 +2717,7 @@ export async function rpcRevenueCatWebhook(
 
     if (!verifyWebhookSignature(payload, signature, webhookSecret)) {
       logger.error('Invalid webhook signature');
+      logAudit(nk, '', null, 'webhook_invalid_signature', 'revenuecat_webhook', {}, 'failure', 'Invalid webhook signature');
       return JSON.stringify({
         success: false,
         error: 'Invalid signature',
@@ -2756,6 +2779,7 @@ export async function rpcRevenueCatWebhook(
 
   if (!appUserId) {
     logger.error('Missing app_user_id in webhook payload');
+    logAudit(nk, '', null, 'webhook_missing_user', 'revenuecat_webhook', { event_type: normalizedEventType }, 'failure', 'Missing app_user_id');
     return JSON.stringify({ success: false, error: 'Missing app_user_id' });
   }
 
