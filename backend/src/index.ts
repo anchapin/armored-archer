@@ -134,10 +134,20 @@ import {
   registerRpcRestorePurchases,
   registerRpcPurchaseCosmetic,
   registerRpcGetCosmeticCatalog,
+  registerRpcGetOwnedCosmetics,
+  registerRpcEquipCosmetic,
+  registerRpcUnequipCosmetic,
+  registerRpcGetEquippedCosmetics,
+  registerRpcSaveCosmeticLoadout,
   rpcProcessPendingPurchases,
   rpcCheckRefunds,
   rpcCheckSubscriptions,
   rpcAppLaunchCheck,
+  rpcGetOwnedCosmetics,
+  rpcEquipCosmetic,
+  rpcUnequipCosmetic,
+  rpcGetEquippedCosmetics,
+  rpcSaveCosmeticLoadout,
 } from './modules/store';
 import { initializeCaches } from './utils/cache';
 
@@ -382,6 +392,36 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/get_owned_cosmetics',
+      'get_owned_cosmetics',
+      rpcGetOwnedCosmetics
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/equip_cosmetic',
+      'equip_cosmetic',
+      rpcEquipCosmetic
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/unequip_cosmetic',
+      'unequip_cosmetic',
+      rpcUnequipCosmetic
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/get_equipped_cosmetics',
+      'get_equipped_cosmetics',
+      rpcGetEquippedCosmetics
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/save_cosmetic_loadout',
+      'save_cosmetic_loadout',
+      rpcSaveCosmeticLoadout
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/revenuecat_webhook',
       'revenuecat_webhook',
       rpcRevenueCatWebhookWrapper
@@ -515,6 +555,11 @@ const InitModule: InitModule = function (
     registerRpcRestorePurchases(initializer);
     registerRpcPurchaseCosmetic(initializer);
     registerRpcGetCosmeticCatalog(initializer);
+    registerRpcGetOwnedCosmetics(initializer);
+    registerRpcEquipCosmetic(initializer);
+    registerRpcUnequipCosmetic(initializer);
+    registerRpcGetEquippedCosmetics(initializer);
+    registerRpcSaveCosmeticLoadout(initializer);
     registerRpcGenerateGear(initializer);
     registerRpcEquipGear(initializer);
     registerRpcUnequipGear(initializer);
