@@ -6,6 +6,8 @@
 ## - purchase_succeeded(product_id: String, gems_awarded: int): Emitted when purchase completes
 ## - purchase_failed(product_id: String, error: String): Emitted when purchase fails
 ## - products_loaded(products: Dictionary): Emitted when product catalog is available
+## - restore_completed(purchases: Array): Emitted when restore finishes
+## - restore_failed(error: String): Emitted when restore fails
 ##
 extends Node
 
@@ -13,11 +15,18 @@ extends Node
 const RPC_VALIDATE_PURCHASE = "armored_archer/validate_purchase"
 const RPC_GET_CURRENCY = "armored_archer/get_currency"
 const RPC_SPEND_GEMS = "armored_archer/spend_gems"
+const RPC_RESTORE_PURCHASES = "armored_archer/restore_purchases"
+const RPC_PROCESS_PENDING = "armored_archer/process_pending_purchases"
 
 # --- Product Identifiers ---
 const PRODUCT_SMALL_GEMS = "com.armoredarcher.gems.small"
 const PRODUCT_MEDIUM_GEMS = "com.armoredarcher.gems.medium"
 const PRODUCT_LARGE_GEMS = "com.armoredarcher.gems.large"
+
+# --- Retry Configuration ---
+const MAX_RETRY_ATTEMPTS: int = 3
+const RETRY_DELAYS: Array[float] = [2.0, 5.0, 15.0]
+const PENDING_PURCHASE_EXPIRY_SEC: float = 86400.0  # 24 hours
 
 # --- Product Definitions ---
 var products: Dictionary = {
@@ -49,12 +58,19 @@ var is_initialized: bool = false
 # --- IAP State ---
 var is_purchase_pending: bool = false
 var pending_product_id: String = ""
+var is_restoring: bool = false
+
+# --- Pending Purchase Queue ---
+# Locally queued purchases that failed due to network issues
+var _pending_purchases: Array[Dictionary] = []
 
 # --- Signals ---
 signal currency_updated(gems: int, gold: int)
 signal purchase_succeeded(product_id: String, gems_awarded: int)
 signal purchase_failed(product_id: String, error: String)
 signal products_loaded(products: Dictionary)
+signal restore_completed(purchases: Array)
+signal restore_failed(error: String)
 
 # --- Network Reference ---
 @onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
@@ -65,6 +81,10 @@ var platform: String = ""
 # --- Development/Test Mode ---
 # Enable test mode to simulate purchases on desktop platforms
 var test_mode: bool = false
+
+# --- Sandbox Mode ---
+# True when running against sandbox/test environment (Apple/Google sandbox)
+var is_sandbox: bool = false
 
 # --- PII Masking for Logs ---
 func _mask_sensitive_data(data: String, max_length: int = 20) -> String:
@@ -86,20 +106,34 @@ func _mask_sensitive_data(data: String, max_length: int = 20) -> String:
 	return data.substr(0, max_length) + "***"
 
 func _ready() -> void:
-	"""Detects platform and sets up signal connections."""
 	_detect_platform()
-	# Enable test mode automatically on desktop platforms for development
 	if platform in ["linux", "windows", "macos"]:
 		test_mode = true
 		print("[StoreManager] Test mode enabled for development on %s" % platform)
+	_detect_sandbox()
+	_load_pending_purchases()
 	if network_manager:
 		network_manager.connection_status_changed.connect(_on_connection_status_changed)
 
 func _on_connection_status_changed(is_online: bool) -> void:
-	if is_online:
-		# Don't auto-load currency - RPC might not be ready yet
-		# await load_currency()
-		pass
+	if is_online and _pending_purchases.size() > 0:
+		_process_pending_purchases()
+
+func _detect_sandbox() -> void:
+	if platform == "ios":
+		if Engine.has_singleton("RevenueCat"):
+			var rc = Engine.get_singleton("RevenueCat")
+			if rc.has_method("isSandbox"):
+				is_sandbox = rc.isSandbox()
+		if OS.has_environment("SIMULATOR_RUNTIME_VERSION"):
+			is_sandbox = true
+	elif platform == "android":
+		if OS.has_environment("BUILD_TYPE"):
+			is_sandbox = OS.get_environment("BUILD_TYPE") == "debug"
+	elif test_mode:
+		is_sandbox = true
+	if is_sandbox:
+		print("[StoreManager] Sandbox environment detected")
 
 func _detect_platform() -> void:
 	"""Determines the current runtime platform."""
@@ -275,8 +309,9 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 	"""
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
+		_add_to_pending_queue(product_id, transaction_receipt)
 		is_purchase_pending = false
-		emit_signal("purchase_failed", product_id, "Not connected to server")
+		emit_signal("purchase_failed", product_id, "Not connected - purchase queued for retry")
 		return
 
 	var payload = JSON.stringify({
@@ -310,12 +345,14 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 	# Handle network failure scenarios
 	if has_timed_out:
 		push_error("Purchase validation timed out for product: %s" % product_id)
-		emit_signal("purchase_failed", product_id, "Network timeout - please try again")
+		_add_to_pending_queue(product_id, transaction_receipt)
+		emit_signal("purchase_failed", product_id, "Network timeout - purchase queued for retry")
 		return
 
 	if response == null:
 		push_error("Purchase validation failed - no response received for product: %s" % product_id)
-		emit_signal("purchase_failed", product_id, "Network error - please try again")
+		_add_to_pending_queue(product_id, transaction_receipt)
+		emit_signal("purchase_failed", product_id, "Network error - purchase queued for retry")
 		return
 
 	if response.has("error"):
@@ -405,12 +442,149 @@ func spend_gems(amount: int, reason: String = "") -> void:
 
 # --- Product Info ---
 func get_products() -> Dictionary:
-	"""Returns the product catalog.
-
-	Returns:
-		Dictionary: Product definitions keyed by product ID
-	"""
 	return products
+
+# --- Restore Purchases ---
+func restore_purchases() -> void:
+	if is_restoring:
+		push_error("Restore already in progress")
+		return
+
+	is_restoring = true
+	print("[StoreManager] Starting purchase restore...")
+
+	if platform == "ios" or platform == "android":
+		if Engine.has_singleton("RevenueCat"):
+			var rc = Engine.get_singleton("RevenueCat")
+			if rc.has_method("restorePurchases"):
+				rc.restorePurchases(_on_revenuecat_restore_complete)
+				return
+		push_error("RevenueCat plugin not found for restore")
+		is_restoring = false
+		emit_signal("restore_failed", "RevenueCat plugin not installed")
+	elif test_mode:
+		await _simulate_test_restore()
+	else:
+		is_restoring = false
+		emit_signal("restore_failed", "Purchases not supported on this platform")
+
+func _on_revenuecat_restore_complete(result: Dictionary) -> void:
+	is_restoring = false
+
+	if not result.get("success", false):
+		var error: String = result.get("error", "Unknown restore error")
+		push_error("Restore failed: %s" % error)
+		emit_signal("restore_failed", error)
+		return
+
+	var restored: Array = result.get("purchases", [])
+
+	if restored.is_empty():
+		print("[StoreManager] No purchases to restore")
+		emit_signal("restore_completed", [])
+		return
+
+	var server_results: Array = []
+	for purchase in restored:
+		var product_id: String = purchase.get("productIdentifier", "")
+		var receipt: String = purchase.get("transactionReceipt", "")
+		if not product_id.is_empty() and not receipt.is_empty():
+			server_results.append(await _validate_purchase_with_server(product_id, receipt))
+
+	await load_currency()
+	print("[StoreManager] Restore complete: %d purchases processed" % restored.size())
+	emit_signal("restore_completed", restored)
+
+func _simulate_test_restore() -> void:
+	await get_tree().create_timer(1.0).timeout
+	is_restoring = false
+	print("[StoreManager] TEST MODE: Restore complete (no purchases to restore)")
+	emit_signal("restore_completed", [])
+
+# --- Pending Purchase Queue ---
+func _add_to_pending_queue(product_id: String, transaction_receipt: String) -> void:
+	var entry: Dictionary = {
+		"product_id": product_id,
+		"platform": platform,
+		"transaction_receipt": transaction_receipt,
+		"timestamp": Time.get_unix_time_from_system(),
+		"retry_count": 0
+	}
+	_pending_purchases.append(entry)
+	_save_pending_purchases()
+	print("[StoreManager] Purchase queued for retry: %s" % product_id)
+
+func _process_pending_purchases() -> void:
+	if _pending_purchases.is_empty():
+		return
+	if not network_manager or not network_manager.is_connected:
+		return
+
+	var remaining: Array[Dictionary] = []
+	var now: float = Time.get_unix_time_from_system()
+
+	for entry in _pending_purchases:
+		var age: float = now - entry.get("timestamp", 0.0)
+		if age > PENDING_PURCHASE_EXPIRY_SEC:
+			print("[StoreManager] Expiring pending purchase: %s" % entry.get("product_id", ""))
+			continue
+
+		var retry_count: int = entry.get("retry_count", 0)
+		if retry_count >= MAX_RETRY_ATTEMPTS:
+			print("[StoreManager] Max retries exceeded: %s" % entry.get("product_id", ""))
+			continue
+
+		entry["retry_count"] = retry_count + 1
+		var product_id: String = entry.get("product_id", "")
+		var receipt: String = entry.get("transaction_receipt", "")
+
+		print("[StoreManager] Retrying pending purchase: %s (attempt %d)" % [product_id, retry_count + 1])
+
+		var delay: float = RETRY_DELAYS[min(retry_count, RETRY_DELAYS.size() - 1)]
+		await get_tree().create_timer(delay).timeout
+
+		await _validate_purchase_with_server(product_id, receipt)
+
+		if is_purchase_pending:
+			remaining.append(entry)
+		else:
+			print("[StoreManager] Pending purchase resolved: %s" % product_id)
+
+	_pending_purchases = remaining
+	_save_pending_purchases()
+
+func _save_pending_purchases() -> void:
+	var save_data: Array = []
+	for entry in _pending_purchases:
+		if entry.get("retry_count", 0) < MAX_RETRY_ATTEMPTS:
+			save_data.append(entry)
+	var file = FileAccess.open("user://pending_purchases.json", FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(save_data))
+		file.close()
+
+func _load_pending_purchases() -> void:
+	if not FileAccess.file_exists("user://pending_purchases.json"):
+		return
+	var file = FileAccess.open("user://pending_purchases.json", FileAccess.READ)
+	if not file:
+		return
+	var json_text: String = file.get_as_text()
+	file.close()
+	var json = JSON.new()
+	var error = json.parse(json_text)
+	if error != OK:
+		return
+	var data = json.data
+	if data is Array:
+		var now: float = Time.get_unix_time_from_system()
+		for entry in data:
+			if entry is Dictionary:
+				var age: float = now - entry.get("timestamp", 0.0)
+				if age < PENDING_PURCHASE_EXPIRY_SEC and entry.get("retry_count", 0) < MAX_RETRY_ATTEMPTS:
+					_pending_purchases.append(entry)
+		if not _pending_purchases.is_empty():
+			print("[StoreManager] Loaded %d pending purchases" % _pending_purchases.size())
 
 func get_product_info(product_id: String) -> Dictionary:
 	"""Retrieves information for a specific product.

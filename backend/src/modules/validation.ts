@@ -327,6 +327,10 @@ export const ValibotSchemas = {
 
   app_launch_check: object({}),
 
+  restore_purchases: object({
+    platform: createEnum(['ios', 'android']),
+  }),
+
   // Deployment observability
   deployment_record: object({
     environment: createEnum(['development', 'staging', 'production']),

@@ -131,6 +131,7 @@ import {
   registerRpcCheckSubscriptions,
   registerRpcAppLaunchCheck,
   registerRpcRevenueCatWebhook,
+  registerRpcRestorePurchases,
   rpcProcessPendingPurchases,
   rpcCheckRefunds,
   rpcCheckSubscriptions,
@@ -509,6 +510,7 @@ const InitModule: InitModule = function (
     registerRpcCheckSubscriptions(initializer);
     registerRpcAppLaunchCheck(initializer);
     registerRpcRevenueCatWebhook(initializer);
+    registerRpcRestorePurchases(initializer);
     registerRpcGenerateGear(initializer);
     registerRpcEquipGear(initializer);
     registerRpcUnequipGear(initializer);

@@ -108,6 +108,12 @@ layout_mode = 2
 text = "$9.99"
 script = ExtResource("4_vwpil")
 
+[node name="RestoreButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer" unique_id=559230184]
+custom_minimum_size = Vector2(160, 40)
+layout_mode = 2
+text = "Restore Purchases"
+script = ExtResource("4_vwpil")
+
 [node name="BackButton" type="Button" parent="SafeAreaContainer/CenterContainer/VBoxContainer" unique_id=869489330]
 custom_minimum_size = Vector2(160, 48)
 layout_mode = 2
