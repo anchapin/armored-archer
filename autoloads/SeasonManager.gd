@@ -21,6 +21,8 @@ const RPC_CLAIM_SEASON_REWARDS = "armored_archer/claim_season_rewards"
 const RPC_GET_SEASON_HISTORY = "armored_archer/get_season_history"
 const RPC_GET_PLAYER_RANK = "armored_archer/get_player_rank"
 const RPC_GET_PLAYER_COSMETICS = "armored_archer/get_player_cosmetics"
+const RPC_GET_PRESTIGE_PROGRESS = "armored_archer/get_prestige_progress"
+const RPC_GET_PROJECTED_NEXT_SEASON_ELO = "armored_archer/get_projected_next_season_elo"
 
 # --- Season Duration ---
 const SEASON_DURATION_DAYS: int = 30  # 30 days per season
@@ -54,6 +56,15 @@ var decay_info: Dictionary = {
 # --- Season History ---
 var season_history: Array = []
 
+# --- Prestige Data ---
+var prestige_progress: Dictionary = {
+	"tiers_earned": [],
+	"season_finishes": [],
+	"tier_progress": []
+}
+var projected_next_season_elo: int = 1000
+var current_tier_name: String = "Unranked"
+
 # --- Signals ---
 signal season_info_loaded(season_info: Dictionary)
 signal leaderboard_loaded(leaderboard: Array)
@@ -64,6 +75,8 @@ signal season_transitioned(old_season: Dictionary, new_season: Dictionary)
 signal decay_info_updated(decay_info: Dictionary)
 signal season_history_loaded(history: Array)
 signal player_cosmetics_loaded(cosmetics: Dictionary)
+signal prestige_progress_loaded(progress: Dictionary)
+signal projected_elo_loaded(elo: int, current_rank: int, tier_name: String)
 
 # --- Network Reference ---
 @onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
@@ -553,6 +566,84 @@ func get_player_cosmetics() -> void:
 		var cosmetics: Dictionary = response.get("cosmetics", {})
 		player_cosmetics_loaded.emit(cosmetics)
 
+# --- Prestige Progress ---
+func get_prestige_progress() -> void:
+	"""Retrieves player's prestige progress across seasons."""
+	if not network_manager or not network_manager.is_connected:
+		push_error("Not connected to server")
+		return
+
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_PRESTIGE_PROGRESS, json.stringify({}))
+
+	if response.has("error"):
+		push_error("Failed to get prestige progress: %s" % response.error)
+		return
+
+	if response.get("success", false):
+		prestige_progress = response.get("prestige", {})
+		prestige_progress_loaded.emit(prestige_progress)
+
+# --- Projected Next Season ELO ---
+func get_projected_next_season_elo() -> void:
+	"""Retrieves the player's projected starting ELO for next season."""
+	if not network_manager or not network_manager.is_connected:
+		push_error("Not connected to server")
+		return
+
+	var json: JSON = JSON.new()
+	var response: Dictionary = await network_manager.send_rpc(RPC_GET_PROJECTED_NEXT_SEASON_ELO, json.stringify({}))
+
+	if response.has("error"):
+		push_error("Failed to get projected ELO: %s" % response.error)
+		return
+
+	if response.get("success", false):
+		projected_next_season_elo = response.get("projected_elo", 1000)
+		current_tier_name = response.get("tier_name", "Unranked")
+		projected_elo_loaded.emit(
+			projected_next_season_elo,
+			response.get("current_rank", 0),
+			current_tier_name
+		)
+
+# --- Local Soft Reset ELO Calculation ---
+func calculate_soft_reset_elo(rank: int) -> int:
+	"""Calculates projected starting ELO based on rank (local, no network).
+
+	Parameters:
+		rank: Player's current rank
+
+	Returns:
+		int: Projected starting ELO for next season
+	"""
+	if rank <= 10:
+		return 1300
+	elif rank <= 50:
+		return 1200
+	elif rank <= 100:
+		return 1150
+	elif rank <= 500:
+		return 1100
+	else:
+		return 1000
+
+func get_projected_elo_sync() -> int:
+	"""Returns cached projected next season ELO (synchronous).
+
+	Returns:
+		int: Projected starting ELO
+	"""
+	return projected_next_season_elo
+
+func get_prestige_progress_sync() -> Dictionary:
+	"""Returns cached prestige progress (synchronous).
+
+	Returns:
+		Dictionary: Prestige progress data
+	"""
+	return prestige_progress
+
 # --- Season Transition ---
 
 ## Handle season transition event
@@ -566,5 +657,11 @@ func on_season_transition(old_season: Dictionary, new_season: Dictionary) -> voi
 	current_season = new_season
 	player_rank = 0
 	player_score = 0
+	projected_next_season_elo = 1000
+	current_tier_name = "Unranked"
 
 	season_transitioned.emit(old_season, new_season)
+
+	# Refresh prestige progress for the new season
+	get_prestige_progress()
+	get_projected_next_season_elo()

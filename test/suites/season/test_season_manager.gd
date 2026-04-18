@@ -23,6 +23,12 @@ func run_tests() -> void:
 	await test_format_time_remaining()
 	await test_get_rank_tier()
 	await test_get_rank_color()
+	await test_soft_reset_elo()
+	await test_prestige_initial_state()
+	await test_projected_elo_initial_state()
+	await test_new_signals_exist()
+	await test_prestige_sync()
+	await test_projected_elo_sync()
 
 	print("\n=== SeasonManager Test Results ===")
 	print("Passed: %d" % _tests_passed)
@@ -297,5 +303,128 @@ func test_get_rank_color() -> void:
 		_pass("test_rank_color_common")
 	else:
 		_fail("test_rank_color_common", "Common should be gray")
+
+	sm.queue_free()
+
+func test_soft_reset_elo() -> void:
+	var sm = _create_season_manager()
+
+	# Test Legendary tier (rank 1-10)
+	if sm.calculate_soft_reset_elo(1) == 1300:
+		_pass("test_soft_reset_legendary_1")
+	else:
+		_fail("test_soft_reset_legendary_1", "Rank 1 should project 1300")
+
+	if sm.calculate_soft_reset_elo(10) == 1300:
+		_pass("test_soft_reset_legendary_10")
+	else:
+		_fail("test_soft_reset_legendary_10", "Rank 10 should project 1300")
+
+	# Test Epic tier (rank 11-50)
+	if sm.calculate_soft_reset_elo(11) == 1200:
+		_pass("test_soft_reset_epic_11")
+	else:
+		_fail("test_soft_reset_epic_11", "Rank 11 should project 1200")
+
+	if sm.calculate_soft_reset_elo(50) == 1200:
+		_pass("test_soft_reset_epic_50")
+	else:
+		_fail("test_soft_reset_epic_50", "Rank 50 should project 1200")
+
+	# Test Rare tier (rank 51-100)
+	if sm.calculate_soft_reset_elo(51) == 1150:
+		_pass("test_soft_reset_rare_51")
+	else:
+		_fail("test_soft_reset_rare_51", "Rank 51 should project 1150")
+
+	if sm.calculate_soft_reset_elo(100) == 1150:
+		_pass("test_soft_reset_rare_100")
+	else:
+		_fail("test_soft_reset_rare_100", "Rank 100 should project 1150")
+
+	# Test Uncommon tier (rank 101-500)
+	if sm.calculate_soft_reset_elo(101) == 1100:
+		_pass("test_soft_reset_uncommon_101")
+	else:
+		_fail("test_soft_reset_uncommon_101", "Rank 101 should project 1100")
+
+	if sm.calculate_soft_reset_elo(500) == 1100:
+		_pass("test_soft_reset_uncommon_500")
+	else:
+		_fail("test_soft_reset_uncommon_500", "Rank 500 should project 1100")
+
+	# Test Common tier (rank 501+)
+	if sm.calculate_soft_reset_elo(501) == 1000:
+		_pass("test_soft_reset_common_501")
+	else:
+		_fail("test_soft_reset_common_501", "Rank 501 should project 1000")
+
+	sm.queue_free()
+
+func test_prestige_initial_state() -> void:
+	var sm = _create_season_manager()
+
+	if sm.prestige_progress.has("tiers_earned"):
+		_pass("test_prestige_has_tiers_earned")
+	else:
+		_fail("test_prestige_has_tiers_earned", "Should have tiers_earned key")
+
+	if sm.prestige_progress.get("tiers_earned", []).is_empty():
+		_pass("test_prestige_initially_empty")
+	else:
+		_fail("test_prestige_initially_empty", "tiers_earned should start empty")
+
+	sm.queue_free()
+
+func test_projected_elo_initial_state() -> void:
+	var sm = _create_season_manager()
+
+	if sm.projected_next_season_elo == 1000:
+		_pass("test_projected_elo_default")
+	else:
+		_fail("test_projected_elo_default", "Projected ELO should default to 1000")
+
+	if sm.current_tier_name == "Unranked":
+		_pass("test_current_tier_default")
+	else:
+		_fail("test_current_tier_default", "Current tier should default to Unranked")
+
+	sm.queue_free()
+
+func test_new_signals_exist() -> void:
+	var sm = _create_season_manager()
+
+	if sm.has_signal("prestige_progress_loaded"):
+		_pass("test_signal_prestige_progress")
+	else:
+		_fail("test_signal_prestige_progress", "Should have prestige_progress_loaded signal")
+
+	if sm.has_signal("projected_elo_loaded"):
+		_pass("test_signal_projected_elo")
+	else:
+		_fail("test_signal_projected_elo", "Should have projected_elo_loaded signal")
+
+	sm.queue_free()
+
+func test_prestige_sync() -> void:
+	var sm = _create_season_manager()
+
+	var progress = sm.get_prestige_progress_sync()
+	if progress.has("tiers_earned"):
+		_pass("test_prestige_sync_returns_data")
+	else:
+		_fail("test_prestige_sync_returns_data", "Should return prestige data")
+
+	sm.queue_free()
+
+func test_projected_elo_sync() -> void:
+	var sm = _create_season_manager()
+	sm.projected_next_season_elo = 1200
+
+	var elo = sm.get_projected_elo_sync()
+	if elo == 1200:
+		_pass("test_projected_elo_sync")
+	else:
+		_fail("test_projected_elo_sync", "Should return cached projected ELO")
 
 	sm.queue_free()

@@ -106,6 +106,8 @@ import {
   registerRpcClaimSeasonRewards,
   registerRpcEndSeason,
   registerRpcGetPlayerCosmetics,
+  registerRpcGetPrestigeProgress,
+  registerRpcGetProjectedNextSeasonElo,
 } from './modules/season_system';
 import { registerSeasonTelemetryEndpoints } from './modules/season_telemetry';
 import {
@@ -489,6 +491,8 @@ const InitModule: InitModule = function (
     registerRpcGetSeasonHistory(initializer);
     registerRpcGetPlayerSeasonRank(initializer);
     registerRpcGetPlayerCosmetics(initializer);
+    registerRpcGetPrestigeProgress(initializer);
+    registerRpcGetProjectedNextSeasonElo(initializer);
     registerRpcValidatePurchase(initializer);
     registerRpcGetCurrency(initializer);
     registerRpcSpendGems(initializer);
