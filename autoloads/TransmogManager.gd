@@ -16,13 +16,15 @@ var current_loadout: Dictionary = {
 		"helm": "helm_basic",
 		"armor": "armor_leather",
 		"bow": "bow_wooden",
-		"arrow": "arrow_wooden"
+		"arrow": "arrow_wooden",
+		"amulet": "amulet_protection"
 	},
 	"skins": {
 		"helm": "",
 		"armor": "",
 		"bow": "",
-		"arrow": ""
+		"arrow": "",
+		"amulet": ""
 	}
 }
 
@@ -185,7 +187,7 @@ func preview_combination(slot: String, base_gear_id: String, skin_id: String) ->
 
 func _apply_current_loadout() -> void:
 	"""Applies all current loadout to character sprite (internal)."""
-	for slot in ["helm", "armor", "bow", "arrow"]:
+	for slot in ["helm", "armor", "bow", "arrow", "amulet"]:
 		var base_gear_id = current_loadout.base_gear.get(slot, "")
 		var skin_id = current_loadout.skins.get(slot, "")
 		if base_gear_id:
@@ -231,7 +233,7 @@ func get_available_skins_for_slot(slot: String) -> Array:
 
 func _on_cosmetics_synced(owned: Array, equipped: Dictionary) -> void:
 	"""Applies equipped skins from server sync to visual loadout."""
-	for slot in ["helm", "armor", "bow", "arrow"]:
+	for slot in ["helm", "armor", "bow", "arrow", "amulet"]:
 		var skin_id = equipped.get(slot, "")
 		current_loadout.skins[slot] = skin_id
 

@@ -344,6 +344,12 @@ export const ValibotSchemas = {
     }),
   }),
 
+  purchase_bundle: object({
+    bundle_id: pipe(string(), minLength(1), maxLength(100)),
+  }),
+
+  get_bundle_catalog: object({}),
+
   check_refunds: object({
     app_user_id: optional(string()),
   }),

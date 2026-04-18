@@ -139,6 +139,8 @@ import {
   registerRpcUnequipCosmetic,
   registerRpcGetEquippedCosmetics,
   registerRpcSaveCosmeticLoadout,
+  registerRpcPurchaseBundle,
+  registerRpcGetBundleCatalog,
   rpcProcessPendingPurchases,
   rpcCheckRefunds,
   rpcCheckSubscriptions,
@@ -148,6 +150,8 @@ import {
   rpcUnequipCosmetic,
   rpcGetEquippedCosmetics,
   rpcSaveCosmeticLoadout,
+  rpcPurchaseBundle,
+  rpcGetBundleCatalog,
 } from './modules/store';
 import { initializeCaches } from './utils/cache';
 
@@ -422,6 +426,18 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/purchase_bundle',
+      'purchase_bundle',
+      rpcPurchaseBundle
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/get_bundle_catalog',
+      'get_bundle_catalog',
+      rpcGetBundleCatalog
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/revenuecat_webhook',
       'revenuecat_webhook',
       rpcRevenueCatWebhookWrapper
@@ -560,6 +576,8 @@ const InitModule: InitModule = function (
     registerRpcUnequipCosmetic(initializer);
     registerRpcGetEquippedCosmetics(initializer);
     registerRpcSaveCosmeticLoadout(initializer);
+    registerRpcPurchaseBundle(initializer);
+    registerRpcGetBundleCatalog(initializer);
     registerRpcGenerateGear(initializer);
     registerRpcEquipGear(initializer);
     registerRpcUnequipGear(initializer);

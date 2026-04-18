@@ -57,6 +57,11 @@ import {
   PlayerCurrency,
   GEM_BUNDLES,
   COSMETIC_CATALOG,
+  BUNDLE_DEFINITIONS,
+  rpcPurchaseBundle,
+  rpcGetBundleCatalog,
+  registerRpcPurchaseBundle,
+  registerRpcGetBundleCatalog,
   validatedReceipts,
   RefundReason,
 } from '../store';
@@ -5038,6 +5043,216 @@ describe('store', () => {
       registerRpcSaveCosmeticLoadout(mockInitializer as unknown as Runtime.Initializer);
       expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
         'armored_archer/save_cosmetic_loadout',
+        expect.any(Function)
+      );
+    });
+  });
+
+  // ============================================================
+  // LAUNCH COSMETICS & BUNDLE TESTS
+  // ============================================================
+
+  describe('Launch Cosmetics Catalog', () => {
+    const foundersItems = [
+      'skin_helm_founders',
+      'skin_armor_founders',
+      'skin_bow_founders',
+      'skin_arrow_founders',
+      'skin_amulet_founders',
+    ];
+
+    it('should have all 5 Founder\'s items in the cosmetic catalog', () => {
+      for (const itemId of foundersItems) {
+        expect(COSMETIC_CATALOG[itemId]).toBeDefined();
+        expect(COSMETIC_CATALOG[itemId].item_id).toBe(itemId);
+      }
+    });
+
+    it('should mark all Founder\'s items as launch exclusive', () => {
+      for (const itemId of foundersItems) {
+        expect(COSMETIC_CATALOG[itemId].is_launch_exclusive).toBe(true);
+      }
+    });
+
+    it('should have Founder\'s items span all 5 equipment slots', () => {
+      const slots = foundersItems.map(id => COSMETIC_CATALOG[id].slot);
+      expect(slots.sort()).toEqual(['amulet', 'armor', 'arrow', 'bow', 'helm']);
+    });
+
+    it('should have Founder\'s items be non-premium (earnable)', () => {
+      for (const itemId of foundersItems) {
+        expect(COSMETIC_CATALOG[itemId].is_premium).toBe(false);
+      }
+    });
+
+    it('should have zero combat stat fields on all cosmetic catalog items', () => {
+      const statFields = ['attack', 'defense', 'speed', 'health', 'stats', 'stat_multiplier'];
+      for (const [itemId, item] of Object.entries(COSMETIC_CATALOG)) {
+        for (const field of statFields) {
+          expect((item as any)[field]).toBeUndefined();
+        }
+      }
+    });
+
+    it('should have all catalog items start with skin_ prefix', () => {
+      for (const itemId of Object.keys(COSMETIC_CATALOG)) {
+        expect(itemId.startsWith('skin_')).toBe(true);
+      }
+    });
+  });
+
+  describe('Bundle Definitions', () => {
+    it('should have the starter founders bundle defined', () => {
+      expect(BUNDLE_DEFINITIONS.bundle_starter_founders).toBeDefined();
+      expect(BUNDLE_DEFINITIONS.bundle_starter_founders.bundle_id).toBe('bundle_starter_founders');
+    });
+
+    it('should include all 5 Founder\'s items in the bundle', () => {
+      const bundle = BUNDLE_DEFINITIONS.bundle_starter_founders;
+      expect(bundle.item_ids).toEqual([
+        'skin_helm_founders',
+        'skin_armor_founders',
+        'skin_bow_founders',
+        'skin_arrow_founders',
+        'skin_amulet_founders',
+      ]);
+    });
+
+    it('should have bundle price lower than original total (discount)', () => {
+      const bundle = BUNDLE_DEFINITIONS.bundle_starter_founders;
+      expect(bundle.price).toBeLessThan(bundle.original_total);
+      expect(bundle.price).toBe(1200);
+      expect(bundle.original_total).toBe(1950);
+    });
+
+    it('should have all bundle item_ids exist in COSMETIC_CATALOG', () => {
+      for (const itemId of BUNDLE_DEFINITIONS.bundle_starter_founders.item_ids) {
+        expect(COSMETIC_CATALOG[itemId]).toBeDefined();
+      }
+    });
+
+    it('should be one-time purchase', () => {
+      expect(BUNDLE_DEFINITIONS.bundle_starter_founders.is_one_time).toBe(true);
+    });
+
+    it('should be launch exclusive', () => {
+      expect(BUNDLE_DEFINITIONS.bundle_starter_founders.is_launch_exclusive).toBe(true);
+    });
+  });
+
+  describe('rpcPurchaseBundle', () => {
+    it('should successfully purchase a bundle with sufficient gems', () => {
+      // Set up currency
+      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 }));
+
+      const result = JSON.parse(rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' })));
+      expect(result.success).toBe(true);
+      expect(result.bundle_id).toBe('bundle_starter_founders');
+      expect(result.price).toBe(1200);
+      expect(result.new_balance).toBe(3800);
+      expect(result.items_granted).toHaveLength(5);
+    });
+
+    it('should reject purchase of non-existent bundle', () => {
+      const result = JSON.parse(rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'nonexistent_bundle' })));
+      expect(result.success).toBe(false);
+      expect(result.error_code).toBe('INVALID_BUNDLE');
+    });
+
+    it('should reject purchase with insufficient gems', () => {
+      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 500, gold: 0 }));
+
+      const result = JSON.parse(rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' })));
+      expect(result.success).toBe(false);
+      expect(result.error_code).toBe('INSUFFICIENT_GEMS');
+    });
+
+    it('should reject purchase when player already owns a bundle item', () => {
+      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 }));
+      testStorage.set('player_cosmetics_owned:test-user', JSON.stringify({ items: ['skin_helm_founders'] }));
+
+      const result = JSON.parse(rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' })));
+      expect(result.success).toBe(false);
+      expect(result.error_code).toBe('ITEM_ALREADY_OWNED');
+    });
+
+    it('should reject duplicate purchase of one-time bundle', () => {
+      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 }));
+      testStorage.set('player_bundles_owned:test-user', JSON.stringify({ bundles: ['bundle_starter_founders'] }));
+
+      const result = JSON.parse(rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' })));
+      expect(result.success).toBe(false);
+      expect(result.error_code).toBe('ALREADY_OWNED');
+    });
+
+    it('should add all bundle items to player ownership', () => {
+      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 }));
+
+      rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' }));
+
+      const ownedKey = 'player_cosmetics_owned:test-user';
+      const stored = JSON.parse(testStorage.get(ownedKey) || '{}');
+      expect(stored.items).toHaveLength(5);
+      expect(stored.items).toContain('skin_helm_founders');
+      expect(stored.items).toContain('skin_amulet_founders');
+    });
+
+    it('should record bundle in player_bundles_owned', () => {
+      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 }));
+
+      rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' }));
+
+      const bundleKey = 'player_bundles_owned:test-user';
+      const stored = JSON.parse(testStorage.get(bundleKey) || '{}');
+      expect(stored.bundles).toContain('bundle_starter_founders');
+    });
+
+    it('should deduct correct bundle price (not individual prices)', () => {
+      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 }));
+
+      const result = JSON.parse(rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' })));
+      expect(result.new_balance).toBe(3800); // 5000 - 1200
+    });
+  });
+
+  describe('rpcGetBundleCatalog', () => {
+    it('should return all bundles', () => {
+      const result = JSON.parse(rpcGetBundleCatalog(mockCtx, mockLogger, mockNk, '{}'));
+      expect(result.success).toBe(true);
+      expect(result.bundles).toHaveLength(1);
+      expect(result.bundles[0].bundle_id).toBe('bundle_starter_founders');
+    });
+
+    it('should mark bundle as not owned by default', () => {
+      const result = JSON.parse(rpcGetBundleCatalog(mockCtx, mockLogger, mockNk, '{}'));
+      expect(result.bundles[0].is_owned).toBe(false);
+    });
+
+    it('should mark bundle as owned when player purchased it', () => {
+      testStorage.set('player_bundles_owned:test-user', JSON.stringify({ bundles: ['bundle_starter_founders'] }));
+
+      const result = JSON.parse(rpcGetBundleCatalog(mockCtx, mockLogger, mockNk, '{}'));
+      expect(result.bundles[0].is_owned).toBe(true);
+    });
+  });
+
+  describe('registerRpcPurchaseBundle', () => {
+    it('should register the purchase_bundle RPC', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcPurchaseBundle(mockInitializer as unknown as Runtime.Initializer);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/purchase_bundle',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('registerRpcGetBundleCatalog', () => {
+    it('should register the get_bundle_catalog RPC', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcGetBundleCatalog(mockInitializer as unknown as Runtime.Initializer);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_bundle_catalog',
         expect.any(Function)
       );
     });
