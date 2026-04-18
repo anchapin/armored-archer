@@ -1759,6 +1759,206 @@ export function registerRpcAppLaunchCheck(initializer: Runtime.Initializer): voi
 }
 
 // ============================================================
+// RESTORE PURCHASES
+// ============================================================
+
+/**
+ * Restore purchases for a user by querying RevenueCat for their purchase history
+ * and awarding any gems that were purchased but not credited.
+ */
+export async function rpcRestorePurchases(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): Promise<string> {
+  logger.info('Restoring purchases for user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.restore_purchases, payload, 'restore_purchases');
+  if (!validation.success) {
+    return createValidationErrorResponse('restore_purchases', validation.error);
+  }
+
+  const request = validation.data;
+  const apiKey = getRevenueCatApiKey();
+  if (!apiKey) {
+    logger.warn('RevenueCat API key not configured - cannot restore purchases');
+    return JSON.stringify({
+      success: false,
+      error: 'Purchase restore not configured',
+      restored: 0,
+    });
+  }
+
+  // Query RevenueCat for subscriber/purchase history
+  const restoreResult = await withCircuitBreaker(
+    'revenuecat',
+    async () => {
+      const response = await fetch(
+        `${REVENUECAT_API_BASE}/subscribers/${encodeURIComponent(ctx.userId)}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'X-Platform': request.platform === 'ios' ? 'apple' : 'google',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('RevenueCat restore API error: %s - %s', response.status, errorText);
+        return {
+          success: false,
+          error: 'Unable to query purchase history',
+          restored: 0,
+          apiError: true,
+        };
+      }
+
+      const data = (await response.json()) as Record<string, unknown>;
+      const subscriber = data.subscriber as Record<string, unknown> | undefined;
+
+      if (!subscriber) {
+        return { success: true, restored: 0, purchases: [] };
+      }
+
+      const catalog = getStoreCatalog(logger);
+      const restoredPurchases: { product_id: string; gems_awarded: number }[] = [];
+
+      // Check non_subscription purchases (consumables like gem packs)
+      const nonSubscriptions = subscriber.non_subscriptions as
+        | Record<string, unknown[]>
+        | undefined;
+      if (nonSubscriptions) {
+        for (const [productId, purchases] of Object.entries(nonSubscriptions)) {
+          const bundle = catalog[productId];
+          if (!bundle) continue;
+
+          for (const purchase of purchases) {
+            const p = purchase as Record<string, unknown>;
+            const transactionId = (p.id as string) || (p.transaction_id as string) || '';
+            if (!transactionId) continue;
+
+            // Check if we already processed this transaction
+            const receiptHash = hashReceipt(transactionId);
+            if (await isReceiptAlreadyUsed(nk, ctx.userId, receiptHash, logger)) {
+              continue;
+            }
+
+            // Award gems and mark receipt
+            const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
+            if (!wouldExceedMaxBalance(playerCurrency.gems, bundle.gem_amount)) {
+              await markReceiptAsUsed(nk, ctx.userId, receiptHash, logger);
+              playerCurrency.gems += bundle.gem_amount;
+
+              nk.storageWrite([
+                {
+                  collection: 'player_currency',
+                  key: ctx.userId,
+                  userId: ctx.userId,
+                  value: JSON.stringify(playerCurrency),
+                },
+              ]);
+
+              nk.walletUpdate(ctx.userId, { gems: bundle.gem_amount });
+              invalidateCurrencyCache(ctx.userId, logger);
+
+              restoredPurchases.push({
+                product_id: productId,
+                gems_awarded: bundle.gem_amount,
+              });
+
+              logger.info(
+                'Restored purchase for user %s: %s (%d gems)',
+                ctx.userId,
+                productId,
+                bundle.gem_amount
+              );
+            }
+          }
+        }
+      }
+
+      // Also check subscription entitlements
+      const entitlements = subscriber.entitlements as Record<string, unknown> | undefined;
+      if (entitlements) {
+        for (const [_entitlementId, entitlement] of Object.entries(entitlements)) {
+          const ent = entitlement as Record<string, unknown>;
+          const productId = (ent.product_id as string) || '';
+          const bundle = catalog[productId];
+          if (!bundle) continue;
+
+          const transactionId =
+            (ent.transaction_id as string) || (ent.original_transaction_id as string) || '';
+          if (!transactionId) continue;
+
+          const receiptHash = hashReceipt(transactionId);
+          if (await isReceiptAlreadyUsed(nk, ctx.userId, receiptHash, logger)) {
+            continue;
+          }
+
+          const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
+          if (!wouldExceedMaxBalance(playerCurrency.gems, bundle.gem_amount)) {
+            await markReceiptAsUsed(nk, ctx.userId, receiptHash, logger);
+            playerCurrency.gems += bundle.gem_amount;
+
+            nk.storageWrite([
+              {
+                collection: 'player_currency',
+                key: ctx.userId,
+                userId: ctx.userId,
+                value: JSON.stringify(playerCurrency),
+              },
+            ]);
+
+            nk.walletUpdate(ctx.userId, { gems: bundle.gem_amount });
+            invalidateCurrencyCache(ctx.userId, logger);
+
+            restoredPurchases.push({
+              product_id: productId,
+              gems_awarded: bundle.gem_amount,
+            });
+          }
+        }
+      }
+
+      return { success: true, restored: restoredPurchases.length, purchases: restoredPurchases };
+    },
+    async () => {
+      logger.error('RevenueCat circuit open - cannot restore purchases');
+      return {
+        success: false,
+        error: 'Restore service temporarily unavailable',
+        restored: 0,
+        apiError: true,
+      } as const;
+    }
+  );
+
+  if ('apiError' in restoreResult || 'circuitOpen' in restoreResult) {
+    return JSON.stringify(restoreResult);
+  }
+
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'restore_purchases',
+    'player_currency',
+    { platform: request.platform, restored: restoreResult.restored },
+    'success'
+  );
+
+  return JSON.stringify(restoreResult);
+}
+
+export function registerRpcRestorePurchases(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/restore_purchases', rpcRestorePurchases);
+}
+
+// ============================================================
 // REVENUECAT WEBHOOK HANDLER
 // ============================================================
 

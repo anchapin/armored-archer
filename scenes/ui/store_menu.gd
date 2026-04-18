@@ -8,6 +8,7 @@ extends Control
 @onready var small_gems_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/SmallGemContainer/BuyButton
 @onready var medium_gems_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/MediumGemContainer/BuyButton
 @onready var large_gems_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/PurchaseContainer/LargeGemContainer/BuyButton
+@onready var restore_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/RestoreButton
 @onready var back_button: ArcheryBaseButton = $SafeAreaContainer/CenterContainer/VBoxContainer/BackButton
 
 @onready var loading_indicator: Control = $LoadingIndicator
@@ -24,31 +25,31 @@ var theme_manager: Node
 var _currency_updated_connection: Callable = Callable()
 var _purchase_succeeded_connection: Callable = Callable()
 var _purchase_failed_connection: Callable = Callable()
+var _restore_completed_connection: Callable = Callable()
+var _restore_failed_connection: Callable = Callable()
 
 # --- State ---
 var is_processing: bool = false
 
 func _ready() -> void:
-	# Get ThemeManager reference
 	theme_manager = get_node_or_null("/root/ThemeManager")
-	
-	# Apply theme if available
+
 	if theme_manager:
 		_apply_theme()
 		theme_manager.theme_changed.connect(_on_theme_changed)
-	
+
 	_connect_signals()
 	_update_currency_display()
 	_update_product_buttons()
 	_apply_design_tokens()
 
 func _exit_tree() -> void:
-	# Clean up connected signals to prevent memory leaks
 	_cleanup_signal_connection(StoreManager, "currency_updated", _currency_updated_connection)
 	_cleanup_signal_connection(StoreManager, "purchase_succeeded", _purchase_succeeded_connection)
 	_cleanup_signal_connection(StoreManager, "purchase_failed", _purchase_failed_connection)
-	
-	# Disconnect theme manager
+	_cleanup_signal_connection(StoreManager, "restore_completed", _restore_completed_connection)
+	_cleanup_signal_connection(StoreManager, "restore_failed", _restore_failed_connection)
+
 	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
 		theme_manager.theme_changed.disconnect(_on_theme_changed)
 
@@ -61,13 +62,18 @@ func _connect_signals() -> void:
 		store_manager.currency_updated.connect(_on_currency_updated)
 		store_manager.purchase_succeeded.connect(_on_purchase_succeeded)
 		store_manager.purchase_failed.connect(_on_purchase_failed)
+		store_manager.restore_completed.connect(_on_restore_completed)
+		store_manager.restore_failed.connect(_on_restore_failed)
 		_currency_updated_connection = _on_currency_updated
 		_purchase_succeeded_connection = _on_purchase_succeeded
 		_purchase_failed_connection = _on_purchase_failed
+		_restore_completed_connection = _on_restore_completed
+		_restore_failed_connection = _on_restore_failed
 
 	small_gems_button.pressed.connect(_on_small_gems_pressed)
 	medium_gems_button.pressed.connect(_on_medium_gems_pressed)
 	large_gems_button.pressed.connect(_on_large_gems_pressed)
+	restore_button.pressed.connect(_on_restore_pressed)
 	back_button.pressed.connect(_on_back_pressed)
 
 func _update_currency_display() -> void:
@@ -119,6 +125,43 @@ func _initiate_purchase(product_id: String) -> void:
 
 	store_manager.purchase_product(product_id)
 
+# --- Restore Handlers ---
+func _on_restore_pressed() -> void:
+	if is_processing:
+		return
+
+	if not store_manager:
+		push_error("StoreManager not available")
+		return
+
+	is_processing = true
+	_set_buttons_enabled(false)
+	restore_button.disabled = true
+	loading_indicator.visible = true
+
+	store_manager.restore_purchases()
+
+func _on_restore_completed(purchases: Array) -> void:
+	is_processing = false
+	loading_indicator.visible = false
+	_set_buttons_enabled(true)
+	restore_button.disabled = false
+
+	if purchases.is_empty():
+		error_dialog.dialog_text = "No purchases found to restore."
+		error_dialog.popup_centered()
+	else:
+		print("Restore completed: %d purchases restored" % purchases.size())
+
+func _on_restore_failed(error: String) -> void:
+	is_processing = false
+	loading_indicator.visible = false
+	_set_buttons_enabled(true)
+	restore_button.disabled = false
+
+	error_dialog.dialog_text = "Restore failed: %s" % error
+	error_dialog.popup_centered()
+
 # --- Callbacks ---
 func _on_currency_updated(gems: int, gold: int) -> void:
 	_update_currency_display()
@@ -159,18 +202,15 @@ func _on_back_pressed() -> void:
 func _apply_theme() -> void:
 	if not theme_manager:
 		return
-	
+
 	var colors = theme_manager.get_theme_colors()
-	
-	# Apply background color
+
 	theme_manager.apply_background(self)
-	
-	# Apply to purchase container
+
 	if purchase_container:
 		purchase_container.modulate = colors["surface"]
 
 func _apply_design_tokens() -> void:
-	# Apply design tokens to currency labels
 	if gold_label and ArcherDesignTokens:
 		gold_label.modulate = ArcherDesignTokens.COLOR_GOLD
 
