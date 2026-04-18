@@ -438,7 +438,7 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 	})
 
 	# Log with masked receipt for security
-	push_error("Validating purchase: product=%s, platform=%s, receipt=%s" % [
+	print("[StoreManager] Validating purchase: product=%s, platform=%s, receipt=%s" % [
 		product_id, platform, _mask_sensitive_data(transaction_receipt)
 	])
 

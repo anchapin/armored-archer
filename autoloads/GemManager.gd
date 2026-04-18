@@ -89,13 +89,13 @@ func _on_session_created(success: bool, _error_message: String) -> void:
 func sync_with_server() -> void:
 	if _sync_in_progress:
 		return
-	if not network_manager or not NetworkManager.is_session_valid():
+	if not network_manager or not network_manager.is_session_valid():
 		return
 
 	_sync_in_progress = true
 
 	# Fetch owned cosmetics from server
-	var owned_response: Dictionary = await NetworkManager.send_rpc("armored_archer/get_owned_cosmetics", "{}")
+	var owned_response: Dictionary = await network_manager.send_rpc("armored_archer/get_owned_cosmetics", "{}")
 	if owned_response.get("success", false):
 		var server_owned: Array = owned_response.get("items", [])
 		# Merge: add any server-known items missing locally
@@ -104,7 +104,7 @@ func sync_with_server() -> void:
 				owned_skins.append(skin_id)
 
 	# Fetch equipped cosmetics from server
-	var equipped_response: Dictionary = await NetworkManager.send_rpc("armored_archer/get_equipped_cosmetics", "{}")
+	var equipped_response: Dictionary = await network_manager.send_rpc("armored_archer/get_equipped_cosmetics", "{}")
 	if equipped_response.get("success", false):
 		var server_equipped: Dictionary = equipped_response.get("equipped", {})
 		# Server is authoritative for equipped state
@@ -115,11 +115,11 @@ func sync_with_server() -> void:
 	sync_completed.emit(owned_skins, equipped_skins)
 
 func save_equipped_to_server(skins: Dictionary) -> void:
-	if not network_manager or not NetworkManager.is_session_valid():
+	if not network_manager or not network_manager.is_session_valid():
 		return
 
 	var payload = JSON.stringify({"equipped": skins})
-	var response: Dictionary = await NetworkManager.send_rpc("armored_archer/save_cosmetic_loadout", payload)
+	var response: Dictionary = await network_manager.send_rpc("armored_archer/save_cosmetic_loadout", payload)
 	if not response.get("success", false):
 		push_error("Failed to save loadout to server: %s" % response.get("error", "unknown"))
 
@@ -224,9 +224,9 @@ func purchase_skin(skin_id: String) -> bool:
 		return false
 
 	# Server-authoritative purchase via RPC
-	if network_manager and NetworkManager.is_session_valid():
+	if network_manager and network_manager.is_session_valid():
 		var payload = JSON.stringify({"item_id": skin_id})
-		var response: Dictionary = await NetworkManager.send_rpc("armored_archer/purchase_cosmetic", payload)
+		var response: Dictionary = await network_manager.send_rpc("armored_archer/purchase_cosmetic", payload)
 
 		if not response.get("success", false):
 			push_error("Server rejected cosmetic purchase: %s" % response.get("error", "unknown"))
@@ -287,9 +287,9 @@ func equip_skin(slot_name: String, skin_id: String) -> bool:
 		return false
 
 	# Server-authoritative equip when online
-	if network_manager and NetworkManager.is_session_valid():
+	if network_manager and network_manager.is_session_valid():
 		var payload = JSON.stringify({"slot": slot_name, "skin_id": skin_id})
-		var response: Dictionary = await NetworkManager.send_rpc("armored_archer/equip_cosmetic", payload)
+		var response: Dictionary = await network_manager.send_rpc("armored_archer/equip_cosmetic", payload)
 		if not response.get("success", false):
 			push_error("Server rejected equip: %s" % response.get("error", "unknown"))
 			return false
@@ -310,9 +310,9 @@ func equip_skin(slot_name: String, skin_id: String) -> bool:
 
 func unequip_skin(slot_name: String) -> void:
 	# Server-authoritative unequip when online
-	if network_manager and NetworkManager.is_session_valid() and equipped_skins.has(slot_name):
+	if network_manager and network_manager.is_session_valid() and equipped_skins.has(slot_name):
 		var payload = JSON.stringify({"slot": slot_name})
-		var response: Dictionary = await NetworkManager.send_rpc("armored_archer/unequip_cosmetic", payload)
+		var response: Dictionary = await network_manager.send_rpc("armored_archer/unequip_cosmetic", payload)
 		if not response.get("success", false):
 			push_error("Server rejected unequip: %s" % response.get("error", "unknown"))
 			return
@@ -334,9 +334,9 @@ func purchase_bundle(bundle_id: String) -> bool:
 		return false
 
 	# Server-authoritative purchase via RPC
-	if network_manager and NetworkManager.is_session_valid():
+	if network_manager and network_manager.is_session_valid():
 		var payload = JSON.stringify({"bundle_id": bundle_id})
-		var response: Dictionary = await NetworkManager.send_rpc("armored_archer/purchase_bundle", payload)
+		var response: Dictionary = await network_manager.send_rpc("armored_archer/purchase_bundle", payload)
 
 		if not response.get("success", false):
 			push_error("Server rejected bundle purchase: %s" % response.get("error", "unknown"))
@@ -362,10 +362,10 @@ func purchase_bundle(bundle_id: String) -> bool:
 	return true
 
 func get_bundle_catalog() -> Array:
-	if not network_manager or not NetworkManager.is_session_valid():
+	if not network_manager or not network_manager.is_session_valid():
 		return []
 
-	var response: Dictionary = await NetworkManager.send_rpc("armored_archer/get_bundle_catalog", "{}")
+	var response: Dictionary = await network_manager.send_rpc("armored_archer/get_bundle_catalog", "{}")
 	if response.get("success", false):
 		var bundles: Array = response.get("bundles", [])
 		for bundle in bundles:
@@ -383,6 +383,7 @@ func save_data() -> void:
 	config.set_value("skins", "equipped", equipped_skins)
 	config.set_value("gems", "balance", _local_gems)
 	config.set_value("achievements", "completed", completed_achievements)
+	config.set_value("bundles", "owned", owned_bundles)
 
 	var error = config.save(SAVE_FILE_PATH)
 	if error != OK:
