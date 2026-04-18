@@ -87,8 +87,8 @@ describe('rpcRestorePurchases', () => {
         json: async () => ({ subscriber: null }),
       });
 
-      // Need REVENUECAT_API_KEY set
-      process.env.REVENUECAT_API_KEY = 'test-api-key';
+      // Need REVENUECAT_SECRET_KEY set
+      process.env.REVENUECAT_SECRET_KEY = 'test-api-key';
 
       const nk = createTestNakama({
         storageRead: jest.fn().mockReturnValue([]),
@@ -106,7 +106,7 @@ describe('rpcRestorePurchases', () => {
       expect(parsed.restored).toBe(0);
 
       global.fetch = originalFetch;
-      delete process.env.REVENUECAT_API_KEY;
+      delete process.env.REVENUECAT_SECRET_KEY;
     });
 
     it('should restore non-subscription purchases and award gems', async () => {
@@ -124,7 +124,7 @@ describe('rpcRestorePurchases', () => {
         }),
       });
 
-      process.env.REVENUECAT_API_KEY = 'test-api-key';
+      process.env.REVENUECAT_SECRET_KEY = 'test-api-key';
 
       const storageWriteFn = jest.fn().mockReturnValue([]);
       const nk = createTestNakama({
@@ -147,7 +147,7 @@ describe('rpcRestorePurchases', () => {
       expect(parsed.purchases[0].gems_awarded).toBe(100);
 
       global.fetch = originalFetch;
-      delete process.env.REVENUECAT_API_KEY;
+      delete process.env.REVENUECAT_SECRET_KEY;
     });
 
     it('should skip already-processed purchases during restore', async () => {
@@ -165,7 +165,7 @@ describe('rpcRestorePurchases', () => {
         }),
       });
 
-      process.env.REVENUECAT_API_KEY = 'test-api-key';
+      process.env.REVENUECAT_SECRET_KEY = 'test-api-key';
 
       // Mock storageRead to return an existing receipt (already processed)
       const nk = createTestNakama({
@@ -191,7 +191,7 @@ describe('rpcRestorePurchases', () => {
       expect(parsed.restored).toBe(0);
 
       global.fetch = originalFetch;
-      delete process.env.REVENUECAT_API_KEY;
+      delete process.env.REVENUECAT_SECRET_KEY;
     });
 
     it('should restore purchases from entitlements', async () => {
@@ -210,7 +210,7 @@ describe('rpcRestorePurchases', () => {
         }),
       });
 
-      process.env.REVENUECAT_API_KEY = 'test-api-key';
+      process.env.REVENUECAT_SECRET_KEY = 'test-api-key';
 
       const storageWriteFn = jest.fn().mockReturnValue([]);
       const nk = createTestNakama({
@@ -231,13 +231,12 @@ describe('rpcRestorePurchases', () => {
       expect(parsed.purchases[0].gems_awarded).toBe(1200);
 
       global.fetch = originalFetch;
-      delete process.env.REVENUECAT_API_KEY;
+      delete process.env.REVENUECAT_SECRET_KEY;
     });
   });
 
   describe('Error Handling', () => {
     it('should return error when RevenueCat API key not configured', async () => {
-      delete process.env.REVENUECAT_API_KEY;
       delete process.env.REVENUECAT_SECRET_KEY;
 
       const nk = createTestNakama();
@@ -262,7 +261,7 @@ describe('rpcRestorePurchases', () => {
         text: async () => 'Unauthorized',
       });
 
-      process.env.REVENUECAT_API_KEY = 'test-api-key';
+      process.env.REVENUECAT_SECRET_KEY = 'test-api-key';
 
       const nk = createTestNakama();
 
@@ -278,7 +277,7 @@ describe('rpcRestorePurchases', () => {
       expect(parsed.restored).toBe(0);
 
       global.fetch = originalFetch;
-      delete process.env.REVENUECAT_API_KEY;
+      delete process.env.REVENUECAT_SECRET_KEY;
     });
   });
 
@@ -298,7 +297,7 @@ describe('rpcRestorePurchases', () => {
         }),
       });
 
-      process.env.REVENUECAT_API_KEY = 'test-api-key';
+      process.env.REVENUECAT_SECRET_KEY = 'test-api-key';
 
       // Player already at max balance
       const existingCurrency = {
@@ -331,7 +330,7 @@ describe('rpcRestorePurchases', () => {
       expect(parsed.restored).toBe(0);
 
       global.fetch = originalFetch;
-      delete process.env.REVENUECAT_API_KEY;
+      delete process.env.REVENUECAT_SECRET_KEY;
     });
   });
 });

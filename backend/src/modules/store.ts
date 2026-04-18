@@ -531,6 +531,49 @@ export const GEM_BUNDLES: Record<string, GemBundle> = {
 };
 
 /**
+ * Cosmetic item data structure.
+ * All cosmetic items are purely visual — they have zero combat stats.
+ *
+ * @property item_id - Unique skin identifier
+ * @property name - Display name
+ * @property slot - Equipment slot (helm, armor, bow, arrow, amulet)
+ * @property base_gear_required - Base gear ID required to equip this skin
+ * @property price - Gem cost
+ * @property is_premium - Whether this is a premium (paid-only) skin
+ */
+export interface CosmeticItem {
+  item_id: string;
+  name: string;
+  slot: string;
+  base_gear_required: string;
+  price: number;
+  is_premium: boolean;
+}
+
+/**
+ * Cosmetic catalog — the ONLY items purchasable with gems.
+ * Every item is a visual skin with zero combat impact.
+ * Combat stats come exclusively from base gear earned through gameplay.
+ */
+export const COSMETIC_CATALOG: Record<string, CosmeticItem> = {
+  skin_helm_golden: { item_id: 'skin_helm_golden', name: 'Golden Helm', slot: 'helm', base_gear_required: 'helm_basic', price: 500, is_premium: true },
+  skin_helm_crimson: { item_id: 'skin_helm_crimson', name: 'Crimson Helm', slot: 'helm', base_gear_required: 'helm_iron', price: 300, is_premium: false },
+  skin_helm_shadow: { item_id: 'skin_helm_shadow', name: 'Shadow Helm', slot: 'helm', base_gear_required: 'helm_dragon', price: 1000, is_premium: true },
+  skin_armor_knight: { item_id: 'skin_armor_knight', name: 'Knight Armor', slot: 'armor', base_gear_required: 'armor_leather', price: 600, is_premium: false },
+  skin_armor_royal: { item_id: 'skin_armor_royal', name: 'Royal Armor', slot: 'armor', base_gear_required: 'armor_plate', price: 1200, is_premium: true },
+  skin_armor_shadow: { item_id: 'skin_armor_shadow', name: 'Shadow Armor', slot: 'armor', base_gear_required: 'armor_chain', price: 800, is_premium: false },
+  skin_bow_fire: { item_id: 'skin_bow_fire', name: 'Fire Bow', slot: 'bow', base_gear_required: 'bow_wooden', price: 400, is_premium: false },
+  skin_bow_ice: { item_id: 'skin_bow_ice', name: 'Ice Bow', slot: 'bow', base_gear_required: 'bow_composite', price: 700, is_premium: false },
+  skin_bow_lightning: { item_id: 'skin_bow_lightning', name: 'Lightning Bow', slot: 'bow', base_gear_required: 'bow_crossbow', price: 1500, is_premium: true },
+  skin_arrow_fire: { item_id: 'skin_arrow_fire', name: 'Fire Arrows', slot: 'arrow', base_gear_required: 'arrow_wooden', price: 200, is_premium: false },
+  skin_arrow_ice: { item_id: 'skin_arrow_ice', name: 'Ice Arrows', slot: 'arrow', base_gear_required: 'arrow_iron', price: 350, is_premium: false },
+  skin_arrow_lightning: { item_id: 'skin_arrow_lightning', name: 'Lightning Arrows', slot: 'arrow', base_gear_required: 'arrow_dragon', price: 900, is_premium: true },
+  skin_amulet_golden: { item_id: 'skin_amulet_golden', name: 'Golden Amulet', slot: 'amulet', base_gear_required: 'amulet_protection', price: 400, is_premium: false },
+  skin_amulet_crystal: { item_id: 'skin_amulet_crystal', name: 'Crystal Amulet', slot: 'amulet', base_gear_required: 'amulet_power', price: 600, is_premium: false },
+  skin_amulet_legendary: { item_id: 'skin_amulet_legendary', name: 'Legendary Amulet', slot: 'amulet', base_gear_required: 'amulet_dragon', price: 1200, is_premium: true },
+};
+
+/**
  * Registers the validate purchase RPC endpoint.
  *
  * @param initializer - Nakama runtime initializer
@@ -1040,6 +1083,123 @@ export function rpcSpendGems(
     new_balance: playerCurrency.gems,
     amount_spent: request.amount,
   });
+}
+
+// ============================================================
+// COSMETIC-ONLY PURCHASE (gems → cosmetic skins)
+// ============================================================
+
+/**
+ * Server-authoritative cosmetic purchase.
+ * Gems can ONLY buy items from COSMETIC_CATALOG — all of which are
+ * purely visual skins with zero combat stats. This is the sole gem
+ * spending path for items and is enforced server-side.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param payload - JSON string with { item_id: string }
+ * @returns JSON string with purchase result
+ */
+export function rpcPurchaseCosmetic(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Cosmetic purchase request from user: %s', ctx.userId);
+
+  const validation = validatePayload(ZodSchemas.purchase_cosmetic, payload, 'purchase_cosmetic');
+  if (!validation.success) {
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_cosmetic', 'player_currency', { item_id: 'unknown' }, 'failure', validation.error);
+    return createValidationErrorResponse('purchase_cosmetic', validation.error);
+  }
+
+  const { item_id } = validation.data;
+
+  // Validate item exists in cosmetic catalog (rejects any non-cosmetic item)
+  const cosmeticItem = COSMETIC_CATALOG[item_id];
+  if (!cosmeticItem) {
+    logger.warn('Cosmetic purchase rejected — item not in cosmetic catalog: %s', item_id);
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_cosmetic', 'player_currency', { item_id }, 'failure', 'Item not in cosmetic catalog');
+    return JSON.stringify({ success: false, error: 'Invalid cosmetic item', error_code: 'INVALID_ITEM' });
+  }
+
+  // Check if player already owns this cosmetic
+  const ownedResult = nk.storageRead([
+    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId },
+  ]);
+  let ownedItems: string[] = [];
+  if (ownedResult.length > 0 && ownedResult[0].value) {
+    const parsed = safeParse<{ items: string[] }>(ownedResult[0].value, null, logger, 'player_cosmetics_owned');
+    if (parsed.success && parsed.data) {
+      ownedItems = parsed.data.items ?? [];
+    }
+  }
+
+  if (ownedItems.includes(item_id)) {
+    logger.warn('Cosmetic purchase rejected — already owned: %s', item_id);
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_cosmetic', 'player_currency', { item_id }, 'failure', 'Already owned');
+    return JSON.stringify({ success: false, error: 'Item already owned', error_code: 'ALREADY_OWNED' });
+  }
+
+  // Check gem balance
+  const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
+  if (playerCurrency.gems < cosmeticItem.price) {
+    logger.warn('Cosmetic purchase rejected — insufficient gems: need %d, have %d', cosmeticItem.price, playerCurrency.gems);
+    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_cosmetic', 'player_currency', { item_id, price: cosmeticItem.price, balance: playerCurrency.gems }, 'failure', 'Insufficient gems');
+    return JSON.stringify({ success: false, error: 'Insufficient gems', error_code: 'INSUFFICIENT_GEMS' });
+  }
+
+  // Deduct gems
+  playerCurrency.gems -= cosmeticItem.price;
+  nk.storageWrite([
+    { collection: 'player_currency', key: ctx.userId, userId: ctx.userId, value: JSON.stringify(playerCurrency) },
+  ]);
+  nk.walletUpdate(ctx.userId, { gems: -cosmeticItem.price });
+  invalidateCurrencyCache(ctx.userId, logger);
+
+  // Record ownership
+  ownedItems.push(item_id);
+  nk.storageWrite([
+    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId, value: JSON.stringify({ items: ownedItems }) },
+  ]);
+
+  logger.info('Cosmetic purchased: user %s bought %s for %d gems (new balance: %d)', ctx.userId, item_id, cosmeticItem.price, playerCurrency.gems);
+  logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_cosmetic', 'player_currency', { item_id, price: cosmeticItem.price, new_balance: playerCurrency.gems }, 'success');
+
+  return JSON.stringify({
+    success: true,
+    item_id,
+    price: cosmeticItem.price,
+    new_balance: playerCurrency.gems,
+  });
+}
+
+export function registerRpcPurchaseCosmetic(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/purchase_cosmetic', rpcPurchaseCosmetic);
+}
+
+/**
+ * Returns the cosmetic catalog — all items purchasable with gems.
+ * Every item is cosmetic-only with zero combat stats.
+ */
+export function rpcGetCosmeticCatalog(
+  _ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  payload: string
+): string {
+  logger.info('Get cosmetic catalog request');
+  const validation = validatePayload(ZodSchemas.get_cosmetic_catalog, payload, 'get_cosmetic_catalog');
+  if (!validation.success) {
+    return createValidationErrorResponse('get_cosmetic_catalog', validation.error);
+  }
+  return JSON.stringify({ success: true, catalog: COSMETIC_CATALOG });
+}
+
+export function registerRpcGetCosmeticCatalog(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_cosmetic_catalog', rpcGetCosmeticCatalog);
 }
 
 // ============================================================
