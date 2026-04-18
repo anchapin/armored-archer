@@ -5061,25 +5061,25 @@ describe('store', () => {
       'skin_amulet_founders',
     ];
 
-    it('should have all 5 Founder's items in the cosmetic catalog', () => {
+    it('should have all 5 Founder\'s items in the cosmetic catalog', () => {
       for (const itemId of foundersItems) {
         expect(COSMETIC_CATALOG[itemId]).toBeDefined();
         expect(COSMETIC_CATALOG[itemId].item_id).toBe(itemId);
       }
     });
 
-    it('should mark all Founder's items as launch exclusive', () => {
+    it('should mark all Founder\'s items as launch exclusive', () => {
       for (const itemId of foundersItems) {
         expect(COSMETIC_CATALOG[itemId].is_launch_exclusive).toBe(true);
       }
     });
 
-    it('should have Founder's items span all 5 equipment slots', () => {
+    it('should have Founder\'s items span all 5 equipment slots', () => {
       const slots = foundersItems.map(id => COSMETIC_CATALOG[id].slot);
       expect(slots.sort()).toEqual(['amulet', 'armor', 'arrow', 'bow', 'helm']);
     });
 
-    it('should have Founder's items be non-premium (earnable)', () => {
+    it('should have Founder\'s items be non-premium (earnable)', () => {
       for (const itemId of foundersItems) {
         expect(COSMETIC_CATALOG[itemId].is_premium).toBe(false);
       }
@@ -5107,7 +5107,7 @@ describe('store', () => {
       expect(BUNDLE_DEFINITIONS.bundle_starter_founders.bundle_id).toBe('bundle_starter_founders');
     });
 
-    it('should include all 5 Founder's items in the bundle', () => {
+    it('should include all 5 Founder\'s items in the bundle', () => {
       const bundle = BUNDLE_DEFINITIONS.bundle_starter_founders;
       expect(bundle.item_ids).toEqual([
         'skin_helm_founders',
@@ -5376,8 +5376,6 @@ describe('store', () => {
         expect(changeAudits).toHaveLength(1);
         expect(changeAudits[0].details.transferred_from).toBe('old-user');
       });
-    });
-  });
     });
   });
 });

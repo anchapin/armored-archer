@@ -8,6 +8,7 @@
 ## - products_loaded(products: Dictionary): Emitted when product catalog is available
 ## - restore_completed(purchases: Array): Emitted when restore finishes
 ## - restore_failed(error: String): Emitted when restore fails
+## - store_availability_changed(is_available: bool, message: String): Emitted when outage starts/ends
 ##
 extends Node
 
@@ -27,6 +28,21 @@ const PRODUCT_LARGE_GEMS = "com.armoredarcher.gems.large"
 const MAX_RETRY_ATTEMPTS: int = 3
 const RETRY_DELAYS: Array[float] = [2.0, 5.0, 15.0]
 const PENDING_PURCHASE_EXPIRY_SEC: float = 86400.0  # 24 hours
+
+# --- Health Check Configuration ---
+const HEALTH_CHECK_INTERVAL_SEC: float = 30.0
+const OUTAGE_THRESHOLD: int = 2  # consecutive failures before declaring outage
+const RECOVERY_CONFIRMATIONS: int = 1  # consecutive successes to declare recovery
+
+# --- User-Facing Error Messages ---
+const ERROR_MESSAGES: Dictionary = {
+	"network": "The store is temporarily unavailable. Please check your connection and try again.",
+	"provider": "The payment provider is experiencing issues. Your purchases are safe and will complete shortly.",
+	"timeout": "The store is taking longer than expected. Please try again in a moment.",
+	"validation": "We couldn't verify your purchase. It has been queued and will complete automatically.",
+	"maintenance": "The store is temporarily down for maintenance. Please try again later.",
+	"generic": "The store is temporarily unavailable. Please try again shortly.",
+}
 
 # --- Product Definitions ---
 var products: Dictionary = {
@@ -71,6 +87,15 @@ signal purchase_failed(product_id: String, error: String)
 signal products_loaded(products: Dictionary)
 signal restore_completed(purchases: Array)
 signal restore_failed(error: String)
+signal store_availability_changed(is_available: bool, message: String)
+
+# --- Outage Detection State ---
+var is_store_available: bool = true
+var _consecutive_failures: int = 0
+var _consecutive_successes: int = 0
+var _health_check_timer: Timer = null
+var _outage_category: String = ""
+var _is_health_checking: bool = false
 
 # --- Network Reference ---
 @onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
@@ -112,12 +137,18 @@ func _ready() -> void:
 		print("[StoreManager] Test mode enabled for development on %s" % platform)
 	_detect_sandbox()
 	_load_pending_purchases()
+	_start_health_check_timer()
 	if network_manager:
 		network_manager.connection_status_changed.connect(_on_connection_status_changed)
 
 func _on_connection_status_changed(is_online: bool) -> void:
-	if is_online and _pending_purchases.size() > 0:
-		_process_pending_purchases()
+	if is_online:
+		if _pending_purchases.size() > 0:
+			_process_pending_purchases()
+		if not is_store_available:
+			_perform_health_check()
+	else:
+		_record_failure("network")
 
 func _detect_sandbox() -> void:
 	if platform == "ios":
@@ -153,6 +184,85 @@ func _detect_platform() -> void:
 func _on_connected() -> void:
 	"""Loads currency when network connection is established."""
 	await load_currency()
+
+# --- Health Check & Outage Detection ---
+func _start_health_check_timer() -> void:
+	_health_check_timer = Timer.new()
+	_health_check_timer.one_shot = false
+	_health_check_timer.wait_time = HEALTH_CHECK_INTERVAL_SEC
+	_health_check_timer.timeout.connect(_on_health_check_tick)
+	add_child(_health_check_timer)
+	_health_check_timer.start()
+
+func _on_health_check_tick() -> void:
+	if is_store_available:
+		return
+	_perform_health_check()
+
+func _perform_health_check() -> void:
+	if _is_health_checking:
+		return
+	_is_health_checking = true
+
+	if not network_manager or not network_manager.is_connected:
+		_record_failure("network")
+		_is_health_checking = false
+		return
+
+	if test_mode:
+		_record_success()
+		_is_health_checking = false
+		return
+
+	var payload = JSON.stringify({})
+	var response = await network_manager.send_rpc(RPC_GET_CURRENCY, payload)
+	_is_health_checking = false
+
+	if response == null or response.has("error"):
+		var err_msg: String = response.get("error", "") if response else ""
+		var category: String = _categorize_error(err_msg)
+		_record_failure(category)
+	else:
+		_record_success()
+
+func _record_failure(category: String) -> void:
+	_consecutive_failures += 1
+	_consecutive_successes = 0
+	_outage_category = category
+
+	if _consecutive_failures >= OUTAGE_THRESHOLD and is_store_available:
+		is_store_available = false
+		var msg: String = ERROR_MESSAGES.get(category, ERROR_MESSAGES["generic"])
+		print("[StoreManager] Store outage detected: %s" % category)
+		emit_signal("store_availability_changed", false, msg)
+
+func _record_success() -> void:
+	_consecutive_successes += 1
+	_consecutive_failures = 0
+
+	if not is_store_available and _consecutive_successes >= RECOVERY_CONFIRMATIONS:
+		is_store_available = true
+		_outage_category = ""
+		print("[StoreManager] Store recovered")
+		emit_signal("store_availability_changed", true, "")
+
+func _categorize_error(error: String) -> String:
+	var lower: String = error.to_lower()
+	if "timeout" in lower or "timed out" in lower:
+		return "timeout"
+	if "network" in lower or "connection" in lower or "not connected" in lower:
+		return "network"
+	if "validation" in lower or "receipt" in lower:
+		return "validation"
+	if "maintenance" in lower or "503" in lower:
+		return "maintenance"
+	if "revenuecat" in lower or "provider" in lower or "plugin" in lower:
+		return "provider"
+	return "generic"
+
+func get_user_facing_error(raw_error: String) -> String:
+	var category: String = _categorize_error(raw_error)
+	return ERROR_MESSAGES.get(category, ERROR_MESSAGES["generic"])
 
 # --- Currency Management ---
 func load_currency() -> void:
@@ -220,6 +330,12 @@ func purchase_product(product_id: String) -> void:
 	if is_purchase_pending:
 		push_error("Purchase already in progress")
 		emit_signal("purchase_failed", product_id, "Purchase already in progress")
+		return
+
+	if not is_store_available:
+		push_error("Store temporarily unavailable")
+		var msg: String = ERROR_MESSAGES.get(_outage_category, ERROR_MESSAGES["generic"])
+		emit_signal("purchase_failed", product_id, msg)
 		return
 
 	is_purchase_pending = true
@@ -311,6 +427,7 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 		push_error("Not connected to server")
 		_add_to_pending_queue(product_id, transaction_receipt)
 		is_purchase_pending = false
+		_record_failure("network")
 		emit_signal("purchase_failed", product_id, "Not connected - purchase queued for retry")
 		return
 
@@ -346,17 +463,20 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 	if has_timed_out:
 		push_error("Purchase validation timed out for product: %s" % product_id)
 		_add_to_pending_queue(product_id, transaction_receipt)
+		_record_failure("timeout")
 		emit_signal("purchase_failed", product_id, "Network timeout - purchase queued for retry")
 		return
 
 	if response == null:
 		push_error("Purchase validation failed - no response received for product: %s" % product_id)
 		_add_to_pending_queue(product_id, transaction_receipt)
+		_record_failure("network")
 		emit_signal("purchase_failed", product_id, "Network error - purchase queued for retry")
 		return
 
 	if response.has("error"):
 		push_error("Purchase validation failed: %s" % response.error)
+		_record_failure(_categorize_error(response.error))
 		emit_signal("purchase_failed", product_id, response.error)
 		return
 
@@ -365,6 +485,7 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 	if result.get("success", false):
 		var gems_awarded: int = result.get("gems_awarded", 0)
 		current_gems = result.get("new_balance", current_gems)
+		_record_success()
 		emit_signal("currency_updated", current_gems, current_gold)
 		emit_signal("purchase_succeeded", product_id, gems_awarded)
 
