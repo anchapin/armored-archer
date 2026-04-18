@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/safe_area_container.tscn" id="2"]
 [ext_resource type="Script" uid="uid://bvk14a8cbgsak" path="res://scenes/ui/safe_area_container.gd" id="3_sa8cq"]
 [ext_resource type="Script" uid="uid://cx8y22877gji7" path="res://scenes/ui/components/base_button.gd" id="4_vwpil"]
+[ext_resource type="PackedScene" path="res://scenes/ui/store_fallback_banner.tscn" id="5_banner"]
 
 [node name="StoreMenu" type="Control" unique_id=1027514548]
 layout_mode = 3
@@ -60,6 +61,9 @@ text = "🪙"
 [node name="GoldLabel" type="Label" parent="SafeAreaContainer/CenterContainer/VBoxContainer/HeaderContainer/GoldContainer" unique_id=2042785312]
 layout_mode = 2
 text = "0"
+
+[node name="FallbackBanner" parent="SafeAreaContainer/CenterContainer/VBoxContainer" instance=ExtResource("5_banner")]
+layout_mode = 2
 
 [node name="PurchaseContainer" type="VBoxContainer" parent="SafeAreaContainer/CenterContainer/VBoxContainer" unique_id=1344995011]
 layout_mode = 2

@@ -13,6 +13,7 @@ extends Control
 
 @onready var loading_indicator: Control = $LoadingIndicator
 @onready var error_dialog: AcceptDialog = $ErrorDialog
+@onready var fallback_banner: PanelContainer = $SafeAreaContainer/CenterContainer/VBoxContainer/FallbackBanner
 
 # --- Manager References ---
 @onready var store_manager: Node = get_node_or_null("/root/StoreManager")
@@ -27,6 +28,7 @@ var _purchase_succeeded_connection: Callable = Callable()
 var _purchase_failed_connection: Callable = Callable()
 var _restore_completed_connection: Callable = Callable()
 var _restore_failed_connection: Callable = Callable()
+var _store_availability_connection: Callable = Callable()
 
 # --- State ---
 var is_processing: bool = false
@@ -42,6 +44,7 @@ func _ready() -> void:
 	_update_currency_display()
 	_update_product_buttons()
 	_apply_design_tokens()
+	_check_initial_store_availability()
 
 func _exit_tree() -> void:
 	_cleanup_signal_connection(StoreManager, "currency_updated", _currency_updated_connection)
@@ -49,6 +52,7 @@ func _exit_tree() -> void:
 	_cleanup_signal_connection(StoreManager, "purchase_failed", _purchase_failed_connection)
 	_cleanup_signal_connection(StoreManager, "restore_completed", _restore_completed_connection)
 	_cleanup_signal_connection(StoreManager, "restore_failed", _restore_failed_connection)
+	_cleanup_signal_connection(StoreManager, "store_availability_changed", _store_availability_connection)
 
 	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
 		theme_manager.theme_changed.disconnect(_on_theme_changed)
@@ -64,17 +68,22 @@ func _connect_signals() -> void:
 		store_manager.purchase_failed.connect(_on_purchase_failed)
 		store_manager.restore_completed.connect(_on_restore_completed)
 		store_manager.restore_failed.connect(_on_restore_failed)
+		store_manager.store_availability_changed.connect(_on_store_availability_changed)
 		_currency_updated_connection = _on_currency_updated
 		_purchase_succeeded_connection = _on_purchase_succeeded
 		_purchase_failed_connection = _on_purchase_failed
 		_restore_completed_connection = _on_restore_completed
 		_restore_failed_connection = _on_restore_failed
+		_store_availability_connection = _on_store_availability_changed
 
 	small_gems_button.pressed.connect(_on_small_gems_pressed)
 	medium_gems_button.pressed.connect(_on_medium_gems_pressed)
 	large_gems_button.pressed.connect(_on_large_gems_pressed)
 	restore_button.pressed.connect(_on_restore_pressed)
 	back_button.pressed.connect(_on_back_pressed)
+
+	if fallback_banner:
+		fallback_banner.retry_pressed.connect(_on_banner_retry)
 
 func _update_currency_display() -> void:
 	if store_manager:
@@ -100,6 +109,32 @@ func _update_product_buttons() -> void:
 	if products.has(store_manager.PRODUCT_LARGE_GEMS):
 		var product = products[store_manager.PRODUCT_LARGE_GEMS]
 		large_gems_button.text = "%s\n$9.99" % product.localized_title
+
+# --- Store Availability ---
+func _check_initial_store_availability() -> void:
+	if not store_manager or not fallback_banner:
+		return
+	if not store_manager.is_store_available:
+		var msg: String = store_manager.ERROR_MESSAGES.get(
+			store_manager._outage_category,
+			store_manager.ERROR_MESSAGES["generic"]
+		)
+		fallback_banner.show_outage_message(msg)
+		_set_buttons_enabled(false)
+
+func _on_store_availability_changed(is_available: bool, message: String) -> void:
+	if not fallback_banner:
+		return
+	if is_available:
+		fallback_banner.show_recovery()
+		_set_buttons_enabled(true)
+	else:
+		fallback_banner.show_outage_message(message)
+		_set_buttons_enabled(false)
+
+func _on_banner_retry() -> void:
+	if store_manager and store_manager.has_method("_perform_health_check"):
+		store_manager._perform_health_check()
 
 # --- Purchase Handlers ---
 func _on_small_gems_pressed() -> void:
@@ -159,7 +194,10 @@ func _on_restore_failed(error: String) -> void:
 	_set_buttons_enabled(true)
 	restore_button.disabled = false
 
-	error_dialog.dialog_text = "Restore failed: %s" % error
+	var user_msg: String = error
+	if store_manager and store_manager.has_method("get_user_facing_error"):
+		user_msg = store_manager.get_user_facing_error(error)
+	error_dialog.dialog_text = user_msg
 	error_dialog.popup_centered()
 
 # --- Callbacks ---
@@ -187,7 +225,10 @@ func _on_purchase_failed(product_id: String, error: String) -> void:
 	loading_indicator.visible = false
 	_set_buttons_enabled(true)
 
-	error_dialog.dialog_text = "Purchase failed: %s" % error
+	var user_msg: String = error
+	if store_manager and store_manager.has_method("get_user_facing_error"):
+		user_msg = store_manager.get_user_facing_error(error)
+	error_dialog.dialog_text = user_msg
 	error_dialog.popup_centered()
 
 func _set_buttons_enabled(enabled: bool) -> void:
