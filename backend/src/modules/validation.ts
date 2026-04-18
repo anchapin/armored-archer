@@ -315,6 +315,12 @@ export const ValibotSchemas = {
     amount: pipe(number(), integer(), minValue(1), maxValue(1000000)),
   }),
 
+  purchase_cosmetic: object({
+    item_id: pipe(string(), minLength(1), maxLength(100)),
+  }),
+
+  get_cosmetic_catalog: object({}),
+
   check_refunds: object({
     app_user_id: optional(string()),
   }),

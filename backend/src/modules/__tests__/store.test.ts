@@ -32,6 +32,8 @@ import {
   rpcCheckRefunds,
   rpcCheckSubscriptions,
   rpcAppLaunchCheck,
+  rpcPurchaseCosmetic,
+  rpcGetCosmeticCatalog,
   registerRpcValidatePurchase,
   registerRpcGetCurrency,
   registerRpcSpendGems,
@@ -40,8 +42,11 @@ import {
   registerRpcCheckRefunds,
   registerRpcCheckSubscriptions,
   registerRpcAppLaunchCheck,
+  registerRpcPurchaseCosmetic,
+  registerRpcGetCosmeticCatalog,
   PlayerCurrency,
   GEM_BUNDLES,
+  COSMETIC_CATALOG,
   validatedReceipts,
   RefundReason,
 } from '../store';
@@ -4626,6 +4631,154 @@ describe('store', () => {
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);
       expect(parsed.message).toMatch(/Unknown product/);
+    });
+  });
+
+  // ============================================================
+  // COSMETIC-ONLY PURCHASE TESTS
+  // ============================================================
+  describe('rpcPurchaseCosmetic', () => {
+    it('should successfully purchase a cosmetic item', () => {
+      // Pre-populate currency (enough gems)
+      const currency = createMockCurrency({ gems: 1000 });
+      mockNk.storageWrite([
+        { collection: 'player_currency', key: 'test-user', userId: 'test-user', value: JSON.stringify(currency) },
+      ]);
+
+      const payload = JSON.stringify({ item_id: 'skin_helm_golden' });
+      const result = rpcPurchaseCosmetic(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.item_id).toBe('skin_helm_golden');
+      expect(parsed.price).toBe(500);
+      expect(parsed.new_balance).toBe(500); // 1000 - 500
+    });
+
+    it('should reject purchase of item not in cosmetic catalog', () => {
+      const payload = JSON.stringify({ item_id: 'sword_of_power' });
+      const result = rpcPurchaseCosmetic(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('INVALID_ITEM');
+    });
+
+    it('should reject purchase with insufficient gems', () => {
+      const currency = createMockCurrency({ gems: 100 });
+      mockNk.storageWrite([
+        { collection: 'player_currency', key: 'test-user', userId: 'test-user', value: JSON.stringify(currency) },
+      ]);
+
+      const payload = JSON.stringify({ item_id: 'skin_armor_royal' }); // costs 1200
+      const result = rpcPurchaseCosmetic(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('INSUFFICIENT_GEMS');
+    });
+
+    it('should reject purchase of already owned cosmetic', () => {
+      const currency = createMockCurrency({ gems: 1000 });
+      mockNk.storageWrite([
+        { collection: 'player_currency', key: 'test-user', userId: 'test-user', value: JSON.stringify(currency) },
+        {
+          collection: 'player_cosmetics_owned',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify({ items: ['skin_helm_golden'] }),
+        },
+      ]);
+
+      const payload = JSON.stringify({ item_id: 'skin_helm_golden' });
+      const result = rpcPurchaseCosmetic(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('ALREADY_OWNED');
+    });
+
+    it('should reject empty item_id', () => {
+      const payload = JSON.stringify({ item_id: '' });
+      const result = rpcPurchaseCosmetic(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+    });
+
+    it('should reject non-existent cosmetic item_id', () => {
+      const payload = JSON.stringify({ item_id: 'nonexistent_skin' });
+      const result = rpcPurchaseCosmetic(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('INVALID_ITEM');
+    });
+
+    it('should reject combat gear items (not in cosmetic catalog)', () => {
+      // Verify that base gear IDs (which have combat stats) cannot be purchased
+      const payload = JSON.stringify({ item_id: 'helm_dragon' });
+      const result = rpcPurchaseCosmetic(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('INVALID_ITEM');
+    });
+  });
+
+  describe('rpcGetCosmeticCatalog', () => {
+    it('should return the full cosmetic catalog', () => {
+      const payload = '{}';
+      const result = rpcGetCosmeticCatalog(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.catalog).toBeDefined();
+      expect(Object.keys(parsed.catalog).length).toBe(Object.keys(COSMETIC_CATALOG).length);
+    });
+  });
+
+  describe('COSMETIC_CATALOG', () => {
+    it('should contain only cosmetic skins (no base gear with combat stats)', () => {
+      // Verify every item in the catalog starts with "skin_" prefix
+      for (const itemId of Object.keys(COSMETIC_CATALOG)) {
+        expect(itemId).toMatch(/^skin_/);
+      }
+    });
+
+    it('should have matching keys and item_ids', () => {
+      for (const [key, item] of Object.entries(COSMETIC_CATALOG)) {
+        expect(item.item_id).toBe(key);
+      }
+    });
+
+    it('should have valid slot types for all items', () => {
+      const validSlots = ['helm', 'armor', 'bow', 'arrow', 'amulet'];
+      for (const item of Object.values(COSMETIC_CATALOG)) {
+        expect(validSlots).toContain(item.slot);
+      }
+    });
+  });
+
+  describe('registerRpcPurchaseCosmetic', () => {
+    it('should register the purchase_cosmetic RPC', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcPurchaseCosmetic(mockInitializer as unknown as Runtime.Initializer);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/purchase_cosmetic',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('registerRpcGetCosmeticCatalog', () => {
+    it('should register the get_cosmetic_catalog RPC', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcGetCosmeticCatalog(mockInitializer as unknown as Runtime.Initializer);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_cosmetic_catalog',
+        expect.any(Function)
+      );
     });
   });
 });

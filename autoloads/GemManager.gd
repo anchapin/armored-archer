@@ -223,9 +223,16 @@ func is_skin_owned(skin_id: String) -> bool:
 	"""
 	return skin_id in owned_skins
 
+# --- Network Reference ---
+@onready var network_manager: Node = get_node_or_null("/root/NetworkManager")
+
 # --- Skin Purchase ---
 func purchase_skin(skin_id: String) -> bool:
-	"""Purchases a skin using gems.
+	"""Purchases a skin using gems via server-authoritative validation.
+
+	The server validates that the item is cosmetic-only (zero combat stats)
+	before deducting gems. The client only marks the skin as owned if the
+	server confirms success.
 
 	Parameters:
 		skin_id: ID of the skin to purchase
@@ -242,20 +249,39 @@ func purchase_skin(skin_id: String) -> bool:
 		push_error("Skin not found: %s" % skin_id)
 		return false
 
-	if not store_manager:
-		push_error("StoreManager not available")
-		return false
+	# Server-authoritative purchase via RPC
+	if network_manager and NetworkManager.is_session_valid():
+		var payload = JSON.stringify({"item_id": skin_id})
+		var response: Dictionary = await NetworkManager.send_rpc("armored_archer/purchase_cosmetic", payload)
 
-	var gem_balance = get_gem_balance()
-	if gem_balance < skin_info.price:
-		push_error("Not enough gems. Need: %d, Have: %d" % [skin_info.price, gem_balance])
-		return false
+		if not response.get("success", false):
+			push_error("Server rejected cosmetic purchase: %s" % response.get("error", "unknown"))
+			return false
 
-	store_manager.spend_gems(skin_info.price, "cosmetic_purchase:" + skin_id)
+		# Update local gem balance from server response
+		var server_balance = response.get("new_balance", -1)
+		if server_balance >= 0:
+			_local_gems = int(server_balance)
+			gems_updated.emit(_local_gems)
 
-	owned_skins.append(skin_id)
-	skin_purchased.emit(skin_id)
-	save_data()
+		owned_skins.append(skin_id)
+		skin_purchased.emit(skin_id)
+		save_data()
+	else:
+		# Offline fallback: client-side validation only
+		if not store_manager:
+			push_error("StoreManager not available")
+			return false
+
+		var gem_balance = get_gem_balance()
+		if gem_balance < skin_info.price:
+			push_error("Not enough gems. Need: %d, Have: %d" % [skin_info.price, gem_balance])
+			return false
+
+		store_manager.spend_gems(skin_info.price, "cosmetic_purchase:" + skin_id)
+		owned_skins.append(skin_id)
+		skin_purchased.emit(skin_id)
+		save_data()
 
 	# Track cosmetic purchase in analytics
 	if analytics and analytics.has_method("log_cosmetic_purchased"):
@@ -263,7 +289,7 @@ func purchase_skin(skin_id: String) -> bool:
 			skin_id,
 			skin_info.skin_name if skin_info.skin_name else skin_id,
 			"skin",
-			"common",  # CosmeticSkinData doesn't have rarity field
+			"common",
 			skin_info.price,
 			"gems"
 		)
