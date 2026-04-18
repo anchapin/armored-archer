@@ -26,6 +26,14 @@ import {
   registerRpcGetSeasonInfo,
   registerRpcGetLeaderboard,
   registerRpcUpdateRank,
+  registerRpcGetSeasonRewards,
+  registerRpcClaimSeasonRewards,
+  registerRpcEndSeason,
+  applyEloUpdates,
+  calculateSoftResetElo,
+  evaluatePrestigeTiers,
+  updatePlayerPrestigeRecord,
+  grantPrestigeRewards,
   SeasonInfo,
 } from '../season_system';
 import { Runtime } from '../../types/nakama';
@@ -878,6 +886,481 @@ describe('season_system', () => {
         'armored_archer/get_player_cosmetics',
         expect.any(Function)
       );
+    });
+  });
+
+  describe('registerRpcGetSeasonRewards', () => {
+    it('should register the get season rewards RPC endpoint', () => {
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      } as unknown as Runtime.Initializer;
+
+      registerRpcGetSeasonRewards(mockInitializer);
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_season_rewards',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('registerRpcClaimSeasonRewards', () => {
+    it('should register the claim season rewards RPC endpoint', () => {
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      } as unknown as Runtime.Initializer;
+
+      registerRpcClaimSeasonRewards(mockInitializer);
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/claim_season_rewards',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('registerRpcEndSeason', () => {
+    it('should register the end season RPC endpoint', () => {
+      const mockInitializer = {
+        registerRpc: jest.fn(),
+      } as unknown as Runtime.Initializer;
+
+      registerRpcEndSeason(mockInitializer);
+
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/end_season',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('calculateSoftResetElo', () => {
+    it('should return correct elo for top ranks', () => {
+      const elo = calculateSoftResetElo(1);
+      expect(elo).toBeGreaterThan(1000);
+    });
+
+    it('should return default 1000 for very low ranks', () => {
+      const elo = calculateSoftResetElo(10000);
+      expect(elo).toBe(1000);
+    });
+  });
+
+  describe('evaluatePrestigeTiers', () => {
+    it('should return empty for no finishes', () => {
+      const tiers = evaluatePrestigeTiers([]);
+      expect(tiers).toEqual([]);
+    });
+
+    it('should earn bronze after 2 qualifying seasons', () => {
+      const finishes = [
+        { season_id: 'season_1', rank: 50 },
+        { season_id: 'season_2', rank: 30 },
+      ];
+      const tiers = evaluatePrestigeTiers(finishes);
+      expect(tiers).toContain('bronze');
+    });
+
+    it('should not earn tier without enough qualifying seasons', () => {
+      const finishes = [{ season_id: 'season_1', rank: 50 }];
+      const tiers = evaluatePrestigeTiers(finishes);
+      expect(tiers).not.toContain('bronze');
+    });
+
+    it('should not count same season twice', () => {
+      const finishes = [
+        { season_id: 'season_1', rank: 50 },
+        { season_id: 'season_1', rank: 30 },
+      ];
+      const tiers = evaluatePrestigeTiers(finishes);
+      expect(tiers).not.toContain('bronze');
+    });
+  });
+
+  describe('updatePlayerPrestigeRecord', () => {
+    it('should add a qualifying season finish', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      mockNk.storageWrite = jest.fn();
+
+      const result = updatePlayerPrestigeRecord(mockNk, 'player-1', 'season_1', 10);
+
+      expect(result.record.season_finishes).toHaveLength(1);
+      expect(result.record.season_finishes[0].rank).toBe(10);
+      expect(mockNk.storageWrite).toHaveBeenCalled();
+    });
+
+    it('should update existing season finish with better rank', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          value: JSON.stringify({
+            player_id: 'player-1',
+            season_finishes: [{ season_id: 'season_1', rank: 50 }],
+            prestige_tiers_earned: [],
+            last_updated: 0,
+          }),
+        },
+      ]);
+      mockNk.storageWrite = jest.fn();
+
+      const result = updatePlayerPrestigeRecord(mockNk, 'player-1', 'season_1', 10);
+
+      expect(result.record.season_finishes[0].rank).toBe(10);
+    });
+
+    it('should skip non-qualifying ranks above 100', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      mockNk.storageWrite = jest.fn();
+
+      const result = updatePlayerPrestigeRecord(mockNk, 'player-1', 'season_1', 200);
+
+      expect(result.record.season_finishes).toHaveLength(0);
+    });
+
+    it('should detect newly earned tiers', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          value: JSON.stringify({
+            player_id: 'player-1',
+            season_finishes: [{ season_id: 'season_1', rank: 50 }],
+            prestige_tiers_earned: [],
+            last_updated: 0,
+          }),
+        },
+      ]);
+      mockNk.storageWrite = jest.fn();
+
+      const result = updatePlayerPrestigeRecord(mockNk, 'player-1', 'season_2', 30);
+
+      expect(result.new_tiers).toContain('bronze');
+    });
+  });
+
+  describe('grantPrestigeRewards', () => {
+    it('should add cosmetics for each new tier', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      mockNk.storageWrite = jest.fn();
+
+      grantPrestigeRewards(mockNk, 'player-1', ['bronze']);
+
+      expect(mockNk.storageWrite).toHaveBeenCalled();
+    });
+
+    it('should handle empty tiers array', () => {
+      mockNk.storageWrite = jest.fn();
+
+      grantPrestigeRewards(mockNk, 'player-1', []);
+
+      expect(mockNk.storageWrite).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('rpcEndSeason with players', () => {
+    it('should distribute rewards to all players', () => {
+      const players = [
+        createMockLeaderboardRecord({ ownerId: 'player-1', rank: 5, score: 2000 }),
+        createMockLeaderboardRecord({ ownerId: 'player-2', rank: 50, score: 1500 }),
+      ];
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.walletUpdate = jest.fn();
+      mockNk.storageWrite = jest.fn();
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const payload = JSON.stringify({});
+      const result = rpcEndSeason(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(mockNk.walletUpdate).toHaveBeenCalledTimes(2);
+    });
+
+    it('should seed players into new season with soft-reset elo', () => {
+      const players = [
+        createMockLeaderboardRecord({ ownerId: 'player-1', username: 'Player1', rank: 1, score: 2500 }),
+      ];
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.walletUpdate = jest.fn();
+      mockNk.storageWrite = jest.fn();
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const payload = JSON.stringify({});
+      rpcEndSeason(mockCtx, mockLogger, mockNk, payload);
+
+      expect(mockNk.leaderboardRecordWrite).toHaveBeenCalled();
+      const allCalls = mockNk.leaderboardRecordWrite.mock.calls;
+      const seedingCall = allCalls.find((call: any[]) => !call[0].startsWith('season_1'));
+      expect(seedingCall).toBeDefined();
+      expect(seedingCall![1]).toBe('player-1');
+    });
+
+    it('should handle players with cosmetic rewards', () => {
+      const players = [
+        createMockLeaderboardRecord({ ownerId: 'player-1', rank: 5, score: 2000 }),
+      ];
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.walletUpdate = jest.fn();
+      mockNk.storageWrite = jest.fn();
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const payload = JSON.stringify({});
+      const result = rpcEndSeason(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(mockNk.storageWrite).toHaveBeenCalled();
+    });
+
+    it('should handle pagination when many players exist', () => {
+      const batch1 = Array.from({ length: 500 }, (_, i) =>
+        createMockLeaderboardRecord({ ownerId: `player-${i}`, rank: i + 1, score: 2000 - i })
+      );
+      const batch2 = Array.from({ length: 10 }, (_, i) =>
+        createMockLeaderboardRecord({ ownerId: `player-${500 + i}`, rank: 501 + i, score: 1490 - i })
+      );
+
+      let callCount = 0;
+      mockNk.leaderboardRecordList = jest.fn(() => {
+        callCount++;
+        if (callCount === 1) return batch1;
+        if (callCount === 2) return batch2;
+        return [];
+      });
+      mockNk.walletUpdate = jest.fn();
+      mockNk.storageWrite = jest.fn();
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const payload = JSON.stringify({});
+      const result = rpcEndSeason(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(mockNk.leaderboardRecordList).toHaveBeenCalled();
+    });
+
+    it('should handle empty leaderboard', () => {
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.walletUpdate = jest.fn();
+      mockNk.storageWrite = jest.fn();
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const payload = JSON.stringify({});
+      const result = rpcEndSeason(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(mockNk.walletUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should handle prestige tier upgrades for qualifying players', () => {
+      mockNk.storageRead = jest.fn((objects: any[]) => {
+        for (const obj of objects) {
+          if (obj.collection === 'player_prestige') {
+            return [{
+              value: JSON.stringify({
+                player_id: obj.key,
+                season_finishes: [{ season_id: 'season_1', rank: 50 }],
+                prestige_tiers_earned: [],
+                last_updated: 0,
+              }),
+            }];
+          }
+        }
+        return [];
+      });
+
+      const players = [
+        createMockLeaderboardRecord({ ownerId: 'player-1', rank: 30, score: 2000 }),
+      ];
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.walletUpdate = jest.fn();
+      mockNk.storageWrite = jest.fn();
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const payload = JSON.stringify({});
+      const result = rpcEndSeason(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+    });
+  });
+
+  describe('rpcClaimSeasonRewards advanced', () => {
+    it('should claim rewards and update wallet', () => {
+      const record = createMockLeaderboardRecord({ rank: 5 });
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      mockNk.storageWrite = jest.fn();
+      mockNk.walletUpdate = jest.fn();
+
+      const payload = JSON.stringify({});
+      const result = rpcClaimSeasonRewards(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.claimed).toBe(true);
+      expect(mockNk.walletUpdate).toHaveBeenCalled();
+    });
+
+    it('should handle validation error', () => {
+      const payload = 'invalid-json';
+
+      const result = rpcClaimSeasonRewards(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+    });
+  });
+
+  describe('rpcGetSeasonRewards advanced', () => {
+    it('should handle validation error', () => {
+      const payload = 'invalid-json';
+
+      const result = rpcGetSeasonRewards(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+    });
+  });
+
+  describe('rpcGetSeasonInfo additional branches', () => {
+    it('should return player_score 0 when no entry', () => {
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+
+      const payload = JSON.stringify({});
+      const result = rpcGetSeasonInfo(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.player_rank).toBeNull();
+      expect(parsed.player_score).toBe(0);
+    });
+  });
+
+  describe('rpcGetLeaderboard additional branches', () => {
+    it('should use default limit when not specified', () => {
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+
+      const payload = JSON.stringify({});
+      const result = rpcGetLeaderboard(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(mockNk.leaderboardRecordList).toHaveBeenCalledWith(
+        expect.any(String),
+        [],
+        50,
+        '',
+        0
+      );
+    });
+
+    it('should use specified limit', () => {
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+
+      const payload = JSON.stringify({ limit: 10 });
+      const result = rpcGetLeaderboard(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(mockNk.leaderboardRecordList).toHaveBeenCalledWith(
+        expect.any(String),
+        [],
+        10,
+        '',
+        0
+      );
+    });
+  });
+
+  describe('applyEloUpdates additional branches', () => {
+    it('should handle missing loser entry', () => {
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const result = applyEloUpdates(
+        mockNk,
+        mockCtx,
+        { season_id: 'season_1' },
+        'winner',
+        'loser',
+        1500,
+        1500,
+        false,
+        null,
+        null
+      );
+
+      expect(result.loserNewElo).toBeLessThan(1500);
+    });
+
+    it('should use higher K-factor for punch-up wins', () => {
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const normalResult = applyEloUpdates(
+        mockNk, mockCtx, { season_id: 'season_1' },
+        'winner', 'loser', 1200, 1000,
+        false, null, null
+      );
+
+      mockNk.leaderboardRecordWrite = jest.fn();
+      const punchUpResult = applyEloUpdates(
+        mockNk, mockCtx, { season_id: 'season_1' },
+        'winner', 'loser', 1200, 1000,
+        true, null, null
+      );
+
+      const normalDelta = normalResult.winnerNewElo - 1200;
+      const punchUpDelta = punchUpResult.winnerNewElo - 1200;
+      expect(punchUpDelta).toBeGreaterThan(normalDelta);
+    });
+  });
+
+  describe('rpcUpdateRank additional branches', () => {
+    it('should handle winner not on leaderboard (default 1000)', () => {
+      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
+      (detectTimingAttack as jest.Mock).mockReturnValue(false);
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const payload = JSON.stringify({
+        match_id: 'match-1',
+        winner_id: 'unknown-winner',
+        loser_id: 'test-user',
+        winner_old_rank: 1000,
+        loser_old_rank: 1000,
+        winner_new_rank: 1016,
+        loser_new_rank: 984,
+        is_punch_up: false,
+      });
+
+      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      if (!parsed.success) {
+        console.log('Failure response:', JSON.stringify(parsed));
+      }
+      expect(parsed.success).toBe(true);
+    });
+  });
+
+  describe('calculateSoftResetElo additional branches', () => {
+    it('should return 1300 for rank 1-10', () => {
+      expect(calculateSoftResetElo(1)).toBe(1300);
+      expect(calculateSoftResetElo(10)).toBe(1300);
+    });
+
+    it('should return 1200 for rank 11-50', () => {
+      expect(calculateSoftResetElo(25)).toBe(1200);
+    });
+
+    it('should return 1150 for rank 51-100', () => {
+      expect(calculateSoftResetElo(75)).toBe(1150);
+    });
+
+    it('should return 1100 for rank 101-500', () => {
+      expect(calculateSoftResetElo(200)).toBe(1100);
     });
   });
 });
