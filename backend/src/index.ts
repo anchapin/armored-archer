@@ -11,6 +11,7 @@ import { createStructuredLogger, StructuredLogger } from './config/structuredLog
 import { initializeTracing } from './config/tracing';
 import { initializeAlerting } from './modules/alerting';
 import { registerAnalyticsEndpoints } from './modules/analytics';
+import { registerRpcQueryAuditLogs, rpcQueryAuditLogs } from './modules/audit';
 import { registerBalanceAnalyticsEndpoints } from './modules/balance_analytics';
 import { registerRpcRunBalanceSession } from './modules/balance_session';
 import {
@@ -444,6 +445,12 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/query_audit_logs',
+      'query_audit_logs',
+      rpcQueryAuditLogs
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/generate_gear',
       'generate_gear',
       rpcGenerateGearWrapper
@@ -578,6 +585,7 @@ const InitModule: InitModule = function (
     registerRpcSaveCosmeticLoadout(initializer);
     registerRpcPurchaseBundle(initializer);
     registerRpcGetBundleCatalog(initializer);
+    registerRpcQueryAuditLogs(initializer);
     registerRpcGenerateGear(initializer);
     registerRpcEquipGear(initializer);
     registerRpcUnequipGear(initializer);
