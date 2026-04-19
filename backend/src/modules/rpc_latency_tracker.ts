@@ -35,7 +35,7 @@ export function recordRpcLatency(rpcName: string, durationMs: number): void {
   }
 }
 
-export function recordRpcError(rpcName: string, _errorType: string): void {
+export function recordRpcError(_rpcName: string, _errorType: string): void {
   if (!initialized) return;
 
   entries.push({ timestamp: Date.now(), durationMs: 0, isError: true });
