@@ -826,6 +826,28 @@ export const ValibotSchemas = {
     player_ids: optional(array(pipe(string(), minLength(1), maxLength(100)))),
     confirmation_token: optional(pipe(string(), minLength(1), maxLength(128))),
   }),
+
+  submit_survey: object({
+    survey_type: createEnum(['post_match', 'post_purchase']),
+    survey_data: object({
+      experience_rating: optional(pipe(number(), integer(), minValue(1), maxValue(5))),
+      difficulty_rating: optional(pipe(number(), integer(), minValue(1), maxValue(5))),
+      would_recommend: optional(pipe(number(), integer(), minValue(1), maxValue(5))),
+      satisfaction_rating: optional(pipe(number(), integer(), minValue(1), maxValue(5))),
+      value_rating: optional(pipe(number(), integer(), minValue(1), maxValue(5))),
+      match_id: optional(string()),
+      match_type: optional(createEnum(['ranked', 'casual'])),
+      is_victory: optional(boolean()),
+      product_id: optional(string()),
+      gems_awarded: optional(pipe(number(), integer(), minValue(0))),
+      free_text: optional(pipe(string(), maxLength(500))),
+    }),
+    client_timestamp: pipe(number(), integer()),
+  }),
+
+  get_survey_status: object({
+    survey_type: createEnum(['post_match', 'post_purchase']),
+  }),
 } as const;
 
 // Export with Zod-like names for backward compatibility

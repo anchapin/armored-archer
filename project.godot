@@ -77,6 +77,7 @@ StatAllocationManager="*res://autoloads/StatAllocationManager.gd"
 TutorialManager="*res://autoloads/TutorialManager.gd"
 WeaponBalanceManager="*res://autoloads/WeaponBalanceManager.gd"
 MonitoringManager="*res://autoloads/MonitoringManager.gd"
+SurveyManager="*res://autoloads/SurveyManager.gd"
 
 [debug]
 

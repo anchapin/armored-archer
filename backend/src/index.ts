@@ -150,6 +150,7 @@ import {
   rpcPurchaseBundle,
   rpcGetBundleCatalog,
 } from './modules/store';
+import { registerRpcSubmitSurvey, registerRpcGetSurveyStatus } from './modules/survey';
 import { InitModule, Runtime } from './types/nakama';
 import { initializeCaches } from './utils/cache';
 
@@ -532,6 +533,18 @@ const InitModule: InitModule = function (
       'track_revenue',
       rpcTrackRevenueWrapper
     );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/submit_survey',
+      'submit_survey',
+      rpcSubmitSurveyWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/get_survey_status',
+      'get_survey_status',
+      rpcGetSurveyStatusWrapper
+    );
   } else {
     registerRpcHealthCheck(initializer);
     registerRpcGainXP(initializer);
@@ -603,6 +616,8 @@ const InitModule: InitModule = function (
     registerRpcSyncDifficulty(initializer);
     registerRpcTrackMatchOutcome(initializer);
     registerRpcGetPlayerPerformance(initializer);
+    registerRpcSubmitSurvey(initializer);
+    registerRpcGetSurveyStatus(initializer);
   }
 
   // Register replay RPC endpoints (always available for debugging/QA)
@@ -941,6 +956,26 @@ function rpcForfeitMatchWrapper(
 ): string {
   const { rpcForfeitMatch } = require('./modules/matchmaker');
   return rpcForfeitMatch(ctx, logger, nk, payload);
+}
+
+function rpcSubmitSurveyWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcSubmitSurvey } = require('./modules/survey');
+  return rpcSubmitSurvey(ctx, logger, nk, payload);
+}
+
+function rpcGetSurveyStatusWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcGetSurveyStatus } = require('./modules/survey');
+  return rpcGetSurveyStatus(ctx, logger, nk, payload);
 }
 
 export default InitModule;

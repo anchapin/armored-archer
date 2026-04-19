@@ -27,6 +27,14 @@ jest.mock('../../index', () => ({
   }),
 }));
 
+jest.mock('../health_monitor', () => ({
+  getHealthStatus: jest.fn().mockReturnValue({
+    healthy: true,
+    metrics: { cpuUsage: 10, memoryUsage: 50, diskUsage: 25, dbConnections: 5 },
+    isMonitoring: false,
+  }),
+}));
+
 const { submitPlayerReport, getReportsForUser } = jest.requireMock('../anti_cheat');
 
 describe('player_rpc', () => {
