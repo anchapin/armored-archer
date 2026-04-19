@@ -79,6 +79,8 @@ func register_impact_effect(effect_type: EffectType, effect_handler: Node) -> bo
 ## This is the main method called by CombatManager, player, enemies, etc.
 ## to trigger all combat juice effects at once.
 func trigger_combat_juice(effect_type: EffectType, data: Dictionary) -> void:
+	_trigger_haptic(effect_type, data)
+
 	# Route to appropriate handler
 	match effect_type:
 		EffectType.SCREEN_SHAKE:
@@ -91,6 +93,26 @@ func trigger_combat_juice(effect_type: EffectType, data: Dictionary) -> void:
 			_trigger_hit_reaction(data)
 		EffectType.DEATH_ANIMATION:
 			_trigger_death_animation(data)
+
+# --- Haptic Integration ---
+
+func _trigger_haptic(effect_type: EffectType, data: Dictionary) -> void:
+	var haptic = get_node_or_null("/root/HapticManager")
+	if not haptic:
+		return
+	match effect_type:
+		EffectType.SCREEN_SHAKE:
+			haptic.medium_tap()
+		EffectType.IMPACT_VFX:
+			if data.get("is_critical", false):
+				haptic.heavy_tap()
+			else:
+				haptic.light_tap()
+		EffectType.DEATH_ANIMATION:
+			haptic.success_pulse()
+		EffectType.HIT_REACTION:
+			haptic.damage_pulse()
+
 
 # --- Individual Effect Triggers ---
 
