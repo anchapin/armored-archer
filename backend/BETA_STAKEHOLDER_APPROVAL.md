@@ -141,9 +141,16 @@ Upon stakeholder approval:
 
 ## Contact Information
 
-**Beta Program Lead**: [To be assigned]  
-**Technical Contact**: [To be assigned]  
+**Beta Program Lead**: [To be assigned]
+**Technical Contact**: [To be assigned]
 **Emergency**: [On-call rotation]
+
+---
+
+## Master Checklist
+
+The unified closed-beta checklist with owners and go/no-go criteria is maintained at:
+**[`docs/CLOSED_BETA_CHECKLIST.md`](docs/CLOSED_BETA_CHECKLIST.md)**
 
 ---
 
