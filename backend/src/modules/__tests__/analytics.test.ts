@@ -37,10 +37,17 @@ jest.mock('../metrics', () => ({
   recordAnalyticsEvent: jest.fn(),
   recordRevenue: jest.fn(),
   recordPurchase: jest.fn(),
+  setFunnelPlayers: jest.fn(),
+  setFunnelConversionRate: jest.fn(),
+  setFunnelDropoff: jest.fn(),
 }));
 
 jest.mock('../privacy_compliance', () => ({
   isPII: jest.fn().mockReturnValue(false),
+}));
+
+jest.mock('../funnel_analytics', () => ({
+  processFunnelEvent: jest.fn(),
 }));
 
 jest.mock('../../utils/circuitBreaker', () => ({
@@ -333,6 +340,10 @@ describe('Analytics Module - Analytics Enabled', () => {
 
     jest.doMock('../privacy_compliance', () => ({
       isPII: jest.fn().mockReturnValue(false),
+    }));
+
+    jest.doMock('../funnel_analytics', () => ({
+      processFunnelEvent: jest.fn(),
     }));
 
     jest.doMock('../../utils/circuitBreaker', () => ({

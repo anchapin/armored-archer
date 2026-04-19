@@ -9,6 +9,7 @@ import { createStructuredLogger, StructuredLogger } from './config/structuredLog
 import { initializeTracing } from './config/tracing';
 import { initializeAlerting } from './modules/alerting';
 import { registerAnalyticsEndpoints } from './modules/analytics';
+import { registerFunnelAnalyticsEndpoints } from './modules/funnel_analytics';
 import { registerRpcQueryAuditLogs, rpcQueryAuditLogs } from './modules/audit';
 import { registerBalanceAnalyticsEndpoints } from './modules/balance_analytics';
 import { registerRpcRunBalanceSession } from './modules/balance_session';
@@ -256,6 +257,7 @@ const InitModule: InitModule = function (
   registerDeploymentObservability(initializer);
   registerProgressiveRollout(initializer);
   registerAnalyticsEndpoints(initializer);
+  registerFunnelAnalyticsEndpoints(initializer);
   registerMatchmakingAnalyticsEndpoints(initializer);
   registerErrorInsightRpcs(initializer);
   registerNotificationEndpoints(initializer);
