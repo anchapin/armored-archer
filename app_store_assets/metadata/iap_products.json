@@ -1,0 +1,111 @@
+{
+  "products": [
+    {
+      "product_id": "com.armoredarcher.gems.small",
+      "reference_name": "Small Gem Pack",
+      "type": "consumable",
+      "price_usd": 0.99,
+      "apple_price_tier": 1,
+      "gem_amount": 100,
+      "display_name": {
+        "en": "Small Gem Pack",
+        "de": "Kleines Edelsteinpaket",
+        "fr": "Petit Paquet de Gemmes",
+        "es": "Paquete Pequeno de Gemas",
+        "ja": "小さいジェムパック",
+        "ko": "작은 젬 팩",
+        "zh-Hans": "小型宝石包",
+        "pt": "Pacote Pequeno de Gemas",
+        "it": "Pacchetto Piccolo di Gemme",
+        "ru": "Маленький Набор Самоцветов"
+      },
+      "description": {
+        "en": "100 Gems",
+        "de": "100 Edelsteine",
+        "fr": "100 Gemmes",
+        "es": "100 Gemas",
+        "ja": "100ジェム",
+        "ko": "젬 100개",
+        "zh-Hans": "100颗宝石",
+        "pt": "100 Gemas",
+        "it": "100 Gemme",
+        "ru": "100 Самоцветов"
+      },
+      "review_notes": "Consumable gem pack. Gems are used exclusively for cosmetic item purchases. No gameplay advantages."
+    },
+    {
+      "product_id": "com.armoredarcher.gems.medium",
+      "reference_name": "Medium Gem Pack",
+      "type": "consumable",
+      "price_usd": 4.99,
+      "apple_price_tier": 5,
+      "gem_amount": 550,
+      "display_name": {
+        "en": "Medium Gem Pack",
+        "de": "Mittleres Edelsteinpaket",
+        "fr": "Paquet Moyen de Gemmes",
+        "es": "Paquete Mediano de Gemas",
+        "ja": "中くらいジェムパック",
+        "ko": "중간 젬 팩",
+        "zh-Hans": "中型宝石包",
+        "pt": "Pacote Medio de Gemas",
+        "it": "Pacchetto Medio di Gemme",
+        "ru": "Средний Набор Самоцветов"
+      },
+      "description": {
+        "en": "550 Gems (Best Value!)",
+        "de": "550 Edelsteine (Bestes Preis-Leistungs-Verhaltnis!)",
+        "fr": "550 Gemmes (Meilleur Rapport Qualite-Prix!)",
+        "es": "550 Gemas (Mejor Valor!)",
+        "ja": "550ジェム（お買い得！）",
+        "ko": "젬 550개 (최고 가성비!)",
+        "zh-Hans": "550颗宝石（超值！）",
+        "pt": "550 Gemas (Melhor Valor!)",
+        "it": "550 Gemme (Miglior Rapporto Qualita-Prezzo!)",
+        "ru": "550 Самоцветов (Лучшая Ценность!)"
+      },
+      "review_notes": "Consumable gem pack. 10% bonus gems compared to small pack. Cosmetic-only currency."
+    },
+    {
+      "product_id": "com.armoredarcher.gems.large",
+      "reference_name": "Large Gem Pack",
+      "type": "consumable",
+      "price_usd": 9.99,
+      "apple_price_tier": 10,
+      "gem_amount": 1200,
+      "display_name": {
+        "en": "Large Gem Pack",
+        "de": "Großes Edelsteinpaket",
+        "fr": "Grand Paquet de Gemmes",
+        "es": "Paquete Grande de Gemas",
+        "ja": "大きいジェムパック",
+        "ko": "큰 젬 팩",
+        "zh-Hans": "大型宝石包",
+        "pt": "Pacote Grande de Gemas",
+        "it": "Pacchetto Grande di Gemme",
+        "ru": "Большой Набор Самоцветов"
+      },
+      "description": {
+        "en": "1200 Gems (Ultimate Value!)",
+        "de": "1200 Edelsteine (Ultimativer Wert!)",
+        "fr": "1200 Gemmes (Valeur Ultimate!)",
+        "es": "1200 Gemas (Valor Maximo!)",
+        "ja": "1200ジェム（最高のお買い得！）",
+        "ko": "젬 1200개 (최고 가성비!)",
+        "zh-Hans": "1200颗宝石（超值特惠！）",
+        "pt": "1200 Gemas (Valor Maximo!)",
+        "it": "1200 Gemme (Valore Massimo!)",
+        "ru": "1200 Самоцветов (Максимальная Ценность!)"
+      },
+      "review_notes": "Consumable gem pack. 20% bonus gems compared to small pack. Cosmetic-only currency."
+    }
+  ],
+  "monetization_policy": {
+    "model": "free_to_play",
+    "p2w": false,
+    "ads": false,
+    "loot_boxes": false,
+    "cosmetic_only": true,
+    "note": "All purchasable items are purely cosmetic with zero combat stats. Gameplay is not gated behind purchases."
+  }
+}

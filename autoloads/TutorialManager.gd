@@ -75,6 +75,28 @@ const TUTORIALS := {
 				"duration": 0
 			}
 		]
+	},
+	"beta_features": {
+		"title": "Beta Features",
+		"description": "Quick tour of beta-specific features.",
+		"steps": [
+			{
+				"id": "feedback_button",
+				"title": "Feedback",
+				"description": "Tap the feedback button to report bugs or suggest features.",
+				"action": "wait",
+				"position": "top_right",
+				"duration": 3.0
+			},
+			{
+				"id": "beta_hub",
+				"title": "Beta Hub",
+				"description": "Check the beta hub for known issues and upcoming features.",
+				"action": "wait",
+				"position": "center",
+				"duration": 3.0
+			}
+		]
 	}
 }
 

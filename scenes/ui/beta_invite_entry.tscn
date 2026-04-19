@@ -1,0 +1,53 @@
+[gd_scene load_steps=2 format=3 uid="uid://beta_invite_entry"]
+
+[ext_resource type="Script" path="res://scenes/ui/beta_invite_entry.gd" id="1_script"]
+
+[node name="BetaInviteEntry" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.055, 0.055, 0.055, 0.95)
+
+[node name="SafeAreaContainer" type="MarginContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_top = 48
+theme_override_constants/margin_bottom = 48
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SafeAreaContainer"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="TitleLabel" type="Label" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+text = "Enter Beta Invite Code"
+horizontal_alignment = 1
+
+[node name="CodeInput" type="LineEdit" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+placeholder_text = "BETA-XXXX-XXXX-XXXX"
+max_length = 19
+
+[node name="ErrorLabel" type="Label" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+visible = false
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="SubmitButton" type="Button" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 44)
+text = "Submit"
+
+[node name="SkipButton" type="Button" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 44)
+text = "Skip"
