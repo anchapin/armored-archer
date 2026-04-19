@@ -67,6 +67,7 @@ import {
   registerRpcGetCampaignProgress,
   rpcGetCampaignProgress,
 } from '../stage_tracking';
+import { resetRateLimiting } from '../rate_limit';
 
 const createMockLogger = () => ({
   info: jest.fn(),
@@ -81,6 +82,9 @@ const createMockNk = () => ({
 });
 
 describe('stage_tracking module', () => {
+  beforeEach(() => {
+    resetRateLimiting();
+  });
   describe('registerRpcCompleteStage', () => {
     it('should register the complete_stage RPC', () => {
       const mockInitializer = { registerRpc: jest.fn() };

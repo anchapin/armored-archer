@@ -870,7 +870,32 @@ async function awardGems(
   // Mark receipt as used BEFORE awarding gems to prevent replay attacks
   await markReceiptAsUsed(nk, ctx.userId, receiptHash, logger);
 
-  const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
+  // Read currency with version for optimistic concurrency
+  const currencyObjects = nk.storageRead([
+    {
+      collection: 'player_currency',
+      key: ctx.userId,
+      userId: ctx.userId,
+    },
+  ]);
+
+  let playerCurrency: PlayerCurrency;
+  let currencyVersion: string | undefined;
+  if (currencyObjects.length === 0 || !currencyObjects[0].value) {
+    playerCurrency = { user_id: ctx.userId, gems: 0, gold: 0 };
+  } else {
+    const parseResult = safeParse<PlayerCurrency>(
+      currencyObjects[0].value,
+      null,
+      logger,
+      'awardGems:player_currency'
+    );
+    playerCurrency =
+      parseResult.success && parseResult.data
+        ? parseResult.data
+        : { user_id: ctx.userId, gems: 0, gold: 0 };
+    currencyVersion = currencyObjects[0].version;
+  }
 
   // Check if adding gems would exceed maximum balance (overflow protection)
   if (wouldExceedMaxBalance(playerCurrency.gems, gemBundle.gem_amount)) {
@@ -902,6 +927,7 @@ async function awardGems(
       key: ctx.userId,
       userId: ctx.userId,
       value: JSON.stringify(playerCurrency),
+      version: currencyVersion,
     },
   ]);
 

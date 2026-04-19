@@ -532,6 +532,41 @@ describe('Anti-Cheat Module', () => {
     expect(stats.processedRequestsCount).toBe(0);
   });
 
+  // ===== HMAC production fail-hard tests =====
+
+  describe('HMAC Secret Configuration', () => {
+    test('initializeAntiCheat works with explicit HMAC secret', () => {
+      expect(() =>
+        initializeAntiCheat(
+          {
+            hmacSecret: 'explicit-secret',
+            replayWindowMs: 300000,
+            maxClockSkewMs: 5000,
+            enableSignatureVerification: true,
+            enableReplayProtection: true,
+          },
+          () => {}
+        )
+      ).not.toThrow();
+    });
+
+    test('initializeAntiCheat overrides module-level default with provided secret', () => {
+      initializeAntiCheat(
+        {
+          hmacSecret: 'override-secret',
+          replayWindowMs: 300000,
+          maxClockSkewMs: 5000,
+          enableSignatureVerification: true,
+          enableReplayProtection: true,
+        },
+        () => {}
+      );
+
+      const stats = getAntiCheatStats();
+      expect(stats.config.hmacSecret).toBe('override-secret');
+    });
+  });
+
   // ===== Leaderboard anti-cheat tests =====
 
   describe('Leaderboard Anti-Cheat', () => {

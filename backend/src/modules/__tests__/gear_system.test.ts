@@ -14,6 +14,7 @@ import {
   applyGearModifiersToPlayerStats,
 } from '../gear_system';
 import { Runtime } from '../../types/nakama';
+import { resetRateLimiting } from '../rate_limit';
 
 describe('gear_system', () => {
   let mockLogger: Runtime.Logger;
@@ -27,6 +28,7 @@ describe('gear_system', () => {
     jest.clearAllMocks();
     jest.spyOn(Math, 'random').mockReturnValue(0.5);
     testStorage.clear(); // Clear storage before each test
+    resetRateLimiting();
   });
 
   afterEach(() => {

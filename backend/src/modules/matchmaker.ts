@@ -1445,6 +1445,28 @@ function processMatchResult(
   const winnerXPGained = calculateXPGain(winnerXPParams);
   const loserXPGained = calculateXPGain(loserXPParams);
 
+  // Re-verify match is still active before awarding rewards (prevents double completion)
+  const freshMatchObjects = nk.storageRead([
+    {
+      collection: 'pvp_matches',
+      key: match.match_id,
+      userId: match.creator_id,
+    },
+  ]);
+  if (freshMatchObjects.length > 0) {
+    const freshMatchResult = safeParse<PvPMatch>(
+      freshMatchObjects[0].value,
+      null,
+      logger,
+      'processMatchResult:freshMatch'
+    );
+    if (!freshMatchResult.success || !freshMatchResult.data || freshMatchResult.data.status !== 'active') {
+      logger.warn('Match %s already completed by concurrent request', match.match_id);
+      return JSON.stringify({ error: 'Match already completed', error_code: 'ALREADY_COMPLETED' });
+    }
+  }
+  const matchVersion = freshMatchObjects.length > 0 ? freshMatchObjects[0].version : undefined;
+
   // Calculate per-match rewards
   const winnerRewards = calculateMatchRewards(winnerXPParams, winnerXPGained);
   const loserRewards = calculateMatchRewards(loserXPParams, loserXPGained);
@@ -1463,13 +1485,14 @@ function processMatchResult(
   match.winner = request.winner_id;
   match.updated_at = now;
 
-  // Update the match in storage
+  // Update the match in storage with version for conditional write
   nk.storageWrite([
     {
       collection: 'pvp_matches',
       key: match.match_id,
       userId: match.creator_id,
       value: JSON.stringify(match),
+      version: matchVersion,
     },
   ]);
 
@@ -1788,6 +1811,7 @@ function updatePlayerXP(nk: Runtime.Nakama, userId: string, xpGained: number): v
       key: userId,
       userId: userId,
       value: JSON.stringify(playerStats),
+      version: objects[0].version,
     },
   ]);
 }

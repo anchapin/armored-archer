@@ -56,7 +56,16 @@ const requestTimingLog = new Map<string, number[]>();
 const timingAnalysisWindow = 3600000; // 1 hour
 
 if (!process.env.HMAC_SECRET) {
-  logger.warn('[SECURITY] HMAC_SECRET not set - using fallback. Set this env var in production.');
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[SECURITY] HMAC_SECRET environment variable is required in production. ' +
+        'Refusing to start with insecure default secret.'
+    );
+  }
+  logger.warn(
+    '[SECURITY] HMAC_SECRET not set - using insecure fallback. ' +
+      'This MUST be set via environment variable before deploying to production.'
+  );
 }
 
 let config: AntiCheatConfig = {

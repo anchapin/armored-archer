@@ -14,6 +14,7 @@ import {
   getPlayerInventory,
 } from './gear_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { checkRateLimit } from './rate_limit';
 
 /**
  * Stage completion record stored in database.
@@ -246,6 +247,63 @@ export function rpcCompleteStage(
   const request = validation.data as CompleteStageRequest;
   const { stage_id, stage_prefix, stars_earned, score } = request;
 
+  // Rate limit check
+  const rateLimitCheck = checkRateLimit(ctx.userId, 'stage_complete');
+  if (!rateLimitCheck.allowed) {
+    logger.warn('Stage complete rate limited for user: %s', ctx.userId);
+    return JSON.stringify({
+      success: false,
+      error: 'Rate limit exceeded. Please try again later.',
+      error_code: 'RATE_LIMITED',
+      retry_after_ms: rateLimitCheck.retryAfter,
+    });
+  }
+
+  // Dedup check: prevent replay of same stage completion within cooldown window
+  const STAGE_COMPLETION_COOLDOWN_MS = 300000; // 5 minutes
+  const claimKey = `${ctx.userId}:${stage_id}`;
+  let existingClaims: { value?: string; version?: string; collection?: string }[] = [];
+  try {
+    existingClaims = nk.storageRead([
+      {
+        collection: 'stage_completion_claims',
+        key: claimKey,
+        userId: ctx.userId,
+      },
+    ]);
+  } catch {
+    // Storage error during dedup check - proceed with completion
+  }
+  if (existingClaims.length > 0 && existingClaims[0].value) {
+    try {
+      const claim = JSON.parse(existingClaims[0].value);
+      if (claim && claim.claimed_at) {
+        const timeSinceClaim = Date.now() - claim.claimed_at;
+        if (timeSinceClaim < STAGE_COMPLETION_COOLDOWN_MS) {
+          logger.warn(
+            'Duplicate stage completion rejected for user %s stage %s',
+            ctx.userId,
+            stage_id
+          );
+          return JSON.stringify({
+            success: false,
+            error: 'Stage completion already processed',
+            error_code: 'DUPLICATE_COMPLETION',
+            retry_after_ms: STAGE_COMPLETION_COOLDOWN_MS - timeSinceClaim,
+          });
+        }
+      }
+    } catch {
+      // Corrupted claim data - allow the completion to proceed
+    }
+  }
+  const claimVersion =
+    existingClaims.length > 0 &&
+    existingClaims[0].collection === 'stage_completion_claims' &&
+    existingClaims[0].version
+      ? existingClaims[0].version
+      : undefined;
+
   logger.info(
     'Processing stage completion: user=%s stage=%s stars=%d score=%d',
     ctx.userId,
@@ -326,6 +384,17 @@ export function rpcCompleteStage(
       response.drop_rate = dropRate;
       response.unlocked_modifier_pools = unlockedModifierPools;
     }
+
+    // Write dedup claim after successful processing
+    nk.storageWrite([
+      {
+        collection: 'stage_completion_claims',
+        key: claimKey,
+        userId: ctx.userId,
+        value: JSON.stringify({ claimed_at: Date.now(), stage_id }),
+        version: claimVersion,
+      },
+    ]);
 
     return JSON.stringify(response);
   } catch (error) {

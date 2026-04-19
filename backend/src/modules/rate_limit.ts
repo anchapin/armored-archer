@@ -80,6 +80,7 @@ const DEFAULT_RATE_LIMITS: Record<string, RateLimitConfig> = {
   list_matches: { maxRequests: 30, windowMs: 60000, penaltyMs: 30000 }, // 30/min, 30s penalty
   get_player_rank: { maxRequests: 60, windowMs: 60000, penaltyMs: 10000 }, // 60/min, 10s penalty
   get_async_match_state: { maxRequests: 30, windowMs: 60000, penaltyMs: 30000 }, // 30/min, 30s penalty
+  stage_complete: { maxRequests: 5, windowMs: 60000, penaltyMs: 300000 }, // 5/min, 5min penalty
 };
 
 // Default cooldown configuration
