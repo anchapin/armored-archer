@@ -1,0 +1,196 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/surveys/post_match_survey.gd" id="1_script"]
+
+[node name="PostMatchSurvey" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+mouse_filter = 2
+
+[node name="DialogPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = -220.0
+offset_right = 260.0
+offset_bottom = 220.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="DialogPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="VBoxContainer" type="VBoxContainer" parent="DialogPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="DialogPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "How was your match?"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="DialogPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="ContentContainer" type="VBoxContainer" parent="DialogPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="ExperienceContainer" type="VBoxContainer" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer"]
+layout_mode = 2
+
+[node name="ExperienceLabel" type="Label" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/ExperienceContainer"]
+layout_mode = 2
+text = "Experience"
+
+[node name="ExperienceStars" type="HBoxContainer" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/ExperienceContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Star1" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/ExperienceContainer/ExperienceStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="Star2" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/ExperienceContainer/ExperienceStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="Star3" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/ExperienceContainer/ExperienceStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="Star4" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/ExperienceContainer/ExperienceStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="Star5" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/ExperienceContainer/ExperienceStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="DifficultyContainer" type="VBoxContainer" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer"]
+layout_mode = 2
+
+[node name="DifficultyLabel" type="Label" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/DifficultyContainer"]
+layout_mode = 2
+text = "Difficulty"
+
+[node name="DifficultyStars" type="HBoxContainer" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/DifficultyContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Star1" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/DifficultyContainer/DifficultyStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="Star2" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/DifficultyContainer/DifficultyStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="Star3" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/DifficultyContainer/DifficultyStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="Star4" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/DifficultyContainer/DifficultyStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="Star5" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/DifficultyContainer/DifficultyStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="RecommendContainer" type="VBoxContainer" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer"]
+layout_mode = 2
+
+[node name="RecommendLabel" type="Label" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/RecommendContainer"]
+layout_mode = 2
+text = "Would you recommend?"
+
+[node name="RecommendStars" type="HBoxContainer" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/RecommendContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Star1" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/RecommendContainer/RecommendStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="Star2" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/RecommendContainer/RecommendStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="Star3" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/RecommendContainer/RecommendStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="Star4" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/RecommendContainer/RecommendStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="Star5" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/RecommendContainer/RecommendStars"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "★"
+
+[node name="FreeTextContainer" type="VBoxContainer" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer"]
+layout_mode = 2
+
+[node name="FreeTextLabel" type="Label" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/FreeTextContainer"]
+layout_mode = 2
+text = "Anything else? (optional)"
+
+[node name="FreeTextEdit" type="TextEdit" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/FreeTextContainer"]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+placeholder_text = "Share your thoughts..."
+wrap_mode = 1
+
+[node name="ButtonContainer" type="HBoxContainer" parent="DialogPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="SkipButton" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ButtonContainer"]
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 2
+text = "Skip"
+
+[node name="SubmitButton" type="Button" parent="DialogPanel/MarginContainer/VBoxContainer/ButtonContainer"]
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 2
+text = "Submit"
