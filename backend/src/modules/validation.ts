@@ -406,6 +406,14 @@ export const ValibotSchemas = {
     platform: optional(createEnum(['ios', 'android'])),
   }),
 
+  // Funnel Analytics
+  get_funnel_conversion: object({
+    start_date: optional(pipe(string(), regex(/^\d{4}-\d{2}-\d{2}$/))),
+    end_date: optional(pipe(string(), regex(/^\d{4}-\d{2}-\d{2}$/))),
+  }),
+
+  get_player_funnel_state: object({}),
+
   // Progressive Rollout
   rollout_create_flag: object({
     name: pipe(string(), minLength(1), maxLength(100)),

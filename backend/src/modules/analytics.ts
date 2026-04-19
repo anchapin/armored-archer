@@ -13,6 +13,7 @@ import {
   recordRevenue as recordMetricsRevenue,
   recordPurchase,
 } from './metrics';
+import { processFunnelEvent } from './funnel_analytics';
 import { isPII } from './privacy_compliance';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -146,6 +147,7 @@ function validateEventPayload(payload: string) {
  * Processes and stores an analytics event.
  */
 function processEvent(
+  nk: Runtime.Nakama,
   userId: string,
   eventName: string,
   properties: Record<string, unknown>,
@@ -175,6 +177,9 @@ function processEvent(
 
   // Record metrics for analytics events
   recordAnalyticsEvent('game', eventName);
+
+  // Track funnel progression for relevant events
+  processFunnelEvent(nk, logger, userId, eventName);
 
   // Forward to external analytics if configured
   forwardToExternalAnalytics(event);
@@ -458,6 +463,7 @@ export function rpcTrackEvent(
 
   try {
     const event = processEvent(
+      _nk,
       ctx.userId,
       event_name,
       properties || {},
@@ -640,6 +646,9 @@ export function rpcTrackRevenue(
   // Record revenue metrics
   recordMetricsRevenue(amount * 100, currency, product_id); // Convert to cents for metrics
   recordPurchase(product_id, true);
+
+  // Track funnel progression for purchase
+  processFunnelEvent(_nk, logger, ctx.userId, 'purchase_completed');
 
   // Update daily metrics
   updateDailyMetrics({

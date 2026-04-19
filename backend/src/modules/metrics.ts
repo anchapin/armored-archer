@@ -286,6 +286,31 @@ const analyticsEventsTotal = new Counter({
 });
 
 // ==========================================
+// Funnel Analytics Metrics
+// ==========================================
+
+const funnelPlayersTotal = new Gauge({
+  name: 'armored_archer_funnel_players_total',
+  help: 'Total unique players reaching each funnel step',
+  labelNames: ['step'] as const,
+  registers: [register],
+});
+
+const funnelConversionRate = new Gauge({
+  name: 'armored_archer_funnel_conversion_rate',
+  help: 'Conversion rate between consecutive funnel steps (0-1)',
+  labelNames: ['from_step', 'to_step'] as const,
+  registers: [register],
+});
+
+const funnelDropoffTotal = new Gauge({
+  name: 'armored_archer_funnel_dropoff_total',
+  help: 'Number of players who dropped off at each funnel step',
+  labelNames: ['step'] as const,
+  registers: [register],
+});
+
+// ==========================================
 // Performance Metrics
 // ==========================================
 
@@ -533,6 +558,18 @@ export function incrementSeasonParticipation(seasonId: string): void {
 
 export function recordAnalyticsEvent(eventCategory: string, eventName: string): void {
   analyticsEventsTotal.inc({ event_category: eventCategory, event_name: eventName });
+}
+
+export function setFunnelPlayers(step: string, count: number): void {
+  funnelPlayersTotal.set({ step }, count);
+}
+
+export function setFunnelConversionRate(fromStep: string, toStep: string, rate: number): void {
+  funnelConversionRate.set({ from_step: fromStep, to_step: toStep }, rate);
+}
+
+export function setFunnelDropoff(step: string, count: number): void {
+  funnelDropoffTotal.set({ step }, count);
 }
 
 // ==========================================

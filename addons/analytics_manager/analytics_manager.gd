@@ -115,6 +115,15 @@ const EVENT_INVENTORY_VIEWED := "inventory_viewed"
 const EVENT_SETTINGS_OPENED := "settings_opened"
 const EVENT_TUTORIAL_SKIPPED := "tutorial_skipped"
 
+# Funnel step constants
+const FUNNEL_STEP_INSTALL := "install"
+const FUNNEL_STEP_PVE := "first_pve_completed"
+const FUNNEL_STEP_PVP := "first_pvp_completed"
+const FUNNEL_STEP_PURCHASE := "first_purchase"
+
+# Local dedup tracking to avoid redundant backend calls
+var _funnel_steps_completed: Dictionary = {}
+
 func _ready() -> void:
 	_initialize_analytics()
 
@@ -1188,6 +1197,67 @@ func export_analytics_data() -> Dictionary:
 			"network_quality": network_quality
 		}
 	}
+
+# ============================================================================
+# Funnel Tracking Helpers
+# ============================================================================
+
+## Track funnel step: Install (called on first session)
+func track_funnel_install() -> void:
+	if _funnel_steps_completed.has(FUNNEL_STEP_INSTALL):
+		return
+	_funnel_steps_completed[FUNNEL_STEP_INSTALL] = true
+	track_event_to_backend(EVENT_FIRST_SESSION, {
+		"funnel_step": FUNNEL_STEP_INSTALL,
+		"is_first": true
+	})
+
+## Track funnel step: First PvE Completion
+func track_funnel_first_pve(stage_id: String, difficulty: String = "") -> void:
+	if _funnel_steps_completed.has(FUNNEL_STEP_PVE):
+		return
+	_funnel_steps_completed[FUNNEL_STEP_PVE] = true
+	track_event_to_backend(EVENT_PVE_STAGE_COMPLETED, {
+		"funnel_step": FUNNEL_STEP_PVE,
+		"is_first": true,
+		"stage_id": stage_id,
+		"difficulty": difficulty
+	})
+
+## Track funnel step: First PvP Match
+func track_funnel_first_pvp(match_id: String = "") -> void:
+	if _funnel_steps_completed.has(FUNNEL_STEP_PVP):
+		return
+	_funnel_steps_completed[FUNNEL_STEP_PVP] = true
+	track_event_to_backend(EVENT_PVP_MATCH_COMPLETED, {
+		"funnel_step": FUNNEL_STEP_PVP,
+		"is_first": true,
+		"match_id": match_id
+	})
+
+## Track funnel step: First Purchase
+func track_funnel_first_purchase(product_id: String, amount: int = 0) -> void:
+	if _funnel_steps_completed.has(FUNNEL_STEP_PURCHASE):
+		return
+	_funnel_steps_completed[FUNNEL_STEP_PURCHASE] = true
+	track_event_to_backend(EVENT_PURCHASE_COMPLETED, {
+		"funnel_step": FUNNEL_STEP_PURCHASE,
+		"is_first": true,
+		"product_id": product_id,
+		"amount": amount
+	})
+
+## Get the player's current funnel state from the backend
+func get_funnel_state_from_backend() -> Dictionary:
+	var network_manager = _get_network_manager()
+	if network_manager == null:
+		push_warning("AnalyticsManager: NetworkManager not available, cannot get funnel state")
+		return {}
+	var rpc_id := "armored_archer/get_player_funnel_state"
+	var response = await network_manager.send_rpc(rpc_id, JSON.stringify({}))
+	if response and response.has("funnel_state"):
+		return response["funnel_state"]
+	return {}
 
 # ============================================================================
 # Backend RPC Integration
