@@ -34,6 +34,10 @@ import {
   evaluatePrestigeTiers,
   updatePlayerPrestigeRecord,
   grantPrestigeRewards,
+  rpcGetPrestigeProgress,
+  rpcGetProjectedNextSeasonElo,
+  registerRpcGetPrestigeProgress,
+  registerRpcGetProjectedNextSeasonElo,
   SeasonInfo,
 } from '../season_system';
 import { Runtime } from '../../types/nakama';
@@ -1361,6 +1365,110 @@ describe('season_system', () => {
 
     it('should return 1100 for rank 101-500', () => {
       expect(calculateSoftResetElo(200)).toBe(1100);
+    });
+  });
+
+  describe('rpcGetPrestigeProgress', () => {
+    it('should return prestige progress for a player', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([{
+        value: JSON.stringify({
+          player_id: 'test-user',
+          season_finishes: [
+            { season_id: 'season_1', rank: 50 },
+            { season_id: 'season_2', rank: 30 },
+          ],
+          prestige_tiers_earned: [],
+          last_updated: Date.now(),
+        }),
+      }]);
+
+      const result = rpcGetPrestigeProgress(mockCtx, mockLogger, mockNk, '{}');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.prestige).toBeDefined();
+      expect(parsed.prestige.season_finishes).toHaveLength(2);
+      expect(parsed.prestige.tier_progress).toBeDefined();
+    });
+
+    it('should handle player with no prestige record', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+
+      const result = rpcGetPrestigeProgress(mockCtx, mockLogger, mockNk, '{}');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.prestige.season_finishes).toHaveLength(0);
+    });
+  });
+
+  describe('rpcGetProjectedNextSeasonElo', () => {
+    it('should return projected ELO when player has leaderboard entry', () => {
+      const record = createMockLeaderboardRecord({ rank: 5, score: 2500 });
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+
+      const result = rpcGetProjectedNextSeasonElo(mockCtx, mockLogger, mockNk, '{}');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.projected_elo).toBe(1300);
+      expect(parsed.tier_name).toBe('Legendary');
+      expect(parsed.current_rank).toBe(5);
+    });
+
+    it('should return default ELO when player has no leaderboard entry', () => {
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+
+      const result = rpcGetProjectedNextSeasonElo(mockCtx, mockLogger, mockNk, '{}');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.projected_elo).toBe(1000);
+      expect(parsed.tier_name).toBe('Unranked');
+    });
+
+    it('should return correct tier for rank 30', () => {
+      const record = createMockLeaderboardRecord({ rank: 30, score: 1800 });
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+
+      const result = rpcGetProjectedNextSeasonElo(mockCtx, mockLogger, mockNk, '{}');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.tier_name).toBe('Epic');
+    });
+
+    it('should return correct tier for rank 200', () => {
+      const record = createMockLeaderboardRecord({ rank: 200, score: 1200 });
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+
+      const result = rpcGetProjectedNextSeasonElo(mockCtx, mockLogger, mockNk, '{}');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.tier_name).toBe('Uncommon');
+    });
+  });
+
+  describe('registerRpcGetPrestigeProgress', () => {
+    it('should register the RPC endpoint', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcGetPrestigeProgress(mockInitializer as any);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_prestige_progress',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('registerRpcGetProjectedNextSeasonElo', () => {
+    it('should register the RPC endpoint', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcGetProjectedNextSeasonElo(mockInitializer as any);
+      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
+        'armored_archer/get_projected_next_season_elo',
+        expect.any(Function)
+      );
     });
   });
 });
