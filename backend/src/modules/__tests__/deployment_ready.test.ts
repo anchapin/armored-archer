@@ -11,6 +11,14 @@ import { Runtime } from '../../types/nakama';
 import { initializeCaches } from '../../utils/cache';
 import { initializeStructuredLogger } from '../../index';
 
+jest.mock('../health_monitor', () => ({
+  getHealthStatus: jest.fn().mockReturnValue({
+    healthy: true,
+    metrics: { cpuUsage: 10, memoryUsage: 50, diskUsage: 25, dbConnections: 5 },
+    isMonitoring: false,
+  }),
+}));
+
 describe('Deployment Readiness', () => {
   let mockLogger: Runtime.Logger;
   let mockCtx: Runtime.Context;
