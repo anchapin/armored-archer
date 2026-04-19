@@ -31,11 +31,11 @@ var punch_up_losses: int = 0
 
 # --- Punch Up Risk Constants (matching backend) ---
 const PUNCH_UP_RANK_DIFF_THRESHOLD = 5
-const PUNCH_UP_MAX_RANK_DIFF = 15
+const PUNCH_UP_MAX_RANK_DIFF = 18
 const PUNCH_UP_MIN_RANK = 20
 const RISK_LEVEL_LOW_THRESHOLD = 7
 const RISK_LEVEL_MEDIUM_THRESHOLD = 11
-const RISK_LEVEL_HIGH_THRESHOLD = 15
+const RISK_LEVEL_HIGH_THRESHOLD = 18
 
 # --- Analytics Reference ---
 @onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")

@@ -148,7 +148,7 @@ const RARITIES: { [key: string]: GearRarity } = {
   common: {
     name: 'Common',
     stat_multiplier: 1.0,
-    drop_chance: 0.6,
+    drop_chance: 0.56,
     color: '#ffffff',
   },
   rare: {
@@ -160,13 +160,13 @@ const RARITIES: { [key: string]: GearRarity } = {
   epic: {
     name: 'Epic',
     stat_multiplier: 1.8,
-    drop_chance: 0.1,
+    drop_chance: 0.12,
     color: '#9b30ff',
   },
   legendary: {
     name: 'Legendary',
     stat_multiplier: 2.0,
-    drop_chance: 0.05,
+    drop_chance: 0.07,
     color: '#ffa500',
   },
 };
@@ -1574,25 +1574,25 @@ const DIFFICULTY_DROP_MULTIPLIERS: { [key: string]: number } = {
   easy: 0.5,
   medium: 1.0,
   hard: 1.5,
-  nightmare: 2.0,
+  nightmare: 2.2,
 };
 
 /**
  * Boss drop rate bonus.
  */
-const BOSS_DROP_BONUS = 0.25;
+const BOSS_DROP_BONUS = 0.3;
 
 /**
  * Base drop rate for any stage completion.
  * Tuned to provide better early progression experience.
  */
-const BASE_DROP_RATE = 0.4;
+const BASE_DROP_RATE = 0.45;
 
 /**
  * XP gain constants for stage completion.
  */
-const BASE_STAGE_XP = 50;
-const BOSS_XP_BONUS = 50;
+const BASE_STAGE_XP = 60;
+const BOSS_XP_BONUS = 65;
 
 /**
  * Calculates XP gain for stage completion.

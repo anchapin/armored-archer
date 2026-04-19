@@ -91,8 +91,8 @@ describe('Utility Functions', () => {
     it('should return legendary rewards for rank 1', () => {
       const rewards = calculateRewards(1, 1);
       expect(rewards.rank_tier).toBe('legendary');
-      expect(rewards.coins).toBe(10000);
-      expect(rewards.gems).toBe(500);
+      expect(rewards.coins).toBe(8500);
+      expect(rewards.gems).toBe(600);
     });
 
     it('should return legendary rewards for rank 10', () => {

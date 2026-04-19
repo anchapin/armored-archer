@@ -18,8 +18,8 @@ const MAX_MODIFIER = 0.20
 const MIN_MODIFIER = -0.20
 
 # --- Streak Thresholds ---
-const WIN_STREAK_THRESHOLD = 3
-const LOSE_STREAK_THRESHOLD = 3
+const WIN_STREAK_THRESHOLD = 4
+const LOSE_STREAK_THRESHOLD = 4
 
 # --- Performance State ---
 var current_modifier: float = 0.0
@@ -134,14 +134,14 @@ func _check_streak_thresholds() -> void:
 	if win_streak >= WIN_STREAK_THRESHOLD:
 		# Increase difficulty
 		var old_modifier = current_modifier
-		current_modifier = min(current_modifier + 0.10, MAX_MODIFIER)
+		current_modifier = min(current_modifier + 0.08, MAX_MODIFIER)
 		if current_modifier != old_modifier:
 			adjustment_needed = true
 
 	if lose_streak >= LOSE_STREAK_THRESHOLD:
 		# Decrease difficulty
 		var old_modifier = current_modifier
-		current_modifier = max(current_modifier - 0.10, MIN_MODIFIER)
+		current_modifier = max(current_modifier - 0.08, MIN_MODIFIER)
 		if current_modifier != old_modifier:
 			adjustment_needed = true
 
@@ -336,6 +336,6 @@ func get_encounter_reward_modifier() -> float:
 		"Hard":
 			return 1.2
 		"Extreme":
-			return 1.4
+			return 1.5
 		_:
 			return 1.0

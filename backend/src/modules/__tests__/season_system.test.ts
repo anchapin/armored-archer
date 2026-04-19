@@ -522,8 +522,8 @@ describe('season_system', () => {
       const { calculateRewards } = require('../season_system');
       const rewards = calculateRewards(1, 5);
       expect(rewards.rank_tier).toBe('legendary');
-      expect(rewards.coins).toBe(10000);
-      expect(rewards.gems).toBe(500);
+      expect(rewards.coins).toBe(8500);
+      expect(rewards.gems).toBe(600);
       expect(rewards.cosmetics).toBeDefined();
     });
 
@@ -531,32 +531,32 @@ describe('season_system', () => {
       const { calculateRewards } = require('../season_system');
       const rewards = calculateRewards(25, 5);
       expect(rewards.rank_tier).toBe('epic');
-      expect(rewards.coins).toBe(5000);
-      expect(rewards.gems).toBe(200);
+      expect(rewards.coins).toBe(4500);
+      expect(rewards.gems).toBe(250);
     });
 
     it('should return rare rewards for rank 51-100', () => {
       const { calculateRewards } = require('../season_system');
       const rewards = calculateRewards(75, 5);
       expect(rewards.rank_tier).toBe('rare');
-      expect(rewards.coins).toBe(2000);
-      expect(rewards.gems).toBe(100);
+      expect(rewards.coins).toBe(2200);
+      expect(rewards.gems).toBe(125);
     });
 
     it('should return uncommon rewards for rank 101-500', () => {
       const { calculateRewards } = require('../season_system');
       const rewards = calculateRewards(200, 5);
       expect(rewards.rank_tier).toBe('uncommon');
-      expect(rewards.coins).toBe(500);
-      expect(rewards.gems).toBe(0);
+      expect(rewards.coins).toBe(750);
+      expect(rewards.gems).toBe(25);
     });
 
     it('should return common rewards for rank >500', () => {
       const { calculateRewards } = require('../season_system');
       const rewards = calculateRewards(600, 5);
       expect(rewards.rank_tier).toBe('common');
-      expect(rewards.coins).toBe(100);
-      expect(rewards.gems).toBe(0);
+      expect(rewards.coins).toBe(250);
+      expect(rewards.gems).toBe(10);
     });
 
     it('should include season number in cosmetics title', () => {

@@ -11,7 +11,7 @@ extends Node2D
 
 # --- Spawner Settings ---
 @export var spawn_area: Rect2 = Rect2(-300, -200, 600, 400)
-@export var time_between_waves: float = 5.0
+@export var time_between_waves: float = 4.0
 @export var time_between_enemies: float = 0.5
 
 # --- Wave Configuration ---

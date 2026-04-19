@@ -38,7 +38,7 @@
         {
           "id": "1_1",
           "name": "Forest Edge",
-          "waves": 3,
+          "waves": 4,
           "boss": null,
           "level_requirement": 1,
           "difficulty": 1,
@@ -74,7 +74,7 @@
           "loot": {
             "xp": 65,
             "gold": 35,
-            "rarity_weights": {"common": 95, "rare": 4, "epic": 1, "legendary": 0}
+            "rarity_weights": {"common": 90, "rare": 8, "epic": 2, "legendary": 0}
           }
         },
         {
@@ -129,7 +129,7 @@
         {
           "id": "2_1",
           "name": "Outer Walls",
-          "waves": 4,
+          "waves": 5,
           "boss": null,
           "level_requirement": 3,
           "difficulty": 2,
@@ -311,7 +311,7 @@
         {
           "id": "4_1",
           "name": "Cracked Earth",
-          "waves": 5,
+          "waves": 4,
           "boss": null,
           "level_requirement": 8,
           "difficulty": 3,
@@ -374,7 +374,7 @@
         {
           "id": "4_4",
           "name": "Nightmare's End",
-          "waves": 7,
+          "waves": 6,
           "boss": "boss_nightmare",
           "level_requirement": 11,
           "difficulty": 3,

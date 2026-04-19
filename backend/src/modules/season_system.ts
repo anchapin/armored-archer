@@ -186,8 +186,8 @@ const SOFT_RESET_TIERS: { max_rank: number; starting_elo: number }[] = [
 
 // Rank decay configuration
 const RANK_DECAY_DAYS = 7; // Days of inactivity before decay starts
-const RANK_DECAY_AMOUNT = 25; // Points lost per decay period
-const RANK_DECAY_MAX_LOSS = 100; // Maximum points that can be lost per decay
+const RANK_DECAY_AMOUNT = 20; // Points lost per decay period
+const RANK_DECAY_MAX_LOSS = 120; // Maximum points that can be lost per decay
 const RANK_DECAY_MIN_SCORE = 800; // Minimum score after decay
 const RANK_DECAY_CHECK_MS = 24 * 60 * 60 * 1000; // Check every 24 hours
 
@@ -617,7 +617,7 @@ export function applyEloUpdates(
   winnerEntry: LeaderboardEntry | null,
   loserEntry: LeaderboardEntry | null
 ): { winnerNewElo: number; loserNewElo: number } {
-  const K = isPunchUp ? 60 : 32;
+  const K = isPunchUp ? 50 : 32;
   const expectedWinner = 1 / (1 + Math.pow(10, (loserOldElo - winnerOldElo) / 400));
   const expectedLoser = 1 - expectedWinner;
 
@@ -1308,8 +1308,8 @@ export function calculateRewards(rank: number, seasonNumber: number): SeasonRewa
   if (rank <= 10) {
     return {
       rank_tier: 'legendary',
-      coins: 10000,
-      gems: 500,
+      coins: 8500,
+      gems: 600,
       cosmetics: {
         title: `Season ${seasonNumber} Champion`,
         aura: 'legendary_aura',
@@ -1318,8 +1318,8 @@ export function calculateRewards(rank: number, seasonNumber: number): SeasonRewa
   } else if (rank <= 50) {
     return {
       rank_tier: 'epic',
-      coins: 5000,
-      gems: 200,
+      coins: 4500,
+      gems: 250,
       cosmetics: {
         title: `Season ${seasonNumber} Elite`,
         aura: 'epic_aura',
@@ -1328,8 +1328,8 @@ export function calculateRewards(rank: number, seasonNumber: number): SeasonRewa
   } else if (rank <= 100) {
     return {
       rank_tier: 'rare',
-      coins: 2000,
-      gems: 100,
+      coins: 2200,
+      gems: 125,
       cosmetics: {
         title: `Season ${seasonNumber} Veteran`,
         aura: 'rare_aura',
@@ -1338,14 +1338,14 @@ export function calculateRewards(rank: number, seasonNumber: number): SeasonRewa
   } else if (rank <= 500) {
     return {
       rank_tier: 'uncommon',
-      coins: 500,
-      gems: 0,
+      coins: 750,
+      gems: 25,
     };
   } else {
     return {
       rank_tier: 'common',
-      coins: 100,
-      gems: 0,
+      coins: 250,
+      gems: 10,
     };
   }
 }
