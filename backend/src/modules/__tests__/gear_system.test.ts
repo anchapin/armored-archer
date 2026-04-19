@@ -308,7 +308,7 @@ describe('gear_system', () => {
       expect(parsed.stage_id).toBe('stage_1');
       expect(parsed.loot.dropped).toBe(false);
       expect(parsed.loot.gear).toBeNull();
-      expect(parsed.drop_rate).toBe(0.2); // 0.4 * 0.5 = 0.2
+      expect(parsed.drop_rate).toBe(0.225); // 0.45 * 0.5 = 0.225
     });
 
     it('should generate loot when roll succeeds', () => {
@@ -329,12 +329,12 @@ describe('gear_system', () => {
       expect(parsed.loot.gear).toBeDefined();
       expect(parsed.loot.gear.id).toBeDefined();
       expect(parsed.loot.gear.type).toBeDefined();
-      expect(parsed.drop_rate).toBe(0.4); // 0.4 * 1.0 = 0.4
+      expect(parsed.drop_rate).toBe(0.45); // 0.45 * 1.0 = 0.45
     });
 
     it('should apply boss drop bonus', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
-      // Set random to 0.4, which is between base (0.3) and with boss bonus (0.55)
+      // Set random to 0.4, which is between base (0.45) and with boss bonus (0.75)
       jest.spyOn(Math, 'random').mockReturnValue(0.4);
 
       const payload = JSON.stringify({
@@ -347,12 +347,12 @@ describe('gear_system', () => {
 
       expect(parsed.success).toBe(true);
       expect(parsed.loot.dropped).toBe(true);
-      expect(parsed.drop_rate).toBe(0.65); // 0.4 * 1.0 + 0.25 = 0.65
+      expect(parsed.drop_rate).toBe(0.75); // 0.45 * 1.0 + 0.3 = 0.75
     });
 
     it('should apply difficulty multiplier correctly', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
-      // Set random to 0.7, which is higher than hard without boss (0.45)
+      // Set random to 0.7, which is higher than hard without boss (0.675)
       jest.spyOn(Math, 'random').mockReturnValue(0.7);
 
       const payload = JSON.stringify({
@@ -364,14 +364,14 @@ describe('gear_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.drop_rate).toBeCloseTo(0.6, 1); // 0.4 * 1.5 = 0.6
+      expect(parsed.drop_rate).toBeCloseTo(0.675, 3); // 0.45 * 1.5 = 0.675
       expect(parsed.loot.dropped).toBe(false);
     });
 
     it('should apply nightmare difficulty multiplier', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
-      // Set random to 0.9, higher than nightmare without boss (0.6)
-      jest.spyOn(Math, 'random').mockReturnValue(0.9);
+      // Set random to 0.995, higher than nightmare without boss (0.99)
+      jest.spyOn(Math, 'random').mockReturnValue(0.995);
 
       const payload = JSON.stringify({
         stage_id: 'stage_1',
@@ -382,13 +382,13 @@ describe('gear_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.drop_rate).toBe(0.8); // 0.4 * 2.0 = 0.8
+      expect(parsed.drop_rate).toBeCloseTo(0.99, 2); // 0.45 * 2.2 = 0.99
       expect(parsed.loot.dropped).toBe(false);
     });
 
     it('should cap drop rate at 100%', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
-      // Even with 0.1 roll, nightmare + boss should drop (0.6 + 0.25 = 0.85)
+      // Even with 0.1 roll, nightmare + boss should drop (0.99 + 0.3 = 1.29, capped at 1.0)
       // This tests that drop rate calculation works correctly
       jest.spyOn(Math, 'random').mockReturnValue(0.1);
 
@@ -401,7 +401,7 @@ describe('gear_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.drop_rate).toBe(1.0); // 0.4 * 2.0 + 0.25 = 1.05, capped at 1.0
+      expect(parsed.drop_rate).toBe(1.0); // 0.45 * 2.2 + 0.3 = 1.29, capped at 1.0
       expect(parsed.loot.dropped).toBe(true);
     });
 
@@ -1047,13 +1047,13 @@ describe('gear_system', () => {
     it('should default to 1.0 multiplier for unknown difficulty', () => {
       const { calculateDropRate } = require('../gear_system');
       const rate = calculateDropRate('unknown_difficulty', false);
-      expect(rate).toBe(0.4); // 0.4 * 1.0 (default)
+      expect(rate).toBe(0.45); // 0.45 * 1.0 (default)
     });
 
     it('should return 1.0 when drop rate exceeds cap', () => {
       const { calculateDropRate } = require('../gear_system');
-      // nightmare (2.0) + boss (0.25) = 0.3 * 2.0 + 0.25 = 0.85, still under 1.0
-      // But if we had a scenario that exceeds, it should cap
+      // nightmare (2.2) + boss (0.3) = 0.45 * 2.2 + 0.3 = 1.29, capped at 1.0
+      // The rate should never exceed 1.0
       const rate = calculateDropRate('nightmare', true);
       expect(rate).toBeLessThanOrEqual(1.0);
     });
