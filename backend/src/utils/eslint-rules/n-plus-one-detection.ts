@@ -35,12 +35,6 @@ const DB_METHOD_PATTERNS = [
   'readStorageObjects',
 ];
 
-// Define rule options interface
-interface RuleOptions {
-  allowedMethods?: string[];
-  maxLoopDepth?: number;
-}
-
 // Create the rule
 export const NPlusOneDetectionRule = {
   meta: {

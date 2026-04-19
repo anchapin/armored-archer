@@ -285,7 +285,7 @@ export function registerRpcCreateMatch(initializer: Runtime.Initializer): void {
  *   "match": { ... }
  * }
  */
-// eslint-disable-next-line max-lines-per-function, complexity
+// eslint-disable-next-line complexity
 export function rpcCreateMatch(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -559,7 +559,7 @@ export function registerRpcAcceptMatch(initializer: Runtime.Initializer): void {
  *   "match": { ... }
  * }
  */
-// eslint-disable-next-line max-lines-per-function, complexity
+// eslint-disable-next-line complexity
 export function rpcAcceptMatch(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -1105,7 +1105,7 @@ export interface MatchReward {
  *   "is_punch_up": false
  * }
  */
-// eslint-disable-next-line max-lines-per-function, complexity
+// eslint-disable-next-line complexity
 export function rpcCompleteMatch(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -2065,7 +2065,6 @@ export function rpcGetMatchDetails(
     try {
       combatLog =
         typeof row.combat_log === 'string' ? JSON.parse(row.combat_log) : row.combat_log || [];
-      // eslint-disable-next-line no-empty
     } catch {
       logger.warn('Failed to parse combat_log for match: %s', match_id);
     }
@@ -2075,7 +2074,6 @@ export function rpcGetMatchDetails(
         typeof row.creator_stats_at_match === 'string'
           ? JSON.parse(row.creator_stats_at_match)
           : row.creator_stats_at_match || {};
-      // eslint-disable-next-line no-empty
     } catch {
       logger.warn('Failed to parse creator_stats_at_match for match: %s', match_id);
     }
@@ -2085,7 +2083,6 @@ export function rpcGetMatchDetails(
         typeof row.opponent_stats_at_match === 'string'
           ? JSON.parse(row.opponent_stats_at_match)
           : row.opponent_stats_at_match || {};
-      // eslint-disable-next-line no-empty
     } catch {
       logger.warn('Failed to parse opponent_stats_at_match for match: %s', match_id);
     }
@@ -2539,7 +2536,7 @@ function processCompleteTurn(
  *   "turn_completed": true
  * }
  */
-// eslint-disable-next-line max-lines-per-function, complexity
+// eslint-disable-next-line complexity
 export function rpcSubmitTurn(
   ctx: Runtime.Context,
   logger: Runtime.Logger,

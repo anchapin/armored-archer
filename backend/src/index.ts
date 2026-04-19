@@ -1,12 +1,10 @@
-import { InitModule, Runtime } from './types/nakama';
-
 // Polyfill for CommonJS compatibility in Nakama
 if (typeof (globalThis as any).exports === 'undefined') {
   (globalThis as any).exports = {};
 }
 import { validateRequiredConfig, config } from './config';
 import { initializeSentry } from './config/errorTracking';
-import { logger, logSystemEvent } from './config/logger';
+import { logSystemEvent } from './config/logger';
 import { createStructuredLogger, StructuredLogger } from './config/structuredLogger';
 import { initializeTracing } from './config/tracing';
 import { initializeAlerting } from './modules/alerting';
@@ -71,10 +69,6 @@ import {
 } from './modules/matchmaking_pool';
 import { registerRpcMetrics, registerRpcWithRateLimit } from './modules/metrics';
 import {
-  startNotificationScheduler,
-  stopNotificationScheduler,
-} from './modules/notification_scheduler';
-import {
   initializeNotifications,
   registerNotificationEndpoints,
 } from './modules/notifications_rpc';
@@ -88,6 +82,7 @@ import {
   registerProgressiveRollout,
   initializeProgressiveRollout,
 } from './modules/progressive_rollout';
+import { initializeRpcLatencyTracker } from './modules/rpc_latency_tracker';
 import {
   registerRpcGainXP,
   registerRpcAllocateStats,
@@ -96,6 +91,12 @@ import {
   registerRpcLoadBuild,
   registerRpcGetBuilds,
 } from './modules/rpg_system';
+import {
+  registerRpcAdminGetSeasonState,
+  registerRpcAdminGetPlayerSeason,
+  registerRpcAdminValidateSeason,
+  registerRpcAdminTriggerSeasonEvent,
+} from './modules/season_admin';
 import {
   registerRpcGetSeasonHistory,
   registerRpcGetPlayerSeasonRank,
@@ -112,12 +113,6 @@ import {
   registerRpcGetProjectedNextSeasonElo,
 } from './modules/season_system';
 import { registerSeasonTelemetryEndpoints } from './modules/season_telemetry';
-import {
-  registerRpcAdminGetSeasonState,
-  registerRpcAdminGetPlayerSeason,
-  registerRpcAdminValidateSeason,
-  registerRpcAdminTriggerSeasonEvent,
-} from './modules/season_admin';
 import {
   registerRpcCompleteStage,
   registerRpcGetCompletedStages,
@@ -154,6 +149,7 @@ import {
   rpcPurchaseBundle,
   rpcGetBundleCatalog,
 } from './modules/store';
+import { InitModule, Runtime } from './types/nakama';
 import { initializeCaches } from './utils/cache';
 
 // Global structured logger instance for use by all modules
@@ -238,7 +234,8 @@ const InitModule: InitModule = function (
   validateRequiredConfig();
   initializeCaches(loggerParam);
   initializeDeploymentObservability(loggerParam);
-  initializeHealthMonitoring(loggerParam);
+  initializeRpcLatencyTracker(loggerParam);
+  initializeHealthMonitoring(loggerParam, nk);
   initializeErrorInsightsPipeline(loggerParam);
   initializeProgressiveRollout(loggerParam);
   initializeNotifications();
@@ -942,22 +939,6 @@ function rpcForfeitMatchWrapper(
 ): string {
   const { rpcForfeitMatch } = require('./modules/matchmaker');
   return rpcForfeitMatch(ctx, logger, nk, payload);
-}
-
-// Register RPC to start notification scheduler (can be called externally)
-function startNotificationSchedulerWrapper(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  try {
-    startNotificationScheduler(nk, 60000); // Run every minute
-    return JSON.stringify({ success: true });
-  } catch (error) {
-    logger.error('Failed to start notification scheduler', { error: String(error) });
-    return JSON.stringify({ success: false, error: String(error) });
-  }
 }
 
 export default InitModule;

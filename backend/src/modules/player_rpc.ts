@@ -10,6 +10,7 @@ import { submitPlayerReport, getReportsForUser } from './anti_cheat';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { getPlayerStatsWithCache } from '../utils/player-data-helpers';
+import { getHealthStatus } from './health_monitor';
 
 /**
  * Helper to get structured logger for this module
@@ -67,10 +68,14 @@ export function rpcHealthCheck(
     return createValidationErrorResponse('health_check', validation.error);
   }
 
+  const health = getHealthStatus();
+
   return JSON.stringify({
-    status: 'ok',
+    status: health.healthy ? 'ok' : 'degraded',
     timestamp: Date.now(),
     version: '0.1.0',
+    metrics: health.metrics,
+    monitoring: health.isMonitoring,
   });
 }
 
