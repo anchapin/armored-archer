@@ -1,0 +1,57 @@
+[gd_scene load_steps=2 format=3 uid="uid://privacy_consent_dialog"]
+
+[ext_resource type="Script" path="res://scenes/ui/components/privacy_consent_dialog.gd" id="1_script"]
+
+[node name="PrivacyConsentDialog" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.7)
+
+[node name="SafeAreaContainer" type="MarginContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_bottom = 32
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SafeAreaContainer"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="TitleLabel" type="Label" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+text = "Privacy Notice"
+horizontal_alignment = 1
+
+[node name="SummaryLabel" type="RichTextLabel" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 200)
+bbcode_enabled = true
+text = "Before you play, here's what we collect:
+
+• [b]Email[/b] — for your account
+• [b]Crash reports[/b] — to fix bugs (via Firebase)
+• [b]Gameplay stats[/b] — to improve balance
+
+We [b]do not sell[/b] your data. No ads, no tracking.
+
+See our full Privacy Policy for details."
+fit_content = true
+scroll_following = true
+
+[node name="ViewPolicyButton" type="Button" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+text = "View Privacy Policy"
+
+[node name="AcceptButton" type="Button" parent="SafeAreaContainer/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+text = "I Accept"

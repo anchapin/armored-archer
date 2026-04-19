@@ -45,6 +45,9 @@ var _currency_updated_connection: Callable = Callable()
 
 # --- Initialization ---
 func _ready() -> void:
+	# Privacy consent check must happen before any data collection
+	_check_privacy_consent()
+
 	# Connect to currency updates
 	if store_manager:
 		_currency_updated_connection = _on_currency_updated
@@ -254,3 +257,46 @@ func _animate_menu_entry() -> void:
 	var tween = create_tween()
 	tween.tween_property(menu_container, "modulate:a", 1.0, 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 	tween.parallel().tween_property(menu_container, "scale", Vector2.ONE, 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+
+
+# --- Privacy Consent & Beta Onboarding ---
+func _check_privacy_consent() -> void:
+	if not _is_scene_loaded("res://scenes/ui/components/privacy_consent_dialog.tscn"):
+		return
+	var script = load("res://scenes/ui/components/privacy_consent_dialog.gd")
+	if script and script.has_method("has_consented") and not script.has_consented():
+		var dialog_scene = load("res://scenes/ui/components/privacy_consent_dialog.tscn")
+		var dialog = dialog_scene.instantiate()
+		get_tree().root.add_child(dialog)
+		dialog.consent_given.connect(_on_consent_given)
+	else:
+		_check_beta_onboarding()
+
+
+func _on_consent_given() -> void:
+	_check_beta_onboarding()
+
+
+func _check_beta_onboarding() -> void:
+	var beta_welcome_script = load("res://scenes/ui/beta_welcome.gd")
+	if beta_welcome_script == null:
+		return
+	if beta_welcome_script.has_method("has_seen_welcome") and not beta_welcome_script.has_seen_welcome():
+		var welcome_scene = load("res://scenes/ui/beta_welcome.tscn")
+		if welcome_scene:
+			var welcome = welcome_scene.instantiate()
+			get_tree().root.add_child(welcome)
+			welcome.dismissed.connect(_on_beta_welcome_dismissed)
+
+	var tutorial_manager = get_node_or_null("/root/TutorialManager")
+	if tutorial_manager and tutorial_manager.has_method("is_tutorial_complete"):
+		if not tutorial_manager.is_tutorial_complete("beta_features"):
+			tutorial_manager.start_tutorial("beta_features")
+
+
+func _on_beta_welcome_dismissed() -> void:
+	pass
+
+
+func _is_scene_loaded(path: String) -> bool:
+	return ResourceLoader.exists(path)

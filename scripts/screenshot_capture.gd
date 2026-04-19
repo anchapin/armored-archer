@@ -98,3 +98,23 @@ func capture_campaign() -> String:
 func capture_loadout() -> String:
 	print("Capturing: Character Loadout")
 	return capture_screenshot()
+
+
+## Captures all 7 required store screenshots in sequence.
+## Call this after navigating to each screen or use with automated scene changes.
+func capture_all_store_screenshots() -> void:
+	print("=== Starting Store Screenshot Capture ===")
+	var screens: Array = [
+		{"name": "01_main_menu", "method": capture_main_menu},
+		{"name": "02_combat", "method": capture_combat},
+		{"name": "03_gear_inventory", "method": capture_gear_inventory},
+		{"name": "04_loadout", "method": capture_loadout},
+		{"name": "05_shop", "method": capture_shop},
+		{"name": "06_campaign", "method": capture_campaign},
+		{"name": "07_leaderboard", "method": capture_leaderboard},
+	]
+	for i in screens.size():
+		print("Capturing %d/%d: %s" % [i + 1, screens.size(), screens[i]["name"]])
+		screens[i]["method"].call()
+		await get_tree().create_timer(0.5).timeout
+	print("=== Store Screenshot Capture Complete ===")

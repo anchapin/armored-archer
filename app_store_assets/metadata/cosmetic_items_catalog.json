@@ -1,0 +1,38 @@
+{
+  "catalog_version": "1.0.0",
+  "last_updated": "2026-04-18",
+  "description": "All cosmetic items purchasable with gems. Every item is purely visual with zero combat stats.",
+  "items": [
+    {"item_id": "skin_helm_golden", "name": "Golden Helm", "slot": "helm", "price": 500, "is_premium": true},
+    {"item_id": "skin_helm_crimson", "name": "Crimson Helm", "slot": "helm", "price": 300, "is_premium": false},
+    {"item_id": "skin_helm_shadow", "name": "Shadow Helm", "slot": "helm", "price": 1000, "is_premium": true},
+    {"item_id": "skin_armor_knight", "name": "Knight Armor", "slot": "armor", "price": 600, "is_premium": false},
+    {"item_id": "skin_armor_royal", "name": "Royal Armor", "slot": "armor", "price": 1200, "is_premium": true},
+    {"item_id": "skin_armor_shadow", "name": "Shadow Armor", "slot": "armor", "price": 800, "is_premium": false},
+    {"item_id": "skin_bow_fire", "name": "Fire Bow", "slot": "bow", "price": 400, "is_premium": false},
+    {"item_id": "skin_bow_ice", "name": "Ice Bow", "slot": "bow", "price": 700, "is_premium": false},
+    {"item_id": "skin_bow_lightning", "name": "Lightning Bow", "slot": "bow", "price": 1500, "is_premium": true},
+    {"item_id": "skin_arrow_fire", "name": "Fire Arrows", "slot": "arrow", "price": 200, "is_premium": false},
+    {"item_id": "skin_arrow_ice", "name": "Ice Arrows", "slot": "arrow", "price": 350, "is_premium": false},
+    {"item_id": "skin_arrow_lightning", "name": "Lightning Arrows", "slot": "arrow", "price": 900, "is_premium": true},
+    {"item_id": "skin_amulet_golden", "name": "Golden Amulet", "slot": "amulet", "price": 400, "is_premium": false},
+    {"item_id": "skin_amulet_crystal", "name": "Crystal Amulet", "slot": "amulet", "price": 600, "is_premium": false},
+    {"item_id": "skin_amulet_legendary", "name": "Legendary Amulet", "slot": "amulet", "price": 1200, "is_premium": true},
+    {"item_id": "skin_helm_founders", "name": "Founder's Helm", "slot": "helm", "price": 400, "is_premium": false, "is_launch_exclusive": true},
+    {"item_id": "skin_armor_founders", "name": "Founder's Armor", "slot": "armor", "price": 500, "is_premium": false, "is_launch_exclusive": true},
+    {"item_id": "skin_bow_founders", "name": "Founder's Bow", "slot": "bow", "price": 450, "is_premium": false, "is_launch_exclusive": true},
+    {"item_id": "skin_arrow_founders", "name": "Founder's Arrows", "slot": "arrow", "price": 250, "is_premium": false, "is_launch_exclusive": true},
+    {"item_id": "skin_amulet_founders", "name": "Founder's Amulet", "slot": "amulet", "price": 350, "is_premium": false, "is_launch_exclusive": true}
+  ],
+  "bundles": [
+    {
+      "bundle_id": "bundle_starter_founders",
+      "name": "Founder's Starter Bundle",
+      "item_ids": ["skin_helm_founders", "skin_armor_founders", "skin_bow_founders", "skin_arrow_founders", "skin_amulet_founders"],
+      "price": 1500,
+      "original_total": 1950,
+      "is_one_time": true,
+      "is_launch_exclusive": true
+    }
+  ]
+}

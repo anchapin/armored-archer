@@ -98,18 +98,18 @@ def create_placeholder_screenshot(size, label, description, output_path):
 
 
 def main():
-    base_path = "/home/alex/armored-archer/app_store_assets"
+    base_path = os.path.dirname(os.path.abspath(__file__))
 
     # Create iOS screenshots
     ios_base = os.path.join(base_path, "ios", "screenshots")
-    for screen in SCREENS[:6]:  # First 6 for iOS (we have 4, but create 6)
+    for screen in SCREENS[:7]:  # All 7 screens for iOS
         for device, size in IOS_SIZES.items():
             output_path = os.path.join(ios_base, device, f"{screen['name']}.png")
             create_placeholder_screenshot(size, screen['label'], screen['description'], output_path)
 
     # Create Android screenshots
     android_base = os.path.join(base_path, "android", "screenshots")
-    for _i, screen in enumerate(SCREENS[:6], 1):
+    for _i, screen in enumerate(SCREENS[:7], 1):
         # Use standard Android sizes
         output_path = os.path.join(android_base, f"{screen['name']}.png")
         create_placeholder_screenshot((1080, 1920), screen['label'], screen['description'], output_path)
