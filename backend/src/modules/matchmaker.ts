@@ -1349,6 +1349,87 @@ function processRankedMatchUpdates(
 }
 
 /**
+ * Verify match hasn't been completed by a concurrent request.
+ */
+function verifyMatchStillActive(
+  nk: Runtime.Nakama,
+  match: PvPMatch,
+  logger: Runtime.Logger
+): { alreadyCompletedResponse: string | null; matchVersion: string | undefined } {
+  const freshMatchObjects = nk.storageRead([
+    { collection: 'pvp_matches', key: match.match_id, userId: match.creator_id },
+  ]);
+  if (freshMatchObjects.length > 0) {
+    const freshMatchResult = safeParse<PvPMatch>(
+      freshMatchObjects[0].value,
+      null,
+      logger,
+      'processMatchResult:freshMatch'
+    );
+    if (
+      !freshMatchResult.success ||
+      !freshMatchResult.data ||
+      freshMatchResult.data.status !== 'active'
+    ) {
+      logger.warn('Match %s already completed by concurrent request', match.match_id);
+      return {
+        alreadyCompletedResponse: JSON.stringify({
+          error: 'Match already completed',
+          error_code: 'ALREADY_COMPLETED',
+        }),
+        matchVersion: undefined,
+      };
+    }
+  }
+  return {
+    alreadyCompletedResponse: null,
+    matchVersion: freshMatchObjects.length > 0 ? freshMatchObjects[0].version : undefined,
+  };
+}
+
+/**
+ * Calculate old and new season positions plus deltas for both players.
+ */
+function calculateSeasonPositions(
+  nk: Runtime.Nakama,
+  winnerId: string,
+  loserId: string,
+  seasonId: string
+): {
+  winnerOldPosition: number;
+  loserOldPosition: number;
+  winnerNewPosition: number;
+  loserNewPosition: number;
+  winnerDelta: number;
+  loserDelta: number;
+} {
+  const winnerOldEntry = getLeaderboardEntry(nk, winnerId, seasonId);
+  const loserOldEntry = getLeaderboardEntry(nk, loserId, seasonId);
+  const winnerOldPosition = winnerOldEntry ? winnerOldEntry.rank : 0;
+  const loserOldPosition = loserOldEntry ? loserOldEntry.rank : 0;
+
+  // These will be fetched after rank updates
+  const winnerNewEntry = getLeaderboardEntry(nk, winnerId, seasonId);
+  const loserNewEntry = getLeaderboardEntry(nk, loserId, seasonId);
+  const winnerNewPosition = winnerNewEntry ? winnerNewEntry.rank : 0;
+  const loserNewPosition = loserNewEntry ? loserNewEntry.rank : 0;
+
+  const winnerDelta =
+    winnerOldPosition > 0 && winnerNewPosition > 0 ? winnerNewPosition - winnerOldPosition : 0;
+  const loserDelta =
+    loserOldPosition > 0 && loserNewPosition > 0 ? loserNewPosition - loserOldPosition : 0;
+
+  return {
+    winnerOldPosition,
+    loserOldPosition,
+    winnerNewPosition,
+    loserNewPosition,
+    winnerDelta,
+    loserDelta,
+  };
+}
+
+/**
  * Process the match result, calculate ranks, and update storage
  */
 function processMatchResult(
@@ -1403,9 +1484,8 @@ function processMatchResult(
   // Get season information for position tracking
   const currentSeason = getCurrentSeason();
   const winnerOldSeasonEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
-  const loserOldSeasonEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
-
   const winnerOldSeasonPosition = winnerOldSeasonEntry ? winnerOldSeasonEntry.rank : 0;
+  const loserOldSeasonEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
   const loserOldSeasonPosition = loserOldSeasonEntry ? loserOldSeasonEntry.rank : 0;
 
   // Calculate punch-up info for reward scaling
@@ -1446,26 +1526,11 @@ function processMatchResult(
   const loserXPGained = calculateXPGain(loserXPParams);
 
   // Re-verify match is still active before awarding rewards (prevents double completion)
-  const freshMatchObjects = nk.storageRead([
-    {
-      collection: 'pvp_matches',
-      key: match.match_id,
-      userId: match.creator_id,
-    },
-  ]);
-  if (freshMatchObjects.length > 0) {
-    const freshMatchResult = safeParse<PvPMatch>(
-      freshMatchObjects[0].value,
-      null,
-      logger,
-      'processMatchResult:freshMatch'
-    );
-    if (!freshMatchResult.success || !freshMatchResult.data || freshMatchResult.data.status !== 'active') {
-      logger.warn('Match %s already completed by concurrent request', match.match_id);
-      return JSON.stringify({ error: 'Match already completed', error_code: 'ALREADY_COMPLETED' });
-    }
+  const matchVerification = verifyMatchStillActive(nk, match, logger);
+  if (matchVerification.alreadyCompletedResponse) {
+    return matchVerification.alreadyCompletedResponse;
   }
-  const matchVersion = freshMatchObjects.length > 0 ? freshMatchObjects[0].version : undefined;
+  const matchVersion = matchVerification.matchVersion;
 
   // Calculate per-match rewards
   const winnerRewards = calculateMatchRewards(winnerXPParams, winnerXPGained);
@@ -1537,21 +1602,17 @@ function processMatchResult(
   );
 
   // Get new season positions after rank updates
-  const winnerNewSeasonEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
-  const loserNewSeasonEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
+  const seasonPositions = calculateSeasonPositions(
+    nk,
+    request.winner_id,
+    request.loser_id,
+    currentSeason.season_id
+  );
 
-  const winnerNewSeasonPosition = winnerNewSeasonEntry ? winnerNewSeasonEntry.rank : 0;
-  const loserNewSeasonPosition = loserNewSeasonEntry ? loserNewSeasonEntry.rank : 0;
-
-  // Calculate season position delta (negative means moved up in rank)
-  const winnerSeasonDelta =
-    winnerOldSeasonPosition > 0 && winnerNewSeasonPosition > 0
-      ? winnerNewSeasonPosition - winnerOldSeasonPosition
-      : 0;
-  const loserSeasonDelta =
-    loserOldSeasonPosition > 0 && loserNewSeasonPosition > 0
-      ? loserNewSeasonPosition - loserOldSeasonPosition
-      : 0;
+  const winnerNewSeasonPosition = seasonPositions.winnerNewPosition;
+  const loserNewSeasonPosition = seasonPositions.loserNewPosition;
+  const winnerSeasonDelta = seasonPositions.winnerDelta;
+  const loserSeasonDelta = seasonPositions.loserDelta;
 
   // Log ranking delta for fairness telemetry (non-blocking)
   if (match.match_type === 'ranked') {

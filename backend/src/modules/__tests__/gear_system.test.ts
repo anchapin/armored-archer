@@ -6,6 +6,7 @@ import {
   rpcGetInventory,
   rpcUnlockModifierPool,
   rpcStageComplete,
+  rpcGetUnlockedModifiers,
   PlayerInventory,
   GearItem,
   getModifiersUnlockedByBoss,
@@ -1394,6 +1395,149 @@ describe('gear_system', () => {
         (m: string) => m === 'piercing_arrow'
       ).length;
       expect(count).toBe(1);
+    });
+  });
+
+  describe('rpcStageComplete dedup check', () => {
+    it('should reject duplicate stage completion within cooldown', () => {
+      mockNk.storageRead = jest.fn(
+        (objects: { collection: string; key: string; userId?: string }[]) => {
+          return objects.map((obj) => {
+            if (obj.collection === 'stage_completion_claims') {
+              return {
+                collection: 'stage_completion_claims',
+                key: obj.key,
+                userId: obj.userId ?? 'test-user',
+                value: JSON.stringify({ claimed_at: Date.now() - 60000, stage_id: 'stage_1' }),
+                version: '1',
+              };
+            }
+            return { collection: obj.collection, key: obj.key, value: '' };
+          }).filter((o: any) => o.value !== '');
+        }
+      );
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'easy',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('DUPLICATE_COMPLETION');
+    });
+
+    it('should allow completion after cooldown expires', () => {
+      const inventory = createMockInventory();
+      mockNk.storageRead = jest.fn(
+        (objects: { collection: string; key: string; userId?: string }[]) => {
+          return objects.map((obj) => {
+            if (obj.collection === 'stage_completion_claims') {
+              return {
+                collection: 'stage_completion_claims',
+                key: obj.key,
+                userId: obj.userId ?? 'test-user',
+                value: JSON.stringify({ claimed_at: Date.now() - 400000, stage_id: 'stage_1' }),
+                version: '1',
+              };
+            }
+            if (obj.collection === 'player_inventory') {
+              return {
+                collection: 'player_inventory',
+                key: 'test-user',
+                value: JSON.stringify(inventory),
+                version: '1',
+              };
+            }
+            return { collection: obj.collection, key: obj.key, value: '' };
+          }).filter((o: any) => o.value !== '');
+        }
+      );
+      jest.spyOn(Math, 'random').mockReturnValue(0.9);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'easy',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+    });
+  });
+
+  describe('rpcStageComplete boss defeat verification', () => {
+    it('should handle boss defeat claim with unknown boss_id', () => {
+      const inventory = createMockInventory();
+      mockNk.storageRead = jest.fn(
+        (objects: { collection: string; key: string; userId?: string }[]) => {
+          return objects.map((obj) => {
+            if (obj.collection === 'player_inventory') {
+              return {
+                collection: 'player_inventory',
+                key: 'test-user',
+                value: JSON.stringify(inventory),
+                version: '1',
+              };
+            }
+            return { collection: obj.collection, key: obj.key, value: '' };
+          }).filter((o: any) => o.value !== '');
+        }
+      );
+      jest.spyOn(Math, 'random').mockReturnValue(0.9);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_boss_1',
+        boss_defeated: true,
+        difficulty: 'medium',
+        boss_id: 'boss_unknown',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.xp_gained).toBeDefined();
+    });
+  });
+
+  describe('rpcGetUnlockedModifiers', () => {
+    it('should return unlocked modifiers and boss defeats', () => {
+      testStorage.set('unlocked_modifier_pools:test-user', JSON.stringify(['piercing_arrow', 'wind_fury']));
+      testStorage.set('boss_defeats:test-user', JSON.stringify({
+        boss_wind: { defeat_count: 3, first_defeated_at: Date.now() },
+        boss_basic: { defeat_count: 1, first_defeated_at: Date.now() },
+      }));
+
+      const result = rpcGetUnlockedModifiers(mockCtx, mockLogger, mockNk, '{}');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.unlocked_modifier_pools).toEqual(['piercing_arrow', 'wind_fury']);
+      expect(parsed.boss_defeats).toBeDefined();
+      expect(parsed.boss_defeats.boss_wind).toBe(3);
+      expect(parsed.boss_defeats.boss_basic).toBe(1);
+    });
+
+    it('should return empty data when no modifiers or boss defeats exist', () => {
+      testStorage.delete('unlocked_modifier_pools:test-user');
+      testStorage.delete('boss_defeats:test-user');
+
+      const result = rpcGetUnlockedModifiers(mockCtx, mockLogger, mockNk, '{}');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.unlocked_modifier_pools).toEqual([]);
+      expect(parsed.boss_defeats).toEqual({});
+    });
+
+    it('should reject invalid payload', () => {
+      const result = rpcGetUnlockedModifiers(mockCtx, mockLogger, mockNk, 'not-json');
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
     });
   });
 });

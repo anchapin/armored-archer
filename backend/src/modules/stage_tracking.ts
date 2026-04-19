@@ -13,8 +13,8 @@ import {
   getModifiersUnlockedByBoss,
   getPlayerInventory,
 } from './gear_system';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { checkRateLimit } from './rate_limit';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Stage completion record stored in database.
@@ -199,6 +199,65 @@ function updateCompletionRecord(
   };
 }
 
+const STAGE_DEDUP_COOLDOWN_MS = 300000; // 5 minutes
+
+function checkStageDedup(
+  nk: Runtime.Nakama,
+  userId: string,
+  stageId: string,
+  logger: Runtime.Logger
+): { error?: string; claimVersion?: string } {
+  const claimKey = `${userId}:${stageId}`;
+  let existingClaims: { value?: string; version?: string; collection?: string }[] = [];
+  try {
+    existingClaims = nk.storageRead([
+      { collection: 'stage_completion_claims', key: claimKey, userId },
+    ]);
+  } catch {
+    // Storage error during dedup check - proceed with completion
+  }
+  if (existingClaims.length > 0 && existingClaims[0].value) {
+    try {
+      const claim = JSON.parse(existingClaims[0].value);
+      if (claim && claim.claimed_at) {
+        const timeSinceClaim = Date.now() - claim.claimed_at;
+        if (timeSinceClaim < STAGE_DEDUP_COOLDOWN_MS) {
+          logger.warn('Duplicate stage completion rejected for user %s stage %s', userId, stageId);
+          return {
+            error: JSON.stringify({
+              success: false,
+              error: 'Stage completion already processed',
+              error_code: 'DUPLICATE_COMPLETION',
+              retry_after_ms: STAGE_DEDUP_COOLDOWN_MS - timeSinceClaim,
+            }),
+          };
+        }
+      }
+    } catch {
+      // Corrupted claim data - allow the completion to proceed
+    }
+  }
+  const claimVersion =
+    existingClaims.length > 0 &&
+    existingClaims[0].collection === 'stage_completion_claims' &&
+    existingClaims[0].version
+      ? existingClaims[0].version
+      : undefined;
+  return { claimVersion };
+}
+
+function validateStageAuth(ctx: Runtime.Context, logger: Runtime.Logger): string | null {
+  if (!ctx.userId) {
+    logger.warn('complete_stage attempted without authentication');
+    return JSON.stringify({
+      success: false,
+      error: 'Authentication required',
+      error_code: 'UNAUTHORIZED',
+    });
+  }
+  return null;
+}
+
 /**
  * Handles stage completion requests from players.
  * Validates input and records stage completion using Nakama storage.
@@ -219,14 +278,8 @@ export function rpcCompleteStage(
   logger.info('Complete stage called for user: %s', ctx.userId);
 
   // Validate authentication
-  if (!ctx.userId) {
-    logger.warn('complete_stage attempted without authentication');
-    return JSON.stringify({
-      success: false,
-      error: 'Authentication required',
-      error_code: 'UNAUTHORIZED',
-    });
-  }
+  const authError = validateStageAuth(ctx, logger);
+  if (authError) return authError;
 
   // Validate payload
   const validation = validatePayload(ZodSchemas.complete_stage, payload, 'complete_stage');
@@ -260,49 +313,11 @@ export function rpcCompleteStage(
   }
 
   // Dedup check: prevent replay of same stage completion within cooldown window
-  const STAGE_COMPLETION_COOLDOWN_MS = 300000; // 5 minutes
+  const dedupResult = checkStageDedup(nk, ctx.userId, stage_id, logger);
+  if (dedupResult.error) {
+    return dedupResult.error;
+  }
   const claimKey = `${ctx.userId}:${stage_id}`;
-  let existingClaims: { value?: string; version?: string; collection?: string }[] = [];
-  try {
-    existingClaims = nk.storageRead([
-      {
-        collection: 'stage_completion_claims',
-        key: claimKey,
-        userId: ctx.userId,
-      },
-    ]);
-  } catch {
-    // Storage error during dedup check - proceed with completion
-  }
-  if (existingClaims.length > 0 && existingClaims[0].value) {
-    try {
-      const claim = JSON.parse(existingClaims[0].value);
-      if (claim && claim.claimed_at) {
-        const timeSinceClaim = Date.now() - claim.claimed_at;
-        if (timeSinceClaim < STAGE_COMPLETION_COOLDOWN_MS) {
-          logger.warn(
-            'Duplicate stage completion rejected for user %s stage %s',
-            ctx.userId,
-            stage_id
-          );
-          return JSON.stringify({
-            success: false,
-            error: 'Stage completion already processed',
-            error_code: 'DUPLICATE_COMPLETION',
-            retry_after_ms: STAGE_COMPLETION_COOLDOWN_MS - timeSinceClaim,
-          });
-        }
-      }
-    } catch {
-      // Corrupted claim data - allow the completion to proceed
-    }
-  }
-  const claimVersion =
-    existingClaims.length > 0 &&
-    existingClaims[0].collection === 'stage_completion_claims' &&
-    existingClaims[0].version
-      ? existingClaims[0].version
-      : undefined;
 
   logger.info(
     'Processing stage completion: user=%s stage=%s stars=%d score=%d',
@@ -392,7 +407,7 @@ export function rpcCompleteStage(
         key: claimKey,
         userId: ctx.userId,
         value: JSON.stringify({ claimed_at: Date.now(), stage_id }),
-        version: claimVersion,
+        version: dedupResult.claimVersion,
       },
     ]);
 

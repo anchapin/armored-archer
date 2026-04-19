@@ -23,8 +23,8 @@ import {
   unlockModifierPoolInDB,
   getUnlockedModifierPoolsFromDB,
 } from './gear_db';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { checkRateLimit } from './rate_limit';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
  * Gear rarity data structure.
@@ -1699,6 +1699,81 @@ function unlockModifierPools(
   return newlyUnlocked;
 }
 
+const STAGE_COMPLETION_COOLDOWN_MS = 300000; // 5 minutes
+
+/**
+ * Check for duplicate stage completion within cooldown window.
+ * @returns Error response string if duplicate, or claim version for storage write
+ */
+function checkStageDedup(
+  nk: Runtime.Nakama,
+  userId: string,
+  stageId: string,
+  logger: Runtime.Logger
+): { error?: string; claimVersion?: string } {
+  const claimKey = `${userId}:${stageId}`;
+  let existingClaims: { value?: string; version?: string; collection?: string }[] = [];
+  try {
+    existingClaims = nk.storageRead([
+      { collection: 'stage_completion_claims', key: claimKey, userId },
+    ]);
+  } catch {
+    // Storage error during dedup check - proceed with completion
+  }
+  if (existingClaims.length > 0 && existingClaims[0].value) {
+    try {
+      const claim = JSON.parse(existingClaims[0].value);
+      if (claim && claim.claimed_at) {
+        const timeSinceClaim = Date.now() - claim.claimed_at;
+        if (timeSinceClaim < STAGE_COMPLETION_COOLDOWN_MS) {
+          logger.warn('Duplicate stage completion rejected for user %s stage %s', userId, stageId);
+          return {
+            error: JSON.stringify({
+              success: false,
+              error: 'Stage completion already processed',
+              error_code: 'DUPLICATE_COMPLETION',
+              retry_after_ms: STAGE_COMPLETION_COOLDOWN_MS - timeSinceClaim,
+            }),
+          };
+        }
+      }
+    } catch {
+      // Corrupted claim data - allow the completion to proceed
+    }
+  }
+  const claimVersion =
+    existingClaims.length > 0 &&
+    existingClaims[0].collection === 'stage_completion_claims' &&
+    existingClaims[0].version
+      ? existingClaims[0].version
+      : undefined;
+  return { claimVersion };
+}
+
+/**
+ * Verify boss defeat claim against server-side records.
+ * @returns true if boss defeat is verified
+ */
+function verifyBossDefeat(
+  request: { boss_defeated?: boolean; boss_id?: string; stage_id: string },
+  nk: Runtime.Nakama,
+  userId: string,
+  result: { bossDefeatResult?: { defeat_count: number } },
+  logger: Runtime.Logger
+): boolean {
+  if (!request.boss_defeated || !request.boss_id) return false;
+  const defeatedBosses = getDefeatedBossesFromDB(nk, userId);
+  if (defeatedBosses.includes(request.boss_id)) return true;
+  if (result.bossDefeatResult && result.bossDefeatResult.defeat_count > 0) return true;
+  logger.warn(
+    'Unverified boss defeat claim: user %s boss %s stage %s',
+    userId,
+    request.boss_id,
+    request.stage_id
+  );
+  return false;
+}
+
 /**
  * Handle stage completion RPC
  *
@@ -1737,49 +1812,11 @@ export function rpcStageComplete(
   }
 
   // Dedup check: prevent replay of same stage completion within cooldown window
-  const STAGE_COMPLETION_COOLDOWN_MS = 300000; // 5 minutes
+  const dedupResult = checkStageDedup(nk, ctx.userId, request.stage_id, logger);
+  if (dedupResult.error) {
+    return dedupResult.error;
+  }
   const claimKey = `${ctx.userId}:${request.stage_id}`;
-  let existingClaims: { value?: string; version?: string; collection?: string }[] = [];
-  try {
-    existingClaims = nk.storageRead([
-      {
-        collection: 'stage_completion_claims',
-        key: claimKey,
-        userId: ctx.userId,
-      },
-    ]);
-  } catch {
-    // Storage error during dedup check - proceed with completion
-  }
-  if (existingClaims.length > 0 && existingClaims[0].value) {
-    try {
-      const claim = JSON.parse(existingClaims[0].value);
-      if (claim && claim.claimed_at) {
-        const timeSinceClaim = Date.now() - claim.claimed_at;
-        if (timeSinceClaim < STAGE_COMPLETION_COOLDOWN_MS) {
-          logger.warn(
-            'Duplicate stage completion rejected for user %s stage %s',
-            ctx.userId,
-            request.stage_id
-          );
-          return JSON.stringify({
-            success: false,
-            error: 'Stage completion already processed',
-            error_code: 'DUPLICATE_COMPLETION',
-            retry_after_ms: STAGE_COMPLETION_COOLDOWN_MS - timeSinceClaim,
-          });
-        }
-      }
-    } catch {
-      // Corrupted claim data - allow the completion to proceed
-    }
-  }
-  const claimVersion =
-    existingClaims.length > 0 &&
-    existingClaims[0].collection === 'stage_completion_claims' &&
-    existingClaims[0].version
-      ? existingClaims[0].version
-      : undefined;
 
   // Process stage completion
   const result = processStageCompletion(nk, ctx, logger, request);
@@ -1791,7 +1828,7 @@ export function rpcStageComplete(
       key: claimKey,
       userId: ctx.userId,
       value: JSON.stringify({ claimed_at: Date.now(), stage_id: request.stage_id }),
-      version: claimVersion,
+      version: dedupResult.claimVersion,
     },
   ]);
 
@@ -1807,23 +1844,7 @@ export function rpcStageComplete(
   );
 
   // Calculate XP gained for stage completion (verify boss defeat claim server-side)
-  let verifiedBossDefeated = false;
-  if (request.boss_defeated && request.boss_id) {
-    const defeatedBosses = getDefeatedBossesFromDB(nk, ctx.userId);
-    if (defeatedBosses.includes(request.boss_id)) {
-      verifiedBossDefeated = true;
-    } else if (result.bossDefeatResult && result.bossDefeatResult.defeat_count > 0) {
-      // Boss was just recorded in processStageCompletion
-      verifiedBossDefeated = true;
-    } else {
-      logger.warn(
-        'Unverified boss defeat claim: user %s boss %s stage %s',
-        ctx.userId,
-        request.boss_id,
-        request.stage_id
-      );
-    }
-  }
+  const verifiedBossDefeated = verifyBossDefeat(request, nk, ctx.userId, result, logger);
   const xpGained = calculateStageXPGain(verifiedBossDefeated, request.difficulty);
 
   return JSON.stringify({
