@@ -5,6 +5,7 @@ import * as rateLimiter from '../utils/rateLimiter';
 import { getDeploymentRegistry } from './deployment_observability';
 import { initializeNPlusOneDetectionWithMetrics, getNPlusOneReport } from './n_plus_one_detection';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { recordRpcLatency, recordRpcError } from './rpc_latency_tracker';
 
 const register = new Registry();
 
@@ -362,16 +363,19 @@ export function wrapRpcWithMetrics(rpcName: string, handler: RpcHandler): RpcHan
     nk: Runtime.Nakama,
     payload: string
   ): Promise<string> {
+    const startTime = Date.now();
     const endTimer = rpcDurationSeconds.startTimer({ rpc: rpcName });
 
     try {
       const result = await handler(ctx, logger, nk, payload);
       rpcCallsTotal.inc({ rpc: rpcName, status: 'success' });
+      recordRpcLatency(rpcName, Date.now() - startTime);
       return result;
     } catch (error) {
       const errorType = error instanceof Error ? error.constructor.name : 'unknown';
       rpcCallsTotal.inc({ rpc: rpcName, status: 'error' });
       rpcErrorsTotal.inc({ rpc: rpcName, error_type: errorType });
+      recordRpcError(rpcName, errorType);
       throw error;
     } finally {
       endTimer();

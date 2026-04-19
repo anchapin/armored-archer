@@ -43,6 +43,7 @@ import {
   registerRpcGetUnlockedModifiers,
 } from './modules/gear_system';
 import { initializeHealthMonitoring } from './modules/health_monitor';
+import { initializeRpcLatencyTracker } from './modules/rpc_latency_tracker';
 import {
   registerRpcGetMatchReplay,
   registerRpcListMatchReplays,
@@ -238,7 +239,8 @@ const InitModule: InitModule = function (
   validateRequiredConfig();
   initializeCaches(loggerParam);
   initializeDeploymentObservability(loggerParam);
-  initializeHealthMonitoring(loggerParam);
+  initializeRpcLatencyTracker(loggerParam);
+  initializeHealthMonitoring(loggerParam, nk);
   initializeErrorInsightsPipeline(loggerParam);
   initializeProgressiveRollout(loggerParam);
   initializeNotifications();

@@ -10,11 +10,13 @@
  */
 
 import * as os from 'os';
+import { execSync } from 'child_process';
 import { Gauge, Registry } from 'prom-client';
 import { alertingConfig, isAlertingEnabled } from '../config/alerting';
 import { Runtime } from '../types/nakama';
 import { triggerHealthAlert, triggerMetricAlert } from './alerting';
 import { logger } from '../config/logger';
+import { getAverageResponseTimeMs, getErrorRate as getRpcErrorRate } from './rpc_latency_tracker';
 
 // Create a dedicated registry for health metrics
 const healthRegistry = new Registry();
@@ -80,6 +82,7 @@ const healthStatus = new Gauge({
 // Health monitoring state
 let healthMonitorInterval: NodeJS.Timeout | null = null;
 let isMonitoring = false;
+let nkInstance: Runtime.Nakama | null = null;
 
 /**
  * Get the health metrics registry
@@ -121,53 +124,108 @@ function getMemoryUsage(): number {
 }
 
 /**
- * Get current disk usage percentage (placeholder - would need fs.statfs in real implementation)
+ * Get current disk usage percentage
  */
 function getDiskUsage(): number {
-  // In a real implementation, you would use fs.statfs() or similar
-  // For now, return a placeholder value
+  try {
+    const output = execSync('df -h /', { encoding: 'utf-8', timeout: 5000 });
+    const lines = output.trim().split('\n');
+    if (lines.length >= 2) {
+      // Parse "Use%" column - typically the 5th column in df -h output
+      const parts = lines[1].trim().split(/\s+/);
+      const useCol = parts.find((p) => p.endsWith('%'));
+      if (useCol) {
+        const pct = parseFloat(useCol.replace('%', ''));
+        if (!isNaN(pct)) return Math.round(pct * 100) / 100;
+      }
+    }
+  } catch {
+    // df not available or failed
+  }
   return 0;
 }
 
 /**
- * Get current database connection usage (placeholder - would need actual DB metrics)
+ * Get current database connection usage percentage
  */
 function getDbConnectionUsage(): number {
-  // In a real implementation, you would query the database for connection count
-  // For now, return a placeholder value
+  if (!nkInstance) return 0;
+  try {
+    const result = nkInstance.storageRead([
+      { collection: 'system_health', key: 'db_connections', userId: '' },
+    ]);
+    if (result.length > 0) {
+      const data = JSON.parse(result[0].value);
+      if (data.active && data.max) {
+        return Math.round((data.active / data.max) * 100 * 100) / 100;
+      }
+    }
+  } catch {
+    // Storage read not available or parsing failed
+  }
   return 0;
 }
 
 /**
- * Get current active connections (placeholder - would need actual connection tracking)
+ * Get current active connections from the metrics registry
  */
 function getActiveConnections(): number {
-  // In a real implementation, you would get this from Nakama or a connection tracker
+  try {
+    const { getMetricsRegistry } = require('./metrics');
+    const registry = getMetricsRegistry();
+    const gauge = registry.getSingleMetric('armored_archer_player_active_sessions');
+    if (gauge && typeof (gauge as any).get === 'function') {
+      const result = (gauge as any).get() as { values: Array<{ value: number }> };
+      if (result?.values?.length > 0) {
+        return result.values[0].value;
+      }
+    }
+  } catch {
+    // Metrics registry not available
+  }
   return 0;
 }
 
 /**
- * Get current match queue size (placeholder - would need actual matchmaker metrics)
+ * Get current match queue size from matchmaking storage
  */
 function getMatchQueueSize(): number {
-  // In a real implementation, you would get this from the matchmaker
+  if (!nkInstance) return 0;
+  try {
+    const objects = nkInstance.storageRead([
+      { collection: 'matchmaking', key: 'matchmaking_pool_1v1', userId: '' },
+      { collection: 'matchmaking', key: 'matchmaking_pool_2v2', userId: '' },
+    ]);
+    let total = 0;
+    for (const obj of objects) {
+      try {
+        const data = JSON.parse(obj.value);
+        if (Array.isArray(data.players)) {
+          total += data.players.length;
+        }
+      } catch {
+        // Skip unparseable entries
+      }
+    }
+    return total;
+  } catch {
+    // Storage read not available
+  }
   return 0;
 }
 
 /**
- * Get current response time (placeholder - would need actual latency tracking)
+ * Get current average response time from the RPC latency tracker
  */
 function getResponseTime(): number {
-  // In a real implementation, you would calculate this from actual request metrics
-  return 0;
+  return getAverageResponseTimeMs();
 }
 
 /**
- * Get current error rate (placeholder - would need actual error tracking)
+ * Get current error rate from the RPC latency tracker
  */
 function getErrorRate(): number {
-  // In a real implementation, you would calculate this from actual error counts
-  return 0;
+  return getRpcErrorRate();
 }
 
 /**
@@ -405,7 +463,11 @@ export function getHealthStatus(): {
 /**
  * Initialize health monitoring
  */
-export function initializeHealthMonitoring(logger: Runtime.Logger): void {
+export function initializeHealthMonitoring(logger: Runtime.Logger, nk?: Runtime.Nakama): void {
+  if (nk) {
+    nkInstance = nk;
+  }
+
   // Set initial health status
   healthStatus.set({ component: 'overall' }, 1);
   healthStatus.set({ component: 'cpu' }, 1);
