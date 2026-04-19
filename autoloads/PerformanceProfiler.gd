@@ -171,9 +171,10 @@ func _check_memory_leak() -> void:
 
 
 func _get_memory_usage_mb() -> float:
-	# Memory profiling disabled - returns 0 to avoid runtime errors
-	# Re-enable when needed with proper platform-specific handling
-	return 0.0
+	if OS.has_feature("web"):
+		return 0.0
+	var static_mem: float = Performance.get_monitor(Performance.MEMORY_STATIC)
+	return static_mem / (1024.0 * 1024.0)
 
 func _get_memory_threshold() -> int:
 	match _device_tier:

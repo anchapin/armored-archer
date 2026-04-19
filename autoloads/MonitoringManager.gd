@@ -43,6 +43,31 @@ func _exit_tree() -> void:
 		_report_timer.queue_free()
 
 
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_PAUSED:
+			_flush_error_buffer()
+			_collect_and_emit_snapshot()
+		NOTIFICATION_APPLICATION_RESUMED:
+			if _report_timer:
+				_report_timer.start()
+			_collect_and_emit_snapshot()
+
+
+func _flush_error_buffer() -> void:
+	if _error_buffer.is_empty():
+		return
+	var analytics := _get_analytics_manager()
+	if analytics and analytics.has_method("track_event_to_backend"):
+		for entry in _error_buffer:
+			analytics.track_event_to_backend("client_error", {
+				"error_message": entry.get("message", ""),
+				"context": entry.get("context", {}),
+				"flushed_on_pause": true,
+			})
+	_error_buffer.clear()
+
+
 # ============================================================================
 # Autoload References (lazy resolution)
 # ============================================================================

@@ -101,7 +101,7 @@ func _physics_process(delta: float) -> void:
 
 	if aim_pressed:
 		is_aiming = true
-		_update_aim_direction()
+		_update_aim_direction(delta)
 	else:
 		is_aiming = false
 
@@ -158,11 +158,13 @@ func set_virtual_move_direction(vector: Vector2) -> void:
 func set_virtual_aim_direction(vector: Vector2) -> void:
 	virtual_aim_direction = vector
 	if vector != Vector2.ZERO:
-		aim_direction = vector.normalized()
+		var target := vector.normalized()
+		_smoothed_aim_direction = _smoothed_aim_direction.lerp(target, aim_smoothing * get_process_delta_time())
+		aim_direction = _smoothed_aim_direction
 		_rotate_bow_toward_aim()
 
 
-func _update_aim_direction() -> void:
+func _update_aim_direction(delta: float) -> void:
 	# Get aim direction from virtual joystick, right stick, or keyboard
 	var aim_input := Input.get_vector("aim_left", "aim_right", "aim_up", "aim_down")
 
@@ -171,7 +173,9 @@ func _update_aim_direction() -> void:
 		aim_input = virtual_aim_direction
 
 	if aim_input != Vector2.ZERO:
-		aim_direction = aim_input.normalized()
+		var target := aim_input.normalized()
+		_smoothed_aim_direction = _smoothed_aim_direction.lerp(target, aim_smoothing * delta)
+		aim_direction = _smoothed_aim_direction
 		_rotate_bow_toward_aim()
 		emit_signal("aim_direction_changed", aim_direction)
 
@@ -201,6 +205,10 @@ func take_damage(amount: int) -> void:
 		actual_damage = max(1, amount - damage_reduction)
 
 	current_health -= actual_damage
+
+	var haptic = get_node_or_null("/root/HapticManager")
+	if haptic:
+		haptic.damage_pulse()
 
 	# Sync with GameManager
 	var game_mgr = get_node_or_null("/root/GameManager")
