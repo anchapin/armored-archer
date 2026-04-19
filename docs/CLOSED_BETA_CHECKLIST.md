@@ -153,7 +153,7 @@ The beta launches only when ALL hard blockers are met. Soft blockers require doc
 | 7.3 | Feedback system active | In-app reporting and external channel | `backend/BETA_FEEDBACK_SYSTEM.md` | |
 | 7.4 | Bug tracking workflow | Triage process documented and followed | `backend/BETA_BUG_TRACKING.md` | |
 | 7.5 | Support email configured | Support address active and monitored | Post-launch ops | |
-| 7.6 | FAQ prepared | Common questions documented | `docs/APP_SUBMISSION_CHECKLIST.md` | |
+| 7.6 | FAQ prepared | Common questions documented | `docs/BETA_SUPPORT_PLAYBOOK.md` | |
 | 7.7 | Community channel ready | Discord or equivalent for beta testers | Support plan | |
 
 ---
