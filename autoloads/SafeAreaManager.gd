@@ -13,16 +13,31 @@ func _ready() -> void:
 	_update_safe_area()
 
 func _update_safe_area() -> void:
-	"""Calculates safe area margins from display server."""
+	"""Calculates safe area margins from display server and converts to viewport coordinates."""
+	var safe_rect: Rect2i = DisplayServer.get_display_safe_area()
 	var screen_size: Vector2i = DisplayServer.screen_get_size()
 
-	# Default to full screen (no safe area)
-	var safe_rect: Rect2i = Rect2i(0, 0, screen_size.x, screen_size.y)
+	# Raw screen-pixel margins
+	var raw_left: float = float(safe_rect.position.x)
+	var raw_top: float = float(safe_rect.position.y)
+	var raw_right: float = float(screen_size.x - safe_rect.end.x)
+	var raw_bottom: float = float(screen_size.y - safe_rect.end.y)
 
-	safe_margins.left = float(safe_rect.position.x)
-	safe_margins.top = float(safe_rect.position.y)
-	safe_margins.right = float(screen_size.x - safe_rect.end.x)
-	safe_margins.bottom = float(screen_size.y - safe_rect.end.y)
+	# Convert to viewport coordinates (project uses 640x360 with canvas_items stretch)
+	var viewport: Viewport = get_viewport()
+	if viewport and screen_size.x > 0 and screen_size.y > 0:
+		var viewport_size: Vector2 = viewport.get_visible_rect().size
+		var scale_x: float = viewport_size.x / float(screen_size.x)
+		var scale_y: float = viewport_size.y / float(screen_size.y)
+		safe_margins.left = raw_left * scale_x
+		safe_margins.top = raw_top * scale_y
+		safe_margins.right = raw_right * scale_x
+		safe_margins.bottom = raw_bottom * scale_y
+	else:
+		safe_margins.left = raw_left
+		safe_margins.top = raw_top
+		safe_margins.right = raw_right
+		safe_margins.bottom = raw_bottom
 
 	safe_area_changed.emit()
 

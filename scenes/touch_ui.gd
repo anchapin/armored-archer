@@ -59,13 +59,15 @@ func _on_safe_area_changed() -> void:
 func _adjust_joysticks_for_safe_area() -> void:
 	var safe_margins: Dictionary = SafeAreaManager.get_safe_margins()
 
+	# Movement joystick is bottom-left
 	if movement_joystick:
-		movement_joystick.offset_left = -200.0 - safe_margins.right
-		movement_joystick.offset_bottom = 200.0 - safe_margins.bottom
+		movement_joystick.offset_right = 200.0 - safe_margins.left
+		movement_joystick.offset_top = -200.0 - safe_margins.bottom
 
+	# Aiming joystick is bottom-right
 	if aiming_joystick:
-		aiming_joystick.offset_right = 200.0 - safe_margins.left
-		aiming_joystick.offset_top = -200.0 - safe_margins.top
+		aiming_joystick.offset_left = -200.0 - safe_margins.right
+		aiming_joystick.offset_bottom = 200.0 - safe_margins.bottom
 
 func _on_movement_joystick_moved(vector: Vector2) -> void:
 	if player:
