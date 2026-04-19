@@ -34,7 +34,7 @@ const TUTORIALS := {
 			{
 				"id": "movement",
 				"title": "Movement",
-				"description": "Use WASD or Arrow keys to move your character. On mobile, use the left joystick.",
+				"description": "Use the left joystick to move your archer. On keyboard: WASD or Arrow keys.",
 				"action": "move",
 				"position": "bottom_left",
 				"duration": 0,
@@ -43,7 +43,7 @@ const TUTORIALS := {
 			{
 				"id": "aiming",
 				"title": "Aiming",
-				"description": "Aim with the Arrow keys. On mobile, use the right joystick.",
+				"description": "Use the right joystick to aim. Auto-aim targets nearby enemies. On keyboard: Arrow keys.",
 				"action": "aim",
 				"position": "top_right",
 				"duration": 0,
@@ -52,7 +52,7 @@ const TUTORIALS := {
 			{
 				"id": "shooting",
 				"title": "Shooting",
-				"description": "Press Space or Enter to shoot arrows. Auto-aim helps you hit enemies!",
+				"description": "Tap the shoot button to fire arrows. Auto-aim helps you hit! On keyboard: Space or Enter.",
 				"action": "shoot",
 				"position": "center_bottom",
 				"duration": 0,
