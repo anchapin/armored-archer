@@ -13,7 +13,9 @@ extends Control
 
 @onready var loading_indicator: Control = $LoadingIndicator
 @onready var error_dialog: AcceptDialog = $ErrorDialog
+@onready var confirm_dialog: ConfirmationDialog = $ConfirmDialog
 @onready var fallback_banner: PanelContainer = $SafeAreaContainer/CenterContainer/VBoxContainer/FallbackBanner
+@onready var success_panel: PanelContainer = $SuccessPanel
 
 # --- Manager References ---
 @onready var store_manager: Node = get_node_or_null("/root/StoreManager")
@@ -32,6 +34,7 @@ var _store_availability_connection: Callable = Callable()
 
 # --- State ---
 var is_processing: bool = false
+var _pending_product_id: String = ""
 
 func _ready() -> void:
 	theme_manager = get_node_or_null("/root/ThemeManager")
@@ -81,6 +84,10 @@ func _connect_signals() -> void:
 	large_gems_button.pressed.connect(_on_large_gems_pressed)
 	restore_button.pressed.connect(_on_restore_pressed)
 	back_button.pressed.connect(_on_back_pressed)
+
+	if confirm_dialog:
+		confirm_dialog.confirmed.connect(_on_purchase_confirmed)
+		confirm_dialog.canceled.connect(_on_purchase_canceled)
 
 	if fallback_banner:
 		fallback_banner.retry_pressed.connect(_on_banner_retry)
@@ -136,15 +143,42 @@ func _on_banner_retry() -> void:
 	if store_manager and store_manager.has_method("_perform_health_check"):
 		store_manager._perform_health_check()
 
+# --- Purchase Confirmation ---
+func _request_purchase_confirmation(product_id: String) -> void:
+	if is_processing or not store_manager:
+		return
+
+	_pending_product_id = product_id
+	var product_info: Dictionary = store_manager.get_product_info(product_id)
+	var gem_amount: int = product_info.get("gem_amount", 0)
+	var title: String = product_info.get("localized_title", "Gem Pack")
+
+	if confirm_dialog:
+		confirm_dialog.dialog_text = "Buy %s (%d gems)?" % [title, gem_amount]
+		confirm_dialog.title = "Confirm Purchase"
+		confirm_dialog.popup_centered()
+	else:
+		_initiate_purchase(product_id)
+
+func _on_purchase_confirmed() -> void:
+	if _pending_product_id.is_empty():
+		return
+	var product_id := _pending_product_id
+	_pending_product_id = ""
+	_initiate_purchase(product_id)
+
+func _on_purchase_canceled() -> void:
+	_pending_product_id = ""
+
 # --- Purchase Handlers ---
 func _on_small_gems_pressed() -> void:
-	_initiate_purchase(store_manager.PRODUCT_SMALL_GEMS)
+	_request_purchase_confirmation(store_manager.PRODUCT_SMALL_GEMS)
 
 func _on_medium_gems_pressed() -> void:
-	_initiate_purchase(store_manager.PRODUCT_MEDIUM_GEMS)
+	_request_purchase_confirmation(store_manager.PRODUCT_MEDIUM_GEMS)
 
 func _on_large_gems_pressed() -> void:
-	_initiate_purchase(store_manager.PRODUCT_LARGE_GEMS)
+	_request_purchase_confirmation(store_manager.PRODUCT_LARGE_GEMS)
 
 func _initiate_purchase(product_id: String) -> void:
 	if is_processing:
@@ -219,6 +253,7 @@ func _on_purchase_succeeded(product_id: String, gems_awarded: int) -> void:
 	_set_buttons_enabled(true)
 
 	print("Purchase succeeded! Product: %s, Gems awarded: %d" % [product_id, gems_awarded])
+	_show_purchase_success(gems_awarded)
 
 func _on_purchase_failed(product_id: String, error: String) -> void:
 	is_processing = false
@@ -261,3 +296,29 @@ func _apply_design_tokens() -> void:
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()
 	_apply_design_tokens()
+
+# --- Purchase Success Feedback ---
+func _show_purchase_success(gems_awarded: int) -> void:
+	if not success_panel:
+		return
+
+	var label: Label = success_panel.get_node_or_null("VBoxContainer/MessageLabel")
+	var gems_label_node: Label = success_panel.get_node_or_null("VBoxContainer/GemsLabel")
+	if label:
+		label.text = "Purchase Complete!"
+	if gems_label_node:
+		gems_label_node.text = "+%d Gems" % gems_awarded
+
+	success_panel.modulate.a = 0.0
+	success_panel.visible = true
+	success_panel.pivot_offset = success_panel.size / 2
+	success_panel.scale = Vector2(0.5, 0.5)
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(success_panel, "modulate:a", 1.0, 0.3).set_ease(Tween.EASE_OUT)
+	tween.tween_property(success_panel, "scale", Vector2.ONE, 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.set_parallel(false)
+	tween.tween_interval(2.5)
+	tween.tween_property(success_panel, "modulate:a", 0.0, 0.4).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func(): success_panel.visible = false)

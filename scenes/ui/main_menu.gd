@@ -110,7 +110,17 @@ func _on_buy_gems_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/store_menu.tscn")
 
 func _on_settings_pressed() -> void:
-	print("Settings not implemented yet")
+	var settings_scene = load("res://scenes/ui/settings_menu.tscn")
+	if settings_scene:
+		get_tree().change_scene_to_packed(settings_scene)
+	else:
+		var dialog := AcceptDialog.new()
+		dialog.title = "Settings"
+		dialog.dialog_text = "Settings are coming soon in a future update."
+		dialog.ok_button_text = "OK"
+		get_tree().root.add_child(dialog)
+		dialog.popup_centered()
+		dialog.confirmed.connect(func(): dialog.queue_free())
 
 func _on_loadout_pressed() -> void:
 	# Clean up existing loadout instance if it exists
