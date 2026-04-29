@@ -4,9 +4,9 @@ This directory contains test files for modules that have not yet been implemente
 
 ## Archived Tests
 
-| Test File | Missing Module | Purpose |
-|-----------|---------------|---------|
-| `stat_allocation.spec.ts.bak` | `stat_allocation.ts` | Tests for respec costs, stat validation, and build management |
+| Test File                          | Missing Module            | Purpose                                                       |
+| ---------------------------------- | ------------------------- | ------------------------------------------------------------- |
+| `stat_allocation.spec.ts.bak`      | `stat_allocation.ts`      | Tests for respec costs, stat validation, and build management |
 | `progression_tracking.spec.ts.bak` | `progression_tracking.ts` | Tests for quest progress, map markers, and level requirements |
 
 ## How to Re-enable

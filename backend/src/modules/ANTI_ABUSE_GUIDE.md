@@ -10,27 +10,27 @@ The PvP anti-abuse system provides comprehensive protection against common abuse
 
 Each PvP RPC endpoint has configurable rate limits to prevent spam and bot attacks:
 
-| RPC Endpoint | Requests/Minute | Penalty | Purpose |
-|--------------|------------------|----------|---------|
-| `create_match` | 5 | 5 minutes | Prevent spam match creation |
-| `accept_match` | 10 | 2 minutes | Limit rapid match acceptance |
-| `submit_turn` | 10 | 1 minute | Prevent turn spam |
-| `complete_match` | 3 | 10 minutes | Prevent rapid match completion farming |
-| `forfeit_match` | 2 | 10 minutes | Limit forfeit spam |
-| `list_matches` | 30 | 30 seconds | Limit query spam |
-| `get_player_rank` | 60 | 10 seconds | Limit rank check spam |
-| `get_async_match_state` | 30 | 30 seconds | Limit state polling |
+| RPC Endpoint            | Requests/Minute | Penalty    | Purpose                                |
+| ----------------------- | --------------- | ---------- | -------------------------------------- |
+| `create_match`          | 5               | 5 minutes  | Prevent spam match creation            |
+| `accept_match`          | 10              | 2 minutes  | Limit rapid match acceptance           |
+| `submit_turn`           | 10              | 1 minute   | Prevent turn spam                      |
+| `complete_match`        | 3               | 10 minutes | Prevent rapid match completion farming |
+| `forfeit_match`         | 2               | 10 minutes | Limit forfeit spam                     |
+| `list_matches`          | 30              | 30 seconds | Limit query spam                       |
+| `get_player_rank`       | 60              | 10 seconds | Limit rank check spam                  |
+| `get_async_match_state` | 30              | 30 seconds | Limit state polling                    |
 
 ### 2. Match Cooldowns
 
 Time-based cooldowns prevent rapid consecutive actions:
 
-| Action | Cooldown Duration |
-|---------|------------------|
-| Create match | 5 seconds |
-| Accept match | 10 seconds |
-| Complete match | 30 seconds |
-| Abandon match | 60 seconds |
+| Action         | Cooldown Duration |
+| -------------- | ----------------- |
+| Create match   | 5 seconds         |
+| Accept match   | 10 seconds        |
+| Complete match | 30 seconds        |
+| Abandon match  | 60 seconds        |
 
 ### 3. Concurrent Match Limits
 
@@ -59,12 +59,14 @@ Time-based cooldowns prevent rapid consecutive actions:
 Analyzes match history for suspicious patterns:
 
 #### Alternating Win/Loss Pattern
+
 - Detects players taking turns winning against each other
 - Requires minimum 5 matches against same opponent
 - Flags when 80%+ of matches alternate results
 - Confidence scales with alternation frequency
 
 #### Rapid Repeated Opponent Pattern
+
 - Detects excessively rapid matches against same opponent
 - Requires minimum 3 matches against same opponent
 - Flags when average time between matches is < 2 minutes
@@ -79,10 +81,10 @@ Initialize the rate limiting module with custom configuration.
 ```typescript
 initializeRateLimiting(
   {
-    'create_match': { maxRequests: 10, windowMs: 60000, penaltyMs: 120000 }
+    create_match: { maxRequests: 10, windowMs: 60000, penaltyMs: 120000 },
   },
   {
-    matchCompleteMs: 60000
+    matchCompleteMs: 60000,
   }
 );
 ```
@@ -180,23 +182,27 @@ cleanupTurnTracking(userId, matchId);
 The rate limiting system is integrated into the following RPC endpoints:
 
 ### `rpcCreateMatch`
+
 1. Checks rate limit for `create_match`
 2. Checks cooldown for match creation
 3. Checks concurrent match limit
 4. Records match creation action on success
 
 ### `rpcAcceptMatch`
+
 1. Checks rate limit for `accept_match`
 2. Checks cooldown for match acceptance
 3. Checks concurrent match limit
 4. Records match acceptance action on success
 
 ### `rpcSubmitTurn`
+
 1. Checks rate limit for `submit_turn`
 2. Checks for duplicate turn submission
 3. Returns error if duplicate detected
 
 ### `rpcCompleteMatch`
+
 1. Checks rate limit for `complete_match`
 2. Checks cooldown for match completion
 3. Performs win trading detection
@@ -207,6 +213,7 @@ The rate limiting system is integrated into the following RPC endpoints:
 ## Error Responses
 
 ### Rate Limit Exceeded
+
 ```json
 {
   "error": "Rate limit exceeded. Please try again later.",
@@ -215,6 +222,7 @@ The rate limiting system is integrated into the following RPC endpoints:
 ```
 
 ### Cooldown Active
+
 ```json
 {
   "error": "Please wait before creating another match.",
@@ -223,6 +231,7 @@ The rate limiting system is integrated into the following RPC endpoints:
 ```
 
 ### Concurrent Match Limit Reached
+
 ```json
 {
   "error": "You have 3 active matches. Complete or abandon some matches first.",
@@ -232,6 +241,7 @@ The rate limiting system is integrated into the following RPC endpoints:
 ```
 
 ### Duplicate Turn Submission
+
 ```json
 {
   "error": "You have already submitted a turn for this round.",
@@ -240,6 +250,7 @@ The rate limiting system is integrated into the following RPC endpoints:
 ```
 
 ### Abandonment Limit Exceeded
+
 ```json
 {
   "error": "Too many abandonments. Please wait before abandoning another match.",
@@ -304,6 +315,7 @@ Default values can be overridden via `initializeRateLimiting()`:
 ## Testing
 
 Comprehensive tests are available in `rate_limit.test.ts` covering:
+
 - RPC rate limiting (5 tests)
 - Match cooldowns (4 tests)
 - Concurrent match limits (3 tests)

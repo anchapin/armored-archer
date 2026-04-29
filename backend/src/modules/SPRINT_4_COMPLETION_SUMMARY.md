@@ -9,27 +9,29 @@
 
 ## Must-Have Items Status
 
-| Item | Status | Notes |
-|-------|----------|--------|
-| Document and implement the async duel lifecycle: creation, turn submission, timeout, reconnect, and resolution | ✅ Complete | Full lifecycle documented in ASYNC_DUEL_LIFECYCLE.md |
-| Finalize casual versus ranked reward differences and expose them clearly in the UI | ✅ Complete | Casual shows "No rank changes", Ranked shows rank updates |
-| Implement and tune punch-up eligibility plus upside/downside reward rules | ✅ Complete | Mechanics verified and documented in PUNCH_UP_MECHANICS_SUMMARY.md |
-| Add match history and basic dispute/debug visibility for internal QA | ✅ Complete | `get_match_details` and `admin_query_matches` endpoints available |
-| Harden anti-abuse checks around invalid actions, repeated submissions, and ranking exploits | ✅ Complete | Comprehensive checks documented in ANTI_ABUSE_GUIDE.md |
+| Item                                                                                                           | Status      | Notes                                                              |
+| -------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------ |
+| Document and implement the async duel lifecycle: creation, turn submission, timeout, reconnect, and resolution | ✅ Complete | Full lifecycle documented in ASYNC_DUEL_LIFECYCLE.md               |
+| Finalize casual versus ranked reward differences and expose them clearly in the UI                             | ✅ Complete | Casual shows "No rank changes", Ranked shows rank updates          |
+| Implement and tune punch-up eligibility plus upside/downside reward rules                                      | ✅ Complete | Mechanics verified and documented in PUNCH_UP_MECHANICS_SUMMARY.md |
+| Add match history and basic dispute/debug visibility for internal QA                                           | ✅ Complete | `get_match_details` and `admin_query_matches` endpoints available  |
+| Harden anti-abuse checks around invalid actions, repeated submissions, and ranking exploits                    | ✅ Complete | Comprehensive checks documented in ANTI_ABUSE_GUIDE.md             |
 
 ## Stretch Items Status
 
-| Item | Status | Notes |
-|-------|----------|--------|
+| Item                                                            | Status      | Notes                                                      |
+| --------------------------------------------------------------- | ----------- | ---------------------------------------------------------- |
 | Add simple replay summaries or turn logs for internal debugging | ✅ Complete | `match_replay.ts` module with turn-by-turn state snapshots |
-| Add player-facing warnings for high-risk punch-up challenges | ✅ Complete | `PunchUpWarningDialog` with risk levels and reward display |
+| Add player-facing warnings for high-risk punch-up challenges    | ✅ Complete | `PunchUpWarningDialog` with risk levels and reward display |
 
 ## Documentation Created
 
 ### 1. Async Duel Lifecycle Documentation
+
 **File**: `backend/src/modules/ASYNC_DUEL_LIFECYCLE.md`
 
 **Contents**:
+
 - Complete lifecycle state diagram (Created → Pending → Active → Complete → Archived)
 - Detailed RPC endpoint documentation for each lifecycle stage
 - Turn flow diagram showing both players' turn submission
@@ -42,9 +44,11 @@
 - Testing checklist
 
 ### 2. Punch-Up Mechanics Summary
+
 **File**: `backend/src/modules/PUNCH_UP_MECHANICS_SUMMARY.md`
 
 **Contents**:
+
 - Eligibility rules (min rank 20, diff 5-15)
 - Reward calculations with formulas
 - Risk levels (Low, Medium, High) with thresholds
@@ -55,9 +59,11 @@
 - Test cases for verification
 
 ### 3. QA and Dispute Resolution Guide
+
 **File**: `backend/src/modules/QA_DISPUTE_RESOLUTION_GUIDE.md`
 
 **Contents**:
+
 - Debug/dispute endpoint documentation:
   - `armored_archer/get_match_details` - Full match info with combat logs
   - `armored_archer/admin_query_matches` - Advanced search with filters
@@ -72,7 +78,9 @@
 ## Key Implementations Verified
 
 ### 1. Async Duel Lifecycle
+
 **Backend (`matchmaker.ts`)**:
+
 - ✅ `rpcCreateMatch()` - Match creation with anti-abuse checks
 - ✅ `rpcAcceptMatch()` - Match acceptance
 - ✅ `rpcSubmitTurn()` - Turn submission with duplicate detection
@@ -83,35 +91,43 @@
 - ✅ Reconnect flow support
 
 **Client (`MatchmakerManager.gd`)**:
+
 - ✅ Async duel lifecycle methods
 - ✅ Reconnect signal: `match_reconnected`
 - ✅ Timeout signals: `match_expired`, `turn_timeout`
 - ✅ Turn submission with validation
 
 ### 2. Casual vs Ranked Rewards
+
 **Backend (`matchmaker.ts`)**:
+
 - ✅ `calculateRewardScaling()` function differentiates match types
 - ✅ Casual: Base XP (50-75), no rank changes
 - ✅ Ranked: Higher XP (100-150), rank changes (±10-30), gems for punch-up
 
 **Client (`match_results.gd`)**:
+
 - ✅ Shows "Casual Match - No rank changes" for casual
 - ✅ Shows rank changes for ranked matches
 - ✅ Match type label displayed clearly
 - ✅ Punch-up status badge
 
 ### 3. Punch-Up Mechanics
+
 **Eligibility Rules**:
+
 - ✅ Minimum rank difference: 5 ranks
 - ✅ Maximum rank difference: 15 ranks
 - ✅ Minimum rank required: 20 (prevents low-level abuse)
 
 **Reward System**:
+
 - ✅ Underdog XP multiplier: 1.2x to 2.0x
 - ✅ Underdog gem bonus: 3 to 10 gems
 - ✅ Favorite penalty: 50% to 70% of normal rewards
 
 **UI Integration**:
+
 - ✅ `PunchUpWarningDialog` with risk levels (Low/Medium/High)
 - ✅ Risk color coding (Green/Orange/Red)
 - ✅ Reward display: "+X% XP, +Y Gems" for wins
@@ -120,7 +136,9 @@
 - ✅ Punch-up statistics tracking in MatchmakerManager
 
 ### 4. Match History & Debug Visibility
+
 **Endpoints**:
+
 - ✅ `armored_archer/get_match_details` - Comprehensive match data:
   - Combat log with turn-by-turn actions
   - Player stats at match time
@@ -140,12 +158,14 @@
   - Statistics summary (wins, losses, win rate, punch-up stats)
 
 **Audit Trail**:
+
 - ✅ All admin/debug queries logged with user ID and filters
 - ✅ Timestamps for accountability
 
 ### 5. Anti-Abuse Checks
 
 **Rate Limiting** (per RPC):
+
 - ✅ `create_match`: 5/minute, 5 minute penalty
 - ✅ `accept_match`: 10/minute, 2 minute penalty
 - ✅ `submit_turn`: 10/minute, 1 minute penalty
@@ -156,37 +176,44 @@
 - ✅ `get_async_match_state`: 30/minute, 30 second penalty
 
 **Cooldowns**:
+
 - ✅ Create match: 5 seconds
 - ✅ Accept match: 10 seconds
 - ✅ Complete match: 30 seconds
 - ✅ Abandon match: 60 seconds
 
 **Duplicate Detection**:
+
 - ✅ `checkDuplicateTurn()` prevents duplicate submissions
 - ✅ Tracks last turn per player per match
 - ✅ Auto-cleanup on match completion
 
 **Win Trading Detection**:
+
 - ✅ Alternating win/loss pattern (80%+ alternation)
 - ✅ Rapid repeated opponent pattern (< 2 minutes between matches)
 - ✅ Confidence scoring for suspicious patterns
 
 **Concurrent Match Limits**:
+
 - ✅ Maximum 3 active matches per player
 - ✅ Enforced on create and accept
 
 **Abandonment Limits**:
+
 - ✅ Maximum 5 abandonments per hour
 - ✅ Reset after 1 hour with no abandonments
 
 ### 6. Replay Summaries/Turn Logs
 
 **Backend (`match_replay.ts`)**:
+
 - ✅ `rpcGetMatchReplay()` - Detailed replay data
 - ✅ `rpcListMatchReplays()` - List with filtering
 - ✅ `rpcFlagMatchForQa()` - Flag matches for investigation
 
 **Data Structures**:
+
 - ✅ `TurnStateSnapshot` - Turn-by-turn state:
   - Turn number and timestamp
   - Creator and opponent health
@@ -208,6 +235,7 @@
 ### 7. Player-Facing Punch-Up Warnings
 
 **Client (`punch_up_warning_dialog.gd`)**:
+
 - ✅ Complete warning dialog implementation
 - ✅ Risk level display with color coding
 - ✅ Rank difference explanation
@@ -216,12 +244,14 @@
   - "If you LOSE: -X% XP, -Y Rank"
 
 **Integration**:
+
 - ✅ `MatchmakerManager.should_show_punch_up_warning()` - Determines if warning needed
 - ✅ `MatchmakingMenu._show_punch_up_warning()` - Displays dialog
 - ✅ Accept/Decline buttons with proper signal handling
 - ✅ Theme support with DesignTokens colors
 
 **Risk Levels**:
+
 - ✅ Low (rank diff 5-7): Green color, mild warning
 - ✅ Medium (rank diff 8-11): Orange color, moderate warning
 - ✅ High (rank diff 12-15): Red color, severe warning
@@ -229,6 +259,7 @@
 ## Test Coverage
 
 ### Backend Tests
+
 - ✅ `matchmaker.test.ts`: 74 tests - All passing
 - ✅ `rate_limit.test.ts`: 34 tests - All passing
 - ✅ `match_replay.test.ts`: Replay system tests

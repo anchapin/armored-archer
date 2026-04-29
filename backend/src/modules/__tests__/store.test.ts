@@ -21,7 +21,12 @@ jest.mock('../../utils/cache', () => ({
   resetCacheManager: jest.fn(),
 }));
 
-import { createMockLogger, createMockContext, createMockNakama, testStorage } from '../../__mocks__/nakama';
+import {
+  createMockLogger,
+  createMockContext,
+  createMockNakama,
+  testStorage,
+} from '../../__mocks__/nakama';
 import {
   rpcValidatePurchase,
   rpcGetCurrency,
@@ -4660,7 +4665,12 @@ describe('store', () => {
       // Pre-populate currency (enough gems)
       const currency = createMockCurrency({ gems: 1000 });
       mockNk.storageWrite([
-        { collection: 'player_currency', key: 'test-user', userId: 'test-user', value: JSON.stringify(currency) },
+        {
+          collection: 'player_currency',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify(currency),
+        },
       ]);
 
       const payload = JSON.stringify({ item_id: 'skin_helm_golden' });
@@ -4685,7 +4695,12 @@ describe('store', () => {
     it('should reject purchase with insufficient gems', () => {
       const currency = createMockCurrency({ gems: 100 });
       mockNk.storageWrite([
-        { collection: 'player_currency', key: 'test-user', userId: 'test-user', value: JSON.stringify(currency) },
+        {
+          collection: 'player_currency',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify(currency),
+        },
       ]);
 
       const payload = JSON.stringify({ item_id: 'skin_armor_royal' }); // costs 1200
@@ -4699,7 +4714,12 @@ describe('store', () => {
     it('should reject purchase of already owned cosmetic', () => {
       const currency = createMockCurrency({ gems: 1000 });
       mockNk.storageWrite([
-        { collection: 'player_currency', key: 'test-user', userId: 'test-user', value: JSON.stringify(currency) },
+        {
+          collection: 'player_currency',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify(currency),
+        },
         {
           collection: 'player_cosmetics_owned',
           key: 'test-user',
@@ -4807,7 +4827,12 @@ describe('store', () => {
   describe('rpcGetOwnedCosmetics', () => {
     it('should return owned cosmetics for a user', () => {
       mockNk.storageWrite([
-        { collection: 'player_cosmetics_owned', key: 'test-user', userId: 'test-user', value: JSON.stringify({ items: ['skin_helm_golden', 'skin_bow_fire'] }) },
+        {
+          collection: 'player_cosmetics_owned',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify({ items: ['skin_helm_golden', 'skin_bow_fire'] }),
+        },
       ]);
 
       const result = rpcGetOwnedCosmetics(mockCtx, mockLogger, mockNk, '{}');
@@ -4836,7 +4861,18 @@ describe('store', () => {
   describe('rpcGetEquippedCosmetics', () => {
     it('should return equipped cosmetics for a user', () => {
       mockNk.storageWrite([
-        { collection: 'player_cosmetics_equipped', key: 'test-user', userId: 'test-user', value: JSON.stringify({ helm: 'skin_helm_golden', armor: '', bow: 'skin_bow_fire', arrow: '', amulet: '' }) },
+        {
+          collection: 'player_cosmetics_equipped',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify({
+            helm: 'skin_helm_golden',
+            armor: '',
+            bow: 'skin_bow_fire',
+            arrow: '',
+            amulet: '',
+          }),
+        },
       ]);
 
       const result = rpcGetEquippedCosmetics(mockCtx, mockLogger, mockNk, '{}');
@@ -4866,7 +4902,12 @@ describe('store', () => {
   describe('rpcEquipCosmetic', () => {
     it('should equip an owned cosmetic to the correct slot', () => {
       mockNk.storageWrite([
-        { collection: 'player_cosmetics_owned', key: 'test-user', userId: 'test-user', value: JSON.stringify({ items: ['skin_helm_golden'] }) },
+        {
+          collection: 'player_cosmetics_owned',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify({ items: ['skin_helm_golden'] }),
+        },
       ]);
 
       const payload = JSON.stringify({ slot: 'helm', skin_id: 'skin_helm_golden' });
@@ -4889,7 +4930,12 @@ describe('store', () => {
 
     it('should reject slot mismatch', () => {
       mockNk.storageWrite([
-        { collection: 'player_cosmetics_owned', key: 'test-user', userId: 'test-user', value: JSON.stringify({ items: ['skin_helm_golden'] }) },
+        {
+          collection: 'player_cosmetics_owned',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify({ items: ['skin_helm_golden'] }),
+        },
       ]);
 
       const payload = JSON.stringify({ slot: 'armor', skin_id: 'skin_helm_golden' });
@@ -4920,7 +4966,18 @@ describe('store', () => {
   describe('rpcUnequipCosmetic', () => {
     it('should unequip a cosmetic slot', () => {
       mockNk.storageWrite([
-        { collection: 'player_cosmetics_equipped', key: 'test-user', userId: 'test-user', value: JSON.stringify({ helm: 'skin_helm_golden', armor: '', bow: '', arrow: '', amulet: '' }) },
+        {
+          collection: 'player_cosmetics_equipped',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify({
+            helm: 'skin_helm_golden',
+            armor: '',
+            bow: '',
+            arrow: '',
+            amulet: '',
+          }),
+        },
       ]);
 
       const payload = JSON.stringify({ slot: 'helm' });
@@ -4942,10 +4999,23 @@ describe('store', () => {
   describe('rpcSaveCosmeticLoadout', () => {
     it('should save a valid cosmetic loadout', () => {
       mockNk.storageWrite([
-        { collection: 'player_cosmetics_owned', key: 'test-user', userId: 'test-user', value: JSON.stringify({ items: ['skin_helm_golden', 'skin_bow_fire'] }) },
+        {
+          collection: 'player_cosmetics_owned',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify({ items: ['skin_helm_golden', 'skin_bow_fire'] }),
+        },
       ]);
 
-      const payload = JSON.stringify({ equipped: { helm: 'skin_helm_golden', armor: '', bow: 'skin_bow_fire', arrow: '', amulet: '' } });
+      const payload = JSON.stringify({
+        equipped: {
+          helm: 'skin_helm_golden',
+          armor: '',
+          bow: 'skin_bow_fire',
+          arrow: '',
+          amulet: '',
+        },
+      });
       const result = rpcSaveCosmeticLoadout(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -4955,7 +5025,9 @@ describe('store', () => {
     });
 
     it('should reject loadout with unowned cosmetic', () => {
-      const payload = JSON.stringify({ equipped: { helm: 'skin_helm_golden', armor: '', bow: '', arrow: '', amulet: '' } });
+      const payload = JSON.stringify({
+        equipped: { helm: 'skin_helm_golden', armor: '', bow: '', arrow: '', amulet: '' },
+      });
       const result = rpcSaveCosmeticLoadout(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -4964,7 +5036,9 @@ describe('store', () => {
     });
 
     it('should reject loadout with invalid cosmetic', () => {
-      const payload = JSON.stringify({ equipped: { helm: 'nonexistent_skin', armor: '', bow: '', arrow: '', amulet: '' } });
+      const payload = JSON.stringify({
+        equipped: { helm: 'nonexistent_skin', armor: '', bow: '', arrow: '', amulet: '' },
+      });
       const result = rpcSaveCosmeticLoadout(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -4974,10 +5048,17 @@ describe('store', () => {
 
     it('should reject loadout with slot mismatch', () => {
       mockNk.storageWrite([
-        { collection: 'player_cosmetics_owned', key: 'test-user', userId: 'test-user', value: JSON.stringify({ items: ['skin_helm_golden'] }) },
+        {
+          collection: 'player_cosmetics_owned',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify({ items: ['skin_helm_golden'] }),
+        },
       ]);
 
-      const payload = JSON.stringify({ equipped: { helm: '', armor: 'skin_helm_golden', bow: '', arrow: '', amulet: '' } });
+      const payload = JSON.stringify({
+        equipped: { helm: '', armor: 'skin_helm_golden', bow: '', arrow: '', amulet: '' },
+      });
       const result = rpcSaveCosmeticLoadout(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
@@ -5061,25 +5142,25 @@ describe('store', () => {
       'skin_amulet_founders',
     ];
 
-    it('should have all 5 Founder\'s items in the cosmetic catalog', () => {
+    it("should have all 5 Founder's items in the cosmetic catalog", () => {
       for (const itemId of foundersItems) {
         expect(COSMETIC_CATALOG[itemId]).toBeDefined();
         expect(COSMETIC_CATALOG[itemId].item_id).toBe(itemId);
       }
     });
 
-    it('should mark all Founder\'s items as launch exclusive', () => {
+    it("should mark all Founder's items as launch exclusive", () => {
       for (const itemId of foundersItems) {
         expect(COSMETIC_CATALOG[itemId].is_launch_exclusive).toBe(true);
       }
     });
 
-    it('should have Founder\'s items span all 5 equipment slots', () => {
-      const slots = foundersItems.map(id => COSMETIC_CATALOG[id].slot);
+    it("should have Founder's items span all 5 equipment slots", () => {
+      const slots = foundersItems.map((id) => COSMETIC_CATALOG[id].slot);
       expect(slots.sort()).toEqual(['amulet', 'armor', 'arrow', 'bow', 'helm']);
     });
 
-    it('should have Founder\'s items be non-premium (earnable)', () => {
+    it("should have Founder's items be non-premium (earnable)", () => {
       for (const itemId of foundersItems) {
         expect(COSMETIC_CATALOG[itemId].is_premium).toBe(false);
       }
@@ -5107,7 +5188,7 @@ describe('store', () => {
       expect(BUNDLE_DEFINITIONS.bundle_starter_founders.bundle_id).toBe('bundle_starter_founders');
     });
 
-    it('should include all 5 Founder\'s items in the bundle', () => {
+    it("should include all 5 Founder's items in the bundle", () => {
       const bundle = BUNDLE_DEFINITIONS.bundle_starter_founders;
       expect(bundle.item_ids).toEqual([
         'skin_helm_founders',
@@ -5142,9 +5223,19 @@ describe('store', () => {
 
   describe('rpcPurchaseBundle', () => {
     it('should successfully purchase a bundle with sufficient gems', () => {
-      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 }));
+      testStorage.set(
+        'player_currency:test-user',
+        JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 })
+      );
 
-      const result = JSON.parse(rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' })));
+      const result = JSON.parse(
+        rpcPurchaseBundle(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ bundle_id: 'bundle_starter_founders' })
+        )
+      );
       expect(result.success).toBe(true);
       expect(result.bundle_id).toBe('bundle_starter_founders');
       expect(result.price).toBe(1200);
@@ -5153,41 +5244,92 @@ describe('store', () => {
     });
 
     it('should reject purchase of non-existent bundle', () => {
-      const result = JSON.parse(rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'nonexistent_bundle' })));
+      const result = JSON.parse(
+        rpcPurchaseBundle(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ bundle_id: 'nonexistent_bundle' })
+        )
+      );
       expect(result.success).toBe(false);
       expect(result.error_code).toBe('INVALID_BUNDLE');
     });
 
     it('should reject purchase with insufficient gems', () => {
-      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 500, gold: 0 }));
+      testStorage.set(
+        'player_currency:test-user',
+        JSON.stringify({ user_id: 'test-user', gems: 500, gold: 0 })
+      );
 
-      const result = JSON.parse(rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' })));
+      const result = JSON.parse(
+        rpcPurchaseBundle(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ bundle_id: 'bundle_starter_founders' })
+        )
+      );
       expect(result.success).toBe(false);
       expect(result.error_code).toBe('INSUFFICIENT_GEMS');
     });
 
     it('should reject purchase when player already owns a bundle item', () => {
-      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 }));
-      testStorage.set('player_cosmetics_owned:test-user', JSON.stringify({ items: ['skin_helm_founders'] }));
+      testStorage.set(
+        'player_currency:test-user',
+        JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 })
+      );
+      testStorage.set(
+        'player_cosmetics_owned:test-user',
+        JSON.stringify({ items: ['skin_helm_founders'] })
+      );
 
-      const result = JSON.parse(rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' })));
+      const result = JSON.parse(
+        rpcPurchaseBundle(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ bundle_id: 'bundle_starter_founders' })
+        )
+      );
       expect(result.success).toBe(false);
       expect(result.error_code).toBe('ITEM_ALREADY_OWNED');
     });
 
     it('should reject duplicate purchase of one-time bundle', () => {
-      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 }));
-      testStorage.set('player_bundles_owned:test-user', JSON.stringify({ bundles: ['bundle_starter_founders'] }));
+      testStorage.set(
+        'player_currency:test-user',
+        JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 })
+      );
+      testStorage.set(
+        'player_bundles_owned:test-user',
+        JSON.stringify({ bundles: ['bundle_starter_founders'] })
+      );
 
-      const result = JSON.parse(rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' })));
+      const result = JSON.parse(
+        rpcPurchaseBundle(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ bundle_id: 'bundle_starter_founders' })
+        )
+      );
       expect(result.success).toBe(false);
       expect(result.error_code).toBe('ALREADY_OWNED');
     });
 
     it('should add all bundle items to player ownership', () => {
-      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 }));
+      testStorage.set(
+        'player_currency:test-user',
+        JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 })
+      );
 
-      rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' }));
+      rpcPurchaseBundle(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({ bundle_id: 'bundle_starter_founders' })
+      );
 
       const ownedKey = 'player_cosmetics_owned:test-user';
       const stored = JSON.parse(testStorage.get(ownedKey) || '{}');
@@ -5197,9 +5339,17 @@ describe('store', () => {
     });
 
     it('should record bundle in player_bundles_owned', () => {
-      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 }));
+      testStorage.set(
+        'player_currency:test-user',
+        JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 })
+      );
 
-      rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' }));
+      rpcPurchaseBundle(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({ bundle_id: 'bundle_starter_founders' })
+      );
 
       const bundleKey = 'player_bundles_owned:test-user';
       const stored = JSON.parse(testStorage.get(bundleKey) || '{}');
@@ -5207,9 +5357,19 @@ describe('store', () => {
     });
 
     it('should deduct correct bundle price (not individual prices)', () => {
-      testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 }));
+      testStorage.set(
+        'player_currency:test-user',
+        JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 })
+      );
 
-      const result = JSON.parse(rpcPurchaseBundle(mockCtx, mockLogger, mockNk, JSON.stringify({ bundle_id: 'bundle_starter_founders' })));
+      const result = JSON.parse(
+        rpcPurchaseBundle(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ bundle_id: 'bundle_starter_founders' })
+        )
+      );
       expect(result.new_balance).toBe(3800); // 5000 - 1200
     });
   });
@@ -5228,7 +5388,10 @@ describe('store', () => {
     });
 
     it('should mark bundle as owned when player purchased it', () => {
-      testStorage.set('player_bundles_owned:test-user', JSON.stringify({ bundles: ['bundle_starter_founders'] }));
+      testStorage.set(
+        'player_bundles_owned:test-user',
+        JSON.stringify({ bundles: ['bundle_starter_founders'] })
+      );
 
       const result = JSON.parse(rpcGetBundleCatalog(mockCtx, mockLogger, mockNk, '{}'));
       expect(result.bundles[0].is_owned).toBe(true);
@@ -5269,10 +5432,21 @@ describe('store', () => {
 
     describe('webhook audit logging', () => {
       it('logs audit for successful webhook purchase', async () => {
-        testStorage.set('player_currency:test-user', JSON.stringify({ user_id: 'test-user', gems: 0, gold: 0 }));
+        testStorage.set(
+          'player_currency:test-user',
+          JSON.stringify({ user_id: 'test-user', gems: 0, gold: 0 })
+        );
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ status: 'active', valid: true, subscriber: { entitlements: { 'com.armoredarcher.gems.small': { product_id: 'com.armoredarcher.gems.small' } } } }),
+          json: async () => ({
+            status: 'active',
+            valid: true,
+            subscriber: {
+              entitlements: {
+                'com.armoredarcher.gems.small': { product_id: 'com.armoredarcher.gems.small' },
+              },
+            },
+          }),
           text: async () => '',
         });
 
@@ -5285,7 +5459,9 @@ describe('store', () => {
         await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
 
         const audits = getAuditLogs(mockNk);
-        const purchaseAudits = audits.filter((a) => a.action === 'webhook_purchase' && a.result === 'success');
+        const purchaseAudits = audits.filter(
+          (a) => a.action === 'webhook_purchase' && a.result === 'success'
+        );
         expect(purchaseAudits.length).toBeGreaterThanOrEqual(1);
         expect(purchaseAudits[0].details.product_id).toBe('com.armoredarcher.gems.small');
       });

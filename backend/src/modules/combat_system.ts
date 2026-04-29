@@ -1044,7 +1044,8 @@ function notifyMatchStateUpdate(
     const opponentId = matchState.opponent_id;
 
     // Determine who took the last action
-    const lastActionTakerId = matchState.current_turn_user_id === creatorId ? opponentId : creatorId;
+    const lastActionTakerId =
+      matchState.current_turn_user_id === creatorId ? opponentId : creatorId;
 
     const notificationData = {
       match_id: matchState.match_id,
@@ -1303,9 +1304,10 @@ export async function rpcPlayerDisconnect(
           match_status: match.status,
           match_type: match.match_type,
           current_turn_user_id: matchState.current_turn_user_id,
-          was_winning: ctx.userId === matchState.creator_id
-            ? matchState.creator_health > matchState.opponent_health
-            : matchState.opponent_health > matchState.creator_health,
+          was_winning:
+            ctx.userId === matchState.creator_id
+              ? matchState.creator_health > matchState.opponent_health
+              : matchState.opponent_health > matchState.creator_health,
           health_before_disconnect:
             ctx.userId === matchState.creator_id
               ? matchState.creator_health

@@ -139,8 +139,22 @@ describe('rpcQueryAuditLogs', () => {
 
   it('returns logs filtered by action', () => {
     const entries = [
-      makeStorageObject({ timestamp: 1000, user_id: 'user1', action: 'webhook_purchase', resource: 'gems', details: {}, result: 'success' }),
-      makeStorageObject({ timestamp: 2000, user_id: 'user1', action: 'spend_gems', resource: 'gems', details: {}, result: 'success' }),
+      makeStorageObject({
+        timestamp: 1000,
+        user_id: 'user1',
+        action: 'webhook_purchase',
+        resource: 'gems',
+        details: {},
+        result: 'success',
+      }),
+      makeStorageObject({
+        timestamp: 2000,
+        user_id: 'user1',
+        action: 'spend_gems',
+        resource: 'gems',
+        details: {},
+        result: 'success',
+      }),
     ];
     mockStorageList.mockReturnValue(entries);
 
@@ -152,8 +166,22 @@ describe('rpcQueryAuditLogs', () => {
 
   it('returns logs filtered by result', () => {
     const entries = [
-      makeStorageObject({ timestamp: 1000, user_id: 'user1', action: 'purchase', resource: 'gems', details: {}, result: 'success' }),
-      makeStorageObject({ timestamp: 2000, user_id: 'user1', action: 'purchase', resource: 'gems', details: {}, result: 'failure' }),
+      makeStorageObject({
+        timestamp: 1000,
+        user_id: 'user1',
+        action: 'purchase',
+        resource: 'gems',
+        details: {},
+        result: 'success',
+      }),
+      makeStorageObject({
+        timestamp: 2000,
+        user_id: 'user1',
+        action: 'purchase',
+        resource: 'gems',
+        details: {},
+        result: 'failure',
+      }),
     ];
     mockStorageList.mockReturnValue(entries);
 
@@ -165,13 +193,39 @@ describe('rpcQueryAuditLogs', () => {
 
   it('returns logs filtered by date range', () => {
     const entries = [
-      makeStorageObject({ timestamp: 1000, user_id: 'user1', action: 'purchase', resource: 'gems', details: {}, result: 'success' }),
-      makeStorageObject({ timestamp: 2000, user_id: 'user1', action: 'purchase', resource: 'gems', details: {}, result: 'success' }),
-      makeStorageObject({ timestamp: 3000, user_id: 'user1', action: 'purchase', resource: 'gems', details: {}, result: 'success' }),
+      makeStorageObject({
+        timestamp: 1000,
+        user_id: 'user1',
+        action: 'purchase',
+        resource: 'gems',
+        details: {},
+        result: 'success',
+      }),
+      makeStorageObject({
+        timestamp: 2000,
+        user_id: 'user1',
+        action: 'purchase',
+        resource: 'gems',
+        details: {},
+        result: 'success',
+      }),
+      makeStorageObject({
+        timestamp: 3000,
+        user_id: 'user1',
+        action: 'purchase',
+        resource: 'gems',
+        details: {},
+        result: 'success',
+      }),
     ];
     mockStorageList.mockReturnValue(entries);
 
-    const result = rpcQueryAuditLogs(mockCtx, mockLogger as any, mockNk, '{"from_timestamp":1500,"to_timestamp":2500}');
+    const result = rpcQueryAuditLogs(
+      mockCtx,
+      mockLogger as any,
+      mockNk,
+      '{"from_timestamp":1500,"to_timestamp":2500}'
+    );
     const parsed = JSON.parse(result);
     expect(parsed.logs).toHaveLength(1);
     expect(parsed.logs[0].timestamp).toBe(2000);
@@ -190,23 +244,48 @@ describe('rpcQueryAuditLogs', () => {
 
   it('respects limit parameter', () => {
     const result = rpcQueryAuditLogs(mockCtx, mockLogger as any, mockNk, '{"limit":25}');
-    expect(mockStorageList).toHaveBeenCalledWith(expect.anything(), 'audit_logs', 25, expect.anything(), expect.anything());
+    expect(mockStorageList).toHaveBeenCalledWith(
+      expect.anything(),
+      'audit_logs',
+      25,
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   it('uses default limit of 50', () => {
     const result = rpcQueryAuditLogs(mockCtx, mockLogger as any, mockNk, '{}');
-    expect(mockStorageList).toHaveBeenCalledWith(expect.anything(), 'audit_logs', 50, expect.anything(), expect.anything());
+    expect(mockStorageList).toHaveBeenCalledWith(
+      expect.anything(),
+      'audit_logs',
+      50,
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   it('passes cursor to storageList', () => {
     const result = rpcQueryAuditLogs(mockCtx, mockLogger as any, mockNk, '{"cursor":"next_page"}');
-    expect(mockStorageList).toHaveBeenCalledWith(expect.anything(), 'audit_logs', 50, 'next_page', expect.anything());
+    expect(mockStorageList).toHaveBeenCalledWith(
+      expect.anything(),
+      'audit_logs',
+      50,
+      'next_page',
+      expect.anything()
+    );
   });
 
   it('skips malformed entries', () => {
     const entries = [
       { collection: 'audit_logs', key: 'bad', userId: 'user1', value: 'not-json' },
-      makeStorageObject({ timestamp: 1000, user_id: 'user1', action: 'purchase', resource: 'gems', details: {}, result: 'success' }),
+      makeStorageObject({
+        timestamp: 1000,
+        user_id: 'user1',
+        action: 'purchase',
+        resource: 'gems',
+        details: {},
+        result: 'success',
+      }),
     ];
     mockStorageList.mockReturnValue(entries);
 

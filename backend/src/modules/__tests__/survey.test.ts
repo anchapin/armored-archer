@@ -166,9 +166,9 @@ describe('survey', () => {
 
     it('should return not eligible when within cooldown', () => {
       const recentTime = new Date().toISOString();
-      mockNk.storageList = jest.fn().mockReturnValue([
-        { key: 'post_match_test_1', updateTime: recentTime },
-      ]);
+      mockNk.storageList = jest
+        .fn()
+        .mockReturnValue([{ key: 'post_match_test_1', updateTime: recentTime }]);
 
       const result = rpcGetSurveyStatus(
         mockCtx,
@@ -184,9 +184,9 @@ describe('survey', () => {
 
     it('should return eligible when cooldown has expired', () => {
       const oldTime = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
-      mockNk.storageList = jest.fn().mockReturnValue([
-        { key: 'post_match_test_1', updateTime: oldTime },
-      ]);
+      mockNk.storageList = jest
+        .fn()
+        .mockReturnValue([{ key: 'post_match_test_1', updateTime: oldTime }]);
 
       const result = rpcGetSurveyStatus(
         mockCtx,

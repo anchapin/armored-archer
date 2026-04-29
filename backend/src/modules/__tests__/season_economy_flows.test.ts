@@ -79,9 +79,7 @@ describe('Season Economy Flows', () => {
     });
 
     it('should not earn bronze with only 1 qualifying season finish', () => {
-      const earned = evaluatePrestigeTiers([
-        { season_id: 'season_1', rank: 50 },
-      ]);
+      const earned = evaluatePrestigeTiers([{ season_id: 'season_1', rank: 50 }]);
       expect(earned).toHaveLength(0); // needs 2 seasons
     });
 

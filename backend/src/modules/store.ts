@@ -84,9 +84,10 @@ function cleanupOldReceipts(): void {
 }
 
 // Run cleanup every hour (only in production, not during tests)
-const _receiptCleanupInterval = process.env.NODE_ENV !== 'test'
-  ? setInterval(cleanupOldReceipts, 60 * 60 * 1000)
-  : null as unknown as NodeJS.Timeout;
+const _receiptCleanupInterval =
+  process.env.NODE_ENV !== 'test'
+    ? setInterval(cleanupOldReceipts, 60 * 60 * 1000)
+    : (null as unknown as NodeJS.Timeout);
 
 /** Clear the receipt cleanup interval (for test teardown). */
 export function stopReceiptCleanup(): void {
@@ -557,27 +558,172 @@ export interface CosmeticItem {
  * Combat stats come exclusively from base gear earned through gameplay.
  */
 export const COSMETIC_CATALOG: Record<string, CosmeticItem> = {
-  skin_helm_golden: { item_id: 'skin_helm_golden', name: 'Golden Helm', slot: 'helm', base_gear_required: 'helm_basic', price: 500, is_premium: true },
-  skin_helm_crimson: { item_id: 'skin_helm_crimson', name: 'Crimson Helm', slot: 'helm', base_gear_required: 'helm_iron', price: 300, is_premium: false },
-  skin_helm_shadow: { item_id: 'skin_helm_shadow', name: 'Shadow Helm', slot: 'helm', base_gear_required: 'helm_dragon', price: 1000, is_premium: true },
-  skin_armor_knight: { item_id: 'skin_armor_knight', name: 'Knight Armor', slot: 'armor', base_gear_required: 'armor_leather', price: 600, is_premium: false },
-  skin_armor_royal: { item_id: 'skin_armor_royal', name: 'Royal Armor', slot: 'armor', base_gear_required: 'armor_plate', price: 1200, is_premium: true },
-  skin_armor_shadow: { item_id: 'skin_armor_shadow', name: 'Shadow Armor', slot: 'armor', base_gear_required: 'armor_chain', price: 800, is_premium: false },
-  skin_bow_fire: { item_id: 'skin_bow_fire', name: 'Fire Bow', slot: 'bow', base_gear_required: 'bow_wooden', price: 400, is_premium: false },
-  skin_bow_ice: { item_id: 'skin_bow_ice', name: 'Ice Bow', slot: 'bow', base_gear_required: 'bow_composite', price: 700, is_premium: false },
-  skin_bow_lightning: { item_id: 'skin_bow_lightning', name: 'Lightning Bow', slot: 'bow', base_gear_required: 'bow_crossbow', price: 1500, is_premium: true },
-  skin_arrow_fire: { item_id: 'skin_arrow_fire', name: 'Fire Arrows', slot: 'arrow', base_gear_required: 'arrow_wooden', price: 200, is_premium: false },
-  skin_arrow_ice: { item_id: 'skin_arrow_ice', name: 'Ice Arrows', slot: 'arrow', base_gear_required: 'arrow_iron', price: 350, is_premium: false },
-  skin_arrow_lightning: { item_id: 'skin_arrow_lightning', name: 'Lightning Arrows', slot: 'arrow', base_gear_required: 'arrow_dragon', price: 900, is_premium: true },
-  skin_amulet_golden: { item_id: 'skin_amulet_golden', name: 'Golden Amulet', slot: 'amulet', base_gear_required: 'amulet_protection', price: 400, is_premium: false },
-  skin_amulet_crystal: { item_id: 'skin_amulet_crystal', name: 'Crystal Amulet', slot: 'amulet', base_gear_required: 'amulet_power', price: 600, is_premium: false },
-  skin_amulet_legendary: { item_id: 'skin_amulet_legendary', name: 'Legendary Amulet', slot: 'amulet', base_gear_required: 'amulet_dragon', price: 1200, is_premium: true },
+  skin_helm_golden: {
+    item_id: 'skin_helm_golden',
+    name: 'Golden Helm',
+    slot: 'helm',
+    base_gear_required: 'helm_basic',
+    price: 500,
+    is_premium: true,
+  },
+  skin_helm_crimson: {
+    item_id: 'skin_helm_crimson',
+    name: 'Crimson Helm',
+    slot: 'helm',
+    base_gear_required: 'helm_iron',
+    price: 300,
+    is_premium: false,
+  },
+  skin_helm_shadow: {
+    item_id: 'skin_helm_shadow',
+    name: 'Shadow Helm',
+    slot: 'helm',
+    base_gear_required: 'helm_dragon',
+    price: 1000,
+    is_premium: true,
+  },
+  skin_armor_knight: {
+    item_id: 'skin_armor_knight',
+    name: 'Knight Armor',
+    slot: 'armor',
+    base_gear_required: 'armor_leather',
+    price: 600,
+    is_premium: false,
+  },
+  skin_armor_royal: {
+    item_id: 'skin_armor_royal',
+    name: 'Royal Armor',
+    slot: 'armor',
+    base_gear_required: 'armor_plate',
+    price: 1200,
+    is_premium: true,
+  },
+  skin_armor_shadow: {
+    item_id: 'skin_armor_shadow',
+    name: 'Shadow Armor',
+    slot: 'armor',
+    base_gear_required: 'armor_chain',
+    price: 800,
+    is_premium: false,
+  },
+  skin_bow_fire: {
+    item_id: 'skin_bow_fire',
+    name: 'Fire Bow',
+    slot: 'bow',
+    base_gear_required: 'bow_wooden',
+    price: 400,
+    is_premium: false,
+  },
+  skin_bow_ice: {
+    item_id: 'skin_bow_ice',
+    name: 'Ice Bow',
+    slot: 'bow',
+    base_gear_required: 'bow_composite',
+    price: 700,
+    is_premium: false,
+  },
+  skin_bow_lightning: {
+    item_id: 'skin_bow_lightning',
+    name: 'Lightning Bow',
+    slot: 'bow',
+    base_gear_required: 'bow_crossbow',
+    price: 1500,
+    is_premium: true,
+  },
+  skin_arrow_fire: {
+    item_id: 'skin_arrow_fire',
+    name: 'Fire Arrows',
+    slot: 'arrow',
+    base_gear_required: 'arrow_wooden',
+    price: 200,
+    is_premium: false,
+  },
+  skin_arrow_ice: {
+    item_id: 'skin_arrow_ice',
+    name: 'Ice Arrows',
+    slot: 'arrow',
+    base_gear_required: 'arrow_iron',
+    price: 350,
+    is_premium: false,
+  },
+  skin_arrow_lightning: {
+    item_id: 'skin_arrow_lightning',
+    name: 'Lightning Arrows',
+    slot: 'arrow',
+    base_gear_required: 'arrow_dragon',
+    price: 900,
+    is_premium: true,
+  },
+  skin_amulet_golden: {
+    item_id: 'skin_amulet_golden',
+    name: 'Golden Amulet',
+    slot: 'amulet',
+    base_gear_required: 'amulet_protection',
+    price: 400,
+    is_premium: false,
+  },
+  skin_amulet_crystal: {
+    item_id: 'skin_amulet_crystal',
+    name: 'Crystal Amulet',
+    slot: 'amulet',
+    base_gear_required: 'amulet_power',
+    price: 600,
+    is_premium: false,
+  },
+  skin_amulet_legendary: {
+    item_id: 'skin_amulet_legendary',
+    name: 'Legendary Amulet',
+    slot: 'amulet',
+    base_gear_required: 'amulet_dragon',
+    price: 1200,
+    is_premium: true,
+  },
   // Founder's Arsenal — launch exclusive cosmetic set (zero combat stats)
-  skin_helm_founders: { item_id: 'skin_helm_founders', name: "Founder's Helm", slot: 'helm', base_gear_required: 'helm_basic', price: 400, is_premium: false, is_launch_exclusive: true },
-  skin_armor_founders: { item_id: 'skin_armor_founders', name: "Founder's Armor", slot: 'armor', base_gear_required: 'armor_leather', price: 500, is_premium: false, is_launch_exclusive: true },
-  skin_bow_founders: { item_id: 'skin_bow_founders', name: "Founder's Bow", slot: 'bow', base_gear_required: 'bow_wooden', price: 450, is_premium: false, is_launch_exclusive: true },
-  skin_arrow_founders: { item_id: 'skin_arrow_founders', name: "Founder's Arrows", slot: 'arrow', base_gear_required: 'arrow_wooden', price: 250, is_premium: false, is_launch_exclusive: true },
-  skin_amulet_founders: { item_id: 'skin_amulet_founders', name: "Founder's Amulet", slot: 'amulet', base_gear_required: 'amulet_protection', price: 350, is_premium: false, is_launch_exclusive: true },
+  skin_helm_founders: {
+    item_id: 'skin_helm_founders',
+    name: "Founder's Helm",
+    slot: 'helm',
+    base_gear_required: 'helm_basic',
+    price: 400,
+    is_premium: false,
+    is_launch_exclusive: true,
+  },
+  skin_armor_founders: {
+    item_id: 'skin_armor_founders',
+    name: "Founder's Armor",
+    slot: 'armor',
+    base_gear_required: 'armor_leather',
+    price: 500,
+    is_premium: false,
+    is_launch_exclusive: true,
+  },
+  skin_bow_founders: {
+    item_id: 'skin_bow_founders',
+    name: "Founder's Bow",
+    slot: 'bow',
+    base_gear_required: 'bow_wooden',
+    price: 450,
+    is_premium: false,
+    is_launch_exclusive: true,
+  },
+  skin_arrow_founders: {
+    item_id: 'skin_arrow_founders',
+    name: "Founder's Arrows",
+    slot: 'arrow',
+    base_gear_required: 'arrow_wooden',
+    price: 250,
+    is_premium: false,
+    is_launch_exclusive: true,
+  },
+  skin_amulet_founders: {
+    item_id: 'skin_amulet_founders',
+    name: "Founder's Amulet",
+    slot: 'amulet',
+    base_gear_required: 'amulet_protection',
+    price: 350,
+    is_premium: false,
+    is_launch_exclusive: true,
+  },
 };
 
 /**
@@ -613,7 +759,13 @@ export const BUNDLE_DEFINITIONS: Record<string, BundleDefinition> = {
     bundle_id: 'bundle_starter_founders',
     name: "Founder's Starter Bundle",
     description: "The complete Founder's collection at a special launch price.",
-    item_ids: ['skin_helm_founders', 'skin_armor_founders', 'skin_bow_founders', 'skin_arrow_founders', 'skin_amulet_founders'],
+    item_ids: [
+      'skin_helm_founders',
+      'skin_armor_founders',
+      'skin_bow_founders',
+      'skin_arrow_founders',
+      'skin_amulet_founders',
+    ],
     price: 1200,
     original_total: 1950,
     is_one_time: true,
@@ -1185,7 +1337,16 @@ export function rpcPurchaseCosmetic(
 
   const validation = validatePayload(ZodSchemas.purchase_cosmetic, payload, 'purchase_cosmetic');
   if (!validation.success) {
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_cosmetic', 'player_currency', { item_id: 'unknown' }, 'failure', validation.error);
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'purchase_cosmetic',
+      'player_currency',
+      { item_id: 'unknown' },
+      'failure',
+      validation.error
+    );
     return createValidationErrorResponse('purchase_cosmetic', validation.error);
   }
 
@@ -1195,8 +1356,21 @@ export function rpcPurchaseCosmetic(
   const cosmeticItem = COSMETIC_CATALOG[item_id];
   if (!cosmeticItem) {
     logger.warn('Cosmetic purchase rejected — item not in cosmetic catalog: %s', item_id);
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_cosmetic', 'player_currency', { item_id }, 'failure', 'Item not in cosmetic catalog');
-    return JSON.stringify({ success: false, error: 'Invalid cosmetic item', error_code: 'INVALID_ITEM' });
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'purchase_cosmetic',
+      'player_currency',
+      { item_id },
+      'failure',
+      'Item not in cosmetic catalog'
+    );
+    return JSON.stringify({
+      success: false,
+      error: 'Invalid cosmetic item',
+      error_code: 'INVALID_ITEM',
+    });
   }
 
   // Check if player already owns this cosmetic
@@ -1205,7 +1379,12 @@ export function rpcPurchaseCosmetic(
   ]);
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
-    const parsed = safeParse<{ items: string[] }>(ownedResult[0].value, null, logger, 'player_cosmetics_owned');
+    const parsed = safeParse<{ items: string[] }>(
+      ownedResult[0].value,
+      null,
+      logger,
+      'player_cosmetics_owned'
+    );
     if (parsed.success && parsed.data) {
       ownedItems = parsed.data.items ?? [];
     }
@@ -1213,22 +1392,57 @@ export function rpcPurchaseCosmetic(
 
   if (ownedItems.includes(item_id)) {
     logger.warn('Cosmetic purchase rejected — already owned: %s', item_id);
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_cosmetic', 'player_currency', { item_id }, 'failure', 'Already owned');
-    return JSON.stringify({ success: false, error: 'Item already owned', error_code: 'ALREADY_OWNED' });
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'purchase_cosmetic',
+      'player_currency',
+      { item_id },
+      'failure',
+      'Already owned'
+    );
+    return JSON.stringify({
+      success: false,
+      error: 'Item already owned',
+      error_code: 'ALREADY_OWNED',
+    });
   }
 
   // Check gem balance
   const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
   if (playerCurrency.gems < cosmeticItem.price) {
-    logger.warn('Cosmetic purchase rejected — insufficient gems: need %d, have %d', cosmeticItem.price, playerCurrency.gems);
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_cosmetic', 'player_currency', { item_id, price: cosmeticItem.price, balance: playerCurrency.gems }, 'failure', 'Insufficient gems');
-    return JSON.stringify({ success: false, error: 'Insufficient gems', error_code: 'INSUFFICIENT_GEMS' });
+    logger.warn(
+      'Cosmetic purchase rejected — insufficient gems: need %d, have %d',
+      cosmeticItem.price,
+      playerCurrency.gems
+    );
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'purchase_cosmetic',
+      'player_currency',
+      { item_id, price: cosmeticItem.price, balance: playerCurrency.gems },
+      'failure',
+      'Insufficient gems'
+    );
+    return JSON.stringify({
+      success: false,
+      error: 'Insufficient gems',
+      error_code: 'INSUFFICIENT_GEMS',
+    });
   }
 
   // Deduct gems
   playerCurrency.gems -= cosmeticItem.price;
   nk.storageWrite([
-    { collection: 'player_currency', key: ctx.userId, userId: ctx.userId, value: JSON.stringify(playerCurrency) },
+    {
+      collection: 'player_currency',
+      key: ctx.userId,
+      userId: ctx.userId,
+      value: JSON.stringify(playerCurrency),
+    },
   ]);
   nk.walletUpdate(ctx.userId, { gems: -cosmeticItem.price });
   invalidateCurrencyCache(ctx.userId, logger);
@@ -1236,11 +1450,30 @@ export function rpcPurchaseCosmetic(
   // Record ownership
   ownedItems.push(item_id);
   nk.storageWrite([
-    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId, value: JSON.stringify({ items: ownedItems }) },
+    {
+      collection: 'player_cosmetics_owned',
+      key: ctx.userId,
+      userId: ctx.userId,
+      value: JSON.stringify({ items: ownedItems }),
+    },
   ]);
 
-  logger.info('Cosmetic purchased: user %s bought %s for %d gems (new balance: %d)', ctx.userId, item_id, cosmeticItem.price, playerCurrency.gems);
-  logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_cosmetic', 'player_currency', { item_id, price: cosmeticItem.price, new_balance: playerCurrency.gems }, 'success');
+  logger.info(
+    'Cosmetic purchased: user %s bought %s for %d gems (new balance: %d)',
+    ctx.userId,
+    item_id,
+    cosmeticItem.price,
+    playerCurrency.gems
+  );
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'purchase_cosmetic',
+    'player_currency',
+    { item_id, price: cosmeticItem.price, new_balance: playerCurrency.gems },
+    'success'
+  );
 
   return JSON.stringify({
     success: true,
@@ -1265,7 +1498,11 @@ export function rpcGetCosmeticCatalog(
   payload: string
 ): string {
   logger.info('Get cosmetic catalog request');
-  const validation = validatePayload(ZodSchemas.get_cosmetic_catalog, payload, 'get_cosmetic_catalog');
+  const validation = validatePayload(
+    ZodSchemas.get_cosmetic_catalog,
+    payload,
+    'get_cosmetic_catalog'
+  );
   if (!validation.success) {
     return createValidationErrorResponse('get_cosmetic_catalog', validation.error);
   }
@@ -1292,7 +1529,11 @@ export function rpcGetOwnedCosmetics(
 ): string {
   logger.info('Getting owned cosmetics for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.get_owned_cosmetics, payload, 'get_owned_cosmetics');
+  const validation = validatePayload(
+    ZodSchemas.get_owned_cosmetics,
+    payload,
+    'get_owned_cosmetics'
+  );
   if (!validation.success) {
     return createValidationErrorResponse('get_owned_cosmetics', validation.error);
   }
@@ -1303,7 +1544,12 @@ export function rpcGetOwnedCosmetics(
 
   let items: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
-    const parsed = safeParse<{ items: string[] }>(ownedResult[0].value, null, logger, 'player_cosmetics_owned');
+    const parsed = safeParse<{ items: string[] }>(
+      ownedResult[0].value,
+      null,
+      logger,
+      'player_cosmetics_owned'
+    );
     if (parsed.success && parsed.data) {
       items = parsed.data.items ?? [];
     }
@@ -1328,7 +1574,11 @@ export function rpcGetEquippedCosmetics(
 ): string {
   logger.info('Getting equipped cosmetics for user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.get_equipped_cosmetics, payload, 'get_equipped_cosmetics');
+  const validation = validatePayload(
+    ZodSchemas.get_equipped_cosmetics,
+    payload,
+    'get_equipped_cosmetics'
+  );
   if (!validation.success) {
     return createValidationErrorResponse('get_equipped_cosmetics', validation.error);
   }
@@ -1356,7 +1606,16 @@ export function rpcEquipCosmetic(
 
   const validation = validatePayload(ZodSchemas.equip_cosmetic, payload, 'equip_cosmetic');
   if (!validation.success) {
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'equip_cosmetic', 'player_cosmetics_equipped', { slot: 'unknown', skin_id: 'unknown' }, 'failure', validation.error);
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'equip_cosmetic',
+      'player_cosmetics_equipped',
+      { slot: 'unknown', skin_id: 'unknown' },
+      'failure',
+      validation.error
+    );
     return createValidationErrorResponse('equip_cosmetic', validation.error);
   }
 
@@ -1365,14 +1624,35 @@ export function rpcEquipCosmetic(
   // Validate skin exists in catalog
   const cosmeticItem = COSMETIC_CATALOG[skin_id];
   if (!cosmeticItem) {
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'equip_cosmetic', 'player_cosmetics_equipped', { slot, skin_id }, 'failure', 'Invalid cosmetic item');
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'equip_cosmetic',
+      'player_cosmetics_equipped',
+      { slot, skin_id },
+      'failure',
+      'Invalid cosmetic item'
+    );
     return JSON.stringify({ success: false, error: 'Invalid cosmetic item' });
   }
 
   // Validate slot matches
   if (cosmeticItem.slot !== slot) {
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'equip_cosmetic', 'player_cosmetics_equipped', { slot, skin_id, expected_slot: cosmeticItem.slot }, 'failure', 'Slot mismatch');
-    return JSON.stringify({ success: false, error: `Skin belongs to slot ${cosmeticItem.slot}, not ${slot}` });
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'equip_cosmetic',
+      'player_cosmetics_equipped',
+      { slot, skin_id, expected_slot: cosmeticItem.slot },
+      'failure',
+      'Slot mismatch'
+    );
+    return JSON.stringify({
+      success: false,
+      error: `Skin belongs to slot ${cosmeticItem.slot}, not ${slot}`,
+    });
   }
 
   // Validate ownership
@@ -1381,14 +1661,28 @@ export function rpcEquipCosmetic(
   ]);
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
-    const parsed = safeParse<{ items: string[] }>(ownedResult[0].value, null, logger, 'player_cosmetics_owned');
+    const parsed = safeParse<{ items: string[] }>(
+      ownedResult[0].value,
+      null,
+      logger,
+      'player_cosmetics_owned'
+    );
     if (parsed.success && parsed.data) {
       ownedItems = parsed.data.items ?? [];
     }
   }
 
   if (!ownedItems.includes(skin_id)) {
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'equip_cosmetic', 'player_cosmetics_equipped', { slot, skin_id }, 'failure', 'Not owned');
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'equip_cosmetic',
+      'player_cosmetics_equipped',
+      { slot, skin_id },
+      'failure',
+      'Not owned'
+    );
     return JSON.stringify({ success: false, error: 'You do not own this cosmetic item' });
   }
 
@@ -1397,7 +1691,15 @@ export function rpcEquipCosmetic(
   equipped[slot] = skin_id;
   _writeEquippedCosmetics(nk, ctx.userId, equipped, logger);
 
-  logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'equip_cosmetic', 'player_cosmetics_equipped', { slot, skin_id }, 'success');
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'equip_cosmetic',
+    'player_cosmetics_equipped',
+    { slot, skin_id },
+    'success'
+  );
   logger.info('User %s equipped %s in slot %s', ctx.userId, skin_id, slot);
 
   return JSON.stringify({ success: true, slot, skin_id });
@@ -1429,7 +1731,15 @@ export function rpcUnequipCosmetic(
   equipped[slot] = '';
   _writeEquippedCosmetics(nk, ctx.userId, equipped, logger);
 
-  logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'unequip_cosmetic', 'player_cosmetics_equipped', { slot }, 'success');
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'unequip_cosmetic',
+    'player_cosmetics_equipped',
+    { slot },
+    'success'
+  );
   logger.info('User %s unequipped slot %s', ctx.userId, slot);
 
   return JSON.stringify({ success: true, slot });
@@ -1452,9 +1762,22 @@ export function rpcSaveCosmeticLoadout(
 ): string {
   logger.info('Save cosmetic loadout request from user: %s', ctx.userId);
 
-  const validation = validatePayload(ZodSchemas.save_cosmetic_loadout, payload, 'save_cosmetic_loadout');
+  const validation = validatePayload(
+    ZodSchemas.save_cosmetic_loadout,
+    payload,
+    'save_cosmetic_loadout'
+  );
   if (!validation.success) {
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'save_cosmetic_loadout', 'player_cosmetics_equipped', {}, 'failure', validation.error);
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'save_cosmetic_loadout',
+      'player_cosmetics_equipped',
+      {},
+      'failure',
+      validation.error
+    );
     return createValidationErrorResponse('save_cosmetic_loadout', validation.error);
   }
 
@@ -1466,7 +1789,12 @@ export function rpcSaveCosmeticLoadout(
   ]);
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
-    const parsed = safeParse<{ items: string[] }>(ownedResult[0].value, null, logger, 'player_cosmetics_owned');
+    const parsed = safeParse<{ items: string[] }>(
+      ownedResult[0].value,
+      null,
+      logger,
+      'player_cosmetics_owned'
+    );
     if (parsed.success && parsed.data) {
       ownedItems = parsed.data.items ?? [];
     }
@@ -1478,17 +1806,47 @@ export function rpcSaveCosmeticLoadout(
 
     const cosmeticItem = COSMETIC_CATALOG[skinId as string];
     if (!cosmeticItem) {
-      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'save_cosmetic_loadout', 'player_cosmetics_equipped', { slot, skin_id: skinId }, 'failure', 'Invalid cosmetic item');
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'save_cosmetic_loadout',
+        'player_cosmetics_equipped',
+        { slot, skin_id: skinId },
+        'failure',
+        'Invalid cosmetic item'
+      );
       return JSON.stringify({ success: false, error: `Invalid cosmetic item: ${skinId}` });
     }
 
     if (cosmeticItem.slot !== slot) {
-      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'save_cosmetic_loadout', 'player_cosmetics_equipped', { slot, skin_id: skinId }, 'failure', 'Slot mismatch');
-      return JSON.stringify({ success: false, error: `Skin ${skinId} belongs to slot ${cosmeticItem.slot}, not ${slot}` });
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'save_cosmetic_loadout',
+        'player_cosmetics_equipped',
+        { slot, skin_id: skinId },
+        'failure',
+        'Slot mismatch'
+      );
+      return JSON.stringify({
+        success: false,
+        error: `Skin ${skinId} belongs to slot ${cosmeticItem.slot}, not ${slot}`,
+      });
     }
 
     if (!ownedItems.includes(skinId as string)) {
-      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'save_cosmetic_loadout', 'player_cosmetics_equipped', { slot, skin_id: skinId }, 'failure', 'Not owned');
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'save_cosmetic_loadout',
+        'player_cosmetics_equipped',
+        { slot, skin_id: skinId },
+        'failure',
+        'Not owned'
+      );
       return JSON.stringify({ success: false, error: `You do not own ${skinId}` });
     }
   }
@@ -1496,7 +1854,15 @@ export function rpcSaveCosmeticLoadout(
   // All validated — persist
   _writeEquippedCosmetics(nk, ctx.userId, equipped as Record<string, string>, logger);
 
-  logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'save_cosmetic_loadout', 'player_cosmetics_equipped', equipped, 'success');
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'save_cosmetic_loadout',
+    'player_cosmetics_equipped',
+    equipped,
+    'success'
+  );
   logger.info('User %s saved cosmetic loadout', ctx.userId);
 
   return JSON.stringify({ success: true, equipped });
@@ -1525,7 +1891,16 @@ export function rpcPurchaseBundle(
 
   const validation = validatePayload(ZodSchemas.purchase_bundle, payload, 'purchase_bundle');
   if (!validation.success) {
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id: 'unknown' }, 'failure', validation.error);
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'purchase_bundle',
+      'player_currency',
+      { bundle_id: 'unknown' },
+      'failure',
+      validation.error
+    );
     return createValidationErrorResponse('purchase_bundle', validation.error);
   }
 
@@ -1535,8 +1910,21 @@ export function rpcPurchaseBundle(
   const bundle = BUNDLE_DEFINITIONS[bundle_id];
   if (!bundle) {
     logger.warn('Bundle purchase rejected — bundle not found: %s', bundle_id);
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id }, 'failure', 'Bundle not found');
-    return JSON.stringify({ success: false, error: 'Invalid bundle', error_code: 'INVALID_BUNDLE' });
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'purchase_bundle',
+      'player_currency',
+      { bundle_id },
+      'failure',
+      'Bundle not found'
+    );
+    return JSON.stringify({
+      success: false,
+      error: 'Invalid bundle',
+      error_code: 'INVALID_BUNDLE',
+    });
   }
 
   // Check one-time purchase restriction
@@ -1546,7 +1934,12 @@ export function rpcPurchaseBundle(
     ]);
     let ownedBundles: string[] = [];
     if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
-      const parsed = safeParse<{ bundles: string[] }>(bundleOwnedResult[0].value, null, logger, 'player_bundles_owned');
+      const parsed = safeParse<{ bundles: string[] }>(
+        bundleOwnedResult[0].value,
+        null,
+        logger,
+        'player_bundles_owned'
+      );
       if (parsed.success && parsed.data) {
         ownedBundles = parsed.data.bundles ?? [];
       }
@@ -1554,8 +1947,21 @@ export function rpcPurchaseBundle(
 
     if (ownedBundles.includes(bundle_id)) {
       logger.warn('Bundle purchase rejected — already purchased: %s', bundle_id);
-      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id }, 'failure', 'Bundle already purchased');
-      return JSON.stringify({ success: false, error: 'Bundle already purchased', error_code: 'ALREADY_OWNED' });
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'purchase_bundle',
+        'player_currency',
+        { bundle_id },
+        'failure',
+        'Bundle already purchased'
+      );
+      return JSON.stringify({
+        success: false,
+        error: 'Bundle already purchased',
+        error_code: 'ALREADY_OWNED',
+      });
     }
   }
 
@@ -1563,8 +1969,21 @@ export function rpcPurchaseBundle(
   for (const itemId of bundle.item_ids) {
     if (!COSMETIC_CATALOG[itemId]) {
       logger.error('Bundle %s contains invalid item: %s', bundle_id, itemId);
-      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id, invalid_item: itemId }, 'failure', 'Invalid item in bundle');
-      return JSON.stringify({ success: false, error: 'Bundle contains invalid item', error_code: 'INVALID_BUNDLE_ITEM' });
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'purchase_bundle',
+        'player_currency',
+        { bundle_id, invalid_item: itemId },
+        'failure',
+        'Invalid item in bundle'
+      );
+      return JSON.stringify({
+        success: false,
+        error: 'Bundle contains invalid item',
+        error_code: 'INVALID_BUNDLE_ITEM',
+      });
     }
   }
 
@@ -1574,7 +1993,12 @@ export function rpcPurchaseBundle(
   ]);
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
-    const parsed = safeParse<{ items: string[] }>(ownedResult[0].value, null, logger, 'player_cosmetics_owned');
+    const parsed = safeParse<{ items: string[] }>(
+      ownedResult[0].value,
+      null,
+      logger,
+      'player_cosmetics_owned'
+    );
     if (parsed.success && parsed.data) {
       ownedItems = parsed.data.items ?? [];
     }
@@ -1583,23 +2007,58 @@ export function rpcPurchaseBundle(
   for (const itemId of bundle.item_ids) {
     if (ownedItems.includes(itemId)) {
       logger.warn('Bundle purchase rejected — player already owns item %s in bundle', itemId);
-      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id, owned_item: itemId }, 'failure', 'Player already owns bundle item');
-      return JSON.stringify({ success: false, error: 'You already own an item in this bundle', error_code: 'ITEM_ALREADY_OWNED' });
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'purchase_bundle',
+        'player_currency',
+        { bundle_id, owned_item: itemId },
+        'failure',
+        'Player already owns bundle item'
+      );
+      return JSON.stringify({
+        success: false,
+        error: 'You already own an item in this bundle',
+        error_code: 'ITEM_ALREADY_OWNED',
+      });
     }
   }
 
   // Check gem balance
   const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
   if (playerCurrency.gems < bundle.price) {
-    logger.warn('Bundle purchase rejected — insufficient gems: need %d, have %d', bundle.price, playerCurrency.gems);
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id, price: bundle.price, balance: playerCurrency.gems }, 'failure', 'Insufficient gems');
-    return JSON.stringify({ success: false, error: 'Insufficient gems', error_code: 'INSUFFICIENT_GEMS' });
+    logger.warn(
+      'Bundle purchase rejected — insufficient gems: need %d, have %d',
+      bundle.price,
+      playerCurrency.gems
+    );
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'purchase_bundle',
+      'player_currency',
+      { bundle_id, price: bundle.price, balance: playerCurrency.gems },
+      'failure',
+      'Insufficient gems'
+    );
+    return JSON.stringify({
+      success: false,
+      error: 'Insufficient gems',
+      error_code: 'INSUFFICIENT_GEMS',
+    });
   }
 
   // Deduct gems
   playerCurrency.gems -= bundle.price;
   nk.storageWrite([
-    { collection: 'player_currency', key: ctx.userId, userId: ctx.userId, value: JSON.stringify(playerCurrency) },
+    {
+      collection: 'player_currency',
+      key: ctx.userId,
+      userId: ctx.userId,
+      value: JSON.stringify(playerCurrency),
+    },
   ]);
   nk.walletUpdate(ctx.userId, { gems: -bundle.price });
   invalidateCurrencyCache(ctx.userId, logger);
@@ -1609,7 +2068,12 @@ export function rpcPurchaseBundle(
     ownedItems.push(itemId);
   }
   nk.storageWrite([
-    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId, value: JSON.stringify({ items: ownedItems }) },
+    {
+      collection: 'player_cosmetics_owned',
+      key: ctx.userId,
+      userId: ctx.userId,
+      value: JSON.stringify({ items: ownedItems }),
+    },
   ]);
 
   // Record bundle ownership (for one-time enforcement)
@@ -1619,19 +2083,48 @@ export function rpcPurchaseBundle(
     ]);
     let ownedBundles: string[] = [];
     if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
-      const parsed = safeParse<{ bundles: string[] }>(bundleOwnedResult[0].value, null, logger, 'player_bundles_owned');
+      const parsed = safeParse<{ bundles: string[] }>(
+        bundleOwnedResult[0].value,
+        null,
+        logger,
+        'player_bundles_owned'
+      );
       if (parsed.success && parsed.data) {
         ownedBundles = parsed.data.bundles ?? [];
       }
     }
     ownedBundles.push(bundle_id);
     nk.storageWrite([
-      { collection: 'player_bundles_owned', key: ctx.userId, userId: ctx.userId, value: JSON.stringify({ bundles: ownedBundles }) },
+      {
+        collection: 'player_bundles_owned',
+        key: ctx.userId,
+        userId: ctx.userId,
+        value: JSON.stringify({ bundles: ownedBundles }),
+      },
     ]);
   }
 
-  logger.info('Bundle purchased: user %s bought %s for %d gems (new balance: %d)', ctx.userId, bundle_id, bundle.price, playerCurrency.gems);
-  logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'purchase_bundle', 'player_currency', { bundle_id, price: bundle.price, items_granted: bundle.item_ids, new_balance: playerCurrency.gems }, 'success');
+  logger.info(
+    'Bundle purchased: user %s bought %s for %d gems (new balance: %d)',
+    ctx.userId,
+    bundle_id,
+    bundle.price,
+    playerCurrency.gems
+  );
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'purchase_bundle',
+    'player_currency',
+    {
+      bundle_id,
+      price: bundle.price,
+      items_granted: bundle.item_ids,
+      new_balance: playerCurrency.gems,
+    },
+    'success'
+  );
 
   return JSON.stringify({
     success: true,
@@ -1668,13 +2161,18 @@ export function rpcGetBundleCatalog(
   ]);
   let ownedBundles: string[] = [];
   if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
-    const parsed = safeParse<{ bundles: string[] }>(bundleOwnedResult[0].value, null, logger, 'player_bundles_owned');
+    const parsed = safeParse<{ bundles: string[] }>(
+      bundleOwnedResult[0].value,
+      null,
+      logger,
+      'player_bundles_owned'
+    );
     if (parsed.success && parsed.data) {
       ownedBundles = parsed.data.bundles ?? [];
     }
   }
 
-  const bundlesWithOwnership = Object.values(BUNDLE_DEFINITIONS).map(bundle => ({
+  const bundlesWithOwnership = Object.values(BUNDLE_DEFINITIONS).map((bundle) => ({
     ...bundle,
     is_owned: ownedBundles.includes(bundle.bundle_id),
   }));
@@ -1701,7 +2199,12 @@ function _readEquippedCosmetics(
 
   if (result.length === 0 || !result[0].value) return defaults;
 
-  const parsed = safeParse<Record<string, string>>(result[0].value, null, logger, 'player_cosmetics_equipped');
+  const parsed = safeParse<Record<string, string>>(
+    result[0].value,
+    null,
+    logger,
+    'player_cosmetics_equipped'
+  );
   if (!parsed.success || !parsed.data) return defaults;
 
   return { ...defaults, ...parsed.data };
@@ -1991,7 +2494,16 @@ export async function rpcProcessPendingPurchases(
     // Skip expired
     if (now - purchase.timestamp >= PENDING_PURCHASE_EXPIRY_MS) {
       results.push({ product_id: purchase.product_id, success: false, error: 'Expired' });
-      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'process_pending_purchase', 'player_currency', { product_id: purchase.product_id }, 'failure', 'Expired');
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'process_pending_purchase',
+        'player_currency',
+        { product_id: purchase.product_id },
+        'failure',
+        'Expired'
+      );
       continue;
     }
 
@@ -2002,7 +2514,16 @@ export async function rpcProcessPendingPurchases(
         success: false,
         error: 'Max retries exceeded',
       });
-      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'process_pending_purchase', 'player_currency', { product_id: purchase.product_id, retry_count: purchase.retry_count }, 'failure', 'Max retries exceeded');
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'process_pending_purchase',
+        'player_currency',
+        { product_id: purchase.product_id, retry_count: purchase.retry_count },
+        'failure',
+        'Max retries exceeded'
+      );
       continue;
     }
 
@@ -2014,7 +2535,16 @@ export async function rpcProcessPendingPurchases(
         success: false,
         error: 'Invalid product ID',
       });
-      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'process_pending_purchase', 'player_currency', { product_id: purchase.product_id }, 'failure', 'Invalid product ID');
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'process_pending_purchase',
+        'player_currency',
+        { product_id: purchase.product_id },
+        'failure',
+        'Invalid product ID'
+      );
       continue;
     }
 
@@ -2024,7 +2554,16 @@ export async function rpcProcessPendingPurchases(
     // Check for duplicate receipt
     if (await isReceiptAlreadyUsed(nk, ctx.userId, receiptHash, logger)) {
       results.push({ product_id: purchase.product_id, success: true, error: 'Already processed' });
-      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'process_pending_purchase', 'player_currency', { product_id: purchase.product_id }, 'success', 'Already processed');
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'process_pending_purchase',
+        'player_currency',
+        { product_id: purchase.product_id },
+        'success',
+        'Already processed'
+      );
       continue;
     }
 
@@ -2039,7 +2578,16 @@ export async function rpcProcessPendingPurchases(
         success: false,
         error: 'Would exceed max balance',
       });
-      logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'process_pending_purchase', 'player_currency', { product_id: purchase.product_id, gem_amount: gemBundle.gem_amount }, 'failure', 'Would exceed max balance');
+      logAudit(
+        nk,
+        ctx.userId,
+        ctx.ipAddress ?? null,
+        'process_pending_purchase',
+        'player_currency',
+        { product_id: purchase.product_id, gem_amount: gemBundle.gem_amount },
+        'failure',
+        'Would exceed max balance'
+      );
       continue;
     }
 
@@ -2060,7 +2608,15 @@ export async function rpcProcessPendingPurchases(
     invalidateCurrencyCache(ctx.userId, logger);
 
     results.push({ product_id: purchase.product_id, success: true });
-    logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'process_pending_purchase', 'player_currency', { product_id: purchase.product_id, gems_awarded: gemBundle.gem_amount }, 'success');
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'process_pending_purchase',
+      'player_currency',
+      { product_id: purchase.product_id, gems_awarded: gemBundle.gem_amount },
+      'success'
+    );
     logger.info(
       'Processed pending purchase for user %s: %s (%d gems)',
       ctx.userId,
@@ -2209,9 +2765,7 @@ export async function rpcCheckRefunds(
 
   let processedCount = 0;
   for (const refund of refunds) {
-    if (
-      !(await isRefundAlreadyProcessed(appUserId, refund.refunded_at, logger))
-    ) {
+    if (!(await isRefundAlreadyProcessed(appUserId, refund.refunded_at, logger))) {
       // Get product info to determine gem amount
       const catalog = getStoreCatalog(logger);
       const productInfo = catalog[refund.product_id];
@@ -2230,11 +2784,7 @@ export async function rpcCheckRefunds(
     }
   }
 
-  logger.info(
-    'Refund check complete for user %s: found %d refunds',
-    appUserId,
-    refunds.length
-  );
+  logger.info('Refund check complete for user %s: found %d refunds', appUserId, refunds.length);
 
   return JSON.stringify({
     success: true,
@@ -2559,7 +3109,20 @@ export async function rpcRestorePurchases(
               nk.walletUpdate(ctx.userId, { gems: bundle.gem_amount });
               invalidateCurrencyCache(ctx.userId, logger);
 
-              logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'restore_purchase_grant', 'player_currency', { product_id: productId, gems_awarded: bundle.gem_amount, new_balance: playerCurrency.gems, source: 'non_subscription' }, 'success');
+              logAudit(
+                nk,
+                ctx.userId,
+                ctx.ipAddress ?? null,
+                'restore_purchase_grant',
+                'player_currency',
+                {
+                  product_id: productId,
+                  gems_awarded: bundle.gem_amount,
+                  new_balance: playerCurrency.gems,
+                  source: 'non_subscription',
+                },
+                'success'
+              );
 
               restoredPurchases.push({
                 product_id: productId,
@@ -2612,7 +3175,20 @@ export async function rpcRestorePurchases(
             nk.walletUpdate(ctx.userId, { gems: bundle.gem_amount });
             invalidateCurrencyCache(ctx.userId, logger);
 
-            logAudit(nk, ctx.userId, ctx.ipAddress ?? null, 'restore_purchase_grant', 'player_currency', { product_id: productId, gems_awarded: bundle.gem_amount, new_balance: playerCurrency.gems, source: 'entitlement' }, 'success');
+            logAudit(
+              nk,
+              ctx.userId,
+              ctx.ipAddress ?? null,
+              'restore_purchase_grant',
+              'player_currency',
+              {
+                product_id: productId,
+                gems_awarded: bundle.gem_amount,
+                new_balance: playerCurrency.gems,
+                source: 'entitlement',
+              },
+              'success'
+            );
 
             restoredPurchases.push({
               product_id: productId,
@@ -2725,7 +3301,16 @@ async function handleInitialPurchase(
 
   if (!gemAmount) {
     logger.error('Unknown product ID in webhook: %s', productId);
-    logAudit(nk, userId, null, 'webhook_purchase', 'player_currency', { product_id: productId, event_type: eventType }, 'failure', 'Unknown product ID');
+    logAudit(
+      nk,
+      userId,
+      null,
+      'webhook_purchase',
+      'player_currency',
+      { product_id: productId, event_type: eventType },
+      'failure',
+      'Unknown product ID'
+    );
     return { success: false, message: 'Unknown product ID', event_type: eventType };
   }
 
@@ -2735,7 +3320,21 @@ async function handleInitialPurchase(
   // Check for max balance
   if (wouldExceedMaxBalance(playerCurrency.gems, gemAmount)) {
     logger.warn('Purchase would exceed max balance for user %s', userId);
-    logAudit(nk, userId, null, 'webhook_purchase', 'player_currency', { product_id: productId, gems_awarded: 0, new_balance: playerCurrency.gems, event_type: eventType }, 'failure', 'Gem balance would exceed maximum');
+    logAudit(
+      nk,
+      userId,
+      null,
+      'webhook_purchase',
+      'player_currency',
+      {
+        product_id: productId,
+        gems_awarded: 0,
+        new_balance: playerCurrency.gems,
+        event_type: eventType,
+      },
+      'failure',
+      'Gem balance would exceed maximum'
+    );
     return {
       success: false,
       message: 'Gem balance would exceed maximum',
@@ -2768,7 +3367,20 @@ async function handleInitialPurchase(
 
   logger.info('Webhook: Awarded %d gems to user %s for product %s', gemAmount, userId, productId);
 
-  logAudit(nk, userId, null, 'webhook_purchase', 'player_currency', { product_id: productId, gems_awarded: gemAmount, new_balance: playerCurrency.gems, event_type: eventType }, 'success');
+  logAudit(
+    nk,
+    userId,
+    null,
+    'webhook_purchase',
+    'player_currency',
+    {
+      product_id: productId,
+      gems_awarded: gemAmount,
+      new_balance: playerCurrency.gems,
+      event_type: eventType,
+    },
+    'success'
+  );
 
   return {
     success: true,
@@ -2812,7 +3424,16 @@ function handleSubscriptionCancelled(
     // Handle empty or non-JSON values
     if (!value || typeof value !== 'string') {
       logger.warn('No valid subscription data found for user %s', userId);
-      logAudit(nk, userId, null, 'subscription_cancelled', 'player_subscription', { product_id: productId, reason: reason || 'not specified', event_type: eventType }, 'failure', 'No valid subscription data found');
+      logAudit(
+        nk,
+        userId,
+        null,
+        'subscription_cancelled',
+        'player_subscription',
+        { product_id: productId, reason: reason || 'not specified', event_type: eventType },
+        'failure',
+        'No valid subscription data found'
+      );
       return {
         success: true,
         message: 'Cancellation noted (no subscription found)',
@@ -2824,7 +3445,16 @@ function handleSubscriptionCancelled(
       subscription = JSON.parse(value);
     } catch (e) {
       logger.error('Failed to parse subscription data for user %s: %s', userId, e);
-      logAudit(nk, userId, null, 'subscription_cancelled', 'player_subscription', { product_id: productId, event_type: eventType }, 'failure', 'Invalid subscription data');
+      logAudit(
+        nk,
+        userId,
+        null,
+        'subscription_cancelled',
+        'player_subscription',
+        { product_id: productId, event_type: eventType },
+        'failure',
+        'Invalid subscription data'
+      );
       return { success: false, error: 'Invalid subscription data' };
     }
     subscription.active = false;
@@ -2842,7 +3472,15 @@ function handleSubscriptionCancelled(
     ]);
   }
 
-  logAudit(nk, userId, null, 'subscription_cancelled', 'player_subscription', { product_id: productId, reason: reason || 'not specified', event_type: eventType }, 'success');
+  logAudit(
+    nk,
+    userId,
+    null,
+    'subscription_cancelled',
+    'player_subscription',
+    { product_id: productId, reason: reason || 'not specified', event_type: eventType },
+    'success'
+  );
   return { success: true, message: 'Cancellation noted', event_type: eventType };
 }
 
@@ -2873,7 +3511,16 @@ function handleBillingIssue(
     // Handle empty or non-JSON values
     if (!value || typeof value !== 'string') {
       logger.warn('No valid subscription data found for user %s', userId);
-      logAudit(nk, userId, null, 'billing_issue', 'player_subscription', { product_id: productId, event_type: eventType }, 'failure', 'No valid subscription data found');
+      logAudit(
+        nk,
+        userId,
+        null,
+        'billing_issue',
+        'player_subscription',
+        { product_id: productId, event_type: eventType },
+        'failure',
+        'No valid subscription data found'
+      );
       return {
         success: true,
         message: 'Billing issue recorded (no subscription found)',
@@ -2885,7 +3532,16 @@ function handleBillingIssue(
       subscription = JSON.parse(value);
     } catch (e) {
       logger.error('Failed to parse subscription data for user %s: %s', userId, e);
-      logAudit(nk, userId, null, 'billing_issue', 'player_subscription', { product_id: productId, event_type: eventType }, 'failure', 'Invalid subscription data');
+      logAudit(
+        nk,
+        userId,
+        null,
+        'billing_issue',
+        'player_subscription',
+        { product_id: productId, event_type: eventType },
+        'failure',
+        'Invalid subscription data'
+      );
       return { success: false, error: 'Invalid subscription data' };
     }
     subscription.billing_issue = true;
@@ -2901,7 +3557,15 @@ function handleBillingIssue(
     ]);
   }
 
-  logAudit(nk, userId, null, 'billing_issue', 'player_subscription', { product_id: productId, event_type: eventType }, 'success');
+  logAudit(
+    nk,
+    userId,
+    null,
+    'billing_issue',
+    'player_subscription',
+    { product_id: productId, event_type: eventType },
+    'success'
+  );
   return { success: true, message: 'Billing issue recorded', event_type: eventType };
 }
 
@@ -2923,7 +3587,15 @@ function handleSubscriptionExpired(
     reason || 'not specified'
   );
 
-  logAudit(nk, userId, null, 'subscription_expired', 'player_subscription', { product_id: productId, reason: reason || 'not specified', event_type: eventType }, 'success');
+  logAudit(
+    nk,
+    userId,
+    null,
+    'subscription_expired',
+    'player_subscription',
+    { product_id: productId, reason: reason || 'not specified', event_type: eventType },
+    'success'
+  );
   return { success: true, message: 'Expiration noted', event_type: eventType };
 }
 
@@ -2946,7 +3618,15 @@ async function handleProductChange(
 
   // For subscription product changes, just record the change without awarding gems
   // (premium subscriptions don't award gems, only consumable gem packs do)
-  logAudit(nk, userId, null, 'product_change', 'player_subscription', { product_id: productId, transferred_from: transferredFrom, event_type: 'product_change' }, 'success');
+  logAudit(
+    nk,
+    userId,
+    null,
+    'product_change',
+    'player_subscription',
+    { product_id: productId, transferred_from: transferredFrom, event_type: 'product_change' },
+    'success'
+  );
   return { success: true, message: 'Product change noted', event_type: 'product_change' };
 }
 
@@ -2971,7 +3651,16 @@ export async function rpcRevenueCatWebhook(
 
     if (!verifyWebhookSignature(payload, signature, webhookSecret)) {
       logger.error('Invalid webhook signature');
-      logAudit(nk, '', null, 'webhook_invalid_signature', 'revenuecat_webhook', {}, 'failure', 'Invalid webhook signature');
+      logAudit(
+        nk,
+        '',
+        null,
+        'webhook_invalid_signature',
+        'revenuecat_webhook',
+        {},
+        'failure',
+        'Invalid webhook signature'
+      );
       return JSON.stringify({
         success: false,
         error: 'Invalid signature',
@@ -3033,7 +3722,16 @@ export async function rpcRevenueCatWebhook(
 
   if (!appUserId) {
     logger.error('Missing app_user_id in webhook payload');
-    logAudit(nk, '', null, 'webhook_missing_user', 'revenuecat_webhook', { event_type: normalizedEventType }, 'failure', 'Missing app_user_id');
+    logAudit(
+      nk,
+      '',
+      null,
+      'webhook_missing_user',
+      'revenuecat_webhook',
+      { event_type: normalizedEventType },
+      'failure',
+      'Missing app_user_id'
+    );
     return JSON.stringify({ success: false, error: 'Missing app_user_id' });
   }
 

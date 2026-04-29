@@ -25,6 +25,17 @@ function getTracingTracer() {
 }
 
 /**
+ * Handle span error state consistently.
+ */
+function setSpanError(span: Span, error: unknown): void {
+  span.setStatus({
+    code: SpanStatusCode.ERROR,
+    message: error instanceof Error ? error.message : String(error),
+  });
+  span.recordException(error instanceof Error ? error : new Error(String(error)));
+}
+
+/**
  * Execute an async function within a traced span with consistent error handling.
  * This is the shared implementation for tracing async operations.
  *
@@ -49,11 +60,7 @@ export async function withSpanAsync<T>(
     span.setStatus({ code: SpanStatusCode.OK });
     return result;
   } catch (error) {
-    span.setStatus({
-      code: SpanStatusCode.ERROR,
-      message: error instanceof Error ? error.message : String(error),
-    });
-    span.recordException(error instanceof Error ? error : new Error(String(error)));
+    setSpanError(span, error);
     throw error;
   } finally {
     span.end();
@@ -80,11 +87,7 @@ export function withSpanSync<T>(name: string, fn: (span: Span) => T, options?: W
     span.setStatus({ code: SpanStatusCode.OK });
     return result;
   } catch (error) {
-    span.setStatus({
-      code: SpanStatusCode.ERROR,
-      message: error instanceof Error ? error.message : String(error),
-    });
-    span.recordException(error instanceof Error ? error : new Error(String(error)));
+    setSpanError(span, error);
     throw error;
   } finally {
     span.end();
@@ -111,11 +114,7 @@ export async function withActiveSpanAsync<T>(
       span.setStatus({ code: SpanStatusCode.OK });
       return result;
     } catch (error) {
-      span.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: error instanceof Error ? error.message : String(error),
-      });
-      span.recordException(error instanceof Error ? error : new Error(String(error)));
+      setSpanError(span, error);
       throw error;
     } finally {
       span.end();

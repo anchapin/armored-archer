@@ -49,7 +49,12 @@ jest.mock('../validation', () => ({
     get_balance_statistics: {},
   },
   createValidationErrorResponse: jest.fn((rpcName, error) => {
-    return JSON.stringify({ success: false, error, error_code: 'VALIDATION_ERROR', rpc_name: rpcName });
+    return JSON.stringify({
+      success: false,
+      error,
+      error_code: 'VALIDATION_ERROR',
+      rpc_name: rpcName,
+    });
   }),
 }));
 
@@ -280,16 +285,96 @@ describe('Balance Analytics Module', () => {
 
       // Record some sample stage attempts
       const sampleAttempts = [
-        { stage: '1_1', prefix: 'campaign_1', difficulty: 'easy', boss: false, completed: true, stars: 3, score: 1500 },
-        { stage: '1_1', prefix: 'campaign_1', difficulty: 'easy', boss: false, completed: true, stars: 2, score: 1200 },
-        { stage: '1_1', prefix: 'campaign_1', difficulty: 'easy', boss: false, completed: false, stars: 0, score: 0 },
-        { stage: '1_2', prefix: 'campaign_1', difficulty: 'medium', boss: false, completed: true, stars: 3, score: 1800 },
-        { stage: '1_2', prefix: 'campaign_1', difficulty: 'medium', boss: false, completed: false, stars: 0, score: 0 },
-        { stage: '1_2', prefix: 'campaign_1', difficulty: 'medium', boss: false, completed: true, stars: 1, score: 800 },
-        { stage: '2_1', prefix: 'campaign_2', difficulty: 'hard', boss: true, completed: true, stars: 3, score: 2500 },
-        { stage: '2_1', prefix: 'campaign_2', difficulty: 'hard', boss: true, completed: false, stars: 0, score: 0 },
-        { stage: '2_2', prefix: 'campaign_2', difficulty: 'hard', boss: false, completed: false, stars: 0, score: 0 },
-        { stage: '2_2', prefix: 'campaign_2', difficulty: 'hard', boss: false, completed: false, stars: 0, score: 0 },
+        {
+          stage: '1_1',
+          prefix: 'campaign_1',
+          difficulty: 'easy',
+          boss: false,
+          completed: true,
+          stars: 3,
+          score: 1500,
+        },
+        {
+          stage: '1_1',
+          prefix: 'campaign_1',
+          difficulty: 'easy',
+          boss: false,
+          completed: true,
+          stars: 2,
+          score: 1200,
+        },
+        {
+          stage: '1_1',
+          prefix: 'campaign_1',
+          difficulty: 'easy',
+          boss: false,
+          completed: false,
+          stars: 0,
+          score: 0,
+        },
+        {
+          stage: '1_2',
+          prefix: 'campaign_1',
+          difficulty: 'medium',
+          boss: false,
+          completed: true,
+          stars: 3,
+          score: 1800,
+        },
+        {
+          stage: '1_2',
+          prefix: 'campaign_1',
+          difficulty: 'medium',
+          boss: false,
+          completed: false,
+          stars: 0,
+          score: 0,
+        },
+        {
+          stage: '1_2',
+          prefix: 'campaign_1',
+          difficulty: 'medium',
+          boss: false,
+          completed: true,
+          stars: 1,
+          score: 800,
+        },
+        {
+          stage: '2_1',
+          prefix: 'campaign_2',
+          difficulty: 'hard',
+          boss: true,
+          completed: true,
+          stars: 3,
+          score: 2500,
+        },
+        {
+          stage: '2_1',
+          prefix: 'campaign_2',
+          difficulty: 'hard',
+          boss: true,
+          completed: false,
+          stars: 0,
+          score: 0,
+        },
+        {
+          stage: '2_2',
+          prefix: 'campaign_2',
+          difficulty: 'hard',
+          boss: false,
+          completed: false,
+          stars: 0,
+          score: 0,
+        },
+        {
+          stage: '2_2',
+          prefix: 'campaign_2',
+          difficulty: 'hard',
+          boss: false,
+          completed: false,
+          stars: 0,
+          score: 0,
+        },
       ];
 
       for (let i = 0; i < sampleAttempts.length; i++) {
