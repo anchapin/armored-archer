@@ -38,6 +38,9 @@ func _ready() -> void:
 	if break_button:
 		break_button.pressed.connect(_on_break_button_pressed)
 
+	# Add decorative elements
+	_add_decorative_elements()
+
 	# Initial update
 	_update_display()
 
@@ -101,16 +104,48 @@ func _update_stamina_display() -> void:
 		stamina_icon.custom_minimum_size = Vector2(16, 16)
 
 		if i < current_stamina:
-			# Active stamina
+			# Active stamina with decorative glow
+			var style = StyleBoxFlat.new()
 			if design_tokens:
-				stamina_icon.modulate = design_tokens.COLOR_PRIMARY
+				style.bg_color = design_tokens.COLOR_PRIMARY
 			else:
-				stamina_icon.modulate = Color.GREEN
+				style.bg_color = Color.GREEN
+			style.corner_radius_top_left = 2
+			style.corner_radius_top_right = 2
+			style.corner_radius_bottom_left = 2
+			style.corner_radius_bottom_right = 2
+			stamina_icon.add_theme_stylebox_override("panel", style)
+
+			# Add subtle pulse for active stamina
+			if i == current_stamina - 1:  # Last active icon
+				var tween = stamina_icon.create_tween()
+				tween.set_loops()
+				tween.tween_property(stamina_icon, "modulate:a", 0.7, 0.8).set_trans(Tween.TRANS_SINE)
+				tween.tween_property(stamina_icon, "modulate:a", 1.0, 0.8).set_trans(Tween.TRANS_SINE)
 		else:
 			# Depleted stamina
-			stamina_icon.modulate = Color.GRAY
+			stamina_icon.modulate = Color(1, 1, 1, 0.2)
 
 		stamina_container.add_child(stamina_icon)
+
+func _add_decorative_elements() -> void:
+	"""Adds decorative UI elements for visual hierarchy."""
+	# Add section divider
+	var divider = DecorativeUI.create_section_divider(self, "Fatigue Status", ArcherDesignTokens.RA_PRIMARY)
+	divider.anchor_left = 0
+	divider.anchor_right = 1
+	divider.anchor_top = 0
+	divider.anchor_bottom = 0
+	divider.offset_top = 4
+	add_child(divider)
+
+	# Add corner ornaments to main container
+	var main_container = get_node("MarginContainer")
+	if main_container:
+		DecorativeUI.create_corner_ornament(main_container, "top_left", ArcherDesignTokens.RA_PRIMARY)
+		DecorativeUI.create_corner_ornament(main_container, "top_right", ArcherDesignTokens.RA_PRIMARY)
+		DecorativeUI.create_corner_ornament(main_container, "bottom_left", ArcherDesignTokens.RA_PRIMARY)
+		DecorativeUI.create_corner_ornament(main_container, "bottom_right", ArcherDesignTokens.RA_PRIMARY)
 
 func _update_recommendation() -> void:
 	"""Updates the recommendation display."""

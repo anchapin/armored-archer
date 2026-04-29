@@ -1,29 +1,45 @@
 [gd_scene load_steps=4 format=3 uid="uid://arrow_trail_particle"]
 
+[ext_resource type="Texture2D" path="res://icon.svg" id="1"]
 
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_trail"]
-emission_shape = 2
-emission_ring_radius = 2.0
-emission_ring_height = 0.0
+direction = Vector3(0, -1, 0)
+spread = 30.0
+flatness = 0.6
 gravity = Vector3(0, 0, 0)
-direction = Vector3(0, 0, 0)
-spread = 0.0
-initial_velocity_min = 0.0
-initial_velocity_max = 0.0
-scale_min = 0.1
-scale_max = 0.3
-color = Color(0.8, 0.8, 0.8, 0.6)
+initial_velocity_min = 40.0
+initial_velocity_max = 80.0
+initial_velocity_random = 0.3
+scale_min = 0.2
+scale_max = 0.35
+scale_curve = SubResource("Curve_scale")
+color = Color(1, 0.85, 0.4, 1.0)  # Golden color for arrow trail
+color_randomness = 0.1
+anim_speed_min = 2.0
+anim_speed_max = 3.0
+emission_shape = 2
+emission_ring_radius = 5.0
+emission_ring_height = 0.0
+emission_ring_inner_radius = 1.0
+
+[sub_resource type="Curve" id="Curve_scale"]
+data = {
+    "point_0": {"time": 0.0, "value": 1.0},
+    "point_1": {"time": 0.4, "value": 0.9},
+    "point_2": {"time": 1.0, "value": 0.0}
+}
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_trail"]
 blend_mode = 1
 
 [node name="ArrowTrail" type="GPUParticles2D"]
-amount = 20
+amount = 30
 process_material = SubResource("ParticleProcessMaterial_trail")
-
-lifetime = 0.3
+texture = ExtResource("1")
+lifetime = 0.35
 one_shot = false
 explosiveness = 0.0
 local_coords = false
 draw_order = 0
 material = SubResource("CanvasItemMaterial_trail")
+speed_scale = 1.2
