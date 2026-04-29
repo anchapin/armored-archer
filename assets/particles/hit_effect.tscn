@@ -4,26 +4,40 @@
 
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_hit"]
 emission_shape = 3
-emission_sphere_radius = 15.0
-gravity = Vector3(0, -30, 0)
+emission_sphere_radius = 12.0
+gravity = Vector3(0, -20, 0)
 direction = Vector3(1, 1, 0)
-spread = 50.0
-initial_velocity_min = 80.0
-initial_velocity_max = 150.0
-scale_min = 0.15
-scale_max = 0.4
-color = Color(1.0, 0.6, 0.2, 1.0)
+spread = 45.0
+initial_velocity_min = 60.0
+initial_velocity_max = 120.0
+initial_velocity_random = 0.3
+scale_min = 0.12
+scale_max = 0.25
+scale_curve = SubResource("Curve_hit_scale")
+color = Color(1.0, 0.5, 0.1, 1.0)  # Orange spark color
+color_randomness = 0.15
+anim_speed_min = 1.5
+anim_speed_max = 2.0
+hue_variation = 0.05
+
+[sub_resource type="Curve" id="Curve_hit_scale"]
+data = {
+    "point_0": {"time": 0.0, "value": 1.0},
+    "point_1": {"time": 0.2, "value": 1.1},
+    "point_2": {"time": 1.0, "value": 0.0}
+}
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_hit"]
 blend_mode = 1
 
 [node name="HitEffect" type="GPUParticles2D"]
-amount = 25
+amount = 35
 process_material = SubResource("ParticleProcessMaterial_hit")
 texture = ExtResource("1")
-lifetime = 0.6
+lifetime = 0.5
 one_shot = true
-explosiveness = 0.85
+explosiveness = 0.8
 local_coords = false
 draw_order = 0
 material = SubResource("CanvasItemMaterial_hit")
+speed_scale = 1.1

@@ -6,6 +6,56 @@
 
 import { Runtime } from '../types/nakama';
 import { GearItem } from './gear_system';
+import { logger } from '../config/logger';
+
+/**
+ * Database row interface for gear items.
+ */
+interface GearItemRow {
+  item_id: string;
+  gear_type: string;
+  name: string;
+  rarity: string;
+  level: number;
+  stats: unknown;
+  modifiers: unknown;
+  created_at: string;
+}
+
+/**
+ * Database row interface for loadout.
+ */
+interface LoadoutRow {
+  helm_item_id: string | null;
+  armor_item_id: string | null;
+  bow_item_id: string | null;
+  arrow_item_id: string | null;
+  amulet_item_id: string | null;
+}
+
+/**
+ * Database row interface for gear stats.
+ */
+interface GearStatRow {
+  name: string;
+  base_value: number;
+  value: number;
+}
+
+/**
+ * Database row interface for boss defeats.
+ */
+interface BossDefeatRow {
+  boss_id: string;
+  defeat_count: number;
+}
+
+/**
+ * Database row interface for unlocked modifier pools.
+ */
+interface UnlockedModifierPoolRow {
+  modifier_id: string;
+}
 
 /**
  * Result of inserting a gear item into the database.
@@ -108,20 +158,20 @@ export function getPlayerGearFromDB(nk: Runtime.Nakama, userId: string): GearIte
   `;
 
   try {
-    const result = nk.dbQuery(query, [userId]) as any[];
+    const result = nk.dbQuery(query, [userId]) as GearItemRow[];
 
     if (!result || result.length === 0) {
       return [];
     }
 
-    return result.map((row: any) => ({
+    return result.map((row: GearItemRow) => ({
       id: row.item_id,
       type: row.gear_type,
       name: row.name,
       rarity: row.rarity,
       level: row.level,
       stats: Array.isArray(row.stats)
-        ? row.stats.map((stat: any) => ({
+        ? (row.stats as GearStatRow[]).map((stat: GearStatRow) => ({
             name: stat.name,
             base_value: stat.base_value,
             value: stat.value,
@@ -131,7 +181,7 @@ export function getPlayerGearFromDB(nk: Runtime.Nakama, userId: string): GearIte
       timestamp: new Date(row.created_at).getTime(),
     }));
   } catch (error) {
-    console.error('Failed to retrieve player gear:', error);
+    logger.error('Failed to retrieve player gear', { error: String(error) });
     return [];
   }
 }
@@ -164,7 +214,7 @@ export function getPlayerLoadoutFromDB(nk: Runtime.Nakama, userId: string): Load
   `;
 
   try {
-    const result = nk.dbQuery(query, [userId]) as any[];
+    const result = nk.dbQuery(query, [userId]) as LoadoutRow[];
 
     if (!result || result.length === 0) {
       return {
@@ -185,7 +235,7 @@ export function getPlayerLoadoutFromDB(nk: Runtime.Nakama, userId: string): Load
       amulet_item_id: row.amulet_item_id || null,
     };
   } catch (error) {
-    console.error('Failed to retrieve player loadout:', error);
+    logger.error('Failed to retrieve player loadout', { error: String(error) });
     return {
       helm_item_id: null,
       armor_item_id: null,
@@ -431,13 +481,13 @@ export function getDefeatedBossesFromDB(nk: Runtime.Nakama, userId: string): str
   `;
 
   try {
-    const result = nk.dbQuery(query, [userId]) as any[];
+    const result = nk.dbQuery(query, [userId]) as BossDefeatRow[];
     if (!result || result.length === 0) {
       return [];
     }
-    return result.map((row: any) => row.boss_id);
+    return result.map((row: BossDefeatRow) => row.boss_id);
   } catch (error) {
-    console.error('Failed to retrieve defeated bosses:', error);
+    logger.error('Failed to retrieve defeated bosses', { error: String(error) });
     return [];
   }
 }
@@ -457,13 +507,13 @@ export function getBossDefeatCount(nk: Runtime.Nakama, userId: string, bossId: s
   `;
 
   try {
-    const result = nk.dbQuery(query, [userId, bossId]) as any[];
+    const result = nk.dbQuery(query, [userId, bossId]) as BossDefeatRow[];
     if (result && result.length > 0) {
       return result[0].defeat_count;
     }
     return 0;
   } catch (error) {
-    console.error('Failed to retrieve boss defeat count:', error);
+    logger.error('Failed to retrieve boss defeat count', { error: String(error) });
     return 0;
   }
 }
@@ -543,13 +593,13 @@ export function getUnlockedModifierPoolsFromDB(nk: Runtime.Nakama, userId: strin
   `;
 
   try {
-    const result = nk.dbQuery(query, [userId]) as any[];
+    const result = nk.dbQuery(query, [userId]) as UnlockedModifierPoolRow[];
     if (!result || result.length === 0) {
       return [];
     }
-    return result.map((row: any) => row.modifier_id);
+    return result.map((row: UnlockedModifierPoolRow) => row.modifier_id);
   } catch (error) {
-    console.error('Failed to retrieve unlocked modifier pools:', error);
+    logger.error('Failed to retrieve unlocked modifier pools', { error: String(error) });
     return [];
   }
 }
@@ -573,10 +623,10 @@ export function isModifierPoolUnlocked(
   `;
 
   try {
-    const result = nk.dbQuery(query, [userId, modifierId]) as any[];
+    const result = nk.dbQuery(query, [userId, modifierId]) as UnlockedModifierPoolRow[];
     return result && result.length > 0;
   } catch (error) {
-    console.error('Failed to check if modifier pool is unlocked:', error);
+    logger.error('Failed to check if modifier pool is unlocked', { error: String(error) });
     return false;
   }
 }

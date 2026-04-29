@@ -13,6 +13,10 @@ var slot_type: int = 0
 var slot_name: String = ""
 var current_gear: Dictionary = {}
 
+# --- Visual Constants ---
+const RARITY_ACCENT_WIDTH: float = 4.0
+const EQUIPPED_GLOW_COLOR: Color = Color(1, 0.675, 0.329, 0.5)  # Golden
+
 @onready var slot_button: Button = $SlotButton
 @onready var slot_label: Label = $SlotLabel
 @onready var gear_name_label: Label = $GearNameLabel
@@ -34,6 +38,7 @@ func _update_display() -> void:
 		gear_name_label.text = "Empty"
 		gear_name_label.modulate = Color(0.5, 0.5, 0.5)
 		gear_icon.texture = null
+		_clear_rarity_accent()
 	else:
 		var gear_name: String = current_gear.get("name", "Unknown")
 		gear_name_label.text = gear_name
@@ -41,11 +46,41 @@ func _update_display() -> void:
 		var rarity: String = current_gear.get("rarity", "common")
 		var rarity_colors: Dictionary = {
 			"common": Color.WHITE,
-			"uncommon": Color(0, 0.8, 0),
-			"rare": Color(0, 0.49, 0.87),
-			"legendary": Color(1, 0.5, 0)
+			"uncommon": Color(0.3, 0.9, 0.3),  # Green
+			"rare": Color(0.3, 0.6, 1.0),      # Blue
+			"epic": Color(0.7, 0.4, 1.0),      # Purple
+			"legendary": Color(1, 0.675, 0.329) # Golden
 		}
-		gear_name_label.modulate = rarity_colors.get(rarity, Color.WHITE)
+		var rarity_color: Color = rarity_colors.get(rarity, Color.WHITE)
+		gear_name_label.modulate = rarity_color
+		
+		# Add rarity accent bar
+		_add_rarity_accent(rarity_color)
+
+func _add_rarity_accent(color: Color) -> void:
+	# Remove existing accent if any
+	_clear_rarity_accent()
+	
+	# Create rarity accent bar on left edge
+	var accent := ColorRect.new()
+	accent.name = "RarityAccent"
+	accent.color = color
+	accent.anchor_left = 0
+	accent.anchor_top = 0
+	accent.anchor_right = 0
+	accent.anchor_bottom = 1
+	accent.offset_left = 0
+	accent.offset_top = 0
+	accent.offset_right = RARITY_ACCENT_WIDTH
+	accent.offset_bottom = 0
+	
+	move_child(accent, 0)  # Add behind other controls
+	add_child(accent)
+
+func _clear_rarity_accent() -> void:
+	var accent = get_node_or_null("RarityAccent")
+	if accent:
+		accent.queue_free()
 
 func set_gear(gear_data: Dictionary) -> void:
 	current_gear = gear_data
@@ -67,6 +102,9 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	var preview: Control = Control.new()
 	var label: Label = Label.new()
 	label.text = current_gear.get("name", "Gear")
+	label.add_theme_color_override("font_color", Color(1, 0.675, 0.329))  # Golden text
+	label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	label.add_theme_constant_override("outline_size", 1)
 	preview.add_child(label)
 	preview.set_anchors_preset(Control.PRESET_CENTER)
 

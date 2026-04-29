@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://virtual_joystick_scene"]
+[gd_scene load_steps=3 format=3 uid="uid://virtual_joystick_scene"]
 
 [ext_resource type="Script" path="res://scenes/virtual_joystick.gd" id="1_joystick_script"]
+[ext_resource type="GradientTexture2D" path="res://assets/sprites/joystick_gradient.tres" id="2_gradient"]
 
 [node name="VirtualJoystick" type="Control"]
 layout_mode = 3
@@ -9,7 +10,7 @@ offset_right = 200.0
 offset_bottom = 200.0
 script = ExtResource("1_joystick_script")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -22,9 +23,10 @@ offset_right = 100.0
 offset_bottom = 100.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(1, 1, 1, 0.3)
+texture = ExtResource("2_gradient")
+modulate = Color(1, 1, 1, 0.25)
 
-[node name="Thumb" type="ColorRect" parent="Background"]
+[node name="Thumb" type="TextureRect" parent="Background"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -37,4 +39,6 @@ offset_right = 25.0
 offset_bottom = 25.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(1, 1, 1, 0.7)
+texture = ExtResource("2_gradient")
+modulate = Color(1, 1, 1, 0.9)
+stretch_mode = 2

@@ -22,7 +22,8 @@
     "**/data/modules/**",
     "**/grafana/**",
     "**/templates/**",
-    "**/reports/**"
+    "**/reports/**",
+    "**/.deprecated/**"
   ],
   "extensions": ["ts", "tsx", "js", "jsx", "gd", "py"],
   "mode": "weak"

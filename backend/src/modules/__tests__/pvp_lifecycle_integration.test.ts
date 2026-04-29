@@ -81,7 +81,9 @@ describe('PvP lifecycle integration', () => {
 
     // Step 1: Create match
     const createResult = rpcCreateMatch(
-      creatorCtx, mockLogger, mockNk,
+      creatorCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({ match_type: 'ranked' })
     );
     const created = JSON.parse(createResult);
@@ -92,7 +94,9 @@ describe('PvP lifecycle integration', () => {
     // Step 2: Accept match
     const opponentCtx = createMockContext({ userId: 'opponent-user' });
     const acceptResult = rpcAcceptMatch(
-      opponentCtx, mockLogger, mockNk,
+      opponentCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({ match_id: matchId })
     );
     const accepted = JSON.parse(acceptResult);
@@ -101,7 +105,9 @@ describe('PvP lifecycle integration', () => {
 
     // Step 3: Submit combat action for creator
     const actionResult = await rpcSubmitCombatAction(
-      creatorCtx, mockLogger, mockNk,
+      creatorCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({
         match_id: matchId,
         action_type: 'shoot',
@@ -114,7 +120,9 @@ describe('PvP lifecycle integration', () => {
 
     // Step 4: Complete match
     const completeResult = rpcCompleteMatch(
-      creatorCtx, mockLogger, mockNk,
+      creatorCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({
         match_id: matchId,
         winner_id: 'creator-user',
@@ -130,7 +138,9 @@ describe('PvP lifecycle integration', () => {
 
     // Create and accept match
     const createResult = rpcCreateMatch(
-      creatorCtx, mockLogger, mockNk,
+      creatorCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({ match_type: 'ranked' })
     );
     const matchId = JSON.parse(createResult).match.match_id;
@@ -140,7 +150,9 @@ describe('PvP lifecycle integration', () => {
 
     // Complete the match
     rpcCompleteMatch(
-      creatorCtx, mockLogger, mockNk,
+      creatorCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({
         match_id: matchId,
         winner_id: 'creator-user',
@@ -150,7 +162,9 @@ describe('PvP lifecycle integration', () => {
 
     // Try to submit action after completion
     const lateActionResult = await rpcSubmitCombatAction(
-      creatorCtx, mockLogger, mockNk,
+      creatorCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({
         match_id: matchId,
         action_type: 'shoot',

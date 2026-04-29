@@ -91,10 +91,10 @@ func _cleanup_signal_connection(node: Node, signal_name: String, connection: Cal
 
 # --- Button Handlers ---
 func _on_play_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/ui/campaign_map.tscn")
+	_transition_to_scene("res://scenes/ui/campaign_map.tscn")
 
 func _on_pvp_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/ui/matchmaking_menu.tscn")
+	_transition_to_scene("res://scenes/ui/matchmaking_menu.tscn")
 
 func _on_shop_pressed() -> void:
 	# Clean up existing shop instance if it exists
@@ -107,12 +107,12 @@ func _on_shop_pressed() -> void:
 	visible = false
 
 func _on_buy_gems_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/ui/store_menu.tscn")
+	_transition_to_scene("res://scenes/ui/store_menu.tscn")
 
 func _on_settings_pressed() -> void:
 	var settings_scene = load("res://scenes/ui/settings_menu.tscn")
 	if settings_scene:
-		get_tree().change_scene_to_packed(settings_scene)
+		_transition_to_scene_packed(settings_scene)
 	else:
 		var dialog := AcceptDialog.new()
 		dialog.title = "Settings"
@@ -134,6 +134,29 @@ func _on_loadout_pressed() -> void:
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()
+
+# --- Scene Transitions ---
+func _transition_to_scene(scene_path: String) -> void:
+	"""Animate menu transition with fade effect."""
+	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+		get_tree().change_scene_to_file(scene_path)
+		return
+	
+	# Fade out animation
+	var tween = create_tween()
+	tween.tween_property(menu_container, "modulate:a", 0.0, 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func(): get_tree().change_scene_to_file(scene_path))
+
+func _transition_to_scene_packed(scene: PackedScene) -> void:
+	"""Animate menu transition with fade effect for packed scenes."""
+	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+		get_tree().change_scene_to_packed(scene)
+		return
+	
+	# Fade out animation
+	var tween = create_tween()
+	tween.tween_property(menu_container, "modulate:a", 0.0, 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func(): get_tree().change_scene_to_packed(scene))
 
 # --- Currency Display ---
 func _update_gem_display() -> void:
@@ -267,6 +290,24 @@ func _animate_menu_entry() -> void:
 	var tween = create_tween()
 	tween.tween_property(menu_container, "modulate:a", 1.0, 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 	tween.parallel().tween_property(menu_container, "scale", Vector2.ONE, 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+	
+	# Add character preview idle animation
+	_animate_character_preview()
+
+func _animate_character_preview() -> void:
+	# Subtle idle bob animation for character preview
+	if not character_preview:
+		return
+	
+	# Only animate if animations are enabled
+	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+		return
+	
+	# Create a looping bob animation
+	var tween = create_tween()
+	tween.set_loops()
+	tween.tween_property(character_preview, "position:y", character_preview.position.y - 5, 2.0).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(character_preview, "position:y", character_preview.position.y, 2.0).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 
 
 # --- Privacy Consent & Beta Onboarding ---

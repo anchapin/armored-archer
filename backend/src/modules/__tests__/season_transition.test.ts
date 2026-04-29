@@ -1,9 +1,5 @@
 import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
-import {
-  calculateSoftResetElo,
-  evaluatePrestigeTiers,
-  PRESTIGE_TIERS,
-} from '../season_system';
+import { calculateSoftResetElo, evaluatePrestigeTiers, PRESTIGE_TIERS } from '../season_system';
 import { Runtime } from '../../types/nakama';
 
 describe('Season transition', () => {
@@ -98,7 +94,7 @@ describe('Season transition', () => {
   describe('soft reset across all tiers', () => {
     it('should produce monotonically decreasing Elo for increasing ranks', () => {
       const rankBreakpoints = [1, 11, 51, 101, 501];
-      const eloValues = rankBreakpoints.map(r => calculateSoftResetElo(r));
+      const eloValues = rankBreakpoints.map((r) => calculateSoftResetElo(r));
 
       for (let i = 1; i < eloValues.length; i++) {
         expect(eloValues[i]).toBeLessThan(eloValues[i - 1]);

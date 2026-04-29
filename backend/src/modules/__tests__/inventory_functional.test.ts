@@ -1,4 +1,9 @@
-import { createMockLogger, createMockContext, createMockNakama, testStorage } from '../../__mocks__/nakama';
+import {
+  createMockLogger,
+  createMockContext,
+  createMockNakama,
+  testStorage,
+} from '../../__mocks__/nakama';
 import { Runtime } from '../../types/nakama';
 
 // Mock gear_db to avoid DB dependency
@@ -73,12 +78,7 @@ jest.mock('../../utils/cache', () => ({
   })),
 }));
 
-import {
-  rpcGenerateGear,
-  rpcEquipGear,
-  rpcUnequipGear,
-  rpcGetInventory,
-} from '../gear_system';
+import { rpcGenerateGear, rpcEquipGear, rpcUnequipGear, rpcGetInventory } from '../gear_system';
 
 describe('Inventory functional flow', () => {
   let mockLogger: Runtime.Logger;
@@ -117,7 +117,9 @@ describe('Inventory functional flow', () => {
 
     // Step 1: Generate gear
     const generateResult = rpcGenerateGear(
-      mockCtx, mockLogger, mockNk,
+      mockCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({ stage_id: 'stage_1' })
     );
     const genParsed = JSON.parse(generateResult);
@@ -128,22 +130,23 @@ describe('Inventory functional flow', () => {
       // Step 2: Equip the gear
       if (gearId) {
         const equipResult = rpcEquipGear(
-          mockCtx, mockLogger, mockNk,
+          mockCtx,
+          mockLogger,
+          mockNk,
           JSON.stringify({ gear_id: gearId, slot: 'helm' })
         );
         const equipParsed = JSON.parse(equipResult);
 
         if (equipParsed.success) {
           // Step 3: Verify equipped via inventory
-          const invResult = rpcGetInventory(
-            mockCtx, mockLogger, mockNk,
-            JSON.stringify({})
-          );
+          const invResult = rpcGetInventory(mockCtx, mockLogger, mockNk, JSON.stringify({}));
           const invParsed = JSON.parse(invResult);
 
           // Step 4: Unequip
           const unequipResult = rpcUnequipGear(
-            mockCtx, mockLogger, mockNk,
+            mockCtx,
+            mockLogger,
+            mockNk,
             JSON.stringify({ slot: 'helm' })
           );
           const unequipParsed = JSON.parse(unequipResult);
@@ -161,9 +164,21 @@ describe('Inventory functional flow', () => {
     const userB = createMockContext({ userId: 'user-b' });
 
     // User A's gear
-    testStorage.set('player_inventory:user-a', JSON.stringify([
-      { id: 'gear-1', name: 'Test Helm', type: 'helm', rarity: 'common', stats: [], modifiers: [], level: 1, timestamp: Date.now() },
-    ]));
+    testStorage.set(
+      'player_inventory:user-a',
+      JSON.stringify([
+        {
+          id: 'gear-1',
+          name: 'Test Helm',
+          type: 'helm',
+          rarity: 'common',
+          stats: [],
+          modifiers: [],
+          level: 1,
+          timestamp: Date.now(),
+        },
+      ])
+    );
     testStorage.set('player_loadout:user-a', JSON.stringify({}));
     testStorage.set('player_inventory:user-b', JSON.stringify([]));
     testStorage.set('player_loadout:user-b', JSON.stringify({}));
@@ -187,7 +202,9 @@ describe('Inventory functional flow', () => {
 
     // User B tries to equip User A's gear
     const result = rpcEquipGear(
-      userB, mockLogger, mockNk,
+      userB,
+      mockLogger,
+      mockNk,
       JSON.stringify({ gear_id: 'gear-1', slot: 'helm' })
     );
     const parsed = JSON.parse(result);

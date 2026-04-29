@@ -1,4 +1,9 @@
-import { createMockLogger, createMockContext, createMockNakama, testStorage } from '../../__mocks__/nakama';
+import {
+  createMockLogger,
+  createMockContext,
+  createMockNakama,
+  testStorage,
+} from '../../__mocks__/nakama';
 import { Runtime } from '../../types/nakama';
 
 jest.mock('../audit', () => ({
@@ -90,7 +95,9 @@ describe('PvE stage flow', () => {
 
     // Gain XP from stage completion
     const result = rpcGainXP(
-      mockCtx, mockLogger, mockNk,
+      mockCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({ xp_amount: 100, source: 'pve' })
     );
     const parsed = JSON.parse(result);
@@ -130,7 +137,9 @@ describe('PvE stage flow', () => {
     let totalXp = 0;
     for (let i = 0; i < 3; i++) {
       const result = rpcGainXP(
-        mockCtx, mockLogger, mockNk,
+        mockCtx,
+        mockLogger,
+        mockNk,
         JSON.stringify({ xp_amount: 150, source: 'pve' })
       );
       const parsed = JSON.parse(result);
