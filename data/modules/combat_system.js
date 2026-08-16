@@ -18,9 +18,9 @@ var profiling_1 = require("./profiling");
 var validation_1 = require("./validation");
 var gear_system_1 = require("./gear_system");
 var safeParse_1 = require("../utils/safeParse");
-// Match-level inactivity timeout: 2 minutes of inactivity results in auto-forfeit
-var MATCH_INACTIVE_TIMEOUT_MS = 2 * 60 * 1000;
-// Maximum consecutive turn timeouts before auto-forfeit
+// Maximum consecutive turn timeouts before auto-forfeit.
+// Turn timers are the single timeout authority (ADR-0003); there is
+// deliberately no separate, harsher match-level inactivity check (issue #868).
 var MAX_CONSECUTIVE_TIMEOUTS = 2;
 /**
  * Registers the submit combat action RPC endpoint.

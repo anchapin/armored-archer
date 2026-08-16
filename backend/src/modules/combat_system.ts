@@ -28,9 +28,11 @@ import {
   type TimeoutEvent,
 } from './fairness_telemetry';
 
-// Match-level inactivity timeout: 2 minutes of inactivity results in auto-forfeit
-const MATCH_INACTIVE_TIMEOUT_MS = 2 * 60 * 1000;
-// Maximum consecutive turn timeouts before auto-forfeit
+// Maximum consecutive turn timeouts before auto-forfeit.
+// Turn timers are the single timeout authority (ADR-0003): the 5-minute turn
+// timer doubles as the mobile reconnect grace, so 2 consecutive timeouts
+// (~10 minutes) forfeit the match. There is deliberately no separate, harsher
+// match-level inactivity check (issue #868).
 const MAX_CONSECUTIVE_TIMEOUTS = 2;
 
 /**
