@@ -574,10 +574,6 @@ describe('matchmaker', () => {
   });
 
   describe('rpcGetPlayerRank', () => {
-    beforeEach(() => {
-      (applyRankDecay as jest.Mock).mockImplementation((_nk, _userId, rank) => rank);
-    });
-
     it('should return player rank, level, and xp', () => {
       const playerStats = {
         level: 7,
@@ -600,6 +596,57 @@ describe('matchmaker', () => {
       expect(parsed.rank).toBeDefined();
       expect(parsed.level).toBe(7);
       expect(parsed.xp).toBe(1250);
+    });
+
+    it('should return the exact derived Power Rating, unaffected by rank decay (issue #865)', () => {
+      // Power Rating is a pure derivation from stored stats; inactivity decay
+      // belongs to the Ladder Rating reads in season_leaderboard, not here.
+      const playerStats = {
+        level: 12,
+        xp: 3400,
+        stats: { attack: 40, defense: 32, dodge: 24, crit_rate: 16 },
+      };
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_stats',
+          key: 'test-user-123',
+          value: JSON.stringify(playerStats),
+        },
+      ]);
+
+      const payload = JSON.stringify({});
+      const result = rpcGetPlayerRank(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      const expectedRank = Math.floor(12 * 10 + (40 + 32 + 24 + 16) / 4);
+      expect(parsed.success).toBe(true);
+      expect(parsed.rank).toBe(expectedRank);
+      // Guard: no inactivity decay on the derived Power Rating path.
+      expect(applyRankDecay).not.toHaveBeenCalled();
+    });
+
+    it('should not write any storage while serving the rank (derived value is never persisted)', () => {
+      const playerStats = {
+        level: 3,
+        xp: 100,
+        stats: { attack: 8, defense: 6, dodge: 4, crit_rate: 2 },
+      };
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_stats',
+          key: 'test-user-123',
+          value: JSON.stringify(playerStats),
+        },
+      ]);
+      mockNk.storageWrite = jest.fn();
+
+      const payload = JSON.stringify({});
+      const result = rpcGetPlayerRank(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(mockNk.storageWrite).not.toHaveBeenCalled();
+      expect(applyRankDecay).not.toHaveBeenCalled();
     });
 
     it('should return error when player stats not found', () => {
@@ -726,7 +773,6 @@ describe('matchmaker', () => {
       (getLeaderboardEntry as jest.Mock).mockReturnValue(null);
       (applyEloUpdates as jest.Mock).mockReturnValue({ winnerNewElo: 1210, loserNewElo: 1140 });
       (recordPlayerActivity as jest.Mock).mockImplementation();
-      (applyRankDecay as jest.Mock).mockImplementation((_nk, _userId, rank) => rank);
       (logAudit as jest.Mock).mockImplementation();
       (recordMatchResult as jest.Mock).mockImplementation();
     });
@@ -1043,7 +1089,6 @@ describe('matchmaker', () => {
           (getLeaderboardEntry as jest.Mock).mockReturnValue(null);
           (applyEloUpdates as jest.Mock).mockReturnValue({ winnerNewElo: 1210, loserNewElo: 1140 });
           (recordPlayerActivity as jest.Mock).mockImplementation();
-          (applyRankDecay as jest.Mock).mockImplementation((_nk: any, _u: string, rank: number) => rank);
           (logAudit as jest.Mock).mockImplementation();
           (recordMatchResult as jest.Mock).mockImplementation();
 
@@ -1352,12 +1397,12 @@ describe('matchmaker', () => {
       expect(parsed.is_punch_up).toBe(false);
     });
 
-    it('should apply rank decay when applicable', () => {
+    it('should not apply rank decay at settlement — decay is Ladder-Rating-read-only (issue #865)', () => {
+      // Inactivity decay applies when the Ladder Rating is read
+      // (season_leaderboard), never at settlement: both participants just
+      // played, and their activity is recorded during settlement. The former
+      // applyMatchRankDecay call was provably inert and is removed.
       const match = createActiveMatch({ opponent_health: 0 });
-      (applyRankDecay as jest.Mock).mockImplementation((_nk, _userId, rank) => {
-        // Simulate rank decay for inactive players
-        return rank > 1100 ? rank - 10 : rank;
-      });
       installStatefulStorage(match);
 
       const payload = JSON.stringify({
@@ -1369,8 +1414,12 @@ describe('matchmaker', () => {
       const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
-      expect(applyRankDecay).toHaveBeenCalled();
+      expect(applyRankDecay).not.toHaveBeenCalled();
       expect(parsed.success).toBe(true);
+      // new_rank must be the pure Elo result from applyEloUpdates (mocked),
+      // not reduced by any inactivity adjustment.
+      expect(parsed.winner.new_rank).toBe(1210);
+      expect(parsed.loser.new_rank).toBe(1140);
     });
 
     it('should record player activity after match completion', () => {

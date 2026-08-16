@@ -38,7 +38,6 @@ import {
   getEloKFactors,
   getLeaderboardEntry,
   recordPlayerActivity,
-  applyRankDecay,
   SeasonInfo,
 } from './season_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
@@ -850,14 +849,33 @@ export function rpcGetPlayerRank(
     return JSON.stringify({ error: 'Player stats not found' });
   }
   const playerStats = statsResult.data!;
-  const rank = calculateRank(playerStats);
 
-  // Apply rank decay check - this updates the player's rank if they've been inactive
-  const decayedRank = applyRankDecay(nk, ctx.userId, rank);
+  // ROOT CAUSE (issue #865): this RPC previously applied applyRankDecay() to
+  // the value returned by calculateRank(). That was wrong on three counts:
+  //
+  // 1. Power Rating is a pure derivation (level*10 + stat average) recomputed
+  //    from player_stats on every call — it has no persistence semantics, so
+  //    "decaying" it could never stick; it only produced a transiently
+  //    misleading display value for inactive players.
+  // 2. The decayed value was never written to storage, never fed into Elo
+  //    (Elo is persisted in processRankedMatchUpdates via applyEloUpdates),
+  //    and never influenced matchmaking (rpcListMatches / rpcCreateMatch
+  //    recompute calculateRank from stored stats server-side; punch-up
+  //    detection uses those server-computed ranks only).
+  // 3. The legitimate decay target is the Ladder Rating (Elo): season_system's
+  //    inactivity decay is applied on ladder reads via season_leaderboard
+  //    (decayed_rating). Build strength does not rust.
+  //
+  // Note: this handler was also shadowed at runtime — index.ts registers
+  // season_leaderboard's rpcGetPlayerRank under the same RPC ID after this
+  // one, and Nakama's JS runtime registerRpc is a last-wins map insert
+  // (Callbacks.Rpc[id] = fn). The decay is removed so this handler returns
+  // the pure Power Rating if it is ever un-shadowed (#871 owns that split).
+  const rank = calculateRank(playerStats);
 
   return JSON.stringify({
     success: true,
-    rank: decayedRank,
+    rank,
     level: playerStats.level,
     xp: playerStats.xp,
   });
@@ -2088,22 +2106,16 @@ function processMatchResult(
     loserKFactor = rankedUpdates.loserK;
   }
 
-  // Record player activity for rank decay tracking
+  // Record player activity for rank decay tracking.
   recordPlayerActivity(nk, request.winner_id);
   recordPlayerActivity(nk, request.loser_id);
 
-  // Apply rank decay if applicable (for inactive players)
-  const { winnerNewRank: winnerDecayedRank, loserNewRank: loserDecayedRank } = applyMatchRankDecay(
-    nk,
-    request.winner_id,
-    request.loser_id,
-    winnerNewRank,
-    loserNewRank,
-    logger
-  );
-
-  winnerNewRank = winnerDecayedRank;
-  loserNewRank = loserDecayedRank;
+  // No decay at settlement (issue #865): inactivity decay applies to the
+  // Ladder Rating when it is read (season_leaderboard), never here. The
+  // former applyMatchRankDecay call was provably inert — both players'
+  // activity is recorded immediately above, so applyRankDecay always saw
+  // 0 inactive days and returned the score unchanged. winner/loser ranks
+  // below are the pure Elo results from processRankedMatchUpdates.
 
   // Get season information for position tracking
   const currentSeason = getCurrentSeason();
@@ -2300,35 +2312,6 @@ function processMatchResult(
     is_punch_up: isPunchUp,
     end_reason: match.end_reason,
   });
-}
-
-/**
- * Apply rank decay to match participants
- */
-function applyMatchRankDecay(
-  nk: Runtime.Nakama,
-  winnerId: string,
-  loserId: string,
-  winnerRank: number,
-  loserRank: number,
-  logger: Runtime.Logger
-): { winnerNewRank: number; loserNewRank: number } {
-  const winnerDecayedRank = applyRankDecay(nk, winnerId, winnerRank);
-  const loserDecayedRank = applyRankDecay(nk, loserId, loserRank);
-
-  if (winnerDecayedRank !== winnerRank) {
-    logger.info(
-      'Rank decay applied for winner %s: %d -> %d',
-      winnerId,
-      winnerRank,
-      winnerDecayedRank
-    );
-  }
-  if (loserDecayedRank !== loserRank) {
-    logger.info('Rank decay applied for loser %s: %d -> %d', loserId, loserRank, loserDecayedRank);
-  }
-
-  return { winnerNewRank: winnerDecayedRank, loserNewRank: loserDecayedRank };
 }
 
 /**
