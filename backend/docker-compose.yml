@@ -2,6 +2,9 @@ services:
   postgres:
     image: postgres:14-alpine
     container_name: armored_archer_db
+    # Self-heal after daemon/host restarts so the Nakama server never
+    # crash-loops against a database that only exists as a stopped container.
+    restart: unless-stopped
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-nakama}
@@ -24,6 +27,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: armored_archer_redis
+    # Same self-healing policy as postgres — it previously lacked one too.
+    restart: unless-stopped
     command: redis-server --save 60 1 --loglevel warning
     ports:
       - "6380:6379"
@@ -210,18 +215,22 @@ services:
   nakama:
     image: heroiclabs/nakama:3.21.1
     container_name: armored_archer_server
+    # DSN is assembled at runtime from the same POSTGRES_* variables that
+    # configure the postgres container (single source of truth — no more
+    # hardcoded credentials drifting away from backend/.env).
     entrypoint:
       - "/bin/sh"
       - "-ecx"
       - >
-        /nakama/nakama migrate up --database.address postgres://postgres:changeme@postgres:5432/nakama &&
-        exec /nakama/nakama --database.address postgres://postgres:changeme@postgres:5432/nakama
+        /nakama/nakama migrate up --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD:-changeme}@postgres:5432/$${POSTGRES_DB:-nakama}" &&
+        exec /nakama/nakama --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD:-changeme}@postgres:5432/$${POSTGRES_DB:-nakama}"
     restart: always
     environment:
       - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-defaultkey}
       - NAKAMA_SERVER_PORT=${NAKAMA_SERVER_PORT:-7350}
-    links:
-      - "postgres:db"
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_DB=${POSTGRES_DB:-nakama}
     depends_on:
       postgres:
         condition: service_healthy
