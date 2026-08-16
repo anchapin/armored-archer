@@ -62,12 +62,12 @@ horizontal_alignment = 1
 
 [node name="RankDifferenceLabel" type="Label" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer"]
 layout_mode = 2
-text = "Opponent is 10 ranks above you"
+text = "Opponent's Power Rating is 10 above yours"
 horizontal_alignment = 1
 
 [node name="ExplanationLabel" type="Label" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer"]
 layout_mode = 2
-text = "This is a high-risk match with enhanced rewards."
+text = "A steep punch-up: losing to a much stronger build costs double Ladder Rating."
 autowrap_mode = 3
 horizontal_alignment = 1
 
@@ -101,11 +101,11 @@ size_flags_horizontal = 3
 
 [node name="LosePenaltyLabel" type="Label" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/RewardsContainer/LoseRewards"]
 layout_mode = 2
-text = "-40% XP, -15 Rank"
+text = "2× Ladder Rating loss; XP reduced, still earned"
 
 [node name="WarningLabel" type="Label" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer"]
 layout_mode = 2
-text = "You may face a much stronger opponent. Are you sure?"
+text = "A loss here costs double Ladder Rating. Are you sure?"
 autowrap_mode = 3
 horizontal_alignment = 1
 

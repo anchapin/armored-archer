@@ -5,6 +5,22 @@ var _tests_failed: int = 0
 
 signal test_completed(test_name: String, passed: bool)
 
+# Mock NetworkManager for settlement-trigger tests
+class MockNetwork:
+	extends Node
+	var is_connected: bool = true
+	var user_id: String = "me"
+	var last_rpc_id: String = ""
+	var last_payload: String = ""
+	var mock_responses: Dictionary = {}
+
+	func send_rpc(rpc_id: String, payload: String) -> Dictionary:
+		last_rpc_id = rpc_id
+		last_payload = payload
+		if mock_responses.has(rpc_id):
+			return mock_responses[rpc_id]
+		return {"success": true}
+
 func _ready() -> void:
 	print("=== Running MatchmakerManager Tests ===\n")
 	await run_tests()
@@ -28,6 +44,9 @@ func run_tests() -> void:
 	await test_calculate_punch_up_risk_level()
 	await test_should_show_punch_up_warning()
 	await test_get_punch_up_risk_details()
+	# Settlement trigger + warning copy tests (issue #862)
+	await test_complete_match_trigger_only()
+	await test_punch_up_warning_dialog_copy()
 
 	print("\n=== MatchmakerManager Test Results ===")
 	print("Passed: %d" % _tests_passed)
@@ -423,3 +442,107 @@ func test_get_punch_up_risk_details() -> void:
 		_fail("test_get_punch_up_risk_details_normal", "Risk details incorrect for normal match: %s" % str(normal_details))
 
 	mm.queue_free()
+
+# --- Settlement Trigger Tests (issue #862) ---
+
+func test_complete_match_trigger_only() -> void:
+	var mm = _create_matchmaker_manager()
+	var mock_net = MockNetwork.new()
+	add_child(mock_net)
+	mm.network_manager = mock_net
+	mm.current_match = {"match_id": "m1", "status": "active"}
+
+	# Server declares the opponent the winner; the client sent no claim
+	mock_net.mock_responses[mm.RPC_COMPLETE_MATCH] = {
+		"success": true,
+		"winner": {"user_id": "opponent", "new_rank": 1100},
+		"loser": {"user_id": "me", "new_rank": 950},
+		"is_punch_up": true
+	}
+
+	var emitted_results: Array = []
+	mm.match_completed.connect(func(result): emitted_results.append(result))
+
+	await mm.complete_match(true)
+
+	var payload = JSON.parse_string(mock_net.last_payload)
+
+	var passed := true
+	var err := ""
+
+	if payload == null:
+		passed = false
+		err = "Payload should parse as JSON"
+	elif payload.has("winner_id") or payload.has("loser_id"):
+		passed = false
+		err = "Trigger-only payload must not carry a winner/loser assertion"
+	elif payload.get("match_id", "") != "m1":
+		passed = false
+		err = "Payload must carry the match_id settlement key"
+	elif not payload.get("is_punch_up", false):
+		passed = false
+		err = "Payload should carry the advisory is_punch_up flag"
+	elif emitted_results.size() != 1:
+		passed = false
+		err = "match_completed should emit exactly once"
+	elif emitted_results[0].get("is_victory", true) != false:
+		passed = false
+		err = "Victory must be derived from the server-declared winner"
+	elif emitted_results[0].get("winner_id", "") != "opponent":
+		passed = false
+		err = "winner_id must be the server-declared winner"
+	elif mm.punch_up_losses != 1 or mm.punch_up_wins != 0:
+		passed = false
+		err = "Punch-up stats must follow the server-declared outcome"
+	elif not mm.current_match.is_empty():
+		passed = false
+		err = "Current match should be cleared after settlement"
+
+	if passed:
+		_pass("test_complete_match_trigger_only")
+	else:
+		_fail("test_complete_match_trigger_only", err)
+
+	mm.queue_free()
+	mock_net.queue_free()
+
+func test_punch_up_warning_dialog_copy() -> void:
+	var dialog = load("res://scenes/ui/punch_up_warning_dialog.tscn").instantiate()
+	add_child(dialog)
+
+	var match_data := {
+		"match_id": "match1",
+		"is_punch_up": true,
+		"creator_rank": 24
+	}
+	dialog.set_match_data(match_data, 10)
+
+	var lose_text: String = dialog.lose_penalty_label.text
+	var rank_text: String = dialog.rank_difference_label.text
+	var win_text: String = dialog.win_bonus_label.text
+
+	var passed := true
+	var err := ""
+
+	if not lose_text.contains("Ladder Rating"):
+		passed = false
+		err = "Loss copy must name Ladder Rating (what's staked)"
+	elif not lose_text.contains("2×"):
+		passed = false
+		err = "Loss copy must state the amplified (2x) Ladder Rating loss"
+	elif lose_text.contains("-") and lose_text.to_upper().contains("XP"):
+		passed = false
+		err = "Loss copy must not advertise an XP penalty"
+	elif not rank_text.contains("Power Rating"):
+		passed = false
+		err = "Gap copy must name Power Rating (eligibility)"
+	elif not win_text.contains("Gems"):
+		passed = false
+		err = "Win copy should keep the gem bonus"
+
+	if passed:
+		_pass("test_punch_up_warning_dialog_copy")
+	else:
+		_fail("test_punch_up_warning_dialog_copy", err)
+
+	dialog.queue_free()

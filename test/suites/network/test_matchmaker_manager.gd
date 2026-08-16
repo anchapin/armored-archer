@@ -127,48 +127,84 @@ func test_get_player_rank_success():
 	assert_signal_emitted(_mm, "rank_retrieved")
 	assert_eq(_mm.player_rank, 1200)
 
-# Test: complete_match success (win)
+# Test: complete_match triggers settlement (win, server-declared)
 func test_complete_match_win():
 	var mock_net = MockNetwork.new()
 	mock_net.user_id = "me"
 	_mm.network_manager = mock_net
 	_mm.current_match = {"match_id": "m1"}
-	
+
 	mock_net.mock_responses[_mm.RPC_COMPLETE_MATCH] = {
 		"success": true,
 		"winner": {"user_id": "me", "new_rank": 1100},
+		"loser": {"user_id": "opponent", "new_rank": 900},
 		"is_punch_up": true
 	}
-	
+
 	watch_signals(_mm)
-	await _mm.complete_match("me", "opponent", true)
-	
+	await _mm.complete_match(true)
+
 	assert_signal_emitted(_mm, "match_completed")
 	assert_signal_emitted(_mm, "punch_up_stats_updated")
 	assert_eq(_mm.player_rank, 1100)
 	assert_eq(_mm.punch_up_wins, 1)
 	assert_true(_mm.current_match.is_empty(), "Current match should be cleared")
 
-# Test: complete_match success (loss)
+	# Trigger-only payload: no winner/loser assertion is sent (issue #862)
+	var payload = JSON.parse_string(mock_net.last_payload)
+	assert_eq(payload["match_id"], "m1")
+	assert_true(payload["is_punch_up"])
+	assert_false(payload.has("winner_id"), "Payload must not assert a winner")
+	assert_false(payload.has("loser_id"), "Payload must not assert a loser")
+
+# Test: complete_match outcome comes from the server declaration (loss)
 func test_complete_match_loss():
 	var mock_net = MockNetwork.new()
 	mock_net.user_id = "me"
 	_mm.network_manager = mock_net
 	_mm.current_match = {"match_id": "m1"}
-	
+
+	# Server declares the OPPONENT the winner; the client sent no claim
 	mock_net.mock_responses[_mm.RPC_COMPLETE_MATCH] = {
 		"success": true,
+		"winner": {"user_id": "opponent", "new_rank": 1100},
 		"loser": {"user_id": "me", "new_rank": 950},
 		"is_punch_up": true
 	}
-	
+
 	watch_signals(_mm)
-	await _mm.complete_match("opponent", "me", true)
-	
+	await _mm.complete_match(true)
+
 	assert_signal_emitted(_mm, "match_completed")
 	assert_signal_emitted(_mm, "punch_up_stats_updated")
 	assert_eq(_mm.player_rank, 950)
 	assert_eq(_mm.punch_up_losses, 1)
+
+	# Victory must be derived from the server-declared winner
+	var params = get_signal_parameters(_mm, "match_completed", 0)
+	assert_false(params[0]["is_victory"], "Victory must come from server declaration")
+	assert_eq(params[0]["winner_id"], "opponent")
+
+# Test: complete_match handles a server-declared draw
+func test_complete_match_draw():
+	var mock_net = MockNetwork.new()
+	mock_net.user_id = "me"
+	_mm.network_manager = mock_net
+	_mm.current_match = {"match_id": "m1"}
+
+	mock_net.mock_responses[_mm.RPC_COMPLETE_MATCH] = {
+		"success": true,
+		"match": {},
+		"is_draw": true,
+		"end_reason": "draw"
+	}
+
+	watch_signals(_mm)
+	await _mm.complete_match(false)
+
+	var draw_params = get_signal_parameters(_mm, "match_completed", 0)
+	assert_true(draw_params[0].get("is_draw", false), "Draw should be reported")
+	assert_true(_mm.current_match.is_empty(), "Current match should be cleared")
 
 # Test: Utility methods
 func test_utilities():
@@ -213,13 +249,8 @@ func test_error_cases():
 	
 	# No active match for complete_match
 	_mm.current_match = {}
-	await _mm.complete_match("w", "l")
+	await _mm.complete_match(false)
 	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC when no active match")
-	
-	# Same winner/loser
-	_mm.current_match = {"id": "m"}
-	await _mm.complete_match("p1", "p1")
-	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC for same winner/loser")
 
 # Test: No network
 func test_no_network():
@@ -229,5 +260,5 @@ func test_no_network():
 	await _mm.create_match("ranked")
 	await _mm.accept_match("m")
 	await _mm.get_player_rank()
-	await _mm.complete_match("w", "l")
+	await _mm.complete_match()
 	assert_true(true, "Should handle null network manager")

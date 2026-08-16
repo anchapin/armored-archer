@@ -1,7 +1,11 @@
 extends Control
 
 ## Warning dialog for high-risk punch-up challenges.
-## Shows risk level, rank difference, and risk vs reward analysis.
+## Shows the Power Rating gap (what gates punch-up eligibility) and the
+## Ladder Rating stake (what a punch-up actually wagers).
+## Loss copy reflects the server-verified consequence model (issue #862):
+## an amplified Ladder Rating deduction plus a reduced, always-positive
+## XP grant — never an XP penalty or XP subtraction.
 ## Players can accept or decline the challenge.
 
 signal warning_accepted(match_data: Dictionary)
@@ -28,7 +32,7 @@ var design_tokens: Node
 var _match_data: Dictionary = {}
 var _player_rank: int = 0
 
-# --- Punch-Up Constants (matching backend) ---
+# --- Punch-Up Constants (matching backend: gap 5-15, min Power Rating 20) ---
 const PUNCH_UP_RANK_DIFF_THRESHOLD = 5
 const PUNCH_UP_MAX_RANK_DIFF = 15
 const PUNCH_UP_MIN_RANK = 20
@@ -96,22 +100,25 @@ func _update_dialog_content() -> void:
 	risk_level_label.text = "Risk Level: %s" % risk_level.to_upper()
 	risk_level_label.modulate = risk_color
 
-	# Update rank difference info
+	# Update Power Rating gap info (eligibility keys on Power Rating,
+	# never on Ladder Rating — issue #862)
 	if opponent_rank > _player_rank:
-		rank_difference_label.text = "Opponent is %d ranks above you" % rank_diff
+		rank_difference_label.text = "Opponent's Power Rating is %d above yours" % rank_diff
 	else:
-		rank_difference_label.text = "Opponent is %d ranks below you" % rank_diff
+		rank_difference_label.text = "Opponent's Power Rating is %d below yours" % rank_diff
 
 	# Update explanation based on risk level
 	explanation_label.text = _get_risk_explanation(risk_level, rank_diff)
 
-	# Calculate and display rewards
+	# Calculate and display server-verified rewards only.
+	# Win: XP multiplier (1.2x-2.0x by gap) plus gem bonus (3-10).
+	# Loss: amplified Ladder Rating deduction (2x K-factor); the XP grant
+	# is reduced but always positive — no XP penalty exists to advertise.
 	var xp_multiplier: float = _calculate_xp_multiplier(rank_diff)
 	var gem_bonus: int = _calculate_gem_bonus(rank_diff)
-	var rank_penalty: int = _calculate_rank_penalty(rank_diff)
 
 	win_bonus_label.text = "+%.0f%% XP, +%d Gems" % [(xp_multiplier - 1.0) * 100.0, gem_bonus]
-	lose_penalty_label.text = "-%d%% XP, -%d Rank" % [int((1.0 - (1.0 / xp_multiplier)) * 100.0), rank_penalty]
+	lose_penalty_label.text = "2× Ladder Rating loss; XP reduced, still earned"
 
 	# Update warning message
 	warning_label.text = _get_warning_message(risk_level)
@@ -177,13 +184,13 @@ func _get_risk_explanation(risk_level: String, rank_diff: int) -> String:
 	"""
 	match risk_level:
 		"low":
-			return "This is a mild punch-up with slightly enhanced rewards."
+			return "A mild punch-up: small Power Rating gap, modest Ladder Rating swing."
 		"medium":
-			return "This is a moderate punch-up with good rewards if you win."
+			return "A moderate punch-up: a wider Power Rating gap means a bigger Ladder Rating swing."
 		"high":
-			return "This is a high-risk match with significantly enhanced rewards."
+			return "A steep punch-up: losing to a much stronger build costs double Ladder Rating."
 		_:
-			return "This is a punch-up match with risk vs reward mechanics."
+			return "A punch-up stakes Ladder Rating; the Power Rating gap set the terms."
 
 func _get_warning_message(risk_level: String) -> String:
 	"""Returns the warning message based on risk level.
@@ -196,13 +203,13 @@ func _get_warning_message(risk_level: String) -> String:
 	"""
 	match risk_level:
 		"low":
-			return "Opponent may be slightly stronger. Continue?"
+			return "Ladder Rating is what's staked. Continue?"
 		"medium":
-			return "Opponent is likely stronger. Are you prepared?"
+			return "You're staking Ladder Rating against a stronger opponent. Prepared?"
 		"high":
-			return "You may face a much stronger opponent. Are you sure?"
+			return "A loss here costs double Ladder Rating. Are you sure?"
 		_:
-			return "Proceed with caution."
+			return "Proceed with caution — Ladder Rating is at stake."
 
 # --- Reward Calculations ---
 
@@ -242,20 +249,6 @@ func _calculate_gem_bonus(rank_diff: int) -> int:
 	)
 	return int(PUNCH_UP_GEM_BONUS_MIN + gem_range * normalized_diff)
 
-func _calculate_rank_penalty(rank_diff: int) -> int:
-	"""Calculates rank penalty for losing a punch-up.
-
-	Parameters:
-		rank_diff: Absolute difference in ranks
-
-	Returns:
-		int: Rank points to lose
-	"""
-	# Penalty scales with rank difference
-	# Minimum penalty of 5, maximum of 25
-	var normalized_diff: float = clampf(float(rank_diff) / float(PUNCH_UP_MAX_RANK_DIFF), 0.0, 1.0)
-	return int(5.0 + 20.0 * normalized_diff)
-
 # --- Button Callbacks ---
 
 func _on_decline_pressed() -> void:
@@ -288,15 +281,15 @@ func _apply_theme() -> void:
 	if explanation_label:
 		explanation_label.modulate = colors["on_surface"]
 	if win_bonus_label:
-		win_bonus_label.modulate = colors["on_surface_variant"]
+		win_bonus_label.modulate = colors.get("on_surface_variant", colors.get("on_surface", Color.WHITE))
 	if lose_penalty_label:
-		lose_penalty_label.modulate = colors["on_surface_variant"]
+		lose_penalty_label.modulate = colors.get("on_surface_variant", colors.get("on_surface", Color.WHITE))
 	if warning_label:
 		warning_label.modulate = colors["on_surface"]
 
 	# Apply button colors
 	if decline_button:
-		decline_button.modulate = colors["on_surface_variant"]
+		decline_button.modulate = colors.get("on_surface_variant", colors.get("on_surface", Color.WHITE))
 	if accept_button:
 		accept_button.modulate = colors["primary"]
 
