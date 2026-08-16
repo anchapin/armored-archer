@@ -34,17 +34,10 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
-      nakama:
-        image: armored-archer/nakama-postgres:3.21.1
-        ports:
-          - 7352:7350
-        options: >-
-          --health-cmd "/nakama/nakama healthcheck"
-          --health-interval 10s
-          --health-timeout 10s
-          --health-retries 60
-          --health-start-period 60s
+      # Note: no Nakama service container here (issue #858) — the
+      # `armored-archer/nakama-postgres:3.21.1` image was never published to a
+      # registry and failed job setup everywhere. This job runs unit tests only
+      # (jest roots=src), which never connect to Nakama.
 
     steps:
       - uses: actions/checkout@v4
@@ -77,18 +70,6 @@ jobs:
           for migration in $(ls -1 *.sql 2>/dev/null | sort -V); do
             echo "Running migration: $migration"
             PGPASSWORD=changeme psql -h localhost -p 5435 -U postgres -d nakama -f "$migration" || true
-          done
-
-      - name: Wait for Nakama to be ready
-        run: |
-          echo "Waiting for Nakama to be ready..."
-          for i in {1..60}; do
-            if curl -s http://localhost:7352/ 2>/dev/null || curl -s http://localhost:7351/ 2>/dev/null; then
-              echo "Nakama is ready"
-              break
-            fi
-            echo "Waiting for Nakama... ($i/60)"
-            sleep 2
           done
 
       - name: Run tests with coverage
@@ -153,7 +134,7 @@ jobs:
           fi
 
       - name: Upload coverage report
-        if: always()
+        if: always() && env.ACT != 'true'
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
@@ -161,6 +142,10 @@ jobs:
           path: |
             backend/coverage/
           retention-days: 30
+
+      - name: Skip upload (act detected)
+        if: always() && env.ACT == 'true'
+        run: echo "Skipping artifact upload in act environment"
 
       - name: Comment PR with coverage summary
         if: github.event_name == 'pull_request'

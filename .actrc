@@ -2,6 +2,10 @@
 --env GODOT_HEADLESS=true
 --env DISPLAY=:99
 
+# Runner image: pin the slim act image (~1.6GB). act's default
+# (catthehacker/ubuntu:full-latest, ~4GB) stalls pulling on slow links (#858).
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+
 # Container architecture
 --container-architecture linux/amd64
 
@@ -10,23 +14,28 @@
 --container-options --volume=/home/runner/.config/godot:/root/.config/godot
 --container-options --shm-size=2gb
 
-# IMPORTANT: For workflows using custom Docker images (like armored-archer/nakama-postgres),
-# use --pull=false to use locally built images instead of trying to pull from registry.
-# Example: act -j backend-test --pull=false
-# Build the image first: docker build -t armored-archer/nakama-postgres:3.21.1 -f .docker/nakama-postgres/Dockerfile .
---pull=false
+# NOTE: --pull=false was removed in #858. It existed only to reuse a locally
+# built `armored-archer/nakama-postgres:3.21.1` image that was never published
+# to any registry. CI services now use standard public images
+# (postgres:14-alpine / postgres:15-alpine / heroiclabs/nakama), so act should
+# pull them normally — keeping --pull=false broke fresh machines that had not
+# pre-pulled those images.
 
-# NOTE: Running the full workflow with 'act' may encounter cache contention errors
-# ('archive/tar: write too long') due to multiple jobs accessing npm cache simultaneously.
+# Parallel act runs (issue #858):
+# - act job containers run on the host network and reach service containers
+#   via their published host ports (localhost:<host-port>); service DNS names
+#   do NOT resolve.
+# - Every DB-dependent CI job now publishes a UNIQUE host port — ci.yml
+#   backend-test 5432, sonarcloud 5434, coverage-threshold.yml 5435,
+#   test.yml backend-tests 5436, ci.yml schema-validation 5437 — none of which
+#   collide with the local dev stack (postgres 5433, nakama 7349-7351), so
+#   different jobs can run in parallel act processes.
+# - The SAME job still cannot run in two act processes at once: act derives
+#   job container names from workflow+job, and both invocations would bind the
+#   same fixed host port. Run same-job invocations sequentially; they also
+#   share ~/.cache/act (action cache races otherwise).
 #
-# Workarounds:
-# 1. Run jobs individually: act -j <job-name>
-# 2. Use optimized local CI runner: ./scripts/ci-local.sh
-# 3. Use --reuse flag: act --reuse (experimental)
-# 4. Run without cache: act --no-cache-cache
-#
-# The project is configured to work correctly with GitHub Actions CI.
-# For local testing, use the optimized ci-local.sh script:
+# For optimized local CI (sequential/parallel job orchestration):
 #   - make ci (sequential)
 #   - make ci-parallel (fastest)
 #   - ./scripts/ci-local.sh --help (for options)

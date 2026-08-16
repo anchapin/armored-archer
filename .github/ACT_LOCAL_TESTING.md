@@ -115,7 +115,7 @@ Pull the required images first:
 docker pull ghcr.io/catthehacker/ubuntu:full-latest
 docker pull postgres:14-alpine
 docker pull postgres:15-alpine
-docker pull armored-archer/nakama-postgres:3.21.1
+docker pull heroiclabs/nakama:3.21.1
 ```
 
 ### Cache issues
