@@ -167,7 +167,7 @@ func _update_gold_display() -> void:
 	if gem_manager:
 		gold_label.text = "%d" % gem_manager.get_gold_balance()
 
-func _on_currency_updated(gems: int, gold: int) -> void:
+func _on_currency_updated(gems: int, coins: int) -> void:
 	_update_gem_display()
 	_update_gold_display()
 

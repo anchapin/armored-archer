@@ -115,7 +115,7 @@ describe('store', () => {
   const createMockCurrency = (overrides?: Partial<PlayerCurrency>): PlayerCurrency => ({
     user_id: 'test-user',
     gems: 100,
-    gold: 500,
+    coins: 500,
     ...overrides,
   });
 
@@ -159,6 +159,56 @@ describe('store', () => {
       expect(parsed.product_id).toBe('com.armoredarcher.gems.small');
     });
 
+    it('migrates a legacy gold record on purchase with zero balance loss (#866)', async () => {
+      // Mock RevenueCat API response for successful validation
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: 'active',
+          subscriber: {
+            non_subscriptions: {
+              'com.armoredarcher.gems.small': [{ product_id: 'com.armoredarcher.gems.small' }],
+            },
+          },
+        }),
+      });
+
+      // Pre-rename record: the coins balance lives under the legacy `gold`
+      // field. The purchase read-modify-write must fold it into `coins`
+      // instead of dropping it on the write-back.
+      mockNk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify({
+            user_id: 'test-user',
+            gems: 100,
+            gold: 500,
+            wallet_bridged: true,
+          }),
+        },
+      ]);
+
+      const payload = JSON.stringify({
+        product_id: 'com.armoredarcher.gems.small',
+        platform: 'ios',
+        transaction_receipt: 'legacy-gold-migration-receipt',
+      });
+      const result = await rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
+
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(true);
+      expect(parsed.gems_awarded).toBe(100);
+
+      const stored = JSON.parse(
+        testStorage.get('player_currency:test-user') as string
+      ) as Record<string, unknown>;
+      expect(stored.gems).toBe(200);
+      expect(stored.coins).toBe(500); // legacy balance preserved
+      expect(stored).not.toHaveProperty('gold'); // normalized on write
+    });
+
     it('should return error for invalid product ID', async () => {
       const payload = JSON.stringify({
         product_id: 'invalid.product.id',
@@ -185,7 +235,7 @@ describe('store', () => {
 
   describe('rpcGetCurrency', () => {
     it('should return player currency', () => {
-      const currency = createMockCurrency({ gems: 500, gold: 1000 });
+      const currency = createMockCurrency({ gems: 500, coins: 1000 });
       mockNk.storageRead = jest.fn().mockReturnValue([
         {
           collection: 'player_currency',
@@ -199,7 +249,7 @@ describe('store', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.gems).toBe(500);
-      expect(parsed.gold).toBe(1000);
+      expect(parsed.coins).toBe(1000);
     });
 
     it('should return default currency when none exists', () => {
@@ -210,7 +260,7 @@ describe('store', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.gems).toBe(0);
-      expect(parsed.gold).toBe(0);
+      expect(parsed.coins).toBe(0);
     });
   });
 
@@ -570,7 +620,7 @@ describe('store', () => {
     });
 
     it('should process successful refund and deduct gems', async () => {
-      const currency = createMockCurrency({ gems: 500, gold: 100 });
+      const currency = createMockCurrency({ gems: 500, coins: 100 });
       const nk = createMockNakama();
       nk.storageWrite([
         {
@@ -597,7 +647,7 @@ describe('store', () => {
     });
 
     it('should apply partial refund when balance is insufficient', async () => {
-      const currency = createMockCurrency({ gems: 50, gold: 100 });
+      const currency = createMockCurrency({ gems: 50, coins: 100 });
       const nk = createMockNakama();
       nk.storageWrite([
         {
@@ -648,7 +698,7 @@ describe('store', () => {
       const cachedCurrency: PlayerCurrency = {
         user_id: 'cached-user',
         gems: 999,
-        gold: 100,
+        coins: 100,
       };
       mockCache.get.mockReturnValue(cachedCurrency);
 
@@ -817,7 +867,7 @@ describe('store', () => {
       const highBalance: PlayerCurrency = {
         user_id: 'whale-user',
         gems: 9_999_950, // 9,999,950 + 100 = 10,000,050 > 10M
-        gold: 0,
+        coins: 0,
       };
 
       const nk = createMockNakama();
@@ -864,7 +914,7 @@ describe('store', () => {
       const normalBalance: PlayerCurrency = {
         user_id: 'normal-user',
         gems: 500,
-        gold: 100,
+        coins: 100,
       };
 
       const nk = createMockNakama();
@@ -2720,7 +2770,7 @@ describe('store', () => {
       const cachedCurrency: PlayerCurrency = {
         user_id: 'test-user',
         gems: 777,
-        gold: 888,
+        coins: 888,
       };
       mockCache.get.mockReturnValue(cachedCurrency);
 
@@ -2728,7 +2778,7 @@ describe('store', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.gems).toBe(777);
-      expect(parsed.gold).toBe(888);
+      expect(parsed.coins).toBe(888);
     });
   });
 
@@ -2837,7 +2887,7 @@ describe('store', () => {
           collection: 'player_currency',
           key: 'refund-test-user',
           userId: 'refund-test-user',
-          value: JSON.stringify({ user_id: 'refund-test-user', gems: 500, gold: 0 }),
+          value: JSON.stringify({ user_id: 'refund-test-user', gems: 500, coins: 0 }),
         },
       ]);
 
@@ -3717,7 +3767,7 @@ describe('store', () => {
           collection: 'player_currency',
           key: 'test-user',
           userId: 'test-user',
-          value: JSON.stringify({ user_id: 'test-user', gems: 10, gold: 0 }),
+          value: JSON.stringify({ user_id: 'test-user', gems: 10, coins: 0 }),
           version: '1',
           permissionRead: 1,
           permissionWrite: 1,
@@ -3738,7 +3788,7 @@ describe('store', () => {
           collection: 'player_currency',
           key: 'test-user',
           userId: 'test-user',
-          value: JSON.stringify({ user_id: 'test-user', gems: 500, gold: 0 }),
+          value: JSON.stringify({ user_id: 'test-user', gems: 500, coins: 0 }),
           version: '1',
           permissionRead: 1,
           permissionWrite: 1,
@@ -3770,7 +3820,7 @@ describe('store', () => {
           collection: 'player_currency',
           key: 'test-user',
           userId: 'test-user',
-          value: JSON.stringify({ user_id: 'test-user', gems: 250, gold: 1000 }),
+          value: JSON.stringify({ user_id: 'test-user', gems: 250, coins: 1000 }),
           version: '1',
           permissionRead: 1,
           permissionWrite: 1,
@@ -3783,7 +3833,7 @@ describe('store', () => {
 
       const parsed = JSON.parse(result);
       expect(parsed.gems).toBe(250);
-      expect(parsed.gold).toBe(1000);
+      expect(parsed.coins).toBe(1000);
     });
 
     it('should return default currency when no data exists', () => {
@@ -3793,7 +3843,7 @@ describe('store', () => {
 
       const parsed = JSON.parse(result);
       expect(parsed.gems).toBe(0);
-      expect(parsed.gold).toBe(0);
+      expect(parsed.coins).toBe(0);
     });
   });
 
@@ -3804,7 +3854,7 @@ describe('store', () => {
           collection: 'player_currency',
           key: 'refund-user',
           userId: 'refund-user',
-          value: JSON.stringify({ user_id: 'refund-user', gems: 500, gold: 0 }),
+          value: JSON.stringify({ user_id: 'refund-user', gems: 500, coins: 0 }),
           version: '1',
           permissionRead: 1,
           permissionWrite: 1,
@@ -3832,7 +3882,7 @@ describe('store', () => {
           collection: 'player_currency',
           key: 'reason-test-user',
           userId: 'reason-test-user',
-          value: JSON.stringify({ user_id: 'reason-test-user', gems: 500, gold: 0 }),
+          value: JSON.stringify({ user_id: 'reason-test-user', gems: 500, coins: 0 }),
           version: '1',
           permissionRead: 1,
           permissionWrite: 1,
@@ -3860,7 +3910,7 @@ describe('store', () => {
           collection: 'player_currency',
           key: 'dup-reason-user',
           userId: 'dup-reason-user',
-          value: JSON.stringify({ user_id: 'dup-reason-user', gems: 300, gold: 0 }),
+          value: JSON.stringify({ user_id: 'dup-reason-user', gems: 300, coins: 0 }),
           version: '1',
           permissionRead: 1,
           permissionWrite: 1,
@@ -3888,7 +3938,7 @@ describe('store', () => {
           collection: 'player_currency',
           key: 'other-reason-user',
           userId: 'other-reason-user',
-          value: JSON.stringify({ user_id: 'other-reason-user', gems: 200, gold: 0 }),
+          value: JSON.stringify({ user_id: 'other-reason-user', gems: 200, coins: 0 }),
           version: '1',
           permissionRead: 1,
           permissionWrite: 1,
@@ -3916,7 +3966,7 @@ describe('store', () => {
           collection: 'player_currency',
           key: 'low-balance-user',
           userId: 'low-balance-user',
-          value: JSON.stringify({ user_id: 'low-balance-user', gems: 50, gold: 0 }),
+          value: JSON.stringify({ user_id: 'low-balance-user', gems: 50, coins: 0 }),
           version: '1',
           permissionRead: 1,
           permissionWrite: 1,
@@ -4328,7 +4378,7 @@ describe('store', () => {
           collection: 'player_currency',
           key: 'redis-err-user',
           userId: 'redis-err-user',
-          value: JSON.stringify({ user_id: 'redis-err-user', gems: 200, gold: 0 }),
+          value: JSON.stringify({ user_id: 'redis-err-user', gems: 200, coins: 0 }),
         },
       ]);
 
@@ -4389,7 +4439,7 @@ describe('store', () => {
       const cachedCurrency: PlayerCurrency = {
         user_id: 'test-user',
         gems: 300,
-        gold: 100,
+        coins: 100,
       };
       mockCache.get.mockReturnValue(cachedCurrency);
 
@@ -4404,7 +4454,7 @@ describe('store', () => {
       const cachedCurrency: PlayerCurrency = {
         user_id: 'test-user',
         gems: 10,
-        gold: 100,
+        coins: 100,
       };
       mockCache.get.mockReturnValue(cachedCurrency);
 
@@ -5225,7 +5275,7 @@ describe('store', () => {
     it('should successfully purchase a bundle with sufficient gems', () => {
       testStorage.set(
         'player_currency:test-user',
-        JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 })
+        JSON.stringify({ user_id: 'test-user', gems: 5000, coins: 0 })
       );
 
       const result = JSON.parse(
@@ -5259,7 +5309,7 @@ describe('store', () => {
     it('should reject purchase with insufficient gems', () => {
       testStorage.set(
         'player_currency:test-user',
-        JSON.stringify({ user_id: 'test-user', gems: 500, gold: 0 })
+        JSON.stringify({ user_id: 'test-user', gems: 500, coins: 0 })
       );
 
       const result = JSON.parse(
@@ -5277,7 +5327,7 @@ describe('store', () => {
     it('should reject purchase when player already owns a bundle item', () => {
       testStorage.set(
         'player_currency:test-user',
-        JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 })
+        JSON.stringify({ user_id: 'test-user', gems: 5000, coins: 0 })
       );
       testStorage.set(
         'player_cosmetics_owned:test-user',
@@ -5299,7 +5349,7 @@ describe('store', () => {
     it('should reject duplicate purchase of one-time bundle', () => {
       testStorage.set(
         'player_currency:test-user',
-        JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 })
+        JSON.stringify({ user_id: 'test-user', gems: 5000, coins: 0 })
       );
       testStorage.set(
         'player_bundles_owned:test-user',
@@ -5321,7 +5371,7 @@ describe('store', () => {
     it('should add all bundle items to player ownership', () => {
       testStorage.set(
         'player_currency:test-user',
-        JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 })
+        JSON.stringify({ user_id: 'test-user', gems: 5000, coins: 0 })
       );
 
       rpcPurchaseBundle(
@@ -5341,7 +5391,7 @@ describe('store', () => {
     it('should record bundle in player_bundles_owned', () => {
       testStorage.set(
         'player_currency:test-user',
-        JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 })
+        JSON.stringify({ user_id: 'test-user', gems: 5000, coins: 0 })
       );
 
       rpcPurchaseBundle(
@@ -5359,7 +5409,7 @@ describe('store', () => {
     it('should deduct correct bundle price (not individual prices)', () => {
       testStorage.set(
         'player_currency:test-user',
-        JSON.stringify({ user_id: 'test-user', gems: 5000, gold: 0 })
+        JSON.stringify({ user_id: 'test-user', gems: 5000, coins: 0 })
       );
 
       const result = JSON.parse(
@@ -5434,7 +5484,7 @@ describe('store', () => {
       it('logs audit for successful webhook purchase', async () => {
         testStorage.set(
           'player_currency:test-user',
-          JSON.stringify({ user_id: 'test-user', gems: 0, gold: 0 })
+          JSON.stringify({ user_id: 'test-user', gems: 0, coins: 0 })
         );
         mockFetch.mockResolvedValueOnce({
           ok: true,

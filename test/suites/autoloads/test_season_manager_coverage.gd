@@ -107,7 +107,7 @@ func test_get_season_rewards_tracks_coverage():
 		"success": true,
 		"rewards": {
 			"rank": 100,
-			"currency": {"gold": 500, "gems": 50},
+			"currency": {"coins": 500, "gems": 50},
 			"items": ["item1", "item2"]
 		}
 	})
@@ -131,7 +131,7 @@ func test_claim_season_rewards_tracks_coverage():
 		"claimed": true,
 		"rewards": {
 			"rank": 100,
-			"currency": {"gold": 500, "gems": 50}
+			"currency": {"coins": 500, "gems": 50}
 		}
 	})
 

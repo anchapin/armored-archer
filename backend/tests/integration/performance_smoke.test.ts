@@ -70,7 +70,7 @@ describe('Performance Smoke Tests', () => {
     await testHelper.writeStorageObject('player_currency', player.userId, player.userId, {
       user_id: player.userId,
       gems: 1000,
-      gold: 5000,
+      coins: 5000,
     });
 
     // Create additional test players for concurrent tests

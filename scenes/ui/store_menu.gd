@@ -95,7 +95,7 @@ func _connect_signals() -> void:
 func _update_currency_display() -> void:
 	if store_manager:
 		gems_label.text = str(store_manager.get_gems())
-		gold_label.text = str(store_manager.get_gold())
+		gold_label.text = str(store_manager.get_coins())
 	elif gem_manager:
 		gems_label.text = str(gem_manager.get_gem_balance())
 
@@ -235,7 +235,7 @@ func _on_restore_failed(error: String) -> void:
 	error_dialog.popup_centered()
 
 # --- Callbacks ---
-func _on_currency_updated(gems: int, gold: int) -> void:
+func _on_currency_updated(gems: int, coins: int) -> void:
 	_update_currency_display()
 
 	if gem_manager:

@@ -937,14 +937,14 @@ describe('matchmaker', () => {
       expect(result.success).toBe(true);
 
       // Ranked win = 50 coins, ranked loss = 10 coins. Coins land in the
-      // ledger `gold` field (canonical "Coins" currency, #866 rename pending)
-      // — not in the write-only Nakama wallet.
+      // ledger `coins` field (canonical "Coins" currency, renamed from
+      // `gold` in #866) — not in the write-only Nakama wallet.
       const winnerCurrency = JSON.parse(stored['player_currency:test-user-123']);
-      expect(winnerCurrency.gold).toBe(50);
+      expect(winnerCurrency.coins).toBe(50);
       expect(winnerCurrency.gems).toBe(0);
 
       const loserCurrency = JSON.parse(stored['player_currency:opponent-user']);
-      expect(loserCurrency.gold).toBe(10);
+      expect(loserCurrency.coins).toBe(10);
       expect(loserCurrency.gems).toBe(0);
 
       expect(mockNk.walletUpdate).not.toHaveBeenCalled();
@@ -956,7 +956,7 @@ describe('matchmaker', () => {
       nowSpy.mockRestore();
 
       const winnerAfterReplay = JSON.parse(stored['player_currency:test-user-123']);
-      expect(winnerAfterReplay.gold).toBe(50);
+      expect(winnerAfterReplay.coins).toBe(50);
     });
 
     describe('punch-up loss settlement (issue #864)', () => {

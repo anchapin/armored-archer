@@ -1095,7 +1095,7 @@ describe('season_system', () => {
       for (const call of currencyWrites) {
         const record = JSON.parse(call[0][0].value);
         expect(record.gems).toBeGreaterThanOrEqual(0);
-        expect(record.gold).toBeGreaterThanOrEqual(0);
+        expect(record.coins).toBeGreaterThanOrEqual(0);
       }
     });
 
@@ -1244,7 +1244,7 @@ describe('season_system', () => {
       const ledgerRecord = JSON.parse(currencyWrites[0][0][0].value);
       expect(ledgerRecord.user_id).toBe('test-user');
       expect(ledgerRecord.gems).toBeGreaterThan(0);
-      expect(ledgerRecord.gold).toBeGreaterThan(0);
+      expect(ledgerRecord.coins).toBeGreaterThan(0);
       expect(mockNk.walletUpdate).not.toHaveBeenCalled();
     });
 

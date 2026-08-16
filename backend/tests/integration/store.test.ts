@@ -37,11 +37,11 @@ describe('Store System Integration Tests', () => {
   }
 
   // Helper to set currency
-  async function setCurrency(account: TestAccount, gems: number, gold: number): Promise<void> {
+  async function setCurrency(account: TestAccount, gems: number, coins: number): Promise<void> {
     await testHelper.writeStorageObject('player_currency', account.userId, account.userId, {
       user_id: account.userId,
       gems,
-      gold,
+      coins,
     });
   }
 
@@ -52,7 +52,7 @@ describe('Store System Integration Tests', () => {
       const result = await rpcCall(freshPlayer, 'armored_archer/get_currency', {});
 
       expect(result.gems).toBe(0);
-      expect(result.gold).toBe(0);
+      expect(result.coins).toBe(0);
       expect(result.user_id).toBe(freshPlayer.userId);
     });
 
@@ -62,16 +62,16 @@ describe('Store System Integration Tests', () => {
       const result = await rpcCall(player, 'armored_archer/get_currency', {});
 
       expect(result.gems).toBe(500);
-      expect(result.gold).toBe(1000);
+      expect(result.coins).toBe(1000);
     });
 
-    test('should return only gems if gold not set', async () => {
+    test('should return only gems if coins not set', async () => {
       await setCurrency(player, 250, 0);
 
       const result = await rpcCall(player, 'armored_archer/get_currency', {});
 
       expect(result.gems).toBe(250);
-      expect(result.gold).toBe(0);
+      expect(result.coins).toBe(0);
     });
   });
 
@@ -298,7 +298,7 @@ describe('Store System Integration Tests', () => {
       expect(storedCurrency.gems).toBe(350);
     });
 
-    test('should not affect gold currency', async () => {
+    test('should not affect coins currency', async () => {
       await setCurrency(player, 500, 1000);
 
       const payload = { amount: 100 };
@@ -307,7 +307,7 @@ describe('Store System Integration Tests', () => {
       expect(result.success).toBe(true);
 
       const currency = await getCurrency(player);
-      expect(currency.gold).toBe(1000); // Gold unchanged
+      expect(currency.coins).toBe(1000); // Coins unchanged
       expect(currency.gems).toBe(400);
     });
   });

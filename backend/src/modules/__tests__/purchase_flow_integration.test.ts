@@ -55,7 +55,7 @@ describe('Purchase flow integration', () => {
 
   it('should reflect gem balance after spend', () => {
     // Seed currency
-    const currency = { gems: 500, gold: 1000 };
+    const currency = { gems: 500, coins: 1000 };
     testStorage.set('player_currency:test-user', JSON.stringify(currency));
 
     mockNk.storageRead = jest.fn((objects: any[]) => {
@@ -95,7 +95,7 @@ describe('Purchase flow integration', () => {
 
   it('should prevent double-spending gems concurrently', () => {
     // Seed currency with exactly 100 gems
-    const currency = { gems: 100, gold: 0 };
+    const currency = { gems: 100, coins: 0 };
     testStorage.set('player_currency:test-user', JSON.stringify(currency));
 
     let callCount = 0;

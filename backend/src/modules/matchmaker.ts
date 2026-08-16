@@ -2448,8 +2448,8 @@ function calculateMatchRewards(params: RewardCalculationParams, xpGained: number
  * Writes to the authoritative `player_currency` storage ledger (issue #860)
  * so earned coins and punch-up gems are immediately visible via
  * get_currency and spendable via spend_gems. Reward type 'coin' maps to the
- * ledger's `gold` field (the canonical "Coins" currency; field rename to
- * `coins` tracked in #866).
+ * ledger's `coins` field (the canonical "Coins" currency, renamed from
+ * `gold` in issue #866).
  *
  * @param nk - Nakama server interface
  * @param logger - Nakama logger instance
@@ -2466,14 +2466,14 @@ function awardMatchRewards(
 
   for (const reward of rewards) {
     if (reward.type === 'coin') {
-      delta.gold = (delta.gold || 0) + reward.quantity;
+      delta.coins = (delta.coins || 0) + reward.quantity;
     } else if (reward.type === 'gem') {
       delta.gems = (delta.gems || 0) + reward.quantity;
     }
     // XP is handled separately
   }
 
-  if (delta.gems !== undefined || delta.gold !== undefined) {
+  if (delta.gems !== undefined || delta.coins !== undefined) {
     applyCurrencyDelta(nk, userId, delta, 'match_rewards', logger);
   }
 }

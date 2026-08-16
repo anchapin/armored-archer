@@ -559,7 +559,7 @@ describe('validateRewardDistribution', () => {
     const ledgerRecord = JSON.parse(currencyWrites[0][0][0].value);
     expect(ledgerRecord.user_id).toBe('p1');
     expect(ledgerRecord.gems).toBe(200);
-    expect(ledgerRecord.gold).toBe(5000);
+    expect(ledgerRecord.coins).toBe(5000);
     expect(mockNk.walletUpdate).not.toHaveBeenCalled();
   });
 });

@@ -369,7 +369,7 @@ export function validateRewardDistribution(
           const rewards = calculateRewards(record.rank, seasonNumber);
           // Repair path writes to the unified currency ledger (issue #860)
           const rewardDelta: CurrencyDelta = {};
-          if (rewards.coins) rewardDelta.gold = rewards.coins;
+          if (rewards.coins) rewardDelta.coins = rewards.coins;
           if (rewards.gems) rewardDelta.gems = rewards.gems;
           applyCurrencyDelta(nk, record.ownerId, rewardDelta, 'season_admin_reward_fix');
           if (rewards.cosmetics) {
@@ -436,7 +436,7 @@ export function triggerEndSeason(
     const rewards = calculateRewards(record.rank, currentSeason.season_number);
     // Currency rewards go through the unified currency ledger (issue #860)
     const rewardDelta: CurrencyDelta = {};
-    if (rewards.coins) rewardDelta.gold = rewards.coins;
+    if (rewards.coins) rewardDelta.coins = rewards.coins;
     if (rewards.gems) rewardDelta.gems = rewards.gems;
     applyCurrencyDelta(nk, record.ownerId, rewardDelta, 'season_admin_end_season', logger);
     if (rewards.cosmetics) {
@@ -613,7 +613,7 @@ export function triggerFixMissingRewards(
           const rewards = calculateRewards(record.rank, seasonNumber);
           // Missing-reward repair credits the unified ledger (issue #860)
           const rewardDelta: CurrencyDelta = {};
-          if (rewards.coins) rewardDelta.gold = rewards.coins;
+          if (rewards.coins) rewardDelta.coins = rewards.coins;
           if (rewards.gems) rewardDelta.gems = rewards.gems;
           applyCurrencyDelta(nk, record.ownerId, rewardDelta, 'season_admin_fix_missing_rewards');
           if (rewards.cosmetics) {

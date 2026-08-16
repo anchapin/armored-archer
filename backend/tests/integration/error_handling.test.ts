@@ -293,7 +293,7 @@ describe('Error Handling Tests', () => {
         await testHelper.writeStorageObject('player_currency', player.userId, player.userId, {
           user_id: player.userId,
           gems: 10,
-          gold: 100,
+          coins: 100,
         });
 
         const result = await rpcCall(player, 'armored_archer/spend_gems', {
@@ -353,7 +353,7 @@ describe('Error Handling Tests', () => {
 
       // Should return zero balances, not crash
       expect(result.gems).toBe(0);
-      expect(result.gold).toBe(0);
+      expect(result.coins).toBe(0);
     });
   });
 

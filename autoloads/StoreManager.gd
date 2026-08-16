@@ -2,7 +2,7 @@
 ## Handles purchase flows, currency management, and server-side validation.
 ##
 ## Signals:
-## - currency_updated(gems: int, gold: int): Emitted when currency balances change
+## - currency_updated(gems: int, coins: int): Emitted when currency balances change
 ## - purchase_succeeded(product_id: String, gems_awarded: int): Emitted when purchase completes
 ## - purchase_failed(product_id: String, error: String): Emitted when purchase fails
 ## - products_loaded(products: Dictionary): Emitted when product catalog is available
@@ -68,7 +68,7 @@ var products: Dictionary = {
 
 # --- Player Currency ---
 var current_gems: int = 0
-var current_gold: int = 0
+var current_coins: int = 0
 var is_initialized: bool = false
 
 # --- IAP State ---
@@ -81,7 +81,7 @@ var is_restoring: bool = false
 var _pending_purchases: Array[Dictionary] = []
 
 # --- Signals ---
-signal currency_updated(gems: int, gold: int)
+signal currency_updated(gems: int, coins: int)
 signal purchase_succeeded(product_id: String, gems_awarded: int)
 signal purchase_failed(product_id: String, error: String)
 signal products_loaded(products: Dictionary)
@@ -280,10 +280,10 @@ func load_currency() -> void:
 
 	var currency_data = response  # Response is already a Dictionary from send_rpc
 	current_gems = currency_data.get("gems", 0)
-	current_gold = currency_data.get("gold", 0)
+	current_coins = currency_data.get("coins", 0)
 	is_initialized = true
 
-	emit_signal("currency_updated", current_gems, current_gold)
+	emit_signal("currency_updated", current_gems, current_coins)
 
 func get_gems() -> int:
 	"""Returns current gem balance.
@@ -293,13 +293,13 @@ func get_gems() -> int:
 	"""
 	return current_gems
 
-func get_gold() -> int:
-	"""Returns current gold balance.
+func get_coins() -> int:
+	"""Returns current coins balance.
 
 	Returns:
-		int: Number of gold owned
+		int: Number of coins owned
 	"""
-	return current_gold
+	return current_coins
 
 func add_gems(amount: int, reason: String = "") -> void:
 	"""Adds gems to player's balance (for rewards, achievements, etc).
@@ -313,7 +313,7 @@ func add_gems(amount: int, reason: String = "") -> void:
 		return
 
 	current_gems += amount
-	emit_signal("currency_updated", current_gems, current_gold)
+	emit_signal("currency_updated", current_gems, current_coins)
 
 # --- Purchase Flow ---
 func purchase_product(product_id: String) -> void:
@@ -393,7 +393,7 @@ func _simulate_test_purchase(product_id: String) -> void:
 
 	print("[StoreManager] TEST MODE: Purchase succeeded! Awarded %d gems" % gems_awarded)
 	emit_signal("purchase_succeeded", product_id, gems_awarded)
-	emit_signal("currency_updated", current_gems, current_gold)
+	emit_signal("currency_updated", current_gems, current_coins)
 
 func _on_revenuecat_purchase_complete(result: Dictionary) -> void:
 	"""Handles RevenueCat purchase completion callback."""
@@ -486,7 +486,7 @@ func _validate_purchase_with_server(product_id: String, transaction_receipt: Str
 		var gems_awarded: int = result.get("gems_awarded", 0)
 		current_gems = result.get("new_balance", current_gems)
 		_record_success()
-		emit_signal("currency_updated", current_gems, current_gold)
+		emit_signal("currency_updated", current_gems, current_coins)
 		emit_signal("purchase_succeeded", product_id, gems_awarded)
 
 		# Track purchase completed in analytics for conversion
@@ -559,7 +559,7 @@ func spend_gems(amount: int, reason: String = "") -> void:
 
 	if result.get("success", false):
 		current_gems = result.get("new_balance", current_gems)
-		emit_signal("currency_updated", current_gems, current_gold)
+		emit_signal("currency_updated", current_gems, current_coins)
 
 # --- Product Info ---
 func get_products() -> Dictionary:
@@ -766,11 +766,11 @@ func format_gems(amount: int) -> String:
 	"""
 	return str(amount)
 
-func format_gold(amount: int) -> String:
-	"""Formats gold amount for display.
+func format_coins(amount: int) -> String:
+	"""Formats coins amount for display.
 
 	Parameters:
-		amount: Numeric gold amount
+		amount: Numeric coins amount
 
 	Returns:
 		String: Formatted string (currently just converts to string)

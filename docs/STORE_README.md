@@ -9,7 +9,7 @@ This document provides an overview of the RevenueCat in-app purchase (IAP) integ
 
 - **RPC Endpoints**:
   - `armored_archer/validate_purchase` - Validates purchase receipts and awards gems
-  - `armored_archer/get_currency` - Retrieves player's gem and gold balance
+  - `armored_archer/get_currency` - Retrieves player's gem and coins balance
   - `armored_archer/spend_gems` - Deducts gems for purchases
 
 - **Product Definitions**:
@@ -39,7 +39,7 @@ Key Features:
 **File**: `scenes/ui/store_menu.tscn` & `.gd`
 
 Features:
-- Display current gem and gold balance
+- Display current gem and coins balance
 - Three gem bundle purchase options
 - Loading states and error handling
 - Integration with both StoreManager and GemManager

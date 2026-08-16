@@ -1,5 +1,5 @@
 /**
- * Currency ledger tests (issue #860).
+ * Currency ledger tests (issues #860 + #866).
  *
  * Covers the unified currency ledger contract:
  * - All earned currency lands in the `player_currency` storage record
@@ -7,6 +7,8 @@
  * - The one-time legacy wallet bridge folds pre-fix wallet balances with
  *   zero loss and never double-counts
  * - No code path dual-writes to the Nakama wallet anymore
+ * - The #866 `gold` → `coins` field rename migrates old records lazily
+ *   with zero balance loss and no dual-field drift
  */
 
 jest.mock('../../utils/circuitBreaker', () => ({
@@ -26,6 +28,7 @@ import {
 import {
   getCurrency,
   applyCurrencyDelta,
+  invalidateCurrencyCache,
   MAX_GEM_BALANCE,
   PLAYER_CURRENCY_COLLECTION,
   PlayerCurrency,
@@ -59,18 +62,18 @@ describe('currency ledger (issue #860)', () => {
     it('returns zero balances for a fresh player without creating a record', () => {
       const currency = getCurrency(mockNk, 'fresh-user', mockLogger);
 
-      expect(currency).toEqual({ user_id: 'fresh-user', gems: 0, gold: 0 });
+      expect(currency).toEqual({ user_id: 'fresh-user', gems: 0, coins: 0 });
       // Empty wallet + no existing record → nothing to bridge or persist
       expect(readLedger('fresh-user')).toBeUndefined();
     });
 
     it('returns the stored ledger record for an existing player', () => {
-      writeLedger({ user_id: 'test-user', gems: 120, gold: 340 });
+      writeLedger({ user_id: 'test-user', gems: 120, coins: 340 });
 
       const currency = getCurrency(mockNk, 'test-user', mockLogger);
 
       expect(currency.gems).toBe(120);
-      expect(currency.gold).toBe(340);
+      expect(currency.coins).toBe(340);
     });
 
     it('falls back to zero balances on a corrupt record', () => {
@@ -79,40 +82,40 @@ describe('currency ledger (issue #860)', () => {
       const currency = getCurrency(mockNk, 'test-user', mockLogger);
 
       expect(currency.gems).toBe(0);
-      expect(currency.gold).toBe(0);
+      expect(currency.coins).toBe(0);
     });
   });
 
   describe('applyCurrencyDelta', () => {
     it('credits earned gems and coins to the storage ledger', () => {
-      const result = applyCurrencyDelta(mockNk, 'test-user', { gems: 7, gold: 50 }, 'match_rewards', mockLogger);
+      const result = applyCurrencyDelta(mockNk, 'test-user', { gems: 7, coins: 50 }, 'match_rewards', mockLogger);
 
       expect(result.gems).toBe(7);
-      expect(result.gold).toBe(50);
+      expect(result.coins).toBe(50);
 
       const stored = readLedger('test-user');
       expect(stored).toBeDefined();
       expect(stored!.gems).toBe(7);
-      expect(stored!.gold).toBe(50);
+      expect(stored!.coins).toBe(50);
       expect(stored!.user_id).toBe('test-user');
     });
 
     it('accumulates across multiple awards', () => {
-      applyCurrencyDelta(mockNk, 'test-user', { gems: 3, gold: 50 }, 'match_rewards', mockLogger);
-      applyCurrencyDelta(mockNk, 'test-user', { gems: 4, gold: 10 }, 'match_rewards', mockLogger);
+      applyCurrencyDelta(mockNk, 'test-user', { gems: 3, coins: 50 }, 'match_rewards', mockLogger);
+      applyCurrencyDelta(mockNk, 'test-user', { gems: 4, coins: 10 }, 'match_rewards', mockLogger);
 
       const stored = readLedger('test-user');
       expect(stored!.gems).toBe(7);
-      expect(stored!.gold).toBe(60);
+      expect(stored!.coins).toBe(60);
     });
 
     it('debits and floors balances at zero', () => {
-      writeLedger({ user_id: 'test-user', gems: 5, gold: 20 });
+      writeLedger({ user_id: 'test-user', gems: 5, coins: 20 });
 
-      const result = applyCurrencyDelta(mockNk, 'test-user', { gems: -9, gold: -30 }, 'respec_stats', mockLogger);
+      const result = applyCurrencyDelta(mockNk, 'test-user', { gems: -9, coins: -30 }, 'respec_stats', mockLogger);
 
       expect(result.gems).toBe(0);
-      expect(result.gold).toBe(0);
+      expect(result.coins).toBe(0);
     });
 
     it('performs no storage write for an empty delta', () => {
@@ -120,12 +123,12 @@ describe('currency ledger (issue #860)', () => {
 
       const result = applyCurrencyDelta(mockNk, 'test-user', {}, 'match_rewards', mockLogger);
 
-      expect(result).toEqual({ user_id: 'test-user', gems: 0, gold: 0 });
+      expect(result).toEqual({ user_id: 'test-user', gems: 0, coins: 0 });
       expect(storageWriteSpy).not.toHaveBeenCalled();
     });
 
     it('caps gem credits at MAX_GEM_BALANCE', () => {
-      writeLedger({ user_id: 'test-user', gems: MAX_GEM_BALANCE - 1, gold: 0 });
+      writeLedger({ user_id: 'test-user', gems: MAX_GEM_BALANCE - 1, coins: 0 });
 
       const result = applyCurrencyDelta(mockNk, 'test-user', { gems: 100 }, 'season_end_distribution', mockLogger);
 
@@ -155,7 +158,7 @@ describe('currency ledger (issue #860)', () => {
     });
 
     it('never writes to the Nakama wallet', () => {
-      applyCurrencyDelta(mockNk, 'test-user', { gems: 7, gold: 50 }, 'match_rewards', mockLogger);
+      applyCurrencyDelta(mockNk, 'test-user', { gems: 7, coins: 50 }, 'match_rewards', mockLogger);
 
       expect(mockNk.walletUpdate).not.toHaveBeenCalled();
     });
@@ -170,22 +173,22 @@ describe('currency ledger (issue #860)', () => {
       const currency = getCurrency(mockNk, 'test-user', mockLogger);
 
       expect(currency.gems).toBe(23);
-      expect(currency.gold).toBe(450);
+      expect(currency.coins).toBe(450);
 
       const stored = readLedger('test-user');
       expect(stored!.gems).toBe(23);
-      expect(stored!.gold).toBe(450);
+      expect(stored!.coins).toBe(450);
       expect(stored!.wallet_bridged).toBe(true);
     });
 
     it('adds wallet balances on top of existing ledger balances', () => {
-      writeLedger({ user_id: 'test-user', gems: 100, gold: 1000 });
+      writeLedger({ user_id: 'test-user', gems: 100, coins: 1000 });
       testWallets.set('test-user', JSON.stringify({ gems: 23, coins: 450 }));
 
       const currency = getCurrency(mockNk, 'test-user', mockLogger);
 
       expect(currency.gems).toBe(123);
-      expect(currency.gold).toBe(1450);
+      expect(currency.coins).toBe(1450);
     });
 
     it('never double-counts: second read is stable', () => {
@@ -198,7 +201,7 @@ describe('currency ledger (issue #860)', () => {
       expect(first).toEqual(second);
       expect(second).toEqual(third);
       expect(third.gems).toBe(23);
-      expect(third.gold).toBe(450);
+      expect(third.coins).toBe(450);
     });
 
     it('ignores the legacy `gem` (singular) respec debt key and negative balances', () => {
@@ -211,7 +214,7 @@ describe('currency ledger (issue #860)', () => {
 
       // `gem` is ignored entirely; negative values are clamped away
       expect(currency.gems).toBe(10);
-      expect(currency.gold).toBe(20);
+      expect(currency.coins).toBe(20);
     });
 
     it('bridges a player who has wallet balances but no storage record', () => {
@@ -220,18 +223,18 @@ describe('currency ledger (issue #860)', () => {
       const currency = getCurrency(mockNk, 'stranded-user', mockLogger);
 
       expect(currency.gems).toBe(600);
-      expect(currency.gold).toBe(8500);
+      expect(currency.coins).toBe(8500);
       expect(readLedger('stranded-user')!.wallet_bridged).toBe(true);
     });
 
     it('treats an unparseable wallet as empty', () => {
       testWallets.set('test-user', '}{ not json');
-      writeLedger({ user_id: 'test-user', gems: 40, gold: 60 });
+      writeLedger({ user_id: 'test-user', gems: 40, coins: 60 });
 
       const currency = getCurrency(mockNk, 'test-user', mockLogger);
 
       expect(currency.gems).toBe(40);
-      expect(currency.gold).toBe(60);
+      expect(currency.coins).toBe(60);
     });
 
     it('skips bridging when accountGetId is unavailable', () => {
@@ -241,12 +244,12 @@ describe('currency ledger (issue #860)', () => {
         storageRead: mockNk.storageRead,
         storageWrite: mockNk.storageWrite,
       } as unknown as Runtime.Nakama;
-      writeLedger({ user_id: 'test-user', gems: 15, gold: 25 });
+      writeLedger({ user_id: 'test-user', gems: 15, coins: 25 });
 
       const currency = getCurrency(limitedNk, 'test-user', mockLogger);
 
       expect(currency.gems).toBe(15);
-      expect(currency.gold).toBe(25);
+      expect(currency.coins).toBe(25);
     });
   });
 
@@ -254,12 +257,12 @@ describe('currency ledger (issue #860)', () => {
     it('makes punch-up gems earned via matches visible and spendable', () => {
       // Punch-up underdog win rewards (3-10 gems) — previously written to
       // the wallet where spend_gems could not see them.
-      applyCurrencyDelta(mockNk, 'test-user', { gems: 8, gold: 50 }, 'match_rewards', mockLogger);
+      applyCurrencyDelta(mockNk, 'test-user', { gems: 8, coins: 50 }, 'match_rewards', mockLogger);
 
       // Displayed via get_currency
       const displayed = JSON.parse(rpcGetCurrency(mockCtx, mockLogger, mockNk, '{}'));
       expect(displayed.gems).toBe(8);
-      expect(displayed.gold).toBe(50);
+      expect(displayed.coins).toBe(50);
 
       // Spendable via spend_gems
       const spent = JSON.parse(
@@ -277,14 +280,14 @@ describe('currency ledger (issue #860)', () => {
       applyCurrencyDelta(
         mockNk,
         'test-user',
-        { gems: 600, gold: 8500 },
+        { gems: 600, coins: 8500 },
         'season_end_distribution',
         mockLogger
       );
 
       const displayed = JSON.parse(rpcGetCurrency(mockCtx, mockLogger, mockNk, '{}'));
       expect(displayed.gems).toBe(600);
-      expect(displayed.gold).toBe(8500);
+      expect(displayed.coins).toBe(8500);
     });
 
     it('spends gems that arrived via the legacy wallet bridge', () => {
@@ -299,6 +302,152 @@ describe('currency ledger (issue #860)', () => {
       );
       expect(spent.success).toBe(true);
       expect(spent.new_balance).toBe(0);
+    });
+  });
+
+  describe('gold → coins storage migration (issue #866)', () => {
+    /** Writes a raw JSON record so fixtures can carry the legacy `gold` field. */
+    const writeRawLedger = (userId: string, raw: Record<string, unknown>): void => {
+      testStorage.set(`${PLAYER_CURRENCY_COLLECTION}:${userId}`, JSON.stringify(raw));
+    };
+
+    it('reads a legacy gold-only record as coins and writes back the normalized shape', () => {
+      writeRawLedger('legacy-user', {
+        user_id: 'legacy-user',
+        gems: 12,
+        gold: 340,
+        wallet_bridged: true,
+      });
+
+      const currency = getCurrency(mockNk, 'legacy-user', mockLogger);
+
+      // Zero balance loss: the legacy value surfaces under `coins`.
+      expect(currency.coins).toBe(340);
+      expect(currency).not.toHaveProperty('gold');
+
+      // The write-back normalized the stored record: coins present, gold gone.
+      const stored = readLedger('legacy-user');
+      expect(stored!.coins).toBe(340);
+      expect(stored).not.toHaveProperty('gold');
+    });
+
+    it('round-trips a post-rename coins record without reintroducing gold', () => {
+      writeLedger({ user_id: 'test-user', gems: 5, coins: 20 });
+
+      const currency = getCurrency(mockNk, 'test-user', mockLogger);
+
+      expect(currency.coins).toBe(20);
+      expect(currency).not.toHaveProperty('gold');
+
+      const stored = readLedger('test-user');
+      expect(stored!.coins).toBe(20);
+      expect(stored).not.toHaveProperty('gold');
+      // First read of an unbridged record also stamps the #860 bridge marker.
+      expect(stored!.wallet_bridged).toBe(true);
+    });
+
+    it('prefers coins when both fields are present (no dual-field drift)', () => {
+      writeRawLedger('drift-user', { user_id: 'drift-user', gems: 1, coins: 20, gold: 999 });
+
+      const currency = getCurrency(mockNk, 'drift-user', mockLogger);
+
+      expect(currency.coins).toBe(20);
+
+      const stored = readLedger('drift-user');
+      expect(stored!.coins).toBe(20);
+      expect(stored).not.toHaveProperty('gold');
+    });
+
+    it('migrates via applyCurrencyDelta: legacy gold folds into the new coins write', () => {
+      writeRawLedger('legacy-user', {
+        user_id: 'legacy-user',
+        gems: 1,
+        gold: 40,
+        wallet_bridged: true,
+      });
+
+      const result = applyCurrencyDelta(
+        mockNk,
+        'legacy-user',
+        { coins: 15 },
+        'match_rewards',
+        mockLogger
+      );
+
+      expect(result.coins).toBe(55);
+
+      const stored = readLedger('legacy-user');
+      expect(stored!.coins).toBe(55);
+      expect(stored).not.toHaveProperty('gold');
+    });
+
+    it('write-back is idempotent: a second read performs no extra ledger write', () => {
+      writeRawLedger('legacy-user', {
+        user_id: 'legacy-user',
+        gems: 0,
+        gold: 10,
+        wallet_bridged: true,
+      });
+      const storageWriteSpy = jest.spyOn(mockNk, 'storageWrite');
+
+      getCurrency(mockNk, 'legacy-user', mockLogger);
+      const writesAfterFirst = storageWriteSpy.mock.calls.length;
+      expect(writesAfterFirst).toBe(1); // exactly the migration write-back
+
+      invalidateCurrencyCache('legacy-user', mockLogger);
+      const second = getCurrency(mockNk, 'legacy-user', mockLogger);
+      expect(second.coins).toBe(10);
+      expect(storageWriteSpy.mock.calls.length).toBe(writesAfterFirst); // no re-write
+    });
+
+    it('returns the correct normalized balance even when the write-back conflicts', () => {
+      writeRawLedger('legacy-user', {
+        user_id: 'legacy-user',
+        gems: 0,
+        gold: 70,
+        wallet_bridged: true,
+      });
+      const originalWrite = mockNk.storageWrite;
+      mockNk.storageWrite = jest.fn(() => {
+        throw new Error('storage write rejected: version check failed');
+      }) as never;
+
+      const currency = getCurrency(mockNk, 'legacy-user', mockLogger);
+
+      // The read path never fails on a migration write failure — the next
+      // read retries the write-back.
+      expect(currency.coins).toBe(70);
+      mockNk.storageWrite = originalWrite;
+    });
+
+    it('composes the wallet bridge and the gold fold in a single write', () => {
+      // Pre-#860 record that also predates the rename: unbridged AND gold-field.
+      writeRawLedger('legacy-user', { user_id: 'legacy-user', gems: 10, gold: 100 });
+      testWallets.set('legacy-user', JSON.stringify({ gems: 5, coins: 50 }));
+      const ledgerWriteSpy = jest.spyOn(mockNk, 'storageWrite');
+      const ledgerWriteCount = (): number =>
+        ledgerWriteSpy.mock.calls.filter(
+          (calls) =>
+            Array.isArray(calls[0]) &&
+            (calls[0][0] as { collection?: string }).collection === PLAYER_CURRENCY_COLLECTION
+        ).length;
+
+      const currency = getCurrency(mockNk, 'legacy-user', mockLogger);
+
+      expect(currency.gems).toBe(15);
+      expect(currency.coins).toBe(150); // 100 legacy gold + 50 wallet coins
+
+      const stored = readLedger('legacy-user');
+      expect(stored).toEqual({
+        user_id: 'legacy-user',
+        gems: 15,
+        coins: 150,
+        wallet_bridged: true,
+      });
+
+      // The bridge's merged write already emits the normalized shape, so the
+      // migration must not add a second ledger write (audit writes excluded).
+      expect(ledgerWriteCount()).toBe(1);
     });
   });
 

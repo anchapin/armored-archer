@@ -113,7 +113,7 @@ describe('rpcRevenueCatWebhook', () => {
       const existingCurrency = {
         user_id: 'test-user-123',
         gems: 100,
-        gold: 50,
+        coins: 50,
       };
 
       const storageWriteFn = jest.fn().mockReturnValue([]);
@@ -320,7 +320,7 @@ describe('rpcRevenueCatWebhook', () => {
       const existingCurrency = {
         user_id: 'test-user-123',
         gems: 550,
-        gold: 100,
+        coins: 100,
       };
 
       const storageWriteFn = jest.fn().mockReturnValue([]);
@@ -359,7 +359,7 @@ describe('rpcRevenueCatWebhook', () => {
       const existingCurrency = {
         user_id: 'test-user-123',
         gems: 100,
-        gold: 50,
+        coins: 50,
       };
 
       const storageWriteFn = jest.fn().mockReturnValue([]);
