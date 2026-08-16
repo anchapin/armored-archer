@@ -64,4 +64,7 @@ backend/docker-compose.override.yml
 # Editor/agent backup files
 *.bak
 
+# Agent session results (transient)
+.agents/results/
+
 .gitnexus
