@@ -108,7 +108,7 @@ func _on_season_info_loaded(season_data: Dictionary) -> void:
 	"""Update UI with season information.
 
 	Parameters:
-		season_data: Dictionary containing season info, player rank, score, time_remaining
+		season_data: Dictionary containing season info, Standing, Ladder Rating, time_remaining
 	"""
 	season_info_loaded = true
 
@@ -124,13 +124,15 @@ func _on_season_info_loaded(season_data: Dictionary) -> void:
 	if countdown_label:
 		countdown_label.text = _format_time_remaining(time_remaining)
 
+	# Ladder Rating (Elo)
 	if rating_label:
 		rating_label.text = str(player_score)
 
+	# Season Standing (leaderboard position)
 	if rank_label and player_rank > 0:
 		rank_label.text = "#%d" % player_rank
 	elif rank_label:
-		rank_label.text = "Unranked"
+		rank_label.text = "No Standing"
 
 ## Handle leaderboard data loaded
 func _on_leaderboard_loaded(leaderboard: Array) -> void:

@@ -16,7 +16,7 @@ import {
   getTopPlayers,
   recordSeasonCompletion,
   getPlayerRank,
-  registerRpcGetPlayerSeasonRank,
+  registerRpcGetPlayerRank,
   registerRpcGetSeasonHistory,
 } from '../season_leaderboard';
 import { Runtime } from '../../types/nakama';
@@ -57,6 +57,15 @@ describe('season_leaderboard_rpc', () => {
       key,
       JSON.stringify({ last_active: Date.now() - daysAgo * 24 * 60 * 60 * 1000 })
     );
+  };
+
+  /** Set player_stats storage for the Power Rating derivation (issue #871). */
+  const setPlayerStats = (
+    level: number,
+    xp: number,
+    stats: { attack: number; defense: number; dodge: number; crit_rate: number }
+  ) => {
+    storageMap.set('player_stats:test-user', JSON.stringify({ level, xp, stats }));
   };
 
   /** Set decay config in storage map */
@@ -135,35 +144,61 @@ describe('season_leaderboard_rpc', () => {
   // ============================================
 
   describe('rpcGetPlayerRank', () => {
-    it('should return player rank with decay info for active player', async () => {
+    it('should return explicit power_rating/ladder_rating/standing plus legacy aliases (issue #871)', async () => {
       setPlayerActive('test-user', 2);
+      setPlayerStats(12, 3400, { attack: 40, defense: 32, dodge: 24, crit_rate: 16 });
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
 
       const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
+      const expectedPowerRating = Math.floor(12 * 10 + (40 + 32 + 24 + 16) / 4);
+
       expect(parsed.success).toBe(true);
-      expect(parsed.rank).toBeGreaterThanOrEqual(1);
-      expect(parsed.rating).toBe(1500);
+      // Explicit fields (CONTEXT.md vocabulary)
+      expect(parsed.power_rating).toBe(expectedPowerRating);
+      expect(parsed.level).toBe(12);
+      expect(parsed.xp).toBe(3400);
+      expect(parsed.ladder_rating).toBe(1500);
+      expect(parsed.standing).toBeGreaterThanOrEqual(1);
       expect(parsed.decayed_rating).toBe(1500);
       expect(parsed.days_inactive).toBe(2);
       expect(parsed.time_remaining).toBeGreaterThan(0);
       expect(parsed.wins).toBe(10);
       expect(parsed.losses).toBe(2);
       expect(parsed.win_rate).toBe(0.83);
+      // Deprecated legacy aliases keep the live season-shape meanings
+      expect(parsed.rank).toBe(parsed.standing);
+      expect(parsed.rating).toBe(parsed.ladder_rating);
     });
 
-    it('should return zero values when player has no leaderboard entry', async () => {
+    it('should return zero ladder/standing values when player has no leaderboard entry, but still derive power_rating', async () => {
+      setPlayerStats(5, 450, { attack: 12, defense: 10, dodge: 8, crit_rate: 6 });
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
 
       const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.rank).toBe(0);
-      expect(parsed.rating).toBe(0);
+      expect(parsed.power_rating).toBe(Math.floor(5 * 10 + (12 + 10 + 8 + 6) / 4));
+      expect(parsed.standing).toBe(0);
+      expect(parsed.ladder_rating).toBe(0);
       expect(parsed.decayed_rating).toBe(0);
       expect(parsed.days_inactive).toBe(0);
+      expect(parsed.rank).toBe(0);
+      expect(parsed.rating).toBe(0);
+    });
+
+    it('should default power_rating to 0 when player_stats storage is missing', async () => {
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
+
+      const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.power_rating).toBe(0);
+      expect(parsed.level).toBe(0);
+      expect(parsed.xp).toBe(0);
     });
 
     it('should apply rating decay for inactive player', async () => {
@@ -1020,13 +1055,13 @@ describe('season_leaderboard_rpc', () => {
   // Registration Functions Tests
   // ============================================
 
-  describe('registerRpcGetPlayerSeasonRank', () => {
+  describe('registerRpcGetPlayerRank (sole registration, issue #871)', () => {
     it('should register the RPC endpoint', () => {
       const mockInitializer = {
         registerRpc: jest.fn(),
       } as unknown as Runtime.Initializer;
 
-      registerRpcGetPlayerSeasonRank(mockInitializer);
+      registerRpcGetPlayerRank(mockInitializer);
 
       expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
         'armored_archer/get_player_rank',

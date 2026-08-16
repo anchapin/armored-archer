@@ -6,7 +6,6 @@
 import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
-import { readAndParseStorage } from '../utils/storage-helpers';
 import {
   isPlayerFlagged,
   getFlagReason,
@@ -795,94 +794,13 @@ export function rpcAcceptMatch(
 }
 
 /**
- * Registers the get player rank RPC endpoint.
- *
- * @param initializer - Nakama runtime initializer
- */
-export function registerRpcGetPlayerRank(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/get_player_rank', rpcGetPlayerRank);
-}
-
-/**
- * Retrieves a player's current rank and stats.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - JSON string (unused, required for RPC format)
- * @returns JSON string with player rank and stats
- *
- * @example
- * // Request payload
- * { }
- *
- * // Response
- * {
- *   "success": true,
- *   "rank": 15,
- *   "level": 5,
- *   "xp": 450
- * }
- */
-export function rpcGetPlayerRank(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('Get player rank called for user: %s', ctx.userId);
-
-  const validation = validatePayload(ZodSchemas.get_player_rank, payload, 'get_player_rank');
-  if (!validation.success) {
-    return createValidationErrorResponse('get_player_rank', validation.error);
-  }
-
-  const statsResult = readAndParseStorage<PlayerStats>(
-    nk,
-    'player_stats',
-    ctx.userId,
-    ctx.userId,
-    logger,
-    'rpcGetPlayerRank'
-  );
-  if (statsResult.error) {
-    return JSON.stringify({ error: 'Player stats not found' });
-  }
-  const playerStats = statsResult.data!;
-
-  // ROOT CAUSE (issue #865): this RPC previously applied applyRankDecay() to
-  // the value returned by calculateRank(). That was wrong on three counts:
-  //
-  // 1. Power Rating is a pure derivation (level*10 + stat average) recomputed
-  //    from player_stats on every call — it has no persistence semantics, so
-  //    "decaying" it could never stick; it only produced a transiently
-  //    misleading display value for inactive players.
-  // 2. The decayed value was never written to storage, never fed into Elo
-  //    (Elo is persisted in processRankedMatchUpdates via applyEloUpdates),
-  //    and never influenced matchmaking (rpcListMatches / rpcCreateMatch
-  //    recompute calculateRank from stored stats server-side; punch-up
-  //    detection uses those server-computed ranks only).
-  // 3. The legitimate decay target is the Ladder Rating (Elo): season_system's
-  //    inactivity decay is applied on ladder reads via season_leaderboard
-  //    (decayed_rating). Build strength does not rust.
-  //
-  // Note: this handler was also shadowed at runtime — index.ts registers
-  // season_leaderboard's rpcGetPlayerRank under the same RPC ID after this
-  // one, and Nakama's JS runtime registerRpc is a last-wins map insert
-  // (Callbacks.Rpc[id] = fn). The decay is removed so this handler returns
-  // the pure Power Rating if it is ever un-shadowed (#871 owns that split).
-  const rank = calculateRank(playerStats);
-
-  return JSON.stringify({
-    success: true,
-    rank,
-    level: playerStats.level,
-    xp: playerStats.xp,
-  });
-}
-
-/**
  * Calculates a player's rank based on level and stats.
+ *
+ * This is the Power Rating derivation (build strength). It is recomputed
+ * from player_stats on every use — matchmaking, punch-up eligibility,
+ * and the consolidated get_player_rank RPC in season_leaderboard (which
+ * exposes it as the explicit `power_rating` response field, issue #871).
+ * It is never persisted and never decays (issue #865).
  *
  * @param playerStats - Player statistics data
  * @returns Calculated player rank

@@ -38,7 +38,10 @@ const MAX_DECAY_LOSS: int = 200  # Maximum points per decay check
 
 # --- Season Data ---
 var current_season: Dictionary = {}
+## Current Standing — the player's leaderboard position in the active
+## season (issue #871 vocabulary; NOT Power Rating, NOT Elo).
 var player_rank: int = 0
+## Current Ladder Rating — the Elo score wagered in ranked duels.
 var player_score: int = 0
 var time_remaining: int = 0
 var leaderboard: Array = []
@@ -267,18 +270,18 @@ func get_current_season() -> Dictionary:
 	return current_season
 
 func get_player_rank_sync() -> int:
-	"""Returns current PvP rank (synchronous, no network call).
+	"""Returns the cached season Standing (synchronous, no network call).
 
 	Returns:
-		int: Current player rank
+		int: Current Standing (leaderboard position; 0 = not on the board)
 	"""
 	return player_rank
 
 func get_player_score_sync() -> int:
-	"""Returns current score/rating (synchronous).
+	"""Returns the cached Ladder Rating / Elo (synchronous).
 
 	Returns:
-		int: Current score/rating value
+		int: Current Ladder Rating value
 	"""
 	return player_score
 
@@ -524,7 +527,12 @@ func get_season_history(limit: int = 10) -> void:
 
 ## Get player rank in current season
 func get_player_rank() -> void:
-	"""Retrieves the player's current rank in the season."""
+	"""Retrieves the player's season Standing and Ladder Rating.
+
+	Parses the consolidated get_player_rank response (issue #871): the
+	explicit `standing` / `ladder_rating` fields are preferred, with the
+	deprecated `rank` / `rating` aliases as fallbacks for older servers.
+	"""
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
@@ -537,8 +545,8 @@ func get_player_rank() -> void:
 		return
 
 	if response.get("success", false):
-		player_rank = response.get("rank", 0)
-		player_score = response.get("rating", 0)
+		player_rank = response.get("standing", response.get("rank", 0))
+		player_score = response.get("ladder_rating", response.get("rating", 0))
 		time_remaining = response.get("time_remaining", 0)
 
 		season_info_loaded.emit({

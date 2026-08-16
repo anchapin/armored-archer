@@ -58,12 +58,12 @@ layout_mode = 2
 
 [node name="RankLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox"]
 layout_mode = 2
-text = "Your Rank: Not ranked yet"
+text = "Your Standing: Not on the leaderboard yet"
 horizontal_alignment = 1
 
 [node name="TierLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox"]
 layout_mode = 2
-text = "Tier: Play PvP to get ranked!"
+text = "Tier: Play PvP to earn a standing!"
 horizontal_alignment = 1
 
 [node name="MotivationalLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox"]

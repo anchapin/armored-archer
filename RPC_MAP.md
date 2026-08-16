@@ -92,7 +92,7 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | List Matches | MatchmakerManager | `rpcListMatches()` in `matchmaker.ts` | `pvp_matches` + `player_stats` storage (custom collections) | `/rpc/armored_archer/list_matches` |
 | Create Match | MatchmakerManager | `rpcCreateMatch()` in `matchmaker.ts` | `pvp_matches` + `player_stats` storage (custom collections) | `/rpc/armored_archer/create_match` |
 | Accept Match | MatchmakerManager | `rpcAcceptMatch()` in `matchmaker.ts` | `pvp_matches` + `player_stats` storage (custom collections) | `/rpc/armored_archer/accept_match` |
-| Get Player Rank | MatchmakerManager | `rpcGetPlayerRank()` in `matchmaker.ts` | `player_stats` storage (custom collection) | `/rpc/armored_archer/get_player_rank` |
+| Get Player Rank | MatchmakerManager + SeasonManager | `rpcGetPlayerRank()` in `season_leaderboard.ts` (sole registration, issue #871) | `player_stats` storage + season leaderboard (Nakama) | `/rpc/armored_archer/get_player_rank` |
 | Complete Match | MatchmakerManager | `rpcCompleteMatch()` in `matchmaker.ts` | `pvp_matches` + `leaderboard` (Nakama) | `/rpc/armored_archer/complete_match` |
 | Join Matchmaking Pool | MatchmakingPoolManager | `rpcJoinPool()` in `matchmaking_pool.ts` | `matchmaking_pool` storage (custom collection) | `/rpc/armored_archer/join_matchmaking_pool` |
 | Leave Matchmaking Pool | MatchmakingPoolManager | `rpcLeavePool()` in `matchmaking_pool.ts` | `matchmaking_pool` storage (custom collection) | `/rpc/armored_archer/leave_matchmaking_pool` |
@@ -404,7 +404,7 @@ For PostgreSQL table changes:
 | `armored_archer/list_matches` | matchmaker | `rpcListMatches()` | PvP |
 | `armored_archer/create_match` | matchmaker | `rpcCreateMatch()` | PvP |
 | `armored_archer/accept_match` | matchmaker | `rpcAcceptMatch()` | PvP |
-| `armored_archer/get_player_rank` | matchmaker | `rpcGetPlayerRank()` | PvP |
+| `armored_archer/get_player_rank` | season_leaderboard | `rpcGetPlayerRank()` | PvP |
 | `armored_archer/complete_match` | matchmaker | `rpcCompleteMatch()` | PvP |
 | `armored_archer/submit_combat_action` | combat_system | `rpcSubmitCombatAction()` | PvP |
 | `armored_archer/get_match_state` | combat_system | `rpcGetMatchState()` | PvP |

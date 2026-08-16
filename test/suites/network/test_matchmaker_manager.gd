@@ -31,7 +31,7 @@ func after_each():
 # Test: Initial state
 func test_initial_state():
 	assert_true(_mm.available_matches.is_empty(), "Initial available_matches should be empty")
-	assert_eq(_mm.player_rank, 0, "Initial player_rank should be 0")
+	assert_eq(_mm.power_rating, 0, "Initial power_rating should be 0")
 	assert_true(_mm.current_match.is_empty(), "Initial current_match should be empty")
 	assert_eq(_mm.punch_up_wins, 0, "Initial punch_up_wins should be 0")
 	assert_eq(_mm.punch_up_losses, 0, "Initial punch_up_losses should be 0")
@@ -61,7 +61,7 @@ func test_list_matches_success():
 	
 	assert_signal_emitted(_mm, "matches_loaded")
 	assert_eq(_mm.available_matches.size(), 2)
-	assert_eq(_mm.player_rank, 1500)
+	assert_eq(_mm.power_rating, 1500)
 	
 	var payload = JSON.parse_string(mock_net.last_payload)
 	assert_eq(payload["match_type"], "ranked")
@@ -111,21 +111,39 @@ func test_accept_match_success():
 	var payload = JSON.parse_string(mock_net.last_payload)
 	assert_eq(payload["match_id"], "m123")
 
-# Test: get_player_rank success
+# Test: get_player_rank success (explicit power_rating field, issue #871)
 func test_get_player_rank_success():
 	var mock_net = MockNetwork.new()
 	_mm.network_manager = mock_net
-	
+
+	mock_net.mock_responses[_mm.RPC_GET_PLAYER_RANK] = {
+		"success": true,
+		"power_rating": 1200,
+		"ladder_rating": 1450,
+		"standing": 15
+	}
+
+	watch_signals(_mm)
+	await _mm.get_player_rank()
+
+	assert_signal_emitted(_mm, "rank_retrieved")
+	assert_eq(_mm.power_rating, 1200, "Explicit power_rating field must be used")
+
+# Test: get_player_rank falls back to the legacy rank alias (older servers)
+func test_get_player_rank_legacy_alias_fallback():
+	var mock_net = MockNetwork.new()
+	_mm.network_manager = mock_net
+
 	mock_net.mock_responses[_mm.RPC_GET_PLAYER_RANK] = {
 		"success": true,
 		"rank": 1200
 	}
-	
+
 	watch_signals(_mm)
 	await _mm.get_player_rank()
-	
+
 	assert_signal_emitted(_mm, "rank_retrieved")
-	assert_eq(_mm.player_rank, 1200)
+	assert_eq(_mm.power_rating, 1200, "Legacy rank alias must still populate the cache")
 
 # Test: complete_match triggers settlement (win, server-declared)
 func test_complete_match_win():
@@ -133,10 +151,11 @@ func test_complete_match_win():
 	mock_net.user_id = "me"
 	_mm.network_manager = mock_net
 	_mm.current_match = {"match_id": "m1"}
+	_mm.power_rating = 1200
 
 	mock_net.mock_responses[_mm.RPC_COMPLETE_MATCH] = {
 		"success": true,
-		"winner": {"user_id": "me", "new_rank": 1100},
+		"winner": {"user_id": "me", "old_rank": 1080, "new_rank": 1100, "rank_change": 20},
 		"loser": {"user_id": "opponent", "new_rank": 900},
 		"is_punch_up": true
 	}
@@ -146,9 +165,16 @@ func test_complete_match_win():
 
 	assert_signal_emitted(_mm, "match_completed")
 	assert_signal_emitted(_mm, "punch_up_stats_updated")
-	assert_eq(_mm.player_rank, 1100)
+	# Settlement new_rank is the Ladder Rating (Elo) — it must NOT overwrite
+	# the cached Power Rating (issue #871).
+	assert_eq(_mm.power_rating, 1200, "Power Rating cache must not absorb the Elo result")
 	assert_eq(_mm.punch_up_wins, 1)
 	assert_true(_mm.current_match.is_empty(), "Current match should be cleared")
+
+	var params = get_signal_parameters(_mm, "match_completed", 0)
+	assert_eq(params[0]["old_rank"], 1080, "Ladder Rating old value is passed through")
+	assert_eq(params[0]["new_rank"], 1100, "Ladder Rating new value is passed through")
+	assert_eq(params[0]["rank_delta"], 20, "Ladder Rating delta is passed through")
 
 	# Trigger-only payload: no winner/loser assertion is sent (issue #862)
 	var payload = JSON.parse_string(mock_net.last_payload)
@@ -163,6 +189,7 @@ func test_complete_match_loss():
 	mock_net.user_id = "me"
 	_mm.network_manager = mock_net
 	_mm.current_match = {"match_id": "m1"}
+	_mm.power_rating = 1200
 
 	# Server declares the OPPONENT the winner; the client sent no claim
 	mock_net.mock_responses[_mm.RPC_COMPLETE_MATCH] = {
@@ -177,7 +204,7 @@ func test_complete_match_loss():
 
 	assert_signal_emitted(_mm, "match_completed")
 	assert_signal_emitted(_mm, "punch_up_stats_updated")
-	assert_eq(_mm.player_rank, 950)
+	assert_eq(_mm.power_rating, 1200, "Loss Elo must not overwrite the Power Rating cache")
 	assert_eq(_mm.punch_up_losses, 1)
 
 	# Victory must be derived from the server-declared winner
@@ -210,11 +237,11 @@ func test_complete_match_draw():
 func test_utilities():
 	_mm.available_matches = [{"id": 1}]
 	_mm.current_match = {"id": 2, "status": "active"}
-	_mm.player_rank = 1000
-	
+	_mm.power_rating = 1000
+
 	assert_eq(_mm.get_available_matches().size(), 1)
 	assert_eq(_mm.get_current_match()["id"], 2)
-	assert_eq(_mm.get_player_rank_sync(), 1000)
+	assert_eq(_mm.get_player_rank_sync(), 1000, "Sync getter returns the cached Power Rating")
 	assert_true(_mm.is_in_match())
 	
 	_mm.current_match = {"status": "completed"}

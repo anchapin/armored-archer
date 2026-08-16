@@ -1,7 +1,8 @@
 ## Match Results Screen Controller
 ##
-## Displays comprehensive match results including XP gained, rank changes, season position,
-## and other progression data after a PvP match completion.
+## Displays comprehensive match results including XP gained, Ladder Rating
+## changes, season Standing, and other progression data after a PvP match
+## completion.
 ##
 ## Signals (Emitted):
 ## - results_closed(): Emitted when player closes the results screen
@@ -88,26 +89,26 @@ func show_match_results(result_data: Dictionary) -> void:
 	# Set XP gained
 	_set_xp_gained(result_data.get("xp_gained", 0))
 
-	# Only show rank/season info for ranked matches
+	# Only show Ladder Rating / Standing info for ranked matches
 	if match_type == "ranked":
-		# Set rank change
+		# Set Ladder Rating change (old/new/rank_delta are Elo values — issue #871)
 		_set_rank_change(
 			result_data.get("old_rank", 0),
 			result_data.get("new_rank", 0),
 			result_data.get("rank_delta", 0)
 		)
 
-		# Set season position
+		# Set season Standing
 		_set_season_position(
 			result_data.get("season_position", 0),
 			result_data.get("season_delta", 0)
 		)
 	else:
-		# Hide rank change for casual matches
+		# Hide Ladder Rating change for casual matches
 		if rank_change_container:
 			rank_change_container.visible = false
 		if season_position_label:
-			season_position_label.text = "Casual Match - No rank changes"
+			season_position_label.text = "Casual Match - No Ladder Rating changes"
 
 	# Set rewards
 	_set_rewards(result_data.get("rewards", []))
@@ -144,7 +145,10 @@ func _set_xp_gained(xp: int) -> void:
 		await xp_animation.animation_finished
 		xp_animation.stop()
 
-## Set rank change with old, new, and delta values
+## Set the Ladder Rating change with old, new, and delta values.
+## The values are the Elo results from the server settlement — rendered
+## under a "Ladder Rating" caption so they are never confused with
+## Standing or Power Rating (issue #871).
 func _set_rank_change(old_rank: int, new_rank: int, delta: int) -> void:
 	if not old_rank_label or not new_rank_label or not rank_delta_label:
 		return
@@ -166,12 +170,12 @@ func _set_rank_change(old_rank: int, new_rank: int, delta: int) -> void:
 		if rank_change_arrow:
 			rank_change_arrow.modulate = NEUTRAL_COLOR
 
-## Set season position and change
+## Set season Standing and change
 func _set_season_position(position: int, delta: int) -> void:
 	if not season_position_label:
 		return
 
-	var position_text: String = "Season Rank: #%d" % position
+	var position_text: String = "Season Standing: #%d" % position
 	if delta != 0:
 		var sign: String = "+" if delta > 0 else ""
 		var delta_text: String = " (%s%d)" % [sign, delta]

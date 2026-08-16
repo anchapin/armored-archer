@@ -686,7 +686,7 @@ func _test_pvp_create_match() -> void:
 	if not matchmaker.available_matches.is_empty():
 		passed = false
 		_error_msg = "No matches initially"
-	elif matchmaker.player_rank != 0:
+	elif matchmaker.power_rating != 0:
 		passed = false
 		_error_msg = "Initial rank should be 0"
 	else:
@@ -778,7 +778,7 @@ func _test_pvp_rank_tracking() -> void:
 	var _error_msg = ""
 
 	# Set player rank
-	matchmaker.player_rank = 1500
+	matchmaker.power_rating = 1500
 
 	var rank_sync = matchmaker.get_player_rank_sync()
 	if rank_sync != 1500:
@@ -881,7 +881,7 @@ func _test_pvp_match_completion_flow() -> void:
 		"status": "active",
 		"players": ["player_1", "player_2"]
 	}
-	matchmaker.player_rank = 1500
+	matchmaker.power_rating = 1500
 
 	if not matchmaker.is_in_match():
 		passed = false
@@ -1040,7 +1040,7 @@ func _test_journey_combined_pvp_gear() -> void:
 		_error_msg = "Should have defense"
 	else:
 		# Setup matchmaker
-		matchmaker.player_rank = 1200
+		matchmaker.power_rating = 1200
 
 		if matchmaker.get_player_rank_sync() != 1200:
 			passed = false

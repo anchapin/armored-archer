@@ -3,7 +3,10 @@
  * @fileoverview Manages seasonal rankings with rating decay and historical records.
  */
 
+import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
+import { readAndParseStorage } from '../utils/storage-helpers';
+import { calculateRank } from './matchmaker';
 import { SeasonInfo } from './season_system';
 import { validatePayload, createValidationErrorResponse, ZodSchemas } from './validation';
 
@@ -585,9 +588,19 @@ export function registerRpcGetSeasonHistory(initializer: Runtime.Initializer): v
 /**
  * Registers the get player rank RPC endpoint.
  *
+ * This is the SOLE registration for the `armored_archer/get_player_rank`
+ * RPC ID (issue #871). Historically matchmaker.ts also registered a
+ * handler under the same ID with a different response shape
+ * (`{rank, level, xp}` = derived Power Rating); because Nakama's JS
+ * runtime resolves duplicate registerRpc calls last-wins and index.ts
+ * registered this module second, the season shape was already the live
+ * contract. The duplicate registration was removed and this handler now
+ * returns a documented superset: explicit `power_rating` / `ladder_rating`
+ * / `standing` fields plus the legacy `rank` / `rating` aliases.
+ *
  * @param initializer - Nakama runtime initializer
  */
-export function registerRpcGetPlayerSeasonRank(initializer: Runtime.Initializer): void {
+export function registerRpcGetPlayerRank(initializer: Runtime.Initializer): void {
   initializer.registerRpc('armored_archer/get_player_rank', rpcGetPlayerRank);
 }
 
@@ -648,7 +661,22 @@ export async function rpcGetSeasonHistory(
 }
 
 /**
- * RPC handler for getting player rank with decay info.
+ * RPC handler for the consolidated player rank snapshot (issue #871).
+ *
+ * Resolves the "rank" triple-collision using the CONTEXT.md vocabulary:
+ * - `power_rating`: build strength (level*10 + stat average), derived
+ *   from player_stats via calculateRank — what matchmaking and punch-up
+ *   eligibility key on.
+ * - `ladder_rating`: the Elo score (seeded 1000) wagered in ranked
+ *   duels. `decayed_rating` is the inactivity-adjusted value used for
+ *   ladder reads.
+ * - `standing`: the player's leaderboard position in the current season.
+ *
+ * Backward compatibility: the legacy `rank` and `rating` fields are kept
+ * as deprecated aliases with the meanings they had in the live
+ * (season_leaderboard) shape — `rank` = standing, `rating` = ladder
+ * rating. The old matchmaker-only fields `level`/`xp` are also included
+ * so the response is a superset of both historical shapes.
  *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
@@ -663,11 +691,19 @@ export async function rpcGetSeasonHistory(
  * // Response
  * {
  *   "success": true,
- *   "rank": 15,
- *   "rating": 1450,
+ *   "power_rating": 87,
+ *   "level": 5,
+ *   "xp": 450,
+ *   "ladder_rating": 1450,
  *   "decayed_rating": 1425,
+ *   "standing": 15,
  *   "days_inactive": 3,
- *   "time_remaining": 1234567
+ *   "time_remaining": 1234567,
+ *   "wins": 10,
+ *   "losses": 2,
+ *   "win_rate": 0.83,
+ *   "rank": 15,        // deprecated alias of standing
+ *   "rating": 1450     // deprecated alias of ladder_rating
  * }
  */
 export async function rpcGetPlayerRank(
@@ -690,30 +726,64 @@ export async function rpcGetPlayerRank(
   }
 
   try {
+    // Power Rating is a pure derivation from stored stats and exists even
+    // when the player has no season entry yet (former matchmaker shape).
+    let powerRating = 0;
+    let level = 0;
+    let xp = 0;
+    const statsResult = readAndParseStorage<PlayerStats>(
+      nk,
+      'player_stats',
+      ctx.userId,
+      ctx.userId,
+      logger,
+      'rpcGetPlayerRank'
+    );
+    if (statsResult.error) {
+      logger.warn('No player_stats for user %s; power_rating defaults to 0', ctx.userId);
+    } else {
+      const playerStats = statsResult.data!;
+      powerRating = calculateRank(playerStats);
+      level = playerStats.level;
+      xp = playerStats.xp;
+    }
+
     const currentSeason = getCurrentSeasonInfo(nk);
     const rankResult = await getPlayerRank(nk, currentSeason.season_id, ctx.userId);
 
     if (!rankResult) {
       return JSON.stringify({
         success: true,
-        rank: 0,
-        rating: 0,
+        power_rating: powerRating,
+        level,
+        xp,
+        ladder_rating: 0,
         decayed_rating: 0,
+        standing: 0,
         days_inactive: 0,
         time_remaining: Math.max(0, currentSeason.end_time - Date.now()),
+        // Deprecated legacy aliases (live season shape since #865)
+        rank: 0,
+        rating: 0,
       });
     }
 
     return JSON.stringify({
       success: true,
-      rank: rankResult.rank,
-      rating: rankResult.entry.rating,
+      power_rating: powerRating,
+      level,
+      xp,
+      ladder_rating: rankResult.entry.rating,
       decayed_rating: rankResult.entry.decayed_rating,
+      standing: rankResult.rank,
       days_inactive: rankResult.entry.days_inactive,
       time_remaining: Math.max(0, currentSeason.end_time - Date.now()),
       wins: rankResult.entry.wins,
       losses: rankResult.entry.losses,
       win_rate: rankResult.entry.win_rate,
+      // Deprecated legacy aliases (live season shape since #865)
+      rank: rankResult.rank,
+      rating: rankResult.entry.rating,
     });
   } catch (error) {
     logger.error('Error in get_player_rank: %s', error);

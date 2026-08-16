@@ -505,6 +505,10 @@ const config: AppConfig = {
         maxRequests: parseInt(process.env.RATE_LIMIT_ACCEPT_MATCH_MAX || '10', 10),
         windowMs: parseInt(process.env.RATE_LIMIT_ACCEPT_MATCH_WINDOW_MS || '60000', 10),
       },
+      get_player_rank: {
+        maxRequests: parseInt(process.env.RATE_LIMIT_GET_PLAYER_RANK_MAX || '60', 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_GET_PLAYER_RANK_WINDOW_MS || '60000', 10),
+      },
       get_leaderboard: {
         maxRequests: parseInt(process.env.RATE_LIMIT_GET_LEADERBOARD_MAX || '30', 10),
         windowMs: parseInt(process.env.RATE_LIMIT_GET_LEADERBOARD_WINDOW_MS || '60000', 10),

@@ -78,7 +78,7 @@ size_flags_horizontal = 3
 
 [node name="RatingTitle" type="Label" parent="SafeAreaContainer/VBoxContainer/PlayerInfoContainer/RatingContainer"]
 layout_mode = 2
-text = "RATING"
+text = "LADDER RATING"
 horizontal_alignment = 1
 
 [node name="RatingLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/PlayerInfoContainer/RatingContainer"]
@@ -96,13 +96,13 @@ size_flags_horizontal = 3
 
 [node name="RankTitle" type="Label" parent="SafeAreaContainer/VBoxContainer/PlayerInfoContainer/RankContainer"]
 layout_mode = 2
-text = "RANK"
+text = "STANDING"
 horizontal_alignment = 1
 
 [node name="RankLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/PlayerInfoContainer/RankContainer"]
 unique_name = "rank_label"
 layout_mode = 2
-text = "Unranked"
+text = "No Standing"
 horizontal_alignment = 1
 
 [node name="ModeContainer" type="HBoxContainer" parent="SafeAreaContainer/VBoxContainer"]

@@ -3,7 +3,6 @@ import {
   rpcCreateMatch,
   rpcAcceptMatch,
   rpcListMatches,
-  rpcGetPlayerRank,
   rpcCompleteMatch,
   calculateRank,
   generateMatchId,
@@ -11,7 +10,6 @@ import {
   registerRpcListMatches,
   registerRpcCreateMatch,
   registerRpcAcceptMatch,
-  registerRpcGetPlayerRank,
   registerRpcCompleteMatch,
   rpcSubmitTurn,
   rpcGetAsyncMatchState,
@@ -573,92 +571,7 @@ describe('matchmaker', () => {
     });
   });
 
-  describe('rpcGetPlayerRank', () => {
-    it('should return player rank, level, and xp', () => {
-      const playerStats = {
-        level: 7,
-        xp: 1250,
-        stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
-      };
-      mockNk.storageRead = jest.fn(() => [
-        {
-          collection: 'player_stats',
-          key: 'test-user-123',
-          value: JSON.stringify(playerStats),
-        },
-      ]);
-
-      const payload = JSON.stringify({});
-      const result = rpcGetPlayerRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.rank).toBeDefined();
-      expect(parsed.level).toBe(7);
-      expect(parsed.xp).toBe(1250);
-    });
-
-    it('should return the exact derived Power Rating, unaffected by rank decay (issue #865)', () => {
-      // Power Rating is a pure derivation from stored stats; inactivity decay
-      // belongs to the Ladder Rating reads in season_leaderboard, not here.
-      const playerStats = {
-        level: 12,
-        xp: 3400,
-        stats: { attack: 40, defense: 32, dodge: 24, crit_rate: 16 },
-      };
-      mockNk.storageRead = jest.fn(() => [
-        {
-          collection: 'player_stats',
-          key: 'test-user-123',
-          value: JSON.stringify(playerStats),
-        },
-      ]);
-
-      const payload = JSON.stringify({});
-      const result = rpcGetPlayerRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      const expectedRank = Math.floor(12 * 10 + (40 + 32 + 24 + 16) / 4);
-      expect(parsed.success).toBe(true);
-      expect(parsed.rank).toBe(expectedRank);
-      // Guard: no inactivity decay on the derived Power Rating path.
-      expect(applyRankDecay).not.toHaveBeenCalled();
-    });
-
-    it('should not write any storage while serving the rank (derived value is never persisted)', () => {
-      const playerStats = {
-        level: 3,
-        xp: 100,
-        stats: { attack: 8, defense: 6, dodge: 4, crit_rate: 2 },
-      };
-      mockNk.storageRead = jest.fn(() => [
-        {
-          collection: 'player_stats',
-          key: 'test-user-123',
-          value: JSON.stringify(playerStats),
-        },
-      ]);
-      mockNk.storageWrite = jest.fn();
-
-      const payload = JSON.stringify({});
-      const result = rpcGetPlayerRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(mockNk.storageWrite).not.toHaveBeenCalled();
-      expect(applyRankDecay).not.toHaveBeenCalled();
-    });
-
-    it('should return error when player stats not found', () => {
-      mockNk.storageRead = jest.fn(() => []);
-      const payload = JSON.stringify({});
-      const result = rpcGetPlayerRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-      expect(parsed.error).toBe('Player stats not found');
-    });
-  });
-
-  describe('calculateRank', () => {
+  describe('calculateRank (Power Rating derivation)', () => {
     it('calculates rank correctly with base stats', () => {
       const stats = { attack: 20, defense: 15, dodge: 10, crit_rate: 8 };
       const rank = calculateRank({ level: 5, xp: 0, stats, user_id: 'test' });
@@ -1501,11 +1414,9 @@ describe('matchmaker', () => {
         rpcAcceptMatch
       );
 
-      registerRpcGetPlayerRank(mockInitializer as any);
-      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-        'armored_archer/get_player_rank',
-        rpcGetPlayerRank
-      );
+      // get_player_rank is registered solely by season_leaderboard's
+      // consolidated handler (issue #871) — matchmaker no longer registers
+      // a duplicate under the same RPC ID.
 
       registerRpcCompleteMatch(mockInitializer as any);
       expect(mockInitializer.registerRpc).toHaveBeenCalledWith(

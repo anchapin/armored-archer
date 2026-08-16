@@ -1,15 +1,16 @@
 ## Manages PvP matchmaking operations including listing, creating, and accepting matches.
-## Handles player rank tracking and match availability.
+## Tracks the player's Power Rating (build strength) used for matchmaking
+## comparisons and punch-up eligibility.
 ##
 ## Settlement is server-authoritative (ADR-0002): complete_match is a
 ## settlement TRIGGER only — the winner is resolved from the server's
 ## terminal match state, never from client input.
 ##
 ## Signals:
-## - matches_loaded(matches: Array, player_rank: int): Emitted when match list is retrieved
+## - matches_loaded(matches: Array, power_rating: int): Emitted when match list is retrieved
 ## - match_created(match: Dictionary): Emitted when a new match is created
 ## - match_accepted(match: Dictionary): Emitted when joining an existing match
-## - rank_retrieved(rank: int): Emitted when player rank is updated
+## - rank_retrieved(power_rating: int): Emitted when the cached Power Rating is refreshed
 ##
 extends Node
 
@@ -26,7 +27,9 @@ const RPC_FORFEIT_MATCH = "armored_archer/forfeit_match"
 
 # --- Match Data ---
 var available_matches: Array = []
-var player_rank: int = 0
+## Cached Power Rating (build strength — level*10 + stat average).
+## NOT the Ladder Rating (Elo) and NOT the season Standing; see issue #871.
+var power_rating: int = 0
 var current_match: Dictionary = {}
 
 # --- Punch Up Statistics ---
@@ -45,10 +48,10 @@ const RISK_LEVEL_HIGH_THRESHOLD = 14
 @onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
 
 # --- Signals ---
-signal matches_loaded(matches: Array, player_rank: int)
+signal matches_loaded(matches: Array, power_rating: int)
 signal match_created(match: Dictionary)
 signal match_accepted(match: Dictionary)
-signal rank_retrieved(rank: int)
+signal rank_retrieved(power_rating: int)
 signal match_completed(match_result: Dictionary)
 signal match_history_loaded(matches: Array, total: int, stats: Dictionary)
 signal punch_up_stats_updated(wins: int, losses: int, win_rate: float)
@@ -98,8 +101,11 @@ func list_matches(match_type: String = "", min_rank: int = 0, max_rank: int = 0,
 
 	if response.get("success", false):
 		available_matches = response.get("matches", [])
-		player_rank = response.get("player_rank", 0)
-		matches_loaded.emit(available_matches, player_rank)
+		# list_matches returns the server-derived Power Rating in its
+		# `player_rank` field (same calculateRank derivation as the
+		# consolidated get_player_rank RPC's `power_rating` field).
+		power_rating = response.get("player_rank", 0)
+		matches_loaded.emit(available_matches, power_rating)
 
 # --- Match Creation ---
 func create_match(match_type: String, is_punch_up: bool = false, target_opponent_id: String = "") -> void:
@@ -145,7 +151,7 @@ func create_match(match_type: String, is_punch_up: bool = false, target_opponent
 			var season_manager = get_node_or_null("/root/SeasonManager")
 			if season_manager and season_manager.current_season.has("season_id"):
 				season_id = season_manager.current_season.get("season_id")
-			analytics.log_pvp_match_started(match_id, opponent_id, season_id, player_rank)
+			analytics.log_pvp_match_started(match_id, opponent_id, season_id, power_rating)
 
 # --- Match Acceptance ---
 func accept_match(match_id: String) -> void:
@@ -177,9 +183,14 @@ func accept_match(match_id: String) -> void:
 		current_match = response.get("match", {})
 		match_accepted.emit(current_match)
 
-# --- Rank Management ---
+# --- Power Rating Management ---
 func get_player_rank() -> void:
-	"""Retrieves the player's current PvP rank."""
+	"""Retrieves the player's Power Rating (build strength).
+
+	The consolidated server response (issue #871) exposes the explicit
+	`power_rating` field; the legacy `rank` alias is only a best-effort
+	fallback for older servers (where it carried the same derivation).
+	"""
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return
@@ -192,8 +203,8 @@ func get_player_rank() -> void:
 		return
 
 	if response.get("success", false):
-		player_rank = response.get("rank", 0)
-		rank_retrieved.emit(player_rank)
+		power_rating = response.get("power_rating", response.get("rank", 0))
+		rank_retrieved.emit(power_rating)
 
 # --- Match History ---
 func get_match_history(match_type: String = "", limit: int = 20, offset: int = 0) -> void:
@@ -306,19 +317,24 @@ func _handle_settlement_response(response: Dictionary, advisory_is_punch_up: boo
 	var my_user_id: String = _get_local_user_id()
 	var is_victory: bool = my_user_id == server_winner_id
 
-	# Update cached player rank from my side of the settlement
+	# Determine which side of the settlement is ours (for the result payload).
+	# Note: we deliberately do NOT update the cached `power_rating` from the
+	# settlement — `new_rank` in the settlement response is the Ladder Rating
+	# (Elo), a different concept (issue #871). Power Rating is build strength
+	# and only changes via stats/level; the cache refreshes from
+	# list_matches / get_player_rank responses.
 	var my_player_data: Dictionary = {}
 	if is_victory:
 		my_player_data = winner_data
-		player_rank = winner_data.get("new_rank", player_rank)
 	elif my_user_id == server_loser_id:
 		my_player_data = loser_data
-		player_rank = loser_data.get("new_rank", player_rank)
 	else:
 		# Not a participant, use winner data as fallback
 		my_player_data = winner_data
 
-	# Extract player result data
+	# Extract player result data. old_rank/new_rank/rank_change are Ladder
+	# Rating (Elo) values from the server settlement — match_results renders
+	# them as the Ladder Rating change (issue #871).
 	var old_rank: int = my_player_data.get("old_rank", 0)
 	var new_rank: int = my_player_data.get("new_rank", 0)
 	var rank_delta: int = my_player_data.get("rank_change", 0)
@@ -437,12 +453,12 @@ func get_current_match() -> Dictionary:
 	return current_match
 
 func get_player_rank_sync() -> int:
-	"""Returns the cached player rank (synchronous).
+	"""Returns the cached Power Rating (build strength, synchronous).
 
 	Returns:
-		int: Current player rank
+		int: Current Power Rating (0 until the first successful fetch)
 	"""
-	return player_rank
+	return power_rating
 
 func is_in_match() -> bool:
 	"""Checks if player is currently in an active match.
@@ -522,7 +538,7 @@ func calculate_punch_up_risk_level(match_data: Dictionary) -> String:
 		return "none"
 
 	var opponent_rank: int = match_data.get("creator_rank", 0)
-	var rank_diff: int = abs(opponent_rank - player_rank)
+	var rank_diff: int = abs(opponent_rank - power_rating)
 
 	if rank_diff >= RISK_LEVEL_HIGH_THRESHOLD:
 		return "high"
@@ -550,7 +566,7 @@ func get_punch_up_risk_details(match_data: Dictionary) -> Dictionary:
 	var is_punch_up: bool = is_punch_up_match(match_data)
 	var risk_level: String = calculate_punch_up_risk_level(match_data)
 	var opponent_rank: int = match_data.get("creator_rank", 0)
-	var rank_diff: int = abs(opponent_rank - player_rank)
+	var rank_diff: int = abs(opponent_rank - power_rating)
 
 	# Calculate rewards based on rank difference
 	var xp_multiplier: float = 1.0
@@ -881,9 +897,9 @@ func _handle_match_completion(response: Dictionary) -> void:
 	if created_at > 0 and completed_at > 0:
 		match_duration = float(completed_at - created_at) / 1000.0
 
-	# Update player rank
-	if not is_victory:
-		player_rank = new_rank
+	# Note: the cached Power Rating is NOT updated here — new_rank is the
+	# Ladder Rating (Elo) from the settlement, a different concept (#871).
+	# Power Rating refreshes from list_matches / get_player_rank responses.
 
 	# Create UI-compatible result data
 	var ui_result_data = {
