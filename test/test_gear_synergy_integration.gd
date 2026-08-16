@@ -53,8 +53,8 @@ func test_gear_balance_calculator_exists() -> void:
 		gbc.queue_free()
 		return
 
-	if not gbc.has_method("calculate_total_stats"):
-		_fail("test_gear_balance_calculator_exists", "Missing calculate_total_stats method")
+	if not gbc.has_method("calculate_total_effective_stats"):
+		_fail("test_gear_balance_calculator_exists", "Missing calculate_total_effective_stats method")
 		gbc.queue_free()
 		return
 

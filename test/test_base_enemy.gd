@@ -91,11 +91,11 @@ func test_take_damage_reduces_health() -> void:
 func test_take_damage_triggers_death_at_zero() -> void:
 	var enemy = _create_enemy()
 	enemy._ready()
-	var died = false
-	enemy.died.connect(func(_xp): died = true)
+	var signals_received: Array = []
+	enemy.died.connect(func(_xp): signals_received.append("died"))
 	enemy.take_damage(100)
 	await get_tree().process_frame
-	if died:
+	if signals_received.size() > 0:
 		_pass("test_take_damage_triggers_death_at_zero")
 	else:
 		_fail("test_take_damage_triggers_death_at_zero", "died signal should emit when health reaches 0")
@@ -104,11 +104,11 @@ func test_take_damage_triggers_death_at_zero() -> void:
 func test_take_damage_no_death_above_zero() -> void:
 	var enemy = _create_enemy()
 	enemy._ready()
-	var died = false
-	enemy.died.connect(func(_xp): died = true)
+	var signals_received: Array = []
+	enemy.died.connect(func(_xp): signals_received.append("died"))
 	enemy.take_damage(50)
 	await get_tree().process_frame
-	if not died and enemy.current_health == 50:
+	if signals_received.is_empty() and enemy.current_health == 50:
 		_pass("test_take_damage_no_death_above_zero")
 	else:
 		_fail("test_take_damage_no_death_above_zero", "Should not die when health > 0")
@@ -129,12 +129,12 @@ func test_take_damage_multiple_hits() -> void:
 func test_died_signal_emitted() -> void:
 	var enemy = _create_enemy()
 	enemy._ready()
-	var received = false
-	enemy.died.connect(func(_xp): received = true)
+	var signals_received: Array = []
+	enemy.died.connect(func(_xp): signals_received.append("died"))
 	enemy.take_damage(999)
-	# In headless mode, give a frame for the signal callback to process
+	# In headless mode, give a frame for deferred death handling to process
 	await get_tree().process_frame
-	if received:
+	if signals_received.size() > 0:
 		_pass("test_died_signal_emitted")
 	else:
 		_fail("test_died_signal_emitted", "died signal should emit on death")
@@ -144,14 +144,14 @@ func test_died_signal_xp_value() -> void:
 	var enemy = _create_enemy()
 	enemy._ready()
 	enemy.xp_reward = 50
-	var received_xp = -1
-	enemy.died.connect(func(xp): received_xp = xp)
+	var signals_received: Array = []
+	enemy.died.connect(func(xp): signals_received.append(xp))
 	enemy.take_damage(999)
 	await get_tree().process_frame
-	if received_xp == 50:
+	if signals_received.size() > 0 and signals_received[0] == 50:
 		_pass("test_died_signal_xp_value")
 	else:
-		_fail("test_died_signal_xp_value", "died signal should pass xp_reward (got %d)" % received_xp)
+		_fail("test_died_signal_xp_value", "died signal should pass xp_reward (got %d)" % (signals_received[0] if signals_received.size() > 0 else -1))
 	enemy.queue_free()
 
 func test_die_calls_unregister() -> void:

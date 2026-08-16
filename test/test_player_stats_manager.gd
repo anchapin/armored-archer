@@ -201,15 +201,13 @@ func test_get_crit_rate() -> void:
 
 func test_signal_emission() -> void:
 	var psm = _create_player_stats_manager()
-	var stats_updated_received = false
-	var xp_gained_received = false
-	var level_up_received = false
-	var stat_allocated_received = false
+	# Array-based tracking: lambdas capture locals by value.
+	var signals_received: Array = []
 
-	psm.stats_updated.connect(func(s): stats_updated_received = true)
-	psm.xp_gained.connect(func(a, t): xp_gained_received = true)
-	psm.level_up.connect(func(l, p): level_up_received = true)
-	psm.stat_allocated.connect(func(s, a): stat_allocated_received = true)
+	psm.stats_updated.connect(func(_s): signals_received.append("stats_updated"))
+	psm.xp_gained.connect(func(_a, _t): signals_received.append("xp_gained"))
+	psm.level_up.connect(func(_l, _p): signals_received.append("level_up"))
+	psm.stat_allocated.connect(func(_s, _a): signals_received.append("stat_allocated"))
 
 	psm.stats_updated.emit({})
 	psm.xp_gained.emit(100, 500)
@@ -218,7 +216,7 @@ func test_signal_emission() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if stats_updated_received and xp_gained_received and level_up_received and stat_allocated_received:
+	if signals_received.has("stats_updated") and signals_received.has("xp_gained") and signals_received.has("level_up") and signals_received.has("stat_allocated"):
 		_pass("test_signal_emission")
 	else:
 		_fail("test_signal_emission", "All signals should be emitted")
@@ -375,15 +373,16 @@ func test_get_player_stats_no_network() -> void:
 
 func test_stats_updated_signal() -> void:
 	var psm = _create_player_stats_manager()
-	var received_stats = {}
+	# Value-capture workaround: append emitted payloads to an Array.
+	var stats_payloads: Array = []
 
-	psm.stats_updated.connect(func(s): received_stats = s)
+	psm.stats_updated.connect(func(s): stats_payloads.append(s))
 
 	psm.stats_updated.emit({"level": 5, "xp": 200})
 
 	await get_tree().create_timer(0.1).timeout
 
-	if received_stats.has("level") and received_stats.level == 5:
+	if not stats_payloads.is_empty() and stats_payloads[0].get("level", 0) == 5:
 		_pass("test_stats_updated_signal")
 	else:
 		_fail("test_stats_updated_signal", "Stats not received")
@@ -392,19 +391,18 @@ func test_stats_updated_signal() -> void:
 
 func test_xp_gained_signal() -> void:
 	var psm = _create_player_stats_manager()
-	var received_amount = 0
-	var received_total = 0
+	# Value-capture workaround: append [amount, total] pairs to an Array.
+	var xp_events: Array = []
 
 	psm.xp_gained.connect(func(a, t):
-		received_amount = a
-		received_total = t
+		xp_events.append([a, t])
 	)
 
 	psm.xp_gained.emit(50, 250)
 
 	await get_tree().create_timer(0.1).timeout
 
-	if received_amount == 50 and received_total == 250:
+	if xp_events.has([50, 250]):
 		_pass("test_xp_gained_signal")
 	else:
 		_fail("test_xp_gained_signal", "XP signal not received correctly")
@@ -413,19 +411,18 @@ func test_xp_gained_signal() -> void:
 
 func test_level_up_signal() -> void:
 	var psm = _create_player_stats_manager()
-	var received_level = 0
-	var received_points = 0
+	# Value-capture workaround: append [level, points] pairs to an Array.
+	var level_up_events: Array = []
 
 	psm.level_up.connect(func(l, p):
-		received_level = l
-		received_points = p
+		level_up_events.append([l, p])
 	)
 
 	psm.level_up.emit(10, 3)
 
 	await get_tree().create_timer(0.1).timeout
 
-	if received_level == 10 and received_points == 3:
+	if level_up_events.has([10, 3]):
 		_pass("test_level_up_signal")
 	else:
 		_fail("test_level_up_signal", "Level up signal not received correctly")
@@ -434,19 +431,18 @@ func test_level_up_signal() -> void:
 
 func test_stat_allocated_signal() -> void:
 	var psm = _create_player_stats_manager()
-	var received_stat = ""
-	var received_amount = 0
+	# Value-capture workaround: append [stat, amount] pairs to an Array.
+	var stat_events: Array = []
 
 	psm.stat_allocated.connect(func(s, a):
-		received_stat = s
-		received_amount = a
+		stat_events.append([s, a])
 	)
 
 	psm.stat_allocated.emit("defense", 2)
 
 	await get_tree().create_timer(0.1).timeout
 
-	if received_stat == "defense" and received_amount == 2:
+	if stat_events.has(["defense", 2]):
 		_pass("test_stat_allocated_signal")
 	else:
 		_fail("test_stat_allocated_signal", "Stat allocated signal not received")

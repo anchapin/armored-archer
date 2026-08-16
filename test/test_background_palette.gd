@@ -94,10 +94,10 @@ func test_main_menu_preset() -> void:
 	else:
 		_fail("test_main_menu_preset_name", "Preset name should be main_menu")
 
-	if preset.base_tint == Color("#fdffda"):
+	if preset.base_tint == Color("#0e0e0e"):
 		_pass("test_main_menu_preset_base_tint")
 	else:
-		_fail("test_main_menu_preset_base_tint", "Base tint should be parchment")
+		_fail("test_main_menu_preset_base_tint", "Base tint should be dark obsidian")
 
 	if preset.layer_colors.size() == 3:
 		_pass("test_main_menu_preset_layer_count")
@@ -117,10 +117,10 @@ func test_forest_preset() -> void:
 	else:
 		_fail("test_forest_preset_name", "Preset name should be gameplay_forest")
 
-	if preset.base_tint == Color("#e6f0cc"):
+	if preset.base_tint == Color("#0a1a0a"):
 		_pass("test_forest_preset_base_tint")
 	else:
-		_fail("test_forest_preset_base_tint", "Base tint should be green-tinted parchment")
+		_fail("test_forest_preset_base_tint", "Base tint should be dark green-tinted")
 
 	if preset.layer_colors.size() == 3:
 		_pass("test_forest_preset_layer_count")
@@ -140,10 +140,10 @@ func test_arena_preset() -> void:
 	else:
 		_fail("test_arena_preset_name", "Preset name should be gameplay_arena")
 
-	if preset.base_tint == Color("#f0ede8"):
+	if preset.base_tint == Color("#1a1a1a"):
 		_pass("test_arena_preset_base_tint")
 	else:
-		_fail("test_arena_preset_base_tint", "Base tint should be neutral warm")
+		_fail("test_arena_preset_base_tint", "Base tint should be neutral dark gray")
 
 	if preset.layer_colors.size() == 3:
 		_pass("test_arena_preset_layer_count")
@@ -175,16 +175,16 @@ func test_preset_structure() -> void:
 func test_get_all_presets() -> void:
 	var presets = GildedBackgroundPalette.get_all_presets()
 
-	if presets.size() == 3:
+	if presets.size() == 4:
 		_pass("test_all_presets_count")
 	else:
-		_fail("test_all_presets_count", "Should return 3 presets, got %d" % presets.size())
+		_fail("test_all_presets_count", "Should return 4 presets, got %d" % presets.size())
 
 	var names = []
 	for p in presets:
 		names.append(p.name)
 
-	if "main_menu" in names and "gameplay_forest" in names and "gameplay_arena" in names:
+	if "main_menu" in names and "gameplay_forest" in names and "gameplay_arena" in names and "gameplay_cavern" in names:
 		_pass("test_all_presets_contains_expected")
 	else:
 		_fail("test_all_presets_contains_expected", "Should contain all expected presets")

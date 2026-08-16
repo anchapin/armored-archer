@@ -85,13 +85,9 @@ func test_initial_state() -> void:
 
 func test_start_combat() -> void:
 	var csm = await _create_combat_sync_manager()
-	var combat_started_emitted = false
-	var emitted_match_id = ""
+	var signals_received: Array = []
 
-	csm.combat_started.connect(func(match_id: String):
-		combat_started_emitted = true
-		emitted_match_id = match_id
-	)
+	csm.combat_started.connect(func(match_id: String): signals_received.append(match_id))
 
 	csm.start_combat("test_match_123")
 
@@ -115,7 +111,7 @@ func test_start_combat() -> void:
 	else:
 		_fail("test_start_combat_match_id", "Match ID should be set")
 
-	if combat_started_emitted and emitted_match_id == "test_match_123":
+	if signals_received.size() > 0 and signals_received[0] == "test_match_123":
 		_pass("test_start_combat_signal")
 	else:
 		_fail("test_start_combat_signal", "combat_started signal should emit with match_id")
@@ -182,13 +178,9 @@ func test_update_opponent_state() -> void:
 	csm.start_combat("test_match")
 	csm.send_move(45.0, 80.0)  # Switch to opponent turn
 
-	var opponent_moved_emitted = false
-	var emitted_move_data = {}
+	var signals_received: Array = []
 
-	csm.opponent_moved.connect(func(move_data: Dictionary):
-		opponent_moved_emitted = true
-		emitted_move_data = move_data
-	)
+	csm.opponent_moved.connect(func(move_data: Dictionary): signals_received.append(move_data))
 
 	var move_data = {
 		"angle": 30.0,
@@ -207,7 +199,7 @@ func test_update_opponent_state() -> void:
 	else:
 		_fail("test_update_opponent_state_turn_back", "Should be player's turn after opponent moves")
 
-	if opponent_moved_emitted:
+	if signals_received.size() > 0:
 		_pass("test_update_opponent_state_signal")
 	else:
 		_fail("test_update_opponent_state_signal", "opponent_moved signal should emit")
@@ -241,13 +233,9 @@ func test_end_combat() -> void:
 	var csm = await _create_combat_sync_manager()
 	csm.start_combat("test_match")
 
-	var combat_ended_emitted = false
-	var winner = ""
+	var signals_received: Array = []
 
-	csm.combat_ended.connect(func(w: String):
-		combat_ended_emitted = true
-		winner = w
-	)
+	csm.combat_ended.connect(func(w: String): signals_received.append(w))
 
 	csm.end_combat("player")
 
@@ -256,7 +244,7 @@ func test_end_combat() -> void:
 	else:
 		_fail("test_end_combat_inactive", "Combat should be inactive after end")
 
-	if combat_ended_emitted and winner == "player":
+	if signals_received.size() > 0 and signals_received[0] == "player":
 		_pass("test_end_combat_signal")
 	else:
 		_fail("test_end_combat_signal", "combat_ended signal should emit with winner")
@@ -362,24 +350,18 @@ func test_health_changed_signal() -> void:
 	var csm = await _create_combat_sync_manager()
 	csm.start_combat("test_match")
 
-	var health_changed_emitted = false
-	var emitted_player_health = 0
-	var emitted_opponent_health = 0
+	var signals_received: Array = []
 
-	csm.health_changed.connect(func(ph: int, oh: int):
-		health_changed_emitted = true
-		emitted_player_health = ph
-		emitted_opponent_health = oh
-	)
+	csm.health_changed.connect(func(ph: int, oh: int): signals_received.append([ph, oh]))
 
 	csm.apply_opponent_damage(25)
 
-	if health_changed_emitted:
+	if signals_received.size() > 0:
 		_pass("test_health_changed_signal_emitted")
 	else:
 		_fail("test_health_changed_signal_emitted", "health_changed signal should emit")
 
-	if emitted_player_health == 100 and emitted_opponent_health == 75:
+	if signals_received.size() > 0 and signals_received[0][0] == 100 and signals_received[0][1] == 75:
 		_pass("test_health_changed_signal_values")
 	else:
 		_fail("test_health_changed_signal_values", "Signal should contain correct health values")
@@ -441,13 +423,9 @@ func test_end_combat_lethal_opponent() -> void:
 	var csm = await _create_combat_sync_manager()
 	csm.start_combat("test_match")
 
-	var combat_ended_emitted = false
-	var winner = ""
+	var signals_received: Array = []
 
-	csm.combat_ended.connect(func(w: String):
-		combat_ended_emitted = true
-		winner = w
-	)
+	csm.combat_ended.connect(func(w: String): signals_received.append(w))
 
 	csm.apply_opponent_damage(100)
 
@@ -456,7 +434,7 @@ func test_end_combat_lethal_opponent() -> void:
 	else:
 		_fail("test_end_combat_lethal_opponent_health", "Opponent health should be 0")
 
-	if combat_ended_emitted and winner == "player":
+	if signals_received.size() > 0 and signals_received[0] == "player":
 		_pass("test_end_combat_lethal_opponent_ends_combat")
 	else:
 		_fail("test_end_combat_lethal_opponent_ends_combat", "Combat should end with player winner")
@@ -467,13 +445,9 @@ func test_end_combat_lethal_player() -> void:
 	var csm = await _create_combat_sync_manager()
 	csm.start_combat("test_match")
 
-	var combat_ended_emitted = false
-	var winner = ""
+	var signals_received: Array = []
 
-	csm.combat_ended.connect(func(w: String):
-		combat_ended_emitted = true
-		winner = w
-	)
+	csm.combat_ended.connect(func(w: String): signals_received.append(w))
 
 	csm.apply_player_damage(100)
 
@@ -482,7 +456,7 @@ func test_end_combat_lethal_player() -> void:
 	else:
 		_fail("test_end_combat_lethal_player_health", "Player health should be 0")
 
-	if combat_ended_emitted and winner == "opponent":
+	if signals_received.size() > 0 and signals_received[0] == "opponent":
 		_pass("test_end_combat_lethal_player_ends_combat")
 	else:
 		_fail("test_end_combat_lethal_player_ends_combat", "Combat should end with opponent winner")

@@ -143,7 +143,7 @@ func test_claim_season_rewards_tracks_coverage():
 	_season_manager.claim_season_rewards()
 
 	# Verify rewards_claimed_signal emitted
-	assert_signal_emitted(_season_manager, "rewards_claimed_signal")
+	assert_signal_emitted(_season_manager, "rewards_claimed")
 
 	# Verify has_claimed_rewards set
 	assert_true(_season_manager.is_rewards_claimed(), "Rewards should be marked as claimed")

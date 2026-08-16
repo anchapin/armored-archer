@@ -322,7 +322,7 @@ func spawn_power_up_pickup_vfx(position: Vector2, power_up_type: String = "speed
 	effect.finished.connect(effect.queue_free)
 
 	# Add initial burst scale
-	var tween = create_tween()
+	var tween = _make_tween()
 	tween.tween_property(effect, "scale", Vector2(1.5, 1.5), 0.3).set_trans(Tween.TRANS_BACK)
 	tween.tween_property(effect, "modulate:a", 0.0, 0.5)
 
@@ -345,7 +345,7 @@ func attach_power_up_vfx(target: Node, power_up_type: String = "speed") -> void:
 	effect.one_shot = false
 
 	# Add subtle pulsing animation
-	var tween = create_tween()
+	var tween = _make_tween()
 	tween.set_loops()
 	tween.tween_property(effect, "scale", Vector2(1.2, 1.2), 0.5).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(effect, "scale", Vector2(0.8, 0.8), 0.5).set_trans(Tween.TRANS_SINE)
@@ -362,7 +362,7 @@ func detach_power_up_vfx(target: Node, power_up_type: String = "speed") -> void:
 
 	var effect = target.get_node_or_null("PowerUpVFX")
 	if effect:
-		var tween = create_tween()
+		var tween = _make_tween()
 		tween.tween_property(effect, "modulate:a", 0.0, 0.3)
 		tween.tween_callback(effect.queue_free)
 
@@ -381,5 +381,5 @@ func _get_power_up_vfx_color(power_up_type: String) -> Color:
 			return Color(1, 0.675, 0.329, 0.7)  # Golden default
 
 # --- Helper for creating tweens (Godot 4.x compatible) ---
-func create_tween() -> Tween:
+func _make_tween() -> Tween:
 	return get_tree().create_tween()

@@ -15,8 +15,9 @@ func _init():
 	_test_root.name = "TestRoot"
 	root.add_child(_test_root)
 
-	# Start running tests
-	_run_next_test()
+	# Start running tests (deferred so autoload singletons are registered
+	# before the first test script is loaded/compiled)
+	call_deferred("_run_next_test")
 
 func _run_next_test():
 	var test_files = [
@@ -155,7 +156,7 @@ func _run_next_test():
 func _run_tests_async(test_files: Array):
 	for test_file in test_files:
 		var test_script = load(test_file)
-		if test_script:
+		if test_script and test_script.can_instantiate():
 			var test_instance = test_script.new()
 			_test_root.add_child(test_instance)
 			_tests_run += 1

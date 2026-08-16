@@ -11,6 +11,11 @@
 
 extends GutTest
 
+# --- Constants ---
+const GUARDIAN_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_earth.tscn")
+const WARLOCK_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_fire.tscn")
+const TITAN_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_wind.tscn")
+
 # --- Test Fixtures ---
 var boss_manager: Node
 var test_player: Node2D
@@ -114,7 +119,7 @@ func test_boss_loot_tables() -> void:
 
 func test_guardian_phases() -> void:
 	# Test: Guardian boss has correct phase structure
-	var guardian_scene = load("res://scenes/enemies/bosses/boss_earth.tscn")
+	var guardian_scene: PackedScene = GUARDIAN_SCENE
 	assert_true(guardian_scene != null, "Guardian boss scene should exist")
 
 	var guardian: GuardianBoss = guardian_scene.instantiate()
@@ -134,7 +139,7 @@ func test_guardian_phases() -> void:
 
 func test_guardian_special_attacks() -> void:
 	# Test: Guardian boss uses ground slam and shield bash
-	var guardian_scene = load("res://scenes/enemies/bosses/boss_earth.tscn")
+	var guardian_scene: PackedScene = GUARDIAN_SCENE
 	var guardian: GuardianBoss = guardian_scene.instantiate()
 	if guardian:
 		get_tree().root.add_child(guardian)
@@ -151,7 +156,7 @@ func test_guardian_special_attacks() -> void:
 
 func test_warlock_minion_spawning() -> void:
 	# Test: Warlock boss spawns shadow minions
-	var warlock_scene = load("res://scenes/enemies/bosses/boss_fire.tscn")
+	var warlock_scene: PackedScene = WARLOCK_SCENE
 	assert_true(warlock_scene != null, "Warlock boss scene should exist")
 
 	var warlock: WarlockBoss = warlock_scene.instantiate()
@@ -171,7 +176,7 @@ func test_warlock_minion_spawning() -> void:
 
 func test_warlock_teleport() -> void:
 	# Test: Warlock boss uses teleport to dodge
-	var warlock_scene = load("res://scenes/enemies/bosses/boss_fire.tscn")
+	var warlock_scene: PackedScene = WARLOCK_SCENE
 	var warlock: WarlockBoss = warlock_scene.instantiate()
 	if warlock:
 		get_tree().root.add_child(warlock)
@@ -188,7 +193,7 @@ func test_warlock_teleport() -> void:
 
 func test_titan_enrage() -> void:
 	# Test: Titan boss enrages at 50% health
-	var titan_scene = load("res://scenes/enemies/bosses/boss_wind.tscn")
+	var titan_scene: PackedScene = TITAN_SCENE
 	assert_true(titan_scene != null, "Titan boss scene should exist")
 
 	var titan: TitanBoss = titan_scene.instantiate()
@@ -208,7 +213,7 @@ func test_titan_enrage() -> void:
 
 func test_titan_special_attacks() -> void:
 	# Test: Titan boss uses stomp, roar, and charge
-	var titan_scene = load("res://scenes/enemies/bosses/boss_wind.tscn")
+	var titan_scene: PackedScene = TITAN_SCENE
 	var titan: TitanBoss = titan_scene.instantiate()
 	if titan:
 		get_tree().root.add_child(titan)

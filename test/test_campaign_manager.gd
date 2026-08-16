@@ -7,6 +7,10 @@ signal test_completed(test_name: String, passed: bool)
 
 func _ready() -> void:
 	print("=== Running CampaignManager Tests ===\n")
+	# Keep the suite hermetic: discard persisted progress from previous runs
+	var dir = DirAccess.open("user://")
+	if dir:
+		var _err = dir.remove("campaign_progress.json")
 	await run_tests()
 
 func run_tests() -> void:
@@ -126,8 +130,8 @@ func test_complete_stage() -> void:
 		]
 	}
 
-	var stage_completed_emitted = false
-	campaign.stage_completed.connect(func(_stage_id): stage_completed_emitted = true)
+	var stage_completed_signals: Array = []
+	campaign.stage_completed.connect(func(stage_id): stage_completed_signals.append(stage_id))
 
 	campaign.complete_stage("1_1")
 
@@ -136,7 +140,7 @@ func test_complete_stage() -> void:
 	else:
 		_fail("test_complete_stage_added", "Stage should be in completed list")
 
-	if stage_completed_emitted:
+	if not stage_completed_signals.is_empty():
 		_pass("test_complete_stage_signal")
 	else:
 		_fail("test_complete_stage_signal", "Should emit stage_completed signal")
@@ -170,8 +174,8 @@ func test_unlock_next_stage() -> void:
 		]
 	}
 
-	var stage_unlocked_emitted = false
-	campaign.stage_unlocked.connect(func(_stage_id): stage_unlocked_emitted = true)
+	var stage_unlocked_signals: Array = []
+	campaign.stage_unlocked.connect(func(stage_id): stage_unlocked_signals.append(stage_id))
 
 	campaign.unlock_next_stage("1_1")
 
@@ -180,7 +184,7 @@ func test_unlock_next_stage() -> void:
 	else:
 		_fail("test_unlock_next_stage", "Should unlock next stage")
 
-	if stage_unlocked_emitted:
+	if not stage_unlocked_signals.is_empty():
 		_pass("test_unlock_next_stage_signal")
 	else:
 		_fail("test_unlock_next_stage_signal", "Should emit stage_unlocked")
@@ -204,16 +208,16 @@ func test_handle_boss_defeat() -> void:
 	else:
 		_fail("test_boss_defeated_tracked", "Boss should be in bosses_defeated list")
 
-	# Test unknown boss doesn't crash
-	campaign.handle_boss_defeat("unknown_boss")
-	_pass("test_handle_boss_defeat_unknown")
-
-	# Test duplicate boss defeat doesn't add twice
+	# Test duplicate boss defeat doesn't add twice (before tracking other bosses)
 	campaign.handle_boss_defeat("boss_wind")
 	if campaign.bosses_defeated.size() == 1:
 		_pass("test_boss_defeat_duplicate_safe")
 	else:
 		_fail("test_boss_defeat_duplicate_safe", "Duplicate boss defeat should not add twice")
+
+	# Test unknown boss doesn't crash
+	campaign.handle_boss_defeat("unknown_boss")
+	_pass("test_handle_boss_defeat_unknown")
 
 	# Test modifier pool unlocked
 	if "piercing_arrow" in campaign.unlocked_modifier_pools:
@@ -281,16 +285,15 @@ func test_update_campaign_progress() -> void:
 		]
 	}
 
-	var progress_updated := false
-	var update_progress = func(_data): progress_updated = true
-	campaign.campaign_progress_updated.connect(update_progress)
+	var progress_updated_signals: Array = []
+	campaign.campaign_progress_updated.connect(func(chapter_id, progress): progress_updated_signals.append([chapter_id, progress]))
 
 	campaign.update_campaign_progress()
 
 	# In headless mode, give a frame for the signal callback to process
 	await get_tree().process_frame
 
-	if progress_updated:
+	if not progress_updated_signals.is_empty():
 		_pass("test_update_campaign_progress_signal")
 	else:
 		_fail("test_update_campaign_progress_signal", "Should emit progress signal")

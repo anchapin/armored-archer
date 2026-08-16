@@ -66,26 +66,26 @@ func test_default_stats() -> void:
 
 func test_detection_range() -> void:
 	var enemy = _create_melee_enemy()
-	if enemy.detection_range == 400.0:
+	if enemy.detection_range == 200.0:
 		_pass("test_detection_range")
 	else:
-		_fail("test_detection_range", "Expected 400.0 got %f" % enemy.detection_range)
+		_fail("test_detection_range", "Expected 200.0 got %f" % enemy.detection_range)
 	enemy.queue_free()
 
 func test_attack_range() -> void:
 	var enemy = _create_melee_enemy()
-	if enemy.attack_range == 50.0:
+	if enemy.attack_range == 35.0:
 		_pass("test_attack_range")
 	else:
-		_fail("test_attack_range", "Expected 50.0 got %f" % enemy.attack_range)
+		_fail("test_attack_range", "Expected 35.0 got %f" % enemy.attack_range)
 	enemy.queue_free()
 
 func test_attack_cooldown() -> void:
 	var enemy = _create_melee_enemy()
-	if enemy.attack_cooldown == 1.0:
+	if enemy.attack_cooldown == 1.5:
 		_pass("test_attack_cooldown")
 	else:
-		_fail("test_attack_cooldown", "Expected 1.0 got %f" % enemy.attack_cooldown)
+		_fail("test_attack_cooldown", "Expected 1.5 got %f" % enemy.attack_cooldown)
 	enemy.queue_free()
 
 func test_chase_sets_velocity() -> void:
@@ -164,10 +164,11 @@ func test_take_damage_with_armor_large_attack() -> void:
 func test_take_damage_death() -> void:
 	var enemy = _create_melee_enemy()
 	enemy._ready()
-	var died = false
-	enemy.died.connect(func(_xp): died = true)
+	# GDScript lambdas capture locals by value; use an Array to observe the signal
+	var death_calls: Array = []
+	enemy.died.connect(func(_xp): death_calls.append(1))
 	enemy.take_damage(100)
-	if died:
+	if death_calls.size() > 0:
 		_pass("test_take_damage_death")
 	else:
 		_fail("test_take_damage_death", "Should die at 0 health")

@@ -94,10 +94,10 @@ func test_phase_2_stats() -> void:
 func test_health_changed_signal() -> void:
 	var boss = _create_boss()
 	boss._ready()
-	var received = false
-	boss.health_changed.connect(func(_c, _m): received = true)
+	var signals_received: Array = []
+	boss.health_changed.connect(func(_c, _m): signals_received.append("health_changed"))
 	boss.take_damage(10)
-	if received:
+	if signals_received.size() > 0:
 		_pass("test_health_changed_signal")
 	else:
 		_fail("test_health_changed_signal", "health_changed signal should emit on take_damage")
@@ -106,13 +106,13 @@ func test_health_changed_signal() -> void:
 func test_boss_defeated_signal() -> void:
 	var boss = _create_boss()
 	boss._ready()
-	var received_name = ""
-	boss.boss_defeated.connect(func(name): received_name = name)
+	var signals_received: Array = []
+	boss.boss_defeated.connect(func(boss_name): signals_received.append(boss_name))
 	boss.take_damage(500)
-	if received_name == "Basic Boss":
+	if signals_received.size() > 0 and signals_received[0] == "Basic Boss":
 		_pass("test_boss_defeated_signal")
 	else:
-		_fail("test_boss_defeated_signal", "boss_defeated should emit boss name (got '%s')" % received_name)
+		_fail("test_boss_defeated_signal", "boss_defeated should emit boss name (got '%s')" % (signals_received[0] if signals_received.size() > 0 else ""))
 	boss.queue_free()
 
 func test_phase_transition_at_50_percent() -> void:
@@ -150,10 +150,10 @@ func test_take_damage_reduces_health() -> void:
 func test_take_damage_death() -> void:
 	var boss = _create_boss()
 	boss._ready()
-	var defeated = false
-	boss.boss_defeated.connect(func(_name): defeated = true)
+	var signals_received: Array = []
+	boss.boss_defeated.connect(func(_name): signals_received.append("boss_defeated"))
 	boss.take_damage(500)
-	if defeated:
+	if signals_received.size() > 0:
 		_pass("test_take_damage_death")
 	else:
 		_fail("test_take_damage_death", "Boss should be defeated at 0 health")

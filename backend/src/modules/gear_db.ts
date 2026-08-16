@@ -4,9 +4,9 @@
  * Provides functions to insert, query, and update gear data in PostgreSQL.
  */
 
+import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { GearItem } from './gear_system';
-import { logger } from '../config/logger';
 
 /**
  * Database row interface for gear items.

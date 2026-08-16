@@ -86,7 +86,7 @@ func test_get_product_info() -> void:
 	var large = sm.get_product_info(sm.PRODUCT_LARGE_GEMS)
 	var unknown = sm.get_product_info("unknown.id")
 
-	if small != null and small.gem_amount == 100 and medium.gem_amount == 550 and large.gem_amount == 1200 and unknown == null:
+	if small != null and small.gem_amount == 100 and medium.gem_amount == 550 and large.gem_amount == 1200 and unknown.is_empty():
 		_pass("test_get_product_info")
 	else:
 		_fail("test_get_product_info", "Product info incorrect")
@@ -95,10 +95,10 @@ func test_get_product_info() -> void:
 
 func test_currency_signals() -> void:
 	var sm = _create_store_manager()
-	var currency_updated_called = false
+	var currency_updated_signals: Array = []
 
-	sm.currency_updated.connect(func(g, a):
-		currency_updated_called = true
+	sm.currency_updated.connect(func(gems, amount):
+		currency_updated_signals.append([gems, amount])
 	)
 
 	# Simulate changing gems (normally would be set via methods)
@@ -109,7 +109,7 @@ func test_currency_signals() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if currency_updated_called:
+	if not currency_updated_signals.is_empty():
 		_pass("test_currency_signals")
 	else:
 		_fail("test_currency_signals", "currency_updated signal not received")
@@ -118,13 +118,11 @@ func test_currency_signals() -> void:
 
 func test_signal_emission() -> void:
 	var sm = _create_store_manager()
-	var purchase_succeeded = false
-	var purchase_failed = false
-	var products_loaded = false
+	var signals_received: Array = []
 
-	sm.purchase_succeeded.connect(func(_product_id, _gems): purchase_succeeded = true)
-	sm.purchase_failed.connect(func(_product_id, _error): purchase_failed = true)
-	sm.products_loaded.connect(func(_products): products_loaded = true)
+	sm.purchase_succeeded.connect(func(_product_id, _gems): signals_received.append("purchase_succeeded"))
+	sm.purchase_failed.connect(func(_product_id, _error): signals_received.append("purchase_failed"))
+	sm.products_loaded.connect(func(_products): signals_received.append("products_loaded"))
 
 	# Emit signals manually
 	sm.purchase_succeeded.emit(sm.PRODUCT_SMALL_GEMS, 100)
@@ -133,7 +131,7 @@ func test_signal_emission() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if purchase_succeeded and purchase_failed and products_loaded:
+	if signals_received.has("purchase_succeeded") and signals_received.has("purchase_failed") and signals_received.has("products_loaded"):
 		_pass("test_signal_emission")
 	else:
 		_fail("test_signal_emission", "Not all signals received")

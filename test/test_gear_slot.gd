@@ -118,11 +118,12 @@ func test_get_equipped_gear() -> void:
 
 func test_gear_updated_signal() -> void:
 	var slot = _create_gear_slot()
-	var received = false
-	slot.gear_updated.connect(func(_slot_type, _data): received = true)
+	# Lambdas capture locals by value in GDScript, so record emissions in an array
+	var signals_received: Array = []
+	slot.gear_updated.connect(func(_slot_type, _data): signals_received.append("gear_updated"))
 	slot.gear_updated.emit(0, {})
 	await get_tree().create_timer(0.05).timeout
-	if received:
+	if signals_received.size() > 0:
 		_pass("test_gear_updated_signal")
 	else:
 		_fail("test_gear_updated_signal", "gear_updated signal should emit")

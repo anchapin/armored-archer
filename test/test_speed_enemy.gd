@@ -105,10 +105,10 @@ func test_take_damage() -> void:
 func test_take_damage_death() -> void:
 	var enemy = _create_speed_enemy()
 	enemy._ready()
-	var died = false
-	enemy.died.connect(func(_xp): died = true)
+	var died_signals: Array = []
+	enemy.died.connect(func(xp): died_signals.append(xp))
 	enemy.take_damage(40)
-	if died:
+	if not died_signals.is_empty():
 		_pass("test_take_damage_death")
 	else:
 		_fail("test_take_damage_death", "Should die at 0 health")

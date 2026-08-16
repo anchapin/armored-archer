@@ -43,7 +43,7 @@ var player_score: int = 0
 var time_remaining: int = 0
 var leaderboard: Array = []
 var season_rewards: Dictionary = {}
-var rewards_claimed: bool = false
+var _rewards_claimed: bool = false
 var has_claimed_rewards: bool = false  # Track if rewards have been claimed
 
 # --- Decay Info ---
@@ -70,7 +70,7 @@ signal season_info_loaded(season_info: Dictionary)
 signal leaderboard_loaded(leaderboard: Array)
 signal rank_updated(rank_change: Dictionary)
 signal rewards_loaded(rewards: Dictionary)
-signal rewards_claimed_signal(rewards: Dictionary)
+signal rewards_claimed(rewards: Dictionary)
 signal season_transitioned(old_season: Dictionary, new_season: Dictionary)
 signal decay_info_updated(decay_info: Dictionary)
 signal season_history_loaded(history: Array)
@@ -246,8 +246,8 @@ func claim_season_rewards() -> void:
 
 	if response.get("success", false):
 		season_rewards = response.get("rewards", {})
-		rewards_claimed = response.get("claimed", false)
-		rewards_claimed_signal.emit(season_rewards)
+		_rewards_claimed = response.get("claimed", false)
+		rewards_claimed.emit(season_rewards)
 
 		# Track season end/rewards claimed in analytics
 		if analytics and analytics.has_method("log_season_end"):
@@ -312,7 +312,7 @@ func is_rewards_claimed() -> bool:
 	Returns:
 		bool: True if already claimed
 	"""
-	return rewards_claimed
+	return _rewards_claimed
 
 func format_time_remaining() -> String:
 	"""Formats remaining time as human-readable string.

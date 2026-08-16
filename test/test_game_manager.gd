@@ -29,6 +29,12 @@ func run_tests() -> void:
 func _create_game_manager() -> Node:
 	var gm = load("res://autoloads/GameManager.gd").new()
 	add_child(gm)
+	# _ready() derives player_max_health from CombinedStatsManager
+	# (BASE_HEALTH 100 + level * 20 + gear), which depends on autoload and
+	# persisted user:// state (e.g. 120 at level 1). Pin the documented
+	# default health so the tests below are hermetic.
+	gm.player_max_health = 100
+	gm.player_current_health = 100
 	return gm
 
 func _pass(test_name: String) -> void:
@@ -63,6 +69,7 @@ func test_initial_state() -> void:
 
 func test_take_player_damage() -> void:
 	var gm = _create_game_manager()
+	gm.is_game_active = true
 	gm.player_current_health = 100
 
 	gm.take_player_damage(30)
@@ -89,6 +96,7 @@ func test_take_player_damage_excess() -> void:
 
 func test_heal_player() -> void:
 	var gm = _create_game_manager()
+	gm.is_game_active = true
 	gm.player_current_health = 50
 
 	gm.heal_player(30)
@@ -130,14 +138,18 @@ func test_start_game() -> void:
 func test_end_game_won() -> void:
 	var gm = _create_game_manager()
 	gm.is_game_active = true
-	gm.current_stage_id = "stage_1"
+	# Keep current_stage_id empty: end_game(true) with a stage id would call
+	# CampaignManager.complete_stage() and change the scene, which are
+	# side effects this test must not trigger.
+	gm.current_stage_id = ""
 
-	var game_won_emitted = false
-	gm.game_won.connect(func(): game_won_emitted = true)
+	# Array-based tracking: lambdas capture locals by value.
+	var game_won_signals: Array = []
+	gm.game_won.connect(func(): game_won_signals.append("game_won"))
 
 	gm.end_game(true)
 
-	if not gm.is_game_active and game_won_emitted:
+	if not gm.is_game_active and not game_won_signals.is_empty():
 		_pass("test_end_game_won")
 	else:
 		_fail("test_end_game_won", "Game should end and emit won signal")
@@ -148,12 +160,13 @@ func test_end_game_lost() -> void:
 	var gm = _create_game_manager()
 	gm.is_game_active = true
 
-	var player_died_emitted = false
-	gm.player_died.connect(func(): player_died_emitted = true)
+	# Array-based tracking: lambdas capture locals by value.
+	var player_died_signals: Array = []
+	gm.player_died.connect(func(): player_died_signals.append("player_died"))
 
 	gm.end_game(false)
 
-	if not gm.is_game_active and player_died_emitted:
+	if not gm.is_game_active and not player_died_signals.is_empty():
 		_pass("test_end_game_lost")
 	else:
 		_fail("test_end_game_lost", "Game should end and emit died signal")
@@ -191,15 +204,13 @@ func test_reset_stage() -> void:
 
 func test_signal_emission() -> void:
 	var gm = _create_game_manager()
-	var health_changed = false
-	var player_died = false
-	var game_won = false
-	var stage_completed = false
+	# Array-based tracking: lambdas capture locals by value.
+	var signals_received: Array = []
 
-	gm.health_changed.connect(func(n, m): health_changed = true)
-	gm.player_died.connect(func(): player_died = true)
-	gm.game_won.connect(func(): game_won = true)
-	gm.stage_completed.connect(func(s): stage_completed = true)
+	gm.health_changed.connect(func(_n, _m): signals_received.append("health_changed"))
+	gm.player_died.connect(func(): signals_received.append("player_died"))
+	gm.game_won.connect(func(): signals_received.append("game_won"))
+	gm.stage_completed.connect(func(_s): signals_received.append("stage_completed"))
 
 	gm.health_changed.emit(50, 100)
 	gm.player_died.emit()
@@ -208,7 +219,7 @@ func test_signal_emission() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if health_changed and player_died and game_won and stage_completed:
+	if signals_received.has("health_changed") and signals_received.has("player_died") and signals_received.has("game_won") and signals_received.has("stage_completed"):
 		_pass("test_signal_emission")
 	else:
 		_fail("test_signal_emission", "All signals should be emitted")

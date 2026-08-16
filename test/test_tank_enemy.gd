@@ -135,13 +135,11 @@ func test_shield_broken_state() -> void:
 	var enemy = _create_tank_enemy()
 	enemy._ready()
 	enemy.shield_active = true
+	var signals_received: Array = []
+	enemy.died.connect(func(_xp): signals_received.append("died"))
 	# Deal enough damage to break through shield and kill
 	enemy.take_damage(999)
-	# Should die from massive damage
-	var died = false
-	enemy.died.connect(func(_xp): died = true)
-	enemy.take_damage(999)
-	if died:
+	if signals_received.size() > 0:
 		_pass("test_shield_broken_state")
 	else:
 		_fail("test_shield_broken_state", "Should die from massive damage even with shield")
@@ -176,10 +174,10 @@ func test_take_damage_death() -> void:
 	var enemy = _create_tank_enemy()
 	enemy._ready()
 	enemy.shield_active = false
-	var died = false
-	enemy.died.connect(func(_xp): died = true)
+	var signals_received: Array = []
+	enemy.died.connect(func(_xp): signals_received.append("died"))
 	enemy.take_damage(200)
-	if died:
+	if signals_received.size() > 0:
 		_pass("test_take_damage_death")
 	else:
 		_fail("test_take_damage_death", "Should die at 0 health")

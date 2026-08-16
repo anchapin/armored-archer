@@ -135,16 +135,29 @@ func test_rating_decay_calculation() -> void:
 		sm.queue_free()
 		return
 
-	# Test decay applies for 10-day inactive player
+	# Test quantized decay model: decay is applied per full 7-day period
+	# (decay_periods = (days_inactive - 7) / 7, integer division).
+	# 10-day inactive player: 3 extra days -> 0 full periods -> no decay yet.
 	var inactive_10d_ms = current_time_ms - 10 * 24 * 60 * 60 * 1000
 	var decayed_10d = sm.apply_rating_decay(1500, inactive_10d_ms)
-	# Should have some decay but not below minimum
-	if decayed_10d >= 1500:
-		_fail("test_rating_decay_10d", "Decay should reduce rating for 10-day inactive player")
+	if decayed_10d != 1500:
+		_fail("test_rating_decay_10d", "10-day inactive player is below first decay period (14d), rating should be unchanged, got: %d" % decayed_10d)
 		sm.queue_free()
 		return
-	if decayed_10d < sm.MINIMUM_RATING:
-		_fail("test_rating_decay_10d_min", "Rating should not go below MINIMUM_RATING (%d)" % sm.MINIMUM_RATING)
+
+	# 14-day inactive player: 1 full decay period at 1% -> 1500 - 15 = 1485
+	var inactive_14d_ms = current_time_ms - 14 * 24 * 60 * 60 * 1000
+	var decayed_14d = sm.apply_rating_decay(1500, inactive_14d_ms)
+	if decayed_14d >= 1500:
+		_fail("test_rating_decay_14d", "Decay should reduce rating for 14-day inactive player")
+		sm.queue_free()
+		return
+	if decayed_14d != 1485:
+		_fail("test_rating_decay_14d_amount", "14-day decay should be 1%% of 1500 (expected 1485, got %d)" % decayed_14d)
+		sm.queue_free()
+		return
+	if decayed_14d < sm.MINIMUM_RATING:
+		_fail("test_rating_decay_14d_min", "Rating should not go below MINIMUM_RATING (%d)" % sm.MINIMUM_RATING)
 		sm.queue_free()
 		return
 

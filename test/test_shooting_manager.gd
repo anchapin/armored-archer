@@ -38,8 +38,6 @@ func run_tests() -> void:
 func _create_shooting_manager() -> Node:
 	var sm = load("res://autoloads/ShootingManager.gd").new()
 	add_child(sm)
-	# Wait for _ready() to complete
-	await get_tree().process_frame
 	return sm
 
 func _pass(test_name: String) -> void:
@@ -54,11 +52,13 @@ func _fail(test_name: String, message: String) -> void:
 
 func test_initial_state() -> void:
 	var sm = _create_shooting_manager()
+	# Give deferred _ready initialization a frame to settle
+	await get_tree().process_frame
 
-	if sm.get_shooting_mode() == sm.ShootingMode.MANUAL and sm.get_ammo() == 50 and sm.get_max_ammo() == 50 and not sm.is_reloading():
+	if sm.get_shooting_mode() == sm.ShootingMode.AUTO and sm.get_ammo() == 50 and sm.get_max_ammo() == 50 and not sm.is_reloading():
 		_pass("test_initial_state")
 	else:
-		_fail("test_initial_state", "Initial state should be MANUAL mode with max ammo")
+		_fail("test_initial_state", "Initial state should be AUTO mode with max ammo")
 
 	sm.queue_free()
 

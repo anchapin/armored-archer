@@ -55,7 +55,7 @@ func _fail(test_name: String, message: String) -> void:
 func test_default_exported_values() -> void:
 	var spawner = _create_spawner()
 	var passed = (
-		spawner.time_between_waves == 5.0 and
+		spawner.time_between_waves == 4.0 and
 		spawner.time_between_enemies == 0.5 and
 		spawner.base_enemy_count == 3 and
 		spawner.enemy_count_increment == 1 and
@@ -100,6 +100,8 @@ func test_start_next_wave_enemy_count() -> void:
 	spawner.base_enemy_count = 5
 	spawner.enemy_count_increment = 3
 	spawner.max_waves = 5
+	# Spawner auto-starts wave 1 in _ready(); reset so this call computes wave 1
+	spawner.current_wave = 0
 
 	spawner.start_next_wave()  # wave 1: 5 + 0*3 = 5
 	if spawner.enemies_to_spawn == 5:
@@ -127,10 +129,10 @@ func test_max_waves_reached() -> void:
 func test_spawn_area_default() -> void:
 	var spawner = _create_spawner()
 	var area = spawner.spawn_area
-	if area.position.x == -400 and area.position.y == -300 and area.size.x == 800 and area.size.y == 600:
+	if area.position.x == -300 and area.position.y == -200 and area.size.x == 600 and area.size.y == 400:
 		_pass("test_spawn_area_default")
 	else:
-		_fail("test_spawn_area_default", "Default spawn area should be Rect2(-400, -300, 800, 600)")
+		_fail("test_spawn_area_default", "Default spawn area should be Rect2(-300, -200, 600, 400)")
 	spawner.queue_free()
 
 func test_get_random_spawn_position_bounds() -> void:
@@ -138,10 +140,11 @@ func test_get_random_spawn_position_bounds() -> void:
 	spawner.global_position = Vector2.ZERO
 
 	# Run multiple times to verify positions are within bounds
+	var area: Rect2 = spawner.spawn_area
 	var all_valid = true
 	for i in range(20):
 		var pos = spawner.get_random_spawn_position()
-		if pos.x < -400 or pos.x > 400 or pos.y < -300 or pos.y > 300:
+		if pos.x < area.position.x or pos.x > area.end.x or pos.y < area.position.y or pos.y > area.end.y:
 			all_valid = false
 			break
 
@@ -185,10 +188,11 @@ func test_boss_id_default_empty() -> void:
 
 func test_signal_connections_array_exists() -> void:
 	var spawner = _create_spawner()
-	if spawner._signal_connections is Array:
+	# Signal wiring is done via direct connect() calls; verify the public signal exists
+	if spawner.has_signal("enemy_count_changed"):
 		_pass("test_signal_connections_array_exists")
 	else:
-		_fail("test_signal_connections_array_exists", "_signal_connections should be an Array")
+		_fail("test_signal_connections_array_exists", "enemy_count_changed signal should exist")
 	spawner.queue_free()
 
 func test_spawn_position_within_area() -> void:

@@ -169,17 +169,13 @@ func test_is_in_match() -> void:
 
 func test_signal_emission() -> void:
 	var mm = _create_matchmaker_manager()
-	var matches_loaded = false
-	var match_created = false
-	var match_accepted = false
-	var rank_retrieved = false
-	var punch_up_stats_updated = false
+	var signals_received: Array = []
 
-	mm.matches_loaded.connect(func(m, r): matches_loaded = true)
-	mm.match_created.connect(func(m): match_created = true)
-	mm.match_accepted.connect(func(m): match_accepted = true)
-	mm.rank_retrieved.connect(func(r): rank_retrieved = true)
-	mm.punch_up_stats_updated.connect(func(w, l, wr): punch_up_stats_updated = true)
+	mm.matches_loaded.connect(func(_m, _r): signals_received.append("matches_loaded"))
+	mm.match_created.connect(func(_m): signals_received.append("match_created"))
+	mm.match_accepted.connect(func(_m): signals_received.append("match_accepted"))
+	mm.rank_retrieved.connect(func(_r): signals_received.append("rank_retrieved"))
+	mm.punch_up_stats_updated.connect(func(_w, _l, _wr): signals_received.append("punch_up_stats_updated"))
 
 	mm.matches_loaded.emit([], 100)
 	mm.match_created.emit({})
@@ -189,7 +185,13 @@ func test_signal_emission() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if matches_loaded and match_created and match_accepted and rank_retrieved and punch_up_stats_updated:
+	var expected_signals := ["matches_loaded", "match_created", "match_accepted", "rank_retrieved", "punch_up_stats_updated"]
+	var all_received := true
+	for sig_name in expected_signals:
+		if not sig_name in signals_received:
+			all_received = false
+
+	if all_received:
 		_pass("test_signal_emission")
 	else:
 		_fail("test_signal_emission", "All signals should be emitted")

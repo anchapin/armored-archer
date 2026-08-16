@@ -167,10 +167,10 @@ func test_take_damage() -> void:
 func test_take_damage_death() -> void:
 	var enemy = _create_necromancer_enemy()
 	enemy._ready()
-	var died = false
-	enemy.died.connect(func(_xp): died = true)
+	var signals_received: Array = []
+	enemy.died.connect(func(_xp): signals_received.append("died"))
 	enemy.take_damage(70)
-	if died:
+	if signals_received.size() > 0:
 		_pass("test_take_damage_death")
 	else:
 		_fail("test_take_damage_death", "Should die at 0 health")
