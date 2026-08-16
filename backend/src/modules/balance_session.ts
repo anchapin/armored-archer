@@ -173,7 +173,6 @@ const GEAR_STAT_RANGES: Record<string, Record<string, [number, number]>> = {
 // Rarity stat multipliers (mirrors gear_system.ts RARITIES)
 const RARITY_STAT_MULTIPLIER: Record<string, number> = {
   common: 1.0,
-  uncommon: 1.2,
   rare: 1.5,
   epic: 1.8,
   legendary: 2.2,

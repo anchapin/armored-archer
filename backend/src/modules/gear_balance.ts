@@ -35,7 +35,6 @@ const MAX_STATS: { [key: string]: { [key: string]: number } } = {
  */
 const RARITY_MULTIPLIERS: { [key: string]: number } = {
   common: 1.0,
-  uncommon: 1.2,
   rare: 1.5,
   epic: 1.8,
   legendary: 2.2,
@@ -58,7 +57,6 @@ const STAT_WEIGHTS: { [key: string]: number } = {
  */
 const MAX_POWER_THRESHOLDS: { [key: string]: number } = {
   common: 15.0,
-  uncommon: 25.0,
   rare: 40.0,
   epic: 60.0,
   legendary: 100.0,
