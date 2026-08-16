@@ -76,6 +76,17 @@ export interface PvPMatch {
   creator_turn_data?: TurnData;
   opponent_turn_data?: TurnData;
   winner?: string;
+  /**
+   * How the server reached a terminal state for this match (health_zero,
+   * forfeit, timeout, disconnect, max_turns, draw). Set by server-side
+   * resolution paths only — never by client input (ADR-0002).
+   */
+  end_reason?: MatchEndReason;
+  /**
+   * Timestamp of the settlement run that applied Elo/XP/rewards. Its presence
+   * makes re-settlement attempts idempotent (double-settlement guard).
+   */
+  settled_at?: number;
   expires_at: number;
   last_turn_timestamp: number;
   // Async duel lifecycle fields
@@ -87,6 +98,37 @@ export interface PvPMatch {
   max_turns: number;
   creator_consecutive_timeouts: number;
   opponent_consecutive_timeouts: number;
+}
+
+/**
+ * Server-side reason a match reached a terminal state. Mirrors the resolution
+ * semantics of combat_system.ts (health-zero, forfeit, timeout) plus the
+ * turn engine's max-turns/draw outcomes.
+ */
+export type MatchEndReason =
+  | 'health_zero'
+  | 'forfeit'
+  | 'timeout'
+  | 'disconnect'
+  | 'max_turns'
+  | 'draw';
+
+/**
+ * Server-declared terminal state of a match, derived exclusively from
+ * server-held state (never from client-asserted payloads).
+ *
+ * @property kind - 'already_settled' (settlement already ran),
+ *                  'winner' (terminal winner declared/resolvable),
+ *                  'draw' (terminal with no winner)
+ * @property winner - Server-declared winner user ID (absent for draws)
+ * @property endReason - Server-side reason the match reached terminal state
+ * @property settledAt - Settlement timestamp when kind is 'already_settled'
+ */
+export interface ServerTerminalState {
+  kind: 'already_settled' | 'winner' | 'draw';
+  winner?: string;
+  endReason: MatchEndReason;
+  settledAt?: number;
 }
 
 /**
@@ -129,15 +171,20 @@ export interface ListMatchesRequest {
 /**
  * Request payload for completing a match.
  *
- * @property match_id - ID of the match to complete
- * @property winner_id - ID of the match winner
- * @property loser_id - ID of the match loser
- * @property is_punch_up - Whether this was a punch-up match
+ * ADR-0002: the client-supplied winner/loser is advisory/logging only. The
+ * settlement winner is derived exclusively from server match state; these
+ * fields are accepted for backwards compatibility with existing client call
+ * sites and are never honored for settlement.
+ *
+ * @property match_id - ID of the match to settle
+ * @property winner_id - Advisory: client-asserted winner (ignored for settlement)
+ * @property loser_id - Advisory: client-asserted loser (ignored for settlement)
+ * @property is_punch_up - Advisory: client-asserted punch-up flag (server record wins)
  */
 export interface CompleteMatchRequest {
   match_id: string;
-  winner_id: string;
-  loser_id: string;
+  winner_id?: string;
+  loser_id?: string;
   is_punch_up?: boolean;
 }
 
@@ -1084,25 +1131,32 @@ export interface MatchReward {
 }
 
 /**
- * Completes a PvP match and updates player ranks using Elo rating system.
+ * Completes a PvP match and updates player ranks using the Elo rating system.
+ *
+ * ADR-0002 — server-declared match settlement: the winner is derived
+ * exclusively from server match state (declared winner from a server-side
+ * resolution path, combat-system MatchState, health-zero, or max-turns).
+ * The client-supplied `winner_id`/`loser_id` payload is advisory/logging
+ * only and is never honored for settlement.
  *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
- * @param payload - JSON string containing match completion data
+ * @param payload - JSON string containing the match settlement trigger
  * @returns JSON string with match result and rank changes
  *
  * @example
- * // Request payload
- * { "match_id": "match_123", "winner_id": "user_1", "loser_id": "user_2", "is_punch_up": false }
+ * // Request payload (client-supplied winner is advisory only)
+ * { "match_id": "match_123", "winner_id": "user_1", "loser_id": "user_2" }
  *
- * // Response
+ * // Response (settled from server state)
  * {
  *   "success": true,
  *   "match": { ... },
  *   "winner": { "user_id": "user_1", "old_rank": 1200, "new_rank": 1220, "rank_change": 20, "xp_gained": 150, "old_season_position": 42, "new_season_position": 40, "rewards": [...] },
  *   "loser": { "user_id": "user_2", "old_rank": 1200, "new_rank": 1180, "rank_change": -20, "xp_gained": 50, "old_season_position": 43, "new_season_position": 44, "rewards": [...] },
- *   "is_punch_up": false
+ *   "is_punch_up": false,
+ *   "end_reason": "health_zero"
  * }
  */
 // eslint-disable-next-line complexity
@@ -1122,7 +1176,7 @@ export function rpcCompleteMatch(
       ctx.ipAddress ?? null,
       'complete_match',
       'pvp_matches',
-      { match_id: 'unknown', winner_id: 'unknown', loser_id: 'unknown' },
+      { match_id: 'unknown' },
       'failure',
       validation.error
     );
@@ -1155,26 +1209,92 @@ export function rpcCompleteMatch(
     });
   }
 
-  // Anti-cheat: Check if players are flagged
-  const winnerFlagged = checkPlayerFlagged(logger, request.winner_id, 'winner');
+  // Fetch the match. A 'completed' status is allowed here: server-side
+  // resolution paths (combat system health-zero/forfeit/timeout) declare the
+  // winner without settling Elo/XP, leaving settlement to this trigger.
+  const matchResult = getAndValidateMatch(nk, ctx, request, logger, { allowCompleted: true });
+  if (matchResult.error || !matchResult.match) {
+    return JSON.stringify({ error: matchResult.error || 'Match not found' });
+  }
+  const match = matchResult.match;
+
+  // Resolve the server-declared terminal state — the sole source of
+  // winner truth (ADR-0002).
+  const terminalState = resolveServerTerminalState(nk, match, logger);
+
+  if (!terminalState) {
+    logger.warn(
+      'Complete match rejected - no server terminal state: match=%s, user=%s',
+      match.match_id,
+      ctx.userId
+    );
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'complete_match',
+      'pvp_matches',
+      { match_id: match.match_id, match_status: match.status },
+      'failure',
+      'no_server_terminal_state'
+    );
+    return JSON.stringify({
+      success: false,
+      error: 'Match cannot be settled: no server-side terminal state',
+      error_code: 'NO_SERVER_TERMINAL_STATE',
+    });
+  }
+
+  // Idempotent double-settlement: a prior settlement already applied
+  // Elo/XP/rewards — return the recorded outcome without re-settling.
+  if (terminalState.kind === 'already_settled') {
+    logger.info(
+      'Complete match idempotent replay: match=%s, settled_at=%d',
+      match.match_id,
+      terminalState.settledAt
+    );
+    return JSON.stringify({
+      success: true,
+      already_settled: true,
+      match_id: match.match_id,
+      winner: terminalState.winner,
+      end_reason: terminalState.endReason,
+      settled_at: terminalState.settledAt,
+    });
+  }
+
+  // Terminal draw: no winner to settle (no Elo/XP/reward application).
+  if (terminalState.kind === 'draw') {
+    return settleDrawMatch(nk, ctx, logger, match);
+  }
+
+  const serverWinnerId = terminalState.winner as string;
+  const serverLoserId = serverWinnerId === match.creator_id ? match.opponent_id : match.creator_id;
+
+  // Advisory logging: record client-asserted payload disagreements with the
+  // server-declared outcome for telemetry. Never blocks settlement.
+  logAdvisoryPayloadMismatch(nk, ctx, logger, match, request, serverWinnerId);
+
+  // Anti-cheat: Check if players are flagged (server-derived participants)
+  const winnerFlagged = checkPlayerFlagged(logger, serverWinnerId, 'winner');
   if (winnerFlagged) return winnerFlagged;
 
-  const loserFlagged = checkPlayerFlagged(logger, request.loser_id, 'loser');
+  const loserFlagged = checkPlayerFlagged(logger, serverLoserId, 'loser');
   if (loserFlagged) return loserFlagged;
 
-  // Anti-abuse: Win trading detection
-  const winnerHistory = getPlayerMatchHistory(request.winner_id);
-  const loserHistory = getPlayerMatchHistory(request.loser_id);
+  // Anti-abuse: Win trading detection (server-derived participants)
+  const winnerHistory = getPlayerMatchHistory(serverWinnerId);
+  const loserHistory = getPlayerMatchHistory(serverLoserId);
 
   if (winnerHistory && loserHistory) {
     const winnerRecentMatches = winnerHistory.matches
-      .filter((m) => m.opponentId === request.loser_id)
+      .filter((m) => m.opponentId === serverLoserId)
       .filter((m) => m.result === 'win' || m.result === 'loss')
       .slice(-10);
 
     const winTradingCheck = detectWinTrading(
-      request.winner_id,
-      request.loser_id,
+      serverWinnerId,
+      serverLoserId,
       winnerRecentMatches.map((m) => ({
         result: m.result as 'win' | 'loss',
         timestamp: m.timestamp,
@@ -1184,8 +1304,8 @@ export function rpcCompleteMatch(
     if (winTradingCheck.suspicious) {
       logger.warn(
         'Potential win trading detected between %s and %s: pattern=%s, confidence=%.2f',
-        request.winner_id,
-        request.loser_id,
+        serverWinnerId,
+        serverLoserId,
         winTradingCheck.pattern,
         winTradingCheck.confidence
       );
@@ -1196,9 +1316,9 @@ export function rpcCompleteMatch(
         'complete_match',
         'pvp_matches',
         {
-          match_id: request.match_id,
-          winner_id: request.winner_id,
-          loser_id: request.loser_id,
+          match_id: match.match_id,
+          winner_id: serverWinnerId,
+          loser_id: serverLoserId,
           win_trading_pattern: winTradingCheck.pattern,
           confidence: winTradingCheck.confidence,
         },
@@ -1208,33 +1328,343 @@ export function rpcCompleteMatch(
     }
   }
 
-  // Fetch and validate the match
-  const matchResult = getAndValidateMatch(nk, ctx, request, logger);
-  if (matchResult.error || !matchResult.match) {
-    return JSON.stringify({ error: matchResult.error || 'Match not found' });
+  // Server-recorded punch-up flag only — client-asserted is_punch_up is
+  // advisory (it would otherwise amplify rewards from client input).
+  const isPunchUp = match.is_punch_up;
+
+  // Process match result from the server-declared winner
+  const settlement: ServerSettlementRequest = {
+    match_id: match.match_id,
+    winner_id: serverWinnerId,
+    loser_id: serverLoserId,
+    end_reason: terminalState.endReason,
+  };
+  return processMatchResult(ctx, logger, nk, settlement, match, isPunchUp);
+}
+
+/**
+ * Settlement instruction derived from server state (never client input).
+ *
+ * @property match_id - ID of the match to settle
+ * @property winner_id - Server-declared winner user ID
+ * @property loser_id - Server-declared loser user ID
+ * @property end_reason - Server-side terminal reason for audit/telemetry
+ */
+interface ServerSettlementRequest {
+  match_id: string;
+  winner_id: string;
+  loser_id: string;
+  end_reason?: MatchEndReason;
+}
+
+/**
+ * Minimal snapshot of the combat system's MatchState needed for
+ * server-declared settlement. Kept local to avoid a runtime import cycle
+ * with combat_system.ts (which imports PvPMatch from this module).
+ */
+interface CombatStateSnapshot {
+  winner?: string;
+  status: string;
+  forfeit_reason?: string;
+  creator_health: number;
+  opponent_health: number;
+}
+
+/**
+ * Reads the combat system's match state (pvp_match_states collection).
+ *
+ * @param nk - Nakama server interface
+ * @param match - The PvP match being settled
+ * @param logger - Nakama logger instance
+ * @returns Combat state snapshot, or null when absent/unparseable
+ */
+function readCombatMatchState(
+  nk: Runtime.Nakama,
+  match: PvPMatch,
+  logger: Runtime.Logger
+): CombatStateSnapshot | null {
+  let objects: ReturnType<Runtime.Nakama['storageRead']> = [];
+  try {
+    objects = nk.storageRead([
+      { collection: 'pvp_match_states', key: match.match_id, userId: match.creator_id },
+    ]);
+  } catch (error) {
+    logger.warn(
+      'Failed reading combat match state for %s: %s',
+      match.match_id,
+      error instanceof Error ? error.message : String(error)
+    );
+    return null;
   }
-  const match = matchResult.match;
 
-  // Validate winner/loser are valid participants
-  const participantError = validateMatchParticipants(match, request);
-  if (participantError) {
-    return JSON.stringify({ error: participantError });
+  if (objects.length === 0 || !objects[0].value) {
+    return null;
   }
 
-  const isPunchUp = request.is_punch_up || match.is_punch_up;
+  const stateResult = safeParse<CombatStateSnapshot>(
+    objects[0].value,
+    null,
+    logger,
+    'rpcCompleteMatch:combatState'
+  );
+  if (!stateResult.success || !stateResult.data) {
+    return null;
+  }
+  return stateResult.data;
+}
 
-  // Process match result
-  return processMatchResult(ctx, logger, nk, request, match, isPunchUp);
+/**
+ * Maps a combat-system forfeit reason to a match end reason.
+ *
+ * @param forfeitReason - Forfeit reason recorded on the combat state
+ * @returns Mapped MatchEndReason (defaults to health_zero when no reason)
+ */
+function mapForfeitReasonToMatchEndReason(forfeitReason?: string): MatchEndReason {
+  if (forfeitReason === 'timeout') return 'timeout';
+  if (forfeitReason === 'disconnect') return 'disconnect';
+  if (forfeitReason) return 'forfeit';
+  return 'health_zero';
+}
+
+/**
+ * Maps a turn-engine end reason (checkMatchEndConditions) to a MatchEndReason.
+ *
+ * @param reason - Turn-engine end reason string
+ * @returns Mapped MatchEndReason
+ */
+function mapTurnEndReasonToMatchEndReason(reason?: string): MatchEndReason {
+  if (!reason) return 'health_zero';
+  if (reason === 'draw') return 'draw';
+  if (reason.startsWith('max_turns')) return 'max_turns';
+  return 'health_zero';
+}
+
+/**
+ * Resolves a terminal state from the combat system's MatchState
+ * (health-zero / forfeit / timeout / disconnect resolution).
+ *
+ * @param nk - Nakama server interface
+ * @param match - The PvP match being resolved
+ * @param logger - Nakama logger instance
+ * @returns ServerTerminalState, or null when the combat state holds no
+ *          terminal outcome
+ */
+function resolveCombatStateTerminal(
+  nk: Runtime.Nakama,
+  match: PvPMatch,
+  logger: Runtime.Logger
+): ServerTerminalState | null {
+  const combatState = readCombatMatchState(nk, match, logger);
+  if (!combatState) {
+    return null;
+  }
+
+  // Winner declared by the combat system (forfeit, timeout, disconnect,
+  // or a health-zero resolution already recorded).
+  if (combatState.winner) {
+    return {
+      kind: 'winner',
+      winner: combatState.winner,
+      endReason: mapForfeitReasonToMatchEndReason(combatState.forfeit_reason),
+    };
+  }
+
+  // Health-zero declared only in the combat state
+  if (combatState.creator_health <= 0 && combatState.opponent_health > 0) {
+    return { kind: 'winner', winner: match.opponent_id, endReason: 'health_zero' };
+  }
+  if (combatState.opponent_health <= 0 && combatState.creator_health > 0) {
+    return { kind: 'winner', winner: match.creator_id, endReason: 'health_zero' };
+  }
+
+  return null;
+}
+
+/**
+ * Resolves the server-declared terminal state of a match. This is the SOLE
+ * source of winner truth for settlement (ADR-0002) — client-asserted
+ * payloads are never consulted.
+ *
+ * Resolution priority:
+ * 1. `settled_at` on the match — settlement already ran (idempotent replay)
+ * 2. `winner` on the match — declared by a server resolution path
+ *    (combat system updateMatchStatus, turn engine)
+ * 3. Combat system MatchState — declared winner (forfeit/timeout/disconnect)
+ *    or health-zero
+ * 4. Turn engine end conditions on the match — health-zero, max-turns
+ *    (winner by remaining health), or draw
+ *
+ * @param nk - Nakama server interface
+ * @param match - The PvP match to resolve
+ * @param logger - Nakama logger instance
+ * @returns ServerTerminalState, or null when no server-side terminal state exists
+ */
+function resolveServerTerminalState(
+  nk: Runtime.Nakama,
+  match: PvPMatch,
+  logger: Runtime.Logger
+): ServerTerminalState | null {
+  // 1. Already settled — replay the recorded outcome idempotently
+  if (match.settled_at) {
+    if (match.winner) {
+      return {
+        kind: 'already_settled',
+        winner: match.winner,
+        endReason: match.end_reason ?? 'health_zero',
+        settledAt: match.settled_at,
+      };
+    }
+    return {
+      kind: 'already_settled',
+      endReason: match.end_reason ?? 'draw',
+      settledAt: match.settled_at,
+    };
+  }
+
+  // 2. Winner already declared by a server-side resolution path
+  if (match.winner) {
+    return { kind: 'winner', winner: match.winner, endReason: match.end_reason ?? 'health_zero' };
+  }
+
+  // 3. Combat system MatchState
+  const combatTerminal = resolveCombatStateTerminal(nk, match, logger);
+  if (combatTerminal) {
+    return combatTerminal;
+  }
+
+  // 4. Turn engine end conditions (health-zero, max-turns, draw). A match
+  // already marked completed without a winner is a settled draw.
+  const endConditions = checkMatchEndConditions(match, logger);
+  if (endConditions.shouldEnd) {
+    if (endConditions.winner) {
+      return {
+        kind: 'winner',
+        winner: endConditions.winner,
+        endReason: mapTurnEndReasonToMatchEndReason(endConditions.reason),
+      };
+    }
+    return { kind: 'draw', endReason: 'draw' };
+  }
+  if (match.status === 'completed') {
+    return { kind: 'draw', endReason: 'draw' };
+  }
+
+  return null;
+}
+
+/**
+ * Logs advisory mismatches between the client-asserted payload and the
+ * server-declared winner for anti-cheat telemetry. Purely informational —
+ * never influences settlement.
+ *
+ * @param nk - Nakama server interface
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param match - The match being settled
+ * @param request - Client-supplied (advisory) payload fields
+ * @param serverWinnerId - Server-declared winner user ID
+ */
+function logAdvisoryPayloadMismatch(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  match: PvPMatch,
+  request: { winner_id?: string; loser_id?: string },
+  serverWinnerId: string
+): void {
+  if (request.winner_id !== undefined && request.winner_id !== serverWinnerId) {
+    logger.warn(
+      'Advisory winner mismatch on match %s: client asserted %s, server declared %s',
+      match.match_id,
+      request.winner_id,
+      serverWinnerId
+    );
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'complete_match',
+      'pvp_matches',
+      {
+        match_id: match.match_id,
+        client_asserted_winner_id: request.winner_id,
+        client_asserted_loser_id: request.loser_id,
+        server_declared_winner_id: serverWinnerId,
+      },
+      'failure',
+      'advisory_winner_mismatch'
+    );
+  }
+}
+
+/**
+ * Settles a terminal draw: marks the match completed/settled without
+ * applying Elo, XP, or rewards (no winner to reward).
+ *
+ * @param nk - Nakama server interface
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param match - The match to settle as a draw
+ * @returns JSON string with the draw settlement result
+ */
+function settleDrawMatch(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  match: PvPMatch
+): string {
+  const now = Date.now();
+  match.status = 'completed';
+  match.updated_at = now;
+  match.settled_at = now;
+  match.end_reason = 'draw';
+
+  nk.storageWrite([
+    {
+      collection: 'pvp_matches',
+      key: match.match_id,
+      userId: match.creator_id,
+      value: JSON.stringify(match),
+    },
+  ]);
+
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'complete_match',
+    'pvp_matches',
+    { match_id: match.match_id, result: 'draw' },
+    'success'
+  );
+
+  logger.info('Match settled as draw: %s', match.match_id);
+
+  return JSON.stringify({
+    success: true,
+    match: match,
+    is_draw: true,
+    end_reason: 'draw',
+  });
 }
 
 /**
  * Fetch and validate the match from storage
+ *
+ * @param nk - Nakama server interface
+ * @param ctx - Nakama runtime context
+ * @param request - Request containing the match_id
+ * @param logger - Nakama logger instance
+ * @param options - When allowCompleted is true, matches already marked
+ *                  completed by a server resolution path are accepted
+ *                  (settlement trigger semantics per ADR-0002)
  */
 function getAndValidateMatch(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
   request: { match_id: string },
-  logger: Runtime.Logger
+  logger: Runtime.Logger,
+  options?: { allowCompleted?: boolean }
 ): { match?: PvPMatch; error?: string } {
   const objects = nk.storageRead([
     {
@@ -1254,7 +1684,9 @@ function getAndValidateMatch(
   }
   const match: PvPMatch = matchResult.data;
 
-  if (match.status !== 'active') {
+  const statusAllowed =
+    match.status === 'active' || (options?.allowCompleted && match.status === 'completed');
+  if (!statusAllowed) {
     return { error: 'Match is not active' };
   }
 
@@ -1263,29 +1695,6 @@ function getAndValidateMatch(
   }
 
   return { match };
-}
-
-/**
- * Validate that winner and loser are valid match participants
- */
-function validateMatchParticipants(
-  match: PvPMatch,
-  request: { winner_id: string; loser_id: string }
-): string | null {
-  // Validate winner and loser are the match participants
-  if (
-    (request.winner_id !== match.creator_id && request.winner_id !== match.opponent_id) ||
-    (request.loser_id !== match.creator_id && request.loser_id !== match.opponent_id)
-  ) {
-    return 'Winner and loser must be match participants';
-  }
-
-  // Validate winner and loser are different
-  if (request.winner_id === request.loser_id) {
-    return 'Winner and loser must be different';
-  }
-
-  return null;
 }
 
 /**
@@ -1349,13 +1758,19 @@ function processRankedMatchUpdates(
 }
 
 /**
- * Verify match hasn't been completed by a concurrent request.
+ * Verify the match has not already been settled by a concurrent or repeated
+ * request. Settlement idempotency is keyed on `settled_at`, which is written
+ * exactly once by the settlement run that applies Elo/XP/rewards.
+ *
+ * Note: a match marked 'completed' by a server resolution path (combat
+ * system) without `settled_at` is intentionally NOT blocked — its winner is
+ * declared but unsettled, awaiting the settlement trigger (ADR-0002).
  */
-function verifyMatchStillActive(
+function verifyMatchNotSettled(
   nk: Runtime.Nakama,
   match: PvPMatch,
   logger: Runtime.Logger
-): { alreadyCompletedResponse: string | null; matchVersion: string | undefined } {
+): { alreadySettledResponse: string | null; matchVersion: string | undefined } {
   const freshMatchObjects = nk.storageRead([
     { collection: 'pvp_matches', key: match.match_id, userId: match.creator_id },
   ]);
@@ -1366,23 +1781,23 @@ function verifyMatchStillActive(
       logger,
       'processMatchResult:freshMatch'
     );
-    if (
-      !freshMatchResult.success ||
-      !freshMatchResult.data ||
-      freshMatchResult.data.status !== 'active'
-    ) {
-      logger.warn('Match %s already completed by concurrent request', match.match_id);
+    if (freshMatchResult.success && freshMatchResult.data && freshMatchResult.data.settled_at) {
+      logger.warn('Match %s already settled by concurrent request', match.match_id);
       return {
-        alreadyCompletedResponse: JSON.stringify({
-          error: 'Match already completed',
-          error_code: 'ALREADY_COMPLETED',
+        alreadySettledResponse: JSON.stringify({
+          success: true,
+          already_settled: true,
+          match_id: match.match_id,
+          winner: freshMatchResult.data.winner,
+          end_reason: freshMatchResult.data.end_reason ?? 'health_zero',
+          settled_at: freshMatchResult.data.settled_at,
         }),
         matchVersion: undefined,
       };
     }
   }
   return {
-    alreadyCompletedResponse: null,
+    alreadySettledResponse: null,
     matchVersion: freshMatchObjects.length > 0 ? freshMatchObjects[0].version : undefined,
   };
 }
@@ -1430,16 +1845,40 @@ function calculateSeasonPositions(
 }
 
 /**
- * Process the match result, calculate ranks, and update storage
+ * Process the match result, calculate ranks, and update storage.
+ *
+ * The winner/loser in `request` must be server-derived (ADR-0002) — either
+ * from a server-side resolution path (combat system, turn engine, forfeit)
+ * or resolved from server terminal state by rpcCompleteMatch.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param request - Server-derived settlement instruction
+ * @param match - The match to settle
+ * @param isPunchUp - Whether the match was a server-recorded punch-up
+ * @returns JSON string with the settlement result
  */
 function processMatchResult(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
-  request: { match_id: string; winner_id: string; loser_id: string },
+  request: ServerSettlementRequest,
   match: PvPMatch,
   isPunchUp: boolean
 ): string {
+  // Guard double-settlement BEFORE applying Elo — a second settlement run
+  // must never re-apply ranks, XP, or rewards.
+  const settledVerification = verifyMatchNotSettled(nk, match, logger);
+  if (settledVerification.alreadySettledResponse) {
+    return settledVerification.alreadySettledResponse;
+  }
+  const matchVersion = settledVerification.matchVersion;
+
+  // Record the server-declared winner on the match up front so downstream
+  // calculations (punch-up rank lookup, telemetry) see consistent state.
+  match.winner = request.winner_id;
+
   // Initialize ranks for ranked matches
   let winnerNewRank = match.creator_rank;
   let loserNewRank = match.opponent_rank;
@@ -1525,13 +1964,6 @@ function processMatchResult(
   const winnerXPGained = calculateXPGain(winnerXPParams);
   const loserXPGained = calculateXPGain(loserXPParams);
 
-  // Re-verify match is still active before awarding rewards (prevents double completion)
-  const matchVerification = verifyMatchStillActive(nk, match, logger);
-  if (matchVerification.alreadyCompletedResponse) {
-    return matchVerification.alreadyCompletedResponse;
-  }
-  const matchVersion = matchVerification.matchVersion;
-
   // Calculate per-match rewards
   const winnerRewards = calculateMatchRewards(winnerXPParams, winnerXPGained);
   const loserRewards = calculateMatchRewards(loserXPParams, loserXPGained);
@@ -1544,11 +1976,15 @@ function processMatchResult(
   updatePlayerXP(nk, request.winner_id, winnerXPGained);
   updatePlayerXP(nk, request.loser_id, loserXPGained);
 
-  // Update match status to completed
+  // Update match status to completed and mark the settlement run. The
+  // settled_at stamp is the double-settlement idempotency key: subsequent
+  // settlement attempts replay the recorded outcome without re-applying.
   const now = Date.now();
   match.status = 'completed';
   match.winner = request.winner_id;
   match.updated_at = now;
+  match.end_reason = request.end_reason ?? 'health_zero';
+  match.settled_at = now;
 
   // Update the match in storage with version for conditional write
   nk.storageWrite([
@@ -1586,6 +2022,7 @@ function processMatchResult(
       loser_id: request.loser_id,
       match_type: match.match_type,
       is_punch_up: isPunchUp,
+      end_reason: match.end_reason,
       winner_rank_change: winnerRankChange,
       loser_rank_change: loserRankChange,
     },
@@ -1667,6 +2104,7 @@ function processMatchResult(
       rewards: loserRewards,
     },
     is_punch_up: isPunchUp,
+    end_reason: match.end_reason,
   });
 }
 
@@ -2911,19 +3349,20 @@ export function rpcForfeitMatch(
     });
   }
 
-  // Determine opponent
+  // Determine opponent (server-declared winner: the non-forfeiting player)
   const opponentId = ctx.userId === match.creator_id ? match.opponent_id : match.creator_id;
 
-  // Complete match with opponent as winner
-  const completeRequest: CompleteMatchRequest = {
+  // Settle with the opponent as winner — derived server-side from the
+  // forfeiting caller's identity, never from client-asserted payloads.
+  const settlement: ServerSettlementRequest = {
     match_id: match.match_id,
     winner_id: opponentId,
     loser_id: ctx.userId,
-    is_punch_up: match.is_punch_up,
+    end_reason: 'forfeit',
   };
 
   // Use existing complete match logic
-  const result = processMatchResult(ctx, logger, nk, completeRequest, match, match.is_punch_up);
+  const result = processMatchResult(ctx, logger, nk, settlement, match, match.is_punch_up);
 
   // Add forfeit information
   const resultObj = JSON.parse(result);
@@ -3219,9 +3658,13 @@ function completeMatchFromTurn(
   endResult: { shouldEnd: boolean; winner?: string; reason?: string }
 ): string {
   if (!endResult.winner) {
-    // Handle draw
+    // Handle draw — terminal with no winner: mark completed and settled
+    // (no Elo/XP/rewards). settled_at makes replayed triggers idempotent.
+    const now = Date.now();
     match.status = 'completed';
-    match.updated_at = Date.now();
+    match.updated_at = now;
+    match.end_reason = 'draw';
+    match.settled_at = now;
 
     nk.storageWrite([
       {
@@ -3242,14 +3685,16 @@ function completeMatchFromTurn(
 
   const loserId = endResult.winner === match.creator_id ? match.opponent_id : match.creator_id;
 
-  const completeRequest: CompleteMatchRequest = {
+  // Winner comes from the turn engine's server-side end conditions
+  // (health-zero or max-turns health comparison) — never client input.
+  const settlement: ServerSettlementRequest = {
     match_id: match.match_id,
     winner_id: endResult.winner,
     loser_id: loserId,
-    is_punch_up: match.is_punch_up,
+    end_reason: endResult.reason?.startsWith('max_turns') ? 'max_turns' : 'health_zero',
   };
 
-  return processMatchResult(ctx, logger, nk, completeRequest, match, match.is_punch_up);
+  return processMatchResult(ctx, logger, nk, settlement, match, match.is_punch_up);
 }
 
 /**

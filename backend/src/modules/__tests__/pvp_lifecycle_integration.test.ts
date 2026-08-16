@@ -76,6 +76,39 @@ describe('PvP lifecycle integration', () => {
     jest.spyOn(Math, 'random').mockRestore();
   });
 
+  /**
+   * Drives the combat system turn-by-turn until a server-side terminal
+   * state exists (health-zero), mirroring the hybrid duel model: combat
+   * resolution declares the winner; complete_match only settles it.
+   */
+  const driveCombatToTerminalState = async (
+    matchId: string,
+    creatorCtx: ReturnType<typeof createMockContext>,
+    opponentCtx: ReturnType<typeof createMockContext>,
+    maxTurns = 60
+  ): Promise<void> => {
+    for (let i = 0; i < maxTurns; i++) {
+      const stateJson = mockStorage.get(`pvp_match_states:${matchId}`);
+      const state: MatchState | undefined = stateJson ? JSON.parse(stateJson) : undefined;
+      if (state && (state.winner || state.creator_health <= 0 || state.opponent_health <= 0)) {
+        return;
+      }
+      const actorCtx = state && state.current_turn_user_id === 'opponent-user' ? opponentCtx : creatorCtx;
+      await rpcSubmitCombatAction(
+        actorCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({
+          match_id: matchId,
+          action_type: 'shoot',
+          angle: 1.5,
+          power: 0.9,
+        })
+      );
+    }
+    throw new Error('Combat did not reach a terminal state within the turn budget');
+  };
+
   it('should execute full pvp lifecycle from create to complete', async () => {
     const creatorCtx = createMockContext({ userId: 'creator-user' });
 
@@ -103,34 +136,31 @@ describe('PvP lifecycle integration', () => {
     expect(accepted.success).toBe(true);
     expect(accepted.match.status).toBe('active');
 
-    // Step 3: Submit combat action for creator
-    const actionResult = await rpcSubmitCombatAction(
-      creatorCtx,
-      mockLogger,
-      mockNk,
-      JSON.stringify({
-        match_id: matchId,
-        action_type: 'shoot',
-        angle: 1.5,
-        power: 0.5,
-      })
-    );
-    const actionParsed = JSON.parse(actionResult);
-    expect(actionParsed.success).toBe(true);
+    // Step 3: Play combat until the server declares a terminal state
+    // (health-zero). The combat system declares the winner server-side.
+    await driveCombatToTerminalState(matchId, creatorCtx, opponentCtx);
+    const finalStateJson = mockStorage.get(`pvp_match_states:${matchId}`);
+    const finalState: MatchState = JSON.parse(finalStateJson as string);
+    expect(finalState.winner).toBeDefined();
 
-    // Step 4: Complete match
+    // Step 4: Trigger settlement. The payload winner is advisory only —
+    // settlement must follow the server-declared winner.
+    const clientAssertedLoser = finalState.winner === 'creator-user' ? 'opponent-user' : 'creator-user';
     const completeResult = rpcCompleteMatch(
       creatorCtx,
       mockLogger,
       mockNk,
       JSON.stringify({
         match_id: matchId,
-        winner_id: 'creator-user',
-        loser_id: 'opponent-user',
+        winner_id: clientAssertedLoser, // client lies; must be ignored
+        loser_id: finalState.winner,
       })
     );
     const completed = JSON.parse(completeResult);
     expect(completed.success).toBe(true);
+    // Server truth wins over the client-asserted payload
+    expect(completed.winner.user_id).toBe(finalState.winner);
+    expect(completed.end_reason).toBe('health_zero');
   });
 
   it('should reject action after match is completed', async () => {
@@ -148,16 +178,15 @@ describe('PvP lifecycle integration', () => {
     const opponentCtx = createMockContext({ userId: 'opponent-user' });
     rpcAcceptMatch(opponentCtx, mockLogger, mockNk, JSON.stringify({ match_id: matchId }));
 
-    // Complete the match
+    // Play combat to a server-declared terminal state
+    await driveCombatToTerminalState(matchId, creatorCtx, opponentCtx);
+
+    // Settle the match
     rpcCompleteMatch(
       creatorCtx,
       mockLogger,
       mockNk,
-      JSON.stringify({
-        match_id: matchId,
-        winner_id: 'creator-user',
-        loser_id: 'opponent-user',
-      })
+      JSON.stringify({ match_id: matchId })
     );
 
     // Try to submit action after completion

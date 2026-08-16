@@ -318,7 +318,7 @@ async function handleTurnTimeout(
         // Non-blocking: log to telemetry
         void logTimeout(nk, timeoutEvent);
 
-        updateMatchStatus(nk, matchResult.data, winnerId);
+        updateMatchStatus(nk, matchResult.data, winnerId, 'timeout');
 
         // Persist match result to database
         await persistMatchResult(nk, matchResult.data, matchState, 'timeout');
@@ -518,7 +518,7 @@ export async function rpcSubmitCombatAction(
       notifyMatchStateUpdate(nk, matchState, result, 'turn_taken');
 
       if (result.winner) {
-        updateMatchStatus(nk, match, result.winner);
+        updateMatchStatus(nk, match, result.winner, 'health_zero');
 
         // Persist match result to database
         await persistMatchResult(nk, match, matchState, 'health_zero');
@@ -941,13 +941,24 @@ function saveMatchState(nk: Runtime.Nakama, matchState: MatchState): void {
 /**
  * Updates match status when a winner is determined.
  *
+ * Marks the match completed with a server-declared winner (ADR-0002). The
+ * match remains unsettled (no settled_at) — Elo/XP/reward settlement is
+ * applied by the matchmaker settlement path keyed off this declaration.
+ *
  * @param nk - Nakama server interface
  * @param match - PvP match data
- * @param winner - ID of the winning player
+ * @param winner - ID of the winning player (server-derived)
+ * @param endReason - Server-side reason the match ended
  */
-function updateMatchStatus(nk: Runtime.Nakama, match: PvPMatch, winner: string): void {
+function updateMatchStatus(
+  nk: Runtime.Nakama,
+  match: PvPMatch,
+  winner: string,
+  endReason: 'health_zero' | 'forfeit' | 'timeout' | 'disconnect'
+): void {
   match.status = 'completed';
   match.winner = winner;
+  match.end_reason = endReason;
   match.updated_at = Date.now();
 
   nk.storageWrite([
@@ -1281,8 +1292,8 @@ export async function rpcPlayerDisconnect(
       // Save match state
       saveMatchState(nk, matchState);
 
-      // Update match status
-      updateMatchStatus(nk, match, winnerId);
+      // Update match status (end reason mirrors persistMatchResult's mapping)
+      updateMatchStatus(nk, match, winnerId, reason === 'timeout' ? 'timeout' : 'disconnect');
 
       // Persist match result to database
       await persistMatchResult(
