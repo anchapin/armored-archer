@@ -87,6 +87,10 @@ signal projected_elo_loaded(elo: int, current_rank: int, tier_name: String)
 # --- Get Season Info ---
 func get_season_info() -> void:
 	"""Retrieves current season information and player ranking."""
+	if OS.get_environment("E2E_TEST") == "1":
+		# In E2E mode we don't want real season RPC spam or errors
+		return
+
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
 		return

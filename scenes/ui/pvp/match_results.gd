@@ -246,7 +246,7 @@ func _play_appear_animation() -> void:
 	# Animate in from bottom
 	position = Vector2(0, get_viewport_rect().size.y)
 	tween.tween_property(self, "position", Vector2(0, 0), 0.5)
-	tween.set_ease(Tween.EASE_OUT_BACK)
+	tween.set_ease(Tween.TRANS_BACK)
 	tween.play()
 
 ## Play rank arrow up animation
@@ -262,7 +262,7 @@ func _play_rank_arrow_up() -> void:
 	tween.tween_property(rank_change_arrow, "position", base_position, 0.0)
 	tween.tween_property(rank_change_arrow, "position", base_position + up_offset, RANK_CHANGE_DURATION)
 	tween.tween_property(rank_change_arrow, "position", base_position, RANK_CHANGE_DURATION)
-	tween.set_ease(Tween.EASE_IN_OUT_SINE)
+	tween.set_ease(Tween.TRANS_SINE)
 	tween.play()
 
 ## Play rank arrow down animation
@@ -278,7 +278,7 @@ func _play_rank_arrow_down() -> void:
 	tween.tween_property(rank_change_arrow, "position", base_position, 0.0)
 	tween.tween_property(rank_change_arrow, "position", base_position + down_offset, RANK_CHANGE_DURATION)
 	tween.tween_property(rank_change_arrow, "position", base_position, RANK_CHANGE_DURATION)
-	tween.set_ease(Tween.EASE_IN_OUT_SINE)
+	tween.set_ease(Tween.TRANS_SINE)
 	tween.play()
 
 ## Handle continue button press
@@ -294,7 +294,7 @@ func _play_disappear_animation() -> void:
 
 	var target_position = Vector2(0, get_viewport_rect().size.y)
 	tween.tween_property(self, "position", target_position, 0.3)
-	tween.set_ease(Tween.EASE_IN_BACK)
+	tween.set_ease(Tween.TRANS_BACK)
 	tween.play()
 
 	await tween.finished

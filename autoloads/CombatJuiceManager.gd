@@ -368,14 +368,8 @@ func set_time_scale(scale: float, smooth: bool = true) -> void:
 
 	if _is_slow_motion:
 		# Use tween to smooth transition
-		var tween = create_tween()
-		tween.tween_property(self, "_current_time_scale", scale)
-		tween.tween_interval(0.1)
+		var tween = get_tree().create_tween()
+		tween.tween_property(self, "_current_time_scale", scale, 0.1)
 		tween.set_ease(Tween.EASE_IN_OUT)
 	else:
 		_current_time_scale = scale
-
-# --- Helper for creating tweens (Godot 4.x compatible) ---
-func create_tween() -> Tween:
-	var tween = Tween.new()
-	return tween

@@ -241,8 +241,8 @@ func _on_pvp_combat_ended(winner: String) -> void:
 
 		result_data = {
 			"is_victory": is_victory,
-			"match_type": current_match.get("match_type", "ranked") if not current_match.is_empty() else "ranked",
-			"is_punch_up": current_match.get("is_punch_up", false) if not current_match.is_empty() else false,
+			"match_type": current_match_state.get("match_type", "ranked") if not current_match_state.is_empty() else "ranked",
+			"is_punch_up": current_match_state.get("is_punch_up", false) if not current_match_state.is_empty() else false,
 			"xp_gained": 150 if is_victory else 50,  # Base XP reward
 			"old_rank": 0,  # Will be filled by MatchmakerManager response
 			"new_rank": 0,

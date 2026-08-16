@@ -33,47 +33,47 @@ func set_haptics_enabled(enabled: bool) -> void:
 func light_tap() -> void:
 	if not is_haptics_enabled():
 		return
-	Input.vibrate(30)
+	Input.start_joy_vibration(0, 0.5, 1.0, -130)
 
 
 func medium_tap() -> void:
 	if not is_haptics_enabled():
 		return
 	if _is_budget_device:
-		Input.vibrate(20)
+		Input.start_joy_vibration(0, 0.5, 1.0, -120)
 		return
-	Input.vibrate(50)
+	Input.start_joy_vibration(0, 0.5, 1.0, -150)
 
 
 func heavy_tap() -> void:
 	if not is_haptics_enabled():
 		return
 	if _is_budget_device:
-		Input.vibrate(30)
+		Input.start_joy_vibration(0, 0.5, 1.0, -130)
 		return
-	Input.vibrate(80)
+	Input.start_joy_vibration(0, 0.5, 1.0, -180)
 
 
 func success_pulse() -> void:
 	if not is_haptics_enabled():
 		return
 	if _is_budget_device:
-		Input.vibrate(40)
+		Input.start_joy_vibration(0, 0.5, 1.0, -140)
 		return
-	Input.vibrate(50)
+	Input.start_joy_vibration(0, 0.5, 1.0, -150)
 	await get_tree().create_timer(0.1).timeout
-	Input.vibrate(50)
+	Input.start_joy_vibration(0, 0.5, 1.0, -150)
 
 
 func damage_pulse() -> void:
 	if not is_haptics_enabled():
 		return
 	if _is_budget_device:
-		Input.vibrate(40)
+		Input.start_joy_vibration(0, 0.5, 1.0, -140)
 		return
-	Input.vibrate(60)
+	Input.start_joy_vibration(0, 0.5, 1.0, -160)
 	await get_tree().create_timer(0.08).timeout
-	Input.vibrate(40)
+	Input.start_joy_vibration(0, 0.5, 1.0, -140)
 
 
 func _load_settings() -> void:

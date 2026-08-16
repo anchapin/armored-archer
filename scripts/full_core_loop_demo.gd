@@ -93,9 +93,9 @@ const COLOR_WARN = Color(1.0, 0.7, 0.2)
 
 ## Initialize demo
 func _ready() -> void:
-	print("=" * 70)
+	print("=".repeat(70))
 	print("ARMORED ARCHER - FULL CORE LOOP DEMO")
-	print("=" * 70)
+	print("=".repeat(70))
 	print()
 	print("Issue #691 - Sprint 2 Vertical Slice Completion")
 	print()
@@ -113,7 +113,7 @@ func _ready() -> void:
 	print(" 11. Complete Match")
 	print(" 12. View Match Results")
 	print(" 13. Progression Updates (XP/Rank)")
-	print("=" * 70)
+	print("=".repeat(70))
 	print()
 
 	_setup_manager_references()
@@ -784,9 +784,9 @@ func _step_complete() -> void:
 	_demo_running = false
 
 	print()
-	print("=" * 70)
+	print("=".repeat(70))
 	print("FULL CORE LOOP DEMO COMPLETE")
-	print("=" * 70)
+	print("=".repeat(70))
 	print()
 	print("Summary:")
 	print("  ✓ All 15 steps completed")
@@ -814,9 +814,9 @@ func _step_complete() -> void:
 	print("  Gear Equipped: %s" % _demo_state.equipped_gear.get("name", "Unknown"))
 	print("  Match Result: %s" % ("Victory" if _demo_state.match_result.get("is_victory", true) else "Defeat"))
 	print()
-	print("=" * 70)
+	print("=".repeat(70))
 	print("The vertical slice is ready for production!")
-	print("=" * 70)
+	print("=".repeat(70))
 
 	# Emit completion signal
 	demo_finished.emit(true, _demo_state)

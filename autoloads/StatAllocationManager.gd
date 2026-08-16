@@ -57,6 +57,9 @@ func _ready() -> void:
 
 	load_data()
 
+	if OS.get_environment("E2E_TEST") == "1":
+		return
+
 	if season_manager:
 		season_manager.season_info_loaded.connect(_on_season_info_loaded)
 		if season_manager.season_info_loaded.is_connected(_on_season_info_loaded):

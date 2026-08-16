@@ -798,7 +798,7 @@ func _handle_match_completion(response: Dictionary) -> void:
 
 	# Check for draw
 	if response.get("is_draw", false):
-		push_info("Match ended in a draw")
+		print("Match ended in a draw")
 		match_completed.emit({
 			"is_draw": true,
 			"reason": response.get("reason", "")

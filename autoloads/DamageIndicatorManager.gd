@@ -58,7 +58,6 @@ func spawn_damage_number(position: Vector2, damage: int, is_critical: bool) -> N
 	tween.tween_property(instance, "global_position:y", position.y + 50.0, 0.5)
 	tween.tween_interval(0.03)
 	tween.tween_ease(Tween.EASE_OUT)
-	tween.finished.connect(_on_number_faded)
 
 	# Cleanup when faded
 	instance.queue_free()

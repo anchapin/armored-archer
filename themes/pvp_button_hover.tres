@@ -1,0 +1,22 @@
+[gd_resource type="StyleBoxFlat" format=3]
+
+[resource]
+// PVP Button Hover - Brighter gold glow
+bg_color = Color(1, 0.75, 0.4, 1)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+border_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+shadow_color = Color(1, 0.675, 0.329, 0.5)
+shadow_size = 24
+shadow_offset = Vector2(0, 4)
+content_margin_left = 20.0
+content_margin_top = 10.0
+content_margin_right = 20.0
+content_margin_bottom = 10.0
+anti_aliasing = 1

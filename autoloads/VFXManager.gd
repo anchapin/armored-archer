@@ -297,7 +297,8 @@ func _exit_tree() -> void:
 	# Clear singleton instance
 	instance = null
 
-	print("[VFXManager] Cleanup complete - all resources released")
+	if OS.get_environment("E2E_TEST") != "1":
+		print("[VFXManager] Cleanup complete - all resources released")
 
 # === Power-Up VFX Methods ===
 
