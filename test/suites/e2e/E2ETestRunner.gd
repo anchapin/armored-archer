@@ -9,11 +9,18 @@ var framework: Node
 func _ready() -> void:
 	print("=== E2E Test Runner Starting ===")
 
+	# Properly instantiate the real E2ETestFramework (was previously a plain Node)
+	var framework_script = preload("res://test/suites/e2e/E2ETestFramework.gd")
 	framework = Node.new()
 	framework.name = "E2ETestFramework"
+	framework.set_script(framework_script)
 	add_child(framework)
 
-	framework.all_tests_completed.connect(_on_all_tests_completed)
+	# Connect only if the signal exists (framework may emit it)
+	if framework.has_signal("all_tests_completed"):
+		framework.all_tests_completed.connect(_on_all_tests_completed)
+	else:
+		print("[E2E] Warning: E2ETestFramework does not expose all_tests_completed signal yet.")
 
 	await get_tree().create_timer(0.5).timeout
 

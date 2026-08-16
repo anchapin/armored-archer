@@ -15,7 +15,7 @@ func set_online(is_online: bool) -> void:
 func is_session_valid() -> bool:
 	return mock_is_online
 
-func has_method(method_name: StringName) -> bool:
+func _has_method(method_name: StringName) -> bool:
 	return method_name == "send_rpc"
 
 ## Mock send_rpc - returns mock server data
