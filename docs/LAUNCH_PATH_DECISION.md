@@ -22,10 +22,10 @@ It defines the launch criteria, specifies the data review that must happen befor
 ## 2. Background
 
 - The product is F2P with **cosmetic-only IAP** (zero pay-to-win), server-authoritative combat and loot on Nakama, Firebase auth, and RevenueCat IAP (`docs/armored-archer_prd.md`).
-- Sprint 8's primary goal is to "use real usage data to fix the last retention, fairness, and economy issues before MVP release" (#735), monitoring the funnel: **install → first PvE completion → first PvP match → first purchase**.
+- Sprint 8's primary goal is to "use real usage data to fix the last retention, fairness, and economy issues before MVP release" (#735), monitoring the funnel: **install → first PvE completion → first PvP duel → first purchase**.
 - Sprint 8's trust mandate: zero unresolved P0/P1 issues affecting **combat authority, ranked fairness, progression loss, or purchase entitlement**.
 - The Release Candidate checklist (`docs/RELEASE_CANDIDATE_CHECKLIST.md`, v3.6.0-rc.1) defines hard blockers RC-H1…H10 and soft blockers RC-S1…S7; several remain `Pending` verification as of this draft (RC-H1, H3–H6, H9, H10; RC-S2–S4). Gameplay-balance tuning (item 3.12: stage pacing, drop rates, risk/reward) is marked `Done` for the Sprint 8 tuning pass, but efficacy against live telemetry is exactly what this decision reviews.
-- `MVP_GAP_ANALYSIS.md` documents historical verification gaps (async PvP end-to-end flow, real-IAP loop vs. sandbox fallbacks, persistence verification, early-game enemy variety) that inform the risk columns below.
+- `MVP_GAP_ANALYSIS.md` documents historical verification gaps (PvP end-to-end flow — async matchmaking → live duels, real-IAP loop vs. sandbox fallbacks, persistence verification, early-game enemy variety) that inform the risk columns below.
 
 ## 3. Launch Criteria Evaluation Matrix
 
@@ -46,10 +46,10 @@ Thresholds come from repo-documented values where they exist (cited); otherwise 
 | ID | Criterion | Threshold | Current Status | Data Source |
 |----|-----------|-----------|----------------|-------------|
 | LC-T1 | Open P0/P1 trust issues (combat authority, ranked fairness, progression loss, purchase entitlement) | 0 open — mirrors hard blocker RC-H1 (#735 mandate) | **Pending live data** (query GitHub Issues `severity:critical/high`) | GitHub issue tracker |
-| LC-T2 | Server-authority violations (client-computed combat/loft results accepted) | 0 confirmed incidents | **Pending live data** | Nakama RPC audit logs; `docs/ANTI_CHEAT_IMPLEMENTATION.md` |
-| LC-T3 | Punch-up wager abuse (rank-manipulation exploits in async PvP) | No statistically anomalous win/XP patterns | **Pending live data** | `pvp_match_completed` events grouped by rank delta; matchmaker telemetry |
+| LC-T2 | Server-authority violations (client-computed combat/loot results accepted) | 0 confirmed incidents | **Pending live data** | Nakama RPC audit logs; `docs/ANTI_CHEAT_IMPLEMENTATION.md` |
+| LC-T3 | Punch-up wager abuse (Ladder Rating manipulation exploits in async matchmaking + live duels) | No statistically anomalous win/XP patterns | **Pending live data** | `pvp_match_completed` events grouped by Ladder Rating delta; matchmaker telemetry |
 | LC-T4 | Progression-loss support tickets (lost XP/gear) | No reproducible data-loss reports | **Pending live data** | Discord `#beta-support` escalations (`docs/BETA_SUPPORT_PLAYBOOK.md` L1–L4 log) |
-| LC-T5 | Purchase-entitlement failures (paid gems/cosmetics not delivered) | 0 unresolved | **Pending live data** | RevenueCat webhook logs; `purchase_completed` vs. entitlement records |
+| LC-T5 | Purchase-entitlement failures (paid Gems/cosmetics not delivered) | 0 unresolved | **Pending live data** | RevenueCat webhook logs; `purchase_completed` vs. entitlement records |
 
 ### 3.3 Economy & Monetization
 
@@ -57,8 +57,8 @@ Thresholds come from repo-documented values where they exist (cited); otherwise 
 |----|-----------|-----------|----------------|-------------|
 | LC-E1 | Install → first purchase conversion | ≥ 1.5% *(proposed — genre-typical F2P cosmetic baseline)* | **Pending live data** | `app_opened` → `store_viewed` → `purchase_completed` funnel |
 | LC-E2 | ARPPU trend | Non-decreasing week-over-week through soft launch | **Pending live data** | Mixpanel revenue reports |
-| LC-E3 | Cosmetic gem pricing sanity (units sold > 0 across ≥ 3 price tiers) | No dead SKUs | **Pending live data** | RevenueCat product events |
-| LC-E4 | Gem economy sink/faucet balance (gems granted vs. spent) | Spent/granted ratio ≥ 40% *(proposed)* | **Pending live data** | `store_opened`, `purchase_completed`, gem ledger RPCs |
+| LC-E3 | Cosmetic Gem pricing sanity (units sold > 0 across ≥ 3 price tiers) | No dead SKUs | **Pending live data** | RevenueCat product events |
+| LC-E4 | Gem economy sink/faucet balance (Gems granted vs. spent) | Spent/granted ratio ≥ 40% *(proposed)* | **Pending live data** | `store_opened`, `purchase_completed`, gem ledger RPCs |
 | LC-E5 | Stage pacing & drop-rate health post-tuning | No stage with > 40% abandon rate; no required-grind spike > 2× median *(proposed)* | **Pending live data** | `pve_stage_started` vs. `pve_stage_completed`/`pve_stage_failed` per stage |
 
 ### 3.4 Funnel Conversion (Sprint 8 funnel, from #735)
@@ -67,8 +67,8 @@ Thresholds come from repo-documented values where they exist (cited); otherwise 
 |----|-------------|-----------|----------------|-------------|
 | LC-F1 | Install → first PvE stage start | ≥ 80% *(proposed)* | **Pending live data** | `app_opened` → `campaign_started` |
 | LC-F2 | First PvE stage start → first completion | ≥ 65% *(proposed)* | **Pending live data** | `campaign_started` → `pve_stage_completed` |
-| LC-F3 | First PvE completion → first PvP match | ≥ 30% *(proposed)* | **Pending live data** | `pve_stage_completed` → `pvp_match_started` |
-| LC-F4 | First PvP match → first purchase | ≥ 5% *(proposed)* | **Pending live data** | `pvp_match_started` → `purchase_completed` |
+| LC-F3 | First PvE completion → first PvP duel | ≥ 30% *(proposed)* | **Pending live data** | `pve_stage_completed` → `pvp_match_started` |
+| LC-F4 | First PvP duel → first purchase | ≥ 5% *(proposed)* | **Pending live data** | `pvp_match_started` → `purchase_completed` |
 | LC-F5 | Tutorial skip rate | ≤ 30% *(proposed)* | **Pending live data** | `tutorial_skipped` / `tutorial_started` |
 
 ### 3.5 Technical Stability
@@ -91,12 +91,12 @@ Thresholds below are repo-documented (RC checklist hard blockers and `docs/CRASH
 **What to pull** (all available per `docs/ANALYTICS_DASHBOARD.md`):
 
 1. Retention cohorts (D1/D7, DAU/MAU, stickiness) — Firebase Analytics + Mixpanel.
-2. The Sprint 8 funnel (install → first PvE completion → first PvP match → first purchase) — built from `app_opened`, `campaign_started`, `pve_stage_completed`, `pvp_lobby_entered`, `pvp_match_started`, `store_viewed`, `purchase_completed`.
-3. Economy reports — revenue over time, ARPPU, purchase conversion funnel, gem ledger balance.
+2. The Sprint 8 funnel (install → first PvE completion → first PvP duel → first purchase) — built from `app_opened`, `campaign_started`, `pve_stage_completed`, `pvp_lobby_entered`, `pvp_match_started`, `store_viewed`, `purchase_completed`.
+3. Economy reports — revenue over time, ARPPU, purchase conversion funnel, Gem ledger balance.
 4. Pacing/drop-rate per stage — `pve_stage_started` vs. `pve_stage_completed`/`pve_stage_failed` by chapter/stage.
 5. Stability — Crashlytics dashboards (crash rate, fatal count, top crashes) cross-referenced with Prometheus `crashlytics_*` metrics.
 6. Trust signals — GitHub Issues filtered to `severity:critical`/`severity:high` trust labels; RevenueCat webhook failure log; support escalation log (Discord `#beta-escalations`).
-7. PvP health — win/loss distribution by rank delta, punch-up win rate, match-abandon rate (`pvp_match_abandoned`).
+7. PvP health — win/loss distribution by Ladder Rating delta, punch-up win rate, match-abandon rate (`pvp_match_abandoned`).
 
 **Who reviews**: Product Manager (funnel, retention, economy), QA Lead (LC-T1, stability evidence), Backend Lead (LC-S3–S4, LC-T2), Client Lead (crash dashboards), Security Lead (LC-T5 entitlement, LC-T2), Community Manager (support/qualitative signal), Technical Lead (overall gate rule). Roles mirror the RC sign-off table.
 
