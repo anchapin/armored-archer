@@ -15,6 +15,7 @@ import {
   number,
   string,
   boolean,
+  object,
   pipe,
   minValue,
   maxValue,
@@ -63,6 +64,26 @@ const WIN_STREAK_THRESHOLD = 3;
 const LOSE_STREAK_THRESHOLD = 3;
 
 /**
+ * Maximum number of match history entries retained (server-side ledger).
+ */
+const MAX_HISTORY_ENTRIES = 100;
+
+/**
+ * Storage collection holding the authoritative server-side PvE stage results.
+ * Written exclusively by the server-validated `complete_stage` RPC
+ * (authentication + rate limiting + per-stage dedup), so entries in it are
+ * trusted evidence of stage wins.
+ */
+const STAGE_COMPLETION_COLLECTION = 'stage_completion';
+
+/**
+ * How long after a server-accepted stage completion a client-reported PvE win
+ * may be corroborated by it. Generous enough for out-of-order RPCs within a
+ * session, tight enough to require a real completion.
+ */
+const STAGE_EVIDENCE_WINDOW_MS = 30 * 60 * 1000;
+
+/**
  * Player performance tracking data.
  */
 export interface PlayerPerformance {
@@ -76,6 +97,11 @@ export interface PlayerPerformance {
 
 /**
  * Individual match entry for tracking.
+ *
+ * `seq`, `verified`, and `counted` are assigned by the server when the entry
+ * is appended. Entries written before server-side re-derivation (legacy
+ * client-trust era) lack these fields and are excluded from streak
+ * derivation.
  */
 export interface MatchEntry {
   match_id: string;
@@ -83,10 +109,23 @@ export interface MatchEntry {
   match_type: 'pve' | 'pvp';
   timestamp: number;
   base_difficulty: number;
+  /** Server-assigned monotonic sequence number (ledger ordering). */
+  seq?: number;
+  /** True when a PvE win was corroborated by server-known stage results. */
+  verified?: boolean;
+  /** True when this entry counts toward streak derivation. */
+  counted?: boolean;
 }
 
 /**
  * Difficulty state persisted per player.
+ *
+ * `win_streak`/`lose_streak` are derived caches recomputed from the
+ * server-classified match ledger on every tracked outcome — they are never
+ * accumulated from client reports. `last_adjusted_seq` is the ledger cursor
+ * marking entries already consumed by a difficulty adjustment, and
+ * `corroborated_completions` records which stage completion events have
+ * already been used to verify a PvE win (replay resistance).
  */
 export interface DifficultyState {
   player_id: string;
@@ -94,6 +133,24 @@ export interface DifficultyState {
   win_streak: number;
   lose_streak: number;
   updated_at: number;
+  /** Ledger cursor: adjustments have been applied through this seq. */
+  last_adjusted_seq?: number;
+  /** stage_id -> epoch ms of the last completion event used as evidence. */
+  corroborated_completions?: Record<string, number>;
+  /** Hint recorded from sync_difficulty (never authoritative). */
+  client_reported_modifier?: number;
+  /** Hint recorded from sync_difficulty (never authoritative). */
+  client_reported_level?: string;
+}
+
+/**
+ * Server-known evidence of a PvE stage win, derived from the authoritative
+ * stage completion storage.
+ */
+interface StageCompletionEvidence {
+  stage_id: string;
+  /** Epoch ms of the last server-accepted completion for this stage. */
+  last_accepted_ms: number;
 }
 
 /**
@@ -194,7 +251,7 @@ export function rpcSyncDifficulty(
   logger.info('Sync difficulty called for user: %s', ctx.userId);
 
   const validation = validatePayload(
-    {
+    object({
       difficulty_modifier: pipe(number(), minValue(MIN_MODIFIER), maxValue(MAX_MODIFIER)),
       difficulty_level: createEnum([
         DifficultyLevel.EASY,
@@ -202,7 +259,7 @@ export function rpcSyncDifficulty(
         DifficultyLevel.HARD,
         DifficultyLevel.EXTREME,
       ]),
-    },
+    }),
     payload,
     'sync_difficulty'
   );
@@ -223,7 +280,7 @@ export function rpcSyncDifficulty(
 
   const request = validation.data;
 
-  // Validate modifier matches level
+  // Validate modifier matches level (hint sanity check)
   const expectedModifier = getModifierForLevel(request.difficulty_level);
   const modifierDiff = Math.abs(request.difficulty_modifier - expectedModifier);
 
@@ -243,14 +300,24 @@ export function rpcSyncDifficulty(
     });
   }
 
-  // Store difficulty state
-  const state: DifficultyState = {
-    player_id: ctx.userId,
-    current_modifier: request.difficulty_modifier,
-    win_streak: 0,
-    lose_streak: 0,
-    updated_at: Math.floor(Date.now() / 1000),
-  };
+  // Server-authoritative hardening (#870): the client sync is a hint only.
+  // It is recorded for disclosure/analytics but never overwrites the
+  // server-derived modifier or streaks, which are recomputed from
+  // server-known stage results.
+  const stateResult = loadDifficultyState(nk, ctx.userId);
+  const state = stateResult.success
+    ? stateResult.data!
+    : {
+        player_id: ctx.userId,
+        current_modifier: 0.0,
+        win_streak: 0,
+        lose_streak: 0,
+        updated_at: 0,
+      };
+
+  state.client_reported_modifier = request.difficulty_modifier;
+  state.client_reported_level = request.difficulty_level;
+  state.updated_at = Math.floor(Date.now() / 1000);
 
   nk.storageWrite([
     {
@@ -268,17 +335,29 @@ export function rpcSyncDifficulty(
     'sync_difficulty',
     'difficulty_state',
     { modifier: request.difficulty_modifier, level: request.difficulty_level },
-    'success'
+    'success',
+    'Client hint recorded; server-derived modifier preserved'
   );
 
   return JSON.stringify({
     success: true,
     synced: true,
+    modifier: state.current_modifier,
+    difficulty_level: getDifficultyLevel(state.current_modifier),
   });
 }
 
 /**
  * Handles match outcome tracking for difficulty adjustment.
+ *
+ * Server-authoritative (#870): the reported outcome is a hint/trigger, never
+ * the streak truth. PvE wins only count when corroborated by server-known
+ * stage results (the `stage_completion` storage written by the validated
+ * `complete_stage` RPC); PvE losses are accepted as hints because failed
+ * stage attempts produce no server-side signal and losses only ease
+ * difficulty (reward-neutral, bounded); PvP outcomes are recorded for
+ * analytics but never affect the modifier (PvE-only constraint). Streaks are
+ * re-derived from the server-classified ledger on every call.
  *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
@@ -291,7 +370,9 @@ export function rpcSyncDifficulty(
  * { "match_id": "uuid", "won": true, "match_type": "pve", "duration": 120 }
  *
  * // Response
- * { "success": true, "modifier": 0.1, "difficulty_level": "Hard" }
+ * { "success": true, "modifier": 0.1, "difficulty_level": "Hard",
+ *   "win_streak": 0, "lose_streak": 0, "adjusted": true,
+ *   "verified": true, "counted": true }
  */
 export function rpcTrackMatchOutcome(
   ctx: Runtime.Context,
@@ -302,12 +383,12 @@ export function rpcTrackMatchOutcome(
   logger.info('Track match outcome called for user: %s', ctx.userId);
 
   const validation = validatePayload(
-    {
+    object({
       match_id: pipe(string(), minLength(1)),
       won: boolean(),
       match_type: createEnum(['pve', 'pvp']),
       duration: pipe(number(), minValue(0)),
-    },
+    }),
     payload,
     'track_match_outcome'
   );
@@ -327,87 +408,21 @@ export function rpcTrackMatchOutcome(
   }
 
   const request = validation.data;
-
-  // Load current difficulty state
-  const stateResult = loadDifficultyState(nk, ctx.userId);
-  const state = stateResult.success
-    ? stateResult.data!
-    : {
-        player_id: ctx.userId,
-        current_modifier: 0.0,
-        win_streak: 0,
-        lose_streak: 0,
-        updated_at: 0,
-      };
-
-  // Update streaks
-  if (request.won) {
-    state.win_streak += 1;
-    state.lose_streak = 0;
-  } else {
-    state.lose_streak += 1;
-    state.win_streak = 0;
-  }
-
-  // Check for difficulty adjustment
-  let adjustmentNeeded = false;
-
-  if (state.win_streak >= WIN_STREAK_THRESHOLD) {
-    const oldModifier = state.current_modifier;
-    state.current_modifier = Math.min(state.current_modifier + 0.1, MAX_MODIFIER);
-    state.win_streak = 0; // Reset after adjustment
-    if (state.current_modifier !== oldModifier) {
-      adjustmentNeeded = true;
-    }
-  }
-
-  if (state.lose_streak >= LOSE_STREAK_THRESHOLD) {
-    const oldModifier = state.current_modifier;
-    state.current_modifier = Math.max(state.current_modifier - 0.1, MIN_MODIFIER);
-    state.lose_streak = 0; // Reset after adjustment
-    if (state.current_modifier !== oldModifier) {
-      adjustmentNeeded = true;
-    }
-  }
-
-  state.updated_at = Math.floor(Date.now() / 1000);
-
-  // Save updated state
-  nk.storageWrite([
-    {
-      collection: 'difficulty_state',
-      key: ctx.userId,
-      userId: ctx.userId,
-      value: JSON.stringify(state),
-    },
-  ]);
-
-  // Track match outcome in storage for analytics
-  const matchEntry: MatchEntry = {
+  const result = applyTrackedOutcome(nk, ctx.userId, {
     match_id: request.match_id,
     won: request.won,
     match_type: request.match_type,
-    timestamp: Math.floor(Date.now() / 1000),
-    base_difficulty: state.current_modifier,
-  };
+    duration: request.duration,
+  });
 
-  const historyResult = loadMatchHistory(nk, ctx.userId);
-  const history = historyResult.success ? historyResult.data! : [];
-  history.push(matchEntry);
-
-  // Keep only last 100 matches
-  if (history.length > 100) {
-    history.splice(0, history.length - 100);
+  if (request.match_type === 'pve' && request.won && !result.verified) {
+    // Disclose that the reported win was not corroborated server-side.
+    logger.warn(
+      'Unverified PvE win report for user %s (match %s) — recorded as hint only',
+      ctx.userId,
+      request.match_id
+    );
   }
-
-  nk.storageWrite([
-    {
-      collection: 'match_history',
-      key: ctx.userId,
-      userId: ctx.userId,
-      value: JSON.stringify(history),
-    },
-  ]);
 
   logAudit(
     nk,
@@ -418,19 +433,176 @@ export function rpcTrackMatchOutcome(
     {
       match_id: request.match_id,
       won: request.won,
-      modifier: state.current_modifier,
+      modifier: result.state.current_modifier,
+      verified: result.verified,
+      counted: result.counted,
     },
     'success'
   );
 
   return JSON.stringify({
     success: true,
-    modifier: state.current_modifier,
-    difficulty_level: getDifficultyLevel(state.current_modifier),
-    win_streak: state.win_streak,
-    lose_streak: state.lose_streak,
-    adjusted: adjustmentNeeded,
+    modifier: result.state.current_modifier,
+    difficulty_level: getDifficultyLevel(result.state.current_modifier),
+    win_streak: result.state.win_streak,
+    lose_streak: result.state.lose_streak,
+    adjusted: result.adjusted,
+    verified: result.verified,
+    counted: result.counted,
   });
+}
+
+/**
+ * Result of applying a tracked outcome through server-side re-derivation.
+ */
+export interface TrackOutcomeResult {
+  state: DifficultyState;
+  /** True when a reported PvE win was corroborated by server-known results. */
+  verified: boolean;
+  /** True when the outcome counted toward streak derivation. */
+  counted: boolean;
+  /** True when this call changed the difficulty modifier. */
+  adjusted: boolean;
+}
+
+/**
+ * Applies a tracked match outcome using server-authoritative re-derivation.
+ *
+ * Classification rules:
+ * - PvE win: counted only when a server-accepted stage completion
+ *   corroborates it (recent + not already consumed). The completion event is
+ *   then marked consumed so it cannot verify further reports (replay
+ *   resistance). A newer completion of the same stage (server refreshes
+ *   `updated_at` only on accepted improvements) can corroborate again.
+ * - PvE loss: counted as a hint (no server-side loss signal exists; losses
+ *   only ease difficulty, which is reward-neutral and bounded).
+ * - PvP: never counted (dynamic difficulty is PvE-only).
+ *
+ * Streaks are always re-derived from the ledger entries after the adjustment
+ * cursor — persisted streak fields are treated as caches, never as truth.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - User the outcome belongs to
+ * @param request - Validated outcome report (hint)
+ * @returns Resulting state plus verification/adjustment flags
+ */
+export function applyTrackedOutcome(
+  nk: Runtime.Nakama,
+  userId: string,
+  request: TrackMatchOutcomeRequest
+): TrackOutcomeResult {
+  const stateResult = loadDifficultyState(nk, userId);
+  const state = stateResult.success
+    ? stateResult.data!
+    : {
+        player_id: userId,
+        current_modifier: 0.0,
+        win_streak: 0,
+        lose_streak: 0,
+        updated_at: 0,
+      };
+
+  // Normalize optional fields for legacy states written before hardening.
+  if (state.last_adjusted_seq === undefined) {
+    state.last_adjusted_seq = 0;
+  }
+  if (state.corroborated_completions === undefined) {
+    state.corroborated_completions = {};
+  }
+
+  const historyResult = loadMatchHistory(nk, userId);
+  const history = historyResult.success ? historyResult.data! : [];
+
+  const nowMs = Date.now();
+  const preAdjustmentModifier = state.current_modifier;
+
+  let verified = false;
+  let counted = false;
+
+  if (request.match_type === 'pve') {
+    if (!request.won) {
+      // PvE loss: hint only (no server-side signal for failed attempts).
+      counted = true;
+    } else {
+      const evidence = loadStageCompletionEvidence(nk, userId);
+      const match = findCorroboratingCompletion(state.corroborated_completions, evidence, nowMs);
+      if (match) {
+        verified = true;
+        counted = true;
+        state.corroborated_completions[match.stage_id] = match.last_accepted_ms;
+      }
+    }
+  }
+  // PvP outcomes: recorded below for analytics only — never counted (PvE-only).
+
+  const seq = nextSequence(history);
+  const matchEntry: MatchEntry = {
+    match_id: request.match_id,
+    won: request.won,
+    match_type: request.match_type,
+    timestamp: Math.floor(nowMs / 1000),
+    base_difficulty: preAdjustmentModifier,
+    seq,
+    verified,
+    counted,
+  };
+  history.push(matchEntry);
+
+  // Keep only the most recent entries (server-side ledger cap).
+  if (history.length > MAX_HISTORY_ENTRIES) {
+    history.splice(0, history.length - MAX_HISTORY_ENTRIES);
+  }
+
+  // Re-derive streaks from the ledger; never trust persisted streak fields.
+  let derived = deriveStreaks(history, state.last_adjusted_seq);
+  let adjustmentNeeded = false;
+
+  if (derived.win_streak >= WIN_STREAK_THRESHOLD) {
+    const newModifier = Math.min(state.current_modifier + 0.1, MAX_MODIFIER);
+    if (newModifier !== state.current_modifier) {
+      adjustmentNeeded = true;
+    }
+    state.current_modifier = newModifier;
+    state.last_adjusted_seq = seq; // Consume ledger entries through this one.
+    derived = deriveStreaks(history, state.last_adjusted_seq);
+  } else if (derived.lose_streak >= LOSE_STREAK_THRESHOLD) {
+    const newModifier = Math.max(state.current_modifier - 0.1, MIN_MODIFIER);
+    if (newModifier !== state.current_modifier) {
+      adjustmentNeeded = true;
+    }
+    state.current_modifier = newModifier;
+    state.last_adjusted_seq = seq; // Consume ledger entries through this one.
+    derived = deriveStreaks(history, state.last_adjusted_seq);
+  }
+
+  state.win_streak = derived.win_streak;
+  state.lose_streak = derived.lose_streak;
+  state.updated_at = Math.floor(nowMs / 1000);
+
+  nk.storageWrite?.([
+    {
+      collection: 'difficulty_state',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(state),
+    },
+  ]);
+
+  nk.storageWrite?.([
+    {
+      collection: 'match_history',
+      key: userId,
+      userId: userId,
+      value: JSON.stringify(history),
+    },
+  ]);
+
+  return {
+    state,
+    verified,
+    counted,
+    adjusted: adjustmentNeeded,
+  };
 }
 
 /**
@@ -476,6 +648,10 @@ export function rpcGetPlayerPerformance(
   const historyResult = loadMatchHistory(nk, ctx.userId);
   const history = historyResult.success ? historyResult.data! : [];
 
+  // Re-derive streaks from the server-classified ledger rather than trusting
+  // the persisted streak caches (#870).
+  const derived = deriveStreaks(history, state.last_adjusted_seq ?? 0);
+
   // Calculate win rate from recent matches
   const recentMatches = history.slice(-10);
   const wins = recentMatches.filter((m) => m.won).length;
@@ -484,14 +660,14 @@ export function rpcGetPlayerPerformance(
   // Calculate performance rating
   const performanceRating = calculatePerformanceRating(
     winRate,
-    state.win_streak,
-    state.lose_streak
+    derived.win_streak,
+    derived.lose_streak
   );
 
   return JSON.stringify({
     win_rate: winRate,
-    win_streak: state.win_streak,
-    lose_streak: state.lose_streak,
+    win_streak: derived.win_streak,
+    lose_streak: derived.lose_streak,
     current_modifier: state.current_modifier,
     difficulty_level: getDifficultyLevel(state.current_modifier),
     performance_rating: performanceRating,
@@ -626,6 +802,200 @@ function loadMatchHistory(
 }
 
 /**
+ * Minimal shape of the authoritative stage completion storage needed for
+ * evidence extraction. The full record is owned by `stage_tracking`.
+ */
+interface StageCompletionStorageShape {
+  completions?: Record<
+    string,
+    {
+      stage_id?: string;
+      completed_at?: string;
+      updated_at?: string;
+    }
+  >;
+}
+
+/**
+ * Loads server-known PvE stage results from the authoritative
+ * `stage_completion` storage (written only by the validated `complete_stage`
+ * RPC). Fails closed: any read/parse error yields no evidence, so PvE wins
+ * cannot be corroborated by accident.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - User to load evidence for
+ * @returns Stage completion evidence keyed by stage_id
+ */
+function loadStageCompletionEvidence(
+  nk: Runtime.Nakama,
+  userId: string
+): StageCompletionEvidence[] {
+  let objects: { value?: string | Record<string, unknown> }[] = [];
+  try {
+    objects =
+      nk.storageRead?.([
+        {
+          collection: STAGE_COMPLETION_COLLECTION,
+          key: userId,
+          userId: userId,
+        },
+      ]) ?? [];
+  } catch {
+    // Storage failure: fail closed (no evidence).
+    return [];
+  }
+
+  if (!objects || objects.length === 0 || !objects[0].value) {
+    return [];
+  }
+
+  const raw = objects[0].value;
+  let parsed: StageCompletionStorageShape | null = null;
+  try {
+    parsed =
+      typeof raw === 'string'
+        ? (JSON.parse(raw) as StageCompletionStorageShape)
+        : (raw as unknown as StageCompletionStorageShape);
+  } catch {
+    return [];
+  }
+
+  if (!parsed || typeof parsed !== 'object' || !parsed.completions) {
+    return [];
+  }
+
+  return Object.values(parsed.completions)
+    .map(parseCompletionEvidenceRecord)
+    .filter((item): item is StageCompletionEvidence => item !== null);
+}
+
+/**
+ * Parses a single stage completion record into evidence, validating that it
+ * carries a usable stage id and a sane (parseable, not-in-the-future)
+ * server-written timestamp.
+ *
+ * @param record - Raw completion record from storage
+ * @returns Evidence, or null when the record is unusable
+ */
+function parseCompletionEvidenceRecord(record: unknown): StageCompletionEvidence | null {
+  if (!record || typeof record !== 'object') {
+    return null;
+  }
+  const typed = record as { stage_id?: unknown; completed_at?: unknown; updated_at?: unknown };
+  const stageId = typeof typed.stage_id === 'string' ? typed.stage_id : null;
+  if (!stageId) {
+    return null;
+  }
+  // `updated_at` is refreshed on every server-accepted (new or improved)
+  // completion; `completed_at` is the first completion timestamp.
+  const rawTs = typed.updated_at || typed.completed_at;
+  if (typeof rawTs !== 'string') {
+    return null;
+  }
+  const ts = Date.parse(rawTs);
+  if (!Number.isFinite(ts) || ts > Date.now()) {
+    return null;
+  }
+  return { stage_id: stageId, last_accepted_ms: ts };
+}
+
+/**
+ * Finds a stage completion event that can corroborate a reported PvE win.
+ *
+ * A completion qualifies when it is newer than the last event already
+ * consumed for that stage (replay resistance) and recent enough to plausibly
+ * correspond to the reported match (evidence window). Among qualifiers the
+ * most recent event is chosen.
+ *
+ * @param consumed - Per-stage consumed completion timestamps (mutated by the caller on match)
+ * @param evidence - Server-known stage completion evidence
+ * @param nowMs - Current server time in epoch ms
+ * @returns The corroborating completion, or null when none qualifies
+ */
+function findCorroboratingCompletion(
+  consumed: Record<string, number>,
+  evidence: StageCompletionEvidence[],
+  nowMs: number
+): StageCompletionEvidence | null {
+  let best: StageCompletionEvidence | null = null;
+
+  for (const item of evidence) {
+    if (item.last_accepted_ms <= (consumed[item.stage_id] ?? 0)) {
+      continue; // Already used to verify a previous report.
+    }
+    if (nowMs - item.last_accepted_ms > STAGE_EVIDENCE_WINDOW_MS) {
+      continue; // Too old to corroborate this report.
+    }
+    if (best === null || item.last_accepted_ms > best.last_accepted_ms) {
+      best = item;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Derives current win/lose streaks from the server-classified match ledger.
+ *
+ * Only entries the server classified as counting (`counted === true`) and
+ * appended after the adjustment cursor participate. Non-counted entries
+ * (PvP reports, uncorroborated PvE wins, legacy pre-hardening entries) are
+ * transparent: they neither extend nor reset a streak. The streak direction
+ * is taken from the most recent counted entry and counts backwards until the
+ * direction flips.
+ *
+ * @param history - Match ledger (may include non-counted and legacy entries)
+ * @param adjustedThroughSeq - Ledger cursor; entries with seq <= this are consumed
+ * @returns Derived win and lose streaks
+ */
+export function deriveStreaks(
+  history: MatchEntry[],
+  adjustedThroughSeq: number
+): { win_streak: number; lose_streak: number } {
+  let winStreak = 0;
+  let loseStreak = 0;
+  let direction: 'win' | 'lose' | null = null;
+
+  for (let i = history.length - 1; i >= 0; i--) {
+    const entry = history[i];
+    if (entry.seq === undefined || entry.seq <= adjustedThroughSeq) {
+      continue; // Consumed by an adjustment, or legacy entry without seq.
+    }
+    if (entry.counted !== true) {
+      continue; // PvP / uncorroborated PvE win — transparent.
+    }
+    if (direction === null) {
+      direction = entry.won ? 'win' : 'lose';
+    }
+    if (entry.won && direction === 'win') {
+      winStreak += 1;
+    } else if (!entry.won && direction === 'lose') {
+      loseStreak += 1;
+    } else {
+      break; // Direction flipped — the streak ends.
+    }
+  }
+
+  return { win_streak: winStreak, lose_streak: loseStreak };
+}
+
+/**
+ * Computes the next monotonic sequence number for the ledger.
+ *
+ * @param history - Current match ledger
+ * @returns Next sequence number (>= 1)
+ */
+function nextSequence(history: MatchEntry[]): number {
+  let max = 0;
+  for (const entry of history) {
+    if (entry.seq !== undefined && entry.seq > max) {
+      max = entry.seq;
+    }
+  }
+  return max + 1;
+}
+
+/**
  * Gets the current difficulty modifier for a player (test helper).
  *
  * @param ctx - Nakama runtime context
@@ -704,6 +1074,9 @@ export function setDifficultyModifier(ctx: TestContext, userId: string, modifier
 /**
  * Tracks a match outcome for difficulty adjustment (test helper).
  *
+ * Delegates to the same server-authoritative re-derivation used by the
+ * `track_match_outcome` RPC, so tests exercise production semantics.
+ *
  * @param ctx - Nakama runtime context
  * @param userId - User ID to track match for
  * @param data - Match outcome data
@@ -713,75 +1086,12 @@ export function trackMatchOutcome(
   userId: string,
   data: { won: boolean; match_type: 'pve' | 'pvp' }
 ): void {
-  const stateResult = loadDifficultyState(ctx as unknown as Runtime.Nakama, userId);
-  const state = stateResult.success
-    ? stateResult.data!
-    : {
-        player_id: userId,
-        current_modifier: 0.0,
-        win_streak: 0,
-        lose_streak: 0,
-        updated_at: 0,
-      };
-
-  // Update streaks
-  if (data.won) {
-    state.win_streak += 1;
-    state.lose_streak = 0;
-  } else {
-    state.lose_streak += 1;
-    state.win_streak = 0;
-  }
-
-  // Check for difficulty adjustment
-  if (state.win_streak >= WIN_STREAK_THRESHOLD) {
-    state.current_modifier = Math.min(state.current_modifier + 0.1, MAX_MODIFIER);
-    state.win_streak = 0;
-  }
-
-  if (state.lose_streak >= LOSE_STREAK_THRESHOLD) {
-    state.current_modifier = Math.max(state.current_modifier - 0.1, MIN_MODIFIER);
-    state.lose_streak = 0;
-  }
-
-  state.updated_at = Math.floor(Date.now() / 1000);
-
-  // Save state
-  ctx.storageWrite?.([
-    {
-      collection: 'difficulty_state',
-      key: userId,
-      userId: userId,
-      value: JSON.stringify(state),
-    },
-  ]);
-
-  // Track match entry
-  const matchEntry: MatchEntry = {
-    match_id: `test-${Date.now()}`,
+  applyTrackedOutcome(ctx as unknown as Runtime.Nakama, userId, {
+    match_id: `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     won: data.won,
     match_type: data.match_type,
-    timestamp: Math.floor(Date.now() / 1000),
-    base_difficulty: state.current_modifier,
-  };
-
-  const historyResult = loadMatchHistory(ctx as unknown as Runtime.Nakama, userId);
-  const history = historyResult.success ? historyResult.data! : [];
-  history.push(matchEntry);
-
-  // Keep only last 50 matches (as per test expectation)
-  if (history.length > 50) {
-    history.splice(0, history.length - 50);
-  }
-
-  ctx.storageWrite?.([
-    {
-      collection: 'match_history',
-      key: userId,
-      userId: userId,
-      value: JSON.stringify(history),
-    },
-  ]);
+    duration: 0,
+  });
 }
 
 /**
@@ -797,6 +1107,8 @@ export function resetDifficulty(ctx: TestContext, userId: string): void {
     win_streak: 0,
     lose_streak: 0,
     updated_at: Math.floor(Date.now() / 1000),
+    last_adjusted_seq: 0,
+    corroborated_completions: {},
   };
 
   // Reset difficulty state
@@ -893,19 +1205,18 @@ export function calculateTargetDifficulty(
 }
 
 /**
- * Gets encounter reward modifier based on difficulty (test helper).
+ * Gets the encounter reward modifier based on difficulty (test helper).
+ *
+ * Reward-neutrality (#870): the dynamic difficulty modifier must NEVER
+ * affect loot, XP, or drop rates. The ratified constraint is enforced here
+ * by always returning a neutral 1.0x multiplier, regardless of the current
+ * difficulty modifier. Rewards are computed exclusively from stage-level
+ * inputs (stage difficulty tier, boss defeat) by the loot system.
  *
  * @param ctx - Nakama runtime context
  * @param userId - User ID to get reward modifier for
- * @returns Reward multiplier (0.8-1.4)
+ * @returns Reward multiplier — always exactly 1.0 (reward-neutral)
  */
-export function getEncounterRewardModifier(ctx: TestContext, userId: string): number {
-  const modifier = getDifficultyModifier(ctx, userId);
-
-  // Map modifier to reward multiplier
-  // -0.2 (Easy) -> 0.8x
-  // 0.0 (Normal) -> 1.0x
-  // 0.1 (Hard) -> 1.2x
-  // 0.2 (Extreme) -> 1.4x
-  return 1.0 + modifier * 2.0;
+export function getEncounterRewardModifier(_ctx: TestContext, _userId: string): number {
+  return 1.0;
 }
