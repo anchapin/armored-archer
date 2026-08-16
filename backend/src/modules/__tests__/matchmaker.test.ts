@@ -32,6 +32,7 @@ import {
   type PunchUpInfo,
 } from '../matchmaker';
 import { resetRateLimiting, initializeRateLimiting } from '../rate_limit';
+import { resetPunchUpWatchState } from '../punchup_watch';
 
 // Mock anti_cheat module
 jest.mock('../anti_cheat', () => ({
@@ -45,6 +46,10 @@ jest.mock('../anti_cheat', () => ({
 jest.mock('../season_system', () => ({
   getCurrentSeason: jest.fn(),
   applyEloUpdates: jest.fn(),
+  getEloKFactors: jest.fn((isPunchUp: boolean, loserIsUnderdog: boolean) => ({
+    winnerK: isPunchUp ? 50 : 32,
+    loserK: isPunchUp && loserIsUnderdog ? 100 : isPunchUp ? 50 : 32,
+  })),
   getLeaderboardEntry: jest.fn(),
   recordPlayerActivity: jest.fn(),
   applyRankDecay: jest.fn(),
@@ -870,6 +875,164 @@ describe('matchmaker', () => {
       // No re-application of Elo/XP/rewards on the replay
       expect(applyEloUpdates).toHaveBeenCalledTimes(1);
       expect(recordMatchResult).toHaveBeenCalledTimes(2); // once per player, first call only
+    });
+
+    describe('punch-up loss settlement (issue #864)', () => {
+      beforeEach(() => {
+        resetPunchUpWatchState();
+      });
+
+      /**
+       * Active ranked punch-up: creator test-user-123 (rank 25) is the
+       * underdog, opponent-user (rank 35) the favorite.
+       */
+      const createPunchUpMatch = (overrides = {}): PvPMatch =>
+        createActiveMatch({
+          creator_rank: 25,
+          opponent_rank: 35,
+          is_punch_up: true,
+          ...overrides,
+        });
+
+      it('amplifies the underdog punch-up loss (2x K-factor) via server-derived underdog flag', () => {
+        // Underdog (creator) at zero health: favorite wins the punch-up
+        const match = createPunchUpMatch({ creator_health: 0 });
+        installStatefulStorage(match);
+
+        const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, JSON.stringify({
+          match_id: match.match_id,
+        }));
+        const parsed = JSON.parse(result);
+
+        expect(parsed.success).toBe(true);
+        expect(parsed.winner.user_id).toBe('opponent-user');
+        expect(parsed.loser.user_id).toBe('test-user-123');
+
+        // applyEloUpdates receives the server-derived underdog flag so the
+        // loser's deduction runs at 2x the punch-up K-factor
+        const eloCall = (applyEloUpdates as jest.Mock).mock.calls[0];
+        expect(eloCall[3]).toBe('opponent-user'); // winner (server-declared)
+        expect(eloCall[4]).toBe('test-user-123'); // loser = underdog
+        expect(eloCall[7]).toBe(true); // isPunchUp from server match record
+        expect(eloCall[10]).toBe(true); // loserIsUnderdog -> amplified 2x K
+
+        // Fairness telemetry emits the punch-up loss event for LC-T3 review
+        const telemetryWrite = (mockNk.storageWrite as jest.Mock).mock.calls
+          .map((call: any[]) => call[0])
+          .flat()
+          .find((w: any) => w.collection === 'fairness_punch_up_losses');
+        expect(telemetryWrite).toBeTruthy();
+        const event = JSON.parse(telemetryWrite.value);
+        expect(event.match_id).toBe(match.match_id);
+        expect(event.loser_id).toBe('test-user-123');
+        expect(event.winner_id).toBe('opponent-user');
+        expect(event.amplified).toBe(true);
+        expect(event.winner_k_factor).toBe(50);
+        expect(event.loser_k_factor).toBe(100);
+        expect(event.loser_xp_gained).toBe(13);
+        expect(event.watch.flagged).toBe(false);
+      });
+
+      it('keeps punch-up loss XP strictly positive and reduced', () => {
+        const match = createPunchUpMatch({ creator_health: 0 });
+        installStatefulStorage(match);
+
+        const parsed = JSON.parse(
+          rpcCompleteMatch(mockCtx, mockLogger, mockNk, JSON.stringify({ match_id: match.match_id }))
+        );
+
+        // Ranked loss base XP 25 reduced by the punch-up loss factor (0.5):
+        // round(25 * 0.5) = 13 — reduced vs the old multiplied grant and vs
+        // a normal loss, never zero or negative.
+        expect(parsed.loser.xp_gained).toBe(13);
+        expect(parsed.loser.xp_gained).toBeGreaterThan(0);
+        // Winner (favorite) XP unchanged: round(100 * favorite penalty at diff 10)
+        expect(parsed.winner.xp_gained).toBe(60);
+        // XP reward entry matches the granted amount
+        const loserXPReward = parsed.loser.rewards.find((r: any) => r.type === 'xp');
+        expect(loserXPReward.quantity).toBe(13);
+      });
+
+      it('does not amplify when the favorite loses the punch-up (upset)', () => {
+        // Favorite (opponent, rank 35) at zero health: underdog wins
+        const match = createPunchUpMatch({ opponent_health: 0 });
+        installStatefulStorage(match);
+
+        const parsed = JSON.parse(
+          rpcCompleteMatch(mockCtx, mockLogger, mockNk, JSON.stringify({ match_id: match.match_id }))
+        );
+
+        expect(parsed.winner.user_id).toBe('test-user-123');
+        expect(parsed.loser.user_id).toBe('opponent-user');
+
+        const eloCall = (applyEloUpdates as jest.Mock).mock.calls[0];
+        expect(eloCall[7]).toBe(true); // isPunchUp
+        expect(eloCall[10]).toBe(false); // loser is the favorite: NOT amplified
+        // Favorite loser XP: reduced by favorite penalty, still positive
+        expect(parsed.loser.xp_gained).toBe(15); // round(25 * 0.6)
+        expect(parsed.loser.xp_gained).toBeGreaterThan(0);
+      });
+
+      it('does not amplify or reduce XP on non-punch-up losses', () => {
+        const match = createActiveMatch({ opponent_health: 0 }); // winner = creator
+        installStatefulStorage(match);
+
+        const parsed = JSON.parse(
+          rpcCompleteMatch(mockCtx, mockLogger, mockNk, JSON.stringify({ match_id: match.match_id }))
+        );
+
+        const eloCall = (applyEloUpdates as jest.Mock).mock.calls[0];
+        expect(eloCall[7]).toBe(false); // not a punch-up
+        expect(eloCall[10]).toBe(false);
+        // Normal ranked loss XP unchanged
+        expect(parsed.loser.xp_gained).toBe(25);
+      });
+
+      it('keeps underdog punch-up loss XP strictly positive across punch-up rank differences', () => {
+        for (const [creatorRank, opponentRank] of [
+          [25, 30], // diff 5 (low)
+          [25, 40], // diff 15 (high)
+        ] as Array<[number, number]>) {
+          // Reset per-iteration: match-completion cooldown + watch history
+          resetRateLimiting();
+          initializeRateLimiting();
+          resetPunchUpWatchState();
+          jest.clearAllMocks();
+          (isPlayerFlagged as jest.Mock).mockReturnValue(false);
+          (getCurrentSeason as jest.Mock).mockReturnValue({
+            season_id: 'season_1',
+            start_time: 0,
+            end_time: Date.now() + 86400000,
+          });
+          (getLeaderboardEntry as jest.Mock).mockReturnValue(null);
+          (applyEloUpdates as jest.Mock).mockReturnValue({ winnerNewElo: 1210, loserNewElo: 1140 });
+          (recordPlayerActivity as jest.Mock).mockImplementation();
+          (applyRankDecay as jest.Mock).mockImplementation((_nk: any, _u: string, rank: number) => rank);
+          (logAudit as jest.Mock).mockImplementation();
+          (recordMatchResult as jest.Mock).mockImplementation();
+
+          const match = createPunchUpMatch({
+            creator_rank: creatorRank,
+            opponent_rank: opponentRank,
+            creator_health: 0,
+            match_id: `match_punchup_diff_${opponentRank - creatorRank}`,
+          });
+          installStatefulStorage(match);
+
+          const parsed = JSON.parse(
+            rpcCompleteMatch(
+              mockCtx,
+              mockLogger,
+              mockNk,
+              JSON.stringify({ match_id: match.match_id })
+            )
+          );
+
+          expect(parsed.success).toBe(true);
+          expect(parsed.loser.xp_gained).toBeGreaterThan(0);
+          expect(parsed.loser.xp_gained).toBe(13);
+        }
+      });
     });
 
     it('should settle from combat system MatchState winner with forfeit reason', () => {

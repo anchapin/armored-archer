@@ -47,6 +47,10 @@ export interface RankChangeEvent {
   loser_rank_delta: number;
   is_punch_up: boolean;
   k_factor: number;
+  /** K-factor used for the winner's Elo gain (issue #864 per-side K). */
+  winner_k_factor?: number;
+  /** Whether the loser's deduction was amplified (2x K punch-up underdog loss). */
+  loser_k_factor_amplified?: boolean;
   days_into_season: number;
 }
 

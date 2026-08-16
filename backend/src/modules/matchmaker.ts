@@ -14,7 +14,14 @@ import {
   getPlayerMatchHistory,
 } from './anti_cheat';
 import { logAudit } from './audit';
-import { logRankingDelta, type RankingDeltaEvent } from './fairness_telemetry';
+import {
+  logRankingDelta,
+  logPunchUpLoss,
+  type RankingDeltaEvent,
+  type PunchUpLossEvent,
+} from './fairness_telemetry';
+import { incrementPunchUpLoss, incrementPunchUpWatchFlag } from './metrics';
+import { recordPunchUpLossAndEvaluate } from './punchup_watch';
 import {
   checkRateLimit,
   checkMatchCooldown,
@@ -27,6 +34,7 @@ import {
 import {
   getCurrentSeason,
   applyEloUpdates,
+  getEloKFactors,
   getLeaderboardEntry,
   recordPlayerActivity,
   applyRankDecay,
@@ -1708,7 +1716,17 @@ function calculateOldRank(match: PvPMatch, userId: string, matchType: string): n
 }
 
 /**
- * Process ranked match updates (Elo, records, anti-cheat)
+ * Process ranked match updates (Elo, records, anti-cheat).
+ *
+ * @param nk - Nakama server interface
+ * @param ctx - Nakama runtime context
+ * @param winnerId - Server-declared winner user ID
+ * @param loserId - Server-declared loser user ID
+ * @param matchId - ID of the match being settled
+ * @param currentSeason - Current season scope
+ * @param isPunchUp - Whether the server match record marks this a punch-up
+ * @param loserIsUnderdog - Whether the loser is the punch-up underdog
+ * @returns New ranks, rank changes, and the per-side K-factors applied
  */
 function processRankedMatchUpdates(
   nk: Runtime.Nakama,
@@ -1717,12 +1735,15 @@ function processRankedMatchUpdates(
   loserId: string,
   matchId: string,
   currentSeason: SeasonInfo,
-  isPunchUp: boolean
+  isPunchUp: boolean,
+  loserIsUnderdog: boolean
 ): {
   winnerNewRank: number;
   loserNewRank: number;
   winnerRankChange: number;
   loserRankChange: number;
+  winnerK: number;
+  loserK: number;
 } {
   // Get current Elo ratings from leaderboard
   const winnerEntry = getLeaderboardEntry(nk, winnerId, currentSeason.season_id);
@@ -1742,18 +1763,23 @@ function processRankedMatchUpdates(
     loserOldElo,
     isPunchUp,
     winnerEntry,
-    loserEntry
+    loserEntry,
+    loserIsUnderdog
   );
 
   // Record match results for anti-cheat analysis
   recordMatchResult(winnerId, matchId, loserId, 'win', true, winnerOldElo, winnerNewElo);
   recordMatchResult(loserId, matchId, winnerId, 'loss', true, loserOldElo, loserNewElo);
 
+  const { winnerK, loserK } = getEloKFactors(isPunchUp, loserIsUnderdog);
+
   return {
     winnerNewRank: winnerNewElo,
     loserNewRank: loserNewElo,
     winnerRankChange: winnerNewElo - winnerOldElo,
     loserRankChange: loserNewElo - loserOldElo,
+    winnerK,
+    loserK,
   };
 }
 
@@ -1845,6 +1871,138 @@ function calculateSeasonPositions(
 }
 
 /**
+ * Determines whether a settlement participant is the punch-up underdog.
+ * The underdog concept only exists within a punch-up — outside one, no
+ * player is an underdog regardless of rank.
+ *
+ * @param isPunchUp - Whether the server match record marks this a punch-up
+ * @param playerId - Participant to test
+ * @param punchUpInfo - Punch-up info resolved from server match ranks
+ * @returns True only for the underdog of an actual punch-up
+ */
+function isPunchUpUnderdog(
+  isPunchUp: boolean,
+  playerId: string,
+  punchUpInfo: PunchUpInfo
+): boolean {
+  return isPunchUp && playerId === punchUpInfo.underdog_id;
+}
+
+/**
+ * Settlement facts about the losing side needed by the punch-up loss watch.
+ *
+ * @property loserOldRank - Loser's ladder rating before settlement
+ * @property loserNewRank - Loser's ladder rating after settlement
+ * @property loserRankChange - Elo delta applied to the loser (negative)
+ * @property loserXpGained - XP granted to the loser (strictly positive)
+ * @property winnerRankChange - Elo delta applied to the winner
+ * @property winnerKFactor - K-factor used for the winner's Elo gain
+ * @property loserKFactor - K-factor used for the loser's deduction
+ */
+interface PunchUpLossSettlementFacts {
+  loserOldRank: number;
+  loserNewRank: number;
+  loserRankChange: number;
+  loserXpGained: number;
+  winnerRankChange: number;
+  winnerKFactor: number;
+  loserKFactor: number;
+}
+
+/**
+ * Runs the LC-T3 punch-up wager abuse watch for a settled punch-up underdog
+ * loss and emits the fairness telemetry event (issue #864). Detection and
+ * logging only — never blocks or alters the settlement outcome.
+ *
+ * @param nk - Nakama server interface
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance (winston)
+ * @param match - The settled match
+ * @param winnerId - Server-declared winner (the favorite)
+ * @param loserId - Server-declared loser (the underdog)
+ * @param facts - Settlement facts for telemetry
+ * @param seasonId - Current season ID
+ * @param settledAt - Settlement timestamp (ms since epoch)
+ */
+function runPunchUpLossWatch(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  match: PvPMatch,
+  winnerId: string,
+  loserId: string,
+  facts: PunchUpLossSettlementFacts,
+  seasonId: string,
+  settledAt: number
+): void {
+  const watchVerdict = recordPunchUpLossAndEvaluate({
+    matchId: match.match_id,
+    winnerId,
+    loserId,
+    timestamp: settledAt,
+  });
+
+  incrementPunchUpLoss(seasonId);
+
+  if (watchVerdict.flagged) {
+    logger.warn(
+      'LC-T3 punch-up wager abuse watch flag: match=%s, loser=%s, winner=%s, reason=%s, pair_losses=%d, player_losses=%d',
+      match.match_id,
+      loserId,
+      winnerId,
+      watchVerdict.reason,
+      watchVerdict.pairLossCount,
+      watchVerdict.playerLossCount
+    );
+    incrementPunchUpWatchFlag(watchVerdict.reason);
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'complete_match',
+      'pvp_matches',
+      {
+        match_id: match.match_id,
+        winner_id: winnerId,
+        loser_id: loserId,
+        watch_reason: watchVerdict.reason,
+        pair_loss_count: watchVerdict.pairLossCount,
+        player_loss_count: watchVerdict.playerLossCount,
+      },
+      'failure',
+      'punch_up_watch_flag'
+    );
+  }
+
+  const punchUpLossEvent: PunchUpLossEvent = {
+    event_id: `punchup_loss_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    match_id: match.match_id,
+    timestamp: settledAt,
+    season_id: seasonId,
+    loser_id: loserId,
+    winner_id: winnerId,
+    loser_old_rank: facts.loserOldRank,
+    loser_new_rank: facts.loserNewRank,
+    loser_rank_change: facts.loserRankChange,
+    loser_xp_gained: facts.loserXpGained,
+    winner_rank_change: facts.winnerRankChange,
+    amplified: true,
+    winner_k_factor: facts.winnerKFactor,
+    loser_k_factor: facts.loserKFactor,
+    end_reason: match.end_reason ?? 'health_zero',
+    watch: {
+      flagged: watchVerdict.flagged,
+      reason: watchVerdict.reason,
+      pair_loss_count: watchVerdict.pairLossCount,
+      player_loss_count: watchVerdict.playerLossCount,
+    },
+  };
+
+  // Non-blocking: log to telemetry but don't wait
+  void logPunchUpLoss(nk, punchUpLossEvent);
+}
+
+/**
  * Process the match result, calculate ranks, and update storage.
  *
  * The winner/loser in `request` must be server-derived (ADR-0002) — either
@@ -1879,11 +2037,34 @@ function processMatchResult(
   // calculations (punch-up rank lookup, telemetry) see consistent state.
   match.winner = request.winner_id;
 
+  // Calculate punch-up info from SERVER match data (ranks recorded at match
+  // creation). This is the sole source for underdog/favorite determination —
+  // client-asserted payloads are advisory only (ADR-0002 / issue #864).
+  const winnerOldRank =
+    match.winner === match.creator_id ? match.creator_rank : match.opponent_rank;
+  const loserOldRank =
+    match.winner === match.opponent_id ? match.creator_rank : match.opponent_rank;
+  const punchUpInfo = isPunchUpMatch(
+    winnerOldRank,
+    loserOldRank,
+    request.winner_id,
+    request.loser_id
+  );
+
+  // Determine if winner and loser are underdogs or favorites. The underdog
+  // concept only exists within a punch-up; the amplified punch-up loss (2x
+  // K-factor, issue #864) applies only when the LOSER is the underdog — the
+  // winner side is never amplified.
+  const winnerIsUnderdog = isPunchUpUnderdog(isPunchUp, request.winner_id, punchUpInfo);
+  const loserIsUnderdog = isPunchUpUnderdog(isPunchUp, request.loser_id, punchUpInfo);
+
   // Initialize ranks for ranked matches
   let winnerNewRank = match.creator_rank;
   let loserNewRank = match.opponent_rank;
   let winnerRankChange = 0;
   let loserRankChange = 0;
+  let winnerKFactor = 0;
+  let loserKFactor = 0;
 
   // Process ranked match Elo and record updates
   if (match.match_type === 'ranked') {
@@ -1895,12 +2076,15 @@ function processMatchResult(
       request.loser_id,
       request.match_id,
       currentSeason,
-      isPunchUp
+      isPunchUp,
+      loserIsUnderdog
     );
     winnerNewRank = rankedUpdates.winnerNewRank;
     loserNewRank = rankedUpdates.loserNewRank;
     winnerRankChange = rankedUpdates.winnerRankChange;
     loserRankChange = rankedUpdates.loserRankChange;
+    winnerKFactor = rankedUpdates.winnerK;
+    loserKFactor = rankedUpdates.loserK;
   }
 
   // Record player activity for rank decay tracking
@@ -1926,22 +2110,6 @@ function processMatchResult(
   const winnerOldSeasonPosition = winnerOldSeasonEntry ? winnerOldSeasonEntry.rank : 0;
   const loserOldSeasonEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
   const loserOldSeasonPosition = loserOldSeasonEntry ? loserOldSeasonEntry.rank : 0;
-
-  // Calculate punch-up info for reward scaling
-  const winnerOldRank =
-    match.winner === match.creator_id ? match.creator_rank : match.opponent_rank;
-  const loserOldRank =
-    match.winner === match.opponent_id ? match.creator_rank : match.opponent_rank;
-  const punchUpInfo = isPunchUpMatch(
-    winnerOldRank,
-    loserOldRank,
-    request.winner_id,
-    request.loser_id
-  );
-
-  // Determine if winner and loser are underdogs or favorites
-  const winnerIsUnderdog = request.winner_id === punchUpInfo.underdog_id;
-  const loserIsUnderdog = request.loser_id === punchUpInfo.underdog_id;
 
   // Calculate XP gains with punch-up scaling
   const winnerXPParams: RewardCalculationParams = {
@@ -2078,6 +2246,31 @@ function processMatchResult(
     void logRankingDelta(nk, rankingDeltaEvent);
   }
 
+  // Punch-up underdog loss (issue #864): run the LC-T3 anti-abuse watch and
+  // emit a fairness telemetry event for review. Watch is detection + logging
+  // only — it never blocks or alters settlement.
+  if (match.match_type === 'ranked' && isPunchUp && loserIsUnderdog) {
+    runPunchUpLossWatch(
+      nk,
+      ctx,
+      logger,
+      match,
+      request.winner_id,
+      request.loser_id,
+      {
+        loserOldRank: calculateOldRank(match, request.loser_id, match.match_type),
+        loserNewRank,
+        loserRankChange,
+        loserXpGained: loserXPGained,
+        winnerRankChange,
+        winnerKFactor,
+        loserKFactor,
+      },
+      currentSeason.season_id,
+      now
+    );
+  }
+
   return JSON.stringify({
     success: true,
     match: match,
@@ -2168,8 +2361,18 @@ function calculateXPGain(params: RewardCalculationParams): number {
 
   if (params.isPunchUp) {
     if (params.isUnderdog) {
-      // Underdog gets bonus based on rank difference
-      baseXP = Math.round(baseXP * params.rewardMultiplier);
+      if (params.isWinner) {
+        // Underdog win: bonus based on rank difference
+        baseXP = Math.round(baseXP * params.rewardMultiplier);
+      } else {
+        // Underdog loss (issue #864): the wager consequence is the amplified
+        // Ladder Rating deduction; the XP grant is reduced but NEVER negative
+        // or zero — progression is never wagered.
+        baseXP = Math.max(
+          PUNCH_UP_LOSS_XP_MINIMUM,
+          Math.round(baseXP * PUNCH_UP_LOSS_XP_MULTIPLIER)
+        );
+      }
     } else {
       // Favorite gets penalty based on rank difference
       const penalty = calculateFavoritePenalty(params.isPunchUp, params.rankDifference);
@@ -2890,6 +3093,8 @@ const PUNCH_UP_GEM_BONUS_MIN = 3; // Minimum gems for punch-up win
 const PUNCH_UP_GEM_BONUS_MAX = 10; // Maximum gems for punch-up win
 const FAVORITE_REWARD_PENALTY_MIN = 0.7; // Minimum reward multiplier for favorites (30% reduction)
 const FAVORITE_REWARD_PENALTY_MAX = 0.5; // Maximum reward multiplier for favorites (50% reduction)
+const PUNCH_UP_LOSS_XP_MULTIPLIER = 0.5; // Issue #864: reduced XP grant on punch-up loss
+const PUNCH_UP_LOSS_XP_MINIMUM = 1; // XP on any loss is strictly positive (progression is never wagered)
 
 /**
  * Turn result data structure.
