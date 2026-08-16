@@ -1080,7 +1080,12 @@ describe('season_system', () => {
 
     it('should seed players into new season with soft-reset elo', () => {
       const players = [
-        createMockLeaderboardRecord({ ownerId: 'player-1', username: 'Player1', rank: 1, score: 2500 }),
+        createMockLeaderboardRecord({
+          ownerId: 'player-1',
+          username: 'Player1',
+          rank: 1,
+          score: 2500,
+        }),
       ];
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
       mockNk.walletUpdate = jest.fn();
@@ -1099,9 +1104,7 @@ describe('season_system', () => {
     });
 
     it('should handle players with cosmetic rewards', () => {
-      const players = [
-        createMockLeaderboardRecord({ ownerId: 'player-1', rank: 5, score: 2000 }),
-      ];
+      const players = [createMockLeaderboardRecord({ ownerId: 'player-1', rank: 5, score: 2000 })];
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
       mockNk.walletUpdate = jest.fn();
       mockNk.storageWrite = jest.fn();
@@ -1121,7 +1124,11 @@ describe('season_system', () => {
         createMockLeaderboardRecord({ ownerId: `player-${i}`, rank: i + 1, score: 2000 - i })
       );
       const batch2 = Array.from({ length: 10 }, (_, i) =>
-        createMockLeaderboardRecord({ ownerId: `player-${500 + i}`, rank: 501 + i, score: 1490 - i })
+        createMockLeaderboardRecord({
+          ownerId: `player-${500 + i}`,
+          rank: 501 + i,
+          score: 1490 - i,
+        })
       );
 
       let callCount = 0;
@@ -1162,22 +1169,22 @@ describe('season_system', () => {
       mockNk.storageRead = jest.fn((objects: any[]) => {
         for (const obj of objects) {
           if (obj.collection === 'player_prestige') {
-            return [{
-              value: JSON.stringify({
-                player_id: obj.key,
-                season_finishes: [{ season_id: 'season_1', rank: 50 }],
-                prestige_tiers_earned: [],
-                last_updated: 0,
-              }),
-            }];
+            return [
+              {
+                value: JSON.stringify({
+                  player_id: obj.key,
+                  season_finishes: [{ season_id: 'season_1', rank: 50 }],
+                  prestige_tiers_earned: [],
+                  last_updated: 0,
+                }),
+              },
+            ];
           }
         }
         return [];
       });
 
-      const players = [
-        createMockLeaderboardRecord({ ownerId: 'player-1', rank: 30, score: 2000 }),
-      ];
+      const players = [createMockLeaderboardRecord({ ownerId: 'player-1', rank: 30, score: 2000 })];
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
       mockNk.walletUpdate = jest.fn();
       mockNk.storageWrite = jest.fn();
@@ -1252,13 +1259,7 @@ describe('season_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(mockNk.leaderboardRecordList).toHaveBeenCalledWith(
-        expect.any(String),
-        [],
-        50,
-        '',
-        0
-      );
+      expect(mockNk.leaderboardRecordList).toHaveBeenCalledWith(expect.any(String), [], 50, '', 0);
     });
 
     it('should use specified limit', () => {
@@ -1269,13 +1270,7 @@ describe('season_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(mockNk.leaderboardRecordList).toHaveBeenCalledWith(
-        expect.any(String),
-        [],
-        10,
-        '',
-        0
-      );
+      expect(mockNk.leaderboardRecordList).toHaveBeenCalledWith(expect.any(String), [], 10, '', 0);
     });
   });
 
@@ -1303,16 +1298,30 @@ describe('season_system', () => {
       mockNk.leaderboardRecordWrite = jest.fn();
 
       const normalResult = applyEloUpdates(
-        mockNk, mockCtx, { season_id: 'season_1' },
-        'winner', 'loser', 1200, 1000,
-        false, null, null
+        mockNk,
+        mockCtx,
+        { season_id: 'season_1' },
+        'winner',
+        'loser',
+        1200,
+        1000,
+        false,
+        null,
+        null
       );
 
       mockNk.leaderboardRecordWrite = jest.fn();
       const punchUpResult = applyEloUpdates(
-        mockNk, mockCtx, { season_id: 'season_1' },
-        'winner', 'loser', 1200, 1000,
-        true, null, null
+        mockNk,
+        mockCtx,
+        { season_id: 'season_1' },
+        'winner',
+        'loser',
+        1200,
+        1000,
+        true,
+        null,
+        null
       );
 
       const normalDelta = normalResult.winnerNewElo - 1200;
@@ -1370,17 +1379,19 @@ describe('season_system', () => {
 
   describe('rpcGetPrestigeProgress', () => {
     it('should return prestige progress for a player', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([{
-        value: JSON.stringify({
-          player_id: 'test-user',
-          season_finishes: [
-            { season_id: 'season_1', rank: 50 },
-            { season_id: 'season_2', rank: 30 },
-          ],
-          prestige_tiers_earned: [],
-          last_updated: Date.now(),
-        }),
-      }]);
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          value: JSON.stringify({
+            player_id: 'test-user',
+            season_finishes: [
+              { season_id: 'season_1', rank: 50 },
+              { season_id: 'season_2', rank: 30 },
+            ],
+            prestige_tiers_earned: [],
+            last_updated: Date.now(),
+          }),
+        },
+      ]);
 
       const result = rpcGetPrestigeProgress(mockCtx, mockLogger, mockNk, '{}');
       const parsed = JSON.parse(result);

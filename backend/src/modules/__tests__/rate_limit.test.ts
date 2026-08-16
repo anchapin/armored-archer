@@ -159,10 +159,7 @@ describe('Rate Limiting Module', () => {
       const userId = 'user_123';
 
       // Custom short cooldown for testing
-      initializeRateLimiting(
-        undefined,
-        { matchCreateMs: 100 }
-      );
+      initializeRateLimiting(undefined, { matchCreateMs: 100 });
 
       recordMatchAction(userId, 'create', 'match_123');
 

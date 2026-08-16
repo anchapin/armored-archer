@@ -95,10 +95,9 @@ describe('match_replay', () => {
       expect(response.replay).toBeDefined();
       expect(response.replay.match_id).toBe('match_test_123');
       expect(response.replay.total_turns).toBe(10);
-      expect(mockNk.dbQuery).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT'),
-        ['match_test_123']
-      );
+      expect(mockNk.dbQuery).toHaveBeenCalledWith(expect.stringContaining('SELECT'), [
+        'match_test_123',
+      ]);
     });
 
     it('should return error when match not found', async () => {
@@ -156,9 +155,7 @@ describe('match_replay', () => {
     });
 
     it('should filter by match type', async () => {
-      const mockMatches = [
-        createMockMatchResult({ match_id: 'match_1', match_type: 'ranked' }),
-      ];
+      const mockMatches = [createMockMatchResult({ match_id: 'match_1', match_type: 'ranked' })];
       mockNk.dbQuery.mockResolvedValue(mockMatches);
 
       const payload = JSON.stringify({ match_type: 'ranked', limit: 10 });
@@ -174,9 +171,7 @@ describe('match_replay', () => {
     });
 
     it('should filter by QA flagged only', async () => {
-      const mockMatches = [
-        createMockMatchResult({ match_id: 'match_1', qa_flagged: true }),
-      ];
+      const mockMatches = [createMockMatchResult({ match_id: 'match_1', qa_flagged: true })];
       mockNk.dbQuery.mockResolvedValue(mockMatches);
 
       const payload = JSON.stringify({ qa_flagged_only: true });
@@ -191,9 +186,7 @@ describe('match_replay', () => {
     });
 
     it('should filter by player ID', async () => {
-      const mockMatches = [
-        createMockMatchResult({ match_id: 'match_1' }),
-      ];
+      const mockMatches = [createMockMatchResult({ match_id: 'match_1' })];
       mockNk.dbQuery.mockResolvedValue(mockMatches);
 
       const payload = JSON.stringify({ player_id: 'creator-user' });
@@ -245,10 +238,10 @@ describe('match_replay', () => {
 
       expect(response.success).toBe(true);
       expect(response.message).toContain('flagged');
-      expect(mockNk.dbQuery).toHaveBeenCalledWith(
-        'SELECT flag_match_for_qa($1, $2)',
-        ['match_test_123', 'Suspicious damage values']
-      );
+      expect(mockNk.dbQuery).toHaveBeenCalledWith('SELECT flag_match_for_qa($1, $2)', [
+        'match_test_123',
+        'Suspicious damage values',
+      ]);
     });
 
     it('should return error when match not found', async () => {

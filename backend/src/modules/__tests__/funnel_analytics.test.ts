@@ -120,8 +120,21 @@ describe('Funnel Analytics Module', () => {
 
     it('should set first_pve_timestamp on pve_stage_completed', () => {
       mockNk = createMockNk(
-        { user_id: 'user_123', install_timestamp: 1000, first_pve_timestamp: null, first_pvp_timestamp: null, first_purchase_timestamp: null, last_updated: 1000 },
-        { install: 1, first_pve_completed: 0, first_pvp_completed: 0, first_purchase: 0, updated_at: 1000 }
+        {
+          user_id: 'user_123',
+          install_timestamp: 1000,
+          first_pve_timestamp: null,
+          first_pvp_timestamp: null,
+          first_purchase_timestamp: null,
+          last_updated: 1000,
+        },
+        {
+          install: 1,
+          first_pve_completed: 0,
+          first_pvp_completed: 0,
+          first_purchase: 0,
+          updated_at: 1000,
+        }
       );
 
       processFunnelEvent(mockNk, mockLogger, 'user_123', 'pve_stage_completed');
@@ -133,8 +146,21 @@ describe('Funnel Analytics Module', () => {
 
     it('should set first_pvp_timestamp on pvp_match_completed', () => {
       mockNk = createMockNk(
-        { user_id: 'user_123', install_timestamp: 1000, first_pve_timestamp: 2000, first_pvp_timestamp: null, first_purchase_timestamp: null, last_updated: 2000 },
-        { install: 1, first_pve_completed: 1, first_pvp_completed: 0, first_purchase: 0, updated_at: 2000 }
+        {
+          user_id: 'user_123',
+          install_timestamp: 1000,
+          first_pve_timestamp: 2000,
+          first_pvp_timestamp: null,
+          first_purchase_timestamp: null,
+          last_updated: 2000,
+        },
+        {
+          install: 1,
+          first_pve_completed: 1,
+          first_pvp_completed: 0,
+          first_purchase: 0,
+          updated_at: 2000,
+        }
       );
 
       processFunnelEvent(mockNk, mockLogger, 'user_123', 'pvp_match_completed');
@@ -146,8 +172,21 @@ describe('Funnel Analytics Module', () => {
 
     it('should set first_purchase_timestamp on purchase_completed', () => {
       mockNk = createMockNk(
-        { user_id: 'user_123', install_timestamp: 1000, first_pve_timestamp: 2000, first_pvp_timestamp: 3000, first_purchase_timestamp: null, last_updated: 3000 },
-        { install: 1, first_pve_completed: 1, first_pvp_completed: 1, first_purchase: 0, updated_at: 3000 }
+        {
+          user_id: 'user_123',
+          install_timestamp: 1000,
+          first_pve_timestamp: 2000,
+          first_pvp_timestamp: 3000,
+          first_purchase_timestamp: null,
+          last_updated: 3000,
+        },
+        {
+          install: 1,
+          first_pve_completed: 1,
+          first_pvp_completed: 1,
+          first_purchase: 0,
+          updated_at: 3000,
+        }
       );
 
       processFunnelEvent(mockNk, mockLogger, 'user_123', 'purchase_completed');
@@ -159,8 +198,21 @@ describe('Funnel Analytics Module', () => {
 
     it('should be idempotent for repeated events', () => {
       mockNk = createMockNk(
-        { user_id: 'user_123', install_timestamp: 1000, first_pve_timestamp: null, first_pvp_timestamp: null, first_purchase_timestamp: null, last_updated: 1000 },
-        { install: 1, first_pve_completed: 0, first_pvp_completed: 0, first_purchase: 0, updated_at: 1000 }
+        {
+          user_id: 'user_123',
+          install_timestamp: 1000,
+          first_pve_timestamp: null,
+          first_pvp_timestamp: null,
+          first_purchase_timestamp: null,
+          last_updated: 1000,
+        },
+        {
+          install: 1,
+          first_pve_completed: 0,
+          first_pvp_completed: 0,
+          first_purchase: 0,
+          updated_at: 1000,
+        }
       );
 
       processFunnelEvent(mockNk, mockLogger, 'user_123', 'first_session');
@@ -203,9 +255,7 @@ describe('Funnel Analytics Module', () => {
 
   describe('rpcGetFunnelConversion', () => {
     it('should return zeros when no data exists', () => {
-      const result = JSON.parse(
-        rpcGetFunnelConversion(mockCtx, mockLogger, mockNk, '{}')
-      );
+      const result = JSON.parse(rpcGetFunnelConversion(mockCtx, mockLogger, mockNk, '{}'));
 
       expect(result.success).toBe(true);
       expect(result.counts.install).toBe(0);
@@ -221,9 +271,7 @@ describe('Funnel Analytics Module', () => {
         updated_at: Date.now(),
       });
 
-      const result = JSON.parse(
-        rpcGetFunnelConversion(mockCtx, mockLogger, mockNk, '{}')
-      );
+      const result = JSON.parse(rpcGetFunnelConversion(mockCtx, mockLogger, mockNk, '{}'));
 
       expect(result.success).toBe(true);
       expect(result.counts.install).toBe(100);
@@ -245,9 +293,7 @@ describe('Funnel Analytics Module', () => {
         updated_at: Date.now(),
       });
 
-      const result = JSON.parse(
-        rpcGetFunnelConversion(mockCtx, mockLogger, mockNk, '{}')
-      );
+      const result = JSON.parse(rpcGetFunnelConversion(mockCtx, mockLogger, mockNk, '{}'));
 
       expect(result.dropoff.install).toBe(40);
       expect(result.dropoff.first_pve_completed).toBe(30);
@@ -265,9 +311,7 @@ describe('Funnel Analytics Module', () => {
 
   describe('rpcGetPlayerFunnelState', () => {
     it('should return none state for new players', () => {
-      const result = JSON.parse(
-        rpcGetPlayerFunnelState(mockCtx, mockLogger, mockNk, '{}')
-      );
+      const result = JSON.parse(rpcGetPlayerFunnelState(mockCtx, mockLogger, mockNk, '{}'));
 
       expect(result.success).toBe(true);
       expect(result.funnel_state.current_step).toBe('none');
@@ -284,9 +328,7 @@ describe('Funnel Analytics Module', () => {
         last_updated: 2000,
       });
 
-      const result = JSON.parse(
-        rpcGetPlayerFunnelState(mockCtx, mockLogger, mockNk, '{}')
-      );
+      const result = JSON.parse(rpcGetPlayerFunnelState(mockCtx, mockLogger, mockNk, '{}'));
 
       expect(result.success).toBe(true);
       expect(result.funnel_state.current_step).toBe('first_pve_completed');
@@ -304,9 +346,7 @@ describe('Funnel Analytics Module', () => {
         last_updated: 4000,
       });
 
-      const result = JSON.parse(
-        rpcGetPlayerFunnelState(mockCtx, mockLogger, mockNk, '{}')
-      );
+      const result = JSON.parse(rpcGetPlayerFunnelState(mockCtx, mockLogger, mockNk, '{}'));
 
       expect(result.success).toBe(true);
       expect(result.funnel_state.current_step).toBe('first_purchase');
@@ -324,9 +364,7 @@ describe('Funnel Analytics Module', () => {
         last_updated: threeDaysAgo,
       });
 
-      const result = JSON.parse(
-        rpcGetPlayerFunnelState(mockCtx, mockLogger, mockNk, '{}')
-      );
+      const result = JSON.parse(rpcGetPlayerFunnelState(mockCtx, mockLogger, mockNk, '{}'));
 
       expect(result.success).toBe(true);
       expect(result.funnel_state.days_since_install).toBe(3);

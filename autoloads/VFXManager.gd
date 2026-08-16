@@ -298,3 +298,87 @@ func _exit_tree() -> void:
 	instance = null
 
 	print("[VFXManager] Cleanup complete - all resources released")
+
+# === Power-Up VFX Methods ===
+
+## Spawn power-up pickup particle effect
+##
+## Parameters:
+##   position: Vector2 where to spawn the effect
+##   power_up_type: String ("speed", "damage", "invincibility", "health")
+func spawn_power_up_pickup_vfx(position: Vector2, power_up_type: String = "speed") -> void:
+	"""Spawn a one-time particle effect when power-up is collected."""
+	if not _charge_effect:
+		return
+
+	var effect: GPUParticles2D = _charge_effect.instantiate()
+	get_tree().current_scene.add_child(effect)
+	effect.global_position = position
+	effect.emitting = true
+	effect.modulate = _get_power_up_vfx_color(power_up_type)
+
+	# Auto-cleanup
+	effect.finished.connect(effect.queue_free)
+
+	# Add initial burst scale
+	var tween = create_tween()
+	tween.tween_property(effect, "scale", Vector2(1.5, 1.5), 0.3).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(effect, "modulate:a", 0.0, 0.5)
+
+## Attach a looping power-up VFX to a target node
+##
+## Parameters:
+##   target: Node to attach effect to
+##   power_up_type: String ("speed", "damage", "invincibility", "health")
+func attach_power_up_vfx(target: Node, power_up_type: String = "speed") -> void:
+	"""Attach a looping particle effect to a node for active power-up."""
+	if not target or not _charge_effect:
+		return
+
+	# Create effect as child of target
+	var effect: GPUParticles2D = _charge_effect.instantiate()
+	target.add_child(effect)
+	effect.name = "PowerUpVFX"
+	effect.emitting = true
+	effect.modulate = _get_power_up_vfx_color(power_up_type)
+	effect.one_shot = false
+
+	# Add subtle pulsing animation
+	var tween = create_tween()
+	tween.set_loops()
+	tween.tween_property(effect, "scale", Vector2(1.2, 1.2), 0.5).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(effect, "scale", Vector2(0.8, 0.8), 0.5).set_trans(Tween.TRANS_SINE)
+
+## Detach power-up VFX from target
+##
+## Parameters:
+##   target: Node the effect is attached to
+##   power_up_type: String type of power-up (unused but kept for consistency)
+func detach_power_up_vfx(target: Node, power_up_type: String = "speed") -> void:
+	"""Remove looping power-up VFX from a target node."""
+	if not target:
+		return
+
+	var effect = target.get_node_or_null("PowerUpVFX")
+	if effect:
+		var tween = create_tween()
+		tween.tween_property(effect, "modulate:a", 0.0, 0.3)
+		tween.tween_callback(effect.queue_free)
+
+## Get VFX color for power-up type
+func _get_power_up_vfx_color(power_up_type: String) -> Color:
+	match power_up_type:
+		"speed":
+			return Color(0.3, 1.0, 0.5, 0.7)  # Green
+		"damage":
+			return Color(1.0, 0.5, 0.3, 0.7)  # Orange/red
+		"invincibility":
+			return Color(0.6, 0.8, 1.0, 0.7)  # Blue
+		"health":
+			return Color(1.0, 0.3, 0.4, 0.7)  # Red
+		_:
+			return Color(1, 0.675, 0.329, 0.7)  # Golden default
+
+# --- Helper for creating tweens (Godot 4.x compatible) ---
+func create_tween() -> Tween:
+	return get_tree().create_tween()

@@ -29,7 +29,12 @@ jest.mock('../validation', () => ({
 
 jest.mock('../gear_system', () => ({
   calculateDropRate: jest.fn((difficulty: string, bossDefeated: boolean) => {
-    const multipliers: Record<string, number> = { easy: 0.5, medium: 1.0, hard: 1.5, nightmare: 2.0 };
+    const multipliers: Record<string, number> = {
+      easy: 0.5,
+      medium: 1.0,
+      hard: 1.5,
+      nightmare: 2.0,
+    };
     const rate = 0.4 * (multipliers[difficulty] || 1.0);
     return Math.min(rate + (bossDefeated ? 0.25 : 0), 1.0);
   }),

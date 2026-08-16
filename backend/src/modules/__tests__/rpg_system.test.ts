@@ -617,10 +617,24 @@ describe('rpg_system', () => {
       mockNk.storageRead = jest.fn().mockImplementation((keys: any[]) => {
         const collection = keys[0].collection;
         if (collection === 'player_stats') {
-          return [{ collection, key: 'test-user-123', userId: 'test-user-123', value: JSON.stringify(existingStats) }];
+          return [
+            {
+              collection,
+              key: 'test-user-123',
+              userId: 'test-user-123',
+              value: JSON.stringify(existingStats),
+            },
+          ];
         }
         if (collection === 'respec_data') {
-          return [{ collection, key: 'test-user-123', userId: 'test-user-123', value: JSON.stringify(respecData) }];
+          return [
+            {
+              collection,
+              key: 'test-user-123',
+              userId: 'test-user-123',
+              value: JSON.stringify(respecData),
+            },
+          ];
         }
         return [];
       });

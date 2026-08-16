@@ -15,6 +15,7 @@ This document describes the tools and endpoints available for QA testing and dis
 **Registration**: `registerRpcGetMatchDetails()` in `src/index.ts` (line 90, 468)
 
 **Request:**
+
 ```json
 {
   "match_id": "match_abc123"
@@ -22,6 +23,7 @@ This document describes the tools and endpoints available for QA testing and dis
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -84,6 +86,7 @@ This document describes the tools and endpoints available for QA testing and dis
 ```
 
 **Use Cases:**
+
 - Investigate specific match disputes
 - Verify turn-by-turn gameplay
 - Check player stats at match time
@@ -99,21 +102,23 @@ This document describes the tools and endpoints available for QA testing and dis
 **Registration**: `registerRpcAdminQueryMatches()` in `src/index.ts` (line 91, 469)
 
 **Request:**
+
 ```json
 {
-  "user_id": "player123",           // Filter by creator or opponent (optional)
-  "match_type": "ranked",          // "ranked" or "casual" (optional)
-  "end_reason": "forfeit",          // Filter by end reason (optional)
+  "user_id": "player123", // Filter by creator or opponent (optional)
+  "match_type": "ranked", // "ranked" or "casual" (optional)
+  "end_reason": "forfeit", // Filter by end reason (optional)
   "season_id": "season_2024_04", // Filter by season (optional)
-  "is_punch_up": true,             // Filter punch-up matches (optional)
-  "start_date": "2024-04-01",    // ISO date string (optional)
-  "end_date": "2024-04-30",      // ISO date string (optional)
-  "limit": 50,                    // Max 200 (optional, default 50)
-  "offset": 0                      // For pagination (optional, default 0)
+  "is_punch_up": true, // Filter punch-up matches (optional)
+  "start_date": "2024-04-01", // ISO date string (optional)
+  "end_date": "2024-04-30", // ISO date string (optional)
+  "limit": 50, // Max 200 (optional, default 50)
+  "offset": 0 // For pagination (optional, default 0)
 }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -148,6 +153,7 @@ This document describes the tools and endpoints available for QA testing and dis
 ```
 
 **Filter Options:**
+
 - **user_id**: Search by either creator or opponent
 - **match_type**: "ranked" or "casual"
 - **end_reason**: "health_depleted", "forfeit", "timeout", "abandoned"
@@ -157,6 +163,7 @@ This document describes the tools and endpoints available for QA testing and dis
 - **limit/offset**: Pagination (max limit: 200)
 
 **Use Cases:**
+
 - Bulk review of player matches
 - Find matches with specific end reasons
 - Season-based dispute analysis
@@ -170,17 +177,19 @@ This document describes the tools and endpoints available for QA testing and dis
 **Purpose**: Retrieve a player's match history with filtering options.
 
 **Request:**
+
 ```json
 {
-  "limit": 20,              // Max matches to return (optional)
-  "match_type": "ranked",    // "ranked" or "casual" (optional)
-  "result": "win",           // "win" or "loss" (optional)
-  "is_punch_up": false,      // Filter punch-up matches (optional)
-  "offset": 0                // For pagination (optional)
+  "limit": 20, // Max matches to return (optional)
+  "match_type": "ranked", // "ranked" or "casual" (optional)
+  "result": "win", // "win" or "loss" (optional)
+  "is_punch_up": false, // Filter punch-up matches (optional)
+  "offset": 0 // For pagination (optional)
 }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -209,17 +218,18 @@ This document describes the tools and endpoints available for QA testing and dis
 
 ## Match End Reasons
 
-| End Reason | Description | When Triggered |
-|-----------|-------------|---------------|
-| `health_depleted` | Player health reached 0 | Normal match completion |
-| `forfeit` | Player explicitly forfeited | Player clicked forfeit |
-| `timeout` | Player timed out 2 consecutive turns | Auto-forfeit after timeout |
-| `abandoned` | Match abandoned without completion | Creator abandoned before opponent accepted |
-| `max_turns_reached` | Match reached maximum turn limit | Forced end after 10 turns |
+| End Reason          | Description                          | When Triggered                             |
+| ------------------- | ------------------------------------ | ------------------------------------------ |
+| `health_depleted`   | Player health reached 0              | Normal match completion                    |
+| `forfeit`           | Player explicitly forfeited          | Player clicked forfeit                     |
+| `timeout`           | Player timed out 2 consecutive turns | Auto-forfeit after timeout                 |
+| `abandoned`         | Match abandoned without completion   | Creator abandoned before opponent accepted |
+| `max_turns_reached` | Match reached maximum turn limit     | Forced end after 10 turns                  |
 
 ## Audit Trail
 
 All admin and debug queries are logged with:
+
 - **User ID**: Who made the request
 - **Match ID**: Which match was accessed
 - **Filters**: What filters were applied
@@ -230,11 +240,13 @@ This provides a complete audit trail for dispute resolution.
 ## Dispute Resolution Workflow
 
 ### Step 1: Gather Context
+
 1. Collect player report with match ID
 2. Verify player is a participant in the match
 3. Check report timestamp against match creation time
 
 ### Step 2: Retrieve Match Data
+
 ```bash
 # Using get_match_details RPC
 curl -X POST https://nakama.server/rpc \
@@ -243,6 +255,7 @@ curl -X POST https://nakama.server/rpc \
 ```
 
 ### Step 3: Analyze Match Evidence
+
 1. Review combat log for each turn
 2. Verify damage calculations
 3. Check player stats at match time
@@ -250,6 +263,7 @@ curl -X POST https://nakama.server/rpc \
 5. Check for timeout or forfeit patterns
 
 ### Step 4: Cross-Reference Player History
+
 ```bash
 # Using admin_query_matches RPC
 curl -X POST https://nakama.server/rpc \
@@ -263,13 +277,16 @@ curl -X POST https://nakama.server/rpc \
 ```
 
 Look for:
+
 - Repeated patterns (win trading)
 - Abnormal match durations
 - Frequent timeouts
 - Suspicious punch-up patterns
 
 ### Step 5: Document Findings
+
 Create dispute resolution record with:
+
 - Match ID and participants
 - Issue reported by player
 - Evidence found in match data
@@ -280,24 +297,28 @@ Create dispute resolution record with:
 ## QA Testing Checklist
 
 ### Match Creation Flow
+
 - [ ] Verify match created successfully
 - [ ] Check match status transitions from pending → active
 - [ ] Verify both players can access match
 - [ ] Test timeout handling
 
 ### Turn Submission Flow
+
 - [ ] Verify turn validation (valid angles, power)
 - [ ] Test duplicate turn submission blocking
 - [ ] Verify turn order enforcement
 - [ ] Check turn result calculation
 
 ### Match Completion Flow
+
 - [ ] Verify health depletion ends match
 - [ ] Check max turns forced end
 - [ ] Verify reward calculations
 - [ ] Test rank/Elo updates
 
 ### Anti-Abuse Tests
+
 - [ ] Test rate limiting for each RPC
 - [ ] Verify cooldown enforcement
 - [ ] Test concurrent match limit
@@ -305,6 +326,7 @@ Create dispute resolution record with:
 - [ ] Verify timeout handling
 
 ### Punch-Up Tests
+
 - [ ] Test punch-up eligibility (various rank diffs)
 - [ ] Verify minimum rank requirement (20)
 - [ ] Check maximum rank difference (15)
@@ -312,6 +334,7 @@ Create dispute resolution record with:
 - [ ] Verify favorite penalty application
 
 ### Debug Endpoint Tests
+
 - [ ] Test `get_match_details` with valid match ID
 - [ ] Test `get_match_details` with invalid match ID
 - [ ] Test `admin_query_matches` with various filters
@@ -321,36 +344,45 @@ Create dispute resolution record with:
 ## Common Dispute Scenarios
 
 ### Scenario 1: "I won but match says I lost"
+
 **Investigation Steps:**
+
 1. Retrieve match details
 2. Review combat log for final turn
 3. Verify health calculations
 4. Check if player timed out (2 consecutive timeouts = auto-forfeit)
 
 **Resolution:**
+
 - If health calculation error: Adjust match result
 - If timeout: Explain timeout rules
 - If valid loss: Uphold result
 
 ### Scenario 2: "My opponent cheated"
+
 **Investigation Steps:**
+
 1. Review combat log for suspicious patterns
 2. Check if actions are physically possible
 3. Look for abnormal damage values
 4. Verify turn submission timestamps
 
 **Resolution:**
+
 - If cheating detected: Flag player in anti-cheat system
 - If no evidence: Explain that match was fair
 
 ### Scenario 3: "I lost more rank than expected"
+
 **Investigation Steps:**
+
 1. Check if it was a punch-up match
 2. Verify favorite penalty was applied correctly
 3. Review Elo calculation formula
 4. Check for any rank decay applied
 
 **Resolution:**
+
 - If error in calculation: Adjust rank
 - If correct calculation: Explain punch-up penalty
 

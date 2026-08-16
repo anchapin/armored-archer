@@ -25,7 +25,6 @@ jest.mock('../../config', () => ({
       sampleRate: 1,
       autoInstrumentations: false,
       instrumentations: [] as string[],
-      jaegerEndpoint: 'http://localhost:14268',
       zipkinEndpoint: 'http://localhost:9411',
       otlpEndpoint: 'http://localhost:4318',
     },
@@ -51,10 +50,6 @@ jest.mock('../logger', () => ({
 
 jest.mock('@opentelemetry/resources', () => ({
   resourceFromAttributes: jest.fn(() => ({})),
-}));
-
-jest.mock('@opentelemetry/exporter-jaeger', () => ({
-  JaegerExporter: jest.fn().mockImplementation(() => ({})),
 }));
 
 jest.mock('@opentelemetry/exporter-zipkin', () => ({
@@ -359,18 +354,6 @@ describe('Tracing Configuration', () => {
 
       // Clean up: reset tracing state
       shutdownTracing();
-    });
-
-    it('should configure jaeger exporter branch', () => {
-      const cfg = getMockConfig();
-      const originalExporter = cfg.tracing.exporter;
-      cfg.tracing.exporter = 'jaeger';
-
-      // Jaeger branch is covered by running initializeTracing with jaeger exporter
-      // The zipkin/otlp/unknown tests prove the switch works; jaeger is a sibling branch
-      // We verify the exporter config value is read correctly
-      expect(cfg.tracing.exporter).toBe('jaeger');
-      cfg.tracing.exporter = originalExporter;
     });
 
     it('should configure zipkin exporter', () => {

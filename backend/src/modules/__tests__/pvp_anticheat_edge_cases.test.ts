@@ -59,8 +59,16 @@ describe('PvP anti-cheat edge cases', () => {
     opponent_id: 'opponent-user',
     creator_health: 100,
     opponent_health: 100,
-    creator_stats: { level: 5, xp: 0, stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 } },
-    opponent_stats: { level: 5, xp: 0, stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 } },
+    creator_stats: {
+      level: 5,
+      xp: 0,
+      stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+    },
+    opponent_stats: {
+      level: 5,
+      xp: 0,
+      stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+    },
     status: 'active',
     log: [],
     last_turn_timestamp: Date.now(),
@@ -102,11 +110,13 @@ describe('PvP anti-cheat edge cases', () => {
 
   it('should reject out-of-range angle via validation', async () => {
     const result = await rpcSubmitCombatAction(
-      mockCtx, mockLogger, mockNk,
+      mockCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({
         match_id: 'match-ac-1',
         action_type: 'shoot',
-        angle: 99.0,  // Out of valid range (0-2π)
+        angle: 99.0, // Out of valid range (0-2π)
         power: 0.5,
       })
     );
@@ -116,12 +126,14 @@ describe('PvP anti-cheat edge cases', () => {
 
   it('should reject out-of-range power via validation', async () => {
     const result = await rpcSubmitCombatAction(
-      mockCtx, mockLogger, mockNk,
+      mockCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({
         match_id: 'match-ac-1',
         action_type: 'shoot',
         angle: 1.5,
-        power: 5.0,  // Out of valid range (0-1)
+        power: 5.0, // Out of valid range (0-1)
       })
     );
     const parsed = JSON.parse(result);
@@ -137,7 +149,9 @@ describe('PvP anti-cheat edge cases', () => {
 
     // First action should succeed
     const result1 = await rpcSubmitCombatAction(
-      mockCtx, mockLogger, mockNk,
+      mockCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({ match_id: 'match-ac-1', action_type: 'shoot', angle: 1.0, power: 0.5 })
     );
     const parsed1 = JSON.parse(result1);
@@ -145,7 +159,9 @@ describe('PvP anti-cheat edge cases', () => {
 
     // Second rapid action should fail - turn has switched to opponent
     const result2 = await rpcSubmitCombatAction(
-      mockCtx, mockLogger, mockNk,
+      mockCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({ match_id: 'match-ac-1', action_type: 'shoot', angle: 1.0, power: 0.5 })
     );
     const parsed2 = JSON.parse(result2);

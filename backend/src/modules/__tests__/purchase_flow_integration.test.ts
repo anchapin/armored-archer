@@ -1,4 +1,9 @@
-import { createMockLogger, createMockContext, createMockNakama, testStorage } from '../../__mocks__/nakama';
+import {
+  createMockLogger,
+  createMockContext,
+  createMockNakama,
+  testStorage,
+} from '../../__mocks__/nakama';
 import { Runtime } from '../../types/nakama';
 
 jest.mock('../../utils/circuitBreaker', () => ({
@@ -22,11 +27,7 @@ jest.mock('../../utils/cache', () => ({
   resetCacheManager: jest.fn(),
 }));
 
-import {
-  rpcGetCurrency,
-  rpcSpendGems,
-  validatedReceipts,
-} from '../store';
+import { rpcGetCurrency, rpcSpendGems, validatedReceipts } from '../store';
 
 describe('Purchase flow integration', () => {
   let mockLogger: Runtime.Logger;
@@ -81,7 +82,9 @@ describe('Purchase flow integration', () => {
 
     // Spend 200 gems
     const spendResult = rpcSpendGems(
-      mockCtx, mockLogger, mockNk,
+      mockCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({ amount: 200, reason: 'test_purchase' })
     );
     const spendParsed = JSON.parse(spendResult);
@@ -115,7 +118,9 @@ describe('Purchase flow integration', () => {
 
     // First spend succeeds
     const result1 = rpcSpendGems(
-      mockCtx, mockLogger, mockNk,
+      mockCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({ amount: 100, reason: 'first_purchase' })
     );
     const parsed1 = JSON.parse(result1);
@@ -123,7 +128,9 @@ describe('Purchase flow integration', () => {
 
     // Second spend should fail - insufficient gems
     const result2 = rpcSpendGems(
-      mockCtx, mockLogger, mockNk,
+      mockCtx,
+      mockLogger,
+      mockNk,
       JSON.stringify({ amount: 100, reason: 'second_purchase' })
     );
     const parsed2 = JSON.parse(result2);

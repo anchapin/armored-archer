@@ -409,12 +409,7 @@ describe('stage_tracking module', () => {
         throw new Error('Storage read failed');
       });
 
-      const result = rpcGetCompletedStages(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        '{}'
-      );
+      const result = rpcGetCompletedStages(mockCtx, createMockLogger() as any, nk as any, '{}');
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(false);
@@ -452,12 +447,7 @@ describe('stage_tracking module', () => {
 
     it('should return empty progress for new user', () => {
       const nk = createMockNk();
-      const result = rpcGetCampaignProgress(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        '{}'
-      );
+      const result = rpcGetCampaignProgress(mockCtx, createMockLogger() as any, nk as any, '{}');
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -494,12 +484,7 @@ describe('stage_tracking module', () => {
         },
       ]);
 
-      const result = rpcGetCampaignProgress(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        '{}'
-      );
+      const result = rpcGetCampaignProgress(mockCtx, createMockLogger() as any, nk as any, '{}');
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -512,12 +497,7 @@ describe('stage_tracking module', () => {
       const nk = createMockNk();
       nk.storageRead.mockReturnValue([{ value: 'corrupted json{' }]);
 
-      const result = rpcGetCampaignProgress(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        '{}'
-      );
+      const result = rpcGetCampaignProgress(mockCtx, createMockLogger() as any, nk as any, '{}');
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -531,12 +511,7 @@ describe('stage_tracking module', () => {
         throw new Error('Storage failed');
       });
 
-      const result = rpcGetCampaignProgress(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        '{}'
-      );
+      const result = rpcGetCampaignProgress(mockCtx, createMockLogger() as any, nk as any, '{}');
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(false);
@@ -569,12 +544,7 @@ describe('stage_tracking module', () => {
         return [];
       });
 
-      const result = rpcGetCampaignProgress(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        '{}'
-      );
+      const result = rpcGetCampaignProgress(mockCtx, createMockLogger() as any, nk as any, '{}');
       const parsed = JSON.parse(result);
 
       expect(parsed.bosses_defeated).toContain('fire_modifiers');
@@ -609,12 +579,7 @@ describe('stage_tracking module', () => {
         },
       ]);
 
-      const result = rpcGetCampaignProgress(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        '{}'
-      );
+      const result = rpcGetCampaignProgress(mockCtx, createMockLogger() as any, nk as any, '{}');
       const parsed = JSON.parse(result);
 
       expect(parsed.unlocked_stages).toContain('1_2');
@@ -638,12 +603,7 @@ describe('stage_tracking module', () => {
         score: 1500,
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(false);
@@ -672,12 +632,7 @@ describe('stage_tracking module', () => {
         difficulty: 'hard',
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(false);
@@ -697,12 +652,7 @@ describe('stage_tracking module', () => {
         difficulty: 'hard',
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -723,12 +673,7 @@ describe('stage_tracking module', () => {
         difficulty: 'hard',
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -750,12 +695,7 @@ describe('stage_tracking module', () => {
         boss_id: 'boss_dragon',
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -790,12 +730,7 @@ describe('stage_tracking module', () => {
         score: 2000,
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -831,12 +766,7 @@ describe('stage_tracking module', () => {
         score: 1500,
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -854,12 +784,7 @@ describe('stage_tracking module', () => {
         score: 500,
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -868,7 +793,12 @@ describe('stage_tracking module', () => {
     });
 
     it('should handle all difficulty levels', () => {
-      const difficulties: ('easy' | 'medium' | 'hard' | 'nightmare')[] = ['easy', 'medium', 'hard', 'nightmare'];
+      const difficulties: ('easy' | 'medium' | 'hard' | 'nightmare')[] = [
+        'easy',
+        'medium',
+        'hard',
+        'nightmare',
+      ];
       const nk = createMockNk();
 
       for (const difficulty of difficulties) {
@@ -880,12 +810,7 @@ describe('stage_tracking module', () => {
           difficulty,
         });
 
-        const result = rpcCompleteStage(
-          mockCtx,
-          createMockLogger() as any,
-          nk as any,
-          payload
-        );
+        const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
         const parsed = JSON.parse(result);
 
         expect(parsed.success).toBe(true);
@@ -903,12 +828,7 @@ describe('stage_tracking module', () => {
         // no difficulty field
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -948,12 +868,7 @@ describe('stage_tracking module', () => {
         score: 1000, // Lower score but higher stars
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -987,12 +902,7 @@ describe('stage_tracking module', () => {
         score: 1500,
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -1026,12 +936,7 @@ describe('stage_tracking module', () => {
         score: 5000,
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -1065,12 +970,7 @@ describe('stage_tracking module', () => {
         score: 1000,
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -1088,12 +988,7 @@ describe('stage_tracking module', () => {
         score: 1000,
       });
 
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
 
       const afterDate = new Date();
 
@@ -1141,12 +1036,7 @@ describe('stage_tracking module', () => {
         score: 1500,
       });
 
-      rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        payload
-      );
+      rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
 
       const writeCalls = (nk.storageWrite as jest.Mock).mock.calls[0][0];
       const storageData = JSON.parse(writeCalls[0].value);
@@ -1178,16 +1068,11 @@ describe('stage_tracking module', () => {
         },
       ]);
 
-      const result = rpcGetCampaignProgress(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        '{}'
-      );
+      const result = rpcGetCampaignProgress(mockCtx, createMockLogger() as any, nk as any, '{}');
       const parsed = JSON.parse(result);
 
       // Should not add any invalid stage IDs to unlocked
-      expect(parsed.unlocked_stages.every(id => !id.includes('invalid'))).toBe(true);
+      expect(parsed.unlocked_stages.every((id) => !id.includes('invalid'))).toBe(true);
     });
 
     it('deriveNextStageId handles edge cases', () => {
@@ -1210,12 +1095,7 @@ describe('stage_tracking module', () => {
         },
       ]);
 
-      const result = rpcGetCampaignProgress(
-        mockCtx,
-        createMockLogger() as any,
-        nk as any,
-        '{}'
-      );
+      const result = rpcGetCampaignProgress(mockCtx, createMockLogger() as any, nk as any, '{}');
       const parsed = JSON.parse(result);
 
       expect(parsed.unlocked_stages).toContain('1_1');

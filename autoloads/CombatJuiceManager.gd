@@ -20,7 +20,10 @@ enum EffectType {
 	IMPACT_VFX,
 	DAMAGE_NUMBER,
 	HIT_REACTION,
-	DEATH_ANIMATION
+	DEATH_ANIMATION,
+	POWER_UP_START,
+	POWER_UP_ACTIVE,
+	POWER_UP_END
 }
 
 # --- State ---
@@ -32,6 +35,7 @@ var _is_slow_motion: bool = false
 # --- Manager References ---
 var _impact_manager: Node
 var _damage_indicator_manager: Node
+var _vfx_manager: Node
 
 # --- Configuration ---
 var _max_concurrent_effects: int = 5
@@ -51,6 +55,7 @@ func _ready() -> void:
 	# Get manager references
 	_impact_manager = get_node_or_null("/root/ImpactManager")
 	_damage_indicator_manager = get_node_or_null("/root/DamageIndicatorManager")
+	_vfx_manager = get_node_or_null("/root/VFXManager")
 
 # --- Public API ---
 
@@ -93,6 +98,12 @@ func trigger_combat_juice(effect_type: EffectType, data: Dictionary) -> void:
 			_trigger_hit_reaction(data)
 		EffectType.DEATH_ANIMATION:
 			_trigger_death_animation(data)
+		EffectType.POWER_UP_START:
+			_trigger_power_up_start(data)
+		EffectType.POWER_UP_ACTIVE:
+			_trigger_power_up_active(data)
+		EffectType.POWER_UP_END:
+			_trigger_power_up_end(data)
 
 # --- Haptic Integration ---
 
@@ -112,6 +123,10 @@ func _trigger_haptic(effect_type: EffectType, data: Dictionary) -> void:
 			haptic.success_pulse()
 		EffectType.HIT_REACTION:
 			haptic.damage_pulse()
+		EffectType.POWER_UP_START:
+			haptic.success_pulse()
+		EffectType.POWER_UP_END:
+			haptic.light_tap()
 
 
 # --- Individual Effect Triggers ---
@@ -226,6 +241,103 @@ func _trigger_death_animation(data: Dictionary) -> Dictionary:
 	var result = {"success": true, "enemy_id": str(enemy_node.get_instance_id())}
 	juice_effect_completed.emit("death_animation", result)
 	return result
+
+# --- Power-Up Effect Triggers ---
+
+## Trigger power-up start animation and effects
+##
+## Parameters:
+##   data: Dictionary with "power_up_type", "position", "duration"
+##
+##   power_up_type: String ("speed", "damage", "invincibility", "health")
+##   position: Vector2 where pickup occurred
+##   duration: Duration of the power-up in seconds
+func _trigger_power_up_start(data: Dictionary) -> Dictionary:
+	var power_up_type = data.get("power_up_type", "speed")
+	var position = data.get("position", Vector2.ZERO)
+
+	juice_effect_started.emit("power_up_start", data)
+
+	# Spawn pickup VFX
+	if _vfx_manager and _vfx_manager.has_method("spawn_power_up_pickup_vfx"):
+		_vfx_manager.spawn_power_up_pickup_vfx(position, power_up_type)
+
+	# Screen flash for power-up acquisition
+	if _impact_manager:
+		_impact_manager.flash_screen(_get_power_up_color(power_up_type), 0.2)
+
+	var result = {
+		"success": true,
+		"power_up_type": power_up_type,
+		"position": position
+	}
+	juice_effect_completed.emit("power_up_start", result)
+	return result
+
+## Trigger power-up active visual effect (looping)
+##
+## Parameters:
+##   data: Dictionary with "power_up_type", "target_node", "remaining"
+##
+##   power_up_type: String ("speed", "damage", "invincibility", "health")
+##   target_node: Node to attach effect to (usually player)
+##   remaining: Remaining duration in seconds
+func _trigger_power_up_active(data: Dictionary) -> Dictionary:
+	var power_up_type = data.get("power_up_type", "speed")
+	var target_node = data.get("target_node")
+
+	juice_effect_started.emit("power_up_active", data)
+
+	# Spawn looping VFX on target
+	if target_node and _vfx_manager and _vfx_manager.has_method("attach_power_up_vfx"):
+		_vfx_manager.attach_power_up_vfx(target_node, power_up_type)
+
+	var result = {
+		"success": true,
+		"power_up_type": power_up_type,
+		"attached_to": target_node
+	}
+	juice_effect_completed.emit("power_up_active", result)
+	return result
+
+## Trigger power-up end animation
+##
+## Parameters:
+##   data: Dictionary with "power_up_type", "target_node"
+func _trigger_power_up_end(data: Dictionary) -> Dictionary:
+	var power_up_type = data.get("power_up_type", "speed")
+	var target_node = data.get("target_node")
+
+	juice_effect_started.emit("power_up_end", data)
+
+	# Remove looping VFX
+	if target_node and _vfx_manager and _vfx_manager.has_method("detach_power_up_vfx"):
+		_vfx_manager.detach_power_up_vfx(target_node, power_up_type)
+
+	# Screen flash for power-up expiration
+	if _impact_manager:
+		_impact_manager.flash_screen(Color(1, 1, 1, 0.1), 0.1)
+
+	var result = {
+		"success": true,
+		"power_up_type": power_up_type
+	}
+	juice_effect_completed.emit("power_up_end", result)
+	return result
+
+## Get power-up color based on type
+func _get_power_up_color(power_up_type: String) -> Color:
+	match power_up_type:
+		"speed":
+			return Color(0.3, 1.0, 0.5)  # Green
+		"damage":
+			return Color(1.0, 0.5, 0.3)  # Orange/red
+		"invincibility":
+			return Color(0.6, 0.8, 1.0)  # Blue
+		"health":
+			return Color(1.0, 0.3, 0.4)  # Red
+		_:
+			return Color(1, 0.675, 0.329)  # Golden default
 
 # --- Utility Methods ---
 

@@ -33,6 +33,15 @@ func _ready() -> void:
 	_camera = get_viewport_camera()
 	_vfx_manager = get_node_or_null("/root/VFXManager")
 
+# --- Helper Methods ---
+
+## Get the viewport camera
+func get_viewport_camera() -> Camera2D:
+	var viewport = get_viewport()
+	if not viewport:
+		return null
+	return viewport.get_camera_2d()
+
 # --- Public API ---
 
 ## Shake screen with configurable intensity and duration
@@ -119,3 +128,37 @@ func _complete_shake() -> void:
 	_current_shake = {}
 	_active_shake_duration = 0.0
 	shake_completed.emit({"success": true})
+
+# --- Screen Flash for Power-ups ---
+
+## Flash the screen with a color for power-up effects
+##
+## Parameters:
+##   color: Color to flash
+##   duration: Duration in seconds
+func flash_screen(color: Color, duration: float) -> void:
+	# Create a full-screen overlay for the flash
+	var viewport = get_viewport()
+	if not viewport:
+		return
+
+	var canvas_layer = CanvasLayer.new()
+	canvas_layer.layer = 100  # Top layer
+
+	var flash = ColorRect.new()
+	flash.color = color
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	flash.mouse_default_cursor_shape = Control.CURSOR_ARROW
+
+	canvas_layer.add_child(flash)
+	viewport.add_child(canvas_layer)
+
+	# Fade out and remove
+	var tween = create_tween()
+	tween.tween_property(flash, "modulate:a", 0.0, duration).set_trans(Tween.TRANS_SINE)
+	tween.tween_callback(canvas_layer.queue_free)
+
+# --- Helper for creating tweens (Godot 4.x compatible) ---
+func create_tween() -> Tween:
+	return get_tree().create_tween()
