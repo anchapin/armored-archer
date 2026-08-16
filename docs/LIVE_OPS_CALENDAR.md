@@ -1,6 +1,6 @@
 # Live-Ops Calendar — Season 1 (First Post-Launch Season)
 
-> Status: DRAFT — pending team sign-off (see [Team Alignment](#team-alignment)).
+> Status: DRAFT — pending team sign-off (see [Team Alignment](#6-team-alignment)).
 >
 > Scope: This calendar plans live operations for the first PvP season after global launch.
 > It uses **relative dates** (`T+N` days from launch, Week 1–6) because no absolute launch
@@ -16,9 +16,9 @@
 | Season ID | `season_1` (per `season_system.ts` ID format) |
 | Theme | **"First Blood"** — celebrate launch; showcase the core loop (PvE grind → build-crafting → ranked ladder) |
 | Duration | **4 weeks** (matches the backend default `duration_weeks: 4` in `backend/src/modules/season_system.ts`; extendable to 5 via the cadence triggers in §5) |
-| Start | `T+0` (launch day) — ranked ladder opens, all players seeded at 1000 Elo |
-| End | `T+28` — final ranks locked, rewards distributed, `season_2` starts automatically via `armored_archer/end_season` |
-| Season rewards | Rank-tier coins + gems + exclusive non-stat cosmetics (title *"Season 1 Veteran"* + tier aura), distributed via `armored_archer/get_season_rewards` / `claim_season_rewards` |
+| Start | `T+0` (launch day) — ranked ladder opens, all players seeded at Ladder Rating 1000 |
+| End | `T+28` — final Ladder Ratings locked, rewards distributed, `season_2` starts automatically via `armored_archer/end_season` |
+| Season rewards | Rank-tier Coins + Gems + exclusive non-stat cosmetics (title *"Season 1 Veteran"* + tier aura), distributed via `armored_archer/get_season_rewards` / `claim_season_rewards` |
 | Monetization rule | **Cosmetics/skins only, via RevenueCat IAP.** Base gear and all stats remain gameplay-earned (transmog policy — see PRD §4C). Nothing in this calendar grants stat power for money. |
 
 ### Design goals for Season 1
@@ -36,12 +36,12 @@ absolute launch date is set; until then, weeks are relative to launch.
 
 | Window | Events & Activities | Featured Content | Store Rotation (IAP cosmetics only) | PvP / Ranked Schedule | Community Beats |
 |---|---|---|---|---|---|
-| **Pre-launch (T−7 → T−1)** | Season 1 config deployed & verified in prod; `season_1` staged; store items approved in App Store/Play consoles | — | Season 1 skin set submitted for store review | Ranked ladder configured, Elo seed = 1000 | Launch-week announcement (social, Discord); support playbook staffed (see `docs/BETA_SUPPORT_PLAYBOOK.md`) |
-| **Week 1 (T+0 → T+6)** | Launch week double XP (PvE + PvP, server-side multiplier) | Campaign Ch. 1–2 featured; first boss modifier unlock highlighted ("Wind Boss → Piercing Arrow" per PRD §4B) | Season 1 skin set live: **Launch Ember** bundle (bow + arrow skins) | Ranked + casual async duels open at launch; punch-up toggle on | Daily dev diary posts; launch AMA; telemetry watch daily |
-| **Week 2 (T+7 → T+13)** | **Bounty Duel Weekend** (T+11 → T+13): casual duels award +50% coins (server config; casual stays rank/gem-free per `CASUAL_VS_RANKED_REWARDS.md`) | Campaign Ch. 3 featured; build-guide spotlight (community builds) | Rotation: **Frost Warden** armor + helm skins | Ranked ladder milestone push — mid-season Elo snapshot published | First community build-contest announcement; Discord ladder screenshot channel |
-| **Week 3 (T+14 → T+20)** | **Punch-Up Week**: punch-up win gem bonus highlighted (+5 gems per win, ranked only); anti-abuse monitoring on punch-up queue | Campaign Ch. 4 featured; modifier drop-pool reminder for unlocked bosses | Rotation: **Legendary Hunt** aura + amulet skin bundle | Mid-season (T+14): leaderboard freeze check + top-100 published; matchmaking pool health review | Mid-season state-of-the-game post; telemetry review vs. §5 targets (go/no-go on cadence adjustments) |
+| **Pre-launch (T−7 → T−1)** | Season 1 config deployed & verified in prod; `season_1` staged; store items approved in App Store/Play consoles | — | Season 1 skin set submitted for store review | Ranked ladder configured, Ladder Rating seed = 1000 | Launch-week announcement (social, Discord); support playbook staffed (see `docs/BETA_SUPPORT_PLAYBOOK.md`) |
+| **Week 1 (T+0 → T+6)** | Launch week double XP (PvE + PvP, server-side multiplier) | Campaign Ch. 1–2 featured; first boss modifier unlock highlighted ("Wind Boss → Piercing Arrow" per PRD §4B) | Season 1 skin set live: **Launch Ember** bundle (bow + arrow skins) | Ranked + casual duels open at launch — asynchronous matchmaking + live short-session duels (ADR-0003); punch-up toggle on | Daily dev diary posts; launch AMA; telemetry watch daily |
+| **Week 2 (T+7 → T+13)** | **Bounty Duel Weekend** (T+11 → T+13): casual duels award +50% Coins (server config; casual stays Ladder Rating/Gem-free per `CASUAL_VS_RANKED_REWARDS.md`) | Campaign Ch. 3 featured; build-guide spotlight (community builds) | Rotation: **Frost Warden** armor + helm skins | Ranked ladder milestone push — mid-season Ladder Rating snapshot published | First community build-contest announcement; Discord ladder screenshot channel |
+| **Week 3 (T+14 → T+20)** | **Punch-Up Week**: punch-up win Gem bonus highlighted (3–10 Gems per win, scaling with the Power Rating gap; ranked only); anti-abuse monitoring on punch-up queue | Campaign Ch. 4 featured; modifier drop-pool reminder for unlocked bosses | Rotation: **Legendary Hunt** aura + amulet skin bundle | Mid-season (T+14): leaderboard freeze check + top-100 published; matchmaking pool health review | Mid-season state-of-the-game post; telemetry review vs. §5 targets (go/no-go on cadence adjustments) |
 | **Week 4 (T+21 → T+27)** | **Final Push Weekend** (T+25 → T+27): ranked XP +25% (config-driven); last-chance ladder climbing | All chapters featured (catch-up week); season rewards preview screen live in client | Last call: full Season 1 cosmetic set (all rotations return for the weekend) | Final ranked push; ladder closes end of `T+27` | "Final 48 hours" push notification via `notification_scheduler.ts`; content-creator ladder race |
-| **Rollover (T+28)** | Season end: ranks locked, rewards claimable, `season_2` auto-starts | Season 1 recap (most-used builds, top duel replays via match replay system) | Season 1 cosmetics move to legacy availability (decision in §5) | Off-season grace (~24h): casual duels only; `season_2` ladder opens at `T+29` | Season 1 awards ceremony post; Season 2 theme tease |
+| **Rollover (T+28)** | Season end: Ladder Ratings locked, rewards claimable, `season_2` auto-starts | Season 1 recap (most-used builds, top duel replays via match replay system) | Season 1 cosmetics move to legacy availability (decision in §5) | Off-season grace (~24h): casual duels only; `season_2` ladder opens at `T+29` | Season 1 awards ceremony post; Season 2 theme tease |
 
 ---
 
@@ -53,19 +53,19 @@ systems** — no new gameplay code is required for Season 1.
 | Event Type | Mechanic | Backing System (do not rebuild) | Reward Rule |
 |---|---|---|---|
 | Double XP weekend | Global XP multiplier | `matchmaker.ts` `calculateXPGain()` / `processMatchResult()` (server-side multiplier config) | Applies to both casual & ranked proportionally |
-| Bounty Duel Weekend | Coin multiplier in casual | Same reward pipeline; casual stays at 50% structure per `CASUAL_VS_RANKED_REWARDS.md` | No gems, no rank change — casual remains practice-only |
-| Punch-Up Week | Highlight + verify existing punch-up bonus (+50% XP, +5 gems on ranked wins) | Punch-up detection in matchmaker; `ANTI_ABUSE_GUIDE.md` monitoring | Gems remain ranked-punch-up-win-only |
-| Final Push Weekend | Ranked XP bonus | Reward pipeline + `SeasonManager.gd` countdown UI | Season position still Elo-based only |
-| Featured campaign chapters | Rotating spotlight + drop-rate focus on unlocked modifier pools | PvE stage completion & server-side loot rolls (`gear_system.ts`); campaign chapter prefix already in stage IDs | Base gear only — never sold |
-| Store rotation | Weekly cosmetic skin set swap | RevenueCat (receipt validation) + `armored_archer/validate_purchase` / `spend_gems`; gem packs 100/$0.99, 550/$4.99, 1200/$9.99 | Cosmetics are visual-only transmog; zero stat impact |
-| Season rewards | End-of-season distribution | `season_system.ts` RPCs; rewards = rank-tier coins + gems + exclusive title/aura | One-time claim per season; cosmetics are non-stat |
+| Bounty Duel Weekend | Coin multiplier in casual | Same reward pipeline; casual stays at 50% structure per `CASUAL_VS_RANKED_REWARDS.md` | No Gems, no Ladder Rating change — casual remains practice-only |
+| Punch-Up Week | Highlight + verify existing punch-up bonus (1.2–2.0× XP multiplier + 3–10 Gems on ranked wins, scaling with Power Rating gap) | Punch-up detection in matchmaker; `ANTI_ABUSE_GUIDE.md` monitoring | Gems remain ranked-punch-up-win-only |
+| Final Push Weekend | Ranked XP bonus | Reward pipeline + `SeasonManager.gd` countdown UI | Season Standing still Ladder Rating-based only |
+| Featured campaign chapters | Rotating spotlight + drop-rate focus on unlocked modifier pools | PvE stage completion & server-side loot rolls (`gear_system.ts`); campaign chapter prefix already in stage IDs | Base Gear only — never sold |
+| Store rotation | Weekly cosmetic skin set swap | RevenueCat (receipt validation) + `armored_archer/validate_purchase` / `spend_gems`; Gem packs 100/$0.99, 550/$4.99, 1200/$9.99 | Cosmetics are visual-only transmog; zero stat impact |
+| Season rewards | End-of-season distribution | `season_system.ts` RPCs; rewards = Rank-tier Coins + Gems + exclusive title/aura | One-time claim per season; cosmetics are non-stat |
 | Community beats | Scheduled posts, contests, push notifications | `notification_scheduler.ts` / `notifications_rpc.ts` for client pings | Social/community only |
 
 **Hard constraints carried into every event:**
 
 - Server-authoritative: all multipliers and rewards are computed on Nakama; the client never decides rewards.
 - No P2W: nothing purchasable affects combat stats (PRD §1).
-- Casual mode never grants gems or rank/season movement.
+- Casual mode never grants Gems or Ladder Rating/season movement.
 
 ---
 
@@ -77,7 +77,7 @@ All items are server config, catalog, or store-metadata changes unless noted. Ow
 | ID | Deliverable | System Touched | Owner (role) | Due | Depends on | Status |
 |---|---|---|---|---|---|---|
 | C1 | Season 1 config (`season_1`, 4-week duration, reward tiers) verified in staging | `season_system.ts` / DB | Backend Engineer | T−7 | — | ☐ |
-| C2 | XP/coin multiplier event flags + kill-switch (see §5) staged | `matchmaker.ts` config | Backend Engineer | T−7 | C1 | ☐ |
+| C2 | XP/Coin multiplier event flags + kill-switch (see §5) staged | `matchmaker.ts` config | Backend Engineer | T−7 | C1 | ☐ |
 | C3 | Season 1 cosmetic set (3 rotations) authored & approved | Art + Game Director | Live-Ops/Art | T−10 | — | ☐ |
 | C4 | RevenueCat products + App Store / Play console metadata approved | RevenueCat / store consoles | Release Manager | T−7 | C3 | ☐ |
 | C5 | Season rewards preview UI (client) | `SeasonManager.gd` + UI | Client Engineer | T−14 | C1 | ☐ |
@@ -114,9 +114,9 @@ Season 1 baselines — recalibrate for Season 2.
 |---|---|---|---|
 | Ranked participation rate | `matchmaking_analytics.ts` / funnel | < 20% of DAU play ≥1 ranked duel in a week | Extend casual-side Bounty Duel events; investigate ranked friction (queue time, punch-up anxiety) |
 | Season funnel conversion | `funnel_analytics.ts` | < 40% of new players reach first PvP duel by T+14 | Shift Week 3–4 featured content toward campaign catch-up + build guides |
-| Match queue health | matchmaker pool metrics | Median ranked queue > 90s for 3 consecutive days | Widen matchmaking Elo band; consider cross-region pools |
+| Match queue health | matchmaker pool metrics | Median ranked queue > 90s for 3 consecutive days | Widen matchmaking Power Rating band; consider cross-region pools |
 | D1/D7 retention vs. launch | `analytics.ts` | D7 < 15% or week-over-week DAU decline > 20% | Live-ops pause on new event types; prioritize stability + core-loop fixes |
-| Economy inflation | `balance_analytics.ts` | Coin/gem faucet drift > +30% vs. model | Disable gem-granting event amplifiers (keep punch-up baseline); rerun economy model |
+| Economy inflation | `balance_analytics.ts` | Coin/Gem faucet drift > +30% vs. model | Disable Gem-granting event amplifiers (keep punch-up baseline); rerun economy model |
 | Crash/error rate | `health_monitor.ts` / alerting | Error budget burn > 2× for 24h | Kill-switch active multiplier events; freeze store rotation changes |
 | Punch-up abuse signals | `anti_cheat.ts` + `ANTI_ABUSE_GUIDE.md` | Confirmed win-trading clusters | Restrict punch-up queue; escalate per anti-abuse runbook |
 
