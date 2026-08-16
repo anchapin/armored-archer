@@ -538,6 +538,171 @@ describe('combat_system', () => {
       expect(parsed.forfeit).toBe(true);
       expect(parsed.winner).toBe('opponent-user');
     });
+
+    describe('turn timers as grace window (issue #868)', () => {
+      const COMBAT_ACTION_PAYLOAD = JSON.stringify({
+        match_id: 'match-123',
+        action_type: 'shoot',
+        angle: 1.5,
+      });
+
+      const createGraceMatchState = (overrides?: Partial<MatchState>): MatchState => ({
+        match_id: 'match-123',
+        turn: 1,
+        current_turn_user_id: 'creator-user',
+        creator_id: 'creator-user',
+        opponent_id: 'opponent-user',
+        creator_health: 100,
+        opponent_health: 100,
+        creator_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        opponent_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        status: 'active',
+        log: [],
+        last_turn_timestamp: Date.now(),
+        turn_timeout_ms: 5 * 60 * 1000, // Production turn timer
+        consecutive_timeouts: 0,
+        ...overrides,
+      });
+
+      const wireStorage = (match: PvPMatch, matchState: MatchState): void => {
+        const mockStorage = new Map();
+        mockStorage.set(`pvp_matches:match-123`, JSON.stringify(match));
+        mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
+
+        mockNk.storageRead = jest.fn((objects) => {
+          return objects
+            .map((obj: any) => {
+              const val =
+                mockStorage.get(`${obj.collection}:${obj.key}`) || mockStorage.get(obj.key);
+              if (!val) return null;
+              return {
+                collection: obj.collection,
+                key: obj.key,
+                value: val,
+              };
+            })
+            .filter(Boolean);
+        });
+
+        mockNk.storageWrite = jest.fn();
+        mockNk.notificationSend = jest.fn();
+      };
+
+      const findStorageWrite = (collection: string): Record<string, any> | undefined => {
+        const calls = (mockNk.storageWrite as jest.Mock).mock.calls as any[][];
+        for (const call of calls) {
+          const written = call[0].find((obj: any) => obj.collection === collection);
+          if (written) {
+            return typeof written.value === 'string'
+              ? JSON.parse(written.value)
+              : written.value;
+          }
+        }
+        return undefined;
+      };
+
+      it('should not forfeit when inactive beyond the removed 2-min inactivity window but within the turn timer', async () => {
+        // Interruption scenario: player app-switched mid-duel 4 minutes ago.
+        // The removed 2-min inactivity forfeit would have ended the match here;
+        // with turn timers as the single authority (5 min) the match continues.
+        const match = createMockMatch({ status: 'active' });
+        const matchState = createGraceMatchState({
+          last_turn_timestamp: Date.now() - 4 * 60 * 1000, // 4 min ago
+          turn_timeout_ms: 5 * 60 * 1000,
+          consecutive_timeouts: 0,
+        });
+        wireStorage(match, matchState);
+
+        const result = await rpcSubmitCombatAction(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          COMBAT_ACTION_PAYLOAD
+        );
+        const parsed = JSON.parse(result);
+
+        // Action processes normally — no forfeit, no error
+        expect(parsed.error).toBeUndefined();
+        expect(parsed.forfeit).toBeUndefined();
+        expect(parsed.success).toBe(true);
+        expect(parsed.result.match_status).toBe('active');
+      });
+
+      it('should not forfeit when returning within grace after one prior turn timeout', async () => {
+        // Player already banked one timeout (~5 min away), opponent took their
+        // turn, and the turn came back with a fresh timestamp. The returning
+        // player acts well within the second turn timer — total inactivity
+        // spans less than 2 consecutive turn timers, so no forfeit and the
+        // consecutive timeout counter resets.
+        const match = createMockMatch({ status: 'active' });
+        const matchState = createGraceMatchState({
+          turn: 3,
+          current_turn_user_id: 'creator-user',
+          last_turn_timestamp: Date.now() - 30 * 1000, // opponent just acted
+          turn_timeout_ms: 5 * 60 * 1000,
+          consecutive_timeouts: 1,
+        });
+        wireStorage(match, matchState);
+
+        const result = await rpcSubmitCombatAction(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          COMBAT_ACTION_PAYLOAD
+        );
+        const parsed = JSON.parse(result);
+
+        expect(parsed.error).toBeUndefined();
+        expect(parsed.forfeit).toBeUndefined();
+        expect(parsed.success).toBe(true);
+
+        // Consecutive timeout counter reset on the successful action
+        const savedState = findStorageWrite('pvp_match_states');
+        expect(savedState).toBeDefined();
+        expect(savedState?.consecutive_timeouts).toBe(0);
+        expect(savedState?.status).toBe('active');
+      });
+
+      it('should still forfeit with end_reason=timeout at 2 consecutive turn timeouts', async () => {
+        // Turn timers expire naturally: a second consecutive expiry (~6 min
+        // into a 5-min turn) forfeits and records end_reason=timeout via the
+        // turn-timer path, preserving server-declared settlement semantics (#861).
+        const match = createMockMatch({ status: 'active' });
+        const matchState = createGraceMatchState({
+          last_turn_timestamp: Date.now() - 6 * 60 * 1000, // 6 min ago
+          turn_timeout_ms: 5 * 60 * 1000,
+          consecutive_timeouts: 1,
+        });
+        wireStorage(match, matchState);
+
+        const result = await rpcSubmitCombatAction(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          COMBAT_ACTION_PAYLOAD
+        );
+        const parsed = JSON.parse(result);
+
+        expect(parsed.error).toBe('Match forfeited due to consecutive timeouts');
+        expect(parsed.forfeit).toBe(true);
+        expect(parsed.winner).toBe('opponent-user');
+
+        // Server-declared settlement: the persisted match records end_reason
+        const savedMatch = findStorageWrite('pvp_matches');
+        expect(savedMatch).toBeDefined();
+        expect(savedMatch?.status).toBe('completed');
+        expect(savedMatch?.winner).toBe('opponent-user');
+        expect(savedMatch?.end_reason).toBe('timeout');
+      });
+    });
   });
 
   describe('rpcSubmitCombatAction - combat resolution', () => {
