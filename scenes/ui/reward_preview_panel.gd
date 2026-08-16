@@ -1,5 +1,5 @@
 ## Shows projected season rewards for current and next tiers.
-## Lets players preview what they earn at each rank tier.
+## Lets players preview what they earn at each rank tier (Standing-based).
 extends PanelContainer
 
 signal closed()
@@ -30,22 +30,22 @@ func _ready() -> void:
 	season_messenger = get_node_or_null("/root/SeasonMessenger")
 	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
 
-func show_for_rank(player_rank: int) -> void:
+func show_for_rank(standing: int) -> void:
 	if not season_messenger:
-		_fallback_show(player_rank)
+		_fallback_show(standing)
 		return
 
-	var current_rewards: Dictionary = season_messenger.get_projected_rewards(player_rank)
+	var current_rewards: Dictionary = season_messenger.get_projected_rewards(standing)
 	_display_current_rewards(current_rewards)
 
-	var next_info: Dictionary = season_messenger.get_next_tier_info(player_rank)
-	if next_info.get("threshold", 0) > 0 and player_rank > 0:
+	var next_info: Dictionary = season_messenger.get_next_tier_info(standing)
+	if next_info.get("threshold", 0) > 0 and standing > 0:
 		var next_rewards: Dictionary = season_messenger.get_projected_rewards(next_info.threshold - 1)
 		_display_next_rewards(next_rewards, next_info)
 		next_section.visible = true
 	else:
-		next_section.visible = player_rank <= 0 or player_rank <= 10
-		if player_rank <= 10 and player_rank > 0:
+		next_section.visible = standing <= 0 or standing <= 10
+		if standing <= 10 and standing > 0:
 			next_tier_label.text = "Legendary (Max Tier)"
 			next_message_label.text = "You're at the highest tier! Defend your position!"
 			next_coins_label.text = ""
@@ -54,10 +54,10 @@ func show_for_rank(player_rank: int) -> void:
 
 	show()
 
-func _fallback_show(player_rank: int) -> void:
+func _fallback_show(standing: int) -> void:
 	var tier: String = "Common"
 	if season_manager:
-		tier = season_manager.get_rank_tier(player_rank)
+		tier = season_manager.get_rank_tier(standing)
 	current_tier_label.text = "Current Tier: %s" % tier
 	current_coins_label.text = ""
 	current_gems_label.text = ""

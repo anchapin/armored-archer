@@ -543,7 +543,7 @@ func _step_pvp_rank_check() -> void:
 	# Wait for signal
 	await _matchmaker_manager.rank_retrieved
 
-	_demo_state.pre_match_rank = _matchmaker_manager.player_rank
+	_demo_state.pre_match_rank = _matchmaker_manager.power_rating
 
 	print("  Current PvP Rank: %d" % _demo_state.pre_match_rank)
 
@@ -675,7 +675,7 @@ func _step_match_complete() -> void:
 	# Get updated rank
 	_matchmaker_manager.get_player_rank()
 	await _matchmaker_manager.rank_retrieved
-	_demo_state.post_match_rank = _matchmaker_manager.player_rank
+	_demo_state.post_match_rank = _matchmaker_manager.power_rating
 
 	print("  ✓ Match completed RPC sent")
 	print("  ✓ Server calculated rewards")

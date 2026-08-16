@@ -15,7 +15,7 @@ signal season_ending_soon(time_left: String)
 # --- Season End Warning Thresholds (in hours) ---
 const WARNING_THRESHOLDS: Array = [168, 72, 24, 1]  # 7d, 3d, 1d, 1h
 const WARNING_MESSAGES: Dictionary = {
-	168: "Season ends in 1 week! Push for a higher rank!",
+	168: "Season ends in 1 week! Push for a higher standing!",
 	72: "Only 3 days left in the season!",
 	24: "Final day of the season! Last chance to climb!",
 	1: "Less than 1 hour remaining! Season ending soon!",
@@ -27,7 +27,7 @@ const TIER_MESSAGES: Dictionary = {
 	"Epic": "Epic tier achieved! Keep pushing for Legendary!",
 	"Rare": "Welcome to the Rare tier! Great progress!",
 	"Uncommon": "Uncommon tier reached! You're climbing!",
-	"Common": "You're ranked! Keep playing to climb higher!",
+	"Common": "You're on the board! Keep playing to climb higher!",
 }
 
 # --- State ---
@@ -134,7 +134,7 @@ func _on_decay_info_updated(info: Dictionary) -> void:
 		if points_at_risk > 0:
 			_emit_message(
 				"decay_warning",
-				"Your rating is decaying! %d points at risk. Play a match to stop decay." % points_at_risk,
+				"Your Ladder Rating is decaying! %d points at risk. Play a match to stop decay." % points_at_risk,
 				"warning"
 			)
 
@@ -170,41 +170,41 @@ func get_pending_messages() -> Array:
 func clear_messages() -> void:
 	_messages_queue.clear()
 
-## Get a motivational message based on rank
-func get_motivational_message(player_rank: int) -> String:
-	if player_rank <= 0:
-		return "Play PvP matches to earn your rank!"
-	elif player_rank <= 10:
+## Get a motivational message based on the season Standing
+func get_motivational_message(standing: int) -> String:
+	if standing <= 0:
+		return "Play PvP matches to earn a standing!"
+	elif standing <= 10:
 		return "Top 10! Defend your Legendary position!"
-	elif player_rank <= 50:
-		var needed: int = player_rank - 10
-		return "Rank %d! Only %d spots to Legendary!" % [player_rank, needed]
-	elif player_rank <= 100:
-		var needed: int = player_rank - 50
-		return "Rank %d! %d spots to Epic tier!" % [player_rank, needed]
-	elif player_rank <= 500:
-		var needed: int = player_rank - 100
-		return "Rank %d! %d spots to Rare tier!" % [player_rank, needed]
+	elif standing <= 50:
+		var needed: int = standing - 10
+		return "Standing #%d! Only %d spots to Legendary!" % [standing, needed]
+	elif standing <= 100:
+		var needed: int = standing - 50
+		return "Standing #%d! %d spots to Epic tier!" % [standing, needed]
+	elif standing <= 500:
+		var needed: int = standing - 100
+		return "Standing #%d! %d spots to Rare tier!" % [standing, needed]
 	else:
-		return "Rank %d. Play matches to climb the ladder!" % player_rank
+		return "Standing #%d. Play matches to climb the ladder!" % standing
 
 ## Get a description of what the next tier offers
-func get_next_tier_info(player_rank: int) -> Dictionary:
-	var current_tier: String = season_manager.get_rank_tier(player_rank) if season_manager else "Unranked"
+func get_next_tier_info(standing: int) -> Dictionary:
+	var current_tier: String = season_manager.get_rank_tier(standing) if season_manager else "Unranked"
 	var next_tier: String = ""
 	var rank_threshold: int = 0
 
-	if player_rank <= 0:
-		return {"tier": "Common", "threshold": 0, "message": "Start playing to get ranked!"}
-	elif player_rank <= 10:
-		return {"tier": "Legendary (max)", "threshold": 1, "message": "You're at the top! Defend your rank!"}
-	elif player_rank <= 50:
+	if standing <= 0:
+		return {"tier": "Common", "threshold": 0, "message": "Start playing to earn a standing!"}
+	elif standing <= 10:
+		return {"tier": "Legendary (max)", "threshold": 1, "message": "You're at the top! Defend your standing!"}
+	elif standing <= 50:
 		next_tier = "Legendary"
 		rank_threshold = 10
-	elif player_rank <= 100:
+	elif standing <= 100:
 		next_tier = "Epic"
 		rank_threshold = 50
-	elif player_rank <= 500:
+	elif standing <= 500:
 		next_tier = "Rare"
 		rank_threshold = 100
 	else:
@@ -214,12 +214,12 @@ func get_next_tier_info(player_rank: int) -> Dictionary:
 	return {
 		"tier": next_tier,
 		"threshold": rank_threshold,
-		"message": "Climb to rank %d for %s tier!" % [rank_threshold, next_tier],
+		"message": "Climb into the top %d for %s tier!" % [rank_threshold, next_tier],
 	}
 
-## Get projected rewards for a given rank
-func get_projected_rewards(player_rank: int) -> Dictionary:
-	var tier: String = season_manager.get_rank_tier(player_rank) if season_manager else "Common"
+## Get projected rewards for a given season Standing
+func get_projected_rewards(standing: int) -> Dictionary:
+	var tier: String = season_manager.get_rank_tier(standing) if season_manager else "Common"
 
 	var rewards: Dictionary = {"tier": tier, "coins": 0, "gems": 0, "cosmetics": {}}
 

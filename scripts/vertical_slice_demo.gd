@@ -414,7 +414,7 @@ func _step_match_results_view() -> void:
 	print("  - OUTCOME: VICTORY")
 	print("  - XP GAINED: +%d" % pvp_xp)
 	print("  - RANK: %d → %d (%+d)" % [old_rank, new_rank, rank_delta])
-	print("  - Season Rank: #42 → #37")
+	print("  - Season Standing: #42 → #37")
 	print("  - Match Type: Ranked")
 	print("  - Duration: 2:34")
 

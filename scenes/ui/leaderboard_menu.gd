@@ -96,50 +96,50 @@ func refresh_leaderboard() -> void:
 func _on_season_info_loaded(data: Dictionary) -> void:
 	var season_info: Dictionary = data.get("season", {})
 	var season_number: int = season_info.get("season_number", 1)
-	var player_rank: int = data.get("player_rank", 0)
-	var player_score: int = data.get("player_score", 0)
+	var standing: int = data.get("player_rank", 0)
+	var ladder_rating: int = data.get("player_score", 0)
 
 	season_label.text = "Season %d" % season_number
 	time_label.text = "Time Remaining: %s" % season_manager.format_time_remaining()
 
-	if player_rank > 0:
-		your_rank_label.text = "Your Rank: #%d (%d Elo)" % [player_rank, player_score]
-		var tier: String = season_manager.get_rank_tier(player_rank)
+	if standing > 0:
+		your_rank_label.text = "Your Standing: #%d (Ladder Rating: %d)" % [standing, ladder_rating]
+		var tier: String = season_manager.get_rank_tier(standing)
 		your_tier_label.text = "Tier: %s" % tier
-		your_tier_label.modulate = season_manager.get_rank_color(player_rank)
-		_update_motivational_message(player_rank)
-		_update_tier_progress(player_rank)
+		your_tier_label.modulate = season_manager.get_rank_color(standing)
+		_update_motivational_message(standing)
+		_update_tier_progress(standing)
 	else:
-		your_rank_label.text = "Not ranked yet"
-		your_tier_label.text = "Play PvP to get ranked!"
+		your_rank_label.text = "Not on the leaderboard yet"
+		your_tier_label.text = "Play PvP to earn a standing!"
 		if motivational_label:
-			motivational_label.text = "Play PvP matches to earn your rank!"
+			motivational_label.text = "Play PvP matches to climb the leaderboard!"
 		if tier_progress_bar:
 			tier_progress_bar.visible = false
 		if tier_progress_label:
 			tier_progress_label.visible = false
 
 # --- Motivational Messaging ---
-func _update_motivational_message(player_rank: int) -> void:
+func _update_motivational_message(standing: int) -> void:
 	if not motivational_label:
 		return
 
 	if season_messenger:
-		motivational_label.text = season_messenger.get_motivational_message(player_rank)
+		motivational_label.text = season_messenger.get_motivational_message(standing)
 	else:
-		if player_rank <= 10:
+		if standing <= 10:
 			motivational_label.text = "Top 10! Defend your Legendary position!"
-		elif player_rank <= 50:
-			motivational_label.text = "Rank %d! Push for Legendary!" % player_rank
+		elif standing <= 50:
+			motivational_label.text = "Standing #%d! Push for Legendary!" % standing
 		else:
-			motivational_label.text = "Rank %d. Keep climbing!" % player_rank
+			motivational_label.text = "Standing #%d. Keep climbing!" % standing
 
 # --- Tier Progress Bar ---
-func _update_tier_progress(player_rank: int) -> void:
+func _update_tier_progress(standing: int) -> void:
 	if not tier_progress_bar or not tier_progress_label or not season_manager:
 		return
 
-	var current_tier: String = season_manager.get_rank_tier(player_rank)
+	var current_tier: String = season_manager.get_rank_tier(standing)
 	var threshold: int = TIER_BOUNDARIES.get(current_tier, 99999)
 
 	if current_tier == "Legendary":
@@ -161,12 +161,12 @@ func _update_tier_progress(player_rank: int) -> void:
 	if next_threshold <= 0:
 		return
 
-	# Progress: higher rank = closer to next tier
-	# Player needs to reach next_threshold rank to advance
-	var spots_needed: int = player_rank - next_threshold
+	# Progress: a lower (better) standing = closer to the next tier.
+	# The player needs to climb to next_threshold standing to advance.
+	var spots_needed: int = standing - next_threshold
 	var current_tier_upper: int = TIER_BOUNDARIES.get(current_tier, 99999)
 	var tier_range: int = current_tier_upper - next_threshold
-	var progress_in_tier: int = current_tier_upper - player_rank
+	var progress_in_tier: int = current_tier_upper - standing
 
 	if tier_range > 0:
 		var progress_pct: float = clampf(float(progress_in_tier) / float(tier_range), 0.0, 1.0)
@@ -183,7 +183,7 @@ func _on_decay_info_updated(info: Dictionary) -> void:
 
 	if info.get("can_decay", false):
 		var points_at_risk: int = info.get("points_at_risk", 0)
-		decay_warning_label.text = "Rating decaying! %d pts at risk" % points_at_risk
+		decay_warning_label.text = "Ladder Rating decaying! %d pts at risk" % points_at_risk
 		decay_warning_label.modulate = Color("#FF7351")
 		decay_warning_label.visible = true
 	else:
@@ -335,7 +335,7 @@ func _on_season_transitioned(old_season: Dictionary, new_season: Dictionary) -> 
 
 	var dialog_text: String = "Season %d has ended!\n\n" % old_season_number
 	dialog_text += "Season %d has begun.\n\n" % new_season_number
-	dialog_text += "Your rank has been reset.\n\n"
+	dialog_text += "Your Ladder Rating has been soft-reset.\n\n"
 	dialog_text += "Play matches to climb the new leaderboard!"
 
 	dialog.dialog_text = dialog_text

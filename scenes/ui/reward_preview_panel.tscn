@@ -79,7 +79,7 @@ text = ""
 [node name="NextMessageLabel" type="Label" parent="VBoxContainer/NextSection"]
 layout_mode = 2
 autowrap_mode = 2
-text = "Climb to rank 500 for Uncommon tier!"
+text = "Climb into the top 500 for Uncommon tier!"
 
 [node name="CloseButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2

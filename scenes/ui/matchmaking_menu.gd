@@ -125,12 +125,12 @@ func _on_quick_join_pressed() -> void:
 	queue_ui.join_queue()
 
 # --- Match Handlers ---
-func _on_matches_loaded(matches: Array, player_rank: int) -> void:
+func _on_matches_loaded(matches: Array, power_rating: int) -> void:
 	current_matches = matches
 	loading_label.visible = false
 	matches_container.visible = true
 
-	rank_label.text = "Rank: %d" % player_rank
+	rank_label.text = "Power Rating: %d" % power_rating
 
 	for child in matches_container.get_children():
 		child.queue_free()
@@ -162,28 +162,28 @@ func _create_match_item(match_data: Dictionary) -> Control:
 	var player_rank_val: int = matchmaker_manager.get_player_rank_sync() if matchmaker_manager else 0
 
 	var rank_label: Label = Label.new()
-	rank_label.text = "Opponent Rank: %d" % opponent_rank
-	
+	rank_label.text = "Opponent Power Rating: %d" % opponent_rank
+
 	# Apply theme text color
 	if theme_manager:
 		rank_label.modulate = theme_manager.get_text_color()
 
-	# Display rank difference - use DesignTokens colors
+	# Display Power Rating difference - use DesignTokens colors
 	var rank_diff_label: Label = Label.new()
 	var rank_diff: int = opponent_rank - player_rank_val
-	
+
 	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color.GREEN
 	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color.ORANGE
 	var error_color = ArcherDesignTokens.COLOR_ERROR if design_tokens else Color.RED
-	
+
 	if rank_diff > 0:
 		rank_diff_label.text = "(+%d above you)" % rank_diff
-		rank_diff_label.modulate = warning_color  # Orange for higher rank
+		rank_diff_label.modulate = warning_color  # Orange for higher Power Rating
 	elif rank_diff < 0:
 		rank_diff_label.text = "(%d below you)" % rank_diff
-		rank_diff_label.modulate = success_color  # Green for lower rank
+		rank_diff_label.modulate = success_color  # Green for lower Power Rating
 	else:
-		rank_diff_label.text = "(same rank)"
+		rank_diff_label.text = "(evenly matched)"
 		if theme_manager:
 			rank_diff_label.modulate = theme_manager.get_text_color()
 
@@ -282,7 +282,8 @@ func _show_punch_up_warning(match_data: Dictionary) -> void:
 	var warning_scene = load("res://scenes/ui/punch_up_warning_dialog.tscn")
 	var warning_dialog = warning_scene.instantiate()
 
-	# Set the match data and player rank
+	# Set the match data and the player's Power Rating (punch-up gaps are
+	# Power Rating comparisons — issue #871)
 	var player_rank_val: int = matchmaker_manager.get_player_rank_sync() if matchmaker_manager else 0
 	warning_dialog.set_match_data(match_data, player_rank_val)
 

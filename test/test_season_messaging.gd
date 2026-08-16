@@ -33,7 +33,7 @@ func after_each():
 
 func test_motivational_message_unranked():
 	var msg = season_messenger.get_motivational_message(0)
-	assert_eq(msg, "Play PvP matches to earn your rank!", "Unranked should have starter message")
+	assert_eq(msg, "Play PvP matches to earn a standing!", "Unranked should have starter message")
 
 func test_motivational_message_top_10():
 	var msg = season_messenger.get_motivational_message(5)

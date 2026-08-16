@@ -29,7 +29,7 @@ func run_tests() -> void:
 	await test_initial_state()
 	await test_constants()
 	await test_available_matches()
-	await test_player_rank()
+	await test_power_rating()
 	await test_current_match()
 	await test_get_available_matches()
 	await test_get_current_match()
@@ -71,7 +71,7 @@ func _fail(test_name: String, message: String) -> void:
 func test_initial_state() -> void:
 	var mm = _create_matchmaker_manager()
 
-	if mm.available_matches.is_empty() and mm.player_rank == 0 and mm.current_match.is_empty():
+	if mm.available_matches.is_empty() and mm.power_rating == 0 and mm.current_match.is_empty():
 		_pass("test_initial_state")
 	else:
 		_fail("test_initial_state", "Initial state should be empty")
@@ -109,14 +109,14 @@ func test_available_matches() -> void:
 
 	mm.queue_free()
 
-func test_player_rank() -> void:
+func test_power_rating() -> void:
 	var mm = _create_matchmaker_manager()
-	mm.player_rank = 1500
+	mm.power_rating = 1500
 
-	if mm.player_rank == 1500:
-		_pass("test_player_rank")
+	if mm.power_rating == 1500:
+		_pass("test_power_rating")
 	else:
-		_fail("test_player_rank", "Player rank should be 1500")
+		_fail("test_power_rating", "Power Rating should be 1500")
 
 	mm.queue_free()
 
@@ -155,12 +155,12 @@ func test_get_current_match() -> void:
 
 func test_get_player_rank_sync() -> void:
 	var mm = _create_matchmaker_manager()
-	mm.player_rank = 2000
+	mm.power_rating = 2000
 
 	if mm.get_player_rank_sync() == 2000:
 		_pass("test_get_player_rank_sync")
 	else:
-		_fail("test_get_player_rank_sync", "Should return player rank")
+		_fail("test_get_player_rank_sync", "Should return cached Power Rating")
 
 	mm.queue_free()
 
@@ -295,7 +295,7 @@ func test_is_punch_up_match() -> void:
 
 func test_calculate_punch_up_risk_level() -> void:
 	var mm = _create_matchmaker_manager()
-	mm.player_rank = 10
+	mm.power_rating = 10
 
 	# Test low risk (rank diff 6)
 	var low_risk_match = {
@@ -345,7 +345,7 @@ func test_calculate_punch_up_risk_level() -> void:
 
 func test_should_show_punch_up_warning() -> void:
 	var mm = _create_matchmaker_manager()
-	mm.player_rank = 10
+	mm.power_rating = 10
 
 	# Test high risk should show warning
 	var high_risk_match = {
@@ -395,7 +395,7 @@ func test_should_show_punch_up_warning() -> void:
 
 func test_get_punch_up_risk_details() -> void:
 	var mm = _create_matchmaker_manager()
-	mm.player_rank = 10
+	mm.power_rating = 10
 
 	# Test high risk match details
 	var high_risk_match = {

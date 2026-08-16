@@ -53,7 +53,6 @@ import {
   registerRpcListMatches,
   registerRpcCreateMatch,
   registerRpcAcceptMatch,
-  registerRpcGetPlayerRank,
   registerRpcCompleteMatch,
   registerRpcGetMatchHistory,
   registerRpcGetMatchDetails,
@@ -100,7 +99,8 @@ import {
 } from './modules/season_admin';
 import {
   registerRpcGetSeasonHistory,
-  registerRpcGetPlayerSeasonRank,
+  registerRpcGetPlayerRank,
+  rpcGetPlayerRank,
 } from './modules/season_leaderboard';
 import {
   registerRpcGetSeasonInfo,
@@ -337,6 +337,12 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/get_player_rank',
+      'get_player_rank',
+      rpcGetPlayerRank
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/submit_turn',
       'submit_turn',
       rpcSubmitTurnWrapper
@@ -557,7 +563,6 @@ const InitModule: InitModule = function (
     registerRpcListMatches(initializer);
     registerRpcCreateMatch(initializer);
     registerRpcAcceptMatch(initializer);
-    registerRpcGetPlayerRank(initializer);
     registerRpcCompleteMatch(initializer);
     registerRpcGetMatchHistory(initializer);
     registerRpcGetMatchDetails(initializer);
@@ -575,7 +580,10 @@ const InitModule: InitModule = function (
     registerRpcClaimSeasonRewards(initializer);
     registerRpcEndSeason(initializer);
     registerRpcGetSeasonHistory(initializer);
-    registerRpcGetPlayerSeasonRank(initializer);
+    // Sole registration of get_player_rank (issue #871): season_leaderboard's
+    // consolidated handler — explicit power_rating / ladder_rating / standing
+    // fields plus legacy rank/rating aliases.
+    registerRpcGetPlayerRank(initializer);
     registerRpcGetPlayerCosmetics(initializer);
     registerRpcGetPrestigeProgress(initializer);
     registerRpcGetProjectedNextSeasonElo(initializer);
