@@ -664,7 +664,7 @@ describe('rpg_system', () => {
         free_respecs_used: 1, // free respec already used → paid path
         current_season_id: 'season1',
       };
-      const currency = { user_id: 'test-user', gems: 10000, gold: 0 };
+      const currency = { user_id: 'test-user', gems: 10000, coins: 0 };
 
       mockNk.storageRead = jest.fn().mockImplementation((keys: any[]) => {
         const collection = keys[0].collection;
@@ -704,7 +704,7 @@ describe('rpg_system', () => {
         free_respecs_used: 1,
         current_season_id: 'season1',
       };
-      const currency = { user_id: 'test-user', gems: 50, gold: 0 };
+      const currency = { user_id: 'test-user', gems: 50, coins: 0 };
 
       mockNk.storageRead = jest.fn().mockImplementation((keys: any[]) => {
         const collection = keys[0].collection;

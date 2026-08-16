@@ -302,11 +302,11 @@ func test_rank_tier_thresholds():
 ## Test season rewards structure
 func test_season_rewards_structure():
 	var test_rewards = {
-		"rank_1": {"gems": 1000, "gold": 5000},
-		"rank_2": {"gems": 800, "gold": 4000},
-		"rank_3": {"gems": 600, "gold": 3000},
-		"rank_10": {"gems": 300, "gold": 1500},
-		"rank_50": {"gems": 150, "gold": 750}
+		"rank_1": {"gems": 1000, "coins": 5000},
+		"rank_2": {"gems": 800, "coins": 4000},
+		"rank_3": {"gems": 600, "coins": 3000},
+		"rank_10": {"gems": 300, "coins": 1500},
+		"rank_50": {"gems": 150, "coins": 750}
 	}
 
 	season_manager.season_rewards = test_rewards

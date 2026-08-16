@@ -410,7 +410,7 @@ func _on_respec_cooldown_remaining(seconds: int) -> void:
 			respec_cooldown_label.visible = false
 			respec_button.disabled = false
 
-func _on_currency_updated(_gems: int, _gold: int) -> void:
+func _on_currency_updated(_gems: int, _coins: int) -> void:
 	refresh_respec_ui()
 
 func _on_back_pressed() -> void:

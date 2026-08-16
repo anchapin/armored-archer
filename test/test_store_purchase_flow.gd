@@ -154,7 +154,7 @@ func test_currency_management() -> void:
 
 	# Test initial state
 	sm.current_gems = 0
-	sm.current_gold = 0
+	sm.current_coins = 0
 	stub.gem_balance = 0
 
 	if sm.get_gems() != 0:

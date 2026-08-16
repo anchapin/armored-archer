@@ -303,7 +303,7 @@ describe('rpcRestorePurchases', () => {
       const existingCurrency = {
         user_id: 'test-user-123',
         gems: 9999999,
-        gold: 0,
+        coins: 0,
       };
 
       const nk = createTestNakama({

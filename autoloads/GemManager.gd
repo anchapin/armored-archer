@@ -192,7 +192,7 @@ func remove_gems(amount: int, reason: String = "") -> void:
 	gems_updated.emit(_local_gems)
 	save_data()
 
-func _on_currency_updated(_gems: int, _gold: int) -> void:
+func _on_currency_updated(_gems: int, _coins: int) -> void:
 	pass
 
 # --- Skin Catalog (Delegates to GearRegistry) ---

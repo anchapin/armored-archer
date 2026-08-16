@@ -38,7 +38,7 @@ export interface GameStateContext {
   maxHealth?: number;
   mana?: number;
   maxMana?: number;
-  gold?: number;
+  coins?: number;
   gems?: number;
   currentMatchId?: string;
   matchState?: string;
@@ -174,7 +174,7 @@ export function setGameStateContext(gameState: GameStateContext): void {
     maxHealth: gameState.maxHealth,
     mana: gameState.mana,
     maxMana: gameState.maxMana,
-    gold: gameState.gold,
+    coins: gameState.coins,
     gems: gameState.gems,
     currentMatchId: gameState.currentMatchId,
     matchState: gameState.matchState,

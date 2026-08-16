@@ -18,6 +18,7 @@ import { logger } from '../config/logger';
 import {
   getCurrency,
   invalidateCurrencyCache as invalidateLedgerCache,
+  readNormalizedCurrencyRecord,
   MAX_GEM_BALANCE,
   PlayerCurrency,
 } from './currency';
@@ -408,8 +409,9 @@ export async function processRefund(
 
 /**
  * Player currency data structure lives in modules/currency.ts (issue #860):
- * the `player_currency` storage record is the single ledger. `gold` holds
- * the canonical "Coins" soft currency pending the #866 field rename.
+ * the `player_currency` storage record is the single ledger. `coins` holds
+ * the canonical "Coins" soft currency (renamed from `gold` in issue #866;
+ * legacy records are folded lazily on read — zero balance loss).
  */
 
 /**
@@ -981,32 +983,16 @@ async function awardGems(
   // Mark receipt as used BEFORE awarding gems to prevent replay attacks
   await markReceiptAsUsed(nk, ctx.userId, receiptHash, logger);
 
-  // Read currency with version for optimistic concurrency
-  const currencyObjects = nk.storageRead([
-    {
-      collection: 'player_currency',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
-
-  let playerCurrency: PlayerCurrency;
-  let currencyVersion: string | undefined;
-  if (currencyObjects.length === 0 || !currencyObjects[0].value) {
-    playerCurrency = { user_id: ctx.userId, gems: 0, gold: 0 };
-  } else {
-    const parseResult = safeParse<PlayerCurrency>(
-      currencyObjects[0].value,
-      null,
-      logger,
-      'awardGems:player_currency'
-    );
-    playerCurrency =
-      parseResult.success && parseResult.data
-        ? parseResult.data
-        : { user_id: ctx.userId, gems: 0, gold: 0 };
-    currencyVersion = currencyObjects[0].version;
-  }
+  // Read currency with version for optimistic concurrency. The normalized
+  // reader folds any pre-#866 `gold` field into `coins` so the write-back
+  // below can never drop a legacy coins balance (zero balance loss).
+  const { currency: parsedCurrency, version: readVersion } = readNormalizedCurrencyRecord(
+    nk,
+    ctx.userId,
+    logger
+  );
+  const playerCurrency: PlayerCurrency = parsedCurrency;
+  const currencyVersion: string | undefined = readVersion;
 
   // Check if adding gems would exceed maximum balance (overflow protection)
   if (wouldExceedMaxBalance(playerCurrency.gems, gemBundle.gem_amount)) {
@@ -1146,7 +1132,7 @@ export async function rpcValidatePurchase(
  * {
  *   "user_id": "user_123",
  *   "gems": 500,
- *   "gold": 1000
+ *   "coins": 1000
  * }
  */
 export function rpcGetCurrency(

@@ -41,8 +41,8 @@ func _connect_signals() -> void:
 
 func _update_display() -> void:
 	if StoreManager:
-		currency_label.text = "Gems: %d | Gold: %d" % [StoreManager.get_gems(), StoreManager.get_gold()]
-		_log("Currency updated: %d gems, %d gold" % [StoreManager.get_gems(), StoreManager.get_gold()])
+		currency_label.text = "Gems: %d | Coins: %d" % [StoreManager.get_gems(), StoreManager.get_coins()]
+		_log("Currency updated: %d gems, %d coins" % [StoreManager.get_gems(), StoreManager.get_coins()])
 
 	var platform_info = "Platform: %s" % OS.get_name()
 	if StoreManager:
@@ -81,9 +81,9 @@ func _on_back() -> void:
 	var result = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
 
 # --- Callbacks ---
-func _on_currency_updated(gems: int, gold: int) -> void:
+func _on_currency_updated(gems: int, coins: int) -> void:
 	_update_display()
-	_log("Currency updated signal: %d gems, %d gold" % [gems, gold])
+	_log("Currency updated signal: %d gems, %d coins" % [gems, coins])
 
 func _on_purchase_succeeded(product_id: String, gems_awarded: int) -> void:
 	_log("✓ Purchase SUCCESS: %s awarded %d gems" % [product_id, gems_awarded])

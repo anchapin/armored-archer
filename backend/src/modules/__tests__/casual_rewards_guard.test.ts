@@ -225,8 +225,8 @@ describe('casual rewards guard (issue #872)', () => {
       // The ledger path demonstrably ran: coins were credited to both sides.
       const winnerLedger = JSON.parse(stored[`player_currency:${CREATOR_ID}`]);
       const loserLedger = JSON.parse(stored[`player_currency:${OPPONENT_ID}`]);
-      expect(winnerLedger.gold).toBeGreaterThan(0);
-      expect(loserLedger.gold).toBeGreaterThan(0);
+      expect(winnerLedger.coins).toBeGreaterThan(0);
+      expect(loserLedger.coins).toBeGreaterThan(0);
 
       // No gems may be credited in a casual settlement: the punch-up gem
       // bonus must not leak through the ledger either.

@@ -40,7 +40,7 @@ func _fail(test_name: String, message: String) -> void:
 func test_initial_state() -> void:
 	var sm = _create_store_manager()
 
-	if sm.current_gems == 0 and sm.current_gold == 0 and not sm.is_initialized:
+	if sm.current_gems == 0 and sm.current_coins == 0 and not sm.is_initialized:
 		_pass("test_initial_state")
 	else:
 		_fail("test_initial_state", "Initial state should be zero/empty")

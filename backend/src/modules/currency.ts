@@ -12,12 +12,19 @@
  * and every read path (notably `armored_archer/get_currency` and
  * `armored_archer/spend_gems` in store.ts) reads it.
  *
- * FIELD NAMING:
- * `gold` is the storage field that holds the canonical "Coins" soft
- * currency (CONTEXT.md ratified "Coins" as the canonical name; `gold` is
- * the legacy field the client already displays). A later change (#866)
- * renames this field to `coins` — this module isolates that rename to the
- * `PlayerCurrency` interface plus the `coinsToLedgerField` mapping below.
+ * FIELD NAMING (issue #866 — completed):
+ * The canonical "Coins" soft currency (CONTEXT.md ratified name) is stored
+ * on the `coins` field. `gold` is the legacy storage field name; records
+ * still carrying it are migrated lazily on first read (see the dual-read
+ * migration note below) so no balance is ever lost.
+ *
+ * LAZY DUAL-READ MIGRATION (zero balance loss, issue #866):
+ * A record written before the rename has its coins balance under `gold`.
+ * Reading such a record falls back to the `gold` value and writes the
+ * normalized `coins`-only record back (version-guarded, idempotent — the
+ * same pattern as the legacy wallet bridge below). Every write path emits
+ * `coins` only, so the legacy field disappears on first touch and can
+ * never reappear.
  *
  * LEGACY WALLET BRIDGE (zero balance loss):
  * Players may hold balances in the wallet from the pre-fix write paths
@@ -55,13 +62,13 @@ export const MAX_GEM_BALANCE = 10000000; // 10 million gems
  *
  * @property user_id - Unique identifier for the player
  * @property gems - Premium currency balance (IAP + earned)
- * @property gold - Soft currency ("Coins") balance; field rename to `coins` tracked in #866
+ * @property coins - Soft currency ("Coins") balance (renamed from `gold` in #866)
  * @property wallet_bridged - One-time marker set when legacy wallet balances were folded in (#860)
  */
 export interface PlayerCurrency {
   user_id: string;
   gems: number;
-  gold: number;
+  coins: number;
   wallet_bridged?: boolean;
 }
 
@@ -69,28 +76,38 @@ export interface PlayerCurrency {
  * A change to apply to the ledger. Positive values credit, negative debit.
  *
  * @property gems - Gems to add/remove
- * @property gold - Coins (stored as `gold`, see field naming note above) to add/remove
+ * @property coins - Coins to add/remove
  */
 export interface CurrencyDelta {
   gems?: number;
-  gold?: number;
+  coins?: number;
 }
 
 /**
- * Result of a raw (uncached, unbridged) ledger read.
+ * Result of a raw (uncached, unbridged) ledger read. `hadLegacyGold` is
+ * true when the stored record still carried the pre-#866 `gold` field and
+ * therefore needs a normalization write-back.
  */
-interface RawCurrencyRead {
+export interface RawCurrencyRead {
   currency: PlayerCurrency;
   version: string | undefined;
+  hadLegacyGold: boolean;
 }
 
 /**
- * Reads the raw ledger record from storage without caching or bridging.
+ * Reads the raw ledger record from storage without caching or bridging,
+ * normalizing the pre-#866 `gold` field to `coins` (dual-read migration).
+ *
+ * Normalization rule: a finite `coins` value wins (canonical write path);
+ * otherwise a finite legacy `gold` value is folded into `coins`. Either
+ * way the returned record carries `coins` only — the legacy field never
+ * survives into memory, so every subsequent write drops it.
  *
  * @param nk - Nakama server interface
  * @param userId - ID of the player
  * @param logger - Logger instance
- * @returns The currency record plus its storage version for conditional writes
+ * @returns The normalized currency record, its storage version for
+ *   conditional writes, and whether a legacy `gold` field was present
  */
 function readCurrencyRecord(
   nk: Runtime.Nakama,
@@ -106,7 +123,7 @@ function readCurrencyRecord(
   ]);
 
   if (objects.length === 0 || !objects[0].value) {
-    return { currency: defaultCurrency(userId), version: undefined };
+    return { currency: defaultCurrency(userId), version: undefined, hadLegacyGold: false };
   }
 
   const parseResult = safeParse<PlayerCurrency>(
@@ -116,18 +133,45 @@ function readCurrencyRecord(
     'currency:player_currency'
   );
   if (!parseResult.success || !parseResult.data) {
-    return { currency: defaultCurrency(userId), version: undefined };
+    return { currency: defaultCurrency(userId), version: undefined, hadLegacyGold: false };
   }
 
-  const parsed = parseResult.data;
+  const parsed = parseResult.data as PlayerCurrency & { gold?: unknown };
+  const coins =
+    typeof parsed.coins === 'number' && Number.isFinite(parsed.coins)
+      ? parsed.coins
+      : typeof parsed.gold === 'number' && Number.isFinite(parsed.gold)
+        ? parsed.gold
+        : 0;
+  const hadLegacyGold = typeof parsed.gold === 'number';
+
   const currency: PlayerCurrency = {
     user_id: parsed.user_id || userId,
     gems: typeof parsed.gems === 'number' && Number.isFinite(parsed.gems) ? parsed.gems : 0,
-    gold: typeof parsed.gold === 'number' && Number.isFinite(parsed.gold) ? parsed.gold : 0,
+    coins,
     wallet_bridged: parsed.wallet_bridged,
   };
 
-  return { currency, version: objects[0].version };
+  return { currency, version: objects[0].version, hadLegacyGold };
+}
+
+/**
+ * Reads a normalized ledger record for read-modify-write callers outside
+ * this module (e.g. the store purchase path), which must not bypass the
+ * #866 dual-read migration when they write the record back.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param logger - Logger instance
+ * @returns The normalized currency record plus its storage version
+ */
+export function readNormalizedCurrencyRecord(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): { currency: PlayerCurrency; version: string | undefined } {
+  const read = readCurrencyRecord(nk, userId, logger);
+  return { currency: read.currency, version: read.version };
 }
 
 /**
@@ -137,14 +181,16 @@ function readCurrencyRecord(
  * @returns A zero-balance currency record
  */
 function defaultCurrency(userId: string): PlayerCurrency {
-  return { user_id: userId, gems: 0, gold: 0 };
+  return { user_id: userId, gems: 0, coins: 0 };
 }
 
 /**
  * Extracts legacy wallet balances that must be folded into the ledger.
  *
  * Recognized wallet keys (clamped at zero — a negative key can only be a
- * legacy debit and must never reduce the ledger):
+ * legacy debit and must never reduce the ledger). These are keys of the
+ * frozen pre-#860 Nakama wallet DATA, not ledger fields, so the legacy
+ * `gold` key must keep being read even after the #866 ledger rename:
  * - `gems`: written by store purchases and punch-up gem rewards
  * - `coins`: written by match and season coin rewards
  * - `gold`: defensive — no known writer used it, but folding is harmless
@@ -157,14 +203,14 @@ function defaultCurrency(userId: string): PlayerCurrency {
  */
 function extractBridgeableWalletBalances(wallet: Record<string, unknown>): {
   gems: number;
-  gold: number;
+  coins: number;
 } {
   const clamp = (value: unknown): number =>
     typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
 
   return {
     gems: clamp(wallet.gems),
-    gold: clamp(wallet.coins) + clamp(wallet.gold),
+    coins: clamp(wallet.coins) + clamp(wallet.gold),
   };
 }
 
@@ -180,19 +226,20 @@ function extractBridgeableWalletBalances(wallet: Record<string, unknown>): {
  * @param userId - ID of the player
  * @param logger - Logger instance
  * @param read - The raw ledger read to bridge
- * @returns The merged currency record (unbridged input on any failure)
+ * @returns The merged currency record plus whether this call persisted a
+ *   record (callers use it to skip a redundant normalization write-back)
  */
 function bridgeLegacyWalletIntoLedger(
   nk: Runtime.Nakama,
   userId: string,
   logger: Runtime.Logger,
   read: RawCurrencyRead
-): PlayerCurrency {
+): { currency: PlayerCurrency; persisted: boolean } {
   // Capability check keeps hand-rolled test mocks (and any runtime without
   // account read access) working: without accountGetId there is nothing we
   // can bridge, so return the record untouched and unstamped.
   if (typeof nk.accountGetId !== 'function') {
-    return read.currency;
+    return { currency: read.currency, persisted: false };
   }
 
   let wallet: Record<string, unknown> = {};
@@ -211,7 +258,7 @@ function bridgeLegacyWalletIntoLedger(
     }
   } catch (error) {
     logger.warn('Currency wallet bridge: account read failed for %s: %s', userId, error);
-    return read.currency;
+    return { currency: read.currency, persisted: false };
   }
 
   const bridge = extractBridgeableWalletBalances(wallet);
@@ -219,7 +266,7 @@ function bridgeLegacyWalletIntoLedger(
   const merged: PlayerCurrency = {
     user_id: userId,
     gems: Math.min(read.currency.gems + bridge.gems, MAX_GEM_BALANCE),
-    gold: read.currency.gold + bridge.gold,
+    coins: read.currency.coins + bridge.coins,
     wallet_bridged: true,
   };
 
@@ -231,7 +278,7 @@ function bridgeLegacyWalletIntoLedger(
     );
   }
 
-  if (bridge.gems === 0 && bridge.gold === 0) {
+  if (bridge.gems === 0 && bridge.coins === 0) {
     // Nothing stranded in the wallet — stamp the marker so we never rescan,
     // but only persist when a record already exists (avoid creating empty
     // records for every fresh read).
@@ -242,7 +289,7 @@ function bridgeLegacyWalletIntoLedger(
         logger.debug('Currency wallet bridge stamp failed for %s: %s', userId, error);
       }
     }
-    return read.currency;
+    return { currency: read.currency, persisted: read.version !== undefined };
   }
 
   try {
@@ -255,9 +302,9 @@ function bridgeLegacyWalletIntoLedger(
       PLAYER_CURRENCY_COLLECTION,
       {
         bridged_gems: bridge.gems,
-        bridged_coins: bridge.gold,
+        bridged_coins: bridge.coins,
         new_gem_balance: merged.gems,
-        new_coin_balance: merged.gold,
+        new_coin_balance: merged.coins,
       },
       'success'
     );
@@ -265,14 +312,14 @@ function bridgeLegacyWalletIntoLedger(
       'Bridged legacy wallet into currency ledger for %s: +%d gems, +%d coins',
       userId,
       bridge.gems,
-      bridge.gold
+      bridge.coins
     );
-    return merged;
+    return { currency: merged, persisted: true };
   } catch (error) {
     // Version conflict or write failure — the wallet is unchanged, so the
     // next read will attempt the bridge again.
     logger.warn('Currency wallet bridge write failed for %s: %s', userId, error);
-    return read.currency;
+    return { currency: read.currency, persisted: false };
   }
 }
 
@@ -327,10 +374,38 @@ export function getCurrency(
   }
 
   const read = readCurrencyRecord(nk, userId, log);
-  const currency =
-    read.currency.wallet_bridged === true
-      ? read.currency
-      : bridgeLegacyWalletIntoLedger(nk, userId, log, read);
+  let currency: PlayerCurrency;
+
+  if (read.currency.wallet_bridged === true) {
+    currency = read.currency;
+  } else {
+    const bridged = bridgeLegacyWalletIntoLedger(nk, userId, log, read);
+    currency = bridged.currency;
+
+    // The bridge already persisted the normalized coins-only record (its
+    // merged and stamp writes both emit the #866 shape) — skip the
+    // redundant normalization write-back below.
+    if (bridged.persisted) {
+      cacheManager.set(PLAYER_CURRENCY_COLLECTION, userId, currency);
+      return currency;
+    }
+  }
+
+  // Lazy dual-read migration (#866): a record still carrying the legacy
+  // `gold` field was normalized in memory above; persist the coins-only
+  // shape so the legacy field disappears on first touch. Version-guarded
+  // (a concurrent write aborts safely) and idempotent (after a successful
+  // write-back the stored record has no `gold` to fold). Best-effort: on
+  // failure the read still returns the correct normalized balance and the
+  // next read retries the write-back.
+  if (read.hadLegacyGold) {
+    try {
+      writeCurrencyRecord(nk, userId, currency, read.version);
+      log.debug('Normalized legacy gold field to coins for %s', userId);
+    } catch (error) {
+      log.debug('Currency gold→coins normalization write failed for %s: %s', userId, error);
+    }
+  }
 
   cacheManager.set(PLAYER_CURRENCY_COLLECTION, userId, currency);
   return currency;
@@ -359,7 +434,7 @@ export function invalidateCurrencyCache(userId: string, logger?: Runtime.Logger)
  *
  * @param nk - Nakama server interface
  * @param userId - ID of the player
- * @param delta - Change to apply (gems and/or gold)
+ * @param delta - Change to apply (gems and/or coins)
  * @param source - Audit identifier for the calling path (e.g. 'match_rewards')
  * @param logger - Optional logger; falls back to the winston logger
  * @returns The updated currency record
@@ -373,9 +448,9 @@ export function applyCurrencyDelta(
 ): PlayerCurrency {
   const log = logger ?? fallbackLogger;
   const gemsDelta = Math.trunc(delta.gems ?? 0);
-  const goldDelta = Math.trunc(delta.gold ?? 0);
+  const coinsDelta = Math.trunc(delta.coins ?? 0);
 
-  if (gemsDelta === 0 && goldDelta === 0) {
+  if (gemsDelta === 0 && coinsDelta === 0) {
     // Nothing to apply — return the current state without a write.
     return getCurrency(nk, userId, log);
   }
@@ -387,7 +462,7 @@ export function applyCurrencyDelta(
     const current = read.currency;
 
     let newGems = current.gems + gemsDelta;
-    const newGold = Math.max(0, current.gold + goldDelta);
+    const newCoins = Math.max(0, current.coins + coinsDelta);
     if (newGems > MAX_GEM_BALANCE) {
       log.warn(
         'Currency award for %s via %s saturated gems at MAX_GEM_BALANCE (%d)',
@@ -403,7 +478,7 @@ export function applyCurrencyDelta(
     const updated: PlayerCurrency = {
       user_id: userId,
       gems: newGems,
-      gold: newGold,
+      coins: newCoins,
       // Preserve an absent bridge marker so a stranded legacy wallet is
       // still folded in on the next read.
       wallet_bridged: current.wallet_bridged,
@@ -434,9 +509,9 @@ export function applyCurrencyDelta(
       {
         source,
         gems_delta: gemsDelta,
-        gold_delta: goldDelta,
+        coin_delta: coinsDelta,
         new_gem_balance: updated.gems,
-        new_coin_balance: updated.gold,
+        new_coin_balance: updated.coins,
       },
       'success'
     );
@@ -446,9 +521,9 @@ export function applyCurrencyDelta(
       userId,
       source,
       gemsDelta,
-      goldDelta,
+      coinsDelta,
       updated.gems,
-      updated.gold
+      updated.coins
     );
 
     return updated;

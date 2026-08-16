@@ -1092,11 +1092,11 @@ export function rpcClaimSeasonRewards(
 
   // Give rewards (coins, gems) via the unified currency ledger (issue #860)
   // so season earnings are visible in get_currency and spendable via
-  // spend_gems. Reward `coins` map to the ledger `gold` field (#866 rename).
+  // spend_gems. Reward `coins` map to the ledger `coins` field (#866).
   const rewardDelta: CurrencyDelta = {};
 
   if (rewards.coins) {
-    rewardDelta.gold = rewards.coins;
+    rewardDelta.coins = rewards.coins;
   }
 
   if (rewards.gems) {
@@ -1191,7 +1191,7 @@ export function rpcEndSeason(
 
     // Auto-grant currency rewards via the unified currency ledger (#860)
     const rewardDelta: CurrencyDelta = {};
-    if (rewards.coins) rewardDelta.gold = rewards.coins;
+    if (rewards.coins) rewardDelta.coins = rewards.coins;
     if (rewards.gems) rewardDelta.gems = rewards.gems;
     applyCurrencyDelta(nk, record.ownerId, rewardDelta, 'season_end_distribution', logger);
 

@@ -490,7 +490,7 @@ describe('Season System Integration Tests', () => {
       await testHelper.writeStorageObject('player_currency', playerA.userId, playerA.userId, {
         user_id: playerA.userId,
         gems: 0,
-        gold: 0,
+        coins: 0,
       });
 
       const payload = {};
@@ -532,7 +532,7 @@ describe('Season System Integration Tests', () => {
       await testHelper.writeStorageObject('player_currency', playerA.userId, playerA.userId, {
         user_id: playerA.userId,
         gems: 0,
-        gold: 0,
+        coins: 0,
       });
 
       const initialCurrency = await getPlayerCurrency(playerA);
