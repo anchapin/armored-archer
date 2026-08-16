@@ -141,18 +141,12 @@ jobs:
           --health-timeout 5s
           --health-retries 5
           --health-start-period 30s
-
-      # Nakama game server service (custom image with PostgreSQL config)
-      nakama:
-        image: armored-archer/nakama-postgres:3.21.1
-        ports:
-          - 7350:7350
-        options: >-
-          --health-cmd "/nakama/nakama healthcheck"
-          --health-interval 10s
-          --health-timeout 10s
-          --health-retries 60
-          --health-start-period 60s
+      # Note: no Nakama service container here (issue #858). The retired
+      # `armored-archer/nakama-postgres:3.21.1` image was never published to a
+      # registry, so both act and GitHub-hosted runners failed at job setup
+      # ("pull access denied"). These jobs run unit tests only (jest roots=src),
+      # which never connect to Nakama — integration coverage runs on the real
+      # stack via `npm run test:integration` + backend/docker-compose.yml.
 
     steps:
       - uses: actions/checkout@v4
@@ -189,18 +183,6 @@ jobs:
           for migration in $(ls -1 *.sql 2>/dev/null | sort -V); do
             echo "Running migration: $migration"
             PGPASSWORD=changeme psql -h localhost -p 5432 -U postgres -d nakama -f "$migration" || true
-          done
-
-      - name: Wait for Nakama to be ready
-        run: |
-          echo "Waiting for Nakama to be ready..."
-          for i in {1..60}; do
-            if curl -s http://localhost:7350/ 2>/dev/null || curl -s http://localhost:7351/ 2>/dev/null; then
-              echo "Nakama is ready"
-              break
-            fi
-            echo "Waiting for Nakama... ($i/60)"
-            sleep 2
           done
 
       - name: Run tests with coverage
@@ -582,19 +564,10 @@ jobs:
           --health-timeout 5s
           --health-retries 5
           --health-start-period 30s
-
-      # Nakama game server service (custom image with PostgreSQL config)
-      # Note: Using unique port 7351 to avoid conflicts with backend-test job (7350) when running act in parallel
-      nakama:
-        image: armored-archer/nakama-postgres:3.21.1
-        ports:
-          - 7351:7350
-        options: >-
-          --health-cmd "/nakama/nakama healthcheck"
-          --health-interval 10s
-          --health-timeout 10s
-          --health-retries 60
-          --health-start-period 60s
+      # Note: no Nakama service container here (issue #858) — the
+      # `armored-archer/nakama-postgres:3.21.1` image was never published to a
+      # registry and failed job setup everywhere. This job runs unit tests only
+      # (jest roots=src); NAKAMA_* env vars below are inert config defaults.
 
     steps:
       - uses: actions/checkout@v4
@@ -643,18 +616,6 @@ jobs:
           for migration in $(ls -1 *.sql 2>/dev/null | sort -V); do
             echo "Running migration: $migration"
             PGPASSWORD=changeme psql -h localhost -p 5434 -U postgres -d nakama -f "$migration" || true
-          done
-
-      - name: Wait for Nakama to be ready
-        run: |
-          echo "Waiting for Nakama to be ready..."
-          for i in {1..60}; do
-            if curl -s http://localhost:7351/ 2>/dev/null; then
-              echo "Nakama is ready"
-              break
-            fi
-            echo "Waiting for Nakama... ($i/60)"
-            sleep 2
           done
 
       - name: Run tests for coverage
@@ -725,6 +686,10 @@ jobs:
     runs-on: ubuntu-latest
     services:
       # PostgreSQL database service
+      # Note: host port 5437 — unique per CI job (5432/5434/5435/5436 are used
+      # by other DB-dependent jobs) and deliberately NOT 5433, which the local
+      # dev stack (backend/docker-compose.yml) binds permanently; reusing it
+      # made parallel act runs fail with "port already allocated" (#858).
       postgres:
         image: postgres:15-alpine
         env:
@@ -732,7 +697,7 @@ jobs:
           POSTGRES_DB: nakama
           POSTGRES_PASSWORD: localdbpassword
         ports:
-          - 5433:5432
+          - 5437:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -748,12 +713,24 @@ jobs:
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
+      # act's runner image (catthehacker/ubuntu:act-latest) ships without
+      # postgresql-client, which silently no-ops the migration steps below and
+      # makes the schema assertions fail. Install it only under act; hosted
+      # ubuntu-latest runners already have psql/pg_isready preinstalled.
+      - name: Install postgresql-client (act only)
+        if: env.ACT == 'true'
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            apt-get update -qq && apt-get install -y -qq postgresql-client
+          fi
+          psql --version
+
       - name: Wait for PostgreSQL to be ready
         run: |
           # For act local testing, use direct pg_isready connection
           # For GitHub Actions, this also works with the service container
           for i in {1..30}; do
-            if PGPASSWORD=localdbpassword pg_isready -h localhost -p 5433 -U postgres 2>/dev/null; then
+            if PGPASSWORD=localdbpassword pg_isready -h localhost -p 5437 -U postgres 2>/dev/null; then
               echo "PostgreSQL is ready"
               break
             fi
@@ -768,7 +745,7 @@ jobs:
           # For GitHub Actions, this also works with the service container
           for migration in $(ls -1 *.sql 2>/dev/null | sort -V); do
             echo "Running migration: $migration"
-            PGPASSWORD=localdbpassword psql -h localhost -p 5433 -U postgres -d nakama -f "$migration" || true
+            PGPASSWORD=localdbpassword psql -h localhost -p 5437 -U postgres -d nakama -f "$migration" || true
           done
 
       - name: Install dependencies
@@ -779,7 +756,7 @@ jobs:
         working-directory: ./backend
         env:
           TEST_DB_HOST: localhost
-          TEST_DB_PORT: 5433
+          TEST_DB_PORT: 5437
           TEST_DB_USER: postgres
           TEST_DB_PASSWORD: localdbpassword
           TEST_DB_NAME: nakama

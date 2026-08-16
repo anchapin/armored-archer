@@ -3,6 +3,11 @@
 # Usage: docker compose -f .github/docker-compose.yml up -d
 #
 # To use with act, set ACT_SERVICES_FILE=.github/docker-compose.yml
+#
+# Note (#858): the retired `armored-archer/nakama-postgres:3.21.1` image was
+# never published to a registry and broke job setup everywhere. Services now
+# use the same standard images as backend/docker-compose.yml:
+# postgres:14-alpine + heroiclabs/nakama:3.21.1.
 
 services:
   # PostgreSQL database - matches CI port 5432 (not local dev's 5433)
@@ -23,10 +28,18 @@ services:
     networks:
       - ci-network
 
-  # Nakama game server - uses custom PostgreSQL image
+  # Nakama game server - standard heroiclabs image, wired to the postgres
+  # service the same way backend/docker-compose.yml does it (migrate up, then
+  # serve; DSN via the compose-network service hostname).
   nakama:
-    image: armored-archer/nakama-postgres:3.21.1
+    image: heroiclabs/nakama:3.21.1
     container_name: ci_nakama
+    entrypoint:
+      - "/bin/sh"
+      - "-ecx"
+      - >
+        /nakama/nakama migrate up --database.address "postgres://postgres:changeme@postgres:5432/nakama" &&
+        exec /nakama/nakama --database.address "postgres://postgres:changeme@postgres:5432/nakama"
     ports:
       - "7350:7350"
       - "7351:7351"
