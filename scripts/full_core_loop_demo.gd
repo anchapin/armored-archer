@@ -652,7 +652,7 @@ func _step_pvp_combat_simulation() -> void:
 func _step_match_complete() -> void:
 	_emit_step_start(DemoStep.MATCH_COMPLETE, "Completing ranked match")
 
-	print("[12/13] MATCH COMPLETE - Submitting match result...")
+	print("[12/13] MATCH COMPLETE - Triggering settlement...")
 
 	await get_tree().create_timer(SIMULATION_DELAY).timeout
 
@@ -660,15 +660,11 @@ func _step_match_complete() -> void:
 	var match_id = match_data.get("match_id", "unknown")
 
 	print("  Match ID: %s" % match_id)
-	print("  Winner: You (%s)" % _network_manager.user_id)
-	print("  Loser: Opponent")
+	print("  Outcome: server-declared (client sends settlement trigger only)")
 
-	# Complete match
-	_matchmaker_manager.complete_match(
-		_network_manager.user_id,
-		"opponent_demo_id",
-		false
-	)
+	# Trigger settlement — the server resolves the winner from its own
+	# terminal match state; the client never asserts one (issue #862).
+	_matchmaker_manager.complete_match(false)
 
 	# Wait for signal
 	await _matchmaker_manager.match_completed

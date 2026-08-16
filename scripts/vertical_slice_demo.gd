@@ -387,15 +387,14 @@ func _step_pvp_combat_complete() -> void:
 	print("  - Your health: 35/100")
 	print("  ✓ PvP combat resolved")
 
-	# Simulate calling complete_match RPC
+	# Simulate calling complete_match RPC (settlement trigger only — the
+	# winner is resolved server-side from terminal match state, issue #862)
 	if _matchmaker_manager:
 		var complete_result = {
 			"match_id": _demo_pvp_match.match_id,
-			"winner_id": "your_user_id",
-			"loser_id": "opponent_user_id",
 			"is_punch_up": false
 		}
-		print("  - Calling MatchmakerManager.complete_match()...")
+		print("  - Calling MatchmakerManager.complete_match() (trigger-only)...")
 
 	_advance_step(DemoStep.MATCH_RESULTS_VIEW)
 

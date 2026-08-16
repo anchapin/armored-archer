@@ -1,6 +1,10 @@
 ## Manages PvP matchmaking operations including listing, creating, and accepting matches.
 ## Handles player rank tracking and match availability.
 ##
+## Settlement is server-authoritative (ADR-0002): complete_match is a
+## settlement TRIGGER only — the winner is resolved from the server's
+## terminal match state, never from client input.
+##
 ## Signals:
 ## - matches_loaded(matches: Array, player_rank: int): Emitted when match list is retrieved
 ## - match_created(match: Dictionary): Emitted when a new match is created
@@ -29,9 +33,9 @@ var current_match: Dictionary = {}
 var punch_up_wins: int = 0
 var punch_up_losses: int = 0
 
-# --- Punch Up Risk Constants (matching backend) ---
+# --- Punch Up Risk Constants (matching backend: gap 5-15, min Power Rating 20) ---
 const PUNCH_UP_RANK_DIFF_THRESHOLD = 5
-const PUNCH_UP_MAX_RANK_DIFF = 18
+const PUNCH_UP_MAX_RANK_DIFF = 15
 const PUNCH_UP_MIN_RANK = 20
 const RISK_LEVEL_LOW_THRESHOLD = 7
 const RISK_LEVEL_MEDIUM_THRESHOLD = 10
@@ -225,14 +229,20 @@ func get_match_history(match_type: String = "", limit: int = 20, offset: int = 0
 		var stats: Dictionary = response.get("stats", {})
 		match_history_loaded.emit(matches, total, stats)
 
-# --- Match Completion ---
-func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = false) -> void:
-	"""Completes a PvP match and updates player ranks.
+# --- Match Completion (Settlement Trigger) ---
+func complete_match(is_punch_up: bool = false) -> void:
+	"""Triggers server-side settlement of the current PvP match.
+
+	Settlement is server-authoritative (ADR-0002 / issue #862): the winner
+	is resolved from the server's terminal match state and the server's
+	match record is the sole source for the punch-up flag. This RPC is a
+	settlement TRIGGER only — the advisory `is_punch_up` flag is sent per
+	the server schema, but no winner/loser assertion is sent or treated as
+	authoritative. Victory, rank updates, XP, and rewards are read from
+	the server response.
 
 	Parameters:
-		winner_id: User ID of the match winner
-		loser_id: User ID of the match loser
-		is_punch_up: True if winner fought a higher-ranked opponent
+		is_punch_up: Advisory client punch-up flag (the server record wins)
 	"""
 	if not network_manager or not network_manager.is_connected:
 		push_error("Not connected to server")
@@ -242,18 +252,11 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 		push_error("No active match to complete")
 		return
 
-	if winner_id.is_empty() or loser_id.is_empty():
-		push_error("Winner and loser IDs required")
-		return
-
-	if winner_id == loser_id:
-		push_error("Winner and loser must be different")
-		return
-
+	# Trigger-only payload: match_id is the settlement key; is_punch_up is
+	# advisory. winner_id/loser_id are intentionally omitted — the server
+	# never honors client winner claims.
 	var payload: Dictionary = {
 		"match_id": current_match.get("match_id", ""),
-		"winner_id": winner_id,
-		"loser_id": loser_id,
 		"is_punch_up": is_punch_up
 	}
 
@@ -265,106 +268,156 @@ func complete_match(winner_id: String, loser_id: String, is_punch_up: bool = fal
 		return
 
 	if response.get("success", false):
-		var match: Dictionary = response.get("match", {})
-		var winner_data: Dictionary = response.get("winner", {})
-		var loser_data: Dictionary = response.get("loser", {})
+		_handle_settlement_response(response, is_punch_up)
 
-		# Update cached player rank
-		var my_user_id: String = NetworkManager.user_id
-		var my_player_data: Dictionary = {}
-		var is_victory: bool = false
-		var old_rank: int = 0
-		var new_rank: int = 0
-		var rank_delta: int = 0
-		var xp_gained: int = 0
-		var old_season_position: int = 0
-		var new_season_position: int = 0
-		var season_delta: int = 0
-		var rewards: Array = []
+func _handle_settlement_response(response: Dictionary, advisory_is_punch_up: bool) -> void:
+	"""Builds the UI result payload from a server settlement response.
 
-		if my_user_id == winner_id:
-			my_player_data = winner_data
-			is_victory = true
-			player_rank = winner_data.get("new_rank", player_rank)
-		elif my_user_id == loser_id:
-			my_player_data = loser_data
-			is_victory = false
-			player_rank = loser_data.get("new_rank", player_rank)
-		else:
-			# Not a participant, use winner data as fallback
-			my_player_data = winner_data
+	Victory is derived from the server-declared winner — never from a
+	client assertion (trigger-only settlement per issue #862).
 
-		# Extract player result data
-		old_rank = my_player_data.get("old_rank", 0)
-		new_rank = my_player_data.get("new_rank", 0)
-		rank_delta = my_player_data.get("rank_change", 0)
-		xp_gained = my_player_data.get("xp_gained", 0)
-		old_season_position = my_player_data.get("old_season_position", 0)
-		new_season_position = my_player_data.get("new_season_position", 0)
-		season_delta = my_player_data.get("season_position_delta", 0)
-		rewards = my_player_data.get("rewards", [])
+	Parameters:
+		response: Settlement response from the complete_match RPC
+		advisory_is_punch_up: Client punch-up flag, used only as a fallback
+			when the server response omits its own record's flag
+	"""
+	var match: Dictionary = response.get("match", {})
+	var winner_data: Dictionary = _extract_participant_data(response.get("winner", {}))
+	var loser_data: Dictionary = _extract_participant_data(response.get("loser", {}))
 
-		# Calculate match duration
-		var match_duration: float = 0.0
-		var created_at: int = match.get("created_at", 0)
-		var completed_at: int = match.get("updated_at", 0)
-		if created_at > 0 and completed_at > 0:
-			match_duration = float(completed_at - created_at) / 1000.0
+	# Server-declared winner: a full settlement returns a winner object;
+	# an already-settled idempotent replay returns a plain winner string.
+	var server_winner_id: String = winner_data.get("user_id", "")
+	var server_loser_id: String = loser_data.get("user_id", "")
 
-		# Create UI-compatible result data
-		var ui_result_data: Dictionary = {
-			"winner_id": winner_id,
-			"loser_id": loser_id,
-			"is_victory": is_victory,
-			"match_type": match.get("match_type", "ranked"),
-			"is_punch_up": response.get("is_punch_up", false),
-			"xp_gained": xp_gained,
-			"old_rank": old_rank,
-			"new_rank": new_rank,
-			"rank_delta": rank_delta,
-			"season_position": new_season_position if new_season_position > 0 else old_season_position,
-			"season_delta": season_delta,
-			"match_duration": match_duration,
-			"rewards": rewards
-		}
+	# The server match record is authoritative for the punch-up flag.
+	var is_punch_up: bool = response.get("is_punch_up", advisory_is_punch_up)
 
-		# Update Punch Up statistics
-		if is_punch_up:
-			if my_user_id == winner_id:
-				punch_up_wins += 1
-			elif my_user_id == loser_id:
-				punch_up_losses += 1
-			_emit_punch_up_stats_updated()
-
-		# Track PvP match completed in analytics
-		if analytics and analytics.has_method("log_pvp_match_completed"):
-			var match_id: String = current_match.get("match_id", "")
-			var opponent_id: String = current_match.get("opponent_id", "")
-			var season_id: int = 0
-			var season_manager = get_node_or_null("/root/SeasonManager")
-			if season_manager and season_manager.current_season.has("season_id"):
-				season_id = season_manager.current_season.get("season_id")
-
-			var result: String = "win" if is_victory else "loss"
-			var my_score: int = winner_data.get("new_rank", 0) if is_victory else loser_data.get("new_rank", 0)
-			var opponent_score: int = loser_data.get("new_rank", 0) if is_victory else winner_data.get("new_rank", 0)
-
-			analytics.log_pvp_match_completed(
-				match_id,
-				result,
-				opponent_id,
-				season_id,
-				match_duration,
-				my_score,
-				opponent_score,
-				rank_delta
-			)
-
-		# Clear current match
+	# Terminal draw (or a response without a server-declared winner): no
+	# winner was settled, so there is no victory data to report.
+	if response.get("is_draw", false) or server_winner_id.is_empty():
 		current_match = {}
+		match_completed.emit({
+			"is_draw": true,
+			"reason": response.get("reason", response.get("end_reason", ""))
+		})
+		return
 
-		# Emit UI-compatible result data
-		match_completed.emit(ui_result_data)
+	var my_user_id: String = _get_local_user_id()
+	var is_victory: bool = my_user_id == server_winner_id
+
+	# Update cached player rank from my side of the settlement
+	var my_player_data: Dictionary = {}
+	if is_victory:
+		my_player_data = winner_data
+		player_rank = winner_data.get("new_rank", player_rank)
+	elif my_user_id == server_loser_id:
+		my_player_data = loser_data
+		player_rank = loser_data.get("new_rank", player_rank)
+	else:
+		# Not a participant, use winner data as fallback
+		my_player_data = winner_data
+
+	# Extract player result data
+	var old_rank: int = my_player_data.get("old_rank", 0)
+	var new_rank: int = my_player_data.get("new_rank", 0)
+	var rank_delta: int = my_player_data.get("rank_change", 0)
+	var xp_gained: int = my_player_data.get("xp_gained", 0)
+	var old_season_position: int = my_player_data.get("old_season_position", 0)
+	var new_season_position: int = my_player_data.get("new_season_position", 0)
+	var season_delta: int = my_player_data.get("season_position_delta", 0)
+	var rewards: Array = my_player_data.get("rewards", [])
+
+	# Calculate match duration
+	var match_duration: float = 0.0
+	var created_at: int = match.get("created_at", 0)
+	var completed_at: int = match.get("updated_at", 0)
+	if created_at > 0 and completed_at > 0:
+		match_duration = float(completed_at - created_at) / 1000.0
+
+	# Create UI-compatible result data (winner/loser are server-declared)
+	var ui_result_data: Dictionary = {
+		"winner_id": server_winner_id,
+		"loser_id": server_loser_id,
+		"is_victory": is_victory,
+		"match_type": match.get("match_type", "ranked"),
+		"is_punch_up": is_punch_up,
+		"xp_gained": xp_gained,
+		"old_rank": old_rank,
+		"new_rank": new_rank,
+		"rank_delta": rank_delta,
+		"season_position": new_season_position if new_season_position > 0 else old_season_position,
+		"season_delta": season_delta,
+		"match_duration": match_duration,
+		"rewards": rewards
+	}
+
+	# Update Punch Up statistics from the server-declared outcome
+	if is_punch_up:
+		if my_user_id == server_winner_id:
+			punch_up_wins += 1
+		elif my_user_id == server_loser_id:
+			punch_up_losses += 1
+		_emit_punch_up_stats_updated()
+
+	# Track PvP match completed in analytics
+	if analytics and analytics.has_method("log_pvp_match_completed"):
+		var match_id: String = current_match.get("match_id", "")
+		var opponent_id: String = current_match.get("opponent_id", "")
+		var season_id: int = 0
+		var season_manager = get_node_or_null("/root/SeasonManager")
+		if season_manager and season_manager.current_season.has("season_id"):
+			season_id = season_manager.current_season.get("season_id")
+
+		var result: String = "win" if is_victory else "loss"
+		var my_score: int = winner_data.get("new_rank", 0) if is_victory else loser_data.get("new_rank", 0)
+		var opponent_score: int = loser_data.get("new_rank", 0) if is_victory else winner_data.get("new_rank", 0)
+
+		analytics.log_pvp_match_completed(
+			match_id,
+			result,
+			opponent_id,
+			season_id,
+			match_duration,
+			my_score,
+			opponent_score,
+			rank_delta
+		)
+
+	# Clear current match
+	current_match = {}
+
+	# Emit UI-compatible result data
+	match_completed.emit(ui_result_data)
+
+func _extract_participant_data(raw_participant: Variant) -> Dictionary:
+	"""Normalizes a settlement participant entry to a Dictionary.
+
+	Full settlements return participant objects; idempotent replays of an
+	already-settled match may return a plain user ID string instead.
+
+	Parameters:
+		raw_participant: The winner/loser entry from a settlement response
+
+	Returns:
+		Dictionary: Participant data (empty when only a string was present)
+	"""
+	if raw_participant is Dictionary:
+		return raw_participant
+	return {}
+
+func _get_local_user_id() -> String:
+	"""Returns the local player's user ID from the network layer.
+
+	Prefers the injected network manager (mocked in tests); falls back to
+	the NetworkManager autoload.
+
+	Returns:
+		String: Local player's user ID (empty when unauthenticated)
+	"""
+	if network_manager and network_manager.get("user_id") != null:
+		return str(network_manager.get("user_id"))
+	return NetworkManager.user_id
 
 # --- Utility Methods ---
 func get_available_matches() -> Array:
