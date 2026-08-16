@@ -97,9 +97,9 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Join Matchmaking Pool | MatchmakingPoolManager | `rpcJoinPool()` in `matchmaking_pool.ts` | `matchmaking_pool` storage (custom collection) | `/rpc/armored_archer/join_matchmaking_pool` |
 | Leave Matchmaking Pool | MatchmakingPoolManager | `rpcLeavePool()` in `matchmaking_pool.ts` | `matchmaking_pool` storage (custom collection) | `/rpc/armored_archer/leave_matchmaking_pool` |
 | Get Queue Status | MatchmakingPoolManager | `rpcGetQueueStatus()` in `matchmaking_pool.ts` | `matchmaking_pool` storage (custom collection) | `/rpc/armored_archer/get_queue_status` |
-| Sync Difficulty | DynamicDifficultyManager | `rpcSyncDifficulty()` in `dynamic_difficulty.ts` | `player_performance` storage (custom collection) | `/rpc/armored_archer/sync_difficulty` |
-| Track Match Outcome | DynamicDifficultyManager | `rpcTrackMatchOutcome()` in `dynamic_difficulty.ts` | `player_performance` storage (custom collection) | `/rpc/armored_archer/track_match_outcome` |
-| Get Player Performance | DynamicDifficultyManager | `rpcGetPlayerPerformance()` in `dynamic_difficulty.ts` | `player_performance` storage (custom collection) | `/rpc/armored_archer/get_player_performance` |
+| Sync Difficulty | DynamicDifficultyManager | `rpcSyncDifficulty()` in `dynamic_difficulty.ts` | `difficulty_state` storage (records client hint only; server-derived modifier preserved) | `/rpc/armored_archer/sync_difficulty` |
+| Track Match Outcome | DynamicDifficultyManager | `rpcTrackMatchOutcome()` in `dynamic_difficulty.ts` | `difficulty_state` + `match_history` storage; PvE wins corroborated against `stage_completion` storage (server-authoritative streak re-derivation, #870) | `/rpc/armored_archer/track_match_outcome` |
+| Get Player Performance | DynamicDifficultyManager | `rpcGetPlayerPerformance()` in `dynamic_difficulty.ts` | `difficulty_state` + `match_history` storage (streaks re-derived from ledger) | `/rpc/armored_archer/get_player_performance` |
 
 **Storage Schema:**
 - `pvp_matches` collection: `{ match_id, creator_id, opponent_id, creator_rank, opponent_rank, match_type, is_punch_up, status, created_at, updated_at, creator_turn_data, opponent_turn_data, winner, expires_at, last_turn_timestamp }`
