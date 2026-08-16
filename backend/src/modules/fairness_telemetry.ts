@@ -18,6 +18,7 @@ const COLLECTION_HIT_RESOLUTION = 'fairness_hit_resolution';
 const COLLECTION_DISCONNECTS = 'fairness_disconnects';
 const COLLECTION_TIMEOUTS = 'fairness_timeouts';
 const COLLECTION_RANKING_DELTAS = 'fairness_ranking_deltas';
+const COLLECTION_PUNCH_UP_LOSSES = 'fairness_punch_up_losses';
 
 /**
  * Hit resolution event data.
@@ -149,6 +150,53 @@ export interface RankingDeltaEvent {
   loser_old_season_position: number;
   loser_new_season_position: number;
   season_id: string;
+}
+
+/**
+ * Punch-up underdog loss event (issue #864 / LC-T3).
+ *
+ * Emitted for every settled punch-up underdog loss so reviewers can audit
+ * amplified deductions and correlate them with the anti-abuse watch verdict.
+ *
+ * @property event_id - Unique identifier for this event
+ * @property match_id - ID of the settled match
+ * @property timestamp - Settlement timestamp (ms since epoch)
+ * @property season_id - Season the ladder rating belongs to
+ * @property loser_id - Underdog who lost the punch-up wager
+ * @property winner_id - Favorite who won the punch-up
+ * @property loser_old_rank - Underdog's ladder rating before settlement
+ * @property loser_new_rank - Underdog's ladder rating after settlement
+ * @property loser_rank_change - Elo delta applied to the underdog (negative)
+ * @property loser_xp_gained - XP granted to the underdog (strictly positive)
+ * @property winner_rank_change - Elo delta applied to the winner
+ * @property amplified - Whether the 2x-K amplified deduction was applied
+ * @property winner_k_factor - K-factor used for the winner's Elo gain
+ * @property loser_k_factor - K-factor used for the loser's deduction
+ * @property end_reason - Server-declared match end reason
+ * @property watch - Anti-abuse watch verdict for this loss (LC-T3)
+ */
+export interface PunchUpLossEvent {
+  event_id: string;
+  match_id: string;
+  timestamp: number;
+  season_id: string;
+  loser_id: string;
+  winner_id: string;
+  loser_old_rank: number;
+  loser_new_rank: number;
+  loser_rank_change: number;
+  loser_xp_gained: number;
+  winner_rank_change: number;
+  amplified: boolean;
+  winner_k_factor: number;
+  loser_k_factor: number;
+  end_reason: string;
+  watch: {
+    flagged: boolean;
+    reason: string;
+    pair_loss_count: number;
+    player_loss_count: number;
+  };
 }
 
 /**
@@ -376,6 +424,59 @@ export async function logRankingDelta(nk: Runtime.Nakama, event: RankingDeltaEve
     );
   } catch (error) {
     logger.error('Failed to log ranking delta', { error, matchId: event.match_id });
+  }
+}
+
+/**
+ * Logs a punch-up underdog loss event to storage for LC-T3 review
+ * (issue #864). Every settled punch-up loss is emitted, flagged or not, so
+ * the amplified-deduction trail is auditable end to end.
+ *
+ * @param nk - Nakama runtime module
+ * @param event - Punch-up loss event data
+ */
+export async function logPunchUpLoss(nk: Runtime.Nakama, event: PunchUpLossEvent): Promise<void> {
+  try {
+    await nk.storageWrite([
+      {
+        collection: COLLECTION_PUNCH_UP_LOSSES,
+        key: event.event_id,
+        userId: '00000000-0000-0000-0000-000000000000',
+        value: JSON.stringify(event),
+        permissionRead: 2,
+        permissionWrite: 0,
+      },
+    ]);
+
+    logger.debug(
+      'Punch-up loss logged: match=%s loser=%s rank_change=%d amplified=%s watch_flagged=%s',
+      event.match_id,
+      event.loser_id,
+      event.loser_rank_change,
+      String(event.amplified),
+      String(event.watch.flagged)
+    );
+
+    // Log audit trail
+    await logAudit(
+      nk,
+      '00000000-0000-0000-0000-000000000000',
+      null,
+      'punch_up_loss_logged',
+      'fairness_telemetry',
+      {
+        event_id: event.event_id,
+        match_id: event.match_id,
+        loser_id: event.loser_id,
+        winner_id: event.winner_id,
+        loser_rank_change: event.loser_rank_change,
+        amplified: event.amplified,
+        watch_reason: event.watch.reason,
+      },
+      'success'
+    );
+  } catch (error) {
+    logger.error('Failed to log punch-up loss', { error, matchId: event.match_id });
   }
 }
 

@@ -596,7 +596,74 @@ function validateRankUpdateSignature(
 }
 
 /**
- * Applies Elo rating updates to both players
+ * Base Elo K-factor applied to both sides of a normal ranked match.
+ */
+export const BASE_K_FACTOR = 32;
+
+/**
+ * Elevated K-factor applied to both sides of a punch-up match (server-recorded).
+ */
+export const PUNCH_UP_K_FACTOR = 50;
+
+/**
+ * Multiplier applied to the K-factor of an underdog's punch-up LOSS deduction
+ * (issue #864): losing the punch-up wager costs 2x the punch-up K-factor in
+ * Ladder Rating so the wager has real teeth.
+ */
+export const PUNCH_UP_LOSS_K_MULTIPLIER = 2;
+
+/**
+ * Per-side K-factors for a settled ranked match.
+ *
+ * @property winnerK - K-factor for the winner's Elo gain
+ * @property loserK - K-factor governing the loser's Elo deduction
+ */
+export interface EloKFactors {
+  winnerK: number;
+  loserK: number;
+}
+
+/**
+ * Resolves the per-side Elo K-factors for a match.
+ *
+ * - Normal matches: base K (32) for both sides.
+ * - Punch-up matches: elevated K (50) for both sides (unchanged behavior).
+ * - Punch-up underdog loss (issue #864): the underdog's deduction is amplified
+ *   to 2x the punch-up K-factor. The winner side is never amplified, and a
+ *   favorite losing a punch-up (upset) still deducts at the plain punch-up K.
+ *
+ * @param isPunchUp - Whether the server match record marks this a punch-up
+ * @param loserIsUnderdog - Whether the loser is the punch-up underdog
+ * @returns Per-side K-factors
+ */
+export function getEloKFactors(isPunchUp: boolean, loserIsUnderdog: boolean): EloKFactors {
+  const winnerK = isPunchUp ? PUNCH_UP_K_FACTOR : BASE_K_FACTOR;
+  const amplifiedLoserK = PUNCH_UP_K_FACTOR * PUNCH_UP_LOSS_K_MULTIPLIER;
+  const loserK =
+    isPunchUp && loserIsUnderdog ? amplifiedLoserK : isPunchUp ? PUNCH_UP_K_FACTOR : BASE_K_FACTOR;
+  return { winnerK, loserK };
+}
+
+/**
+ * Applies Elo rating updates to both players.
+ *
+ * The loser's deduction uses 2x the punch-up K-factor when (and only when)
+ * the loser is the punch-up underdog — the amplified punch-up loss ratified
+ * in issue #864. The underdog flag must be derived from server-side data
+ * (match record ranks / leaderboard Elo), never from client payloads.
+ *
+ * @param nk - Nakama server interface
+ * @param ctx - Nakama runtime context
+ * @param currentSeason - Current season scope for the leaderboard writes
+ * @param winnerId - Server-declared winner user ID
+ * @param loserId - Server-declared loser user ID
+ * @param winnerOldElo - Winner's Elo before the match
+ * @param loserOldElo - Loser's Elo before the match
+ * @param isPunchUp - Whether the server match record marks this a punch-up
+ * @param winnerEntry - Winner's prior leaderboard entry (or null)
+ * @param loserEntry - Loser's prior leaderboard entry (or null)
+ * @param loserIsUnderdog - Whether the loser is the punch-up underdog
+ * @returns New Elo ratings for winner and loser
  */
 export function applyEloUpdates(
   nk: Runtime.Nakama,
@@ -608,14 +675,15 @@ export function applyEloUpdates(
   loserOldElo: number,
   isPunchUp: boolean,
   winnerEntry: LeaderboardEntry | null,
-  loserEntry: LeaderboardEntry | null
+  loserEntry: LeaderboardEntry | null,
+  loserIsUnderdog: boolean
 ): { winnerNewElo: number; loserNewElo: number } {
-  const K = isPunchUp ? 50 : 32;
+  const { winnerK, loserK } = getEloKFactors(isPunchUp, loserIsUnderdog);
   const expectedWinner = 1 / (1 + Math.pow(10, (loserOldElo - winnerOldElo) / 400));
   const expectedLoser = 1 - expectedWinner;
 
-  const winnerNewElo = Math.round(winnerOldElo + K * (1 - expectedWinner));
-  const loserNewElo = Math.round(loserOldElo + K * (0 - expectedLoser));
+  const winnerNewElo = Math.round(winnerOldElo + winnerK * (1 - expectedWinner));
+  const loserNewElo = Math.round(loserOldElo + loserK * (0 - expectedLoser));
 
   // Update winner
   const winnerMeta = winnerEntry
@@ -700,6 +768,11 @@ export function rpcUpdateRank(
   const winnerOldElo = winnerEntry ? winnerEntry.score : 1000;
   const loserOldElo = loserEntry ? loserEntry.score : 1000;
 
+  // Underdog derivation uses server-side leaderboard data, never client
+  // payloads (issue #864 server-authoritative requirement). The lower-rated
+  // player is the punch-up underdog.
+  const loserIsUnderdog = loserOldElo < winnerOldElo;
+
   // Apply Elo updates
   const { winnerNewElo, loserNewElo } = applyEloUpdates(
     nk,
@@ -711,7 +784,8 @@ export function rpcUpdateRank(
     loserOldElo,
     request.is_punch_up,
     winnerEntry,
-    loserEntry
+    loserEntry,
+    loserIsUnderdog
   );
 
   // Record match results for anti-cheat analysis
@@ -738,7 +812,7 @@ export function rpcUpdateRank(
   const daysIntoSeason = Math.floor(
     (Date.now() - currentSeason.start_time) / (24 * 60 * 60 * 1000)
   );
-  const kFactor = request.is_punch_up ? 60 : 32;
+  const { winnerK, loserK } = getEloKFactors(request.is_punch_up, loserIsUnderdog);
 
   logRankChange(nk, {
     event_id: '',
@@ -754,7 +828,9 @@ export function rpcUpdateRank(
     loser_new_elo: loserNewElo,
     loser_rank_delta: loserNewElo - loserOldElo,
     is_punch_up: request.is_punch_up,
-    k_factor: kFactor,
+    k_factor: loserK,
+    winner_k_factor: winnerK,
+    loser_k_factor_amplified: request.is_punch_up && loserIsUnderdog,
     days_into_season: daysIntoSeason,
   });
 

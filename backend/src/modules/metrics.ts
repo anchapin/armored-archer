@@ -275,6 +275,26 @@ const seasonActivePlayersGauge = new Gauge({
 });
 
 // ==========================================
+// Punch-Up Loss Watch Metrics (LC-T3)
+// ==========================================
+
+const punchUpLossesTotal = new Counter({
+  name: 'armored_archer_punch_up_losses_total',
+  help: 'Total settled punch-up underdog losses (amplified 2x-K deduction)',
+  labelNames: ['season_id'] as const,
+  registers: [register],
+});
+
+const punchUpWatchFlagsTotal = new Counter({
+  name: 'armored_archer_punch_up_watch_flags_total',
+  help:
+    'LC-T3 punch-up wager abuse watch flags raised, by detection reason ' +
+    '(pair_farming / loss_frequency)',
+  labelNames: ['reason'] as const,
+  registers: [register],
+});
+
+// ==========================================
 // Analytics Event Metrics
 // ==========================================
 
@@ -611,6 +631,24 @@ export function incrementSeasonRankChanges(seasonId: string, isPunchUp: boolean)
 
 export function recordSeasonRankChangeDelta(seasonId: string, delta: number): void {
   seasonRankChangeDelta.observe({ season_id: seasonId }, delta);
+}
+
+/**
+ * Increments the settled punch-up underdog loss counter (LC-T3 watch input).
+ *
+ * @param seasonId - Current season ID
+ */
+export function incrementPunchUpLoss(seasonId: string): void {
+  punchUpLossesTotal.inc({ season_id: seasonId });
+}
+
+/**
+ * Increments the punch-up wager abuse watch flag counter (LC-T3).
+ *
+ * @param reason - Detection reason that raised the flag
+ */
+export function incrementPunchUpWatchFlag(reason: string): void {
+  punchUpWatchFlagsTotal.inc({ reason });
 }
 
 export function setSeasonActivePlayers(seasonId: string, count: number): void {

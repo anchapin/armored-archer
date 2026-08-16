@@ -30,6 +30,10 @@ import {
   registerRpcClaimSeasonRewards,
   registerRpcEndSeason,
   applyEloUpdates,
+  getEloKFactors,
+  BASE_K_FACTOR,
+  PUNCH_UP_K_FACTOR,
+  PUNCH_UP_LOSS_K_MULTIPLIER,
   calculateSoftResetElo,
   evaluatePrestigeTiers,
   updatePlayerPrestigeRecord,
@@ -349,7 +353,8 @@ describe('season_system', () => {
         1000,
         false,
         null,
-        null
+        null,
+        false
       );
 
       expect(result.winnerNewElo).toBeGreaterThan(1000);
@@ -370,7 +375,8 @@ describe('season_system', () => {
         1000,
         false,
         null,
-        null
+        null,
+        false
       );
 
       const punchUpResult = applyEloUpdates(
@@ -383,7 +389,8 @@ describe('season_system', () => {
         1000,
         true,
         null,
-        null
+        null,
+        false
       );
 
       // Punch-up should give more points to the lower-rated winner
@@ -406,7 +413,8 @@ describe('season_system', () => {
         1000,
         false,
         null,
-        null
+        null,
+        false
       );
 
       expect(mockNk.leaderboardRecordWrite).toHaveBeenCalledTimes(2);
@@ -1288,7 +1296,8 @@ describe('season_system', () => {
         1500,
         false,
         null,
-        null
+        null,
+        false
       );
 
       expect(result.loserNewElo).toBeLessThan(1500);
@@ -1307,7 +1316,8 @@ describe('season_system', () => {
         1000,
         false,
         null,
-        null
+        null,
+        false
       );
 
       mockNk.leaderboardRecordWrite = jest.fn();
@@ -1321,12 +1331,111 @@ describe('season_system', () => {
         1000,
         true,
         null,
-        null
+        null,
+        false
       );
 
       const normalDelta = normalResult.winnerNewElo - 1200;
       const punchUpDelta = punchUpResult.winnerNewElo - 1200;
       expect(punchUpDelta).toBeGreaterThan(normalDelta);
+    });
+  });
+
+  describe('applyEloUpdates amplified punch-up loss (issue #864)', () => {
+    // Favorite 1200 vs underdog 1100: expectedWinner = 0.64006,
+    // expectedLoser = 0.35994.
+    // - Amplified loss deduction:  round(1100 - 100 * 0.35994) = 1064 (drop of 36)
+    // - Non-amplified punch-up:    round(1100 - 50  * 0.35994) = 1082 (drop of 18)
+    // - Winner (favorite) gain:    round(1200 + 50  * 0.35994) = 1218
+    const FAVORITE_ELO = 1200;
+    const UNDERDOG_ELO = 1100;
+
+    const settle = (isPunchUp: boolean, loserIsUnderdog: boolean) => {
+      mockNk.leaderboardRecordWrite = jest.fn();
+      const { applyEloUpdates } = require('../season_system');
+      return applyEloUpdates(
+        mockNk,
+        mockCtx,
+        { season_id: 'season_1' },
+        'favorite',
+        'underdog',
+        FAVORITE_ELO,
+        UNDERDOG_ELO,
+        isPunchUp,
+        null,
+        null,
+        loserIsUnderdog
+      );
+    };
+
+    it('deducts the underdog punch-up loss at 2x the punch-up K-factor', () => {
+      const amplified = settle(true, true);
+      const nonAmplified = settle(true, false);
+
+      const amplifiedDeduction = UNDERDOG_ELO - amplified.loserNewElo;
+      const nonAmplifiedDeduction = UNDERDOG_ELO - nonAmplified.loserNewElo;
+
+      // 2x K-factor: the deduction is exactly double (pre-rounding both are
+      // K * expectedLoser, so doubling K doubles the deduction)
+      expect(amplifiedDeduction).toBe(nonAmplifiedDeduction * 2);
+      expect(amplified.loserNewElo).toBe(1064);
+      expect(nonAmplified.loserNewElo).toBe(1082);
+    });
+
+    it('leaves the winner side unchanged by the amplified loser deduction', () => {
+      const withAmplifiedLoser = settle(true, true);
+      const withoutAmplifiedLoser = settle(true, false);
+
+      expect(withAmplifiedLoser.winnerNewElo).toBe(withoutAmplifiedLoser.winnerNewElo);
+      expect(withAmplifiedLoser.winnerNewElo).toBe(1218);
+    });
+
+    it('does not amplify losses in non-punch-up matches regardless of underdog flag', () => {
+      const normalLoss = settle(false, true);
+      const normalBaseline = settle(false, false);
+
+      expect(normalLoss.loserNewElo).toBe(normalBaseline.loserNewElo);
+      // Base K deduction: round(1100 - 32 * 0.35994) = 1088
+      expect(normalLoss.loserNewElo).toBe(1088);
+    });
+
+    it('does not amplify a favorite losing a punch-up (upset)', () => {
+      // Underdog 1200 wins... i.e. settle with the LOWER rated player winning:
+      // winner 1100, loser 1200 — loser is the favorite, not the underdog.
+      mockNk.leaderboardRecordWrite = jest.fn();
+      const { applyEloUpdates } = require('../season_system');
+      const upset = applyEloUpdates(
+        mockNk,
+        mockCtx,
+        { season_id: 'season_1' },
+        'underdog',
+        'favorite',
+        UNDERDOG_ELO,
+        FAVORITE_ELO,
+        true,
+        null,
+        null,
+        false
+      );
+
+      // Loser is the 1200-rated favorite losing to the 1100-rated winner:
+      // loserOld - winnerOld = +100 -> the favorite's expected score is high.
+      const expectedLoser = 1 - 1 / (1 + Math.pow(10, (FAVORITE_ELO - UNDERDOG_ELO) / 400));
+      // Plain punch-up K (50), NOT amplified
+      expect(upset.loserNewElo).toBe(Math.round(FAVORITE_ELO - PUNCH_UP_K_FACTOR * expectedLoser));
+    });
+
+    it('exposes per-side K-factors for telemetry', () => {
+      expect(getEloKFactors(false, false)).toEqual({ winnerK: BASE_K_FACTOR, loserK: BASE_K_FACTOR });
+      expect(getEloKFactors(false, true)).toEqual({ winnerK: BASE_K_FACTOR, loserK: BASE_K_FACTOR });
+      expect(getEloKFactors(true, false)).toEqual({
+        winnerK: PUNCH_UP_K_FACTOR,
+        loserK: PUNCH_UP_K_FACTOR,
+      });
+      expect(getEloKFactors(true, true)).toEqual({
+        winnerK: PUNCH_UP_K_FACTOR,
+        loserK: PUNCH_UP_K_FACTOR * PUNCH_UP_LOSS_K_MULTIPLIER,
+      });
     });
   });
 
