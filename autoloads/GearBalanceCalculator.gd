@@ -62,7 +62,6 @@ const SYNERGY_GROUPS: Dictionary = {
 # Power rating multipliers by rarity
 const RARITY_MULTIPLIERS: Dictionary = {
 	"common": 1.0,
-	"uncommon": 1.2,
 	"rare": 1.5,
 	"epic": 1.8,
 	"legendary": 2.2
@@ -155,7 +154,6 @@ func validate_gear_power(gear_data: Dictionary) -> Dictionary:
 	# Max power thresholds per rarity
 	var max_power_thresholds: Dictionary = {
 		"common": 15.0,
-		"uncommon": 25.0,
 		"rare": 40.0,
 		"epic": 60.0,
 		"legendary": 100.0
