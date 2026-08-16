@@ -877,6 +877,42 @@ describe('matchmaker', () => {
       expect(recordMatchResult).toHaveBeenCalledTimes(2); // once per player, first call only
     });
 
+    it('awards match coins to the unified player_currency ledger (issue #860)', () => {
+      const match = createActiveMatch({ opponent_health: 0 });
+      const stored = installStatefulStorage(match);
+
+      const payload = JSON.stringify({
+        match_id: match.match_id,
+        winner_id: 'test-user-123',
+        loser_id: 'opponent-user',
+      });
+
+      const result = JSON.parse(rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+
+      // Ranked win = 50 coins, ranked loss = 10 coins. Coins land in the
+      // ledger `gold` field (canonical "Coins" currency, #866 rename pending)
+      // — not in the write-only Nakama wallet.
+      const winnerCurrency = JSON.parse(stored['player_currency:test-user-123']);
+      expect(winnerCurrency.gold).toBe(50);
+      expect(winnerCurrency.gems).toBe(0);
+
+      const loserCurrency = JSON.parse(stored['player_currency:opponent-user']);
+      expect(loserCurrency.gold).toBe(10);
+      expect(loserCurrency.gems).toBe(0);
+
+      expect(mockNk.walletUpdate).not.toHaveBeenCalled();
+
+      // Idempotent replay must not double-award currency
+      const realNow = Date.now();
+      const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => realNow + 120000);
+      rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload);
+      nowSpy.mockRestore();
+
+      const winnerAfterReplay = JSON.parse(stored['player_currency:test-user-123']);
+      expect(winnerAfterReplay.gold).toBe(50);
+    });
+
     describe('punch-up loss settlement (issue #864)', () => {
       beforeEach(() => {
         resetPunchUpWatchState();

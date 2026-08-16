@@ -101,11 +101,23 @@ declare namespace Runtime {
   }
 
   /**
+   * Nakama account interface (subset used by the runtime).
+   *
+   * @property user - User summary
+   * @property wallet - JSON-encoded wallet map (legacy; see modules/currency.ts)
+   */
+  export interface Account {
+    user: { id: string; username?: string; displayName?: string };
+    wallet: string;
+  }
+
+  /**
    * Nakama server interface.
    *
    * @method storageRead - Reads storage objects
    * @method storageWrite - Writes storage objects
    * @method storageList - Lists storage objects
+   * @method accountGetId - Fetches a user account (used to read legacy wallet balances)
    * @method walletUpdate - Updates user wallet
    * @method walletLedgerUpdate - Updates wallet ledger
    * @method leaderboardCreate - Creates a leaderboard
@@ -132,6 +144,7 @@ declare namespace Runtime {
       cursor: string,
       filter: string
     ): StorageObject[];
+    accountGetId(userId: string): Account;
     walletUpdate(userId: string, changes: { [key: string]: number }): void;
     walletLedgerUpdate(userId: string, id: string, metadata: { [key: string]: string }): void;
     leaderboardCreate(

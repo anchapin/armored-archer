@@ -550,7 +550,17 @@ describe('validateRewardDistribution', () => {
     expect(result.issues_found).toBe(1);
     expect(result.details[0].auto_fixed).toBe(true);
     expect(mockNk.storageWrite).toHaveBeenCalled();
-    expect(mockNk.walletUpdate).toHaveBeenCalled();
+    // Issue #860: the repair credits the unified player_currency ledger
+    // (mocked calculateRewards: 5000 coins, 200 gems), not the wallet.
+    const currencyWrites = mockNk.storageWrite.mock.calls.filter(
+      (call: any[]) => call[0][0].collection === 'player_currency'
+    );
+    expect(currencyWrites).toHaveLength(1);
+    const ledgerRecord = JSON.parse(currencyWrites[0][0][0].value);
+    expect(ledgerRecord.user_id).toBe('p1');
+    expect(ledgerRecord.gems).toBe(200);
+    expect(ledgerRecord.gold).toBe(5000);
+    expect(mockNk.walletUpdate).not.toHaveBeenCalled();
   });
 });
 

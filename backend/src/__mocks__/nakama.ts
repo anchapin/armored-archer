@@ -3,6 +3,10 @@ import { Runtime } from '../types/nakama';
 // Module-level storage map for test data sharing
 export const testStorage: Map<string, string> = new Map();
 
+// Module-level wallet map backing accountGetId (JSON-encoded wallet maps),
+// used to simulate pre-fix legacy wallet balances (issue #860 bridge tests)
+export const testWallets: Map<string, string> = new Map();
+
 // Helper function to set up test inventory data
 export const setTestInventory = (inventory: any): void => {
   testStorage.set('player_inventory:test-user', JSON.stringify(inventory));
@@ -488,6 +492,10 @@ export const createMockNakama = (): Runtime.Nakama => {
     walletUpdate: jest.fn((_userId: string, _changes: { [key: string]: number }) => {
       return { updated: true };
     }),
+    accountGetId: jest.fn((userId: string) => ({
+      user: { id: userId, username: 'TestPlayer' },
+      wallet: testWallets.get(userId) ?? '{}',
+    })),
   } as unknown as Runtime.Nakama;
 };
 
