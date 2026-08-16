@@ -1,195 +1,158 @@
 # Async Duel Lifecycle
 
+> **Shipped model — hybrid duels (ADR-0003, as cited in `backend/src/modules/combat_system.ts`):**
+> **asynchronous matchmaking + live short-session turn-based duels.**
+> An earlier revision of this document described correspondence-style duels (24-hour turns, 7-day matches). That model never shipped and is not described here except for one clearly-labeled [legacy note](#legacy-correspondence-engine-compatibility).
+
 ## Overview
 
-Armored Archer implements an asynchronous turn-based PvP system where two players take turns submitting combat actions. The match is server-authoritative, ensuring fair gameplay and preventing cheating. Players can disconnect and reconnect without losing their match progress.
+Armored Archer PvP is a hybrid:
+
+- **Matchmaking is asynchronous.** A player creates a match and does not need to be online while waiting. An open match waits in the pool for up to **24 hours**; a direct challenge to a specific opponent waits **5 minutes**.
+- **The duel is live.** Once an opponent accepts, both players fight a short-session, turn-based duel with **5-minute turn timers**. Each turn is one discrete combat action (shoot: angle + power) — no realtime simulation or prediction.
+- **The server is authoritative.** All combat math, health, timers, outcome declaration, and settlement run server-side (`backend/src/modules/combat_system.ts`, `backend/src/modules/matchmaker.ts`).
+- **Settlement is server-declared.** The winner is derived exclusively from server terminal state; the client only *triggers* settlement (`rpcCompleteMatch`). Client-supplied outcome payloads are advisory and never honored (ADR-0002, as cited in `backend/src/modules/matchmaker.ts`).
+- **Timeouts are mobile-hardened.** The 5-minute turn timer doubles as the reconnect grace window: **2 consecutive timeouts (~10 minutes) forfeit the match**. There is deliberately no separate, harsher inactivity forfeit — the 2-minute `MATCH_INACTIVE_TIMEOUT_MS` was removed as redundant in #868.
 
 ## Architecture
 
-The async duel system consists of the following components:
+| Component | Location | Responsibility |
+|-----------|----------|----------------|
+| Matchmaker (Nakama RPCs) | `backend/src/modules/matchmaker.ts` | Match creation, acceptance, server-declared settlement, Elo/XP/rewards |
+| Combat system (Nakama RPCs) | `backend/src/modules/combat_system.ts` | Live duel turn engine: combat actions, health, turn timers, timeout/forfeit declaration |
+| Storage — match record | Nakama collection `pvp_matches` | `PvPMatch`: status, ranks, winner/end_reason, `settled_at`, expiry |
+| Storage — live duel state | Nakama collection `pvp_match_states` | `MatchState`: health, current turn, `turn_timeout_ms`, `consecutive_timeouts` |
+| Client (Godot) | `autoloads/MatchmakingManager.gd`, `autoloads/CombatManager.gd`, `autoloads/CombatSyncManager.gd` | Matchmaking calls, combat actions, state polling/reconnect |
 
-- **Server (Nakama/TypeScript)**: RPC endpoints for match management, turn submission, and state retrieval
-- **Client (Godot/GDScript)**: MatchmakerManager and NetworkManager for client-side logic
-- **Storage**: Match data stored in Nakama storage with expiration timestamps
+## Lifecycle Phases
+
+```text
+┌────────────────────────── ASYNC MATCHMAKING ──────────────────────────┐
+│ create_match → status: pending                                        │
+│   • open match (no target): 24-hour acceptance window                 │
+│     (PENDING_MATCH_EXPIRY_MS, matchmaker.ts)                          │
+│   • direct challenge (target_opponent_id): 5-minute window            │
+│     (expires_at = Date.now() + 300000, matchmaker.ts)                 │
+│                                                                      │
+│ accept_match → status: active (creator takes the first turn)          │
+└───────────────────────────────────┬───────────────────────────────────┘
+                                    ▼
+┌────────────────────────── LIVE DUEL (short session) ──────────────────┐
+│ submit_combat_action — one discrete action per turn                   │
+│   • 5-minute turn timer (TURN_TIMEOUT_MS, combat_system.ts)           │
+│   • 1st timeout: turn passes to the opponent                          │
+│   • 2nd consecutive timeout: auto-forfeit — opponent wins             │
+│     (end_reason "timeout"); the ~10-minute reconnect grace           │
+│     (MAX_CONSECUTIVE_TIMEOUTS, combat_system.ts)                      │
+│   • health reaches zero: winner declared (end_reason "health_zero")   │
+│ player_disconnect → forfeit, opponent wins (end_reason "disconnect")  │
+│                                                                      │
+│ THE SERVER DECLARES the terminal state:                               │
+│   status = completed, winner + end_reason recorded,                   │
+│   but NO settlement yet (match has no settled_at)                     │
+└───────────────────────────────────┬───────────────────────────────────┘
+                                    ▼
+┌────────────────────────── SETTLEMENT (server-declared) ───────────────┐
+│ complete_match — the client is only a TRIGGER:                        │
+│   1. resolveServerTerminalState derives winner/draw from server       │
+│      state only (client winner_id/loser_id is advisory, logged,       │
+│      never honored)                                                   │
+│   2. already settled → idempotent replay of the recorded outcome      │
+│   3. draw → settleDrawMatch (completed + settled_at, no Elo/XP/       │
+│      rewards)                                                         │
+│   4. winner → Elo rank update, XP, rewards; settled_at written        │
+│   No server terminal state → rejected (NO_SERVER_TERMINAL_STATE)      │
+└───────────────────────────────────┬───────────────────────────────────┘
+                                    ▼
+                     completed (settled) — rewards applied
+
+Cleanup guards (not gameplay): matches whose expires_at passes are
+abandoned — pending matches at their acceptance deadline, active matches
+after the 7-day inactivity guard (isMatchExpired, combat_system.ts).
+```
 
 ## Match States
 
-A match can be in one of the following states:
+A match (`PvPMatch.status`) is in one of four states:
 
-| State | Description | Duration |
-|-------|-------------|----------|
-| `pending` | Match created, waiting for opponent to accept | 24 hours |
-| `active` | Both players joined, turns can be submitted | 7 days of inactivity |
-| `completed` | Match finished with a winner | Permanent |
-| `expired` | Match abandoned due to timeout | Permanent |
+| State | Description | Entered via |
+|-------|-------------|-------------|
+| `pending` | Created, waiting for an opponent to accept | `create_match` |
+| `active` | Live duel session in progress (5-minute turns) | `accept_match` |
+| `completed` | Terminal — winner declared and/or settlement applied | server declaration (+ settlement) |
+| `expired` | Abandoned (cleanup, not a gameplay outcome) | `expires_at` passed (`isMatchExpired`) |
 
-## Lifecycle States Diagram
+The `active` phase has **no multi-day duration by design** — a duel is a live short session bounded by 5-minute turns. The 7-day `ACTIVE_MATCH_EXPIRY_MS` stamp written at acceptance is an abandonment guard for stuck matches, not a gameplay window.
 
-```
-┌─────────────┐
-│  pending    │ ──[opponent accepts]──> active
-└─────────────┘
-      │
-      └──[24h timeout]──> expired
+## Timer & Timeout Reference
 
-┌─────────────┐
-│   active    │
-└─────────────┘
-      │
-      ├─[both submit turns]──> calculate results
-      │                              │
-      │                              ├─[HP <= 0]──> completed
-      │                              ├─[max turns]──> completed (draw or score compare)
-      │                              └─[continue]──> back to active
-      │
-      ├─[7d inactivity]──> expired
-      ├─[player forfeits]──> completed
-      └─[turn timeout]──> auto-forfeit → completed
-```
+Every gameplay timer in the shipped hybrid model, with its code symbol:
 
-## Match Data Structure
+| Timer | Value | Code symbol (file) |
+|-------|-------|--------------------|
+| Turn timeout | **5 minutes** | `TURN_TIMEOUT_MS = 5 * 60 * 1000` → `MatchState.turn_timeout_ms` (`combat_system.ts`, `getOrCreateMatchState`) |
+| Reconnect grace / auto-forfeit | **2 consecutive timeouts (~10 minutes)** | `MAX_CONSECUTIVE_TIMEOUTS = 2` (`combat_system.ts`) |
+| Open-match acceptance window | **24 hours** | `PENDING_MATCH_EXPIRY_MS = 24 * 60 * 60 * 1000` (`matchmaker.ts`, `create_match` open-pool branch) |
+| Direct-challenge acceptance window | **5 minutes** | `expires_at: Date.now() + 300000` (`matchmaker.ts`, `create_match` targeted branch) |
+| Active-match abandonment guard | **7 days** (cleanup only) | `ACTIVE_MATCH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000` (`matchmaker.ts`, set in `rpcAcceptMatch`) |
+| Expiry check | lazy | `isMatchExpired` (`combat_system.ts`) |
+| Separate inactivity forfeit | **none** | the 2-minute `MATCH_INACTIVE_TIMEOUT_MS` was removed in #868; turn timers are the single timeout authority |
 
-Matches are stored in Nakama storage with the following structure:
+Turn-timing authority is the combat engine's `MatchState.turn_timeout_ms` (5 minutes), stored in `pvp_match_states`. The `turn_time_limit_ms` field on `PvPMatch` belongs to the legacy engine (see [legacy note](#legacy-correspondence-engine-compatibility)) and is not the gameplay timer.
 
-```typescript
-interface PvPMatch {
-  // Identification
-  match_id: string;           // Unique match identifier
-  creator_id: string;         // User ID of the match creator
-  opponent_id: string;        // User ID of the opponent
-
-  // Rankings
-  creator_rank: number;       // Creator's rank at match creation
-  opponent_rank: number;      // Opponent's rank at match acceptance
-
-  // Match Settings
-  match_type: 'ranked' | 'casual';
-  is_punch_up: boolean;       // High risk/reward match
-
-  // Status
-  status: 'pending' | 'active' | 'completed' | 'expired';
-  winner?: string;            // User ID of the winner (if completed)
-
-  // Timestamps
-  created_at: number;         // Match creation timestamp (ms)
-  updated_at: number;         // Last update timestamp (ms)
-  expires_at: number;         // Match expiration timestamp (ms)
-  last_turn_timestamp: number; // Last turn action timestamp (ms)
-
-  // Turn Data
-  current_turn: number;       // Current turn number (1-based)
-  current_player: string;     // User ID of player whose turn it is
-  turn_time_limit_ms: number; // Time limit per turn in milliseconds
-  creator_turn_data?: TurnData;  // Creator's turn data for current round
-  opponent_turn_data?: TurnData; // Opponent's turn data for current round
-
-  // Game State (server-calculated, read-only to client)
-  creator_health: number;     // Creator's current HP
-  opponent_health: number;    // Opponent's current HP
-  max_turns: number;          // Maximum number of turns before forced end
-
-  // Forfeit tracking
-  creator_consecutive_timeouts: number;
-  opponent_consecutive_timeouts: number;
-}
-
-interface TurnData {
-  action_type: 'shoot';       // Action type (expandable)
-  angle: number;              // Shot angle in radians (0-2π)
-  power?: number;             // Shot power (0-1, optional, defaults to 1.0)
-  // Future: Additional action types and parameters
-}
-```
-
-## RPC Endpoints
+## RPC Endpoints (shipped lifecycle)
 
 ### 1. Create Match
 
-**Endpoint**: `armored_archer/create_match`
+**Endpoint**: `armored_archer/create_match` (matchmaker.ts)
 
-**Purpose**: Creates a new async PvP match waiting for an opponent.
+**Purpose**: Opens the async matchmaking phase — creates a `pending` match.
 
-**Request**:
+**Request** (core fields):
 ```json
 {
-  "match_type": "ranked",          // "ranked" or "casual"
-  "is_punch_up": false,            // Optional: enable high risk/reward
-  "target_opponent_id": "user-uuid" // Optional: challenge specific player
+  "match_type": "ranked",
+  "is_punch_up": false,
+  "target_opponent_id": "user-uuid"
 }
 ```
+`target_opponent_id` is optional: without it the match is an open pool entry (24-hour window); with it, a direct challenge (5-minute window, punch-up rules may apply).
 
-**Response** (Success):
-```json
-{
-  "success": true,
-  "match": {
-    "match_id": "match_1234567890_abc123",
-    "creator_id": "user-uuid",
-    "opponent_id": "",
-    "status": "pending",
-    "created_at": 1234567890000,
-    "expires_at": 1256967890000
-  }
-}
-```
-
-**Validation Rules**:
-- `match_type` must be "ranked" or "casual"
-- If `target_opponent_id` is specified and not a punch-up, rank difference must be ≤ 3
-- Player must have valid stats (level ≥ 1)
+**Side effects**:
+- Match stored in `pvp_matches` with `status: "pending"` and the branch-specific `expires_at`
+- Anti-abuse: `recordMatchAction(userId, 'create', match_id)`; rate limit and cooldown checks
+- Punch-up detection runs for targeted challenges (rank-difference thresholds in `matchmaker.ts` punch-up constants)
 
 ### 2. Accept Match
 
-**Endpoint**: `armored_archer/accept_match`
+**Endpoint**: `armored_archer/accept_match` (`rpcAcceptMatch`, matchmaker.ts)
 
-**Purpose**: Joins a pending match and initializes turn-based combat.
+**Purpose**: Opponent joins the pending match — the live duel starts.
 
 **Request**:
 ```json
-{
-  "match_id": "match_1234567890_abc123"
-}
+{ "match_id": "match_1234567890_abc123" }
 ```
 
-**Response** (Success):
-```json
-{
-  "success": true,
-  "match": {
-    "match_id": "match_1234567890_abc123",
-    "creator_id": "user-uuid",
-    "opponent_id": "opponent-uuid",
-    "status": "active",
-    "current_turn": 1,
-    "current_player": "creator_id",  // Creator always goes first
-    "turn_time_limit_ms": 86400000,   // 24 hours per turn
-    "creator_health": 100,
-    "opponent_health": 100,
-    "max_turns": 10
-  }
-}
-```
-
-**Validation Rules**:
-- Match must exist and be in "pending" status
+**Validation rules**:
+- Match must exist and still be `pending`
 - Player cannot accept their own match
-- Player must have valid stats
+- Player must have `player_stats` on record
+- Concurrent active-match limit enforced
 
-**Side Effects**:
-- Match status changes to "active"
-- `expires_at` is updated to 7 days from now
-- `current_turn` is set to 1
-- `current_player` is set to creator (creator always goes first)
-- Health is initialized to 100 for both players
-- Turn time limit is set (default: 24 hours)
+**Side effects**:
+- `status` → `"active"`; `opponent_id`/`opponent_rank` recorded (`calculateRank`)
+- `current_turn = 1`, creator takes the first turn
+- `expires_at` re-stamped to now + `ACTIVE_MATCH_EXPIRY_MS` (7-day abandonment guard)
+- Anti-abuse: `recordMatchAction(userId, 'accept', match_id)`; audit log entry
 
-### 3. Submit Turn
+### 3. Submit Combat Action (live duel turn)
 
-**Endpoint**: `armored_archer/submit_turn`
+**Endpoint**: `armored_archer/submit_combat_action` (`rpcSubmitCombatAction`, combat_system.ts)
 
-**Purpose**: Submits a player's turn action for the current round.
+**Purpose**: Submits one discrete turn action and receives the server-computed result.
 
-**Request**:
+**Request** (core fields):
 ```json
 {
   "match_id": "match_1234567890_abc123",
@@ -199,707 +162,261 @@ interface TurnData {
 }
 ```
 
-**Response** (Success, waiting for opponent):
+**Server-side flow**:
+1. Validate match and participant (`getAndValidateMatch`)
+2. Lazily check the turn timer (`isTurnTimedOut`) — see [Turn Timeout Handling](#turn-timeout-handling)
+3. Reset `consecutive_timeouts = 0` on a successful action
+4. Run anti-cheat validation (`validateAntiCheat`)
+5. `processCombatAction` computes hit/damage server-side from stored stats
+6. `saveMatchState` persists the duel state; both players notified (`notifyMatchStateUpdate`)
+7. If health reaches zero: server declares the winner — `updateMatchStatus(..., 'health_zero')` + `persistMatchResult(..., 'health_zero')` — the match is terminal but **unsettled** (no `settled_at` yet)
+
+**Response (timeout forfeited)**:
 ```json
 {
-  "success": true,
-  "match": {
-    "match_id": "match_1234567890_abc123",
-    "status": "active",
-    "current_turn": 1,
-    "current_player": "opponent_id",  // Opponent's turn now
-    "creator_turn_data": {
-      "action_type": "shoot",
-      "angle": 1.57,
-      "power": 0.9
-    },
-    "opponent_turn_data": null,
-    "updated_at": 1234567895000,
-    "last_turn_timestamp": 1234567895000
-  }
+  "error": "Match forfeited due to consecutive timeouts",
+  "forfeit": true,
+  "winner": "opponent-uuid"
 }
 ```
-
-**Response** (Success, both turns submitted, results calculated):
-```json
-{
-  "success": true,
-  "match": {
-    "match_id": "match_1234567890_abc123",
-    "status": "active",
-    "current_turn": 2,  // Advanced to next turn
-    "current_player": "creator_id",
-    "creator_turn_data": null,
-    "opponent_turn_data": null,
-    "creator_health": 85,   // Damage calculated
-    "opponent_health": 92,
-    "turn_result": {
-      "creator_hit": true,
-      "opponent_hit": true,
-      "creator_damage": 8,
-      "opponent_damage": 15
-    },
-    "updated_at": 1234567896000,
-    "last_turn_timestamp": 1234567896000
-  }
-}
-```
-
-**Response** (Success, match completed):
-```json
-{
-  "success": true,
-  "match": {
-    "match_id": "match_1234567890_abc123",
-    "status": "completed",
-    "winner": "creator_id",
-    "creator_health": 0,
-    "opponent_health": 45
-  },
-  "completion_data": {
-    "winner_id": "creator_id",
-    "loser_id": "opponent_id",
-    "total_turns": 5,
-    "duration_ms": 432000,
-    "rewards": {
-      "winner": { "xp": 100, "coins": 50, "rank_change": 20 },
-      "loser": { "xp": 25, "coins": 10, "rank_change": -20 }
-    }
-  }
-}
-```
-
-**Validation Rules**:
-- Match must exist and be in "active" status
-- Player must be a participant in the match
-- It must be the player's turn (`current_player` must equal user's ID)
-- Turn must be submitted before timeout (`now < last_turn_timestamp + turn_time_limit_ms`)
-- Action type must be valid
-- Angle must be between 0 and 2π (6.28318530718)
-- Power must be between 0 and 1 (if provided)
-
-**Server-Side Logic**:
-1. Validate turn submission
-2. Store turn data in appropriate field (`creator_turn_data` or `opponent_turn_data`)
-3. Check if both players have submitted turns
-4. If both turns submitted:
-   - Calculate combat results using combat_system.ts
-   - Update health values
-   - Check for winner (HP ≤ 0 or max turns reached)
-   - If winner found, call `complete_match` RPC
-   - Otherwise, advance to next turn
-5. Update `last_turn_timestamp`
-6. Send match state to both players (via notifications)
 
 ### 4. Get Match State
 
-**Endpoint**: `armored_archer/get_match_state`
+**Endpoint**: `armored_archer/get_match_state` (`registerRpcGetMatchState`, combat_system.ts)
 
-**Purpose**: Retrieves the current state of an active match.
+**Purpose**: Reads the live duel's server state (`pvp_match_states`) — health, current turn, whose turn it is, timer fields. Used for initial load, polling, and reconnect resync.
 
-**Request**:
-```json
-{
-  "match_id": "match_1234567890_abc123"
-}
-```
+### 5. Player Disconnect (forfeit)
 
-**Response** (Success):
-```json
-{
-  "success": true,
-  "match": {
-    "match_id": "match_1234567890_abc123",
-    "creator_id": "user-uuid",
-    "opponent_id": "opponent-uuid",
-    "status": "active",
-    "current_turn": 3,
-    "current_player": "opponent_id",
-    "creator_health": 70,
-    "opponent_health": 85,
-    "turn_time_limit_ms": 86400000,
-    "last_turn_timestamp": 1234567890000,
-    "time_remaining_ms": 82800000,
-    "creator_turn_data": null,
-    "opponent_turn_data": null,
-    "max_turns": 10,
-    "created_at": 1234567800000,
-    "updated_at": 1234567890000,
-    "expires_at": 1256967890000
-  },
-  "is_my_turn": false,
-  "my_health": 85,
-  "opponent_health": 70,
-  "time_until_timeout": 82800000
-}
-```
+**Endpoint**: `armored_archer/player_disconnect` (`rpcPlayerDisconnect`, combat_system.ts)
 
-**Validation Rules**:
-- Match must exist
-- Player must be a participant in the match
+**Purpose**: Reports a disconnect; the server forfeits the reporting player.
 
-**Use Cases**:
-- Initial match state load after accepting a match
-- Reconnecting after a disconnect
-- Periodic polling for match updates (backup to notifications)
-- Refreshing UI after background/foreground app state changes
+**Side effects**:
+- Opponent declared winner: `updateMatchStatus(..., 'disconnect')` (or `'timeout'` when the reason is a timeout) + `persistMatchResult`
+- Disconnect telemetry (`logDisconnect`) for fairness monitoring
+- Players notified (`notifyOpponentOfForfeit`, `notifyMatchStateUpdate(..., 'match_completed')`)
 
-### 5. Complete Match
+### 6. Complete Match (settlement trigger)
 
-**Endpoint**: `armored_archer/complete_match`
+**Endpoint**: `armored_archer/complete_match` (`rpcCompleteMatch`, matchmaker.ts)
 
-**Purpose**: Manually completes a match (called automatically when HP reaches 0 or max turns reached).
+**Purpose**: Triggers settlement of a terminal match. **The client is a trigger only — the winner is server-declared** (ADR-0002): `resolveServerTerminalState` is the sole source of winner truth, and the client-supplied `winner_id`/`loser_id` payload is advisory/logging only (`logAdvisoryPayloadMismatch`).
 
 **Request**:
 ```json
 {
   "match_id": "match_1234567890_abc123",
   "winner_id": "user-uuid",
-  "loser_id": "opponent-uuid",
-  "is_punch_up": false
+  "loser_id": "opponent-uuid"
 }
 ```
+`winner_id`/`loser_id`/`is_punch_up` in the payload are advisory; settlement uses only server state (the server-recorded punch-up flag, not the client's).
 
-**Response** (Success):
-```json
-{
-  "success": true,
-  "match": {
+**Behavior**:
+- **No server terminal state** → rejected with `error_code: "NO_SERVER_TERMINAL_STATE"` (a live, unresolved match cannot be settled)
+- **Already settled** (`settled_at` present) → idempotent replay:
+  ```json
+  {
+    "success": true,
+    "already_settled": true,
     "match_id": "match_1234567890_abc123",
-    "status": "completed",
-    "winner": "user-uuid"
-  },
-  "winner": {
-    "user_id": "user-uuid",
-    "old_rank": 1200,
-    "new_rank": 1220,
-    "rank_change": 20,
-    "xp_gained": 150,
-    "old_season_position": 42,
-    "new_season_position": 40,
-    "rewards": [
-      { "name": "XP", "quantity": 150, "type": "xp" },
-      { "name": "Coins", "quantity": 50, "type": "coin" }
-    ]
-  },
-  "loser": {
-    "user_id": "opponent-uuid",
-    "old_rank": 1200,
-    "new_rank": 1180,
-    "rank_change": -20,
-    "xp_gained": 50,
-    "old_season_position": 43,
-    "new_season_position": 44,
-    "rewards": [
-      { "name": "XP", "quantity": 50, "type": "xp" },
-      { "name": "Coins", "quantity": 10, "type": "coin" }
-    ]
+    "winner": "user-uuid",
+    "end_reason": "health_zero",
+    "settled_at": 1234567900000
   }
-}
-```
+  ```
+- **Terminal draw** → `settleDrawMatch`: marks completed + `settled_at` + `end_reason: "draw"`; **no Elo/XP/rewards** are applied; response carries `is_draw: true`
+- **Winner** → Elo rank update, XP, and rewards applied for both players; `settled_at` written as the double-settlement idempotency key
 
-### 6. Forfeit Match
+**Terminal-state resolution priority** (`resolveServerTerminalState`, matchmaker.ts):
+1. `settled_at` on the match — settlement already ran (idempotent replay)
+2. `winner` on the match — declared by a server resolution path (`updateMatchStatus` in combat_system.ts, or the turn engine)
+3. Combat-system `MatchState` — declared winner (forfeit/timeout/disconnect) or health-zero (`resolveCombatStateTerminal`)
+4. Turn-engine end conditions (`checkMatchEndConditions`) — health-zero, max-turns (winner by remaining health), or draw
 
-**Endpoint**: `armored_archer/forfeit_match`
+Server-side end reasons (`end_reason`): `health_zero`, `forfeit`, `timeout`, `disconnect` (combat declaration, `combat_system.ts`) plus `draw` and max-turns mappings at settlement (`MatchEndReason`, `mapTurnEndReasonToMatchEndReason` in matchmaker.ts).
 
-**Purpose**: Player voluntarily forfeits the match.
-
-**Request**:
-```json
-{
-  "match_id": "match_1234567890_abc123"
-}
-```
-
-**Response** (Success):
-```json
-{
-  "success": true,
-  "match": {
-    "match_id": "match_1234567890_abc123",
-    "status": "completed",
-    "winner": "opponent-uuid",  // Opponent wins by forfeit
-    "forfeited_by": "user-uuid"
-  },
-  "completion_data": {
-    "winner_id": "opponent-uuid",
-    "loser_id": "user-uuid",
-    "reason": "forfeit",
-    "rewards": { /* ... */ }
-  }
-}
-```
-
-**Validation Rules**:
-- Match must exist and be in "active" status
-- Player must be a participant in the match
-- Player cannot forfeit if both turns for current round are already submitted
+**Anti-abuse around settlement**: rate limit and cooldown checks, flagged-player checks for both participants, win-trading detection, audit logging (`logAudit`).
 
 ## Turn Timeout Handling
 
-### Timeout Configuration
+### Configuration
 
 ```typescript
-const TURN_TIMEOUT_MS = 24 * 60 * 60 * 1000;  // 24 hours per turn
-const MAX_CONSECUTIVE_TIMEOUTS = 2;          // Auto-forfeit after 2 timeouts
+// combat_system.ts
+const TURN_TIMEOUT_MS = 5 * 60 * 1000;        // 5 minutes per turn
+const MAX_CONSECUTIVE_TIMEOUTS = 2;           // auto-forfeit after 2 consecutive
 ```
+
+The 5-minute turn timer is the **single timeout authority**: it doubles as the mobile reconnect grace, so a player who drops has roughly 10 minutes (two turn windows) to return before forfeiting. There is deliberately no separate, harsher inactivity forfeit — the 2-minute `MATCH_INACTIVE_TIMEOUT_MS` was removed as redundant dead code in #868.
 
 ### Timeout Flow
 
-1. **First Timeout**:
-   - Player fails to submit turn within `turn_time_limit_ms`
-   - Server detects timeout on next `submit_turn` or `get_match_state` call
-   - Player's consecutive timeout counter increments
-   - A "random" default turn is generated (e.g., straight shot, full power)
-   - Match continues normally
-   - Both players receive a timeout notification
+1. **First timeout**:
+   - Detected lazily when a combat RPC arrives (`rpcSubmitCombatAction` calls `isTurnTimedOut` before processing)
+   - `handleTurnTimeout` increments `MatchState.consecutive_timeouts`
+   - The turn passes to the opponent; the match continues
+   - Timeout telemetry logged (`logTimeout`, `timeout_type: 'turn_timeout'`); players notified
 
-2. **Second Consecutive Timeout**:
-   - Player times out again consecutively
-   - Player's consecutive timeout counter reaches `MAX_CONSECUTIVE_TIMEOUTS`
-   - Match is auto-forfeited
-   - Opponent wins by default
-   - Forfeiting player receives reduced XP/coins (25% of normal loss reward)
+2. **Second consecutive timeout**:
+   - `consecutive_timeouts >= MAX_CONSECUTIVE_TIMEOUTS` → auto-forfeit
+   - The player who did **not** time out is declared the winner
+   - `updateMatchStatus(..., 'timeout')` + `persistMatchResult(..., 'timeout')`; opponent notified (`notifyOpponentOfForfeit`)
 
-3. **Timeout Reset**:
-   - Consecutive timeout counter resets to 0 when player successfully submits a turn
+3. **Reset**:
+   - `consecutive_timeouts` resets to 0 whenever the player successfully submits a combat action
 
 ### Timeout Detection
 
-Timeouts are detected lazily - when either player makes a request (`submit_turn` or `get_match_state`), the server checks if the other player's turn has timed out:
+Detection is lazy — no cron. `isTurnTimedOut` compares elapsed time since `last_turn_timestamp` against `MatchState.turn_timeout_ms` when the next combat action arrives:
 
 ```typescript
-function checkTurnTimeout(match: PvPMatch, now: number): {
-  hasTimedOut: boolean;
-  shouldForfeit: boolean;
-} {
-  const timeSinceLastTurn = now - match.last_turn_timestamp;
-  const hasTimedOut = timeSinceLastTurn > match.turn_time_limit_ms;
+function isTurnTimedOut(matchState: MatchState): boolean {
+  const timeSinceLastTurn = Date.now() - matchState.last_turn_timestamp;
+  return timeSinceLastTurn > matchState.turn_timeout_ms;
+}
+```
 
-  if (!hasTimedOut) {
-    return { hasTimedOut: false, shouldForfeit: false };
-  }
+## Match Data
 
-  const playerWhoTimedOut = match.current_player;
-  const consecutiveTimeouts = playerWhoTimedOut === match.creator_id
-    ? match.creator_consecutive_timeouts
-    : match.opponent_consecutive_timeouts;
+Two storage records back the hybrid model.
 
-  const shouldForfeit = consecutiveTimeouts + 1 >= MAX_CONSECUTIVE_TIMEOUTS;
+**`PvPMatch`** (collection `pvp_matches`, matchmaker.ts) — the match record:
 
-  return { hasTimedOut, shouldForfeit };
+```typescript
+interface PvPMatch {
+  match_id: string;
+  creator_id: string;
+  opponent_id: string;
+  creator_rank: number;
+  opponent_rank: number;
+  match_type: 'ranked' | 'casual';
+  is_punch_up: boolean;
+  status: 'pending' | 'active' | 'completed' | 'expired';
+  winner?: string;             // server-declared winner
+  end_reason?: MatchEndReason; // health_zero | forfeit | timeout | disconnect | draw | ...
+  settled_at?: number;         // settlement idempotency key (written by complete_match)
+  created_at: number;
+  updated_at: number;
+  expires_at: number;          // acceptance window (pending) / abandonment guard (active)
+  last_turn_timestamp: number;
+  // Legacy turn-engine fields (see legacy note): current_turn, current_player,
+  // turn_time_limit_ms, creator_health, opponent_health, max_turns,
+  // creator_consecutive_timeouts, opponent_consecutive_timeouts
+}
+```
+
+**`MatchState`** (collection `pvp_match_states`, combat_system.ts) — the live duel state and the **turn-timing authority**:
+
+```typescript
+interface MatchState {
+  match_id: string;
+  turn: number;
+  current_turn_user_id: string;
+  creator_id: string;
+  opponent_id: string;
+  creator_health: number;      // level-scaled: 100 + level * 10 (getOrCreateMatchState)
+  opponent_health: number;
+  creator_stats: PlayerStats;  // stored server-side stats — never client input
+  opponent_stats: PlayerStats;
+  status: string;
+  log: CombatLogEntry[];
+  last_turn_timestamp: number;
+  turn_timeout_ms: number;     // 5 minutes (TURN_TIMEOUT_MS)
+  consecutive_timeouts: number;
+  forfeit_reason?: string;
+  winner?: string;
 }
 ```
 
 ## Reconnect Flow
 
-### When to Reconnect
+Because turn timers are the grace window, reconnect is simply "come back within roughly 10 minutes and take your turn."
 
-A client should attempt to reconnect to a match in these scenarios:
+**When to reconnect**: network loss/restoration, app backgrounded/foregrounded, crash restart while a match is active.
 
-1. Network connection lost and restored
-2. App backgrounded and foregrounded
-3. App crashed and restarted (while match is active)
-4. Device lost and regained internet connectivity
+**Procedure** (client):
+1. Ensure the network session is alive (`NetworkManager`)
+2. Fetch server state via `get_match_state` (CombatManager/CombatSyncManager wrap this RPC)
+3. Handle the response:
+   - `active` → resync UI from server health/turn data; submit your turn if `current_turn_user_id` is you
+   - `completed` → show results (settlement may still need a `complete_match` trigger)
+   - expired/error → show the abandoned-match message, return to menu
+4. Never trust local state — the server is the source of truth for health and turn order
 
-### Reconnect Procedure
-
-1. **Check Network Connection**:
-   ```gdscript
-   if not NetworkManager.is_connected:
-       await NetworkManager.session_created
-   ```
-
-2. **Get Current Match State**:
-   ```gdscript
-   var match_id = MatchmakerManager.get_current_match().get("match_id", "")
-   var response = await MatchmakerManager.get_match_state(match_id)
-   ```
-
-3. **Handle Response**:
-   - If match is `active`: Update UI with current state
-   - If match is `completed`: Show match results screen
-   - If match is `expired`: Show match expired message
-   - If error: Player was removed, return to main menu
-
-4. **Sync Local State**:
-   - Update local variables with server state
-   - Display current turn information
-   - Show health values
-   - Enable/disable submit button based on `is_my_turn`
-
-### Reconnect Edge Cases
+**Edge cases**:
 
 | Scenario | Handling |
 |----------|----------|
-| Match completed while offline | Show results screen with winner/rewards |
-| Match expired while offline | Show "match expired" message, return to menu |
-| Opponent submitted turn while offline | Show opponent's turn result, allow new turn |
-| Both turns submitted while offline | Show round results, update to next turn |
-| Player timed out while offline | Show timeout notification, continue if first, forfeit if second |
+| Match completed while offline | Results screen; winner already server-declared |
+| Opponent acted while offline | Server state shows their result; take your turn |
+| One turn window missed | Turn passed to you/opponent; counter at 1 — keep playing |
+| Two consecutive windows missed | Auto-forfeit already declared; opponent won by `timeout` |
 
-## Client-Side Implementation
+## Client Integration
 
-### MatchmakerManager Extensions
+The shipped client uses these autoloads (registered in `project.godot`):
 
-```gdscript
-# --- Turn Submission ---
-func submit_turn(action_type: String, angle: float, power: float = 1.0) -> void:
-    """Submits a turn action for the current match."""
-    if not is_in_match():
-        push_error("Not in an active match")
-        return
+| Phase | Autoload / scene | RPCs used |
+|-------|------------------|-----------|
+| Matchmaking | `autoloads/MatchmakingManager.gd` | `create_match`, `accept_match` |
+| Live duel | `autoloads/CombatManager.gd` (`RPC_SUBMIT_COMBAT_ACTION`, `RPC_GET_MATCH_STATE`) | `submit_combat_action`, `get_match_state` |
+| Live duel (sync) | `autoloads/CombatSyncManager.gd` | `submit_combat_action`, `get_match_state` |
+| UI | `scenes/ui/matchmaking_menu.gd`, `scenes/ui/combat_menu.gd` | accept / action + state polling |
 
-    var match_id = current_match.get("match_id", "")
-    var payload = {
-        "match_id": match_id,
-        "action_type": action_type,
-        "angle": angle,
-        "power": power
-    }
+`autoloads/MatchmakerManager.gd` predates the hybrid model and still calls the legacy `get_async_match_state` — see the legacy note below.
 
-    var json = JSON.new()
-    var response = await network_manager.send_rpc(
-        RPC_SUBMIT_TURN,
-        json.stringify(payload)
-    )
+## Notifications
 
-    if response.has("error"):
-        push_error("Failed to submit turn: %s" % response.error)
-        return
+Server → client notifications (combat_system.ts):
 
-    if response.get("success", false):
-        current_match = response.get("match", {})
-        turn_submitted.emit(current_match)
+- **Turn taken / state update** — `notifyMatchStateUpdate(..., 'turn_taken' | 'health_update')`
+- **Match completed** — `notifyMatchStateUpdate(..., 'match_completed')`
+- **Forfeit/disconnect** — `notifyOpponentOfForfeit`
 
-        # Check if match completed
-        if current_match.get("status") == "completed":
-            _handle_match_completion(response)
-
-# --- Match State ---
-func get_match_state(match_id: String) -> Dictionary:
-    """Retrieves the current state of a match."""
-    var payload = { "match_id": match_id }
-    var json = JSON.new()
-    return await network_manager.send_rpc(
-        RPC_GET_MATCH_STATE,
-        json.stringify(payload)
-    )
-
-# --- Reconnect ---
-async func reconnect_to_match() -> void:
-    """Attempts to reconnect to the current match."""
-    if current_match.is_empty():
-        push_warning("No match to reconnect to")
-        return
-
-    # Wait for network connection
-    if not network_manager.is_connected:
-        await network_manager.session_created
-
-    var match_id = current_match.get("match_id", "")
-    var response = await get_match_state(match_id)
-
-    if response.has("error"):
-        push_error("Failed to reconnect: %s" % response.error)
-        # Clear current match and return to menu
-        current_match = {}
-        match_reconnect_failed.emit(response.error)
-        return
-
-    if response.get("success", false):
-        current_match = response.get("match", {})
-        match_reconnected.emit(current_match)
-
-        # Handle different match states
-        match current_match.get("status"):
-            "active":
-                # Update UI with match state
-                pass
-            "completed":
-                # Show results
-                _handle_match_completion(response)
-            "expired":
-                # Show expired message
-                match_expired.emit(current_match)
-
-# --- Forfeit ---
-func forfeit_match() -> void:
-    """Forfeits the current match."""
-    if not is_in_match():
-        push_error("Not in an active match")
-        return
-
-    var match_id = current_match.get("match_id", "")
-    var payload = { "match_id": match_id }
-
-    var json = JSON.new()
-    var response = await network_manager.send_rpc(
-        RPC_FORFEIT_MATCH,
-        json.stringify(payload)
-    )
-
-    if response.has("error"):
-        push_error("Failed to forfeit: %s" % response.error)
-        return
-
-    if response.get("success", false):
-        current_match = response.get("match", {})
-        match_forfeited.emit(current_match)
-
-# --- Timeout Monitoring ---
-func _check_turn_timeout() -> void:
-    """Checks if the current turn has timed out."""
-    if not is_in_match():
-        return
-
-    var last_turn = current_match.get("last_turn_timestamp", 0)
-    var time_limit = current_match.get("turn_time_limit_ms", 86400000)
-    var elapsed = Time.get_ticks_msec() - last_turn
-    var remaining = time_limit - elapsed
-
-    if remaining <= 0:
-        turn_timeout.emit(current_match)
-```
-
-### UI Flow Example
-
-```gdscript
-extends Control
-
-@onready var matchmaker = $/root/MatchmakerManager
-
-func _ready():
-    # Connect signals
-    matchmaker.turn_submitted.connect(_on_turn_submitted)
-    matchmaker.match_reconnected.connect(_on_match_reconnected)
-    matchmaker.turn_timeout.connect(_on_turn_timeout)
-    matchmaker.match_expired.connect(_on_match_expired)
-
-    # Check if we have an active match
-    if matchmaker.is_in_match():
-        await reconnect_to_match()
-    else:
-        # Show no active match UI
-        _show_no_match_ui()
-
-    # Start timeout polling
-    _start_timeout_polling()
-
-func reconnect_to_match() -> void:
-    show_loading("Reconnecting to match...")
-    await matchmaker.reconnect_to_match()
-    hide_loading()
-    _update_match_ui()
-
-func submit_turn():
-    var angle = get_shot_angle()
-    var power = get_shot_power()
-    submit_button.disabled = true
-    await matchmaker.submit_turn("shoot", angle, power)
-    submit_button.disabled = false
-    _update_match_ui()
-
-func _on_turn_submitted(match_data: Dictionary):
-    _update_match_ui()
-    if match_data.get("status") == "completed":
-        show_results(match_data)
-
-func _on_match_reconnected(match_data: Dictionary):
-    _update_match_ui()
-
-func _on_turn_timeout(match_data: Dictionary):
-    show_warning("Your turn timed out! Reconnect to continue.")
-
-func _on_match_expired(match_data: Dictionary):
-    show_error("Match has expired.")
-    return_to_main_menu()
-
-func _update_match_ui():
-    var match_data = matchmaker.get_current_match()
-    my_health_bar.value = match_data.get("my_health", 100)
-    opponent_health_bar.value = match_data.get("opponent_health", 100)
-    turn_label.text = "Turn %d" % match_data.get("current_turn", 1)
-
-    var is_my_turn = match_data.get("is_my_turn", false)
-    submit_button.disabled = not is_my_turn
-    turn_indicator.text = "Your Turn" if is_my_turn else "Opponent's Turn"
-
-func _start_timeout_polling():
-    while matchmaker.is_in_match():
-        matchmaker._check_turn_timeout()
-        await get_tree().create_timer(1.0).timeout
-```
-
-## Server-Side Implementation Details
-
-### Turn Calculation
-
-When both players submit turns, the server calculates combat results:
-
-```typescript
-function calculateTurnResults(
-  creatorTurn: TurnData,
-  opponentTurn: TurnData,
-  creatorStats: PlayerStats,
-  opponentStats: PlayerStats
-): TurnResult {
-  // Use the combat_system to calculate damage
-  const creatorDamage = calculateDamage(
-    creatorTurn,
-    opponentStats,
-    creatorStats
-  );
-
-  const opponentDamage = calculateDamage(
-    opponentTurn,
-    creatorStats,
-    opponentStats
-  );
-
-  // Determine if shots hit based on angle/distance calculations
-  const creatorHit = calculateHit(creatorTurn, opponentTurn, creatorStats);
-  const opponentHit = calculateHit(opponentTurn, creatorTurn, opponentStats);
-
-  return {
-    creator_hit: creatorHit,
-    opponent_hit: opponentHit,
-    creator_damage: creatorHit ? creatorDamage : 0,
-    opponent_damage: opponentHit ? opponentDamage : 0,
-  };
-}
-```
-
-### Match Completion Triggers
-
-A match is completed when any of these conditions are met:
-
-1. **Player HP reaches 0**:
-   ```typescript
-   if (match.creator_health <= 0) {
-     winner = match.opponent_id;
-   } else if (match.opponent_health <= 0) {
-     winner = match.creator_id;
-   }
-   ```
-
-2. **Maximum turns reached**:
-   ```typescript
-   if (match.current_turn > match.max_turns) {
-     // Compare remaining HP
-     if (match.creator_health > match.opponent_health) {
-       winner = match.creator_id;
-     } else if (match.opponent_health > match.creator_health) {
-       winner = match.opponent_id;
-     } else {
-       // Draw - both get reduced rewards
-     }
-   }
-   ```
-
-3. **Forfeit**:
-   - Player voluntarily forfeits
-   - Player times out consecutively (max limit reached)
-
-4. **Expiration**:
-   - 7 days of inactivity on an active match
-
-### Notifications
-
-The server sends notifications to both players on key events:
-
-- **Match Started**: When opponent accepts the match
-- **Turn Submitted**: When opponent submits their turn
-- **Turn Result**: When both turns are processed
-- **Match Completed**: When match ends
-- **Timeout Warning**: When player is close to timeout (12h remaining)
-- **Timeout Occurred**: When player's turn times out
-
-Notifications use Nakama's notification system:
-
-```typescript
-nk.notificationsSend(userId, [{
-  code: 1,  // Match event
-  subject: "Your turn in match " + match.match_id,
-  content: JSON.stringify({
-    match_id: match.match_id,
-    event: "your_turn",
-    time_remaining_ms: match.turn_time_limit_ms
-  }),
-  sender_id: SYSTEM_USER_ID,
-  persistent: true
-}]);
-```
+Timeouts and disconnects are additionally logged as fairness telemetry (`logTimeout`, `logDisconnect`).
 
 ## Testing
 
-### Unit Tests
+**Unit** (`backend/src/modules/**/__tests__/`): RPC validation, timeout accounting (`handleTurnTimeout`, `isTurnTimedOut`), terminal-state resolution (`resolveServerTerminalState`), draw settlement, settlement idempotency.
 
-Test each RPC endpoint with various scenarios:
+**Integration** (`backend/tests/integration/`): full lifecycle — create → accept → live turns → server declaration → settlement trigger → rewards.
 
-- Valid submissions
-- Invalid inputs (wrong match ID, not player's turn, timeout)
-- Edge cases (max turns, HP at 0)
-- Timeout detection and handling
-
-### Integration Tests
-
-Test the full lifecycle:
-
-1. Create match
-2. Accept match
-3. Submit turns for multiple rounds
-4. Test timeout scenarios
-5. Test reconnect flow
-6. Complete match and verify rewards
-
-### Manual Testing
-
-1. **Normal Flow**:
-   - Player A creates match
-   - Player B accepts
-   - Both submit turns
-   - Verify results and HP updates
-   - Continue until match ends
-
-2. **Timeout Flow**:
-   - Player A submits turn
-   - Player B waits >24 hours
-   - Player A submits another turn
-   - Verify timeout detection
-   - Verify default turn generated
-
-3. **Reconnect Flow**:
-   - Start a match
-   - Player B disconnects (network off)
-   - Player A submits turn
-   - Player B reconnects
-   - Verify state is synced
+**Manual flows**:
+1. *Normal*: create → accept → alternate `submit_combat_action` turns → health-zero declaration → `complete_match` → verify rewards
+2. *Timeout*: create → accept → one player waits past **5 minutes** (one window) → verify the turn passed; wait a second consecutive window → verify auto-forfeit with `end_reason: "timeout"`
+3. *Reconnect*: accept → disconnect (network off) → reconnect within the grace period → `get_match_state` resyncs → play continues
+4. *Draw*: reach max-turns end conditions with equal health → `complete_match` → verify `is_draw: true`, no Elo/XP applied
 
 ## Security Considerations
 
-1. **Server-Authoritative**: All combat calculations happen server-side
-2. **Turn Validation**: Server validates all turn submissions
-3. **Anti-Cheat**: Turn submissions are logged for suspicious pattern detection
-4. **Rate Limiting**: Prevent rapid turn submission spam
-5. **Timestamp Validation**: Reject turns submitted after timeout
-6. **Match State Verification**: Server is the source of truth for all match state
+1. **Server-authoritative combat** — damage/hit computed from stored stats (`processCombatAction`), never client input
+2. **Server-declared settlement** — client `winner_id`/`loser_id` advisory only; mismatches logged for telemetry (`logAdvisoryPayloadMismatch`), never honored
+3. **Idempotent settlement** — `settled_at` guards against double reward application
+4. **Anti-abuse** — rate limits, action cooldowns, concurrent-match limits, `recordMatchAction` tracking, win-trading detection, flagged-player checks
+5. **Server-recorded punch-up** — reward multipliers key off the stored `is_punch_up` flag, not the client's claim
+6. **Lazy timestamp validation** — late turn submissions are rejected against `turn_timeout_ms`
 
 ## Performance Considerations
 
-1. **Storage Efficiency**: Only store current turn data, not full history
-2. **Lazy Timeout Detection**: Check timeouts on player actions, not cron
-3. **Notification Batching**: Batch notifications to reduce API calls
-4. **Match Cleanup**: Archive completed matches after a period (30 days)
-5. **Indexing**: Ensure `match_id` and `user_id` fields are indexed
+1. **Lazy timeout detection** — timers checked on combat RPCs, no cron sweep
+2. **Current-state storage** — one `MatchState` record per match plus a combat log, not full turn history
+3. **Expiry as cleanup** — `expires_at` abandonment guards keep stale pending/active matches out of the pool (`isMatchExpired`)
 
-## Future Enhancements
+## Legacy Correspondence Engine (Compatibility)
 
-- **More Action Types**: Charge shots, special abilities, items
-- **Spectator Mode**: Allow others to watch live matches
-- **Match Replays**: Save and replay matches
-- **Tournament Mode**: Bracket-style async tournaments
-- **Team PvP**: 2v2 or larger team matches
-- **Custom Time Limits**: Allow players to agree on custom turn times
-- **Draft System**: Draft gear/abilities before match starts
-- **Seasonal Events**: Special match types during events
+A superseded correspondence-style turn engine still exists in `backend/src/modules/matchmaker.ts` (section "ASYNC DUEL LIFECYCLE - Turn-Based PvP System") and its RPCs remain registered (`registerRpcSubmitTurn`, `registerRpcGetAsyncMatchState`, `registerRpcForfeitMatch` in `backend/src/index.ts`):
+
+- `armored_archer/submit_turn`, `armored_archer/get_async_match_state`, `armored_archer/forfeit_match`
+- Its `TURN_TIMEOUT_MS = 24 * 60 * 60 * 1000` (24-hour turns) and the matching `PvPMatch.turn_time_limit_ms` field belong to that engine — they are **not** the gameplay timer of the shipped hybrid model
+- `DEFAULT_MAX_TURNS = 10` and `BASE_HEALTH = 100` originate here; max-turns end conditions are still honored at settlement (`checkMatchEndConditions`), but live combat HP is level-scaled in `MatchState` (`getOrCreateMatchState`)
+
+The shipped client does not use these endpoints (see [Client Integration](#client-integration)); new work must target `submit_combat_action` / `get_match_state` / `player_disconnect`.
+
+## Related Documents
+
+- [MATCHMAKER.md](MATCHMAKER.md) — matchmaking, ranks, Elo, punch-up rules
+- [COMBAT_SYSTEM.md](COMBAT_SYSTEM.md) — combat math and anti-cheat
+- [CASUAL_VS_RANKED_REWARDS.md](CASUAL_VS_RANKED_REWARDS.md) — reward differences by match type
+- [SEASONAL_LEADERBOARD.md](SEASONAL_LEADERBOARD.md) — seasonal rank settlement
