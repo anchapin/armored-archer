@@ -2350,6 +2350,10 @@ interface RewardCalculationParams {
  * Punch-up matches provide scaled multiplier bonuses (1.2x to 2.0x) based on rank difference.
  * Favorites in punch-up matches receive reduced rewards (50% to 70% of normal).
  *
+ * Casual matches never expose the punch-up wager (issue #872): punch-up XP
+ * shaping is applied to ranked matches only, regardless of any punch-up flag
+ * recorded on the match.
+ *
  * @param params - Reward calculation parameters
  * @returns XP gained
  */
@@ -2360,7 +2364,11 @@ function calculateXPGain(params: RewardCalculationParams): number {
   // Casual matches award 50% of ranked XP
   let baseXP = params.matchType === 'ranked' ? rankedBaseXP : casualBaseXP;
 
-  if (params.isPunchUp) {
+  // Punch-up shaping is ranked-only (issue #872): a stake-free casual wager
+  // would contradict the Punch-Up definition in CONTEXT.md.
+  const isRankedPunchUp = params.matchType === 'ranked' && params.isPunchUp;
+
+  if (isRankedPunchUp) {
     if (params.isUnderdog) {
       if (params.isWinner) {
         // Underdog win: bonus based on rank difference
@@ -2390,9 +2398,12 @@ function calculateXPGain(params: RewardCalculationParams): number {
  * Ranked matches offer higher rewards and include punch-up gem bonuses.
  * Casual matches offer 50% coin rewards and no gem bonuses.
  *
- * Punch-up mechanics:
+ * Punch-up mechanics (ranked only):
  * - Underdogs: Scaled XP multiplier, bonus gems for wins
  * - Favorites: Reduced rewards (50-70% of normal), harsher penalties for losses
+ *
+ * Casual matches never expose the punch-up wager (issue #872): no punch-up
+ * gem bonus and no favorite penalty are applied in casual mode.
  *
  * @param params - Reward calculation parameters
  * @param xpGained - XP gained in the match
@@ -2418,8 +2429,12 @@ function calculateMatchRewards(params: RewardCalculationParams, xpGained: number
     coins = params.isWinner ? 25 : 5;
   }
 
+  // Punch-up shaping is ranked-only (issue #872): casual rewards are
+  // punch-up-free regardless of any punch-up flag recorded on the match.
+  const isRankedPunchUp = params.matchType === 'ranked' && params.isPunchUp;
+
   // Apply favorite penalty for punch-up matches
-  if (params.isPunchUp && !params.isUnderdog) {
+  if (isRankedPunchUp && !params.isUnderdog) {
     const penalty = calculateFavoritePenalty(params.isPunchUp, params.rankDifference);
     coins = Math.round(coins * penalty);
   }
@@ -2432,7 +2447,7 @@ function calculateMatchRewards(params: RewardCalculationParams, xpGained: number
 
   // Bonus gems for punch-up underdog wins (ranked only)
   // Scale gem bonus based on rank difference
-  if (params.isWinner && params.isPunchUp && params.isUnderdog && params.matchType === 'ranked') {
+  if (params.isWinner && isRankedPunchUp && params.isUnderdog) {
     const gemBonus = calculatePunchUpGemBonus(params.rankDifference);
     rewards.push({
       name: 'Gems',
