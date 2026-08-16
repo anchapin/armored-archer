@@ -15,10 +15,7 @@ import {
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { recordSeasonCompletion } from './season_leaderboard';
 import { logRankChange, logRewardClaim, recordSeasonEndSnapshot } from './season_telemetry';
-import {
-  incrementSeasonRankChanges,
-  recordSeasonRankChangeDelta,
-} from './metrics';
+import { incrementSeasonRankChanges, recordSeasonRankChangeDelta } from './metrics';
 
 /**
  * Season rewards data structure.
@@ -285,9 +282,7 @@ export function updatePlayerPrestigeRecord(
 
   // Only record finishes within top 100 (max threshold for any prestige tier)
   if (finalRank <= 100) {
-    const existingIdx = record.season_finishes.findIndex(
-      (f) => f.season_id === seasonId
-    );
+    const existingIdx = record.season_finishes.findIndex((f) => f.season_id === seasonId);
     if (existingIdx >= 0) {
       record.season_finishes[existingIdx].rank = Math.min(
         record.season_finishes[existingIdx].rank,
@@ -342,9 +337,7 @@ export function grantPrestigeRewards(
  * @param seasonFinishes - Player's qualifying season finishes
  * @returns Progress info for each tier
  */
-export function calculatePrestigeProgress(
-  seasonFinishes: { season_id: string; rank: number }[]
-): {
+export function calculatePrestigeProgress(seasonFinishes: { season_id: string; rank: number }[]): {
   tier: PrestigeTierName;
   earned: boolean;
   qualifying_seasons: number;
@@ -742,7 +735,9 @@ export function rpcUpdateRank(
   );
 
   // Season telemetry: log rank change and update Prometheus metrics
-  const daysIntoSeason = Math.floor((Date.now() - currentSeason.start_time) / (24 * 60 * 60 * 1000));
+  const daysIntoSeason = Math.floor(
+    (Date.now() - currentSeason.start_time) / (24 * 60 * 60 * 1000)
+  );
   const kFactor = request.is_punch_up ? 60 : 32;
 
   logRankChange(nk, {
@@ -1035,12 +1030,7 @@ export function rpcClaimSeasonRewards(
 
   // Store cosmetic rewards (titles, auras)
   if (rewards.cosmetics) {
-    addPlayerCosmetic(
-      nk,
-      ctx.userId,
-      rewards.cosmetics.title,
-      rewards.cosmetics.aura
-    );
+    addPlayerCosmetic(nk, ctx.userId, rewards.cosmetics.title, rewards.cosmetics.aura);
   }
 
   // Season telemetry: log reward claim
@@ -1112,13 +1102,7 @@ export function rpcEndSeason(
   let allRecords: LeaderboardRecord[] = [];
   let cursor = '';
   do {
-    const batch = nk.leaderboardRecordList(
-      currentSeason.season_id,
-      [],
-      BATCH_SIZE,
-      cursor,
-      0
-    );
+    const batch = nk.leaderboardRecordList(currentSeason.season_id, [], BATCH_SIZE, cursor, 0);
     allRecords = allRecords.concat(batch);
     cursor = batch.length >= BATCH_SIZE ? String(batch[batch.length - 1]?.rank || '') : '';
   } while (cursor !== '');
@@ -1559,9 +1543,7 @@ export function rpcGetPrestigeProgress(
  *
  * @param initializer - Nakama runtime initializer
  */
-export function registerRpcGetProjectedNextSeasonElo(
-  initializer: Runtime.Initializer
-): void {
+export function registerRpcGetProjectedNextSeasonElo(initializer: Runtime.Initializer): void {
   initializer.registerRpc(
     'armored_archer/get_projected_next_season_elo',
     rpcGetProjectedNextSeasonElo
@@ -1608,10 +1590,15 @@ export function rpcGetProjectedNextSeasonElo(
 
   const projectedElo = calculateSoftResetElo(playerEntry.rank);
   const tierName =
-    playerEntry.rank <= 10 ? 'Legendary' :
-    playerEntry.rank <= 50 ? 'Epic' :
-    playerEntry.rank <= 100 ? 'Rare' :
-    playerEntry.rank <= 500 ? 'Uncommon' : 'Common';
+    playerEntry.rank <= 10
+      ? 'Legendary'
+      : playerEntry.rank <= 50
+        ? 'Epic'
+        : playerEntry.rank <= 100
+          ? 'Rare'
+          : playerEntry.rank <= 500
+            ? 'Uncommon'
+            : 'Common';
 
   return JSON.stringify({
     success: true,

@@ -1,12 +1,151 @@
 {
-  "timestamp": "2026-03-31T12:59:45.025Z",
+  "timestamp": "2026-04-29T04:38:05.149Z",
   "summary": {
-    "total": 0,
+    "total": 15,
     "critical": 0,
     "high": 0,
     "medium": 0,
-    "low": 0,
-    "byCategory": {}
+    "low": 15,
+    "byCategory": {
+      "logging": 2,
+      "type-safety": 13
+    }
   },
-  "issues": []
+  "issues": [
+    {
+      "file": "src/modules/gear_system.ts",
+      "line": 518,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.warn('Failed to load stage rarity weights:', error);",
+      "details": "console.warn used"
+    },
+    {
+      "file": "src/modules/matchmaker.ts",
+      "line": 1966,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "const params: any[] = [ctx.userId];",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/matchmaker.ts",
+      "line": 2002,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "const matches = result.map((row: any) => {",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/matchmaker.ts",
+      "line": 2146,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "let combatLog: any[] = [];",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/matchmaker.ts",
+      "line": 2147,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "let creatorStats: any = {};",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/matchmaker.ts",
+      "line": 2148,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "let opponentStats: any = {};",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/matchmaker.ts",
+      "line": 2312,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "const params: any[] = [];",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/matchmaker.ts",
+      "line": 2377,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "const matches = result.map((row: any) => ({",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/matchmaker.ts",
+      "line": 3283,
+      "type": "logging",
+      "severity": "low",
+      "description": "Console logging should use proper logger",
+      "code": "console.error('Failed to send timeout notification:', error);",
+      "details": "console.error used"
+    },
+    {
+      "file": "src/modules/player_rpc.ts",
+      "line": 247,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "const enhancedReports = reports.map((report: any) => {",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/season_admin.ts",
+      "line": 959,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "function buildLeaderboardData(entry: { rank: number; score: number; meta: any } | null) {",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/season_admin.ts",
+      "line": 974,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "function buildPrestigeData(prestige: { prestige_tiers_earned: string[]; season_finishes: any[] }) {",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/season_admin.ts",
+      "line": 984,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "entry: { rank: number; score: number; meta: any } | null,",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/season_admin.ts",
+      "line": 985,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "prestige: { prestige_tiers_earned: string[]; season_finishes: any[] },",
+      "details": "Variable typed as 'any'"
+    },
+    {
+      "file": "src/modules/survey.ts",
+      "line": 79,
+      "type": "type-safety",
+      "severity": "low",
+      "description": "Using any type - reduces type safety",
+      "code": "(obj: any) => obj.updateTime !== null && new Date(obj.updateTime).getTime() > twentyFourHoursAgo",
+      "details": "Variable typed as 'any'"
+    }
+  ]
 }

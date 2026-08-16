@@ -1146,7 +1146,7 @@ describe('matchmaker', () => {
         expect(mockNk.storageWrite).toHaveBeenCalled();
       });
 
-      it('should reject turn submission when not player\'s turn', () => {
+      it("should reject turn submission when not player's turn", () => {
         const match: PvPMatch = {
           match_id: 'match_123',
           creator_id: 'creator-user',
@@ -1301,7 +1301,7 @@ describe('matchmaker', () => {
         expect(response.time_remaining_ms).toBeGreaterThan(0);
       });
 
-      it('should correctly identify opponent\'s turn', () => {
+      it("should correctly identify opponent's turn", () => {
         const match: PvPMatch = {
           match_id: 'match_123',
           creator_id: 'creator-user',
@@ -1682,9 +1682,7 @@ describe('matchmaker', () => {
         },
       ];
 
-      (nk.dbQuery as jest.Mock)
-        .mockReturnValueOnce([{ total: 1 }])
-        .mockReturnValueOnce(matchRows);
+      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 1 }]).mockReturnValueOnce(matchRows);
 
       const result = rpcGetMatchHistory(ctx, logger, nk, JSON.stringify({}));
       const parsed = JSON.parse(result);
@@ -1704,9 +1702,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock)
-        .mockReturnValueOnce([{ total: 0 }])
-        .mockReturnValueOnce([]);
+      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
 
       const result = rpcGetMatchHistory(ctx, logger, nk, JSON.stringify({ match_type: 'ranked' }));
       const parsed = JSON.parse(result);
@@ -1769,9 +1765,7 @@ describe('matchmaker', () => {
         },
       ];
 
-      (nk.dbQuery as jest.Mock)
-        .mockReturnValueOnce([{ total: 1 }])
-        .mockReturnValueOnce(matchRows);
+      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 1 }]).mockReturnValueOnce(matchRows);
 
       const result = rpcGetMatchHistory(ctx, logger, nk, JSON.stringify({}));
       const parsed = JSON.parse(result);
@@ -1788,9 +1782,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock)
-        .mockReturnValueOnce([{ total: 0 }])
-        .mockReturnValueOnce([]);
+      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
 
       const result = rpcGetMatchHistory(
         ctx,
@@ -1842,7 +1834,12 @@ describe('matchmaker', () => {
 
       (nk.dbQuery as jest.Mock).mockReturnValue([matchRow]);
 
-      const result = rpcGetMatchDetails(ctx, logger, nk, JSON.stringify({ match_id: 'match_detail_1' }));
+      const result = rpcGetMatchDetails(
+        ctx,
+        logger,
+        nk,
+        JSON.stringify({ match_id: 'match_detail_1' })
+      );
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -1859,7 +1856,12 @@ describe('matchmaker', () => {
 
       (nk.dbQuery as jest.Mock).mockReturnValue([]);
 
-      const result = rpcGetMatchDetails(ctx, logger, nk, JSON.stringify({ match_id: 'nonexistent' }));
+      const result = rpcGetMatchDetails(
+        ctx,
+        logger,
+        nk,
+        JSON.stringify({ match_id: 'nonexistent' })
+      );
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(false);
@@ -1931,7 +1933,12 @@ describe('matchmaker', () => {
 
       (nk.dbQuery as jest.Mock).mockReturnValue([matchRow]);
 
-      const result = rpcGetMatchDetails(ctx, logger, nk, JSON.stringify({ match_id: 'match_detail_2' }));
+      const result = rpcGetMatchDetails(
+        ctx,
+        logger,
+        nk,
+        JSON.stringify({ match_id: 'match_detail_2' })
+      );
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -1969,9 +1976,7 @@ describe('matchmaker', () => {
         },
       ];
 
-      (nk.dbQuery as jest.Mock)
-        .mockReturnValueOnce([{ total: 1 }])
-        .mockReturnValueOnce(matchRows);
+      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 1 }]).mockReturnValueOnce(matchRows);
 
       const result = rpcAdminQueryMatches(ctx, logger, nk, JSON.stringify({}));
       const parsed = JSON.parse(result);
@@ -1989,9 +1994,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock)
-        .mockReturnValueOnce([{ total: 0 }])
-        .mockReturnValueOnce([]);
+      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
 
       const result = rpcAdminQueryMatches(ctx, logger, nk, JSON.stringify({ user_id: 'player1' }));
       const parsed = JSON.parse(result);
@@ -2005,9 +2008,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock)
-        .mockReturnValueOnce([{ total: 0 }])
-        .mockReturnValueOnce([]);
+      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
 
       const result = rpcAdminQueryMatches(
         ctx,
@@ -2025,9 +2026,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock)
-        .mockReturnValueOnce([{ total: 0 }])
-        .mockReturnValueOnce([]);
+      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
 
       const result = rpcAdminQueryMatches(
         ctx,
@@ -2045,7 +2044,12 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      const result = rpcAdminQueryMatches(ctx, logger, nk, JSON.stringify({ match_type: 'invalid' }));
+      const result = rpcAdminQueryMatches(
+        ctx,
+        logger,
+        nk,
+        JSON.stringify({ match_type: 'invalid' })
+      );
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(false);
@@ -2073,9 +2077,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock)
-        .mockReturnValueOnce([{ total: 0 }])
-        .mockReturnValueOnce([]);
+      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
 
       const result = rpcAdminQueryMatches(
         ctx,
@@ -2115,11 +2117,14 @@ describe('matchmaker', () => {
         season_id: 'season_1',
       }));
 
-      (nk.dbQuery as jest.Mock)
-        .mockReturnValueOnce([{ total: 15 }])
-        .mockReturnValueOnce(matchRows);
+      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 15 }]).mockReturnValueOnce(matchRows);
 
-      const result = rpcAdminQueryMatches(ctx, logger, nk, JSON.stringify({ limit: 5, offset: 10 }));
+      const result = rpcAdminQueryMatches(
+        ctx,
+        logger,
+        nk,
+        JSON.stringify({ limit: 5, offset: 10 })
+      );
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);

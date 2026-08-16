@@ -1,4 +1,9 @@
-import { createMockLogger, createMockContext, createMockNakama, testStorage } from '../../__mocks__/nakama';
+import {
+  createMockLogger,
+  createMockContext,
+  createMockNakama,
+  testStorage,
+} from '../../__mocks__/nakama';
 import {
   rpcGenerateGear,
   rpcEquipGear,
@@ -161,10 +166,13 @@ describe('gear_system', () => {
       // Set up inventory with an equipped bow
       const inventory = createMockInventory({ gear: [createMockGearItem({ type: 'bow' })] });
       // Manually set the loadout with equipped gear
-      testStorage.set('player_inventory:test-user', JSON.stringify({
-        ...inventory,
-        equipped_gear: { bow: 'gear-123' }
-      }));
+      testStorage.set(
+        'player_inventory:test-user',
+        JSON.stringify({
+          ...inventory,
+          equipped_gear: { bow: 'gear-123' },
+        })
+      );
 
       const payload = JSON.stringify({ slot: 'bow' });
       const result = rpcUnequipGear(mockCtx, mockLogger, mockNk, payload);
@@ -901,9 +909,12 @@ describe('gear_system', () => {
         unlocked_modifier_pools: ['heavy_impact'],
       };
       // Set up existing boss defeat data in database mock (2 previous defeats)
-      testStorage.set('boss_defeats:test-user', JSON.stringify({
-        boss_basic: { defeat_count: 2, first_defeated_at: Date.now() }
-      }));
+      testStorage.set(
+        'boss_defeats:test-user',
+        JSON.stringify({
+          boss_basic: { defeat_count: 2, first_defeated_at: Date.now() },
+        })
+      );
       // Set up existing unlocked modifier pools in database mock
       testStorage.set('unlocked_modifier_pools:test-user', JSON.stringify(['heavy_impact']));
 
@@ -1402,18 +1413,20 @@ describe('gear_system', () => {
     it('should reject duplicate stage completion within cooldown', () => {
       mockNk.storageRead = jest.fn(
         (objects: { collection: string; key: string; userId?: string }[]) => {
-          return objects.map((obj) => {
-            if (obj.collection === 'stage_completion_claims') {
-              return {
-                collection: 'stage_completion_claims',
-                key: obj.key,
-                userId: obj.userId ?? 'test-user',
-                value: JSON.stringify({ claimed_at: Date.now() - 60000, stage_id: 'stage_1' }),
-                version: '1',
-              };
-            }
-            return { collection: obj.collection, key: obj.key, value: '' };
-          }).filter((o: any) => o.value !== '');
+          return objects
+            .map((obj) => {
+              if (obj.collection === 'stage_completion_claims') {
+                return {
+                  collection: 'stage_completion_claims',
+                  key: obj.key,
+                  userId: obj.userId ?? 'test-user',
+                  value: JSON.stringify({ claimed_at: Date.now() - 60000, stage_id: 'stage_1' }),
+                  version: '1',
+                };
+              }
+              return { collection: obj.collection, key: obj.key, value: '' };
+            })
+            .filter((o: any) => o.value !== '');
         }
       );
 
@@ -1433,26 +1446,28 @@ describe('gear_system', () => {
       const inventory = createMockInventory();
       mockNk.storageRead = jest.fn(
         (objects: { collection: string; key: string; userId?: string }[]) => {
-          return objects.map((obj) => {
-            if (obj.collection === 'stage_completion_claims') {
-              return {
-                collection: 'stage_completion_claims',
-                key: obj.key,
-                userId: obj.userId ?? 'test-user',
-                value: JSON.stringify({ claimed_at: Date.now() - 400000, stage_id: 'stage_1' }),
-                version: '1',
-              };
-            }
-            if (obj.collection === 'player_inventory') {
-              return {
-                collection: 'player_inventory',
-                key: 'test-user',
-                value: JSON.stringify(inventory),
-                version: '1',
-              };
-            }
-            return { collection: obj.collection, key: obj.key, value: '' };
-          }).filter((o: any) => o.value !== '');
+          return objects
+            .map((obj) => {
+              if (obj.collection === 'stage_completion_claims') {
+                return {
+                  collection: 'stage_completion_claims',
+                  key: obj.key,
+                  userId: obj.userId ?? 'test-user',
+                  value: JSON.stringify({ claimed_at: Date.now() - 400000, stage_id: 'stage_1' }),
+                  version: '1',
+                };
+              }
+              if (obj.collection === 'player_inventory') {
+                return {
+                  collection: 'player_inventory',
+                  key: 'test-user',
+                  value: JSON.stringify(inventory),
+                  version: '1',
+                };
+              }
+              return { collection: obj.collection, key: obj.key, value: '' };
+            })
+            .filter((o: any) => o.value !== '');
         }
       );
       jest.spyOn(Math, 'random').mockReturnValue(0.9);
@@ -1474,17 +1489,19 @@ describe('gear_system', () => {
       const inventory = createMockInventory();
       mockNk.storageRead = jest.fn(
         (objects: { collection: string; key: string; userId?: string }[]) => {
-          return objects.map((obj) => {
-            if (obj.collection === 'player_inventory') {
-              return {
-                collection: 'player_inventory',
-                key: 'test-user',
-                value: JSON.stringify(inventory),
-                version: '1',
-              };
-            }
-            return { collection: obj.collection, key: obj.key, value: '' };
-          }).filter((o: any) => o.value !== '');
+          return objects
+            .map((obj) => {
+              if (obj.collection === 'player_inventory') {
+                return {
+                  collection: 'player_inventory',
+                  key: 'test-user',
+                  value: JSON.stringify(inventory),
+                  version: '1',
+                };
+              }
+              return { collection: obj.collection, key: obj.key, value: '' };
+            })
+            .filter((o: any) => o.value !== '');
         }
       );
       jest.spyOn(Math, 'random').mockReturnValue(0.9);
@@ -1505,11 +1522,17 @@ describe('gear_system', () => {
 
   describe('rpcGetUnlockedModifiers', () => {
     it('should return unlocked modifiers and boss defeats', () => {
-      testStorage.set('unlocked_modifier_pools:test-user', JSON.stringify(['piercing_arrow', 'wind_fury']));
-      testStorage.set('boss_defeats:test-user', JSON.stringify({
-        boss_wind: { defeat_count: 3, first_defeated_at: Date.now() },
-        boss_basic: { defeat_count: 1, first_defeated_at: Date.now() },
-      }));
+      testStorage.set(
+        'unlocked_modifier_pools:test-user',
+        JSON.stringify(['piercing_arrow', 'wind_fury'])
+      );
+      testStorage.set(
+        'boss_defeats:test-user',
+        JSON.stringify({
+          boss_wind: { defeat_count: 3, first_defeated_at: Date.now() },
+          boss_basic: { defeat_count: 1, first_defeated_at: Date.now() },
+        })
+      );
 
       const result = rpcGetUnlockedModifiers(mockCtx, mockLogger, mockNk, '{}');
       const parsed = JSON.parse(result);

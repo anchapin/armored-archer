@@ -2,7 +2,12 @@
  * Tests for gear database operations related to boss defeats and modifier pools.
  */
 
-import { createMockLogger, createMockContext, createMockNakama, testStorage } from '../../__mocks__/nakama';
+import {
+  createMockLogger,
+  createMockContext,
+  createMockNakama,
+  testStorage,
+} from '../../__mocks__/nakama';
 import {
   recordBossDefeatInDB,
   getDefeatedBossesFromDB,
@@ -110,7 +115,13 @@ describe('gear_db modifier pool tracking', () => {
 
   describe('unlockModifierPoolInDB', () => {
     it('should unlock modifier pool for the first time', () => {
-      const result = unlockModifierPoolInDB(mockNk, mockCtx.userId, 'piercing_arrow', 'boss_defeat', 'boss_wind');
+      const result = unlockModifierPoolInDB(
+        mockNk,
+        mockCtx.userId,
+        'piercing_arrow',
+        'boss_defeat',
+        'boss_wind'
+      );
 
       expect(result.success).toBe(true);
       expect(result.newly_unlocked).toBe(true);
@@ -119,15 +130,33 @@ describe('gear_db modifier pool tracking', () => {
     it('should not duplicate already unlocked modifier pool', () => {
       unlockModifierPoolInDB(mockNk, mockCtx.userId, 'piercing_arrow', 'boss_defeat', 'boss_wind');
 
-      const result = unlockModifierPoolInDB(mockNk, mockCtx.userId, 'piercing_arrow', 'boss_defeat', 'boss_wind');
+      const result = unlockModifierPoolInDB(
+        mockNk,
+        mockCtx.userId,
+        'piercing_arrow',
+        'boss_defeat',
+        'boss_wind'
+      );
 
       expect(result.success).toBe(true);
       expect(result.newly_unlocked).toBe(false);
     });
 
     it('should track multiple modifier pools', () => {
-      const result1 = unlockModifierPoolInDB(mockNk, mockCtx.userId, 'piercing_arrow', 'boss_defeat', 'boss_wind');
-      const result2 = unlockModifierPoolInDB(mockNk, mockCtx.userId, 'wind_fury', 'boss_defeat', 'boss_wind');
+      const result1 = unlockModifierPoolInDB(
+        mockNk,
+        mockCtx.userId,
+        'piercing_arrow',
+        'boss_defeat',
+        'boss_wind'
+      );
+      const result2 = unlockModifierPoolInDB(
+        mockNk,
+        mockCtx.userId,
+        'wind_fury',
+        'boss_defeat',
+        'boss_wind'
+      );
 
       expect(result1.newly_unlocked).toBe(true);
       expect(result2.newly_unlocked).toBe(true);
@@ -138,7 +167,12 @@ describe('gear_db modifier pool tracking', () => {
     });
 
     it('should support different unlock reasons', () => {
-      const result1 = unlockModifierPoolInDB(mockNk, mockCtx.userId, 'vitality_boost', 'enemy_defeat');
+      const result1 = unlockModifierPoolInDB(
+        mockNk,
+        mockCtx.userId,
+        'vitality_boost',
+        'enemy_defeat'
+      );
       const result2 = unlockModifierPoolInDB(mockNk, mockCtx.userId, 'fortification', 'purchase');
 
       expect(result1.newly_unlocked).toBe(true);

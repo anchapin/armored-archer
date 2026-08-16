@@ -20,13 +20,14 @@ func _ready() -> void:
 	_get_camera()
 
 
-func _get_camera() -> void:
+func _get_camera() -> Node:
 	"""Find the active camera in the scene."""
 	var tree := get_tree()
 	if tree:
 		var current_scene := tree.current_scene
 		if current_scene:
 			_camera = current_scene.get_viewport().get_camera_2d()
+	return _camera
 
 
 func _process(delta: float) -> void:
@@ -106,3 +107,11 @@ func shake_heavy() -> void:
 func shake_impact() -> void:
 	"""Start an impact shake (for boss hits or explosions)."""
 	start_shake(30.0, 0.5, 40.0)
+
+
+# --- Integration methods ---
+
+func on_player_hit(damage: int) -> void:
+	"""Called when player takes damage - triggers appropriate shake."""
+	var intensity := clamp(damage / 10.0, 5.0, 20.0)
+	shake_medium()

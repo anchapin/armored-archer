@@ -176,9 +176,8 @@ export interface TracingConfig {
   enabled: boolean;
   serviceName: string;
   serviceVersion: string;
-  exporter: 'jaeger' | 'zipkin' | 'otlp' | 'none';
+  exporter: 'zipkin' | 'otlp' | 'none';
   sampleRate: number;
-  jaegerEndpoint?: string;
   zipkinEndpoint?: string;
   otlpEndpoint?: string;
   autoInstrumentations: boolean;
@@ -557,9 +556,8 @@ const config: AppConfig = {
     enabled: process.env.TRACING_ENABLED === 'true',
     serviceName: process.env.TRACING_SERVICE_NAME || 'armored-archer-backend',
     serviceVersion: process.env.TRACING_SERVICE_VERSION || '0.1.0',
-    exporter: (process.env.TRACING_EXPORTER || 'jaeger') as 'jaeger' | 'zipkin' | 'otlp' | 'none',
+    exporter: (process.env.TRACING_EXPORTER || 'zipkin') as 'zipkin' | 'otlp' | 'none',
     sampleRate: parseFloat(process.env.TRACING_SAMPLE_RATE || '1.0'),
-    jaegerEndpoint: process.env.JAEGER_ENDPOINT,
     zipkinEndpoint: process.env.ZIPKIN_ENDPOINT,
     otlpEndpoint: process.env.OTLP_ENDPOINT,
     autoInstrumentations: process.env.TRACING_AUTO_INSTRUMENTATIONS !== 'false',

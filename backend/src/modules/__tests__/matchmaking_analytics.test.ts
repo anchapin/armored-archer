@@ -268,7 +268,8 @@ describe('Matchmaking Analytics Module', () => {
       // We need 2/3 abandonment rate = 0.667, which exceeds 5% * 1.5 = 7.5%
       mockNk.storageRead
         .mockResolvedValueOnce([]) // No weapon stats
-        .mockResolvedValueOnce([ // Match data with high abandonment rate
+        .mockResolvedValueOnce([
+          // Match data with high abandonment rate
           {
             value: {
               match_id: 'match1',
@@ -415,9 +416,7 @@ describe('Matchmaking Analytics Module', () => {
 
       // First read returns empty (checking existing queue times),
       // Second read returns the 10001 queue objects
-      mockNk.storageRead
-        .mockResolvedValueOnce(mockQueueObjects)
-        .mockResolvedValueOnce([]);
+      mockNk.storageRead.mockResolvedValueOnce(mockQueueObjects).mockResolvedValueOnce([]);
 
       await logQueueTime(mockNk, {
         queue_time: 45,

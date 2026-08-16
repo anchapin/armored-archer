@@ -8,7 +8,6 @@ import {
   propagation,
 } from '@opentelemetry/api';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { ZipkinExporter } from '@opentelemetry/exporter-zipkin';
 import { resourceFromAttributes } from '@opentelemetry/resources';
@@ -250,12 +249,6 @@ export function initializeTracing(): void {
     // Set up exporters based on configuration
     let exporter;
     switch (tracingConfig.exporter) {
-      case 'jaeger':
-        exporter = new JaegerExporter({
-          endpoint: tracingConfig.jaegerEndpoint || 'http://localhost:14268',
-        });
-        logger.info(`[Tracing] Jaeger exporter configured: ${tracingConfig.jaegerEndpoint}`);
-        break;
       case 'zipkin':
         exporter = new ZipkinExporter({
           url: tracingConfig.zipkinEndpoint || 'http://localhost:9411',

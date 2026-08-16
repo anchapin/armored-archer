@@ -4,10 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import {
-  PlayerArchetype,
-  runBalanceSession,
-} from '../balance_session';
+import { PlayerArchetype, runBalanceSession } from '../balance_session';
 import type { BalanceSessionConfig, BalanceSessionReport } from '../balance_session';
 
 // Mock the metrics module
@@ -36,7 +33,12 @@ jest.mock('../validation', () => ({
 // Mock the gear_system module for calculateDropRate
 jest.mock('../gear_system', () => ({
   calculateDropRate: jest.fn((difficulty: string, bossDefeated: boolean) => {
-    const multipliers: Record<string, number> = { easy: 0.5, medium: 1.0, hard: 1.5, nightmare: 2.0 };
+    const multipliers: Record<string, number> = {
+      easy: 0.5,
+      medium: 1.0,
+      hard: 1.5,
+      nightmare: 2.0,
+    };
     const rate = 0.4 * (multipliers[difficulty] || 1.0);
     return Math.min(rate + (bossDefeated ? 0.25 : 0), 1.0);
   }),
@@ -93,7 +95,11 @@ describe('BalanceSession', () => {
     it('should generate correct total runs (players * iterations * difficulties)', () => {
       const report = runBalanceSession(DEFAULT_CONFIG);
       const archetypes = Object.values(PlayerArchetype);
-      const expectedRuns = archetypes.length * DEFAULT_CONFIG.cohortSize * DEFAULT_CONFIG.pveIterations * DEFAULT_CONFIG.difficulties.length;
+      const expectedRuns =
+        archetypes.length *
+        DEFAULT_CONFIG.cohortSize *
+        DEFAULT_CONFIG.pveIterations *
+        DEFAULT_CONFIG.difficulties.length;
       expect(report.pve.totalRuns).toBe(expectedRuns);
     });
 
@@ -122,7 +128,12 @@ describe('BalanceSession', () => {
     });
 
     it('should show higher completion for endgame vs new players', () => {
-      const config: BalanceSessionConfig = { ...DEFAULT_CONFIG, seed: 12345, pveIterations: 10, cohortSize: 30 };
+      const config: BalanceSessionConfig = {
+        ...DEFAULT_CONFIG,
+        seed: 12345,
+        pveIterations: 10,
+        cohortSize: 30,
+      };
       const report = runBalanceSession(config);
 
       const newRate = report.pve.completionRateByArchetype[PlayerArchetype.NEW]?.rate ?? 0;

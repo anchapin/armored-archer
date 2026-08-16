@@ -210,12 +210,7 @@ describe('Season Telemetry', () => {
     it('should return stable drift when no snapshots exist', async () => {
       (mockNk.storageRead as jest.Mock).mockResolvedValue([]);
 
-      const result = await getRankInflation(
-        mockNk,
-        'season_1',
-        Date.now() - 86400000,
-        Date.now()
-      );
+      const result = await getRankInflation(mockNk, 'season_1', Date.now() - 86400000, Date.now());
 
       expect(result.current_avg_elo).toBe(1000);
       expect(result.drift_direction).toBe('stable');
@@ -245,19 +240,12 @@ describe('Season Telemetry', () => {
     });
 
     it('should detect deflation when average drifts below 990', async () => {
-      const snapshots = [
-        { season_id: 'season_1', timestamp: Date.now(), avg_elo: 980 },
-      ];
+      const snapshots = [{ season_id: 'season_1', timestamp: Date.now(), avg_elo: 980 }];
       (mockNk.storageRead as jest.Mock).mockResolvedValue(
         snapshots.map((s) => ({ value: JSON.stringify(s) }))
       );
 
-      const result = await getRankInflation(
-        mockNk,
-        'season_1',
-        Date.now() - 86400000,
-        Date.now()
-      );
+      const result = await getRankInflation(mockNk, 'season_1', Date.now() - 86400000, Date.now());
 
       expect(result.current_avg_elo).toBe(980);
       expect(result.drift_direction).toBe('deflating');
@@ -282,9 +270,36 @@ describe('Season Telemetry', () => {
 
     it('should calculate tier distribution and currency totals', async () => {
       const claims = [
-        { season_id: 'season_1', timestamp: Date.now(), user_id: 'u1', rank: 5, rank_tier: 'legendary', coins_awarded: 10000, gems_awarded: 500, had_cosmetics: true },
-        { season_id: 'season_1', timestamp: Date.now(), user_id: 'u2', rank: 50, rank_tier: 'epic', coins_awarded: 5000, gems_awarded: 200, had_cosmetics: true },
-        { season_id: 'season_1', timestamp: Date.now(), user_id: 'u3', rank: 200, rank_tier: 'uncommon', coins_awarded: 500, gems_awarded: 0, had_cosmetics: false },
+        {
+          season_id: 'season_1',
+          timestamp: Date.now(),
+          user_id: 'u1',
+          rank: 5,
+          rank_tier: 'legendary',
+          coins_awarded: 10000,
+          gems_awarded: 500,
+          had_cosmetics: true,
+        },
+        {
+          season_id: 'season_1',
+          timestamp: Date.now(),
+          user_id: 'u2',
+          rank: 50,
+          rank_tier: 'epic',
+          coins_awarded: 5000,
+          gems_awarded: 200,
+          had_cosmetics: true,
+        },
+        {
+          season_id: 'season_1',
+          timestamp: Date.now(),
+          user_id: 'u3',
+          rank: 200,
+          rank_tier: 'uncommon',
+          coins_awarded: 500,
+          gems_awarded: 0,
+          had_cosmetics: false,
+        },
       ];
       (mockNk.storageRead as jest.Mock).mockResolvedValue(
         claims.map((c) => ({ value: JSON.stringify(c) }))
@@ -309,8 +324,26 @@ describe('Season Telemetry', () => {
 
     it('should filter claims by season_id', async () => {
       const claims = [
-        { season_id: 'season_1', timestamp: Date.now(), user_id: 'u1', rank: 5, rank_tier: 'legendary', coins_awarded: 10000, gems_awarded: 500, had_cosmetics: true },
-        { season_id: 'season_2', timestamp: Date.now(), user_id: 'u2', rank: 50, rank_tier: 'epic', coins_awarded: 5000, gems_awarded: 200, had_cosmetics: true },
+        {
+          season_id: 'season_1',
+          timestamp: Date.now(),
+          user_id: 'u1',
+          rank: 5,
+          rank_tier: 'legendary',
+          coins_awarded: 10000,
+          gems_awarded: 500,
+          had_cosmetics: true,
+        },
+        {
+          season_id: 'season_2',
+          timestamp: Date.now(),
+          user_id: 'u2',
+          rank: 50,
+          rank_tier: 'epic',
+          coins_awarded: 5000,
+          gems_awarded: 200,
+          had_cosmetics: true,
+        },
       ];
       (mockNk.storageRead as jest.Mock).mockResolvedValue(
         claims.map((c) => ({ value: JSON.stringify(c) }))
@@ -347,9 +380,30 @@ describe('Season Telemetry', () => {
 
     it('should calculate weekly velocity and punch-up rate', async () => {
       const rankChanges = [
-        { season_id: 'season_1', timestamp: Date.now(), winner_rank_delta: 16, loser_rank_delta: -16, is_punch_up: false, days_into_season: 3 },
-        { season_id: 'season_1', timestamp: Date.now(), winner_rank_delta: 30, loser_rank_delta: -30, is_punch_up: true, days_into_season: 10 },
-        { season_id: 'season_1', timestamp: Date.now(), winner_rank_delta: 14, loser_rank_delta: -14, is_punch_up: false, days_into_season: 20 },
+        {
+          season_id: 'season_1',
+          timestamp: Date.now(),
+          winner_rank_delta: 16,
+          loser_rank_delta: -16,
+          is_punch_up: false,
+          days_into_season: 3,
+        },
+        {
+          season_id: 'season_1',
+          timestamp: Date.now(),
+          winner_rank_delta: 30,
+          loser_rank_delta: -30,
+          is_punch_up: true,
+          days_into_season: 10,
+        },
+        {
+          season_id: 'season_1',
+          timestamp: Date.now(),
+          winner_rank_delta: 14,
+          loser_rank_delta: -14,
+          is_punch_up: false,
+          days_into_season: 20,
+        },
       ];
       (mockNk.storageRead as jest.Mock).mockResolvedValue(
         rankChanges.map((rc) => ({ value: JSON.stringify(rc) }))

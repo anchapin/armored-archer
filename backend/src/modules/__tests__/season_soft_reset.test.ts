@@ -195,9 +195,11 @@ describe('player prestige record management', () => {
         prestige_tiers_earned: [],
         last_updated: 1000,
       };
-      mockNk.storageRead = jest.fn().mockReturnValue([{
-        value: JSON.stringify(stored),
-      }]);
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          value: JSON.stringify(stored),
+        },
+      ]);
       const record = getPlayerPrestigeRecord(mockNk, 'user-1');
 
       expect(record.season_finishes).toHaveLength(1);
@@ -207,18 +209,18 @@ describe('player prestige record management', () => {
 
   describe('updatePlayerPrestigeRecord', () => {
     it('should add qualifying finish and detect new tier', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([{
-        value: JSON.stringify({
-          player_id: 'user-1',
-          season_finishes: [{ season_id: 'season_1', rank: 80 }],
-          prestige_tiers_earned: [],
-          last_updated: 1000,
-        }),
-      }]);
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          value: JSON.stringify({
+            player_id: 'user-1',
+            season_finishes: [{ season_id: 'season_1', rank: 80 }],
+            prestige_tiers_earned: [],
+            last_updated: 1000,
+          }),
+        },
+      ]);
 
-      const { record, new_tiers } = updatePlayerPrestigeRecord(
-        mockNk, 'user-1', 'season_2', 90
-      );
+      const { record, new_tiers } = updatePlayerPrestigeRecord(mockNk, 'user-1', 'season_2', 90);
 
       expect(record.season_finishes).toHaveLength(2);
       expect(new_tiers).toEqual(['bronze']);
@@ -228,48 +230,46 @@ describe('player prestige record management', () => {
     it('should not add finish for rank > 100', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
 
-      const { record, new_tiers } = updatePlayerPrestigeRecord(
-        mockNk, 'user-1', 'season_1', 200
-      );
+      const { record, new_tiers } = updatePlayerPrestigeRecord(mockNk, 'user-1', 'season_1', 200);
 
       expect(record.season_finishes).toHaveLength(0);
       expect(new_tiers).toEqual([]);
     });
 
     it('should update existing season finish with better rank', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([{
-        value: JSON.stringify({
-          player_id: 'user-1',
-          season_finishes: [{ season_id: 'season_1', rank: 80 }],
-          prestige_tiers_earned: [],
-          last_updated: 1000,
-        }),
-      }]);
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          value: JSON.stringify({
+            player_id: 'user-1',
+            season_finishes: [{ season_id: 'season_1', rank: 80 }],
+            prestige_tiers_earned: [],
+            last_updated: 1000,
+          }),
+        },
+      ]);
 
-      const { record } = updatePlayerPrestigeRecord(
-        mockNk, 'user-1', 'season_1', 50
-      );
+      const { record } = updatePlayerPrestigeRecord(mockNk, 'user-1', 'season_1', 50);
 
       expect(record.season_finishes).toHaveLength(1);
       expect(record.season_finishes[0].rank).toBe(50);
     });
 
     it('should not duplicate already earned tiers', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([{
-        value: JSON.stringify({
-          player_id: 'user-1',
-          season_finishes: [
-            { season_id: 'season_1', rank: 80 },
-            { season_id: 'season_2', rank: 90 },
-          ],
-          prestige_tiers_earned: ['bronze'],
-          last_updated: 1000,
-        }),
-      }]);
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          value: JSON.stringify({
+            player_id: 'user-1',
+            season_finishes: [
+              { season_id: 'season_1', rank: 80 },
+              { season_id: 'season_2', rank: 90 },
+            ],
+            prestige_tiers_earned: ['bronze'],
+            last_updated: 1000,
+          }),
+        },
+      ]);
 
-      const { new_tiers } = updatePlayerPrestigeRecord(
-        mockNk, 'user-1', 'season_3', 85
-      );
+      const { new_tiers } = updatePlayerPrestigeRecord(mockNk, 'user-1', 'season_3', 85);
 
       // Bronze already earned, no new tiers from just adding another top-100
       expect(new_tiers).not.toContain('bronze');

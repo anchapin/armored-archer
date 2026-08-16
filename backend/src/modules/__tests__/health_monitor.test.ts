@@ -46,9 +46,11 @@ jest.mock('../../config/logger', () => ({
 }));
 
 jest.mock('child_process', () => ({
-  execSync: jest.fn().mockReturnValue(
-    'Filesystem      Size  Used Avail Use% Mounted on\n/dev/sda1        50G   25G   25G  50% /'
-  ),
+  execSync: jest
+    .fn()
+    .mockReturnValue(
+      'Filesystem      Size  Used Avail Use% Mounted on\n/dev/sda1        50G   25G   25G  50% /'
+    ),
 }));
 
 import { Registry } from 'prom-client';
@@ -659,9 +661,7 @@ describe('health_monitor', () => {
   describe('coverage: internal functions via initializeHealthMonitoring', () => {
     it('should read db connection usage from nkInstance storage', () => {
       const mockNk = {
-        storageRead: jest.fn().mockReturnValue([
-          { value: JSON.stringify({ active: 5, max: 10 }) },
-        ]),
+        storageRead: jest.fn().mockReturnValue([{ value: JSON.stringify({ active: 5, max: 10 }) }]),
       };
 
       const mockLogger = {

@@ -137,16 +137,9 @@ describe('season_leaderboard_rpc', () => {
   describe('rpcGetPlayerRank', () => {
     it('should return player rank with decay info for active player', async () => {
       setPlayerActive('test-user', 2);
-      mockNk.leaderboardRecordList = jest
-        .fn()
-        .mockReturnValue([createMockLeaderboardRecord()]);
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
 
-      const result = await rpcGetPlayerRank(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -163,12 +156,7 @@ describe('season_leaderboard_rpc', () => {
     it('should return zero values when player has no leaderboard entry', async () => {
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
 
-      const result = await rpcGetPlayerRank(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -184,12 +172,7 @@ describe('season_leaderboard_rpc', () => {
         .fn()
         .mockReturnValue([createMockLeaderboardRecord({ score: 1500 })]);
 
-      const result = await rpcGetPlayerRank(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -199,9 +182,7 @@ describe('season_leaderboard_rpc', () => {
 
     it('should handle empty payload string', async () => {
       setPlayerActive('test-user', 0);
-      mockNk.leaderboardRecordList = jest
-        .fn()
-        .mockReturnValue([createMockLeaderboardRecord()]);
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
 
       const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, '{}');
       const parsed = JSON.parse(result);
@@ -210,12 +191,7 @@ describe('season_leaderboard_rpc', () => {
     });
 
     it('should return validation error for invalid JSON', async () => {
-      const result = await rpcGetPlayerRank(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        'not-valid-json{{{'
-      );
+      const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, 'not-valid-json{{{');
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(false);
@@ -224,9 +200,7 @@ describe('season_leaderboard_rpc', () => {
 
     it('should accept optional season_id parameter', async () => {
       setPlayerActive('test-user', 0);
-      mockNk.leaderboardRecordList = jest
-        .fn()
-        .mockReturnValue([createMockLeaderboardRecord()]);
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
 
       const result = await rpcGetPlayerRank(
         mockCtx,
@@ -260,12 +234,7 @@ describe('season_leaderboard_rpc', () => {
         return records;
       });
 
-      const result = await rpcGetPlayerRank(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -287,12 +256,7 @@ describe('season_leaderboard_rpc', () => {
         }),
       ]);
 
-      const result = await rpcGetPlayerRank(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -304,12 +268,7 @@ describe('season_leaderboard_rpc', () => {
         throw new Error('Database connection failed');
       });
 
-      const result = await rpcGetPlayerRank(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(false);
@@ -323,12 +282,7 @@ describe('season_leaderboard_rpc', () => {
         .fn()
         .mockReturnValue([createMockLeaderboardRecord({ metadata: '' })]);
 
-      const result = await rpcGetPlayerRank(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -342,12 +296,7 @@ describe('season_leaderboard_rpc', () => {
         .fn()
         .mockReturnValue([createMockLeaderboardRecord({ metadata: 'invalid-json' })]);
 
-      const result = await rpcGetPlayerRank(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       // Malformed metadata causes an error inside getPlayerRank,
@@ -362,12 +311,7 @@ describe('season_leaderboard_rpc', () => {
 
   describe('rpcGetSeasonHistory', () => {
     it('should return empty history when no seasons archived', async () => {
-      const result = await rpcGetSeasonHistory(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetSeasonHistory(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -412,12 +356,7 @@ describe('season_leaderboard_rpc', () => {
         },
       });
 
-      const result = await rpcGetSeasonHistory(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetSeasonHistory(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -479,12 +418,7 @@ describe('season_leaderboard_rpc', () => {
     });
 
     it('should default to limit of 10 when not provided', async () => {
-      const result = await rpcGetSeasonHistory(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetSeasonHistory(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -532,12 +466,7 @@ describe('season_leaderboard_rpc', () => {
     });
 
     it('should handle invalid JSON payload', async () => {
-      const result = await rpcGetSeasonHistory(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        'not-valid-json{{{'
-      );
+      const result = await rpcGetSeasonHistory(mockCtx, mockLogger, mockNk, 'not-valid-json{{{');
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(false);
@@ -551,12 +480,7 @@ describe('season_leaderboard_rpc', () => {
         throw new Error('Storage error');
       });
 
-      const result = await rpcGetSeasonHistory(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetSeasonHistory(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       // getSeasonArchive catches errors and returns {}, so we get empty success
@@ -568,12 +492,7 @@ describe('season_leaderboard_rpc', () => {
       // Put invalid JSON directly in storageMap
       storageMap.set('season_archive:season_archive', 'invalid-json');
 
-      const result = await rpcGetSeasonHistory(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetSeasonHistory(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       // getSeasonArchive catches parse errors and returns {}
@@ -600,12 +519,7 @@ describe('season_leaderboard_rpc', () => {
         },
       });
 
-      const result = await rpcGetSeasonHistory(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetSeasonHistory(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -693,14 +607,12 @@ describe('season_leaderboard_rpc', () => {
     });
 
     it('should pass limit parameter to leaderboard query', async () => {
-      const records = Array.from(
-        { length: 10 },
-        (_, i) =>
-          createMockLeaderboardRecord({
-            ownerId: `user${i}`,
-            rank: i + 1,
-            score: 2000 - i * 20,
-          })
+      const records = Array.from({ length: 10 }, (_, i) =>
+        createMockLeaderboardRecord({
+          ownerId: `user${i}`,
+          rank: i + 1,
+          score: 2000 - i * 20,
+        })
       );
       for (let i = 0; i < 10; i++) setPlayerActive(`user${i}`, 0);
 
@@ -709,23 +621,19 @@ describe('season_leaderboard_rpc', () => {
       await getTopPlayers(mockNk, TEST_SEASON_ID, null, 10);
 
       // The limit is passed to leaderboardRecordList as the 3rd arg
-      expect(mockNk.leaderboardRecordList).toHaveBeenCalledWith(
-        TEST_SEASON_ID,
-        [],
-        10,
-        '',
-        0
-      );
+      expect(mockNk.leaderboardRecordList).toHaveBeenCalledWith(TEST_SEASON_ID, [], 10, '', 0);
     });
 
     it('should apply rating decay for inactive players', async () => {
       setPlayerActive('user1', 1);
       setPlayerActive('user2', 14); // Inactive
 
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([
-        createMockLeaderboardRecord({ ownerId: 'user1', rank: 1, score: 2000 }),
-        createMockLeaderboardRecord({ ownerId: 'user2', rank: 2, score: 1900 }),
-      ]);
+      mockNk.leaderboardRecordList = jest
+        .fn()
+        .mockReturnValue([
+          createMockLeaderboardRecord({ ownerId: 'user1', rank: 1, score: 2000 }),
+          createMockLeaderboardRecord({ ownerId: 'user2', rank: 2, score: 1900 }),
+        ]);
 
       const result = await getTopPlayers(mockNk, TEST_SEASON_ID, null, 10);
 
@@ -739,11 +647,13 @@ describe('season_leaderboard_rpc', () => {
       setPlayerActive('user2', 30); // Very inactive, high decay
       setPlayerActive('user3', 1);
 
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([
-        createMockLeaderboardRecord({ ownerId: 'user1', rank: 1, score: 2000 }),
-        createMockLeaderboardRecord({ ownerId: 'user2', rank: 2, score: 1950 }),
-        createMockLeaderboardRecord({ ownerId: 'user3', rank: 3, score: 1900 }),
-      ]);
+      mockNk.leaderboardRecordList = jest
+        .fn()
+        .mockReturnValue([
+          createMockLeaderboardRecord({ ownerId: 'user1', rank: 1, score: 2000 }),
+          createMockLeaderboardRecord({ ownerId: 'user2', rank: 2, score: 1950 }),
+          createMockLeaderboardRecord({ ownerId: 'user3', rank: 3, score: 1900 }),
+        ]);
 
       const result = await getTopPlayers(mockNk, TEST_SEASON_ID, null, 10);
 
@@ -757,11 +667,13 @@ describe('season_leaderboard_rpc', () => {
       setPlayerActive('user2', 0);
       setPlayerActive('user3', 0);
 
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([
-        createMockLeaderboardRecord({ ownerId: 'user1', rank: 1, score: 2000 }),
-        createMockLeaderboardRecord({ ownerId: 'user2', rank: 2, score: 1900 }),
-        createMockLeaderboardRecord({ ownerId: 'user3', rank: 3, score: 1800 }),
-      ]);
+      mockNk.leaderboardRecordList = jest
+        .fn()
+        .mockReturnValue([
+          createMockLeaderboardRecord({ ownerId: 'user1', rank: 1, score: 2000 }),
+          createMockLeaderboardRecord({ ownerId: 'user2', rank: 2, score: 1900 }),
+          createMockLeaderboardRecord({ ownerId: 'user3', rank: 3, score: 1800 }),
+        ]);
 
       const result = await getTopPlayers(mockNk, TEST_SEASON_ID, null, 10);
 
@@ -854,11 +766,7 @@ describe('season_leaderboard_rpc', () => {
 
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue(allRecords);
 
-      const archive = await recordSeasonCompletion(
-        mockNk,
-        TEST_SEASON_ID,
-        mockLogger
-      );
+      const archive = await recordSeasonCompletion(mockNk, TEST_SEASON_ID, mockLogger);
 
       expect(archive.season_id).toBe(TEST_SEASON_ID);
       expect(archive.winner_id).toBe('winner-user');
@@ -871,11 +779,7 @@ describe('season_leaderboard_rpc', () => {
     it('should handle season with no players', async () => {
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
 
-      const archive = await recordSeasonCompletion(
-        mockNk,
-        TEST_SEASON_ID,
-        mockLogger
-      );
+      const archive = await recordSeasonCompletion(mockNk, TEST_SEASON_ID, mockLogger);
 
       expect(archive.total_players).toBe(0);
       expect(archive.winner_id).toBe('');
@@ -917,11 +821,7 @@ describe('season_leaderboard_rpc', () => {
         },
       ]);
 
-      const archive = await recordSeasonCompletion(
-        mockNk,
-        TEST_SEASON_ID,
-        mockLogger
-      );
+      const archive = await recordSeasonCompletion(mockNk, TEST_SEASON_ID, mockLogger);
 
       const writeCall = mockNk.storageWrite.mock.calls[0][0][0];
       const writtenData = JSON.parse(writeCall.value);
@@ -951,11 +851,7 @@ describe('season_leaderboard_rpc', () => {
         },
       ]);
 
-      const archive = await recordSeasonCompletion(
-        mockNk,
-        TEST_SEASON_ID,
-        mockLogger
-      );
+      const archive = await recordSeasonCompletion(mockNk, TEST_SEASON_ID, mockLogger);
 
       expect(archive.winner_name).toBe('Unknown');
     });
@@ -981,11 +877,7 @@ describe('season_leaderboard_rpc', () => {
         },
       ]);
 
-      const archive = await recordSeasonCompletion(
-        mockNk,
-        TEST_SEASON_ID,
-        mockLogger
-      );
+      const archive = await recordSeasonCompletion(mockNk, TEST_SEASON_ID, mockLogger);
 
       expect(archive.winner_name).toBe('DisplayChamp');
     });
@@ -1011,11 +903,7 @@ describe('season_leaderboard_rpc', () => {
         },
       ]);
 
-      const archive = await recordSeasonCompletion(
-        mockNk,
-        TEST_SEASON_ID,
-        mockLogger
-      );
+      const archive = await recordSeasonCompletion(mockNk, TEST_SEASON_ID, mockLogger);
 
       expect(archive.winner_name).toBe('UserChamp');
     });
@@ -1049,14 +937,12 @@ describe('season_leaderboard_rpc', () => {
     it('should return rank and entry for existing player', async () => {
       setPlayerActive('test-user', 0);
 
-      mockNk.leaderboardRecordList = jest.fn(
-        (_id: string, ownerIds: string[]) => {
-          if (ownerIds && ownerIds.length === 1 && ownerIds[0] === 'test-user') {
-            return [createMockLeaderboardRecord()];
-          }
-          return [];
+      mockNk.leaderboardRecordList = jest.fn((_id: string, ownerIds: string[]) => {
+        if (ownerIds && ownerIds.length === 1 && ownerIds[0] === 'test-user') {
+          return [createMockLeaderboardRecord()];
         }
-      );
+        return [];
+      });
 
       const result = await getPlayerRank(mockNk, TEST_SEASON_ID, 'test-user');
 
@@ -1116,14 +1002,12 @@ describe('season_leaderboard_rpc', () => {
         },
       ];
 
-      mockNk.leaderboardRecordList = jest.fn(
-        (_id: string, ownerIds: string[]) => {
-          if (ownerIds && ownerIds.length === 1 && ownerIds[0] === 'test-user') {
-            return [records[1]];
-          }
-          return records;
+      mockNk.leaderboardRecordList = jest.fn((_id: string, ownerIds: string[]) => {
+        if (ownerIds && ownerIds.length === 1 && ownerIds[0] === 'test-user') {
+          return [records[1]];
         }
-      );
+        return records;
+      });
 
       const result = await getPlayerRank(mockNk, TEST_SEASON_ID, 'test-user');
 
@@ -1186,12 +1070,7 @@ describe('season_leaderboard_rpc', () => {
         },
       });
 
-      const result = await rpcGetSeasonHistory(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetSeasonHistory(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -1214,12 +1093,7 @@ describe('season_leaderboard_rpc', () => {
         },
       });
 
-      const result = await rpcGetSeasonHistory(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetSeasonHistory(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -1232,12 +1106,7 @@ describe('season_leaderboard_rpc', () => {
         .fn()
         .mockReturnValue([createMockLeaderboardRecord({ score: -100 })]);
 
-      const result = await rpcGetPlayerRank(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -1288,12 +1157,7 @@ describe('season_leaderboard_rpc', () => {
         },
       });
 
-      const result = await rpcGetSeasonHistory(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetSeasonHistory(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
@@ -1315,12 +1179,7 @@ describe('season_leaderboard_rpc', () => {
         .fn()
         .mockReturnValue([createMockLeaderboardRecord({ score: 2000 })]);
 
-      const result = await rpcGetPlayerRank(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({})
-      );
+      const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);

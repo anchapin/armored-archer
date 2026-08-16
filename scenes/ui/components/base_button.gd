@@ -25,11 +25,13 @@ enum ButtonState {
 
 var _current_state: ButtonState = ButtonState.NORMAL
 var _is_toggled: bool = false
+var _base_scale: float = 1.0
 
 # --- Lifecycle ---
 func _ready() -> void:
 	_setup_button()
 	_connect_signals()
+	_base_scale = scale.x
 
 func _setup_button() -> void:
 	# Apply default styling
@@ -47,14 +49,17 @@ func _connect_signals() -> void:
 func _on_mouse_entered() -> void:
 	if not disabled:
 		_set_state(ButtonState.HOVER)
+		_animate_hover(true)
 
 func _on_mouse_exited() -> void:
 	if not disabled:
 		_set_state(ButtonState.NORMAL)
+		_animate_hover(false)
 
 func _on_button_down() -> void:
 	if not disabled:
 		_set_state(ButtonState.PRESSED)
+		_animate_press(true)
 
 func _on_button_up() -> void:
 	if not disabled:
@@ -62,6 +67,7 @@ func _on_button_up() -> void:
 			_set_state(ButtonState.HOVER)
 		else:
 			_set_state(ButtonState.NORMAL)
+		_animate_press(false)
 
 func _on_toggled(button_pressed: bool) -> void:
 	_is_toggled = button_pressed
@@ -80,6 +86,39 @@ func _set_state(new_state: ButtonState) -> void:
 		ButtonState.PRESSED: state_changed.emit("pressed")
 		ButtonState.DISABLED: state_changed.emit("disabled")
 		ButtonState.FOCUSED: state_changed.emit("focused")
+
+# --- Visual Animations ---
+func _animate_hover(is_hovering: bool) -> void:
+	var tween := create_tween()
+	if is_hovering:
+		tween.tween_property(self, "scale", Vector2(_base_scale * 1.05, _base_scale * 1.05), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		# Add subtle glow pulse on hover
+		_animate_glow(true)
+	else:
+		tween.tween_property(self, "scale", Vector2(_base_scale, _base_scale), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		_animate_glow(false)
+
+func _animate_press(is_pressed: bool) -> void:
+	var tween := create_tween()
+	if is_pressed:
+		# Tactile press with scale and slight rotation for physical feel
+		tween.tween_property(self, "scale", Vector2(_base_scale * 0.92, _base_scale * 0.92), 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(self, "rotation", deg_to_rad(1.5), 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	else:
+		tween.tween_property(self, "scale", Vector2(_base_scale, _base_scale), 0.1).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(self, "rotation", 0, 0.1).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+
+func _animate_glow(enabled: bool) -> void:
+	# Add pulsing glow effect for hover state
+	var style := get_theme_stylebox("normal") as StyleBoxFlat
+	if not style:
+		return
+	
+	var tween := create_tween()
+	if enabled:
+		tween.tween_property(style, "shadow_size", 12, 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		tween.tween_property(style, "shadow_size", ArcherDesignTokens.RA_AMBIENT_SHADOW_BLUR, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 # --- Style Updates ---
 func _update_button_style() -> void:
