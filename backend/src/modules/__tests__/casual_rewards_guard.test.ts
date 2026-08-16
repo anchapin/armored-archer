@@ -210,20 +210,28 @@ describe('casual rewards guard (issue #872)', () => {
       expect(allRewards.some((r: any) => r.type === 'gem')).toBe(false);
     });
 
-    it('never writes gems to the wallet when settling a punch-up-flagged casual match', () => {
+    it('never credits gems to the currency ledger when settling a punch-up-flagged casual match', () => {
       const match = createActiveMatch({ opponent_health: 0 });
-      installStatefulStorage(match);
+      const stored = installStatefulStorage(match);
 
       const parsed = settleMatch(match);
 
       expect(parsed.success).toBe(true);
-      const walletCalls = (mockNk.walletUpdate as jest.Mock).mock.calls as Array<
-        [string, Record<string, number>]
-      >;
-      expect(walletCalls.length).toBeGreaterThan(0);
-      for (const [, changes] of walletCalls) {
-        expect(changes).not.toHaveProperty('gems');
-      }
+
+      // Rewards are written to the `player_currency` storage ledger (#860),
+      // not the Nakama wallet — the legacy wallet API is never a write path.
+      expect((mockNk.walletUpdate as jest.Mock).mock.calls.length).toBe(0);
+
+      // The ledger path demonstrably ran: coins were credited to both sides.
+      const winnerLedger = JSON.parse(stored[`player_currency:${CREATOR_ID}`]);
+      const loserLedger = JSON.parse(stored[`player_currency:${OPPONENT_ID}`]);
+      expect(winnerLedger.gold).toBeGreaterThan(0);
+      expect(loserLedger.gold).toBeGreaterThan(0);
+
+      // No gems may be credited in a casual settlement: the punch-up gem
+      // bonus must not leak through the ledger either.
+      expect(winnerLedger.gems).toBe(0);
+      expect(loserLedger.gems).toBe(0);
     });
   });
 
