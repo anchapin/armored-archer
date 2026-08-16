@@ -52,6 +52,9 @@ var wave_complete: bool = false  # Track if current wave has finished spawning
 var spawn_timer_node: Timer
 var wave_timer_node: Timer
 
+func _is_e2e_test() -> bool:
+	return OS.get_environment("E2E_TEST") == "1"
+
 
 
 # --- Signals ---
@@ -69,7 +72,8 @@ func _ready() -> void:
 	add_child(wave_timer_node)
 	wave_timer_node.timeout.connect(_on_wave_timer_timeout)
 
-	print("DEBUG: Spawner ready, starting first wave")
+	if OS.get_environment("E2E_TEST") != "1":
+		print("DEBUG: Spawner ready, starting first wave")
 	start_next_wave()
 
 func _exit_tree() -> void:
@@ -91,7 +95,8 @@ func connect_enemy_death(enemy: Node) -> void:
 		print("DEBUG: Connected to enemy_died for %s" % enemy.name)
 
 func start_next_wave() -> void:
-	print("DEBUG: Starting wave %d of %d, spawning %d enemies" % [current_wave, max_waves, enemies_to_spawn])
+	if OS.get_environment("E2E_TEST") != "1":
+		print("DEBUG: Starting wave %d of %d, spawning %d enemies" % [current_wave, max_waves, enemies_to_spawn])
 	if current_wave >= max_waves:
 		if boss_id != "":
 			spawn_boss()
@@ -104,7 +109,8 @@ func start_next_wave() -> void:
 	wave_complete = false  # Reset wave completion flag
 	# CRITICAL: Stop any existing wave timer to prevent premature next wave start
 	if wave_timer_node and wave_timer_node.time_left > 0:
-		print("DEBUG: Stopping existing wave timer before starting new wave")
+		if not _is_e2e_test():
+			print("DEBUG: Stopping existing wave timer before starting new wave")
 		wave_timer_node.stop()
 
 	if spawn_timer_node:
@@ -112,7 +118,8 @@ func start_next_wave() -> void:
 		spawn_timer_node.start()
 
 func spawn_enemy() -> void:
-	print("DEBUG: spawn_enemy() ENTRY, enemies_to_spawn=%d, is_spawning=%s" % [enemies_to_spawn, is_spawning])
+	if not _is_e2e_test():
+		print("DEBUG: spawn_enemy() ENTRY, enemies_to_spawn=%d, is_spawning=%s" % [enemies_to_spawn, is_spawning])
 
 	if enemies_to_spawn <= 0:
 		is_spawning = false
@@ -149,8 +156,10 @@ func spawn_enemy() -> void:
 		# Disconnect any old connections first (pooled enemies may have stale connections)
 		if enemy_instance.is_connected("enemy_died", _on_enemy_exiting):
 			enemy_instance.enemy_died.disconnect(_on_enemy_exiting)
-			print("DEBUG: Disconnected old enemy_died signal for %s" % enemy_instance.name)
-		print("DEBUG: Connecting enemy_died signal for %s (%s)" % [enemy_instance.name, str(enemy_instance.get_instance_id())])
+			if not _is_e2e_test():
+				print("DEBUG: Disconnected old enemy_died signal for %s" % enemy_instance.name)
+		if not _is_e2e_test():
+			print("DEBUG: Connecting enemy_died signal for %s (%s)" % [enemy_instance.name, str(enemy_instance.get_instance_id())])
 		enemy_instance.enemy_died.connect(_on_enemy_exiting)
 
 	# Enable collision after spawning (disabled when returned to pool)
@@ -160,23 +169,27 @@ func spawn_enemy() -> void:
 	# CRITICAL: Only add if not already in list (handles pooled enemy reuse)
 	if not enemy_instance in active_enemies:
 		active_enemies.append(enemy_instance)
-		print("DEBUG: Added enemy %s (%s) to active_enemies at index %d (now %d total)" %
-			[enemy_instance.name, str(enemy_instance.get_instance_id()), active_enemies.size() - 1, active_enemies.size()])
+		if not _is_e2e_test():
+			print("DEBUG: Added enemy %s (%s) to active_enemies at index %d (now %d total)" %
+				[enemy_instance.name, str(enemy_instance.get_instance_id()), active_enemies.size() - 1, active_enemies.size()])
 	else:
-		print("DEBUG: Enemy %s (%s) already in active_enemies, skipping" %
-			[enemy_instance.name, str(enemy_instance.get_instance_id())])
+		if not _is_e2e_test():
+			print("DEBUG: Enemy %s (%s) already in active_enemies, skipping" %
+				[enemy_instance.name, str(enemy_instance.get_instance_id())])
 	enemies_to_spawn -= 1
 
 	# CRITICAL: Set spawning state when done spawning all enemies
 	if enemies_to_spawn <= 0:
 		is_spawning = false
 		wave_complete = true  # Mark wave as complete
-		print("DEBUG: Wave spawning complete, enemies_to_spawn=%d, is_spawning=%s" % [enemies_to_spawn, is_spawning])
+		if not _is_e2e_test():
+			print("DEBUG: Wave spawning complete, enemies_to_spawn=%d, is_spawning=%s" % [enemies_to_spawn, is_spawning])
 		return  # Exit early to avoid restarting timer unnecessarily
 
 	# CRITICAL: Restart spawn timer to spawn next enemy (timer is one-shot)
 	if spawn_timer_node:
-		print("DEBUG: Restarting spawn timer for next enemy (%d remaining)" % enemies_to_spawn)
+		if not _is_e2e_test():
+			print("DEBUG: Restarting spawn timer for next enemy (%d remaining)" % enemies_to_spawn)
 		spawn_timer_node.wait_time = time_between_enemies
 		spawn_timer_node.start()
 
@@ -190,7 +203,8 @@ func get_random_spawn_position() -> Vector2:
 
 func _on_spawn_timer_timeout() -> void:
 	if is_spawning:
-		print("DEBUG: About to call spawn_enemy()")
+		if OS.get_environment("E2E_TEST") != "1":
+			print("DEBUG: About to call spawn_enemy()")
 		spawn_enemy()
 
 func _on_wave_timer_timeout() -> void:

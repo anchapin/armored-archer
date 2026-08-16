@@ -173,6 +173,10 @@ func _capture_crash_dump() -> void:
 		_log_crashlytics_error("Application crash detected", "", crash_data)
 
 func _initialize_analytics() -> void:
+	if OS.get_environment("E2E_TEST") == "1":
+		is_initialized = true
+		return
+
 	# Determine platform
 	if OS.has_feature("android"):
 		platform = "android"
@@ -230,7 +234,8 @@ func _initialize_local_analytics() -> void:
 	# Initialize without Firebase (for testing/non-mobile platforms)
 	is_initialized = true
 	analytics_initialized.emit()
-	print("AnalyticsManager: Initialized in local mode")
+	if OS.get_environment("E2E_TEST") != "1":
+		print("AnalyticsManager: Initialized in local mode")
 
 func _load_firebase_config(config_path: String) -> void:
 	var config_file: FileAccess = FileAccess.open(config_path, FileAccess.READ)

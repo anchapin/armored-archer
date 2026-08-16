@@ -118,7 +118,7 @@ func _setup_mode_filter() -> void:
 
 		# Set toggle state
 		button.toggle_mode = true
-		button.set_pressed_no_signal(current_mode == str(mode).to_lower())
+		child.set_pressed_no_signal(current_mode == str(mode).to_lower())
 
 		button.pressed.connect(_on_mode_button_pressed.bind(str(mode).to_lower()))
 		mode_filter_container.add_child(button)
@@ -433,7 +433,7 @@ func _update_mode_button_states() -> void:
 	for child in mode_filter_container.get_children():
 		if child is Button:
 			var button_text: String = child.text.to_lower()
-			button.set_pressed_no_signal(button_text == current_mode)
+			child.set_pressed_no_signal(button_text == current_mode)
 
 ## Show season history
 func _show_season_history() -> void:

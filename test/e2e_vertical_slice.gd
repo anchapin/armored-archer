@@ -1,13 +1,15 @@
-extends Node
+extends SceneTree
 
 # Vertical Slice End-to-End Smoke Test for Godot Client
 #
 # Validates the complete vertical slice flow from account creation
 # to PvE stage completion, loot drop, and equipment equip.
 #
-# Usage:
+# Usage (headless):
 #   godot --headless --script res://test/e2e_vertical_slice.gd
-#   Or open in editor and press F5
+#
+# Note: This script was updated to extend SceneTree so it can be run
+# directly via --script in headless mode.
 
 enum TestStatus {
 	PENDING,
@@ -41,16 +43,18 @@ const COLOR_PASS = Color(0.2, 0.8, 0.2)
 const COLOR_FAIL = Color(0.8, 0.2, 0.2)
 const COLOR_SKIP = Color(0.7, 0.7, 0.7)
 
-func _ready() -> void:
+func _init() -> void:
+	# In SceneTree scripts for --headless --script, we initialize here.
 	print("=== Vertical Slice E2E Smoke Test ===")
 	print("Issue: #679 - Sprint 1 Vertical Slice Foundation")
 	print("")
 
-	# Get manager references
-	network_manager = get_node_or_null("/root/NetworkManager")
-	player_stats_manager = get_node_or_null("/root/PlayerStatsManager")
-	campaign_manager = get_node_or_null("/root/CampaignManager")
-	inventory_manager = get_node_or_null("/root/InventoryManager")
+	# Autoloads are available via /root/ even in pure script mode.
+	# Use get_node (more reliable in SceneTree scripts) + yield a frame if needed.
+	network_manager = get_node("/root/NetworkManager")
+	player_stats_manager = get_node("/root/PlayerStatsManager")
+	campaign_manager = get_node("/root/CampaignManager")
+	inventory_manager = get_node("/root/InventoryManager")
 
 	# Verify managers are available
 	if not network_manager:
@@ -63,12 +67,8 @@ func _ready() -> void:
 		_finish_tests()
 		return
 
-	# Clear any existing session for fresh test
-	network_manager.logout()
-	await get_tree().process_frame
-
-	# Start test sequence
-	await _run_test_sequence()
+	# Defer the actual async test sequence until the tree is ready
+	call_deferred("_start_test_sequence")
 
 ## Runs all tests in sequence
 func _run_test_sequence() -> void:
@@ -115,7 +115,8 @@ func _test_vs_1_account_bootstrap() -> void:
 
 	for attempt in range(RETRY_ATTEMPTS):
 		network_manager.authenticate_device()
-		await get_tree().create_timer(2.0).timeout
+		await process_frame
+		await process_frame  # approximate delay for 2s in headless (real timers are better in real scenes)
 
 		if network_manager.is_connected:
 			_log_result("VS-1-1", "Device authentication successful", TestStatus.PASS)
@@ -631,11 +632,25 @@ func _determine_exit_code() -> void:
 			failed += 1
 
 	if failed == 0:
-		get_tree().quit(0) # Success
+		print("[E2E] All tests passed. Exiting with code 0.")
+		quit(0)  # Success - SceneTree.quit()
 	else:
-		get_tree().quit(1) # Failure
+		print("[E2E] %d test(s) failed. Exiting with code 1." % failed)
+		quit(1)  # Failure
 
 ## Marks all tests as complete
 func _finish_tests() -> void:
 	_print_summary()
 	_determine_exit_code()
+
+## Helper to start the async sequence after the tree is ready (called via call_deferred)
+func _start_test_sequence() -> void:
+	# Clear any existing session for fresh test
+	if network_manager and network_manager.has_method("logout"):
+		network_manager.logout()
+
+	# Give autoloads a frame to settle
+	await process_frame
+
+	# Start test sequence
+	await _run_test_sequence()

@@ -11,6 +11,9 @@
 
 extends GutTest
 
+# --- Constants ---
+const ELEMENTAL_SCENE: PackedScene = preload("res://scenes/enemies/elemental_enemy.tscn")
+
 # --- Test Fixtures ---
 var enemy_factory: Node
 var ai_manager: Node
@@ -96,7 +99,7 @@ func test_difficulty_scaling() -> void:
 
 func test_elemental_attacks() -> void:
 	# Test: Elemental enemies have elemental attacks
-	var elemental_scene = load("res://scenes/enemies/elemental_enemy.tscn")
+	var elemental_scene: PackedScene = ELEMENTAL_SCENE
 	assert_true(elemental_scene != null, "Elemental enemy scene should exist")
 
 	var elemental: ElementalEnemy = elemental_scene.instantiate()
@@ -115,7 +118,7 @@ func test_elemental_attacks() -> void:
 
 func test_elemental_weakness() -> void:
 	# Test: Elemental weakness deals 2x damage
-	var elemental_scene = load("res://scenes/enemies/elemental_enemy.tscn")
+	var elemental_scene: PackedScene = ELEMENTAL_SCENE
 	var elemental: ElementalEnemy = elemental_scene.instantiate()
 	if elemental:
 		get_tree().root.add_child(elemental)

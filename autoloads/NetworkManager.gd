@@ -183,6 +183,12 @@ func _validate_required_config() -> void:
 
 # --- Initialization ---
 func _ready() -> void:
+	# E2E isolation: when running smoke tests / E2E suites, stay quiet and don't auto-connect
+	if OS.get_environment("E2E_TEST") == "1":
+		is_offline = true
+		print("[E2E] NetworkManager running in isolated E2E mode — network disabled")
+		return
+
 	_load_environment_variables()
 	_log_environment_info()
 	base_url = "http://%s:%d" % [server_url, server_port]
@@ -732,4 +738,5 @@ func _exit_tree() -> void:
 	if _reconnect_timer != null:
 		_reconnect_timer.queue_free()
 		_reconnect_timer = null
-	print("[NetworkManager] Cleanup complete - all resources released")
+	if OS.get_environment("E2E_TEST") != "1":
+		print("[NetworkManager] Cleanup complete - all resources released")

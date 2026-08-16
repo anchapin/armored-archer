@@ -136,9 +136,10 @@ func test_set_multiple_user_properties() -> void:
 		_fail(test_name, "AnalyticsManager not available")
 		return
 
+	# set_user_property() is typed String -> String; values must be strings
 	var properties := {
 		"platform": "ios",
-		"level": 10,
+		"level": "10",
 		"version": "1.0.0"
 	}
 	analytics.set_user_properties(properties)

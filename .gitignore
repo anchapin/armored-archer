@@ -59,3 +59,9 @@ act-cache/
 
 # Local docker-compose files for CI
 .docker/docker-compose-ci-local.yml
+backend/docker-compose.override.yml
+
+# Editor/agent backup files
+*.bak
+
+.gitnexus

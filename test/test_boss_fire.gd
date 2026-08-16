@@ -16,7 +16,7 @@ func run_tests() -> void:
 	await test_phase_2_transition()
 	await test_phase_3_transition()
 	await test_enraged_state()
-	await test_enraged_takes_more_damage()
+	await test_enraged_damage_increase()
 	await test_health_changed_signal()
 	await test_boss_defeated_signal()
 	await test_take_damage_death()
@@ -29,6 +29,8 @@ func run_tests() -> void:
 	print("Failed: %d" % _tests_failed)
 	queue_free()
 
+## boss_fire.gd ships the Shadow Warlock (WarlockBoss): ranged spells boss
+## whose phases are driven by BossManager.transition_to_phase().
 func _create_fire_boss() -> Node:
 	var enemy = CharacterBody2D.new()
 	enemy.set_script(load("res://scenes/enemies/bosses/boss_fire.gd"))
@@ -57,85 +59,81 @@ func _fail(test_name: String, message: String) -> void:
 func test_default_stats() -> void:
 	var boss = _create_fire_boss()
 	boss._ready()
-	var passed = boss.max_health == 800 and boss.damage == 25
+	var passed = boss.max_health == 700 and boss.damage == 18
 	if passed:
 		_pass("test_default_stats")
 	else:
-		_fail("test_default_stats", "Expected health=800, damage=25 got (%d, %d)" % [boss.max_health, boss.damage])
+		_fail("test_default_stats", "Expected health=700, damage=18 got (%d, %d)" % [boss.max_health, boss.damage])
 	boss.queue_free()
 
 func test_boss_name() -> void:
 	var boss = _create_fire_boss()
-	if boss.boss_name == "Inferno":
+	if boss.boss_name == "Shadow Warlock":
 		_pass("test_boss_name")
 	else:
-		_fail("test_boss_name", "Expected 'Inferno' got '%s'" % boss.boss_name)
+		_fail("test_boss_name", "Expected 'Shadow Warlock' got '%s'" % boss.boss_name)
 	boss.queue_free()
 
 func test_phase_1_defaults() -> void:
 	var boss = _create_fire_boss()
 	boss._ready()
-	var passed = boss.phase == 1 and boss.move_speed == boss.base_move_speed and not boss.is_enraged
+	var passed = boss.current_phase == 0 and boss.move_speed == boss.base_move_speed and not boss.is_enraged
 	if passed:
 		_pass("test_phase_1_defaults")
 	else:
-		_fail("test_phase_1_defaults", "Should start in phase 1, not enraged")
+		_fail("test_phase_1_defaults", "Should start in phase 0 (phase 1), not enraged")
 	boss.queue_free()
 
 func test_phase_2_transition() -> void:
 	var boss = _create_fire_boss()
 	boss._ready()
-	# Deal 400 damage (50% of 800)
-	boss.take_damage(400)
-	if boss.phase == 2:
+	await boss.transition_to_phase(1)
+	var passed = boss.current_phase == 1 and boss.damage == 22 and boss.can_summon_minions
+	if passed:
 		_pass("test_phase_2_transition")
 	else:
-		_fail("test_phase_2_transition", "Should enter phase 2 at 50%% health (got phase %d)" % boss.phase)
+		_fail("test_phase_2_transition", "Phase 2 should unlock minions and set damage=22 (got phase %d, damage %d)" % [boss.current_phase, boss.damage])
 	boss.queue_free()
 
 func test_phase_3_transition() -> void:
 	var boss = _create_fire_boss()
 	boss._ready()
-	# Deal 600 damage (75% of 800) to trigger phase 2 then phase 3
-	boss.take_damage(600)
-	if boss.phase == 3:
+	await boss.transition_to_phase(2)
+	if boss.current_phase == 2:
 		_pass("test_phase_3_transition")
 	else:
-		_fail("test_phase_3_transition", "Should enter phase 3 at 25%% health (got phase %d)" % boss.phase)
+		_fail("test_phase_3_transition", "Should enter phase 3 (got phase %d)" % boss.current_phase)
 	boss.queue_free()
 
 func test_enraged_state() -> void:
 	var boss = _create_fire_boss()
 	boss._ready()
-	boss.take_damage(600)
+	await boss.transition_to_phase(2)
 	if boss.is_enraged:
 		_pass("test_enraged_state")
 	else:
 		_fail("test_enraged_state", "Should be enraged in phase 3")
 	boss.queue_free()
 
-func test_enraged_takes_more_damage() -> void:
+func test_enraged_damage_increase() -> void:
 	var boss = _create_fire_boss()
 	boss._ready()
-	boss.take_damage(600)  # Enter phase 3 (enraged)
-	var health_after_phase3 = boss.current_health
-	# When enraged, takes 20% more damage
-	boss.take_damage(100)
-	# Actual damage = int(100 * 1.2) = 120
-	var expected = health_after_phase3 - 120
-	if boss.current_health == expected:
-		_pass("test_enraged_takes_more_damage")
+	var base_damage: int = boss.damage
+	await boss.transition_to_phase(2)
+	if boss.damage > base_damage and boss.damage == 26:
+		_pass("test_enraged_damage_increase")
 	else:
-		_fail("test_enraged_takes_more_damage", "Expected %d got %d (enraged should take 120%% damage)" % [expected, boss.current_health])
+		_fail("test_enraged_damage_increase", "Enraged should deal increased damage (base %d, got %d)" % [base_damage, boss.damage])
 	boss.queue_free()
 
 func test_health_changed_signal() -> void:
 	var boss = _create_fire_boss()
 	boss._ready()
-	var received = false
-	boss.health_changed.connect(func(_c, _m): received = true)
+	# GDScript lambdas capture locals by value; use an Array to observe the signal
+	var calls: Array = []
+	boss.health_changed.connect(func(_c, _m): calls.append(1))
 	boss.take_damage(10)
-	if received:
+	if calls.size() > 0:
 		_pass("test_health_changed_signal")
 	else:
 		_fail("test_health_changed_signal", "health_changed should emit on damage")
@@ -144,22 +142,24 @@ func test_health_changed_signal() -> void:
 func test_boss_defeated_signal() -> void:
 	var boss = _create_fire_boss()
 	boss._ready()
-	var received_name = ""
-	boss.boss_defeated.connect(func(name): received_name = name)
-	boss.take_damage(800)
-	if received_name == "Inferno":
+	# GDScript lambdas capture locals by value; use an Array to observe the signal
+	var defeated_names: Array = []
+	boss.boss_defeated.connect(func(boss_name): defeated_names.append(boss_name))
+	boss.take_damage(700)
+	if defeated_names.has("Shadow Warlock"):
 		_pass("test_boss_defeated_signal")
 	else:
-		_fail("test_boss_defeated_signal", "boss_defeated should emit 'Inferno' (got '%s')" % received_name)
+		_fail("test_boss_defeated_signal", "boss_defeated should emit 'Shadow Warlock' (got '%s')" % str(defeated_names))
 	boss.queue_free()
 
 func test_take_damage_death() -> void:
 	var boss = _create_fire_boss()
 	boss._ready()
-	var defeated = false
-	boss.boss_defeated.connect(func(_name): defeated = true)
-	boss.take_damage(800)
-	if defeated:
+	# GDScript lambdas capture locals by value; use an Array to observe the signal
+	var defeat_calls: Array = []
+	boss.boss_defeated.connect(func(_name): defeat_calls.append(1))
+	boss.take_damage(700)
+	if defeat_calls.size() > 0:
 		_pass("test_take_damage_death")
 	else:
 		_fail("test_take_damage_death", "Should be defeated at 0 health")
@@ -177,19 +177,19 @@ func test_in_boss_group() -> void:
 func test_phase_2_speed_increase() -> void:
 	var boss = _create_fire_boss()
 	boss._ready()
-	boss.take_damage(400)  # Enter phase 2
-	if boss.move_speed == boss.phase2_speed:
+	await boss.transition_to_phase(1)
+	if boss.move_speed == boss.base_move_speed:
 		_pass("test_phase_2_speed_increase")
 	else:
-		_fail("test_phase_2_speed_increase", "Phase 2 should set speed to phase2_speed")
+		_fail("test_phase_2_speed_increase", "Phase 2 should keep speed at base_move_speed")
 	boss.queue_free()
 
 func test_phase_3_speed_increase() -> void:
 	var boss = _create_fire_boss()
 	boss._ready()
-	boss.take_damage(600)  # Enter phase 3
-	if boss.move_speed == boss.phase3_speed:
+	await boss.transition_to_phase(2)
+	if is_equal_approx(boss.move_speed, boss.base_move_speed * 1.2):
 		_pass("test_phase_3_speed_increase")
 	else:
-		_fail("test_phase_3_speed_increase", "Phase 3 should set speed to phase3_speed")
+		_fail("test_phase_3_speed_increase", "Phase 3 should set speed to base_move_speed * 1.2")
 	boss.queue_free()

@@ -34,8 +34,8 @@ const PUNCH_UP_RANK_DIFF_THRESHOLD = 5
 const PUNCH_UP_MAX_RANK_DIFF = 18
 const PUNCH_UP_MIN_RANK = 20
 const RISK_LEVEL_LOW_THRESHOLD = 7
-const RISK_LEVEL_MEDIUM_THRESHOLD = 11
-const RISK_LEVEL_HIGH_THRESHOLD = 18
+const RISK_LEVEL_MEDIUM_THRESHOLD = 10
+const RISK_LEVEL_HIGH_THRESHOLD = 14
 
 # --- Analytics Reference ---
 @onready var analytics: Node = get_node_or_null("/root/AnalyticsManager")
@@ -573,7 +573,7 @@ func _calculate_gem_bonus(rank_diff: int) -> int:
 		0.0,
 		1.0
 	)
-	return int(gem_min + gem_range * normalized_diff)
+	return int(round(gem_min + gem_range * normalized_diff))
 
 func _calculate_rank_penalty(rank_diff: int) -> int:
 	"""Calculates rank penalty for losing a punch-up.
@@ -798,7 +798,7 @@ func _handle_match_completion(response: Dictionary) -> void:
 
 	# Check for draw
 	if response.get("is_draw", false):
-		push_info("Match ended in a draw")
+		print("Match ended in a draw")
 		match_completed.emit({
 			"is_draw": true,
 			"reason": response.get("reason", "")

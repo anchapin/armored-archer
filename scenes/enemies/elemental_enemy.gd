@@ -29,7 +29,7 @@ var elemental_data: Dictionary = {
 		"color": Color.RED,
 		"weakness": ElementalType.ICE,
 		"resistance": ElementalType.FIRE,
-		"attack_damage": 15,
+		"attackdamage": 15,
 		"attack_cooldown": 2.0,
 		"status_effect": "burn"
 	},
@@ -38,7 +38,7 @@ var elemental_data: Dictionary = {
 		"color": Color.CYAN,
 		"weakness": ElementalType.FIRE,
 		"resistance": ElementalType.ICE,
-		"attack_damage": 12,
+		"attackdamage": 12,
 		"attack_cooldown": 2.5,
 		"status_effect": "freeze"
 	},
@@ -47,7 +47,7 @@ var elemental_data: Dictionary = {
 		"color": Color.YELLOW,
 		"weakness": null,  # Lightning has no weakness
 		"resistance": ElementalType.LIGHTNING,
-		"attack_damage": 18,
+		"attackdamage": 18,
 		"attack_cooldown": 1.8,
 		"status_effect": "shock"
 	}
@@ -94,10 +94,10 @@ func _ready() -> void:
 		detection_area.body_entered.connect(_on_player_detected)
 
 	# Set base stats based on element
-	_max_health = 60
-	_max_speed = 130.0
-	_damage = get_elemental_data().attack_damage
-	_xp_reward = 30
+	max_health = 60
+	max_speed = 130.0
+	damage = get_elemental_data().attackdamage
+	xp_reward = 30
 
 	# Apply elemental sprite color
 	if sprite:
@@ -129,24 +129,24 @@ func get_elemental_data() -> Dictionary:
 ## Calculate elemental damage considering weakness and resistance
 ##
 ## Parameters:
-##   base_damage: Base damage value
+##   basedamage: Base damage value
 ##   damage_type: Attacker's elemental type
 ##   attacker_element: ElementalType of attacker
 ##
 ## Returns:
 ##   int: Final damage value
-func get_elemental_damage(base_damage: int, attacker_element: ElementalType) -> int:
+func get_elementaldamage(basedamage: int, attacker_element: ElementalType) -> int:
 	var data = get_elemental_data()
 
 	# Check for weakness (2x damage)
 	if data.weakness == attacker_element:
-		return base_damage * 2
+		return basedamage * 2
 
 	# Check for resistance (0.5x damage)
 	if data.resistance == attacker_element and attacker_element != null:
-		return base_damage / 2
+		return basedamage / 2
 
-	return base_damage
+	return basedamage
 
 ## Cast elemental attack
 func cast_attack() -> void:
@@ -161,8 +161,8 @@ func cast_attack() -> void:
 	elemental_attack_cast.emit(element_name)
 
 	# Apply damage to player if in range
-	if _player_reference and _player_reference.has_method("take_damage"):
-		_player_reference.take_damage(_damage)
+	if _player_reference and _player_reference.has_method("takedamage"):
+		_player_reference.takedamage(damage)
 
 	# Apply status effect
 	_apply_status_effect(_player_reference, data.status_effect)
@@ -176,7 +176,7 @@ func _dodge_when_close() -> void:
 	var dodge_dir = (global_position - _player_reference.global_position).normalized()
 
 	# Apply dodge movement
-	velocity = dodge_dir * _max_speed * 1.5
+	velocity = dodge_dir * max_speed * 1.5
 	move_and_slide()
 
 ## Maintain distance from player
@@ -189,7 +189,7 @@ func maintain_distance(target_distance: float = 150.0) -> void:
 	if distance > target_distance + 20.0:
 		# Move closer
 		var direction = (_player_reference.global_position - global_position).normalized()
-		velocity = direction * _max_speed * 0.5
+		velocity = direction * max_speed * 0.5
 		move_and_slide()
 	elif distance < target_distance - 20.0:
 		# Move away (dodge)

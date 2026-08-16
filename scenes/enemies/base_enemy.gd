@@ -30,62 +30,78 @@ signal enemy_died(enemy: BaseEnemy)
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var hurt_area: Area2D = $HurtArea
 
+func _is_e2e_test() -> bool:
+	return OS.get_environment("E2E_TEST") == "1"
+
 func _ready() -> void:
 	# Set collision layer FIRST before any other initialization
 	collision_layer = 2
 	collision_mask = 1
 	current_health = max_health
-	print("DEBUG: reset_pooled_state called for %s, current_health: %d, max_health: %d, collision_layer=%d" % [name, current_health, max_health, collision_layer])
-	print("DEBUG: reset_for_spawn called for %s, current_health: %d, max_health: %d" % [name, current_health, max_health])
-	print("DEBUG: After reset_for_spawn, health: %d/%d" % [current_health, max_health])
-	print("DEBUG: After reset, health: %d/%d" % [current_health, max_health])
+
+	if not _is_e2e_test():
+		print("DEBUG: reset_pooled_state called for %s, current_health: %d, max_health: %d, collision_layer=%d" % [name, current_health, max_health, collision_layer])
+		print("DEBUG: reset_for_spawn called for %s, current_health: %d, max_health: %d" % [name, current_health, max_health])
+		print("DEBUG: After reset_for_spawn, health: %d/%d" % [current_health, max_health])
+		print("DEBUG: After reset, health: %d/%d" % [current_health, max_health])
+
 	add_to_group("Enemies")
 	if hurt_area:
 		var _err = hurt_area.body_entered.connect(_on_hurt_area_body_entered)
 
 	# Register with auto-aim if available
-	var aim_mgr = get_node_or_null("/root/AutoAimManager")
-	if aim_mgr and aim_mgr.has_method("register_enemy"):
-		aim_mgr.register_enemy(self)
+	if not _is_e2e_test():
+		var aim_mgr = get_node_or_null("/root/AutoAimManager")
+		if aim_mgr and aim_mgr.has_method("register_enemy"):
+			aim_mgr.register_enemy(self)
 
 # Reset enemy state for reuse from object pool
 func reset_for_spawn() -> void:
-	print("DEBUG: reset_for_spawn called for %s, setting health to %d" % [name, max_health])
+	if not _is_e2e_test():
+		print("DEBUG: reset_for_spawn called for %s, setting health to %d" % [name, max_health])
 	current_health = max_health
 	is_dead = false
 	collision_layer = 2
 	collision_mask = 1
-	var aim_mgr = get_node_or_null("/root/AutoAimManager")
-	if aim_mgr and aim_mgr.has_method("register_enemy"):
-		print("DEBUG: Calling aim_mgr.register_enemy for %s" % name)
-		aim_mgr.register_enemy(self)
+	if not _is_e2e_test():
+		var aim_mgr = get_node_or_null("/root/AutoAimManager")
+		if aim_mgr and aim_mgr.has_method("register_enemy"):
+			print("DEBUG: Calling aim_mgr.register_enemy for %s" % name)
+			aim_mgr.register_enemy(self)
 
 ## Enable collision (for spawner after pooling)
 func enable_collision() -> void:
 	if collision_shape:
-		print("DEBUG: enable_collision called for %s, collision_enabled=%s" % [name, collision_enabled])
-		if collision_enabled:
-			print("DEBUG: Collision already enabled for %s, skipping" % name)
-			return
+		if not _is_e2e_test():
+			print("DEBUG: enable_collision called for %s, collision_enabled=%s" % [name, collision_enabled])
+			if collision_enabled:
+				print("DEBUG: Collision already enabled for %s, skipping" % name)
+				return
 		collision_shape.disabled = false
 		collision_enabled = true
-		print("DEBUG: Collision enabled for %s" % name)
+		if not _is_e2e_test():
+			print("DEBUG: Collision enabled for %s" % name)
 
 func take_damage(amount: int) -> void:
 	# Prevent re-damage on already dead enemies
 	if is_dead:
-		print("DEBUG: Enemy %s is already dead, ignoring damage" % name)
+		if not _is_e2e_test():
+			print("DEBUG: Enemy %s is already dead, ignoring damage" % name)
 		return
-	print("DEBUG: Enemy %s taking %d damage, health: %d/%d" % [name, amount, current_health, max_health])
+	if not _is_e2e_test():
+		print("DEBUG: Enemy %s taking %d damage, health: %d/%d" % [name, amount, current_health, max_health])
 	current_health -= amount
-	print("DEBUG: Enemy %s health after damage: %d/%d" % [name, current_health, max_health])
+	if not _is_e2e_test():
+		print("DEBUG: Enemy %s health after damage: %d/%d" % [name, current_health, max_health])
 	if current_health <= 0:
-		print("DEBUG: Enemy %s health <= 0, calling die()" % name)
+		if not _is_e2e_test():
+			print("DEBUG: Enemy %s health <= 0, calling die()" % name)
 		is_dead = true
 		die()
 
 func die() -> void:
-	print("DEBUG: die() called for %s, health: %d/%d" % [name, current_health, max_health])
+	if not _is_e2e_test():
+		print("DEBUG: die() called for %s, health: %d/%d" % [name, current_health, max_health])
 	var aim_mgr = get_node_or_null("/root/AutoAimManager")
 	if aim_mgr and aim_mgr.has_method("unregister_enemy"):
 		aim_mgr.unregister_enemy(self)
@@ -94,7 +110,8 @@ func die() -> void:
 	is_dead = true
 
 	# Emit death signals first
-	print("DEBUG: Emitting died signal for %s (%s)" % [name, str(get_instance_id())])
+	if not _is_e2e_test():
+		print("DEBUG: Emitting died signal for %s (%s)" % [name, str(get_instance_id())])
 	died.emit(xp_reward)
 
 	# Trigger death animation through CombatJuiceManager

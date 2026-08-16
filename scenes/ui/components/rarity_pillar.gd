@@ -108,7 +108,7 @@ func _animate_fill_value(target_value: float) -> void:
 
 	# Create new tween
 	_tween = create_tween()
-	_tween.tween_method(self, "_set_display_value", _display_value, target_value, 0.3) \
+	_tween.tween_method(_set_display_value, _display_value, target_value, 0.3) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 
 func _set_display_value(value: float) -> void:

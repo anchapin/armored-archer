@@ -403,6 +403,7 @@ func test_profiling_toggle() -> void:
 		_fail("test_profiling_can_enable", "Profiling should be enabled")
 
 	# Test start_marker when disabled returns -1
+	profiler.set_profiling_enabled(false)
 	var disabled_id = profiler.start_marker("disabled_test")
 	if disabled_id == -1:
 		_pass("test_start_marker_disabled")
@@ -568,31 +569,28 @@ func test_time_function_named_when_disabled() -> void:
 func test_slow_marker_signal() -> void:
 	var profiler = _create_profiler()
 
-	var slow_detected = false
-	var slow_name = ""
-	var slow_time = 0.0
+	# Lambdas capture locals by value in GDScript, so record emissions in an array
+	var signals_received: Array = []
 
-	profiler.slow_marker_detected.connect(func(name: String, time_ms: float, count: int):
-		slow_detected = true
-		slow_name = name
-		slow_time = time_ms
+	profiler.slow_marker_detected.connect(func(name: String, time_ms: float, _count: int):
+		signals_received.append([name, time_ms])
 	)
 
 	var id = profiler.start_marker("slow_test_marker")
 	await get_tree().create_timer(0.05).timeout
 	var duration = profiler.end_marker("slow_test_marker", id)
 
-	if slow_detected:
+	if signals_received.size() > 0:
 		_pass("test_slow_marker_signal_emitted")
 	else:
 		_fail("test_slow_marker_signal_emitted", "slow_marker_detected should emit for slow markers")
 
-	if slow_name == "slow_test_marker":
+	if signals_received.size() > 0 and signals_received[0][0] == "slow_test_marker":
 		_pass("test_slow_marker_signal_name")
 	else:
 		_fail("test_slow_marker_signal_name", "Signal should contain marker name")
 
-	if slow_time > 0:
+	if signals_received.size() > 0 and signals_received[0][1] > 0:
 		_pass("test_slow_marker_signal_time")
 	else:
 		_fail("test_slow_marker_signal_time", "Signal should contain time > 0")

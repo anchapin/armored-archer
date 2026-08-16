@@ -401,7 +401,7 @@ func _on_builds_updated(builds: Dictionary) -> void:
 	_update_build_slots_ui()
 
 func _on_respec_cooldown_remaining(seconds: int) -> void:
-	if cooldown_label:
+	if respec_cooldown_label:
 		if seconds > 0:
 			respec_cooldown_label.text = "Cooldown: %s" % stat_allocation_manager.format_cooldown_time(seconds)
 			respec_button.disabled = true

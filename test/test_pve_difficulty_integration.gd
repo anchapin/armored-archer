@@ -115,12 +115,12 @@ func test_aggressive_ai_attacks_low_health_player() -> void:
 	# Test with low health player (below 30%)
 	var action = ai.decide_action(20, 5)
 
-	if not action.has("action_type"):
-		_fail("test_aggressive_ai_attacks_low_health", "Action should have action_type")
+	if not action.has("action"):
+		_fail("test_aggressive_ai_attacks_low_health", "Action should have action key")
 		ai.queue_free()
 		return
 
-	var action_type = action["action_type"]
+	var action_type = action["action"]
 	if action_type != "attack" and action_type != "power_attack":
 		_fail("test_aggressive_ai_attacks_low_health", "AGGRESSIVE AI should attack low HP player, got: %s" % str(action_type))
 		ai.queue_free()

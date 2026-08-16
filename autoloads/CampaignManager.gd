@@ -66,6 +66,14 @@ func _ready() -> void:
 		unlocked_chapters = ["chapter_1"]
 		save_progress()
 
+## Helper for E2E / smoke tests to get a properly initialized local instance
+func initialize_for_testing() -> void:
+	load_campaigns_data()
+	if unlocked_stages.is_empty():
+		unlocked_stages = ["1_1"]
+	if unlocked_chapters.is_empty():
+		unlocked_chapters = ["chapter_1"]
+
 	# Connect to network for sync
 	if network_manager and network_manager.has_signal("connection_status_changed"):
 		network_manager.connection_status_changed.connect(_on_connection_status_changed)
@@ -446,14 +454,15 @@ func unlock_next_stage(stage_id: String) -> void:
 		stage_id: ID of the just-completed stage
 	"""
 	var parts = stage_id.split("_")
-	var current_chapter = parts[0]
+	var chapter_num = parts[0]
 	var current_stage_num = int(parts[1])
 
-	var next_stage_id = "%s_%d" % [current_chapter, current_stage_num + 1]
+	var next_stage_id = "%s_%d" % [chapter_num, current_stage_num + 1]
+	var chapter_id = "chapter_" + chapter_num
 
 	if get_stage_data(next_stage_id):
 		# Check if the chapter is unlocked before unlocking the stage
-		if current_chapter in unlocked_chapters:
+		if chapter_id in unlocked_chapters:
 			if not next_stage_id in unlocked_stages:
 				unlocked_stages.append(next_stage_id)
 				stage_unlocked.emit(next_stage_id)
@@ -463,7 +472,7 @@ func unlock_next_stage(stage_id: String) -> void:
 					analytics.log_custom_event("stage_unlocked", {
 						"stage_id": next_stage_id,
 						"unlocked_from": stage_id,
-						"chapter": int(current_chapter)
+						"chapter": int(chapter_num)
 					})
 
 func get_chapter_progress(chapter_id: String) -> float:

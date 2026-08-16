@@ -69,7 +69,9 @@ func test_constants() -> void:
 	vfx.queue_free()
 
 func test_initial_state() -> void:
-	var vfx = await _create_vfx_manager()
+	# Preloading happens in _ready(), which only runs once the node enters the
+	# tree. Check the fields on a fresh instance before adding it as a child.
+	var vfx = VFXManagerClass.new()
 
 	if vfx._hit_effect == null:
 		_pass("test_initial_hit_effect_null")
@@ -81,7 +83,7 @@ func test_initial_state() -> void:
 	else:
 		_fail("test_initial_screen_shake_null", "Should be null initially")
 
-	vfx.queue_free()
+	vfx.free()
 
 func test_scene_preloading() -> void:
 	var vfx = await _create_vfx_manager()
@@ -94,6 +96,10 @@ func test_scene_preloading() -> void:
 	if vfx._crit_effect != null:
 		_pass("test_crit_effect_preloaded")
 	else:
+		# KNOWN PRODUCTION BUG (not fixed here, test kept as regression signal):
+		# assets/particles/crit_effect.tscn:16 contains an inline "# Golden spark
+		# color" comment, which is invalid .tscn syntax, so the whole scene fails
+		# to parse and load() returns null.
 		_fail("test_crit_effect_preloaded", "Crit effect should be preloaded")
 
 	if vfx._miss_effect != null:
@@ -129,6 +135,9 @@ func test_scene_preloading() -> void:
 	vfx.queue_free()
 
 func test_singleton_instance() -> void:
+	# Drain any deferred queue_free() from the previous test first, otherwise
+	# its _exit_tree() nulls the static instance after this instance sets it.
+	await get_tree().process_frame
 	var vfx = await _create_vfx_manager()
 
 	if vfx.instance == vfx:
@@ -137,6 +146,7 @@ func test_singleton_instance() -> void:
 		_fail("test_singleton_sets_self", "Singleton should be set to self")
 
 	vfx.queue_free()
+	await get_tree().process_frame
 
 	# Access static instance through the loaded class
 	if VFXManagerClass.instance == null:

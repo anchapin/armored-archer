@@ -305,7 +305,12 @@ func test_cleanup_invalid_instances() -> void:
 	# Run cleanup
 	pool.cleanup_invalid_instances()
 
-	# Only arrow2 should remain in active
+	# KNOWN PRODUCTION BUG (intentionally left failing as regression signal):
+	# In Godot 4.6, appending a previously-freed object into a typed Array[Node]
+	# fails ("Attempted to push_back an invalid (previously freed?) object"),
+	# so ObjectPool.cleanup_invalid_instances() (autoloads/ObjectPool.gd:310-339)
+	# collects nothing and never erases freed instances from the active arrays.
+	# Once production is fixed, this assertion enforces the intended behavior.
 	if pool._active_arrows.size() == 1 and pool._active_arrows.has(arrow2):
 		_pass("test_cleanup_removes_invalid")
 	else:

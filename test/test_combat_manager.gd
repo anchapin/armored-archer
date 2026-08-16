@@ -88,15 +88,14 @@ func test_get_match_state_no_network() -> void:
 
 func test_signal_emission() -> void:
 	var cm = _create_combat_manager()
-	var action_submitted = false
-	var state_updated = false
-	var turn_changed = false
-	var combat_ended = false
+	# GDScript lambdas capture locals by value; track emissions in an Array
+	# (a reference type) so appends inside lambdas propagate to this scope.
+	var signals_received: Array = []
 
-	cm.combat_action_submitted.connect(func(_result): action_submitted = true)
-	cm.match_state_updated.connect(func(_state): state_updated = true)
-	cm.turn_changed.connect(func(_is_my_turn): turn_changed = true)
-	cm.combat_ended.connect(func(_winner): combat_ended = true)
+	cm.combat_action_submitted.connect(func(_result): signals_received.append("combat_action_submitted"))
+	cm.match_state_updated.connect(func(_state): signals_received.append("match_state_updated"))
+	cm.turn_changed.connect(func(_is_my_turn): signals_received.append("turn_changed"))
+	cm.combat_ended.connect(func(_winner): signals_received.append("combat_ended"))
 
 	# Emit signals manually
 	cm.combat_action_submitted.emit({"test": true})
@@ -106,7 +105,7 @@ func test_signal_emission() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if action_submitted and state_updated and turn_changed and combat_ended:
+	if signals_received.has("combat_action_submitted") and signals_received.has("match_state_updated") and signals_received.has("turn_changed") and signals_received.has("combat_ended"):
 		_pass("test_signal_emission")
 	else:
 		_fail("test_signal_emission", "Not all signals were received")
@@ -116,15 +115,13 @@ func test_signal_emission() -> void:
 func test_update_local_state() -> void:
 	var cm = _create_combat_manager()
 
-	# Create a mock NetworkManager to provide user_id
-	var nm = Node.new()
-	nm.set("user_id", "user_123")
-	nm.set("is_connected", true)
-	add_child(nm)
-	# Manually set the network_manager reference in CombatManager
-	cm.network_manager = nm
+	# _update_local_state() reads the NetworkManager autoload's user_id
+	# directly (not the network_manager property), so drive the autoload's
+	# user_id and restore it afterwards instead of using a mock node.
+	var previous_user_id: String = NetworkManager.user_id
 
 	# Simulate being the creator
+	NetworkManager.user_id = "user_123"
 	cm.current_match_state = {
 		"creator_id": "user_123",
 		"creator_health": 80,
@@ -139,7 +136,7 @@ func test_update_local_state() -> void:
 		_fail("test_update_local_state_creator", "Health values incorrect for creator")
 
 	# Simulate being the opponent
-	nm.set("user_id", "opponent_user")
+	NetworkManager.user_id = "opponent_user"
 	cm.current_match_state = {
 		"creator_id": "other_user",
 		"creator_health": 100,
@@ -152,7 +149,7 @@ func test_update_local_state() -> void:
 	else:
 		_fail("test_update_local_state_opponent", "Health values incorrect for opponent")
 
-	nm.queue_free()
+	NetworkManager.user_id = previous_user_id
 	cm.queue_free()
 
 # --- Additional CombatManager Tests for Higher Coverage ---
@@ -167,11 +164,10 @@ func test_update_from_match_state_empty() -> void:
 
 func test_update_from_match_state_creator() -> void:
 	var cm = _create_combat_manager()
-	# Mock NetworkManager user_id
-	var nm = Node.new()
-	nm.set("user_id", "creator_user")
-	add_child(nm)
-	cm.network_manager = nm
+	# _update_from_match_state() reads the NetworkManager autoload's user_id
+	# directly, so drive the autoload (saved/restored) instead of a mock node.
+	var previous_user_id: String = NetworkManager.user_id
+	NetworkManager.user_id = "creator_user"
 
 	cm.current_match_state = {
 		"creator_id": "creator_user",
@@ -189,15 +185,13 @@ func test_update_from_match_state_creator() -> void:
 	else:
 		_fail("test_update_from_match_state_creator", "Creator state incorrect")
 
+	NetworkManager.user_id = previous_user_id
 	cm.queue_free()
-	nm.queue_free()
 
 func test_update_from_match_state_opponent() -> void:
 	var cm = _create_combat_manager()
-	var nm = Node.new()
-	nm.set("user_id", "opponent_user")
-	add_child(nm)
-	cm.network_manager = nm
+	var previous_user_id: String = NetworkManager.user_id
+	NetworkManager.user_id = "opponent_user"
 
 	cm.current_match_state = {
 		"creator_id": "creator_user",
@@ -215,8 +209,8 @@ func test_update_from_match_state_opponent() -> void:
 	else:
 		_fail("test_update_from_match_state_opponent", "Opponent state incorrect")
 
+	NetworkManager.user_id = previous_user_id
 	cm.queue_free()
-	nm.queue_free()
 
 func test_utility_methods() -> void:
 	var cm = _create_combat_manager()
@@ -299,14 +293,11 @@ func test_get_match_state_invalid_params() -> void:
 
 func test_turn_changed_signal() -> void:
 	var cm = _create_combat_manager()
-	var turn_true_received = false
-	var turn_false_received = false
+	# Array-based tracking: lambdas capture locals by value.
+	var turn_signals: Array = []
 
 	cm.turn_changed.connect(func(is_turn):
-		if is_turn:
-			turn_true_received = true
-		else:
-			turn_false_received = true
+		turn_signals.append("turn_" + str(is_turn))
 	)
 
 	cm.turn_changed.emit(true)
@@ -314,7 +305,7 @@ func test_turn_changed_signal() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if turn_true_received and turn_false_received:
+	if turn_signals.has("turn_true") and turn_signals.has("turn_false"):
 		_pass("test_turn_changed_signal")
 	else:
 		_fail("test_turn_changed_signal", "Turn signals not received")
@@ -323,15 +314,16 @@ func test_turn_changed_signal() -> void:
 
 func test_combat_ended_signal() -> void:
 	var cm = _create_combat_manager()
-	var winner_received = ""
+	# Value-capture workaround: append emitted winner values to an Array.
+	var winner_values: Array = []
 
-	cm.combat_ended.connect(func(w): winner_received = w)
+	cm.combat_ended.connect(func(w): winner_values.append(w))
 
 	cm.combat_ended.emit("player_1")
 
 	await get_tree().create_timer(0.1).timeout
 
-	if winner_received == "player_1":
+	if not winner_values.is_empty() and winner_values[0] == "player_1":
 		_pass("test_combat_ended_signal")
 	else:
 		_fail("test_combat_ended_signal", "Winner not received")

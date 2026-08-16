@@ -16,7 +16,7 @@ extends BaseEnemy
 # --- Flight Configuration ---
 @export var flight_height: float = 50.0  # Height above ground
 @export var circle_radius: float = 100.0
-@export var dive_damage_multiplier: float = 1.5
+@export var divedamage_multiplier: float = 1.5
 
 # --- Combat State ---
 var _player_reference: Node2D
@@ -54,10 +54,10 @@ func _ready() -> void:
 		add_child(attack_timer)
 
 	# Set base stats for harpy
-	_max_health = 45
-	_max_speed = 160.0
-	_damage = 12
-	_xp_reward = 35
+	max_health = 45
+	max_speed = 160.0
+	damage = 12
+	xp_reward = 35
 
 	# Initialize flight altitude
 	_target_altitude = flight_height
@@ -90,7 +90,7 @@ func _physics_process(delta: float) -> void:
 ##   target: Target position to fly towards
 func fly_towards(target: Vector2) -> void:
 	var direction = (target - global_position).normalized()
-	velocity = direction * _max_speed
+	velocity = direction * max_speed
 	move_and_slide()
 
 ## Circle around target
@@ -122,13 +122,13 @@ func dive_attack() -> void:
 	dive_attack_started.emit()
 
 ## Escape when damaged (fly up and away)
-func escape_when_damaged() -> void:
+func escape_whendamaged() -> void:
 	if not _player_reference:
 		return
 
 	var escape_dir = (global_position - _player_reference.global_position).normalized()
 	_target_altitude = flight_height * 1.5  # Fly higher
-	velocity = escape_dir * _max_speed * 1.2
+	velocity = escape_dir * max_speed * 1.2
 	move_and_slide()
 
 ## Override select_attack_pattern from base enemy
@@ -138,7 +138,7 @@ func select_attack_pattern() -> void:
 
 	if _dive_recovery_timer > 0:
 		# Recovery phase - fly away
-		escape_when_damaged()
+		escape_whendamaged()
 	elif not _is_diving and _dive_cooldown <= 0:
 		var distance = global_position.distance_to(_player_reference.global_position)
 		if distance < 150.0:
@@ -161,7 +161,7 @@ func _execute_dive_attack(delta: float) -> void:
 	elif _is_diving:
 		# Dive phase - charge towards target
 		var dive_dir = (_dive_target - global_position).normalized()
-		velocity = dive_dir * _max_speed * 2.0  # Fast dive
+		velocity = dive_dir * max_speed * 2.0  # Fast dive
 
 		var new_pos = global_position + velocity * delta
 		if new_pos.distance_to(_dive_target) < 20.0:
@@ -179,9 +179,9 @@ func _on_dive_impact() -> void:
 		var distance = global_position.distance_to(_player_reference.global_position)
 		if distance < 50.0:
 			# 1.5x damage on dive
-			var dive_damage = int(_damage * dive_damage_multiplier)
-			if _player_reference.has_method("take_damage"):
-				_player_reference.take_damage(dive_damage)
+			var divedamage = int(damage * divedamage_multiplier)
+			if _player_reference.has_method("takedamage"):
+				_player_reference.takedamage(divedamage)
 
 	# Start recovery
 	_is_diving = false
@@ -190,7 +190,7 @@ func _on_dive_impact() -> void:
 
 	# Fly back up
 	_target_altitude = flight_height
-	escape_when_damaged()
+	escape_whendamaged()
 
 ## Execute normal flight behavior (circle then dive)
 ##
@@ -202,7 +202,7 @@ func _execute_flight_behavior(delta: float) -> void:
 	else:
 		# Idle hovering
 		var idle_dir = Vector2(sin(_circle_angle), cos(_circle_angle))
-		velocity = idle_dir * _max_speed * 0.2
+		velocity = idle_dir * max_speed * 0.2
 		_circle_angle += delta * 0.5
 		move_and_slide()
 
@@ -212,10 +212,10 @@ func apply_gravity() -> void:
 	var gravity = 50.0  # Much lower than normal gravity
 	velocity.y += gravity * 0.016
 
-## Override take_damage to trigger escape behavior
-func take_damage(amount: int) -> void:
-	super.take_damage(amount)
+## Override takedamage to trigger escape behavior
+func takedamage(amount: int) -> void:
+	super.takedamage(amount)
 	if not is_dead and current_health > 0:
 		# 30% chance to escape when hit
 		if randf() < 0.3:
-			escape_when_damaged()
+			escape_whendamaged()

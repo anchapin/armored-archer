@@ -145,35 +145,71 @@ func test_product_constants_valid() -> void:
 func test_currency_management() -> void:
 	var sm = _create_store_manager()
 
+	# spend_gems is server-authoritative: it requires a connected
+	# NetworkManager and awaits its send_rpc response. Inject a stub that
+	# mirrors the gem balance so the flow is deterministic without a server.
+	var stub: StubNetworkManager = StubNetworkManager.new()
+	add_child(stub)
+	sm.network_manager = stub
+
 	# Test initial state
 	sm.current_gems = 0
 	sm.current_gold = 0
+	stub.gem_balance = 0
 
 	if sm.get_gems() != 0:
 		_fail("test_currency_management_initial", "Initial gems should be 0")
 		sm.queue_free()
+		stub.queue_free()
 		return
 
 	# Test adding gems
 	sm.add_gems(100, "test")
+	stub.gem_balance = sm.current_gems
 	if sm.get_gems() != 100:
 		_fail("test_currency_management_add", "Gems should be 100 after adding 100")
 		sm.queue_free()
+		stub.queue_free()
 		return
 
 	# Test spending gems
-	sm.spend_gems(50, "test")
+	await sm.spend_gems(50, "test")
 	if sm.get_gems() != 50:
 		_fail("test_currency_management_spend", "Gems should be 50 after spending 50")
 		sm.queue_free()
+		stub.queue_free()
 		return
 
 	# Test spending more than available should not go negative
-	sm.spend_gems(200, "test")
+	await sm.spend_gems(200, "test")
 	if sm.get_gems() < 0:
 		_fail("test_currency_management_overspend", "Gems should not go negative")
 		sm.queue_free()
+		stub.queue_free()
 		return
 
 	_pass("test_currency_management")
 	sm.queue_free()
+	stub.queue_free()
+
+
+## Minimal stand-in for NetworkManager in currency tests.
+## Tracks an authoritative gem balance and answers the spend_gems RPC.
+class StubNetworkManager:
+	extends Node
+
+	const RPC_SPEND_GEMS: String = "armored_archer/spend_gems"
+
+	var is_connected: bool = true
+	var gem_balance: int = 0
+
+	func send_rpc(rpc_id: String, payload: String) -> Dictionary:
+		if rpc_id != RPC_SPEND_GEMS:
+			return {"error": "Unknown RPC: %s" % rpc_id}
+		var parsed: Variant = JSON.parse_string(payload)
+		var data: Dictionary = parsed if parsed is Dictionary else {}
+		var amount: int = int(data.get("amount", 0))
+		if gem_balance < amount:
+			return {"success": false, "error": "Insufficient gems"}
+		gem_balance -= amount
+		return {"success": true, "new_balance": gem_balance}

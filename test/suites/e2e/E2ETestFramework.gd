@@ -49,8 +49,8 @@ func run_test(test_name: String, test_func: Callable) -> void:
 		print("[FAIL] %s: %s (%dms)" % [test_name, error, duration_ms])
 
 func run_all_tests() -> void:
-	test_results.clear()
-	print("\n=== Running E2E Test Suite ===\n")
+	# Do NOT clear results here — they were populated by run_test() calls
+	print("\n=== Running E2E Test Suite Summary ===\n")
 
 	await get_tree().create_timer(0.1).timeout
 

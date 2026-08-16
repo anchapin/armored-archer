@@ -30,7 +30,7 @@ var _vfx_manager: Node
 
 # --- Initialization ---
 func _ready() -> void:
-	_camera = get_viewport_camera()
+	_camera = get_viewport().get_camera_2d()
 	_vfx_manager = get_node_or_null("/root/VFXManager")
 
 # --- Helper Methods ---
@@ -155,10 +155,10 @@ func flash_screen(color: Color, duration: float) -> void:
 	viewport.add_child(canvas_layer)
 
 	# Fade out and remove
-	var tween = create_tween()
+	var tween = _make_tween()
 	tween.tween_property(flash, "modulate:a", 0.0, duration).set_trans(Tween.TRANS_SINE)
 	tween.tween_callback(canvas_layer.queue_free)
 
 # --- Helper for creating tweens (Godot 4.x compatible) ---
-func create_tween() -> Tween:
+func _make_tween() -> Tween:
 	return get_tree().create_tween()

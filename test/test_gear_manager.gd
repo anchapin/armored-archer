@@ -115,15 +115,14 @@ func test_calculate_gear_score() -> void:
 
 func test_signal_emission() -> void:
 	var gm = _create_gear_manager()
-	var generated = false
-	var equipped = false
-	var unequipped = false
-	var inventory_updated = false
+	# Array-based tracking: lambdas capture locals by value, so signal
+	# reception is recorded via Array appends (reference semantics).
+	var signals_received: Array = []
 
-	gm.gear_generated.connect(func(_gear_data): generated = true)
-	gm.gear_equipped.connect(func(_slot, _item_id): equipped = true)
-	gm.gear_unequipped.connect(func(_slot): unequipped = true)
-	gm.inventory_updated.connect(func(_item_id): inventory_updated = true)
+	gm.gear_generated.connect(func(_gear_data): signals_received.append("gear_generated"))
+	gm.gear_equipped.connect(func(_slot, _item_id): signals_received.append("gear_equipped"))
+	gm.gear_unequipped.connect(func(_slot): signals_received.append("gear_unequipped"))
+	gm.inventory_updated.connect(func(_inventory): signals_received.append("inventory_updated"))
 
 	# Emit signals manually
 	gm.gear_generated.emit({"id": "test"})
@@ -133,7 +132,7 @@ func test_signal_emission() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if generated and equipped and unequipped and inventory_updated:
+	if signals_received.has("gear_generated") and signals_received.has("gear_equipped") and signals_received.has("gear_unequipped") and signals_received.has("inventory_updated"):
 		_pass("test_signal_emission")
 	else:
 		_fail("test_signal_emission", "Not all signals received")

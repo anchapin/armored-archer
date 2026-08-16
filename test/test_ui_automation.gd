@@ -62,6 +62,9 @@ func test_constants() -> void:
 	ui_auto.queue_free()
 
 func test_singleton_initialization() -> void:
+	# Drain any deferred queue_free() from the previous test first, otherwise
+	# its _exit_tree() nulls the static _instance after this instance sets it.
+	await get_tree().process_frame
 	var ui_auto = await _create_ui_automation()
 
 	if UIAutomationClass._instance == ui_auto:
@@ -70,6 +73,7 @@ func test_singleton_initialization() -> void:
 		_fail("test_singleton_sets_instance", "Singleton should set _instance")
 
 	ui_auto.queue_free()
+	await get_tree().process_frame
 
 	if not UIAutomationClass._instance:
 		_pass("test_singleton_clears_on_exit")
@@ -184,12 +188,17 @@ func test_static_methods_exist() -> void:
 	ui_auto.queue_free()
 
 func test_get_instance_creates_instance() -> void:
+	# Drain deferred cleanup from the previous test (see test_singleton_initialization).
+	await get_tree().process_frame
 	var ui_auto = await _create_ui_automation()
 	ui_auto.queue_free()
 
+	# Called in the same frame: _instance is still the valid instance because
+	# queue_free() defers deletion to the end of the frame.
 	var instance = UIAutomationClass.get_instance()
 	if instance != null:
 		_pass("test_get_instance_returns_instance")
-		instance.queue_free()
+		if not instance.is_queued_for_deletion():
+			instance.queue_free()
 	else:
 		_fail("test_get_instance_returns_instance", "get_instance should return instance")

@@ -74,7 +74,7 @@ func _process(delta: float) -> void:
 		_add_idle_pulse(delta)
 
 func _update_opacity_smooth(delta: float) -> void:
-	var target_opacity: float = is_active ? ACTIVE_OPACITY : BASE_OPACITY
+	var target_opacity: float = ACTIVE_OPACITY if is_active else BASE_OPACITY
 	if background:
 		var current: Color = background.modulate
 		background.modulate = Color(current.r, current.g, current.b, lerp(current.a, target_opacity, delta * OPACITY_SMOOTH_SPEED))
@@ -89,13 +89,13 @@ func _update_visual_state(active: bool) -> void:
 	# Scale thumb when active
 	if thumb:
 		var tween := create_tween()
-		var scale: float = active ? THUMB_ACTIVE_SCALE : THUMB_BASE_SCALE
+		var scale: float = THUMB_ACTIVE_SCALE if active else THUMB_BASE_SCALE
 		tween.tween_property(thumb, "scale", Vector2(scale, scale), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	
 	# Update opacity
 	if background:
 		var tween := create_tween()
-		var target_opacity: float = active ? ACTIVE_OPACITY : BASE_OPACITY
+		var target_opacity: float = ACTIVE_OPACITY if active else BASE_OPACITY
 		tween.tween_property(background, "modulate:a", target_opacity, 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _get_joystick_center() -> Vector2:

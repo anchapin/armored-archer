@@ -308,37 +308,36 @@ func log_statistics() -> void:
 
 ## Clean up invalid instances from active tracking arrays
 func cleanup_invalid_instances() -> void:
+	# Rebuild with only still-valid instances. Erasing freed objects from
+	# typed arrays is unreliable in Godot 4.6 (freed objects are rejected
+	# or auto-nulled in typed Array[Node] slots).
 	# Clean up arrows
-	var invalid_arrows: Array[Node] = []
+	var valid_arrows: Array[Node] = []
 	for arrow in _active_arrows:
-		if not is_instance_valid(arrow):
-			invalid_arrows.append(arrow)
-	for arrow in invalid_arrows:
-		_active_arrows.erase(arrow)
+		if is_instance_valid(arrow):
+			valid_arrows.append(arrow)
+	_active_arrows = valid_arrows
 
 	# Clean up enemies
-	var invalid_enemies: Array[Node] = []
+	var valid_enemies: Array[Node] = []
 	for enemy in _active_enemies:
-		if not is_instance_valid(enemy):
-			invalid_enemies.append(enemy)
-	for enemy in invalid_enemies:
-		_active_enemies.erase(enemy)
+		if is_instance_valid(enemy):
+			valid_enemies.append(enemy)
+	_active_enemies = valid_enemies
 
 	# Clean up hit effects
-	var invalid_effects: Array[Node] = []
+	var valid_effects: Array[Node] = []
 	for effect in _active_hit_effects:
-		if not is_instance_valid(effect):
-			invalid_effects.append(effect)
-	for effect in invalid_effects:
-		_active_hit_effects.erase(effect)
+		if is_instance_valid(effect):
+			valid_effects.append(effect)
+	_active_hit_effects = valid_effects
 
 	# Clean up death effects
-	var invalid_death_effects: Array[Node] = []
+	var valid_death_effects: Array[Node] = []
 	for effect in _active_death_effects:
-		if not is_instance_valid(effect):
-			invalid_death_effects.append(effect)
-	for effect in invalid_death_effects:
-		_active_death_effects.erase(effect)
+		if is_instance_valid(effect):
+			valid_death_effects.append(effect)
+	_active_death_effects = valid_death_effects
 
 ## Pre-warm pools (call during loading screen)
 func warm_pools() -> void:

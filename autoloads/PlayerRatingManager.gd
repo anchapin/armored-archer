@@ -34,6 +34,8 @@ var _network_manager: Node
 
 # --- Initialization ---
 func _ready() -> void:
+	if OS.get_environment("E2E_TEST") == "1":
+		return
 	_network_manager = get_node_or_null("/root/NetworkManager")
 	load_rating_from_storage()
 

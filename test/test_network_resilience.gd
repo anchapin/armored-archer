@@ -95,21 +95,22 @@ func test_offline_authentication_blocked() -> void:
 	var nm = _create_network_manager()
 	nm.is_offline = true
 
-	var signal_received = false
-	var error_msg = ""
+	# NOTE: lambdas capture locals by value; use an Array (captured by
+	# reference) to track received signals.
+	var session_errors: Array = []
 
 	nm.session_created.connect(func(success: bool, error: String):
-		signal_received = true
-		error_msg = error
+		if not success:
+			session_errors.append(error)
 	)
 
 	nm.authenticate_device()
 	await get_tree().create_timer(0.1).timeout
 
-	if signal_received and error_msg == "Cannot authenticate while offline":
+	if session_errors.has("Cannot authenticate while offline"):
 		_pass("test_offline_authentication_blocked")
 	else:
-		_fail("test_offline_authentication_blocked", "Error: " + error_msg)
+		_fail("test_offline_authentication_blocked", "Error: " + str(session_errors))
 
 	nm.queue_free()
 
@@ -158,11 +159,11 @@ func test_offline_state_persists() -> void:
 
 func test_offline_indicator_signal() -> void:
 	var nm = _create_network_manager()
-	var offline_signal_received = false
+	var status_changes: Array = []
 
 	nm.connection_status_changed.connect(func(is_online: bool):
 		if not is_online:
-			offline_signal_received = true
+			status_changes.append("offline")
 	)
 
 	# Simulate going offline
@@ -170,7 +171,7 @@ func test_offline_indicator_signal() -> void:
 	nm.connection_status_changed.emit(false)
 	await get_tree().create_timer(0.1).timeout
 
-	if offline_signal_received:
+	if status_changes.has("offline"):
 		_pass("test_offline_indicator_signal")
 	else:
 		_fail("test_offline_indicator_signal", "Offline signal not received")
@@ -187,13 +188,10 @@ func test_reconnection_after_network_loss() -> void:
 	nm.session_token = "valid_token"
 	nm.refresh_token = "refresh_token"
 
-	var reconnected_signal_received = false
-	var online_signal_received = false
+	var status_changes: Array = []
 
 	nm.connection_status_changed.connect(func(is_online: bool):
-		if is_online:
-			online_signal_received = true
-			reconnected_signal_received = true
+		status_changes.append(is_online)
 	)
 
 	# Simulate network loss
@@ -210,7 +208,7 @@ func test_reconnection_after_network_loss() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if online_signal_received and reconnected_signal_received:
+	if status_changes.has(true) and status_changes.has(false):
 		_pass("test_reconnection_after_network_loss")
 	else:
 		_fail("test_reconnection_after_network_loss", "Reconnection signals not received")
@@ -320,15 +318,12 @@ func test_auto_reconnect_on_app_focus() -> void:
 	var nm = _create_network_manager()
 
 	# Simulate app losing focus and gaining focus
-	var focus_gained = false
-	var reconnect_attempted = false
+	var status_changes: Array = []
 
 	# When app gains focus, we should attempt to reconnect
 	# This would be handled by listening to app focus events
 	nm.connection_status_changed.connect(func(is_online: bool):
-		if is_online:
-			focus_gained = true
-			reconnect_attempted = true
+		status_changes.append(is_online)
 	)
 
 	# Simulate app gaining focus after being offline
@@ -338,7 +333,7 @@ func test_auto_reconnect_on_app_focus() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if focus_gained and reconnect_attempted:
+	if status_changes.has(true):
 		_pass("test_auto_reconnect_on_app_focus")
 	else:
 		_fail("test_auto_reconnect_on_app_focus", "Auto reconnect on focus not triggered")
@@ -367,13 +362,11 @@ func test_timeout_handling() -> void:
 func test_connection_timeout_during_auth() -> void:
 	var nm = _create_network_manager()
 
-	var auth_error_received = false
-	var error_message = ""
+	var session_errors: Array = []
 
 	nm.session_created.connect(func(success: bool, error: String):
 		if not success:
-			auth_error_received = true
-			error_message = error
+			session_errors.append(error)
 	)
 
 	# Simulate connection timeout (response code 0)
@@ -381,10 +374,10 @@ func test_connection_timeout_during_auth() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if auth_error_received and (error_message == "No internet connection" or "connection" in error_message.to_lower()):
+	if session_errors.size() > 0 and (session_errors.has("No internet connection") or str(session_errors).to_lower().contains("connection")):
 		_pass("test_connection_timeout_during_auth")
 	else:
-		_fail("test_connection_timeout_during_auth", "Error: " + error_message)
+		_fail("test_connection_timeout_during_auth", "Error: " + str(session_errors))
 
 	nm.queue_free()
 
@@ -407,18 +400,18 @@ func test_connection_timeout_during_rpc() -> void:
 func test_http_error_handling() -> void:
 	var nm = _create_network_manager()
 
-	var error_received = false
+	var session_errors: Array = []
 
 	nm.session_created.connect(func(success: bool, error: String):
 		if not success:
-			error_received = true
+			session_errors.append(error)
 	)
 
 	# Test various HTTP error codes
 	nm._handle_authentication_error(401, '{"message": "Unauthorized"}')
 	await get_tree().create_timer(0.1).timeout
 
-	if error_received:
+	if not session_errors.is_empty():
 		_pass("test_http_error_handling_401")
 	else:
 		_fail("test_http_error_handling_401", "401 Error not handled")
@@ -464,11 +457,11 @@ func test_auth_retry_on_failure() -> void:
 	var nm = _create_network_manager()
 
 	# Test that authentication can be retried
-	var auth_attempted = false
+	var session_errors: Array = []
 
 	nm.session_created.connect(func(success: bool, error: String):
 		if not success:
-			auth_attempted = true
+			session_errors.append(error)
 			# In retry logic, we would retry here
 	)
 
@@ -476,7 +469,7 @@ func test_auth_retry_on_failure() -> void:
 	nm._handle_authentication_error(0, "")
 	await get_tree().create_timer(0.1).timeout
 
-	if auth_attempted:
+	if not session_errors.is_empty():
 		_pass("test_auth_retry_on_failure")
 	else:
 		_fail("test_auth_retry_on_failure", "Auth failure not detected")
@@ -538,14 +531,11 @@ func test_match_state_on_disconnect() -> void:
 	# When disconnected during a match, match state should be handled
 	# This is handled by MatchmakerManager, but we test NetworkManager's role
 
-	var disconnect_handled = false
-	var reconnection_needed = false
+	var offline_events: Array = []
 
 	nm.connection_status_changed.connect(func(is_online: bool):
 		if not is_online:
-			disconnect_handled = true
-			# Set flag that reconnection is needed
-			reconnection_needed = true
+			offline_events.append("disconnect")
 	)
 
 	nm.is_connected = false
@@ -553,7 +543,7 @@ func test_match_state_on_disconnect() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if disconnect_handled and reconnection_needed:
+	if not offline_events.is_empty():
 		_pass("test_match_state_on_disconnect")
 	else:
 		_fail("test_match_state_on_disconnect", "Disconnect not handled properly")
@@ -563,11 +553,11 @@ func test_match_state_on_disconnect() -> void:
 func test_matchmaking_state_on_disconnect() -> void:
 	var nm = _create_network_manager()
 
-	var matchmaking_aborted = false
+	var offline_events: Array = []
 
 	nm.connection_status_changed.connect(func(is_online: bool):
 		if not is_online:
-			matchmaking_aborted = true
+			offline_events.append("matchmaking_aborted")
 	)
 
 	nm.is_connected = false
@@ -575,7 +565,7 @@ func test_matchmaking_state_on_disconnect() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if matchmaking_aborted:
+	if offline_events.has("matchmaking_aborted"):
 		_pass("test_matchmaking_state_on_disconnect")
 	else:
 		_fail("test_matchmaking_state_on_disconnect", "Matchmaking disconnect not handled")

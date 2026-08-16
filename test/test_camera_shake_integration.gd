@@ -18,6 +18,7 @@ func _ready() -> void:
 func run_tests() -> void:
 	await test_vfxmanager_shake_methods()
 	await test_baseenemy_die_calls_vfx()
+	await test_gamemanager_damage_shake()
 
 func test_vfxmanager_shake_methods() -> void:
 	"""Test that VFXManager has screen shake methods."""
@@ -60,41 +61,40 @@ func test_baseenemy_die_calls_vfx() -> void:
 
 	base_enemy.queue_free()
 
-	# Read the source to check for VFXManager call
+	# Read the source to check for death VFX wiring. die() routes through
+	# CombatJuiceManager ("DEATH_ANIMATION") with a VFXManager.spawn_death_particles fallback.
 	var source_code = FileAccess.open("res://scenes/enemies/base_enemy.gd", FileAccess.READ)
 	if source_code:
 		var content = source_code.get_as_text()
 		source_code.close()
 
-		if "VFXManager" in content and "play_death_effect" in content:
+		if content.contains("CombatJuiceManager") and content.contains("DEATH_ANIMATION") and content.contains("VFXManager") and content.contains("spawn_death_particles"):
 			_pass("test_baseenemy_die_calls_vfx - VFXManager integration")
 		else:
-			_fail("test_baseenemy_die_calls_vfx - VFXManager integration", "VFXManager.play_death_effect call not found")
+			_fail("test_baseenemy_die_calls_vfx - VFXManager integration", "Death VFX wiring (CombatJuiceManager/VFXManager) not found")
 	else:
 		_fail("test_baseenemy_die_calls_vfx - VFXManager integration", "Could not read source file")
 
 func test_gamemanager_damage_shake() -> void:
 	"""Test that GameManager.take_player_damage triggers screen shake."""
-	var game_manager_script = load("res://autoloads/GameManager.gd")
+	# Read the source: has_method() on a GDScript resource is unreliable
+	var source_code = FileAccess.open("res://autoloads/GameManager.gd", FileAccess.READ)
+	if not source_code:
+		_fail("test_gamemanager_damage_shake - take_player_damage method exists", "Could not read source file")
+		return
+	var content = source_code.get_as_text()
+	source_code.close()
 
-	# Check that take_player_damage method exists
-	if game_manager_script.has_method("take_player_damage"):
+	if content.contains("func take_player_damage"):
 		_pass("test_gamemanager_damage_shake - take_player_damage method exists")
 	else:
 		_fail("test_gamemanager_damage_shake - take_player_damage method exists", "Method not found")
 
-	# Read the source to check for VFXManager call
-	var source_code = FileAccess.open("res://autoloads/GameManager.gd", FileAccess.READ)
-	if source_code:
-		var content = source_code.get_as_text()
-		source_code.close()
-
-		if "VFXManager" in content and "trigger_" in content:
-			_pass("test_gamemanager_damage_shake - VFXManager integration")
-		else:
-			_fail("test_gamemanager_damage_shake - VFXManager integration", "VFXManager.trigger_* call not found")
+	# Check that damage routes to a VFXManager shake trigger
+	if content.contains("VFXManager") and content.contains("trigger_"):
+		_pass("test_gamemanager_damage_shake - VFXManager integration")
 	else:
-		_fail("test_gamemanager_damage_shake - VFXManager integration", "Could not read source file")
+		_fail("test_gamemanager_damage_shake - VFXManager integration", "VFXManager.trigger_* call not found")
 
 func _pass(test_name: String) -> void:
 	_tests_passed += 1
