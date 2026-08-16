@@ -26,10 +26,11 @@ Mid-core mobile gamers who enjoy ARPG progression, theory-crafting character bui
 
 * **Touch Controls:** Twin-stick mobile input (Left thumb: move, Right thumb: drag-to-aim/release-to-fire).  
 * **PvE Campaign:** Progression-based stages ending in Boss encounters. Auto-aim mechanics are enabled to facilitate dodging and movement.  
-* **PvP Modes (Asynchronous Turn-Based):**  
-  * **Casual PvP:** Practice builds with no risk to rank or XP.  
-  * **Ranked PvP:** Ladder system with a matchmaking toggle. Players can choose to challenge similar ranks (standard risk/reward) or "Punch Up" to challenge significantly higher ranks.  
-  * *High-Stakes Wager:* Challenging a much higher rank yields massive XP/Rank rewards if won, but inflicts severe XP/Rank penalties if lost.
+* **Dynamic Difficulty:** Ratified for PvE only — reward-neutral, bounded within ±20%, and disclosed to the player. Adjusts challenge pacing only; never loot, XP, or drop rates.  
+* **PvP Modes (Hybrid Duel Model):** Asynchronous matchmaking (challenge or queue, with a 24-hour acceptance window) precedes a live, short-session Duel — turn-based combat with 5-minute turn timers and reconnect grace.  
+  * **Casual PvP:** Practice duels with reduced — but never negative — rewards; no Ladder Rating or season effect, and the Punch-Up wager is unavailable.  
+  * **Ranked PvP:** Ladder system with a matchmaking toggle. Players can challenge similar opponents (standard risk/reward) or "Punch Up" against significantly more powerful ones.  
+  * *Punch-Up:* Eligibility keys on Power Rating (minimum 20, Power Rating gap of 5–15 versus the opponent). Severity lands on Ladder Rating only — amplified upside on a win, amplified downside on a loss — never on XP or levels.
 
 ### **B. RPG Progression & Loadouts**
 
@@ -38,13 +39,21 @@ Mid-core mobile gamers who enjoy ARPG progression, theory-crafting character bui
 * **Gear System (5 Slots):** Helmets, Armor, Bows, Arrows, and Amulets.  
 * **Modifiers:** Gear drops with specific stat modifiers.  
   * *Example:* Defeating the "Wind Boss" in PvE permanently unlocks the "Piercing Arrow" modifier drop pool.
+* **Gear Rarity:** Base Gear drops across four earned-only tiers — Common, Rare, Epic, Legendary — scaling stat power and modifier quality. Rarity is never purchasable, and Cosmetic Skins carry no rarity.
 
 ### **C. The Economy & Rewards**
 
-* **Seasonal Leaderboards:** Ending a PvP season at high ranks awards massive XP bursts and exclusive (non-stat) cosmetic titles or auras.  
+* **Currencies:**  
+  * *Coins:* The earnable soft currency, paid out by matches and Season Rewards. Its primary sink ships Season 1 mid-season; Coins are never purchasable.  
+  * *Gems:* The premium currency, bought with real money via IAP, plus small skill-gated earnable faucets (Punch-Up wins, season tiers). Gems buy Cosmetic Skins and nothing with stats.  
+* **Seasonal Leaderboards:** A 4-week ranked ladder cycle on Ladder Rating.  
+  * *Season Rewards:* Tiered payouts of Coins, Gems, and exclusive (non-stat) cosmetic titles or auras by final Standing — no XP component ("massive XP bursts" superseded).  
+  * *Soft Reset:* Tiered Ladder Rating seeding into the next season based on final Standing.  
+  * *Rank Decay:* Idle Ladder Rating erodes during inactivity.  
+  * *Prestige Tiers:* Permanent cosmetic standing earned by repeated top season finishes.  
 * **Separation of Stats and Cosmetics (Transmog):**  
   * *Base Gear:* Earned strictly by playing. Contains all the stats and modifiers.  
-  * *Skins:* Bought with premium currency. Alters the visual appearance of Base Gear without changing its stats.
+  * *Skins:* Bought with Gems. Alters the visual appearance of Base Gear without changing its stats.
 
 ## **5\. Technical Stack**
 
@@ -56,7 +65,8 @@ Mid-core mobile gamers who enjoy ARPG progression, theory-crafting character bui
 ## **6\. Architecture & Security (Server-Authoritative)**
 
 * **Combat Calculation:** The Nakama backend must calculate all PvP damage. The Godot client sends the action ("Player shot arrow at 45 degrees"), and the server calculates the hit based on the attacker's server-stored Attack stats and the defender's server-stored Defense/Dodge stats.  
-* **Loot Generation:** Drops are rolled securely on the server upon PvE stage completion to prevent client-side drop-rate hacking.
+* **Loot Generation:** Drops are rolled securely on the server upon PvE stage completion to prevent client-side drop-rate hacking.  
+* **Match Settlement:** Only the server declares a Duel's winner (health-zero, forfeit, or timeout) and finalizes Ladder Rating, XP, and reward payouts. The client may trigger Match Settlement, but never asserts outcomes.
 
 ## **7\. Out of Scope for MVP**
 
