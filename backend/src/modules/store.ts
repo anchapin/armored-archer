@@ -15,11 +15,18 @@ import { logAudit } from './audit';
 import { isPII } from './privacy_compliance';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { logger } from '../config/logger';
+import {
+  getCurrency,
+  invalidateCurrencyCache as invalidateLedgerCache,
+  MAX_GEM_BALANCE,
+  PlayerCurrency,
+} from './currency';
 
-/**
- * Maximum gem balance allowed to prevent overflow exploits.
- */
-const MAX_GEM_BALANCE = 10000000; // 10 million gems
+// The player_currency storage record is the single currency ledger
+// (issue #860). The Nakama wallet is no longer written by this module; all
+// balances — earned and purchased — live in the storage record that
+// get_currency/spend_gems read. Re-exported for existing importers.
+export type { PlayerCurrency } from './currency';
 
 /**
  * Maximum single purchase amount to prevent large exploits.
@@ -345,7 +352,7 @@ export async function processRefund(
   const deduction = Math.min(refundAmount, playerCurrency.gems);
   playerCurrency.gems -= deduction;
 
-  // Update storage
+  // Update the single currency ledger (storage record)
   nk.storageWrite([
     {
       collection: 'player_currency',
@@ -354,11 +361,6 @@ export async function processRefund(
       value: JSON.stringify(playerCurrency),
     },
   ]);
-
-  // Update wallet
-  nk.walletUpdate(userId, {
-    gems: -deduction,
-  });
 
   // Invalidate cache
   invalidateCurrencyCache(userId, logger);
@@ -405,20 +407,16 @@ export async function processRefund(
 }
 
 /**
- * Player currency data structure.
- *
- * @property user_id - Unique identifier for the player
- * @property gems - Number of gems the player owns
- * @property gold - Number of gold the player owns
+ * Player currency data structure lives in modules/currency.ts (issue #860):
+ * the `player_currency` storage record is the single ledger. `gold` holds
+ * the canonical "Coins" soft currency pending the #866 field rename.
  */
-export interface PlayerCurrency {
-  user_id: string;
-  gems: number;
-  gold: number;
-}
 
 /**
  * Retrieves player currency with caching.
+ *
+ * Delegates to the authoritative currency ledger (modules/currency.ts),
+ * which also runs the one-time legacy wallet bridge (issue #860).
  *
  * @param nk - Nakama server interface
  * @param userId - ID of the player to retrieve currency for
@@ -430,58 +428,19 @@ function getPlayerCurrencyWithCache(
   userId: string,
   logger: Runtime.Logger
 ): PlayerCurrency {
-  const cacheManager = getCacheManager(logger);
-  const cachedCurrency = cacheManager.get<PlayerCurrency>('player_currency', userId);
-
-  if (cachedCurrency !== undefined) {
-    return cachedCurrency;
-  }
-
-  const objects = nk.storageRead([
-    {
-      collection: 'player_currency',
-      key: userId,
-      userId: userId,
-    },
-  ]);
-
-  let currency: PlayerCurrency;
-  if (objects.length === 0 || !objects[0].value) {
-    currency = {
-      user_id: userId,
-      gems: 0,
-      gold: 0,
-    };
-  } else {
-    const parseResult = safeParse<PlayerCurrency>(
-      objects[0].value,
-      null,
-      logger,
-      'player_currency'
-    );
-    currency =
-      parseResult.success && parseResult.data
-        ? parseResult.data
-        : {
-            user_id: userId,
-            gems: 0,
-            gold: 0,
-          };
-  }
-
-  cacheManager.set('player_currency', userId, currency);
-  return currency;
+  return getCurrency(nk, userId, logger);
 }
 
 /**
  * Invalidates player currency cache.
  *
+ * Delegates to the authoritative currency ledger (modules/currency.ts).
+ *
  * @param userId - ID of the player to invalidate cache for
  * @param logger - Nakama logger instance
  */
 function invalidateCurrencyCache(userId: string, logger: Runtime.Logger): void {
-  const cacheManager = getCacheManager(logger);
-  cacheManager.delete('player_currency', userId);
+  invalidateLedgerCache(userId, logger);
 }
 
 /**
@@ -1073,6 +1032,7 @@ async function awardGems(
 
   playerCurrency.gems += gemBundle.gem_amount;
 
+  // Single-ledger write (issue #860): the storage record is authoritative.
   nk.storageWrite([
     {
       collection: 'player_currency',
@@ -1082,10 +1042,6 @@ async function awardGems(
       version: currencyVersion,
     },
   ]);
-
-  nk.walletUpdate(ctx.userId, {
-    gems: gemBundle.gem_amount,
-  });
 
   invalidateCurrencyCache(ctx.userId, logger);
 
@@ -1434,7 +1390,7 @@ export function rpcPurchaseCosmetic(
     });
   }
 
-  // Deduct gems
+  // Deduct gems (single-ledger write, issue #860)
   playerCurrency.gems -= cosmeticItem.price;
   nk.storageWrite([
     {
@@ -1444,7 +1400,6 @@ export function rpcPurchaseCosmetic(
       value: JSON.stringify(playerCurrency),
     },
   ]);
-  nk.walletUpdate(ctx.userId, { gems: -cosmeticItem.price });
   invalidateCurrencyCache(ctx.userId, logger);
 
   // Record ownership
@@ -2050,7 +2005,7 @@ export function rpcPurchaseBundle(
     });
   }
 
-  // Deduct gems
+  // Deduct gems (single-ledger write, issue #860)
   playerCurrency.gems -= bundle.price;
   nk.storageWrite([
     {
@@ -2060,7 +2015,6 @@ export function rpcPurchaseBundle(
       value: JSON.stringify(playerCurrency),
     },
   ]);
-  nk.walletUpdate(ctx.userId, { gems: -bundle.price });
   invalidateCurrencyCache(ctx.userId, logger);
 
   // Grant all bundle items
@@ -2604,7 +2558,6 @@ export async function rpcProcessPendingPurchases(
       },
     ]);
 
-    nk.walletUpdate(ctx.userId, { gems: gemBundle.gem_amount });
     invalidateCurrencyCache(ctx.userId, logger);
 
     results.push({ product_id: purchase.product_id, success: true });
@@ -3106,7 +3059,6 @@ export async function rpcRestorePurchases(
                 },
               ]);
 
-              nk.walletUpdate(ctx.userId, { gems: bundle.gem_amount });
               invalidateCurrencyCache(ctx.userId, logger);
 
               logAudit(
@@ -3172,7 +3124,6 @@ export async function rpcRestorePurchases(
               },
             ]);
 
-            nk.walletUpdate(ctx.userId, { gems: bundle.gem_amount });
             invalidateCurrencyCache(ctx.userId, logger);
 
             logAudit(
@@ -3344,10 +3295,10 @@ async function handleInitialPurchase(
     };
   }
 
-  // Award gems
+  // Award gems (single-ledger write, issue #860)
   playerCurrency.gems += gemAmount;
 
-  // Update storage
+  // Update the currency ledger
   nk.storageWrite([
     {
       collection: 'player_currency',
@@ -3356,11 +3307,6 @@ async function handleInitialPurchase(
       value: JSON.stringify(playerCurrency),
     },
   ]);
-
-  // Update wallet
-  nk.walletUpdate(userId, {
-    gems: gemAmount,
-  });
 
   // Invalidate cache
   invalidateCurrencyCache(userId, logger);

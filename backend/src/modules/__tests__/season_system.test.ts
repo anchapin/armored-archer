@@ -1083,7 +1083,20 @@ describe('season_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(mockNk.walletUpdate).toHaveBeenCalledTimes(2);
+      // Issue #860: season rewards land in the unified player_currency
+      // storage ledger (not the wallet) so they are visible + spendable.
+      const currencyWrites = mockNk.storageWrite.mock.calls.filter(
+        (call: any[]) => call[0][0].collection === 'player_currency'
+      );
+      expect(currencyWrites).toHaveLength(2);
+      const awardedPlayers = currencyWrites.map((call: any[]) => call[0][0].userId);
+      expect(awardedPlayers).toContain('player-1');
+      expect(awardedPlayers).toContain('player-2');
+      for (const call of currencyWrites) {
+        const record = JSON.parse(call[0][0].value);
+        expect(record.gems).toBeGreaterThanOrEqual(0);
+        expect(record.gold).toBeGreaterThanOrEqual(0);
+      }
     });
 
     it('should seed players into new season with soft-reset elo', () => {
@@ -1161,7 +1174,6 @@ describe('season_system', () => {
 
     it('should handle empty leaderboard', () => {
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
-      mockNk.walletUpdate = jest.fn();
       mockNk.storageWrite = jest.fn();
       mockNk.leaderboardRecordWrite = jest.fn();
 
@@ -1170,7 +1182,11 @@ describe('season_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(mockNk.walletUpdate).not.toHaveBeenCalled();
+      // No players → no currency ledger writes
+      const currencyWrites = mockNk.storageWrite.mock.calls.filter(
+        (call: any[]) => call[0][0].collection === 'player_currency'
+      );
+      expect(currencyWrites).toHaveLength(0);
     });
 
     it('should handle prestige tier upgrades for qualifying players', () => {
@@ -1207,12 +1223,11 @@ describe('season_system', () => {
   });
 
   describe('rpcClaimSeasonRewards advanced', () => {
-    it('should claim rewards and update wallet', () => {
+    it('should claim rewards and credit the unified currency ledger', () => {
       const record = createMockLeaderboardRecord({ rank: 5 });
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
       mockNk.storageRead = jest.fn().mockReturnValue([]);
       mockNk.storageWrite = jest.fn();
-      mockNk.walletUpdate = jest.fn();
 
       const payload = JSON.stringify({});
       const result = rpcClaimSeasonRewards(mockCtx, mockLogger, mockNk, payload);
@@ -1220,7 +1235,17 @@ describe('season_system', () => {
 
       expect(parsed.success).toBe(true);
       expect(parsed.claimed).toBe(true);
-      expect(mockNk.walletUpdate).toHaveBeenCalled();
+      // Issue #860: claimed rewards land in the player_currency storage
+      // ledger — never in the (write-only) Nakama wallet.
+      const currencyWrites = mockNk.storageWrite.mock.calls.filter(
+        (call: any[]) => call[0][0].collection === 'player_currency'
+      );
+      expect(currencyWrites).toHaveLength(1);
+      const ledgerRecord = JSON.parse(currencyWrites[0][0][0].value);
+      expect(ledgerRecord.user_id).toBe('test-user');
+      expect(ledgerRecord.gems).toBeGreaterThan(0);
+      expect(ledgerRecord.gold).toBeGreaterThan(0);
+      expect(mockNk.walletUpdate).not.toHaveBeenCalled();
     });
 
     it('should handle validation error', () => {

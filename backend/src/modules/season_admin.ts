@@ -34,6 +34,7 @@
 
 import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
+import { applyCurrencyDelta, type CurrencyDelta } from './currency';
 import {
   getDecayConfig,
   calculateDecayAmount,
@@ -366,12 +367,11 @@ export function validateRewardDistribution(
         result.issues_found++;
         if (autoFix) {
           const rewards = calculateRewards(record.rank, seasonNumber);
-          const rewardChanges: { [key: string]: number } = {};
-          if (rewards.coins) rewardChanges['coins'] = rewards.coins;
-          if (rewards.gems) rewardChanges['gems'] = rewards.gems;
-          if (Object.keys(rewardChanges).length > 0) {
-            nk.walletUpdate(record.ownerId, rewardChanges);
-          }
+          // Repair path writes to the unified currency ledger (issue #860)
+          const rewardDelta: CurrencyDelta = {};
+          if (rewards.coins) rewardDelta.gold = rewards.coins;
+          if (rewards.gems) rewardDelta.gems = rewards.gems;
+          applyCurrencyDelta(nk, record.ownerId, rewardDelta, 'season_admin_reward_fix');
           if (rewards.cosmetics) {
             addPlayerCosmetic(nk, record.ownerId, rewards.cosmetics.title, rewards.cosmetics.aura);
           }
@@ -434,12 +434,11 @@ export function triggerEndSeason(
   // Distribute rewards and update prestige (same flow as rpcEndSeason)
   for (const record of allRecords) {
     const rewards = calculateRewards(record.rank, currentSeason.season_number);
-    const rewardChanges: { [key: string]: number } = {};
-    if (rewards.coins) rewardChanges['coins'] = rewards.coins;
-    if (rewards.gems) rewardChanges['gems'] = rewards.gems;
-    if (Object.keys(rewardChanges).length > 0) {
-      nk.walletUpdate(record.ownerId, rewardChanges);
-    }
+    // Currency rewards go through the unified currency ledger (issue #860)
+    const rewardDelta: CurrencyDelta = {};
+    if (rewards.coins) rewardDelta.gold = rewards.coins;
+    if (rewards.gems) rewardDelta.gems = rewards.gems;
+    applyCurrencyDelta(nk, record.ownerId, rewardDelta, 'season_admin_end_season', logger);
     if (rewards.cosmetics) {
       addPlayerCosmetic(nk, record.ownerId, rewards.cosmetics.title, rewards.cosmetics.aura);
     }
@@ -612,12 +611,11 @@ export function triggerFixMissingRewards(
         fixed.push(record.ownerId);
         if (!dryRun) {
           const rewards = calculateRewards(record.rank, seasonNumber);
-          const rewardChanges: { [key: string]: number } = {};
-          if (rewards.coins) rewardChanges['coins'] = rewards.coins;
-          if (rewards.gems) rewardChanges['gems'] = rewards.gems;
-          if (Object.keys(rewardChanges).length > 0) {
-            nk.walletUpdate(record.ownerId, rewardChanges);
-          }
+          // Missing-reward repair credits the unified ledger (issue #860)
+          const rewardDelta: CurrencyDelta = {};
+          if (rewards.coins) rewardDelta.gold = rewards.coins;
+          if (rewards.gems) rewardDelta.gems = rewards.gems;
+          applyCurrencyDelta(nk, record.ownerId, rewardDelta, 'season_admin_fix_missing_rewards');
           if (rewards.cosmetics) {
             addPlayerCosmetic(nk, record.ownerId, rewards.cosmetics.title, rewards.cosmetics.aura);
           }

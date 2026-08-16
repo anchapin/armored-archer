@@ -10,6 +10,7 @@ import { invalidatePlayerStatsCache } from '../utils/db_optimizer';
 import { getPlayerStatsWithCache } from '../utils/player-data-helpers';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
+import { applyCurrencyDelta, getCurrency } from './currency';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { getLevelForXp } from './xp_manager';
@@ -656,8 +657,13 @@ export function rpcRespecStats(
   // Determine if free respec can be used
   const useFreeRespec = canUseFreeRespec(respecData, request.use_free_respec || false);
 
+  // Respec costs are validated against and paid from the unified currency
+  // ledger (issue #860). The old path debited a dead wallet key (`gem`)
+  // that no reader ever saw, making paid respecs effectively free.
+  const playerCurrency = getCurrency(nk, ctx.userId, logger);
+
   // Calculate and validate cost
-  const costResult = calculateAndValidateCost(playerStats, useFreeRespec);
+  const costResult = calculateAndValidateCost(playerCurrency.gems, useFreeRespec);
   if (costResult.error) {
     logAudit(
       nk,
@@ -675,11 +681,9 @@ export function rpcRespecStats(
     });
   }
 
-  // Deduct gems if not using free respec
+  // Deduct gems from the unified currency ledger if not using free respec
   if (!useFreeRespec) {
-    nk.walletUpdate(ctx.userId, {
-      gem: -costResult.costPaid,
-    });
+    applyCurrencyDelta(nk, ctx.userId, { gems: -costResult.costPaid }, 'respec_stats', logger);
   }
 
   // Apply new allocation
@@ -983,19 +987,17 @@ function canUseFreeRespec(respecData: RespecData, useFreeRespec: boolean): boole
 }
 
 /**
- * Calculates the respec cost and validates player has enough gems.
+ * Calculates the respec cost and validates the player has enough gems in
+ * the unified currency ledger (issue #860).
  */
 function calculateAndValidateCost(
-  playerStats: PlayerStats,
+  gemBalance: number,
   useFreeRespec: boolean
 ): { costPaid: number; error?: string } {
   if (useFreeRespec) {
     return { costPaid: 0 };
   }
 
-  // Use gem balance from player stats (already loaded)
-  const statsWithGems = playerStats.stats as Record<string, number>;
-  const gemBalance = statsWithGems.gems || 0;
   let costPaid = Math.floor(gemBalance * RESPEC_COST_PERCENT);
   costPaid = Math.max(RESPEC_MIN_COST, Math.min(RESPEC_MAX_COST, costPaid));
 

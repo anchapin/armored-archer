@@ -13,6 +13,7 @@ import {
   RequestSignature,
 } from './anti_cheat';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import { applyCurrencyDelta, type CurrencyDelta } from './currency';
 import { recordSeasonCompletion } from './season_leaderboard';
 import { logRankChange, logRewardClaim, recordSeasonEndSnapshot } from './season_telemetry';
 import { incrementSeasonRankChanges, recordSeasonRankChangeDelta } from './metrics';
@@ -1089,20 +1090,20 @@ export function rpcClaimSeasonRewards(
     },
   ]);
 
-  // Give rewards (coins, cosmetics)
-  const rewardChanges: { [key: string]: number } = {};
+  // Give rewards (coins, gems) via the unified currency ledger (issue #860)
+  // so season earnings are visible in get_currency and spendable via
+  // spend_gems. Reward `coins` map to the ledger `gold` field (#866 rename).
+  const rewardDelta: CurrencyDelta = {};
 
   if (rewards.coins) {
-    rewardChanges['coins'] = rewards.coins;
+    rewardDelta.gold = rewards.coins;
   }
 
   if (rewards.gems) {
-    rewardChanges['gems'] = rewards.gems;
+    rewardDelta.gems = rewards.gems;
   }
 
-  if (Object.keys(rewardChanges).length > 0) {
-    nk.walletUpdate(ctx.userId, rewardChanges);
-  }
+  applyCurrencyDelta(nk, ctx.userId, rewardDelta, 'season_rewards_claim', logger);
 
   // Store cosmetic rewards (titles, auras)
   if (rewards.cosmetics) {
@@ -1188,13 +1189,11 @@ export function rpcEndSeason(
     const playerRank = record.rank;
     const rewards = calculateRewards(playerRank, currentSeason.season_number);
 
-    // Auto-grant currency rewards
-    const rewardChanges: { [key: string]: number } = {};
-    if (rewards.coins) rewardChanges['coins'] = rewards.coins;
-    if (rewards.gems) rewardChanges['gems'] = rewards.gems;
-    if (Object.keys(rewardChanges).length > 0) {
-      nk.walletUpdate(record.ownerId, rewardChanges);
-    }
+    // Auto-grant currency rewards via the unified currency ledger (#860)
+    const rewardDelta: CurrencyDelta = {};
+    if (rewards.coins) rewardDelta.gold = rewards.coins;
+    if (rewards.gems) rewardDelta.gems = rewards.gems;
+    applyCurrencyDelta(nk, record.ownerId, rewardDelta, 'season_end_distribution', logger);
 
     // Auto-grant cosmetic rewards (titles, auras)
     if (rewards.cosmetics) {

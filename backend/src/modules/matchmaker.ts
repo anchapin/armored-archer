@@ -14,6 +14,7 @@ import {
   getPlayerMatchHistory,
 } from './anti_cheat';
 import { logAudit } from './audit';
+import { applyCurrencyDelta, type CurrencyDelta } from './currency';
 import {
   logRankingDelta,
   logPunchUpLoss,
@@ -2136,9 +2137,9 @@ function processMatchResult(
   const winnerRewards = calculateMatchRewards(winnerXPParams, winnerXPGained);
   const loserRewards = calculateMatchRewards(loserXPParams, loserXPGained);
 
-  // Award rewards to players (coins, gems)
-  awardMatchRewards(nk, request.winner_id, winnerRewards);
-  awardMatchRewards(nk, request.loser_id, loserRewards);
+  // Award rewards to players (coins, gems) via the unified currency ledger
+  awardMatchRewards(nk, logger, request.winner_id, winnerRewards);
+  awardMatchRewards(nk, logger, request.loser_id, loserRewards);
 
   // Update player XP
   updatePlayerXP(nk, request.winner_id, winnerXPGained);
@@ -2446,24 +2447,36 @@ function calculateMatchRewards(params: RewardCalculationParams, xpGained: number
 /**
  * Awards match rewards to a player.
  *
+ * Writes to the authoritative `player_currency` storage ledger (issue #860)
+ * so earned coins and punch-up gems are immediately visible via
+ * get_currency and spendable via spend_gems. Reward type 'coin' maps to the
+ * ledger's `gold` field (the canonical "Coins" currency; field rename to
+ * `coins` tracked in #866).
+ *
  * @param nk - Nakama server interface
+ * @param logger - Nakama logger instance
  * @param userId - ID of the player to award rewards to
  * @param rewards - Array of rewards to award
  */
-function awardMatchRewards(nk: Runtime.Nakama, userId: string, rewards: MatchReward[]): void {
-  const walletChanges: { [key: string]: number } = {};
+function awardMatchRewards(
+  nk: Runtime.Nakama,
+  logger: Runtime.Logger,
+  userId: string,
+  rewards: MatchReward[]
+): void {
+  const delta: CurrencyDelta = {};
 
   for (const reward of rewards) {
     if (reward.type === 'coin') {
-      walletChanges['coins'] = (walletChanges['coins'] || 0) + reward.quantity;
+      delta.gold = (delta.gold || 0) + reward.quantity;
     } else if (reward.type === 'gem') {
-      walletChanges['gems'] = (walletChanges['gems'] || 0) + reward.quantity;
+      delta.gems = (delta.gems || 0) + reward.quantity;
     }
     // XP is handled separately
   }
 
-  if (Object.keys(walletChanges).length > 0) {
-    nk.walletUpdate(userId, walletChanges);
+  if (delta.gems !== undefined || delta.gold !== undefined) {
+    applyCurrencyDelta(nk, userId, delta, 'match_rewards', logger);
   }
 }
 

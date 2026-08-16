@@ -1,4 +1,9 @@
-import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
+import {
+  createMockLogger,
+  createMockContext,
+  createMockNakama,
+  testStorage,
+} from '../../__mocks__/nakama';
 import {
   rpcGainXP,
   rpcAllocateStats,
@@ -24,6 +29,7 @@ describe('rpg_system', () => {
   let mockNk: Runtime.Nakama;
 
   beforeEach(() => {
+    testStorage.clear();
     mockLogger = createMockLogger();
     mockCtx = createMockContext();
     mockNk = createMockNakama();
@@ -650,6 +656,80 @@ describe('rpg_system', () => {
       expect(parsed.used_free_respec).toBe(true);
       expect(parsed.cost_paid).toBe(0);
       expect(parsed.player_stats.stats.attack).toBe(20);
+    });
+
+    it('should pay respec cost from the unified currency ledger (issue #860)', () => {
+      const respecData = {
+        last_respec_time: 0,
+        free_respecs_used: 1, // free respec already used → paid path
+        current_season_id: 'season1',
+      };
+      const currency = { user_id: 'test-user', gems: 10000, gold: 0 };
+
+      mockNk.storageRead = jest.fn().mockImplementation((keys: any[]) => {
+        const collection = keys[0].collection;
+        if (collection === 'player_stats') {
+          return [{ collection, key: 'test-user-123', value: JSON.stringify(existingStats) }];
+        }
+        if (collection === 'respec_data') {
+          return [{ collection, key: 'test-user-123', value: JSON.stringify(respecData) }];
+        }
+        if (collection === 'player_currency') {
+          return [{ collection, key: 'test-user', value: JSON.stringify(currency) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        new_allocation: { attack: 20, defense: 12, dodge: 10, crit_rate: 0 },
+        use_free_respec: false,
+      });
+      const result = rpcRespecStats(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.cost_paid).toBe(500); // 5% of 10000, clamped [100, 1000]
+
+      // The cost is debited from the player_currency ledger — not the
+      // write-only wallet key the old path used.
+      const ledgerRaw = testStorage.get('player_currency:test-user');
+      expect(ledgerRaw).toBeDefined();
+      expect(JSON.parse(ledgerRaw!).gems).toBe(9500);
+      expect(mockNk.walletUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should reject paid respec when the ledger balance is insufficient', () => {
+      const respecData = {
+        last_respec_time: 0,
+        free_respecs_used: 1,
+        current_season_id: 'season1',
+      };
+      const currency = { user_id: 'test-user', gems: 50, gold: 0 };
+
+      mockNk.storageRead = jest.fn().mockImplementation((keys: any[]) => {
+        const collection = keys[0].collection;
+        if (collection === 'player_stats') {
+          return [{ collection, key: 'test-user-123', value: JSON.stringify(existingStats) }];
+        }
+        if (collection === 'respec_data') {
+          return [{ collection, key: 'test-user-123', value: JSON.stringify(respecData) }];
+        }
+        if (collection === 'player_currency') {
+          return [{ collection, key: 'test-user', value: JSON.stringify(currency) }];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        new_allocation: { attack: 20, defense: 12, dodge: 10, crit_rate: 0 },
+        use_free_respec: false,
+      });
+      const result = rpcRespecStats(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      // Minimum cost is 100 gems; balance of 50 cannot pay it
+      expect(parsed.error).toContain('Not enough gems');
+      expect(parsed.cost).toBe(100);
     });
   });
 
