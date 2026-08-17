@@ -39,6 +39,152 @@ try {
   // Read the transpiled bundle
   let bundleContent = fs.readFileSync(TEMP_PATH, 'utf8');
 
+  // Rewrite any surviving ES2018+ regex lookbehind assertions to
+  // Nakama-safe equivalents. babel-preset-env does not transform
+  // lookbehind literals (verified: even `targets: { ie: '11' }` leaves
+  // them intact) and Nakama's Duktape/QuickJS runtime throws at parse
+  // time when it encounters `(?<=` or `(?<!`. See issue #958.
+  //
+  // Each entry is the lookbehind regex source as it appears in the
+  // bundle text (regex literal and/or string form), and a
+  // lookbehind-free replacement that preserves the original semantics
+  // for our server code paths. The replacements stay inside the ES5.1
+  // regex grammar that Nakama can parse.
+  //
+  // Adding a new transitive dependency: if `grep '(?<' bundle` finds
+  // a new lookbehind literal, append its source here.
+  const lookbehindReplacements = [
+    // Sentry SQL sanitization — Sentry's postgresjs integration.
+    // Bundle occurrences:
+    //   • /(dollar)-?\b\d+\b/g              (regex literal, module 228)
+    //   • "(?<!\\$)-?\\b\\d+\\b"            (string in new RegExp(...))
+    // The lookbehind rejects an integer preceded by `$` so the postgres
+    // `$1` placeholder is preserved in the sanitized span name. The
+    // postgresjs instrumentation is dead code on this server (we use
+    // `pg`, never `postgres.js`), so a slight semantic loosening — the
+    // replacement also collapses any standalone `$N` to `?` — is
+    // acceptable. Source: @sentry/core/build/cjs/integrations/postgresjs.js.
+    {
+      name: 'Sentry SQL sanitization (@sentry/core .../postgresjs.js)',
+      needle: String.raw`/(?<!\$)-?\b\d+\b/g`,
+      replacement: String.raw`/-?\b\d+\b/g`,
+    },
+    {
+      name: 'Sentry SQL sanitization string form (new RegExp(...))',
+      needle: String.raw`(?<!\\$)-?\\b\\d+\\b`,
+      replacement: String.raw`-?\\b\\d+\\b`,
+    },
+  ];
+
+  let lookbehindRewritesApplied = 0;
+  for (const rw of lookbehindReplacements) {
+    const occurrences = bundleContent.split(rw.needle).length - 1;
+    if (occurrences > 0) {
+      bundleContent = bundleContent.split(rw.needle).join(rw.replacement);
+      lookbehindRewritesApplied += occurrences;
+      console.log(
+        `   • rewrote ${occurrences}× ${rw.name} (lookbehind stripped)`
+      );
+    }
+  }
+
+  // Fail loud if any *regex literal* (`/…(?<!…/[flags]`) lookbehind
+  // remains — Nakama's parser cannot tokenize it. Lookbehind inside
+  // string literals (`"…(?<!…"` / `'…(?<!…'`) and inside
+  // `new RegExp(string, flags)` calls is safe: those are only parsed
+  // when the string is evaluated, where the surrounding code (Sentry,
+  // yaml, …) already wraps the call in a try/catch with a
+  // non-lookbehind fallback. See issue #958.
+  //
+  // Approximation: scan the bundle text and flag any `(?<!` / `(?<=`
+  // that is NOT sandwiched between a pair of matching quotes. We do
+  // this by walking each character and tracking whether we are inside
+  // a single-quoted or double-quoted string. This is O(n) but the
+  // bundle is ~12 MB so we still finish in well under a second.
+  let remainingRegexLiteralLookbehinds = 0;
+  let firstSample = null;
+  {
+    let inSingle = false;
+    let inDouble = false;
+    let inLineComment = false;
+    let inBlockComment = false;
+    for (let i = 0; i < bundleContent.length - 4; i++) {
+      const two = bundleContent.slice(i, i + 2);
+      if (inLineComment) {
+        if (bundleContent[i] === '\n') inLineComment = false;
+        continue;
+      }
+      if (inBlockComment) {
+        if (two === '*/') {
+          inBlockComment = false;
+          i++;
+        }
+        continue;
+      }
+      if (inSingle) {
+        if (bundleContent[i] === '\\') {
+          i++;
+          continue;
+        }
+        if (bundleContent[i] === "'") inSingle = false;
+        continue;
+      }
+      if (inDouble) {
+        if (bundleContent[i] === '\\') {
+          i++;
+          continue;
+        }
+        if (bundleContent[i] === '"') inDouble = false;
+        continue;
+      }
+      // Outside any string/comment.
+      if (two === '//') {
+        inLineComment = true;
+        i++;
+        continue;
+      }
+      if (two === '/*') {
+        inBlockComment = true;
+        i++;
+        continue;
+      }
+      if (bundleContent[i] === "'") {
+        inSingle = true;
+        continue;
+      }
+      if (bundleContent[i] === '"') {
+        inDouble = true;
+        continue;
+      }
+      if (two === '(?' && i + 2 < bundleContent.length) {
+        const next = bundleContent[i + 2];
+        if (next === '<' && i + 3 < bundleContent.length) {
+          const afterLt = bundleContent[i + 3];
+          if (afterLt === '=' || afterLt === '!') {
+            remainingRegexLiteralLookbehinds++;
+            if (!firstSample) {
+              firstSample = bundleContent.slice(Math.max(0, i - 10), i + 30);
+            }
+          }
+        }
+      }
+    }
+  }
+  if (remainingRegexLiteralLookbehinds > 0) {
+    console.error(
+      `\n❌ ${remainingRegexLiteralLookbehinds} unreplaced ES2018 lookbehind assertion(s) remain in non-string positions in the bundle after rewrite pass.\n` +
+        `   Sample location: ${JSON.stringify(firstSample)}\n` +
+        `   Add a new entry to lookbehindReplacements in scripts/transpile-bundle.js.\n`
+    );
+    process.exit(1);
+  }
+
+  if (lookbehindRewritesApplied > 0) {
+    console.log(
+      `🔧 Lookbehind rewrite pass: ${lookbehindRewritesApplied} regex-literal replacement(s) applied; remaining lookbehinds all inside string literals (safe).`
+    );
+  }
+
   // Add Nakama-compatible wrapper at the beginning
   // This defines exports and __webpack_require__ for Nakama's eval context
   const wrapper = `// Nakama JavaScript runtime compatibility
