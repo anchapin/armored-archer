@@ -54,10 +54,7 @@ interface PunchUpLossRecord {
  * Why (or why not) the watch flagged a punch-up loss.
  */
 export type PunchUpWatchReason =
-  | 'none'
-  | 'pair_farming'
-  | 'loss_frequency'
-  | 'pair_farming+loss_frequency';
+  'none' | 'pair_farming' | 'loss_frequency' | 'pair_farming+loss_frequency';
 
 /**
  * Verdict for a recorded punch-up loss.
