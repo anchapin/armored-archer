@@ -271,11 +271,10 @@ func test_boss_scene_map_covers_ch1_bosses() -> void:
 
 func test_stage_stats_override_enemy_defaults() -> void:
 	# Verify _apply_stage_stats mutates an enemy Node's properties.
-	# Construct manually (matching test_base_enemy.gd pattern — the headless
-	# test framework does not reliably attach scripts on .tscn instantiate).
+	# Use BaseEnemy.new() (class_name-registered) — `set_script()` on a
+	# raw CharacterBody2D is a no-op for class_name scripts in Godot 4.6.
 	var spawner = _create_spawner()
-	var enemy = CharacterBody2D.new()
-	enemy.set_script(load("res://scenes/enemies/base_enemy.gd"))
+	var enemy: BaseEnemy = BaseEnemy.new()
 	var sprite = Sprite2D.new()
 	sprite.name = "Sprite2D"
 	enemy.add_child(sprite)
@@ -300,6 +299,7 @@ func test_stage_stats_override_enemy_defaults() -> void:
 		_fail("test_stage_stats_override_enemy_defaults",
 			"Stage stats did not override enemy defaults (hp=%s, dmg=%s, spd=%s)" %
 			[str(hp_value), str(dmg_value), str(spd_value)])
+	spawner.last_stage_enemy_stats = {}
 	enemy.queue_free()
 	spawner.queue_free()
 
