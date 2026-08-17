@@ -111,7 +111,12 @@ export interface PvPMatch {
  * turn engine's max-turns/draw outcomes.
  */
 export type MatchEndReason =
-  'health_zero' | 'forfeit' | 'timeout' | 'disconnect' | 'max_turns' | 'draw';
+  | 'health_zero'
+  | 'forfeit'
+  | 'timeout'
+  | 'disconnect'
+  | 'max_turns'
+  | 'draw';
 
 /**
  * Server-declared terminal state of a match, derived exclusively from
