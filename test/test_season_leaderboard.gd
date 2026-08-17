@@ -215,9 +215,12 @@ func test_decay_info_inactive_player():
 	season_manager.player_score = 1500
 
 	# Mock storage to return inactive timestamp
+	# NOTE: set_script() expects a Script resource, not a Node instance.
+	# Earlier revisions called `.new()` on the preload — that produces a
+	# Node and Godot 4.6 rejects it at script-assign time. See #894.
 	var mock_storage = Node.new()
 	mock_storage.name = "MockStorage"
-	mock_storage.set_script(preload("res://test/mocks/mock_storage.gd").new())
+	mock_storage.set_script(preload("res://test/mocks/mock_storage.gd"))
 	season_manager.network_manager.add_child(mock_storage)
 	season_manager.network_manager._storage_sync = mock_storage
 
