@@ -1,5 +1,8 @@
 extends Node
 
+# Preloaded so we can use shared network constants (issue #908).
+const NetworkConsts := preload("res://autoloads/const.gd")
+
 # --- Environment Types ---
 enum EnvironmentType {
 	DEVELOPMENT,
@@ -56,6 +59,9 @@ signal session_refreshed(success: bool, error_message: String)
 signal connection_status_changed(is_online: bool)
 signal reconnection_attempted(success: bool, attempt_number: int)
 signal connection_lost(reason: String)
+# Issue #908: emitted when auth is blocked because the bounded timeout/health-gate fired.
+# `guidance` is a short user-facing string ("run: make services-start") the UI renders.
+signal auth_blocked(reason: String, guidance: String)
 
 # --- Constants ---
 const SESSION_FILE: String = "user://session_data.json"
@@ -64,6 +70,15 @@ const SESSION_FILE: String = "user://session_data.json"
 const MAX_RETRY_ATTEMPTS: int = 3
 const RETRY_DELAY_SECONDS: float = 2.0
 const RECONNECT_ON_FOCUS: bool = true
+
+# --- Issue #908: bounded auth timeout + health-gate state ---
+# overall bound for the auth sequence (incl. retries) — kept under 15s acceptance limit
+var _auth_started_at_ms: int = -1
+var _auth_outer_timer: Timer = null
+var _auth_pending_attempts: int = 0
+var _auth_blocked_emitted: bool = false
+# tracks whether `_try_auto_connect` already issued a health-gate probe
+var _last_health_check_passed: bool = false
 
 # --- Reconnection State ---
 var _reconnect_timer: Timer = null
@@ -170,6 +185,14 @@ func _validate_required_config() -> void:
 	elif server_key.is_empty():
 		missing_vars.append("NAKAMA_SERVER_KEY")
 
+	# Issue #908: silently fall back to the documented local-dev default
+	# ("defaultkey", which must match backend/data/nakama.yml:14 → runtime.http_key).
+	# Setting ARMORED_ARCHER_ALLOW_EMPTY_SERVER_KEY=1 re-enables strict behaviour
+	# so tests can still exercise the empty-key failure path.
+	if server_key.is_empty() and OS.get_environment("ARMORED_ARCHER_ALLOW_EMPTY_SERVER_KEY") != "1":
+		server_key = NetworkConsts.DEFAULT_SERVER_KEY
+		print("NetworkManager: empty server_key auto-corrected to '%s' (matches backend runtime.http_key). Set NAKAMA_SERVER_KEY to override." % server_key)
+
 	if not missing_vars.is_empty():
 		var warning_msg: String = "Environment: %s | Missing required config: %s" % [
 			EnvironmentType.keys()[current_environment],
@@ -233,6 +256,10 @@ func _generate_device_id() -> void:
 var is_authenticating: bool = false
 
 # --- Authentication ---
+# Issue #908: auth is now gated by a /v2/health probe AND bounded by MAX_AUTH_DURATION_SEC,
+# with up to 3 attempts at delays 1s/2s/4s before we raise auth_blocked (the UI shows the
+# error panel). Both layers are required: the health gate stops us from sending a doomed
+# authenticate/device request into a black hole, and the outer timer caps total wait time.
 func authenticate_device() -> void:
 	if is_offline:
 		session_created.emit(false, "Cannot authenticate while offline")
@@ -240,6 +267,16 @@ func authenticate_device() -> void:
 
 	# Prevent duplicate authentication requests
 	if is_authenticating:
+		return
+
+	# Bounded outer timer: if (gate + retries) exceeds MAX_AUTH_DURATION_SEC we
+	# emit auth_blocked and stop trying so the UI gets an actionable error.
+	_start_auth_outer_timer()
+
+	# Issue #908 — health-gate: probe /v2/health before authenticating. If the probe
+	# fails we short-circuit to auth_blocked with an operator-actionable message.
+	if not _last_health_check_passed:
+		_run_health_gate_then_auth()
 		return
 
 	_is_refreshing = false  # This is NOT a refresh request
@@ -281,6 +318,162 @@ func authenticate_device() -> void:
 		session_created.emit(false, "Failed to send authentication request (Error: %d)" % error)
 		is_offline = true
 		connection_status_changed.emit(false)
+
+# ==================== ISSUE #908: HEALTH-GATE + BOUNDED RETRY ====================
+
+## Runs a synchronous-feeling /v2/health probe. Resolves true if Nakama answered
+## 200 within HEALTH_CHECK_TIMEOUT_SEC, false otherwise. Never throws.
+func _probe_health() -> bool:
+	if http_request == null:
+		return false
+	var url: String = "%s%s" % [base_url, NetworkConsts.HEALTH_GATE_PATH]
+	var timer: Timer = Timer.new()
+	timer.wait_time = NetworkConsts.HEALTH_CHECK_TIMEOUT_SEC
+	timer.one_shot = true
+	add_child(timer)
+	var result: Array = []
+	var done: bool = false
+	var _t1 = timer.timeout.connect(func():
+		if not done:
+			done = true
+			if http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+				http_request.cancel_request()
+	, CONNECT_ONE_SHOT)
+	var _t2 = http_request.request_completed.connect(func(_r: int, code: int, _h: PackedStringArray, _b: PackedByteArray):
+		if not done:
+			done = true
+			result = [code]
+	, CONNECT_ONE_SHOT)
+	var err: Error = http_request.request(url, PackedStringArray(), HTTPClient.METHOD_GET, "")
+	if err != OK:
+		timer.queue_free()
+		return false
+	timer.start()
+	while not done:
+		await get_tree().process_frame
+	timer.queue_free()
+	if result.is_empty():
+		return false
+	var code: int = result[0]
+	return code >= 200 and code < 300
+
+## Health-gate wrapper: probes first; on failure emits auth_blocked and stops.
+## On success, clears the gate flag and re-issues authenticate_device().
+func _run_health_gate_then_auth() -> void:
+	var probe_ok: bool = await _probe_health()
+	if not probe_ok:
+		is_authenticating = false
+		_last_health_check_passed = false
+		_emit_auth_blocked(
+			"Cannot reach Nakama at %s" % base_url,
+			"Backend not reachable. Run: make services-start"
+		)
+		return
+	_last_health_check_passed = true
+	# Re-enter authenticate_device with the gate cleared; this will fall through to
+	# the actual request.
+	_issue_auth_request_with_retry()
+
+## Issues the real /v2/account/authenticate/device call inside the bounded retry
+## envelope defined by NetworkConsts.AUTH_RETRY_DELAYS. Stops on success, on auth_blocked,
+## or when the outer auth timer fires.
+func _issue_auth_request_with_retry() -> void:
+	# Reset outer timer for the actual request phase.
+	_start_auth_outer_timer()
+	_attempt_auth_with_retry_loop(0)
+
+func _attempt_auth_with_retry_loop(attempt_index: int) -> void:
+	if _auth_blocked_emitted:
+		return
+	if attempt_index >= NetworkConsts.AUTH_RETRY_DELAYS.size() + 1:
+		# Exhausted retries — emit auth_blocked.
+		_emit_auth_blocked(
+			"Authentication timed out after %d attempts." % (attempt_index),
+			"Backend is slow or unreachable. Run: make services-start, then press Retry."
+		)
+		return
+	_auth_pending_attempts = attempt_index + 1
+	# Wait for the per-attempt delay (skip on the very first attempt).
+	if attempt_index > 0:
+		var delay: float = NetworkConsts.AUTH_RETRY_DELAYS[attempt_index - 1]
+		await get_tree().create_timer(delay).timeout
+	if _auth_blocked_emitted:
+		return
+	_actually_send_device_auth(attempt_index)
+
+func _actually_send_device_auth(attempt_index: int) -> void:
+	_is_refreshing = false
+	is_authenticating = true
+	var url: String = "%s%s" % [base_url, NetworkConsts.DEVICE_AUTH_PATH]
+	var auth_string: String = Marshalls.utf8_to_base64("%s:" % server_key)
+	var headers: PackedStringArray = [
+		"Content-Type: application/json",
+		"Accept: application/json",
+		"Authorization: Basic %s" % auth_string
+	]
+	var body: Dictionary = {"id": device_id, "create": true}
+	var json_string: String = JSON.stringify(body)
+	_current_request_id += 1
+	if http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+		http_request.cancel_request()
+	await get_tree().process_frame
+	_request_counter += 1
+	var error: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_string)
+	if error != OK:
+		is_authenticating = false
+		# Treat as a retryable transport error.
+		_attempt_auth_with_retry_loop(attempt_index + 1)
+		await get_tree().process_frame  # ensure call above runs
+		return
+	# Wait for response or for outer timeout. _on_http_request_completed will
+	# either mark us connected or send us through the retry path on auth errors.
+	var waited_ms: int = 0
+	var poll_ms: int = 50
+	while is_authenticating and not _auth_blocked_emitted:
+		await get_tree().create_timer(poll_ms / 1000.0).timeout
+		waited_ms += poll_ms
+		if not _last_health_check_passed:
+			return  # health gate cleared by probe failure during retry
+	# If still authenticating after the loop (i.e., outer timer fired), retry once more.
+	if not _auth_blocked_emitted and not is_connected:
+		_attempt_auth_with_retry_loop(attempt_index + 1)
+
+## Starts (or restarts) the bounded outer auth timer. On timeout, raises auth_blocked.
+func _start_auth_outer_timer() -> void:
+	if _auth_outer_timer and is_instance_valid(_auth_outer_timer):
+		_auth_outer_timer.queue_free()
+	_auth_started_at_ms = Time.get_ticks_msec()
+	_auth_blocked_emitted = false
+	_auth_outer_timer = Timer.new()
+	_auth_outer_timer.wait_time = NetworkConsts.MAX_AUTH_DURATION_SEC
+	_auth_outer_timer.one_shot = true
+	var _t = _auth_outer_timer.timeout.connect(_on_auth_outer_timeout)
+	add_child(_auth_outer_timer)
+	_auth_outer_timer.start()
+
+func _on_auth_outer_timeout() -> void:
+	if _auth_blocked_emitted:
+		return
+	is_authenticating = false
+	is_offline = true
+	connection_status_changed.emit(false)
+	_emit_auth_blocked(
+		"Authentication did not complete within %.0fs" % NetworkConsts.MAX_AUTH_DURATION_SEC,
+		"Backend did not respond in time. Run: make services-start, then press Retry."
+	)
+
+func _emit_auth_blocked(reason: String, guidance: String) -> void:
+	if _auth_blocked_emitted:
+		return
+	_auth_blocked_emitted = true
+	_last_health_check_passed = false
+	push_warning("NetworkManager: auth blocked — %s" % reason)
+	auth_blocked.emit(reason, guidance)
+
+## Public: returns true if the most recent /v2/health probe succeeded.
+func health_check() -> bool:
+	_last_health_check_passed = await _probe_health()
+	return _last_health_check_passed
 
 func _try_auto_connect() -> void:
 	if not session_token.is_empty():
@@ -348,6 +541,7 @@ func _on_http_request_completed(_result: int, response_code: int, headers: Packe
 
 				is_offline = false
 				connection_status_changed.emit(true)
+				_auth_blocked_emitted = true  # success — cancel outer timer pathway
 			else:
 				session_created.emit(false, "Server response missing token")
 		else:
@@ -399,6 +593,13 @@ func _handle_authentication_error(response_code: int, response_text: String) -> 
 
 		# Log authentication error for analytics
 		_log_network_error("authentication_failed", "/v2/account/authenticate/device", response_code)
+		# Issue #908: surface an actionable error to the UI immediately. The outer
+		# timer will not fire a second auth_blocked because _auth_blocked_emitted
+		# is now true.
+		_emit_auth_blocked(
+			"%s (HTTP %d)" % [error_message, response_code],
+			"Authentication rejected. Run: make services-start, then press Retry."
+		)
 
 func _log_network_error(error_type: String, endpoint: String, status_code: int) -> void:
 	# Use AnalyticsManager if available
@@ -738,5 +939,9 @@ func _exit_tree() -> void:
 	if _reconnect_timer != null:
 		_reconnect_timer.queue_free()
 		_reconnect_timer = null
+	# Clean up bounded auth outer timer (issue #908)
+	if _auth_outer_timer != null and is_instance_valid(_auth_outer_timer):
+		_auth_outer_timer.queue_free()
+		_auth_outer_timer = null
 	if OS.get_environment("E2E_TEST") != "1":
 		print("[NetworkManager] Cleanup complete - all resources released")

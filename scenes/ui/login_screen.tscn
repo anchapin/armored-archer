@@ -77,3 +77,49 @@ offset_right = 64.0
 offset_bottom = 64.0
 grow_horizontal = 2
 grow_vertical = 2
+
+; --- Issue #908: Actionable error panel shown when health-gate / bounded auth
+;     timeout fires. Hidden by default; populated by login_screen.gd when
+;     NetworkManager.auth_blocked is emitted.
+
+[node name="ErrorPanel" type="PanelContainer" parent="." unique_id=200000001]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = -140.0
+offset_right = 260.0
+offset_bottom = 140.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ErrorVBox" type="VBoxContainer" parent="ErrorPanel" unique_id=200000002]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ErrorTitleLabel" type="Label" parent="ErrorPanel/ErrorVBox" unique_id=200000003]
+layout_mode = 2
+text = "Cannot reach server"
+horizontal_alignment = 1
+
+[node name="ErrorMessageLabel" type="Label" parent="ErrorPanel/ErrorVBox" unique_id=200000004]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="GuidanceLabel" type="Label" parent="ErrorPanel/ErrorVBox" unique_id=200000005]
+layout_mode = 2
+text = "Run: make services-start"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ErrorRetryButton" type="Button" parent="ErrorPanel/ErrorVBox" unique_id=200000006]
+custom_minimum_size = Vector2(160, 48)
+layout_mode = 2
+text = "Retry"
+script = ExtResource("4_25ghd")
