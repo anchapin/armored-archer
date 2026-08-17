@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-restart-destructive services-cold-start services-assert-cold-start services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new check-game-schema backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-restart-destructive services-cold-start services-assert-cold-start services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report
 
 # Default target
 all: help
@@ -57,8 +57,9 @@ help:
 	@echo "  make rollback          Show rollback automation help"
 	@echo ""
 	@echo "$(GREEN)Database Commands$(RESET)"
-	@echo "  make backend-migrate    Run database migrations"
+	@echo "  make backend-migrate    Run database migrations (reads backend/.env; human-supervised — see docs/db/MIGRATIONS.md)"
 	@echo "  make backend-migrate-new Create new migration file"
+	@echo "  make check-game-schema   Verify game tables exist (read-only, never migrates; issue #891)"
 	@echo "  make backend-db-schema   Display current database schema"
 	@echo ""
 	@echo "$(GREEN)Local Services (Dev)$(RESET)"
@@ -175,9 +176,30 @@ clean:
 	@echo "$(GREEN)✓ Clean complete$(RESET)"
 
 ## Database Commands
+# Issue #891 / #896: the DSN is assembled at runtime from backend/.env
+# (POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB). No secrets in the target.
+# See docs/db/MIGRATIONS.md — schema mutations still require human supervision.
 backend-migrate:
 	@echo "$(BLUE)Running database migrations...$(RESET)"
-	@docker exec -it armored_archer_server /nakama/nakama migrate up --database.address postgres://postgres:localdbpassword@postgres:5432/nakama || echo "$(YELLOW)Make sure backend is running: make backend-start$(RESET)"
+	@if [ ! -f $(BACKEND_DIR)/.env ]; then \
+		echo "$(YELLOW)backend/.env missing — copy backend/.env.example to backend/.env first.$(RESET)"; \
+		exit 1; \
+	fi
+	@set -a; . $(BACKEND_DIR)/.env; set +a; \
+	DSN="postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD}@postgres:5432/$${POSTGRES_DB:-nakama}"; \
+	echo "$(BLUE)DSN: postgres://$${POSTGRES_USER:-postgres}:***@postgres:5432/$${POSTGRES_DB:-nakama}$(RESET)"; \
+	docker exec -e POSTGRES_USER=$${POSTGRES_USER:-postgres} \
+	            -e POSTGRES_PASSWORD=$${POSTGRES_PASSWORD} \
+	            -e POSTGRES_DB=$${POSTGRES_DB:-nakama} \
+	            armored_archer_server \
+	            /nakama/nakama migrate up --database.address "$$DSN" \
+	  || { echo "$(YELLOW)Make sure backend is running: make backend-start$(RESET)"; exit 1; }
+
+# Issue #891: pure-read schema verification. NEVER applies migrations.
+# See backend/scripts/check-game-schema.sh.
+check-game-schema:
+	@echo "$(BLUE)Verifying game schema (read-only, no migration will be applied)...$(RESET)"
+	@bash $(BACKEND_DIR)/scripts/check-game-schema.sh
 
 backend-migrate-new:
 	@echo "$(BLUE)Creating new migration file...$(RESET)"

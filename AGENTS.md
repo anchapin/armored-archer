@@ -106,12 +106,14 @@ Local DB default: `postgres://postgres:localdbpassword@localhost:5432/nakama`.
 ### Database (PostgreSQL)
 
 ```bash
-make backend-migrate                 # nakama migrate up (stack must be running)
+make services-health                 # confirm stack is healthy before touching schema
+make check-game-schema               # pure-read verification that game tables exist (issue #891)
+make backend-migrate                 # nakama migrate up (reads backend/.env; HUMAN-SUPERVISED — see docs/db/MIGRATIONS.md)
 make backend-migrate-new             # scaffold a new migration
 cd backend && npm run test:schema    # schema tests
 ```
 
-Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type` (helm/armor/bow/arrow/amulet), `gear_rarity` (common/rare/epic/legendary). Reference: `backend/DATABASE_SCHEMA.md`; migrations live in `backend/data/*.sql`. Schema changes always require human review.
+Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type` (helm/armor/bow/arrow/amulet), `gear_rarity` (common/rare/epic/legendary). Reference: `backend/DATABASE_SCHEMA.md`; migrations live in `backend/data/*.sql`. **Schema changes always require human review** — see [`docs/db/MIGRATIONS.md`](docs/db/MIGRATIONS.md) for the local-stack runbook (pre-flight, two-engineer review, verification queries, forward-only warning).
 
 ## GDScript Code Style
 
