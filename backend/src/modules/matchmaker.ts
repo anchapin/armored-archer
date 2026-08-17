@@ -27,8 +27,6 @@ import {
   checkMatchCooldown,
   recordMatchAction,
   checkConcurrentMatchLimit,
-  checkDuplicateTurn,
-  cleanupTurnTracking,
   detectWinTrading,
 } from './rate_limit';
 import {
@@ -511,13 +509,15 @@ export function rpcCreateMatch(
       updated_at: Date.now(),
       expires_at: Date.now() + 300000, // 5 minutes
       last_turn_timestamp: Date.now(),
-      // Async duel lifecycle fields (default values for pending match)
+      // Live-duel default fields for pending match. combat_system.ts
+      // re-initializes turn_timeout_ms, max_health, and consecutive_timeouts
+      // when the duel starts (issue #903 — legacy correspondence constants removed).
       current_turn: 1,
       current_player: ctx.userId,
-      turn_time_limit_ms: TURN_TIMEOUT_MS,
-      creator_health: BASE_HEALTH,
-      opponent_health: BASE_HEALTH,
-      max_turns: DEFAULT_MAX_TURNS,
+      turn_time_limit_ms: 5 * 60 * 1000, // 5 minutes — matches combat_system.ts
+      creator_health: 100,
+      opponent_health: 100,
+      max_turns: 10,
       creator_consecutive_timeouts: 0,
       opponent_consecutive_timeouts: 0,
     };
@@ -570,13 +570,15 @@ export function rpcCreateMatch(
       updated_at: now,
       expires_at: now + PENDING_MATCH_EXPIRY_MS,
       last_turn_timestamp: now,
-      // Async duel lifecycle fields (default values for pending match)
+      // Live-duel default fields for pending match. combat_system.ts
+      // re-initializes turn_timeout_ms, max_health, and consecutive_timeouts
+      // when the duel starts (issue #903 — legacy correspondence constants removed).
       current_turn: 1,
       current_player: ctx.userId,
-      turn_time_limit_ms: TURN_TIMEOUT_MS,
-      creator_health: BASE_HEALTH,
-      opponent_health: BASE_HEALTH,
-      max_turns: DEFAULT_MAX_TURNS,
+      turn_time_limit_ms: 5 * 60 * 1000, // 5 minutes — matches combat_system.ts
+      creator_health: 100,
+      opponent_health: 100,
+      max_turns: 10,
       creator_consecutive_timeouts: 0,
       opponent_consecutive_timeouts: 0,
     };
@@ -756,22 +758,24 @@ export function rpcAcceptMatch(
   }
   const playerStats = playerStatsResult.data;
   const now = Date.now();
-  // Active matches expire after 7 days of inactivity
-  const ACTIVE_MATCH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+  // Active matches rely on the live duel engine (combat_system.ts) for
+  // turn timeout / forfeit — no correspondence-era 7-day expiry here
+  // (issue #903 — legacy correspondence constants removed).
   match.opponent_id = ctx.userId;
   match.opponent_rank = calculateRank(playerStats);
   match.status = 'active';
   match.updated_at = now;
-  match.expires_at = now + ACTIVE_MATCH_EXPIRY_MS;
   match.last_turn_timestamp = now;
 
-  // Initialize turn-based combat fields
+  // Initialize turn-based combat fields. combat_system.ts will override
+  // turn_time_limit_ms / creator_health / opponent_health / max_turns when
+  // the live duel starts (issue #903 — legacy correspondence constants removed).
   match.current_turn = 1;
   match.current_player = match.creator_id; // Creator always goes first
-  match.turn_time_limit_ms = TURN_TIMEOUT_MS;
-  match.creator_health = BASE_HEALTH;
-  match.opponent_health = BASE_HEALTH;
-  match.max_turns = DEFAULT_MAX_TURNS;
+  match.turn_time_limit_ms = 5 * 60 * 1000; // 5 minutes — matches combat_system.ts
+  match.creator_health = 100;
+  match.opponent_health = 100;
+  match.max_turns = 10;
   match.creator_consecutive_timeouts = 0;
   match.opponent_consecutive_timeouts = 0;
 
@@ -2093,9 +2097,9 @@ function processMatchResult(
     match.match_id
   );
 
-  // Anti-abuse: Cleanup turn tracking
-  cleanupTurnTracking(request.winner_id, match.match_id);
-  cleanupTurnTracking(request.loser_id, match.match_id);
+  // Issue #903: cleanupTurnTracking was removed with the legacy
+  // correspondence turn-submission path. No-op here — the live duel
+  // engine in combat_system.ts owns its own turn bookkeeping.
 
   // Log audit event
   logAudit(
@@ -2990,22 +2994,12 @@ export function rpcAdminQueryMatches(
 }
 
 // =============================================================================
-// ASYNC DUEL LIFECYCLE - Turn-Based PvP System
+// Punch-up configuration constants (issue #903: legacy correspondence
+// constants TURN_TIMEOUT_MS / MAX_CONSECUTIVE_TIMEOUTS / DEFAULT_MAX_TURNS /
+// BASE_HEALTH / ACTIVE_MATCH_EXPIRY_MS were removed; the shipped live duel
+// engine in combat_system.ts owns its own turn timer.)
 // =============================================================================
 
-/**
- * Configuration constants for async duel timeouts and limits.
- */
-const TURN_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours per turn
-const MAX_CONSECUTIVE_TIMEOUTS = 2; // Auto-forfeit after 2 consecutive timeouts
-const DEFAULT_MAX_TURNS = 10; // Maximum number of turns before forced end
-const BASE_HEALTH = 100; // Base health for both players
-
-/**
- * Punch-up configuration constants.
- * Punch-up allows lower-ranked players to challenge higher-ranked opponents
- * with enhanced rewards for winning and reduced rewards for the favorite.
- */
 const PUNCH_UP_RANK_DIFF_THRESHOLD = 5; // Minimum rank difference to qualify as punch-up
 const PUNCH_UP_MAX_RANK_DIFF = 15; // Maximum allowed rank difference for punch-up
 const PUNCH_UP_MIN_RANK = 20; // Minimum rank to be eligible for punch-up (prevents low-level abuse)
@@ -3023,728 +3017,10 @@ const PUNCH_UP_LOSS_XP_MULTIPLIER = 0.5; // Issue #864: reduced XP grant on punc
 const PUNCH_UP_LOSS_XP_MINIMUM = 1; // XP on any loss is strictly positive (progression is never wagered)
 
 /**
- * Turn result data structure.
- */
-interface TurnResult {
-  creator_hit: boolean;
-  opponent_hit: boolean;
-  creator_damage: number;
-  opponent_damage: number;
-}
-
-/**
- * Request payload for submitting a turn.
- */
-export interface SubmitTurnRequest {
-  match_id: string;
-  action_type: 'shoot'; // Future: expand with more action types
-  angle: number;
-  power?: number;
-}
-
-/**
- * Request payload for forfeiting a match.
- */
-export interface ForfeitMatchRequest {
-  match_id: string;
-}
-
-/**
- * Registers the submit turn RPC endpoint.
- *
- * @param initializer - Nakama runtime initializer
- */
-export function registerRpcSubmitTurn(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/submit_turn', rpcSubmitTurn);
-}
-
-/**
- * Submits a player's turn action for the current round.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - JSON string containing turn data
- * @returns JSON string with updated match state
- *
- * @example
- * // Request payload
- * { "match_id": "match_123", "action_type": "shoot", "angle": 1.57, "power": 0.9 }
- *
- * // Response (waiting for opponent)
- * {
- *   "success": true,
- *   "match": { ... },
- *   "turn_submitted": true
- * }
- *
- * // Response (both turns submitted, results calculated)
- * {
- *   "success": true,
- *   "match": { ... },
- *   "turn_result": { ... },
- *   "turn_completed": true
- * }
- */
-
-/**
- * Stores turn data for a player.
- */
-function storePlayerTurnData(match: PvPMatch, isCreator: boolean, turnData: TurnData): void {
-  if (isCreator) {
-    match.creator_turn_data = turnData;
-  } else {
-    match.opponent_turn_data = turnData;
-  }
-}
-
-/**
- * Resets consecutive timeout counters for the submitting player.
- */
-function resetConsecutiveTimeouts(match: PvPMatch, isCreator: boolean): void {
-  if (isCreator && match.creator_consecutive_timeouts > 0) {
-    match.creator_consecutive_timeouts = 0;
-  } else if (!isCreator && match.opponent_consecutive_timeouts > 0) {
-    match.opponent_consecutive_timeouts = 0;
-  }
-}
-
-/**
- * Saves match state to storage.
- */
-function saveMatchState(nk: Runtime.Nakama, match: PvPMatch): void {
-  nk.storageWrite([
-    {
-      collection: 'pvp_matches',
-      key: match.match_id,
-      userId: match.creator_id,
-      value: JSON.stringify(match),
-    },
-  ]);
-}
-
-/**
- * Processes turn when both players have submitted.
- */
-function processCompleteTurn(
-  match: PvPMatch,
-  isCreator: boolean,
-  now: number,
-  logger: Runtime.Logger
-): { turnResult: ReturnType<typeof calculateTurnResults>; shouldContinue: boolean } {
-  const turnResult = calculateTurnResults(
-    match.creator_turn_data!,
-    match.opponent_turn_data!,
-    match,
-    logger
-  );
-
-  // Apply damage
-  match.creator_health = Math.max(0, match.creator_health - turnResult.opponent_damage);
-  match.opponent_health = Math.max(0, match.opponent_health - turnResult.creator_damage);
-
-  // Clear turn data for next round
-  match.creator_turn_data = undefined;
-  match.opponent_turn_data = undefined;
-
-  // Check for match end conditions
-  const matchEndResult = checkMatchEndConditions(match, logger);
-
-  if (matchEndResult.shouldEnd) {
-    return { turnResult, shouldContinue: false };
-  }
-
-  // Advance to next turn
-  match.current_turn += 1;
-  match.current_player = isCreator ? match.opponent_id : match.creator_id;
-  match.updated_at = now;
-
-  return { turnResult, shouldContinue: true };
-}
-
-/**
- * Handles turn submission for asynchronous PvP matches.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - JSON string containing turn data
- * @returns JSON string with updated match state
- *
- * @example
- * // Request payload
- * { "match_id": "match_123", "action_type": "shoot", "angle": 1.57, "power": 0.9 }
- *
- * // Response (waiting for opponent)
- * {
- *   "success": true,
- *   "match": { ... },
- *   "turn_submitted": true
- * }
- *
- * // Response (both turns submitted, results calculated)
- * {
- *   "success": true,
- *   "match": { ... },
- *   "turn_result": { ... },
- *   "turn_completed": true
- * }
- */
-// eslint-disable-next-line complexity
-export function rpcSubmitTurn(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('Submit turn called for user: %s', ctx.userId);
-
-  const validation = validatePayload(ZodSchemas.submit_turn, payload, 'submit_turn');
-  if (!validation.success) {
-    logAudit(
-      nk,
-      ctx.userId,
-      ctx.ipAddress ?? null,
-      'submit_turn',
-      'pvp_matches',
-      { match_id: 'unknown' },
-      'failure',
-      validation.error
-    );
-    return createValidationErrorResponse('submit_turn', validation.error);
-  }
-
-  const request = validation.data;
-
-  // Anti-abuse: Check rate limiting
-  const rateLimitCheck = checkRateLimit(ctx.userId, 'submit_turn');
-  if (!rateLimitCheck.allowed) {
-    logger.warn(
-      'Submit turn rate limited for user: %s, reason: %s',
-      ctx.userId,
-      rateLimitCheck.reason
-    );
-    return JSON.stringify({
-      error: 'Rate limit exceeded. Please try again later.',
-      retry_after_ms: rateLimitCheck.retryAfter,
-    });
-  }
-
-  // Fetch the match
-  const matchResult = getMatchForTurnSubmission(nk, ctx, request.match_id, logger);
-  if (matchResult.error || !matchResult.match) {
-    return JSON.stringify({ error: matchResult.error || 'Match not found' });
-  }
-  const match = matchResult.match;
-
-  // Check if match is active
-  if (match.status !== 'active') {
-    return JSON.stringify({
-      error: 'Match is not active',
-      match_status: match.status,
-    });
-  }
-
-  // Check if it's the player's turn
-  if (match.current_player !== ctx.userId) {
-    return JSON.stringify({
-      error: 'It is not your turn',
-      current_player: match.current_player,
-    });
-  }
-
-  // Anti-abuse: Check for duplicate turn submission
-  const duplicateCheck = checkDuplicateTurn(ctx.userId, request.match_id, match.current_turn);
-  if (duplicateCheck.isDuplicate) {
-    logger.warn(
-      'Duplicate turn submission detected for user: %s in match: %s, turn: %d',
-      ctx.userId,
-      request.match_id,
-      match.current_turn
-    );
-    return JSON.stringify({
-      error: 'You have already submitted a turn for this round.',
-      turn_number: match.current_turn,
-    });
-  }
-
-  const now = Date.now();
-
-  // Check for timeout
-  const timeoutCheck = checkTurnTimeout(match, now);
-  if (timeoutCheck.shouldForfeit) {
-    // Auto-forfeit due to consecutive timeouts
-    return handleTimeoutForfeit(nk, ctx, logger, match, ctx.userId);
-  }
-
-  // Determine which player is submitting
-  const isCreator = ctx.userId === match.creator_id;
-
-  // Reset consecutive timeout counters
-  resetConsecutiveTimeouts(match, isCreator);
-
-  // Store the turn data
-  const turnData: TurnData = {
-    action_type: request.action_type,
-    angle: request.angle,
-    power: request.power ?? 1.0,
-  };
-  storePlayerTurnData(match, isCreator, turnData);
-
-  // Update timestamp
-  match.last_turn_timestamp = now;
-
-  // Check if both players have submitted turns
-  if (match.creator_turn_data && match.opponent_turn_data) {
-    const { turnResult, shouldContinue } = processCompleteTurn(match, isCreator, now, logger);
-
-    if (!shouldContinue) {
-      const matchEndResult = checkMatchEndConditions(match, logger);
-      return completeMatchFromTurn(nk, ctx, logger, match, matchEndResult);
-    }
-
-    saveMatchState(nk, match);
-
-    logAudit(
-      nk,
-      ctx.userId,
-      ctx.ipAddress ?? null,
-      'submit_turn',
-      'pvp_matches',
-      { match_id: match.match_id, turn: match.current_turn - 1 },
-      'success'
-    );
-
-    // Return with turn results
-    return JSON.stringify({
-      success: true,
-      match: match,
-      turn_result: turnResult,
-      turn_completed: true,
-    });
-  }
-
-  // Only one turn submitted, waiting for opponent
-  match.updated_at = now;
-  saveMatchState(nk, match);
-
-  logAudit(
-    nk,
-    ctx.userId,
-    ctx.ipAddress ?? null,
-    'submit_turn',
-    'pvp_matches',
-    { match_id: match.match_id, turn: match.current_turn },
-    'success'
-  );
-
-  return JSON.stringify({
-    success: true,
-    match: match,
-    turn_submitted: true,
-  });
-}
-
-/**
- * Registers the get async match state RPC endpoint.
- *
- * @param initializer - Nakama runtime initializer
- */
-export function registerRpcGetAsyncMatchState(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/get_async_match_state', rpcGetAsyncMatchState);
-}
-
-/**
- * Retrieves the current state of an async match.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - JSON string containing match_id
- * @returns JSON string with match state
- */
-export function rpcGetAsyncMatchState(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('Get async match state called for user: %s', ctx.userId);
-
-  const validation = validatePayload(ZodSchemas.get_match_state, payload, 'get_async_match_state');
-  if (!validation.success) {
-    return createValidationErrorResponse('get_async_match_state', validation.error);
-  }
-
-  const request = validation.data;
-
-  // Fetch the match
-  const matchResult = getAndValidateMatch(nk, ctx, request, logger);
-  if (matchResult.error || !matchResult.match) {
-    return JSON.stringify({ error: matchResult.error || 'Match not found' });
-  }
-  const match = matchResult.match;
-
-  // Check for timeout on state retrieval
-  const now = Date.now();
-  const timeoutCheck = checkTurnTimeout(match, now);
-
-  // Calculate time remaining for current turn
-  const timeRemainingMs = Math.max(0, match.turn_time_limit_ms - (now - match.last_turn_timestamp));
-
-  // Determine player-specific information
-  const isCreator = ctx.userId === match.creator_id;
-  const myHealth = isCreator ? match.creator_health : match.opponent_health;
-  const opponentHealth = isCreator ? match.opponent_health : match.creator_health;
-  const isMyTurn = match.current_player === ctx.userId;
-
-  // Handle timeout detection
-  if (timeoutCheck.hasTimedOut) {
-    if (timeoutCheck.shouldForfeit) {
-      // Auto-forfeit due to consecutive timeouts
-      const forfeitResult = handleTimeoutForfeit(nk, ctx, logger, match, match.current_player);
-      // Return forfeit result
-      return forfeitResult;
-    } else {
-      // Generate default turn for timed-out player
-      handleFirstTimeout(nk, logger, match, match.current_player);
-    }
-  }
-
-  return JSON.stringify({
-    success: true,
-    match: match,
-    is_my_turn: isMyTurn,
-    my_health: myHealth,
-    opponent_health: opponentHealth,
-    time_remaining_ms: timeRemainingMs,
-    time_until_timeout: timeRemainingMs,
-  });
-}
-
-/**
- * Registers the forfeit match RPC endpoint.
- *
- * @param initializer - Nakama runtime initializer
- */
-export function registerRpcForfeitMatch(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/forfeit_match', rpcForfeitMatch);
-}
-
-/**
- * Player voluntarily forfeits the match.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - JSON string containing match_id
- * @returns JSON string with match completion data
- */
-export function rpcForfeitMatch(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('Forfeit match called for user: %s', ctx.userId);
-
-  const validation = validatePayload(ZodSchemas.forfeit_match, payload, 'forfeit_match');
-  if (!validation.success) {
-    logAudit(
-      nk,
-      ctx.userId,
-      ctx.ipAddress ?? null,
-      'forfeit_match',
-      'pvp_matches',
-      { match_id: 'unknown' },
-      'failure',
-      validation.error
-    );
-    return createValidationErrorResponse('forfeit_match', validation.error);
-  }
-
-  const request = validation.data;
-
-  // Fetch and validate the match
-  const matchResult = getAndValidateMatch(nk, ctx, request, logger);
-  if (matchResult.error || !matchResult.match) {
-    return JSON.stringify({ error: matchResult.error || 'Match not found' });
-  }
-  const match = matchResult.match;
-
-  // Check if match is active
-  if (match.status !== 'active') {
-    return JSON.stringify({
-      error: 'Match is not active',
-      match_status: match.status,
-    });
-  }
-
-  // Determine opponent (server-declared winner: the non-forfeiting player)
-  const opponentId = ctx.userId === match.creator_id ? match.opponent_id : match.creator_id;
-
-  // Settle with the opponent as winner — derived server-side from the
-  // forfeiting caller's identity, never from client-asserted payloads.
-  const settlement: ServerSettlementRequest = {
-    match_id: match.match_id,
-    winner_id: opponentId,
-    loser_id: ctx.userId,
-    end_reason: 'forfeit',
-  };
-
-  // Use existing complete match logic
-  const result = processMatchResult(ctx, logger, nk, settlement, match, match.is_punch_up);
-
-  // Add forfeit information
-  const resultObj = JSON.parse(result);
-  if (resultObj.success) {
-    resultObj.forfeited_by = ctx.userId;
-    resultObj.forfeit_reason = 'voluntary';
-  }
-
-  logAudit(
-    nk,
-    ctx.userId,
-    ctx.ipAddress ?? null,
-    'forfeit_match',
-    'pvp_matches',
-    {
-      match_id: match.match_id,
-      forfeited_by: ctx.userId,
-      winner: opponentId,
-    },
-    'success'
-  );
-
-  return JSON.stringify(resultObj);
-}
-
-// =============================================================================
-// HELPER FUNCTIONS FOR ASYNC DUEL LIFECYCLE
-// =============================================================================
-
-/**
- * Fetches and validates a match for turn submission.
- */
-function getMatchForTurnSubmission(
-  nk: Runtime.Nakama,
-  ctx: Runtime.Context,
-  matchId: string,
-  logger: Runtime.Logger
-): { match?: PvPMatch; error?: string } {
-  const objects = nk.storageRead([
-    {
-      collection: 'pvp_matches',
-      key: matchId,
-      userId: ctx.userId,
-    },
-  ]);
-
-  if (objects.length === 0) {
-    // Try reading with creator_id as userId
-    const creatorObjects = nk.storageRead([
-      {
-        collection: 'pvp_matches',
-        key: matchId,
-        userId: ctx.userId, // This will be creator_id
-      },
-    ]);
-
-    if (creatorObjects.length === 0) {
-      return { error: 'Match not found' };
-    }
-  }
-
-  const matchResult = safeParse<PvPMatch>(
-    objects[0].value,
-    null,
-    logger,
-    'getMatchForTurnSubmission:match'
-  );
-  if (!matchResult.success || !matchResult.data) {
-    return { error: 'Failed to parse match data' };
-  }
-  const match = matchResult.data;
-
-  // Verify user is a participant
-  if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
-    return { error: 'Not a participant in this match' };
-  }
-
-  return { match };
-}
-
-/**
- * Checks if the current turn has timed out.
- */
-function checkTurnTimeout(
-  match: PvPMatch,
-  now: number
-): {
-  hasTimedOut: boolean;
-  shouldForfeit: boolean;
-} {
-  const timeSinceLastTurn = now - match.last_turn_timestamp;
-  const hasTimedOut = timeSinceLastTurn > match.turn_time_limit_ms;
-
-  if (!hasTimedOut) {
-    return { hasTimedOut: false, shouldForfeit: false };
-  }
-
-  const playerWhoTimedOut = match.current_player;
-  const consecutiveTimeouts =
-    playerWhoTimedOut === match.creator_id
-      ? match.creator_consecutive_timeouts
-      : match.opponent_consecutive_timeouts;
-
-  const shouldForfeit = consecutiveTimeouts + 1 >= MAX_CONSECUTIVE_TIMEOUTS;
-
-  return { hasTimedOut, shouldForfeit };
-}
-
-/**
- * Handles the first timeout for a player by generating a default turn.
- */
-function handleFirstTimeout(
-  nk: Runtime.Nakama,
-  logger: Runtime.Logger,
-  match: PvPMatch,
-  timedOutPlayerId: string
-): void {
-  logger.warn('Player %s timed out in match %s (first timeout)', timedOutPlayerId, match.match_id);
-
-  // Generate default turn data
-  const defaultTurnData: TurnData = {
-    action_type: 'shoot',
-    angle: Math.PI / 2, // Straight shot
-    power: 1.0, // Full power
-  };
-
-  // Store the default turn
-  if (timedOutPlayerId === match.creator_id) {
-    match.creator_turn_data = defaultTurnData;
-    match.creator_consecutive_timeouts += 1;
-  } else {
-    match.opponent_turn_data = defaultTurnData;
-    match.opponent_consecutive_timeouts += 1;
-  }
-
-  match.last_turn_timestamp = Date.now();
-
-  // Save updated match state
-  nk.storageWrite([
-    {
-      collection: 'pvp_matches',
-      key: match.match_id,
-      userId: match.creator_id,
-      value: JSON.stringify(match),
-    },
-  ]);
-
-  // Send timeout notification to the player
-  sendTimeoutNotification(nk, timedOutPlayerId, match.match_id, 1);
-}
-
-/**
- * Handles forfeit due to consecutive timeouts.
- */
-function handleTimeoutForfeit(
-  nk: Runtime.Nakama,
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  match: PvPMatch,
-  timedOutPlayerId: string
-): string {
-  logger.warn(
-    'Player %s forfeited match %s due to consecutive timeouts',
-    timedOutPlayerId,
-    match.match_id
-  );
-
-  const opponentId = timedOutPlayerId === match.creator_id ? match.opponent_id : match.creator_id;
-
-  // Mark match as completed
-  match.status = 'completed';
-  match.winner = opponentId;
-  match.updated_at = Date.now();
-
-  // Save match state
-  nk.storageWrite([
-    {
-      collection: 'pvp_matches',
-      key: match.match_id,
-      userId: match.creator_id,
-      value: JSON.stringify(match),
-    },
-  ]);
-
-  logAudit(
-    nk,
-    ctx.userId,
-    ctx.ipAddress ?? null,
-    'timeout_forfeit',
-    'pvp_matches',
-    {
-      match_id: match.match_id,
-      forfeited_by: timedOutPlayerId,
-      winner: opponentId,
-    },
-    'success'
-  );
-
-  // Return forfeit result
-  return JSON.stringify({
-    success: true,
-    match: match,
-    forfeited_by: timedOutPlayerId,
-    forfeit_reason: 'consecutive_timeouts',
-    winner_id: opponentId,
-  });
-}
-
-/**
- * Calculates turn results based on both players' actions.
- */
-function calculateTurnResults(
-  creatorTurn: TurnData,
-  opponentTurn: TurnData,
-  match: PvPMatch,
-  logger: Runtime.Logger
-): TurnResult {
-  // Simple damage calculation based on power and angle
-  // In a real implementation, this would use the combat system
-  const creatorBaseDamage = Math.round(10 * (creatorTurn.power ?? 1.0));
-  const opponentBaseDamage = Math.round(10 * (opponentTurn.power ?? 1.0));
-
-  // Calculate hit probability based on angle deviation from ideal
-  // Ideal shot is straight up (PI/2)
-  const creatorAngleDeviation = Math.abs(creatorTurn.angle - Math.PI / 2);
-  const opponentAngleDeviation = Math.abs(opponentTurn.angle - Math.PI / 2);
-
-  const creatorHitProbability = Math.max(0.3, 1 - creatorAngleDeviation / Math.PI);
-  const opponentHitProbability = Math.max(0.3, 1 - opponentAngleDeviation / Math.PI);
-
-  const creatorHit = Math.random() < creatorHitProbability;
-  const opponentHit = Math.random() < opponentHitProbability;
-
-  logger.info(
-    'Turn calculated - Creator hit: %s (dmg: %d), Opponent hit: %s (dmg: %d)',
-    creatorHit,
-    creatorBaseDamage,
-    opponentHit,
-    opponentBaseDamage
-  );
-
-  return {
-    creator_hit: creatorHit,
-    opponent_hit: opponentHit,
-    creator_damage: creatorHit ? creatorBaseDamage : 0,
-    opponent_damage: opponentHit ? opponentBaseDamage : 0,
-  };
-}
-
-/**
- * Checks if the match should end.
+ * Checks whether the match has reached a terminal state from the legacy
+ * turn-engine health/max-turns bookkeeping on PvPMatch (used by the
+ * server-terminal-state resolver; issue #903). The shipped live duel
+ * engine in combat_system.ts is authoritative for current/active duels.
  */
 function checkMatchEndConditions(
   match: PvPMatch,
@@ -3776,86 +3052,4 @@ function checkMatchEndConditions(
   }
 
   return { shouldEnd: false };
-}
-
-/**
- * Completes a match from turn-based combat.
- */
-function completeMatchFromTurn(
-  nk: Runtime.Nakama,
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  match: PvPMatch,
-  endResult: { shouldEnd: boolean; winner?: string; reason?: string }
-): string {
-  if (!endResult.winner) {
-    // Handle draw — terminal with no winner: mark completed and settled
-    // (no Elo/XP/rewards). settled_at makes replayed triggers idempotent.
-    const now = Date.now();
-    match.status = 'completed';
-    match.updated_at = now;
-    match.end_reason = 'draw';
-    match.settled_at = now;
-
-    nk.storageWrite([
-      {
-        collection: 'pvp_matches',
-        key: match.match_id,
-        userId: match.creator_id,
-        value: JSON.stringify(match),
-      },
-    ]);
-
-    return JSON.stringify({
-      success: true,
-      match: match,
-      is_draw: true,
-      reason: endResult.reason,
-    });
-  }
-
-  const loserId = endResult.winner === match.creator_id ? match.opponent_id : match.creator_id;
-
-  // Winner comes from the turn engine's server-side end conditions
-  // (health-zero or max-turns health comparison) — never client input.
-  const settlement: ServerSettlementRequest = {
-    match_id: match.match_id,
-    winner_id: endResult.winner,
-    loser_id: loserId,
-    end_reason: endResult.reason?.startsWith('max_turns') ? 'max_turns' : 'health_zero',
-  };
-
-  return processMatchResult(ctx, logger, nk, settlement, match, match.is_punch_up);
-}
-
-/**
- * Sends a timeout notification to a player.
- */
-function sendTimeoutNotification(
-  nk: Runtime.Nakama,
-  userId: string,
-  matchId: string,
-  consecutiveCount: number
-): void {
-  try {
-    nk.notificationSend(
-      userId,
-      'Your turn has timed out',
-      {
-        match_id: matchId,
-        event: 'turn_timeout',
-        consecutive_count: consecutiveCount,
-        message:
-          consecutiveCount >= MAX_CONSECUTIVE_TIMEOUTS
-            ? 'You have forfeited the match due to consecutive timeouts.'
-            : 'A default turn was submitted. Please submit your next turn promptly.',
-      },
-      1001, // Timeout notification code
-      true, // persistent
-      'system' // senderId
-    );
-  } catch (error) {
-    // Non-blocking: notification failure should not affect match logic
-    console.error('Failed to send timeout notification:', error);
-  }
 }

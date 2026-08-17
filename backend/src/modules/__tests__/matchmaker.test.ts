@@ -11,12 +11,6 @@ import {
   registerRpcCreateMatch,
   registerRpcAcceptMatch,
   registerRpcCompleteMatch,
-  rpcSubmitTurn,
-  rpcGetAsyncMatchState,
-  rpcForfeitMatch,
-  registerRpcSubmitTurn,
-  registerRpcGetAsyncMatchState,
-  registerRpcForfeitMatch,
   rpcGetMatchHistory,
   rpcGetMatchDetails,
   rpcAdminQueryMatches,
@@ -1586,549 +1580,172 @@ describe('matchmaker', () => {
     });
   });
 
-  // ==================== ASYNC DUEL LIFECYCLE TESTS ====================
 
-  describe('Async Duel Lifecycle', () => {
-    describe('rpcSubmitTurn', () => {
-      it('should submit a turn successfully', () => {
-        const match: PvPMatch = {
-          match_id: 'match_123',
-          creator_id: 'creator-user',
-          opponent_id: 'opponent-user',
-          creator_rank: 15,
-          opponent_rank: 14,
-          match_type: 'ranked',
-          is_punch_up: false,
-          status: 'active',
-          created_at: Date.now() - 60000,
-          updated_at: Date.now(),
-          creator_turn_data: undefined,
-          opponent_turn_data: undefined,
-          winner: undefined,
-          expires_at: Date.now() + 86400000,
-          last_turn_timestamp: Date.now() - 30000,
-          // Async duel fields
-          current_turn: 1,
-          current_player: 'creator-user',
-          turn_time_limit_ms: 86400000,
-          creator_health: 100,
-          opponent_health: 100,
-          max_turns: 10,
-          creator_consecutive_timeouts: 0,
-          opponent_consecutive_timeouts: 0,
-        };
+  // ==================== LEGACY DUEL RPC DECOMMISSION (issue #903) ====================
+  // The correspondence-style duel engine RPCs (submit_turn,
+  // get_async_match_state, forfeit_match) and their correspondence-era
+  // constants (TURN_TIMEOUT_MS = 24h, MAX_CONSECUTIVE_TIMEOUTS,
+  // DEFAULT_MAX_TURNS, BASE_HEALTH, ACTIVE_MATCH_EXPIRY_MS) were removed
+  // from the matchmaker module. The shipped hybrid duel model uses
+  // submit_combat_action / get_match_state in combat_system.ts instead.
 
-        mockNk.storageRead = jest.fn(() => [
-          {
-            collection: 'pvp_matches',
-            key: 'match_123',
-            userId: 'test-user-123',
-            value: JSON.stringify(match),
-          },
-        ]);
+  describe('Legacy Duel RPC Decommission (issue #903)', () => {
+    const legacyRpcs = [
+      'armored_archer/submit_turn',
+      'armored_archer/get_async_match_state',
+      'armored_archer/forfeit_match',
+    ];
 
-        const payload = JSON.stringify({
-          match_id: 'match_123',
-          action_type: 'shoot',
-          angle: 1.57,
-          power: 0.9,
-        });
+    it.each(legacyRpcs)(
+      'does not register legacy RPC %s',
+      (rpcName) => {
+        // Matchmaker.ts must not export a register* function for these
+        // legacy RPCs, and index.ts must not register them on the
+        // initializer. Verifying the named export is absent is the
+        // strictest signal that the decommission is complete.
+        const matchmakerModule = require('../matchmaker');
+        const expectedRegisterName = `registerRpc${rpcName
+          .split('/')
+          .pop()
+          ?.replace(/^./, (c: string) => c.toUpperCase())
+          .replace(/_([a-z])/g, (_m: string, g: string) => g.toUpperCase())}`;
+        expect(matchmakerModule[expectedRegisterName]).toBeUndefined();
+      }
+    );
+  });
 
-        mockCtx.userId = 'creator-user';
+  describe('Punch-up Mechanics', () => {
+    describe('isPunchUpMatch', () => {
+      it('should detect punch-up with minimum rank difference', () => {
+        const result = isPunchUpMatch(25, 30, 'player1', 'player2');
 
-        const result = rpcSubmitTurn(mockCtx, mockLogger, mockNk, payload);
-        const response = JSON.parse(result);
-
-        expect(response.success).toBe(true);
-        expect(response.turn_submitted).toBe(true);
-        expect(response.match.creator_turn_data).toBeDefined();
-        expect(response.match.creator_turn_data.action_type).toBe('shoot');
-        expect(mockNk.storageWrite).toHaveBeenCalled();
+        expect(result.is_punch_up).toBe(true);
+        expect(result.rank_difference).toBe(5);
+        expect(result.underdog_rank).toBe(25);
+        expect(result.favorite_rank).toBe(30);
+        expect(result.underdog_id).toBe('player1');
+        expect(result.reward_multiplier).toBeGreaterThan(1.0);
       });
 
-      it("should reject turn submission when not player's turn", () => {
-        const match: PvPMatch = {
-          match_id: 'match_123',
-          creator_id: 'creator-user',
-          opponent_id: 'opponent-user',
-          creator_rank: 15,
-          opponent_rank: 14,
-          match_type: 'ranked',
-          is_punch_up: false,
-          status: 'active',
-          created_at: Date.now() - 60000,
-          updated_at: Date.now(),
-          creator_turn_data: undefined,
-          opponent_turn_data: undefined,
-          winner: undefined,
-          expires_at: Date.now() + 86400000,
-          last_turn_timestamp: Date.now() - 30000,
-          current_turn: 1,
-          current_player: 'opponent-user', // Not creator's turn
-          turn_time_limit_ms: 86400000,
-          creator_health: 100,
-          opponent_health: 100,
-          max_turns: 10,
-          creator_consecutive_timeouts: 0,
-          opponent_consecutive_timeouts: 0,
-        };
+      it('should detect punch-up with maximum rank difference', () => {
+        const result = isPunchUpMatch(25, 40, 'player1', 'player2');
 
-        mockNk.storageRead = jest.fn(() => [
-          {
-            collection: 'pvp_matches',
-            key: 'match_123',
-            userId: 'test-user-123',
-            value: JSON.stringify(match),
-          },
-        ]);
-
-        const payload = JSON.stringify({
-          match_id: 'match_123',
-          action_type: 'shoot',
-          angle: 1.57,
-        });
-
-        mockCtx.userId = 'creator-user';
-
-        const result = rpcSubmitTurn(mockCtx, mockLogger, mockNk, payload);
-        const response = JSON.parse(result);
-
-        expect(response.success).toBeUndefined();
-        expect(response.error).toBe('It is not your turn');
-        expect(response.current_player).toBe('opponent-user');
+        expect(result.is_punch_up).toBe(true);
+        expect(result.rank_difference).toBe(15);
+        expect(result.reward_multiplier).toBe(2.0);
       });
 
-      it('should reject turn submission for non-active match', () => {
-        const match: PvPMatch = {
-          match_id: 'match_123',
-          creator_id: 'creator-user',
-          opponent_id: 'opponent-user',
-          creator_rank: 15,
-          opponent_rank: 14,
-          match_type: 'ranked',
-          is_punch_up: false,
-          status: 'pending', // Not active
-          created_at: Date.now() - 60000,
-          updated_at: Date.now(),
-          creator_turn_data: undefined,
-          opponent_turn_data: undefined,
-          winner: undefined,
-          expires_at: Date.now() + 86400000,
-          last_turn_timestamp: Date.now() - 30000,
-          current_turn: 1,
-          current_player: 'creator-user',
-          turn_time_limit_ms: 86400000,
-          creator_health: 100,
-          opponent_health: 100,
-          max_turns: 10,
-          creator_consecutive_timeouts: 0,
-          opponent_consecutive_timeouts: 0,
-        };
+      it('should not detect punch-up with rank difference below threshold', () => {
+        const result = isPunchUpMatch(25, 29, 'player1', 'player2');
 
-        mockNk.storageRead = jest.fn(() => [
-          {
-            collection: 'pvp_matches',
-            key: 'match_123',
-            userId: 'test-user-123',
-            value: JSON.stringify(match),
-          },
-        ]);
+        expect(result.is_punch_up).toBe(false);
+        expect(result.reward_multiplier).toBe(1.0);
+      });
 
-        const payload = JSON.stringify({
-          match_id: 'match_123',
-          action_type: 'shoot',
-          angle: 1.57,
-        });
+      it('should not detect punch-up with rank difference above maximum', () => {
+        const result = isPunchUpMatch(25, 41, 'player1', 'player2');
 
-        mockCtx.userId = 'creator-user';
+        expect(result.is_punch_up).toBe(false);
+        expect(result.reward_multiplier).toBe(1.0);
+      });
 
-        const result = rpcSubmitTurn(mockCtx, mockLogger, mockNk, payload);
-        const response = JSON.parse(result);
+      it('should not detect punch-up when both players are below minimum rank', () => {
+        const result = isPunchUpMatch(15, 20, 'player1', 'player2');
 
-        expect(response.success).toBeUndefined();
-        expect(response.error).toBe('Match is not active');
-        expect(response.match_status).toBe('pending');
+        expect(result.is_punch_up).toBe(false);
+        expect(result.reward_multiplier).toBe(1.0);
+      });
+
+      it('should correctly identify underdog and favorite', () => {
+        // Note: variable names are intentionally misleading - 'high_ranker' has rank 30,
+        // 'low_ranker' has rank 40, so 'high_ranker' is actually the underdog
+        const result = isPunchUpMatch(30, 40, 'high_ranker', 'low_ranker');
+
+        expect(result.is_punch_up).toBe(true);
+        expect(result.underdog_id).toBe('high_ranker'); // The player with rank 30
+        expect(result.underdog_rank).toBe(30);
+        expect(result.favorite_rank).toBe(40);
+      });
+
+      it('should scale reward multiplier with rank difference', () => {
+        const smallDiff = isPunchUpMatch(25, 30, 'p1', 'p2');
+        const mediumDiff = isPunchUpMatch(25, 35, 'p1', 'p2');
+        const largeDiff = isPunchUpMatch(25, 40, 'p1', 'p2');
+
+        expect(smallDiff.reward_multiplier).toBeLessThan(mediumDiff.reward_multiplier);
+        expect(mediumDiff.reward_multiplier).toBeLessThan(largeDiff.reward_multiplier);
       });
     });
 
-    describe('rpcGetAsyncMatchState', () => {
-      it('should return match state with player-specific information', () => {
-        const match: PvPMatch = {
-          match_id: 'match_123',
-          creator_id: 'creator-user',
-          opponent_id: 'opponent-user',
-          creator_rank: 15,
-          opponent_rank: 14,
-          match_type: 'ranked',
-          is_punch_up: false,
-          status: 'active',
-          created_at: Date.now() - 60000,
-          updated_at: Date.now(),
-          creator_turn_data: undefined,
-          opponent_turn_data: undefined,
-          winner: undefined,
-          expires_at: Date.now() + 86400000,
-          last_turn_timestamp: Date.now() - 30000,
-          current_turn: 1,
-          current_player: 'creator-user',
-          turn_time_limit_ms: 86400000,
-          creator_health: 85,
-          opponent_health: 92,
-          max_turns: 10,
-          creator_consecutive_timeouts: 0,
-          opponent_consecutive_timeouts: 0,
-        };
-
-        mockNk.storageRead = jest.fn(() => [
-          {
-            collection: 'pvp_matches',
-            key: 'match_123',
-            userId: 'test-user-123',
-            value: JSON.stringify(match),
-          },
-        ]);
-
-        const payload = JSON.stringify({ match_id: 'match_123' });
-        mockCtx.userId = 'creator-user';
-
-        const result = rpcGetAsyncMatchState(mockCtx, mockLogger, mockNk, payload);
-        const response = JSON.parse(result);
-
-        expect(response.success).toBe(true);
-        expect(response.is_my_turn).toBe(true);
-        expect(response.my_health).toBe(85);
-        expect(response.opponent_health).toBe(92);
-        expect(response.time_remaining_ms).toBeGreaterThan(0);
+    describe('calculatePunchUpGemBonus', () => {
+      it('should return minimum gems for smallest punch-up', () => {
+        const bonus = calculatePunchUpGemBonus(5);
+        expect(bonus).toBe(3);
       });
 
-      it("should correctly identify opponent's turn", () => {
-        const match: PvPMatch = {
-          match_id: 'match_123',
-          creator_id: 'creator-user',
-          opponent_id: 'opponent-user',
-          creator_rank: 15,
-          opponent_rank: 14,
-          match_type: 'ranked',
-          is_punch_up: false,
-          status: 'active',
-          created_at: Date.now() - 60000,
-          updated_at: Date.now(),
-          creator_turn_data: undefined,
-          opponent_turn_data: undefined,
-          winner: undefined,
-          expires_at: Date.now() + 86400000,
-          last_turn_timestamp: Date.now() - 30000,
-          current_turn: 1,
-          current_player: 'opponent-user', // Opponent's turn
-          turn_time_limit_ms: 86400000,
-          creator_health: 85,
-          opponent_health: 92,
-          max_turns: 10,
-          creator_consecutive_timeouts: 0,
-          opponent_consecutive_timeouts: 0,
-        };
-
-        mockNk.storageRead = jest.fn(() => [
-          {
-            collection: 'pvp_matches',
-            key: 'match_123',
-            userId: 'test-user-123',
-            value: JSON.stringify(match),
-          },
-        ]);
-
-        const payload = JSON.stringify({ match_id: 'match_123' });
-        mockCtx.userId = 'creator-user';
-
-        const result = rpcGetAsyncMatchState(mockCtx, mockLogger, mockNk, payload);
-        const response = JSON.parse(result);
-
-        expect(response.success).toBe(true);
-        expect(response.is_my_turn).toBe(false);
+      it('should return maximum gems for largest punch-up', () => {
+        const bonus = calculatePunchUpGemBonus(15);
+        expect(bonus).toBe(10);
       });
 
-      it('should return error for non-existent match', () => {
-        mockNk.storageRead = jest.fn(() => []);
+      it('should scale gem bonus with rank difference', () => {
+        const smallBonus = calculatePunchUpGemBonus(5);
+        const mediumBonus = calculatePunchUpGemBonus(10);
+        const largeBonus = calculatePunchUpGemBonus(15);
 
-        const payload = JSON.stringify({ match_id: 'nonexistent' });
-        mockCtx.userId = 'creator-user';
-
-        const result = rpcGetAsyncMatchState(mockCtx, mockLogger, mockNk, payload);
-        const response = JSON.parse(result);
-
-        expect(response.success).toBeUndefined();
-        expect(response.error).toBe('Match not found');
+        expect(smallBonus).toBeLessThan(mediumBonus);
+        expect(mediumBonus).toBeLessThan(largeBonus);
       });
     });
 
-    describe('rpcForfeitMatch', () => {
-      it('should forfeit match successfully', () => {
-        const match: PvPMatch = {
-          match_id: 'match_123',
-          creator_id: 'creator-user',
-          opponent_id: 'opponent-user',
-          creator_rank: 15,
-          opponent_rank: 14,
-          match_type: 'ranked',
-          is_punch_up: false,
-          status: 'active',
-          created_at: Date.now() - 60000,
-          updated_at: Date.now(),
-          creator_turn_data: undefined,
-          opponent_turn_data: undefined,
-          winner: undefined,
-          expires_at: Date.now() + 86400000,
-          last_turn_timestamp: Date.now() - 30000,
-          current_turn: 1,
-          current_player: 'creator-user',
-          turn_time_limit_ms: 86400000,
-          creator_health: 85,
-          opponent_health: 92,
-          max_turns: 10,
-          creator_consecutive_timeouts: 0,
-          opponent_consecutive_timeouts: 0,
+    describe('generatePunchUpDescription', () => {
+      it('should generate description for slight punch-up', () => {
+        const info: PunchUpInfo = {
+          is_punch_up: true,
+          rank_difference: 6,
+          underdog_rank: 25,
+          favorite_rank: 31,
+          underdog_id: 'player1',
+          reward_multiplier: 1.25,
         };
 
-        mockNk.storageRead = jest.fn(() => [
-          {
-            collection: 'pvp_matches',
-            key: 'match_123',
-            userId: 'test-user-123',
-            value: JSON.stringify(match),
-          },
-        ]);
-
-        const payload = JSON.stringify({ match_id: 'match_123' });
-        mockCtx.userId = 'creator-user';
-
-        // Mock complete match process
-        (applyEloUpdates as jest.Mock).mockReturnValue({
-          winnerNewElo: 1220,
-          loserNewElo: 1180,
-        });
-
-        (getLeaderboardEntry as jest.Mock).mockReturnValue({ score: 1200 });
-
-        const result = rpcForfeitMatch(mockCtx, mockLogger, mockNk, payload);
-        const response = JSON.parse(result);
-
-        expect(response.success).toBe(true);
-        expect(response.forfeited_by).toBe('creator-user');
-        expect(response.forfeit_reason).toBe('voluntary');
-        expect(response.match.winner).toBe('opponent-user');
+        const description = generatePunchUpDescription(info);
+        expect(description).toContain('slight difference of 6 ranks');
+        expect(description).toContain('1.3x XP bonus'); // Formatted to 1 decimal place
       });
 
-      it('should reject forfeit for non-active match', () => {
-        const match: PvPMatch = {
-          match_id: 'match_123',
-          creator_id: 'creator-user',
-          opponent_id: 'opponent-user',
-          creator_rank: 15,
-          opponent_rank: 14,
-          match_type: 'ranked',
-          is_punch_up: false,
-          status: 'pending', // Not active
-          created_at: Date.now() - 60000,
-          updated_at: Date.now(),
-          creator_turn_data: undefined,
-          opponent_turn_data: undefined,
-          winner: undefined,
-          expires_at: Date.now() + 86400000,
-          last_turn_timestamp: Date.now() - 30000,
-          current_turn: 1,
-          current_player: 'creator-user',
-          turn_time_limit_ms: 86400000,
-          creator_health: 100,
-          opponent_health: 100,
-          max_turns: 10,
-          creator_consecutive_timeouts: 0,
-          opponent_consecutive_timeouts: 0,
+      it('should generate description for extreme punch-up', () => {
+        const info: PunchUpInfo = {
+          is_punch_up: true,
+          rank_difference: 15,
+          underdog_rank: 25,
+          favorite_rank: 40,
+          underdog_id: 'player1',
+          reward_multiplier: 2.0,
         };
 
-        mockNk.storageRead = jest.fn(() => [
-          {
-            collection: 'pvp_matches',
-            key: 'match_123',
-            userId: 'creator-user',
-            value: JSON.stringify(match),
-          },
-        ]);
-
-        const payload = JSON.stringify({ match_id: 'match_123' });
-        mockCtx.userId = 'creator-user';
-
-        const result = rpcForfeitMatch(mockCtx, mockLogger, mockNk, payload);
-        const response = JSON.parse(result);
-
-        expect(response.error).toBe('Match is not active');
-      });
-    });
-
-    describe('RPC Registration', () => {
-      it('should register submit_turn RPC', () => {
-        const mockInitializer = { registerRpc: jest.fn() };
-
-        registerRpcSubmitTurn(mockInitializer as any);
-        expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-          'armored_archer/submit_turn',
-          rpcSubmitTurn
-        );
+        const description = generatePunchUpDescription(info);
+        expect(description).toContain('extreme difference of 15 ranks');
+        expect(description).toContain('2.0x XP bonus');
+        expect(description).toContain('10 bonus gems');
       });
 
-      it('should register get_async_match_state RPC', () => {
-        const mockInitializer = { registerRpc: jest.fn() };
+      it('should describe the ratified punch-up consequence (issue #864/#902)', () => {
+        const info: PunchUpInfo = {
+          is_punch_up: true,
+          rank_difference: 10,
+          underdog_rank: 25,
+          favorite_rank: 35,
+          underdog_id: 'player1',
+          reward_multiplier: 1.6,
+        };
 
-        registerRpcGetAsyncMatchState(mockInitializer as any);
-        expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-          'armored_archer/get_async_match_state',
-          rpcGetAsyncMatchState
-        );
-      });
-
-      it('should register forfeit_match RPC', () => {
-        const mockInitializer = { registerRpc: jest.fn() };
-
-        registerRpcForfeitMatch(mockInitializer as any);
-        expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-          'armored_archer/forfeit_match',
-          rpcForfeitMatch
-        );
-      });
-    });
-
-    describe('Punch-up Mechanics', () => {
-      describe('isPunchUpMatch', () => {
-        it('should detect punch-up with minimum rank difference', () => {
-          const result = isPunchUpMatch(25, 30, 'player1', 'player2');
-
-          expect(result.is_punch_up).toBe(true);
-          expect(result.rank_difference).toBe(5);
-          expect(result.underdog_rank).toBe(25);
-          expect(result.favorite_rank).toBe(30);
-          expect(result.underdog_id).toBe('player1');
-          expect(result.reward_multiplier).toBeGreaterThan(1.0);
-        });
-
-        it('should detect punch-up with maximum rank difference', () => {
-          const result = isPunchUpMatch(25, 40, 'player1', 'player2');
-
-          expect(result.is_punch_up).toBe(true);
-          expect(result.rank_difference).toBe(15);
-          expect(result.reward_multiplier).toBe(2.0);
-        });
-
-        it('should not detect punch-up with rank difference below threshold', () => {
-          const result = isPunchUpMatch(25, 29, 'player1', 'player2');
-
-          expect(result.is_punch_up).toBe(false);
-          expect(result.reward_multiplier).toBe(1.0);
-        });
-
-        it('should not detect punch-up with rank difference above maximum', () => {
-          const result = isPunchUpMatch(25, 41, 'player1', 'player2');
-
-          expect(result.is_punch_up).toBe(false);
-          expect(result.reward_multiplier).toBe(1.0);
-        });
-
-        it('should not detect punch-up when both players are below minimum rank', () => {
-          const result = isPunchUpMatch(15, 20, 'player1', 'player2');
-
-          expect(result.is_punch_up).toBe(false);
-          expect(result.reward_multiplier).toBe(1.0);
-        });
-
-        it('should correctly identify underdog and favorite', () => {
-          // Note: variable names are intentionally misleading - 'high_ranker' has rank 30,
-          // 'low_ranker' has rank 40, so 'high_ranker' is actually the underdog
-          const result = isPunchUpMatch(30, 40, 'high_ranker', 'low_ranker');
-
-          expect(result.is_punch_up).toBe(true);
-          expect(result.underdog_id).toBe('high_ranker'); // The player with rank 30
-          expect(result.underdog_rank).toBe(30);
-          expect(result.favorite_rank).toBe(40);
-        });
-
-        it('should scale reward multiplier with rank difference', () => {
-          const smallDiff = isPunchUpMatch(25, 30, 'p1', 'p2');
-          const mediumDiff = isPunchUpMatch(25, 35, 'p1', 'p2');
-          const largeDiff = isPunchUpMatch(25, 40, 'p1', 'p2');
-
-          expect(smallDiff.reward_multiplier).toBeLessThan(mediumDiff.reward_multiplier);
-          expect(mediumDiff.reward_multiplier).toBeLessThan(largeDiff.reward_multiplier);
-        });
-      });
-
-      describe('calculatePunchUpGemBonus', () => {
-        it('should return minimum gems for smallest punch-up', () => {
-          const bonus = calculatePunchUpGemBonus(5);
-          expect(bonus).toBe(3);
-        });
-
-        it('should return maximum gems for largest punch-up', () => {
-          const bonus = calculatePunchUpGemBonus(15);
-          expect(bonus).toBe(10);
-        });
-
-        it('should scale gem bonus with rank difference', () => {
-          const smallBonus = calculatePunchUpGemBonus(5);
-          const mediumBonus = calculatePunchUpGemBonus(10);
-          const largeBonus = calculatePunchUpGemBonus(15);
-
-          expect(smallBonus).toBeLessThan(mediumBonus);
-          expect(mediumBonus).toBeLessThan(largeBonus);
-        });
-      });
-
-      describe('generatePunchUpDescription', () => {
-        it('should generate description for slight punch-up', () => {
-          const info: PunchUpInfo = {
-            is_punch_up: true,
-            rank_difference: 6,
-            underdog_rank: 25,
-            favorite_rank: 31,
-            underdog_id: 'player1',
-            reward_multiplier: 1.25,
-          };
-
-          const description = generatePunchUpDescription(info);
-          expect(description).toContain('slight difference of 6 ranks');
-          expect(description).toContain('1.3x XP bonus'); // Formatted to 1 decimal place
-        });
-
-        it('should generate description for extreme punch-up', () => {
-          const info: PunchUpInfo = {
-            is_punch_up: true,
-            rank_difference: 15,
-            underdog_rank: 25,
-            favorite_rank: 40,
-            underdog_id: 'player1',
-            reward_multiplier: 2.0,
-          };
-
-          const description = generatePunchUpDescription(info);
-          expect(description).toContain('extreme difference of 15 ranks');
-          expect(description).toContain('2.0x XP bonus');
-          expect(description).toContain('10 bonus gems');
-        });
-
-        it('should describe the ratified punch-up consequence (issue #864/#902)', () => {
-          const info: PunchUpInfo = {
-            is_punch_up: true,
-            rank_difference: 10,
-            underdog_rank: 25,
-            favorite_rank: 35,
-            underdog_id: 'player1',
-            reward_multiplier: 1.6,
-          };
-
-          const description = generatePunchUpDescription(info);
-          // Issue #902: description must reference the ratified consequence
-          // (2x K-factor on Ladder Rating) and must NOT mention the historic
-          // "Favorites receive reduced rewards" reward-penalty heuristic.
-          expect(description).toContain('2x K-factor');
-          expect(description).not.toContain('Favorites receive reduced rewards');
-        });
+        const description = generatePunchUpDescription(info);
+        // Issue #902: description must reference the ratified consequence
+        // (2x K-factor on Ladder Rating) and must NOT mention the historic
+        // "Favorites receive reduced rewards" reward-penalty heuristic.
+        expect(description).toContain('2x K-factor');
+        expect(description).not.toContain('Favorites receive reduced rewards');
       });
     });
   });

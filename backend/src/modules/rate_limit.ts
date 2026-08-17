@@ -74,12 +74,9 @@ interface TurnSubmissionTracking {
 const DEFAULT_RATE_LIMITS: Record<string, RateLimitConfig> = {
   create_match: { maxRequests: 5, windowMs: 60000, penaltyMs: 300000 }, // 5/min, 5min penalty
   accept_match: { maxRequests: 10, windowMs: 60000, penaltyMs: 120000 }, // 10/min, 2min penalty
-  submit_turn: { maxRequests: 10, windowMs: 60000, penaltyMs: 60000 }, // 10/min, 1min penalty
   complete_match: { maxRequests: 3, windowMs: 60000, penaltyMs: 600000 }, // 3/min, 10min penalty
-  forfeit_match: { maxRequests: 2, windowMs: 60000, penaltyMs: 600000 }, // 2/min, 10min penalty
   list_matches: { maxRequests: 30, windowMs: 60000, penaltyMs: 30000 }, // 30/min, 30s penalty
   get_player_rank: { maxRequests: 60, windowMs: 60000, penaltyMs: 10000 }, // 60/min, 10s penalty
-  get_async_match_state: { maxRequests: 30, windowMs: 60000, penaltyMs: 30000 }, // 30/min, 30s penalty
   stage_complete: { maxRequests: 5, windowMs: 60000, penaltyMs: 300000 }, // 5/min, 5min penalty
 };
 

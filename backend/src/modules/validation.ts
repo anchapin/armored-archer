@@ -703,18 +703,6 @@ export const ValibotSchemas = {
     difficulties: optional(array(string())),
   }),
 
-  // Async duel lifecycle schemas
-  submit_turn: object({
-    match_id: pipe(string(), minLength(1), maxLength(100)),
-    action_type: createEnum(['shoot']),
-    angle: pipe(number(), minValue(0), maxValue(6.28318530718)),
-    power: optional(pipe(number(), minValue(0), maxValue(1))),
-  }),
-
-  forfeit_match: object({
-    match_id: pipe(string(), minLength(1), maxLength(100)),
-  }),
-
   // Match replay schemas for debugging and QA
   get_match_replay: object({
     match_id: pipe(string(), minLength(1), maxLength(100)),
