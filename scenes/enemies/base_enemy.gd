@@ -60,6 +60,15 @@ func _ready() -> void:
 	if hurt_area:
 		var _err = hurt_area.body_entered.connect(_on_hurt_area_body_entered)
 
+	# Issue #914: fire boss_intro on the SFX bus the first time this enemy is
+	# added to the Boss group (boss subclasses do this in their own _ready()
+	# before calling super). Pooled re-spawns don't replay the sting — the
+	# AudioManager handles the dedupe via the standard event dispatch.
+	if is_in_group("Boss"):
+		var audio := get_node_or_null("/root/AudioManager")
+		if audio and audio.has_method("play_event"):
+			audio.play_event("boss_intro")
+
 	# Register with auto-aim if available
 	if not _is_e2e_test():
 		var aim_mgr = get_node_or_null("/root/AutoAimManager")
@@ -120,9 +129,19 @@ func die() -> void:
 	# CRITICAL: Set is_dead flag immediately to prevent re-damage before deferred pool return
 	is_dead = true
 
-	# Audio feedback — arrow_kill on the SFX bus (issue #911)
+# Audio feedback — arrow_kill on the SFX bus (issue #911)
+	# Issue #914: per-archetype death on the SFX bus (full inventory wiring).
+	# Boss group membership overrides the archetype variant so the boss sting
+	# plays once instead of the per-archetype fall-through.
 	var audio_kill = get_node_or_null("/root/AudioManager")
 	if audio_kill:
+		if is_in_group("Boss"):
+			if audio_kill.has_method("play_event"):
+				audio_kill.play_event("boss_death")
+		else:
+			var archetype_event: String = archetype_death_event()
+			if archetype_event != "" and audio_kill.has_method("play_event"):
+				audio_kill.play_event(archetype_event)
 		if audio_kill.has_method("play_arrow_kill"):
 			audio_kill.play_arrow_kill()
 		elif audio_kill.has_method("play_sfx"):
@@ -254,3 +273,28 @@ func spawn_death_particles(particle_count: int = 5) -> void:
 	var vfx_manager = get_node_or_null("/root/VFXManager")
 	if vfx_manager and vfx_manager.has_method("spawn_death_particles"):
 		vfx_manager.spawn_death_particles(global_position, particle_count)
+
+## Resolve the per-archetype death event name (issue #914).
+## Returns "" when the class isn't one of the four Ch1 archetypes — callers
+## then fall through to the generic arrow_kill sound.
+func archetype_death_event() -> String:
+	var script := get_script()
+	if script == null:
+		return ""
+	var class_id := script.get_global_name() if script.has_method("get_global_name") else ""
+	# get_global_name() requires the script be class_name-registered. Fall back
+	# to the file basename for scripts that only declare `extends BaseEnemy`.
+	if class_id == "":
+		var path := script.resource_path if script.has_method("resource_path") else ""
+		if path != "":
+			class_id = path.get_file().get_basename()
+	match class_id:
+		"ScoutEnemy", "scout_enemy", "goblin":
+			return "archetype_death_goblin"
+		"SwarmerEnemy", "swarmer_enemy", "wolf":
+			return "archetype_death_wolf"
+		"GuardianEnemy", "guardian_enemy", "guardian":
+			return "archetype_death_guardian"
+		"ElementalEnemy", "elemental_enemy", "elemental":
+			return "archetype_death_elemental"
+	return ""

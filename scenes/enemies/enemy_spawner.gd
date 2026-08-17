@@ -348,6 +348,11 @@ func _on_enemy_exiting(enemy: Node) -> void:
 				if game_mgr and game_mgr.has_method("end_game"):
 					game_mgr.end_game(true)
 		else:
+			# Issue #914: wave_clear sting fires between waves (not on the final
+			# wave — that triggers stage_win via GameManager.end_game(true)).
+			var audio := get_node_or_null("/root/AudioManager")
+			if audio and audio.has_method("play_event"):
+				audio.play_event("wave_clear")
 			print("DEBUG: Wave complete, starting wave timer for next wave")
 			# CRITICAL: Only start wave timer if not already running (prevent duplicate timers)
 			if wave_timer_node:

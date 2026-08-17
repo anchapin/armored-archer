@@ -60,6 +60,11 @@ func _on_button_down() -> void:
 	if not disabled:
 		_set_state(ButtonState.PRESSED)
 		_animate_press(true)
+		# Issue #914: ui_click sting on every button press. Calls go through
+		# AudioManager.play_event which dedupe-maps to the SFX pool.
+		var audio := get_node_or_null("/root/AudioManager")
+		if audio and audio.has_method("play_event"):
+			audio.play_event("ui_click")
 
 func _on_button_up() -> void:
 	if not disabled:

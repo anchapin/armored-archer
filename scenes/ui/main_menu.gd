@@ -52,6 +52,13 @@ func _ready() -> void:
 	# flashes before being hidden.
 	_apply_mvp_gating()
 
+	# Issue #914: start the menu music loop on first paint. The AudioManager
+	# also auto-switches on tree_changed, but an explicit call here covers
+	# the bootstrap path (main_scene = login_screen, no prior change_scene).
+	var audio := get_node_or_null("/root/AudioManager")
+	if audio and audio.has_method("play_default_music_menu"):
+		audio.play_default_music_menu()
+
 	# Privacy consent check must happen before any data collection
 	_check_privacy_consent()
 
