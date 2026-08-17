@@ -38,6 +38,50 @@
 
 ---
 
+## Post MVP PvE Slice Status (2026-08)
+
+The original analysis above (2026-04 / 2026-05) led to a focused MVP-PvE slice
+that landed in 2026-08. Quick post-slice snapshot; the durable home for the
+deferred-mode prerequisites is [`docs/mvp/MVP-2_PREREQUISITES.md`](docs/mvp/MVP-2_PREREQUISITES.md).
+
+**Closed by the slice (was P0/P1, now resolved):**
+- Login/services hard dependency (#910) — bounded auth timeline + retry.
+- Audio infrastructure (#911) + sound wiring (#914) — `AudioManager` +
+  `default_bus_layout.tres` + canonical `SOUND_*` event constants.
+- Frame animations (#913) — SpriteFrames + `AnimatedSprite2D` for the 7
+  Ch1 characters.
+- Tutorial review + balance calibration + DD disclosure UI (#915).
+- MVP scope gating (#909) — `autoloads/const.gd::MVP_PVE_ONLY = true` hides
+  PvP, Shop, and BuyGems in the main menu.
+
+**Pillar traffic light after the slice:**
+- Pillar 1 (PvE Progression): 🟢 Constrained-MVP ready. The slice is the MVP.
+- Pillar 2 (Async Matchmaking + Live Duels): 🟡 Const-hidden. RPC surface +
+  MatchmakerManager + duel UI exist; full lifecycle not end-to-end
+  demonstrated. Re-enable via `MVP_PVE_ONLY = false` (see prerequisites).
+- Pillar 3 (Seasons/Leaderboards): 🟡 Visible UI; rank updates gated behind
+  PvP. Infrastructure (`season_system.ts`, leaderboards) is wired.
+- Pillar 4 (Cosmetic Monetization): 🟡 Const-hidden. StoreManager + GemManager
+  + cosmetic_shop UI exist; real IAP loop vs. test fallbacks unverified.
+
+**MVP-2 prerequisites (must close before const-flip):**
+1. **Security** — `armored_archer/update_rank` accepts client-asserted
+   `winner_id` / `loser_id` with optional signature fields
+   ([`backend/src/modules/season_system.ts`](backend/src/modules/season_system.ts)
+   `rpcUpdateRank` ~L728+; `validateRankUpdateSignature` L566). This is an
+   **ADR-0002 bypass** that must close before any PvP re-enable. Full detail:
+   [`docs/mvp/MVP-2_PREREQUISITES.md`](docs/mvp/MVP-2_PREREQUISITES.md) §1.
+2. **iOS toolchain** — iOS export requires macOS (unavailable on Linux).
+   Defer or provision a macOS build lane before any iOS store claim.
+3. **Const-flip re-enable procedure** — `autoloads/const.gd::MVP_PVE_ONLY`
+   from `true` → `false` restores PvP / Shop / BuyGems. Steps in
+   [`docs/mvp/MVP-2_PREREQUISITES.md`](docs/mvp/MVP-2_PREREQUISITES.md) §3.
+
+**Remaining blockers (not in MVP-2 prerequisites):** #891 DB migrations apply
+task, #912 asset procurement (music loops), #917 DoD verification.
+
+---
+
 ## Pillar 1: PvE Progression (Auto-shooter Campaign + Loot + Leveling)
 
 **Frozen MVP ACs (from MVP-SCOPE.md) — Status vs. Evidence**
