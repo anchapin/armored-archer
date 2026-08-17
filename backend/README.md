@@ -127,6 +127,15 @@ cp .env.example .env
 ./start.sh
 ```
 
+   **Recommended (issue #907):** for a true cold-start, prefer the
+   repo-root helper which pre-pulls images, waits for postgres + nakama
+   healthchecks, and prints a pass/fail assertion:
+   ```bash
+   # from repo root
+   ./scripts/cold-start.sh            # alias of `make services-start`
+   ./scripts/assert-cold-start.sh     # re-assert all-green any time
+   ```
+
 4. Verify Nakama is running:
 - API: http://localhost:7350
 - Admin Console: http://localhost:7351 (username: admin, password: password)
@@ -135,6 +144,26 @@ cp .env.example .env
 ```bash
 npm run build
 ```
+
+### Cold-start caveats (issue #907)
+
+The `cold-start.sh` / `assert-cold-start.sh` pair reaches all-green from a
+truly cold state (no containers, no volumes, no cached images) with zero
+manual steps — as long as a real `backend/.env` is present. Caveats:
+
+- **`backend/.env` must exist before invoking `cold-start.sh` in a worktree.**
+  Auto-creating it from `.env.example` would replace the parent's healthy
+  credentials (the data volume keeps the real password). See the script's
+  git-worktree guard. From a fresh clone run `cp .env.example .env` first.
+- **Game schema migrations are NOT applied by `cold-start.sh`.** Issue #891
+  owns the "apply game SQL to local volume" task (the 16 core Nakama tables
+  exist, but `player_stats`, `catalog`, `inventory`, `loadout`, … are not
+  present until that lands). Until then, integration tests that touch game
+  tables will fail with "relation does not exist". Run
+  `npm run test:integration` to exercise the migration path.
+- **Destructive-restart path:** `make services-restart-destructive` drops
+  the named `data` volume and re-runs cold-start. Use this to verify
+  self-healing without manually editing compose files.
 
 ## Build Process
 
