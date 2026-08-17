@@ -3,7 +3,7 @@
 **Date:** 2026-04 (analysis performed)  
 **Scope:** Frozen MVP definition from `.planning/MVP-SCOPE.md` (4 pillars only: PvE auto-shooter campaign, async matchmaking + live duels, Seasonal leaderboards + rewards, Cosmetic-only IAP). Per [ADR-0003](docs/adr/0003-hybrid-duel-model.md) and `CONTEXT.md`, the PvP pillar is the ratified hybrid duel model: asynchronous pairing (Duel Matchmaking) followed by live short-session turn-based duels.  
 **Status:** Evidence-based review of current codebase vs. frozen acceptance criteria, RPC contract, runtime behavior, content, UX/UI/gameplay feel, integration, and launch readiness.  
-**Primary Sources:** `.planning/MVP-SCOPE.md`, `MVP-STORIES.md`, `STATE.md`, `RPC-MAP.md`, `continue-here.md`, `ROADMAP.md`, client autoloads (40+ managers), backend `src/modules/*.ts`, `data/campaigns.json`, UI verification & gameplay reports, existing smoke/e2e tests, demos.
+**Primary Sources:** `.planning/MVP-SCOPE.md`, `MVP-STORIES.md`, `STATE.md`, `RPC-MAP.md`, `ROADMAP.md`, client autoloads (40+ managers), backend `src/modules/*.ts`, `data/campaigns.json`, UI verification & gameplay reports, existing smoke/e2e tests, demos.
 
 ---
 
@@ -21,7 +21,7 @@
 | **4. Cosmetic Monetization** | 🟡 Partial (fallbacks exist) | StoreManager + GemManager call validate/purchase/spend, TransmogManager, cosmetic_shop UI, backend store.ts + RevenueCat webhooks. **Gaps:** Real IAP end-to-end (vs. fallbacks), purchase → gem balance → cosmetic equip loop verification, fraud/restore edge cases. |
 
 **Top 5 P0 Blockers (Must Fix for Any MVP Claim)**
-1. **Login / Backend Dependency** — Game stuck ~75% on login_screen when Nakama/Postgres not running (reproduced via `make services-health`). Blocks all pillar verification, persistence testing, and any real player onboarding. (`.planning/continue-here.md`, NetworkManager + login_screen.gd)
+1. **Login / Backend Dependency** — Game stuck ~75% on login_screen when Nakama/Postgres not running (reproduced via `make services-health`). Blocks all pillar verification, persistence testing, and any real player onboarding. (NetworkManager + login_screen.gd)
 2. **Enemy Content & Variety** — `EnemyFactory.gd:37-39` explicitly TODOs proper scenes for Goblin/Skeleton/Archer (core early types); they fallback to generic enemy_spawner. Directly contradicts "varied enemies" and "engaging challenges" in v4.0.0 goals + MVP enemy scaling ACs.
 3. **PvE End-to-End Reliability** — Campaign persistence sync recently added (get_campaign_progress RPC) but human verification step blocked by #1. Retry/backoff TODOs still present in CampaignManager. Stage completion → loot → equip → restart persistence not battle-tested in real sessions.
 4. **Async Matchmaking + Live Duel Core Loop** — RPC surface exists; full client "submit action → wait for opponent → authoritative result → rank/season update" flow lacks clear, working end-to-end demonstration in demos or tests (most smoke focuses on PvE loot/equip).
@@ -90,7 +90,7 @@ task, #912 asset procurement (music loops), #917 DoD verification.
 - [x] XP awarded on stage completion — Backend rpg_system + stage_complete RPC wired; client calls exist
 - [ ] Level-up grants ability points — Likely in PlayerStatsManager + stat_allocation UI (exists); needs fresh verification
 - [ ] Stats allocatable immediately after points — StatAllocationManager + UI present
-- [ ] Stage progression persistent across restarts — **BLOCKED** (continue-here.md human verification step; CampaignManager has retry TODOs at lines 98/314/319)
+- [ ] Stage progression persistent across restarts — **BLOCKED** (human verification step pending; CampaignManager has retry TODOs at lines 98/314/319)
 - [ ] Enemies scale appropriately — DynamicDifficultyManager + PacingManager + EnemyAIManager exist; "too hard" was a v4 driver
 
 **Evidence Highlights**
@@ -249,7 +249,7 @@ During continuation of this analysis (post-plan approval), we executed real comm
    - Request fails/times out.
    - `login_screen.gd` drives progress bar to 50% then caps it in `_process(delta)` while waiting for the `session_created` signal.
    - UI appears stuck around 50-75% (user perception). The "Connection Failed" + Retry button path only triggers after explicit error handling in `_on_http_request_completed`.
-   - This exactly matches the blocker documented in `.planning/continue-here.md` that halted the human verification step for campaign persistence.
+   - This matches the campaign-persistence verification blocker that halted the human verification step for that pillar.
 
 **Conclusion from runtime run:** The operational gap is **not theoretical**. A developer or tester following the documented "make backend-start" path on a typical machine will hit port conflicts, long startup, partial failure, and an unplayable client stuck at login. This blocks every single MVP pillar from being exercised.
 
@@ -442,7 +442,7 @@ Based on the evidence (static + fresh runtime), here are 5 concrete, scoped reco
 ### 4. Strengthen Campaign Persistence Verification Path
 **Problem:** Recent `get_campaign_progress` RPC work could not be human-verified because of the login blocker.
 **Actions:**
-- Once services are reliably startable, complete the manual verification step from `.planning/continue-here.md` (complete stage → restart → confirm progress).
+- Once services are reliably startable (see `docs/dod/MVP_PVE_SLICE_DOD_REPORT_2026.md` for the cold-start fixes shipped 2026-08), complete the manual campaign persistence verification (complete stage → restart → confirm progress) per `docs/mvp/MVP-2_PREREQUISITES.md`.
 - Implement the remaining retry/backoff TODOs in `CampaignManager.gd`.
 - Add an automated test that exercises the full sync loop (or at minimum a robust smoke test step).
 
