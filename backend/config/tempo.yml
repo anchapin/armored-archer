@@ -11,13 +11,15 @@ server:
 multitenancy_enabled: false
 
 # Query configuration
+# Tempo 2.3.x inlines `SearchConfig.SLO` and `TraceByIDConfig.SLO` — the SLO
+# fields (`duration_slo`, `throughput_bytes_slo`) live directly under
+# `search:` and `trace_by_id:`, NOT under a `slo:` sub-block. `metadata_slo:`
+# does not exist. (Tracking: issue #895 — config must validate against the
+# pinned 2.3.1 image.)
 query_frontend:
   search:
     duration_slo: 5s
     throughput_bytes_slo: 1.073741824e+09
-    metadata_slo:
-        duration_slo: 5s
-        throughput_bytes_slo: 1.073741824e+09
   trace_by_id:
     duration_slo: 5s
 
@@ -42,34 +44,45 @@ distributor:
       endpoint: 0.0.0.0:9411
 
 # Ingester configuration
+# `overwrite_existing` and `max_live_traces` are NOT fields of
+# tempo 2.3.x ingester.Config — they were accepted by older releases but
+# the 2.3.1 image rejects them. (Tracking: issue #895.)
 ingester:
   max_block_duration: 5m
   max_block_bytes: 1073741824
-  overwrite_existing: true
   trace_idle_period: 10s
-  max_live_traces: 100000
 
 # Compactor configuration
+# `chunk_size_bytes` is NOT a field of tempodb.CompactorConfig in tempo 2.3.x
+# (the v2 buffer byte size is `v2_in_buffer_bytes`). Removing it so the
+# config validates. (Tracking: issue #895.)
 compactor:
   compaction:
     block_retention: 48h
     compacted_block_retention: 12h
     max_compaction_objects: 1000000
-    chunk_size_bytes: 1048576
 
 # Querier configuration
+# Top-level `query_timeout` is not a field of querier.Config in tempo 2.3.x —
+# the timeout lives under `search.query_timeout` (SearchConfig.QueryTimeout)
+# and `trace_by_id.query_timeout` (TraceByIDConfig.QueryTimeout). (Tracking:
+# issue #895 — config must validate against the pinned 2.3.1 image.)
 querier:
   max_concurrent_queries: 20
-  query_timeout: 30s
+  search:
+    query_timeout: 30s
+  trace_by_id:
+    query_timeout: 30s
 
 # Storage configuration
+# `wal.enabled` / `wal.flush_to_storage` are NOT fields of wal.Config in
+# tempo 2.3.x — the WAL is implicitly enabled when a path is set. Removing
+# them so the config validates. (Tracking: issue #895.)
 storage:
   trace:
     backend: local
     wal:
       path: /tmp/tempo/wal
-      enabled: true
-      flush_to_storage: true
     local:
       path: /tmp/tempo/blocks
     pool:
@@ -90,9 +103,9 @@ metrics_generator:
   traces_storage:
     path: /tmp/tempo/generator/traces
   processor:
-    local_blocks:
-      filter_server_spans: true
-      flush_to_storage: true
+    # local_blocks: `filter_server_spans` and `flush_to_storage` are NOT fields
+    # of localblocks.Config in tempo 2.3.x — removed so the config validates.
+    # (Tracking: issue #895.)
     span_metrics:
       dimensions:
         - service_name
@@ -104,22 +117,21 @@ metrics_generator:
         - error_code
 
 # Overrides for per-tenant limits
+# Tempo 2.3.x restructured overrides — the flat legacy keys below have moved
+# under typed sub-blocks (`ingestion:`, `global:`, `read:`, `metrics_generator:`).
+# `tags_allow_list` is not part of overrides.ReadOverrides in 2.3.x (it was
+# removed in favour of TraceQL intrinsic dimensions), so it is dropped here.
+# (Tracking: issue #895 — config must validate against the pinned 2.3.1 image.)
 overrides:
   defaults:
     ingestion:
-      rate_limit: 10000000
-      ingestion_burst_size: 20000000
-    max_bytes_per_trace: 1048576
-    max_traces_per_user: 100000
-    max_spans_per_trace: 10000
-    search:
-      tags_allow_list:
-        - service.name
-        - rpc.name
-        - user.id
-        - match.id
-        - match.type
-        - error.code
+      rate_limit_bytes: 10000000
+      burst_size_bytes: 20000000
+      max_traces_per_user: 100000
+    global:
+      max_bytes_per_trace: 1048576
+      # `max_spans_per_trace` is not part of overrides.GlobalOverrides in
+      # tempo 2.3.x — removed so the config validates. (Tracking: issue #895.)
     metrics_generator:
       processors:
         - service-graphs
@@ -127,5 +139,7 @@ overrides:
       collection_interval: 10s
 
 # Usage reporting
+# The usagestats.Config field is `reporting_enabled` (not `enabled`).
+# (Tracking: issue #895.)
 usage_report:
-  enabled: true
+  reporting_enabled: true

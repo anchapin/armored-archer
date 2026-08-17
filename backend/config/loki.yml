@@ -94,13 +94,10 @@ limits_config:
   # Volume enabled for analytics
   volume_enabled: true
 
-# Logging configuration for Loki itself
-logging:
-  format: json
-  level: info
-  backtrace: false
-
-# Chunk storage configuration
+# Logging configuration for Loki itself.
+# Loki 2.9.x does not have a top-level `logging:` block — the log level/format
+# live under `server.log_level` / `server.log_format` (dskit server config).
+# (Tracking: issue #895 — using server.log_level: info keeps the previous intent.)
 chunk_store_config:
   max_look_back_period: 720h
   chunk_cache_config:
@@ -111,15 +108,6 @@ chunk_store_config:
 # Query scheduler
 query_scheduler:
   max_outstanding_requests_per_tenant: 32768
-
-# Frontend cache
-query_frontend:
-  cache_results: true
-  results_cache_config:
-    cache:
-      embedded_cache:
-        enabled: true
-        max_size_mb: 256
 
 # Overrides for specific tenants (optional)
 # overrides:

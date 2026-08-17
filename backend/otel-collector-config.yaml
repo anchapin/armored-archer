@@ -45,21 +45,31 @@ processors:
         value: armored-archer
         action: upsert
       - key: deployment.environment
-        value: ${ENVIRONMENT:development}
+        # The OpenTelemetry collector does NOT support compose-style `${VAR:default}` syntax
+        # (it parses the `:` as a URI scheme separator and crashes with
+        # "scheme \"ENVIRONMENT\" is not supported"). Use the `$$` escape so docker-compose
+        # does NOT pre-expand this; the collector then resolves $ENVIRONMENT at startup
+        # (docker-compose always sets it via the service `environment:` block with a
+        # `-development` fallback, so the variable is guaranteed to be non-empty).
+        value: $${ENVIRONMENT}
         action: upsert
   
-  # Span processor to add metadata
+  # Span processor to add metadata.
+  # Go's RE2 regexp requires named capture groups to be plain identifiers
+  # (no `.` / `-` / etc.); the previous patterns used dotted names (`rpc.name`,
+  # `db.operation`, …) which RE2 rejects with "invalid regexp pattern".
+  # (Tracking: issue #895.)
   span:
     name:
       to_attributes:
         rules:
-          - ^(?P<rpc.name>rpc/.*)$
-          - ^(?P<db.operation>db/.*)$
-          - ^(?P<cache.operation>cache/.*)$
-          - ^(?P<match.operation>match/.*)$
-          - ^(?P<combat.operation>combat/.*)$
-          - ^(?P<gear.operation>gear/.*)$
-          - ^(?P<season.operation>season/.*)$
+          - ^(?P<rpc_name>rpc/.*)$
+          - ^(?P<db_operation>db/.*)$
+          - ^(?P<cache_operation>cache/.*)$
+          - ^(?P<match_operation>match/.*)$
+          - ^(?P<combat_operation>combat/.*)$
+          - ^(?P<gear_operation>gear/.*)$
+          - ^(?P<season_operation>season/.*)$
   
   # Sampling processor for production (1% sampling)
   # In development, use probability: 1.0 for full sampling
@@ -106,11 +116,7 @@ extensions:
   health_check:
     endpoint: 0.0.0.0:13133
     path: /health
-  
-  # Prometheus metrics for the collector itself
-  prometheus:
-    endpoint: 0.0.0.0:8888
-  
+
   # Z-pages for debugging
   zpages:
     endpoint: 0.0.0.0:55679
@@ -118,9 +124,8 @@ extensions:
 service:
   extensions:
     - health_check
-    - prometheus
     - zpages
-  
+
   pipelines:
     # Traces pipeline: OTLP/Jaeger/Zipkin -> Processors -> Tempo
     traces:
@@ -148,10 +153,8 @@ service:
         - prometheus
         - logging
 
-# Telemetry for the collector itself
-telemetry:
-  metrics:
-    address: 0.0.0.0:8888
-  logs:
-    level: info
-    development: false
+# Telemetry for the collector itself.
+# The top-level `telemetry:` block was added in otel-collector v0.95.0; the
+# 0.92.0 image we pin here rejects it as an invalid key. Internal metrics are
+# still exposed via the `prometheus` exporter on port 8889 (see exporters section).
+# (Tracking: issue #895 — config must validate against the pinned 0.92.0 image.)
