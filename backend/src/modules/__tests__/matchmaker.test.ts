@@ -24,7 +24,6 @@ import {
   registerRpcGetMatchDetails,
   registerRpcAdminQueryMatches,
   isPunchUpMatch,
-  calculateFavoritePenalty,
   calculatePunchUpGemBonus,
   generatePunchUpDescription,
   type PunchUpInfo,
@@ -592,6 +591,35 @@ describe('matchmaker', () => {
       expect(parsed.total).toBe(2);
     });
 
+    // Issue #902: list_matches must expose the canonical `power_rating`
+    // field and keep `player_rank` as a deprecated alias for already-
+    // shipped clients. Both fields must return the same value.
+    it('should expose power_rating and keep player_rank as a deprecated alias (#902)', () => {
+      const playerStats = {
+        level: 5,
+        xp: 500,
+        stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 8 },
+      };
+
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_stats',
+          key: 'test-user-123',
+          value: JSON.stringify(playerStats),
+        },
+      ]);
+      mockNk.storageList = jest.fn(() => []);
+
+      const result = rpcListMatches(mockCtx, mockLogger, mockNk, JSON.stringify({}));
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.power_rating).toBeDefined();
+      expect(parsed.player_rank).toBeDefined();
+      // Deprecated alias must return the same value as the canonical field
+      expect(parsed.power_rating).toBe(parsed.player_rank);
+    });
+
     it('should filter by match_type', () => {
       const playerStats = {
         level: 5,
@@ -1067,8 +1095,11 @@ describe('matchmaker', () => {
         // a normal loss, never zero or negative.
         expect(parsed.loser.xp_gained).toBe(13);
         expect(parsed.loser.xp_gained).toBeGreaterThan(0);
-        // Winner (favorite) XP unchanged: round(100 * favorite penalty at diff 10)
-        expect(parsed.winner.xp_gained).toBe(60);
+        // Issue #902: the favorite reward penalty was removed. The
+        // favorite's consequence is the 2x K-factor on Ladder Rating
+        // (issue #864), not an XP multiplier. Favorites in punch-up wins
+        // now receive the full ranked-win XP grant (100).
+        expect(parsed.winner.xp_gained).toBe(100);
         // XP reward entry matches the granted amount
         const loserXPReward = parsed.loser.rewards.find((r: any) => r.type === 'xp');
         expect(loserXPReward.quantity).toBe(13);
@@ -1089,8 +1120,11 @@ describe('matchmaker', () => {
         const eloCall = (applyEloUpdates as jest.Mock).mock.calls[0];
         expect(eloCall[7]).toBe(true); // isPunchUp
         expect(eloCall[10]).toBe(false); // loser is the favorite: NOT amplified
-        // Favorite loser XP: reduced by favorite penalty, still positive
-        expect(parsed.loser.xp_gained).toBe(15); // round(25 * 0.6)
+        // Issue #902: favorite XP penalty removed. Favorites who lose a
+        // punch-up now receive the full ranked-loss base XP (25), and the
+        // only consequence is the 2x K-factor on Ladder Rating (issue
+        // #864) on the WINner's side, which is asserted via applyEloUpdates.
+        expect(parsed.loser.xp_gained).toBe(25);
         expect(parsed.loser.xp_gained).toBeGreaterThan(0);
       });
 
@@ -2025,32 +2059,6 @@ describe('matchmaker', () => {
         });
       });
 
-      describe('calculateFavoritePenalty', () => {
-        it('should return no penalty for non-punch-up matches', () => {
-          const penalty = calculateFavoritePenalty(false, 10);
-          expect(penalty).toBe(1.0);
-        });
-
-        it('should calculate minimum penalty for smallest punch-up', () => {
-          const penalty = calculateFavoritePenalty(true, 5);
-          expect(penalty).toBe(0.7);
-        });
-
-        it('should calculate maximum penalty for largest punch-up', () => {
-          const penalty = calculateFavoritePenalty(true, 15);
-          expect(penalty).toBe(0.5);
-        });
-
-        it('should scale penalty with rank difference', () => {
-          const smallPenalty = calculateFavoritePenalty(true, 5);
-          const mediumPenalty = calculateFavoritePenalty(true, 10);
-          const largePenalty = calculateFavoritePenalty(true, 15);
-
-          expect(smallPenalty).toBeGreaterThan(mediumPenalty);
-          expect(mediumPenalty).toBeGreaterThan(largePenalty);
-        });
-      });
-
       describe('calculatePunchUpGemBonus', () => {
         it('should return minimum gems for smallest punch-up', () => {
           const bonus = calculatePunchUpGemBonus(5);
@@ -2104,7 +2112,7 @@ describe('matchmaker', () => {
           expect(description).toContain('10 bonus gems');
         });
 
-        it('should mention favorite penalty', () => {
+        it('should describe the ratified punch-up consequence (issue #864/#902)', () => {
           const info: PunchUpInfo = {
             is_punch_up: true,
             rank_difference: 10,
@@ -2115,7 +2123,11 @@ describe('matchmaker', () => {
           };
 
           const description = generatePunchUpDescription(info);
-          expect(description).toContain('Favorites receive reduced rewards');
+          // Issue #902: description must reference the ratified consequence
+          // (2x K-factor on Ladder Rating) and must NOT mention the historic
+          // "Favorites receive reduced rewards" reward-penalty heuristic.
+          expect(description).toContain('2x K-factor');
+          expect(description).not.toContain('Favorites receive reduced rewards');
         });
       });
     });

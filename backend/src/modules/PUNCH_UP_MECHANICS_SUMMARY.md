@@ -148,8 +148,9 @@ const PUNCH_UP_XP_MULTIPLIER_MIN = 1.2; // Min XP bonus
 const PUNCH_UP_XP_MULTIPLIER_MAX = 2.0; // Max XP bonus
 const PUNCH_UP_GEM_BONUS_MIN = 3; // Min gem bonus
 const PUNCH_UP_GEM_BONUS_MAX = 10; // Max gem bonus
-const FAVORITE_REWARD_PENALTY_MIN = 0.7; // Min favorite multiplier (70%)
-const FAVORITE_REWARD_PENALTY_MAX = 0.5; // Max favorite multiplier (50%)
+// Issue #902: FAVORITE_REWARD_PENALTY_MIN/MAX removed. The favorites
+// consequence is the 2x K-factor on Ladder Rating (issue #864), not a
+// reward multiplier. The rank_penalty heuristic was misleading.
 ```
 
 ### Client (`MatchmakerManager.gd`, `punch_up_warning_dialog.gd`)
