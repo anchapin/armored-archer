@@ -15,6 +15,8 @@ Godot 4.6 mobile archery auto-shooter with a Nakama (TypeScript) backend and Pos
 ├── test/                  # test/*.gd = legacy custom runner (used by CI)
 │   └── suites/            # GUT suites (config: .gutconfig.json; see suites/MIGRATION_GUIDE.md)
 ├── themes/                # UI themes
+├── data/                  # Tooling state (flaky-test history, coverage history) — NOT SQL migrations
+├── docs/                  # Deep dives: PRD, ADRs (docs/adr/), runbooks, per-feature docs
 ├── script_templates/      # Custom Godot script templates
 └── project.godot          # Main scene: scenes/ui/login_screen.tscn; features: 4.6, Mobile
 
@@ -23,7 +25,7 @@ Godot 4.6 mobile archery auto-shooter with a Nakama (TypeScript) backend and Pos
 │   └── **/__tests__/      # Unit tests (colocated with source)
 ├── tests/integration/     # Integration tests (the only dir the integration jest config matches)
 ├── scripts/               # Build/validation tooling (bundle, flaky, tech-debt, agents-md)
-├── data/                  # SQL migrations + flaky-test history
+├── data/                  # SQL migrations (source of truth) + nakama config ymls
 ├── build/                 # Compiled output (do not edit)
 ├── .env.example           # Copy to .env before starting services
 ├── start.sh               # Validates env, then starts services
@@ -32,6 +34,9 @@ Godot 4.6 mobile archery auto-shooter with a Nakama (TypeScript) backend and Pos
 
 - `*.uid` files next to `.gd`/`.tscn` are Godot-generated — never hand-edit.
 - Two Godot test systems coexist: the custom runner (`test/run_all_tests.gd`, what CI uses) and GUT (`test/suites/`). New suites go in `test/suites/`.
+- `RPC_MAP.md` is the authoritative per-RPC reference (client caller, server handler, storage ownership) — update it whenever RPCs change.
+- `CONTEXT.md` holds the ratified domain vocabulary; use its terms verbatim and respect the `_Avoid_` anti-terms (e.g. Dynamic Difficulty ≠ `difficulty_scaling.ts`).
+- Root `migrations/` is an unreferenced partial copy of `backend/data/*.sql` — only edit `backend/data/`.
 
 ## Build & Development Commands
 
@@ -87,7 +92,7 @@ make services-start     # = backend-start; docker compose up from backend/
 make services-stop | services-status | services-health | services-logs | services-clean
 ```
 
-Stack: `armored_archer_server` (Nakama 3.21 — API :7350, console http://localhost:7351, credentials from `backend/.env`), `armored_archer_db` (PostgreSQL 14), plus redis, prometheus, grafana, loki, alertmanager.
+Stack: `armored_archer_server` (Nakama 3.21 — API :7350, console http://localhost:7351, credentials from `backend/.env`), `armored_archer_db` (PostgreSQL 14), plus redis and a full observability stack (prometheus, grafana, loki, tempo, otel-collector, promtail, alertmanager, node-exporter).
 Local DB default: `postgres://postgres:localdbpassword@localhost:5432/nakama`.
 
 ### Database (PostgreSQL)
@@ -122,7 +127,7 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 
 ### Godot
 - Run headlessly as shown above; treat `Failed: N` in output as the pass/fail signal.
-- Flaky detection: `python3 scripts/detect_godot_flaky_tests.py` (history in `data/godot-flaky-test-history.json`).
+- Flaky detection: `python3 scripts/detect_godot_flaky_tests.py` (history in repo-root `data/godot-flaky-test-history.json`).
 
 ### Backend (Jest)
 - **Unit tests** are colocated at `src/**/__tests__/*.test.ts` (jest roots = `src/`). Run all: `npm test`. Single file: `npm test -- <path-or-pattern>`.
@@ -135,6 +140,7 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 - Auth: Firebase. IAP: RevenueCat. Client talks to Nakama via `@heroiclabs/nakama-js`; the `NetworkManager` autoload owns the session/RPC calls.
 - Transmog: base gear carries all stats (gameplay-earned); cosmetic skins are visual-only (IAP). The client combines base + skin for rendering.
 - A Go backend migration was abandoned — ignore the deprecated Go targets in the Makefile.
+- PvP/combat decisions are recorded as ADRs in `docs/adr/` (server-declared match settlement, hybrid duel model) — read them before changing duel or settlement flow.
 - The Nakama bundle has a size budget enforced by `make bundle-size-check` (config: `backend/bundle-size-limits.json`).
 
 ## Commit & PR Guidelines
@@ -147,7 +153,7 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 
 - Commits containing AI-generated changes need the `[AI-assisted]` prefix plus model and task in the body, e.g. `[AI-assisted] feat: ...` / `- AI Model: ...` / `- Task: ...`; document AI-assisted scope in the PR description.
 - Human review is mandatory for AI-assisted changes. Hard rules: no secrets/credentials in code, input validation on all user data, and **database migrations plus security-critical code always require human supervision**.
-- Review checklist: `AI_CODE_REVIEW.md`. Workflow and tooling: `AI_INTEGRATION.md`, `GODOGEN_SETUP.md`, `FOLEY_AI_SETUP.md`. Repo skills: `.agents/skills/godot-backend`, `.agents/skills/godot-development`.
+- Review checklist: `AI_CODE_REVIEW.md`. Workflow and tooling: `AI_INTEGRATION.md`, `GODOGEN_SETUP.md`, `FOLEY_AI_SETUP.md`. Companion guide: `CLAUDE.md` (autoload map, design system, tooling notes). Repo skills: `.agents/skills/godot-backend`, `.agents/skills/godot-development` (plus `godot-task`/`godogen` in `.claude/skills/`).
 
 ## Maintenance Automation
 
