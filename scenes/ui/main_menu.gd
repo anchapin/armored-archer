@@ -164,8 +164,13 @@ func _update_gem_display() -> void:
 		gem_label.text = "%d" % gem_manager.get_gem_balance()
 
 func _update_gold_display() -> void:
-	if gem_manager:
-		gold_label.text = "%d" % gem_manager.get_gold_balance()
+	# Issue #901: the previous gold-balance accessor lived on a manager that
+	# no longer exposes it. The canonical source-of-truth for coins is
+	# StoreManager.get_coins() (post-#866). The StoreManager.currency_updated
+	# signal (connected in _ready) keeps the label in sync as the balance
+	# changes; this call sets the initial value.
+	if store_manager and store_manager.has_method("get_coins"):
+		gold_label.text = "%d" % store_manager.get_coins()
 
 func _on_currency_updated(gems: int, coins: int) -> void:
 	_update_gem_display()
