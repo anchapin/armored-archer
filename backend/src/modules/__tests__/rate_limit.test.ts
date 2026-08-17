@@ -40,9 +40,9 @@ describe('Rate Limiting Module', () => {
     test('allows requests within rate limit', () => {
       const userId = 'user_123';
 
-      // Make 5 requests (limit is 10/min for submit_turn)
+      // Make 5 requests (limit is 5/min for create_match)
       for (let i = 0; i < 5; i++) {
-        const result = checkRateLimit(userId, 'submit_turn');
+        const result = checkRateLimit(userId, 'create_match');
         expect(result.allowed).toBe(true);
       }
     });
@@ -51,13 +51,13 @@ describe('Rate Limiting Module', () => {
       const userId = 'user_123';
 
       // Make requests up to limit
-      for (let i = 0; i < 10; i++) {
-        const result = checkRateLimit(userId, 'submit_turn');
-        expect(result.allowed).toBe(i < 10);
+      for (let i = 0; i < 5; i++) {
+        const result = checkRateLimit(userId, 'create_match');
+        expect(result.allowed).toBe(i < 5);
       }
 
-      // 11th request should be blocked
-      const result = checkRateLimit(userId, 'submit_turn');
+      // 6th request should be blocked
+      const result = checkRateLimit(userId, 'create_match');
       expect(result.allowed).toBe(false);
       expect(result.reason).toBe('rate_limit_exceeded');
       expect(result.retryAfter).toBeGreaterThan(0);
@@ -66,18 +66,18 @@ describe('Rate Limiting Module', () => {
     test('applies penalty period after rate limit exceeded', () => {
       const userId = 'user_123';
 
-      // Exhaust rate limit
-      for (let i = 0; i < 10; i++) {
-        checkRateLimit(userId, 'submit_turn');
+      // Exhaust rate limit (5/min for create_match)
+      for (let i = 0; i < 5; i++) {
+        checkRateLimit(userId, 'create_match');
       }
 
       // This request triggers the rate limit
-      const firstBlockedResult = checkRateLimit(userId, 'submit_turn');
+      const firstBlockedResult = checkRateLimit(userId, 'create_match');
       expect(firstBlockedResult.allowed).toBe(false);
       expect(firstBlockedResult.reason).toBe('rate_limit_exceeded');
 
       // Next request should be blocked with penalty
-      const secondBlockedResult = checkRateLimit(userId, 'submit_turn');
+      const secondBlockedResult = checkRateLimit(userId, 'create_match');
       expect(secondBlockedResult.allowed).toBe(false);
       expect(secondBlockedResult.reason).toBe('rate_limit_penalty');
       expect(secondBlockedResult.retryAfter).toBeGreaterThan(0);
@@ -89,23 +89,23 @@ describe('Rate Limiting Module', () => {
       // Exhaust rate limit with short penalty
       initializeRateLimiting(
         {
-          submit_turn: { maxRequests: 2, windowMs: 1000, penaltyMs: 500 },
+          create_match: { maxRequests: 2, windowMs: 1000, penaltyMs: 500 },
         },
         undefined
       );
 
-      checkRateLimit(userId, 'submit_turn');
-      checkRateLimit(userId, 'submit_turn');
+      checkRateLimit(userId, 'create_match');
+      checkRateLimit(userId, 'create_match');
 
       // Should be blocked
-      const blockedResult = checkRateLimit(userId, 'submit_turn');
+      const blockedResult = checkRateLimit(userId, 'create_match');
       expect(blockedResult.allowed).toBe(false);
 
       // Wait for penalty to expire
       jest.advanceTimersByTime(600);
 
       // Should be allowed again
-      const allowedResult = checkRateLimit(userId, 'submit_turn');
+      const allowedResult = checkRateLimit(userId, 'create_match');
       expect(allowedResult.allowed).toBe(true);
     });
 
@@ -113,17 +113,17 @@ describe('Rate Limiting Module', () => {
       const user1 = 'user_1';
       const user2 = 'user_2';
 
-      // User 1 exhausts their limit
-      for (let i = 0; i < 10; i++) {
-        checkRateLimit(user1, 'submit_turn');
+      // User 1 exhausts their limit (5/min for create_match)
+      for (let i = 0; i < 5; i++) {
+        checkRateLimit(user1, 'create_match');
       }
 
       // User 1 should be blocked
-      const user1Result = checkRateLimit(user1, 'submit_turn');
+      const user1Result = checkRateLimit(user1, 'create_match');
       expect(user1Result.allowed).toBe(false);
 
       // User 2 should still be allowed
-      const user2Result = checkRateLimit(user2, 'submit_turn');
+      const user2Result = checkRateLimit(user2, 'create_match');
       expect(user2Result.allowed).toBe(true);
     });
 
@@ -506,7 +506,7 @@ describe('Rate Limiting Module', () => {
     test('returns rate limit statistics', () => {
       const userId = 'user_123';
 
-      checkRateLimit(userId, 'submit_turn');
+      checkRateLimit(userId, 'create_match');
       recordMatchAction(userId, 'create', 'match_123');
       checkDuplicateTurn(userId, 'match_123', 1);
 
@@ -558,7 +558,7 @@ describe('Rate Limiting Module', () => {
       const userId = 'user_123';
 
       // Create some activity
-      checkRateLimit(userId, 'submit_turn');
+      checkRateLimit(userId, 'create_match');
 
       // Advance time significantly
       jest.advanceTimersByTime(86400000 * 2); // 2 days
@@ -578,7 +578,7 @@ describe('Rate Limiting Module', () => {
       const userId = 'user_123';
 
       // Create activity
-      checkRateLimit(userId, 'submit_turn');
+      checkRateLimit(userId, 'create_match');
       recordMatchAction(userId, 'create', 'match_123');
       checkDuplicateTurn(userId, 'match_123', 1);
 

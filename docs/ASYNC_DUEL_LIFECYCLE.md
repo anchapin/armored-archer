@@ -98,7 +98,7 @@ Every gameplay timer in the shipped hybrid model, with its code symbol:
 | Expiry check | lazy | `isMatchExpired` (`combat_system.ts`) |
 | Separate inactivity forfeit | **none** | the 2-minute `MATCH_INACTIVE_TIMEOUT_MS` was removed in #868; turn timers are the single timeout authority |
 
-Turn-timing authority is the combat engine's `MatchState.turn_timeout_ms` (5 minutes), stored in `pvp_match_states`. The `turn_time_limit_ms` field on `PvPMatch` belongs to the legacy engine (see [legacy note](#legacy-correspondence-engine-compatibility)) and is not the gameplay timer.
+Turn-timing authority is the combat engine's `MatchState.turn_timeout_ms` (5 minutes), stored in `pvp_match_states`. The `turn_time_limit_ms` field on `PvPMatch` is preserved for storage-type migration only (see [legacy note](#legacy-correspondence-engine-removed-issue-903)) and is not the gameplay timer.
 
 ## RPC Endpoints (shipped lifecycle)
 
@@ -365,7 +365,7 @@ The shipped client uses these autoloads (registered in `project.godot`):
 | Live duel (sync) | `autoloads/CombatSyncManager.gd` | `submit_combat_action`, `get_match_state` |
 | UI | `scenes/ui/matchmaking_menu.gd`, `scenes/ui/combat_menu.gd` | accept / action + state polling |
 
-`autoloads/MatchmakerManager.gd` predates the hybrid model and still calls the legacy `get_async_match_state` — see the legacy note below.
+`autoloads/MatchmakerManager.gd` previously exposed the legacy correspondence duel methods (`submit_turn`, `get_async_match_state`, `forfeit_match`, `reconnect_to_match`) — these were removed in issue #903. Use `CombatManager` / `CombatSyncManager` for the live duel path.
 
 ## Notifications
 
@@ -404,15 +404,16 @@ Timeouts and disconnects are additionally logged as fairness telemetry (`logTime
 2. **Current-state storage** — one `MatchState` record per match plus a combat log, not full turn history
 3. **Expiry as cleanup** — `expires_at` abandonment guards keep stale pending/active matches out of the pool (`isMatchExpired`)
 
-## Legacy Correspondence Engine (Compatibility)
+## Legacy Correspondence Engine — Removed (issue #903)
 
-A superseded correspondence-style turn engine still exists in `backend/src/modules/matchmaker.ts` (section "ASYNC DUEL LIFECYCLE - Turn-Based PvP System") and its RPCs remain registered (`registerRpcSubmitTurn`, `registerRpcGetAsyncMatchState`, `registerRpcForfeitMatch` in `backend/src/index.ts`):
+The correspondence-style turn engine (24-hour turns, 7-day matches) and its RPCs were removed in issue #903:
 
-- `armored_archer/submit_turn`, `armored_archer/get_async_match_state`, `armored_archer/forfeit_match`
-- Its `TURN_TIMEOUT_MS = 24 * 60 * 60 * 1000` (24-hour turns) and the matching `PvPMatch.turn_time_limit_ms` field belong to that engine — they are **not** the gameplay timer of the shipped hybrid model
-- `DEFAULT_MAX_TURNS = 10` and `BASE_HEALTH = 100` originate here; max-turns end conditions are still honored at settlement (`checkMatchEndConditions`), but live combat HP is level-scaled in `MatchState` (`getOrCreateMatchState`)
+- `armored_archer/submit_turn`, `armored_archer/get_async_match_state`, `armored_archer/forfeit_match` — RPCs removed from `backend/src/modules/matchmaker.ts` and `backend/src/index.ts`.
+- Correspondence-era constants removed: `TURN_TIMEOUT_MS = 24 * 60 * 60 * 1000`, `MAX_CONSECUTIVE_TIMEOUTS = 2`, `DEFAULT_MAX_TURNS = 10`, `BASE_HEALTH = 100`, `ACTIVE_MATCH_EXPIRY_MS = 7 days`.
+- `PvPMatch.turn_time_limit_ms`, `creator_health`, `opponent_health`, `max_turns`, `consecutive_timeouts` remain on the storage type for migration compatibility, but are no longer authoritative — the live duel engine in `combat_system.ts` (`MatchState`) owns the gameplay timer, HP, and timeout bookkeeping.
+- The legacy correspondence client code in `autoloads/MatchmakerManager.gd` (`submit_turn`, `get_async_match_state`, `forfeit_match`, `reconnect_to_match`, timeout monitoring, async duel signals) was removed.
 
-The shipped client does not use these endpoints (see [Client Integration](#client-integration)); new work must target `submit_combat_action` / `get_match_state` / `player_disconnect`.
+Historical references for completeness: see [MATCHMAKER.md](MATCHMAKER.md) and [COMBAT_SYSTEM.md](COMBAT_SYSTEM.md).
 
 ## Related Documents
 
