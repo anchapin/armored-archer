@@ -26,9 +26,13 @@ const originalSize = fs.statSync(BUNDLE_PATH).size;
 console.log(`Original bundle size: ${(originalSize / 1024 / 1024).toFixed(2)} MB`);
 
 try {
-  // Use babel to transpile the bundle with config file
+  // Use babel to transpile the bundle with config file.
+  // Resolve the babel binary directly from node_modules so the call is deterministic
+  // and does not depend on npx's PATH discovery (which previously fell back to the
+  // legacy `babel@5.8.38` CLI on clean checkouts — see issue #892).
+  const babelBin = path.resolve(__dirname, '../node_modules/.bin/babel');
   execSync(
-    `npx babel ${BUNDLE_PATH} --out-file ${TEMP_PATH} --config-file ${path.resolve(__dirname, '../babel.config.js')}`,
+    `"${babelBin}" ${BUNDLE_PATH} --out-file ${TEMP_PATH} --config-file ${path.resolve(__dirname, '../babel.config.js')}`,
     { stdio: 'inherit', cwd: __dirname }
   );
 
