@@ -361,6 +361,19 @@ func _on_consent_given() -> void:
 	_check_beta_onboarding()
 
 
+## Issue #915: Show the Dynamic Difficulty disclosure on the player's first
+## PvE entry. Persistence is handled inside the dialog — once acknowledged
+## it won't re-pop. Players can re-open from Settings.
+func check_dd_disclosure() -> void:
+	if not _is_scene_loaded("res://scenes/ui/components/dd_disclosure_dialog.tscn"):
+		return
+	var script = load("res://scenes/ui/components/dd_disclosure_dialog.gd")
+	if script and script.has_method("has_acknowledged") and not script.has_acknowledged():
+		var dialog_scene = load("res://scenes/ui/components/dd_disclosure_dialog.tscn")
+		var dialog = dialog_scene.instantiate()
+		get_tree().root.add_child(dialog)
+
+
 func _check_beta_onboarding() -> void:
 	var beta_welcome_script = load("res://scenes/ui/beta_welcome.gd")
 	if beta_welcome_script == null:
