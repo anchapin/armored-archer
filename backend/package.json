@@ -107,7 +107,7 @@
     "@opentelemetry/exporter-zipkin": "^2.10.0",
     "@opentelemetry/resources": "2.10.0",
     "@opentelemetry/sdk-node": "^0.221.0",
-    "@opentelemetry/semantic-conventions": "1.40.0",
+    "@opentelemetry/semantic-conventions": "1.43.0",
     "@sentry/node": "^10.51.0",
     "@types/ioredis": "^5.0.0",
     "ioredis": "^5.10.0",
