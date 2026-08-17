@@ -28,6 +28,16 @@ var _is_pve_mode: bool = false
 var _enemy_health: int = 0
 var _enemy_max_health: int = 0
 
+# --- Server-declared result routing (issue #902) ---
+# combat_menu now waits for MatchmakerManager.match_completed to render
+# the result screen. The `_server_result_connected` flag prevents wiring
+# the same callback twice if combat ends twice (e.g. reconnect mid-match).
+var _server_result_connected: bool = false
+var _server_result_rendered: bool = false
+var _server_result_rendered_match_id: String = ""
+var _last_combat_winner_local: String = ""
+var _last_combat_victory_local: bool = false
+
 # --- Constants ---
 const CRITICAL_HIT_CHANCE: float = 0.15
 const CRITICAL_HIT_MULTIPLIER: float = 2.0
@@ -230,37 +240,53 @@ func _on_turn_changed(is_my_turn: bool) -> void:
 		_refresh_match_state()
 
 func _on_pvp_combat_ended(winner: String) -> void:
-	# For vertical slice, show match results screen instead of simple dialog
-	# Get match result data from CombatManager
-	var result_data: Dictionary = {}
+	# Issue #902: the previous implementation fabricated XP/Ladder Rating
+	# placeholders here and only forwarded an "old_rank=0, rank_delta=0,
+	# xp_gained=150 if is_victory else 50" stub to the match results screen.
+	# That display-only path diverged from the server-declared settlement
+	# payload emitted by MatchmakerManager.match_completed, so the player
+	# could see one set of values on the results screen and a different
+	# set when reconciliation finished.
+	#
+	# The combat menu must now route through server-declared results only:
+	# it listens to MatchmakerManager.match_completed and renders the
+	# server's payload verbatim. The local `winner` argument from the
+	# combat_ended signal is intentionally ignored here — the server is
+	# authoritative on who won (issue #861). We guard against double-handling
+	# by tracking the match_id of the result we already rendered.
+	var my_user_id: String = NetworkManager.user_id if NetworkManager else ""
+	var is_victory: bool = winner == my_user_id
 
-	if combat_manager:
-		# Build comprehensive result data
-		var is_victory: bool = winner == NetworkManager.user_id
-		var my_user_id: String = NetworkManager.user_id
+	var matchmaker_manager = get_node_or_null("/root/MatchmakerManager")
+	if matchmaker_manager and not _server_result_rendered:
+		if not _server_result_connected:
+			matchmaker_manager.match_completed.connect(_on_server_match_completed)
+			_server_result_connected = true
+		# Capture whether this is a win locally, but the actual numbers come
+		# from the server signal. We just stash the outcome for the fallback
+		# dialog if the server signal never arrives.
+		_last_combat_winner_local = winner
+		_last_combat_victory_local = is_victory
 
-		result_data = {
-			"is_victory": is_victory,
-			"match_type": current_match_state.get("match_type", "ranked") if not current_match_state.is_empty() else "ranked",
-			"is_punch_up": current_match_state.get("is_punch_up", false) if not current_match_state.is_empty() else false,
-			"xp_gained": 150 if is_victory else 50,  # Base XP reward
-			"old_rank": 0,  # Will be filled by MatchmakerManager response
-			"new_rank": 0,
-			"rank_delta": 0,
-			"season_position": 0,
-			"season_delta": 0,
-			"match_duration": 120.0,  # 2 minutes default
-			"rewards": []
-		}
+func _on_server_match_completed(server_result: Dictionary) -> void:
+	# Server-declared settlement payload — render it verbatim. The combat
+	# menu never invents XP, rank, or season-position numbers; whatever the
+	# server sent is what the player sees (issue #861, issue #902).
+	var payload: Dictionary = server_result.duplicate(true)
+	var rendered_match_id: String = payload.get("match_id", match_id)
+	if not rendered_match_id.is_empty() and rendered_match_id == _server_result_rendered_match_id:
+		return
+	_server_result_rendered_match_id = rendered_match_id
 
-		# Load and show match results scene
-		var match_results_scene = load("res://scenes/ui/pvp/match_results.tscn")
-		if match_results_scene:
-			match_results_scene.show_match_results(result_data)
-			get_tree().change_scene_to_packed(match_results_scene)
-		else:
-			# Fallback to dialog if scene not available
-			_show_fallback_dialog(is_victory)
+	var match_results_scene = load("res://scenes/ui/pvp/match_results.tscn")
+	if match_results_scene:
+		match_results_scene.show_match_results(payload)
+		get_tree().change_scene_to_packed(match_results_scene)
+	else:
+		# Fallback only when the results scene is missing — still use the
+		# server's is_victory flag (never the local derivation).
+		_show_fallback_dialog(payload.get("is_victory", false))
+	_server_result_rendered = true
 
 func _show_fallback_dialog(is_victory: bool) -> void:
 	var dialog: AcceptDialog = AcceptDialog.new()

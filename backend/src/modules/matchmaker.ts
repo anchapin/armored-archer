@@ -224,11 +224,17 @@ function matchPassesFilter(match: PvPMatch, userId: string, request: ListMatches
 /**
  * Lists available PvP matches with filtering options.
  *
+ * Power Rating (the build-strength value derived from player_stats) is now
+ * exposed as the canonical `power_rating` field in line with the terminology
+ * split ratified in issue #871. The legacy `player_rank` name is kept as a
+ * deprecated alias for one release so already-shipped clients continue to
+ * parse the response unchanged; new clients should prefer `power_rating`.
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param payload - JSON string containing filter parameters
- * @returns JSON string with list of matches and player rank
+ * @returns JSON string with list of matches and the player's power rating
  *
  * @example
  * // Request payload
@@ -238,7 +244,8 @@ function matchPassesFilter(match: PvPMatch, userId: string, request: ListMatches
  * {
  *   "success": true,
  *   "matches": [ ... ],
- *   "player_rank": 15,
+ *   "power_rating": 15,   // canonical (issue #871)
+ *   "player_rank": 15,   // deprecated alias of power_rating
  *   "total": 8
  * }
  */
@@ -306,6 +313,10 @@ export function rpcListMatches(
   return JSON.stringify({
     success: true,
     matches: filteredMatches.slice(0, limit),
+    // Power Rating (build strength) is the canonical field (issue #871).
+    // `player_rank` is retained as a deprecated alias for clients that
+    // already parse the legacy name; new clients should use `power_rating`.
+    power_rating: playerRank,
     player_rank: playerRank,
     total: filteredMatches.length,
   });
@@ -899,32 +910,6 @@ export function isPunchUpMatch(
 }
 
 /**
- * Calculates the reward penalty for a favorite player in a punch-up match.
- * Favorites receive reduced rewards proportional to the rank difference.
- *
- * @param isPunchUp - Whether this is a punch-up match
- * @param rankDifference - The absolute difference in ranks
- * @returns Multiplier to apply to favorite's rewards (0.5 to 1.0)
- */
-export function calculateFavoritePenalty(isPunchUp: boolean, rankDifference: number): number {
-  if (!isPunchUp) {
-    return 1.0; // No penalty for normal matches
-  }
-
-  // Calculate penalty based on rank difference
-  // Larger rank difference = harsher penalty
-  const penaltyRange = FAVORITE_REWARD_PENALTY_MIN - FAVORITE_REWARD_PENALTY_MAX;
-  const rankDiffRange = PUNCH_UP_MAX_RANK_DIFF - PUNCH_UP_RANK_DIFF_THRESHOLD;
-  const normalizedDiff = Math.min(
-    (rankDifference - PUNCH_UP_RANK_DIFF_THRESHOLD) / rankDiffRange,
-    1.0
-  );
-  const penalty = FAVORITE_REWARD_PENALTY_MIN - penaltyRange * normalizedDiff;
-
-  return parseFloat(penalty.toFixed(2));
-}
-
-/**
  * Calculates gem bonus for punch-up wins.
  * Scales with rank difference to incentivize challenging stronger opponents.
  *
@@ -968,7 +953,7 @@ export function generatePunchUpDescription(punchUpInfo: PunchUpInfo): string {
   return (
     `Punch-up match (${intensity} difference of ${rank_difference} ranks). ` +
     `Underdogs receive ${formattedMultiplier}x XP bonus and ${gemBonus} bonus gems on win. ` +
-    `Favorites receive reduced rewards (${Math.round((1 - calculateFavoritePenalty(true, rank_difference)) * 100)}% penalty).`
+    `Favorites face amplified Ladder Rating swings (2x K-factor on loss, issue #864).`
   );
 }
 
@@ -2287,11 +2272,13 @@ function calculateXPGain(params: RewardCalculationParams): number {
           Math.round(baseXP * PUNCH_UP_LOSS_XP_MULTIPLIER)
         );
       }
-    } else {
-      // Favorite gets penalty based on rank difference
-      const penalty = calculateFavoritePenalty(params.isPunchUp, params.rankDifference);
-      baseXP = Math.round(baseXP * penalty);
     }
+    // Favorites in punch-up matches receive no XP penalty here: the
+    // ratified punch-up consequence is the 2x K-factor on Ladder Rating
+    // (issue #864), which is applied in season_system.applyEloUpdates.
+    // The historical rank_penalty heuristic that scaled XP for favorites
+    // was removed because it conflated two distinct consequence channels
+    // and misled readers about the ratified model.
   }
 
   return baseXP;
@@ -2305,7 +2292,10 @@ function calculateXPGain(params: RewardCalculationParams): number {
  *
  * Punch-up mechanics (ranked only):
  * - Underdogs: Scaled XP multiplier, bonus gems for wins
- * - Favorites: Reduced rewards (50-70% of normal), harsher penalties for losses
+ * - Favorites: No coin reward shaping here. Their consequence is the
+ *   amplified Ladder Rating swings from issue #864 (2x K-factor on loss),
+ *   not a reward multiplier. The historical rank_penalty heuristic that
+ *   scaled coins for favorites was removed (issue #902).
  *
  * Casual matches never expose the punch-up wager (issue #872): no punch-up
  * gem bonus and no favorite penalty are applied in casual mode.
@@ -2338,11 +2328,10 @@ function calculateMatchRewards(params: RewardCalculationParams, xpGained: number
   // punch-up-free regardless of any punch-up flag recorded on the match.
   const isRankedPunchUp = params.matchType === 'ranked' && params.isPunchUp;
 
-  // Apply favorite penalty for punch-up matches
-  if (isRankedPunchUp && !params.isUnderdog) {
-    const penalty = calculateFavoritePenalty(params.isPunchUp, params.rankDifference);
-    coins = Math.round(coins * penalty);
-  }
+  // No favorite coin penalty is applied here (issue #902): the punch-up
+  // consequence for favorites is the 2x K-factor on Ladder Rating (issue
+  // #864), not a reward multiplier. The historical rank_penalty heuristic
+  // was removed because it conflated the two consequence channels.
 
   rewards.push({
     name: 'Coins',
@@ -3024,8 +3013,12 @@ const PUNCH_UP_XP_MULTIPLIER_MIN = 1.2; // Minimum XP multiplier for punch-up (s
 const PUNCH_UP_XP_MULTIPLIER_MAX = 2.0; // Maximum XP multiplier for punch-up (large diff)
 const PUNCH_UP_GEM_BONUS_MIN = 3; // Minimum gems for punch-up win
 const PUNCH_UP_GEM_BONUS_MAX = 10; // Maximum gems for punch-up win
-const FAVORITE_REWARD_PENALTY_MIN = 0.7; // Minimum reward multiplier for favorites (30% reduction)
-const FAVORITE_REWARD_PENALTY_MAX = 0.5; // Maximum reward multiplier for favorites (50% reduction)
+// Issue #902: FAVORITE_REWARD_PENALTY_MIN/MAX were removed. The historical
+// rank_penalty heuristic conflated the XP/coin reward channel with the
+// Ladder Rating (Elo) consequence channel. The ratified punch-up consequence
+// for favorites is the 2x K-factor on Ladder Rating (issue #864), applied in
+// season_system.applyEloUpdates. Reward shaping for favorites is now a
+// no-op here.
 const PUNCH_UP_LOSS_XP_MULTIPLIER = 0.5; // Issue #864: reduced XP grant on punch-up loss
 const PUNCH_UP_LOSS_XP_MINIMUM = 1; // XP on any loss is strictly positive (progression is never wagered)
 
