@@ -141,6 +141,10 @@ describe('season_system', () => {
         winner_new_rank: 1520,
         loser_new_rank: 1380,
         is_punch_up: false,
+        requestId: 'req-update-rank-success-1',
+        timestamp: Date.now(),
+        signature: 'a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]',
+        nonce: 'nonce-update-rank-success-1234567890123456',
       });
       const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
@@ -163,6 +167,10 @@ describe('season_system', () => {
         winner_new_rank: 1032,
         loser_new_rank: 968,
         is_punch_up: true,
+        requestId: 'req-update-rank-newplayers-1',
+        timestamp: Date.now(),
+        signature: 'a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]',
+        nonce: 'nonce-update-rank-newplayers-123456789012345',
       });
       const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
@@ -694,6 +702,119 @@ describe('season_system', () => {
     });
   });
 
+  describe('rpcUpdateRank anti-cheat signature required (issue #955)', () => {
+    it('should reject when all four signature fields are missing', () => {
+      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
+      (verifyRequestSignature as jest.Mock).mockReturnValue({ valid: true, violations: [] });
+
+      const payload = JSON.stringify({
+        match_id: 'match-955-missing',
+        winner_id: 'winner-user',
+        loser_id: 'loser-user',
+        winner_old_rank: 1500,
+        loser_old_rank: 1400,
+        winner_new_rank: 1520,
+        loser_new_rank: 1380,
+        is_punch_up: false,
+      });
+      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('ANTI_CHEAT_VIOLATION');
+      expect(parsed.error).toBe('Missing anti-cheat signature fields');
+      expect(verifyRequestSignature).not.toHaveBeenCalled();
+      expect(mockLogger.warn).toHaveBeenCalled();
+    });
+
+    it('should reject when any one of the four signature fields is missing', () => {
+      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
+      (verifyRequestSignature as jest.Mock).mockReturnValue({ valid: true, violations: [] });
+
+      // requestId, timestamp, signature, nonce — drop the nonce
+      const payload = JSON.stringify({
+        match_id: 'match-955-partial',
+        winner_id: 'winner-user',
+        loser_id: 'loser-user',
+        winner_old_rank: 1500,
+        loser_old_rank: 1400,
+        winner_new_rank: 1520,
+        loser_new_rank: 1380,
+        is_punch_up: false,
+        requestId: 'req-955-partial-1',
+        timestamp: Date.now(),
+        signature: 'a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]',
+      });
+      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('ANTI_CHEAT_VIOLATION');
+      expect(parsed.error).toBe('Missing anti-cheat signature fields');
+      expect(verifyRequestSignature).not.toHaveBeenCalled();
+    });
+
+    it('should reject when all four fields present but signature verification fails', () => {
+      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
+      (verifyRequestSignature as jest.Mock).mockReturnValue({
+        valid: false,
+        violations: ['invalid_signature'],
+      });
+
+      const payload = JSON.stringify({
+        match_id: 'match-955-mismatch',
+        winner_id: 'winner-user',
+        loser_id: 'loser-user',
+        winner_old_rank: 1500,
+        loser_old_rank: 1400,
+        winner_new_rank: 1520,
+        loser_new_rank: 1380,
+        is_punch_up: false,
+        requestId: 'req-955-mismatch-1',
+        timestamp: Date.now(),
+        signature: 'b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]',
+        nonce: 'nonce-955-mismatch-123456789012345678',
+      });
+      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('ANTI_CHEAT_VIOLATION');
+      expect(parsed.error).toBe('Invalid request signature');
+      expect(parsed.violations).toEqual(['invalid_signature']);
+      expect(verifyRequestSignature).toHaveBeenCalled();
+    });
+
+    it('should accept when all four signature fields are present and signature is valid', () => {
+      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
+      (verifyRequestSignature as jest.Mock).mockReturnValue({ valid: true, violations: [] });
+      (detectTimingAttack as jest.Mock).mockReturnValue(false);
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const payload = JSON.stringify({
+        match_id: 'match-955-valid',
+        winner_id: 'winner-user',
+        loser_id: 'loser-user',
+        winner_old_rank: 1500,
+        loser_old_rank: 1400,
+        winner_new_rank: 1520,
+        loser_new_rank: 1380,
+        is_punch_up: false,
+        requestId: 'req-955-valid-1',
+        timestamp: Date.now(),
+        signature: 'c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]',
+        nonce: 'nonce-955-valid-1234567890123456789012',
+      });
+      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.error_code).toBeUndefined();
+      expect(verifyRequestSignature).toHaveBeenCalled();
+    });
+  });
+
   describe('rpcUpdateRank with timing attack detection', () => {
     it('should reject when timing attack is detected', () => {
       (isPlayerFlagged as jest.Mock).mockReturnValue(false);
@@ -709,6 +830,10 @@ describe('season_system', () => {
         winner_new_rank: 1520,
         loser_new_rank: 1380,
         is_punch_up: false,
+        requestId: 'req-timing-attack-test-1',
+        timestamp: Date.now(),
+        signature: 'a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]',
+        nonce: 'nonce-timing-attack-test-1234567890123456',
       });
       const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
@@ -1480,6 +1605,10 @@ describe('season_system', () => {
         winner_new_rank: 1016,
         loser_new_rank: 984,
         is_punch_up: false,
+        requestId: 'req-update-rank-unknown-winner-1',
+        timestamp: Date.now(),
+        signature: 'a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]',
+        nonce: 'nonce-update-rank-unknown-winner-12345678',
       });
 
       const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);

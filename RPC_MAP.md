@@ -132,7 +132,7 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 |----------|---------------|----------------|-------------------|------------------|
 | Get Season Info | SeasonManager | `rpcGetSeasonInfo()` in `season_system.ts` | `seasons` storage (custom collection) + `leaderboard` (Nakama) | `/rpc/armored_archer/get_season_info` |
 | Get Leaderboard | SeasonManager | `rpcGetLeaderboard()` in `season_system.ts` | `leaderboard` (Nakama built-in) | `/rpc/armored_archer/get_leaderboard` |
-| Update Rank | SeasonManager | `rpcUpdateRank()` in `season_system.ts` | `leaderboard` (Nakama built-in) | `/rpc/armored_archer/update_rank` |
+| Update Rank | SeasonManager | `rpcUpdateRank()` in `season_system.ts` (signature now REQUIRED — issue #955, ADR-0002 follow-up; requests missing `requestId`/`timestamp`/`signature`/`nonce` are rejected with `ANTI_CHEAT_VIOLATION`) | `leaderboard` (Nakama built-in) | `/rpc/armored_archer/update_rank` |
 | Get Season Rewards | SeasonManager | `rpcGetSeasonRewards()` in `season_system.ts` | `leaderboard` (Nakama built-in) | `/rpc/armored_archer/get_season_rewards` |
 | Claim Season Rewards | SeasonManager | `rpcClaimSeasonRewards()` in `season_system.ts` | `season_rewards_claimed` storage (custom collection) + wallet (Nakama) | `/rpc/armored_archer/claim_season_rewards` |
 | End Season | SeasonManager | `rpcEndSeason()` in `season_system.ts` | `seasons` storage (custom collection) + `leaderboard` (Nakama) | `/rpc/armored_archer/end_season` |
@@ -314,7 +314,7 @@ All gameplay RPCs integrate with the anti-cheat system:
 - `accept_match`
 - `complete_match`
 - `submit_combat_action`
-- `update_rank`
+- `update_rank` — anti-cheat signature is **required** as of issue #955. Requests omitting any of `requestId`, `timestamp`, `signature`, or `nonce` are rejected with `error_code: "ANTI_CHEAT_VIOLATION"` (fail-closed). See ADR-0002 (`docs/adr/0002-server-declared-match-settlement.md`) and `backend/src/modules/season_system.ts` `validateRankUpdateSignature`.
 
 ---
 
