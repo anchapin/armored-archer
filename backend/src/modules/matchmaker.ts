@@ -523,21 +523,25 @@ export function rpcCreateMatch(
     // Anti-abuse: Record match creation
     recordMatchAction(ctx.userId, 'create', match.match_id);
 
-    return JSON.stringify({
+    // punch_up_info is ranked-only: casual matches must not advertise punch-up
+    // metadata on the wire (punch-up shaping does not apply post-#872).
+    // See issue #899.
+    const response: Record<string, unknown> = {
       success: true,
       match: match,
-      punch_up_info: isPunchUp
-        ? {
-            is_punch_up: true,
-            rank_difference: rankDiff,
-            underdog_id: punchUpInfo.underdog_id,
-            underdog_rank: punchUpInfo.underdog_rank,
-            favorite_rank: punchUpInfo.favorite_rank,
-            reward_multiplier: punchUpInfo.reward_multiplier,
-            description: generatePunchUpDescription(punchUpInfo),
-          }
-        : null,
-    });
+    };
+    if (request.match_type === 'ranked' && isPunchUp) {
+      response.punch_up_info = {
+        is_punch_up: true,
+        rank_difference: rankDiff,
+        underdog_id: punchUpInfo.underdog_id,
+        underdog_rank: punchUpInfo.underdog_rank,
+        favorite_rank: punchUpInfo.favorite_rank,
+        reward_multiplier: punchUpInfo.reward_multiplier,
+        description: generatePunchUpDescription(punchUpInfo),
+      };
+    }
+    return JSON.stringify(response);
   } else {
     const now = Date.now();
     // Pending matches expire after 24 hours

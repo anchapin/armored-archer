@@ -310,6 +310,132 @@ describe('matchmaker', () => {
       expect(parsed.match.status).toBe('pending');
     });
 
+    // Issue #899: casual match creation must not advertise punch_up_info on
+    // the wire. Punch-up shaping is ranked-only post-#872.
+    it('should omit punch_up_info from casual open match response', () => {
+      const playerStats = createPlayerStats();
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_stats',
+          key: 'test-user-123',
+          userId: 'test-user-123',
+          value: JSON.stringify(playerStats),
+        },
+      ]);
+
+      const payload = JSON.stringify({ match_type: 'casual' });
+      const result = rpcCreateMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.match.match_type).toBe('casual');
+      expect(parsed.punch_up_info).toBeUndefined();
+    });
+
+    it('should omit punch_up_info from casual match with target opponent', () => {
+      // Build ranks inside the punch-up band (both >=20, 5-15 gap) so the
+      // server's auto-detector would flag is_punch_up=true if match_type
+      // leaked through. The wire response must still hide punch_up_info for
+      // casual — that's the issue #899 contract.
+      const casualPlayerStats = createPlayerStats({
+        level: 4,
+        stats: { attack: 0, defense: 0, dodge: 0, crit_rate: 0 }, // rank = 40
+      });
+      const casualTargetStats = createPlayerStats({
+        level: 5,
+        stats: { attack: 0, defense: 0, dodge: 0, crit_rate: 0 }, // rank = 50
+      });
+
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].key === 'test-user-123') {
+          return [
+            {
+              collection: 'player_stats',
+              key: 'test-user-123',
+              userId: 'test-user-123',
+              value: JSON.stringify(casualPlayerStats),
+            },
+          ];
+        }
+        if (objects[0].key === 'target-user') {
+          return [
+            {
+              collection: 'player_stats',
+              key: 'target-user',
+              userId: 'target-user',
+              value: JSON.stringify(casualTargetStats),
+            },
+          ];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_type: 'casual',
+        target_opponent_id: 'target-user',
+        is_punch_up: true,
+      });
+      const result = rpcCreateMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.match.match_type).toBe('casual');
+      expect(parsed.punch_up_info).toBeUndefined();
+    });
+
+    it('should still include punch_up_info for ranked punch-up matches', () => {
+      // Regression guard for the issue #899 fix: the ranked punch-up reward
+      // path must keep working (do NOT change server constants; do NOT break
+      // ranked rewards).
+      const rankedPlayerStats = createPlayerStats({
+        level: 4,
+        stats: { attack: 0, defense: 0, dodge: 0, crit_rate: 0 }, // rank = 40
+      });
+      const rankedTargetStats = createPlayerStats({
+        level: 5,
+        stats: { attack: 0, defense: 0, dodge: 0, crit_rate: 0 }, // rank = 50, diff = 10
+      });
+
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].key === 'test-user-123') {
+          return [
+            {
+              collection: 'player_stats',
+              key: 'test-user-123',
+              userId: 'test-user-123',
+              value: JSON.stringify(rankedPlayerStats),
+            },
+          ];
+        }
+        if (objects[0].key === 'target-user') {
+          return [
+            {
+              collection: 'player_stats',
+              key: 'target-user',
+              userId: 'target-user',
+              value: JSON.stringify(rankedTargetStats),
+            },
+          ];
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({
+        match_type: 'ranked',
+        target_opponent_id: 'target-user',
+        is_punch_up: true,
+      });
+      const result = rpcCreateMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.match.match_type).toBe('ranked');
+      expect(parsed.match.is_punch_up).toBe(true);
+      expect(parsed.punch_up_info).toBeDefined();
+      expect(parsed.punch_up_info.is_punch_up).toBe(true);
+      expect(parsed.punch_up_info.rank_difference).toBe(10);
+    });
+
     it('should return error when player stats not found', () => {
       mockNk.storageRead = jest.fn(() => []);
       const payload = JSON.stringify({ match_type: 'ranked' });
