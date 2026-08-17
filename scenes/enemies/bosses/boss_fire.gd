@@ -188,10 +188,10 @@ func summon_shadow_minions(attack_data: Dictionary) -> void:
 	for i in range(minion_count):
 		var minion_pos = global_position + Vector2(randf_range(-50, 50), randf_range(-50, 50))
 
-		# Use EnemyFactory if available
-		var enemy_factory = get_node_or_null("/root/EnemyFactory")
-		if enemy_factory and enemy_factory.has_method("spawn_enemy"):
-			enemy_factory.spawn_enemy(0, minion_pos, 2)  # Type 0: Goblin, Difficulty 2
+		# Use EnemySpawner (EnemyFactory was removed in issue #910)
+		var enemy_spawner = get_node_or_null("/root/EnemySpawner")
+		if enemy_spawner and enemy_spawner.has_method("spawn_archetype"):
+			enemy_spawner.spawn_archetype("Goblin Scout", minion_pos, 2)  # Difficulty 2
 
 	await get_tree().create_timer(0.5).timeout
 
