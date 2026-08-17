@@ -98,8 +98,12 @@ func _trigger_muzzle_flash(position: Vector2, direction: Vector2) -> void:
 func _play_shoot_sound() -> void:
 	"""Play shoot sound effect."""
 	var audio = get_node_or_null("/root/AudioManager")
-	if audio and audio.has_method("play_sfx"):
-		audio.play_sfx("shoot")
+	if not audio:
+		return
+	if audio.has_method("play_arrow_shot"):
+		audio.play_arrow_shot()
+	elif audio.has_method("play_sfx"):
+		audio.play_sfx("arrow_shot")
 
 func _trigger_screen_shake_light() -> void:
 	"""Trigger a light screen shake on shoot."""

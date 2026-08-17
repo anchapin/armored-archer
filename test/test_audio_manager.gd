@@ -83,16 +83,18 @@ func test_initial_state() -> void:
 
 func test_pool_creation() -> void:
 	var audio = await _create_audio_manager()
-	var player_count = 0
+	var sfx_player_count = 0
 
 	for child in audio.get_children():
-		if child is AudioStreamPlayer:
-			player_count += 1
+		# Issue #911: AudioManager now also owns a music player on the Music
+		# bus; count only the SFX-bus players to match NUM_PLAYERS.
+		if child is AudioStreamPlayer and child.bus == audio.SFX_BUS:
+			sfx_player_count += 1
 
-	if player_count == audio.NUM_PLAYERS:
+	if sfx_player_count == audio.NUM_PLAYERS:
 		_pass("test_pool_creation")
 	else:
-		_fail("test_pool_creation", "Should have 10 AudioStreamPlayer children")
+		_fail("test_pool_creation", "Should have %d SFX AudioStreamPlayer children" % audio.NUM_PLAYERS)
 
 	audio.queue_free()
 

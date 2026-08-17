@@ -67,6 +67,13 @@ func _on_body_entered(body: Node) -> void:
 	# Check if we hit an enemy
 	if body.is_in_group("Enemies") or body.is_in_group("Boss"):
 		print("DEBUG: Arrow hit enemy: %s, damage: %d" % [body.name, damage])
+		# Audio feedback — arrow_hit on the SFX bus (issue #911)
+		var audio = get_node_or_null("/root/AudioManager")
+		if audio:
+			if audio.has_method("play_arrow_hit"):
+				audio.play_arrow_hit()
+			elif audio.has_method("play_sfx"):
+				audio.play_sfx("arrow_hit")
 		if body.has_method("take_damage"):
 			print("DEBUG: Calling take_damage(%d) on enemy %s" % [damage, body.name])
 			body.take_damage(damage)
