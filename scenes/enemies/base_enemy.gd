@@ -50,12 +50,6 @@ func _ready() -> void:
 	collision_mask = 1
 	current_health = max_health
 
-	if not _is_e2e_test():
-		print("DEBUG: reset_pooled_state called for %s, current_health: %d, max_health: %d, collision_layer=%d" % [name, current_health, max_health, collision_layer])
-		print("DEBUG: reset_for_spawn called for %s, current_health: %d, max_health: %d" % [name, current_health, max_health])
-		print("DEBUG: After reset_for_spawn, health: %d/%d" % [current_health, max_health])
-		print("DEBUG: After reset, health: %d/%d" % [current_health, max_health])
-
 	add_to_group("Enemies")
 	if hurt_area:
 		var _err = hurt_area.body_entered.connect(_on_hurt_area_body_entered)
@@ -77,8 +71,6 @@ func _ready() -> void:
 
 # Reset enemy state for reuse from object pool
 func reset_for_spawn() -> void:
-	if not _is_e2e_test():
-		print("DEBUG: reset_for_spawn called for %s, setting health to %d" % [name, max_health])
 	current_health = max_health
 	is_dead = false
 	collision_layer = 2
@@ -86,42 +78,26 @@ func reset_for_spawn() -> void:
 	if not _is_e2e_test():
 		var aim_mgr = get_node_or_null("/root/AutoAimManager")
 		if aim_mgr and aim_mgr.has_method("register_enemy"):
-			print("DEBUG: Calling aim_mgr.register_enemy for %s" % name)
 			aim_mgr.register_enemy(self)
 
 ## Enable collision (for spawner after pooling)
 func enable_collision() -> void:
 	if collision_shape:
 		if not _is_e2e_test():
-			print("DEBUG: enable_collision called for %s, collision_enabled=%s" % [name, collision_enabled])
 			if collision_enabled:
-				print("DEBUG: Collision already enabled for %s, skipping" % name)
 				return
 		collision_shape.disabled = false
 		collision_enabled = true
-		if not _is_e2e_test():
-			print("DEBUG: Collision enabled for %s" % name)
-
 func take_damage(amount: int) -> void:
 	# Prevent re-damage on already dead enemies
 	if is_dead:
-		if not _is_e2e_test():
-			print("DEBUG: Enemy %s is already dead, ignoring damage" % name)
 		return
-	if not _is_e2e_test():
-		print("DEBUG: Enemy %s taking %d damage, health: %d/%d" % [name, amount, current_health, max_health])
 	current_health -= amount
-	if not _is_e2e_test():
-		print("DEBUG: Enemy %s health after damage: %d/%d" % [name, current_health, max_health])
 	if current_health <= 0:
-		if not _is_e2e_test():
-			print("DEBUG: Enemy %s health <= 0, calling die()" % name)
 		is_dead = true
 		die()
 
 func die() -> void:
-	if not _is_e2e_test():
-		print("DEBUG: die() called for %s, health: %d/%d" % [name, current_health, max_health])
 	var aim_mgr = get_node_or_null("/root/AutoAimManager")
 	if aim_mgr and aim_mgr.has_method("unregister_enemy"):
 		aim_mgr.unregister_enemy(self)
@@ -148,8 +124,6 @@ func die() -> void:
 			audio_kill.play_sfx("arrow_kill")
 
 	# Emit death signals first
-	if not _is_e2e_test():
-		print("DEBUG: Emitting died signal for %s (%s)" % [name, str(get_instance_id())])
 	died.emit(xp_reward)
 
 	# Trigger death animation through CombatJuiceManager
@@ -173,13 +147,9 @@ func _direct_return_to_pool() -> void:
 	# CRITICAL: Directly notify spawner of enemy death (EnemySpawner is now an autoload)
 	var spawner: Node = get_node_or_null("/root/EnemySpawner")
 	if spawner and spawner.has_method("_on_enemy_exiting"):
-		print("DEBUG: Directly calling spawner._on_enemy_exiting for %s" % name)
 		spawner._on_enemy_exiting(self)
 	else:
-		print("DEBUG: Could not find spawner at /root/EnemySpawner")
 		# Try emitting signal as fallback
-		print("DEBUG: Emitting enemy_died signal for %s (%s)" % [name, str(get_instance_id())])
-		print("DEBUG: enemy_died signal has %d connections: %s" % [get_signal_connection_list("enemy_died").size(), str(get_signal_connection_list("enemy_died"))])
 		enemy_died.emit(self)
 
 	# CRITICAL: Return enemy to pool via deferred call to ensure signals process first
