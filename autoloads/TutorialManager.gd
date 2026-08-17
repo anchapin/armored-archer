@@ -34,7 +34,7 @@ const TUTORIALS := {
 			{
 				"id": "movement",
 				"title": "Movement",
-				"description": "Use the left joystick to move your archer. On keyboard: WASD or Arrow keys.",
+				"description": "Use the left joystick (or WASD / Arrow keys on desktop) to move your archer around the battlefield.",
 				"action": "move",
 				"position": "bottom_left",
 				"duration": 0,
@@ -42,8 +42,8 @@ const TUTORIALS := {
 			},
 			{
 				"id": "aiming",
-				"title": "Aiming",
-				"description": "Use the right joystick to aim. Auto-aim targets nearby enemies. On keyboard: Arrow keys.",
+				"title": "Drag to Aim",
+				"description": "Press and drag on the screen (or move the right stick / move the mouse while holding the mouse button) to aim your bow. An aiming arc shows where your arrow will fly.",
 				"action": "aim",
 				"position": "top_right",
 				"duration": 0,
@@ -51,12 +51,20 @@ const TUTORIALS := {
 			},
 			{
 				"id": "shooting",
-				"title": "Shooting",
-				"description": "Tap the shoot button to fire arrows. Auto-aim helps you hit! On keyboard: Space or Enter.",
+				"title": "Release to Fire",
+				"description": "Release to fire the arrow. On desktop, click and release the mouse button (or tap Space / Enter). The harder you draw back, the more powerful the shot!",
 				"action": "shoot",
 				"position": "center_bottom",
 				"duration": 0,
 				"input_actions": ["shoot"]
+			},
+			{
+				"id": "auto_aim",
+				"title": "Auto-Aim Assist",
+				"description": "When you start aiming, auto-aim will gently steer your bow toward the nearest enemy. You stay in control — use it as a hint, not a crutch.",
+				"action": "wait",
+				"position": "top_right",
+				"duration": 3.0
 			},
 			{
 				"id": "health",
