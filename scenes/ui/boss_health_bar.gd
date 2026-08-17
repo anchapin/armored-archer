@@ -36,7 +36,6 @@ func set_boss(boss: CharacterBody2D) -> void:
 
 func _on_boss_spawned(boss_node: Node) -> void:
 	"""Handle boss spawn event from GameManager."""
-	print("DEBUG: Boss health bar received boss_spawned signal")
 	_connect_to_boss(boss_node)
 
 func _connect_to_existing_boss() -> void:
@@ -66,7 +65,6 @@ func _connect_to_boss(boss: Node) -> void:
 		boss.boss_defeated.connect(_on_boss_defeated)
 
 	set_boss(boss)
-	print("DEBUG: Connected boss health bar to boss")
 
 func _on_boss_health_changed(current: int, max_health: int) -> void:
 	if boss_ref and boss_ref.has_method("get"):

@@ -54,19 +54,14 @@ func setup(start_pos: Vector2, dir: Vector2, dmg: int, spd: float = 800.0) -> vo
 		rotation = direction.angle()
 
 	# Log collision layers for debugging
-	if _collision_shape:
-		print("DEBUG: Arrow setup - collision_layer=%d, collision_mask=%d, is_active=%s" % [collision_layer, collision_mask, is_active])
-
 func _on_body_entered(body: Node) -> void:
 	"""Handle collision with body."""
 	if not is_active:
 		return
 
-	print("DEBUG: Arrow hit body: %s, collision_layer=%d, collision_mask=%d" % [body.name, collision_layer, collision_mask])
 
 	# Check if we hit an enemy
 	if body.is_in_group("Enemies") or body.is_in_group("Boss"):
-		print("DEBUG: Arrow hit enemy: %s, damage: %d" % [body.name, damage])
 		# Audio feedback — arrow_hit on the SFX bus (issue #911)
 		var audio = get_node_or_null("/root/AudioManager")
 		if audio:
@@ -75,12 +70,10 @@ func _on_body_entered(body: Node) -> void:
 			elif audio.has_method("play_sfx"):
 				audio.play_sfx("arrow_hit")
 		if body.has_method("take_damage"):
-			print("DEBUG: Calling take_damage(%d) on enemy %s" % [damage, body.name])
 			body.take_damage(damage)
 		_return_to_pool()
 	elif body.is_in_group("Environment"):
 		# Hit wall/obstacle
-		print("DEBUG: Arrow hit environment")
 		_return_to_pool()
 
 func _return_to_pool() -> void:
