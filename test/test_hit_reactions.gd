@@ -9,7 +9,7 @@ func test_trigger_flinch_method_exists():
 	if player_sprite and player_sprite.has_method("trigger_flinch"):
 		pass_test("trigger_flinch method exists on player sprite")
 	else:
-		pending_test("PlayerCharacter or trigger_flinch method not available in test environment")
+		pending("PlayerCharacter or trigger_flinch method not available in test environment")
 
 ## Test trigger_stutter method exists on player sprite
 func test_trigger_stutter_method_exists():
@@ -17,7 +17,7 @@ func test_trigger_stutter_method_exists():
 	if player_sprite and player_sprite.has_method("trigger_stutter"):
 		pass_test("trigger_stutter method exists on player sprite")
 	else:
-		pending_test("PlayerCharacter or trigger_stutter method not available in test environment")
+		pending("PlayerCharacter or trigger_stutter method not available in test environment")
 
 ## Test on_damage_taken method routes to correct reaction
 func test_on_damage_taken_routing():
@@ -25,7 +25,7 @@ func test_on_damage_taken_routing():
 	if player_sprite and player_sprite.has_method("on_damage_taken"):
 		pass_test("on_damage_taken method exists on player sprite")
 	else:
-		pending_test("PlayerCharacter or on_damage_taken method not available in test environment")
+		pending("PlayerCharacter or on_damage_taken method not available in test environment")
 
 ## Test CombatJuiceManager HIT_REACTION routing
 func test_combat_juice_hit_reaction_routing():
@@ -51,7 +51,7 @@ func test_flinch_timing():
 		# Flinch should be fast (approximately 200ms trigger time)
 		assert_true(duration < 500, "Flinch trigger should be fast (<500ms)")
 	else:
-		pending_test("PlayerCharacter or trigger_flinch method not available in test environment")
+		pending("PlayerCharacter or trigger_flinch method not available in test environment")
 
 ## Test stutter effect timing (should be ~50ms pause)
 func test_stutter_timing():
@@ -64,7 +64,7 @@ func test_stutter_timing():
 		# Stutter should be very fast (approximately 50ms trigger time)
 		assert_true(duration < 200, "Stutter trigger should be very fast (<200ms)")
 	else:
-		pending_test("PlayerCharacter or trigger_stutter method not available in test environment")
+		pending("PlayerCharacter or trigger_stutter method not available in test environment")
 
 ## Test hit reaction with different damage sources
 func test_hit_reaction_sources():

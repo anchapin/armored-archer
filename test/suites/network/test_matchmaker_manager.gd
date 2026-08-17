@@ -281,6 +281,8 @@ func test_error_cases():
 
 # Test: No network
 func test_no_network():
+	pending("ENV_DEPENDENT: requires live Nakama on 127.0.0.1:7350; see issue #960")
+	return
 	_mm.network_manager = null
 	# Should not crash
 	await _mm.list_matches()

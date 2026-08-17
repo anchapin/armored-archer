@@ -55,6 +55,8 @@ func test_combat_sync_integration():
 	assert_eq(sync_mgr.get_match_id(), "test_match", "Sync manager should track match")
 
 func test_gem_manager_with_player_stats():
+	pending("ENV_DEPENDENT: requires live Nakama / authenticated session; see issue #960")
+	return
 	var gem_mgr = GemManagerClass.new()
 	add_child_autofree(gem_mgr)
 

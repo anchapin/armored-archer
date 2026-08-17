@@ -278,14 +278,14 @@ func spawn_death_particles(particle_count: int = 5) -> void:
 ## Returns "" when the class isn't one of the four Ch1 archetypes — callers
 ## then fall through to the generic arrow_kill sound.
 func archetype_death_event() -> String:
-	var script := get_script()
+	var script: Script = get_script()
 	if script == null:
 		return ""
-	var class_id := script.get_global_name() if script.has_method("get_global_name") else ""
+	var class_id: String = script.get_global_name() if script.has_method("get_global_name") else ""
 	# get_global_name() requires the script be class_name-registered. Fall back
 	# to the file basename for scripts that only declare `extends BaseEnemy`.
 	if class_id == "":
-		var path := script.resource_path if script.has_method("resource_path") else ""
+		var path: String = script.resource_path if script.has_method("resource_path") else ""
 		if path != "":
 			class_id = path.get_file().get_basename()
 	match class_id:
