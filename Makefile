@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-restart-destructive services-cold-start services-assert-cold-start services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report
 
 # Default target
 all: help
@@ -62,14 +62,17 @@ help:
 	@echo "  make backend-db-schema   Display current database schema"
 	@echo ""
 	@echo "$(GREEN)Local Services (Dev)$(RESET)"
-	@echo "  make services-start     Start Nakama + PostgreSQL containers"
-	@echo "  make services-stop      Stop all service containers"
-	@echo "  make services-restart  Restart all services"
-	@echo "  make services-status    Show service status"
-	@echo "  make services-health   Check service health"
-	@echo "  make services-logs     View service logs"
-	@echo "  make services-validate Validate prerequisites"
-	@echo "  make services-clean    Stop and remove services + volumes"
+	@echo "  make services-start                 Start Nakama + PostgreSQL (robust cold-start, #907)"
+	@echo "  make services-cold-start            Same as services-start"
+	@echo "  make services-assert-cold-start     Assert stack reached all-green"
+	@echo "  make services-stop                  Stop all service containers"
+	@echo "  make services-restart               Restart all services"
+	@echo "  make services-restart-destructive   Drop volume + re-run cold-start (self-heal test)"
+	@echo "  make services-status                Show service status"
+	@echo "  make services-health                Check service health"
+	@echo "  make services-logs                  View service logs"
+	@echo "  make services-validate              Validate prerequisites"
+	@echo "  make services-clean                 Stop and remove services + volumes"
 	@echo ""
 	@echo "$(GREEN)CI Services (for act)$(RESET)"
 	@echo "  make ci-services-start  Start CI services (PostgreSQL:5432, Nakama:7350)"
@@ -263,15 +266,23 @@ serve-burndown:
 	fi
 
 ## Local Services Management
+# Issue #907: services-start is now backed by scripts/cold-start.sh so a truly
+# cold state (no containers, no volumes) reaches `make services-health`
+# all-green with zero manual steps. If you already have a healthy stack this
+# is a no-op (docker compose up -d is idempotent) — preserved for back-compat.
 services-start:
-	@echo "$(BLUE)Starting local services (Nakama + PostgreSQL)...$(RESET)"
-	cd $(BACKEND_DIR) && docker compose up -d
-	@echo "$(GREEN)✓ Services started$(RESET)"
-	@echo "  - Nakama API:     http://localhost:7350"
-	@echo "  - Nakama Console: http://localhost:7351 (admin:password)"
-	@echo "  - PostgreSQL:    localhost:5432"
+	@echo "$(BLUE)Starting local services (Nakama + PostgreSQL) — robust cold-start (#907)$(RESET)"
+	@./scripts/cold-start.sh
 	@echo ""
 	@echo "Run 'make services-health' to verify services are healthy."
+
+services-cold-start:
+	@echo "$(BLUE)Robust cold-start (alias for services-start, see #907)$(RESET)"
+	@./scripts/cold-start.sh
+
+services-assert-cold-start:
+	@echo "$(BLUE)Asserting cold-start reached all-green (#907)$(RESET)"
+	@./scripts/assert-cold-start.sh
 
 services-stop:
 	@echo "$(BLUE)Stopping local services...$(RESET)"
@@ -282,6 +293,15 @@ services-restart:
 	@echo "$(BLUE)Restarting local services...$(RESET)"
 	cd $(BACKEND_DIR) && docker compose restart
 	@echo "$(GREEN)✓ Services restarted$(RESET)"
+
+# Issue #907: destructive-restart scenario — drops postgres container + the
+# named data volume, then re-runs cold-start. Use this to verify the self-
+# healing path reaches all-green from a truly cold state.
+services-restart-destructive:
+	@echo "$(BLUE)Destructive restart — drops containers + named data volume then re-runs cold-start (#907)$(RESET)"
+	@echo "$(YELLOW)WARNING: this removes the local postgres data volume.$(RESET)"
+	@cd $(BACKEND_DIR) && docker compose down -v
+	@./scripts/cold-start.sh
 
 services-status:
 	@echo "$(BLUE)Local Services Status:$(RESET)"
@@ -294,9 +314,21 @@ services-health:
 	@docker ps --filter "name=armored" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null || true
 	@echo ""
 	@echo -n "$(BLUE)Checking Nakama API: $(RESET)"
-	@curl -s --max-time 5 http://localhost:7350/ > /dev/null 2>&1 && echo "$(GREEN)Healthy$(RESET)" || echo "$(YELLOW)Not responding$(RESET)"
+	@if curl -s --max-time 5 http://localhost:7350/ > /dev/null 2>&1; then \
+		echo "$(GREEN)Healthy$(RESET)"; \
+	else \
+		echo "$(YELLOW)Not responding$(RESET)"; \
+		exit 1; \
+	fi
 	@echo -n "$(BLUE)Checking PostgreSQL: $(RESET)"
-	@docker exec armored_archer_db pg_isready -U postgres > /dev/null 2>&1 && echo "$(GREEN)Healthy$(RESET)" || (docker exec $$(docker ps --filter "name=postgres" --format "{{.Names}}" | head -1) pg_isready -U postgres > /dev/null 2>&1 && echo "$(GREEN)Healthy$(RESET)" || echo "$(YELLOW)Not responding$(RESET)")
+	@if docker exec armored_archer_db pg_isready -U postgres > /dev/null 2>&1; then \
+		echo "$(GREEN)Healthy$(RESET)"; \
+	elif docker exec $$(docker ps --filter "name=postgres" --format "{{.Names}}" | head -1) pg_isready -U postgres > /dev/null 2>&1; then \
+		echo "$(GREEN)Healthy$(RESET)"; \
+	else \
+		echo "$(YELLOW)Not responding$(RESET)"; \
+		exit 1; \
+	fi
 
 services-logs:
 	@echo "$(BLUE)Viewing service logs (Ctrl+C to exit)...$(RESET)"

@@ -126,6 +126,8 @@ cp .env.example .env
 
 # Start Nakama and PostgreSQL
 ./start.sh
+# OR for a robust cold-start with pass/fail assertion (issue #907):
+./scripts/cold-start.sh && ./scripts/assert-cold-start.sh
 ```
 
 The backend will be available at:
@@ -205,9 +207,12 @@ To export the game for a specific platform:
 | Command | Description |
 |---------|-------------|
 | `./start.sh` | Start Nakama and PostgreSQL with validation |
+| `./scripts/cold-start.sh` | Robust cold-start with health-check waits + final assertion (#907) |
+| `./scripts/assert-cold-start.sh` | Assert the stack reached all-green |
+| `make services-restart-destructive` | Drop volume + re-run cold-start (self-heal test, #907) |
 | `npm run dev` | Start development server with auto-reload |
 | `npm run build` | Build TypeScript to JavaScript |
-| `npm run build:watch` | Build in watch mode |
+| `npm run build:watch` | Build TypeScript in watch mode |
 | `./validate-env.sh` | Validate environment variables |
 
 ### Testing

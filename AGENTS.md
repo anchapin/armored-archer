@@ -92,8 +92,10 @@ From repo root: `make backend-check` = lint + typecheck; `make help` lists all t
 ### Services (Docker Compose)
 
 ```bash
-make services-start     # = backend-start; docker compose up from backend/
+make services-start     # = backend-start; robust cold-start with health-check waits (issue #907)
 make services-stop | services-status | services-health | services-logs | services-clean
+make services-restart-destructive   # drop postgres volume + re-run cold-start (self-heal test, #907)
+make services-assert-cold-start      # assert all-green (suitable for CI / act)
 ```
 
 Stack: `armored_archer_server` (Nakama 3.21 — API :7350, console http://localhost:7351, credentials from `backend/.env`), `armored_archer_db` (PostgreSQL 14), plus redis and a full observability stack (prometheus, grafana, loki, tempo, otel-collector, promtail, alertmanager, node-exporter).
