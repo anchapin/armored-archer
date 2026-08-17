@@ -13,7 +13,8 @@ module.exports = {
           esmodules: false,
         },
         modules: 'commonjs',
-        loose: true, // Use loose mode to inline helpers
+        // Babel 8 removed the top-level `loose` and `spec` options —
+        // replaced by the granular `assumptions` block below.
         forceAllTransforms: true,
       },
     ],
