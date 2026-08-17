@@ -15,13 +15,20 @@ positions:
 clients:
   - url: http://loki:3100/loki/api/v1/push
     timeout: 10s
-    batch_size: 1048576  # 1MB
-    batch_wait: 10s
-
-# Common labels applied to all logs
-common_labels:
-  cluster: armored_archer
-  environment: ${ENVIRONMENT:-development}
+    # Promtail 2.9.x uses `batchsize` / `batchwait` (no underscore) — `batch_size`
+    # / `batch_wait` are deprecated CLI-flag names, not YAML field names.
+    batchsize: 1048576  # 1MB
+    batchwait: 10s
+    # Static external labels applied to every pushed log line (replaces the
+    # previously-broken top-level `common_labels:` block, which is not part of
+    # the promtail Config struct). Promtail does NOT support compose-style
+    # `${VAR:-default}` substitution — use `$$` to escape docker-compose's
+    # variable expansion; docker-compose already guarantees the variable is
+    # set via the service `environment:` block, so $${ENVIRONMENT} resolves
+    # to the actual value at startup.
+    external_labels:
+      cluster: armored_archer
+      environment: $${ENVIRONMENT}
 
 scrape_configs:
   # ============================================
@@ -201,40 +208,13 @@ scrape_configs:
           level:
 
 # ============================================
-# Scrape Configurations
-# ============================================
-scrape_config_defaults:
-  # Default settings for all scrape configs
-  relabel_configs:
-    # Add hostname as label
-    - action: replace
-      source_labels: [__host__]
-      target_label: hostname
-
-  # Default pipeline stages
-  pipeline_stages:
-    # Drop debug logs in production
-    - match:
-        selector: '{environment="production"}'
-        stages:
-          - drop:
-              expression: '(?i)debug'
-              source: level
-
-# ============================================
-# Position Tracking
-# ============================================
-# Positions file tracks where Promtail has read to in each log file
-# This prevents duplicate log entries on restart
-positions:
-  filename: /tmp/positions.yaml
-  sync_period: 10s
-
-# ============================================
 # Target Discovery
 # ============================================
+# The promtail `target_config` (file.Config) only accepts `sync_period` and
+# `stdin` — `max_targets` is not part of the struct, so removing it.
+# (`scrape_config_defaults` is also not part of the promtail Config struct;
+# the earlier duplicate `positions:` block and that defaults block were
+# both rejected by -check-syntax.) (Tracking: issue #895.)
 target_config:
   # How often to sync targets
   sync_period: 10s
-  # Maximum number of concurrent targets
-  max_targets: 1000

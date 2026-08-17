@@ -162,12 +162,18 @@ services:
     command:
       - "--config=/etc/otel-collector/config.yaml"
     ports:
-      - "4317:4317"   # OTLP gRPC receiver
-      - "4318:4318"   # OTLP HTTP receiver
-      - "14268:14268" # Jaeger thrift HTTP receiver
+      # The OTEL collector and Tempo both listen on 4317/4318 inside the
+      # container. Remapping the collector's host ports to 14317/14318 avoids
+      # the pre-existing port collision documented in MVP_GAP_ANALYSIS.md
+      # ("Bind for 0.0.0.0:4317 failed: port is already allocated"). Internal
+      # clients connect via the service name (`otel-collector:4317`), so this
+      # remap only affects external host access. (Tracking: issue #895.)
+      - "14317:4317"  # OTLP gRPC receiver (host:container)
+      - "14318:4318"  # OTLP HTTP receiver (host:container)
+      - "24268:14268" # Jaeger thrift HTTP receiver (host:container, remapped to avoid tempo clash)
       - "14250:14250" # Jaeger gRPC receiver
       - "6831:6831"   # Jaeger thrift compact receiver
-      - "9411:9411"   # Zipkin receiver
+      - "19411:9411"  # Zipkin receiver (host:container, remapped to avoid tempo 9411 clash)
       - "8888:8888"   # Prometheus metrics (collector itself)
       - "8889:8889"   # Prometheus metrics exporter
       - "13133:13133" # Health check endpoint
@@ -179,11 +185,13 @@ services:
       - prometheus
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-development}
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:13133/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # The otel-collector image (otel/opentelemetry-collector-contrib:0.92.0)
+    # does not ship with `wget` / `curl` / `busybox`, so the previous
+    # wget-based healthcheck always failed with "executable file not found"
+    # even when the collector itself reported "Everything is ready". Drop the
+    # wget healthcheck and rely on `restart: unless-stopped` + the collector's
+    # own stdout ("Everything is ready") + the `:13133` endpoint being open
+    # to docker-proxy health checks. (Tracking: issue #895.)
 
   # Grafana Tempo for distributed tracing storage
   tempo:
