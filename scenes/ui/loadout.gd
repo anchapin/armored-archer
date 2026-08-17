@@ -46,8 +46,8 @@ const SLOT_NAMES: Dictionary = {
 
 var rarity_colors: Dictionary = {
 	"common": Color.WHITE,
-	"uncommon": Color(0, 0.8, 0),
 	"rare": Color(0, 0.49, 0.87),
+	"epic": Color(0.7, 0.4, 1.0),
 	"legendary": Color(1, 0.5, 0)
 }
 

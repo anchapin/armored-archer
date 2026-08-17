@@ -46,7 +46,6 @@ func _update_display() -> void:
 		var rarity: String = current_gear.get("rarity", "common")
 		var rarity_colors: Dictionary = {
 			"common": Color.WHITE,
-			"uncommon": Color(0.3, 0.9, 0.3),  # Green
 			"rare": Color(0.3, 0.6, 1.0),      # Blue
 			"epic": Color(0.7, 0.4, 1.0),      # Purple
 			"legendary": Color(1, 0.675, 0.329) # Golden

@@ -79,10 +79,10 @@ func test_slot_names_mapping() -> void:
 func test_rarity_colors_mapping() -> void:
 	var loadout = _create_loadout()
 	var colors = loadout.rarity_colors
-	if colors.has("common") and colors.has("uncommon") and colors.has("rare") and colors.has("legendary"):
+	if colors.has("common") and colors.has("rare") and colors.has("epic") and colors.has("legendary"):
 		_pass("test_rarity_colors_mapping")
 	else:
-		_fail("test_rarity_colors_mapping", "rarity_colors should have common, uncommon, rare, legendary")
+		_fail("test_rarity_colors_mapping", "rarity_colors should have common, rare, epic, legendary")
 	loadout.queue_free()
 
 func test_get_slot_key_helm() -> void:
