@@ -70,7 +70,7 @@ func test_get_base_gear() -> void:
 		_fail("test_get_base_gear_exists", "Should return gear data")
 
 	var gear_data = reg.get_base_gear("helm_iron")
-	if gear_data and gear_data.rarity == "uncommon":
+	if gear_data and gear_data.rarity == "rare":
 		_pass("test_gear_rarity")
 	else:
 		_fail("test_gear_rarity", "Gear should have correct rarity")

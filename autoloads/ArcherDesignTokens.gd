@@ -121,7 +121,7 @@ const RA_ON_SECONDARY_CONTAINER := Color("#ddcebf")  # Text on secondary contain
 
 # --- Accent Colors ---
 const RA_OUTLINE_VARIANT := Color("#484848")  # Etched metal - Ghost borders (15% opacity)
-const RA_TERTIARY := Color("#7ef839")  # Green/Uncommon - Health, uncommon items
+const RA_TERTIARY := Color("#7ef839")  # Green - Health (gear rarity palette lives in loadout.rarity_colors)
 const RA_TERTIARY_DIM := Color("#62db13")  # Dim tertiary
 const RA_TERTIARY_CONTAINER := Color("#70ea28")  # Tertiary container
 const RA_ON_TERTIARY := Color("#235a00")  # Text on tertiary
