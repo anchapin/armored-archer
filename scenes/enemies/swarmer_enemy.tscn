@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://swarmer_enemy_scene"]
+[gd_scene load_steps=6 format=3 uid="uid://swarmer_enemy_scene"]
 
 [ext_resource type="Script" path="res://scenes/enemies/swarmer_enemy.gd" id="1_swarmer_enemy_script"]
 [ext_resource type="PlaceholderTexture2D" uid="uid://melee_enemy_sprite" path="res://assets/sprites/melee_enemy.tres" id="2_swarmer_enemy_sprite"]
+[ext_resource type="SpriteFrames" path="res://assets/sprite_frames/wolf_pack_frames.tres" id="3_wolf_frames"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_swarmer_enemy"]
 size = Vector2(26, 26)
@@ -15,10 +16,11 @@ radius = 400.0
 [node name="SwarmerEnemy" type="CharacterBody2D"]
 script = ExtResource("1_swarmer_enemy_script")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-texture = ExtResource("2_swarmer_enemy_sprite")
+[node name="Sprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("3_wolf_frames")
 offset = Vector2(13, 13)
 modulate = Color(0.6, 0.8, 0.4, 1)
+autoplay = &"idle"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_swarmer_enemy")

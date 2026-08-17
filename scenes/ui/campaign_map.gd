@@ -41,6 +41,9 @@ const RANK_COLORS = {
 }
 
 func _ready() -> void:
+	# Issue #913 — fade in from black so menu transitions feel seamless.
+	_play_fade_in()
+
 	# Get ThemeManager reference
 	theme_manager = get_node_or_null("/root/ThemeManager")
 
@@ -400,7 +403,7 @@ func _on_stage_pressed(stage_id: String) -> void:
 	var boss_value = stage_data.get("boss")
 	GameManager.boss_id = boss_value if boss_value != null else ""
 
-	get_tree().change_scene_to_packed(MAIN_SCENE)
+	_transition_to_packed(MAIN_SCENE)
 
 func _on_stage_unlocked(_stage_id: String) -> void:
 	build_stage_buttons()
@@ -414,7 +417,63 @@ func _on_progress_updated(chapter_id: String, progress: float) -> void:
 		print("Chapter %s progress: %d%%" % [chapter_id, percentage])
 
 func _on_back_button_pressed() -> void:
-	var result = get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	_transition_to_file("res://scenes/ui/main_menu.tscn")
+
+# --- Fade Transitions (issue #913) ---
+const FADE_OUT_DURATION: float = 0.2
+const FADE_IN_DURATION: float = 0.2
+var _fade_rect: ColorRect = null
+
+## Fade-out current screen, swap scene, fade-in the next.
+func _transition_to_file(scene_path: String) -> void:
+	var ui_automation: Node = get_node_or_null("/root/UIAutomation")
+	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+		get_tree().change_scene_to_file(scene_path)
+		return
+
+	var fade_rect := _ensure_fade_overlay()
+	if not fade_rect:
+		get_tree().change_scene_to_file(scene_path)
+		return
+	var tween := create_tween()
+	tween.tween_property(fade_rect, "color:a", 1.0, FADE_OUT_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func(): get_tree().change_scene_to_file(scene_path))
+
+func _transition_to_packed(scene: PackedScene) -> void:
+	var ui_automation: Node = get_node_or_null("/root/UIAutomation")
+	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+		get_tree().change_scene_to_packed(scene)
+		return
+
+	var fade_rect := _ensure_fade_overlay()
+	if not fade_rect:
+		get_tree().change_scene_to_packed(scene)
+		return
+	var tween := create_tween()
+	tween.tween_property(fade_rect, "color:a", 1.0, FADE_OUT_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func(): get_tree().change_scene_to_packed(scene))
+
+## Build (or reuse) a fullscreen ColorRect used as a fade overlay.
+func _ensure_fade_overlay() -> ColorRect:
+	if _fade_rect and is_instance_valid(_fade_rect):
+		return _fade_rect
+	var rect := ColorRect.new()
+	rect.name = "FadeOverlay"
+	rect.color = Color(0, 0, 0, 0)
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(rect)
+	_fade_rect = rect
+	return rect
+
+## Fade from black back to clear (call after entering the screen).
+func _play_fade_in() -> void:
+	var fade_rect := _ensure_fade_overlay()
+	if not fade_rect:
+		return
+	fade_rect.color = Color(0, 0, 0, 1.0)
+	var tween := create_tween()
+	tween.tween_property(fade_rect, "color:a", 0.0, FADE_IN_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
 func _exit_tree() -> void:

@@ -1,7 +1,7 @@
-[gd_scene format=3 uid="uid://cctew8khj0gk8"]
+[gd_scene load_steps=3 format=3 uid="uid://cctew8khj0gk8"]
 
 [ext_resource type="Script" uid="uid://jbas50xig4i8" path="res://scenes/enemies/guardian_enemy.gd" id="1_guardian_enemy_script"]
-[ext_resource type="Texture2D" uid="uid://c0l5h3t58a3cd" path="res://assets/sprites/enemies/skeleton_idle_down_0.png" id="2_nnie4"]
+[ext_resource type="SpriteFrames" path="res://assets/sprite_frames/forest_guardian_frames.tres" id="2_guardian_frames"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_guardian_enemy"]
 size = Vector2(36, 36)
@@ -12,10 +12,11 @@ radius = 32.0
 [node name="GuardianEnemy" type="CharacterBody2D" unique_id=1725576782]
 script = ExtResource("1_guardian_enemy_script")
 
-[node name="Sprite2D" type="Sprite2D" parent="." unique_id=787457610]
+[node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=787457610]
 modulate = Color(0.3, 0.3, 0.9, 1)
-texture = ExtResource("2_nnie4")
+sprite_frames = ExtResource("2_guardian_frames")
 offset = Vector2(18, 18)
+autoplay = &"idle"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1910034497]
 shape = SubResource("RectangleShape2D_guardian_enemy")

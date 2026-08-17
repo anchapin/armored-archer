@@ -26,9 +26,20 @@ signal died(xp_reward: int)
 signal enemy_died(enemy: BaseEnemy)
 
 # --- Node References ---
-@onready var sprite: Sprite2D = $Sprite2D
+# Issue #913: 'sprite' is typed as Node2D so the reference works for both
+# legacy Sprite2D nodes and the new AnimatedSprite2D nodes. Use
+# 'animated_sprite' for sprite-frame-specific logic.
+@onready var sprite: Node2D = $Sprite2D
+@onready var animated_sprite: AnimatedSprite2D = _resolve_animated_sprite()
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var hurt_area: Area2D = $HurtArea
+
+func _resolve_animated_sprite() -> AnimatedSprite2D:
+	"""Returns the Sprite2D node as an AnimatedSprite2D if applicable (issue #913)."""
+	var node := get_node_or_null("Sprite2D")
+	if node is AnimatedSprite2D:
+		return node
+	return null
 
 func _is_e2e_test() -> bool:
 	return OS.get_environment("E2E_TEST") == "1"
@@ -195,8 +206,22 @@ func _exit_tree() -> void:
 
 ## Death animation: Fade out and apply ragdoll physics
 func play_death_animation() -> void:
-	"""Fade out sprite over 0.5s and trigger ragdoll physics"""
-	# Fade out sprite over 0.5s
+	"""Fade out sprite over 0.5s and trigger ragdoll physics.
+
+	Issue #913: when an AnimatedSprite2D is present, play the 'death' animation
+	and await its completion before applying ragdoll physics. Falls back to the
+	tween fade when only a static Sprite2D is available.
+	"""
+	# If an AnimatedSprite2D with a 'death' animation is available, play it and
+	# wait for completion (so the body isn't freed mid-animation).
+	if animated_sprite and animated_sprite.sprite_frames and animated_sprite.sprite_frames.has_animation(&"death"):
+		animated_sprite.play(&"death")
+		# Only await if the animation actually has frames to play; empty placeholder
+		# frames would otherwise complete instantly and skip the death effect.
+		if animated_sprite.sprite_frames.get_frame_count(&"death") > 0:
+			await animated_sprite.animation_finished
+
+	# Fade out sprite over 0.5s (still useful for visibility transition)
 	if sprite:
 		var tween = create_tween()
 		tween.tween_property(sprite, "modulate:a", 0.0, 0.5)
