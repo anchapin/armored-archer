@@ -23,10 +23,10 @@ const NetworkConsts := preload("res://autoloads/const.gd")
 @onready var play_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/LeftPanel/ActionButtons/PlayButton
 @onready var loadout_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/LeftPanel/ActionButtons/LoadoutButton
 @onready var pvp_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/LeftPanel/ActionButtons/PvpButton
-@onready var shop_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/RightPanel/ShopButton
-@onready var buy_gems_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/RightPanel/BuyGemsButton
-@onready var settings_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/RightPanel/SettingsButton
-@onready var quit_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/RightPanel/QuitButton
+@onready var shop_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/RightPanel/ShopButton
+@onready var buy_gems_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/RightPanel/BuyGemsButton
+@onready var settings_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/RightPanel/SettingsButton
+@onready var quit_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/RightPanel/QuitButton
 
 @onready var character_preview: Control = $SafeAreaContainer/MainContainer/CenterContent/CharacterPreview
 @onready var menu_container: Control = $SafeAreaContainer/MainContainer
@@ -249,7 +249,7 @@ func _apply_relic_archive_theme() -> void:
 		_apply_surface_tier_style(left_panel, "high")
 
 	# Right Panel: Surface tier container (RA_SURFACE_CONTAINER #191a1a)
-	var right_panel: PanelContainer = get_node_or_null("SafeAreaContainer/MainContainer/RightPanel") as PanelContainer
+	var right_panel: PanelContainer = get_node_or_null("SafeAreaContainer/MainContainer/CenterContent/RightPanel") as PanelContainer
 	if right_panel:
 		_apply_surface_tier_style(right_panel, "container")
 
