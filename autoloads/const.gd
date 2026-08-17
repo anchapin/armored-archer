@@ -60,3 +60,16 @@ const JOYSTICK_DEADZONE: float = 0.1
 # --- Performance ---
 const MAX_FPS: int = 60
 const TARGET_FRAME_TIME: float = 1.0 / MAX_FPS
+
+# --- Animation Names (issue #913) ---
+# Used by 7 Ch1 characters (player, 4 archetypes, 2 bosses) — see SpriteFrames .tres
+const ANIM_IDLE: StringName = &"idle"
+const ANIM_WALK: StringName = &"walk"
+const ANIM_ATTACK: StringName = &"attack"
+const ANIM_DEATH: StringName = &"death"
+const ANIM_DRAW: StringName = &"draw"
+const ANIM_RELEASE: StringName = &"release"
+const ANIM_INTRO: StringName = &"intro"
+const DEFAULT_ANIM_FPS: float = 8.0
+const DEATH_ANIM_FPS: float = 6.0
+const INTRO_ANIM_FPS: float = 4.0

@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3 uid="uid://boss_basic_scene"]
+[gd_scene load_steps=5 format=3 uid="uid://boss_basic_scene"]
 
 [ext_resource type="Script" path="res://scenes/enemies/bosses/boss_basic.gd" id="1_boss_basic_script"]
 [ext_resource type="PlaceholderTexture2D" uid="uid://boss_basic_sprite" path="res://assets/sprites/boss_basic.tres" id="2_boss_basic_sprite"]
+[ext_resource type="SpriteFrames" path="res://assets/sprite_frames/boss_basic_frames.tres" id="3_boss_basic_frames"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_boss"]
 size = Vector2(64, 64)
@@ -12,10 +13,11 @@ radius = 40.0
 [node name="BossBasic" type="CharacterBody2D"]
 script = ExtResource("1_boss_basic_script")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-texture = ExtResource("2_boss_basic_sprite")
+[node name="Sprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("3_boss_basic_frames")
 offset = Vector2(32, 32)
 scale = Vector2(2.0, 2.0)
+autoplay = &"intro"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_boss")

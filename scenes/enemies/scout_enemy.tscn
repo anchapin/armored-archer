@@ -1,7 +1,7 @@
-[gd_scene format=3 uid="uid://cyk2qta2tooyh"]
+[gd_scene load_steps=3 format=3 uid="uid://cyk2qta2tooyh"]
 
 [ext_resource type="Script" uid="uid://ckpfxk82yoolo" path="res://scenes/enemies/scout_enemy.gd" id="1_scout_enemy_script"]
-[ext_resource type="Texture2D" uid="uid://wdxsmhe1d63j" path="res://assets/sprites/enemies/shadow_runner_idle_down_0.png" id="2_yo3dh"]
+[ext_resource type="SpriteFrames" path="res://assets/sprite_frames/goblin_scout_frames.tres" id="2_scout_frames"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_scout_enemy"]
 size = Vector2(24, 24)
@@ -12,10 +12,11 @@ radius = 20.0
 [node name="ScoutEnemy" type="CharacterBody2D" unique_id=841064586]
 script = ExtResource("1_scout_enemy_script")
 
-[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1513018610]
+[node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=1513018610]
 modulate = Color(0.9, 0.6, 0.1, 1)
-texture = ExtResource("2_yo3dh")
+sprite_frames = ExtResource("2_scout_frames")
 offset = Vector2(12, 12)
+autoplay = &"idle"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1698506414]
 shape = SubResource("RectangleShape2D_scout_enemy")

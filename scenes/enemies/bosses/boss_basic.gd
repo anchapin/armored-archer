@@ -33,7 +33,23 @@ func _ready() -> void:
 	add_to_group("Boss")
 	super._ready()
 
+	# Issue #913: play intro animation on spawn. If the sprite has actual frames,
+	# wait for intro to finish before becoming attackable. With empty placeholder
+	# frames the intro completes instantly and we proceed to idle.
+	_play_intro_and_idle()
+
 	health_changed.emit(current_health, max_health)
+
+## Play intro animation on spawn, then return to idle loop (issue #913).
+func _play_intro_and_idle() -> void:
+	if not animated_sprite or not animated_sprite.sprite_frames:
+		return
+	if animated_sprite.sprite_frames.has_animation(&"intro"):
+		animated_sprite.play(&"intro")
+		if animated_sprite.sprite_frames.get_frame_count(&"intro") > 0:
+			await animated_sprite.animation_finished
+	if animated_sprite.sprite_frames.has_animation(&"idle"):
+		animated_sprite.play(&"idle")
 
 func _physics_process(delta: float) -> void:
 	if not player_ref:

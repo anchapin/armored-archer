@@ -31,7 +31,9 @@ signal movement_stopped
 signal aim_direction_changed(direction: Vector2)
 
 # --- Node References ---
-@onready var body_sprite: Sprite2D = $BodySprite
+# Issue #913: 'body_sprite' is typed as Node2D so it works for both the legacy
+# Sprite2D and the new AnimatedSprite2D node. The body sprite is animation-driven.
+@onready var body_sprite: Node2D = $BodySprite
 @onready var bow_pivot: Node2D = $BowPivot
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 

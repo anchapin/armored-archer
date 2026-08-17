@@ -1,7 +1,7 @@
-[gd_scene format=3 uid="uid://bw7xv9k3m4lpq"]
+[gd_scene load_steps=3 format=3 uid="uid://bw7xv9k3m4lpq"]
 
 [ext_resource type="Script" uid="uid://bw7xv9k3m4lpr" path="res://scenes/enemies/elemental_enemy.gd" id="1_elemental_script"]
-[ext_resource type="Texture2D" path="res://assets/sprites/enemy.tres" id="2_sprite"]
+[ext_resource type="SpriteFrames" path="res://assets/sprite_frames/wind_elemental_frames.tres" id="2_wind_frames"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_collision"]
 size = Vector2(32, 32)
@@ -15,10 +15,11 @@ radius = 200.0
 [node name="ElementalEnemy" type="CharacterBody2D" unique_id=1607551683]
 script = ExtResource("1_elemental_script")
 
-[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1025519918]
-texture = ExtResource("2_sprite")
+[node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=1025519918]
+sprite_frames = ExtResource("2_wind_frames")
 offset = Vector2(16, 16)
 modulate = Color(1, 0, 0, 1)
+autoplay = &"idle"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=2022863301]
 shape = SubResource("RectangleShape2D_collision")
