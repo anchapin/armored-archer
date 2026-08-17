@@ -19,6 +19,10 @@ run/main_scene="res://scenes/ui/login_screen.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
 
+[audio]
+
+audio/bus_layout_path="res://default_bus_layout.tres"
+
 [autoload]
 
 NetworkManager="*res://autoloads/NetworkManager.gd"

@@ -109,6 +109,14 @@ func die() -> void:
 	# CRITICAL: Set is_dead flag immediately to prevent re-damage before deferred pool return
 	is_dead = true
 
+	# Audio feedback — arrow_kill on the SFX bus (issue #911)
+	var audio_kill = get_node_or_null("/root/AudioManager")
+	if audio_kill:
+		if audio_kill.has_method("play_arrow_kill"):
+			audio_kill.play_arrow_kill()
+		elif audio_kill.has_method("play_sfx"):
+			audio_kill.play_sfx("arrow_kill")
+
 	# Emit death signals first
 	if not _is_e2e_test():
 		print("DEBUG: Emitting died signal for %s (%s)" % [name, str(get_instance_id())])
