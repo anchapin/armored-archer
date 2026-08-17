@@ -14,6 +14,17 @@ const WAVES_PER_STAGE: int = 3
 const DEFAULT_SERVER_URL: String = "http://localhost:7350"
 const API_VERSION: String = "v2"
 const REQUEST_TIMEOUT: float = 10.0
+# Bounded timeout for the entire login/auth sequence (issue #908 acceptance: ≤15s)
+const MAX_AUTH_DURATION_SEC: float = 12.0
+# Exponential backoff retry delays (issue #908 acceptance: 1s/2s/4s — 3 attempts)
+const AUTH_RETRY_DELAYS: Array = [1.0, 2.0, 4.0]
+# Bound on the pre-auth health probe (issue #908 health-gate)
+const HEALTH_CHECK_TIMEOUT_SEC: float = 4.0
+const HEALTH_GATE_PATH: String = "/v2/health"
+const DEVICE_AUTH_PATH: String = "/v2/account/authenticate/device"
+const SESSION_REFRESH_PATH: String = "/v2/account/session/refresh"
+# Default server key — must match backend/data/nakama.yml runtime.http_key
+const DEFAULT_SERVER_KEY: String = "defaultkey"
 
 # --- Combat ---
 const CRITICAL_HIT_CHANCE: float = 0.15
