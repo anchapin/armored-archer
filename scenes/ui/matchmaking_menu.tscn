@@ -156,7 +156,7 @@ horizontal_alignment = 1
 [node name="RankedPunchUpLabel" type="Label" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox/RewardComparisonHBox/RankedRewards"]
 unique_id=7777777777
 layout_mode = 2
-text = "Punch Up Win: +50% XP, +5 Gems"
+text = "Punch Up Win: +20-100% XP, +3-10 Gems"
 horizontal_alignment = 1
 
 [node name="CasualRewards" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer/RewardInfoPanel/RewardInfoVBox/RewardComparisonHBox"]

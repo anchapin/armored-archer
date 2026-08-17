@@ -89,7 +89,7 @@ size_flags_horizontal = 3
 
 [node name="WinBonusLabel" type="Label" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/RewardsContainer/WinRewards"]
 layout_mode = 2
-text = "+60% XP, +8 Gems"
+text = "+20-100% XP, +3-10 Gems"
 
 [node name="LoseRewards" type="HBoxContainer" parent="DialogPanel/MarginContainer/VBoxContainer/ContentContainer/RewardsContainer"]
 layout_mode = 2
