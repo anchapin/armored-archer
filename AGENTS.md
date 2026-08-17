@@ -2,6 +2,10 @@
 
 Godot 4.6 mobile archery auto-shooter with a Nakama (TypeScript) backend and PostgreSQL. The repo root **is** the Godot project (`res://`); the server lives in `backend/`. The game is server-authoritative: clients send actions, Nakama RPCs validate and compute results.
 
+## CI outage recovery
+
+When every hosted Actions job fails with *"recent account payments have failed or your spending limit needs to be increased"*, it is **account-billing**, not a code problem — see [`docs/ci/ci-billing-recovery.md`](docs/ci/ci-billing-recovery.md) (issue #855). Detection: `gh api orgs/anchapin/settings/billing/actions` and the annotation on check run `95179007068`. **Fix must be performed by a repo/org owner in Settings → Billing & plans** — no code change unblocks the gate. While hosted CI is dark, use `./scripts/local-godot-tests.sh`, `cd backend && npm run lint && npm test`, and the `act` matrix on `.github/workflows/ci.yml` (PR #889); never disable required status checks as a workaround.
+
 ## Project Structure
 
 ```text
