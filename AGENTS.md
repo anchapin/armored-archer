@@ -59,11 +59,13 @@ godot4 --headless --script test/run_all_tests.gd
 gdlint autoloads/*.gd scenes/**/*.gd scripts/*.gd test/*.gd
 
 # Wrapper (use when GitHub Actions / act is unavailable)
-./scripts/local-godot-tests.sh            # lint + syntax + tests
+./scripts/local-godot-tests.sh            # lint + syntax + tests (default = --all)
+./scripts/local-godot-tests.sh --all      # explicit: run everything
 ./scripts/local-godot-tests.sh --quick    # no Godot binary required
 ./scripts/local-godot-tests.sh --lint     # gdlint only
 ./scripts/local-godot-tests.sh --syntax
 ./scripts/local-godot-tests.sh --tests
+./scripts/local-godot-tests.sh --help     # full flag list
 ```
 
 Gotchas:
@@ -124,7 +126,7 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 
 ## TypeScript Code Style (Nakama Backend)
 
-- `"strict": true`; interfaces for data structures, enums for fixed sets; validate input with zod.
+- `"strict": true`; interfaces for data structures, enums for fixed sets; validate input with **`valibot`** (canonical — see `backend/src/modules/validation.ts`). `zod` is a legacy holdover in `xp_manager.ts`; don't introduce new `zod` imports.
 - ESM `import` syntax. Tests must match `*.test.ts`.
 - Server-authoritative: never trust client input; combat results and loot are computed server-side from stored stats.
 - `async/await` with try/catch around DB ops; log via winston; never leak internals in client-facing errors.
@@ -160,6 +162,7 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 - Commits containing AI-generated changes need the `[AI-assisted]` prefix plus model and task in the body, e.g. `[AI-assisted] feat: ...` / `- AI Model: ...` / `- Task: ...`; document AI-assisted scope in the PR description.
 - Human review is mandatory for AI-assisted changes. Hard rules: no secrets/credentials in code, input validation on all user data, and **database migrations plus security-critical code always require human supervision**.
 - Review checklist: `AI_CODE_REVIEW.md`. Workflow and tooling: `AI_INTEGRATION.md`, `GODOGEN_SETUP.md`, `FOLEY_AI_SETUP.md`. Companion guide: `CLAUDE.md` (autoload map, design system, tooling notes). Repo skills: `.agents/skills/godot-backend`, `.agents/skills/godot-development` (plus `godot-task`/`godogen` in `.claude/skills/`).
+- **Skill caveat:** `.agents/skills/godot-backend/SKILL.md` is stale — it claims a Go backend (`go run main.go`, port 7349, `NAKAMA_PORT` defaults). The real backend is **TypeScript** (Node 18+, npm scripts in `backend/package.json`, Nakama API on **:7350**, console on :7351). Trust this AGENTS.md over that skill file.
 
 ## Maintenance Automation
 
