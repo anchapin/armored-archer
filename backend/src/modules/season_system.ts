@@ -543,7 +543,13 @@ function checkPlayerFlagged(
 }
 
 /**
- * Validates anti-cheat signature for rank update
+ * Validates anti-cheat signature for rank update.
+ *
+ * Issue #955 / ADR-0002: the four anti-cheat fields
+ * (requestId, timestamp, signature, nonce) are REQUIRED for update_rank.
+ * Requests missing any field are rejected with ANTI_CHEAT_VIOLATION —
+ * the previous presence check silently bypassed signature verification
+ * when any field was omitted.
  */
 function validateRankUpdateSignature(
   ctx: Runtime.Context,
@@ -563,35 +569,49 @@ function validateRankUpdateSignature(
     nonce?: string;
   }
 ): string | null {
-  if (request.requestId && request.timestamp && request.signature && request.nonce) {
-    const signatureData: RequestSignature = {
-      requestId: request.requestId,
-      timestamp: request.timestamp,
-      signature: request.signature,
-      nonce: request.nonce,
-    };
-
-    const payloadForSig = JSON.stringify({
-      match_id: request.match_id,
-      winner_id: request.winner_id,
-      loser_id: request.loser_id,
-      winner_old_rank: request.winner_old_rank,
-      loser_old_rank: request.loser_old_rank,
-      winner_new_rank: request.winner_new_rank,
-      loser_new_rank: request.loser_new_rank,
-      is_punch_up: request.is_punch_up,
+  if (!request.requestId || !request.timestamp || !request.signature || !request.nonce) {
+    logger.warn(
+      'update_rank rejected: missing anti-cheat signature field(s) for user %s (requestId=%s, timestamp=%s, signature=%s, nonce=%s)',
+      ctx.userId,
+      Boolean(request.requestId),
+      Boolean(request.timestamp),
+      Boolean(request.signature),
+      Boolean(request.nonce)
+    );
+    return JSON.stringify({
+      success: false,
+      error_code: 'ANTI_CHEAT_VIOLATION',
+      error: 'Missing anti-cheat signature fields',
     });
+  }
 
-    const sigResult = verifyRequestSignature(ctx, payloadForSig, signatureData, 'update_rank');
-    if (!sigResult.valid) {
-      logger.warn('Invalid signature for update_rank: %s', sigResult.violations.join(', '));
-      return JSON.stringify({
-        success: false,
-        error_code: 'ANTI_CHEAT_VIOLATION',
-        error: 'Invalid request signature',
-        violations: sigResult.violations,
-      });
-    }
+  const signatureData: RequestSignature = {
+    requestId: request.requestId,
+    timestamp: request.timestamp,
+    signature: request.signature,
+    nonce: request.nonce,
+  };
+
+  const payloadForSig = JSON.stringify({
+    match_id: request.match_id,
+    winner_id: request.winner_id,
+    loser_id: request.loser_id,
+    winner_old_rank: request.winner_old_rank,
+    loser_old_rank: request.loser_old_rank,
+    winner_new_rank: request.winner_new_rank,
+    loser_new_rank: request.loser_new_rank,
+    is_punch_up: request.is_punch_up,
+  });
+
+  const sigResult = verifyRequestSignature(ctx, payloadForSig, signatureData, 'update_rank');
+  if (!sigResult.valid) {
+    logger.warn('Invalid signature for update_rank: %s', sigResult.violations.join(', '));
+    return JSON.stringify({
+      success: false,
+      error_code: 'ANTI_CHEAT_VIOLATION',
+      error: 'Invalid request signature',
+      violations: sigResult.violations,
+    });
   }
   return null;
 }
