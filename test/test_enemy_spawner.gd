@@ -23,6 +23,12 @@ func run_tests() -> void:
 	await test_boss_id_default_empty()
 	await test_signal_connections_array_exists()
 	await test_spawn_position_within_area()
+	# --- issue #910 guard tests ---
+	await test_enemy_scene_map_has_ch1_archetypes()
+	await test_ch1_stage_keys_resolve()
+	await test_boss_scene_map_covers_ch1_bosses()
+	await test_stage_stats_override_enemy_defaults()
+	await test_set_active_stage_populates_context()
 
 	print("\n=== EnemySpawner Test Results ===")
 	print("Passed: %d" % _tests_passed)
@@ -211,4 +217,101 @@ func test_spawn_position_within_area() -> void:
 		_pass("test_spawn_position_within_area")
 	else:
 		_fail("test_spawn_position_within_area", "Spawn positions should be offset by global_position")
+	spawner.queue_free()
+
+# --- issue #910 guard tests ---
+
+func test_enemy_scene_map_has_ch1_archetypes() -> void:
+	var spawner = _create_spawner()
+	var archetypes := ["Goblin Scout", "Wolf Pack", "Forest Guardian", "Wind Elemental"]
+	var all_passed := true
+	for archetype in archetypes:
+		if not spawner.archetype_scene_map.has(archetype):
+			_fail("test_enemy_scene_map_has_ch1_archetypes",
+				"Archetype '%s' missing from archetype_scene_map" % archetype)
+			all_passed = false
+	if all_passed:
+		_pass("test_enemy_scene_map_has_ch1_archetypes")
+	spawner.queue_free()
+
+func test_ch1_stage_keys_resolve() -> void:
+	var spawner = _create_spawner()
+	var all_passed := true
+	for stage_id in ["1_1", "1_2", "1_3", "1_4"]:
+		var parts: PackedStringArray = stage_id.split("_")
+		spawner.current_chapter = int(parts[0])
+		spawner.current_stage = int(parts[1])
+		spawner.last_stage_enemy_stats = {}
+		var scene = spawner._resolve_current_stage_scene()
+		if scene == null:
+			_fail("test_ch1_stage_keys_resolve",
+				"Stage %s must resolve to a PackedScene" % stage_id)
+			all_passed = false
+	if all_passed:
+		_pass("test_ch1_stage_keys_resolve")
+	spawner.queue_free()
+
+func test_boss_scene_map_covers_ch1_bosses() -> void:
+	var spawner = _create_spawner()
+	var bosses := ["boss_basic", "boss_wind"]
+	var all_passed := true
+	for boss_id in bosses:
+		if not spawner.boss_scene_map.has(boss_id):
+			_fail("test_boss_scene_map_covers_ch1_bosses",
+				"boss_id '%s' missing from boss_scene_map" % boss_id)
+			all_passed = false
+		var scene = spawner.get_boss_scene(boss_id)
+		if scene == null:
+			_fail("test_boss_scene_map_covers_ch1_bosses",
+				"Boss scene for '%s' did not resolve" % boss_id)
+			all_passed = false
+	if all_passed:
+		_pass("test_boss_scene_map_covers_ch1_bosses")
+	spawner.queue_free()
+
+func test_stage_stats_override_enemy_defaults() -> void:
+	# Verify _apply_stage_stats mutates an enemy Node's properties.
+	# Construct manually (matching test_base_enemy.gd pattern — the headless
+	# test framework does not reliably attach scripts on .tscn instantiate).
+	var spawner = _create_spawner()
+	var enemy = CharacterBody2D.new()
+	enemy.set_script(load("res://scenes/enemies/base_enemy.gd"))
+	var sprite = Sprite2D.new()
+	sprite.name = "Sprite2D"
+	enemy.add_child(sprite)
+	var collision_shape = CollisionShape2D.new()
+	collision_shape.name = "CollisionShape2D"
+	enemy.add_child(collision_shape)
+	var hurt_area = Area2D.new()
+	hurt_area.name = "HurtArea"
+	enemy.add_child(hurt_area)
+	add_child(enemy)
+	spawner.last_stage_enemy_stats = {"type": "Goblin Scout", "health": 30, "attack": 8, "speed": 10}
+	spawner._apply_stage_stats(enemy)
+	var hp_value = enemy.get("max_health")
+	var dmg_value = enemy.get("damage")
+	var spd_value = enemy.get("move_speed")
+	var hp_ok: bool = hp_value != null and int(hp_value) == 30
+	var dmg_ok: bool = dmg_value != null and int(dmg_value) == 8
+	var spd_ok: bool = spd_value != null and int(spd_value) == 10
+	if hp_ok and dmg_ok and spd_ok:
+		_pass("test_stage_stats_override_enemy_defaults")
+	else:
+		_fail("test_stage_stats_override_enemy_defaults",
+			"Stage stats did not override enemy defaults (hp=%s, dmg=%s, spd=%s)" %
+			[str(hp_value), str(dmg_value), str(spd_value)])
+	enemy.queue_free()
+	spawner.queue_free()
+
+func test_set_active_stage_populates_context() -> void:
+	var spawner = _create_spawner()
+	spawner.set_active_stage(1, 1, {"type": "Goblin Scout", "health": 30})
+	if (spawner.current_chapter == 1 and
+			spawner.current_stage == 1 and
+			spawner.last_stage_enemy_stats["type"] == "Goblin Scout" and
+			int(spawner.last_stage_enemy_stats["health"]) == 30):
+		_pass("test_set_active_stage_populates_context")
+	else:
+		_fail("test_set_active_stage_populates_context",
+			"set_active_stage did not populate stage context")
 	spawner.queue_free()

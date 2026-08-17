@@ -7,6 +7,7 @@ extends Node2D
 ## - Object pool integration for performance
 ## - Boss spawning support
 ## - Automatic wave progression
+## - Stage-driven deterministic spawning via `enemy_scene_map` (issue #910)
 ##
 
 # --- Spawner Settings ---
@@ -29,6 +30,10 @@ const SCOUT_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/scout_enemy
 const BRUTE_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/brute_enemy.tscn")
 const GUARDIAN_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/guardian_enemy.tscn")
 const NECROMANCER_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/necromancer_enemy.tscn")
+const ELEMENTAL_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/elemental_enemy.tscn")
+const TANK_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/tank_enemy.tscn")
+const SWARMER_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/swarmer_enemy.tscn")
+const SPEED_ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/speed_enemy.tscn")
 
 # --- Boss Scenes ---
 const BOSS_BASIC_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_basic.tscn")
@@ -36,6 +41,93 @@ const BOSS_WIND_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_w
 const BOSS_FIRE_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_fire.tscn")
 const BOSS_ICE_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_ice.tscn")
 const BOSS_EARTH_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_earth.tscn")
+const BOSS_ELECTRIC_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_electric.tscn")
+const BOSS_KING_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_king.tscn")
+const BOSS_IRON_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_iron.tscn")
+const BOSS_NIGHTMARE_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_nightmare.tscn")
+const BOSS_SHADOW_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_shadow.tscn")
+
+# --- Enemy Type → Scene Map (issue #910) ---
+## Explicit map keyed by `data/campaigns.json` enemy type strings.
+## Each stage's `enemy.type` is resolved through this map for deterministic
+## spawning — no random fallback on the Ch1 path.
+## Use `last_stage_enemy_stats: Dictionary` to override scene defaults with
+## the per-stage `health/attack/defense/speed` values when present.
+var enemy_scene_map: Dictionary = {
+	"ch1_1": SCOUT_ENEMY_SCENE,        # Stage 1_1: Forest Edge (Goblin Scout)
+	"ch1_2": SWARMER_ENEMY_SCENE,      # Stage 1_2: Ambush (Wolf Pack)
+	"ch1_3": GUARDIAN_ENEMY_SCENE,     # Stage 1_3: First Blood (Forest Guardian)
+	"ch1_4": ELEMENTAL_ENEMY_SCENE,    # Stage 1_4: Wind Passage (Wind Elemental)
+	"ch2_1": BRUTE_ENEMY_SCENE,        # Stage 2_1: Outer Walls (Stone Golem)
+	"ch2_2": TANK_ENEMY_SCENE,         # Stage 2_2: Courtyard (Armored Knight)
+	"ch2_3": SWARMER_ENEMY_SCENE,      # Stage 2_3: Armory (Fire Imps)
+	"ch2_4": GUARDIAN_ENEMY_SCENE,     # Stage 2_4: Throne (Frost Warden)
+	"ch3_1": BRUTE_ENEMY_SCENE,        # Stage 3_1: Twisted Paths (Shadow Beast)
+	"ch3_2": NECROMANCER_ENEMY_SCENE,  # Stage 3_2: The Hollow (Cultist Priest)
+	"ch3_3": GUARDIAN_ENEMY_SCENE,     # Stage 3_3: Cursed Grove (Lightning Guardian)
+	"ch3_4": BRUTE_ENEMY_SCENE,        # Stage 3_4: Ancient Shrine (Elder King)
+	"ch4_1": BRUTE_ENEMY_SCENE,        # Stage 4_1: Cracked Earth (Earth Golem)
+	"ch4_2": BRUTE_ENEMY_SCENE,        # Stage 4_2: Iron Fortress (Titan Guardian)
+	"ch4_3": BRUTE_ENEMY_SCENE,        # Stage 4_3: Shadow Realm (Shadow Knight)
+	"ch4_4": BRUTE_ENEMY_SCENE,        # Stage 4_4: Nightmare's End (Nightmare Walker)
+	"ch4_5": BRUTE_ENEMY_SCENE,        # Stage 4_5: Shadow Ascension (Shadow Lord)
+}
+
+## Archetype map keyed by `campaigns.json` `enemy.type` string.
+## Used for stages configured by enemy.type rather than stage ID.
+var archetype_scene_map: Dictionary = {
+	"Goblin Scout": SCOUT_ENEMY_SCENE,
+	"Wolf Pack": SWARMER_ENEMY_SCENE,
+	"Forest Guardian": GUARDIAN_ENEMY_SCENE,
+	"Wind Elemental": ELEMENTAL_ENEMY_SCENE,
+	"Stone Golem": BRUTE_ENEMY_SCENE,
+	"Armored Knight": TANK_ENEMY_SCENE,
+	"Fire Imps": SWARMER_ENEMY_SCENE,
+	"Frost Warden": GUARDIAN_ENEMY_SCENE,
+	"Shadow Beast": BRUTE_ENEMY_SCENE,
+	"Cultist Priest": NECROMANCER_ENEMY_SCENE,
+	"Lightning Guardian": GUARDIAN_ENEMY_SCENE,
+	"Elder King": BRUTE_ENEMY_SCENE,
+	"Earth Golem": BRUTE_ENEMY_SCENE,
+	"Titan Guardian": BRUTE_ENEMY_SCENE,
+	"Shadow Knight": BRUTE_ENEMY_SCENE,
+	"Nightmare Walker": BRUTE_ENEMY_SCENE,
+	"Shadow Lord": BRUTE_ENEMY_SCENE,
+}
+
+## Explicit map from `boss_id` (campaigns.json `boss` field) to scene.
+var boss_scene_map: Dictionary = {
+	"boss_basic": BOSS_BASIC_SCENE,
+	"boss_wind": BOSS_WIND_SCENE,
+	"boss_fire": BOSS_FIRE_SCENE,
+	"boss_ice": BOSS_ICE_SCENE,
+	"boss_earth": BOSS_EARTH_SCENE,
+	"boss_electric": BOSS_ELECTRIC_SCENE,
+	"boss_king": BOSS_KING_SCENE,
+	"boss_iron": BOSS_IRON_SCENE,
+	"boss_nightmare": BOSS_NIGHTMARE_SCENE,
+	"boss_shadow": BOSS_SHADOW_SCENE,
+}
+
+## Stage archetype name → canonical key in `enemy_scene_map`.
+## Used to resolve the per-archetype scene for the spawned enemy.
+const CH1_STAGE_KEYS: Dictionary = {
+	"1_1": "ch1_1",
+	"1_2": "ch1_2",
+	"1_3": "ch1_3",
+	"1_4": "ch1_4",
+}
+
+## Stats pulled from the active stage entry in campaigns.json. When set,
+## `spawn_enemy_for_stage()` overrides the scene defaults with these values.
+## Shape: { "health": int, "attack": int, "defense": int, "speed": int, "type": String }
+var last_stage_enemy_stats: Dictionary = {}
+
+# --- Active Stage Context (issue #910) ---
+## Current chapter number (1..4), 0 when no stage is active.
+var current_chapter: int = 0
+## Current stage number within the active chapter (1..5), 0 when unset.
+var current_stage: int = 0
 
 # --- State ---
 var current_wave: int = 0
@@ -135,16 +227,24 @@ func spawn_enemy() -> void:
 	if object_pool and object_pool.has_method("get_enemy"):
 		enemy_instance = object_pool.get_enemy()
 	else:
-		# Fallback: instantiate from preloaded scenes if object pool unavailable
-		var enemy_scenes = [MELEE_ENEMY_SCENE, RANGED_ENEMY_SCENE, SCOUT_ENEMY_SCENE,
-				BRUTE_ENEMY_SCENE, GUARDIAN_ENEMY_SCENE, NECROMANCER_ENEMY_SCENE]
-		var random_scene = enemy_scenes[randi() % enemy_scenes.size()]
-		enemy_instance = random_scene.instantiate()
+		# Deterministic scene selection via enemy_scene_map (issue #910).
+		# Falls back to scout_enemy if no stage context is set — the
+		# random-scene fallback that previously corrupted Ch1 is removed.
+		var mapped_scene: PackedScene = _resolve_current_stage_scene()
+		if not mapped_scene:
+			mapped_scene = SCOUT_ENEMY_SCENE
+			push_warning("EnemySpawner: no scene resolved for current stage, defaulting to scout_enemy")
+		enemy_instance = mapped_scene.instantiate()
 
 
 
 
 	enemy_instance.global_position = spawn_position
+
+	# Apply per-stage stats from campaigns.json (issue #910) before reset,
+	# so they override scene defaults on first spawn.
+	if enemy_instance:
+		_apply_stage_stats(enemy_instance)
 
 	# Reset enemy stats for new spawn with null safety
 	if enemy_instance and enemy_instance.has_method("reset_for_spawn"):
@@ -293,5 +393,107 @@ func _on_boss_defeated(_boss_name: String) -> void:
 	var game_mgr = get_node_or_null("/root/GameManager")
 	if game_mgr and game_mgr.has_method("end_game"):
 		game_mgr.end_game(true)
+
+# --- Stage-driven helpers (issue #910) ---
+
+## Look up the scene mapped to the current stage's archetype.
+##
+## Resolution order:
+##   1. `last_stage_enemy_stats["type"]` via `archetype_scene_map`
+##   2. `current_chapter` + `current_stage` via `enemy_scene_map`
+##      (e.g. chapter=1 stage=4 → "ch1_4")
+##   3. Empty PackedScene (caller falls back to scout_enemy)
+func _resolve_current_stage_scene() -> PackedScene:
+	var stage_type: String = last_stage_enemy_stats.get("type", "")
+	if stage_type != "" and archetype_scene_map.has(stage_type):
+		return archetype_scene_map[stage_type]
+	var ch_key := "ch%d_%d" % [current_chapter, current_stage]
+	if enemy_scene_map.has(ch_key):
+		return enemy_scene_map[ch_key]
+	return null
+
+## Apply campaigns.json inline stats to the spawned enemy instance.
+## Only overrides when the stat is present and > 0.
+func _apply_stage_stats(enemy: Node) -> void:
+	if last_stage_enemy_stats.is_empty():
+		return
+	if not enemy:
+		return
+	var stats: Dictionary = last_stage_enemy_stats
+	if stats.has("health") and int(stats["health"]) > 0:
+		enemy.set("max_health", int(stats["health"]))
+	if stats.has("attack") and int(stats["attack"]) > 0:
+		enemy.set("damage", int(stats["attack"]))
+	if stats.has("defense"):
+		enemy.set("defense", int(stats.get("defense", 0)))
+	if stats.has("speed") and int(stats["speed"]) > 0:
+		enemy.set("move_speed", float(stats["speed"]))
+
+## Set the active stage so subsequent `spawn_enemy()` calls pick the
+## mapped archetype and apply the inline stage stats.
+##
+## Parameters:
+##   chapter: int — chapter number (1..4)
+##   stage: int — stage number within the chapter (1..5)
+##   stats: Dictionary — `enemy` entry from campaigns.json
+##     ({"type": "...", "health": int, "attack": int, "defense": int, "speed": int})
+func set_active_stage(chapter: int, stage: int, stats: Dictionary = {}) -> void:
+	current_chapter = chapter
+	current_stage = stage
+	last_stage_enemy_stats = stats.duplicate(true)
+	if OS.get_environment("E2E_TEST") != "1":
+		print("DEBUG: EnemySpawner.set_active_stage(ch=%d, st=%d, type=%s, hp=%d)" %
+			[chapter, stage, stats.get("type", "?"), int(stats.get("health", 0))])
+
+## Resolve a boss scene by id (campaigns.json `boss` field).
+func get_boss_scene(boss_id_value: String) -> PackedScene:
+	if boss_scene_map.has(boss_id_value):
+		return boss_scene_map[boss_id_value]
+	push_warning("EnemySpawner: unknown boss_id '%s'" % boss_id_value)
+	return null
+
+## Look up the scene mapped to a named archetype from campaigns.json
+## `enemy.type` strings. Returns null when the type is not registered.
+func get_scene_for_archetype(archetype: String) -> PackedScene:
+	if archetype_scene_map.has(archetype):
+		return archetype_scene_map[archetype]
+	return null
+
+## Direct entry point used by BossFire and other callers that previously
+## routed through the deleted EnemyFactory. Falls back to a scout.
+func spawn_archetype(archetype: String, position: Vector2,
+		difficulty: int = 1) -> Node:
+	var scene: PackedScene = get_scene_for_archetype(archetype)
+	if not scene:
+		push_warning("EnemySpawner.spawn_archetype: unknown archetype '%s'" % archetype)
+		return null
+	var instance: Node = scene.instantiate()
+	instance.global_position = position
+	# Apply difficulty scaling (mirrors EnemyFactory.apply_difficulty_modifier).
+	if instance.has_method("apply_difficulty_modifier"):
+		instance.apply_difficulty_modifier(difficulty)
+	elif "damage" in instance and "max_health" in instance:
+		var mult: float = 1.0
+		match difficulty:
+			1:
+				mult = 0.8
+			2:
+				mult = 1.0
+			3:
+				mult = 1.3
+		instance.max_health = int(int(instance.max_health) * mult)
+		instance.damage = int(int(instance.damage) * mult)
+	if instance.has_signal("enemy_died") and not instance.is_connected("enemy_died", _on_enemy_exiting):
+		instance.enemy_died.connect(_on_enemy_exiting)
+	if instance.has_method("enable_collision"):
+		instance.enable_collision()
+	var parent_node: Node = get_parent()
+	if parent_node == null:
+		parent_node = get_tree().current_scene
+	if parent_node:
+		parent_node.add_child(instance)
+	if active_enemies.find(instance) == -1:
+		active_enemies.append(instance)
+	return instance
 
 # gdlint-ignore-file
