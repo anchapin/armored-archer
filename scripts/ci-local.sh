@@ -78,11 +78,19 @@ ACT_JOBS=(
     "tech-debt-tracking"
     "dead-code-detection"
     "agents-md-validation"
+    # schema-validation runs via act: the ci.yml job starts its own postgres
+    # service container on unique host port 5437, installs psql under act, and
+    # applies backend/data/*.sql migrations before jest — everything the old
+    # direct-host service path below lacked (it never started services because
+    # check_services exits 0 on an empty compose project, and never migrated),
+    # so tests hit ECONNREFUSED 127.0.0.1:5432 against a schema-less DB.
+    "schema-validation"
 )
 
 SERVICE_JOBS=(
+    # backend-test (unit tests, jest roots=src/) needs no database; it runs
+    # on the host via npm for speed.
     "backend-test"
-    "schema-validation"
 )
 
 ALL_JOBS=("${ACT_JOBS[@]}" "${SERVICE_JOBS[@]}")

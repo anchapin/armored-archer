@@ -22,7 +22,7 @@ const DISCLOSURE_FILE := "user://dd_disclosure.json"
 const DISCLOSURE_TITLE := "Dynamic Difficulty"
 
 # Required PRD text (issue #915 acceptance criteria). Verbatim wording.
-const DISCLOSURE_BODY := "Dynamic Difficulty (PvE-only, bounded ±20%%, reward-neutral).
+const DISCLOSURE_BODY := """Dynamic Difficulty (PvE-only, bounded ±20%%, reward-neutral).
 
 This game adjusts enemy stats slightly based on your recent performance in
 [color=#ffac54]PvE[/color] stages only. The system is:
@@ -33,7 +33,7 @@ This game adjusts enemy stats slightly based on your recent performance in
  • [b]Reward-neutral[/b] — XP, gold, and loot drops are never modified by
    this system. A harder run does not pay better.
 
-You can opt out from Settings → Dynamic Difficulty at any time."
+You can opt out from Settings → Dynamic Difficulty at any time."""
 
 
 func _ready() -> void:
