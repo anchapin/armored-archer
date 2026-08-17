@@ -220,6 +220,12 @@ export function initializeCaches(logger?: Runtime.Logger): CacheManager {
   manager.createCache('season_info', CACHE_SIZES.SMALL, TTL.MEDIUM);
   manager.createCache('store_catalog', CACHE_SIZES.SMALL, TTL.LONG);
   manager.createCache('gear_definitions', CACHE_SIZES.SMALL, TTL.LONG);
+  // player_currency: short TTL with explicit write-through invalidation in
+  // currency.ts (invalidateCurrencyCache + set after every write). Issue
+  // #904 wired this up — previously the cache key was referenced by
+  // getCurrency/setCurrency but the cache was never created, so every
+  // call was a miss.
+  manager.createCache('player_currency', CACHE_SIZES.MEDIUM, TTL.SHORT);
 
   if (logger) {
     logger.info('All caches initialized');
