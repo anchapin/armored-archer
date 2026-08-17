@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://privacy_consent_dialog"]
+[gd_scene load_steps=3 format=3 uid="uid://privacy_consent_dialog"]
 
 [ext_resource type="Script" path="res://scenes/ui/components/privacy_consent_dialog.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://cx8y22877gji7" path="res://scenes/ui/components/base_button.gd" id="2_base_button"]
 
 [node name="PrivacyConsentDialog" type="Control"]
 anchor_right = 1.0
@@ -50,8 +51,10 @@ scroll_following = true
 layout_mode = 2
 custom_minimum_size = Vector2(120, 40)
 text = "View Privacy Policy"
+script = ExtResource("2_base_button")
 
 [node name="AcceptButton" type="Button" parent="SafeAreaContainer/VBoxContainer"]
 layout_mode = 2
 custom_minimum_size = Vector2(120, 40)
 text = "I Accept"
+script = ExtResource("2_base_button")

@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://beta_invite_entry"]
+[gd_scene load_steps=3 format=3 uid="uid://beta_invite_entry"]
 
 [ext_resource type="Script" path="res://scenes/ui/beta_invite_entry.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://cx8y22877gji7" path="res://scenes/ui/components/base_button.gd" id="2_base_button"]
 
 [node name="BetaInviteEntry" type="Control"]
 anchor_right = 1.0
@@ -46,8 +47,10 @@ autowrap_mode = 2
 layout_mode = 2
 custom_minimum_size = Vector2(200, 44)
 text = "Submit"
+script = ExtResource("2_base_button")
 
 [node name="SkipButton" type="Button" parent="SafeAreaContainer/VBoxContainer"]
 layout_mode = 2
 custom_minimum_size = Vector2(200, 44)
 text = "Skip"
+script = ExtResource("2_base_button")
