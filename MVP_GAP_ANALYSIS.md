@@ -1,7 +1,7 @@
 # MVP Gap Analysis: Armored Archer v1.0.0
 
 **Date:** 2026-04 (analysis performed)  
-**Scope:** Frozen MVP definition from `.planning/MVP-SCOPE.md` (4 pillars only: PvE auto-shooter campaign, Async turn-based PvP, Seasonal leaderboards + rewards, Cosmetic-only IAP).  
+**Scope:** Frozen MVP definition from `.planning/MVP-SCOPE.md` (4 pillars only: PvE auto-shooter campaign, async matchmaking + live duels, Seasonal leaderboards + rewards, Cosmetic-only IAP). Per [ADR-0003](docs/adr/0003-hybrid-duel-model.md) and `CONTEXT.md`, the PvP pillar is the ratified hybrid duel model: asynchronous pairing (Duel Matchmaking) followed by live short-session turn-based duels.  
 **Status:** Evidence-based review of current codebase vs. frozen acceptance criteria, RPC contract, runtime behavior, content, UX/UI/gameplay feel, integration, and launch readiness.  
 **Primary Sources:** `.planning/MVP-SCOPE.md`, `MVP-STORIES.md`, `STATE.md`, `RPC-MAP.md`, `continue-here.md`, `ROADMAP.md`, client autoloads (40+ managers), backend `src/modules/*.ts`, `data/campaigns.json`, UI verification & gameplay reports, existing smoke/e2e tests, demos.
 
@@ -16,7 +16,7 @@
 | Pillar | Status | Key Evidence |
 |--------|--------|--------------|
 | **1. PvE Progression** | 🟡 Partial / Closest to viable | Strong data model (`campaigns.json` 4+ chapters), backend stage_tracking + loot on boss, CampaignManager + campaign_map UI, main.gd combat entry + tutorial hooks. **Blockers:** Login 75% stuck (services dependency), EnemyFactory placeholders for early enemies (Goblin/Skeleton/Archer all route to generic spawner), persistence verification blocked, balance/"too hard" history. |
-| **2. Async PvP** | 🔴 Planned / Thin | MatchmakerManager calls `create_match`/`accept_match`, backend matchmaker + combat_system RPCs exist, PvP UI scenes present. **Gaps:** Full turn-based action submission + opponent simulation + results/replay flow not clearly end-to-end in client demos or manual flows. "Planned" in README. |
+| **2. Async Matchmaking + Live Duels** | 🔴 Planned / Thin | MatchmakerManager calls `create_match`/`accept_match`, backend matchmaker + combat_system RPCs exist, PvP UI scenes present. **Gaps:** Full turn-based action submission + opponent simulation + results/replay flow not clearly end-to-end in client demos or manual flows. "Planned" in README. Per ADR-0003, the pillar is the hybrid duel model (Duel Matchmaking → Duel), not "async PvP". |
 | **3. Seasonal Leaderboards** | 🟡 Wired but unproven | SeasonManager calls season_* RPCs, backend `season_system.ts` + leaderboards, dedicated UI. **Gaps:** Reset/claim/reward flows, seasonal rollover testing, integration with PvP rank updates in real play. |
 | **4. Cosmetic Monetization** | 🟡 Partial (fallbacks exist) | StoreManager + GemManager call validate/purchase/spend, TransmogManager, cosmetic_shop UI, backend store.ts + RevenueCat webhooks. **Gaps:** Real IAP end-to-end (vs. fallbacks), purchase → gem balance → cosmetic equip loop verification, fraud/restore edge cases. |
 
@@ -24,7 +24,7 @@
 1. **Login / Backend Dependency** — Game stuck ~75% on login_screen when Nakama/Postgres not running (reproduced via `make services-health`). Blocks all pillar verification, persistence testing, and any real player onboarding. (`.planning/continue-here.md`, NetworkManager + login_screen.gd)
 2. **Enemy Content & Variety** — `EnemyFactory.gd:37-39` explicitly TODOs proper scenes for Goblin/Skeleton/Archer (core early types); they fallback to generic enemy_spawner. Directly contradicts "varied enemies" and "engaging challenges" in v4.0.0 goals + MVP enemy scaling ACs.
 3. **PvE End-to-End Reliability** — Campaign persistence sync recently added (get_campaign_progress RPC) but human verification step blocked by #1. Retry/backoff TODOs still present in CampaignManager. Stage completion → loot → equip → restart persistence not battle-tested in real sessions.
-4. **Async PvP Core Loop** — RPC surface exists; full client "submit action → wait for opponent → authoritative result → rank/season update" flow lacks clear, working end-to-end demonstration in demos or tests (most smoke focuses on PvE loot/equip).
+4. **Async Matchmaking + Live Duel Core Loop** — RPC surface exists; full client "submit action → wait for opponent → authoritative result → rank/season update" flow lacks clear, working end-to-end demonstration in demos or tests (most smoke focuses on PvE loot/equip).
 5. **Operational "One Command" Startup & Graceful Degradation** — No services = hard failure at login with no clear path for testers/devs. MVP requires reliable local dev + clear error states + (ideally) limited offline/preview mode.
 
 **Cross-Cutting Themes (User-Noted + Hidden)**
@@ -34,7 +34,7 @@
 - **Content:** campaigns.json substantial (419 lines, chapter unlock chains). Enemy/gear visual + AI variety thinner due to placeholders and reuse.
 - **Launch/Infra:** App store assets folder is complete. Beta checklists, alerts, privacy docs exist. Active backend is TypeScript/Nakama (RPC-MAP 2026-04-13); past Go migration celebrated in ALPHA_READINESS but not current. Services startup friction is a real adoption barrier.
 
-**Recommendation:** Treat current state as "advanced vertical slice + excellent infrastructure" rather than "MVP ready." Fix the 5 P0 blockers + run the verification checklist below before claiming any milestone or beta. A focused 2-4 week "MVP Lock" sprint on reliability + one polished PvE chapter + basic async PvP happy path + cosmetic purchase is likely required.
+**Recommendation:** Treat current state as "advanced vertical slice + excellent infrastructure" rather than "MVP ready." Fix the 5 P0 blockers + run the verification checklist below before claiming any milestone or beta. A focused 2-4 week "MVP Lock" sprint on reliability + one polished PvE chapter + basic async matchmaking + live duel happy path + cosmetic purchase is likely required.
 
 ---
 
@@ -64,9 +64,9 @@
 
 ---
 
-## Pillars 2-4: Async PvP, Seasons, Cosmetic Monetization (Summary)
+## Pillars 2-4: Async Matchmaking + Live Duels, Seasons, Cosmetic Monetization (Summary)
 
-**Pillar 2 (Async PvP)**
+**Pillar 2 (Async Matchmaking + Live Duels)**
 - RPC surface strong (RPC-MAP + matchmaker.ts + combat_system.ts: create/accept/complete/submit/get_state).
 - Client: MatchmakerManager, MatchResultsManager, PvP UI scenes (`scenes/ui/pvp/`, `matchmaking_menu.gd`).
 - Gap (P0/P1): Full turn-based duel lifecycle (submit action as attacker → opponent turn simulation → authoritative result → UI feedback + rank update) not demonstrated as reliable end-to-end in current demos or smoke (most focus on PvE loot/equip). "Planned" per README.
@@ -105,7 +105,7 @@
 **Testing & QA Reality**
 - Backend: Excellent (94.5% lines, mutation, anti-cheat, many pillar-specific tests).
 - Godot client: Partial coverage per STATE.md. Visual regression + flaky detection + screenshot baselines exist.
-- Gap: Godot autoload instrumentation is low; full pillar E2E (especially async PvP + IAP + seasons under failure) needs strengthening.
+- Gap: Godot autoload instrumentation is low; full pillar E2E (especially async matchmaking + live duels + IAP + seasons under failure) needs strengthening.
 
 **Launch / Ops / Business Readiness**
 - Strengths: Full `app_store_assets/`, export presets, beta checklists, alerts, privacy docs, monitoring stack.
@@ -118,7 +118,7 @@
 1. **Environment:** `make backend-start` (or services) succeeds cleanly; health checks pass.
 2. **Fresh Login:** New device/auth → username setup → main menu with no hard stuck states.
 3. **Full PvE Happy Path:** Campaign map → Stage 1 (normal) → complete combat (aim + auto) → boss → loot drop → inventory → equip → visible stat change → quit → reopen → progress persisted (check CampaignManager + get_campaign_progress).
-4. **Async PvP Happy Path:** Create match → (simulated) accept → submit combat action(s) → view authoritative result + rank/season update.
+4. **Async Matchmaking + Live Duel Happy Path:** Create match → (simulated) accept → submit combat action(s) → view authoritative result + rank/season update.
 5. **Cosmetic Flow:** View catalog → (test or real) purchase → gem deduction → equip cosmetic → visual change persists.
 6. **Error/Offline:** Backend down or network loss during above flows → graceful messages + no data loss on recovery.
 7. **Low-End/Perf:** Run low-end device test + Godot profiler during combat; target 60 FPS stable.
@@ -137,7 +137,7 @@
 
 **MVP Lock Sprint (P0/P1 — Ship-Ready Core Loops)**
 - Make one full PvE chapter (e.g. Chapter 1) reliably completable + persistent end-to-end with good feedback.
-- Implement and demo complete async PvP happy path (action submission → result → UI).
+- Implement and demo complete async matchmaking + live duel happy path (action submission → result → UI).
 - Close cosmetic purchase → equip loop with real/test IAP validation.
 - Season claim + post-match rank integration.
 - Polish pass on tutorial + combat juice + difficulty curve for the chosen content.
@@ -402,10 +402,10 @@ Based on the evidence (static + fresh runtime), here are 5 concrete, scoped reco
 - Implement the remaining retry/backoff TODOs in `CampaignManager.gd`.
 - Add an automated test that exercises the full sync loop (or at minimum a robust smoke test step).
 
-### 5. Define & Demo Minimal Async PvP Happy Path
+### 5. Define & Demo Minimal Async Matchmaking + Live Duel Happy Path
 **Problem:** RPC surface and managers exist; end-to-end "create → submit actions → authoritative result → UI" is not clearly proven.
 **Actions:**
-- Create or update a focused demo scene / test that walks the full async duel lifecycle using the existing `MatchmakerManager` + `combat_system` RPCs.
+- Create or update a focused demo scene / test that walks the full Duel Matchmaking → Duel lifecycle (see `docs/ASYNC_DUEL_LIFECYCLE.md`) using the existing `MatchmakerManager` + `combat_system` RPCs.
 - Document the exact client-server contract for a minimal turn-based exchange.
 - Add this as a required step in the smoke test suite for Pillar 2.
 

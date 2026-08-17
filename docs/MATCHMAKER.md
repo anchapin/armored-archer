@@ -2,7 +2,17 @@
 
 ## Overview
 
-This implementation provides an asynchronous PvP matchmaking system for Armored Archer using Nakama server-authoritative RPCs.
+This implementation provides an asynchronous PvP matchmaking system for Armored Archer using Nakama server-authoritative RPCs. The matchmaking pipeline is **Duel Matchmaking → Duel** (the hybrid duel model ratified in [ADR-0003](adr/0003-hybrid-duel-model.md)): asynchronous pairing followed by a live short-session turn-based duel.
+
+## Vocabulary (per `CONTEXT.md`)
+
+The bare word **"rank"** was retired post-#871 because it collided with three distinct concepts. In this document:
+
+- **Power Rating** — build-strength score from `level×10 + (atk+def+dodge+crit)/4`. The storage fields `creator_rank`, `opponent_rank`, `player_rank`, and the `get_player_rank` RPC return **Power Rating**; it gates matchmaking brackets and Punch-Up eligibility.
+- **Ladder Rating** — Elo score wagered in **Ranked** duels. The "Ranked" match type wagers Ladder Rating on win/loss.
+- **Standing** — leaderboard position (1st, 2nd, …) within a Season.
+
+The match-type literal `"ranked"` (lowercase) refers to the **Ranked** mode (a CONTEXT.md term), which wagers **Ladder Rating**. See `CONTEXT.md` for the canonical definitions and the _Avoid_ list.
 
 ## Components
 
@@ -126,17 +136,19 @@ Retrieves the player's current PvP rank.
 }
 ```
 
-#### Rank Calculation
+#### Power Rating Calculation
 
 ```
-Rank = (Level × 10) + (Stats Total ÷ 4)
+Power Rating = (Level × 10) + (Stats Total ÷ 4)
 
 Where Stats Total = Attack + Defense + Dodge + Crit Rate
 ```
 
+This is the **Power Rating** (per `CONTEXT.md`); it gates matchmaking brackets and Punch-Up eligibility. It is **not** Ladder Rating (Elo) and **not** Standing.
+
 Example:
 - Level 5, Attack 20, Defense 15, Dodge 10, Crit Rate 10
-- Rank = (5 × 10) + ((20 + 15 + 10 + 10) ÷ 4) = 50 + 13 = 63
+- Power Rating = (5 × 10) + ((20 + 15 + 10 + 10) ÷ 4) = 50 + 13 = 63
 
 ### Client-Side (Godot GDScript)
 
@@ -227,14 +239,14 @@ The matchmaking interface provides:
 ### Match Types
 
 **Ranked:**
-- Affects player rank on win/loss
+- Wagers **Ladder Rating** on win/loss (the Elo score on the seasonal leaderboard)
 - Higher stakes and competition
-- Matched based on similar ranks (±3 ranks)
+- Matched based on similar Power Rating (±3 ranks)
 
 **Casual:**
-- No rank impact
+- No Ladder Rating or Standing impact (per `CONTEXT.md`, Casual PvP pays reduced-but-positive rewards; never negative)
 - For practice and fun
-- Wider rank matching range
+- Wider Power Rating matching range
 
 ### Punch Up System
 

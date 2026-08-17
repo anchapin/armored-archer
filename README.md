@@ -250,11 +250,19 @@ choco install act-cli
 
 #### Initial Setup
 
-Build the custom Nakama Docker image required for CI (first time only):
+No custom image build is required. The retired `armored-archer/nakama-postgres:3.21.1` phantom image (issue #858) was never published to a registry; CI now uses the standard upstream images directly via `.github/docker-compose.yml`:
+
+- Postgres: `postgres:14-alpine`
+- Nakama: `heroiclabs/nakama:3.21.1`
+
+Pull them once and you're set:
 
 ```bash
-docker build -t armored-archer/nakama-postgres:3.21.1 -f .docker/nakama-postgres/Dockerfile .
+docker pull postgres:14-alpine
+docker pull heroiclabs/nakama:3.21.1
 ```
+
+(The `.docker/nakama-postgres/` directory is kept for reference only — its custom entrypoint is superseded by the inline entrypoint in `.github/docker-compose.yml`.)
 
 #### Running Jobs
 

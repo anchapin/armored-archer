@@ -146,7 +146,7 @@ Async PvP (duel lifecycle, punch-up mechanics) must be fair and exploit-resistan
 
 | # | Blocker Check | Verification Method | Status | Evidence |
 |---|---------------|---------------------|--------|----------|
-| T-R1 | Match outcomes computed server-side | Async duel resolution runs entirely on the server (`backend/src/modules/ASYNC_DUEL_LIFECYCLE.md`) | Done | Integration tests |
+| T-R1 | Match outcomes computed server-side | Async duel resolution runs entirely on the server (`docs/ASYNC_DUEL_LIFECYCLE.md`) | Done | Integration tests |
 | T-R2 | Punch-up mechanics verified | Weaker-player buff math validated server-side (`backend/src/modules/PUNCH_UP_MECHANICS_SUMMARY.md`) | Done | Balance unit tests |
 | T-R3 | Fairness telemetry operational | `fairness_telemetry.ts` endpoints registered in `backend/src/index.ts`; win-rate drift monitorable | Done | Endpoint smoke check |
 | T-R4 | Match replay integrity | `match_replay.ts` supports post-hoc dispute review (`QA_DISPUTE_RESOLUTION_GUIDE.md`) | Done | Dispute drill |
