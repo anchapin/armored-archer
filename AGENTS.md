@@ -4,7 +4,7 @@ Godot 4.6 mobile archery auto-shooter with a Nakama (TypeScript) backend and Pos
 
 ## CI outage recovery
 
-When every hosted Actions job fails with *"recent account payments have failed or your spending limit needs to be increased"*, it is **account-billing**, not a code problem — see [`docs/ci/ci-billing-recovery.md`](docs/ci/ci-billing-recovery.md) (issue #855). Detection: `gh api orgs/anchapin/settings/billing/actions` and the annotation on check run `95179007068`. **Fix must be performed by a repo/org owner in Settings → Billing & plans** — no code change unblocks the gate. While hosted CI is dark, use `./scripts/local-godot-tests.sh`, `cd backend && npm run lint && npm test`, and the `act` matrix on `.github/workflows/ci.yml` (PR #889); never disable required status checks as a workaround.
+When every hosted Actions job fails with *"recent account payments have failed or your spending limit needs to be increased"*, it is **account-billing**, not a code problem — see [`docs/ci/ci-billing-recovery.md`](docs/ci/ci-billing-recovery.md) (issue #855). Detection: `gh api orgs/anchapin/settings/billing/actions` and the annotation on check run `95179007068`. **Fix must be performed by a repo/org owner in Settings → Billing & plans** — no code change unblocks the gate. While hosted CI is dark, use `./scripts/local-godot-tests.sh`, `cd backend && npm run lint && npm test`, and the `act` matrix on `.github/workflows/ci.yml` (PR #889; if `act` fails on git clone, run `make ci-clear-cache`); never disable required status checks as a workaround.
 
 ## Project Structure
 
@@ -70,12 +70,12 @@ gdlint autoloads/*.gd scenes/**/*.gd scripts/*.gd test/*.gd
 
 Gotchas:
 - The test runner's **exit code is unreliable** (non-zero on resource leaks, not failures). Check output for `Failed: N`.
-- No single-test filter: `run_all_tests.gd` hardcodes its file list — trim it temporarily to run a subset.
+- No single-test filter: `run_all_tests.gd` hardcodes its file list and ignores CLI args — trim it temporarily to run a subset (the `-dselect=` examples in `test/suites/MIGRATION_GUIDE.md` are **not implemented**).
 - `act` (local GitHub Actions) **skips** Godot tests — they OOM in containers. Use `local-godot-tests.sh` instead.
 
 ### Backend (TypeScript / Nakama)
 
-Requires Node 18+ and Docker.
+Requires Node 18+ and Docker. Bootstrap from repo root: `make setup` (installs npm + Godot dependencies).
 
 ```bash
 cd backend
@@ -102,6 +102,7 @@ make services-assert-cold-start      # assert all-green (suitable for CI / act)
 
 Stack: `armored_archer_server` (Nakama 3.21 — API :7350, console http://localhost:7351, credentials from `backend/.env`), `armored_archer_db` (PostgreSQL 14), plus redis and a full observability stack (prometheus, grafana, loki, tempo, otel-collector, promtail, alertmanager, node-exporter).
 Local DB default: `postgres://postgres:localdbpassword@localhost:5432/nakama`.
+Compose source of truth: `backend/docker-compose.yml` (root `docker-compose.yml` is a byte-identical copy); `act` services use `.github/docker-compose.yml` via `make ci-services-*`.
 
 ### Database (PostgreSQL)
 
