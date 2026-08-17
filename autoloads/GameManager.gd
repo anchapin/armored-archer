@@ -218,6 +218,12 @@ func end_game(won: bool) -> void:
 	if game_start_time > 0:
 		game_duration = Time.get_unix_time_from_system() - game_start_time
 
+	# Issue #914: stage_win / stage_lose stings fire on the SFX bus before any
+		# scene transition so the player hears the result.
+	var audio := get_node_or_null("/root/AudioManager")
+	if audio and audio.has_method("play_event"):
+		audio.play_event("stage_win" if won else "stage_lose")
+
 	if won:
 		game_won.emit()
 

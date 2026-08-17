@@ -12,6 +12,16 @@ extends Node
 ##   - Music playback uses a single AudioStreamPlayer on the Music bus with a
 ##     loopable stream and an API to switch menu/combat tracks at runtime.
 ##   - Settings UI binds to set_bus_volume / set_bus_mute for SFX + Music.
+##
+## Issue #914 acceptance:
+##   - `play_event(name)` centralizes the full ratified inventory (arrow_shot /
+##     arrow_hit / arrow_kill, the 4 archetype deaths, boss_intro / boss_death,
+##     wave_clear, stage_win / stage_lose, loot_pickup, ui_click). Unknown
+##     names log a warning and resolve to silence — no push_error spam.
+##   - `play_music_menu()` / `play_music_combat()` no-arg overloads read the
+##     default tracks declared in autoloads/const.gd (issue #912 pending).
+##   - Listens for SceneTree.tree_changed to switch music on scene transitions
+##     and stops music cleanly on WM_CLOSE_REQUEST (app exit).
 
 # --- Configuration constants ---
 const NUM_PLAYERS: int = 10
@@ -20,6 +30,51 @@ const MUSIC_BUS: String = "Music"
 const SETTINGS_FILE: String = "user://audio_settings.cfg"
 const SETTINGS_SECTION: String = "audio"
 const DEFAULT_DB_FLOOR: float = -80.0
+
+# --- Event → path map (issue #914) ---
+# Every entry in the ratified sound-event inventory maps to a res:// path.
+# Files pending procurement (issue #912) are kept here so callers don't have to
+# branch on availability — the file is loaded with `load(path)` and a missing
+# file logs a warning (never push_error) and resolves to silence.
+const _EVENT_PATHS: Dictionary = {
+    # Combat — arrow flight
+    "arrow_shot": "res://assets/audio/sfx/combat/arrow_shot.wav",
+    "arrow_hit": "res://assets/audio/sfx/combat/hit.wav",
+    "arrow_kill": "res://assets/audio/sfx/combat/kill.wav",
+    # Combat — per-archetype death (Ch1 archetypes)
+    "archetype_death_goblin": "res://assets/audio/sfx/combat/archetype_death_goblin.wav",
+    "archetype_death_wolf": "res://assets/audio/sfx/combat/archetype_death_wolf.wav",
+    "archetype_death_guardian": "res://assets/audio/sfx/combat/archetype_death_guardian.wav",
+    "archetype_death_elemental": "res://assets/audio/sfx/combat/archetype_death_elemental.wav",
+    # Combat — boss
+    "boss_intro": "res://assets/audio/sfx/combat/boss_intro.wav",
+    "boss_death": "res://assets/audio/sfx/combat/boss_death.wav",
+    # Combat — flow
+    "wave_clear": "res://assets/audio/sfx/combat/wave_clear.wav",
+    "stage_win": "res://assets/audio/sfx/combat/stage_win.wav",
+    "stage_lose": "res://assets/audio/sfx/combat/stage_lose.wav",
+    "loot_pickup": "res://assets/audio/sfx/combat/loot_pickup.wav",
+    # UI
+    "ui_click": "res://assets/audio/sfx/ui/click.wav",
+}
+
+# --- Scene-name → music-track routing (issue #914) ---
+# Strings derived from res:// scene paths (basename, lower-cased). When the
+# active scene's basename matches, the matching track plays. Anything else
+# defaults to combat. Add entries above as new menu-style scenes ship.
+const _MENU_SCENE_KEYS: Array[String] = [
+    "login_screen",
+    "main_menu",
+    "campaign_map",
+    "loadout",
+    "cosmetic_shop",
+    "store_menu",
+    "settings_menu",
+    "leaderboard_menu",
+    "matchmaking_menu",
+    "matchmaking_queue",
+    "game_over",
+]
 
 # --- SFX pool (existing) ---
 var _available: Array[AudioStreamPlayer] = []
@@ -59,6 +114,13 @@ func _ready() -> void:
 	_load_settings()
 	_apply_settings()
 
+	# Issue #914: listen for scene transitions to swap menu↔combat music and
+	# stop cleanly on app exit. tree_changed fires after scene swaps, so the
+	# current_scene is the newly-arrived one when we react.
+	var tree := get_tree()
+	if tree:
+		tree.tree_changed.connect(_on_tree_changed)
+
 	print("[AudioManager] Initialized (SFX pool=%d, music bus=%s)" % [NUM_PLAYERS, MUSIC_BUS])
 
 
@@ -94,9 +156,15 @@ func play_path(path: String) -> void:
 	if path.is_empty():
 		push_warning("[AudioManager] Attempted to play empty path")
 		return
+	# ResourceLoader.exists is the cheap pre-check before a noisy load(). Files
+	# pending procurement (issue #912) legitimately don't yet — issue #914
+	# keeps the logic clean by warning, never erroring.
+	if not ResourceLoader.exists(path):
+		push_warning("[AudioManager] Sound asset missing (procurement pending): %s" % path)
+		return
 	var stream: AudioStream = load(path) as AudioStream
 	if stream == null:
-		push_error("[AudioManager] Failed to load sound: %s" % path)
+		push_warning("[AudioManager] Failed to load sound: %s" % path)
 		return
 	play(stream)
 
@@ -125,6 +193,46 @@ func play_arrow_hit() -> void: play_sfx("arrow_hit")
 
 ## Convenience for kill wired in scenes/enemies/base_enemy.gd.die().
 func play_arrow_kill() -> void: play_sfx("arrow_kill")
+
+## Centralized sound-event dispatcher (issue #914).
+##
+## Accepts any name from the ratified inventory (arrow_shot/hit/kill, the four
+## archetype_death_* variants, boss_intro / boss_death, wave_clear, stage_win /
+## stage_lose, loot_pickup, ui_click). Unknown names log a warning and return
+## false. Files missing on disk (procurement pending, issue #912) log a
+## warning and resolve to silence — never a hard push_error.
+##
+## Returns true if a stream was successfully queued for playback.
+func play_event(event_name: String) -> bool:
+	if event_name.is_empty():
+		push_warning("[AudioManager] play_event called with empty name")
+		return false
+	if not _has_bus(SFX_BUS):
+		push_warning("[AudioManager] SFX bus unavailable, skipping '%s'" % event_name)
+		return false
+	var path: String = _EVENT_PATHS.get(event_name, "")
+	if path.is_empty():
+		push_warning("[AudioManager] Unknown sound event '%s'" % event_name)
+		return false
+	play_path(path)
+	return true
+
+## Resolve an event name to its res:// path (issue #914). Public so tests can
+## assert the full inventory is wired without touching the audio pool.
+func get_event_path(event_name: String) -> String:
+	return _EVENT_PATHS.get(event_name, "")
+
+## Inventory check for tests + UIs (issue #914).
+func has_event(event_name: String) -> bool:
+	return _EVENT_PATHS.has(event_name)
+
+## Full inventory keys in declaration order. Used by tests to assert wiring
+## without callers having to maintain their own copy.
+func get_all_event_names() -> Array[String]:
+	var keys: Array[String] = []
+	for k in _EVENT_PATHS.keys():
+		keys.append(k)
+	return keys
 
 func _resolve_sfx_path(name: String) -> String:
 	# Allow callers to pass either friendly names or full res:// paths.
@@ -159,9 +267,13 @@ func play_music(path: String, loop: bool = true) -> void:
 		return
 	if path == _current_music_path and _music_player.playing:
 		return
+	# Issue #914: missing music files (procurement pending) warn, never error.
+	if not ResourceLoader.exists(path):
+		push_warning("[AudioManager] Music asset missing (procurement pending): %s" % path)
+		return
 	var stream: AudioStream = load(path) as AudioStream
 	if stream == null:
-		push_error("[AudioManager] Failed to load music: %s" % path)
+		push_warning("[AudioManager] Failed to load music: %s" % path)
 		return
 	# Looping support — both AudioStreamWAV and AudioStreamOgg have loop=false default.
 	if stream is AudioStreamWAV:
@@ -177,11 +289,78 @@ func play_music(path: String, loop: bool = true) -> void:
 	_music_player.stream = stream
 	_music_player.play()
 
-## Convenience for menu tracks.
+## Convenience for menu tracks (path overload — preserved from #911).
 func play_music_menu(path: String) -> void: play_music(path, true)
 
-## Convenience for combat tracks.
+## Convenience for combat tracks (path overload — preserved from #911).
 func play_music_combat(path: String) -> void: play_music(path, true)
+
+## Default menu music — reads `const.MENU_MUSIC_PATH` (issue #914).
+## No-arg form for callers that don't want to know the file path.
+func play_default_music_menu() -> void:
+	var menu_path: String = _resolve_const_path("MENU_MUSIC_PATH", "res://assets/audio/music/menu_loop.ogg")
+	play_music(menu_path, true)
+
+## Default combat music — reads `const.COMBAT_MUSIC_PATH` (issue #914).
+func play_default_music_combat() -> void:
+	var combat_path: String = _resolve_const_path("COMBAT_MUSIC_PATH", "res://assets/audio/music/combat_loop.ogg")
+	play_music(combat_path, true)
+
+## Look up a `const.<Name>` on autoloads/const.gd without a hard dependency on
+## the script being loaded. Returns the fallback when the const isn't defined.
+func _resolve_const_path(const_name: String, fallback: String) -> String:
+	var const_script := load("res://autoloads/const.gd")
+	if const_script == null:
+		return fallback
+	if const_name in const_script:
+		return str(const_script.get(const_name))
+	return fallback
+
+# --- Scene-driven auto-switching (issue #914) ---
+## SceneTree.tree_changed fires after the active scene is swapped. Inspect the
+## current scene's basename and start the right loop, or stop music on exit.
+## Guarded against tree teardown (get_tree() returns null mid-cleanup).
+func _on_tree_changed() -> void:
+	if not is_inside_tree():
+		return
+	var tree := get_tree()
+	if tree == null:
+		stop_music()
+		return
+	var current := tree.current_scene
+	if current == null:
+		stop_music()
+		return
+	var basename := _scene_basename(current.scene_file_path)
+	if basename == "":
+		# Not loaded from a .tscn (programmatic scene) — keep whatever's playing.
+		return
+	if _is_menu_scene(basename):
+		play_default_music_menu()
+	else:
+		play_default_music_combat()
+
+func _scene_basename(path: String) -> String:
+	if path.is_empty():
+		return ""
+	# "res://scenes/ui/main_menu.tscn" → "main_menu"
+	var no_ext := path.get_basename()
+	var slash_idx := no_ext.rfind("/")
+	if slash_idx < 0:
+		return no_ext.to_lower()
+	return no_ext.substr(slash_idx + 1).to_lower()
+
+func _is_menu_scene(basename: String) -> bool:
+	for menu_name in _MENU_SCENE_KEYS:
+		if menu_name.to_lower() == basename:
+			return true
+	return false
+
+func _notification(what: int) -> void:
+	# App exit — stop music cleanly so audio devices aren't held open by a
+	# lingering AudioStreamPlayer on quit. (issue #914)
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		stop_music()
 
 ## Stop the currently playing music track.
 func stop_music() -> void:

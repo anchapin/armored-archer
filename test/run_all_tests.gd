@@ -57,6 +57,7 @@ func _run_next_test():
 
 		# Audio
 		"res://test/test_audio_manager.gd",
+		"res://test/test_audio_manager_issue_914.gd",
 
 		# Accessibility
 		"res://test/test_accessibility_manager.gd",

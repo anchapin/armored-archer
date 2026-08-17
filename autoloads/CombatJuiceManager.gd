@@ -262,6 +262,11 @@ func _trigger_power_up_start(data: Dictionary) -> Dictionary:
 	if _vfx_manager and _vfx_manager.has_method("spawn_power_up_pickup_vfx"):
 		_vfx_manager.spawn_power_up_pickup_vfx(position, power_up_type)
 
+	# Issue #914: loot_pickup sting fires when a power-up / pickup is consumed.
+	var audio := get_node_or_null("/root/AudioManager")
+	if audio and audio.has_method("play_event"):
+		audio.play_event("loot_pickup")
+
 	# Screen flash for power-up acquisition
 	if _impact_manager:
 		_impact_manager.flash_screen(_get_power_up_color(power_up_type), 0.2)

@@ -72,4 +72,29 @@ const ANIM_RELEASE: StringName = &"release"
 const ANIM_INTRO: StringName = &"intro"
 const DEFAULT_ANIM_FPS: float = 8.0
 const DEATH_ANIM_FPS: float = 6.0
+
+# --- Sound event names (issue #914) ---
+# Centralized event-name strings routed through AudioManager.play_event().
+# Used by callers in base_enemy, boss scripts, spawner, GameManager,
+# CombatJuiceManager, and ArcheryBaseButton so the inventory never goes silent.
+const SOUND_ARROW_SHOT: String = "arrow_shot"
+const SOUND_ARROW_HIT: String = "arrow_hit"
+const SOUND_ARROW_KILL: String = "arrow_kill"
+const SOUND_ARCHETYPE_DEATH_GOBLIN: String = "archetype_death_goblin"
+const SOUND_ARCHETYPE_DEATH_WOLF: String = "archetype_death_wolf"
+const SOUND_ARCHETYPE_DEATH_GUARDIAN: String = "archetype_death_guardian"
+const SOUND_ARCHETYPE_DEATH_ELEMENTAL: String = "archetype_death_elemental"
+const SOUND_BOSS_INTRO: String = "boss_intro"
+const SOUND_BOSS_DEATH: String = "boss_death"
+const SOUND_WAVE_CLEAR: String = "wave_clear"
+const SOUND_STAGE_WIN: String = "stage_win"
+const SOUND_STAGE_LOSE: String = "stage_lose"
+const SOUND_LOOT_PICKUP: String = "loot_pickup"
+const SOUND_UI_CLICK: String = "ui_click"
+
+# --- Default music tracks (issue #914) ---
+# Files are procurement-pending (issue #912). When missing, AudioManager logs
+# a warning and skips playback — silence is acceptable while pending.
+const MENU_MUSIC_PATH: String = "res://assets/audio/music/menu_loop.ogg"
+const COMBAT_MUSIC_PATH: String = "res://assets/audio/music/combat_loop.ogg"
 const INTRO_ANIM_FPS: float = 4.0

@@ -9,6 +9,13 @@ extends Node2D
 var tutorial_controller_scene: PackedScene = preload("res://scenes/ui/tutorial_controller.tscn")
 
 func _ready() -> void:
+	# Issue #914: swap to combat music as the combat scene enters. tree_changed
+	# auto-switch would handle this too, but an explicit call avoids any gap
+	# between scene load and the tree_changed signal firing.
+	var audio := get_node_or_null("/root/AudioManager")
+	if audio and audio.has_method("play_default_music_combat"):
+		audio.play_default_music_combat()
+
 	# Start the game
 	GameManager.start_game()
 
