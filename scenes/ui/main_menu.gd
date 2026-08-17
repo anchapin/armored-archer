@@ -1,5 +1,7 @@
 extends Control
 
+const NetworkConsts := preload("res://autoloads/const.gd")
+
 # =============================================================================
 # MAIN MENU - Armored Archer (Relic Archive Redesign)
 # =============================================================================
@@ -45,6 +47,11 @@ var _currency_updated_connection: Callable = Callable()
 
 # --- Initialization ---
 func _ready() -> void:
+	# MVP gating (issue #909): hide PvP/Shop/BuyGems flow under the
+	# MVP-PvE slice. Done BEFORE privacy consent so the gated UI never
+	# flashes before being hidden.
+	_apply_mvp_gating()
+
 	# Privacy consent check must happen before any data collection
 	_check_privacy_consent()
 
@@ -74,6 +81,20 @@ func _ready() -> void:
 
 	# Animate menu entry
 	_animate_menu_entry()
+
+# --- MVP Gating (issue #909) ---
+func _apply_mvp_gating() -> void:
+	# Hide deferred-mode entry points when the MVP-PvE build const is set.
+	# Play / Loadout / Settings / Quit remain reachable so the slice is
+	# usable; flipping the const re-enables everything.
+	if not NetworkConsts.MVP_PVE_ONLY:
+		return
+	if pvp_button:
+		pvp_button.visible = false
+	if shop_button:
+		shop_button.visible = false
+	if buy_gems_button:
+		buy_gems_button.visible = false
 
 func _exit_tree() -> void:
 	# Clean up connected signals to prevent memory leaks

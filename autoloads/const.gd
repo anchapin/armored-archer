@@ -37,6 +37,12 @@ const FAST_ANIMATION_DURATION: float = 0.15
 const SLOW_ANIMATION_DURATION: float = 0.5
 const UI_TRANSITION_DURATION: float = 0.25
 
+# --- MVP gating (issue #909) ---
+# When true, the MVP-PvE slice hides PvP/Shop/BuyGems from main menu and
+# gates any other UI path that reaches PvP, Seasons, Leaderboard, or Shop
+# flows (kept reachable for MVP-2 by flipping the flag).
+const MVP_PVE_ONLY: bool = true
+
 # --- Effects ---
 const DAMAGE_POPUP_DURATION: float = 1.0
 const SCREEN_SHAKE_DURATION: float = 0.3
