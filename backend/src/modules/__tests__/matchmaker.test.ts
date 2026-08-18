@@ -1020,6 +1020,197 @@ describe('matchmaker', () => {
       expect(winnerAfterReplay.coins).toBe(50);
     });
 
+    describe('settlement exactly-once ordering (issue #1078)', () => {
+      /**
+       * Installs a stateful storage mock with Nakama optimistic-concurrency
+       * semantics: reads return the tracked version, and a versioned write
+       * whose version no longer matches the stored one throws.
+       *
+       * A `serveStaleMatch` latch simulates the double-settlement race: while
+       * active, pvp_matches reads serve the ORIGINAL unsettled snapshot —
+       * exactly what a second settler sees when it passes the freshness
+       * check before the first settler's claim lands. The latch opens on the
+       * first rejected versioned write, so post-conflict re-reads observe
+       * the winner's settled state.
+       */
+      const installOccStorage = (match: PvPMatch) => {
+        const matchKey = `pvp_matches:${match.match_id}`;
+        const originalMatchValue = JSON.stringify(match);
+        const originalVersion = '1';
+        const stored: Record<string, string> = { [matchKey]: originalMatchValue };
+        const versions: Record<string, string> = { [matchKey]: originalVersion };
+        let serveStaleMatch = true;
+
+        mockNk.storageRead = jest.fn((objects: any[]) =>
+          objects
+            .map((o) => {
+              const key = `${o.collection}:${o.key}`;
+              // Frozen pre-claim snapshot for the racing settler: BOTH the
+              // unsettled value and the version it observed at read time.
+              const stale = o.collection === 'pvp_matches' && serveStaleMatch;
+              const value = stale ? originalMatchValue : stored[key];
+              const version = stale ? originalVersion : versions[key];
+              return value ? { collection: o.collection, key: o.key, value, version } : null;
+            })
+            .filter(Boolean)
+        );
+
+        mockNk.storageWrite = jest.fn((writes: any[]) => {
+          writes.forEach((w) => {
+            const key = `${w.collection}:${w.key}`;
+            if (
+              w.version !== undefined &&
+              versions[key] !== undefined &&
+              versions[key] !== w.version
+            ) {
+              serveStaleMatch = false; // a concurrent settler won this object
+              throw new Error('Storage write rejected - version check failed.');
+            }
+            stored[key] = w.value;
+            versions[key] = String(Number(versions[key] || 0) + 1);
+          });
+          return writes.map((w) => ({ key: w.key, version: '1' }));
+        });
+
+        return { stored };
+      };
+
+      it('applies settlement exactly once when two settlers race the claim', () => {
+        const match = createActiveMatch({ opponent_health: 0 });
+        const { stored } = installOccStorage(match);
+
+        const payload = JSON.stringify({
+          match_id: match.match_id,
+          winner_id: 'test-user-123',
+          loser_id: 'opponent-user',
+        });
+
+        // Settler A — passes the freshness check, claims the settled marker,
+        // and applies the full settlement.
+        const first = JSON.parse(rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload));
+        expect(first.success).toBe(true);
+        expect(first.already_settled).toBeUndefined();
+
+        // Settler B races: it still reads the PRE-claim snapshot (stale
+        // latch), so it passes the same freshness check and reaches the
+        // claim with the stale version — which the OCC write rejects.
+        const realNow = Date.now();
+        const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => realNow + 120000);
+        const second = JSON.parse(rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload));
+        nowSpy.mockRestore();
+
+        // The loser of the race replays the winner's recorded outcome.
+        expect(second.success).toBe(true);
+        expect(second.already_settled).toBe(true);
+        expect(second.winner).toBe('test-user-123');
+
+        // Exactly-once: currency, Elo, and per-player records applied by A only.
+        expect(JSON.parse(stored['player_currency:test-user-123']).coins).toBe(50);
+        expect(JSON.parse(stored['player_currency:opponent-user']).coins).toBe(10);
+        expect(applyEloUpdates).toHaveBeenCalledTimes(1);
+        expect(recordMatchResult).toHaveBeenCalledTimes(2); // once per player, first settler only
+      });
+
+      it('applies no rewards and audits a failure when the settled-marker claim write throws', () => {
+        const match = createActiveMatch({ opponent_health: 0 });
+        const stored = installStatefulStorage(match);
+        mockNk.storageWrite = jest.fn((writes: any[]) => {
+          if (writes.some((w) => w.collection === 'pvp_matches')) {
+            throw new Error('storage backend unavailable');
+          }
+          writes.forEach((w) => {
+            stored[`${w.collection}:${w.key}`] = w.value;
+          });
+          return writes.map((w) => ({ key: w.key, version: '2' }));
+        });
+
+        const payload = JSON.stringify({
+          match_id: match.match_id,
+          winner_id: 'test-user-123',
+          loser_id: 'opponent-user',
+        });
+
+        const result = JSON.parse(rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload));
+
+        // Graceful failure — no crash, and safe for the client to retry.
+        expect(result.success).toBe(false);
+        expect(result.error_code).toBe('SETTLEMENT_CLAIM_FAILED');
+
+        // Nothing was applied: the claim is the FIRST settlement mutation.
+        expect(applyEloUpdates).not.toHaveBeenCalled();
+        expect(stored['player_currency:test-user-123']).toBeUndefined();
+        expect(stored['player_currency:opponent-user']).toBeUndefined();
+
+        // The failure is audited on the existing channel.
+        expect(logAudit).toHaveBeenCalledWith(
+          mockNk,
+          mockCtx.userId,
+          mockCtx.ipAddress ?? null,
+          'complete_match',
+          'pvp_matches',
+          expect.objectContaining({ match_id: match.match_id }),
+          'failure',
+          'settlement_claim_failed'
+        );
+      });
+
+      it('stays settled-but-degraded and audits when reward application throws after the claim', () => {
+        const match = createActiveMatch({ opponent_health: 0 });
+        const stored = installStatefulStorage(match);
+        mockNk.storageWrite = jest.fn((writes: any[]) => {
+          // The loser's ledger write fails persistently: applyCurrencyDelta
+          // retries once, then the error propagates out of settlement.
+          if (writes.some((w) => w.collection === 'player_currency' && w.key === 'opponent-user')) {
+            throw new Error('ledger write failed');
+          }
+          writes.forEach((w) => {
+            stored[`${w.collection}:${w.key}`] = w.value;
+          });
+          return writes.map((w) => ({ key: w.key, version: '2' }));
+        });
+
+        const payload = JSON.stringify({
+          match_id: match.match_id,
+          winner_id: 'test-user-123',
+          loser_id: 'opponent-user',
+        });
+
+        const result = JSON.parse(rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload));
+
+        // No crash: the settlement is reported as degraded, not failed —
+        // the marker is claimed, so retries can never re-apply.
+        expect(result.success).toBe(true);
+        expect(result.degraded).toBe(true);
+        expect(result.settled_at).toBeGreaterThan(0);
+
+        // The claim landed: the match stays settled in storage.
+        const settledMatch = JSON.parse(stored[`pvp_matches:${match.match_id}`]);
+        expect(settledMatch.settled_at).toBeGreaterThan(0);
+        expect(settledMatch.status).toBe('completed');
+
+        // Half-applied state is possible (winner credited, loser not) and
+        // must never be re-granted — hence no revert of the marker.
+        expect(JSON.parse(stored['player_currency:test-user-123']).coins).toBe(50);
+        expect(stored['player_currency:opponent-user']).toBeUndefined();
+
+        // The degradation is audited on the existing channel.
+        expect(logAudit).toHaveBeenCalledWith(
+          mockNk,
+          mockCtx.userId,
+          mockCtx.ipAddress ?? null,
+          'complete_match',
+          'pvp_matches',
+          expect.objectContaining({
+            match_id: match.match_id,
+            winner_id: 'test-user-123',
+            loser_id: 'opponent-user',
+          }),
+          'failure',
+          'settlement_degraded'
+        );
+      });
+    });
+
     describe('punch-up loss settlement (issue #864)', () => {
       beforeEach(() => {
         resetPunchUpWatchState();

@@ -1710,13 +1710,38 @@ function processRankedMatchUpdates(
 }
 
 /**
- * Verify the match has not already been settled by a concurrent or repeated
- * request. Settlement idempotency is keyed on `settled_at`, which is written
- * exactly once by the settlement run that applies Elo/XP/rewards.
+ * Builds the idempotent replay response for an already-settled match: the
+ * recorded outcome is returned without re-applying Elo, XP, or rewards.
+ *
+ * @param match - The settled match (must carry `settled_at`)
+ * @returns JSON string with the recorded settlement outcome
+ */
+function buildAlreadySettledResponse(match: PvPMatch): string {
+  return JSON.stringify({
+    success: true,
+    already_settled: true,
+    match_id: match.match_id,
+    winner: match.winner,
+    end_reason: match.end_reason ?? 'health_zero',
+    settled_at: match.settled_at,
+  });
+}
+
+/**
+ * Fast-path settlement idempotency check and version source for the
+ * settlement claim. This read alone cannot close the double-settlement
+ * race (it is check-then-act); the atomic guarantee comes from the
+ * version-conditioned claim write in claimSettlementMarker (issue #1078).
  *
  * Note: a match marked 'completed' by a server resolution path (combat
  * system) without `settled_at` is intentionally NOT blocked — its winner is
  * declared but unsettled, awaiting the settlement trigger (ADR-0002).
+ *
+ * @param nk - Nakama server interface
+ * @param match - The match about to be settled
+ * @param logger - Nakama logger instance
+ * @returns An immediate replay response when the match is already settled,
+ *          otherwise the fresh storage version the claim must condition on
  */
 function verifyMatchNotSettled(
   nk: Runtime.Nakama,
@@ -1736,14 +1761,7 @@ function verifyMatchNotSettled(
     if (freshMatchResult.success && freshMatchResult.data && freshMatchResult.data.settled_at) {
       logger.warn('Match %s already settled by concurrent request', match.match_id);
       return {
-        alreadySettledResponse: JSON.stringify({
-          success: true,
-          already_settled: true,
-          match_id: match.match_id,
-          winner: freshMatchResult.data.winner,
-          end_reason: freshMatchResult.data.end_reason ?? 'health_zero',
-          settled_at: freshMatchResult.data.settled_at,
-        }),
+        alreadySettledResponse: buildAlreadySettledResponse(freshMatchResult.data),
         matchVersion: undefined,
       };
     }
@@ -1929,7 +1947,143 @@ function runPunchUpLossWatch(
 }
 
 /**
- * Process the match result, calculate ranks, and update storage.
+ * Outcome of a settlement-marker claim attempt (issue #1078).
+ *
+ * @property status - 'claimed' (this caller owns the settlement and must
+ *                    apply rank/XP/rewards), 'lost_race' (a concurrent
+ *                    settler claimed first — replay its recorded outcome),
+ *                    or 'failed' (the claim write failed before anything
+ *                    was applied — safe for the client to retry)
+ * @property response - Immediate JSON response for the non-claimed outcomes
+ */
+type SettlementClaim =
+  { status: 'claimed'; response: null } | { status: 'lost_race' | 'failed'; response: string };
+
+/**
+ * Claims the settlement of a match by stamping the `settled_at` idempotency
+ * marker via a VERSION-CONDITIONED storage write BEFORE any reward, XP, or
+ * rank mutation (issue #1078).
+ *
+ * Claim-before-apply is what makes settlement exactly-once under races: two
+ * concurrent settlers can both pass the (check-then-act) freshness read in
+ * verifyMatchNotSettled, but only the settler whose versioned write lands
+ * first owns the settlement — the loser's write fails Nakama's optimistic
+ * concurrency check, so it replays the winner's recorded outcome without
+ * applying anything. Under the previous order (rewards first, marker last)
+ * both racers applied currency/XP/Elo, and a failed final marker write let
+ * a retry re-apply all of them.
+ *
+ * Failure semantics:
+ * - Any claim-write throw triggers a fresh re-read rather than error-message
+ *   matching (brittle across Nakama versions). If the re-read shows
+ *   `settled_at`, a concurrent settler won — return its recorded outcome.
+ *   This also covers the exotic case of this caller's own claim landing
+ *   while the call still errored: treating the marker as another settler's
+ *   is the conservative exactly-once answer.
+ * - Otherwise the claim genuinely failed. Nothing has been mutated yet —
+ *   the claim is the FIRST settlement mutation — so the failure is audited
+ *   and a graceful error is returned; a client retry is safe.
+ *
+ * Note: when the freshness read cannot supply a storage version the claim
+ * write degrades to unconditional, matching the legacy marker write's
+ * behavior. In production Nakama always versions existing objects, and the
+ * match was just read by getAndValidateMatch, so the conditional path is
+ * the norm.
+ *
+ * @param nk - Nakama server interface
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param match - The match to settle (mutated: stamped as settled)
+ * @param request - Server-derived settlement instruction
+ * @param matchVersion - Storage version the claim conditions on
+ * @returns The claim outcome; callers apply effects only on 'claimed'
+ */
+function claimSettlementMarker(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  match: PvPMatch,
+  request: ServerSettlementRequest,
+  matchVersion: string | undefined
+): SettlementClaim {
+  const now = Date.now();
+  match.status = 'completed';
+  match.winner = request.winner_id;
+  match.updated_at = now;
+  match.end_reason = request.end_reason ?? 'health_zero';
+  match.settled_at = now;
+
+  try {
+    nk.storageWrite([
+      {
+        collection: 'pvp_matches',
+        key: match.match_id,
+        userId: match.creator_id,
+        value: JSON.stringify(match),
+        version: matchVersion,
+      },
+    ]);
+  } catch (claimError) {
+    // Re-read to distinguish a lost race from a genuine storage failure.
+    const freshMatchObjects = nk.storageRead([
+      { collection: 'pvp_matches', key: match.match_id, userId: match.creator_id },
+    ]);
+    if (freshMatchObjects.length > 0) {
+      const freshMatchResult = safeParse<PvPMatch>(
+        freshMatchObjects[0].value,
+        null,
+        logger,
+        'claimSettlementMarker:freshMatch'
+      );
+      if (freshMatchResult.success && freshMatchResult.data?.settled_at) {
+        logger.warn('Match %s settlement claim lost to a concurrent settler', match.match_id);
+        return {
+          status: 'lost_race',
+          response: buildAlreadySettledResponse(freshMatchResult.data),
+        };
+      }
+    }
+
+    logger.error('Match %s settlement claim failed: %s', match.match_id, claimError);
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'complete_match',
+      'pvp_matches',
+      {
+        match_id: match.match_id,
+        winner_id: request.winner_id,
+        loser_id: request.loser_id,
+      },
+      'failure',
+      'settlement_claim_failed'
+    );
+    return {
+      status: 'failed',
+      response: JSON.stringify({
+        success: false,
+        error: 'Failed to settle match: settlement claim failed',
+        error_code: 'SETTLEMENT_CLAIM_FAILED',
+        match_id: match.match_id,
+      }),
+    };
+  }
+
+  logger.info(
+    'Match %s settlement claimed by settler for winner %s',
+    match.match_id,
+    request.winner_id
+  );
+  return { status: 'claimed', response: null };
+}
+
+/**
+ * Applies the post-claim settlement effects: Elo/rank updates, activity
+ * recording, currency rewards, XP, audits, and fairness telemetry. Only
+ * ever called by the settler that WON the claim in claimSettlementMarker,
+ * so each effect is applied at most once per match (issue #1078). The
+ * match arrives already stamped `completed`/`settled_at` by the claim.
  *
  * The winner/loser in `request` must be server-derived (ADR-0002) — either
  * from a server-side resolution path (combat system, turn engine, forfeit)
@@ -1939,11 +2093,11 @@ function runPunchUpLossWatch(
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
  * @param request - Server-derived settlement instruction
- * @param match - The match to settle
+ * @param match - The claimed match (settled marker already persisted)
  * @param isPunchUp - Whether the match was a server-recorded punch-up
  * @returns JSON string with the settlement result
  */
-function processMatchResult(
+function applySettlementOutcome(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
@@ -1951,18 +2105,6 @@ function processMatchResult(
   match: PvPMatch,
   isPunchUp: boolean
 ): string {
-  // Guard double-settlement BEFORE applying Elo — a second settlement run
-  // must never re-apply ranks, XP, or rewards.
-  const settledVerification = verifyMatchNotSettled(nk, match, logger);
-  if (settledVerification.alreadySettledResponse) {
-    return settledVerification.alreadySettledResponse;
-  }
-  const matchVersion = settledVerification.matchVersion;
-
-  // Record the server-declared winner on the match up front so downstream
-  // calculations (punch-up rank lookup, telemetry) see consistent state.
-  match.winner = request.winner_id;
-
   // Calculate punch-up info from SERVER match data (ranks recorded at match
   // creation). This is the sole source for underdog/favorite determination —
   // client-asserted payloads are advisory only (ADR-0002 / issue #864).
@@ -2064,26 +2206,10 @@ function processMatchResult(
   updatePlayerXP(nk, request.winner_id, winnerXPGained);
   updatePlayerXP(nk, request.loser_id, loserXPGained);
 
-  // Update match status to completed and mark the settlement run. The
-  // settled_at stamp is the double-settlement idempotency key: subsequent
-  // settlement attempts replay the recorded outcome without re-applying.
-  const now = Date.now();
-  match.status = 'completed';
-  match.winner = request.winner_id;
-  match.updated_at = now;
-  match.end_reason = request.end_reason ?? 'health_zero';
-  match.settled_at = now;
-
-  // Update the match in storage with version for conditional write
-  nk.storageWrite([
-    {
-      collection: 'pvp_matches',
-      key: match.match_id,
-      userId: match.creator_id,
-      value: JSON.stringify(match),
-      version: matchVersion,
-    },
-  ]);
+  // The completed status and settled_at stamp were already persisted by the
+  // claim in claimSettlementMarker BEFORE any of the effects above — the
+  // marker write is what guards this application pass, so there is no
+  // further match write here (issue #1078).
 
   // Anti-abuse: Record match completion
   recordMatchAction(ctx.userId, 'complete', match.match_id);
@@ -2187,7 +2313,7 @@ function processMatchResult(
         loserKFactor,
       },
       currentSeason.season_id,
-      now
+      match.settled_at ?? Date.now()
     );
   }
 
@@ -2219,6 +2345,105 @@ function processMatchResult(
     is_punch_up: isPunchUp,
     end_reason: match.end_reason,
   });
+}
+
+/**
+ * Process the match result: claim the settlement marker, then apply ranks,
+ * rewards, and XP (issue #1078 ordering).
+ *
+ * Settlement is exactly-once by construction:
+ * 1. verifyMatchNotSettled — fast-path replay of an already-settled match
+ *    (and source of the storage version for the claim).
+ * 2. claimSettlementMarker — the versioned `settled_at` write. This is the
+ *    FIRST and only atomic mutation of settlement: a concurrent settler
+ *    that loses the version check returns the recorded outcome without
+ *    applying anything, and a failed claim applies nothing at all.
+ * 3. applySettlementOutcome — Elo/rank updates, currency rewards, XP,
+ *    audits, and telemetry, applied only by the claim winner.
+ *
+ * FAILURE-PATH CHOICE (issue #1078) — settled-but-degraded, never revert:
+ * if the post-claim application throws, the match STAYS marked settled and
+ * the degradation is audited for manual reconciliation. Reverting the
+ * marker would let a retry re-run the whole application pass and
+ * double-grant every mutation that already landed (currency credits flow
+ * through the versioned applyCurrencyDelta ledger, so a half-applied
+ * state — e.g. winner credited, loser not — is possible and must never be
+ * re-applied). The claimed marker guarantees no retry can re-apply; ops
+ * reconcile the audited shortfall.
+ *
+ * @param ctx - Nakama runtime context
+ * @param logger - Nakama logger instance
+ * @param nk - Nakama server interface
+ * @param request - Server-derived settlement instruction
+ * @param match - The match to settle
+ * @param isPunchUp - Whether the match was a server-recorded punch-up
+ * @returns JSON string with the settlement result
+ */
+function processMatchResult(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  request: ServerSettlementRequest,
+  match: PvPMatch,
+  isPunchUp: boolean
+): string {
+  // Fast-path idempotent replay (also captures the version for the claim).
+  const settledVerification = verifyMatchNotSettled(nk, match, logger);
+  if (settledVerification.alreadySettledResponse) {
+    return settledVerification.alreadySettledResponse;
+  }
+
+  // CLAIM BEFORE APPLY: the settled_at idempotency marker is claimed via a
+  // versioned write BEFORE any reward, XP, or rank mutation. Losing racers
+  // and failed claims return here without having applied anything.
+  const claim = claimSettlementMarker(
+    nk,
+    ctx,
+    logger,
+    match,
+    request,
+    settledVerification.matchVersion
+  );
+  if (claim.status !== 'claimed') {
+    return claim.response;
+  }
+
+  try {
+    return applySettlementOutcome(ctx, logger, nk, request, match, isPunchUp);
+  } catch (error) {
+    // See the FAILURE-PATH CHOICE note above: keep the match settled, audit
+    // the degradation, and return a graceful (non-crashing) response. A
+    // retry of this settlement will hit the already-settled fast path and
+    // can never re-apply the partially-landed effects.
+    logger.error(
+      'Match %s settlement degraded after claim (effects may be partially applied): %s',
+      match.match_id,
+      error
+    );
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'complete_match',
+      'pvp_matches',
+      {
+        match_id: match.match_id,
+        winner_id: request.winner_id,
+        loser_id: request.loser_id,
+        error: String(error),
+      },
+      'failure',
+      'settlement_degraded'
+    );
+    return JSON.stringify({
+      success: true,
+      degraded: true,
+      match_id: match.match_id,
+      winner: request.winner_id,
+      end_reason: match.end_reason,
+      settled_at: match.settled_at,
+    });
+  }
 }
 
 /**
