@@ -11,23 +11,20 @@ static func parse_executable_lines(file_path: String) -> Array:
 
 	var executable_lines = []
 	var line_number = 1
-	var in_multiline_comment = false
 
 	while not file.eof_reached():
 		var line = file.get_line().strip_edges()
 
-		# Skip multiline comments
+		# PATCHED for #967: removed bogus multiline-comment tracking.
+		# GDScript has no multiline comments — "##" is only a doc-comment
+		# marker, so any code line containing "##" wrongly swallowed itself
+		# and every following line until the next "##". Not an upstream
+		# divergence: this file is first-party (authored in
+		# .planning/phases/13-godot-coverage-tools), despite living under
+		# addons/gut/. Revisit only if GUT ever ships its own parser.
+		# Skip comment-only lines ("#" covers "##" doc comments too)
 		if line.begins_with('#'):
 			line_number += 1
-			continue
-
-		# Track multiline comment state
-		if "##" in line:
-			in_multiline_comment = true
-		if in_multiline_comment:
-			line_number += 1
-			if "##" in line:
-				in_multiline_comment = false
 			continue
 
 		# Skip empty lines and comment-only lines
