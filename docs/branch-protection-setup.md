@@ -1,5 +1,12 @@
 # Branch Protection for Visual Regression Checks
 
+> **Status note (2026-08-18, issue #1035):** branch protection is currently
+> **not enforced** on this repository (private repo on GitHub Free — the
+> protection API returns 403). The steps in this guide describe the intended
+> target configuration; see [`BRANCH_PROTECTION.md`](BRANCH_PROTECTION.md)
+> → "Current Enforcement Status" for the verified live state and
+> re-verification commands.
+
 ## Purpose
 
 This guide explains how to configure GitHub branch protection rules to require visual regression tests to pass before code can be merged to the `main` branch. This ensures that visual regressions in UI components are caught and reviewed before deployment.
