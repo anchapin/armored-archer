@@ -1,7 +1,12 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src'],
+  // Include scripts/ so tooling tests (e.g. scripts/__tests__/
+  // validate-nakama-bundle.test.ts, issue #994) are discovered by `npm test`.
+  // Same approach as jest.schema.config.js, which adds <rootDir>/tests because
+  // tests outside `roots` match zero tests. Only *.test.ts / *.spec.ts files
+  // inside scripts/__tests__/ are picked up — testMatch is unchanged.
+  roots: ['<rootDir>/src', '<rootDir>/scripts'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverageFrom: [
