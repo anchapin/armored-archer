@@ -2,6 +2,54 @@
 
 This document describes the branch protection rules configured for this repository per Issue #313.
 
+## Current Enforcement Status (2026-08-18 audit — issue #1035)
+
+**Branch protection is NOT currently enforced on `main`.** The repository is
+**private on GitHub Free**, and branch protection rules are a paid/public-plan
+feature. Verification (any collaborator can run this):
+
+```bash
+gh api repos/anchapin/armored-archer/branches/main/protection
+# 403: "Upgrade to GitHub Pro or make this repository public to enable this feature."
+gh repo view anchapin/armored-archer --json isPrivate   # isPrivate: true
+```
+
+Consequences:
+
+- Direct pushes to `main` are **not blocked** today; the rules below are the
+  intended target configuration, not live state.
+- To actually enforce them, a repo owner must either make the repository public
+  or upgrade the plan (GitHub Pro / Team), then apply the configuration below.
+  Until then, the PR-first rule (see AGENTS.md "Commit & PR Guidelines") is
+  convention only and must be policed in commit-window audits.
+
+### Rule: verify "duplicate landings" before flagging them
+
+Issue #1035 flagged commits `a093fdb2` (alleged direct push) and `bbade2c5`
+(alleged PR #997 squash) as the same change landing twice with divergent
+content. Audit conclusion — **not a duplicate landing**:
+
+- `bbade2c5` is a **merge commit** with parents `7797d964 a093fdb2`; its second
+  parent **is** the PR #997 branch head (`gh pr view 997 --json headRefOid,mergeCommit`).
+- `a093fdb2` is absent from `main`'s first-parent chain; exactly one commit on
+  `main` references it as a parent. The change landed exactly once.
+- The two "divergent" 4-insertion diffs are byte-identical patches
+  (`git diff a093fdb2^ a093fdb2 -- AGENTS.md` == `git diff bbade2c5^1 bbade2c5 -- AGENTS.md`),
+  because the PR branch was based on the main-side parent. Current `AGENTS.md`
+  retains the union of both diffs — nothing was dropped.
+
+Process rule for future audits: before flagging a same-subject commit pair on
+`main` as a duplicate landing, run:
+
+```bash
+git log --format='%H %P' -1 <merge-sha>                 # is it a merge? is the other sha a parent?
+git rev-list --first-parent origin/main | grep -c <sha> # 0 => landed only via the merge's side branch
+gh pr view <number> --json headRefOid,mergeCommit       # does the PR head equal the "direct" commit?
+```
+
+A merge commit that carries a same-subject commit as its second parent is the
+normal result of merging (not squashing) a PR — not a second landing.
+
 ## Protected Branches
 
 - `main` (default branch)
@@ -84,5 +132,9 @@ To run the workflow:
 
 ## Note
 
-This repository was made public to enable branch protection features.
-Branch protection is now fully configured and active.
+**Historical claim, now stale:** this section previously stated the repository
+"was made public to enable branch protection features" and that protection was
+"fully configured and active". As of the 2026-08-18 audit (issue #1035) the
+repository is private on GitHub Free and no branch protection is enforced —
+see [Current Enforcement Status](#current-enforcement-status-2026-08-18-audit--issue-1035)
+above for the verified state and how to re-verify it.
