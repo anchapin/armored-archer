@@ -1,31 +1,13 @@
 import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
 
-// Mock anti_cheat module to control flagged/signature/timing behavior in tests
-jest.mock('../anti_cheat', () => ({
-  isPlayerFlagged: jest.fn().mockReturnValue(false),
-  getFlagReason: jest.fn().mockReturnValue('suspicious activity'),
-  recordMatchResult: jest.fn(),
-  verifyRequestSignature: jest.fn().mockReturnValue({ valid: true, violations: [] }),
-  detectTimingAttack: jest.fn().mockReturnValue(false),
-  generateNonce: jest.fn().mockReturnValue('test-nonce'),
-}));
-
-import {
-  isPlayerFlagged,
-  getFlagReason,
-  verifyRequestSignature,
-  detectTimingAttack,
-} from '../anti_cheat';
 import {
   rpcGetSeasonInfo,
   rpcGetLeaderboard,
-  rpcUpdateRank,
   rpcGetSeasonRewards,
   rpcClaimSeasonRewards,
   rpcEndSeason,
   registerRpcGetSeasonInfo,
   registerRpcGetLeaderboard,
-  registerRpcUpdateRank,
   registerRpcGetSeasonRewards,
   registerRpcClaimSeasonRewards,
   registerRpcEndSeason,
@@ -128,67 +110,35 @@ describe('season_system', () => {
     });
   });
 
-  describe('rpcUpdateRank', () => {
-    it('should update rank for winner and loser', () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
-
-      const payload = JSON.stringify({
-        match_id: 'match-123',
-        winner_id: 'winner-user',
-        loser_id: 'loser-user',
-        winner_old_rank: 1500,
-        loser_old_rank: 1400,
-        winner_new_rank: 1520,
-        loser_new_rank: 1380,
-        is_punch_up: false,
-        requestId: 'req-update-rank-success-1',
-        timestamp: Date.now(),
-        signature: 'a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]',
-        nonce: 'nonce-update-rank-success-1234567890123456',
-      });
-      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.winner).toBeDefined();
-      expect(parsed.loser).toBeDefined();
-      expect(parsed.winner.rank_change).toBeGreaterThan(0);
+  describe('update_rank removal (issue #1076)', () => {
+    it('must not export a client-callable rpcUpdateRank handler', () => {
+      const mod = require('../season_system');
+      expect(mod.rpcUpdateRank).toBeUndefined();
+      expect(mod.registerRpcUpdateRank).toBeUndefined();
     });
 
-    it('should handle new players without existing entry', () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+    it('must not register armored_archer/update_rank via any registerRpc* export', () => {
+      const mod = require('../season_system');
+      const registeredIds: string[] = [];
+      const mockInitializer = {
+        registerRpc: jest.fn((id: string) => registeredIds.push(id)),
+      } as unknown as Runtime.Initializer;
 
-      const payload = JSON.stringify({
-        match_id: 'match-456',
-        winner_id: 'new-winner',
-        loser_id: 'new-loser',
-        winner_old_rank: 1000,
-        loser_old_rank: 1000,
-        winner_new_rank: 1032,
-        loser_new_rank: 968,
-        is_punch_up: true,
-        requestId: 'req-update-rank-newplayers-1',
-        timestamp: Date.now(),
-        signature: 'a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]',
-        nonce: 'nonce-update-rank-newplayers-123456789012345',
-      });
-      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
+      Object.keys(mod)
+        .filter((name: string) => name.startsWith('registerRpc'))
+        .forEach((name: string) => mod[name](mockInitializer));
 
-      expect(parsed.success).toBe(true);
-      expect(parsed.is_punch_up).toBe(true);
+      expect(registeredIds).not.toContain('armored_archer/update_rank');
     });
 
-    it('should validate input payload', () => {
-      const payload = JSON.stringify({
-        winner_id: '',
-        loser_id: 'loser',
-        is_punch_up: 'not a boolean',
-      });
-      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    it('must not export settlement helpers that accept client-declared winners', () => {
+      // ADR-0002: only complete_match's resolveServerTerminalState path may
+      // mutate Elo, via the exported applyEloUpdates used by matchmaker.ts.
+      // The client-facing wrapper around it must stay gone.
+      const mod = require('../season_system');
+      expect(typeof mod.applyEloUpdates).toBe('function');
+      expect(mod.validateRankUpdateSignature).toBeUndefined();
+      expect(mod.checkPlayerFlagged).toBeUndefined();
     });
   });
 
@@ -623,231 +573,6 @@ describe('season_system', () => {
     });
   });
 
-  describe('rpcUpdateRank with flagged player', () => {
-    it('should block when winner is flagged', () => {
-      (isPlayerFlagged as jest.Mock).mockImplementation((id: string) => id === 'winner-user');
-      (getFlagReason as jest.Mock).mockReturnValue('match manipulation');
-
-      const payload = JSON.stringify({
-        match_id: 'match-123',
-        winner_id: 'winner-user',
-        loser_id: 'loser-user',
-        winner_old_rank: 1500,
-        loser_old_rank: 1400,
-        winner_new_rank: 1520,
-        loser_new_rank: 1380,
-        is_punch_up: false,
-      });
-      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(false);
-      expect(parsed.error_code).toBe('PLAYER_FLAGGED');
-      expect(parsed.error).toContain('Player is flagged for review');
-      expect(mockLogger.warn).toHaveBeenCalled();
-    });
-
-    it('should block when loser is flagged', () => {
-      (isPlayerFlagged as jest.Mock).mockImplementation((id: string) => id === 'loser-user');
-      (getFlagReason as jest.Mock).mockReturnValue('suspicious win rate');
-
-      const payload = JSON.stringify({
-        match_id: 'match-123',
-        winner_id: 'winner-user',
-        loser_id: 'loser-user',
-        winner_old_rank: 1500,
-        loser_old_rank: 1400,
-        winner_new_rank: 1520,
-        loser_new_rank: 1380,
-        is_punch_up: false,
-      });
-      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(false);
-      expect(parsed.error_code).toBe('PLAYER_FLAGGED');
-      expect(parsed.error).toContain('Opponent is flagged for review');
-    });
-  });
-
-  describe('rpcUpdateRank with signature validation failure', () => {
-    it('should reject when signature verification fails', () => {
-      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
-      (verifyRequestSignature as jest.Mock).mockReturnValue({
-        valid: false,
-        violations: ['invalid_signature', 'replay_attack'],
-      });
-
-      const payload = JSON.stringify({
-        match_id: 'match-123',
-        winner_id: 'winner-user',
-        loser_id: 'loser-user',
-        winner_old_rank: 1500,
-        loser_old_rank: 1400,
-        winner_new_rank: 1520,
-        loser_new_rank: 1380,
-        is_punch_up: false,
-        requestId: 'req-abc123',
-        timestamp: Date.now(),
-        signature: 'a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]',
-        nonce: 'nonce-12345678901234567890123456',
-      });
-      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(false);
-      expect(parsed.error_code).toBe('ANTI_CHEAT_VIOLATION');
-      expect(parsed.error).toBe('Invalid request signature');
-      expect(parsed.violations).toEqual(['invalid_signature', 'replay_attack']);
-    });
-  });
-
-  describe('rpcUpdateRank anti-cheat signature required (issue #955)', () => {
-    it('should reject when all four signature fields are missing', () => {
-      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
-      (verifyRequestSignature as jest.Mock).mockReturnValue({ valid: true, violations: [] });
-
-      const payload = JSON.stringify({
-        match_id: 'match-955-missing',
-        winner_id: 'winner-user',
-        loser_id: 'loser-user',
-        winner_old_rank: 1500,
-        loser_old_rank: 1400,
-        winner_new_rank: 1520,
-        loser_new_rank: 1380,
-        is_punch_up: false,
-      });
-      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(false);
-      expect(parsed.error_code).toBe('ANTI_CHEAT_VIOLATION');
-      expect(parsed.error).toBe('Missing anti-cheat signature fields');
-      expect(verifyRequestSignature).not.toHaveBeenCalled();
-      expect(mockLogger.warn).toHaveBeenCalled();
-    });
-
-    it('should reject when any one of the four signature fields is missing', () => {
-      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
-      (verifyRequestSignature as jest.Mock).mockReturnValue({ valid: true, violations: [] });
-
-      // requestId, timestamp, signature, nonce — drop the nonce
-      const payload = JSON.stringify({
-        match_id: 'match-955-partial',
-        winner_id: 'winner-user',
-        loser_id: 'loser-user',
-        winner_old_rank: 1500,
-        loser_old_rank: 1400,
-        winner_new_rank: 1520,
-        loser_new_rank: 1380,
-        is_punch_up: false,
-        requestId: 'req-955-partial-1',
-        timestamp: Date.now(),
-        signature: 'a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]',
-      });
-      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(false);
-      expect(parsed.error_code).toBe('ANTI_CHEAT_VIOLATION');
-      expect(parsed.error).toBe('Missing anti-cheat signature fields');
-      expect(verifyRequestSignature).not.toHaveBeenCalled();
-    });
-
-    it('should reject when all four fields present but signature verification fails', () => {
-      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
-      (verifyRequestSignature as jest.Mock).mockReturnValue({
-        valid: false,
-        violations: ['invalid_signature'],
-      });
-
-      const payload = JSON.stringify({
-        match_id: 'match-955-mismatch',
-        winner_id: 'winner-user',
-        loser_id: 'loser-user',
-        winner_old_rank: 1500,
-        loser_old_rank: 1400,
-        winner_new_rank: 1520,
-        loser_new_rank: 1380,
-        is_punch_up: false,
-        requestId: 'req-955-mismatch-1',
-        timestamp: Date.now(),
-        signature: 'b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]b]',
-        nonce: 'nonce-955-mismatch-123456789012345678',
-      });
-      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(false);
-      expect(parsed.error_code).toBe('ANTI_CHEAT_VIOLATION');
-      expect(parsed.error).toBe('Invalid request signature');
-      expect(parsed.violations).toEqual(['invalid_signature']);
-      expect(verifyRequestSignature).toHaveBeenCalled();
-    });
-
-    it('should accept when all four signature fields are present and signature is valid', () => {
-      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
-      (verifyRequestSignature as jest.Mock).mockReturnValue({ valid: true, violations: [] });
-      (detectTimingAttack as jest.Mock).mockReturnValue(false);
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
-      mockNk.leaderboardRecordWrite = jest.fn();
-
-      const payload = JSON.stringify({
-        match_id: 'match-955-valid',
-        winner_id: 'winner-user',
-        loser_id: 'loser-user',
-        winner_old_rank: 1500,
-        loser_old_rank: 1400,
-        winner_new_rank: 1520,
-        loser_new_rank: 1380,
-        is_punch_up: false,
-        requestId: 'req-955-valid-1',
-        timestamp: Date.now(),
-        signature: 'c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]c]',
-        nonce: 'nonce-955-valid-1234567890123456789012',
-      });
-      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.error_code).toBeUndefined();
-      expect(verifyRequestSignature).toHaveBeenCalled();
-    });
-  });
-
-  describe('rpcUpdateRank with timing attack detection', () => {
-    it('should reject when timing attack is detected', () => {
-      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
-      (verifyRequestSignature as jest.Mock).mockReturnValue({ valid: true, violations: [] });
-      (detectTimingAttack as jest.Mock).mockReturnValue(true);
-
-      const payload = JSON.stringify({
-        match_id: 'match-123',
-        winner_id: 'winner-user',
-        loser_id: 'loser-user',
-        winner_old_rank: 1500,
-        loser_old_rank: 1400,
-        winner_new_rank: 1520,
-        loser_new_rank: 1380,
-        is_punch_up: false,
-        requestId: 'req-timing-attack-test-1',
-        timestamp: Date.now(),
-        signature: 'a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]',
-        nonce: 'nonce-timing-attack-test-1234567890123456',
-      });
-      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(false);
-      expect(parsed.error_code).toBe('TIMING_ANOMALY');
-      expect(parsed.error).toBe('Suspicious request pattern detected');
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        'Timing attack detected for user: %s',
-        mockCtx.userId
-      );
-    });
-  });
-
   describe('registerRpcGetSeasonInfo', () => {
     it('should register the RPC endpoint', () => {
       const mockInitializer = {
@@ -874,22 +599,6 @@ describe('season_system', () => {
       expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
         'armored_archer/get_leaderboard',
         rpcGetLeaderboard
-      );
-    });
-  });
-
-  describe('registerRpcUpdateRank', () => {
-    it('should register the RPC endpoint', () => {
-      const { registerRpcUpdateRank } = require('../season_system');
-      const mockInitializer = {
-        registerRpc: jest.fn(),
-      } as unknown as Runtime.Initializer;
-
-      registerRpcUpdateRank(mockInitializer);
-
-      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-        'armored_archer/update_rank',
-        rpcUpdateRank
       );
     });
   });
@@ -1586,38 +1295,6 @@ describe('season_system', () => {
         winnerK: PUNCH_UP_K_FACTOR,
         loserK: PUNCH_UP_K_FACTOR * PUNCH_UP_LOSS_K_MULTIPLIER,
       });
-    });
-  });
-
-  describe('rpcUpdateRank additional branches', () => {
-    it('should handle winner not on leaderboard (default 1000)', () => {
-      (isPlayerFlagged as jest.Mock).mockReturnValue(false);
-      (detectTimingAttack as jest.Mock).mockReturnValue(false);
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
-      mockNk.leaderboardRecordWrite = jest.fn();
-
-      const payload = JSON.stringify({
-        match_id: 'match-1',
-        winner_id: 'unknown-winner',
-        loser_id: 'test-user',
-        winner_old_rank: 1000,
-        loser_old_rank: 1000,
-        winner_new_rank: 1016,
-        loser_new_rank: 984,
-        is_punch_up: false,
-        requestId: 'req-update-rank-unknown-winner-1',
-        timestamp: Date.now(),
-        signature: 'a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]a]',
-        nonce: 'nonce-update-rank-unknown-winner-12345678',
-      });
-
-      const result = rpcUpdateRank(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
-
-      if (!parsed.success) {
-        console.log('Failure response:', JSON.stringify(parsed));
-      }
-      expect(parsed.success).toBe(true);
     });
   });
 

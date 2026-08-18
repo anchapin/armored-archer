@@ -4,19 +4,10 @@
  */
 
 import { Runtime } from '../types/nakama';
-import {
-  verifyRequestSignature,
-  detectTimingAttack,
-  recordMatchResult,
-  isPlayerFlagged,
-  getFlagReason,
-  RequestSignature,
-} from './anti_cheat';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { applyCurrencyDelta, type CurrencyDelta } from './currency';
 import { recordSeasonCompletion } from './season_leaderboard';
-import { logRankChange, logRewardClaim, recordSeasonEndSnapshot } from './season_telemetry';
-import { incrementSeasonRankChanges, recordSeasonRankChangeDelta } from './metrics';
+import { logRewardClaim, recordSeasonEndSnapshot } from './season_telemetry';
 
 /**
  * Season rewards data structure.
@@ -484,137 +475,15 @@ export function rpcGetLeaderboard(
 }
 
 /**
- * Registers the update rank RPC endpoint.
- *
- * @param initializer - Nakama runtime initializer
+ * Issue #1076 / ADR-0002: the client-facing `armored_archer/update_rank` RPC
+ * (`rpcUpdateRank` + `registerRpcUpdateRank`) was removed. It applied Elo
+ * updates from client-supplied winner/loser IDs without verifying the caller
+ * was a participant of a server-recorded terminal match, bypassing the
+ * server-declared settlement that `matchmaker.ts`'s `rpcCompleteMatch`
+ * implements via `resolveServerTerminalState`. Seasonal Elo now mutates ONLY
+ * through `complete_match`'s server-declared path, which settles via the
+ * exported `applyEloUpdates` below.
  */
-export function registerRpcUpdateRank(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/update_rank', rpcUpdateRank);
-}
-
-/**
- * Updates player ranks after a match using Elo rating system.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - JSON string containing match results
- * @returns JSON string with rank changes
- *
- * @example
- * // Request payload
- * { "winner_id": "user_1", "loser_id": "user_2", "is_punch_up": false }
- *
- * // Response
- * {
- *   "success": true,
- *   "winner": { ... },
- *   "loser": { ... },
- *   "is_punch_up": false
- * }
- */
-
-/**
- * Checks if a player is flagged and returns error response if so
- */
-function checkPlayerFlagged(
-  logger: Runtime.Logger,
-  playerId: string,
-  playerType: 'winner' | 'loser'
-): string | null {
-  if (isPlayerFlagged(playerId)) {
-    logger.warn(
-      'Update rank blocked - %s flagged: %s reason: %s',
-      playerType,
-      playerId,
-      getFlagReason(playerId)
-    );
-    const errorMsg =
-      playerType === 'winner'
-        ? `Player is flagged for review: ${getFlagReason(playerId)}`
-        : `Opponent is flagged for review: ${getFlagReason(playerId)}`;
-    return JSON.stringify({
-      success: false,
-      error_code: 'PLAYER_FLAGGED',
-      error: errorMsg,
-    });
-  }
-  return null;
-}
-
-/**
- * Validates anti-cheat signature for rank update.
- *
- * Issue #955 / ADR-0002: the four anti-cheat fields
- * (requestId, timestamp, signature, nonce) are REQUIRED for update_rank.
- * Requests missing any field are rejected with ANTI_CHEAT_VIOLATION —
- * the previous presence check silently bypassed signature verification
- * when any field was omitted.
- */
-function validateRankUpdateSignature(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  request: {
-    match_id: string;
-    winner_id: string;
-    loser_id: string;
-    winner_old_rank: number;
-    loser_old_rank: number;
-    winner_new_rank: number;
-    loser_new_rank: number;
-    is_punch_up: boolean;
-    requestId?: string;
-    timestamp?: number;
-    signature?: string;
-    nonce?: string;
-  }
-): string | null {
-  if (!request.requestId || !request.timestamp || !request.signature || !request.nonce) {
-    logger.warn(
-      'update_rank rejected: missing anti-cheat signature field(s) for user %s (requestId=%s, timestamp=%s, signature=%s, nonce=%s)',
-      ctx.userId,
-      Boolean(request.requestId),
-      Boolean(request.timestamp),
-      Boolean(request.signature),
-      Boolean(request.nonce)
-    );
-    return JSON.stringify({
-      success: false,
-      error_code: 'ANTI_CHEAT_VIOLATION',
-      error: 'Missing anti-cheat signature fields',
-    });
-  }
-
-  const signatureData: RequestSignature = {
-    requestId: request.requestId,
-    timestamp: request.timestamp,
-    signature: request.signature,
-    nonce: request.nonce,
-  };
-
-  const payloadForSig = JSON.stringify({
-    match_id: request.match_id,
-    winner_id: request.winner_id,
-    loser_id: request.loser_id,
-    winner_old_rank: request.winner_old_rank,
-    loser_old_rank: request.loser_old_rank,
-    winner_new_rank: request.winner_new_rank,
-    loser_new_rank: request.loser_new_rank,
-    is_punch_up: request.is_punch_up,
-  });
-
-  const sigResult = verifyRequestSignature(ctx, payloadForSig, signatureData, 'update_rank');
-  if (!sigResult.valid) {
-    logger.warn('Invalid signature for update_rank: %s', sigResult.violations.join(', '));
-    return JSON.stringify({
-      success: false,
-      error_code: 'ANTI_CHEAT_VIOLATION',
-      error: 'Invalid request signature',
-      violations: sigResult.violations,
-    });
-  }
-  return null;
-}
 
 /**
  * Base Elo K-factor applied to both sides of a normal ranked match.
@@ -743,138 +612,6 @@ export function applyEloUpdates(
   });
 
   return { winnerNewElo, loserNewElo };
-}
-
-export function rpcUpdateRank(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('Update rank called for user: %s', ctx.userId);
-
-  const validation = validatePayload(ZodSchemas.update_rank, payload, 'update_rank');
-  if (!validation.success) {
-    return createValidationErrorResponse('update_rank', validation.error);
-  }
-
-  const request = validation.data;
-
-  // Anti-cheat: Check if players are flagged
-  const winnerFlagged = checkPlayerFlagged(logger, request.winner_id, 'winner');
-  if (winnerFlagged) return winnerFlagged;
-
-  const loserFlagged = checkPlayerFlagged(logger, request.loser_id, 'loser');
-  if (loserFlagged) return loserFlagged;
-
-  // Anti-cheat: Verify request signature
-  const signatureError = validateRankUpdateSignature(ctx, logger, request);
-  if (signatureError) return signatureError;
-
-  // Anti-cheat: Detect timing attacks
-  if (detectTimingAttack(ctx.userId, 'update_rank', request.requestId || '')) {
-    logger.warn('Timing attack detected for user: %s', ctx.userId);
-    return JSON.stringify({
-      success: false,
-      error_code: 'TIMING_ANOMALY',
-      error: 'Suspicious request pattern detected',
-    });
-  }
-
-  const currentSeason = getCurrentSeason();
-
-  const winnerEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
-  const loserEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
-
-  const winnerOldElo = winnerEntry ? winnerEntry.score : 1000;
-  const loserOldElo = loserEntry ? loserEntry.score : 1000;
-
-  // Underdog derivation uses server-side leaderboard data, never client
-  // payloads (issue #864 server-authoritative requirement). The lower-rated
-  // player is the punch-up underdog.
-  const loserIsUnderdog = loserOldElo < winnerOldElo;
-
-  // Apply Elo updates
-  const { winnerNewElo, loserNewElo } = applyEloUpdates(
-    nk,
-    ctx,
-    currentSeason,
-    request.winner_id,
-    request.loser_id,
-    winnerOldElo,
-    loserOldElo,
-    request.is_punch_up,
-    winnerEntry,
-    loserEntry,
-    loserIsUnderdog
-  );
-
-  // Record match results for anti-cheat analysis
-  recordMatchResult(
-    request.winner_id,
-    request.match_id,
-    request.loser_id,
-    'win',
-    true,
-    winnerOldElo,
-    winnerNewElo
-  );
-  recordMatchResult(
-    request.loser_id,
-    request.match_id,
-    request.winner_id,
-    'loss',
-    true,
-    loserOldElo,
-    loserNewElo
-  );
-
-  // Season telemetry: log rank change and update Prometheus metrics
-  const daysIntoSeason = Math.floor(
-    (Date.now() - currentSeason.start_time) / (24 * 60 * 60 * 1000)
-  );
-  const { winnerK, loserK } = getEloKFactors(request.is_punch_up, loserIsUnderdog);
-
-  logRankChange(nk, {
-    event_id: '',
-    match_id: request.match_id,
-    season_id: currentSeason.season_id,
-    timestamp: Date.now(),
-    winner_id: request.winner_id,
-    loser_id: request.loser_id,
-    winner_old_elo: winnerOldElo,
-    winner_new_elo: winnerNewElo,
-    winner_rank_delta: winnerNewElo - winnerOldElo,
-    loser_old_elo: loserOldElo,
-    loser_new_elo: loserNewElo,
-    loser_rank_delta: loserNewElo - loserOldElo,
-    is_punch_up: request.is_punch_up,
-    k_factor: loserK,
-    winner_k_factor: winnerK,
-    loser_k_factor_amplified: request.is_punch_up && loserIsUnderdog,
-    days_into_season: daysIntoSeason,
-  });
-
-  incrementSeasonRankChanges(currentSeason.season_id, request.is_punch_up);
-  recordSeasonRankChangeDelta(currentSeason.season_id, winnerNewElo - winnerOldElo);
-  recordSeasonRankChangeDelta(currentSeason.season_id, loserNewElo - loserOldElo);
-
-  return JSON.stringify({
-    success: true,
-    winner: {
-      user_id: request.winner_id,
-      old_rank: winnerOldElo,
-      new_rank: winnerNewElo,
-      rank_change: winnerNewElo - winnerOldElo,
-    },
-    loser: {
-      user_id: request.loser_id,
-      old_rank: loserOldElo,
-      new_rank: loserNewElo,
-      rank_change: loserNewElo - loserOldElo,
-    },
-    is_punch_up: request.is_punch_up,
-  });
 }
 
 /**

@@ -9,7 +9,6 @@ import { createStructuredLogger, StructuredLogger } from './config/structuredLog
 import { initializeTracing } from './config/tracing';
 import { initializeAlerting } from './modules/alerting';
 import { registerAnalyticsEndpoints } from './modules/analytics';
-import { registerFunnelAnalyticsEndpoints } from './modules/funnel_analytics';
 import { registerRpcQueryAuditLogs, rpcQueryAuditLogs } from './modules/audit';
 import { registerBalanceAnalyticsEndpoints } from './modules/balance_analytics';
 import { registerRpcRunBalanceSession } from './modules/balance_session';
@@ -32,6 +31,7 @@ import {
   initializeErrorInsightsPipeline,
 } from './modules/error_insight_pipeline';
 import { registerFairnessTelemetryEndpoints } from './modules/fairness_telemetry';
+import { registerFunnelAnalyticsEndpoints } from './modules/funnel_analytics';
 import {
   registerRpcGenerateGear,
   registerRpcEquipGear,
@@ -102,7 +102,6 @@ import {
 import {
   registerRpcGetSeasonInfo,
   registerRpcGetLeaderboard,
-  registerRpcUpdateRank,
   registerRpcGetSeasonRewards,
   registerRpcClaimSeasonRewards,
   registerRpcEndSeason,
@@ -551,7 +550,9 @@ const InitModule: InitModule = function (
     registerRpcPlayerDisconnect(initializer);
     registerRpcGetSeasonInfo(initializer);
     registerRpcGetLeaderboard(initializer);
-    registerRpcUpdateRank(initializer);
+    // update_rank is intentionally NOT registered — removed in issue #1076
+    // (client-declared winners must not mutate Elo; ADR-0002: only
+    // complete_match's server-declared settlement path may).
     registerRpcGetSeasonRewards(initializer);
     registerRpcClaimSeasonRewards(initializer);
     registerRpcEndSeason(initializer);
@@ -911,8 +912,6 @@ function rpcGetPlayerPerformanceWrapper(
   const { rpcGetPlayerPerformance } = require('./modules/dynamic_difficulty');
   return rpcGetPlayerPerformance(ctx, logger, nk, payload);
 }
-
-
 
 function rpcSubmitSurveyWrapper(
   ctx: Runtime.Context,

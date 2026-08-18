@@ -102,22 +102,23 @@ func test_get_leaderboard_tracks_coverage() -> void:
 	var leaderboard: Array = _season_manager.get_leaderboard_sync()
 	assert_eq(leaderboard.size(), 2, "Leaderboard should have 2 entries")
 
-func test_update_rank_tracks_coverage() -> void:
-	"""Test update_rank() with coverage tracking."""
+func test_update_rank_removed_tracks_coverage() -> void:
+	"""update_rank() was removed (issue #1076) — clients must not declare match outcomes."""
 	watch_signals(_season_manager)
 
-	# Stub successful RPC response
-	_mock_network.rpc_response = {
-		"success": true,
-		"winner": {"user_id": "winner1", "new_rank": 95},
-		"loser": {"user_id": "loser1", "new_rank": 105},
-		"is_punch_up": true
-	}
-
-	_season_manager.update_rank("winner1", "loser1", true)
-
-	# Verify rank_updated signal emitted
-	assert_signal_emitted(_season_manager, "rank_updated")
+	assert_false(
+		_season_manager.has_method("update_rank"),
+		"update_rank() must not exist (issue #1076)"
+	)
+	assert_false(
+		_season_manager.has_signal("rank_updated"),
+		"rank_updated signal must not exist (issue #1076)"
+	)
+	assert_eq(
+		_season_manager.get("RPC_UPDATE_RANK"),
+		null,
+		"RPC_UPDATE_RANK constant must not exist (issue #1076)"
+	)
 
 func test_get_season_rewards_tracks_coverage() -> void:
 	"""Test get_season_rewards() with coverage tracking."""
@@ -242,15 +243,11 @@ func test_leaderboard_limit_parameter_tracks_coverage() -> void:
 	# Verify leaderboard_loaded signal emitted
 	assert_signal_emitted(_season_manager, "leaderboard_loaded")
 
-func test_update_rank_validation_tracks_coverage() -> void:
-	"""Test update_rank validation with coverage tracking."""
+func test_update_rank_no_orphaned_rpc_path_tracks_coverage() -> void:
+	"""No code path may send the removed armored_archer/update_rank RPC (issue #1076)."""
 	watch_signals(_season_manager)
 
-	# Try to update with empty IDs (should fail validation)
-	_season_manager.update_rank("", "", false)
-
-	# The validation failure is logged before returning
-	assert_push_error("Winner and loser IDs required")
-
-	# Verify rank_updated NOT emitted on validation error
-	assert_signal_not_emitted(_season_manager, "rank_updated")
+	# The update_rank() sender is gone; an accidental re-add would have to
+	# re-introduce the method first, which the removal test above guards.
+	assert_false(_season_manager.has_method("update_rank"), "update_rank() must stay removed")
+	assert_signal_not_emitted(_season_manager, "season_info_loaded")

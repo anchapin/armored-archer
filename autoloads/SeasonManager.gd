@@ -1,10 +1,12 @@
 ## Manages seasonal ranking system, leaderboards, and rewards.
-## Handles rank updates, leaderboard retrieval, season reward claims, and rating decay.
+## Handles leaderboard retrieval, season reward claims, and rating decay.
+## Rank updates are server-authoritative: seasonal Elo mutates only via the
+## server-declared settlement of `armored_archer/complete_match` (issue #1076);
+## the removed `update_rank` client RPC must not be reintroduced.
 ##
 ## Signals:
 ## - season_info_loaded(season_info: Dictionary): Emitted when season data is retrieved
 ## - leaderboard_loaded(leaderboard: Array): Emitted when leaderboard data arrives
-## - rank_updated(rank_change: Dictionary): Emitted when rank changes after a match
 ## - rewards_loaded(rewards: Dictionary): Emitted when season rewards are available
 ## - rewards_claimed(rewards: Dictionary): Emitted when rewards are claimed
 ## - season_transitioned(old_season: Dictionary, new_season: Dictionary): Emitted on season end
@@ -15,7 +17,6 @@ extends Node
 # --- RPC IDs ---
 const RPC_GET_SEASON_INFO = "armored_archer/get_season_info"
 const RPC_GET_LEADERBOARD = "armored_archer/get_leaderboard"
-const RPC_UPDATE_RANK = "armored_archer/update_rank"
 const RPC_GET_SEASON_REWARDS = "armored_archer/get_season_rewards"
 const RPC_CLAIM_SEASON_REWARDS = "armored_archer/claim_season_rewards"
 const RPC_GET_SEASON_HISTORY = "armored_archer/get_season_history"
@@ -71,7 +72,6 @@ var current_tier_name: String = "Unranked"
 # --- Signals ---
 signal season_info_loaded(season_info: Dictionary)
 signal leaderboard_loaded(leaderboard: Array)
-signal rank_updated(rank_change: Dictionary)
 signal rewards_loaded(rewards: Dictionary)
 signal rewards_claimed(rewards: Dictionary)
 signal season_transitioned(old_season: Dictionary, new_season: Dictionary)
@@ -171,49 +171,11 @@ func get_leaderboard(limit: int = 50) -> void:
 		leaderboard = response.get("leaderboard", [])
 		leaderboard_loaded.emit(leaderboard)
 
-# --- Update Rank ---
-func update_rank(winner_id: String, loser_id: String, is_punch_up: bool = false) -> void:
-	"""Updates player ranks after a match concludes.
-
-	Parameters:
-		winner_id: User ID of the match winner
-		loser_id: User ID of the match loser
-		is_punch_up: True if winner fought a higher-ranked opponent
-	"""
-	if not network_manager or not network_manager.is_connected:
-		push_error("Not connected to server")
-		return
-
-	if winner_id.is_empty() or loser_id.is_empty():
-		push_error("Winner and loser IDs required")
-		return
-
-	var payload: Dictionary = {
-		"winner_id": winner_id,
-		"loser_id": loser_id,
-		"is_punch_up": is_punch_up
-	}
-
-	var json: JSON = JSON.new()
-	var response: Dictionary = await network_manager.send_rpc(RPC_UPDATE_RANK, json.stringify(payload))
-
-	if response.has("error"):
-		push_error("Failed to update rank: %s" % response.error)
-		return
-
-	if response.get("success", false):
-		var rank_change: Dictionary = {
-			"winner": response.get("winner", {}),
-			"loser": response.get("loser", {}),
-			"is_punch_up": response.get("is_punch_up", false)
-		}
-
-		if NetworkManager.user_id == winner_id:
-			player_score = rank_change.winner.get("new_rank", player_score)
-		elif NetworkManager.user_id == loser_id:
-			player_score = rank_change.loser.get("new_rank", player_score)
-
-		rank_updated.emit(rank_change)
+# --- Update Rank (removed, issue #1076) ---
+# update_rank() and the rank_updated signal were removed: clients must never
+# declare match outcomes. Seasonal Elo is mutated server-side only by the
+# settlement of `armored_archer/complete_match` (ADR-0002). Refresh the local
+# Standing / Ladder Rating cache via get_season_info() / get_player_rank().
 
 # --- Get Season Rewards ---
 func get_season_rewards() -> void:
