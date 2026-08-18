@@ -138,7 +138,7 @@ func _on_buy_gems_pressed() -> void:
 	_transition_to_scene("res://scenes/ui/store_menu.tscn")
 
 func _on_settings_pressed() -> void:
-	var settings_scene = load("res://scenes/ui/settings_menu.tscn")
+	var settings_scene = load("res://scenes/ui/settings_screen.tscn")
 	if settings_scene:
 		_transition_to_scene_packed(settings_scene)
 	else:
