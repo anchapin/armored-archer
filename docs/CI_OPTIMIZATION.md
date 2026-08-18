@@ -136,6 +136,9 @@ New fast CI runner with advanced features.
 - `backend-test`
 - `schema-validation`
 
+**Service Jobs with bundle mount (45-90s each):**
+- `backend-integration-test` — boots PostgreSQL on **5438** + Nakama on **7352**/**7353** and mounts the compiled game bundle (`./backend/data/modules`) read-only into the Nakama container at `/nakama/data/modules`. Prerequisite: `cd backend && npm run build:full`. Local mirror: `make ci-services-start` (prefights bundle, then asserts `--require-nakama-bundle`); `make ci-services-status` fails fast when `/nakama/data/modules` is empty. (Pass-2 of issue #1126.)
+
 **Slow Jobs (1-3 min each):**
 - `security-audit`
 - `sonarcloud`

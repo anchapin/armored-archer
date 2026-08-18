@@ -23,6 +23,9 @@ Successfully ran CI workflows locally using `act` CLI. Most jobs pass, but some 
 15. AGENTS.md Validation
 16. N+1 Query Detection (second instance)
 
+### 🆕 Service Jobs (boot mount-validated containers)
+- **`backend-integration-test`** — boots PostgreSQL on **5438** + Nakama on **7352**/**7353** and mounts the compiled game bundle (`./backend/data/modules`) read-only into the Nakama container at `/nakama/data/modules`. Prerequisite: `cd backend && npm run build:full` (the bundle is gitignored). The local CI stack mirrors this via `make ci-services-start` (run `make ci-services-preflight` first; `make ci-services-status` fails fast when `/nakama/data/modules` is empty). Also see pass-2 of issue #1126.
+
 ### ❌ Failing Jobs (4/20)
 1. **N+1 Query Detection** (first instance) - Container name conflict
 2. **Backend Tests with Coverage** - Port conflict (7350)

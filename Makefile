@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new check-game-schema backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-restart-destructive services-cold-start services-assert-cold-start services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci tracked-ignored-check tracked-ignored-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new check-game-schema backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-restart-destructive services-cold-start services-assert-cold-start services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci tracked-ignored-check tracked-ignored-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-preflight ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report
 
 # Default target
 all: help
@@ -76,10 +76,12 @@ help:
 	@echo "  make services-clean                 Stop and remove services + volumes"
 	@echo ""
 	@echo "$(GREEN)CI Services (for act)$(RESET)"
-	@echo "  make ci-services-start  Start CI services (PostgreSQL:5432, Nakama:7350)"
-	@echo "  make ci-services-stop   Stop CI services"
-	@echo "  make ci-services-status Show CI services status"
-	@echo "  make ci-services-restart Restart CI services"
+	@echo "  make ci-services-preflight        Fail-fast if backend/data/modules/index.js is missing (build:full prerequisite)"
+	@echo "  make ci-services-preflight-build  Run 'npm run build:full' then verify bundle"
+	@echo "  make ci-services-start            Start CI services (PostgreSQL:5432, Nakama:7350) — runs preflight + assert --require-nakama-bundle"
+	@echo "  make ci-services-stop             Stop CI services"
+	@echo "  make ci-services-status           Show CI services status + bundle mount check (fails when /nakama/data/modules is empty)"
+	@echo "  make ci-services-restart          Restart CI services"
 	@echo ""
 	@echo "$(GREEN)Local CI (optimized for speed)$(RESET)"
 	@echo "  make ci                Run all CI jobs sequentially"
@@ -495,13 +497,46 @@ tracked-ignored-check-ci:
 	cd $(BACKEND_DIR) && npm run validate:tracked-ignored:ci
 
 ## CI Services (for local act testing)
-# These services match the CI environment exactly (different ports than dev)
+# These services match the CI environment exactly (different ports than dev).
+# Pass-2 of PR #1126 follow-up: the Nakama container now mounts the compiled
+# game bundle from backend/data/modules (mirroring .github/workflows/ci.yml).
+# Without that mount, RPCs (combat / loot / season) 500 and every test that
+# calls them fails. The bundle is gitignored — it must be built locally via
+# `cd backend && npm run build:full` (or the `ci-services-preflight-build`
+# target below) BEFORE `ci-services-start`. The preflight + assert contract
+# mirrors the dev-stack cold-start workflow (issue #907).
+ci-services-preflight:
+	@echo "$(BLUE)CI services preflight — verifying backend bundle is built (#1126 pass-2)$(RESET)"
+	@if [ ! -f $(BACKEND_DIR)/data/modules/index.js ]; then \
+		echo "$(YELLOW)✗ Missing $(BACKEND_DIR)/data/modules/index.js$(RESET)"; \
+		echo "  Nakama's game bundle has not been built. Run one of:"; \
+		echo "    make ci-services-preflight-build   (auto-build + verify)"; \
+		echo "    cd $(BACKEND_DIR) && npm run build:full"; \
+		echo "  Then re-run 'make ci-services-start'."; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✓ Bundle present: $(BACKEND_DIR)/data/modules/index.js$(RESET)"
+	@ls -1 $(BACKEND_DIR)/data/modules | head -20 | sed 's/^/  /'
+	@echo ""
+	@echo "$(GREEN)✓ Preflight PASSED — safe to run 'make ci-services-start'$(RESET)"
+
+ci-services-preflight-build:
+	@echo "$(BLUE)Building Nakama bundle (npm run build:full)...$(RESET)"
+	cd $(BACKEND_DIR) && npm run build:full
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) --no-print-directory ci-services-preflight
+
 ci-services-start:
 	@echo "$(BLUE)Starting CI services (for act)...$(RESET)"
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) --no-print-directory ci-services-preflight
 	docker compose -f .github/docker-compose.yml -p ci-armored-archer up -d
 	@echo "$(GREEN)✓ CI services started$(RESET)"
 	@echo "  - PostgreSQL: localhost:5432 (CI port)"
 	@echo "  - Nakama:    localhost:7350"
+	@echo ""
+	@echo "Asserting cold-start with bundle check (#1126 pass-2)..."
+	@DB_CONTAINER=ci_postgres SERVER_CONTAINER=ci_nakama NAKAMA_PORT=7350 \
+		./scripts/assert-cold-start.sh --require-nakama-bundle || \
+		{ echo "$(YELLOW)Cold-start assertion failed — check 'docker logs ci_nakama' and the bundle preflight above.$(RESET)"; exit 1; }
 	@echo ""
 	@echo "Run with act:"
 	@echo "  act -W .github/workflows/test.yml"
@@ -514,6 +549,20 @@ ci-services-stop:
 ci-services-status:
 	@echo "$(BLUE)CI Services Status:$(RESET)"
 	docker compose -f .github/docker-compose.yml -p ci-armored-archer ps
+	@echo ""
+	@echo "$(BLUE)Bundle mount check (#1126 pass-2):$(RESET)"
+	@if docker ps -a --format '{{.Names}}' | grep -qx 'ci_nakama'; then \
+		modules_count=$$(docker exec ci_nakama sh -c 'ls -1 /nakama/data/modules 2>/dev/null | wc -l' || echo 0); \
+		if [ "$${modules_count:-0}" -gt 0 ]; then \
+			echo "$(GREEN)✓ /nakama/data/modules has $${modules_count} entries (bundle loaded)$(RESET)"; \
+		else \
+			echo "$(YELLOW)✗ /nakama/data/modules is empty — run 'cd backend && npm run build:full' then 'make ci-services-restart'$(RESET)"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "$(YELLOW)ci_nakama container not present — run 'make ci-services-start' first.$(RESET)"; \
+		exit 1; \
+	fi
 
 ci-services-restart:
 	@echo "$(BLUE)Restarting CI services...$(RESET)"

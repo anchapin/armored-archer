@@ -8,6 +8,18 @@
 # never published to a registry and broke job setup everywhere. Services now
 # use the same standard images as backend/docker-compose.yml:
 # postgres:14-alpine + heroiclabs/nakama:3.21.1.
+#
+# Bundle mount (pass-2 of PR #1126 follow-up): the `backend-integration-test`
+# job in .github/workflows/ci.yml mounts ./backend/data/modules into the
+# nakama container at /nakama/data/modules so the compiled game bundle
+# (combat / loot / season RPCs) is picked up by Nakama's default module path.
+# Mirror that here so the CI stack matches the hosted runner -- otherwise
+# integration tests pass under `act` only when the bundle is otherwise
+# injected, which the assert script (--require-nakama-bundle) will now
+# detect as a failure. PREREQUISITE: run `cd backend && npm run build:full`
+# once before `make ci-services-start`; the preflight target
+# (`make ci-services-preflight`) fails-fast if backend/data/modules/index.js
+# is missing.
 
 services:
   # PostgreSQL database - matches CI port 5432 (not local dev's 5433)
@@ -43,6 +55,12 @@ services:
     ports:
       - "7350:7350"
       - "7351:7351"
+    # Bundle mount: mirrors .github/workflows/ci.yml:888-893 (the hosted
+    # runner). PREREQUISITE: backend/data/modules/index.js must exist; run
+    # `cd backend && npm run build:full` first, or `make ci-services-preflight`
+    # will refuse to bring the stack up.
+    volumes:
+      - ./backend/data/modules:/nakama/data/modules:ro
     depends_on:
       postgres:
         condition: service_healthy

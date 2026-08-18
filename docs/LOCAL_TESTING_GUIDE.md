@@ -159,6 +159,44 @@ docker compose ps
 docker compose logs nakama
 ```
 
+### CI stack (services for `act`) — bundle requirement
+
+**Symptom**: `backend-integration-test` (or any act job that talks to the
+real Nakama RPCs) fails with HTTP 500s even though the API is reachable.
+
+**Cause**: The CI stack defined in `.github/docker-compose.yml` (used by
+`make ci-services-start`) mounts `backend/data/modules` into the Nakama
+container at `/nakama/data/modules:ro` — the same mount the hosted runner
+has at `.github/workflows/ci.yml:888-893`. The bundle is **gitignored**
+(per AGENTS.md §Project Structure), so it must be built locally before
+the CI services start. If it's missing, `make ci-services-start` will
+fail-fast via the preflight target and the assert script will refuse to
+pass.
+
+**Solution** (build + start):
+
+```bash
+# Auto-build the bundle, verify it, then start the CI services
+make ci-services-preflight-build
+make ci-services-start
+
+# OR run them in one shot (preflight runs first, then `up -d`,
+# then `assert-cold-start.sh --require-nakama-bundle`):
+make ci-services-start    # bundle must already exist OR error out
+
+# Verify the stack afterwards (will exit non-zero if bundle is empty)
+make ci-services-status
+```
+
+If you started the CI services before the bundle existed, simply rebuild
+and restart:
+
+```bash
+cd backend && npm run build:full
+make ci-services-restart      # re-applies the bundle mount
+make ci-services-status       # confirms /nakama/data/modules is populated
+```
+
 ---
 
 ## Project Structure
