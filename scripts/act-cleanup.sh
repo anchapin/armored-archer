@@ -4,6 +4,15 @@
 
 set -e
 
+# Script directory (for sourcing the shared act lock helper)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Act invocation lock (issues #992 / #1028): wiping ~/.cache/act while an
+# act invocation is running corrupts it — serialize with ci-local.sh and
+# run-ci-locally.sh.
+# shellcheck source=scripts/lib/act-lock.sh
+source "${SCRIPT_DIR}/lib/act-lock.sh"
+
 echo "Cleaning up act resources..."
 
 # Remove all act containers
@@ -17,7 +26,8 @@ docker network ls --filter "name=act-" --format "{{.ID}}" 2>/dev/null | xargs -r
 # Optional: Clean up act cache
 if [ "$1" = "--cache" ]; then
   echo "Cleaning up act cache..."
-  rm -rf /home/alex/.cache/act/*
+  # Hold the act lock while wiping the shared cache (issue #992).
+  run_with_act_lock rm -rf "${HOME}/.cache/act/"*
 fi
 
 echo "Act cleanup complete!"

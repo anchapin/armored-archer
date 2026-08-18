@@ -6,6 +6,14 @@
 
 set -e
 
+# Script directory (for sourcing the shared act lock helper)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Act invocation lock (issues #992 / #1028): serialize act invocations with
+# ci-local.sh and act-cleanup.sh to avoid ~/.cache/act git-clone races.
+# shellcheck source=scripts/lib/act-lock.sh
+source "${SCRIPT_DIR}/lib/act-lock.sh"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -48,7 +56,7 @@ for job in "${JOBS[@]}"; do
     echo -e "${YELLOW}Running: $job${NC}"
     echo "----------------------------------------"
 
-    if act -W .github/workflows/ci.yml -j "$job" --bind 2>&1 | tee /tmp/act-${job}.log | tail -3; then
+    if run_with_act_lock act -W .github/workflows/ci.yml -j "$job" --bind 2>&1 | tee /tmp/act-${job}.log | tail -3; then
         if grep -q "Job succeeded" /tmp/act-${job}.log 2>/dev/null; then
             echo -e "${GREEN}✓ $job PASSED${NC}"
             PASSED+=("$job")
@@ -77,7 +85,7 @@ if [ ${#FAILED[@]} -gt 0 ]; then
     echo -e "${RED}FAILED (${#FAILED[@]}):${NC}"
     for job in "${FAILED[@]}"; do
         echo "  ✗ $job (see /tmp/act-${job}.log)"
-    fi
+    done
     echo ""
     echo -e "${RED}Some CI jobs failed!${NC}"
     exit 1
