@@ -1,9 +1,23 @@
 extends GutTest
 
+# Issue #1025: in headless GUT runs the autoloads are loaded, so the global
+# identifiers GameManager/CombatManager resolve to the singleton INSTANCES —
+# calling .new() on them fails with Nil errors. Load the scripts and
+# instantiate those instead (same pattern as test_game_manager.gd /
+# test_combat_manager.gd).
+var GameManagerClass = load("res://autoloads/GameManager.gd")
+var CombatManagerClass = load("res://autoloads/CombatManager.gd")
+
 # Test core gameplay maintains 60 FPS target
 func test_core_gameplay_60_fps() -> void:
+	# Headless dummy renderer caps reported FPS at ~30, making the 55 FPS
+	# gate unachievable in CI — gate on real display servers only (#976).
+	if DisplayServer.get_name() == "headless":
+		pending("ENV_DEPENDENT: FPS test is meaningless under headless dummy renderer; see issue #976")
+		return
+
 	# Setup - Create GameManager instance
-	var game_manager = GameManager.new()
+	var game_manager = GameManagerClass.new()
 	add_child_autofree(game_manager)
 
 	# Initialize game
@@ -17,13 +31,20 @@ func test_core_gameplay_60_fps() -> void:
 	print("[test_core_gameplay_60_fps] Starting 60-second gameplay simulation...")
 
 	for i in range(test_frames):
-		# Process game logic
+		# Process game logic. GameManager is event-driven and defines no
+		# per-frame callbacks (calling an unoverridden virtual like _process
+		# is an error in Godot 4.6), so guard the same way the enemy loop
+		# below does.
 		var delta = 1.0 / 60.0
-		game_manager._process(delta)
-		game_manager._physics_process(delta)
+		if game_manager.has_method("_process"):
+			game_manager._process(delta)
+		if game_manager.has_method("_physics_process"):
+			game_manager._physics_process(delta)
 
-		# Collect FPS samples every 60 frames (1 second)
-		if i % 60 == 0:
+		# Collect FPS samples every 60 frames (1 second). Skip the frame-0
+		# warmup sample: Engine.get_frames_per_second() has no stable window
+		# before the first rendered frame (see headless baseline test).
+		if i % 60 == 0 and i > 0:
 			var current_fps = Engine.get_frames_per_second()
 			fps_samples.append(current_fps)
 
@@ -63,7 +84,7 @@ func test_core_gameplay_60_fps() -> void:
 # Test combat calculations are fast enough for 60 FPS
 func test_combat_calculations_performance() -> void:
 	# Setup - Create CombatManager instance
-	var combat_manager = CombatManager.new()
+	var combat_manager = CombatManagerClass.new()
 	add_child_autofree(combat_manager)
 
 	# Benchmark parameters
@@ -273,8 +294,14 @@ func test_ui_rendering_performance_headless_baseline() -> void:
 
 # Test performance with multiple enemies
 func test_multiple_enemies_performance() -> void:
+	# Headless dummy renderer caps reported FPS at ~30, making the 50 FPS
+	# gate unachievable in CI — gate on real display servers only (#976).
+	if DisplayServer.get_name() == "headless":
+		pending("ENV_DEPENDENT: FPS test is meaningless under headless dummy renderer; see issue #976")
+		return
+
 	# Setup - Create GameManager with simulated enemies
-	var game_manager = GameManager.new()
+	var game_manager = GameManagerClass.new()
 	add_child_autofree(game_manager)
 
 	game_manager.start_game()
@@ -300,9 +327,11 @@ func test_multiple_enemies_performance() -> void:
 	for i in range(test_frames):
 		var delta = 1.0 / 60.0
 
-		# Process game manager
-		game_manager._process(delta)
-		game_manager._physics_process(delta)
+		# Process game manager (guarded: no per-frame callbacks on GameManager)
+		if game_manager.has_method("_process"):
+			game_manager._process(delta)
+		if game_manager.has_method("_physics_process"):
+			game_manager._physics_process(delta)
 
 		# Update all enemy positions/behaviors
 		for enemy in enemies:
@@ -321,8 +350,10 @@ func test_multiple_enemies_performance() -> void:
 			# Simulate combat action
 			game_manager.take_player_damage(randi() % 10)
 
-		# Collect FPS samples every 60 frames (1 second)
-		if i % 60 == 0:
+		# Collect FPS samples every 60 frames (1 second). Skip the frame-0
+		# warmup sample: Engine.get_frames_per_second() has no stable window
+		# before the first rendered frame (see headless baseline test).
+		if i % 60 == 0 and i > 0:
 			var current_fps = Engine.get_frames_per_second()
 			fps_samples.append(current_fps)
 

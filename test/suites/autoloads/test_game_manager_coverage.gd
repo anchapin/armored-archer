@@ -5,12 +5,29 @@ const CoverageTracker = preload("res://addons/gut/coverage/coverage_tracker.gd")
 # Verifies that CoverageTracker.track_execution() calls work correctly
 # Tests game state changes with coverage tracking
 
-var _game_manager: GameManager
+# Issue #1025: in headless GUT runs the autoloads are loaded, so the global
+# identifier GameManager resolves to the singleton INSTANCE — calling .new()
+# on it fails with Nil errors. Load the script and instantiate that instead.
+var GameManagerClass = load("res://autoloads/GameManager.gd")
+var _game_manager
 var _mock_analytics: Node
+var _mock_combined_stats: Node
+var _hidden_effects_manager: Node
+var _hidden_vfx_manager: Node
+
+## Minimal stand-in for the CombinedStatsManager autoload (issue #968).
+## A real method is required because GUT cannot stub methods that do not
+## exist on a double(Node).
+class MockCombinedStats:
+	extends Node
+	var stub_max_health: int = 100
+
+	func get_max_health() -> int:
+		return stub_max_health
 
 func before_each():
-	# Create fresh GameManager instance for each test
-	_game_manager = GameManager.new()
+	# Create fresh GameManager instance for each test (ISO-04 pattern)
+	_game_manager = GameManagerClass.new()
 	add_child_autofree(_game_manager)
 
 	# Mock analytics to avoid analytics calls during tests
@@ -22,6 +39,40 @@ func before_each():
 	stub(_mock_analytics, "log_pve_stage_completed").to_return({})
 	stub(_mock_analytics, "log_pve_stage_failed").to_return({})
 	_game_manager.set("analytics", _mock_analytics)
+
+	# Mock CombinedStatsManager (issue #968): _ready() pulled the live
+	# autoload, whose gear bonuses would set max health to 120. Reset to the
+	# flat base (DEFAULT_PLAYER_HEALTH = 100) so these tests assert
+	# GameManager's logic in isolation.
+	_mock_combined_stats = MockCombinedStats.new()
+	_mock_combined_stats.name = "CombinedStatsManager"
+	add_child_autofree(_mock_combined_stats)
+	_game_manager.set("combined_stats_manager", _mock_combined_stats)
+	_game_manager._update_max_health_from_stats()
+	_game_manager.player_current_health = _game_manager.player_max_health
+
+	# take_player_damage()/heal_player() reach the live EffectsManager and
+	# VFXManager via absolute /root/ lookups, and under headless those
+	# autoloads emit engine errors (broken overlay shader, unparseable
+	# screen_shake.gd — issues #1019/#1023 wave) that GUT's error watcher
+	# would flag. GameManager null-guards the lookups, so temporarily move
+	# the live autoloads off their canonical paths to keep this suite about
+	# GameManager's own logic; after_each() restores them.
+	_hidden_effects_manager = get_node_or_null("/root/EffectsManager")
+	if _hidden_effects_manager:
+		_hidden_effects_manager.name = "EffectsManager_iso_1025"
+	_hidden_vfx_manager = get_node_or_null("/root/VFXManager")
+	if _hidden_vfx_manager:
+		_hidden_vfx_manager.name = "VFXManager_iso_1025"
+
+func after_each():
+	# Restore the live autoloads' canonical names for other suites.
+	if _hidden_effects_manager:
+		_hidden_effects_manager.name = "EffectsManager"
+		_hidden_effects_manager = null
+	if _hidden_vfx_manager:
+		_hidden_vfx_manager.name = "VFXManager"
+		_hidden_vfx_manager = null
 
 func test_health_damage_tracks_coverage():
 	"""Test that taking damage tracks coverage correctly."""
@@ -142,6 +193,12 @@ func test_game_won_tracks_coverage():
 
 func test_stage_completed_tracks_coverage():
 	"""Test that completing a stage tracks coverage correctly."""
+	# Setting current_stage_id routes end_game() through the live
+	# CampaignManager autoload (server RPC + save_progress + scene swap),
+	# which needs an authenticated session — same callout as
+	# test_game_manager.gd (issue #960).
+	pending("ENV_DEPENDENT: requires live Nakama / authenticated session; see issue #960")
+	return
 	watch_signals(_game_manager)
 
 	# Set up stage
