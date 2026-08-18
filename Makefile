@@ -8,9 +8,10 @@ BACKEND_DIR := backend
 GREEN := $(shell tput setaf 2 2>/dev/null || echo "")
 BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
+RED := $(shell tput setaf 1 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new check-game-schema backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-restart-destructive services-cold-start services-assert-cold-start services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci tracked-ignored-check tracked-ignored-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-preflight ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new check-game-schema backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-restart-destructive services-cold-start services-assert-cold-start services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci tracked-ignored-check tracked-ignored-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-preflight ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report commit-check hooks-install hooks-uninstall
 
 # Default target
 all: help
@@ -123,7 +124,7 @@ help:
 	@echo "  - Nakama Console: http://localhost:7351 (admin:password)"
 	@echo ""
 
-setup: backend-install
+setup: backend-install hooks-install
 	@echo ""
 	@echo "$(GREEN)✓ Setup complete!$(RESET)"
 	@echo "Next steps:"
@@ -134,6 +135,38 @@ setup: backend-install
 backend-install:
 	@echo "$(BLUE)Installing backend dependencies...$(RESET)"
 	cd $(BACKEND_DIR) && npm install
+
+## Git hooks management (issue #1157)
+hooks-install:
+	@echo "$(BLUE)Installing git hooks from .githooks/...$(RESET)"
+	@if [ ! -d .githooks ]; then echo "$(YELLOW).githooks/ missing — nothing to install$(RESET)"; exit 0; fi
+	git config core.hooksPath .githooks
+	@chmod +x .githooks/* 2>/dev/null || true
+	@echo "$(GREEN)✓ core.hooksPath = .githooks$(RESET)"
+	@echo "  Hooks active: $(shell ls .githooks 2>/dev/null | tr '\n' ' ')"
+
+hooks-uninstall:
+	@echo "$(BLUE)Uninstalling custom git hooks...$(RESET)"
+	git config --unset-all core.hooksPath 2>/dev/null || true
+	@echo "$(GREEN)✓ Reverted core.hooksPath to default$(RESET)"
+
+## AI-assisted commit trailer check (issue #1157)
+## Validates $1 against the [AI-assisted] trailer convention from AGENTS.md:173.
+## Use this to lint a commit message without performing a commit, e.g.:
+##   make commit-check MSG=.git/COMMIT_EDITMSG
+##   make commit-check MSG=/path/to/saved-message.txt
+commit-check:
+	@if [ -z "$(MSG)" ]; then \
+		echo "$(YELLOW)Usage: make commit-check MSG=<path-to-commit-message-file>$(RESET)"; \
+		echo "$(YELLOW)       (reads from .git/COMMIT_EDITMSG by default if MSG is empty)$(RESET)"; \
+		MSG_PATH=".git/COMMIT_EDITMSG"; \
+	else \
+		MSG_PATH="$(MSG)"; \
+	fi; \
+	if [ ! -f "$$MSG_PATH" ]; then \
+		echo "$(RED)commit-check: file '$$MSG_PATH' does not exist$(RESET)" >&2; exit 2; \
+	fi; \
+	./scripts/commit-msg-check-ai-trailer.sh "$$MSG_PATH"
 
 ## Backend Commands
 backend-start:
