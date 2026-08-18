@@ -47,8 +47,11 @@ func test_start_combat():
 func test_get_current_turn():
 	var csm = CombatSyncManagerClass.new()
 	add_child_autofree(csm)
+	csm.start_combat("test_match")
 	var turn = csm.get_current_turn()
-	assert_eq(turn, "player", "Should be player's turn initially")
+	assert_eq(turn, "player", "Should be player's turn after start_combat")
+	csm.send_move(0.5, 0.8)
+	assert_eq(csm.get_current_turn(), "opponent", "Should be opponent's turn after player sends a move")
 
 func test_apply_opponent_damage():
 	var csm = CombatSyncManagerClass.new()
