@@ -106,7 +106,7 @@ make services-assert-cold-start      # assert all-green (suitable for CI / act)
 
 Stack: `armored_archer_server` (Nakama 3.21 — API :7350, console http://localhost:7351, credentials from `backend/.env`), `armored_archer_db` (PostgreSQL 14), plus redis and a full observability stack (prometheus, grafana, loki, tempo, otel-collector, promtail, alertmanager, node-exporter).
 Local DB default: `postgres://postgres:localdbpassword@localhost:5432/nakama`.
-Compose source of truth: `backend/docker-compose.yml` (root `docker-compose.yml` is a byte-identical copy); `act` services use `.github/docker-compose.yml` via `make ci-services-*`.
+Compose source of truth: `backend/docker-compose.yml` — there is intentionally **no root `docker-compose.yml`** (removed in issue #1033; a root copy made `./data/modules` resolve to a stale/unbuilt path). Run compose from `backend/` or via the `make services-*` targets; `act` services use `.github/docker-compose.yml` via `make ci-services-*`.
 
 ### Database (PostgreSQL)
 
