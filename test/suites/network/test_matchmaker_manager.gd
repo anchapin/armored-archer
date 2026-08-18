@@ -146,6 +146,11 @@ func test_get_player_rank_legacy_alias_fallback():
 	assert_eq(_mm.power_rating, 1200, "Legacy rank alias must still populate the cache")
 
 # Test: complete_match triggers settlement (win, server-declared)
+# Issue #975 verdict: production code is correct per ADR-0002 — settlement
+# is server-declared and the client must NOT absorb the Ladder Rating (Elo)
+# result into the Power Rating cache (issue #871). The pre-#888 form of
+# these tests expected exactly that client-side computation and was the
+# stale side; the assertions below encode the ratified behavior.
 func test_complete_match_win():
 	var mock_net = MockNetwork.new()
 	mock_net.user_id = "me"
@@ -262,21 +267,27 @@ func test_punch_up_stats_calc():
 	assert_eq(_mm.get_punch_up_win_rate(), 0.0)
 
 # Test: Error cases
+# The validation guards log via push_error; GUT's error tracker fails a
+# test on unhandled push_error output, so each expected error is asserted
+# (and thereby marked handled) with assert_push_error.
 func test_error_cases():
 	var mock_net = MockNetwork.new()
 	_mm.network_manager = mock_net
-	
+
 	# Invalid create_match type
 	await _mm.create_match("invalid")
+	assert_push_error("Invalid match type")
 	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC for invalid match type")
-	
+
 	# Empty accept_match id
 	await _mm.accept_match("")
+	assert_push_error("Match ID required")
 	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC for empty match id")
-	
+
 	# No active match for complete_match
 	_mm.current_match = {}
 	await _mm.complete_match(false)
+	assert_push_error("No active match to complete")
 	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC when no active match")
 
 # Test: No network
