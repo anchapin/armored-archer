@@ -811,3 +811,27 @@ jobs:
       - name: Skip upload (act detected)
         if: always() && env.ACT == 'true'
         run: echo "Skipping artifact upload in act environment"
+
+  tracked-ignored-files:
+    name: Tracked-but-ignored Files Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      # Fails when `git ls-files -i -c --exclude-standard` is non-empty —
+      # i.e. a file is both tracked and gitignored (secrets-leak vector,
+      # issue #1032). The validator only lists file paths, never contents.
+      - name: Fail if any tracked file matches .gitignore
+        working-directory: ./backend
+        run: npm run validate:tracked-ignored:ci

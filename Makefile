@@ -10,7 +10,7 @@ BLUE := $(shell tput setaf 4 2>/dev/null || echo "")
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new check-game-schema backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-restart-destructive services-cold-start services-assert-cold-start services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new check-game-schema backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-restart-destructive services-cold-start services-assert-cold-start services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci tracked-ignored-check tracked-ignored-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report
 
 # Default target
 all: help
@@ -111,6 +111,10 @@ help:
 	@echo "$(GREEN)AGENTS.md Validation$(RESET)"
 	@echo "  make agents-md-check     Validate AGENTS.md format and structure"
 	@echo "  make agents-md-check-ci Validate AGENTS.md in CI mode"
+	@echo ""
+	@echo "$(GREEN)Tracked-but-ignored Files Guard (issue #1032)$(RESET)"
+	@echo "  make tracked-ignored-check     Fail if any tracked file matches .gitignore"
+	@echo "  make tracked-ignored-check-ci Same, CI mode (exit 1 on violation)"
 	@echo ""
 	@echo "$(GREEN)Notes$(RESET)"
 	@echo "  - Godot: Open project in Godot 4.x Editor and press F5 to run"
@@ -480,6 +484,15 @@ agents-md-check:
 agents-md-check-ci:
 	@echo "$(BLUE)Running AGENTS.md validation (CI mode)...$(RESET)"
 	cd $(BACKEND_DIR) && npm run validate:agents-md:ci
+
+## Tracked-but-ignored files guard (issue #1032)
+tracked-ignored-check:
+	@echo "$(BLUE)Checking for tracked-but-ignored files...$(RESET)"
+	cd $(BACKEND_DIR) && npm run validate:tracked-ignored
+
+tracked-ignored-check-ci:
+	@echo "$(BLUE)Checking for tracked-but-ignored files (CI mode)...$(RESET)"
+	cd $(BACKEND_DIR) && npm run validate:tracked-ignored:ci
 
 ## CI Services (for local act testing)
 # These services match the CI environment exactly (different ports than dev)
