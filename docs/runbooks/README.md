@@ -4,21 +4,41 @@ This directory contains runbooks for responding to alerts configured in the Armo
 
 ## 📚 Available Runbooks
 
+The runbook set mirrors [`backend/alerts.yml`](../../backend/alerts.yml) 1:1 — every alert
+has a corresponding runbook. If you add a new alert, write its runbook at the
+same time and add a row below.
+
 ### Critical Alerts
 
 | Runbook | Alert | Severity | Description |
 |---------|-------|----------|-------------|
 | [GameServerDown.md](./GameServerDown.md) | `GameServerDown` | Critical | Nakama server unavailable |
 | [HighErrorRate.md](./HighErrorRate.md) | `HighErrorRate` | Critical | Error rate >5% for 5 minutes |
+| [DatabaseDown.md](./DatabaseDown.md) | `DatabaseDown` | Critical | PostgreSQL unavailable |
+| [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `PaymentProcessingFailures` | Critical | IAP / RevenueCat failures detected |
+| [SuspiciousLoginActivity.md](./SuspiciousLoginActivity.md) | `SuspiciousLoginActivity` | Critical | Failed-login rate >10/min (possible brute force) |
 
 ### Warning Alerts
 
 | Runbook | Alert | Severity | Description |
 |---------|-------|----------|-------------|
-| [HighLatency.md](./HighLatency.md) | `HighLatency` | Warning | P95 latency >500ms for 10 minutes |
-| [DiskSpaceLow.md](./DiskSpaceLow.md) | `DiskSpaceLow` | Warning | Disk space <10% available |
-| [HighMemoryUsage.md](./HighMemoryUsage.md) | `HighMemoryUsage` | Warning | Memory usage >85% for 15 minutes |
+| [HighLatency.md](./HighLatency.md) | `HighLatency` | Warning | P95 latency >2s for 3 minutes |
+| [DiskSpaceLow.md](./DiskSpaceLow.md) | `DiskSpaceLow` | Warning | Disk space <15% available |
+| [HighMemoryUsage.md](./HighMemoryUsage.md) | `HighMemoryUsage` | Warning | Memory usage >85% for 5 minutes |
+| [HighCPUUsage.md](./HighCPUUsage.md) | `HighCPUUsage` | Warning | CPU usage >80% for 5 minutes |
 | [DatabaseConnectionPoolExhausted.md](./DatabaseConnectionPoolExhausted.md) | `DatabaseConnectionPoolExhausted` | Warning | DB connection pool >90% |
+| [AntiCheatViolationSpike.md](./AntiCheatViolationSpike.md) | `AntiCheatViolationSpike` | Warning | Anti-cheat violations >5/min (possible new exploit) |
+| [UnusualAPICallPattern.md](./UnusualAPICallPattern.md) | `UnusualAPICallPattern` | Warning | RPC request rate >1000/min (possible bots / DDoS) |
+| [MatchmakingQueueBuilding.md](./MatchmakingQueueBuilding.md) | `MatchmakingQueueBuilding` | Warning | Matchmaking queue >100 for 5 minutes |
+| [ActiveUsersAnomaly.md](./ActiveUsersAnomaly.md) | `ActiveUsersAnomaly` | Warning | Active users >50% drift vs 1h ago |
+| [SessionDurationAnomaly.md](./SessionDurationAnomaly.md) | `SessionDurationAnomaly` | Warning | Avg session duration >30% drift vs 24h ago |
+
+### Info Alerts
+
+| Runbook | Alert | Severity | Description |
+|---------|-------|----------|-------------|
+| [LowRevenue.md](./LowRevenue.md) | `LowRevenue` | Info | 24h revenue <100 cents/hour |
+| [ClientVersionMismatch.md](./ClientVersionMismatch.md) | `ClientVersionMismatch` | Info | A non-current client version has >10 active users |
 
 ## 🚨 Alert Response Process
 
