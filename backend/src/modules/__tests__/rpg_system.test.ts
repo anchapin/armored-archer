@@ -360,6 +360,120 @@ describe('rpg_system', () => {
     });
   });
 
+  describe('rpcGainXP - server-authoritative cap (issue #1068)', () => {
+    const buildExistingStats = (xp: number): PlayerStats => ({
+      user_id: 'test-user-123',
+      level: 1,
+      xp,
+      ability_points: 0,
+      stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+    });
+
+    it('should cap an inflated xp_amount at the server stage-XP ceiling', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_stats',
+          key: 'test-user-123',
+          userId: 'test-user-123',
+          value: JSON.stringify(buildExistingStats(100)),
+        },
+      ]);
+
+      // Schema ceiling is 1,000,000 - well above the server cap of 275
+      // ((60 base + 65 boss bonus) * 2.2 nightmare multiplier)
+      const payload = JSON.stringify({ xp_amount: 999999, source: 'pve' });
+      const result = rpcGainXP(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.xp_gained).toBe(275);
+      expect(parsed.xp_capped).toBe(true);
+
+      // Stored XP must reflect the capped grant, not the client claim
+      const writeCalls = (mockNk.storageWrite as jest.Mock).mock.calls;
+      const statsWrites = writeCalls.filter((call: any[]) =>
+        call[0].some((obj: any) => obj.collection === 'player_stats')
+      );
+      expect(statsWrites.length).toBeGreaterThan(0);
+      const storedStats = JSON.parse(
+        statsWrites[0][0].find((obj: any) => obj.collection === 'player_stats').value
+      );
+      expect(storedStats.xp).toBe(375); // 100 existing + 275 capped grant
+    });
+
+    it('should cap inflated xp_amount for the pvp source identically', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_stats',
+          key: 'test-user-123',
+          userId: 'test-user-123',
+          value: JSON.stringify(buildExistingStats(0)),
+        },
+      ]);
+
+      const payload = JSON.stringify({ xp_amount: 50000, source: 'pvp' });
+      const result = rpcGainXP(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.xp_gained).toBe(275);
+      expect(parsed.xp_capped).toBe(true);
+      expect(parsed.player_stats.xp).toBe(275);
+    });
+
+    it('should grant the full amount when at or below the cap', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_stats',
+          key: 'test-user-123',
+          userId: 'test-user-123',
+          value: JSON.stringify(buildExistingStats(0)),
+        },
+      ]);
+
+      const payload = JSON.stringify({ xp_amount: 275, source: 'pve' });
+      const result = rpcGainXP(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.xp_gained).toBe(275);
+      expect(parsed.xp_capped).toBe(false);
+      expect(parsed.player_stats.xp).toBe(275);
+    });
+
+    it('should audit when a request is capped', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([
+        {
+          collection: 'player_stats',
+          key: 'test-user-123',
+          userId: 'test-user-123',
+          value: JSON.stringify(buildExistingStats(0)),
+        },
+      ]);
+
+      const payload = JSON.stringify({ xp_amount: 10000, source: 'pve' });
+      rpcGainXP(mockCtx, mockLogger, mockNk, payload);
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Capping XP request'),
+        10000,
+        275,
+        'test-user',
+        'pve'
+      );
+
+      const writeCalls = (mockNk.storageWrite as jest.Mock).mock.calls;
+      const auditWrites = writeCalls.filter((call: any[]) =>
+        call[0].some((obj: any) => obj.collection === 'audit_logs')
+      );
+      expect(auditWrites.length).toBeGreaterThan(0);
+      const auditEntry = JSON.parse(auditWrites[0][0][0].value);
+      expect(auditEntry.action).toBe('gain_xp');
+      expect(auditEntry.details.xp_amount).toBe(10000);
+      expect(auditEntry.details.xp_granted).toBe(275);
+    });
+  });
+
   describe('registerRpcAllocateStats', () => {
     it('should register the allocate_stats RPC endpoint', () => {
       const mockInitializer = {

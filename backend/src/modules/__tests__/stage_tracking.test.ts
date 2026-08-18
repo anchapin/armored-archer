@@ -34,6 +34,12 @@ jest.mock('../gear_system', () => ({
     gear: [],
     unlocked_modifier_pools: [],
   }),
+  // Issue #1068: default mock mirrors the real stateless policy - nightmare
+  // (not client-claimable) is clamped to hard; other tiers pass through.
+  // Real behavior is unit-tested in gear_system.test.ts.
+  resolveVerifiedDifficulty: jest.fn((_claimed: string) =>
+    _claimed === 'nightmare' ? 'hard' : _claimed
+  ),
 }));
 
 jest.mock('../validation', () => ({
@@ -49,6 +55,7 @@ jest.mock('../validation', () => ({
     complete_stage: {},
     get_all_stage_completions: {},
   },
+  MAX_STAGE_SCORE: 1000000,
   createValidationErrorResponse: jest.fn((name: string, error: string) =>
     JSON.stringify({ success: false, error: `${name}: ${error}` })
   ),
@@ -67,6 +74,7 @@ import {
   registerRpcGetCampaignProgress,
   rpcGetCampaignProgress,
 } from '../stage_tracking';
+import { resolveVerifiedDifficulty, calculateDropRate } from '../gear_system';
 import { resetRateLimiting } from '../rate_limit';
 
 const createMockLogger = () => ({
@@ -210,6 +218,83 @@ describe('stage_tracking module', () => {
       expect(parsed.success).toBe(true);
       expect(parsed.loot).toBeDefined();
       expect(parsed.drop_rate).toBeDefined();
+    });
+
+    it('should clamp inflated stars and score before persisting (issue #1068)', () => {
+      const nk = createMockNk();
+      // The valibot schema rejects these outright; with validation mocked
+      // permissively here, the handler clamps must still bound what is
+      // persisted (defense-in-depth).
+      const payload = JSON.stringify({
+        stage_id: 'forest_1',
+        stage_prefix: 'forest',
+        stars_earned: 7,
+        score: 99999999,
+      });
+
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.stars_earned).toBe(3); // clamped to the 0-3 bound
+      expect(parsed.score).toBe(1000000); // clamped to MAX_STAGE_SCORE
+
+      // Nothing persisted may carry the inflated values
+      const writeCalls = (nk.storageWrite as jest.Mock).mock.calls;
+      const writtenValues: string[] = writeCalls.map(
+        (call: any[]) => call[0].map((obj: any) => obj.value ?? '').join('\n')
+      );
+      const allWrites = writtenValues.join('\n');
+      expect(allWrites).not.toContain('"stars_earned":7');
+      expect(allWrites).not.toContain('"score":99999999');
+      expect(allWrites).toContain('"stars_earned":3');
+      expect(allWrites).toContain('"score":1000000');
+    });
+
+    it('should clamp a forged nightmare difficulty claim (issue #1068)', () => {
+      const nk = createMockNk();
+      const payload = JSON.stringify({
+        stage_id: 'cavern_1',
+        stage_prefix: 'cavern',
+        stars_earned: 3,
+        score: 1500,
+        difficulty: 'nightmare',
+        boss_defeated: false,
+      });
+
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      // The handler must consult the server-side verifier with the raw claim
+      expect(resolveVerifiedDifficulty).toHaveBeenCalledWith(
+        'nightmare',
+        expect.anything()
+      );
+      // ...and reward loot from the verified (clamped) tier, not the claim.
+      // The default mock clamps nightmare to hard.
+      expect(calculateDropRate).toHaveBeenLastCalledWith('hard', false);
+      expect(parsed.drop_rate).toBe(0.25); // mocked calculateDropRate result
+    });
+
+    it('should reward the verified tier returned by the verifier (issue #1068)', () => {
+      (resolveVerifiedDifficulty as jest.Mock).mockReturnValueOnce('easy');
+      const nk = createMockNk();
+      const payload = JSON.stringify({
+        stage_id: 'cavern_1',
+        stage_prefix: 'cavern',
+        stars_earned: 3,
+        score: 1500,
+        difficulty: 'hard',
+        boss_defeated: false,
+      });
+
+      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      // The loot path must use the verifier's verdict, whatever it is
+      expect(calculateDropRate).toHaveBeenLastCalledWith('easy', false);
     });
 
     it('should handle stage replay with improvement', () => {

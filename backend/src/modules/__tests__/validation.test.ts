@@ -566,6 +566,51 @@ describe('validation', () => {
         expect(result.success).toBe(false);
       });
 
+      it('should fail when score exceeds MAX_STAGE_SCORE (issue #1068)', () => {
+        const payload = JSON.stringify({
+          stage_id: 'stage_1',
+          stage_prefix: 'campaign',
+          stars_earned: 3,
+          score: 1000001,
+          difficulty: 'easy',
+        });
+
+        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error).toContain('Validation failed for complete_stage');
+        }
+      });
+
+      it('should accept score at exactly MAX_STAGE_SCORE (issue #1068)', () => {
+        const payload = JSON.stringify({
+          stage_id: 'stage_1',
+          stage_prefix: 'campaign',
+          stars_earned: 3,
+          score: 1000000,
+          difficulty: 'easy',
+        });
+
+        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+
+        expect(result.success).toBe(true);
+      });
+
+      it('should fail when score is negative', () => {
+        const payload = JSON.stringify({
+          stage_id: 'stage_1',
+          stage_prefix: 'campaign',
+          stars_earned: 1,
+          score: -5,
+          difficulty: 'easy',
+        });
+
+        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+
+        expect(result.success).toBe(false);
+      });
+
       it('should fail when xp_amount is 0 (min is 1)', () => {
         const payload = JSON.stringify({
           xp_amount: 0,

@@ -12,9 +12,15 @@ import {
   GearItem,
   getModifiersUnlockedByBoss,
   getPlayerInventory,
+  resolveVerifiedDifficulty,
 } from './gear_system';
 import { checkRateLimit } from './rate_limit';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
+import {
+  validatePayload,
+  ZodSchemas,
+  createValidationErrorResponse,
+  MAX_STAGE_SCORE,
+} from './validation';
 
 /**
  * Stage completion record stored in database.
@@ -259,6 +265,30 @@ function validateStageAuth(ctx: Runtime.Context, logger: Runtime.Logger): string
 }
 
 /**
+ * Sanitizes client-claimed completion inputs (issue #1068).
+ *
+ * Clamps `stars_earned` to 0-3 and `score` to MAX_STAGE_SCORE (the valibot
+ * schema already rejects out-of-range payloads; these clamps are
+ * defense-in-depth so persisted completions can never exceed the bounds even
+ * if the schema is loosened later), and mutates `request.difficulty` in place
+ * to the server-verified tier via `resolveVerifiedDifficulty` before any
+ * loot multiplier is applied.
+ *
+ * @returns The clamped stars/score values to persist and echo.
+ */
+function sanitizeCompletionClaims(
+  logger: Runtime.Logger,
+  request: CompleteStageRequest
+): { safeStars: number; safeScore: number } {
+  const safeStars = Math.min(3, Math.max(0, request.stars_earned));
+  const safeScore = Math.min(MAX_STAGE_SCORE, Math.max(0, request.score));
+  if (request.difficulty) {
+    request.difficulty = resolveVerifiedDifficulty(request.difficulty, logger);
+  }
+  return { safeStars, safeScore };
+}
+
+/**
  * Handles stage completion requests from players.
  * Validates input and records stage completion using Nakama storage.
  * Allows stage replay - only updates if new score is better.
@@ -298,7 +328,11 @@ export function rpcCompleteStage(
   }
 
   const request = validation.data as CompleteStageRequest;
-  const { stage_id, stage_prefix, stars_earned, score } = request;
+  const { stage_id, stage_prefix } = request;
+
+  // Issue #1068: clamp client-declared stars/score and verify difficulty
+  // server-side before anything is persisted or rewarded.
+  const { safeStars, safeScore } = sanitizeCompletionClaims(logger, request);
 
   // Rate limit check
   const rateLimitCheck = checkRateLimit(ctx.userId, 'stage_complete');
@@ -323,8 +357,8 @@ export function rpcCompleteStage(
     'Processing stage completion: user=%s stage=%s stars=%d score=%d',
     ctx.userId,
     stage_id,
-    stars_earned,
-    score
+    safeStars,
+    safeScore
   );
 
   try {
@@ -334,8 +368,8 @@ export function rpcCompleteStage(
       ctx.userId,
       stage_id,
       stage_prefix,
-      stars_earned,
-      score,
+      safeStars,
+      safeScore,
       logger
     );
 
@@ -376,7 +410,7 @@ export function rpcCompleteStage(
       ctx.ipAddress ?? null,
       'complete_stage',
       'stage_completion',
-      { stage_id, stage_prefix, stars_earned, score },
+      { stage_id, stage_prefix, stars_earned: safeStars, score: safeScore },
       isNewCompletion ? 'success' : 'success',
       isNewCompletion ? 'New completion' : 'Updated completion'
     );
@@ -384,8 +418,8 @@ export function rpcCompleteStage(
     const response: StageCompletionResponse = {
       success: true,
       stage_id,
-      stars_earned,
-      score,
+      stars_earned: safeStars,
+      score: safeScore,
       is_new_completion: isNewCompletion,
     };
 

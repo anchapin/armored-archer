@@ -18,6 +18,8 @@ import {
   getModifiersUnlockedByEnemy,
   getEquippedGearModifierBonuses,
   applyGearModifiersToPlayerStats,
+  resolveVerifiedDifficulty,
+  getMaxStageXPGain,
 } from '../gear_system';
 import { Runtime } from '../../types/nakama';
 import { resetRateLimiting } from '../rate_limit';
@@ -376,9 +378,12 @@ describe('gear_system', () => {
       expect(parsed.loot.dropped).toBe(false);
     });
 
-    it('should apply nightmare difficulty multiplier', () => {
+    it('should clamp a nightmare claim to the hard tier (issue #1068)', () => {
+      // nightmare is not client-claimable (client vocabulary is
+      // easy/medium/hard/normal), so it is clamped to hard - the highest
+      // honest tier - before multipliers apply.
       mockNk.storageRead = jest.fn().mockReturnValue([]);
-      // Set random to 0.995, higher than nightmare without boss (0.99)
+      // Set random to 0.995, higher than hard without boss (0.675)
       jest.spyOn(Math, 'random').mockReturnValue(0.995);
 
       const payload = JSON.stringify({
@@ -390,26 +395,29 @@ describe('gear_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.drop_rate).toBeCloseTo(0.99, 2); // 0.45 * 2.2 = 0.99
+      expect(parsed.drop_rate).toBeCloseTo(0.675, 3); // nightmare (2.2x) clamped to hard (1.5x)
       expect(parsed.loot.dropped).toBe(false);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Clamping claimed difficulty'),
+        'nightmare'
+      );
     });
 
-    it('should cap drop rate at 100%', () => {
+    it('should cap drop rate at 100% for the highest claimable tier', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
-      // Even with 0.1 roll, nightmare + boss should drop (0.99 + 0.3 = 1.29, capped at 1.0)
-      // This tests that drop rate calculation works correctly
+      // Even with 0.1 roll, hard + boss should drop (0.675 + 0.3 = 0.975)
       jest.spyOn(Math, 'random').mockReturnValue(0.1);
 
       const payload = JSON.stringify({
         stage_id: 'stage_boss_1',
         boss_defeated: true,
-        difficulty: 'nightmare',
+        difficulty: 'hard',
       });
       const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.drop_rate).toBe(1.0); // 0.45 * 2.2 + 0.3 = 1.29, capped at 1.0
+      expect(parsed.drop_rate).toBeCloseTo(0.975, 3); // 0.45 * 1.5 + 0.3 = 0.975
       expect(parsed.loot.dropped).toBe(true);
     });
 
@@ -456,6 +464,90 @@ describe('gear_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('rpcStageComplete server-side difficulty verification (issue #1068)', () => {
+    it('should clamp a forged nightmare claim to hard and cap its XP', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'nightmare',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      // Multipliers clamped from nightmare (2.2x) to hard (1.5x)
+      expect(parsed.drop_rate).toBeCloseTo(0.675, 3); // 0.45 * 1.5
+      expect(parsed.xp_gained).toBe(90); // round(60 * 1.5) - no boss bonus (unverified claim)
+    });
+
+    it('should never read difficulty state while completing a stage (reward neutrality)', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'hard',
+      });
+      rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+
+      const readCalls = (mockNk.storageRead as jest.Mock).mock.calls.flat();
+      const difficultyReads = readCalls.filter((obj: any) => obj?.collection === 'difficulty_state');
+      expect(difficultyReads).toEqual([]);
+    });
+
+    it('should pass honest tiers through unchanged', () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.99);
+
+      const easyPayload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'easy',
+      });
+      const parsedEasy = JSON.parse(
+        rpcStageComplete(mockCtx, mockLogger, mockNk, easyPayload)
+      );
+      expect(parsedEasy.success).toBe(true);
+      expect(parsedEasy.drop_rate).toBeCloseTo(0.225, 3); // easy 0.5x untouched
+      expect(parsedEasy.xp_gained).toBe(30); // round(60 * 0.5)
+
+      const normalPayload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'normal', // legacy alias canonicalized to medium
+      });
+      const parsedNormal = JSON.parse(
+        rpcStageComplete(mockCtx, mockLogger, mockNk, normalPayload)
+      );
+      expect(parsedNormal.success).toBe(true);
+      expect(parsedNormal.drop_rate).toBeCloseTo(0.45, 3); // medium 1.0x
+      expect(parsedNormal.xp_gained).toBe(60);
+    });
+  });
+
+  describe('resolveVerifiedDifficulty (issue #1068)', () => {
+    it('should clamp nightmare and unknown tiers to hard', () => {
+      expect(resolveVerifiedDifficulty('nightmare', mockLogger)).toBe('hard');
+      expect(resolveVerifiedDifficulty('unknown_tier', mockLogger)).toBe('hard');
+    });
+
+    it('should pass claimable tiers through, canonicalizing normal to medium', () => {
+      expect(resolveVerifiedDifficulty('easy', mockLogger)).toBe('easy');
+      expect(resolveVerifiedDifficulty('medium', mockLogger)).toBe('medium');
+      expect(resolveVerifiedDifficulty('hard', mockLogger)).toBe('hard');
+      expect(resolveVerifiedDifficulty('normal', mockLogger)).toBe('medium');
+    });
+
+    it('should expose the server XP ceiling from the stage XP constants', () => {
+      // (BASE_STAGE_XP + BOSS_XP_BONUS) * nightmare multiplier = (60 + 65) * 2.2
+      expect(getMaxStageXPGain()).toBe(275);
     });
   });
 
