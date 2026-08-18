@@ -9,12 +9,13 @@
 # What it does, in order:
 #   1. Validate prerequisites (docker, docker compose, curl)
 #   2. Validate .env (copy from .env.example if missing)
-#   3. Pre-pull required images so the first `up` doesn't stall on a slow mirror
-#   4. `docker compose up -d` — idempotent (no-op if containers already up)
-#   5. Wait for postgres to become healthy via Docker healthcheck + pg_isready
-#   6. Wait for Nakama to become healthy + API to answer
-#   7. Run scripts/assert-cold-start.sh for the final pass/fail summary
-#   8. Print the caveat hand-off to issue #891 for game migrations
+#   3. Build the compiled Nakama JS bundle if missing (untracked — issue #996)
+#   4. Pre-pull required images so the first `up` doesn't stall on a slow mirror
+#   5. `docker compose up -d` — idempotent (no-op if containers already up)
+#   6. Wait for postgres to become healthy via Docker healthcheck + pg_isready
+#   7. Wait for Nakama to become healthy + API to answer
+#   8. Run scripts/assert-cold-start.sh for the final pass/fail summary
+#   9. Print the caveat hand-off to issue #891 for game migrations
 #
 # Exit codes:
 #   0 — stack is fully healthy
@@ -170,12 +171,43 @@ else
     warn "password ('changeme') baked into the postgres data volume — fine for local dev only."
 fi
 
-# --- 3. Image pre-pull (idempotent) ---------------------------------------
+# --- 3. Compiled Nakama bundle (issue #996) ---------------------------------
+# backend/data/modules/ is build output (npm run build:full) and is no longer
+# tracked in git. On a fresh checkout the bundle is absent, while
+# docker-compose.yml mounts ./data/modules into the Nakama container — without
+# it, Nakama boots "healthy" but without the game module. Build it here so a
+# single `make services-start` still reaches all-green from a fresh clone.
+# (cwd is $BACKEND_DIR since step 2.)
+info "3/9 Ensuring compiled Nakama bundle (data/modules/index.js)"
+if [ -f data/modules/index.js ]; then
+    ok "bundle already present"
+else
+    if ! command -v npm >/dev/null 2>&1; then
+        err "data/modules/index.js is missing and npm is not available to build it."
+        echo "  Fresh checkouts must build it first: cd backend && npm install && npm run build:full"
+        exit 1
+    fi
+    warn "bundle missing (fresh checkout) — building via npm run build:full"
+    if [ ! -d node_modules ]; then
+        info "  node_modules missing — running npm install (log: /tmp/cold-start-npm-install.log)"
+        npm install --no-audit --no-fund >/tmp/cold-start-npm-install.log 2>&1 || {
+            err "npm install failed — see /tmp/cold-start-npm-install.log"
+            exit 1
+        }
+    fi
+    npm run build:full >/tmp/cold-start-build.log 2>&1 || {
+        err "npm run build:full failed — see /tmp/cold-start-build.log"
+        exit 1
+    }
+    ok "bundle built at data/modules/index.js"
+fi
+
+# --- 4. Image pre-pull (idempotent) ---------------------------------------
 # We pre-pull only the *application* images (postgres, redis, nakama) — the
 # observability stack is already addressable in #895 / #923 and is not on the
 # cold-start critical path (they don't gate the Nakama <-> postgres link).
 if [ "$SKIP_PULL" = "0" ]; then
-    info "3/8 Pre-pulling critical images (idempotent — skips cached)"
+    info "4/9 Pre-pulling critical images (idempotent — skips cached)"
     pull_one() {
         local img="$1"
         if docker image inspect "$img" >/dev/null 2>&1; then
@@ -197,11 +229,11 @@ if [ "$SKIP_PULL" = "0" ]; then
     [ -n "$redis_image" ] && pull_one "$redis_image"
     [ -n "$nakama_image" ] && pull_one "$nakama_image"
 else
-    info "3/8 Skipping image pre-pull (--skip-pull)"
+    info "4/9 Skipping image pre-pull (--skip-pull)"
 fi
 
-# --- 4. docker compose up -d ----------------------------------------------
-info "4/8 docker compose up -d"
+# --- 5. docker compose up -d ----------------------------------------------
+info "5/9 docker compose up -d"
 if docker compose up -d >/tmp/cold-start-up.log 2>&1; then
     ok "compose up completed"
 else
@@ -217,8 +249,8 @@ if ! docker ps -a --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
 fi
 ok "$DB_CONTAINER created"
 
-# --- 5. Wait for PostgreSQL health -----------------------------------------
-info "5/8 Waiting for PostgreSQL to become healthy (timeout ${PG_HEALTH_TIMEOUT}s)"
+# --- 6. Wait for PostgreSQL health -----------------------------------------
+info "6/9 Waiting for PostgreSQL to become healthy (timeout ${PG_HEALTH_TIMEOUT}s)"
 wait_for_pg() {
     local waited=0 status
     while [ "$waited" -lt "$PG_HEALTH_TIMEOUT" ]; do
@@ -252,8 +284,8 @@ if ! wait_for_pg; then
     exit 1
 fi
 
-# --- 6. Wait for Nakama ----------------------------------------------------
-info "6/8 Waiting for Nakama to become healthy + API ready (timeout ${HEALTH_TIMEOUT}s)"
+# --- 7. Wait for Nakama ----------------------------------------------------
+info "7/9 Waiting for Nakama to become healthy + API ready (timeout ${HEALTH_TIMEOUT}s)"
 wait_for_nakama() {
     local waited=0 status api_code deadline
     deadline=$(( $(date +%s) + HEALTH_TIMEOUT ))
@@ -282,8 +314,8 @@ if ! wait_for_nakama; then
     exit 1
 fi
 
-# --- 7. Final pass/fail assertion -----------------------------------------
-info "7/8 Final all-green assertion"
+# --- 8. Final pass/fail assertion -----------------------------------------
+info "8/9 Final all-green assertion"
 if [ "$SKIP_ASSERT" = "1" ]; then
     warn "--skip-assert set — running without final assertion"
 elif [ -x "$ASSERT_SCRIPT" ]; then
@@ -304,8 +336,8 @@ else
     warn "assert-cold-start.sh not found at $ASSERT_SCRIPT — skipping"
 fi
 
-# --- 8. Caveat hand-off ----------------------------------------------------
-info "8/8 Caveat hand-off"
+# --- 9. Caveat hand-off ----------------------------------------------------
+info "9/9 Caveat hand-off"
 warn "Game schema migrations are NOT verified by this script."
 warn "Issue #891 (and PR #919) own the 'apply game SQL to local volume' task."
 warn "Until that lands, 'psql \\dt' inside $DB_CONTAINER may show the 16 core"

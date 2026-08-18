@@ -92,9 +92,26 @@ module.exports = {
               ['@babel/preset-env', {
                 targets: { esmodules: false },
                 modules: 'commonjs',
-                loose: true,
               }],
             ],
+            // Babel 8 removed the preset-level `loose` option — mirror the
+            // granular `assumptions` block from babel.config.js instead
+            // (loose-mode output keeps the bundle small; see issue #996 notes).
+            assumptions: {
+              noDocumentAll: true,
+              setPublicClassFields: true,
+              privateFieldsAsProperties: true,
+              objectRestNoSymbols: true,
+              constantReexports: true,
+              enumerableModuleMeta: true,
+              ignoreFunctionLength: true,
+              ignoreToPrimitiveHint: true,
+              mutableTemplateObject: true,
+              noClassCalls: true,
+              noNewArrows: true,
+              skipForOfIteratorClosing: true,
+              superIsCallableConstructor: true,
+            },
           },
         },
       },
