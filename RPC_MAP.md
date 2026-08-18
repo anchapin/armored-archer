@@ -39,7 +39,7 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 |----------|---------------|----------------|-------------------|------------------|
 | Health Check | NetworkManager | `rpcHealthCheck()` in `player_rpc.ts` | None (stateless) | `/rpc/armored_archer/health_check` |
 | Report Player | PlayerStatsManager | `rpcReportPlayer()` in `player_rpc.ts` | `player_reports` storage (custom collection) | `/rpc/armored_archer/report_player` |
-| Get Player Reports | PlayerStatsManager | `rpcGetPlayerReports()` in `player_rpc.ts` | `player_reports` storage (custom collection) | `/rpc/armored_archer/get_player_reports` |
+| Get Player Reports | PlayerStatsManager | `rpcGetPlayerReports()` in `player_rpc.ts` — **scoped to caller (issue #1150):** payload `user_id` must match `ctx.userId` or be omitted; mismatches return `FORBIDDEN` and are audit-logged as `cross_user_probe`; allowlisted admins (`isAdminUser`, issue #1075) may target any user | `player_reports` storage (custom collection) | `/rpc/armored_archer/get_player_reports` |
 
 **Storage Schema:**
 - `player_reports` collection: `{ reported_user_id, reason, match_id, additional_info, timestamp, reporter_id }`
@@ -515,7 +515,7 @@ For PostgreSQL table changes:
 | `armored_archer/app_launch_check` | store | `rpcAppLaunchCheck()` | Store |
 | `armored_archer/revenuecat_webhook` | store | `rpcRevenueCatWebhook()` | Store |
 | `armored_archer/report_player` | player_rpc | `rpcReportPlayer()` | System |
-| `armored_archer/get_player_reports` | player_rpc | `rpcGetPlayerReports()` | System |
+| `armored_archer/get_player_reports` | player_rpc | `rpcGetPlayerReports()` — scoped to `ctx.userId` (mismatches → `FORBIDDEN` + audit log, issue #1150; admin override via `ADMIN_USER_IDS`) | System |
 | `armored_archer_register_device_token` | notifications_rpc | - | Notifications |
 | `armored_archer_remove_device_token` | notifications_rpc | - | Notifications |
 | `armored_archer_get_notification_preferences` | notifications_rpc | - | Notifications |
