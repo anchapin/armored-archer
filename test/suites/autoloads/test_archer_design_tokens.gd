@@ -4,7 +4,11 @@ var _tokens = null
 
 func before_each():
 	var ArcherDesignTokens = preload("res://autoloads/ArcherDesignTokens.gd")
-	_tokens = ArcherDesignTokens
+	# Use an instance: get_surface_tier_color / get_ambient_shadow_blur /
+	# get_gradient_colors are instance methods, and static members resolve
+	# fine on an instance too. See issue #964.
+	_tokens = ArcherDesignTokens.new()
+	add_child_autofree(_tokens)
 
 # =============================================================================
 # TACTILE HEROISM COLOR PALETTE TESTS
