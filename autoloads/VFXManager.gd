@@ -77,40 +77,41 @@ func _ensure_screen_shake() -> void:
 # === Particle Effect Methods ===
 
 func play_hit_effect(global_position: Vector2) -> void:
-	"""Play standard hit particle effect."""
-	_spawn_particle(_hit_effect, global_position)
+	"""Play standard hit particle effect (issue #1090: routed through ObjectPool)."""
+	_spawn_pooled_particle("hit", global_position)
 
 
 func play_crit_effect(global_position: Vector2) -> void:
 	"""Play critical hit effect with gold particles."""
-	_spawn_particle(_crit_effect, global_position)
+	_spawn_pooled_particle("crit", global_position)
 	_trigger_crit_shake()
 	_trigger_slow_motion()
 
 
 func play_miss_effect(global_position: Vector2) -> void:
 	"""Play miss/dodge effect with gray particles."""
-	_spawn_particle(_miss_effect, global_position)
+	_spawn_pooled_particle("miss", global_position)
 
 
 func play_fire_effect(global_position: Vector2) -> void:
 	"""Play fire elemental damage effect."""
-	_spawn_particle(_fire_effect, global_position)
+	_spawn_pooled_particle("fire", global_position)
 
 
 func play_ice_effect(global_position: Vector2) -> void:
 	"""Play ice/frost elemental damage effect."""
-	_spawn_particle(_ice_effect, global_position)
+	_spawn_pooled_particle("ice", global_position)
 
 
 func play_lightning_effect(global_position: Vector2) -> void:
 	"""Play lightning elemental damage effect."""
-	_spawn_particle(_lightning_effect, global_position)
+	_spawn_pooled_particle("lightning", global_position)
 	_trigger_lightning_shake()
 
 
 func play_charge_effect(global_position: Vector2, parent: Node) -> void:
-	"""Play charging effect - attached to a parent node for continuous effects."""
+	"""Play charging effect - attached to a parent node for continuous effects.
+	Charge effects are long-lived so they aren't pooled (they follow the parent)."""
 	if _charge_effect:
 		var effect: GPUParticles2D = _charge_effect.instantiate()
 		parent.add_child(effect)
@@ -119,37 +120,121 @@ func play_charge_effect(global_position: Vector2, parent: Node) -> void:
 
 func play_death_effect(global_position: Vector2) -> void:
 	"""Play death explosion effect for enemy defeat."""
-	_spawn_particle(_death_effect, global_position)
+	_spawn_pooled_particle("death", global_position)
 	trigger_heavy_shake()
 
 
 func spawn_arrow_trail(parent: Node) -> GPUParticles2D:
 	"""Attach arrow trail particle to a parent node (e.g., Arrow).
 
-	Returns the trail node for manual cleanup or lifetime management.
+	Issue #1090: trail now comes from ObjectPool.get_arrow_trail(). The returned
+	trail loops while parented; the caller (or arrow return-to-pool logic) is
+	responsible for releasing it via ObjectPool.return_arrow_trail().
 	"""
-	if not _arrow_trail or not parent:
-		push_warning("VFXManager: Arrow trail scene or parent not available")
+	if not parent:
+		push_warning("VFXManager: Arrow trail parent not provided")
 		return null
 
-	var trail: GPUParticles2D = _arrow_trail.instantiate()
+	var trail: GPUParticles2D = ObjectPool.get_arrow_trail()
 	parent.add_child(trail)
 	return trail
 
 
-func _spawn_particle(effect_scene: PackedScene, global_position: Vector2) -> void:
-	"""Spawn a particle effect at the given position."""
-	if not effect_scene:
-		push_warning("VFXManager: Effect scene not loaded")
+# === Pool-routed particle spawn (issue #1090) ===
+
+## Acquire the matching particle from ObjectPool and auto-release it back
+## when the GPUParticles2D `finished` signal fires (one-shot effects end here).
+## Charge effects are handled separately (play_charge_effect) since they loop
+## while attached to a parent.
+func _spawn_pooled_particle(effect_type: String, global_position: Vector2) -> void:
+	var current_scene := get_tree().current_scene
+	if current_scene == null:
+		push_warning("VFXManager: No current scene; particle skipped")
 		return
 
-	var effect: GPUParticles2D = effect_scene.instantiate()
-	get_tree().current_scene.add_child(effect)
-	effect.global_position = global_position
+	var pool := get_node_or_null("/root/ObjectPool")
+	if pool == null:
+		push_warning("VFXManager: ObjectPool autoload missing; particle skipped")
+		return
 
-	# Auto-cleanup after effect completes
+	var effect: GPUParticles2D = null
+	match effect_type:
+		"hit":
+			effect = ObjectPool.get_hit_effect()
+		"death":
+			effect = ObjectPool.get_death_effect()
+		"crit":
+			effect = ObjectPool.get_crit_effect()
+		"miss":
+			effect = ObjectPool.get_miss_effect()
+		"fire":
+			effect = ObjectPool.get_fire_effect()
+		"ice":
+			effect = ObjectPool.get_ice_effect()
+		"lightning":
+			effect = ObjectPool.get_lightning_effect()
+		_:
+			effect = ObjectPool.get_hit_effect()
+
+	if effect == null:
+		push_warning("VFXManager: ObjectPool returned null for '%s'" % effect_type)
+		return
+
+	# Reparent into the live scene (pool holds it as a child of ObjectPool)
+	if effect.get_parent() == null:
+		current_scene.add_child(effect)
+	elif effect.get_parent() != current_scene:
+		effect.reparent(current_scene)
+
+	effect.global_position = global_position
 	effect.emitting = true
-	var _err = effect.finished.connect(effect.queue_free)
+	if effect.one_shot:
+		effect.restart()
+
+	# Auto-return to pool when the one-shot finishes. We reconnect the
+	# finished signal fresh each spawn in case a prior spawn leaked a binding.
+	for conn in effect.finished.get_connections():
+		effect.finished.disconnect(conn["callable"])
+	effect.finished.connect(func() -> void: _return_pooled_particle(effect_type, effect))
+
+
+## Return a particle to its matching ObjectPool, reparenting it back under
+## the pool so the next acquire can find it.
+func _return_pooled_particle(effect_type: String, effect: Node) -> void:
+	if not is_instance_valid(effect):
+		return
+	var pool := get_node_or_null("/root/ObjectPool")
+	if pool == null:
+		return
+
+	# Detach the finished binding so a stray emission can't double-return.
+	for conn in effect.finished.get_connections():
+		effect.finished.disconnect(conn["callable"])
+
+	# Reparent back under ObjectPool (no-op if already there)
+	if effect.get_parent() != pool:
+		if effect.get_parent() != null:
+			effect.reparent(pool)
+		else:
+			pool.add_child(effect)
+
+	match effect_type:
+		"hit":
+			ObjectPool.return_hit_effect(effect)
+		"death":
+			ObjectPool.return_death_effect(effect)
+		"crit":
+			ObjectPool.return_crit_effect(effect)
+		"miss":
+			ObjectPool.return_miss_effect(effect)
+		"fire":
+			ObjectPool.return_fire_effect(effect)
+		"ice":
+			ObjectPool.return_ice_effect(effect)
+		"lightning":
+			ObjectPool.return_lightning_effect(effect)
+		_:
+			ObjectPool.return_hit_effect(effect)
 
 
 # === Damage Popup Methods ===
@@ -161,17 +246,49 @@ func show_damage_popup(
 	is_miss: bool = false,
 	is_heal: bool = false
 ) -> void:
-	"""Display a floating damage number at the given position."""
-	if not _damage_popup_scene:
-		push_warning("VFXManager: Damage popup scene not loaded")
+	"""Display a floating damage number at the given position.
+
+	Issue #1090: popup Label is acquired from ObjectPool.get_damage_popup() and
+	reparented into the live scene. The popup returns itself to the pool from
+	its own _process when its lifetime expires (see scripts/damage_popup.gd).
+	A safety-net tween also calls return_damage_popup() in case _process is
+	disabled (e.g. when the scene tree is paused for a popup that was just
+		reparented but never reached its lifetime tick).
+	"""
+	var pool := get_node_or_null("/root/ObjectPool")
+	if pool == null:
+		push_warning("VFXManager: ObjectPool not available; popup skipped")
 		return
 
-	var popup: Label = _damage_popup_scene.instantiate()
-	get_tree().current_scene.add_child(popup)
+	var current_scene := get_tree().current_scene
+	if current_scene == null:
+		push_warning("VFXManager: No current scene; popup skipped")
+		return
 
-	# Offset slightly above the target
+	var popup: Label = pool.get_damage_popup()
+	if popup == null:
+		push_warning("VFXManager: ObjectPool returned null damage popup")
+		return
+
+	# Reparent into the live scene if needed (pool holds it under ObjectPool)
+	if popup.get_parent() == null:
+		current_scene.add_child(popup)
+	elif popup.get_parent() != current_scene:
+		popup.reparent(current_scene)
+
 	popup.global_position = global_position + Vector2(0, -30)
 	popup.setup_damage(damage, is_crit, is_miss, is_heal)
+
+	# Safety net: if _process never reaches the lifetime threshold (e.g. the
+	# popup was added while the scene tree was paused, or the popup script
+	# was somehow disabled), this tween guarantees the slot is returned.
+	var lifetime: float = float(popup.lifetime) if "lifetime" in popup else 1.0
+	var tween := _make_tween()
+	tween.tween_interval(lifetime + 0.1)
+	tween.tween_callback(func() -> void:
+		if is_instance_valid(popup):
+			pool.return_damage_popup(popup)
+	)
 
 
 # === Screen Shake Methods ===
