@@ -49,6 +49,13 @@ tech-debt-report.json
 .bundle-size-history.json
 agents-md-validation-report.json
 
+# GUT JUnit output (regenerated on every test run; issue #996 pattern)
+test/results/*.xml
+
+# Compiled Nakama bundle at repo root (runtime mount target only; built by
+# cold-start.sh / start.sh when missing — mirrors backend/data/modules, #996)
+data/modules/
+
 # Smoke test reports
 reports/smoke-tests/
 
