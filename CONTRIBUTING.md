@@ -1,65 +1,117 @@
 # Contributing to Armored Archer
 
-Thank you for contributing to Armored Archer! This document provides guidelines and information for contributors.
+Thanks for contributing. **[AGENTS.md](AGENTS.md) is the canonical reference** for build commands, code style, testing, and AI-assisted commit rules — link out, don't duplicate. This file points at the rules a first-time contributor is most likely to violate, and at the four DX rules that were missing from prior versions of this document.
 
-## Getting Started
+## Quick start (first contribution)
 
-### Prerequisites
-- Godot 4.x (for game client)
-- Node.js 18+ and npm (for backend server)
-- Docker & Docker Compose (for database and Nakama server)
-- Git
+```bash
+# 0. One-time per clone
+make setup                    # installs npm + gdlint + Godot deps + commit-msg hook
 
-### Setting up development environment
-1. Clone the repository.
-2. For the Godot client, open the project in Godot 4.x editor.
-3. For the backend, navigate to `backend/` and run `npm install` to install dependencies.
-4. Set up environment variables for the backend (see `backend/README.md` or `backend/.env.example` if exists).
-5. Start the database and Nakama server using Docker Compose: `docker-compose up -d` from the project root or backend directory.
-6. Verify everything runs: open Godot editor, run the project; start backend with `npm run dev` in backend.
+# 1. Worktree + branch (conventional branch names — see "Branch naming")
+git worktree add ../wt-<slug> -b fix/issue-<number>-<slug> origin/main
+cd ../wt-<slug>
 
-### Running the project locally
-- **Client**: In Godot editor, press F5 to run the game.
-- **Backend**: In `backend/`, run `npm run dev` to start the Nakama server in watch mode.
+# 2. Loop: code → test → lint → commit → push
+./scripts/local-godot-tests.sh --all    # Godot: lint + syntax + tests
+cd backend && npm run lint && npm run typecheck && npm test   # Backend
+git add -p && git commit -F /tmp/msg.txt  # trailers required — see "Commits"
+git push -u origin fix/issue-<number>-<slug> --force-with-lease
 
-## Development Workflow
-1. **Fork and clone** the repository.
-2. **Create a feature branch** from `main`: `git checkout -b fix/issue-<number>` or `feat/<description>`.
-3. **Make changes** in the appropriate subproject (client or backend).
-4. **Run tests and linting**:
-   - Backend: `npm test`, `npm run lint`, `npm run typecheck`.
-   - Client: GDScript linting via built-in Godot tools (no automated linter currently).
-5. **Commit changes** following conventional commit style: `git commit -m "Fix #<number>: <description>"`.
-6. **Push and create PR**: `git push -u origin fix/issue-<number>` and open a PR on GitHub.
+# 3. Open the PR (base branch is `main`, NOT `develop`)
+gh pr create --base main
+```
 
-## Code Style
-- **TypeScript**: Follow the rules in `AGENTS.md` and the ESLint configuration. Use async/await, strict typing, and JSDoc for public functions.
-- **GDScript**: Follow `AGENTS.md` guidelines: snake_case for variables/functions, PascalCase for classes, use `@export` for inspector variables, use `@onready` for node references.
-- **Naming**: Use descriptive names. Constants in UPPER_SNAKE_CASE. Private members prefixed with `_`.
-- **File organization**: Keep scripts organized in `scripts/` and scenes in `scenes/`. Use autoloads for singletons.
+The full command list lives in [AGENTS.md §Build & Development Commands](AGENTS.md#build--development-commands).
+
+## Branch naming
+
+Branches off `main`. The base branch is **`main`**, never `develop` — this differs from the multi-agent orchestrator skill defaults that assume `develop`.
+
+| Type        | Pattern                            | Example                          |
+|-------------|------------------------------------|----------------------------------|
+| Bug fix     | `fix/issue-<number>-<slug>`        | `fix/issue-1154-rewrite-contributing-md` |
+| Feature     | `feat/<slug>`                      | `feat/party-finder`              |
+| Refactor    | `refactor/<slug>`                  | `refactor/extract-validation`    |
+| Docs / chore| `docs/<slug>` / `chore/<slug>`     | `docs/adr-pvp-settlement`        |
+
+## Commits
+
+We use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`, …). Release notes are generated from them (`make release-notes`).
+
+The repo enforces **four commit rules** via a local `commit-msg` hook installed by `make setup` (or `make hooks-install`):
+
+1. **Conventional commit subject** — type + optional scope + colon + description. The hook is permissive about non-AI subjects (existing manual commits are grandfathered in the 19/30 ratio noted in issue #1154). New commits should still follow the format.
+2. **[AI-assisted] prefix is mandatory** for any commit whose code, tests, or docs were produced by an AI agent. See [AGENTS.md §AI Agent-Assisted Development](AGENTS.md#ai-agent-assisted-development) — the body must end with two trailers:
+   - `- AI Model: <model-id-version>` (e.g. `MiniMax-M3`, `claude-opus-4-6`)
+   - `- Task: <one-sentence task>`
+3. **Subject body lines ≤ 100 chars**, body wrapped at 72. The hook runs against `$1` (the message file) and blocks any push that fails. Escape hatch for emergencies: add `[skip-ai-check]` to the body.
+4. **`git push --force-with-lease`** is the conventional push flag (never bare `--force`) — see step 2 of Quick start above.
+
+If the hook blocks you unexpectedly, read its error: the script it invokes is `scripts/commit-msg-check-ai-trailer.sh` (installed via `make hooks-install`, or `make setup` which now does this automatically).
+
+## Local CI: memory-pressure rule (issue #993)
+
+When hosted CI is unavailable (billing outage — see [docs/ci/ci-billing-recovery.md](docs/ci/ci-billing-recovery.md)) and you're running the [`act`](https://nektosact.com/) matrix locally:
+
+- **Run `make ci` and `./scripts/local-godot-tests.sh` sequentially, never in parallel.** Concurrent act + headless-Godot suites OOM-kill `backend-typecheck` (exitcode `137`, zero compiler output). Tune via `ACT_MIN_FREE_MB` (default 2048) and `ACT_MEM_WAIT_SECS` (default 60) — see [`scripts/ci-local.sh`](scripts/ci-local.sh).
+- **All `act` invocations route through `scripts/lib/act-lock.sh`** (`ci-local.sh`, `run-ci-locally.sh`, `act-cleanup.sh`) to serialize `~/.cache/act` git-clone work. Don't invoke `act` outside the wrappers (issues #992/#1028).
+- **Never disable required status checks.** Re-rerun the failing job in isolation before debugging.
+
+## Linting & quality gates (replaces the stale "no automated linter" line)
+
+| Layer        | Command                                          | Notes                                                        |
+|--------------|--------------------------------------------------|--------------------------------------------------------------|
+| GDScript     | `./scripts/local-godot-tests.sh --lint`          | gdlint against `autoloads/`, `scenes/`, `scripts/`, `test/`  |
+| GDScript     | `./scripts/local-godot-tests.sh --all`           | lint + syntax check + headless test suite                    |
+| TypeScript   | `cd backend && npm run lint && npm run typecheck` | eslint + `tsc --noEmit` (strict)                             |
+| TypeScript   | `cd backend && npm test`                         | Jest (unit + colocated tooling tests; ~80% coverage gate)    |
+| Schema       | `cd backend && npm run test:schema`              | needs PostgreSQL, not Nakama — cheapest migration check      |
+| Smoke        | `make smoke-test-quick`                          | end-to-end after a full stack-up via `make services-start`   |
+| Repo hygiene | `make tech-debt-check duplicate-code-check dead-code-check tracked-ignored-check` | task-grade maintenance gates |
+
+If you only touched Markdown or config, no tool check is needed. If you touched any `.gd`/`.tscn`, you must run the corresponding lint and test command; CI gates merge on it.
 
 ## Testing
-- **Backend tests**: Jest tests are located in `backend/src/**/__tests__/`. Run `npm test` to execute all tests. Aim for high coverage.
-- **Writing new tests**: Place tests alongside modules or in `__tests__` folders. Mock external dependencies.
-- **Coverage requirements**: New code should include tests for critical paths.
 
-## Pull Requests
-- **PR template**: Use the provided template when creating a PR. Include a clear description, related issues, testing performed, and screenshots if applicable.
-- **Review checklist**:
-  - [ ] Code follows style guidelines.
-  - [ ] All tests pass.
-  - [ ] Linting passes without errors.
-  - [ ] Documentation updated (if needed).
-  - [ ] No breaking changes without discussion.
-- **What gets merged**: PRs that are approved, pass CI checks, and align with project goals.
+- **Godot:** tests live in `test/run_all_tests.gd` (legacy custom runner, what CI uses) and `test/suites/` (GUT). Run with `./scripts/local-godot-tests.sh --tests` or `godot4 --headless --script test/run_all_tests.gd`. The runner's exit code is **unreliable** (non-zero on resource leaks, not failures) — check for `Failed: N` in the output.
+- **Backend:** unit + tooling tests under `backend/src/**/__tests__/*.test.ts` and `backend/scripts/__tests__/*.test.ts` are the default `npm test` roots. Integration tests (`npm run test:integration`) need the stack up via `make services-start`. Schema tests (`npm run test:schema`) need only PostgreSQL. Property & benchmark suites have their own configs (`jest.property.config.js`, `jest.benchmark.config.js`).
 
-## Issue Reporting
-- **Bug report**: Include steps to reproduce, expected vs actual behavior, environment details, and logs.
-- **Feature request**: Describe the problem, propose a solution, and discuss with maintainers before implementation.
+Schema changes always require human review — see [`docs/db/MIGRATIONS.md`](docs/db/MIGRATIONS.md).
 
-## Questions?
-Open an issue for any clarifications.
+## AI-assisted changes — extra rules
 
----
+Beyond the commit trailers above, AGENTS.md §AI Agent-Assisted Development requires:
 
-By contributing, you agree that your work will be licensed under the project's MIT License.
+- **Human review is mandatory** for any AI-generated code. Hard rules: no secrets/credentials, input validation on all user data, and database-migration + security-critical code always needs a human approver.
+- **`backend/.env` (and `backend/.env.*`) must never be committed** — `make tracked-ignored-check` fails CI on tracked-but-ignored files (issue #1032).
+- **Document AI-assisted scope in the PR description** as well as the commit body.
+- **Review checklist:** [`AI_CODE_REVIEW.md`](AI_CODE_REVIEW.md). Workflow: [`AI_INTEGRATION.md`](AI_INTEGRATION.md), [`GODOGEN_SETUP.md`](GODOGEN_SETUP.md), [`FOLEY_AI_SETUP.md`](FOLEY_AI_SETUP.md). **Skill caveat:** `.agents/skills/godot-backend/SKILL.md` is **stale** — it claims a Go backend on port 7349. The real backend is TypeScript on `:7350`. Trust `AGENTS.md` over that skill.
+
+## Sub-agents and the agents tree
+
+Repo-local skills: `.agents/skills/<name>/SKILL.md` (e.g. `godot-backend`, `godot-development`). Claude-specific skills (mostly tool helpers): `.claude/skills/<name>/SKILL.md`. **One skill caveat above applies** — always cross-check a skill against `AGENTS.md` before trusting it on this repo.
+
+`.agents/results/<name>.md` and `.agents/results/<plan-name>.json` are the **outputs of orchestration runs** (e.g. `result-pm.md`, `result-backend.md`, `plan-2026-08-16-mvp-pve-slice.json`). Treat them as **read-only artifacts**, not source of truth — they may be regenerated by another run. Naming conventions:
+
+- `result-<role-or-persona>.md` — narrative output of a sub-agent (PM, backend, mobile).
+- `result-<role>-<task-slug>-<date>.md` — task-scoped variation.
+- `plan-<date>-<slug>.json` — structured plan emitted by a planning skill.
+
+None of these belong in a code review; if you find yourself referencing one in a PR description, link to the issue instead and quote the relevant excerpt in the PR body.
+
+## Pull requests
+
+- PR base is `main` (never `develop`).
+- The [PR template](.github/PULL_REQUEST_TEMPLATE.md) is mandatory — checklist covers behavior changes, test evidence, and doc updates.
+- Backend lint + typecheck + tests must be green; Godot lint + `local-godot-tests.sh --all` must be green; docs updated when behavior changes (`RPC_MAP.md` is the per-RPC reference and must be edited if you add or change an RPC).
+- `make ci` runs the full CI matrix locally. CI hosted run gates merge.
+
+## Issue reporting
+
+- **Bug:** reproduction steps, expected vs actual, Godot version, backend commit SHA, relevant logs (`backend/build/` and `backend/.runtime/logs/` if present).
+- **Feature request:** describe the problem before proposing a solution; discuss in the issue thread before opening a PR.
+
+## License
+
+By contributing, you agree your work is licensed under the project's MIT License.
