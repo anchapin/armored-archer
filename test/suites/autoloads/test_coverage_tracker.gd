@@ -76,19 +76,23 @@ func test_get_coverage_data_full_coverage():
 	assert_eq(data["res://test.gd"].percentage, 100.0, "Coverage should be 100.0% when all lines executed")
 
 func test_script_line_parser_skips_comments():
-	"""Test that ScriptLineParser skips comment lines."""
+	"""Full-line comments (incl. ## doc comments) are skipped; code lines
+	carrying trailing # or ## comments stay executable (#967 verdict)."""
 	var parser = TrackerHelper.get_parser_instance()
 	var test_file = "res://test/coverage/test_parse_comments.gd"
 	# Create test file
 	var file = FileAccess.open(test_file, FileAccess.WRITE)
 	file.store_line("# This is a comment")
+	file.store_line("## This is a doc comment")
 	file.store_line("var x = 10  # Inline comment")
-	file.store_line("var y = 20")
+	file.store_line("var s = \"# hash inside a string is not a comment\"")
+	file.store_line("var y = 20  ## Trailing doc comment")
+	file.store_line("var z = 30")
 	file.close()
 
 	var lines = parser.parse_executable_lines(test_file)
-	assert_eq(lines.size(), 1, "Should have 1 executable line (comment lines skipped)")
-	assert_eq(lines[0], 3, "Line 3 should be executable")
+	assert_eq(lines.size(), 4, "Should have 4 executable lines (comment-only lines skipped)")
+	assert_eq(lines, [3, 4, 5, 6], "Lines 3-6 are executable; trailing comments do not hide code")
 
 func test_script_line_parser_skips_empty_lines():
 	"""Test that ScriptLineParser skips empty lines."""
