@@ -60,6 +60,13 @@ USE_PARALLEL=false
 PERSIST_SERVICES=false
 VERBOSE=false
 
+# Host memory guard (issue #993): act Node-job containers plus concurrent
+# native local-godot-tests.sh suites can exhaust host RAM and OOM-kill jobs
+# (act reports exitcode '137' with no error output). Before each act job we
+# warn/wait while available memory is below this threshold (MB).
+ACT_MIN_FREE_MB="${ACT_MIN_FREE_MB:-2048}"
+ACT_MEM_WAIT_SECS="${ACT_MEM_WAIT_SECS:-60}"
+
 # Job categories
 ACT_JOBS=(
     "backend-lint"
@@ -213,6 +220,45 @@ check_services() {
     fi
 }
 
+# --- Host memory guard (issue #993) ---
+
+# Print available host memory in MB (empty when it cannot be determined).
+available_mem_mb() {
+    if command -v free >/dev/null 2>&1; then
+        free -m | awk '/^Mem:/ {print $7}'
+    elif command -v vm_stat >/dev/null 2>&1; then
+        vm_stat | awk '
+            /page size of/ { gsub(/[^0-9]/, "", $0); ps = $0 + 0 }
+            /^Pages free/ { gsub(/[^0-9]/, "", $3); p = $3 + 0 }
+            /^Pages inactive/ { gsub(/[^0-9]/, "", $3); p += $3 + 0 }
+            END { if (ps > 0) printf "%d", (p * ps) / 1048576 }
+        '
+    fi
+}
+
+# Warn and wait (up to ACT_MEM_WAIT_SECS) for host memory to recover before
+# an act job launches. Advisory only — never blocks the CI run indefinitely.
+wait_for_memory() {
+    local avail
+    avail="$(available_mem_mb || true)"
+    [[ "${avail}" =~ ^[0-9]+$ ]] || return 0
+    [ "${avail}" -ge "${ACT_MIN_FREE_MB}" ] && return 0
+
+    log_warning "Low host memory: ${avail}MB available (< ${ACT_MIN_FREE_MB}MB) — concurrent local-godot-tests.sh run? (issue #993)"
+    local waited=0
+    while [ "${waited}" -lt "${ACT_MEM_WAIT_SECS}" ]; do
+        sleep 5
+        waited=$((waited + 5))
+        avail="$(available_mem_mb || true)"
+        [[ "${avail}" =~ ^[0-9]+$ ]] || return 0
+        if [ "${avail}" -ge "${ACT_MIN_FREE_MB}" ]; then
+            log_info "Host memory recovered: ${avail}MB available"
+            return 0
+        fi
+    done
+    log_warning "Proceeding with ${avail}MB free — the act job may be OOM-killed (exitcode '137')"
+}
+
 # Job execution
 run_act_job() {
     local job="$1"
@@ -221,6 +267,10 @@ run_act_job() {
     log_step "Running: ${CYAN}${job}${NC}"
 
     cd "${PROJECT_ROOT}"
+
+    # Host memory guard (issue #993): warn/wait while free memory is low so
+    # concurrent native Godot suites don't OOM-kill this container job.
+    wait_for_memory
 
     # Use .actrc-local if it exists
     local act_opts="-W .github/workflows/ci.yml"
@@ -234,17 +284,24 @@ run_act_job() {
         act_opts="${act_opts} --no-cache-server"
     fi
 
-    if act -j "${job}" ${act_opts} 2>&1; then
+    local _rc=0
+    act -j "${job}" ${act_opts} 2>&1 || _rc=$?
+    JOB_TIME[$job]=$(log_timing $job_start)
+
+    if [ "${_rc}" -eq 0 ]; then
         JOB_STATUS[$job]="pass"
-        JOB_TIME[$job]=$(log_timing $job_start)
         log_success "${job} completed in ${JOB_TIME[$job]}"
         return 0
-    else
-        JOB_STATUS[$job]="fail"
-        JOB_TIME[$job]=$(log_timing $job_start)
-        log_error "${job} failed after ${JOB_TIME[$job]}"
-        return 1
     fi
+
+    JOB_STATUS[$job]="fail"
+    log_error "${job} failed after ${JOB_TIME[$job]} (exit ${_rc})"
+    if [ "${_rc}" -eq 137 ]; then
+        log_warning "exit 137 = SIGKILL, likely host OOM (concurrent local-godot-tests.sh?) — re-run in isolation before debugging (issue #993)"
+    else
+        log_warning "If the act log above shows exitcode '137' with no error output, suspect host OOM — re-run in isolation before debugging (issue #993)"
+    fi
+    return 1
 }
 
 run_service_job() {

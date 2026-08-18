@@ -6,6 +6,8 @@ Godot 4.6 mobile archery auto-shooter with a Nakama (TypeScript) backend and Pos
 
 When every hosted Actions job fails with *"recent account payments have failed or your spending limit needs to be increased"*, it is **account-billing**, not a code problem — see [`docs/ci/ci-billing-recovery.md`](docs/ci/ci-billing-recovery.md) (issue #855). Detection: `gh api orgs/anchapin/settings/billing/actions` and the annotation on check run `95179007068`. **Fix must be performed by a repo/org owner in Settings → Billing & plans** — no code change unblocks the gate. While hosted CI is dark, use `./scripts/local-godot-tests.sh`, `cd backend && npm run lint && npm test`, and the `act` matrix on `.github/workflows/ci.yml` (PR #889; if `act` fails on git clone, run `make ci-clear-cache`); never disable required status checks as a workaround.
 
+**Host-memory rule while hosted CI is dark (issue #993):** run `make ci` (act) and `./scripts/local-godot-tests.sh` **sequentially, never concurrently** — Node/tsc jobs inside act containers plus concurrent headless Godot suites exhausted host RAM and OOM-killed `backend-typecheck`. Failure signature: act reports `exitcode '137'` (SIGKILL) with **zero** error/compiler output → suspect host OOM and re-run the job in isolation before debugging. `scripts/ci-local.sh` warns and waits before each act job when available memory is low (tune via `ACT_MIN_FREE_MB`, default 2048, and `ACT_MEM_WAIT_SECS`, default 60).
+
 ## Project Structure
 
 ```text
