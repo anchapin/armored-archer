@@ -358,7 +358,7 @@ func test_season_transition_signal():
 func test_rpc_constants():
 	assert_eq(season_manager.RPC_GET_SEASON_INFO, "armored_archer/get_season_info", "Get season info RPC constant")
 	assert_eq(season_manager.RPC_GET_LEADERBOARD, "armored_archer/get_leaderboard", "Get leaderboard RPC constant")
-	assert_eq(season_manager.RPC_UPDATE_RANK, "armored_archer/update_rank", "Update rank RPC constant")
+	assert_eq(season_manager.get("RPC_UPDATE_RANK"), null, "Update rank RPC removed (issue #1076)")
 	assert_eq(season_manager.RPC_GET_SEASON_REWARDS, "armored_archer/get_season_rewards", "Get rewards RPC constant")
 	assert_eq(season_manager.RPC_CLAIM_SEASON_REWARDS, "armored_archer/claim_season_rewards", "Claim rewards RPC constant")
 	assert_eq(season_manager.RPC_GET_SEASON_HISTORY, "armored_archer/get_season_history", "Get history RPC constant")

@@ -53,7 +53,8 @@ func _setup_check_timer() -> void:
 func _connect_signals() -> void:
 	if season_manager:
 		season_manager.season_info_loaded.connect(_on_season_info_loaded)
-		season_manager.rank_updated.connect(_on_rank_updated)
+		# rank_updated was removed with the update_rank client RPC (issue #1076);
+		# tier milestones are now derived from season_info_loaded refreshes.
 		season_manager.season_transitioned.connect(_on_season_transitioned)
 		season_manager.decay_info_updated.connect(_on_decay_info_updated)
 		season_manager.rewards_loaded.connect(_on_rewards_loaded)
@@ -91,31 +92,6 @@ func _on_season_info_loaded(data: Dictionary) -> void:
 		_last_known_tier = current_tier
 
 	_check_season_end_warning(season_manager.get_time_remaining())
-
-# --- Handle Rank Updated ---
-func _on_rank_updated(rank_change: Dictionary) -> void:
-	var my_id: String = ""
-	if season_manager and season_manager.network_manager:
-		my_id = season_manager.network_manager.user_id
-
-	if my_id.is_empty():
-		return
-
-	var is_winner: bool = rank_change.get("winner", {}).get("user_id", "") == my_id
-	if not is_winner:
-		return
-
-	var new_rank: int = rank_change.get("winner", {}).get("new_rank", 0)
-	if new_rank <= 0:
-		return
-
-	var new_tier: String = season_manager.get_rank_tier(new_rank)
-	if new_tier != _last_known_tier:
-		_last_known_tier = new_tier
-		tier_milestone_reached.emit(new_tier, new_rank)
-
-		var msg: String = TIER_MESSAGES.get(new_tier, "Tier changed!")
-		_emit_message("tier_milestone", msg, "achievement")
 
 # --- Handle Season Transition ---
 func _on_season_transitioned(_old_season: Dictionary, _new_season: Dictionary) -> void:

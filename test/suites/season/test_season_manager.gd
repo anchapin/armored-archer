@@ -83,10 +83,11 @@ func test_constants() -> void:
 	else:
 		_fail("test_rpc_leaderboard", "RPC_GET_LEADERBOARD mismatch")
 
-	if sm.RPC_UPDATE_RANK == "armored_archer/update_rank":
-		_pass("test_rpc_update_rank")
+	# update_rank RPC removed (issue #1076): clients must not declare outcomes.
+	if sm.get("RPC_UPDATE_RANK") == null:
+		_pass("test_rpc_update_rank_removed")
 	else:
-		_fail("test_rpc_update_rank", "RPC_UPDATE_RANK mismatch")
+		_fail("test_rpc_update_rank_removed", "RPC_UPDATE_RANK must not exist (issue #1076)")
 
 	sm.queue_free()
 
@@ -103,10 +104,11 @@ func test_signals_exist() -> void:
 	else:
 		_fail("test_signal_leaderboard", "Should have leaderboard_loaded")
 
-	if sm.has_signal("rank_updated"):
-		_pass("test_signal_rank")
+	# rank_updated removed together with update_rank (issue #1076).
+	if not sm.has_signal("rank_updated"):
+		_pass("test_signal_rank_updated_removed")
 	else:
-		_fail("test_signal_rank", "Should have rank_updated")
+		_fail("test_signal_rank_updated_removed", "rank_updated must not exist (issue #1076)")
 
 	if sm.has_signal("rewards_loaded"):
 		_pass("test_signal_rewards")

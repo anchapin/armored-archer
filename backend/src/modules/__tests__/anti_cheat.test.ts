@@ -742,6 +742,146 @@ describe('Anti-Cheat Module', () => {
     });
   });
 
+  // ===== HMAC default-on configuration (issue #1076) =====
+
+  describe('HMAC verification default configuration (issue #1076)', () => {
+    const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+    const ORIGINAL_SECRET = process.env.HMAC_SECRET;
+    const ORIGINAL_FLAG = process.env.ENABLE_HMAC_VERIFICATION;
+
+    const requireFreshAntiCheat = () => {
+      jest.resetModules();
+      return require('../anti_cheat');
+    };
+
+    afterEach(() => {
+      process.env.NODE_ENV = ORIGINAL_NODE_ENV;
+      if (ORIGINAL_SECRET === undefined) {
+        delete process.env.HMAC_SECRET;
+      } else {
+        process.env.HMAC_SECRET = ORIGINAL_SECRET;
+      }
+      if (ORIGINAL_FLAG === undefined) {
+        delete process.env.ENABLE_HMAC_VERIFICATION;
+      } else {
+        process.env.ENABLE_HMAC_VERIFICATION = ORIGINAL_FLAG;
+      }
+      jest.resetModules();
+    });
+
+    test('signature verification is enabled by default', () => {
+      process.env.NODE_ENV = 'test';
+      process.env.HMAC_SECRET = 'issue-1076-default-on-secret';
+      delete process.env.ENABLE_HMAC_VERIFICATION;
+
+      const fresh = requireFreshAntiCheat();
+      expect(fresh.getAntiCheatStats().config.enableSignatureVerification).toBe(true);
+      expect(fresh.getAntiCheatStats().config.hmacSecret).toBe('issue-1076-default-on-secret');
+    });
+
+    test('rejects a garbage signature when verification is on (default)', () => {
+      process.env.NODE_ENV = 'test';
+      process.env.HMAC_SECRET = 'issue-1076-default-on-secret';
+      delete process.env.ENABLE_HMAC_VERIFICATION;
+
+      const fresh = requireFreshAntiCheat();
+      const { requestId, nonce } = fresh.generateRequestIdAndNonce();
+      const result = fresh.verifyRequestSignature(
+        mockContext,
+        '{"winner_id":"attacker","loser_id":"victim"}',
+        { requestId, timestamp: Date.now(), signature: 'f'.repeat(64), nonce },
+        'update_rank'
+      );
+
+      expect(result.valid).toBe(false);
+      expect(result.violations.some((v: { violationType: string }) => v.violationType === 'invalid_signature')).toBe(true);
+    });
+
+    test('rejects an unsigned (empty) signature when verification is on (default)', () => {
+      process.env.NODE_ENV = 'test';
+      process.env.HMAC_SECRET = 'issue-1076-default-on-secret';
+      delete process.env.ENABLE_HMAC_VERIFICATION;
+
+      const fresh = requireFreshAntiCheat();
+      const { requestId, nonce } = fresh.generateRequestIdAndNonce();
+      const result = fresh.verifyRequestSignature(
+        mockContext,
+        '{"winner_id":"attacker","loser_id":"victim"}',
+        { requestId, timestamp: Date.now(), signature: '', nonce },
+        'update_rank'
+      );
+
+      expect(result.valid).toBe(false);
+      expect(result.violations.some((v: { violationType: string }) => v.violationType === 'invalid_signature')).toBe(true);
+    });
+
+    test('accepts a correctly computed signature under default configuration', () => {
+      process.env.NODE_ENV = 'test';
+      process.env.HMAC_SECRET = 'issue-1076-default-on-secret';
+      delete process.env.ENABLE_HMAC_VERIFICATION;
+
+      const fresh = requireFreshAntiCheat();
+      const payload = '{"action_type":"shoot","angle":1.57}';
+      const { requestId, nonce } = fresh.generateRequestIdAndNonce();
+      const timestamp = Date.now();
+      const signature = fresh.computeSignature(payload, timestamp, nonce);
+
+      const result = fresh.verifyRequestSignature(
+        mockContext,
+        payload,
+        { requestId, timestamp, signature, nonce },
+        'submit_combat_action'
+      );
+
+      expect(result.valid).toBe(true);
+      expect(result.violations).toHaveLength(0);
+    });
+
+    test('ENABLE_HMAC_VERIFICATION=false explicitly opts out', () => {
+      process.env.NODE_ENV = 'test';
+      process.env.HMAC_SECRET = 'issue-1076-default-on-secret';
+      process.env.ENABLE_HMAC_VERIFICATION = 'false';
+
+      const fresh = requireFreshAntiCheat();
+      expect(fresh.getAntiCheatStats().config.enableSignatureVerification).toBe(false);
+    });
+
+    test('missing HMAC_SECRET refuses to load in production', () => {
+      process.env.NODE_ENV = 'production';
+      delete process.env.HMAC_SECRET;
+
+      expect(() => requireFreshAntiCheat()).toThrow(/HMAC_SECRET/);
+    });
+
+    test('missing HMAC_SECRET outside test/production logs a warning and uses the insecure fallback', () => {
+      process.env.NODE_ENV = 'development';
+      delete process.env.HMAC_SECRET;
+
+      const fresh = requireFreshAntiCheat();
+      try {
+        // Loads without throwing (local dev stack compatibility) but on an
+        // unmistakably insecure secret, with verification still enabled.
+        expect(fresh.getAntiCheatStats().config.hmacSecret).toBe(
+          'default-secret-change-in-production'
+        );
+        expect(fresh.getAntiCheatStats().config.enableSignatureVerification).toBe(true);
+      } finally {
+        // development env starts the cleanup interval — stop it so jest
+        // does not report an open handle.
+        fresh.stopAntiCheatCleanup();
+      }
+    });
+
+    test('test environment without HMAC_SECRET uses the test-only fallback secret', () => {
+      process.env.NODE_ENV = 'test';
+      delete process.env.HMAC_SECRET;
+
+      const fresh = requireFreshAntiCheat();
+      expect(fresh.getAntiCheatStats().config.hmacSecret).toBe('test-only-hmac-fallback-secret');
+      expect(fresh.getAntiCheatStats().config.enableSignatureVerification).toBe(true);
+    });
+  });
+
   // ===== Player Reporting System =====
 
   describe('Player Reporting', () => {

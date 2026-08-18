@@ -132,7 +132,6 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 |----------|---------------|----------------|-------------------|------------------|
 | Get Season Info | SeasonManager | `rpcGetSeasonInfo()` in `season_system.ts` | `seasons` storage (custom collection) + `leaderboard` (Nakama) | `/rpc/armored_archer/get_season_info` |
 | Get Leaderboard | SeasonManager | `rpcGetLeaderboard()` in `season_system.ts` | `leaderboard` (Nakama built-in) | `/rpc/armored_archer/get_leaderboard` |
-| Update Rank | SeasonManager | `rpcUpdateRank()` in `season_system.ts` (signature now REQUIRED — issue #955, ADR-0002 follow-up; requests missing `requestId`/`timestamp`/`signature`/`nonce` are rejected with `ANTI_CHEAT_VIOLATION`) | `leaderboard` (Nakama built-in) | `/rpc/armored_archer/update_rank` |
 | Get Season Rewards | SeasonManager | `rpcGetSeasonRewards()` in `season_system.ts` | `leaderboard` (Nakama built-in) | `/rpc/armored_archer/get_season_rewards` |
 | Claim Season Rewards | SeasonManager | `rpcClaimSeasonRewards()` in `season_system.ts` | `season_rewards_claimed` storage (custom collection) + wallet (Nakama) | `/rpc/armored_archer/claim_season_rewards` |
 | End Season | SeasonManager | `rpcEndSeason()` in `season_system.ts` | `seasons` storage (custom collection) + `leaderboard` (Nakama) | `/rpc/armored_archer/end_season` |
@@ -142,6 +141,9 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 - `season_rewards_claimed` collection: `{ season_id, user_id, claimed_at, rank, rewards }`
 - `player_activity` collection: `{ user_id, last_match_time }`
 - `leaderboard` (Nakama): Built-in leaderboard system with metadata: `{ wins, losses, win_rate, punch_up_wins }`
+
+**Removed RPCs:**
+- `armored_archer/update_rank` — **removed** (issue #1076). It applied Elo updates from client-declared `winner_id`/`loser_id`, bypassing ADR-0002 server-declared settlement. Seasonal Elo now mutates exclusively via `complete_match`'s `resolveServerTerminalState` path (see PvP section). Clients refresh Standing / Ladder Rating via `get_season_info` / `get_player_rank`.
 
 ---
 
@@ -304,10 +306,9 @@ Reads of missing keys return `null`, which every caller already treats as "apply
 │  │                       SEASONS / LEADERBOARDS                       │       │
 │  │  get_season_info        │                                          │       │
 │  │  get_leaderboard       │────────┐   Shared via       │       │
-│  │  update_rank            │        │   Nakama           │       │
-│  │  get_season_rewards     │        │   leaderboard      │       │
-│  │  claim_season_rewards    │        │   + player_stats   │       │
-│  │  end_season             │        │   storage          │       │
+│  │  get_season_rewards     │        │   Nakama           │       │
+│  │  claim_season_rewards    │        │   leaderboard      │       │
+│  │  end_season             │        │   + player_stats   │       │
 │  └────────────────────────────────────────────────────────────────────────────┘       │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -327,7 +328,7 @@ All gameplay RPCs integrate with the anti-cheat system:
 - `accept_match`
 - `complete_match`
 - `submit_combat_action`
-- `update_rank` — anti-cheat signature is **required** as of issue #955. Requests omitting any of `requestId`, `timestamp`, `signature`, or `nonce` are rejected with `error_code: "ANTI_CHEAT_VIOLATION"` (fail-closed). See ADR-0002 (`docs/adr/0002-server-declared-match-settlement.md`) and `backend/src/modules/season_system.ts` `validateRankUpdateSignature`.
+- `update_rank` — **removed entirely** (issue #1076): the client-declared winner/loser form was an ADR-0002 bypass that no signature gate could salvage. Elo mutates only through `complete_match`'s server-declared settlement. HMAC signature verification itself is now **enabled by default** (`ENABLE_HMAC_VERIFICATION` defaults on; `HMAC_SECRET` required in env templates — see `backend/src/modules/anti_cheat.ts`).
 
 ---
 
@@ -427,7 +428,6 @@ For PostgreSQL table changes:
 | `armored_archer/get_queue_status` | matchmaking_pool | `rpcGetQueueStatus()` | PvP |
 | `armored_archer/get_season_info` | season_system | `rpcGetSeasonInfo()` | Seasons |
 | `armored_archer/get_leaderboard` | season_system | `rpcGetLeaderboard()` | Seasons |
-| `armored_archer/update_rank` | season_system | `rpcUpdateRank()` | Seasons |
 | `armored_archer/get_season_rewards` | season_system | `rpcGetSeasonRewards()` | Seasons |
 | `armored_archer/claim_season_rewards` | season_system | `rpcClaimSeasonRewards()` | Seasons |
 | `armored_archer/end_season` | season_system | `rpcEndSeason()` | Seasons |

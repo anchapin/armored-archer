@@ -55,6 +55,14 @@ const replayWindow = 300000; // 5 minutes
 const requestTimingLog = new Map<string, number[]>();
 const timingAnalysisWindow = 3600000; // 1 hour
 
+// Issue #1076: HMAC_SECRET is a required deployment secret (see
+// backend/.env.example / backend/.env.production.example). Production refuses
+// to start without it. The insecure fallbacks below survive ONLY for explicit
+// local environments: NODE_ENV==='test' (jest configs that do not load
+// jest.setup.js) and bare local dev stacks whose docker-compose does not yet
+// forward the variable — both log a loud warning.
+const isTestEnvironment = process.env.NODE_ENV === 'test';
+
 if (!process.env.HMAC_SECRET) {
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
@@ -62,17 +70,29 @@ if (!process.env.HMAC_SECRET) {
         'Refusing to start with insecure default secret.'
     );
   }
-  logger.warn(
-    '[SECURITY] HMAC_SECRET not set - using insecure fallback. ' +
-      'This MUST be set via environment variable before deploying to production.'
-  );
+  if (isTestEnvironment) {
+    logger.warn(
+      '[SECURITY] HMAC_SECRET not set in test environment - using test-only fallback secret. ' +
+        'Set HMAC_SECRET to exercise production signing paths.'
+    );
+  } else {
+    logger.warn(
+      '[SECURITY] HMAC_SECRET not set - using insecure fallback secret. ' +
+        'Set HMAC_SECRET in backend/.env (see backend/.env.example). ' +
+        'HMAC signature verification is enabled by default (issue #1076).'
+    );
+  }
 }
 
 let config: AntiCheatConfig = {
-  hmacSecret: process.env.HMAC_SECRET || 'default-secret-change-in-production',
+  hmacSecret:
+    process.env.HMAC_SECRET ||
+    (isTestEnvironment ? 'test-only-hmac-fallback-secret' : 'default-secret-change-in-production'),
   replayWindowMs: replayWindow,
   maxClockSkewMs: 5000,
-  enableSignatureVerification: process.env.ENABLE_HMAC_VERIFICATION === 'true',
+  // Issue #1076: signature verification is ON by default. Opt out explicitly
+  // with ENABLE_HMAC_VERIFICATION=false (local debugging only).
+  enableSignatureVerification: process.env.ENABLE_HMAC_VERIFICATION !== 'false',
   enableReplayProtection: true,
 };
 

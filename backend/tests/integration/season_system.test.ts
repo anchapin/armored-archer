@@ -259,116 +259,21 @@ describe('Season System Integration Tests', () => {
     });
   });
 
-  describe('rpcUpdateRank', () => {
-    test('should update ranks after a match (non-punch-up)', async () => {
-      // Both players start with same Elo
-      const admin = await testHelper.getAdminClient();
-      const season = getCurrentSeasonInfo();
-
-      admin.leaderboardRecordWrite(season.season_id, playerA.userId, playerA.username, 1000, 0, {
-        wins: '0',
-        losses: '0',
-        win_rate: '0',
-        punch_up_wins: '0',
-      });
-      admin.leaderboardRecordWrite(season.season_id, playerB.userId, playerB.username, 1000, 0, {
-        wins: '0',
-        losses: '0',
-        win_rate: '0',
-        punch_up_wins: '0',
-      });
-
-      const payload = {
-        winner_id: playerA.userId,
-        loser_id: playerB.userId,
-        winner_old_rank: 1000,
-        loser_old_rank: 1000,
-        winner_new_rank: 1016, // 1000 + 32 * 1 = 1016 (expected winner gains ~16)
-        loser_new_rank: 984, // 1000 - 32 * 0.5 = 984
-        is_punch_up: false,
-      };
-
-      const result = await rpcCall(playerA, 'armored_archer/update_rank', payload);
-
-      expect(result.success).toBe(true);
-      expect(result.winner.new_rank).toBeGreaterThan(result.winner.old_rank);
-      expect(result.loser.new_rank).toBeLessThan(result.loser.old_rank);
-      expect(result.winner.rank_change).toBeGreaterThan(0);
-      expect(result.loser.rank_change).toBeLessThan(0);
-      expect(result.is_punch_up).toBe(false);
-    });
-
-    test('should apply higher K-factor for punch-up matches', async () => {
-      const admin = await testHelper.getAdminClient();
-      const season = getCurrentSeasonInfo();
-
-      // Winner is lower rank (underdog)
-      admin.leaderboardRecordWrite(season.season_id, playerA.userId, playerA.username, 800, 0, {
-        wins: '0',
-        losses: '0',
-        win_rate: '0',
-        punch_up_wins: '0',
-      });
-      admin.leaderboardRecordWrite(season.season_id, playerB.userId, playerB.username, 1200, 0, {
-        wins: '0',
-        losses: '0',
-        win_rate: '0',
-        punch_up_wins: '0',
-      });
-
-      const payload = {
-        winner_id: playerA.userId,
-        loser_id: playerB.userId,
-        winner_old_rank: 800,
-        loser_old_rank: 1200,
-        winner_new_rank: 860, // Approximate with K=60
-        loser_new_rank: 1140,
-        is_punch_up: true,
-      };
-
-      const result = await rpcCall(playerA, 'armored_archer/update_rank', payload);
-
-      expect(result.success).toBe(true);
-      expect(result.is_punch_up).toBe(true);
-      // Winner should gain more than standard K allows
-      expect(result.winner.rank_change).toBeGreaterThan(16);
-    });
-
-    test('should track win rate and punch-up wins', async () => {
-      const admin = await testHelper.getAdminClient();
-      const season = getCurrentSeasonInfo();
-
-      // Setup initial records
-      admin.leaderboardRecordWrite(season.season_id, playerA.userId, playerA.username, 1000, 0, {
-        wins: '5',
-        losses: '10',
-        win_rate: '0.333',
-        punch_up_wins: '2',
-      });
-      admin.leaderboardRecordWrite(season.season_id, playerB.userId, playerB.username, 1000, 0, {
-        wins: '10',
-        losses: '5',
-        win_rate: '0.667',
-        punch_up_wins: '0',
-      });
-
-      const payload = {
-        winner_id: playerA.userId,
-        loser_id: playerB.userId,
-        winner_old_rank: 1000,
-        loser_old_rank: 1000,
-        winner_new_rank: 1016,
-        loser_new_rank: 984,
-        is_punch_up: false,
-      };
-
-      const result = await rpcCall(playerA, 'armored_archer/update_rank', payload);
-
-      expect(result.success).toBe(true);
-      // The actual leaderboard entry would be updated with win/loss counts
-      // We verify the response indicates proper tracking
-      expect(result.winner).toBeDefined();
-      expect(result.loser).toBeDefined();
+  describe('rpcUpdateRank (removed — issue #1076)', () => {
+    // update_rank was removed: client-declared winners must not mutate Elo
+    // (ADR-0002 — only complete_match's server-declared settlement path may).
+    test('armored_archer/update_rank is no longer routeable', async () => {
+      await expect(
+        rpcCall(playerA, 'armored_archer/update_rank', {
+          winner_id: playerA.userId,
+          loser_id: playerB.userId,
+          winner_old_rank: 1000,
+          loser_old_rank: 1000,
+          winner_new_rank: 1016,
+          loser_new_rank: 984,
+          is_punch_up: false,
+        })
+      ).rejects.toThrow();
     });
   });
 
