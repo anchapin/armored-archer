@@ -46,6 +46,20 @@ else
     echo -e "${YELLOW}⚠ validate-env.sh not found, skipping validation${NC}"
 fi
 
+# Build the compiled Nakama bundle if it is missing.
+# backend/data/modules/ is build output untracked since issue #996; a fresh
+# checkout has no bundle, and docker-compose mounts ./data/modules into the
+# Nakama container. Without this guard Nakama boots without the game module.
+if [ ! -f data/modules/index.js ]; then
+    echo -e "${YELLOW}⚠ Compiled Nakama bundle not found (data/modules/index.js) — building...${NC}"
+    if [ ! -d node_modules ]; then
+        echo -e "${YELLOW}⚠ node_modules missing — running npm install...${NC}"
+        npm install --no-audit --no-fund || { echo -e "${RED}✗ npm install failed${NC}"; exit 1; }
+    fi
+    npm run build:full || { echo -e "${RED}✗ npm run build:full failed${NC}"; exit 1; }
+    echo -e "${GREEN}✓ Compiled Nakama bundle built${NC}"
+fi
+
 echo ""
 echo "=========================================="
 echo "Starting Docker Compose services..."

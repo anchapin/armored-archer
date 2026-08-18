@@ -194,7 +194,7 @@ npm run build:full
 2. **ES5 Transpilation** (`npm run bundle:nakama`)
    - Uses Babel to transpile ES6+ to ES5 for Nakama's Duktape/QuickJS runtime
    - Bundles code with webpack for optimal size
-   - Output: `data/modules/index.js`
+   - Output: `data/modules/index.js` — a **gitignored build artifact** (untracked since issue #996); fresh checkouts must run `npm run build:full` before starting services (`scripts/cold-start.sh` and `start.sh` do this automatically)
 
 3. **Bundle Validation** (`npm run bundle:validate`)
    - Validates bundle doesn't contain ES6+ syntax
