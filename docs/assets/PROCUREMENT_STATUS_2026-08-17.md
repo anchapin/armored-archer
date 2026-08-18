@@ -2,8 +2,8 @@
 
 **Owner:** audio-team (human procurement required for binary assets)
 **AI scaffold:** MiniMax-M3 (this pass)
-**Updated:** 2026-08-17
-**Related:** issue #956, issue #989, `docs/assets/ASSET_PROSING_PLAN_2026.md`, `assets/audio/SOURCES.md`
+**Updated:** 2026-08-17; 2026-08-18 (issue #1030 — first binaries landed, §8)
+**Related:** issue #956, issue #989, issue #1030, `docs/assets/ASSET_PROSING_PLAN_2026.md`, `assets/audio/SOURCES.md`
 
 > **Scope note.** Per the procurement plan, AI agents cannot:
 > 1. Verify a CC0 license offline (only the original distribution page can do that).
@@ -19,11 +19,15 @@
 
 | Category | Required | Already present (binary) | Placeholder files (`.md`) | To procure (human) |
 |---|---:|---:|---:|---:|
-| Combat SFX | 17 | 3 (arrow_shot, hit, kill) | 14 | 14 |
+| Combat SFX | 17 | 4 (arrow_shot, hit, kill, archetype_death_goblin) | 13 | 13 |
 | UI SFX | 3 | 0 | 3 | 3 |
-| Music | 2 | 0 | 2 | 2 |
+| Music | 2 | 2 (menu_loop, combat_loop) | 0 | 0 |
 | Character sprites (Ch1) | 7 | Kenney roguelike/tiny-dungeon pack present (PNG, frame mapping TBD) | — | 7 (frame mapping + 3 boss assets) |
-| **Total** | **29** | **3 + 1 pack** | **19** | **26** |
+| **Total** | **29** | **6 + 1 pack** | **16** | **23** |
+
+**Update 2026-08-18 (issue #1030):** `menu_loop.ogg`, `combat_loop.ogg`,
+and `archetype_death_goblin.wav` were procured from CC0 sources — see §8.
+Counts above reflect that landing.
 
 **Net effect of this PR:** no new binary assets committed. The 19 `.md`
 procurement placeholders (created in #912) remain in place; each one already
@@ -99,7 +103,7 @@ For each item below, the human owner should:
 | `assets/audio/sfx/combat/boss_attack_heavy.wav` | §2 row 10 | ElevenLabs (prompt in §4) |
 | `assets/audio/sfx/combat/boss_death_heavy.wav` | §2 row 11 | ElevenLabs (prompt in §4) |
 | `assets/audio/sfx/combat/bow_thrum_medium.wav` | §2 row 12 | ElevenLabs (prompt in §4) |
-| `assets/audio/sfx/combat/archer_death_goblin.wav` | §2 row 13 | CC0 (Kenney / freesound) |
+| `assets/audio/sfx/combat/archer_death_goblin.wav` | §2 row 13 | CC0 (Kenney / freesound) — **RECEIVED 2026-08-18 as `archetype_death_goblin.wav` (issue #1030, see §8)** |
 | `assets/audio/sfx/combat/archer_death_orc.wav` | §2 row 14 | CC0 (Kenney / freesound) |
 | `assets/audio/sfx/combat/archer_death_skeleton.wav` | §2 row 15 | CC0 (Kenney / freesound) |
 | `assets/audio/sfx/combat/archer_death_bandit.wav` | §2 row 16 | CC0 (Kenney / freesound) |
@@ -117,8 +121,8 @@ For each item below, the human owner should:
 
 | Canonical path | Plan ref | Source class |
 |---|---|---|
-| `assets/audio/music/menu_loop.ogg` | §3 row 1 | CC0 (freepd `Action`/`Ambient`) |
-| `assets/audio/music/combat_loop.ogg` | §3 row 2 | CC0 (freepd `Action` ~110–130 BPM) |
+| `assets/audio/music/menu_loop.ogg` | §3 row 1 | CC0 (freepd `Action`/`Ambient`) — **RECEIVED 2026-08-18 (issue #1030, see §8)** |
+| `assets/audio/music/combat_loop.ogg` | §3 row 2 | CC0 (freepd `Action` ~110–130 BPM) — **RECEIVED 2026-08-18 (issue #1030, see §8)** |
 
 ### 5.4 Character sprites (7 to map)
 
@@ -170,3 +174,39 @@ The `[AudioManager] Music asset missing (procurement pending)` warnings for
 verify path wiring (which passes) while file presence stays a procurement
 signal. Option 1 of issue #989 (procure the real binaries via §5.1/§5.3)
 remains open with the audio-team.
+
+## 8. Addendum — issue #1030 procurement landed (2026-08-18)
+
+Option 1 executed for the three assets named in issue #1030. All three are
+sourced from verifiable CC0 origins (license checked at the distribution
+page, not the filename). Full provenance rows live in
+`assets/audio/SOURCES.md`; loop-seam metrics in
+`assets/audio/music/SEAM_VERIFICATION.md`.
+
+| Asset | Status | Source | License | Author |
+|---|---|---|---|---|
+| `assets/audio/music/menu_loop.ogg` | **Received** | FreePD (archived) — [track page](https://web.archive.org/web/2019/http://freepd.com/Cinematic/Night%20in%20the%20Castle), [file](https://web.archive.org/web/2024/https://freepd.com/music/Night%20in%20the%20Castle.mp3) | CC0 1.0 — [deed](https://creativecommons.org/publicdomain/zero/1.0/); FreePD site statement: "Public Domain Music — Creative Commons 0" ([archived](https://web.archive.org/web/2024/https://freepd.com/)) | Kevin MacLeod ("dedicated to the Public Domain October 2015") |
+| `assets/audio/music/combat_loop.ogg` | **Received** | FreePD (archived) — [track page](https://web.archive.org/web/2019/http://freepd.com/Cinematic/Action%20Epic), [file](https://web.archive.org/web/2024/http://freepd.com/Cinematic/Action%20Epic.mp3) | CC0 1.0 — [deed](https://creativecommons.org/publicdomain/zero/1.0/) | Komiku (FMA album "The Binge Watchers — Score 1") |
+| `assets/audio/sfx/combat/archetype_death_goblin.wav` | **Received** | OpenGameArt — [80 CC0 creature SFX #2](https://opengameart.org/content/80-cc0-creture-sfx-2), [zip](https://opengameart.org/sites/default/files/80-CC0-creature-sfx-2.zip) | CC0 1.0 (page license block) | dread-knight (AncientBeast collection) |
+
+Notes:
+
+- freepd.com (the primary source named in §5.3) **closed permanently in
+  2025**; files were retrieved from the Wayback Machine snapshots of the
+  original CC0 distribution pages, downloaded 2026-08-18.
+- Format conversion (permitted by policy — no synthetic audio was
+  fabricated): music mp3→ogg vorbis q5 44.1 kHz stereo; SFX ogg→wav
+  44.1 kHz mono pcm_s16 (matches existing `arrow_shot.wav` conventions).
+- `combat_loop.ogg` is "Action Epic", measured ~117.5 BPM — within the
+  §5.3 spec of ~110–130 BPM.
+- The goblin death SFX lands at the canonical runtime path
+  `archetype_death_goblin.wav` (AudioManager `_EVENT_PATHS`, per the #989 /
+  PR #1003 event-name repair), replacing the earlier `archer_death_*`
+  placeholder naming; the SOURCES.md row was canonicalized accordingly.
+- Remaining §5.1/§5.2/§5.3 items (13 combat SFX, 3 UI SFX) are still
+  pending procurement. The archetype-death siblings
+  (`archetype_death_{wolf,guardian,elemental}.wav`) remain missing — note
+  these had no `archer_death_*` placeholder md and need SOURCES.md rows
+  when procured.
+- Human sign-off on license/provenance and aural loop-seam review are still
+  required per §6 before issue #956 can close.
