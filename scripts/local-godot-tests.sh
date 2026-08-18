@@ -51,6 +51,28 @@ check_godot() {
     fi
 }
 
+# Ensure the .godot import cache exists before any headless Godot run.
+# Fresh git worktrees/checkouts lack .godot/ (gitignored, per-worktree state),
+# which cascades into phantom test failures: missing global script classes
+# (BaseEnemy, GearData, ...) and unimported resources (issue #991).
+# Idempotent: no-op when the class cache already exists.
+ensure_import() {
+    if [ -f "$PROJECT_ROOT/.godot/global_script_class_cache.cfg" ]; then
+        return 0
+    fi
+    if ! command -v "$GODOT_BINARY" &> /dev/null; then
+        log_warning "Godot binary '$GODOT_BINARY' not found — cannot run import for fresh checkout"
+        return 0
+    fi
+    log_info "Fresh checkout detected — running godot import (one-time)..."
+    timeout 300 "$GODOT_BINARY" --headless --quit --import || {
+        log_error "Godot import failed"
+        return 1
+    }
+    log_success "Godot import completed"
+    return 0
+}
+
 run_lint() {
     log_info "Running GDScript linting..."
     
@@ -239,7 +261,18 @@ main() {
         run_syntax_flag=true
         run_tests_flag=true
     fi
-    
+
+    # Self-heal fresh worktrees before headless Godot runs (issue #991).
+    # If the import fails, skip Godot-dependent checks so phantom failures
+    # from a missing .godot/ cache are not reported as test regressions.
+    if [ "$run_syntax_flag" = true ] || [ "$run_tests_flag" = true ]; then
+        if ! ensure_import; then
+            run_syntax_flag=false
+            run_tests_flag=false
+            exit_code=1
+        fi
+    fi
+
     if [ "$run_quick_flag" = true ]; then
         echo "=== Quick Validation ==="
         run_quick_validation || exit_code=1
