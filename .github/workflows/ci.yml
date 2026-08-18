@@ -145,8 +145,10 @@ jobs:
       # `armored-archer/nakama-postgres:3.21.1` image was never published to a
       # registry, so both act and GitHub-hosted runners failed at job setup
       # ("pull access denied"). These jobs run unit tests only (jest roots=src),
-      # which never connect to Nakama — integration coverage runs on the real
-      # stack via `npm run test:integration` + backend/docker-compose.yml.
+      # which never connect to Nakama — integration coverage runs in the
+      # `backend-integration-test` job below (issue #1070), which boots the
+      # real heroiclabs/nakama:3.21.1 + postgres:14-alpine pair as service
+      # containers and executes `npm run test:integration`.
 
     steps:
       - uses: actions/checkout@v4
@@ -835,3 +837,164 @@ jobs:
       - name: Fail if any tracked file matches .gitignore
         working-directory: ./backend
         run: npm run validate:tracked-ignored:ci
+
+  # Issue #1070: gate PRs with the 17 real-stack integration suites under
+  # backend/tests/integration/ (combat_system, matchmaker, authentication,
+  # gear_system, season_system, store, network_resilience, error_handling,
+  # spend_gems, vertical_slice_smoke, …) that exercise live RPC dispatch,
+  # DB persistence, and transactionality against Nakama + PostgreSQL. Until
+  # this job existed, settlement/purchase regressions merged green because
+  # only mocked unit tests ran in CI. Companion to backend-test (which runs
+  # `npm run test:coverage` against the unit suite only).
+  #
+  # Service-container ports — 5438 (postgres), 7352 (Nakama API), 7353
+  # (console) — are deliberately distinct from 5432/5434/5435/5436/5437 and
+  # 7350/7351 used by other jobs and the local dev stack (#858), so this
+  # job can run in parallel with backend-test / schema-validation under
+  # `act` without "port already allocated" failures.
+  #
+  # Bundle mount: real RPCs (combat / loot) require the Nakama game bundle
+  # built from backend/src. We build it via `npm run build:full` and mount
+  # the resulting backend/data/modules/ into the nakama container at
+  # /nakama/data/modules (Nakama's default module load path). NOTE: the
+  # .github/docker-compose.yml used by `make ci-services-*` does not mount
+  # this volume — leaving that as a follow-up keeps this PR diff small.
+  backend-integration-test:
+    name: Backend Integration Tests (Nakama + Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:14-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: nakama
+          POSTGRES_PASSWORD: changeme
+        ports:
+          - 5438:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      nakama:
+        image: heroiclabs/nakama:3.21.1
+        env:
+          NAKAMA_DATABASE_ADDRESS: postgres://postgres:changeme@postgres:5432/nakama
+          NAKAMA_SERVER_KEY: defaultkey
+        ports:
+          - 7352:7350
+          - 7353:7351
+        volumes:
+          # backend/data/modules is gitignored (AGENTS.md §Project Structure).
+          # The `Build Nakama bundle` step below populates it before the
+          # service container starts loading — Nakama's default module path
+          # picks it up automatically.
+          - ./backend/data/modules:/nakama/data/modules:ro
+        options: >-
+          --health-cmd "/nakama/nakama healthcheck"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+          --health-start-period 30s
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      # Builds the Nakama game bundle into backend/data/modules/, which the
+      # `nakama` service container mounts as a volume (see services.nakama
+      # above). Without this, custom RPCs (combat / loot / season) 500 and
+      # every integration test that calls them fails.
+      - name: Build Nakama bundle
+        working-directory: ./backend
+        run: npm run build:full
+
+      # act's runner image (catthehacker/ubuntu:act-latest) ships without
+      # postgresql-client — silent no-op on the migration step. Install only
+      # under act; hosted ubuntu-latest already has psql/pg_isready.
+      - name: Install postgresql-client (act only)
+        if: env.ACT == 'true'
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            apt-get update -qq && apt-get install -y -qq postgresql-client
+          fi
+          psql --version
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for i in {1..30}; do
+            if PGPASSWORD=changeme pg_isready -h localhost -p 5438 -U postgres 2>/dev/null; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Wait for Nakama to be ready
+        run: |
+          # /nakama/nakama healthcheck requires its own CLI subcommand and a
+          # reachable :7350 inside the container. From the runner we only
+          # need the HTTP API to respond; the game-bundle load is best-
+          # effort because Nakama's healthcheck doesn't reflect it.
+          for i in {1..60}; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:7352/ 2>/dev/null || echo "000")
+            if [ "$code" != "000" ] && [ "$code" != "" ]; then
+              echo "Nakama API reachable (HTTP $code)"
+              break
+            fi
+            echo "Waiting for Nakama... ($i/60)"
+            sleep 2
+          done
+
+      - name: Run game schema migrations
+        working-directory: ./backend/data
+        run: |
+          # Nakama's own startup created its internal tables (users,
+          # storage, …). Our 000_* migration is `CREATE TABLE IF NOT EXISTS`
+          # so it is a no-op when users already exists, and 001+ add the
+          # game schema on top. `|| true` mirrors backend-test's tolerance
+          # for re-applied migrations in cache-warm runners.
+          for migration in $(ls -1 *.sql 2>/dev/null | sort -V); do
+            echo "Running migration: $migration"
+            PGPASSWORD=changeme psql -h localhost -p 5438 -U postgres -d nakama -f "$migration" || true
+          done
+
+      - name: Run integration tests
+        working-directory: ./backend
+        env:
+          NAKAMA_HOST: localhost
+          NAKAMA_PORT: '7352'
+          NAKAMA_SERVER_KEY: defaultkey
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: '5438'
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: changeme
+          TEST_DB_NAME: nakama
+          CI: 'true'
+        run: npm run test:integration
+
+      - name: Upload integration test results
+        if: always() && env.ACT != 'true'
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: integration-test-results
+          path: backend/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Skip upload (act detected)
+        if: always() && env.ACT == 'true'
+        run: echo "Skipping artifact upload in act environment"
