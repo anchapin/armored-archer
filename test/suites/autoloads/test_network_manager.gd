@@ -256,11 +256,20 @@ func test_reconnection_attempts():
 	# Test attempt_reconnection() retry logic
 	watch_signals(_network)
 
+	# Empty credentials keep the timer-timeout branch offline-deterministic
+	# (no HTTP auth attempt), regardless of any persisted session file.
+	_network.session_token = ""
+	_network.device_id = ""
+
 	# First attempt
 	_network.attempt_reconnection()
 	assert_eq(_network.get_retry_attempts(), 1, "Should increment retry attempts on first call")
 	assert_true(_network.is_reconnecting(), "Should be reconnecting after attempt")
 	assert_signal_emitted(_network, "reconnection_attempted", "Should emit reconnection_attempted")
+
+	# Production clears _is_reconnecting only when the pending reconnect
+	# timer fires, so simulate that expiry before the next attempt.
+	_network._on_reconnect_timer_timeout()
 
 	# Second attempt
 	_network.attempt_reconnection()
@@ -270,13 +279,24 @@ func test_reconnection_max_attempts():
 	# Test MAX_RETRY_ATTEMPTS limit
 	watch_signals(_network)
 
-	# Attempt more than MAX_RETRY_ATTEMPTS (3)
-	for i in range(5):
-		_network.attempt_reconnection()
+	_network.session_token = ""
+	_network.device_id = ""
 
-	# Should stop at MAX_RETRY_ATTEMPTS
-	assert_eq(_network.get_retry_attempts(), 3, "Should not exceed MAX_RETRY_ATTEMPTS")
+	# Drive attempts up to the cap, simulating the reconnect-timer expiry
+	# between calls (the re-entrancy guard only clears when the timer fires).
+	for i in range(_network.MAX_RETRY_ATTEMPTS):
+		_network.attempt_reconnection()
+		assert_eq(_network.get_retry_attempts(), i + 1, "Attempt %d should be counted" % (i + 1))
+		_network._on_reconnect_timer_timeout()
+	assert_eq(_network.get_retry_attempts(), _network.MAX_RETRY_ATTEMPTS,
+		"Should reach MAX_RETRY_ATTEMPTS without exceeding it")
+
+	# Once at the cap, the next call refuses to start a new attempt and
+	# resets the reconnection state instead (retry counter back to zero).
+	_network.attempt_reconnection()
 	assert_false(_network.is_reconnecting(), "Should not be reconnecting after max attempts")
+	assert_eq(_network.get_retry_attempts(), 0,
+		"Retry counter should reset after the max-attempts refusal")
 
 func test_handle_connection_lost():
 	# Test connection_lost signal and offline mode
