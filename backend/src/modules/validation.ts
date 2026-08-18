@@ -281,7 +281,12 @@ export const ValibotSchemas = {
     additional_info: optional(pipe(string(), maxLength(500))),
   }),
 
-  get_player_reports: object({}),
+  get_player_reports: object({
+    // Optional admin-override target. The handler still enforces caller-scoping
+    // (issue #1150): a non-admin session must either omit user_id or pass its
+    // own ctx.userId, and a mismatch is rejected with FORBIDDEN + audit log.
+    user_id: optional(pipe(string(), minLength(1), maxLength(100))),
+  }),
 
   claim_season_rewards: object({}),
 

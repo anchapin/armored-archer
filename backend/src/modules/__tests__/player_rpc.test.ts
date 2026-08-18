@@ -18,6 +18,14 @@ jest.mock('../metrics', () => ({
   registerRpcWithMetrics: jest.fn(),
 }));
 
+// Mock the audit module so player_rpc can call logAudit without pulling in
+// the real audit/admin_auth module graph (which would create a circular
+// import during test bootstrap). The mock mirrors the production
+// logAudit signature so the handler can be called directly.
+jest.mock('../audit', () => ({
+  logAudit: jest.fn(),
+}));
+
 jest.mock('../../index', () => ({
   getStructuredLogger: () => ({
     info: jest.fn(),
@@ -36,6 +44,7 @@ jest.mock('../health_monitor', () => ({
 }));
 
 const { submitPlayerReport, getReportsForUser } = jest.requireMock('../anti_cheat');
+const { logAudit } = jest.requireMock('../audit') as { logAudit: jest.Mock };
 
 describe('player_rpc', () => {
   let mockLogger: Runtime.Logger;
@@ -231,28 +240,96 @@ describe('player_rpc', () => {
       expect(parsed.reports).toEqual([]);
     });
 
-    it('should return reports for specified user_id', () => {
+    // Regression test for issue #1150: rpcGetPlayerReports previously accepted
+    // an arbitrary `user_id` in the payload and returned that user's moderation
+    // reports to any authenticated session, leaking reporter identities,
+    // match IDs, and free-text reasons. The handler now binds the lookup to
+    // ctx.userId and rejects cross-user probes with FORBIDDEN + audit log.
+    it('should accept an explicit self user_id and look up ctx.userId (#1150)', () => {
       getReportsForUser.mockReturnValue([
-        { reportId: 'r2', reporterId: 'admin', reason: 'cheating' },
+        { reportId: 'r-self', reporterId: 'test-user', reason: 'cheating' },
       ]);
 
-      // Mock validatePayload to return data with user_id (Valibot strips unknown keys)
-      const validation = require('../validation');
-      const originalValidate = validation.validatePayload;
-      validation.validatePayload = jest.fn().mockReturnValue({
-        success: true,
-        data: { user_id: 'target-user' },
-      });
-
-      const payload = JSON.stringify({ user_id: 'target-user' });
+      const payload = JSON.stringify({ user_id: 'test-user' });
       const result = rpcGetPlayerReports(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
       expect(parsed.reports).toHaveLength(1);
-      expect(getReportsForUser).toHaveBeenCalledWith('target-user');
+      expect(getReportsForUser).toHaveBeenCalledWith('test-user');
+      expect(logAudit).not.toHaveBeenCalled();
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+    });
 
-      validation.validatePayload = originalValidate;
+    it('should reject a cross-user probe with FORBIDDEN and audit log the attempt (#1150)', () => {
+      const payload = JSON.stringify({ user_id: 'victim-user' });
+      const result = rpcGetPlayerReports(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      // The probe must be rejected with a generic message that does not leak
+      // any information about the victim's reports.
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBe('Forbidden');
+      expect(parsed.error_code).toBe('FORBIDDEN');
+      expect(parsed.rpc_name).toBe('get_player_reports');
+      expect(parsed.reports).toBeUndefined();
+      expect(parsed.total).toBeUndefined();
+
+      // The victim's storage is never read.
+      expect(getReportsForUser).not.toHaveBeenCalled();
+      expect(getReportsForUser).not.toHaveBeenCalledWith('victim-user');
+
+      // The attempt must be audit-logged against the caller for security
+      // monitoring — the victim's id is recorded in the details so operators
+      // can correlate, but never echoed to the client.
+      expect(logAudit).toHaveBeenCalledTimes(1);
+      const auditArgs = (logAudit as jest.Mock).mock.calls[0];
+      expect(auditArgs[0]).toBe(mockNk);
+      expect(auditArgs[1]).toBe('test-user');
+      expect(auditArgs[3]).toBe('get_player_reports');
+      expect(auditArgs[4]).toBe('player_reports');
+      expect(auditArgs[6]).toBe('failure');
+      expect(auditArgs[7]).toContain('does not match');
+      const details = auditArgs[5] as Record<string, unknown>;
+      expect(details.requested_user_id).toBe('victim-user');
+      expect(details.reason).toBe('cross_user_probe');
+
+      // The response must not echo the victim or any internals.
+      expect(result).not.toContain('victim-user');
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('test-user')
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('victim-user')
+      );
+    });
+
+    it('should allow an allowlisted admin to query another user\'s reports (#1150, #1075)', () => {
+      const previousAdminIds = process.env.ADMIN_USER_IDS;
+      process.env.ADMIN_USER_IDS = 'admin-user';
+      // isAdminUser caches no state per call (it re-parses the env), so no
+      // cache reset is required here.
+      const adminCtx = createMockContext({ userId: 'admin-user' });
+
+      getReportsForUser.mockReturnValue([
+        { reportId: 'r-victim', reporterId: 'victim-user', reason: 'win_trading' },
+      ]);
+
+      const payload = JSON.stringify({ user_id: 'victim-user' });
+      const result = rpcGetPlayerReports(adminCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.reports).toHaveLength(1);
+      expect(getReportsForUser).toHaveBeenCalledWith('victim-user');
+      expect(logAudit).not.toHaveBeenCalled();
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+
+      if (previousAdminIds === undefined) {
+        delete process.env.ADMIN_USER_IDS;
+      } else {
+        process.env.ADMIN_USER_IDS = previousAdminIds;
+      }
     });
   });
 });

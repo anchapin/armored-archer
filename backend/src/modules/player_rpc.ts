@@ -11,6 +11,8 @@ import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { getPlayerStatsWithCache } from '../utils/player-data-helpers';
 import { getHealthStatus } from './health_monitor';
+import { logAudit } from './audit';
+import { isAdminUser } from './admin_auth';
 
 /**
  * Helper to get structured logger for this module
@@ -210,15 +212,29 @@ export function registerRpcGetPlayerReports(initializer: Runtime.Initializer): v
 }
 
 /**
- * Retrieves reports for a player (admin/reporter view).
+ * Retrieves reports for the calling player (self-listing) or, for allowlisted
+ * admins, for an explicitly-named target user.
  *
  * Enhances reports with match details from the database when match_id is present.
  * This is useful for dispute resolution and QA debugging.
  *
+ * Scoping decision (issue #1150): this player-callable RPC previously accepted
+ * an arbitrary `user_id` in the payload and returned that user's moderation
+ * reports to anyone with a valid session. The in-memory playerReports map
+ * stores reporter identities, match IDs, and free-text reasons — cross-user
+ * reads expose PII and undermine ranked-PvP integrity. The lookup is now
+ * bound to the session-derived `ctx.userId`: a caller may either omit
+ * `user_id` (defaults to self) or pass their own session id. A payload
+ * `user_id` that differs from the caller is rejected with a generic Forbidden
+ * response and recorded via `logAudit` as a `cross_user_probe` so
+ * impersonation attempts surface for security monitoring. Allowlisted admins
+ * (`isAdminUser`, issue #1075) may target any user; this is the only
+ * supported way to read another player's moderation trail.
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
- * @param payload - JSON string with optional user_id filter
+ * @param payload - JSON string with optional user_id filter (admin-only)
  * @returns JSON string with reports and match details
  */
 export function rpcGetPlayerReports(
@@ -237,11 +253,43 @@ export function rpcGetPlayerReports(
     return createValidationErrorResponse('get_player_reports', validation.error);
   }
 
-  const { user_id } = validation.data;
+  const { user_id: requestedUserId } = validation.data;
+  const sessionUserId = ctx.userId;
+  const callerIsAdmin = isAdminUser(sessionUserId);
 
-  // If user_id provided, get reports for that user (admin view)
-  // Otherwise, get reports filed by current user
-  const reports = user_id ? getReportsForUser(user_id) : getReportsForUser(ctx.userId);
+  // Reject cross-user probes for non-admin callers. A mismatch is a probe, not
+  // a configuration error — surface it as a FORBIDDEN response and record it
+  // against the caller so impersonation attempts are auditable. The victim's
+  // data is never read or logged.
+  if (requestedUserId !== undefined && requestedUserId !== sessionUserId && !callerIsAdmin) {
+    logAudit(
+      nk,
+      sessionUserId,
+      ctx.ipAddress ?? null,
+      'get_player_reports',
+      'player_reports',
+      {
+        requested_user_id: requestedUserId,
+        reason: 'cross_user_probe',
+      },
+      'failure',
+      'requested user_id does not match the authenticated caller'
+    );
+    logger.warn(
+      `get_player_reports rejected: session user '${sessionUserId}' attempted to query reports for '${requestedUserId}'`
+    );
+    return JSON.stringify({
+      success: false,
+      error: 'Forbidden',
+      error_code: 'FORBIDDEN',
+      rpc_name: 'get_player_reports',
+    });
+  }
+
+  // Self-listing (caller omitted user_id OR passed their own id) is the
+  // player-callable path. Admins may pass a different id to inspect a victim.
+  const effectiveUserId = callerIsAdmin && requestedUserId !== undefined ? requestedUserId : sessionUserId;
+  const reports = getReportsForUser(effectiveUserId);
 
   // Enhance reports with match details when available
   const enhancedReports = reports.map((report: any) => {
