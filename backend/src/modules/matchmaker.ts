@@ -112,7 +112,12 @@ export interface PvPMatch {
  * turn engine's max-turns/draw outcomes.
  */
 export type MatchEndReason =
-  'health_zero' | 'forfeit' | 'timeout' | 'disconnect' | 'max_turns' | 'draw';
+  | 'health_zero'
+  | 'forfeit'
+  | 'timeout'
+  | 'disconnect'
+  | 'max_turns'
+  | 'draw';
 
 /**
  * Server-declared terminal state of a match, derived exclusively from
@@ -1957,7 +1962,8 @@ function runPunchUpLossWatch(
  * @property response - Immediate JSON response for the non-claimed outcomes
  */
 type SettlementClaim =
-  { status: 'claimed'; response: null } | { status: 'lost_race' | 'failed'; response: string };
+  | { status: 'claimed'; response: null }
+  | { status: 'lost_race' | 'failed'; response: string };
 
 /**
  * Claims the settlement of a match by stamping the `settled_at` idempotency
