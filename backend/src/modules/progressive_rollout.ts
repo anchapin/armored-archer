@@ -14,6 +14,7 @@ import { Counter, Gauge, Histogram, Registry } from 'prom-client';
 import { config } from '../config';
 import { Runtime } from '../types/nakama';
 import { withAdminGuard } from './admin_auth';
+import { logAudit } from './audit';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 // Create a dedicated registry for rollout metrics
@@ -624,11 +625,23 @@ async function rpcListFeatureFlags(
 
 /**
  * RPC: Check if feature is enabled for user
+ *
+ * Scoping decision (issue #1156): this player-callable RPC previously
+ * accepted an arbitrary `user_id` in the payload and returned that user's
+ * feature-flag state. That allowed any authenticated session to probe
+ * other users' flags — canary cohorts and rollout percentages are
+ * operational signals whose leakage lets attackers identify testers,
+ * predict rollouts, and time exploits to the window when vulnerable code
+ * is active. The check is now bound to the session-derived `ctx.userId`:
+ * a caller may either omit `user_id` (defaults to self) or pass their own
+ * session id, and a mismatch is rejected with a generic Forbidden
+ * response and written to the audit trail against the caller so
+ * impersonation attempts surface for security monitoring.
  */
 async function rpcCheckFeatureFlag(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  _nk: Runtime.Nakama,
+  nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
   const validation = validatePayload(ZodSchemas.rollout_check, payload, 'rollout_check');
@@ -636,9 +649,40 @@ async function rpcCheckFeatureFlag(
     return createValidationErrorResponse('rollout_check', validation.error);
   }
 
-  const { feature_name, user_id, game_version } = validation.data;
+  const { feature_name, user_id: requestedUserId, game_version } = validation.data;
+  const sessionUserId = ctx.userId;
 
-  const enabled = isFeatureEnabled(feature_name, user_id, game_version);
+  // Reject cross-user probes: the player-callable rollout_check must
+  // only return flag state for the caller themselves. Allowlisted
+  // admins have the dedicated rollout_list_flags RPC for that purpose.
+  if (requestedUserId !== undefined && requestedUserId !== sessionUserId) {
+    logAudit(
+      nk,
+      sessionUserId,
+      ctx.ipAddress ?? null,
+      'rollout_check',
+      'feature_flags',
+      {
+        requested_user_id: requestedUserId,
+        feature_name,
+        reason: 'cross_user_probe',
+      },
+      'failure',
+      'requested user_id does not match the authenticated caller'
+    );
+    logger.warn(
+      `rollout_check rejected: session user '${sessionUserId}' attempted to query flag state for '${requestedUserId}' (feature='${feature_name}')`
+    );
+    return JSON.stringify({
+      success: false,
+      error: 'Forbidden',
+      error_code: 'FORBIDDEN',
+      rpc_name: 'rollout_check',
+    });
+  }
+
+  const effectiveUserId = requestedUserId ?? sessionUserId;
+  const enabled = isFeatureEnabled(feature_name, effectiveUserId, game_version);
   const flag = featureFlags.get(feature_name);
 
   return JSON.stringify({

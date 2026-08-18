@@ -285,7 +285,7 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Progressive Rollout - Create Flag | Admin Dashboard (admin-only) | `rpcCreateFeatureFlag()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_create_flag` |
 | Progressive Rollout - Update Flag | Admin Dashboard (admin-only) | `rpcUpdateFeatureFlag()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_update_flag` |
 | Progressive Rollout - List Flags | Admin Dashboard (admin-only) | `rpcListFeatureFlags()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_list_flags` |
-| Progressive Rollout - Check | Client/Admin | `rpcCheckFeatureFlag()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_check` |
+| Progressive Rollout - Check | Client/Admin | `rpcCheckFeatureFlag()` in `progressive_rollout.ts` — **scoped to caller (issue #1156):** payload `user_id` must match `ctx.userId` or be omitted; mismatches return `FORBIDDEN` and are audit-logged as `cross_user_probe` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_check` |
 | Progressive Rollout - Advance Phase | Admin Dashboard (admin-only) | `rpcAdvancePhase()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_advance` |
 | Progressive Rollout - Rollback | Admin Dashboard (admin-only) | `rpcRollbackFeature()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_rollback` |
 | Progressive Rollout - Health Check | Admin Dashboard (admin-only) | `rpcRolloutHealth()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_health` |
@@ -302,7 +302,7 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 **Admin Authorization (issue #1075):**
 - Every RPC in this section marked *(admin-only)* — plus the season admin tools, `admin_query_matches`, and the QA replay endpoints — is wrapped server-side by the shared admin guard (`backend/src/modules/admin_auth.ts`).
 - Authorized callers are configured via the `ADMIN_USER_IDS` environment variable (comma-separated Nakama user ids; see `backend/.env.example`). Unset/empty rejects every caller (fail-closed), and rejections are audit-logged as `admin_rpc_access_denied`.
-- `rollout_check` and `rollout_record_metrics` remain player-callable by design (client feature-gating and rollout telemetry).
+- `rollout_check` and `rollout_record_metrics` remain player-callable by design (client feature-gating and rollout telemetry). `rollout_check` is **hard-scoped to the session user** (issue #1156): a payload `user_id` must equal `ctx.userId` or be omitted — cross-user probes are rejected with `FORBIDDEN` and audit-logged against the caller. Operators needing the full flag inventory (including canary cohorts) must use the admin-only `rollout_list_flags` RPC.
 
 ### Client-Side Synchronous Storage Cache (no RPC)
 
@@ -539,7 +539,7 @@ For PostgreSQL table changes:
 | `armored_archer/rollout_create_flag` | progressive_rollout | `rpcCreateFeatureFlag()` | Infrastructure *(admin-only)* |
 | `armored_archer/rollout_update_flag` | progressive_rollout | `rpcUpdateFeatureFlag()` | Infrastructure *(admin-only)* |
 | `armored_archer/rollout_list_flags` | progressive_rollout | `rpcListFeatureFlags()` | Infrastructure *(admin-only)* |
-| `armored_archer/rollout_check` | progressive_rollout | `rpcCheckFeatureFlag()` | Infrastructure (player-callable) |
+| `armored_archer/rollout_check` | progressive_rollout | `rpcCheckFeatureFlag()` — scoped to `ctx.userId` (mismatches → `FORBIDDEN` + audit log, issue #1156) | Infrastructure (player-callable) |
 | `armored_archer/rollout_advance` | progressive_rollout | `rpcAdvancePhase()` | Infrastructure *(admin-only)* |
 | `armored_archer/rollout_rollback` | progressive_rollout | `rpcRollbackFeature()` | Infrastructure *(admin-only)* |
 | `armored_archer/rollout_health` | progressive_rollout | `rpcRolloutHealth()` | Infrastructure *(admin-only)* |

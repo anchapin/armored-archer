@@ -460,7 +460,7 @@ export const ValibotSchemas = {
 
   rollout_check: object({
     feature_name: pipe(string(), minLength(1), maxLength(100)),
-    user_id: pipe(string(), minLength(1), maxLength(100)),
+    user_id: optional(pipe(string(), minLength(1), maxLength(100))),
     game_version: optional(pipe(string(), maxLength(50))),
   }),
 
