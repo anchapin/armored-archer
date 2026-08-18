@@ -1,5 +1,6 @@
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { isAdminUser } from './admin_auth';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
@@ -77,8 +78,12 @@ export function logAudit(
  * with a generic error rather than silently clamped, so impersonation attempts
  * surface as failures and are recorded via logAudit in the caller's own audit
  * trail for security monitoring. The victim's data is never read or logged.
- * There is intentionally no admin bypass here — the shared admin gate is a
- * separate workstream (issue #1075).
+ *
+ * Admin override (issue #1075): callers allowlisted via the shared admin gate
+ * (ADMIN_USER_IDS) may query any user's audit trail — without this, operators
+ * could not investigate the admin_rpc_access_denied entries the gate itself
+ * writes against rejected callers. Non-admins remain hard-scoped to their own
+ * entries.
  *
  * @param ctx - Nakama runtime context
  * @param loggerParam - Nakama logger instance
@@ -109,10 +114,13 @@ export function rpcQueryAuditLogs(
     cursor = '',
   } = validation.data;
 
-  // Payload user_id is advisory only: it must either match the caller or be
-  // absent. A mismatch is a cross-user read attempt — reject and audit-log it
-  // against the caller (logAudit never throws, so this path stays safe).
-  if (user_id !== undefined && user_id !== ctx.userId) {
+  const callerIsAdmin = isAdminUser(ctx.userId);
+
+  // Payload user_id is advisory only for players: it must either match the
+  // caller or be absent. A mismatch is a cross-user read attempt — reject and
+  // audit-log it against the caller (logAudit never throws, so this path
+  // stays safe). Allowlisted admins may target any user (issue #1075).
+  if (user_id !== undefined && user_id !== ctx.userId && !callerIsAdmin) {
     logAudit(
       nk,
       ctx.userId,
@@ -133,8 +141,8 @@ export function rpcQueryAuditLogs(
   }
 
   // Missing user_id defaults to the caller; a matching user_id is redundant.
-  // Either way the read target is exactly ctx.userId.
-  const effectiveUserId: string = ctx.userId;
+  // Allowlisted admins may read any player's trail; players only their own.
+  const effectiveUserId: string = callerIsAdmin && user_id !== undefined ? user_id : ctx.userId;
 
   try {
     const storageObjects = nk.storageList(effectiveUserId, 'audit_logs', limit, cursor || '', '');

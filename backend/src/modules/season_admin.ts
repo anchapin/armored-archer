@@ -33,6 +33,7 @@
  */
 
 import { Runtime } from '../types/nakama';
+import { withAdminGuard } from './admin_auth';
 import { logAudit } from './audit';
 import { applyCurrencyDelta, type CurrencyDelta } from './currency';
 import {
@@ -1211,18 +1212,35 @@ export function rpcAdminTriggerSeasonEvent(
 
 // --- Registration ---
 
+// All season admin RPCs are wrapped in the shared admin gate (issue #1075):
+// fail-closed unless the caller is allowlisted via ADMIN_USER_IDS. This
+// includes admin_trigger_season_event's end_season action — its
+// confirmation_token only has to equal the guessable season_id, so the
+// token alone must not be treated as authorization.
 export function registerRpcAdminGetSeasonState(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/admin_get_season_state', rpcAdminGetSeasonState);
+  initializer.registerRpc(
+    'armored_archer/admin_get_season_state',
+    withAdminGuard('armored_archer/admin_get_season_state', rpcAdminGetSeasonState)
+  );
 }
 
 export function registerRpcAdminGetPlayerSeason(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/admin_get_player_season', rpcAdminGetPlayerSeason);
+  initializer.registerRpc(
+    'armored_archer/admin_get_player_season',
+    withAdminGuard('armored_archer/admin_get_player_season', rpcAdminGetPlayerSeason)
+  );
 }
 
 export function registerRpcAdminValidateSeason(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/admin_validate_season', rpcAdminValidateSeason);
+  initializer.registerRpc(
+    'armored_archer/admin_validate_season',
+    withAdminGuard('armored_archer/admin_validate_season', rpcAdminValidateSeason)
+  );
 }
 
 export function registerRpcAdminTriggerSeasonEvent(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/admin_trigger_season_event', rpcAdminTriggerSeasonEvent);
+  initializer.registerRpc(
+    'armored_archer/admin_trigger_season_event',
+    withAdminGuard('armored_archer/admin_trigger_season_event', rpcAdminTriggerSeasonEvent)
+  );
 }

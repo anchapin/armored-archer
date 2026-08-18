@@ -29,6 +29,7 @@ import {
   TrendData,
 } from '../types/errorInsights';
 import { Runtime } from '../types/nakama';
+import { withAdminGuard } from './admin_auth';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
@@ -767,14 +768,33 @@ function determineSeverityFromError(error: Error): ErrorSeverity {
 }
 
 /**
- * Register RPC handlers for error insights
+ * Register RPC handlers for error insights.
+ *
+ * All five endpoints are wrapped in the shared admin gate (issue #1075):
+ * they expose raw internal error telemetry (stack traces, frequencies),
+ * so only allowlisted operators (ADMIN_USER_IDS) may call them.
  */
 export function registerErrorInsightRpcs(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/error_insights_dashboard', rpcGetErrorDashboard);
-  initializer.registerRpc('armored_archer/error_insights_summary', rpcGetErrorSummary);
-  initializer.registerRpc('armored_archer/error_insights_patterns', rpcGetErrorPatterns);
-  initializer.registerRpc('armored_archer/error_insights_stats', rpcGetErrorStats);
-  initializer.registerRpc('armored_archer/error_insights_dismiss', rpcDismissInsight);
+  initializer.registerRpc(
+    'armored_archer/error_insights_dashboard',
+    withAdminGuard('armored_archer/error_insights_dashboard', rpcGetErrorDashboard)
+  );
+  initializer.registerRpc(
+    'armored_archer/error_insights_summary',
+    withAdminGuard('armored_archer/error_insights_summary', rpcGetErrorSummary)
+  );
+  initializer.registerRpc(
+    'armored_archer/error_insights_patterns',
+    withAdminGuard('armored_archer/error_insights_patterns', rpcGetErrorPatterns)
+  );
+  initializer.registerRpc(
+    'armored_archer/error_insights_stats',
+    withAdminGuard('armored_archer/error_insights_stats', rpcGetErrorStats)
+  );
+  initializer.registerRpc(
+    'armored_archer/error_insights_dismiss',
+    withAdminGuard('armored_archer/error_insights_dismiss', rpcDismissInsight)
+  );
 }
 
 /**

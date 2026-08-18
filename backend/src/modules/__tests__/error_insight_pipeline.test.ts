@@ -34,6 +34,23 @@ jest.mock('../../config/logger', () => ({
 }));
 
 describe('error_insight_pipeline', () => {
+  // The error-insights RPCs are registered behind the shared admin gate
+  // (issue #1075), so handler-level tests must allowlist their caller ctxs
+  // ('test-user' in RPC endpoints, 'test' in the branch suites).
+  const previousAdminIds = process.env.ADMIN_USER_IDS;
+
+  beforeAll(() => {
+    process.env.ADMIN_USER_IDS = 'test-user,test';
+  });
+
+  afterAll(() => {
+    if (previousAdminIds === undefined) {
+      delete process.env.ADMIN_USER_IDS;
+    } else {
+      process.env.ADMIN_USER_IDS = previousAdminIds;
+    }
+  });
+
   beforeEach(() => {
     const store = getErrorStore();
     store.clear();

@@ -6,6 +6,7 @@
 import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
+import { withAdminGuard } from './admin_auth';
 import {
   isPlayerFlagged,
   getFlagReason,
@@ -2792,10 +2793,17 @@ export function rpcGetMatchDetails(
 /**
  * Registers the admin query matches RPC endpoint.
  *
+ * The handler is wrapped in the shared admin gate (issue #1075) —
+ * admin_query_matches returns every player's match rows, so it must only be
+ * reachable by allowlisted operators (ADMIN_USER_IDS).
+ *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcAdminQueryMatches(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/admin_query_matches', rpcAdminQueryMatches);
+  initializer.registerRpc(
+    'armored_archer/admin_query_matches',
+    withAdminGuard('armored_archer/admin_query_matches', rpcAdminQueryMatches)
+  );
 }
 
 /**

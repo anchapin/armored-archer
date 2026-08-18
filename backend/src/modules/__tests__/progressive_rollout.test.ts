@@ -30,6 +30,18 @@ jest.mock('../../config', () => ({
   },
 }));
 
+// Mock the winston logger: the admin guard (admin_auth.ts, issue #1075)
+// pulls in config/logger, whose real module reads config.logger at import.
+jest.mock('../../config/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+  logSystemEvent: jest.fn(),
+}));
+
 // Mock validation module - parse JSON payload and return as data
 jest.mock('../validation', () => ({
   validatePayload: jest.fn((_schema: unknown, payload: string) => {
@@ -461,7 +473,13 @@ describe('Progressive Rollout', () => {
   describe('RPC Handlers', () => {
     let registeredHandlers: Map<string, Function>;
 
+    // These RPCs are registered behind the shared admin guard (issue #1075),
+    // so the test caller must be allowlisted for the handler bodies to run.
+    // rollout_check / rollout_record_metrics stay player-callable.
+    const previousAdminIds = process.env.ADMIN_USER_IDS;
+
     beforeEach(() => {
+      process.env.ADMIN_USER_IDS = 'rollout-test-user';
       registeredHandlers = new Map();
       const mockInitializer = {
         registerRpc: jest.fn((name: string, handler: Function) => {
@@ -470,6 +488,14 @@ describe('Progressive Rollout', () => {
       } as unknown as Runtime.Initializer;
 
       registerProgressiveRollout(mockInitializer);
+    });
+
+    afterEach(() => {
+      if (previousAdminIds === undefined) {
+        delete process.env.ADMIN_USER_IDS;
+      } else {
+        process.env.ADMIN_USER_IDS = previousAdminIds;
+      }
     });
 
     it('rpcCreateFeatureFlag creates a flag via RPC', async () => {

@@ -6,6 +6,7 @@
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
+import { withAdminGuard } from './admin_auth';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
@@ -344,8 +345,15 @@ function buildLastAction(
  *
  * @param initializer - Nakama runtime initializer
  */
+// All replay/QA endpoints are wrapped in the shared admin gate (issue #1075).
+// They exist for QA flagging, debugging, and dispute resolution; none have
+// player-facing callers, and get/list read any player's match rows without
+// ownership scoping — exactly the privileged surface the gate exists for.
 export function registerRpcGetMatchReplay(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/get_match_replay', rpcGetMatchReplay);
+  initializer.registerRpc(
+    'armored_archer/get_match_replay',
+    withAdminGuard('armored_archer/get_match_replay', rpcGetMatchReplay)
+  );
 }
 
 /**
@@ -439,7 +447,10 @@ export async function rpcGetMatchReplay(
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcListMatchReplays(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/list_match_replays', rpcListMatchReplays);
+  initializer.registerRpc(
+    'armored_archer/list_match_replays',
+    withAdminGuard('armored_archer/list_match_replays', rpcListMatchReplays)
+  );
 }
 
 /**
@@ -567,7 +578,10 @@ export async function rpcListMatchReplays(
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcFlagMatchForQa(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/flag_match_for_qa', rpcFlagMatchForQa);
+  initializer.registerRpc(
+    'armored_archer/flag_match_for_qa',
+    withAdminGuard('armored_archer/flag_match_for_qa', rpcFlagMatchForQa)
+  );
 }
 
 /**
@@ -636,7 +650,10 @@ export async function rpcFlagMatchForQa(
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcAddDebugNotes(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/add_debug_notes', rpcAddDebugNotes);
+  initializer.registerRpc(
+    'armored_archer/add_debug_notes',
+    withAdminGuard('armored_archer/add_debug_notes', rpcAddDebugNotes)
+  );
 }
 
 /**
@@ -706,7 +723,10 @@ export async function rpcAddDebugNotes(
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcReconstructMatchState(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/reconstruct_match_state', rpcReconstructMatchState);
+  initializer.registerRpc(
+    'armored_archer/reconstruct_match_state',
+    withAdminGuard('armored_archer/reconstruct_match_state', rpcReconstructMatchState)
+  );
 }
 
 /**

@@ -395,7 +395,12 @@ describe('deployment_observability', () => {
   describe('RPC handlers', () => {
     let rpcHandlers: Record<string, Function>;
 
+    // Registered handlers are behind the shared admin gate (issue #1075),
+    // so the test caller ctx must be allowlisted via ADMIN_USER_IDS.
+    const previousAdminIds = process.env.ADMIN_USER_IDS;
+
     beforeEach(() => {
+      process.env.ADMIN_USER_IDS = 'test-admin';
       rpcHandlers = {};
       const mockInitializer = {
         registerRpc: jest.fn((id: string, handler: Function) => {
@@ -405,13 +410,21 @@ describe('deployment_observability', () => {
       registerDeploymentObservability(mockInitializer as any);
     });
 
+    afterEach(() => {
+      if (previousAdminIds === undefined) {
+        delete process.env.ADMIN_USER_IDS;
+      } else {
+        process.env.ADMIN_USER_IDS = previousAdminIds;
+      }
+    });
+
     describe('rpcRecordDeployment', () => {
       it('should return error for invalid payload', async () => {
         const { validatePayload } = require('../validation');
         validatePayload.mockReturnValue({ success: false, error: 'Invalid' });
 
         const result = await rpcHandlers['armored_archer/deployment_record'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           'invalid'
@@ -434,7 +447,7 @@ describe('deployment_observability', () => {
         });
 
         const result = await rpcHandlers['armored_archer/deployment_record'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           '{}'
@@ -459,7 +472,7 @@ describe('deployment_observability', () => {
         });
 
         const result = await rpcHandlers['armored_archer/deployment_record'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           '{}'
@@ -482,7 +495,7 @@ describe('deployment_observability', () => {
         });
 
         await rpcHandlers['armored_archer/deployment_record'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           '{}'
@@ -513,7 +526,7 @@ describe('deployment_observability', () => {
         });
 
         await rpcHandlers['armored_archer/deployment_record'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           '{}'
@@ -544,7 +557,7 @@ describe('deployment_observability', () => {
         });
 
         const result = await rpcHandlers['armored_archer/deployment_record'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           '{}'
@@ -567,7 +580,7 @@ describe('deployment_observability', () => {
         });
 
         const result = await rpcHandlers['armored_archer/deployment_record'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           '{}'
@@ -584,7 +597,7 @@ describe('deployment_observability', () => {
         validatePayload.mockReturnValue({ success: false, error: 'Invalid' });
 
         const result = await rpcHandlers['armored_archer/deployment_health'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           'invalid'
@@ -599,7 +612,7 @@ describe('deployment_observability', () => {
         validatePayload.mockReturnValue({ success: true, data: {} });
 
         const result = await rpcHandlers['armored_archer/deployment_health'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           '{}'
@@ -618,7 +631,7 @@ describe('deployment_observability', () => {
         validatePayload.mockReturnValue({ success: true, data: {} });
 
         const result = await rpcHandlers['armored_archer/deployment_health'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           '{}'
@@ -632,7 +645,7 @@ describe('deployment_observability', () => {
     describe('rpcDeploymentHistory', () => {
       it('should return deployment history with default limit', async () => {
         const result = await rpcHandlers['armored_archer/deployment_history'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           '{}'
@@ -647,7 +660,7 @@ describe('deployment_observability', () => {
 
       it('should accept custom limit from payload', async () => {
         const result = await rpcHandlers['armored_archer/deployment_history'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           JSON.stringify({ limit: 5 })
@@ -659,7 +672,7 @@ describe('deployment_observability', () => {
 
       it('should handle invalid JSON payload gracefully', async () => {
         const result = await rpcHandlers['armored_archer/deployment_history'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           'not json'
@@ -671,7 +684,7 @@ describe('deployment_observability', () => {
 
       it('should handle null payload', async () => {
         const result = await rpcHandlers['armored_archer/deployment_history'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           null as any
@@ -687,7 +700,7 @@ describe('deployment_observability', () => {
         recordDeployment('test', '2.0.0', 'started');
 
         const result = await rpcHandlers['armored_archer/deployment_history'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           '{}'
@@ -709,7 +722,7 @@ describe('deployment_observability', () => {
         validatePayload.mockReturnValue({ success: false, error: 'Invalid' });
 
         const result = await rpcHandlers['armored_archer/deployment_metrics'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           'invalid'
@@ -724,7 +737,7 @@ describe('deployment_observability', () => {
         validatePayload.mockReturnValue({ success: true, data: {} });
 
         const result = await rpcHandlers['armored_archer/deployment_metrics'](
-          {},
+          { userId: 'test-admin' },
           { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
           {},
           '{}'

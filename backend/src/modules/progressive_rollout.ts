@@ -13,6 +13,7 @@
 import { Counter, Gauge, Histogram, Registry } from 'prom-client';
 import { config } from '../config';
 import { Runtime } from '../types/nakama';
+import { withAdminGuard } from './admin_auth';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 // Create a dedicated registry for rollout metrics
@@ -477,19 +478,49 @@ export function getAllRolloutMetrics(): RolloutMetrics[] {
 // ============== RPC Handlers ==============
 
 /**
- * Register RPC handlers for progressive rollout
+ * Register RPC handlers for progressive rollout.
+ *
+ * Flag mutation and ops-telemetry endpoints are wrapped in the shared admin
+ * gate (issue #1075) — fail-closed unless the caller is allowlisted via
+ * ADMIN_USER_IDS. `rollout_check` and `rollout_record_metrics` intentionally
+ * stay player-callable: the game client reads flag state and reports rollout
+ * telemetry through them.
  */
 export function registerProgressiveRollout(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/rollout_create_flag', rpcCreateFeatureFlag);
-  initializer.registerRpc('armored_archer/rollout_update_flag', rpcUpdateFeatureFlag);
-  initializer.registerRpc('armored_archer/rollout_list_flags', rpcListFeatureFlags);
+  initializer.registerRpc(
+    'armored_archer/rollout_create_flag',
+    withAdminGuard('armored_archer/rollout_create_flag', rpcCreateFeatureFlag)
+  );
+  initializer.registerRpc(
+    'armored_archer/rollout_update_flag',
+    withAdminGuard('armored_archer/rollout_update_flag', rpcUpdateFeatureFlag)
+  );
+  initializer.registerRpc(
+    'armored_archer/rollout_list_flags',
+    withAdminGuard('armored_archer/rollout_list_flags', rpcListFeatureFlags)
+  );
   initializer.registerRpc('armored_archer/rollout_check', rpcCheckFeatureFlag);
-  initializer.registerRpc('armored_archer/rollout_advance', rpcAdvancePhase);
-  initializer.registerRpc('armored_archer/rollout_rollback', rpcRollbackFeature);
-  initializer.registerRpc('armored_archer/rollout_metrics', rpcGetRolloutMetrics);
+  initializer.registerRpc(
+    'armored_archer/rollout_advance',
+    withAdminGuard('armored_archer/rollout_advance', rpcAdvancePhase)
+  );
+  initializer.registerRpc(
+    'armored_archer/rollout_rollback',
+    withAdminGuard('armored_archer/rollout_rollback', rpcRollbackFeature)
+  );
+  initializer.registerRpc(
+    'armored_archer/rollout_metrics',
+    withAdminGuard('armored_archer/rollout_metrics', rpcGetRolloutMetrics)
+  );
   initializer.registerRpc('armored_archer/rollout_record_metrics', rpcRecordMetrics);
-  initializer.registerRpc('armored_archer/rollout_health', rpcRolloutHealth);
-  initializer.registerRpc('armored_archer/rollout_metrics_prometheus', rpcPrometheusMetrics);
+  initializer.registerRpc(
+    'armored_archer/rollout_health',
+    withAdminGuard('armored_archer/rollout_health', rpcRolloutHealth)
+  );
+  initializer.registerRpc(
+    'armored_archer/rollout_metrics_prometheus',
+    withAdminGuard('armored_archer/rollout_metrics_prometheus', rpcPrometheusMetrics)
+  );
 }
 
 /**
