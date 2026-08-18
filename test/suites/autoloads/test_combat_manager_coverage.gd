@@ -5,12 +5,16 @@ const CoverageTracker = preload("res://addons/gut/coverage/coverage_tracker.gd")
 # This test validates the coverage tracking approach before full implementation
 # Tracks 10-15 key lines in CombatManager.gd for proof of concept
 
-var _combat: CombatManager
+# Issue #1025: in headless GUT runs the autoloads are loaded, so the global
+# identifier CombatManager resolves to the singleton INSTANCE — calling .new()
+# on it fails with Nil errors. Load the script and instantiate that instead.
+var CombatManagerClass = load("res://autoloads/CombatManager.gd")
+var _combat
 var _mock_network: Node
 
 func before_each():
-	# Create fresh CombatManager instance for each test
-	_combat = CombatManager.new()
+	# Create fresh CombatManager instance for each test (ISO-04 pattern)
+	_combat = CombatManagerClass.new()
 	add_child_autofree(_combat)
 
 	# Create mock NetworkManager for RPC isolation
