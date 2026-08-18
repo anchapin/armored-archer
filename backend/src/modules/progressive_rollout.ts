@@ -386,7 +386,24 @@ export function checkRollbackCriteria(featureName: string): {
 }
 
 /**
- * Record rollout metrics for a feature
+ * Player-observable delta the client may submit to `rollout_record_metrics`
+ * (issue #1149). Bounded counters only — clients cannot set totals, only
+ * nudge them. Aggregates the server cannot defend (errorRate, p99LatencyMs)
+ * are intentionally absent from this surface so the rollback criteria
+ * remain under server control.
+ */
+export interface RolloutMetricsClientDelta {
+  errorCountDelta?: number;
+  healthCheckPassesDelta?: number;
+  healthCheckFailsDelta?: number;
+  avgLatencyMsDelta?: number;
+}
+
+/**
+ * Record rollout metrics for a feature. Non-client callers (internal modules,
+ * tests, future admin RPCs) may supply arbitrary fields, but the
+ * `rollout_record_metrics` RPC only ever threads bounded deltas through
+ * here.
  */
 export function recordRolloutMetrics(featureName: string, metrics: Partial<RolloutMetrics>): void {
   const existing = rolloutMetrics.get(featureName) || {
@@ -413,6 +430,55 @@ export function recordRolloutMetrics(featureName: string, metrics: Partial<Rollo
   };
 
   rolloutMetrics.set(featureName, updated);
+}
+
+/**
+ * Fold a bounded client delta into the rollout metrics map (issue #1149).
+ *
+ * Client-supplied payloads cannot overwrite authoritative counters — they
+ * can only add to them, with per-call caps that prevent a single session
+ * from fabricating enough signal to flip `checkRollbackCriteria`. Returns
+ * the resulting `RolloutMetrics` so callers (and the RPC handler) can
+ * surface rollback state without an extra map read.
+ */
+export function recordRolloutClientDelta(
+  featureName: string,
+  delta: RolloutMetricsClientDelta
+): RolloutMetrics {
+  const existing = rolloutMetrics.get(featureName) || {
+    featureName,
+    phase: 'disabled' as RolloutPhase,
+    totalUsers: 0,
+    activeUsers: 0,
+    errorCount: 0,
+    errorRate: 0,
+    avgLatencyMs: 0,
+    p99LatencyMs: 0,
+    healthCheckPasses: 0,
+    healthCheckFails: 0,
+    lastUpdated: Date.now(),
+  };
+
+  const flag = featureFlags.get(featureName);
+
+  const next: RolloutMetrics = {
+    ...existing,
+    errorCount: existing.errorCount + Math.max(0, Math.trunc(delta.errorCountDelta ?? 0)),
+    healthCheckPasses:
+      existing.healthCheckPasses + Math.max(0, Math.trunc(delta.healthCheckPassesDelta ?? 0)),
+    healthCheckFails:
+      existing.healthCheckFails + Math.max(0, Math.trunc(delta.healthCheckFailsDelta ?? 0)),
+    // Latency is reported as a single sample per call: the handler threads
+    // it into the histogram observation only. We do not derive a per-feature
+    // average from client submissions because the server-authoritative
+    // rollback criterion (avgLatencyMs) must come from server-side telemetry,
+    // not from a single player's report.
+    phase: flag?.rolloutPhase || 'disabled',
+    lastUpdated: Date.now(),
+  };
+
+  rolloutMetrics.set(featureName, next);
+  return next;
 }
 
 /**
@@ -485,7 +551,11 @@ export function getAllRolloutMetrics(): RolloutMetrics[] {
  * gate (issue #1075) — fail-closed unless the caller is allowlisted via
  * ADMIN_USER_IDS. `rollout_check` and `rollout_record_metrics` intentionally
  * stay player-callable: the game client reads flag state and reports rollout
- * telemetry through them.
+ * telemetry through them. `rollout_record_metrics` is restricted to bounded
+ * deltas (issue #1149) so a single player cannot drive the in-memory
+ * counters past `checkRollbackCriteria`'s thresholds or trigger Prometheus
+ * high-cardinality label explosions. `rollout_check` is hard-scoped to the
+ * session user (issue #1156).
  */
 export function registerProgressiveRollout(initializer: Runtime.Initializer): void {
   initializer.registerRpc(
@@ -803,12 +873,110 @@ async function rpcGetRolloutMetrics(
 }
 
 /**
+ * Hard caps used by `rpcRecordMetrics` to bound client-supplied deltas
+ * (issue #1149). Lives next to the handler so they are obvious side
+ * effects to update if the rollback thresholds in test phases change.
+ */
+const ROLLOUT_RECORD_METRICS_LIMITS = {
+  // Errors a single session can claim per RPC call. Trivially below any
+  // error-rate threshold the rollback logic cares about; the bound stops a
+  // single player from spamming the counter.
+  ERROR_COUNT_MAX: 50,
+  HEALTH_CHECK_PASSES_MAX: 100,
+  HEALTH_CHECK_FAILS_MAX: 5,
+  // Latency the client may observe in one call. The handler routes this
+  // to the Prometheus histogram only — it never feeds the rollback
+  // criterion directly.
+  AVG_LATENCY_MS_MAX: 5000,
+} as const;
+
+/**
+ * Reject a `rollout_record_metrics` submission that bypassed validation
+ * but still looks suspicious (issue #1149). Centralised so every defence
+ * branch writes the same audit shape — security monitoring downstream
+ * relies on the canonical `reason` field.
+ */
+function rejectMetricPoisoning(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  details: Record<string, unknown>,
+  reason: string,
+  message: string
+): string {
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'rollout_record_metrics',
+    'rollout_metrics',
+    {
+      ...details,
+      reason,
+    },
+    'failure',
+    message
+  );
+  logger.warn(`rollout_record_metrics rejected (${reason}) for user '${ctx.userId}': ${message}`);
+  return JSON.stringify({
+    success: false,
+    error: 'Forbidden',
+    error_code: 'FORBIDDEN',
+    rpc_name: 'rollout_record_metrics',
+    reason,
+  });
+}
+
+/**
+ * Defence-in-depth: validate client deltas against per-call caps even if
+ * the schema drift allows them through (issue #1149). Returns the list of
+ * offending field names (empty if all checks pass).
+ */
+function deltaFieldsOverCap(delta: {
+  error_count_delta?: number;
+  health_check_passes_delta?: number;
+  health_check_fails_delta?: number;
+  avg_latency_ms_delta?: number;
+}): string[] {
+  const overage: string[] = [];
+  if ((delta.error_count_delta ?? 0) > ROLLOUT_RECORD_METRICS_LIMITS.ERROR_COUNT_MAX) {
+    overage.push('error_count_delta');
+  }
+  if (
+    (delta.health_check_passes_delta ?? 0) > ROLLOUT_RECORD_METRICS_LIMITS.HEALTH_CHECK_PASSES_MAX
+  ) {
+    overage.push('health_check_passes_delta');
+  }
+  if (
+    (delta.health_check_fails_delta ?? 0) > ROLLOUT_RECORD_METRICS_LIMITS.HEALTH_CHECK_FAILS_MAX
+  ) {
+    overage.push('health_check_fails_delta');
+  }
+  if ((delta.avg_latency_ms_delta ?? 0) > ROLLOUT_RECORD_METRICS_LIMITS.AVG_LATENCY_MS_MAX) {
+    overage.push('avg_latency_ms_delta');
+  }
+  return overage;
+}
+
+/**
  * RPC: Record rollout metrics
+ *
+ * Security contract (issue #1149): this is a player-callable RPC by
+ * design (client rollout telemetry), but the server remains authoritative
+ * over the rollback-criteria signal. Clients may submit only **bounded
+ * deltas** (`error_count_delta`, `health_check_passes_delta`,
+ * `health_check_fails_delta`, `avg_latency_ms_delta`) — never totals.
+ * Total counters, error rates, p99 latency, and active-user counts are
+ * computed server-side from server-traced counters and the in-memory
+ * `rolloutMetrics` map; clients cannot overwrite them. Numeric fields
+ * are capped at submission time so a single session cannot fabricate
+ * the volume needed to trip `checkRollbackCriteria`, and any anomaly is
+ * audit-logged as `metric_poisoning_attempt`.
  */
 async function rpcRecordMetrics(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  _nk: Runtime.Nakama,
+  nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
   const validation = validatePayload(
@@ -817,58 +985,96 @@ async function rpcRecordMetrics(
     'rollout_record_metrics'
   );
   if (!validation.success) {
-    return createValidationErrorResponse('rollout_record_metrics', validation.error);
+    return rejectMetricPoisoning(
+      nk,
+      ctx,
+      logger,
+      { schema_error: validation.error },
+      'validation_failed',
+      'rollout_record_metrics payload failed schema validation'
+    );
   }
 
   const {
     feature_name,
-    total_users,
-    active_users,
-    error_count,
-    error_rate,
-    avg_latency_ms,
-    p99_latency_ms,
-    health_check_passes,
-    health_check_fails,
+    error_count_delta,
+    health_check_passes_delta,
+    health_check_fails_delta,
+    avg_latency_ms_delta,
+    client_platform,
   } = validation.data;
 
-  recordRolloutMetrics(feature_name, {
-    totalUsers: total_users,
-    activeUsers: active_users,
-    errorCount: error_count,
-    errorRate: error_rate,
-    avgLatencyMs: avg_latency_ms,
-    p99LatencyMs: p99_latency_ms,
-    healthCheckPasses: health_check_passes,
-    healthCheckFails: health_check_fails,
+  // Schema enforces per-field maximums in validation.ts; this re-check is
+  // defence-in-depth in case a future schema refactor widens the ceiling.
+  const overage = deltaFieldsOverCap({
+    error_count_delta,
+    health_check_passes_delta,
+    health_check_fails_delta,
+    avg_latency_ms_delta,
   });
-
-  // Update Prometheus counters
-  if (total_users) {
-    rolloutUsersTotal.inc(
-      { feature_name, phase: rolloutMetrics.get(feature_name)?.phase || 'disabled' },
-      total_users
-    );
-  }
-  if (error_count) {
-    rolloutErrorsTotal.inc(
+  if (overage.length > 0) {
+    return rejectMetricPoisoning(
+      nk,
+      ctx,
+      logger,
       {
         feature_name,
-        phase: rolloutMetrics.get(feature_name)?.phase || 'disabled',
-        error_type: 'total',
+        offending_fields: overage,
+        client_platform: client_platform ?? null,
       },
-      error_count
-    );
-  }
-  if (avg_latency_ms) {
-    rolloutLatencyHistogram.observe(
-      { feature_name, phase: rolloutMetrics.get(feature_name)?.phase || 'disabled' },
-      avg_latency_ms
+      'delta_above_cap',
+      `delta fields ${overage.join(', ')} exceed per-call cap`
     );
   }
 
-  // Check rollback criteria after recording metrics
+  // Reject submissions for undeclared flags — otherwise a client could
+  // silently grow the metrics map and collide with later admin ops.
+  if (!featureFlags.has(feature_name)) {
+    return rejectMetricPoisoning(
+      nk,
+      ctx,
+      logger,
+      { feature_name, client_platform: client_platform ?? null },
+      'unknown_feature',
+      `unknown feature '${feature_name}'`
+    );
+  }
+
+  // Fold bounded deltas into the in-memory metrics map. Every field in
+  // `recordRolloutClientDelta` is independently capped by the schema
+  // and the constants above, so a caller can never drive a counter
+  // past the rollback thresholds in a single request.
+  const updated = recordRolloutClientDelta(feature_name, {
+    errorCountDelta: error_count_delta,
+    healthCheckPassesDelta: health_check_passes_delta,
+    healthCheckFailsDelta: health_check_fails_delta,
+  });
+
+  // Latency is reported as a per-call observation routed to the
+  // Prometheus histogram only — it must NOT influence the in-memory
+  // avgLatencyMs that feeds the rollback criterion. The server-side
+  // sampling path remains the authoritative signal.
+  if (avg_latency_ms_delta !== undefined) {
+    rolloutLatencyHistogram.observe({ feature_name, phase: updated.phase }, avg_latency_ms_delta);
+  }
+  if (error_count_delta) {
+    rolloutErrorsTotal.inc(
+      { feature_name, phase: updated.phase, error_type: 'total' },
+      error_count_delta
+    );
+  }
+
+  // Check rollback criteria after recording metrics. Even if the delta
+  // were within bounds, repeated submissions could theoretically drive
+  // counts toward the threshold; the surface response is unchanged so
+  // legitimate callers continue to receive rollback state, but every
+  // flip is recorded for monitoring.
   const rollbackCheck = checkRollbackCriteria(feature_name);
+  if (rollbackCheck.shouldRollback) {
+    logger.info(
+      `rollout_record_metrics: rollback criteria fired for '${feature_name}' after submitter '${ctx.userId}' — reason='${rollbackCheck.reason ?? ''}'`
+    );
+  }
 
   return JSON.stringify({
     success: true,

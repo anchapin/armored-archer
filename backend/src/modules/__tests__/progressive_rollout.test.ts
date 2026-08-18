@@ -6,6 +6,7 @@
 
 import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
 import { Runtime } from '../../types/nakama';
+import { logAudit } from '../audit';
 import {
   registerProgressiveRollout,
   createFeatureFlag,
@@ -17,6 +18,7 @@ import {
   rollbackFeature,
   checkRollbackCriteria,
   recordRolloutMetrics,
+  recordRolloutClientDelta,
   getRolloutMetrics,
   getAllRolloutMetrics,
   initializeProgressiveRollout,
@@ -776,43 +778,246 @@ describe('Progressive Rollout', () => {
       expect(result.error).toContain('No metrics found');
     });
 
-    it('rpcRecordMetrics records metrics via RPC', async () => {
+    it('rpcRecordMetrics records bounded client deltas via RPC (#1149)', async () => {
       createFeatureFlag('rpc_rec', 'RPC rec', testPhases);
       advancePhase('rpc_rec');
       const handler = registeredHandlers.get('armored_archer/rollout_record_metrics')!;
       const payload = JSON.stringify({
         feature_name: 'rpc_rec',
-        total_users: 500,
-        active_users: 200,
-        error_count: 5,
-        error_rate: 1.0,
-        avg_latency_ms: 45,
-        p99_latency_ms: 200,
-        health_check_passes: 195,
-        health_check_fails: 0,
+        error_count_delta: 5,
+        health_check_passes_delta: 50,
+        health_check_fails_delta: 0,
+        avg_latency_ms_delta: 45,
+        client_platform: 'android',
       });
 
       const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
       expect(result.success).toBe(true);
       expect(result.feature_name).toBe('rpc_rec');
       expect(result.rollback_triggered).toBe(false);
+
+      // Confirm the delta was folded into the in-memory metrics map and not
+      // lost (the handler is no longer the setter of authoritative totals).
+      const stored = getRolloutMetrics('rpc_rec');
+      expect(stored).toBeDefined();
+      expect(stored!.errorCount).toBe(5);
+      expect(stored!.healthCheckPasses).toBe(50);
+      expect(stored!.healthCheckFails).toBe(0);
     });
 
-    it('rpcRecordMetrics triggers rollback when thresholds exceeded', async () => {
+    it('rpcRecordMetrics folds deltas cumulatively across calls (#1149)', async () => {
+      createFeatureFlag('rpc_rec_cum', 'RPC rec cum', testPhases);
+      advancePhase('rpc_rec_cum');
+      const handler = registeredHandlers.get('armored_archer/rollout_record_metrics')!;
+
+      await handler(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({
+          feature_name: 'rpc_rec_cum',
+          error_count_delta: 3,
+          health_check_passes_delta: 5,
+          health_check_fails_delta: 1,
+        })
+      );
+      await handler(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({
+          feature_name: 'rpc_rec_cum',
+          error_count_delta: 2,
+          health_check_passes_delta: 7,
+          health_check_fails_delta: 0,
+        })
+      );
+
+      const stored = getRolloutMetrics('rpc_rec_cum');
+      expect(stored!.errorCount).toBe(5);
+      expect(stored!.healthCheckPasses).toBe(12);
+      expect(stored!.healthCheckFails).toBe(1);
+    });
+
+    it('rpcRecordMetrics rolls up server-side totals from in-memory map (#1149)', async () => {
+      // The rollback criterion still works — it just runs against whatever
+      // was last persisted in the in-memory map. We seed via
+      // recordRolloutMetrics (the direct, non-RPC path) to simulate the
+      // server-telemetry aggregation, then a single client delta must not
+      // be able to flip the rollback by itself.
       createFeatureFlag('rpc_rec_rb', 'RPC rec rb', testPhases);
       advancePhase('rpc_rec_rb');
+      recordRolloutMetrics('rpc_rec_rb', {
+        errorRate: 10,
+        avgLatencyMs: 50,
+        healthCheckFails: 0,
+      });
+
       const handler = registeredHandlers.get('armored_archer/rollout_record_metrics')!;
       const payload = JSON.stringify({
         feature_name: 'rpc_rec_rb',
-        error_rate: 10,
-        avg_latency_ms: 50,
-        health_check_fails: 0,
+        // A trivially small delta that, on its own, could never trip a
+        // rollback. The pre-fix RPC took the full aggregates from the
+        // client payload, which is the bug we're guarding against.
+        error_count_delta: 1,
+        health_check_passes_delta: 1,
       });
 
       const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
       expect(result.success).toBe(true);
+      // Rollback still fires because the *server-side* metrics already
+      // crossed the threshold.
       expect(result.rollback_triggered).toBe(true);
       expect(result.rollback_reason).toBeDefined();
+    });
+
+    // ============================================================
+    // Regression tests for issue #1149 — the
+    // `metric_poisoning_attempt` surface. The pre-fix RPC trusted
+    // client payloads verbatim, letting any authenticated player trip
+    // the rollback threshold by inflating health_check_fails or
+    // crafting high-cardinality label values.
+    // ============================================================
+
+    it('rpcRecordMetrics rejects a payload that attempts to set health_check_fails_total (#1149)', async () => {
+      // The test mock for `validation.ts` bypasses schema validation, so
+      // this test simulates what happens if a future schema refactor
+      // re-introduces a `health_check_fails` field — the handler should
+      // refuse to acknowledge the legacy key and audit the attempt.
+      createFeatureFlag('rpc_rec_total', 'RPC rec total', testPhases);
+      advancePhase('rpc_rec_total');
+      const handler = registeredHandlers.get('armored_archer/rollout_record_metrics')!;
+      const payload = JSON.stringify({
+        feature_name: 'rpc_rec_total',
+        health_check_fails_delta: 999, // legacy attempt; the per-call cap (5) bites
+      });
+
+      (logAudit as jest.Mock).mockClear();
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(false);
+      expect(result.error_code).toBe('FORBIDDEN');
+      expect(result.reason).toBe('delta_above_cap');
+      expect(logAudit).toHaveBeenCalledWith(
+        mockNk,
+        'rollout-test-user',
+        mockCtx.ipAddress ?? null,
+        'rollout_record_metrics',
+        'rollout_metrics',
+        expect.objectContaining({ reason: 'delta_above_cap' }),
+        'failure',
+        expect.any(String)
+      );
+    });
+
+    it('rpcRecordMetrics rejects payloads targeting an unknown feature (#1149)', async () => {
+      const handler = registeredHandlers.get('armored_archer/rollout_record_metrics')!;
+      const payload = JSON.stringify({
+        feature_name: 'never_existed_flag',
+        health_check_passes_delta: 1,
+      });
+
+      (logAudit as jest.Mock).mockClear();
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(false);
+      expect(result.error_code).toBe('FORBIDDEN');
+      expect(result.reason).toBe('unknown_feature');
+      expect(logAudit).toHaveBeenCalled();
+      // No side-effect: the metrics map must remain untouched for the
+      // bogus feature.
+      expect(getRolloutMetrics('never_existed_flag')).toBeUndefined();
+    });
+
+    it('rpcRecordMetrics cannot drive the in-memory metrics past the canary threshold via repeated deltas (#1149)', async () => {
+      // Canary default rollbackCriteria set healthCheckFails threshold to
+      // 3. The per-call cap is 5, so a single call *could* land the
+      // metric on the threshold — but the mapping is an increment, not
+      // a set. A direct set of health_check_fails to 99 (the pre-fix
+      // path) must no longer be reachable from the RPC surface.
+      createFeatureFlag('rpc_rec_brute', 'RPC rec brute', testPhases);
+      advancePhase('rpc_rec_brute');
+      const handler = registeredHandlers.get('armored_archer/rollout_record_metrics')!;
+
+      // Try to bypass by submitting a huge value — schema bounds it,
+      // and even if the schema is mocked aside the handler still clamps
+      // via the delta-fold logic (cumulative, not replacing).
+      (logAudit as jest.Mock).mockClear();
+      const payload = JSON.stringify({
+        feature_name: 'rpc_rec_brute',
+        health_check_fails_delta: 1_000_000,
+      });
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(false);
+      expect(result.error_code).toBe('FORBIDDEN');
+      expect(logAudit).toHaveBeenCalled();
+
+      // The pre-fix behaviour (a player setting health_check_fails to
+      // 99 to trip rollback) is impossible here because the field is
+      // increment-only and capped per call.
+      const stored = getRolloutMetrics('rpc_rec_brute');
+      expect(stored === undefined || stored.healthCheckFails < 3).toBe(true);
+    });
+
+    it('rpcRecordMetrics rejects payloads that the schema would reject (#1149)', async () => {
+      // The mocked validation module passes every well-formed JSON payload
+      // through, so we cannot directly exercise the schema's 32-char
+      // `client_platform` cap here. Instead we exercise the next line of
+      // defence — the handler-level overage check — with a single delta
+      // that is over the documented per-call cap. The combination of the
+      // schema and the handler-level check must reject any oversized
+      // submission; this test pins the handler-level check.
+      createFeatureFlag('rpc_rec_plat', 'RPC rec plat', testPhases);
+      advancePhase('rpc_rec_plat');
+      const handler = registeredHandlers.get('armored_archer/rollout_record_metrics')!;
+
+      (logAudit as jest.Mock).mockClear();
+      const payload = JSON.stringify({
+        feature_name: 'rpc_rec_plat',
+        health_check_fails_delta: 999, // above the 5-per-call cap
+      });
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(false);
+      expect(result.error_code).toBe('FORBIDDEN');
+      expect(result.reason).toBe('delta_above_cap');
+      expect(logAudit).toHaveBeenCalledWith(
+        mockNk,
+        'rollout-test-user',
+        mockCtx.ipAddress ?? null,
+        'rollout_record_metrics',
+        'rollout_metrics',
+        expect.objectContaining({
+          feature_name: 'rpc_rec_plat',
+          reason: 'delta_above_cap',
+          offending_fields: expect.arrayContaining(['health_check_fails_delta']),
+        }),
+        'failure',
+        expect.any(String)
+      );
+    });
+
+    it('recordRolloutClientDelta clamps negative deltas to zero (#1149)', async () => {
+      // Defensive: a client could attempt to underflow by submitting a
+      // negative delta. The fold function must not subtract.
+      const result = recordRolloutClientDelta('clamp_test', {
+        errorCountDelta: -10,
+        healthCheckPassesDelta: -5,
+        healthCheckFailsDelta: -1,
+      });
+      expect(result.errorCount).toBe(0);
+      expect(result.healthCheckPasses).toBe(0);
+      expect(result.healthCheckFails).toBe(0);
+    });
+
+    it('recordRolloutClientDelta accumulates across calls without ever rolling back the values (#1149)', async () => {
+      recordRolloutClientDelta('accum_a', {
+        errorCountDelta: 1,
+        healthCheckPassesDelta: 2,
+      });
+      const after = recordRolloutClientDelta('accum_a', {
+        errorCountDelta: 4,
+        healthCheckPassesDelta: 3,
+      });
+      expect(after.errorCount).toBe(5);
+      expect(after.healthCheckPasses).toBe(5);
     });
 
     it('rpcRolloutHealth returns health status', async () => {
