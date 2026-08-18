@@ -8,6 +8,7 @@ import {
 import { Runtime } from '../../types/nakama';
 import { PlayerStats } from '../../types/game';
 import { initializeCaches } from '../../utils/cache';
+import { resetAdminAllowlistCache } from '../admin_auth';
 
 jest.mock('../anti_cheat', () => ({
   submitPlayerReport: jest.fn(),
@@ -307,8 +308,9 @@ describe('player_rpc', () => {
     it('should allow an allowlisted admin to query another user\'s reports (#1150, #1075)', () => {
       const previousAdminIds = process.env.ADMIN_USER_IDS;
       process.env.ADMIN_USER_IDS = 'admin-user';
-      // isAdminUser caches no state per call (it re-parses the env), so no
-      // cache reset is required here.
+      // isAdminUser caches the parsed allowlist (issue #1155), so the cache
+      // must be reset after mutating ADMIN_USER_IDS for the guard to see it.
+      resetAdminAllowlistCache();
       const adminCtx = createMockContext({ userId: 'admin-user' });
 
       getReportsForUser.mockReturnValue([
@@ -330,6 +332,7 @@ describe('player_rpc', () => {
       } else {
         process.env.ADMIN_USER_IDS = previousAdminIds;
       }
+      resetAdminAllowlistCache();
     });
   });
 });
