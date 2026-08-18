@@ -100,7 +100,9 @@ describe('logAudit', () => {
 describe('rpcQueryAuditLogs', () => {
   let mockNk: any;
   let mockStorageList: jest.Mock;
-  const mockCtx = { userId: 'admin', ipAddress: '127.0.0.1', variables: {} } as any;
+  let mockStorageWrite: jest.Mock;
+  const callerId = 'user-a';
+  const mockCtx = { userId: callerId, ipAddress: '127.0.0.1', variables: {} } as any;
   const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
 
   function makeStorageObject(entry: Record<string, unknown>) {
@@ -115,7 +117,8 @@ describe('rpcQueryAuditLogs', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockStorageList = jest.fn().mockReturnValue([]);
-    mockNk = { storageList: mockStorageList };
+    mockStorageWrite = jest.fn().mockReturnValue({});
+    mockNk = { storageList: mockStorageList, storageWrite: mockStorageWrite };
   });
 
   it('returns validation error for invalid payload', () => {
@@ -132,9 +135,52 @@ describe('rpcQueryAuditLogs', () => {
     expect(parsed.count).toBe(0);
   });
 
-  it('passes user_id to storageList for server-side filtering', () => {
-    const result = rpcQueryAuditLogs(mockCtx, mockLogger as any, mockNk, '{"user_id":"user1"}');
-    expect(mockStorageList).toHaveBeenCalledWith('user1', 'audit_logs', 50, '', '');
+  it('scopes storageList to the caller when payload user_id matches the caller', () => {
+    const result = rpcQueryAuditLogs(
+      mockCtx,
+      mockLogger as any,
+      mockNk,
+      `{"user_id":"${callerId}"}`
+    );
+    const parsed = JSON.parse(result);
+    expect(parsed.success).toBe(true);
+    expect(mockStorageList).toHaveBeenCalledWith(callerId, 'audit_logs', 50, '', '');
+  });
+
+  it('scopes queries with no user_id to the caller', () => {
+    const result = rpcQueryAuditLogs(mockCtx, mockLogger as any, mockNk, '{}');
+    const parsed = JSON.parse(result);
+    expect(parsed.success).toBe(true);
+    expect(mockStorageList).toHaveBeenCalledWith(callerId, 'audit_logs', 50, '', '');
+  });
+
+  it('rejects a user_id belonging to another user and audit-logs the attempt', () => {
+    const result = rpcQueryAuditLogs(mockCtx, mockLogger as any, mockNk, '{"user_id":"user-b"}');
+    const parsed = JSON.parse(result);
+
+    // Rejected with a generic error, no entries returned.
+    expect(parsed.success).toBe(false);
+    expect(parsed.logs).toEqual([]);
+    expect(parsed.count).toBe(0);
+    // The victim's storage is never read.
+    expect(mockStorageList).not.toHaveBeenCalled();
+    expect(mockStorageList).not.toHaveBeenCalledWith('user-b', expect.anything(), expect.anything(), expect.anything(), expect.anything());
+
+    // The attempt is recorded in the CALLER's audit trail (not the victim's).
+    expect(mockStorageWrite).toHaveBeenCalledTimes(1);
+    const callArg = mockStorageWrite.mock.calls[0][0][0];
+    expect(callArg.collection).toBe('audit_logs');
+    expect(callArg.userId).toBe(callerId);
+    const value = JSON.parse(callArg.value);
+    expect(value.user_id).toBe(callerId);
+    expect(value.action).toBe('query_audit_logs');
+    expect(value.result).toBe('failure');
+    expect(value.details.requested_user_id).toBe('user-b');
+    expect(value.details.reason).toBe('cross_user_access_denied');
+
+    // The client-facing response must not echo the target or any internals.
+    expect(result).not.toContain('user-b');
+    expect(mockLogger.warn).toHaveBeenCalled();
   });
 
   it('returns logs filtered by action', () => {

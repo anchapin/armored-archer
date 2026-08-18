@@ -69,6 +69,17 @@ export function logAudit(
  * Query audit logs with optional filters.
  * Supports filtering by user_id, action, result, and date range.
  *
+ * Reads are hard-scoped to the calling user (issue #1077): audit entries embed
+ * PII (IP addresses, purchase events, gem balances, moderation reasons), so a
+ * player may only ever list their own audit trail.
+ *
+ * Scoping decision: a payload user_id that differs from ctx.userId is REJECTED
+ * with a generic error rather than silently clamped, so impersonation attempts
+ * surface as failures and are recorded via logAudit in the caller's own audit
+ * trail for security monitoring. The victim's data is never read or logged.
+ * There is intentionally no admin bypass here — the shared admin gate is a
+ * separate workstream (issue #1075).
+ *
  * @param ctx - Nakama runtime context
  * @param loggerParam - Nakama logger instance
  * @param nk - Nakama server interface
@@ -98,8 +109,35 @@ export function rpcQueryAuditLogs(
     cursor = '',
   } = validation.data;
 
+  // Payload user_id is advisory only: it must either match the caller or be
+  // absent. A mismatch is a cross-user read attempt — reject and audit-log it
+  // against the caller (logAudit never throws, so this path stays safe).
+  if (user_id !== undefined && user_id !== ctx.userId) {
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'query_audit_logs',
+      'audit_logs',
+      { requested_user_id: user_id, reason: 'cross_user_access_denied' },
+      'failure',
+      'requested user_id does not match the authenticated caller'
+    );
+    loggerParam.warn('query_audit_logs: rejected cross-user read attempt by caller %s', ctx.userId);
+    return JSON.stringify({
+      success: false,
+      error: 'Not permitted to query audit logs for another user',
+      logs: [],
+      count: 0,
+    });
+  }
+
+  // Missing user_id defaults to the caller; a matching user_id is redundant.
+  // Either way the read target is exactly ctx.userId.
+  const effectiveUserId: string = ctx.userId;
+
   try {
-    const storageObjects = nk.storageList(user_id || '', 'audit_logs', limit, cursor || '', '');
+    const storageObjects = nk.storageList(effectiveUserId, 'audit_logs', limit, cursor || '', '');
 
     const logs = filterAuditEntries(
       storageObjects,
