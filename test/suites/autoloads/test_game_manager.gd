@@ -3,6 +3,17 @@ extends GutTest
 var GameManagerClass = load("res://autoloads/GameManager.gd")
 var _game
 var _mock_analytics: Node  # Mock AnalyticsManager for test isolation
+var _mock_combined_stats: Node  # Mock CombinedStatsManager for test isolation
+
+## Minimal stand-in for the CombinedStatsManager autoload (issue #968).
+## A real method is required because GUT cannot stub methods that do not
+## exist on a double(Node).
+class MockCombinedStats:
+	extends Node
+	var stub_max_health: int = 100
+
+	func get_max_health() -> int:
+		return stub_max_health
 
 func before_each():
 	# Create fresh GameManager instance for each test (ISO-04 pattern)
@@ -24,10 +35,25 @@ func before_each():
 	# Inject mock by setting the @onready property directly
 	_game.set("analytics", _mock_analytics)
 
+	# Mock CombinedStatsManager (issue #968): GameManager._ready() pulls max
+	# health from the live CombinedStatsManager autoload, whose combined stats
+	# (base 100 + default gear bonus) yield 120. Stub to the flat base value
+	# (const DEFAULT_PLAYER_HEALTH = 100) so these tests assert GameManager's
+	# logic in isolation instead of gear defaults.
+	_mock_combined_stats = MockCombinedStats.new()
+	_mock_combined_stats.name = "CombinedStatsManager"
+	add_child_autofree(_mock_combined_stats)
+	_game.set("combined_stats_manager", _mock_combined_stats)
+	# _ready() already read the live autoload while entering the tree, so
+	# recompute max health from the mock and resync current health.
+	_game._update_max_health_from_stats()
+	_game.player_current_health = _game.player_max_health
+
 func after_each():
 	# Cleanup is handled by add_child_autofree, but clear references
 	_game = null
 	_mock_analytics = null
+	_mock_combined_stats = null
 
 # --- Health Management Tests ---
 
