@@ -6,7 +6,7 @@ Godot 4.6 mobile archery auto-shooter with a Nakama (TypeScript) backend and Pos
 
 When every hosted Actions job fails with *"recent account payments have failed or your spending limit needs to be increased"*, it is **account-billing**, not a code problem — see [`docs/ci/ci-billing-recovery.md`](docs/ci/ci-billing-recovery.md) (issue #855). Detection: `gh api orgs/anchapin/settings/billing/actions` and the annotation on check run `95179007068`. **Fix must be performed by a repo/org owner in Settings → Billing & plans** — no code change unblocks the gate. While hosted CI is dark, use `./scripts/local-godot-tests.sh`, `cd backend && npm run lint && npm test`, and the `act` matrix on `.github/workflows/ci.yml` (PR #889; if `act` fails on git clone, run `make ci-clear-cache`); never disable required status checks as a workaround.
 
-**Host-memory rule while hosted CI is dark (issue #993):** run `make ci` (act) and `./scripts/local-godot-tests.sh` **sequentially, never concurrently** — Node/tsc jobs inside act containers plus concurrent headless Godot suites exhausted host RAM and OOM-killed `backend-typecheck`. Failure signature: act reports `exitcode '137'` (SIGKILL) with **zero** error/compiler output → suspect host OOM and re-run the job in isolation before debugging. `scripts/ci-local.sh` warns and waits before each act job when available memory is low (tune via `ACT_MIN_FREE_MB`, default 2048, and `ACT_MEM_WAIT_SECS`, default 60).
+**Host-memory rule while hosted CI is dark (issue #993):** run `make ci` (act) and `./scripts/local-godot-tests.sh` **sequentially, never concurrently** — Node/tsc jobs inside act containers plus concurrent headless Godot suites exhausted host RAM and OOM-killed `backend-typecheck`. Failure signature: act reports `exitcode '137'` (SIGKILL) with **zero** error/compiler output → suspect host OOM and re-run the job in isolation before debugging. `scripts/ci-local.sh` warns and waits before each act job when available memory is low (tune via `ACT_MIN_FREE_MB`, default 2048, and `ACT_MEM_WAIT_SECS`, default 60). Act invocations are themselves serialized through a shared lock (`scripts/lib/act-lock.sh`, issues #992/#1028): `ci-local.sh`, `run-ci-locally.sh`, and `act-cleanup.sh` all acquire it to prevent `~/.cache/act` git-clone races — don't invoke `act` outside these wrappers.
 
 ## Project Structure
 
@@ -159,7 +159,7 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 - Auth: Firebase. IAP: RevenueCat. Client talks to Nakama via `@heroiclabs/nakama-js`; the `NetworkManager` autoload owns the session/RPC calls.
 - Transmog: base gear carries all stats (gameplay-earned); cosmetic skins are visual-only (IAP). The client combines base + skin for rendering.
 - A Go backend migration was abandoned — ignore the deprecated Go targets in the Makefile.
-- PvP/combat decisions are recorded as ADRs in `docs/adr/` (server-declared match settlement, hybrid duel model) — read them before changing duel or settlement flow.
+- PvP/combat decisions are recorded as ADRs in `docs/adr/` (server-declared match settlement, hybrid duel model, decommissioned legacy duel RPCs) — read them before changing duel or settlement flow.
 - The Nakama bundle has a size budget enforced by `make bundle-size-check` (config: `backend/bundle-size-limits.json`).
 
 ## Commit & PR Guidelines
@@ -172,6 +172,7 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 
 - Commits containing AI-generated changes need the `[AI-assisted]` prefix plus model and task in the body, e.g. `[AI-assisted] feat: ...` / `- AI Model: ...` / `- Task: ...`; document AI-assisted scope in the PR description.
 - Human review is mandatory for AI-assisted changes. Hard rules: no secrets/credentials in code, input validation on all user data, and **database migrations plus security-critical code always require human supervision**.
+- `backend/.env` (and any `backend/.env.*`) must never be committed — `make tracked-ignored-check` (issue #1032) fails CI on tracked-but-ignored files.
 - Review checklist: `AI_CODE_REVIEW.md`. Workflow and tooling: `AI_INTEGRATION.md`, `GODOGEN_SETUP.md`, `FOLEY_AI_SETUP.md`. Companion guide: `CLAUDE.md` (autoload map, design system, tooling notes). Repo skills: `.agents/skills/godot-backend`, `.agents/skills/godot-development` (plus `godot-task`/`godogen` in `.claude/skills/`).
 - **Skill caveat:** `.agents/skills/godot-backend/SKILL.md` is stale — it claims a Go backend (`go run main.go`, port 7349, `NAKAMA_PORT` defaults). The real backend is **TypeScript** (Node 18+, npm scripts in `backend/package.json`, Nakama API on **:7350**, console on :7351). Trust this AGENTS.md over that skill file.
 
@@ -187,6 +188,7 @@ All available via `make help`. Most used:
 | `make bundle-size-check` | Enforce Nakama bundle size budget |
 | `make duplicate-code-check` | jscpd duplicate detection (TS/GDScript/Python) |
 | `make dead-code-check` | Dead code detection |
+| `make tracked-ignored-check` | Fail on tracked-but-ignored files (e.g. `backend/.env`) |
 | `make test-flaky-report` | Flaky test report (backend + Godot) |
 | `make smoke-test-quick` | Quick end-to-end smoke |
 | `make ci` | Run the CI pipeline locally (Godot jobs skip under act) |
