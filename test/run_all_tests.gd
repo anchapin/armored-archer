@@ -148,7 +148,13 @@ func _run_next_test():
 		"res://test/test_pve_difficulty_integration.gd",
 		"res://test/test_gear_synergy_integration.gd",
 		"res://test/test_store_purchase_flow.gd",
-		"res://test/test_season_manager_integration.gd"
+		"res://test/test_season_manager_integration.gd",
+
+		# Adopted Orphaned Tests (issue #1083)
+		"res://test/test_async_duel_flow.gd",
+		"res://test/test_pve_combat_loop.gd",
+		"res://test/test_campaign_gameplay_flow.gd",
+		"res://test/test_store_fallback.gd"
 	]
 
 	_total_tests = test_files.size()
