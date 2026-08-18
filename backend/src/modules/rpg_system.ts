@@ -11,6 +11,7 @@ import { getPlayerStatsWithCache } from '../utils/player-data-helpers';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { applyCurrencyDelta, getCurrency } from './currency';
+import { getMaxStageXPGain } from './gear_system';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { getLevelForXp } from './xp_manager';
@@ -181,6 +182,14 @@ export function registerRpcGainXP(initializer: Runtime.Initializer): void {
 /**
  * Handles XP gain requests and level progression.
  *
+ * Server-authoritative policy (issue #1068): the client-declared
+ * `xp_amount` is never applied verbatim. It is hard-capped per request at
+ * the server's own stage-completion ceiling (boss + nightmare difficulty,
+ * via `getMaxStageXPGain()`), so granted XP can never exceed what the
+ * server would compute itself. `stage_complete` remains the fully
+ * server-settled XP path; this cap bounds the legacy `gain_xp` RPC until
+ * the stage RPCs are consolidated (#1069).
+ *
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
@@ -196,6 +205,7 @@ export function registerRpcGainXP(initializer: Runtime.Initializer): void {
  *   "success": true,
  *   "player_stats": { ... },
  *   "xp_gained": 100,
+ *   "xp_capped": false,
  *   "levels_gained": 1
  * }
  */
@@ -223,6 +233,45 @@ export function rpcGainXP(
   }
 
   const request = validation.data;
+
+  // Server-authoritative XP policy (issue #1068): a client-declared amount is
+  // never applied verbatim. Every request is hard-capped at what the server
+  // itself would award for the best possible stage completion (boss defeated
+  // at nightmare difficulty — see getMaxStageXPGain in gear_system.ts, which
+  // derives the cap from the same constants as calculateStageXPGain), so the
+  // XP granted per stage completion can never exceed the server's own
+  // calculation regardless of the declared source. The fully server-settled
+  // path is `stage_complete`, which computes XP without client input; this
+  // cap is the defensive bound for the legacy `gain_xp` RPC until the stage
+  // RPCs are consolidated (#1069).
+  const xpCap = getMaxStageXPGain();
+  const grantedXp = Math.min(request.xp_amount, xpCap);
+  const xpCapped = grantedXp < request.xp_amount;
+
+  if (xpCapped) {
+    logger.warn(
+      'Capping XP request from %d to %d for user %s (source: %s) [issue #1068]',
+      request.xp_amount,
+      grantedXp,
+      ctx.userId,
+      request.source
+    );
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'gain_xp',
+      'player_stats',
+      {
+        xp_amount: request.xp_amount,
+        xp_granted: grantedXp,
+        xp_cap: xpCap,
+        source: request.source,
+      },
+      'success',
+      'XP request capped to server maximum'
+    );
+  }
 
   const objects = nk.storageRead([
     {
@@ -283,7 +332,7 @@ export function rpcGainXP(
   }
 
   const oldLevel = playerStats.level;
-  playerStats.xp += request.xp_amount;
+  playerStats.xp += grantedXp;
 
   const newLevel = calculateLevel(playerStats.xp);
   playerStats.level = newLevel;
@@ -305,7 +354,8 @@ export function rpcGainXP(
   return JSON.stringify({
     success: true,
     player_stats: playerStats,
-    xp_gained: request.xp_amount,
+    xp_gained: grantedXp,
+    xp_capped: xpCapped,
     levels_gained: Math.max(0, newLevel - oldLevel),
   });
 }

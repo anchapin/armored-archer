@@ -50,15 +50,15 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Feature | Client Caller | Server Handler | Storage Ownership | Deployment Path |
 |----------|---------------|----------------|-------------------|------------------|
 | Get Player Stats | PlayerStatsManager | `rpcGetPlayerStats()` in `rpg_system.ts` | `player_stats` storage (custom collection) | `/rpc/armored_archer/get_player_stats` |
-| Gain XP | PlayerStatsManager | `rpcGainXP()` in `rpg_system.ts` | `player_stats` storage (custom collection) | `/rpc/armored_archer/gain_xp` |
+| Gain XP | PlayerStatsManager | `rpcGainXP()` in `rpg_system.ts` — client amount hard-capped at the server's max stage-completion XP (`getMaxStageXPGain()`); `stage_complete` is the authoritative server-settled XP path (#1068) | `player_stats` storage (custom collection) | `/rpc/armored_archer/gain_xp` |
 | Allocate Stats | PlayerStatsManager | `rpcAllocateStats()` in `rpg_system.ts` | `player_stats` storage (custom collection) | `/rpc/armored_archer/allocate_stats` |
 | Respec Stats | PlayerStatsManager | `rpcRespecStats()` in `rpg_system.ts` | `player_stats` + `respec_data` storage (custom collections) | `/rpc/armored_archer/respec_stats` |
 | Save Build | PlayerStatsManager | `rpcSaveBuild()` in `rpg_system.ts` | `player_builds` storage (custom collection) | `/rpc/armored_archer/save_build` |
 | Load Build | PlayerStatsManager | `rpcLoadBuild()` in `rpg_system.ts` | `player_builds` storage (custom collection) | `/rpc/armored_archer/load_build` |
 | Get Builds | PlayerStatsManager | `rpcGetBuilds()` in `rpg_system.ts` | `player_builds` storage (custom collection) | `/rpc/armored_archer/get_builds` |
 | Generate Gear | GearManager | `rpcGenerateGear()` in `gear_system.ts` | `catalog` + `inventory` tables (PostgreSQL) | `/rpc/armored_archer/generate_gear` |
-| Stage Complete | GearManager | `rpcStageComplete()` in `gear_system.ts` | `catalog` + `inventory` tables (PostgreSQL) | `/rpc/armored_archer/stage_complete` |
-| Complete Stage | CampaignManager | `rpcCompleteStage()` in `stage_tracking.ts` | `campaign_progress` storage (custom collection) | `/rpc/armored_archer/complete_stage` |
+| Stage Complete | GearManager | `rpcStageComplete()` in `gear_system.ts` — difficulty verified server-side via `resolveVerifiedDifficulty()` (non-claimable tiers like nightmare are clamped to hard) before drop/XP multipliers; XP computed server-side (#1068) | `catalog` + `inventory` tables (PostgreSQL) | `/rpc/armored_archer/stage_complete` |
+| Complete Stage | CampaignManager | `rpcCompleteStage()` in `stage_tracking.ts` — stars clamped 0-3, score capped at `MAX_STAGE_SCORE`, difficulty server-verified before loot multipliers (#1068) | `campaign_progress` storage (custom collection) | `/rpc/armored_archer/complete_stage` |
 | Get Completed Stages | CampaignManager | `rpcGetCompletedStages()` in `stage_tracking.ts` | `campaign_progress` storage (custom collection) | `/rpc/armored_archer/get_completed_stages` |
 | Get Campaign Progress | CampaignManager | `rpcGetCampaignProgress()` in `stage_tracking.ts` | `campaign_progress` storage (custom collection) | `/rpc/armored_archer/get_campaign_progress` |
 

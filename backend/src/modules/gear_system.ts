@@ -1609,6 +1609,80 @@ function calculateStageXPGain(bossDefeated: boolean, difficulty: string): number
 }
 
 /**
+ * Server-side ceiling for XP granted by a single stage completion.
+ *
+ * Issue #1068 policy anchor: any client-facing XP grant must be bounded by
+ * what the server itself would award for the best possible stage completion
+ * (boss defeated at the highest difficulty tier). Computed from the same
+ * constants as `calculateStageXPGain` so the bound cannot drift from the
+ * server's own stage XP math.
+ */
+export function getMaxStageXPGain(): number {
+  return calculateStageXPGain(true, 'nightmare');
+}
+
+/**
+ * Canonical stage difficulty tiers, typed for reward-multiplier paths.
+ */
+type StageDifficultyTier = 'easy' | 'medium' | 'hard' | 'nightmare';
+
+/**
+ * Difficulty tiers an honest client can claim. The client derives its
+ * difficulty string from the campaign stage tier (campaigns.json tiers 1-3
+ * map to easy/medium/hard, with `normal` as the legacy fallback) — see
+ * `_get_difficulty_string()` in autoloads/CampaignManager.gd. `nightmare`
+ * exists only in the server enum and is not producible by an honest client.
+ */
+const CLIENT_CLAIMABLE_DIFFICULTY_TIERS: { [tier: string]: StageDifficultyTier } = {
+  easy: 'easy',
+  normal: 'medium', // legacy alias for the medium tier (same 1.0x multiplier)
+  medium: 'medium',
+  hard: 'hard',
+};
+
+/**
+ * Cross-validates a client-claimed stage difficulty before any drop-rate or
+ * XP multiplier is applied (issue #1068).
+ *
+ * Policy: the reward tier is bounded by a stateless server-side allowlist,
+ * not by any per-player state. A `nightmare` claim — a tier no honest client
+ * can produce, and the only tier worth forging (2.2x drop/XP) — is clamped
+ * down to `hard`, the highest honestly-claimable tier, so a modified client
+ * can never farm nightmare-tier loot/XP. All honest tiers pass through
+ * unchanged (legacy `normal` is canonicalized to `medium`).
+ *
+ * This deliberately consults NO per-player difficulty state: the ratified
+ * reward-neutrality contract (see the "Reward neutrality regression (loot
+ * path)" suite in dynamic_difficulty.test.ts) requires loot to be identical
+ * regardless of the dynamic-difficulty modifier and forbids reading
+ * `difficulty_state` on the completion path. Binding rewards to per-stage
+ * configuration instead of this allowlist is deferred to the stage-RPC
+ * consolidation in #1069.
+ *
+ * @param claimedDifficulty - Difficulty tier claimed by the client
+ * @param logger - Nakama logger instance
+ * @returns The verified (possibly clamped) difficulty tier to reward
+ */
+export function resolveVerifiedDifficulty(
+  claimedDifficulty: string,
+  logger: Runtime.Logger
+): StageDifficultyTier {
+  const canonicalClaim = CLIENT_CLAIMABLE_DIFFICULTY_TIERS[claimedDifficulty];
+
+  if (canonicalClaim === undefined) {
+    // Not in the claimable vocabulary (e.g. a forged 'nightmare' claim or an
+    // unknown string): reward at most the highest honest tier.
+    logger.warn(
+      'Clamping claimed difficulty %s down to hard: tier is not client-claimable [issue #1068]',
+      claimedDifficulty
+    );
+    return 'hard';
+  }
+
+  return canonicalClaim;
+}
+
+/**
  * Calculates the drop rate based on stage difficulty and boss defeat.
  *
  * @param difficulty - Stage difficulty level
@@ -1798,6 +1872,11 @@ export function rpcStageComplete(
   }
 
   const request = validation.data;
+
+  // Issue #1068: never trust the client-declared difficulty tier. Verify it
+  // against the server-side allowlist before any multiplier is applied —
+  // drop rate, XP, and analytics below all use the verified value.
+  request.difficulty = resolveVerifiedDifficulty(request.difficulty, logger);
 
   // Rate limit check
   const rateLimitCheck = checkRateLimit(ctx.userId, 'stage_complete');
