@@ -163,6 +163,8 @@ beforeEach(() => {
 });
 
 // =================== Registration Tests ===================
+// Handlers are registered wrapped in the shared admin guard (issue #1075),
+// so assertions match on any function rather than the bare handler reference.
 
 describe('registerRpc', () => {
   it('registers admin_get_season_state with correct endpoint name', () => {
@@ -170,7 +172,7 @@ describe('registerRpc', () => {
     registerRpcAdminGetSeasonState(initializer as any);
     expect(initializer.registerRpc).toHaveBeenCalledWith(
       'armored_archer/admin_get_season_state',
-      rpcAdminGetSeasonState
+      expect.any(Function)
     );
   });
 
@@ -179,7 +181,7 @@ describe('registerRpc', () => {
     registerRpcAdminGetPlayerSeason(initializer as any);
     expect(initializer.registerRpc).toHaveBeenCalledWith(
       'armored_archer/admin_get_player_season',
-      rpcAdminGetPlayerSeason
+      expect.any(Function)
     );
   });
 
@@ -188,7 +190,7 @@ describe('registerRpc', () => {
     registerRpcAdminValidateSeason(initializer as any);
     expect(initializer.registerRpc).toHaveBeenCalledWith(
       'armored_archer/admin_validate_season',
-      rpcAdminValidateSeason
+      expect.any(Function)
     );
   });
 
@@ -197,7 +199,7 @@ describe('registerRpc', () => {
     registerRpcAdminTriggerSeasonEvent(initializer as any);
     expect(initializer.registerRpc).toHaveBeenCalledWith(
       'armored_archer/admin_trigger_season_event',
-      rpcAdminTriggerSeasonEvent
+      expect.any(Function)
     );
   });
 });

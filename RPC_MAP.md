@@ -201,33 +201,38 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 
 | Feature | Client Caller | Server Handler | Storage Ownership | Deployment Path |
 |----------|---------------|----------------|-------------------|------------------|
-| Get Metrics | Admin Dashboard | `rpcGetMetrics()` in `metrics.ts` | Metrics store (Prometheus) | `/rpc/armored_archer/metrics` |
-| N+1 Query Report | Admin Dashboard | `rpcGetNPlusOneReport()` in `metrics.ts` + `n_plus_one_detection.ts` | `query_performance` storage (custom collection) | `/rpc/armored_archer/n_plus_one_report` |
-| Error Insights Dashboard | Admin Dashboard | `rpcGetErrorDashboard()` in `error_insight_pipeline.ts` | `error_insights` storage (custom collection) | `/rpc/armored_archer/error_insights_dashboard` |
-| Error Insights Summary | Admin Dashboard | `rpcGetErrorSummary()` in `error_insight_pipeline.ts` | `error_insights` storage (custom collection) | `/rpc/armored_archer/error_insights_summary` |
-| Error Insights Patterns | Admin Dashboard | `rpcGetErrorPatterns()` in `error_insight_pipeline.ts` | `error_insights` storage (custom collection) | `/rpc/armored_archer/error_insights_patterns` |
-| Error Insights Stats | Admin Dashboard | `rpcGetErrorStats()` in `error_insight_pipeline.ts` | `error_insights` storage (custom collection) | `/rpc/armored_archer/error_insights_stats` |
-| Error Insights Dismiss | Admin Dashboard | `rpcDismissInsight()` in `error_insight_pipeline.ts` | `error_insights` storage (custom collection) | `/rpc/armored_archer/error_insights_dismiss` |
-| Deployment Record | CI/CD Pipeline | `rpcRecordDeployment()` in `deployment_observability.ts` | `deployment_history` storage (custom collection) | `/rpc/armored_archer/deployment_record` |
-| Deployment Health | Admin Dashboard | `rpcDeploymentHealth()` in `deployment_observability.ts` | `deployment_history` storage (custom collection) | `/rpc/armored_archer/deployment_health` |
-| Deployment History | Admin Dashboard | `rpcDeploymentHistory()` in `deployment_observability.ts` | `deployment_history` storage (custom collection) | `/rpc/armored_archer/deployment_history` |
-| Deployment Metrics | Admin Dashboard | `rpcDeploymentMetrics()` in `deployment_observability.ts` | `deployment_history` storage (custom collection) | `/rpc/armored_archer/deployment_metrics` |
-| Progressive Rollout - Create Flag | Admin Dashboard | `rpcCreateFeatureFlag()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_create_flag` |
-| Progressive Rollout - Update Flag | Admin Dashboard | `rpcUpdateFeatureFlag()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_update_flag` |
-| Progressive Rollout - List Flags | Admin Dashboard | `rpcListFeatureFlags()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_list_flags` |
+| Get Metrics | Admin Dashboard (admin-only) | `rpcGetMetrics()` in `metrics.ts` | Metrics store (Prometheus) | `/rpc/armored_archer/metrics` |
+| N+1 Query Report | Admin Dashboard (admin-only) | `rpcGetNPlusOneReport()` in `metrics.ts` + `n_plus_one_detection.ts` | `query_performance` storage (custom collection) | `/rpc/armored_archer/n_plus_one_report` |
+| Error Insights Dashboard | Admin Dashboard (admin-only) | `rpcGetErrorDashboard()` in `error_insight_pipeline.ts` | `error_insights` storage (custom collection) | `/rpc/armored_archer/error_insights_dashboard` |
+| Error Insights Summary | Admin Dashboard (admin-only) | `rpcGetErrorSummary()` in `error_insight_pipeline.ts` | `error_insights` storage (custom collection) | `/rpc/armored_archer/error_insights_summary` |
+| Error Insights Patterns | Admin Dashboard (admin-only) | `rpcGetErrorPatterns()` in `error_insight_pipeline.ts` | `error_insights` storage (custom collection) | `/rpc/armored_archer/error_insights_patterns` |
+| Error Insights Stats | Admin Dashboard (admin-only) | `rpcGetErrorStats()` in `error_insight_pipeline.ts` | `error_insights` storage (custom collection) | `/rpc/armored_archer/error_insights_stats` |
+| Error Insights Dismiss | Admin Dashboard (admin-only) | `rpcDismissInsight()` in `error_insight_pipeline.ts` | `error_insights` storage (custom collection) | `/rpc/armored_archer/error_insights_dismiss` |
+| Deployment Record | CI/CD Pipeline (admin-only) | `rpcRecordDeployment()` in `deployment_observability.ts` | `deployment_history` storage (custom collection) | `/rpc/armored_archer/deployment_record` |
+| Deployment Health | Admin Dashboard (admin-only) | `rpcDeploymentHealth()` in `deployment_observability.ts` | `deployment_history` storage (custom collection) | `/rpc/armored_archer/deployment_health` |
+| Deployment History | Admin Dashboard (admin-only) | `rpcDeploymentHistory()` in `deployment_observability.ts` | `deployment_history` storage (custom collection) | `/rpc/armored_archer/deployment_history` |
+| Deployment Metrics | Admin Dashboard (admin-only) | `rpcDeploymentMetrics()` in `deployment_observability.ts` | `deployment_history` storage (custom collection) | `/rpc/armored_archer/deployment_metrics` |
+| Progressive Rollout - Create Flag | Admin Dashboard (admin-only) | `rpcCreateFeatureFlag()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_create_flag` |
+| Progressive Rollout - Update Flag | Admin Dashboard (admin-only) | `rpcUpdateFeatureFlag()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_update_flag` |
+| Progressive Rollout - List Flags | Admin Dashboard (admin-only) | `rpcListFeatureFlags()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_list_flags` |
 | Progressive Rollout - Check | Client/Admin | `rpcCheckFeatureFlag()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_check` |
-| Progressive Rollout - Advance Phase | Admin Dashboard | `rpcAdvancePhase()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_advance` |
-| Progressive Rollout - Rollback | Admin Dashboard | `rpcRollbackFeature()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_rollback` |
-| Progressive Rollout - Health Check | Admin Dashboard | `rpcRolloutHealth()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_health` |
-| Progressive Rollout - Metrics | Admin Dashboard | `rpcGetRolloutMetrics()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_metrics` |
+| Progressive Rollout - Advance Phase | Admin Dashboard (admin-only) | `rpcAdvancePhase()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_advance` |
+| Progressive Rollout - Rollback | Admin Dashboard (admin-only) | `rpcRollbackFeature()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_rollback` |
+| Progressive Rollout - Health Check | Admin Dashboard (admin-only) | `rpcRolloutHealth()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_health` |
+| Progressive Rollout - Metrics | Admin Dashboard (admin-only) | `rpcGetRolloutMetrics()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_metrics` |
 | Progressive Rollout - Record Metrics | Client | `rpcRecordMetrics()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_record_metrics` |
-| Progressive Rollout - Prometheus Metrics | Admin Dashboard | `rpcPrometheusMetrics()` in `progressive_rollout.ts` | Metrics store (Prometheus) | `/rpc/armored_archer/rollout_metrics_prometheus` |
+| Progressive Rollout - Prometheus Metrics | Admin Dashboard (admin-only) | `rpcPrometheusMetrics()` in `progressive_rollout.ts` | Metrics store (Prometheus) | `/rpc/armored_archer/rollout_metrics_prometheus` |
 
 **Storage Schema:**
 - `error_insights` collection: `{ insight_id, error_type, count, first_seen, last_seen, stack_trace, dismissed }`
 - `deployment_history` collection: `{ deployment_id, timestamp, version, status, environment, metrics }`
 - `feature_flags` collection: `{ flag_id, name, description, phase, enabled_percentage, targeting, created_at }`
 - `query_performance` collection: `{ query_id, execution_time_ms, n_plus_one_detected, timestamp }`
+
+**Admin Authorization (issue #1075):**
+- Every RPC in this section marked *(admin-only)* — plus the season admin tools, `admin_query_matches`, and the QA replay endpoints — is wrapped server-side by the shared admin guard (`backend/src/modules/admin_auth.ts`).
+- Authorized callers are configured via the `ADMIN_USER_IDS` environment variable (comma-separated Nakama user ids; see `backend/.env.example`). Unset/empty rejects every caller (fail-closed), and rejections are audit-logged as `admin_rpc_access_denied`.
+- `rollout_check` and `rollout_record_metrics` remain player-callable by design (client feature-gating and rollout telemetry).
 
 ### Client-Side Synchronous Storage Cache (no RPC)
 
@@ -448,27 +453,37 @@ For PostgreSQL table changes:
 | `armored_archer_schedule_notification` | notifications_rpc | - | Notifications |
 | `armored_archer_cancel_notification` | notifications_rpc | - | Notifications |
 | `armored_archer_get_notification_status` | notifications_rpc | - | Notifications |
-| `armored_archer/metrics` | metrics | `rpcGetMetrics()` | Infrastructure |
-| `armored_archer/n_plus_one_report` | metrics + n_plus_one | - | Infrastructure |
-| `armored_archer/error_insights_dashboard` | error_insight_pipeline | `rpcGetErrorDashboard()` | Infrastructure |
-| `armored_archer/error_insights_summary` | error_insight_pipeline | `rpcGetErrorSummary()` | Infrastructure |
-| `armored_archer/error_insights_patterns` | error_insight_pipeline | `rpcGetErrorPatterns()` | Infrastructure |
-| `armored_archer/error_insights_stats` | error_insight_pipeline | `rpcGetErrorStats()` | Infrastructure |
-| `armored_archer/error_insights_dismiss` | error_insight_pipeline | `rpcDismissInsight()` | Infrastructure |
-| `armored_archer/deployment_record` | deployment_observability | `rpcRecordDeployment()` | Infrastructure |
-| `armored_archer/deployment_health` | deployment_observability | `rpcDeploymentHealth()` | Infrastructure |
-| `armored_archer/deployment_history` | deployment_observability | `rpcDeploymentHistory()` | Infrastructure |
-| `armored_archer/deployment_metrics` | deployment_observability | `rpcDeploymentMetrics()` | Infrastructure |
-| `armored_archer/rollout_create_flag` | progressive_rollout | `rpcCreateFeatureFlag()` | Infrastructure |
-| `armored_archer/rollout_update_flag` | progressive_rollout | `rpcUpdateFeatureFlag()` | Infrastructure |
-| `armored_archer/rollout_list_flags` | progressive_rollout | `rpcListFeatureFlags()` | Infrastructure |
-| `armored_archer/rollout_check` | progressive_rollout | `rpcCheckFeatureFlag()` | Infrastructure |
-| `armored_archer/rollout_advance` | progressive_rollout | `rpcAdvancePhase()` | Infrastructure |
-| `armored_archer/rollout_rollback` | progressive_rollout | `rpcRollbackFeature()` | Infrastructure |
-| `armored_archer/rollout_health` | progressive_rollout | `rpcRolloutHealth()` | Infrastructure |
-| `armored_archer/rollout_metrics` | progressive_rollout | `rpcGetRolloutMetrics()` | Infrastructure |
-| `armored_archer/rollout_record_metrics` | progressive_rollout | `rpcRecordMetrics()` | Infrastructure |
-| `armored_archer/rollout_metrics_prometheus` | progressive_rollout | `rpcPrometheusMetrics()` | Infrastructure |
+| `armored_archer/metrics` | metrics | `rpcGetMetrics()` | Infrastructure *(admin-only)* |
+| `armored_archer/n_plus_one_report` | metrics + n_plus_one | - | Infrastructure *(admin-only)* |
+| `armored_archer/error_insights_dashboard` | error_insight_pipeline | `rpcGetErrorDashboard()` | Infrastructure *(admin-only)* |
+| `armored_archer/error_insights_summary` | error_insight_pipeline | `rpcGetErrorSummary()` | Infrastructure *(admin-only)* |
+| `armored_archer/error_insights_patterns` | error_insight_pipeline | `rpcGetErrorPatterns()` | Infrastructure *(admin-only)* |
+| `armored_archer/error_insights_stats` | error_insight_pipeline | `rpcGetErrorStats()` | Infrastructure *(admin-only)* |
+| `armored_archer/error_insights_dismiss` | error_insight_pipeline | `rpcDismissInsight()` | Infrastructure *(admin-only)* |
+| `armored_archer/deployment_record` | deployment_observability | `rpcRecordDeployment()` | Infrastructure *(admin-only)* |
+| `armored_archer/deployment_health` | deployment_observability | `rpcDeploymentHealth()` | Infrastructure *(admin-only)* |
+| `armored_archer/deployment_history` | deployment_observability | `rpcDeploymentHistory()` | Infrastructure *(admin-only)* |
+| `armored_archer/deployment_metrics` | deployment_observability | `rpcDeploymentMetrics()` | Infrastructure *(admin-only)* |
+| `armored_archer/rollout_create_flag` | progressive_rollout | `rpcCreateFeatureFlag()` | Infrastructure *(admin-only)* |
+| `armored_archer/rollout_update_flag` | progressive_rollout | `rpcUpdateFeatureFlag()` | Infrastructure *(admin-only)* |
+| `armored_archer/rollout_list_flags` | progressive_rollout | `rpcListFeatureFlags()` | Infrastructure *(admin-only)* |
+| `armored_archer/rollout_check` | progressive_rollout | `rpcCheckFeatureFlag()` | Infrastructure (player-callable) |
+| `armored_archer/rollout_advance` | progressive_rollout | `rpcAdvancePhase()` | Infrastructure *(admin-only)* |
+| `armored_archer/rollout_rollback` | progressive_rollout | `rpcRollbackFeature()` | Infrastructure *(admin-only)* |
+| `armored_archer/rollout_health` | progressive_rollout | `rpcRolloutHealth()` | Infrastructure *(admin-only)* |
+| `armored_archer/rollout_metrics` | progressive_rollout | `rpcGetRolloutMetrics()` | Infrastructure *(admin-only)* |
+| `armored_archer/rollout_record_metrics` | progressive_rollout | `rpcRecordMetrics()` | Infrastructure (player-callable) |
+| `armored_archer/rollout_metrics_prometheus` | progressive_rollout | `rpcPrometheusMetrics()` | Infrastructure *(admin-only)* |
+| `armored_archer/admin_get_season_state` | season_admin | `rpcAdminGetSeasonState()` | Seasons *(admin-only)* |
+| `armored_archer/admin_get_player_season` | season_admin | `rpcAdminGetPlayerSeason()` | Seasons *(admin-only)* |
+| `armored_archer/admin_validate_season` | season_admin | `rpcAdminValidateSeason()` | Seasons *(admin-only)* |
+| `armored_archer/admin_trigger_season_event` | season_admin | `rpcAdminTriggerSeasonEvent()` | Seasons *(admin-only)* |
+| `armored_archer/admin_query_matches` | matchmaker | `rpcAdminQueryMatches()` | PvP *(admin-only)* |
+| `armored_archer/get_match_replay` | match_replay | `rpcGetMatchReplay()` | QA Replay *(admin-only)* |
+| `armored_archer/list_match_replays` | match_replay | `rpcListMatchReplays()` | QA Replay *(admin-only)* |
+| `armored_archer/flag_match_for_qa` | match_replay | `rpcFlagMatchForQa()` | QA Replay *(admin-only)* |
+| `armored_archer/add_debug_notes` | match_replay | `rpcAddDebugNotes()` | QA Replay *(admin-only)* |
+| `armored_archer/reconstruct_match_state` | match_replay | `rpcReconstructMatchState()` | QA Replay *(admin-only)* |
 | `armored_archer/sync_difficulty` | dynamic_difficulty | `rpcSyncDifficulty()` | PvE |
 | `armored_archer/track_match_outcome` | dynamic_difficulty | `rpcTrackMatchOutcome()` | PvE |
 | `armored_archer/get_player_performance` | dynamic_difficulty | `rpcGetPlayerPerformance()` | PvE |

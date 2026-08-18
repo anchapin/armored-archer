@@ -302,6 +302,22 @@ describe('metrics', () => {
   // ==========================================
 
   describe('rpcGetMetrics handler', () => {
+    // The metrics RPCs are registered behind the shared admin guard
+    // (issue #1075), so handler-level tests must allowlist their callers.
+    const previousAdminIds = process.env.ADMIN_USER_IDS;
+
+    beforeEach(() => {
+      process.env.ADMIN_USER_IDS = 'user_123,specific_user_42,admin_1,admin_2';
+    });
+
+    afterEach(() => {
+      if (previousAdminIds === undefined) {
+        delete process.env.ADMIN_USER_IDS;
+      } else {
+        process.env.ADMIN_USER_IDS = previousAdminIds;
+      }
+    });
+
     it('returns combined base and deployment metrics', async () => {
       const capturedHandlers: Record<string, Function> = {};
       const mockInitializer = {
@@ -376,6 +392,21 @@ describe('metrics', () => {
   // ==========================================
 
   describe('rpcGetNPlusOneReport handler', () => {
+    // Behind the shared admin guard (issue #1075) — see note above.
+    const previousAdminIds = process.env.ADMIN_USER_IDS;
+
+    beforeEach(() => {
+      process.env.ADMIN_USER_IDS = 'user_123,specific_user_42,admin_1,admin_2';
+    });
+
+    afterEach(() => {
+      if (previousAdminIds === undefined) {
+        delete process.env.ADMIN_USER_IDS;
+      } else {
+        process.env.ADMIN_USER_IDS = previousAdminIds;
+      }
+    });
+
     it('returns the N+1 detection report as JSON', async () => {
       const mockReport = { queries: [{ table: 'users', count: 5 }] };
       const { getNPlusOneReport } = require('../n_plus_one_detection');

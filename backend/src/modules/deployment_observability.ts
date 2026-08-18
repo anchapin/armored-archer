@@ -12,6 +12,7 @@ import { Counter, Gauge, Histogram, Registry } from 'prom-client';
 import { config } from '../config';
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { withAdminGuard } from './admin_auth';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 // Create a dedicated registry for deployment metrics
@@ -154,13 +155,29 @@ export function updateDeploymentHealth(
 }
 
 /**
- * Register RPC handlers for deployment observability
+ * Register RPC handlers for deployment observability.
+ *
+ * All four endpoints are wrapped in the shared admin gate (issue #1075):
+ * they expose internal deployment telemetry and mutation (deployment_record),
+ * so only allowlisted operators (ADMIN_USER_IDS) may call them.
  */
 export function registerDeploymentObservability(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/deployment_record', rpcRecordDeployment);
-  initializer.registerRpc('armored_archer/deployment_health', rpcDeploymentHealth);
-  initializer.registerRpc('armored_archer/deployment_history', rpcDeploymentHistory);
-  initializer.registerRpc('armored_archer/deployment_metrics', rpcDeploymentMetrics);
+  initializer.registerRpc(
+    'armored_archer/deployment_record',
+    withAdminGuard('armored_archer/deployment_record', rpcRecordDeployment)
+  );
+  initializer.registerRpc(
+    'armored_archer/deployment_health',
+    withAdminGuard('armored_archer/deployment_health', rpcDeploymentHealth)
+  );
+  initializer.registerRpc(
+    'armored_archer/deployment_history',
+    withAdminGuard('armored_archer/deployment_history', rpcDeploymentHistory)
+  );
+  initializer.registerRpc(
+    'armored_archer/deployment_metrics',
+    withAdminGuard('armored_archer/deployment_metrics', rpcDeploymentMetrics)
+  );
 }
 
 /**

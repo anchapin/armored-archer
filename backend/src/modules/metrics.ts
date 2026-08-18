@@ -2,6 +2,7 @@ import { Counter, Histogram, Registry, collectDefaultMetrics, Gauge } from 'prom
 import { config } from '../config';
 import { Runtime } from '../types/nakama';
 import * as rateLimiter from '../utils/rateLimiter';
+import { withAdminGuard } from './admin_auth';
 import { getDeploymentRegistry } from './deployment_observability';
 import { initializeNPlusOneDetectionWithMetrics, getNPlusOneReport } from './n_plus_one_detection';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
@@ -352,9 +353,19 @@ const cacheHitRatio = new Gauge({
 // Register rate limiter callbacks
 rateLimiter.setMetricsCallbacks(recordRateLimitViolation, updateActiveUsersCount);
 
+// Operational telemetry endpoints — full Prometheus/deployment dumps must
+// not be harvestable by players. The guard wraps the handler itself (not the
+// registration call site in index.ts) so it survives the upcoming metrics
+// exposure rework (issue #1074).
 export function registerRpcMetrics(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/metrics', rpcGetMetrics);
-  initializer.registerRpc('armored_archer/n_plus_one_report', rpcGetNPlusOneReport);
+  initializer.registerRpc(
+    'armored_archer/metrics',
+    withAdminGuard('armored_archer/metrics', rpcGetMetrics)
+  );
+  initializer.registerRpc(
+    'armored_archer/n_plus_one_report',
+    withAdminGuard('armored_archer/n_plus_one_report', rpcGetNPlusOneReport)
+  );
 }
 
 // RPC handler for N+1 detection report
