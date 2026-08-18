@@ -9,7 +9,7 @@ import { Runtime } from '../types/nakama';
 import { getRedisClient } from '../utils/redis';
 import { getCacheManager } from '../utils/cache';
 import { withCircuitBreaker } from '../utils/circuitBreaker';
-import { safeParse } from '../utils/safeParse';
+import { safeParse, safeParsePayload } from '../utils/safeParse';
 import { config } from '../config';
 import { logAudit } from './audit';
 import { isPII } from './privacy_compliance';
@@ -19,6 +19,7 @@ import {
   getCurrency,
   invalidateCurrencyCache as invalidateLedgerCache,
   readNormalizedCurrencyRecord,
+  applyCurrencyDelta,
   MAX_GEM_BALANCE,
   PlayerCurrency,
 } from './currency';
@@ -222,54 +223,149 @@ function hashReceipt(receipt: string): string {
 }
 
 /**
+ * Storage collection holding durable refund dedup markers (issue #1067).
+ * Redis markers are only a cache; these records are the authority that
+ * keeps refunds at-most-once across Redis outages.
+ */
+const REFUND_MARKER_COLLECTION = 'refund_markers';
+
+/** Redis TTL for refund dedup cache markers (30 days — no unbounded keys). */
+const REFUND_MARKER_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+/**
+ * Outcome of a refund dedup check.
+ * - 'processed'   — a durable (or cached) marker exists; do not re-apply
+ * - 'unprocessed' — no marker found; safe to proceed
+ * - 'unavailable' — the authoritative storage check itself failed; the
+ *   caller must fail safe (reject so RevenueCat retries later)
+ */
+type RefundDedupStatus = 'processed' | 'unprocessed' | 'unavailable';
+
+/**
  * Check if a refund has already been processed.
- * Uses Redis for persistence and distributed systems support.
  *
+ * Redis is a fast-path cache only; the durable Nakama storage marker is
+ * the authority. Redis errors fall through to storage instead of failing
+ * open (issue #1067), and a storage error surfaces as 'unavailable' so
+ * callers can reject rather than risk a double deduction.
+ *
+ * @param nk - Nakama server interface
  * @param userId - The user who received the refund
  * @param refundTransactionId - Unique refund transaction identifier
  * @param logger - Optional Nakama logger
- * @returns true if the refund was already processed
+ * @returns The dedup status for this refund transaction
  */
-async function isRefundAlreadyProcessed(
+async function checkRefundProcessed(
+  nk: Runtime.Nakama,
   userId: string,
   refundTransactionId: string,
   logger?: Runtime.Logger
-): Promise<boolean> {
+): Promise<RefundDedupStatus> {
+  // 1. Redis fast path (cache only — errors fall through to storage)
   const redis = getRedisClient(logger);
   if (redis) {
     try {
       const exists = await redis.exists(`refund:${userId}:${refundTransactionId}`);
-      if (exists) return true;
+      if (exists) return 'processed';
     } catch (e) {
-      if (logger) logger.error('Redis error in isRefundAlreadyProcessed: %s', e);
+      if (logger) {
+        logger.error(
+          'Redis error in refund dedup check, falling back to durable storage: %s',
+          e
+        );
+      }
     }
   }
 
-  // For now we primarily use Redis for this, or you could add a Nakama storage check
-  return false;
+  // 2. Durable Nakama storage marker (authoritative)
+  try {
+    const objects = nk.storageRead([
+      {
+        collection: REFUND_MARKER_COLLECTION,
+        key: `refund_${refundTransactionId}`,
+        userId: userId,
+      },
+    ]);
+    return objects.length > 0 ? 'processed' : 'unprocessed';
+  } catch (e) {
+    if (logger) logger.error('Storage read error in refund dedup check: %s', e);
+    return 'unavailable';
+  }
 }
 
 /**
  * Mark a refund as processed.
- * Uses Redis for persistence and distributed systems support.
  *
+ * Writes the durable Nakama storage marker first (a versioned,
+ * optimistic-concurrency write), then the Redis cache marker with a TTL.
+ * Redis is best-effort: losing the cache entry only costs a storage read.
+ *
+ * @param nk - Nakama server interface
  * @param userId - The user who received the refund
  * @param refundTransactionId - Unique refund transaction identifier
+ * @param outcome - Recorded refund outcome (deducted amount, balances)
  * @param logger - Optional Nakama logger
+ * @returns true if the durable marker was written successfully
  */
 async function markRefundAsProcessed(
+  nk: Runtime.Nakama,
   userId: string,
   refundTransactionId: string,
+  outcome: Record<string, unknown>,
   logger?: Runtime.Logger
-): Promise<void> {
+): Promise<boolean> {
+  // 1. Durable storage marker (authoritative). Read the current record
+  // first so the write carries the observed version (OCC); a missing
+  // record yields an unversioned create.
+  try {
+    let version: string | undefined;
+    const existing = nk.storageRead([
+      {
+        collection: REFUND_MARKER_COLLECTION,
+        key: `refund_${refundTransactionId}`,
+        userId: userId,
+      },
+    ]);
+    if (existing.length > 0) {
+      version = existing[0].version;
+    }
+
+    nk.storageWrite([
+      {
+        collection: REFUND_MARKER_COLLECTION,
+        key: `refund_${refundTransactionId}`,
+        userId: userId,
+        value: JSON.stringify({
+          refund_transaction_id: refundTransactionId,
+          user_id: userId,
+          processed_at: Date.now(),
+          outcome: outcome,
+        }),
+        version: version,
+        permissionRead: 0, // No public read
+        permissionWrite: 0, // No public write
+      },
+    ]);
+  } catch (e) {
+    if (logger) logger.error('Storage write error in markRefundAsProcessed: %s', e);
+    return false;
+  }
+
+  // 2. Redis cache marker with TTL (issue #1067 — no unbounded keys)
   const redis = getRedisClient(logger);
   if (redis) {
     try {
-      await redis.set(`refund:${userId}:${refundTransactionId}`, '1');
+      await redis.setex(
+        `refund:${userId}:${refundTransactionId}`,
+        REFUND_MARKER_TTL_SECONDS,
+        '1'
+      );
     } catch (e) {
       if (logger) logger.error('Redis error in markRefundAsProcessed: %s', e);
     }
   }
+
+  return true;
 }
 
 /**
@@ -330,14 +426,33 @@ export async function processRefund(
   reason: RefundReason,
   logger: Runtime.Logger
 ): Promise<{ success: boolean; message: string; new_balance?: number }> {
-  // Check for duplicate refund
-  if (await isRefundAlreadyProcessed(userId, refundTransactionId, logger)) {
+  // A refund without an identifier cannot be deduplicated — refuse it
+  // rather than allow a repeatable deduction (issue #1067).
+  if (!refundTransactionId) {
+    logger.error('Refund rejected: missing refund transaction id for user %s', userId);
+    return { success: false, message: 'Missing refund transaction id' };
+  }
+
+  // Check for duplicate refund. The durable storage marker is the
+  // authority; Redis is only a cache. When the authoritative check itself
+  // is unavailable we fail safe — reject so RevenueCat retries later
+  // instead of risking a double deduction (issue #1067).
+  const dedupStatus = await checkRefundProcessed(nk, userId, refundTransactionId, logger);
+  if (dedupStatus === 'processed') {
     logger.warn(
       'Duplicate refund detected for user: %s, transaction: %s',
       userId,
       refundTransactionId
     );
     return { success: false, message: 'Refund already processed' };
+  }
+  if (dedupStatus === 'unavailable') {
+    logger.error(
+      'Refund dedup check unavailable for user: %s, transaction: %s — failing safe',
+      userId,
+      refundTransactionId
+    );
+    return { success: false, message: 'Refund dedup check unavailable' };
   }
 
   // Validate refund amount
@@ -351,29 +466,44 @@ export async function processRefund(
 
   // Calculate new balance (don't go below zero)
   const deduction = Math.min(refundAmount, playerCurrency.gems);
-  playerCurrency.gems -= deduction;
 
-  // Update the single currency ledger (storage record)
-  nk.storageWrite([
+  // Apply the deduction through the authoritative currency ledger (atomic,
+  // version-guarded OCC write — issue #1067: webhook-driven currency
+  // mutations never use plain storageWrite).
+  let newBalance = playerCurrency.gems;
+  if (deduction > 0) {
+    const updated = applyCurrencyDelta(nk, userId, { gems: -deduction }, 'refund', logger);
+    newBalance = updated.gems;
+  }
+
+  // Durable dedup marker first, Redis cache second (best-effort).
+  const marked = await markRefundAsProcessed(
+    nk,
+    userId,
+    refundTransactionId,
     {
-      collection: 'player_currency',
-      key: userId,
-      userId: userId,
-      value: JSON.stringify(playerCurrency),
+      refund_amount: refundAmount,
+      actual_deducted: deduction,
+      new_balance: newBalance,
+      reason: reason,
     },
-  ]);
-
-  // Invalidate cache
-  invalidateCurrencyCache(userId, logger);
-
-  // Mark refund as processed
-  await markRefundAsProcessed(userId, refundTransactionId, logger);
+    logger
+  );
+  if (!marked) {
+    // The deduction already landed; rejecting now would make RevenueCat
+    // retry and double-deduct. Report success and flag for reconciliation.
+    logger.error(
+      'Refund deduction applied but durable marker write FAILED for user %s, transaction %s — manual reconciliation required',
+      userId,
+      refundTransactionId
+    );
+  }
 
   // Log the refund for audit
   const refundDetails = {
     refund_amount: refundAmount,
     actual_deducted: deduction,
-    new_balance: playerCurrency.gems,
+    new_balance: newBalance,
     reason: reason,
     refund_transaction_id: refundTransactionId,
   };
@@ -396,14 +526,14 @@ export async function processRefund(
     userId,
     deduction,
     refundAmount,
-    playerCurrency.gems,
+    newBalance,
     reason
   );
 
   return {
     success: true,
     message: deduction < refundAmount ? 'Partial refund applied' : 'Refund processed successfully',
-    new_balance: playerCurrency.gems,
+    new_balance: newBalance,
   };
 }
 
@@ -2704,20 +2834,22 @@ export async function rpcCheckRefunds(
 
   let processedCount = 0;
   for (const refund of refunds) {
-    if (!(await isRefundAlreadyProcessed(appUserId, refund.refunded_at, logger))) {
-      // Get product info to determine gem amount
-      const catalog = getStoreCatalog(logger);
-      const productInfo = catalog[refund.product_id];
+    // processRefund performs its own durable dedup check (issue #1067) —
+    // already-processed transactions return success:false here.
+    // Get product info to determine gem amount
+    const catalog = getStoreCatalog(logger);
+    const productInfo = catalog[refund.product_id];
 
-      if (productInfo) {
-        await processRefund(
-          nk,
-          appUserId,
-          productInfo.gem_amount,
-          refund.refunded_at,
-          RefundReason.CHARGEBACK,
-          logger
-        );
+    if (productInfo) {
+      const refundOutcome = await processRefund(
+        nk,
+        appUserId,
+        productInfo.gem_amount,
+        refund.refunded_at,
+        RefundReason.CHARGEBACK,
+        logger
+      );
+      if (refundOutcome.success) {
         processedCount++;
       }
     }
@@ -3219,18 +3351,331 @@ function getGemAmountForProduct(productId: string, logger: Runtime.Logger): numb
 }
 
 /**
+ * Storage collection for the durable RevenueCat webhook event ledger
+ * (issue #1067). Mirrors the validated_receipts receipt-hash ledger
+ * pattern: Redis is a fast-path cache, Nakama storage is the durable
+ * record that makes event handling idempotent.
+ */
+const WEBHOOK_EVENT_COLLECTION = 'revenuecat_webhook_events';
+
+/** Redis key prefix for webhook event fast-path markers. */
+const WEBHOOK_EVENT_REDIS_PREFIX = 'rc_webhook_event';
+
+/** Redis TTL for webhook event fast-path markers (30 days). */
+const WEBHOOK_EVENT_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+/**
+ * Storage collection for paid awards queued at the MAX_GEM_BALANCE cap
+ * (issue #1067): the remainder of a purchase that could not be applied
+ * immediately is recorded durably and drained once balance allows.
+ */
+const WEBHOOK_PENDING_COLLECTION = 'revenuecat_pending_awards';
+
+/** A queued (not yet applied) portion of a paid webhook award. */
+interface PendingWebhookAward {
+  event_id: string;
+  product_id: string;
+  gems_remaining: number;
+  queued_at: number;
+}
+
+/**
+ * In-memory fast-path cache of processed webhook event outcomes
+ * (event id -> recorded outcome JSON). Exported for test teardown, like
+ * validatedReceipts.
+ */
+export const processedWebhookEvents: Map<string, string> = new Map();
+
+/** Clear in-memory webhook dedup caches (for test teardown). */
+export function clearWebhookEventLedgersForTests(): void {
+  processedWebhookEvents.clear();
+}
+
+/**
+ * Fetch the recorded outcome of a previously processed webhook event.
+ *
+ * Mirrors the receipt-hash ledger lookup order: Redis fast path, then the
+ * in-memory cache, then the durable Nakama storage record (authoritative).
+ *
+ * @param nk - Nakama server interface
+ * @param eventId - RevenueCat event id (or transaction id fallback)
+ * @param logger - Nakama logger instance
+ * @returns The recorded outcome JSON, or undefined when the event was
+ *   never processed
+ */
+async function getRecordedWebhookOutcome(
+  nk: Runtime.Nakama,
+  eventId: string,
+  logger: Runtime.Logger
+): Promise<string | undefined> {
+  // 1. Redis fast path
+  const redis = getRedisClient(logger);
+  if (redis) {
+    try {
+      const cached = await redis.get(`${WEBHOOK_EVENT_REDIS_PREFIX}:${eventId}`);
+      if (cached) return cached;
+    } catch (e) {
+      logger.error('Redis error in webhook event dedup lookup: %s', e);
+    }
+  }
+
+  // 2. In-memory cache
+  const memoryCached = processedWebhookEvents.get(eventId);
+  if (memoryCached !== undefined) {
+    return memoryCached;
+  }
+
+  // 3. Durable storage record (authoritative)
+  try {
+    const objects = nk.storageRead([
+      {
+        collection: WEBHOOK_EVENT_COLLECTION,
+        key: `event_${eventId}`,
+        userId: '',
+      },
+    ]);
+    if (objects.length > 0) {
+      const record = safeParsePayload<{ outcome?: string }>(
+        objects[0].value,
+        logger,
+        'webhook_event_ledger'
+      );
+      if (record && record.outcome !== undefined) {
+        return record.outcome;
+      }
+    }
+  } catch (e) {
+    logger.error('Storage read error in webhook event dedup lookup: %s', e);
+  }
+  return undefined;
+}
+
+/**
+ * Durably record the outcome of a processed webhook event so replays
+ * return the recorded outcome without re-applying (issue #1067).
+ *
+ * @param nk - Nakama server interface
+ * @param eventId - RevenueCat event id (or transaction id fallback)
+ * @param userId - The app user the event applied to
+ * @param outcome - The handler result to record
+ * @param logger - Nakama logger instance
+ */
+async function recordWebhookOutcome(
+  nk: Runtime.Nakama,
+  eventId: string,
+  userId: string,
+  outcome: Record<string, unknown>,
+  logger: Runtime.Logger
+): Promise<void> {
+  const outcomeJson = JSON.stringify(outcome);
+  const record = JSON.stringify({
+    event_id: eventId,
+    app_user_id: userId,
+    recorded_at: Date.now(),
+    outcome: outcomeJson,
+  });
+
+  // 1. Durable Nakama storage record (authoritative)
+  try {
+    nk.storageWrite([
+      {
+        collection: WEBHOOK_EVENT_COLLECTION,
+        key: `event_${eventId}`,
+        userId: '',
+        value: record,
+        permissionRead: 0, // No public read
+        permissionWrite: 0, // No public write
+      },
+    ]);
+  } catch (e) {
+    logger.error('Storage write error recording webhook event outcome: %s', e);
+  }
+
+  // 2. Redis fast path with TTL
+  const redis = getRedisClient(logger);
+  if (redis) {
+    try {
+      await redis.setex(
+        `${WEBHOOK_EVENT_REDIS_PREFIX}:${eventId}`,
+        WEBHOOK_EVENT_TTL_SECONDS,
+        outcomeJson
+      );
+    } catch (e) {
+      logger.error('Redis error recording webhook event outcome: %s', e);
+    }
+  }
+
+  // 3. In-memory cache
+  processedWebhookEvents.set(eventId, outcomeJson);
+}
+
+/**
+ * Read the pending webhook award queue for a player.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param logger - Nakama logger instance
+ * @returns The queued awards and the storage version observed on read
+ */
+function readPendingWebhookAwards(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): { awards: PendingWebhookAward[]; version: string | undefined } {
+  try {
+    const objects = nk.storageRead([
+      {
+        collection: WEBHOOK_PENDING_COLLECTION,
+        key: userId,
+        userId: userId,
+      },
+    ]);
+    if (objects.length === 0) {
+      return { awards: [], version: undefined };
+    }
+    const parsed = safeParsePayload<{ awards?: PendingWebhookAward[] }>(
+      objects[0].value,
+      logger,
+      'webhook_pending_awards'
+    );
+    const awards = parsed && Array.isArray(parsed.awards) ? parsed.awards : [];
+    return { awards, version: objects[0].version };
+  } catch (e) {
+    logger.error('Storage read error reading pending webhook awards: %s', e);
+    return { awards: [], version: undefined };
+  }
+}
+
+/**
+ * Persist the pending webhook award queue (versioned OCC write).
+ *
+ * @returns true when the queue was persisted successfully
+ */
+function writePendingWebhookAwards(
+  nk: Runtime.Nakama,
+  userId: string,
+  awards: PendingWebhookAward[],
+  version: string | undefined,
+  logger: Runtime.Logger
+): boolean {
+  try {
+    nk.storageWrite([
+      {
+        collection: WEBHOOK_PENDING_COLLECTION,
+        key: userId,
+        userId: userId,
+        value: JSON.stringify({ awards: awards }),
+        version: version,
+        permissionRead: 0, // No public read
+        permissionWrite: 0, // No public write
+      },
+    ]);
+    return true;
+  } catch (e) {
+    logger.error('Storage write error persisting pending webhook awards: %s', e);
+    return false;
+  }
+}
+
+/**
+ * Queue the un-appliable remainder of a paid award (balance saturated at
+ * MAX_GEM_BALANCE). The queue is durable; drainPendingWebhookAwards
+ * applies it once the balance has headroom again (issue #1067).
+ */
+function queuePendingWebhookAward(
+  nk: Runtime.Nakama,
+  userId: string,
+  award: PendingWebhookAward,
+  logger: Runtime.Logger
+): void {
+  const { awards, version } = readPendingWebhookAwards(nk, userId, logger);
+  awards.push(award);
+  writePendingWebhookAwards(nk, userId, awards, version, logger);
+}
+
+/**
+ * Apply queued awards while balance headroom exists (FIFO).
+ *
+ * Called from the webhook award path so a player whose balance dropped
+ * below the cap receives queued gems on their next webhook-driven event.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param logger - Nakama logger instance
+ * @returns Total queued gems applied during this drain
+ */
+function drainPendingWebhookAwards(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): number {
+  const { awards, version } = readPendingWebhookAwards(nk, userId, logger);
+  if (awards.length === 0) {
+    return 0;
+  }
+
+  const remaining = [...awards];
+  let totalApplied = 0;
+  while (remaining.length > 0) {
+    const current = getPlayerCurrencyWithCache(nk, userId, logger);
+    const headroom = MAX_GEM_BALANCE - current.gems;
+    if (headroom <= 0) {
+      break;
+    }
+    const next = remaining[0];
+    if (next.gems_remaining <= 0) {
+      // Defensive: drop malformed empty entries.
+      remaining.shift();
+      continue;
+    }
+    const apply = Math.min(next.gems_remaining, headroom);
+    const updated = applyCurrencyDelta(
+      nk,
+      userId,
+      { gems: apply },
+      'revenuecat_webhook_queued',
+      logger
+    );
+    totalApplied += apply;
+    next.gems_remaining -= apply;
+    if (next.gems_remaining <= 0) {
+      remaining.shift();
+    } else {
+      // Balance saturated again; the rest stays queued.
+      break;
+    }
+  }
+
+  if (totalApplied > 0 || remaining.length !== awards.length) {
+    writePendingWebhookAwards(nk, userId, remaining, version, logger);
+  }
+  if (totalApplied > 0) {
+    logger.info('Webhook: drained %d queued gems to user %s', totalApplied, userId);
+  }
+  return totalApplied;
+}
+
+/**
  * Handle initial purchase event - award gems to player.
+ *
+ * Idempotency (issue #1067): the caller deduplicates by RevenueCat event
+ * id before invoking this. Currency mutations go exclusively through the
+ * authoritative applyCurrencyDelta ledger (versioned OCC write); when the
+ * award would exceed MAX_GEM_BALANCE the un-appliable remainder of the
+ * paid award is queued durably instead of failing the purchase.
  */
 async function handleInitialPurchase(
   nk: Runtime.Nakama,
   userId: string,
   productId: string,
   logger: Runtime.Logger,
-  eventType: string = 'initial_purchase'
+  eventType: string = 'initial_purchase',
+  eventId: string = ''
 ): Promise<{
   success: boolean;
   message: string;
   gems_awarded?: number;
+  gems_queued?: number;
   new_balance?: number;
   event_type?: string;
 }> {
@@ -3251,53 +3696,51 @@ async function handleInitialPurchase(
     return { success: false, message: 'Unknown product ID', event_type: eventType };
   }
 
-  // Get current player currency
-  const playerCurrency = getPlayerCurrencyWithCache(nk, userId, logger);
+  // Apply any previously queued (cap-overflow) awards while there is
+  // balance headroom (issue #1067).
+  drainPendingWebhookAwards(nk, userId, logger);
 
-  // Check for max balance
-  if (wouldExceedMaxBalance(playerCurrency.gems, gemAmount)) {
-    logger.warn('Purchase would exceed max balance for user %s', userId);
-    logAudit(
+  // The player has already paid — award what fits under the cap and queue
+  // the remainder instead of failing (issue #1067).
+  const current = getPlayerCurrencyWithCache(nk, userId, logger);
+  const headroom = Math.max(0, MAX_GEM_BALANCE - current.gems);
+  const appliedNow = Math.min(gemAmount, headroom);
+  const queued = gemAmount - appliedNow;
+
+  let newBalance = current.gems;
+  if (appliedNow > 0) {
+    const updated = applyCurrencyDelta(
       nk,
       userId,
-      null,
-      'webhook_purchase',
-      'player_currency',
-      {
-        product_id: productId,
-        gems_awarded: 0,
-        new_balance: playerCurrency.gems,
-        event_type: eventType,
-      },
-      'failure',
-      'Gem balance would exceed maximum'
+      { gems: appliedNow },
+      'revenuecat_webhook',
+      logger
     );
-    return {
-      success: false,
-      message: 'Gem balance would exceed maximum',
-      gems_awarded: 0,
-      new_balance: playerCurrency.gems,
-      event_type: eventType,
-    };
+    newBalance = updated.gems;
   }
 
-  // Award gems (single-ledger write, issue #860)
-  playerCurrency.gems += gemAmount;
+  if (queued > 0) {
+    logger.warn(
+      'Webhook: award of %d gems for user %s capped at MAX_GEM_BALANCE — applied %d, queued %d',
+      gemAmount,
+      userId,
+      appliedNow,
+      queued
+    );
+    queuePendingWebhookAward(
+      nk,
+      userId,
+      {
+        event_id: eventId,
+        product_id: productId,
+        gems_remaining: queued,
+        queued_at: Date.now(),
+      },
+      logger
+    );
+  }
 
-  // Update the currency ledger
-  nk.storageWrite([
-    {
-      collection: 'player_currency',
-      key: userId,
-      userId: userId,
-      value: JSON.stringify(playerCurrency),
-    },
-  ]);
-
-  // Invalidate cache
-  invalidateCurrencyCache(userId, logger);
-
-  logger.info('Webhook: Awarded %d gems to user %s for product %s', gemAmount, userId, productId);
+  logger.info('Webhook: Awarded %d gems to user %s for product %s', appliedNow, userId, productId);
 
   logAudit(
     nk,
@@ -3307,8 +3750,9 @@ async function handleInitialPurchase(
     'player_currency',
     {
       product_id: productId,
-      gems_awarded: gemAmount,
-      new_balance: playerCurrency.gems,
+      gems_awarded: appliedNow,
+      gems_queued: queued,
+      new_balance: newBalance,
       event_type: eventType,
     },
     'success'
@@ -3316,9 +3760,10 @@ async function handleInitialPurchase(
 
   return {
     success: true,
-    message: 'Gems awarded',
-    gems_awarded: gemAmount,
-    new_balance: playerCurrency.gems,
+    message: queued > 0 ? 'Gems awarded (remainder queued at max balance)' : 'Gems awarded',
+    gems_awarded: appliedNow,
+    gems_queued: queued,
+    new_balance: newBalance,
     event_type: eventType,
   };
 }
@@ -3565,6 +4010,14 @@ async function handleProductChange(
 /**
  * RevenueCat webhook handler.
  * Processes incoming webhooks from RevenueCat.
+ *
+ * Security & idempotency (issue #1067):
+ * - FAIL-CLOSED: when REVENUECAT_WEBHOOK_SECRET is not configured the
+ *   webhook is rejected outright — nothing is granted or deducted.
+ * - Event dedup: initial_purchase/renewal/refund events are deduplicated
+ *   by RevenueCat event id (transaction id fallback) via the durable
+ *   webhook event ledger; replays return the recorded outcome without
+ *   re-applying.
  */
 export async function rpcRevenueCatWebhook(
   ctx: Runtime.Context,
@@ -3574,32 +4027,48 @@ export async function rpcRevenueCatWebhook(
 ): Promise<string> {
   logger.info('Processing RevenueCat webhook');
 
-  // Get webhook secret for signature verification
+  // FAIL-CLOSED (issue #1067): without a configured secret we cannot
+  // verify the sender, so the event is rejected — nothing is granted or
+  // deducted. An unverifiable webhook must never be processed.
   const webhookSecret = getRevenueCatWebhookSecret();
+  if (!webhookSecret) {
+    logger.error(
+      '[SECURITY] REVENUECAT_WEBHOOK_SECRET is not configured — rejecting RevenueCat webhook (fail-closed)'
+    );
+    logAudit(
+      nk,
+      '',
+      null,
+      'webhook_missing_secret',
+      'revenuecat_webhook',
+      {},
+      'failure',
+      'Webhook secret not configured'
+    );
+    return JSON.stringify({
+      success: false,
+      error: 'Webhook not configured',
+    });
+  }
 
-  // Verify webhook signature if secret is configured
-  if (webhookSecret) {
-    const signature = ctx.variables['x-revenuecat-signature'] || '';
-
-    if (!verifyWebhookSignature(payload, signature, webhookSecret)) {
-      logger.error('Invalid webhook signature');
-      logAudit(
-        nk,
-        '',
-        null,
-        'webhook_invalid_signature',
-        'revenuecat_webhook',
-        {},
-        'failure',
-        'Invalid webhook signature'
-      );
-      return JSON.stringify({
-        success: false,
-        error: 'Invalid signature',
-      });
-    }
-  } else {
-    logger.warn('RevenueCat webhook secret not configured - skipping signature verification');
+  // Verify webhook signature (HMAC-SHA256 over the raw payload)
+  const signature = ctx.variables['x-revenuecat-signature'] || '';
+  if (!verifyWebhookSignature(payload, signature, webhookSecret)) {
+    logger.error('Invalid webhook signature');
+    logAudit(
+      nk,
+      '',
+      null,
+      'webhook_invalid_signature',
+      'revenuecat_webhook',
+      {},
+      'failure',
+      'Invalid webhook signature'
+    );
+    return JSON.stringify({
+      success: false,
+      error: 'Invalid signature',
+    });
   }
 
   // Parse webhook payload
@@ -3667,19 +4136,77 @@ export async function rpcRevenueCatWebhook(
     return JSON.stringify({ success: false, error: 'Missing app_user_id' });
   }
 
+  // Extract the transaction id and event id for dedup (issue #1067).
+  // RevenueCat sends a unique event.id; legacy/test payloads may only
+  // carry event_id or transaction_id.
+  const transactionId =
+    (webhookData.transaction_id as string) ||
+    (eventObj?.transaction_id as string) ||
+    (webhookData.refund_transaction_id as string) ||
+    (eventObj?.refund_transaction_id as string) ||
+    '';
+  const rawEventId = eventObj?.id ?? webhookData.event_id ?? eventObj?.event_id;
+  const eventId = rawEventId !== undefined && rawEventId !== null && String(rawEventId) !== ''
+    ? String(rawEventId)
+    : transactionId;
+
+  // Event types whose application must be idempotent (issue #1067).
+  const requiresEventDedup =
+    normalizedEventType === 'initial_purchase' ||
+    normalizedEventType === 'renewal' ||
+    normalizedEventType === 'refund';
+
+  if (requiresEventDedup && !eventId) {
+    logger.error(
+      'Missing event/transaction identifier in %s webhook payload — refusing to process',
+      normalizedEventType
+    );
+    logAudit(
+      nk,
+      appUserId,
+      null,
+      'webhook_missing_event_id',
+      'revenuecat_webhook',
+      { event_type: normalizedEventType },
+      'failure',
+      'Missing event identifier'
+    );
+    return JSON.stringify({ success: false, error: 'Missing event identifier' });
+  }
+
+  if (requiresEventDedup) {
+    const recorded = await getRecordedWebhookOutcome(nk, eventId, logger);
+    if (recorded !== undefined) {
+      logger.warn(
+        'Duplicate RevenueCat webhook event %s (%s) — returning recorded outcome without re-applying',
+        eventId,
+        normalizedEventType
+      );
+      return recorded;
+    }
+  }
+
   let result: {
     success: boolean;
     message?: string;
     event_type?: string;
     error?: string;
     gems_awarded?: number;
+    gems_queued?: number;
     new_balance?: number;
   };
 
   switch (normalizedEventType) {
     case 'initial_purchase':
     case 'renewal':
-      result = await handleInitialPurchase(nk, appUserId, productId, logger, normalizedEventType);
+      result = await handleInitialPurchase(
+        nk,
+        appUserId,
+        productId,
+        logger,
+        normalizedEventType,
+        eventId
+      );
       break;
     case 'cancellation':
     case 'uncancellation':
@@ -3716,7 +4243,7 @@ export async function rpcRevenueCatWebhook(
         logger
       );
       break;
-    case 'refund':
+    case 'refund': {
       const refundAmount = getGemAmountForProduct(productId, logger) || 0;
       // Map webhook reason to valid RefundReason enum
       const refundReason = mapWebhookReasonToRefundReason(webhookData.reason as string | undefined);
@@ -3724,14 +4251,13 @@ export async function rpcRevenueCatWebhook(
         nk,
         appUserId,
         refundAmount,
-        (webhookData.transaction_id as string) ||
-          (webhookData.refund_transaction_id as string) ||
-          '',
+        transactionId,
         refundReason,
         logger
       );
       result = refundResult;
       break;
+    }
     default:
       logger.info('Webhook: Received unhandled event type: %s', eventType);
       result = {
@@ -3741,9 +4267,27 @@ export async function rpcRevenueCatWebhook(
       };
   }
 
+  // Record the outcome for dedup'd event types so RevenueCat retries and
+  // replays return this exact outcome without re-applying (issue #1067).
+  // Failures are intentionally not recorded — a retry of a failed event
+  // re-attempts (nothing was applied).
+  if (requiresEventDedup && result.success) {
+    await recordWebhookOutcome(nk, eventId, appUserId, result, logger);
+  }
+
   return JSON.stringify(result);
 }
 
 export function registerRpcRevenueCatWebhook(initializer: Runtime.Initializer): void {
+  // Startup validation (issue #1067): a missing webhook secret puts the
+  // RPC in fail-closed mode — surface it loudly at boot so operators fix
+  // the configuration instead of silently dropping RevenueCat events.
+  if (!getRevenueCatWebhookSecret()) {
+    logger.error(
+      '[SECURITY] REVENUECAT_WEBHOOK_SECRET is not set — the RevenueCat webhook RPC ' +
+        '(armored_archer/revenuecat_webhook) will REJECT all events until it is configured ' +
+        '(fail-closed, issue #1067). Add it to the environment / .env to enable webhook processing.'
+    );
+  }
   initializer.registerRpc('armored_archer/revenuecat_webhook', rpcRevenueCatWebhook);
 }
