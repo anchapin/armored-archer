@@ -35,6 +35,14 @@
 #   same fixed host port. Run same-job invocations sequentially; they also
 #   share ~/.cache/act (action cache races otherwise).
 #
+# Host memory (issue #993):
+# - act Node-job containers plus concurrent NATIVE ./scripts/local-godot-tests.sh
+#   suites on the same host can exhaust host RAM and OOM-kill jobs — act reports
+#   exitcode '137' with no error output. Run the act matrix and native Godot
+#   suites sequentially, never concurrently.
+# - scripts/ci-local.sh warns/waits before each act job when available memory
+#   is low (ACT_MIN_FREE_MB, default 2048; ACT_MEM_WAIT_SECS, default 60).
+#
 # For optimized local CI (sequential/parallel job orchestration):
 #   - make ci (sequential)
 #   - make ci-parallel (fastest)
