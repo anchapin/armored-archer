@@ -67,6 +67,16 @@ VERBOSE=false
 ACT_MIN_FREE_MB="${ACT_MIN_FREE_MB:-2048}"
 ACT_MEM_WAIT_SECS="${ACT_MEM_WAIT_SECS:-60}"
 
+# Process-wide act invocation lock (issue #992): concurrent act processes
+# (e.g. PR-verification matrices in different worktrees) share ~/.cache/act,
+# where act git-clones action refs (actions/checkout, setup-node, ...).
+# Simultaneous clones of the same ref corrupt the cache and fail jobs with
+# "Non-terminating error while running 'git clone': some refs were not
+# updated". Every act invocation (and act cache clear) is serialized via
+# flock on this shared lock file. The per-user suffix avoids /tmp permission
+# clashes on multi-user hosts.
+ACT_LOCK_FILE="${ACT_LOCK_FILE:-${XDG_RUNTIME_DIR:-/tmp}/act-invocation-$(id -u).lock}"
+
 # Job categories
 ACT_JOBS=(
     "backend-lint"
@@ -259,6 +269,25 @@ wait_for_memory() {
     log_warning "Proceeding with ${avail}MB free — the act job may be OOM-killed (exitcode '137')"
 }
 
+# --- Act invocation lock (issue #992) ---
+
+# Run a command while holding the process-wide act lock, blocking until any
+# concurrent act invocation finishes. Within a single ci-local.sh process act
+# jobs already run sequentially, so this only contends across processes.
+# Falls back to running unlocked (with a warning) on hosts without flock
+# (e.g. macOS without util-linux installed).
+run_with_act_lock() {
+    if ! command -v flock >/dev/null 2>&1; then
+        log_warning "flock not found — running without act cache lock (issue #992 race possible)"
+        "$@"
+        return
+    fi
+    if ! flock -n "${ACT_LOCK_FILE}" true 2>/dev/null; then
+        log_warning "Another act invocation is running — waiting for ${ACT_LOCK_FILE} to avoid ~/.cache/act races (issue #992)"
+    fi
+    flock "${ACT_LOCK_FILE}" "$@"
+}
+
 # Job execution
 run_act_job() {
     local job="$1"
@@ -285,7 +314,9 @@ run_act_job() {
     fi
 
     local _rc=0
-    act -j "${job}" ${act_opts} 2>&1 || _rc=$?
+    # Serialize act invocations process-wide (issue #992): concurrent act
+    # processes share ~/.cache/act and their action git clones race.
+    run_with_act_lock act -j "${job}" ${act_opts} 2>&1 || _rc=$?
     JOB_TIME[$job]=$(log_timing $job_start)
 
     if [ "${_rc}" -eq 0 ]; then
@@ -602,7 +633,9 @@ main() {
                 ;;
             --clear-cache)
                 log_step "Clearing act cache..."
-                rm -rf ~/.cache/act/* 2>/dev/null || rm -rf ~/Library/Caches/act/* 2>/dev/null || true
+                # Hold the act lock: wiping ~/.cache/act under a running act
+                # invocation causes the same corruption (issue #992).
+                run_with_act_lock rm -rf ~/.cache/act/* 2>/dev/null || run_with_act_lock rm -rf ~/Library/Caches/act/* 2>/dev/null || true
                 log_success "Act cache cleared"
                 exit 0
                 ;;

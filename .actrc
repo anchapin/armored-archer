@@ -32,8 +32,17 @@
 #   different jobs can run in parallel act processes.
 # - The SAME job still cannot run in two act processes at once: act derives
 #   job container names from workflow+job, and both invocations would bind the
-#   same fixed host port. Run same-job invocations sequentially; they also
-#   share ~/.cache/act (action cache races otherwise).
+#   same fixed host port. Run same-job invocations sequentially.
+# - DIFFERENT jobs in different act processes also race (issue #992): they
+#   share ~/.cache/act, where act git-clones every action ref
+#   (actions/checkout, setup-node, ...), and concurrent clones of the same
+#   ref fail with "Non-terminating error while running 'git clone': some
+#   refs were not updated" (dead-code-detection failed mid-matrix, passed in
+#   isolation). scripts/ci-local.sh therefore serializes every act invocation
+#   (and --clear-cache) process-wide via flock on
+#   ${XDG_RUNTIME_DIR:-/tmp}/act-invocation-<uid>.lock (override:
+#   ACT_LOCK_FILE). Raw `act` commands outside ci-local.sh bypass the lock —
+#   never run them concurrently with another act invocation.
 #
 # Host memory (issue #993):
 # - act Node-job containers plus concurrent NATIVE ./scripts/local-godot-tests.sh
