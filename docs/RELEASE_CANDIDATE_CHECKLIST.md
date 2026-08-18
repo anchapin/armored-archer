@@ -86,7 +86,7 @@ Every gate must be **GREEN** before a build is declared RC. A single red gate = 
 | E5 | IAP policy compliant | Gems purchase cosmetics only — zero combat impact, enforced server-side; no pay-to-win (`docs/IAP_SECURITY_AUDIT.md`) | Security Lead | Done |
 | E6 | TLS on all external endpoints | Firebase auth, Nakama API, RevenueCat traffic encrypted in production | Security Lead | Pending |
 | E7 | DAST scan clean | `.github/workflows/dast-scanning.yml` run with no critical/high findings | Security Lead | Pending |
-| E8 | Secrets audit clean | No credentials in code or bundles; `docs/SECRET_ROTATION.md` schedule current | Security Lead | Pending |
+| E8 | Secrets audit clean | No credentials in code or bundles; `docs/SECRETS_ROTATION.md` schedule current | Security Lead | Pending |
 
 ---
 
