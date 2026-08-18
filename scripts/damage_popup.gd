@@ -40,9 +40,42 @@ func _process(delta: float) -> void:
 		var fade_progress := (_time_alive - fade_start) / (lifetime - fade_start)
 		modulate.a = lerp(1.0, 0.0, fade_progress)
 
-	# Destroy when lifetime ends
+	# Issue #1090: instead of queue_free'ing, return to the ObjectPool so the
+	# popup can be reused. Falls back to queue_free if the pool isn't available
+	# (e.g. running outside the main scene tree).
 	if _time_alive >= lifetime:
-		queue_free()
+		var pool := get_node_or_null("/root/ObjectPool")
+		if pool and pool.has_method("return_damage_popup"):
+			pool.return_damage_popup(self)
+		else:
+			queue_free()
+
+
+## Issue #1090: reset all per-instance state so the popup can be reused from
+## the ObjectPool without re-instantiating. Mirrors the convention used by
+## arrow.gd / pooled enemies.
+func reset_pooled_state() -> void:
+	_time_alive = 0.0
+	modulate.a = 1.0
+	modulate = COLOR_NORMAL
+	position = Vector2.ZERO
+	scale = Vector2.ONE
+	set_process(false)
+	visible = false
+	# Strip theme overrides accumulated by setup_damage() so the next acquire
+	# starts from a clean slate (Label holds strong references otherwise).
+	if has_theme_font_size_override("font_size"):
+		remove_theme_font_size_override("font_size")
+	if has_theme_color_override("font_color"):
+		remove_theme_color_override("font_color")
+	if has_theme_color_override("font_outline_color"):
+		remove_theme_color_override("font_outline_color")
+	if has_theme_color_override("font_shadow_color"):
+		remove_theme_color_override("font_shadow_color")
+	if has_theme_constant_override("outline_size"):
+		remove_theme_constant_override("outline_size")
+	if has_theme_constant_override("shadow_outline_size"):
+		remove_theme_constant_override("shadow_outline_size")
 
 
 func setup_damage(amount: int, is_crit: bool = false, is_miss: bool = false, is_heal: bool = false) -> void:

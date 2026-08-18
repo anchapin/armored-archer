@@ -1,6 +1,6 @@
 ## Combat Juice Manager autoload for coordinating all combat juice effects.
-## Coordinates ImpactManager (screen shake, VFX), DamageIndicatorManager (damage numbers),
-## and hit reactions (flinch, stutter) and death animations.
+## Coordinates ImpactManager (screen shake, VFX), VFXManager (damage popups via
+## ObjectPool — issue #1090), and hit reactions (flinch, stutter) and death animations.
 ##
 ## Signals:
 ## - juice_effect_queued(effect_type: String, data: Dictionary): Emitted when juice effect is queued
@@ -34,7 +34,6 @@ var _is_slow_motion: bool = false
 
 # --- Manager References ---
 var _impact_manager: Node
-var _damage_indicator_manager: Node
 var _vfx_manager: Node
 
 # --- Configuration ---
@@ -54,7 +53,6 @@ func _ready() -> void:
 
 	# Get manager references
 	_impact_manager = get_node_or_null("/root/ImpactManager")
-	_damage_indicator_manager = get_node_or_null("/root/DamageIndicatorManager")
 	_vfx_manager = get_node_or_null("/root/VFXManager")
 
 # --- Public API ---
@@ -175,14 +173,25 @@ func _trigger_impact_vfx(data: Dictionary) -> Dictionary:
 ##   position: Vector2 where number spawns
 ##   damage: Damage amount to display
 ##   is_critical: True for critical hits (> 100%)
+##
+## Issue #1090: route through VFXManager (which now owns the pooled popup
+## path). The DamageIndicatorManager autoload has been consolidated into
+## VFXManager — there is no longer a separate damage-number manager.
 func _trigger_damage_number(data: Dictionary) -> Dictionary:
-	if not _damage_indicator_manager:
-		return {"success": false, "error": "DamageIndicatorManager not found"}
+	if not _vfx_manager:
+		return {"success": false, "error": "VFXManager not found"}
 
 	juice_effect_started.emit("damage_number", data)
 
-	var result = _damage_indicator_manager.spawn_damage_number(data.position, data.damage, data.is_critical)
+	_vfx_manager.show_damage_popup(
+		data.damage,
+		data.position,
+		data.is_critical,
+		false,
+		false
+	)
 
+	var result = {"success": true, "position": data.position}
 	juice_effect_completed.emit("damage_number", result)
 	return result
 
