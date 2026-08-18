@@ -6,9 +6,17 @@ on:
   push:
     branches: [ main ]
 
-# Allow workflow to write to repository for baseline updates
+# Issue #1031 re-baseline: the previous pipeline ran `go test -bench` via
+# scripts/benchmark-tests.sh against the abandoned (and deleted) Go backend,
+# compared with benchstat against backend/tests/benchmarks/baseline.txt, and
+# pushed baseline updates from this workflow (hence the old contents: write).
+# The TypeScript replacement gate is the self-contained performance-threshold
+# suite backend/tests/integration/low_end_device_performance.test.ts, which
+# needs no services. The Go baseline files (baseline.txt, compare.sh, new.txt)
+# no longer exist; stack-dependent perf smoke tests remain covered by the
+# integration job in ci.yml.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   benchmark:
@@ -18,163 +26,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          fetch-depth: 0  # Fetch full history for baseline comparison
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.21'
-          cache: true
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
 
-      - name: Download Go dependencies
-        run: |
-          cd backend
-          go mod download
-
-      - name: Run benchmarks
+      - name: Run benchmark suite
         env:
           SLOW_TEST_THRESHOLD: 100
-        run: |
-          echo "Running Go benchmarks with slow test detection..."
-          ./scripts/benchmark-tests.sh
-          echo "Benchmarks completed"
-          echo ""
-          cat backend/tests/benchmarks/new.txt
+        working-directory: backend
+        run: npm run test:benchmark
 
-      - name: Check for slow benchmarks
+      - name: Benchmark summary
         if: always()
         run: |
-          if grep -q "SLOW:" backend/tests/benchmarks/new.txt 2>/dev/null; then
-            echo "Warning: Slow benchmarks detected (>100ms)"
-            echo ""
-            echo "Slow benchmarks:"
-            grep "SLOW:" backend/tests/benchmarks/new.txt || true
-            echo ""
-            echo "Consider optimizing slow benchmarks for better performance."
-          else
-            echo "No slow benchmarks detected"
-          fi
-
-      - name: Fetch baseline from main branch
-        run: |
-          echo "Fetching baseline from main branch..."
-          cd backend/tests/benchmarks
-          git checkout origin/main -- baseline.txt || echo "No baseline found on main branch, using new results as baseline"
-          if [ ! -f baseline.txt ]; then
-            echo "Warning: No baseline file found, skipping comparison"
-            echo "This is expected for the first run"
-            cp new.txt baseline.txt
-          fi
-          echo "Baseline file:"
-          head -30 baseline.txt || true
-
-      - name: Compare with baseline
-        id: compare
-        run: |
-          echo "Comparing benchmark results with baseline..."
-          cd backend/tests/benchmarks
-          chmod +x compare.sh
-          # Set PATH for benchstat
-          export PATH=$PATH:$HOME/go/bin
-          ./compare.sh baseline.txt new.txt || true
-        continue-on-error: true
-
-      - name: Check for performance regression
-        run: |
-          echo "Checking for performance regressions..."
-          if [ -f backend/tests/benchmarks/comparison.txt ]; then
-            cat backend/tests/benchmarks/comparison.txt
-            echo ""
-
-            # Check if regression was detected
-            if grep -q "Performance regression detected" backend/tests/benchmarks/comparison.txt 2>/dev/null; then
-              echo "❌ Performance regression detected!"
-              echo ""
-              echo "The following benchmarks show performance regressions >10%:"
-              grep "~" backend/tests/benchmarks/comparison.txt | grep -E "\+\s*[1-9][0-9]\.\d+%|+\s*100\.\d+%|+\s*[1-9][0-9][0-9]\.\d+%" || true
-              echo ""
-              echo "Please investigate the performance regression before merging."
-              exit 1
-            fi
-
-            # Check for warning level regressions (10%+)
-            if grep "~" backend/tests/benchmarks/comparison.txt | grep -E "\+\s*[1-9]\.\d+%|+\s*10\.0+%|+\s*10\.\d+%|+\s*11\.\d+%|+\s*12\.\d+%|+\s*13\.\d+%|+\s*14\.\d+%|+\s*15\.\d+%|+\s*16\.\d+%|+\s*17\.\d+%|+\s*18\.\d+%|+\s*19\.\d+%" > /dev/null 2>&1; then
-              echo "⚠️ Warning: Performance regression detected (>10%)"
-              echo ""
-              echo "The following benchmarks show performance regressions:"
-              grep "~" backend/tests/benchmarks/comparison.txt | grep -E "\+\s*[1-9]\.\d+%|+\s*10\.0+%|+\s*10\.\d+%|+\s*11\.\d+%|+\s*12\.\d+%|+\s*13\.\d+%|+\s*14\.\d+%|+\s*15\.\d+%|+\s*16\.\d+%|+\s*17\.\d+%|+\s*18\.\d+%|+\s*19\.\d+%" || true
-              echo ""
-              echo "Performance regression threshold: >10%"
-              echo "Please investigate before merging."
-              exit 1
-            fi
-
-            echo "✅ No significant performance regressions detected"
-          else
-            echo "Warning: Comparison file not found"
-          fi
-
-      - name: Update baseline on main branch
-        if: github.ref == 'refs/heads/main'
-        run: |
-          echo "Updating baseline on main branch..."
-          cd backend/tests/benchmarks
-          cp new.txt baseline.txt
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add baseline.txt
-          git commit -m "chore: update performance baseline - Benchmark results from ${{ github.sha }}" || echo "No changes to baseline"
-          git push
-          echo "✓ Baseline updated"
-
-      - name: Upload benchmark results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-results-${{ github.sha }}
-          path: |
-            backend/tests/benchmarks/new.txt
-            backend/tests/benchmarks/comparison.txt
-          retention-days: 30
-
-      - name: Comment PR with results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            let comment = '## 📊 Benchmark Results\n\n';
-
-            try {
-              const newResults = fs.readFileSync('backend/tests/benchmarks/new.txt', 'utf8');
-              comment += '### New Results\n```\n' + newResults.split('\n').slice(0, 30).join('\n') + '\n```\n\n';
-            } catch (e) {
-              comment += '⚠️ Could not read new results\n\n';
-            }
-
-            try {
-              const comparison = fs.readFileSync('backend/tests/benchmarks/comparison.txt', 'utf8');
-              comment += '### Comparison with Baseline\n```\n' + comparison + '\n```\n\n';
-
-              // Check for regressions
-              if (comparison.includes('Performance regression detected')) {
-                comment += '### ⚠️ Performance Regression Detected\n\n';
-                comment += 'This PR shows performance regressions >10%. Please review before merging.\n';
-              } else {
-                comment += '### ✅ No Significant Regressions\n\n';
-                comment += 'Performance is within acceptable thresholds (<10% change).\n';
-              }
-            } catch (e) {
-              comment += '⚠️ Could not read comparison results\n\n';
-            }
-
-            comment += '\n---\n';
-            comment += '*Generated by benchmark regression workflow*';
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+          echo "## Benchmark Regression Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Performance threshold suite passed (low_end_device_performance)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Baseline: Go benchstat baseline retired with the Go backend (issue #1031)." >> $GITHUB_STEP_SUMMARY
