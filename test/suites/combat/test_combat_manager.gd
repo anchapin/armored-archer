@@ -84,6 +84,41 @@ func test_update_from_match_state_opponent():
 	assert_eq(_combat.opponent_health, 100, "Opponent should see creator health as opponent_health")
 	assert_false(_combat.is_my_turn, "It should not be my turn as opponent")
 
+# Test: _local_user_id prefers the injected network manager's user_id
+func test_local_user_id_uses_injected_manager():
+	var mock_net = MockNetwork.new()
+	mock_net.user_id = "injected-user"
+	_combat.network_manager = mock_net
+
+	assert_eq(_combat._local_user_id(), "injected-user", "user_id should come from the injected network manager, not the global autoload")
+
+# Test: _local_user_id falls back to the global autoload when no user_id is injectable
+func test_local_user_id_falls_back_to_global():
+	_combat.network_manager = null
+
+	assert_eq(_combat._local_user_id(), NetworkManager.user_id, "Fallback should read the global NetworkManager autoload")
+
+# Test: perspective is driven by the injected user_id even when it differs from the global autoload
+func test_perspective_uses_injected_user_id_not_global():
+	var mock_net = MockNetwork.new()
+	mock_net.user_id = "player2"
+	_combat.network_manager = mock_net
+
+	_combat.current_match_state = {
+		"match_id": "match123",
+		"creator_id": "player2",
+		"opponent_id": "player1",
+		"creator_health": 90,
+		"opponent_health": 40,
+		"current_turn_user_id": "player2"
+	}
+
+	_combat._update_from_match_state()
+
+	assert_eq(_combat.my_health, 90, "Injected user_id should resolve the local player as the creator")
+	assert_eq(_combat.opponent_health, 40, "Injected user_id should map opponent health correctly")
+	assert_true(_combat.is_my_turn, "Injected user_id should drive turn ownership")
+
 # Test: calculate_damage basic
 func test_calculate_damage_basic():
 	var attacker_stats = {"attack": 10, "crit_rate": 0}
@@ -148,6 +183,37 @@ func test_submit_combat_action_success():
 	
 	assert_signal_emitted(_combat, "combat_action_submitted")
 	assert_eq(_combat.opponent_health, 75, "Opponent health should be updated")
+
+# Test: submit_combat_action merges the fresh server result into local state
+func test_submit_combat_action_applies_result_state():
+	var mock_net = MockNetwork.new()
+	mock_net.user_id = "player1"
+	_combat.network_manager = mock_net
+
+	_combat.current_match_state = {
+		"match_id": "match123",
+		"creator_id": "player1",
+		"opponent_id": "player2",
+		"creator_health": 100,
+		"opponent_health": 100
+	}
+
+	var result_data = {
+		"success": true,
+		"result": {
+			"damage": 45,
+			"creator_id": "player1",
+			"creator_health": 100,
+			"opponent_health": 55
+		}
+	}
+	mock_net.mock_responses[_combat.RPC_SUBMIT_COMBAT_ACTION] = result_data
+
+	await _combat.submit_combat_action("match123", "shoot", 30.0, 1.0)
+
+	assert_eq(_combat.my_health, 100, "My health should come from the fresh server result")
+	assert_eq(_combat.opponent_health, 55, "Opponent health should come from the fresh server result")
+	assert_eq(_combat.get_current_match_state().get("opponent_health", 0), 55, "Match state should be refreshed with the server result")
 
 # Test: get_match_state success
 func test_get_match_state_success():

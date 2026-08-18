@@ -113,25 +113,37 @@ func get_match_state(match_id: String) -> void:
 		profiling_block.end()
 
 # --- State Updates ---
-func _update_local_state(_result: Dictionary) -> void:
-	if current_match_state.has("creator_id"):
-		var is_creator: bool = current_match_state.get("creator_id") == NetworkManager.user_id
-
-		if is_creator:
-			my_health = current_match_state.get("creator_health", 100)
-			opponent_health = current_match_state.get("opponent_health", 100)
-		else:
-			my_health = current_match_state.get("opponent_health", 100)
-			opponent_health = current_match_state.get("creator_health", 100)
+func _update_local_state(result: Dictionary) -> void:
+	# Merge the server-authoritative result into the cached match state so
+	# health and perspective reflect the outcome of the submitted action.
+	for key: String in result:
+		current_match_state[key] = result[key]
+	_apply_perspective()
 
 func _update_from_match_state() -> void:
 	if current_match_state.is_empty():
 		return
 
-	var current_turn_user_id: String = current_match_state.get("current_turn_user_id", "")
-	is_my_turn = (current_turn_user_id == NetworkManager.user_id)
+	is_my_turn = (current_match_state.get("current_turn_user_id", "") == _local_user_id())
 
-	var is_creator: bool = current_match_state.get("creator_id") == NetworkManager.user_id
+	_apply_perspective()
+
+	turn_changed.emit(is_my_turn)
+
+# Resolves the local player's id from the injected network manager, falling
+# back to the global autoload so non-injected consumers keep working (#974).
+func _local_user_id() -> String:
+	if network_manager != null and "user_id" in network_manager:
+		return network_manager.user_id
+	return NetworkManager.user_id
+
+# Maps creator/opponent health onto my/opponent health from the local
+# player's perspective.
+func _apply_perspective() -> void:
+	if not current_match_state.has("creator_id"):
+		return
+
+	var is_creator: bool = current_match_state.get("creator_id") == _local_user_id()
 
 	if is_creator:
 		my_health = current_match_state.get("creator_health", 100)
@@ -139,8 +151,6 @@ func _update_from_match_state() -> void:
 	else:
 		my_health = current_match_state.get("opponent_health", 100)
 		opponent_health = current_match_state.get("creator_health", 100)
-
-	turn_changed.emit(is_my_turn)
 
 # --- Utility Methods ---
 func get_current_match_state() -> Dictionary:
