@@ -59,7 +59,7 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Get Builds | PlayerStatsManager | `rpcGetBuilds()` in `rpg_system.ts` | `player_builds` storage (custom collection) | `/rpc/armored_archer/get_builds` |
 | Generate Gear | GearManager | `rpcGenerateGear()` in `gear_system.ts` | `catalog` + `inventory` tables (PostgreSQL) | `/rpc/armored_archer/generate_gear` |
 | Stage Complete | CampaignManager | `rpcStageComplete()` in `gear_system.ts` — sole stage-completion RPC since #1069 (consolidated `complete_stage` into it): stars clamped 0-3, score capped at `MAX_STAGE_SCORE`, difficulty server-verified via `resolveVerifiedDifficulty()` before drop/XP multipliers (#1068); claim-first atomic writes (`stage_completion_claims` marker precedes any loot/XP/stars grant so retries no-op); loot persisted via `gear_db` DB layer; XP computed server-side | `stage_completion` + `stage_completion_claims` storage (custom collections), `inventory_items`/`boss_defeats`/`unlocked_modifier_pools` tables (PostgreSQL) | `/rpc/armored_archer/stage_complete` |
-| ~~Complete Stage~~ | — | **DECOMMISSIONED (#1069)**: `rpcCompleteStage()` in `stage_tracking.ts` removed — no production client caller (CampaignManager calls `stage_complete`). Stars/score best-of persistence migrated to `stage_complete` via `stage_progression.applyStageCompletion`; its orphaned `player_inventory` storage loot write was deleted (loot now persists through the `gear_db` layer). Tombstone left in `stage_tracking.ts` | — | ~~`/rpc/armored_archer/complete_stage`~~ |
+| ~~Complete Stage~~ | — | **DECOMMISSIONED (#1069)**: `rpcCompleteStage()` in `stage_tracking.ts` removed — no production client caller (CampaignManager calls `stage_complete`). Stars/score best-of persistence migrated to `stage_complete` via `stage_progression.applyStageCompletion`; its orphaned `player_inventory` storage loot write was deleted (loot now persists through the `gear_db` layer). Tombstone left in `stage_tracking.ts`. See [Removed / Decommissioned RPCs](#removed--decommissioned-rpcs) for the appendix tombstone. | — | ~~`/rpc/armored_archer/complete_stage`~~ |
 | Get Completed Stages | CampaignManager | `rpcGetCompletedStages()` in `stage_tracking.ts` | `campaign_progress` storage (custom collection) | `/rpc/armored_archer/get_completed_stages` |
 | Get Campaign Progress | CampaignManager | `rpcGetCampaignProgress()` in `stage_tracking.ts` | `campaign_progress` storage (custom collection) | `/rpc/armored_archer/get_campaign_progress` |
 
@@ -174,9 +174,6 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 - `season_rewards_claimed` collection: `{ season_id, user_id, claimed_at, rank, rewards }`
 - `player_activity` collection: `{ user_id, last_match_time }`
 - `leaderboard` (Nakama): Built-in leaderboard system with metadata: `{ wins, losses, win_rate, punch_up_wins }`
-
-**Removed RPCs:**
-- `armored_archer/update_rank` — **removed** (issue #1076). It applied Elo updates from client-declared `winner_id`/`loser_id`, bypassing ADR-0002 server-declared settlement. Seasonal Elo now mutates exclusively via `complete_match`'s `resolveServerTerminalState` path (see PvP section). Clients refresh Standing / Ladder Rating via `get_season_info` / `get_player_rank`.
 
 ---
 
@@ -403,7 +400,7 @@ All gameplay RPCs integrate with the anti-cheat system:
 - `accept_match`
 - `complete_match`
 - `submit_combat_action`
-- `update_rank` — **removed entirely** (issue #1076): the client-declared winner/loser form was an ADR-0002 bypass that no signature gate could salvage. Elo mutates only through `complete_match`'s server-declared settlement. HMAC signature verification itself is now **enabled by default** (`ENABLE_HMAC_VERIFICATION` defaults on; `HMAC_SECRET` required in env templates — see `backend/src/modules/anti_cheat.ts`).
+- `update_rank` — **removed entirely** (issue #1076): the client-declared winner/loser form was an ADR-0002 bypass that no signature gate could salvage. Elo mutates only through `complete_match`'s server-declared settlement. HMAC signature verification itself is now **enabled by default** (`ENABLE_HMAC_VERIFICATION` defaults on; `HMAC_SECRET` required in env templates — see `backend/src/modules/anti_cheat.ts`). See [Removed / Decommissioned RPCs](#removed--decommissioned-rpcs) for the appendix tombstone.
 
 ---
 
@@ -451,7 +448,7 @@ All RPCs are instrumented with:
 7. **Write tests** (unit + integration)
 8. **Deploy to staging** and validate
 
-> **Maintenance note (issue #1072):** When adding or removing an RPC, update this file in the same PR. CI will fail with a registered-vs-documented diff in a follow-up issue.
+> **Maintenance note (issue #1072):** When adding or removing an RPC, update this file in the same PR — additions go in the feature section table **and** the [Appendix: RPC Index](#appendix-rpc-index); removals go in the canonical [Removed / Decommissioned RPCs](#removed--decommissioned-rpcs) appendix section (with struck-through row + originating issue link), not as an orphaned heading under a feature section. CI will fail with a registered-vs-documented diff in a follow-up issue.
 
 ### Deprecating an RPC
 
@@ -491,7 +488,6 @@ For PostgreSQL table changes:
 | `armored_archer/get_inventory` | gear_system | `rpcGetInventory()` | Inventory |
 | `armored_archer/unlock_modifier_pool` | gear_system | `rpcUnlockModifierPool()` | Inventory |
 | `armored_archer/get_unlocked_modifiers` | gear_system | `rpcGetUnlockedModifiers()` | Inventory |
-| `armored_archer/stage_complete` | gear_system | `rpcStageComplete()` | PvE |
 | `armored_archer/list_matches` | matchmaker | `rpcListMatches()` | PvP |
 | `armored_archer/create_match` | matchmaker | `rpcCreateMatch()` | PvP |
 | `armored_archer/accept_match` | matchmaker | `rpcAcceptMatch()` | PvP |
@@ -616,6 +612,21 @@ For PostgreSQL table changes:
 
 ---
 
+## Removed / Decommissioned RPCs
+
+The index above lists only currently registered RPCs. The following entries used to exist in this codebase and were retired; they are preserved here (struck through) as the single source of truth for "what used to be here" — the orphan section-orphan that previously lived under Seasons & Leaderboards is consolidated here so client engineers, server maintainers, and audits can find former RPCs in one place. Cross-references in the section tables above (lines 62 and 406) point back to this section.
+
+| RPC Name | Module | File | Handler | Removed | Reason | Replacement |
+|----------|---------|------|---------|---------|--------|-------------|
+| ~~`armored_archer/complete_stage`~~ | stage_tracking | `rpcCompleteStage()` + `registerRpcCompleteStage()` | PvE | Issue #1069 (2026) | Consolidated into `armored_archer/stage_complete` (#1068/#1069). The duplicate name had no production client caller (CampaignManager always invoked `stage_complete` via `autoloads/CampaignManager.gd`). Stars/score best-of persistence moved to `stage_progression.applyStageCompletion`; loot now flows through the same `gear_db` / `insertGearItem` path the inventory reads. Tombstone left in `stage_tracking.ts:22`. | `armored_archer/stage_complete` (gear_system.ts) |
+| ~~`armored_archer/update_rank`~~ | season_system | `rpcUpdateRank()` + `registerRpcUpdateRank()` | Seasons *(never security-gated)* | Issue #1076 (2026) | Applied Elo updates from a client-declared `winner_id` / `loser_id`, bypassing **ADR-0002** server-declared settlement. No HMAC signature gate could salvage the trust model, so it was removed entirely rather than hardened (see Anti-Cheat section note). Seasonal Elo now mutates only via `complete_match`'s `resolveServerTerminalState` path; clients refresh Standing / Ladder Rating via `get_season_info` / `get_player_rank`. | `armored_archer/complete_match` (server-declared settlement) |
+
+Notes:
+- Historical callers should migrate to the **Replacement** column before any future tombstone purge (issue #1072 follow-up).
+- New removals must be appended here in the same PR that deletes the handler registration, per the maintenance procedure (see *Deprecating an RPC* below).
+
+---
+
 **Document Owners:**
 - Technical Lead: [To be assigned]
 - Backend Team Lead: [To be assigned]
@@ -626,3 +637,4 @@ For PostgreSQL table changes:
 |---------|------|----------|--------|
 | 1.0 | 2026-04-15 | Initial comprehensive RPC map creation | Claude (AI-assisted) |
 | 1.1 | 2026-08-18 | Documented all 135 registered RPCs (was 86 of ~135); added Analytics & Telemetry section (events, revenue, surveys, audit, funnel); added cosmetics, bundles, restore, season cosmetics/prestige, telemetry, encounter pacing, matchmaking analytics, fairness, balance, match history/details, query_audit_logs sections/rows; corrected stale `Zod` instructions to `valibot` (canonical per AGENTS.md and `validation.ts`); added maintenance note for follow-up registered-vs-documented CI diff check (issue #1072) | Claude (AI-assisted) |
+| 1.1.1 | 2026-08-18 | Removed duplicate `armored_archer/stage_complete` appendix row (kept the canonical `gear_system (+ stage_progression persistence)` attribution); consolidated the section-orphaned `**Removed RPCs:**` heading into a canonical [Removed / Decommissioned RPCs](#removed--decommissioned-rpcs) appendix section with struck-through tombstones for `~~armored_archer/complete_stage~~` (#1069) and `~~armored_archer/update_rank~~` (#1076), linked from the affected feature-section rows; expanded the maintenance note to require the dedicated removed-RPC section. Closes issue #1152. | MiniMax-M3 (AI-assisted) |
