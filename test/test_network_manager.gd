@@ -29,6 +29,12 @@ func run_tests() -> void:
 	await test_handle_auth_error_with_message()
 	await test_session_file_operations()
 	await test_send_rpc_not_authenticated()
+	await test_send_rpc_not_authenticated_returns_synchronously()
+	await test_auth_error_guidance_gated_in_production()
+	await test_rpc_401_not_routed_to_auth_error_ui()
+	await test_auth_recovery_skips_refresh_when_token_rotated()
+	await test_auth_recovery_coalesces_concurrent_401s()
+	await test_auth_recovery_fails_closed_without_http()
 	await test_get_auth_headers_partial()
 	await test_detect_environment_development()
 	await test_log_config_warning()
@@ -512,4 +518,172 @@ func test_log_network_error() -> void:
 	# Just verify it doesn't crash
 	nm._log_network_error("test_error", "/test/endpoint", 500)
 	_pass("test_log_network_error")
+	nm.queue_free()
+
+# --- Issue #1079: mid-session auth recovery (401 refresh + replay) ---
+
+func test_send_rpc_not_authenticated_returns_synchronously() -> void:
+	OS.set_environment("E2E_TEST", "1")  # quiesce background startup auth
+	var nm = _create_network_manager()
+	OS.set_environment("E2E_TEST", "0")
+	nm.session_token = ""
+	nm.is_connected = false
+
+	# The not-authenticated early return must stay a plain Dictionary (not a
+	# suspended coroutine state) so no-await callers keep working.
+	var result: Variant = nm.send_rpc("test_rpc", "{}")
+
+	if result is Dictionary and result.get("error", "") == "Not authenticated":
+		_pass("test_send_rpc_not_authenticated_sync")
+	else:
+		_fail("test_send_rpc_not_authenticated_sync", "Early return should be synchronous")
+
+	nm.queue_free()
+
+func test_auth_error_guidance_gated_in_production() -> void:
+	OS.set_environment("E2E_TEST", "1")  # quiesce background startup auth
+	var nm = _create_network_manager()
+	OS.set_environment("E2E_TEST", "0")
+	var guidance_received: Array = []
+
+	nm.auth_blocked.connect(func(_reason: String, guidance: String):
+		guidance_received.append(guidance)
+	)
+
+	nm.current_environment = nm.EnvironmentType.PRODUCTION
+	nm._handle_authentication_error(401, '{"message": "Invalid credentials"}')
+
+	await get_tree().create_timer(0.1).timeout
+
+	if guidance_received.has("Session expired. Please sign in again."):
+		_pass("test_auth_error_guidance_production_safe")
+	else:
+		_fail("test_auth_error_guidance_production_safe", "Production guidance leaked dev-runbook text")
+
+	# Non-production keeps the actionable dev-runbook guidance.
+	OS.set_environment("E2E_TEST", "1")  # quiesce background startup auth
+	var nm_dev = _create_network_manager()
+	OS.set_environment("E2E_TEST", "0")
+	var dev_guidance: Array = []
+
+	nm_dev.auth_blocked.connect(func(_reason: String, guidance: String):
+		dev_guidance.append(guidance)
+	)
+
+	nm_dev.current_environment = nm_dev.EnvironmentType.DEVELOPMENT
+	nm_dev._handle_authentication_error(401, '{"message": "Invalid credentials"}')
+
+	await get_tree().create_timer(0.1).timeout
+
+	var has_dev_hint: bool = false
+	for guidance in dev_guidance:
+		if "make services-start" in guidance:
+			has_dev_hint = true
+
+	if has_dev_hint:
+		_pass("test_auth_error_guidance_dev_runbook_in_dev")
+	else:
+		_fail("test_auth_error_guidance_dev_runbook_in_dev", "Dev builds should keep runbook guidance")
+
+	nm.queue_free()
+	nm_dev.queue_free()
+
+func test_rpc_401_not_routed_to_auth_error_ui() -> void:
+	OS.set_environment("E2E_TEST", "1")  # quiesce background startup auth
+	var nm = _create_network_manager()
+	OS.set_environment("E2E_TEST", "0")
+	var auth_events: Array = []
+
+	nm.auth_blocked.connect(func(_reason: String, _guidance: String):
+		auth_events.append("auth_blocked")
+	)
+	nm.session_created.connect(func(_success: bool, _error: String):
+		auth_events.append("session_created")
+	)
+
+	# An in-flight RPC 401 must not trigger the startup auth-error UI path.
+	nm._rpc_request_active = true
+	nm._on_http_request_completed(0, 401, PackedStringArray(), PackedByteArray())
+
+	await get_tree().create_timer(0.1).timeout
+
+	if auth_events.is_empty():
+		_pass("test_rpc_401_skips_auth_error_ui")
+	else:
+		_fail("test_rpc_401_skips_auth_error_ui", "RPC 401 was misrouted into auth_blocked/session_created")
+
+	# The same 401 on an auth request still surfaces the auth error UI path.
+	nm._rpc_request_active = false
+	nm._on_http_request_completed(0, 401, PackedStringArray(), PackedByteArray())
+
+	await get_tree().create_timer(0.1).timeout
+
+	if not auth_events.is_empty():
+		_pass("test_auth_401_still_surfaces_auth_error")
+	else:
+		_fail("test_auth_401_still_surfaces_auth_error", "Auth-request 401 no longer surfaces")
+
+	nm.queue_free()
+
+func test_auth_recovery_skips_refresh_when_token_rotated() -> void:
+	OS.set_environment("E2E_TEST", "1")  # quiesce background startup auth
+	var nm = _create_network_manager()
+	OS.set_environment("E2E_TEST", "0")
+	nm.session_token = "fresh_rotated_token"
+	nm._refreshing_session = false
+
+	# A 401 signed with the pre-rotation token must replay without refreshing.
+	var recovered: bool = await nm._recover_session_after_auth_error("stale_token")
+
+	if recovered and not nm._refreshing_session:
+		_pass("test_auth_recovery_token_rotation_fast_path")
+	else:
+		_fail("test_auth_recovery_token_rotation_fast_path", "Rotated token should skip refresh")
+
+	nm.queue_free()
+
+func test_auth_recovery_coalesces_concurrent_401s() -> void:
+	OS.set_environment("E2E_TEST", "1")  # quiesce background startup auth
+	var nm = _create_network_manager()
+	OS.set_environment("E2E_TEST", "0")
+	nm.session_token = "stale_shared_token"
+	nm._refreshing_session = true
+	nm._last_refresh_succeeded = false
+
+	var outcomes: Array = []
+	var waiter: Callable = func():
+		var recovered: bool = await nm._recover_session_after_auth_error("stale_shared_token")
+		outcomes.append(recovered)
+	waiter.call()
+
+	await get_tree().create_timer(0.1).timeout
+
+	# Simulate the single in-flight refresh completing with a rotated token.
+	nm.session_token = "coalesced_fresh_token"
+	nm._last_refresh_succeeded = true
+	nm._refreshing_session = false
+
+	await get_tree().create_timer(0.2).timeout
+
+	if outcomes.size() == 1 and outcomes[0] == true:
+		_pass("test_auth_recovery_coalesces_into_single_refresh")
+	else:
+		_fail("test_auth_recovery_coalesces_into_single_refresh", "Waiter did not reuse coalesced refresh outcome")
+
+	nm.queue_free()
+
+func test_auth_recovery_fails_closed_without_http() -> void:
+	OS.set_environment("E2E_TEST", "1")  # quiesce background startup auth
+	var nm = _create_network_manager()
+	OS.set_environment("E2E_TEST", "0")
+	nm.session_token = "stale_token"
+	nm.http_request = null  # simulate no transport: recovery must fail closed
+
+	var recovered: bool = await nm._recover_session_after_auth_error("stale_token")
+
+	if not recovered and not nm._refreshing_session:
+		_pass("test_auth_recovery_fails_closed")
+	else:
+		_fail("test_auth_recovery_fails_closed", "Recovery should fail closed without transport")
+
 	nm.queue_free()

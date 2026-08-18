@@ -60,11 +60,18 @@ signal connection_status_changed(is_online: bool)
 signal reconnection_attempted(success: bool, attempt_number: int)
 signal connection_lost(reason: String)
 # Issue #908: emitted when auth is blocked because the bounded timeout/health-gate fired.
-# `guidance` is a short user-facing string ("run: make services-start") the UI renders.
+# `guidance` is a short user-facing string the UI renders. Issue #1079: dev-runbook
+# guidance (e.g. "run: make services-start") is gated to non-production environments;
+# production players get player-safe text instead.
 signal auth_blocked(reason: String, guidance: String)
 
 # --- Constants ---
 const SESSION_FILE: String = "user://session_data.json"
+
+# Issue #1079: player-safe auth_blocked guidance for production builds.
+# Dev-runbook strings ("make services-start", "press Retry") never reach players.
+const AUTH_GUIDANCE_PLAYER_SESSION_EXPIRED: String = "Session expired. Please sign in again."
+const AUTH_GUIDANCE_PLAYER_CONNECTION_PROBLEM: String = "Connection problem. Please try again."
 
 # --- Reconnection Configuration ---
 const MAX_RETRY_ATTEMPTS: int = 3
@@ -279,6 +286,7 @@ func authenticate_device() -> void:
 		_run_health_gate_then_auth()
 		return
 
+	_rpc_request_active = false  # Issue #1079: auth requests are never RPC responses
 	_is_refreshing = false  # This is NOT a refresh request
 	is_authenticating = true
 
@@ -366,7 +374,10 @@ func _run_health_gate_then_auth() -> void:
 		_last_health_check_passed = false
 		_emit_auth_blocked(
 			"Cannot reach Nakama at %s" % base_url,
-			"Backend not reachable. Run: make services-start"
+			_gate_auth_guidance(
+				"Backend not reachable. Run: make services-start",
+				AUTH_GUIDANCE_PLAYER_CONNECTION_PROBLEM
+			)
 		)
 		return
 	_last_health_check_passed = true
@@ -389,7 +400,10 @@ func _attempt_auth_with_retry_loop(attempt_index: int) -> void:
 		# Exhausted retries — emit auth_blocked.
 		_emit_auth_blocked(
 			"Authentication timed out after %d attempts." % (attempt_index),
-			"Backend is slow or unreachable. Run: make services-start, then press Retry."
+			_gate_auth_guidance(
+				"Backend is slow or unreachable. Run: make services-start, then press Retry.",
+				AUTH_GUIDANCE_PLAYER_CONNECTION_PROBLEM
+			)
 		)
 		return
 	_auth_pending_attempts = attempt_index + 1
@@ -402,6 +416,7 @@ func _attempt_auth_with_retry_loop(attempt_index: int) -> void:
 	_actually_send_device_auth(attempt_index)
 
 func _actually_send_device_auth(attempt_index: int) -> void:
+	_rpc_request_active = false  # Issue #1079: auth requests are never RPC responses
 	_is_refreshing = false
 	is_authenticating = true
 	var url: String = "%s%s" % [base_url, NetworkConsts.DEVICE_AUTH_PATH]
@@ -459,7 +474,10 @@ func _on_auth_outer_timeout() -> void:
 	connection_status_changed.emit(false)
 	_emit_auth_blocked(
 		"Authentication did not complete within %.0fs" % NetworkConsts.MAX_AUTH_DURATION_SEC,
-		"Backend did not respond in time. Run: make services-start, then press Retry."
+		_gate_auth_guidance(
+			"Backend did not respond in time. Run: make services-start, then press Retry.",
+			AUTH_GUIDANCE_PLAYER_CONNECTION_PROBLEM
+		)
 	)
 
 func _emit_auth_blocked(reason: String, guidance: String) -> void:
@@ -487,6 +505,7 @@ func _refresh_session() -> void:
 		authenticate_device()
 		return
 
+	_rpc_request_active = false  # Issue #1079: auth requests are never RPC responses
 	_is_refreshing = true  # Mark this as a refresh request
 
 	var url: String = "%s/v2/account/session/refresh" % base_url
@@ -551,6 +570,12 @@ func _on_http_request_completed(_result: int, response_code: int, headers: Packe
 		if _is_refreshing:
 			_is_refreshing = false
 			authenticate_device()
+		elif _rpc_request_active and (response_code == 401 or response_code == 403):
+			# Issue #1079: RPC auth errors are handled by send_rpc's recovery
+			# (one coalesced refresh + single replay). Routing them into
+			# _handle_authentication_error leaked dev-runbook guidance to
+			# players on every mid-session 401 — do not do that.
+			pass
 		else:
 			_handle_authentication_error(response_code, response_text)
 
@@ -569,6 +594,14 @@ func _update_session_from_response(response_data: Dictionary) -> void:
 
 	is_connected = true
 	_save_session_to_file()
+
+## Issue #1079: player-facing auth guidance must never contain dev-runbook
+## strings. Dev guidance is restricted to non-production environments; the
+## production environment (the only one players run) gets player-safe text.
+func _gate_auth_guidance(dev_guidance: String, player_guidance: String) -> String:
+	if is_production():
+		return player_guidance
+	return dev_guidance
 
 func _handle_authentication_error(response_code: int, response_text: String) -> void:
 	if response_code == 0 or response_code == -1:
@@ -598,7 +631,10 @@ func _handle_authentication_error(response_code: int, response_text: String) -> 
 		# is now true.
 		_emit_auth_blocked(
 			"%s (HTTP %d)" % [error_message, response_code],
-			"Authentication rejected. Run: make services-start, then press Retry."
+			_gate_auth_guidance(
+				"Authentication rejected. Run: make services-start, then press Retry.",
+				AUTH_GUIDANCE_PLAYER_SESSION_EXPIRED
+			)
 		)
 
 func _log_network_error(error_type: String, endpoint: String, status_code: int) -> void:
@@ -697,7 +733,30 @@ var _rpc_request_id: int = 0
 var _pending_rpc_callbacks: Dictionary = {}  # Map request_id to callback info
 var _rpc_busy: bool = false  # Serialize requests to single HTTPRequest node
 
+# --- Issue #1079: Mid-Session Auth Recovery (401/403 refresh + replay) ---
+# True while the shared HTTPRequest node is servicing an RPC (send_rpc or
+# send_rpc_async) rather than an auth request, so _on_http_request_completed
+# can route 401/403s to recovery instead of the startup auth-error UI path.
+var _rpc_request_active: bool = false
+# Re-entrancy guard: concurrent RPC auth errors coalesce into ONE refresh.
+var _refreshing_session: bool = false
+# Outcome of the most recent coalesced refresh, read by coalesced waiters.
+var _last_refresh_succeeded: bool = false
+
 func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Dictionary:
+	# Issue #1079: thin public wrapper. The not-authenticated early return must
+	# stay synchronous because callers (and tests) invoke send_rpc without
+	# await on this path; recovery + replay live in _send_rpc_with_recovery.
+	if not is_session_valid():
+		return {"error": "Not authenticated", "is_auth_error": false}
+	return await _send_rpc_with_recovery(rpc_id, payload, timeout, false)
+
+## Issue #1079: send_rpc implementation with mid-session auth recovery. On a
+## 401/403 it performs ONE automatic session refresh (coalesced across
+## concurrent RPCs via _refreshing_session) and replays the original request
+## exactly once; `is_replay` marks that replay so a second auth error surfaces
+## the error instead of looping.
+func _send_rpc_with_recovery(rpc_id: String, payload: String, timeout: float, is_replay: bool) -> Dictionary:
 	if not is_session_valid():
 		return {"error": "Not authenticated", "is_auth_error": false}
 
@@ -710,9 +769,12 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	# Increment RPC request ID
 	_rpc_request_id += 1
 	var this_rpc_id: int = _rpc_request_id
-	
+
 	var start_time: int = Time.get_ticks_msec()
 	var url: String = "%s/v2/rpc/%s" % [base_url, rpc_id]
+	# Issue #1079: remember the token this request is signed with so recovery
+	# can tell whether a concurrent refresh already rotated it.
+	var token_used: String = session_token
 	var headers: PackedStringArray = get_auth_headers()
 
 	var _err = headers.append("Content-Type: application/json")
@@ -747,9 +809,14 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 
 	timer.start()
 
+	# Issue #1079: mark the shared node as servicing an RPC until this
+	# coroutine finishes processing, so the persistent completion handler does
+	# not misroute a 401/403 into the startup auth-error UI path.
+	_rpc_request_active = true
 	var error_code: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_body)
 
 	if error_code != OK:
+		_rpc_request_active = false
 		timer.queue_free()
 		_rpc_busy = false
 		return {"error": "Failed to send RPC request"}
@@ -758,6 +825,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	while not response_received and not timed_out:
 		await get_tree().process_frame
 
+	_rpc_request_active = false
 	timer.queue_free()
 
 	# Check if request timed out
@@ -767,6 +835,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 
 	# Process the successful response
 	var response_data: Dictionary = {}
+	var is_auth_error: bool = false
 	var result = request_result
 
 	# Validate that request_result has enough elements (should have 5: result, code, headers, body, rpc_id)
@@ -778,7 +847,7 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 	var rpc_id_completed: int = -1
 	if result.size() >= 5:
 		rpc_id_completed = result[4]
-	
+
 
 	if result[1] >= 200 and result[1] < 300:
 		var json: JSON = JSON.new()
@@ -788,8 +857,8 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 			response_data = {"error": "Failed to parse response", "is_auth_error": false}
 	else:
 		# Check if this is an authentication error (401, 403) vs a server error (400, 500, etc.)
-		var is_auth_error: bool = (result[1] == 401 or result[1] == 403)
-		
+		is_auth_error = (result[1] == 401 or result[1] == 403)
+
 		var json: JSON = JSON.new()
 		if json.parse(result[3].get_string_from_utf8()) == OK:
 			var parsed: Dictionary = json.data
@@ -802,12 +871,62 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 		else:
 			response_data = {"error": "HTTP error: %d" % result[1], "is_auth_error": is_auth_error}
 
+	# Issue #1079: on an auth error, attempt ONE coalesced session refresh and
+	# replay the original request exactly once before surfacing the error.
+	if is_auth_error and not is_replay:
+		_rpc_busy = false
+		if await _recover_session_after_auth_error(token_used):
+			# Single replay with the refreshed token; is_replay prevents loops.
+			return await _send_rpc_with_recovery(rpc_id, payload, timeout, true)
+		# Refresh failed — fall through and surface the original auth error.
+
 	# Log RPC latency for analytics
 	var latency_ms: int = Time.get_ticks_msec() - start_time
 	_log_rpc_latency(rpc_id, latency_ms)
 
 	_rpc_busy = false
 	return response_data
+
+## Issue #1079: recovers the session after an RPC auth error. Concurrent 401s
+## coalesce into a single refresh via the _refreshing_session guard; if a
+## concurrent recovery already rotated the token while this request was in
+## flight, the caller can replay immediately without refreshing again.
+## Returns true when a usable (rotated) session token is available.
+func _recover_session_after_auth_error(token_used: String) -> bool:
+	if token_used != session_token and not session_token.is_empty():
+		# Token already rotated by a concurrent recovery — replay against it.
+		return true
+	if _refreshing_session:
+		while _refreshing_session:
+			await get_tree().process_frame
+		return _last_refresh_succeeded and not session_token.is_empty()
+	_refreshing_session = true
+	var refreshed: bool = await _run_refresh_and_await_result()
+	_last_refresh_succeeded = refreshed
+	_refreshing_session = false
+	return refreshed
+
+## Issue #1079: triggers the existing _refresh_session() machinery once and
+## waits (bounded by MAX_AUTH_DURATION_SEC) for its session_refreshed signal.
+## Returns true only when a fresh token was stored. On failure or timeout the
+## caller surfaces the original RPC error — no retry loop.
+func _run_refresh_and_await_result() -> bool:
+	if http_request == null:
+		return false
+	var outcome: Array = []
+	var on_refreshed: Callable = func(success: bool, _error_message: String):
+		if outcome.is_empty():
+			outcome.append(success)
+	session_refreshed.connect(on_refreshed, CONNECT_ONE_SHOT)
+	_refresh_session()
+	var deadline_ms: int = Time.get_ticks_msec() + int(NetworkConsts.MAX_AUTH_DURATION_SEC * 1000.0)
+	while outcome.is_empty():
+		await get_tree().process_frame
+		if Time.get_ticks_msec() >= deadline_ms:
+			if session_refreshed.is_connected(on_refreshed):
+				session_refreshed.disconnect(on_refreshed)
+			return false
+	return bool(outcome[0]) and not session_token.is_empty()
 
 ## Sends an RPC request without waiting for response (fire-and-forget).
 ## Used for notifications like stage completion where we don't need the result.
@@ -825,8 +944,18 @@ func send_rpc_async(rpc_id: String, payload: String, _timeout: float = 10.0) -> 
 	var json_body: String = JSON.stringify(body)
 
 	# Fire request without waiting - we don't care about the response
+	# Issue #1079: mark the completion as an RPC response so a 401/403 is not
+	# misrouted into the startup auth-error UI path. Fire-and-forget requests
+	# never replay; the next tracked send_rpc runs the refresh + replay.
+	_rpc_request_active = true
+	var on_completed: Callable = func(_result: int, _response_code: int, _headers: PackedStringArray, _body: PackedByteArray):
+		_rpc_request_active = false
+	var _err2 = http_request.request_completed.connect(on_completed, CONNECT_ONE_SHOT)
 	var error_code: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_body)
 	if error_code != OK:
+		_rpc_request_active = false
+		if http_request.request_completed.is_connected(on_completed):
+			http_request.request_completed.disconnect(on_completed)
 		push_warning("Failed to send async RPC: %s" % rpc_id)
 
 func _log_rpc_latency(rpc_name: String, latency_ms: int) -> void:
