@@ -2,6 +2,7 @@ extends Node
 
 var _tests_passed: int = 0
 var _tests_failed: int = 0
+var _death_signal_received: bool = false
 
 signal test_completed(test_name: String, passed: bool)
 
@@ -11,14 +12,14 @@ func _ready() -> void:
 
 func run_tests() -> void:
 	await test_default_stats()
-	await test_detection_range()
-	await test_attack_range()
-	await test_attack_cooldown()
-	await test_zigzag_settings()
-	await test_dash_settings()
+	await test_swarmer_detection_range()
+	await test_group_buff_config()
+	await test_initial_attack_cooldown()
+	await test_retreat_config()
+	await test_rush_settings()
 	await test_take_damage()
 	await test_take_damage_death()
-	await test_change_direction_no_player()
+	await test_solo_swarmer_no_buff()
 
 	print("\n=== SwarmerEnemy Test Results ===")
 	print("Passed: %d" % _tests_passed)
@@ -37,6 +38,9 @@ func _create_swarmer_enemy() -> Node:
 	var hurt_area = Area2D.new()
 	hurt_area.name = "HurtArea"
 	enemy.add_child(hurt_area)
+	var detection = Area2D.new()
+	detection.name = "DetectionArea"
+	enemy.add_child(detection)
 	add_child(enemy)
 	return enemy
 
@@ -52,87 +56,84 @@ func _fail(test_name: String, message: String) -> void:
 
 func test_default_stats() -> void:
 	var enemy = _create_swarmer_enemy()
-	enemy._ready()
-	var passed = enemy.max_health == 70 and enemy.move_speed == 180.0 and enemy.damage == 10 and enemy.xp_reward == 40
+	var passed = enemy.max_health == 25 and enemy.move_speed == 180.0 and enemy.damage == 8 and enemy.xp_reward == 15
 	if passed:
 		_pass("test_default_stats")
 	else:
-		_fail("test_default_stats", "Expected (70, 180, 10, 40) got (%d, %f, %d, %d)" % [enemy.max_health, enemy.move_speed, enemy.damage, enemy.xp_reward])
-	enemy.queue_free()
+		_fail("test_default_stats", "Expected (25, 180, 8, 15) got (%d, %f, %d, %d)" % [enemy.max_health, enemy.move_speed, enemy.damage, enemy.xp_reward])
+	enemy.free()
 
-func test_detection_range() -> void:
+func test_swarmer_detection_range() -> void:
 	var enemy = _create_swarmer_enemy()
-	if enemy.detection_range == 400.0:
-		_pass("test_detection_range")
+	if enemy._swarmer_detection_range == 150.0:
+		_pass("test_swarmer_detection_range")
 	else:
-		_fail("test_detection_range", "Expected 400.0 got %f" % enemy.detection_range)
-	enemy.queue_free()
+		_fail("test_swarmer_detection_range", "Expected 150.0 got %f" % enemy._swarmer_detection_range)
+	enemy.free()
 
-func test_attack_range() -> void:
+func test_group_buff_config() -> void:
 	var enemy = _create_swarmer_enemy()
-	if enemy.attack_range == 35.0:
-		_pass("test_attack_range")
-	else:
-		_fail("test_attack_range", "Expected 35.0 got %f" % enemy.attack_range)
-	enemy.queue_free()
-
-func test_attack_cooldown() -> void:
-	var enemy = _create_swarmer_enemy()
-	if enemy.attack_cooldown == 0.8:
-		_pass("test_attack_cooldown")
-	else:
-		_fail("test_attack_cooldown", "Expected 0.8 got %f" % enemy.attack_cooldown)
-	enemy.queue_free()
-
-func test_zigzag_settings() -> void:
-	var enemy = _create_swarmer_enemy()
-	var passed = enemy.zigzag_enabled == true and enemy.zigzag_interval == 0.3
+	var passed = enemy.group_buff_threshold == 3 and enemy.group_buff_speed_multiplier == 1.2
 	if passed:
-		_pass("test_zigzag_settings")
+		_pass("test_group_buff_config")
 	else:
-		_fail("test_zigzag_settings", "Expected zigzag_enabled=true, interval=0.3")
-	enemy.queue_free()
+		_fail("test_group_buff_config", "Expected threshold=3, multiplier=1.2")
+	enemy.free()
 
-func test_dash_settings() -> void:
+func test_initial_attack_cooldown() -> void:
 	var enemy = _create_swarmer_enemy()
-	var passed = enemy.dash_cooldown == 4.0 and enemy.is_dashing == false
-	if passed:
-		_pass("test_dash_settings")
+	if enemy._attack_cooldown == 0.0:
+		_pass("test_initial_attack_cooldown")
 	else:
-		_fail("test_dash_settings", "Expected dash_cooldown=4.0, is_dashing=false")
-	enemy.queue_free()
+		_fail("test_initial_attack_cooldown", "Expected 0.0 got %f" % enemy._attack_cooldown)
+	enemy.free()
+
+func test_retreat_config() -> void:
+	var enemy = _create_swarmer_enemy()
+	var passed = enemy._retreat_when_hurt_threshold == 0.25 and enemy._is_retreating == false
+	if passed:
+		_pass("test_retreat_config")
+	else:
+		_fail("test_retreat_config", "Expected threshold=0.25, retreating=false")
+	enemy.free()
+
+func test_rush_settings() -> void:
+	var enemy = _create_swarmer_enemy()
+	var passed = enemy._rush_speed == 200.0 and enemy._is_rushing == false
+	if passed:
+		_pass("test_rush_settings")
+	else:
+		_fail("test_rush_settings", "Expected _rush_speed=200.0, is_rushing=false")
+	enemy.free()
 
 func test_take_damage() -> void:
 	var enemy = _create_swarmer_enemy()
-	enemy._ready()
-	enemy.take_damage(30)
-	var expected = 70 - 30
+	enemy.take_damage(5)
+	var expected = 25 - 5
 	if enemy.current_health == expected:
 		_pass("test_take_damage")
 	else:
 		_fail("test_take_damage", "Expected %d got %d" % [expected, enemy.current_health])
-	enemy.queue_free()
+	enemy.free()
 
 func test_take_damage_death() -> void:
 	var enemy = _create_swarmer_enemy()
-	enemy._ready()
-	var died = false
-	enemy.died.connect(func(_xp): died = true)
-	enemy.take_damage(70)
-	if died:
+	_death_signal_received = false
+	enemy.died.connect(func(_xp): _death_signal_received = true)
+	enemy.take_damage(25)
+	if _death_signal_received:
 		_pass("test_take_damage_death")
 	else:
 		_fail("test_take_damage_death", "Should die at 0 health")
-	enemy.queue_free()
+	enemy.free()
 
-func test_change_direction_no_player() -> void:
+func test_solo_swarmer_no_buff() -> void:
 	var enemy = _create_swarmer_enemy()
-	enemy.player_ref = null
-	enemy.change_direction()
-	# Should set a random direction without error
-	var passed = enemy.current_direction.length() > 0.9  # Should be normalized
+	var nearby = enemy.check_nearby_swarmers()
+	# A lone swarmer should count zero allies and have no group buff
+	var passed = nearby == 0 and enemy._group_buff_active == false
 	if passed:
-		_pass("test_change_direction_no_player")
+		_pass("test_solo_swarmer_no_buff")
 	else:
-		_fail("test_change_direction_no_player", "Direction should be set (length=%f)" % enemy.current_direction.length())
-	enemy.queue_free()
+		_fail("test_solo_swarmer_no_buff", "Expected 0 nearby, buff inactive (got %d, %s)" % [nearby, str(enemy._group_buff_active)])
+	enemy.free()

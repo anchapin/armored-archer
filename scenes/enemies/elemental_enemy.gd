@@ -66,6 +66,12 @@ signal elemental_attack_cast(element: String)
 @onready var detection_area: Area2D = $DetectionArea
 
 func _ready() -> void:
+	# Set base stats based on element (before super so current_health seeds from max_health)
+	max_health = 60
+	move_speed = 130.0
+	damage = get_elemental_data().attackdamage
+	xp_reward = 30
+
 	super._ready()
 
 	# Setup attack timer
@@ -92,12 +98,6 @@ func _ready() -> void:
 	# Connect detection signal
 	if detection_area:
 		detection_area.body_entered.connect(_on_player_detected)
-
-	# Set base stats based on element
-	max_health = 60
-	max_speed = 130.0
-	damage = get_elemental_data().attackdamage
-	xp_reward = 30
 
 	# Apply elemental sprite color
 	if sprite:
@@ -161,8 +161,8 @@ func cast_attack() -> void:
 	elemental_attack_cast.emit(element_name)
 
 	# Apply damage to player if in range
-	if _player_reference and _player_reference.has_method("takedamage"):
-		_player_reference.takedamage(damage)
+	if _player_reference and _player_reference.has_method("take_damage"):
+		_player_reference.take_damage(damage)
 
 	# Apply status effect
 	_apply_status_effect(_player_reference, data.status_effect)
@@ -176,7 +176,7 @@ func _dodge_when_close() -> void:
 	var dodge_dir = (global_position - _player_reference.global_position).normalized()
 
 	# Apply dodge movement
-	velocity = dodge_dir * max_speed * 1.5
+	velocity = dodge_dir * move_speed * 1.5
 	move_and_slide()
 
 ## Maintain distance from player
@@ -189,7 +189,7 @@ func maintain_distance(target_distance: float = 150.0) -> void:
 	if distance > target_distance + 20.0:
 		# Move closer
 		var direction = (_player_reference.global_position - global_position).normalized()
-		velocity = direction * max_speed * 0.5
+		velocity = direction * move_speed * 0.5
 		move_and_slide()
 	elif distance < target_distance - 20.0:
 		# Move away (dodge)
