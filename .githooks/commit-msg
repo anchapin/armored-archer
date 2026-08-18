@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# .githooks/commit-msg — thin wrapper installed by `make hooks-install` that
+# delegates to scripts/commit-msg-check-ai-trailer.sh. Kept as a dedicated
+# file so any editor or git tooling that needs to invoke the hook can do so
+# directly without resolving $(dirname ...) at call time.
+
+set -euo pipefail
+
+# git invokes commit-msg with the path to the message file as $1.
+exec "$(git rev-parse --show-toplevel)/scripts/commit-msg-check-ai-trailer.sh" "$1"
