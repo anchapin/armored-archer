@@ -14,47 +14,74 @@ describe('validation', () => {
 
   describe('validatePayload', () => {
     describe('happy path', () => {
-      it('should validate complete_stage with all required fields', () => {
+      it('should validate stage_complete with optional progression fields (issue #1069)', () => {
         const payload = JSON.stringify({
           stage_id: 'stage_01',
+          boss_defeated: false,
+          difficulty: 'hard',
           stage_prefix: 'campaign',
           stars_earned: 3,
           score: 5000,
-          difficulty: 'hard',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(true);
         if (result.success) {
           expect(result.data).toEqual({
             stage_id: 'stage_01',
+            boss_defeated: false,
+            difficulty: 'hard',
             stage_prefix: 'campaign',
             stars_earned: 3,
             score: 5000,
-            difficulty: 'hard',
           });
         }
       });
 
-      it('should validate complete_stage with optional fields', () => {
+      it('should validate stage_complete without optional fields (legacy client shape)', () => {
         const payload = JSON.stringify({
           stage_id: 'stage_01',
-          stage_prefix: 'campaign',
-          stars_earned: 2,
-          score: 3000,
-          difficulty: 'nightmare',
           boss_defeated: true,
+          difficulty: 'nightmare',
           boss_id: 'boss_dragon',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(true);
         if (result.success) {
           expect(result.data.boss_defeated).toBe(true);
           expect(result.data.boss_id).toBe('boss_dragon');
+          expect(result.data.stars_earned).toBeUndefined();
+          expect(result.data.score).toBeUndefined();
         }
+      });
+
+      it('should reject stage_complete stars above the 0-3 bound (issue #1068)', () => {
+        const payload = JSON.stringify({
+          stage_id: 'stage_01',
+          boss_defeated: false,
+          difficulty: 'hard',
+          stars_earned: 4,
+        });
+
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject stage_complete score above MAX_STAGE_SCORE (issue #1068)', () => {
+        const payload = JSON.stringify({
+          stage_id: 'stage_01',
+          boss_defeated: false,
+          difficulty: 'hard',
+          score: 1000001,
+        });
+
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
+
+        expect(result.success).toBe(false);
       });
 
       it('should validate gain_xp with valid data', () => {
@@ -298,11 +325,11 @@ describe('validation', () => {
       });
 
       it('should fail validation when schema requires fields and payload is empty string', () => {
-        const result = validatePayload(ValibotSchemas.complete_stage, '', 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, '', 'stage_complete');
 
         expect(result.success).toBe(false);
         if (!result.success) {
-          expect(result.error).toContain('Validation failed for complete_stage');
+          expect(result.error).toContain('Validation failed for stage_complete');
         }
       });
 
@@ -319,14 +346,14 @@ describe('validation', () => {
     describe('invalid JSON', () => {
       it('should return error for malformed JSON', () => {
         const result = validatePayload(
-          ValibotSchemas.complete_stage,
+          ValibotSchemas.stage_complete,
           '{invalid json}',
-          'complete_stage'
+          'stage_complete'
         );
 
         expect(result.success).toBe(false);
         if (!result.success) {
-          expect(result.error).toContain('Invalid JSON in complete_stage');
+          expect(result.error).toContain('Invalid JSON in stage_complete');
         }
       });
 
@@ -363,19 +390,20 @@ describe('validation', () => {
     });
 
     describe('missing required fields', () => {
-      it('should fail when complete_stage missing stage_id', () => {
+      it('should fail when stage_complete missing stage_id', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_prefix: 'campaign',
           stars_earned: 3,
           score: 5000,
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(false);
         if (!result.success) {
-          expect(result.error).toContain('Validation failed for complete_stage');
+          expect(result.error).toContain('Validation failed for stage_complete');
           expect(result.error).toContain('stage_id');
         }
       });
@@ -460,6 +488,7 @@ describe('validation', () => {
     describe('wrong types', () => {
       it('should fail when string provided where number expected for stars_earned', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'stage_1',
           stage_prefix: 'campaign',
           stars_earned: 'three',
@@ -467,16 +496,17 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(false);
         if (!result.success) {
-          expect(result.error).toContain('Validation failed for complete_stage');
+          expect(result.error).toContain('Validation failed for stage_complete');
         }
       });
 
       it('should fail when number provided where string expected for stage_id', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 123,
           stage_prefix: 'campaign',
           stars_earned: 3,
@@ -484,7 +514,7 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(false);
         if (!result.success) {
@@ -537,6 +567,7 @@ describe('validation', () => {
     describe('out of range values', () => {
       it('should fail when stars_earned exceeds max of 3', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'stage_1',
           stage_prefix: 'campaign',
           stars_earned: 4,
@@ -544,16 +575,17 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(false);
         if (!result.success) {
-          expect(result.error).toContain('Validation failed for complete_stage');
+          expect(result.error).toContain('Validation failed for stage_complete');
         }
       });
 
       it('should fail when stars_earned is negative', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'stage_1',
           stage_prefix: 'campaign',
           stars_earned: -1,
@@ -561,13 +593,14 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(false);
       });
 
       it('should fail when score exceeds MAX_STAGE_SCORE (issue #1068)', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'stage_1',
           stage_prefix: 'campaign',
           stars_earned: 3,
@@ -575,16 +608,17 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(false);
         if (!result.success) {
-          expect(result.error).toContain('Validation failed for complete_stage');
+          expect(result.error).toContain('Validation failed for stage_complete');
         }
       });
 
       it('should accept score at exactly MAX_STAGE_SCORE (issue #1068)', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'stage_1',
           stage_prefix: 'campaign',
           stars_earned: 3,
@@ -592,13 +626,14 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(true);
       });
 
       it('should fail when score is negative', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'stage_1',
           stage_prefix: 'campaign',
           stars_earned: 1,
@@ -606,7 +641,7 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(false);
       });
@@ -667,6 +702,7 @@ describe('validation', () => {
 
       it('should fail when stage_id exceeds max length of 100', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'a'.repeat(101),
           stage_prefix: 'campaign',
           stars_earned: 3,
@@ -674,13 +710,14 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(false);
       });
 
       it('should fail when stage_id is empty string (minLength 1)', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: '',
           stage_prefix: 'campaign',
           stars_earned: 3,
@@ -688,13 +725,14 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(false);
       });
 
       it('should fail when score is negative', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'stage_1',
           stage_prefix: 'campaign',
           stars_earned: 1,
@@ -702,7 +740,7 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(false);
       });
@@ -726,8 +764,9 @@ describe('validation', () => {
     });
 
     describe('enum validation', () => {
-      it('should fail when complete_stage has invalid difficulty', () => {
+      it('should fail when stage_complete has invalid difficulty', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'stage_1',
           stage_prefix: 'campaign',
           stars_earned: 3,
@@ -735,11 +774,11 @@ describe('validation', () => {
           difficulty: 'insane',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(false);
         if (!result.success) {
-          expect(result.error).toContain('Validation failed for complete_stage');
+          expect(result.error).toContain('Validation failed for stage_complete');
         }
       });
 
@@ -851,7 +890,7 @@ describe('validation', () => {
     });
 
     describe('optional fields', () => {
-      it('should pass when optional boss_defeated is absent in complete_stage', () => {
+      it('should fail when required boss_defeated is absent in stage_complete', () => {
         const payload = JSON.stringify({
           stage_id: 'stage_1',
           stage_prefix: 'campaign',
@@ -860,13 +899,9 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(result.data.boss_defeated).toBeUndefined();
-          expect(result.data.boss_id).toBeUndefined();
-        }
+        expect(result.success).toBe(false);
       });
 
       it('should pass when optional power is absent in submit_combat_action', () => {
@@ -950,6 +985,7 @@ describe('validation', () => {
     describe('integer validation', () => {
       it('should fail when stars_earned is a float', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'stage_1',
           stage_prefix: 'campaign',
           stars_earned: 2.5,
@@ -957,7 +993,7 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(false);
       });
@@ -988,6 +1024,7 @@ describe('validation', () => {
     describe('edge cases', () => {
       it('should accept boundary value stars_earned = 0', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'stage_1',
           stage_prefix: 'campaign',
           stars_earned: 0,
@@ -995,13 +1032,14 @@ describe('validation', () => {
           difficulty: 'easy',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(true);
       });
 
       it('should accept boundary value stars_earned = 3', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'stage_1',
           stage_prefix: 'campaign',
           stars_earned: 3,
@@ -1009,7 +1047,7 @@ describe('validation', () => {
           difficulty: 'nightmare',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(true);
       });
@@ -1108,6 +1146,7 @@ describe('validation', () => {
 
       it('should accept 1-char stage_id at boundary', () => {
         const payload = JSON.stringify({
+          boss_defeated: false,
           stage_id: 'a',
           stage_prefix: 'x',
           stars_earned: 1,
@@ -1115,7 +1154,7 @@ describe('validation', () => {
           difficulty: 'medium',
         });
 
-        const result = validatePayload(ValibotSchemas.complete_stage, payload, 'complete_stage');
+        const result = validatePayload(ValibotSchemas.stage_complete, payload, 'stage_complete');
 
         expect(result.success).toBe(true);
       });
@@ -1147,16 +1186,16 @@ describe('validation', () => {
   describe('createValidationErrorResponse', () => {
     it('should return valid JSON with correct structure', () => {
       const response = createValidationErrorResponse(
-        'complete_stage',
-        'Validation failed for complete_stage: stage_id: Required'
+        'stage_complete',
+        'Validation failed for stage_complete: stage_id: Required'
       );
 
       const parsed = JSON.parse(response);
 
       expect(parsed.success).toBe(false);
       expect(parsed.error_code).toBe('VALIDATION_ERROR');
-      expect(parsed.rpc_name).toBe('complete_stage');
-      expect(parsed.error).toBe('Validation failed for complete_stage: stage_id: Required');
+      expect(parsed.rpc_name).toBe('stage_complete');
+      expect(parsed.error).toBe('Validation failed for stage_complete: stage_id: Required');
     });
 
     it('should include the rpc_name in the response', () => {

@@ -57,8 +57,8 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Load Build | PlayerStatsManager | `rpcLoadBuild()` in `rpg_system.ts` | `player_builds` storage (custom collection) | `/rpc/armored_archer/load_build` |
 | Get Builds | PlayerStatsManager | `rpcGetBuilds()` in `rpg_system.ts` | `player_builds` storage (custom collection) | `/rpc/armored_archer/get_builds` |
 | Generate Gear | GearManager | `rpcGenerateGear()` in `gear_system.ts` | `catalog` + `inventory` tables (PostgreSQL) | `/rpc/armored_archer/generate_gear` |
-| Stage Complete | GearManager | `rpcStageComplete()` in `gear_system.ts` — difficulty verified server-side via `resolveVerifiedDifficulty()` (non-claimable tiers like nightmare are clamped to hard) before drop/XP multipliers; XP computed server-side (#1068) | `catalog` + `inventory` tables (PostgreSQL) | `/rpc/armored_archer/stage_complete` |
-| Complete Stage | CampaignManager | `rpcCompleteStage()` in `stage_tracking.ts` — stars clamped 0-3, score capped at `MAX_STAGE_SCORE`, difficulty server-verified before loot multipliers (#1068) | `campaign_progress` storage (custom collection) | `/rpc/armored_archer/complete_stage` |
+| Stage Complete | CampaignManager | `rpcStageComplete()` in `gear_system.ts` — sole stage-completion RPC since #1069 (consolidated `complete_stage` into it): stars clamped 0-3, score capped at `MAX_STAGE_SCORE`, difficulty server-verified via `resolveVerifiedDifficulty()` before drop/XP multipliers (#1068); claim-first atomic writes (`stage_completion_claims` marker precedes any loot/XP/stars grant so retries no-op); loot persisted via `gear_db` DB layer; XP computed server-side | `stage_completion` + `stage_completion_claims` storage (custom collections), `inventory_items`/`boss_defeats`/`unlocked_modifier_pools` tables (PostgreSQL) | `/rpc/armored_archer/stage_complete` |
+| ~~Complete Stage~~ | — | **DECOMMISSIONED (#1069)**: `rpcCompleteStage()` in `stage_tracking.ts` removed — no production client caller (CampaignManager calls `stage_complete`). Stars/score best-of persistence migrated to `stage_complete` via `stage_progression.applyStageCompletion`; its orphaned `player_inventory` storage loot write was deleted (loot now persists through the `gear_db` layer). Tombstone left in `stage_tracking.ts` | — | ~~`/rpc/armored_archer/complete_stage`~~ |
 | Get Completed Stages | CampaignManager | `rpcGetCompletedStages()` in `stage_tracking.ts` | `campaign_progress` storage (custom collection) | `/rpc/armored_archer/get_completed_stages` |
 | Get Campaign Progress | CampaignManager | `rpcGetCampaignProgress()` in `stage_tracking.ts` | `campaign_progress` storage (custom collection) | `/rpc/armored_archer/get_campaign_progress` |
 
@@ -487,7 +487,7 @@ For PostgreSQL table changes:
 | `armored_archer/sync_difficulty` | dynamic_difficulty | `rpcSyncDifficulty()` | PvE |
 | `armored_archer/track_match_outcome` | dynamic_difficulty | `rpcTrackMatchOutcome()` | PvE |
 | `armored_archer/get_player_performance` | dynamic_difficulty | `rpcGetPlayerPerformance()` | PvE |
-| `armored_archer/complete_stage` | stage_tracking | `rpcCompleteStage()` | PvE |
+| `armored_archer/stage_complete` | gear_system (+ `stage_progression` persistence) | `rpcStageComplete()` | PvE |
 | `armored_archer/get_completed_stages` | stage_tracking | `rpcGetCompletedStages()` | PvE |
 | `armored_archer/get_campaign_progress` | stage_tracking | `rpcGetCampaignProgress()` | PvE |
 

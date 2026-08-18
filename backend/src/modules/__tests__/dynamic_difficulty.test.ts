@@ -4,8 +4,9 @@
  *
  * Since #870 the module is server-authoritative: PvE wins only count when
  * corroborated by server-known stage results (the `stage_completion`
- * storage written by the validated `complete_stage` RPC), so tests that
- * expect wins to count must seed completions via `seedStageCompletions`.
+ * storage written by the validated `stage_complete` RPC — sole writer since
+ * the #1069 consolidation), so tests that expect wins to count must seed
+ * completions via `seedStageCompletions`.
  * Losses remain client hints (no server-side loss signal exists) and PvP
  * outcomes never affect the modifier (PvE-only constraint).
  */
@@ -24,7 +25,7 @@ import {
   rpcGetPlayerPerformance,
   rpcSyncDifficulty,
 } from '../dynamic_difficulty';
-import { rpcCompleteStage } from '../stage_tracking';
+import { rpcStageComplete } from '../gear_system';
 import { Runtime } from '../../types/nakama';
 
 /** Silent logger stub for RPC-level tests. */
@@ -112,7 +113,7 @@ describe('DynamicDifficulty', () => {
   /**
    * Simulates the server accepting an improved replay of a stage: refreshes
    * `updated_at` on the stored completion record (exactly what
-   * `complete_stage` does for an accepted improvement).
+   * `stage_complete` does for an accepted improvement).
    */
   function refreshStageCompletion(stageId: string): void {
     const raw = storage.get(`stage_completion:${testUserId}`);
@@ -663,10 +664,10 @@ describe('DynamicDifficulty', () => {
       const ctxHard = { userId: 'loot-user-hard', ipAddress: '127.0.0.1' } as Runtime.Context;
 
       const resEasy = JSON.parse(
-        rpcCompleteStage(ctxEasy, silentLogger, mockCtx as unknown as Runtime.Nakama, stagePayload)
+        rpcStageComplete(ctxEasy, silentLogger, mockCtx as unknown as Runtime.Nakama, stagePayload)
       );
       const resHard = JSON.parse(
-        rpcCompleteStage(ctxHard, silentLogger, mockCtx as unknown as Runtime.Nakama, stagePayload)
+        rpcStageComplete(ctxHard, silentLogger, mockCtx as unknown as Runtime.Nakama, stagePayload)
       );
 
       expect(resEasy.success).toBe(true);
@@ -681,7 +682,7 @@ describe('DynamicDifficulty', () => {
 
       const ctx = { userId: 'loot-user-spy', ipAddress: '127.0.0.1' } as Runtime.Context;
       const res = JSON.parse(
-        rpcCompleteStage(
+        rpcStageComplete(
           ctx,
           silentLogger,
           mockCtx as unknown as Runtime.Nakama,
