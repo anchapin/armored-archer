@@ -142,16 +142,24 @@ func test_session_file_operations():
 # ==================== AUTHENTICATION AND SIGNAL TESTS ====================
 
 func test_authenticate_device_offline():
-	pending("ENV_DEPENDENT: requires live Nakama / authenticated session; see issue #960")
-	return
-	# Test offline mode prevents authentication
+	# Test offline mode prevents authentication. The offline branch
+	# (NetworkManager.gd authenticate_device) short-circuits before any
+	# HTTP traffic, so this is deterministic without a live Nakama stack.
 	_network.is_offline = true
 	watch_signals(_network)
 
 	_network.authenticate_device()
 
-	# Should not emit session_created with success when offline
-	assert_signal_not_emitted(_network, "session_created", "Should not emit session_created when offline")
+	# Offline failure must still be REPORTED: production emits
+	# session_created(false, "Cannot authenticate while offline") so the
+	# login UI gets an actionable outcome (login_screen.gd
+	# _on_session_created; the #908 login-hang fix relies on this path).
+	# The old assert_signal_not_emitted contradicted the test's own
+	# stated intent ("not emit session_created with success").
+	assert_signal_emitted(_network, "session_created",
+		"Offline auth failure should be reported via session_created")
+	assert_signal_emitted_with_parameters(_network, "session_created",
+		[false, "Cannot authenticate while offline"])
 
 func test_signal_emission():
 	# Test all signals can be connected and emitted
