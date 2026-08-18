@@ -42,6 +42,7 @@ import {
   initializeDeploymentObservability,
   registerDeploymentObservability,
 } from '../deployment_observability';
+import { resetAdminAllowlistCache } from '../admin_auth';
 
 describe('deployment_observability', () => {
   beforeEach(() => {
@@ -401,6 +402,7 @@ describe('deployment_observability', () => {
 
     beforeEach(() => {
       process.env.ADMIN_USER_IDS = 'test-admin';
+      resetAdminAllowlistCache();
       rpcHandlers = {};
       const mockInitializer = {
         registerRpc: jest.fn((id: string, handler: Function) => {
@@ -416,6 +418,7 @@ describe('deployment_observability', () => {
       } else {
         process.env.ADMIN_USER_IDS = previousAdminIds;
       }
+      resetAdminAllowlistCache();
     });
 
     describe('rpcRecordDeployment', () => {

@@ -22,6 +22,7 @@ import {
   initializeProgressiveRollout,
   RolloutPhase,
 } from '../progressive_rollout';
+import { resetAdminAllowlistCache } from '../admin_auth';
 
 // Mock config
 jest.mock('../../config', () => ({
@@ -480,6 +481,7 @@ describe('Progressive Rollout', () => {
 
     beforeEach(() => {
       process.env.ADMIN_USER_IDS = 'rollout-test-user';
+      resetAdminAllowlistCache();
       registeredHandlers = new Map();
       const mockInitializer = {
         registerRpc: jest.fn((name: string, handler: Function) => {
@@ -496,6 +498,7 @@ describe('Progressive Rollout', () => {
       } else {
         process.env.ADMIN_USER_IDS = previousAdminIds;
       }
+      resetAdminAllowlistCache();
     });
 
     it('rpcCreateFeatureFlag creates a flag via RPC', async () => {

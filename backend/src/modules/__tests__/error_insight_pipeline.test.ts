@@ -4,6 +4,7 @@ import {
   registerErrorInsightRpcs,
   initializeErrorInsightsPipeline,
 } from '../error_insight_pipeline';
+import { resetAdminAllowlistCache } from '../admin_auth';
 
 // Mock dependencies
 jest.mock('../../config', () => ({
@@ -41,6 +42,7 @@ describe('error_insight_pipeline', () => {
 
   beforeAll(() => {
     process.env.ADMIN_USER_IDS = 'test-user,test';
+    resetAdminAllowlistCache();
   });
 
   afterAll(() => {
@@ -49,6 +51,7 @@ describe('error_insight_pipeline', () => {
     } else {
       process.env.ADMIN_USER_IDS = previousAdminIds;
     }
+    resetAdminAllowlistCache();
   });
 
   beforeEach(() => {

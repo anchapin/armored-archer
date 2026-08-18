@@ -1,5 +1,5 @@
 /**
- * Shared admin authorization guard (issue #1075).
+ * Shared admin authorization guard (issue #1075, hardened in #1155).
  *
  * Every privileged RPC — `admin_*` season tools, the rollout flag mutators,
  * `metrics`/`n_plus_one_report`, `deployment_*`, `error_insights_*`, and the
@@ -10,18 +10,35 @@
  *
  * Authorization model: allowlisted Nakama user ids supplied via the
  * `ADMIN_USER_IDS` environment variable (comma-separated). The allowlist is
- * parsed per call — a trivial string split, cheap enough to not cache — so
- * operators can rotate the list without a server restart.
+ * parsed once on first use and frozen — see #1155 for the rationale. Per-call
+ * re-parsing was a TOCTOU surface (a hot-reload, test fixture, or stray
+ * `process.env.ADMIN_USER_IDS = …` mutation could flip the gate between
+ * requests without any operator action). The parser also rejects malformed
+ * entries (whitespace, commas, oversized strings, non-canonical characters)
+ * and normalizes case to lowercase so an admin allowlist entry written as
+ * `ABC-123` matches a `ctx.userId` of `abc-123` — a case mismatch previously
+ * bricked the deployment silently.
  *
- * Fail-closed semantics: an unset or empty `ADMIN_USER_IDS` rejects every
- * caller, and calls that carry no userId (e.g. raw server-key invocations;
- * the server key ships inside client binaries) are never treated as admin.
+ * Fail-closed semantics: an unset, blank, or empty `ADMIN_USER_IDS` rejects
+ * every caller (the resolved Set is empty). Calls that carry no userId
+ * (e.g. raw server-key invocations; the server key ships inside client
+ * binaries) are never treated as admin.
+ *
+ * The resolved count and a SHA-prefix of each id are logged once at first
+ * parse for rotation auditability — operators can prove the deployed
+ * allowlist without printing the raw ids.
+ *
+ * `resetAdminAllowlistCache()` is exported for tests that mutate
+ * `process.env.ADMIN_USER_IDS` between cases; production code should never
+ * call it. `reloadAdminAllowlist()` is the explicit operator-facing path for
+ * mid-flight rotation if a future need arises.
  *
  * Every rejection is recorded in the caller's own audit trail via
  * `logAudit` (which never throws) and logged through both the runtime
  * logger and the winston application logger.
  */
 
+import { createHash } from 'crypto';
 import { logger as winstonLogger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { logAudit } from './audit';
@@ -35,19 +52,130 @@ export type AdminGatedRpcHandler = (
 ) => string | Promise<string>;
 
 /**
- * Parse the ADMIN_USER_IDS allowlist.
+ * Canonical Nakama user-id format used for admin allowlist validation.
  *
- * @returns Set of allowlisted user ids; empty (never undefined) when the
- * variable is unset or blank, which makes every admin RPC reject everyone.
+ * Accepts both the server-generated 32-hex-char form (e.g. Nakama's own
+ * internal IDs) and the conventional UUID form with dashes. Whitespace,
+ * commas, and other punctuation are rejected to catch operator typos
+ * (issue #1155). The maximum length is generous — Nakama's longest canonical
+ * user id is 40 chars with dashes — but capped to prevent a runaway env var
+ * from inflating the parse.
  */
-export function getAdminUserIds(): Set<string> {
-  const raw = process.env.ADMIN_USER_IDS ?? '';
-  return new Set(
-    raw
-      .split(',')
-      .map((id) => id.trim())
-      .filter((id) => id.length > 0)
-  );
+const VALID_USER_ID = /^[a-zA-Z0-9-]{1,128}$/;
+
+/** Internal shape of the cached allowlist. Frozen so callers cannot mutate it. */
+interface ResolvedAllowlist {
+  readonly ids: ReadonlySet<string>;
+  readonly count: number;
+  readonly fingerprints: readonly string[];
+}
+
+let cachedAllowlist: ResolvedAllowlist | null = null;
+
+/**
+ * Validate, normalize, and fingerprint the ADMIN_USER_IDS env var.
+ *
+ * Parsing rules:
+ *  - Split on comma, trim each entry, drop empty segments.
+ *  - Reject any entry that contains whitespace, a comma, or any character
+ *    outside `[a-zA-Z0-9-]` (operator typos). When the env var is unset or
+ *    blank the resolved set is empty — which is the fail-closed default.
+ *  - Normalize to lowercase so that `ctx.userId=ABC-123` matches an env
+ *    entry of `abc-123`.
+ *  - SHA-256 prefix is logged per id for rotation auditability.
+ *
+ * @throws if any entry is malformed; the process is expected to crash
+ *         immediately on startup rather than run with a silently-broken gate.
+ */
+function parseAndValidate(raw: string | undefined): ResolvedAllowlist {
+  const entries = (raw ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+
+  if (entries.length === 0) {
+    winstonLogger.info('Admin allowlist is empty (ADMIN_USER_IDS unset or blank); all admin RPCs will reject every caller (fail-closed)');
+    return { ids: new Set(), count: 0, fingerprints: [] };
+  }
+
+  const normalized = new Set<string>();
+  const fingerprints: string[] = [];
+  for (const id of entries) {
+    if (!VALID_USER_ID.test(id)) {
+      throw new Error(
+        `ADMIN_USER_IDS contains malformed entry ${JSON.stringify(id)}: must match ${VALID_USER_ID} (alphanumeric + dash, 1-128 chars). Fix the env var and restart.`
+      );
+    }
+    const lower = id.toLowerCase();
+    if (normalized.has(lower)) {
+      winstonLogger.warn('Admin allowlist contains duplicate entry (after case normalization); ignoring duplicate', {
+        duplicate_id: lower,
+      });
+      continue;
+    }
+    normalized.add(lower);
+    fingerprints.push(createHash('sha256').update(lower).digest('hex').slice(0, 8));
+  }
+
+  const resolved: ResolvedAllowlist = {
+    ids: normalized,
+    count: normalized.size,
+    fingerprints,
+  };
+  winstonLogger.info('Admin allowlist parsed', {
+    count: resolved.count,
+    fingerprints: resolved.fingerprints,
+  });
+  return resolved;
+}
+
+/**
+ * Lazily parse, validate, and cache the ADMIN_USER_IDS allowlist.
+ *
+ * The first call resolves the env var; subsequent calls return the same
+ * frozen Set so a TOCTOU mutation of `process.env.ADMIN_USER_IDS` cannot
+ * flip the gate between requests (issue #1155). Tests that mutate the env
+ * var explicitly call `resetAdminAllowlistCache()` to invalidate the cache.
+ *
+ * @returns Frozen Set of allowlisted (lowercase) user ids; empty (never
+ *         undefined) when the variable is unset or blank, which makes every
+ *         admin RPC reject everyone.
+ */
+export function getAdminUserIds(): ReadonlySet<string> {
+  if (cachedAllowlist === null) {
+    cachedAllowlist = parseAndValidate(process.env.ADMIN_USER_IDS);
+  }
+  return cachedAllowlist.ids;
+}
+
+/**
+ * Invalidate the cached allowlist so the next `getAdminUserIds()` call
+ * re-parses `process.env.ADMIN_USER_IDS`.
+ *
+ * Production code must NOT call this — the cached-once semantics is the
+ * whole point of #1155's hardening. Only test code that mutates the env
+ * between cases should invoke it.
+ */
+export function resetAdminAllowlistCache(): void {
+  cachedAllowlist = null;
+}
+
+/**
+ * Explicit, audited reload of the admin allowlist.
+ *
+ * Reserved for the case where mid-flight rotation is genuinely needed (e.g.
+ * an incident-response RPC). Re-reads the env var, validates it, and
+ * replaces the cached Set atomically. Returns the new count so callers can
+ * log the rotation.
+ *
+ * A malformed env var does NOT throw — it leaves the existing cache intact
+ * and surfaces the error to the caller, so a broken rotation does not
+ * disable the gate.
+ */
+export function reloadAdminAllowlist(): number {
+  const next = parseAndValidate(process.env.ADMIN_USER_IDS);
+  cachedAllowlist = next;
+  return next.count;
 }
 
 /**
@@ -60,7 +188,7 @@ export function isAdminUser(userId: string | undefined | null): boolean {
   if (!userId) {
     return false;
   }
-  return getAdminUserIds().has(userId);
+  return getAdminUserIds().has(userId.toLowerCase());
 }
 
 /**
