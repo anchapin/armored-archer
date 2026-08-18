@@ -30,6 +30,7 @@ import {
   recordDatabaseQueryDuration,
   setCacheHitRatio,
 } from '../metrics';
+import { resetAdminAllowlistCache } from '../admin_auth';
 
 // ---- Mocks ----
 
@@ -308,6 +309,7 @@ describe('metrics', () => {
 
     beforeEach(() => {
       process.env.ADMIN_USER_IDS = 'user_123,specific_user_42,admin_1,admin_2';
+      resetAdminAllowlistCache();
     });
 
     afterEach(() => {
@@ -316,6 +318,7 @@ describe('metrics', () => {
       } else {
         process.env.ADMIN_USER_IDS = previousAdminIds;
       }
+      resetAdminAllowlistCache();
     });
 
     it('returns combined base and deployment metrics', async () => {
@@ -397,6 +400,7 @@ describe('metrics', () => {
 
     beforeEach(() => {
       process.env.ADMIN_USER_IDS = 'user_123,specific_user_42,admin_1,admin_2';
+      resetAdminAllowlistCache();
     });
 
     afterEach(() => {
@@ -405,6 +409,7 @@ describe('metrics', () => {
       } else {
         process.env.ADMIN_USER_IDS = previousAdminIds;
       }
+      resetAdminAllowlistCache();
     });
 
     it('returns the N+1 detection report as JSON', async () => {

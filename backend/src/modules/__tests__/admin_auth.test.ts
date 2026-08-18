@@ -12,7 +12,13 @@
  */
 
 import { Runtime } from '../../types/nakama';
-import { getAdminUserIds, isAdminUser, withAdminGuard } from '../admin_auth';
+import {
+  getAdminUserIds,
+  isAdminUser,
+  withAdminGuard,
+  resetAdminAllowlistCache,
+  reloadAdminAllowlist,
+} from '../admin_auth';
 import {
   registerRpcAdminGetSeasonState,
   registerRpcAdminGetPlayerSeason,
@@ -255,29 +261,44 @@ afterAll(() => {
   } else {
     process.env.ADMIN_USER_IDS = ORIGINAL_ADMIN_USER_IDS;
   }
+  resetAdminAllowlistCache();
 });
+
+/**
+ * Test helper: every test that mutates `process.env.ADMIN_USER_IDS` must
+ * route through this so the cached allowlist (issue #1155) reflects the
+ * latest env value before the assertion runs.
+ */
+function setAdminUserIds(value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env.ADMIN_USER_IDS;
+  } else {
+    process.env.ADMIN_USER_IDS = value;
+  }
+  resetAdminAllowlistCache();
+}
 
 // =================== Allowlist parsing ===================
 
 describe('getAdminUserIds / isAdminUser', () => {
   afterEach(() => {
-    delete process.env.ADMIN_USER_IDS;
+    setAdminUserIds(undefined);
   });
 
   it('unset ADMIN_USER_IDS yields an empty allowlist (fail-closed)', () => {
-    delete process.env.ADMIN_USER_IDS;
+    setAdminUserIds(undefined);
     expect(getAdminUserIds().size).toBe(0);
     expect(isAdminUser(ADMIN_ID)).toBe(false);
   });
 
   it('blank ADMIN_USER_IDS yields an empty allowlist', () => {
-    process.env.ADMIN_USER_IDS = '   ';
+    setAdminUserIds('   ');
     expect(getAdminUserIds().size).toBe(0);
     expect(isAdminUser(ADMIN_ID)).toBe(false);
   });
 
   it('parses comma-separated ids with whitespace and empty segments tolerated', () => {
-    process.env.ADMIN_USER_IDS = ` ${ADMIN_ID} ,, other-admin `;
+    setAdminUserIds(` ${ADMIN_ID} ,, other-admin `);
     expect(getAdminUserIds()).toEqual(new Set([ADMIN_ID, 'other-admin']));
     expect(isAdminUser(ADMIN_ID)).toBe(true);
     expect(isAdminUser('other-admin')).toBe(true);
@@ -285,10 +306,97 @@ describe('getAdminUserIds / isAdminUser', () => {
   });
 
   it('never treats missing or empty userId as admin (server-key path)', () => {
-    process.env.ADMIN_USER_IDS = ADMIN_ID;
+    setAdminUserIds(ADMIN_ID);
     expect(isAdminUser(undefined)).toBe(false);
     expect(isAdminUser(null)).toBe(false);
     expect(isAdminUser('')).toBe(false);
+  });
+});
+
+// =================== Hardening (issue #1155) ===================
+
+describe('getAdminUserIds hardening (#1155)', () => {
+  afterEach(() => {
+    setAdminUserIds(undefined);
+  });
+
+  it('mutating process.env.ADMIN_USER_IDS does NOT change the cached allowlist (TOCTOU)', () => {
+    setAdminUserIds(ADMIN_ID);
+    expect(getAdminUserIds().has(ADMIN_ID)).toBe(true);
+
+    // Even if a hot-reload or stray console mutates the env, the cache holds
+    // the value from the first parse (until an explicit reset).
+    process.env.ADMIN_USER_IDS = 'a-different-admin';
+    expect(getAdminUserIds().has(ADMIN_ID)).toBe(true);
+    expect(getAdminUserIds().has('a-different-admin')).toBe(false);
+
+    // Reset clears the cache; the next call re-parses.
+    resetAdminAllowlistCache();
+    expect(getAdminUserIds().has('a-different-admin')).toBe(true);
+    expect(getAdminUserIds().has(ADMIN_ID)).toBe(false);
+  });
+
+  it('rejects an entry with internal whitespace at first parse', () => {
+    setAdminUserIds(undefined);
+    process.env.ADMIN_USER_IDS = `${ADMIN_ID} with-a-space`;
+    resetAdminAllowlistCache();
+    expect(() => getAdminUserIds()).toThrow(/malformed entry/);
+  });
+
+  it('rejects an entry containing a comma at first parse', () => {
+    setAdminUserIds(undefined);
+    process.env.ADMIN_USER_IDS = `${ADMIN_ID},bad,entry,with,comma,inside`;
+    resetAdminAllowlistCache();
+    expect(() => getAdminUserIds()).toThrow(/malformed entry/);
+  });
+
+  it('rejects an entry that exceeds the 128-char length cap', () => {
+    setAdminUserIds(undefined);
+    process.env.ADMIN_USER_IDS = 'a'.repeat(129);
+    resetAdminAllowlistCache();
+    expect(() => getAdminUserIds()).toThrow(/malformed entry/);
+  });
+
+  it('normalizes case so admin-user-1 matches ADMIN-USER-1', () => {
+    setAdminUserIds('ADMIN-USER-1');
+    expect(getAdminUserIds().has('admin-user-1')).toBe(true);
+    expect(isAdminUser('admin-user-1')).toBe(true);
+    expect(isAdminUser('ADMIN-USER-1')).toBe(true);
+  });
+
+  it('isAdminUser lowercases the caller so runtime ids match the env allowlist', () => {
+    setAdminUserIds('Admin-User-1');
+    expect(isAdminUser('admin-user-1')).toBe(true);
+    expect(isAdminUser('ADMIN-USER-1')).toBe(true);
+  });
+
+  it('deduplicates entries that differ only in case', () => {
+    setAdminUserIds('admin-user-1,ADMIN-USER-1,Admin-User-1');
+    expect(getAdminUserIds().size).toBe(1);
+    expect(getAdminUserIds().has('admin-user-1')).toBe(true);
+  });
+
+  it('reloadAdminAllowlist re-reads the env and returns the new count', () => {
+    setAdminUserIds(ADMIN_ID);
+    expect(getAdminUserIds().size).toBe(1);
+
+    process.env.ADMIN_USER_IDS = `${ADMIN_ID},other-admin`;
+    expect(getAdminUserIds().size).toBe(1); // cache still holds the old set
+
+    const newCount = reloadAdminAllowlist();
+    expect(newCount).toBe(2);
+    expect(getAdminUserIds().size).toBe(2);
+    expect(getAdminUserIds().has('other-admin')).toBe(true);
+  });
+
+  it('reloadAdminAllowlist leaves the cache intact when the env is malformed', () => {
+    setAdminUserIds(ADMIN_ID);
+    expect(getAdminUserIds().size).toBe(1);
+
+    process.env.ADMIN_USER_IDS = 'has a space';
+    expect(() => reloadAdminAllowlist()).toThrow(/malformed entry/);
+    expect(getAdminUserIds().size).toBe(1); // failure does not break the gate
+    expect(getAdminUserIds().has(ADMIN_ID)).toBe(true);
   });
 });
 
@@ -301,7 +409,7 @@ describe('withAdminGuard', () => {
   beforeEach(() => {
     mockNk = createMockNakama();
     mockLogger = createMockLogger();
-    delete process.env.ADMIN_USER_IDS;
+    setAdminUserIds(undefined);
   });
 
   it('rejects a non-allowlisted caller without invoking the handler', async () => {
@@ -328,7 +436,7 @@ describe('withAdminGuard', () => {
   });
 
   it('invokes the handler and propagates its result for an allowlisted admin', async () => {
-    process.env.ADMIN_USER_IDS = ADMIN_ID;
+    setAdminUserIds(ADMIN_ID);
     const inner = jest.fn(() => JSON.stringify({ success: true, data: 'ok' }));
     const guarded = withAdminGuard('armored_archer/test_rpc', inner);
 
@@ -342,7 +450,7 @@ describe('withAdminGuard', () => {
   });
 
   it('supports async handlers', async () => {
-    process.env.ADMIN_USER_IDS = ADMIN_ID;
+    setAdminUserIds(ADMIN_ID);
     const inner = jest.fn(async () => JSON.stringify({ success: true }));
     const guarded = withAdminGuard('armored_archer/test_rpc', inner);
 
@@ -377,7 +485,7 @@ describe('admin gate: ordinary player rejected + audit-logged on every privilege
   let mockLogger: Runtime.Logger;
 
   beforeEach(() => {
-    delete process.env.ADMIN_USER_IDS;
+    setAdminUserIds(undefined);
     handlers = buildRegisteredHandlers();
     mockNk = createMockNakama();
     mockLogger = createMockLogger();
@@ -410,7 +518,7 @@ describe('admin gate: empty ADMIN_USER_IDS rejects everyone (fail-closed)', () =
   let mockLogger: Runtime.Logger;
 
   beforeEach(() => {
-    process.env.ADMIN_USER_IDS = '';
+    setAdminUserIds('');
     handlers = buildRegisteredHandlers();
     mockNk = createMockNakama();
     mockLogger = createMockLogger();
@@ -441,7 +549,7 @@ describe('admin gate: allowlisted admin reaches the real handler', () => {
   let mockLogger: Runtime.Logger;
 
   beforeEach(() => {
-    process.env.ADMIN_USER_IDS = ADMIN_ID;
+    setAdminUserIds(ADMIN_ID);
     handlers = buildRegisteredHandlers();
     mockNk = createMockNakama();
     mockLogger = createMockLogger();
@@ -534,7 +642,7 @@ describe('admin gate: allowlisted admin reaches the real handler', () => {
 
   it('a caller that is allowlisted for one id is still rejected when removed from the list', async () => {
     const handler = handlers.get('armored_archer/rollout_create_flag')!;
-    process.env.ADMIN_USER_IDS = 'somebody-else';
+    setAdminUserIds('somebody-else');
 
     const result = JSON.parse(
       (await handler(createMockContext(ADMIN_ID), mockLogger, mockNk, '{}')) as string
