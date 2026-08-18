@@ -58,14 +58,14 @@ func test_start_stage_sets_current() -> void:
 
 	if cm.has_method("start_stage"):
 		cm.start_stage("1_1")
-		var current = cm.current_stage_id if "current_stage_id" in cm else cm.get("current_stage", "")
+		var current: String = cm.current_stage_id if "current_stage_id" in cm else cm.current_stage
 		if current == "1_1" or not str(current).is_empty():
 			_pass("test_start_stage_sets_current")
 		else:
 			_fail("test_start_stage_sets_current", "current_stage should be set after start_stage (got: %s)" % str(current))
 	elif cm.has_method("set_current_stage"):
 		cm.set_current_stage("1_1")
-		var current = cm.current_stage_id if "current_stage_id" in cm else cm.get("current_stage", "")
+		var current: String = cm.current_stage_id if "current_stage_id" in cm else cm.current_stage
 		if current == "1_1":
 			_pass("test_start_stage_sets_current")
 		else:
