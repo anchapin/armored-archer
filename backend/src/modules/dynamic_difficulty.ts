@@ -70,9 +70,10 @@ const MAX_HISTORY_ENTRIES = 100;
 
 /**
  * Storage collection holding the authoritative server-side PvE stage results.
- * Written exclusively by the server-validated `complete_stage` RPC
- * (authentication + rate limiting + per-stage dedup), so entries in it are
- * trusted evidence of stage wins.
+ * Written exclusively by the server-validated `stage_complete` RPC
+ * (authentication + rate limiting + per-stage dedup — sole writer since the
+ * `complete_stage` consolidation in #1069), so entries in it are trusted
+ * evidence of stage wins.
  */
 const STAGE_COMPLETION_COLLECTION = 'stage_completion';
 
@@ -353,7 +354,7 @@ export function rpcSyncDifficulty(
  * Server-authoritative (#870): the reported outcome is a hint/trigger, never
  * the streak truth. PvE wins only count when corroborated by server-known
  * stage results (the `stage_completion` storage written by the validated
- * `complete_stage` RPC); PvE losses are accepted as hints because failed
+ * `stage_complete` RPC, the sole writer since #1069); PvE losses are accepted as hints because failed
  * stage attempts produce no server-side signal and losses only ease
  * difficulty (reward-neutral, bounded); PvP outcomes are recorded for
  * analytics but never affect the modifier (PvE-only constraint). Streaks are
@@ -818,8 +819,8 @@ interface StageCompletionStorageShape {
 
 /**
  * Loads server-known PvE stage results from the authoritative
- * `stage_completion` storage (written only by the validated `complete_stage`
- * RPC). Fails closed: any read/parse error yields no evidence, so PvE wins
+ * `stage_completion` storage (written only by the validated `stage_complete`
+ * RPC, the sole writer since the #1069 consolidation). Fails closed: any read/parse error yields no evidence, so PvE wins
  * cannot be corroborated by accident.
  *
  * @param nk - Nakama server interface

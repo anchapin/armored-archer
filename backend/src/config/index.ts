@@ -533,10 +533,8 @@ const config: AppConfig = {
         maxRequests: parseInt(process.env.RATE_LIMIT_STAGE_COMPLETE_MAX || '30', 10),
         windowMs: parseInt(process.env.RATE_LIMIT_STAGE_COMPLETE_WINDOW_MS || '60000', 10),
       },
-      complete_stage: {
-        maxRequests: parseInt(process.env.RATE_LIMIT_COMPLETE_STAGE_MAX || '30', 10),
-        windowMs: parseInt(process.env.RATE_LIMIT_COMPLETE_STAGE_WINDOW_MS || '60000', 10),
-      },
+      // `complete_stage` rate-limit entry removed with the RPC (issue #1069);
+      // the consolidated survivor is `stage_complete` above.
       get_campaign_progress: {
         maxRequests: parseInt(process.env.RATE_LIMIT_GET_CAMPAIGN_PROGRESS_MAX || '30', 10),
         windowMs: parseInt(process.env.RATE_LIMIT_GET_CAMPAIGN_PROGRESS_WINDOW_MS || '60000', 10),

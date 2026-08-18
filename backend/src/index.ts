@@ -111,7 +111,6 @@ import {
 } from './modules/season_system';
 import { registerSeasonTelemetryEndpoints } from './modules/season_telemetry';
 import {
-  registerRpcCompleteStage,
   registerRpcGetCompletedStages,
   registerRpcGetCampaignProgress,
 } from './modules/stage_tracking';
@@ -451,12 +450,9 @@ const InitModule: InitModule = function (
       'stage_complete',
       rpcStageCompleteWrapper
     );
-    registerRpcWithRateLimit(
-      initializer,
-      'armored_archer/complete_stage',
-      'complete_stage',
-      rpcCompleteStageWrapper
-    );
+    // `armored_archer/complete_stage` was decommissioned in issue #1069 and
+    // consolidated into `stage_complete` above (claim-first atomic writes,
+    // DB-layer loot persistence, stars/score best-of records).
     registerRpcWithRateLimit(
       initializer,
       'armored_archer/get_campaign_progress',
@@ -592,7 +588,8 @@ const InitModule: InitModule = function (
     registerRpcGetUnlockedModifiers(initializer);
     registerRpcReportPlayer(initializer);
     registerRpcGetPlayerReports(initializer);
-    registerRpcCompleteStage(initializer);
+    // registerRpcCompleteStage removed — `armored_archer/complete_stage` was
+    // decommissioned and consolidated into `stage_complete` in issue #1069.
     registerRpcGetCompletedStages(initializer);
     registerRpcGetCampaignProgress(initializer);
     registerRpcJoinPool(initializer);
@@ -811,16 +808,6 @@ function rpcStageCompleteWrapper(
 ): string {
   const { rpcStageComplete } = require('./modules/gear_system');
   return rpcStageComplete(ctx, logger, nk, payload);
-}
-
-function rpcCompleteStageWrapper(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  const { rpcCompleteStage } = require('./modules/stage_tracking');
-  return rpcCompleteStage(ctx, logger, nk, payload);
 }
 
 function rpcGetCampaignProgressWrapper(

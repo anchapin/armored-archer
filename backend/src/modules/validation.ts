@@ -50,7 +50,7 @@ function createEnum<T extends string>(values: readonly T[]): ReturnType<typeof e
 
 /**
  * Conservative global ceiling for a client-reported stage score (issue #1068).
- * No per-stage score configuration exists yet, so `complete_stage` scores are
+ * No per-stage score configuration exists yet, so `stage_complete` scores are
  * bounded by this global cap in the schema (and defensively re-clamped in the
  * handler). Per-stage maxima should replace it once stage metadata defines
  * them. Chosen with wide headroom over any observed score scale.
@@ -61,17 +61,6 @@ export const ValibotSchemas = {
   health_check: object({}),
 
   get_player_stats: object({}),
-
-  // Stage completion schemas for PvE progression (with loot generation)
-  complete_stage: object({
-    stage_id: pipe(string(), minLength(1), maxLength(100)),
-    stage_prefix: pipe(string(), minLength(1), maxLength(50)),
-    stars_earned: pipe(number(), integer(), minValue(0), maxValue(3)),
-    score: pipe(number(), integer(), minValue(0), maxValue(MAX_STAGE_SCORE)),
-    difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare', 'normal']),
-    boss_defeated: optional(boolean()),
-    boss_id: optional(pipe(string(), minLength(1), maxLength(100))),
-  }),
 
   get_stage_completion: object({
     stage_id: pipe(string(), minLength(1), maxLength(100)),
@@ -124,13 +113,18 @@ export const ValibotSchemas = {
     boss_defeated: boolean(),
   }),
 
-  // Stage completion with loot generation
+  // Stage completion with loot generation (sole stage-completion RPC since
+  // issue #1069 consolidated complete_stage into it; stars/score/prefix are
+  // optional best-of progression claims, clamped in the schema AND the handler)
   stage_complete: object({
     stage_id: pipe(string(), minLength(1), maxLength(100)),
     boss_defeated: boolean(),
     difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare', 'normal']),
     boss_id: optional(pipe(string(), minLength(1), maxLength(100))),
     enemy_type: optional(pipe(string(), minLength(1), maxLength(100))),
+    stage_prefix: optional(pipe(string(), minLength(1), maxLength(50))),
+    stars_earned: optional(pipe(number(), integer(), minValue(0), maxValue(3))),
+    score: optional(pipe(number(), integer(), minValue(0), maxValue(MAX_STAGE_SCORE))),
   }),
 
   equip_gear: object({

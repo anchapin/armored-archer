@@ -20,26 +20,8 @@ jest.mock('../audit', () => ({
   logAudit: jest.fn(),
 }));
 
-jest.mock('../gear_system', () => ({
-  generateGearItem: jest.fn().mockReturnValue({
-    id: 'gear_1',
-    name: 'Test Bow',
-    rarity: 'rare',
-    type: 'bow',
-  }),
-  calculateDropRate: jest.fn().mockReturnValue(0.25),
-  GearItem: {},
-  getModifiersUnlockedByBoss: jest.fn().mockReturnValue([]),
-  getPlayerInventory: jest.fn().mockReturnValue({
-    gear: [],
-    unlocked_modifier_pools: [],
-  }),
-  // Issue #1068: default mock mirrors the real stateless policy - nightmare
-  // (not client-claimable) is clamped to hard; other tiers pass through.
-  // Real behavior is unit-tested in gear_system.test.ts.
-  resolveVerifiedDifficulty: jest.fn((_claimed: string) =>
-    _claimed === 'nightmare' ? 'hard' : _claimed
-  ),
+jest.mock('../gear_db', () => ({
+  getDefeatedBossesFromDB: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../validation', () => ({
@@ -52,7 +34,6 @@ jest.mock('../validation', () => ({
     }
   }),
   ZodSchemas: {
-    complete_stage: {},
     get_all_stage_completions: {},
   },
   MAX_STAGE_SCORE: 1000000,
@@ -67,15 +48,12 @@ jest.mock('../../utils/circuitBreaker', () => ({
 }));
 
 import {
-  rpcCompleteStage,
   rpcGetCompletedStages,
-  registerRpcCompleteStage,
   registerRpcGetCompletedStages,
   registerRpcGetCampaignProgress,
   rpcGetCampaignProgress,
 } from '../stage_tracking';
-import { resolveVerifiedDifficulty, calculateDropRate } from '../gear_system';
-import { resetRateLimiting } from '../rate_limit';
+import { getDefeatedBossesFromDB } from '../gear_db';
 
 const createMockLogger = () => ({
   info: jest.fn(),
@@ -87,21 +65,19 @@ const createMockLogger = () => ({
 const createMockNk = () => ({
   storageRead: jest.fn().mockReturnValue([]),
   storageWrite: jest.fn(),
+  dbQuery: jest.fn().mockReturnValue([]),
 });
 
-describe('stage_tracking module', () => {
+/**
+ * Issue #1069 decommissioned `rpcCompleteStage` (the `complete_stage` RPC).
+ * Its write-path behavior — clamps, best-of records, claim-first atomicity,
+ * idempotent retries — is covered by stage_progression.test.ts against the
+ * consolidated survivor `rpcStageComplete` in gear_system.ts. This file
+ * covers the surviving read RPCs only.
+ */
+describe('stage_tracking module (read RPCs)', () => {
   beforeEach(() => {
-    resetRateLimiting();
-  });
-  describe('registerRpcCompleteStage', () => {
-    it('should register the complete_stage RPC', () => {
-      const mockInitializer = { registerRpc: jest.fn() };
-      registerRpcCompleteStage(mockInitializer as any);
-      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-        'armored_archer/complete_stage',
-        expect.any(Function)
-      );
-    });
+    (getDefeatedBossesFromDB as jest.Mock).mockReturnValue([]);
   });
 
   describe('registerRpcGetCompletedStages', () => {
@@ -112,225 +88,6 @@ describe('stage_tracking module', () => {
         'armored_archer/get_completed_stages',
         expect.any(Function)
       );
-    });
-  });
-
-  describe('rpcCompleteStage', () => {
-    const mockCtx = { userId: 'user_123', ipAddress: '127.0.0.1' } as any;
-
-    it('should reject unauthenticated requests', () => {
-      const ctxNoUser = { userId: null } as any;
-      const result = rpcCompleteStage(
-        ctxNoUser,
-        createMockLogger() as any,
-        createMockNk() as any,
-        '{}'
-      );
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(false);
-      expect(parsed.error_code).toBe('UNAUTHORIZED');
-    });
-
-    it('should handle invalid JSON payload', () => {
-      const result = rpcCompleteStage(
-        mockCtx,
-        createMockLogger() as any,
-        createMockNk() as any,
-        'not json'
-      );
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(false);
-      expect(parsed.error).toBeDefined();
-    });
-
-    it('should process a new stage completion', () => {
-      const nk = createMockNk();
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 1500,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.stage_id).toBe('forest_1');
-      expect(parsed.stars_earned).toBe(3);
-      expect(parsed.score).toBe(1500);
-      expect(parsed.is_new_completion).toBe(true);
-      expect(nk.storageWrite).toHaveBeenCalled();
-    });
-
-    it('should handle stage replay with no improvement', () => {
-      const nk = createMockNk();
-      nk.storageRead.mockReturnValue([
-        {
-          value: JSON.stringify({
-            user_id: 'user_123',
-            completions: {
-              forest_1: {
-                stage_id: 'forest_1',
-                stage_prefix: 'forest',
-                stars_earned: 3,
-                score: 2000,
-                completed_at: '2024-01-01T00:00:00Z',
-                updated_at: '2024-01-01T00:00:00Z',
-              },
-            },
-          }),
-        },
-      ]);
-
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 2,
-        score: 1000,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.is_new_completion).toBe(false);
-      expect(parsed.message).toBe('No improvement over previous completion');
-    });
-
-    it('should process stage completion with loot generation', () => {
-      const nk = createMockNk();
-      const payload = JSON.stringify({
-        stage_id: 'cavern_1',
-        stage_prefix: 'cavern',
-        stars_earned: 3,
-        score: 2000,
-        difficulty: 'hard',
-        boss_defeated: true,
-        boss_id: 'boss_1',
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.loot).toBeDefined();
-      expect(parsed.drop_rate).toBeDefined();
-    });
-
-    it('should clamp inflated stars and score before persisting (issue #1068)', () => {
-      const nk = createMockNk();
-      // The valibot schema rejects these outright; with validation mocked
-      // permissively here, the handler clamps must still bound what is
-      // persisted (defense-in-depth).
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 7,
-        score: 99999999,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.stars_earned).toBe(3); // clamped to the 0-3 bound
-      expect(parsed.score).toBe(1000000); // clamped to MAX_STAGE_SCORE
-
-      // Nothing persisted may carry the inflated values
-      const writeCalls = (nk.storageWrite as jest.Mock).mock.calls;
-      const writtenValues: string[] = writeCalls.map(
-        (call: any[]) => call[0].map((obj: any) => obj.value ?? '').join('\n')
-      );
-      const allWrites = writtenValues.join('\n');
-      expect(allWrites).not.toContain('"stars_earned":7');
-      expect(allWrites).not.toContain('"score":99999999');
-      expect(allWrites).toContain('"stars_earned":3');
-      expect(allWrites).toContain('"score":1000000');
-    });
-
-    it('should clamp a forged nightmare difficulty claim (issue #1068)', () => {
-      const nk = createMockNk();
-      const payload = JSON.stringify({
-        stage_id: 'cavern_1',
-        stage_prefix: 'cavern',
-        stars_earned: 3,
-        score: 1500,
-        difficulty: 'nightmare',
-        boss_defeated: false,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      // The handler must consult the server-side verifier with the raw claim
-      expect(resolveVerifiedDifficulty).toHaveBeenCalledWith(
-        'nightmare',
-        expect.anything()
-      );
-      // ...and reward loot from the verified (clamped) tier, not the claim.
-      // The default mock clamps nightmare to hard.
-      expect(calculateDropRate).toHaveBeenLastCalledWith('hard', false);
-      expect(parsed.drop_rate).toBe(0.25); // mocked calculateDropRate result
-    });
-
-    it('should reward the verified tier returned by the verifier (issue #1068)', () => {
-      (resolveVerifiedDifficulty as jest.Mock).mockReturnValueOnce('easy');
-      const nk = createMockNk();
-      const payload = JSON.stringify({
-        stage_id: 'cavern_1',
-        stage_prefix: 'cavern',
-        stars_earned: 3,
-        score: 1500,
-        difficulty: 'hard',
-        boss_defeated: false,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      // The loot path must use the verifier's verdict, whatever it is
-      expect(calculateDropRate).toHaveBeenLastCalledWith('easy', false);
-    });
-
-    it('should handle stage replay with improvement', () => {
-      const nk = createMockNk();
-      nk.storageRead.mockReturnValue([
-        {
-          value: JSON.stringify({
-            user_id: 'user_123',
-            completions: {
-              forest_1: {
-                stage_id: 'forest_1',
-                stage_prefix: 'forest',
-                stars_earned: 1,
-                score: 500,
-                completed_at: '2024-01-01T00:00:00Z',
-                updated_at: '2024-01-01T00:00:00Z',
-              },
-            },
-          }),
-        },
-      ]);
-
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 1500,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.is_new_completion).toBe(false);
-      expect(parsed.previous_best).toBeDefined();
-      expect(parsed.previous_best!.stars_earned).toBe(1);
     });
   });
 
@@ -603,37 +360,21 @@ describe('stage_tracking module', () => {
       expect(parsed.error_code).toBe('INTERNAL_ERROR');
     });
 
-    it('should return bosses defeated from inventory', () => {
+    it('should return bosses defeated from the DB layer, not the orphaned player_inventory storage (issue #1069)', () => {
+      (getDefeatedBossesFromDB as jest.Mock).mockReturnValue(['boss_dragon', 'boss_lich']);
       const nk = createMockNk();
-      nk.storageRead.mockImplementation((keys: any[]) => {
-        if (keys[0].collection === 'stage_completion') {
-          return [
-            {
-              value: JSON.stringify({
-                user_id: 'user_123',
-                completions: {},
-              }),
-            },
-          ];
-        }
-        if (keys[0].collection === 'player_inventory') {
-          return [
-            {
-              value: JSON.stringify({
-                gear: [],
-                unlocked_modifier_pools: ['fire_modifiers', 'ice_modifiers'],
-              }),
-            },
-          ];
-        }
-        return [];
-      });
 
       const result = rpcGetCampaignProgress(mockCtx, createMockLogger() as any, nk as any, '{}');
       const parsed = JSON.parse(result);
 
-      expect(parsed.bosses_defeated).toContain('fire_modifiers');
-      expect(parsed.bosses_defeated).toContain('ice_modifiers');
+      expect(getDefeatedBossesFromDB).toHaveBeenCalledWith(expect.anything(), 'user_123');
+      expect(parsed.bosses_defeated).toContain('boss_dragon');
+      expect(parsed.bosses_defeated).toContain('boss_lich');
+
+      // The orphaned read of the player_inventory storage collection is gone
+      const readCalls = (nk.storageRead as jest.Mock).mock.calls.flat();
+      const inventoryReads = readCalls.filter((obj: any) => obj?.collection === 'player_inventory');
+      expect(inventoryReads).toEqual([]);
     });
 
     it('should derive next stage IDs from completions', () => {
@@ -672,466 +413,8 @@ describe('stage_tracking module', () => {
     });
   });
 
-  describe('rpcCompleteStage edge cases', () => {
-    const mockCtx = { userId: 'user_123', ipAddress: '127.0.0.1' } as any;
-
-    it('should handle storage errors during completion', () => {
-      const nk = createMockNk();
-      nk.storageRead.mockImplementation(() => {
-        throw new Error('Storage read failed');
-      });
-
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 1500,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(false);
-      expect(parsed.error_code).toBe('INTERNAL_ERROR');
-    });
-
-    it('should handle storage errors during loot processing', () => {
-      const nk = createMockNk();
-      nk.storageRead.mockReturnValue([
-        {
-          value: JSON.stringify({
-            user_id: 'user_123',
-            completions: {},
-          }),
-        },
-      ]);
-      nk.storageWrite.mockImplementation(() => {
-        throw new Error('Storage write failed');
-      });
-
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 1500,
-        difficulty: 'hard',
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(false);
-      expect(parsed.error_code).toBe('INTERNAL_ERROR');
-    });
-
-    it('should handle loot generation when drop is successful', () => {
-      const { calculateDropRate } = require('../gear_system');
-      (calculateDropRate as jest.Mock).mockReturnValue(1.0); // 100% drop rate
-
-      const nk = createMockNk();
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 1500,
-        difficulty: 'hard',
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.loot?.dropped).toBe(true);
-      expect(parsed.loot?.gear).toBeDefined();
-    });
-
-    it('should handle loot generation when drop fails', () => {
-      const { calculateDropRate } = require('../gear_system');
-      (calculateDropRate as jest.Mock).mockReturnValue(0.0); // 0% drop rate
-
-      const nk = createMockNk();
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 1500,
-        difficulty: 'hard',
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.loot?.dropped).toBe(false);
-    });
-
-    it('should unlock modifier pools when boss is defeated', () => {
-      const { getModifiersUnlockedByBoss } = require('../gear_system');
-      (getModifiersUnlockedByBoss as jest.Mock).mockReturnValue(['boss_mod_1', 'boss_mod_2']);
-
-      const nk = createMockNk();
-      const payload = JSON.stringify({
-        stage_id: 'boss_stage',
-        stage_prefix: 'boss',
-        stars_earned: 3,
-        score: 5000,
-        difficulty: 'nightmare',
-        boss_defeated: true,
-        boss_id: 'boss_dragon',
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.unlocked_modifier_pools).toContain('boss_mod_1');
-      expect(parsed.unlocked_modifier_pools).toContain('boss_mod_2');
-    });
-
-    it('should handle stage replay with same stars but higher score', () => {
-      const nk = createMockNk();
-      nk.storageRead.mockReturnValue([
-        {
-          value: JSON.stringify({
-            user_id: 'user_123',
-            completions: {
-              forest_1: {
-                stage_id: 'forest_1',
-                stage_prefix: 'forest',
-                stars_earned: 3,
-                score: 1500,
-                completed_at: '2024-01-01T00:00:00Z',
-                updated_at: '2024-01-01T00:00:00Z',
-              },
-            },
-          }),
-        },
-      ]);
-
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 2000,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.is_new_completion).toBe(false);
-      expect(parsed.previous_best?.stars_earned).toBe(3);
-      expect(parsed.previous_best?.score).toBe(1500);
-    });
-
-    it('should include previous_best when improving completion', () => {
-      const nk = createMockNk();
-      nk.storageRead.mockReturnValue([
-        {
-          value: JSON.stringify({
-            user_id: 'user_123',
-            completions: {
-              forest_1: {
-                stage_id: 'forest_1',
-                stage_prefix: 'forest',
-                stars_earned: 2,
-                score: 1000,
-                completed_at: '2024-01-01T00:00:00Z',
-                updated_at: '2024-01-01T00:00:00Z',
-              },
-            },
-          }),
-        },
-      ]);
-
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 1500,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.previous_best).toBeDefined();
-      expect(parsed.previous_best!.stars_earned).toBe(2);
-      expect(parsed.previous_best!.score).toBe(1000);
-    });
-
-    it('should not include previous_best for new completion', () => {
-      const nk = createMockNk();
-      const payload = JSON.stringify({
-        stage_id: 'new_stage',
-        stage_prefix: 'new',
-        stars_earned: 1,
-        score: 500,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.is_new_completion).toBe(true);
-      expect(parsed.previous_best).toBeUndefined();
-    });
-
-    it('should handle all difficulty levels', () => {
-      const difficulties: ('easy' | 'medium' | 'hard' | 'nightmare')[] = [
-        'easy',
-        'medium',
-        'hard',
-        'nightmare',
-      ];
-      const nk = createMockNk();
-
-      for (const difficulty of difficulties) {
-        const payload = JSON.stringify({
-          stage_id: 'test_stage',
-          stage_prefix: 'test',
-          stars_earned: 3,
-          score: 1000,
-          difficulty,
-        });
-
-        const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-        const parsed = JSON.parse(result);
-
-        expect(parsed.success).toBe(true);
-        expect(parsed.loot).toBeDefined();
-      }
-    });
-
-    it('should not process loot when difficulty is not provided', () => {
-      const nk = createMockNk();
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 1500,
-        // no difficulty field
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.loot).toBeUndefined();
-      expect(parsed.drop_rate).toBeUndefined();
-      expect(parsed.unlocked_modifier_pools).toBeUndefined();
-    });
-  });
-
-  describe('Helper functions behavior', () => {
-    const mockCtx = { userId: 'user_123', ipAddress: '127.0.0.1' } as any;
-
-    it('isBetterCompletion returns true for higher stars', () => {
-      const nk = createMockNk();
-      nk.storageRead.mockReturnValue([
-        {
-          value: JSON.stringify({
-            user_id: 'user_123',
-            completions: {
-              forest_1: {
-                stage_id: 'forest_1',
-                stage_prefix: 'forest',
-                stars_earned: 1,
-                score: 5000,
-                completed_at: '2024-01-01T00:00:00Z',
-                updated_at: '2024-01-01T00:00:00Z',
-              },
-            },
-          }),
-        },
-      ]);
-
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 1000, // Lower score but higher stars
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.stars_earned).toBe(3);
-    });
-
-    it('isBetterCompletion returns true for same stars with higher score', () => {
-      const nk = createMockNk();
-      nk.storageRead.mockReturnValue([
-        {
-          value: JSON.stringify({
-            user_id: 'user_123',
-            completions: {
-              forest_1: {
-                stage_id: 'forest_1',
-                stage_prefix: 'forest',
-                stars_earned: 3,
-                score: 1000,
-                completed_at: '2024-01-01T00:00:00Z',
-                updated_at: '2024-01-01T00:00:00Z',
-              },
-            },
-          }),
-        },
-      ]);
-
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 1500,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.score).toBe(1500);
-    });
-
-    it('isBetterCompletion returns false for lower stars', () => {
-      const nk = createMockNk();
-      nk.storageRead.mockReturnValue([
-        {
-          value: JSON.stringify({
-            user_id: 'user_123',
-            completions: {
-              forest_1: {
-                stage_id: 'forest_1',
-                stage_prefix: 'forest',
-                stars_earned: 3,
-                score: 500,
-                completed_at: '2024-01-01T00:00:00Z',
-                updated_at: '2024-01-01T00:00:00Z',
-              },
-            },
-          }),
-        },
-      ]);
-
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 2,
-        score: 5000,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('No improvement over previous completion');
-    });
-
-    it('isBetterCompletion returns false for same stars with lower score', () => {
-      const nk = createMockNk();
-      nk.storageRead.mockReturnValue([
-        {
-          value: JSON.stringify({
-            user_id: 'user_123',
-            completions: {
-              forest_1: {
-                stage_id: 'forest_1',
-                stage_prefix: 'forest',
-                stars_earned: 3,
-                score: 1500,
-                completed_at: '2024-01-01T00:00:00Z',
-                updated_at: '2024-01-01T00:00:00Z',
-              },
-            },
-          }),
-        },
-      ]);
-
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 1000,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-      const parsed = JSON.parse(result);
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('No improvement over previous completion');
-    });
-
-    it('createCompletionRecord creates proper record with timestamps', () => {
-      const nk = createMockNk();
-      const beforeDate = new Date();
-
-      const payload = JSON.stringify({
-        stage_id: 'test_1',
-        stage_prefix: 'test',
-        stars_earned: 3,
-        score: 1000,
-      });
-
-      const result = rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-
-      const afterDate = new Date();
-
-      expect(nk.storageWrite).toHaveBeenCalled();
-      const writeCalls = (nk.storageWrite as jest.Mock).mock.calls[0][0];
-      const storageData = JSON.parse(writeCalls[0].value);
-      const completion = storageData.completions.test_1;
-
-      expect(completion.stage_id).toBe('test_1');
-      expect(completion.stage_prefix).toBe('test');
-      expect(completion.stars_earned).toBe(3);
-      expect(completion.score).toBe(1000);
-
-      const completedAt = new Date(completion.completed_at);
-      const updatedAt = new Date(completion.updated_at);
-      expect(completedAt).toBeInstanceOf(Date);
-      expect(updatedAt).toBeInstanceOf(Date);
-    });
-
-    it('updateCompletionRecord preserves original completion date', () => {
-      const nk = createMockNk();
-      const originalDate = '2024-01-01T00:00:00Z';
-      nk.storageRead.mockReturnValue([
-        {
-          value: JSON.stringify({
-            user_id: 'user_123',
-            completions: {
-              forest_1: {
-                stage_id: 'forest_1',
-                stage_prefix: 'forest',
-                stars_earned: 2,
-                score: 1000,
-                completed_at: originalDate,
-                updated_at: originalDate,
-              },
-            },
-          }),
-        },
-      ]);
-
-      const payload = JSON.stringify({
-        stage_id: 'forest_1',
-        stage_prefix: 'forest',
-        stars_earned: 3,
-        score: 1500,
-      });
-
-      rpcCompleteStage(mockCtx, createMockLogger() as any, nk as any, payload);
-
-      const writeCalls = (nk.storageWrite as jest.Mock).mock.calls[0][0];
-      const storageData = JSON.parse(writeCalls[0].value);
-      const completion = storageData.completions.forest_1;
-
-      expect(completion.completed_at).toBe(originalDate);
-      expect(completion.updated_at).not.toBe(originalDate);
-      expect(completion.stars_earned).toBe(3);
-      expect(completion.score).toBe(1500);
-    });
+  describe('deriveNextStageId edge cases', () => {
+    const mockCtx = { userId: 'user_123' } as any;
 
     it('deriveNextStageId returns null for invalid format', () => {
       const nk = createMockNk();
