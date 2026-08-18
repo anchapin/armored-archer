@@ -145,9 +145,11 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 - Flaky detection: `python3 scripts/detect_godot_flaky_tests.py` (history in repo-root `data/godot-flaky-test-history.json`).
 
 ### Backend (Jest)
-- **Unit tests** are colocated at `src/**/__tests__/*.test.ts`; jest roots are `src/` + `scripts/`, so tooling tests in `backend/scripts/__tests__/` also run under `npm test` (issue #994). Single file: `npm test -- <path-or-pattern>`.
+- **Unit tests** are colocated at `src/**/__tests__/*.test.ts` and `scripts/__tests__/*.test.ts`; the default `jest.config.js` roots are `src/` + `scripts/`, so tooling tests also run under `npm test` (issues #994, #1029). Single file: `npm test -- <path-or-pattern>`.
 - **Integration tests** only match `backend/tests/integration/**` (`jest.integration.config.js`). Run `npm run test:integration` with the stack up (`make services-start`).
 - **Schema tests** (`npm run test:schema`) match only `tests/integration/schema.test.ts` and need PostgreSQL but not a running Nakama server (issue #893) — the cheapest post-migration verification.
+- **Property-based tests** (`npm run test:property`) use `jest.property.config.js` with roots = `tests/unit/` — outside the default roots (issue #1031).
+- **Benchmark gate** (`npm run test:benchmark`) uses `jest.benchmark.config.js` and matches only `tests/integration/low_end_device_performance.test.ts`; it needs no services (issue #1031).
 - CI enforces ~80% coverage thresholds (`jest.config.js` + coverage gates in `test.yml`).
 - Git hooks (husky, `backend/.husky/`): pre-commit runs lint-staged on staged TS; pre-push runs the full backend suite. Skip deliberately with `git commit --no-verify`.
 - Flaky detection: `npm run test:flaky`. Smoke: `make smoke-test-quick`.
