@@ -67,7 +67,11 @@ func _ensure_screen_shake() -> void:
 
 	var screen_shake_scene := load(SCREEN_SHAKE_SCENE)
 	_screen_shake = screen_shake_scene.instantiate()
-	get_tree().current_scene.add_child(_screen_shake)
+	var current_scene := get_tree().current_scene
+	if current_scene == null:
+		push_warning("VFXManager: No current scene - screen shake not attached")
+		return
+	current_scene.add_child(_screen_shake)
 
 
 # === Particle Effect Methods ===

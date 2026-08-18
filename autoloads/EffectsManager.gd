@@ -85,7 +85,11 @@ func _ensure_damage_overlay() -> void:
 		return
 
 	_damage_overlay = overlay_scene.instantiate()
-	get_tree().current_scene.add_child(_damage_overlay)
+	var current_scene := get_tree().current_scene
+	if current_scene == null:
+		push_warning("EffectsManager: No current scene - damage overlay not attached")
+		return
+	current_scene.add_child(_damage_overlay)
 	_damage_overlay.visible = false
 
 
