@@ -33,7 +33,7 @@ A heuristic evaluation of the FTUE and purchase flows identified 11 issues acros
 ### C4: Settings button does nothing silently
 - **File:** `scenes/ui/main_menu.gd`
 - **Impact:** Users tap Settings and nothing visible happens (only a console print)
-- **Fix:** Shows an AcceptDialog with "Settings coming soon" message. Falls back to `settings_menu.tscn` if the scene exists
+- **Fix:** Shows an AcceptDialog with "Settings coming soon" message. Falls back to `settings_screen.tscn` if the scene exists
 - **Status:** FIXED
 
 ## Moderate Issues (Requires Usability Session Validation)

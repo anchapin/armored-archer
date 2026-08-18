@@ -69,7 +69,7 @@ const _MENU_SCENE_KEYS: Array[String] = [
     "loadout",
     "cosmetic_shop",
     "store_menu",
-    "settings_menu",
+    "settings_screen",
     "leaderboard_menu",
     "matchmaking_menu",
     "matchmaking_queue",
