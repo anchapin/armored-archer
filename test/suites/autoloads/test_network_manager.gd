@@ -2,7 +2,16 @@ extends GutTest
 
 var NetworkManagerClass = load("res://autoloads/NetworkManager.gd")
 var _network
-var _mock_http: Node  # Mock HTTPRequest for network isolation
+var _mock_http: HTTPRequest  # Passive transport probe (real HTTPRequest, localhost-only)
+
+## The old GUT double(HTTPRequest) transport is gone: GUT 9.6 doubles of
+## native engine classes carry null doubling metadata, so neither
+## assert_called counting, .to_return() nor .to_call() interception ever
+## fire (issue #1026). A plain HTTPRequest is installed instead and
+## dispatch is observed via get_http_client_status(): a fresh instance is
+## STATUS_DISCONNECTED and transitions out of it synchronously when
+## request() dispatches. All requests target 127.0.0.1 (dev base_url),
+## so no external traffic occurs.
 var _session_file_path: String = NetworkManagerClass.SESSION_FILE
 
 func _remove_persisted_session() -> void:
@@ -16,18 +25,25 @@ func before_each():
 	# _load_session_from_file() cannot restore a stale token (issue #969).
 	_remove_persisted_session()
 
-	# Create fresh NetworkManager instance for each test (ISO-04 pattern)
+	# Create fresh NetworkManager instance for each test (ISO-04 pattern).
+	# Flag offline BEFORE entering the tree so _ready()'s auto-connect
+	# short-circuits in authenticate_device() without issuing the #908
+	# health-gate probe — otherwise a real HTTPRequest stays busy in the
+	# background and deterministically ERR_BUSYs any later request
+	# (issue #1026).
 	_network = NetworkManagerClass.new()
+	_network.is_offline = true
 	add_child_autofree(_network)
 
-	# Create mock HTTPRequest using GUT's double() functionality
-	# This prevents real network calls during testing
-	_mock_http = double(HTTPRequest).new()
-	_mock_http.request_completed = Signal()
+	# Install a passive transport probe (plain HTTPRequest — see the
+	# var declaration comment for why GUT doubles are unusable here,
+	# issue #1026). All dispatches target 127.0.0.1 only.
+	# NOTE: do NOT try to reset its request_completed signal by assigning
+	# Signal() — assigning to a signal property is an invalid assignment
+	# SCRIPT ERROR that aborts before_each mid-way, leaving the real
+	# HTTPRequest installed (issue #1026).
+	_mock_http = HTTPRequest.new()
 	add_child_autofree(_mock_http)
-
-	# Stub HTTPRequest.request() to return OK and prevent actual network calls
-	stub(_mock_http, "request").to_return(OK)
 
 	# Replace the http_request node in NetworkManager
 	_network.http_request = _mock_http
@@ -37,6 +53,12 @@ func after_each():
 	# test_session_file_operations) so it cannot leak into later suites
 	# or subsequent runs (issue #969).
 	_remove_persisted_session()
+
+	# Drop the mock reference before teardown so _exit_tree() does not
+	# queue_free() a node GUT's autofree already owns (double-free once
+	# the before_each swap actually takes effect, issue #1026).
+	if is_instance_valid(_network):
+		_network.http_request = null
 
 	# Cleanup is handled by add_child_autofree, but clear references
 	_network = null
@@ -275,6 +297,12 @@ func test_send_rpc_async_fire_and_forget():
 
 	# Verify it doesn't throw or crash (fire-and-forget pattern)
 	assert_true(true, "Async RPC should complete without blocking")
+	# The fire-and-forget dispatch must go through the installed transport
+	# probe (issue #1026: previously hit the busy real HTTPRequest left by
+	# _ready()'s health-gate probe and failed on ERR_BUSY). A dispatched
+	# request moves the fresh probe out of STATUS_DISCONNECTED synchronously.
+	assert_ne(_mock_http.get_http_client_status(), HTTPClient.STATUS_DISCONNECTED,
+		"Fire-and-forget RPC must dispatch through the installed transport")
 
 func test_reconnection_attempts():
 	# Test attempt_reconnection() retry logic
@@ -325,6 +353,11 @@ func test_reconnection_max_attempts():
 func test_handle_connection_lost():
 	# Test connection_lost signal and offline mode
 	watch_signals(_network)
+
+	# The suite boots the manager offline (issue #1026), but this test
+	# exercises the online -> offline transition; handle_connection_lost()
+	# early-returns when already offline.
+	_network.is_offline = false
 
 	# Simulate connection loss
 	_network.handle_connection_lost("Test connection lost")
@@ -426,6 +459,11 @@ func test_validate_required_config():
 
 	# Call validation - should not crash, just log warnings
 	_network._validate_required_config()
+
+	# Production config gaps are reported via push_error; GUT fails tests
+	# on unhandled push_errors, so assert the intentional error (the
+	# sibling-suite pattern, issue #1026).
+	assert_push_error("PRODUCTION SECURITY ERROR")
 
 	# Test should pass (validation doesn't throw, just logs)
 	assert_true(true, "Config validation should complete without crashing")
