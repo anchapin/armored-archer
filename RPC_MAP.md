@@ -1,7 +1,7 @@
 # Armored Archer - Comprehensive RPC Map
 
-**Document Version:** 1.0
-**Last Updated:** 2026-04-15
+**Document Version:** 1.1
+**Last Updated:** 2026-08-18
 **Purpose:** Identifies the client caller, server handler, storage ownership, and deployment path for every PRD-critical feature.
 
 ---
@@ -27,7 +27,8 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 5. [Seasons & Leaderboards](#seasons--leaderboards)
 6. [Monetization & Store](#monetization--store)
 7. [Notifications](#notifications)
-8. [Infrastructure & Observability](#infrastructure--observability)
+8. [Analytics, Surveys & Audit](#analytics-surveys--audit)
+9. [Infrastructure & Observability](#infrastructure--observability)
 9. [RPC Dependencies](#rpc-dependencies)
 
 ---
@@ -100,6 +101,29 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Sync Difficulty | DynamicDifficultyManager | `rpcSyncDifficulty()` in `dynamic_difficulty.ts` | `difficulty_state` storage (records client hint only; server-derived modifier preserved) | `/rpc/armored_archer/sync_difficulty` |
 | Track Match Outcome | DynamicDifficultyManager | `rpcTrackMatchOutcome()` in `dynamic_difficulty.ts` | `difficulty_state` + `match_history` storage; PvE wins corroborated against `stage_completion` storage (server-authoritative streak re-derivation, #870) | `/rpc/armored_archer/track_match_outcome` |
 | Get Player Performance | DynamicDifficultyManager | `rpcGetPlayerPerformance()` in `dynamic_difficulty.ts` | `difficulty_state` + `match_history` storage (streaks re-derived from ledger) | `/rpc/armored_archer/get_player_performance` |
+| Get Match History | MatchmakerManager | `rpcGetMatchHistory()` in `matchmaker.ts` | `pvp_matches` + `player_stats` storage (custom collections) | `/rpc/armored_archer/get_match_history` |
+| Get Match Details | MatchmakerManager (legacy/test) | `rpcGetMatchDetails()` in `matchmaker.ts` — no active production caller (only test fixtures and admin tooling invoke it; prefer `get_match_history`/`get_match_state`) | `pvp_matches` + `pvp_match_states` storage | `/rpc/armored_archer/get_match_details` |
+| Log Match Data | MatchmakingAnalyticsManager (telemetry) | `rpcLogMatchData()` in `matchmaking_analytics.ts` | `matchmaking_match_data` storage (custom collection) | `/rpc/armored_archer/log_match_data` |
+| Log Abandonment | MatchmakingAnalyticsManager (telemetry) | `rpcLogAbandonment()` in `matchmaking_analytics.ts` | `matchmaking_match_data` storage (custom collection) | `/rpc/armored_archer/log_abandonment` |
+| Log Weapon Result | MatchmakingAnalyticsManager (telemetry) | `rpcLogWeaponResult()` in `matchmaking_analytics.ts` | `matchmaking_weapon_stats` storage (custom collection) | `/rpc/armored_archer/log_weapon_result` |
+| Log Queue Time | MatchmakingAnalyticsManager (telemetry) | `rpcLogQueueTime()` in `matchmaking_analytics.ts` | `matchmaking_queue_times` storage (custom collection) | `/rpc/armored_archer/log_queue_time` |
+| Get Match Quality Metrics | Admin Dashboard *(admin-only)* | `rpcGetMatchQualityMetrics()` in `matchmaking_analytics.ts` | `matchmaking_match_data` storage (custom collection) | `/rpc/armored_archer/get_match_quality_metrics` |
+| Get Weapon Stats | Admin Dashboard *(admin-only)* | `rpcGetWeaponStats()` in `matchmaking_analytics.ts` | `matchmaking_weapon_stats` storage (custom collection) | `/rpc/armored_archer/get_weapon_stats` |
+| Detect Balance Issues | Admin Dashboard *(admin-only)* | `rpcDetectBalanceIssues()` in `matchmaking_analytics.ts` | `matchmaking_balance_issues` storage (custom collection) | `/rpc/armored_archer/detect_balance_issues` |
+| Export Analytics Report | Admin Dashboard *(admin-only)* | `rpcExportAnalyticsReport()` in `matchmaking_analytics.ts` | `matchmaking_balance_issues` + `matchmaking_match_data` storage (read) | `/rpc/armored_archer/export_analytics_report` |
+| Log Hit Resolution | CombatManager (telemetry) | `rpcLogHitResolution()` in `fairness_telemetry.ts` | `fairness_hit_resolution` storage (custom collection) | `/rpc/armored_archer/log_hit_resolution` |
+| Log Disconnect | CombatManager (telemetry) | `rpcLogDisconnect()` in `fairness_telemetry.ts` | `fairness_disconnects` storage (custom collection) | `/rpc/armored_archer/log_disconnect` |
+| Log Timeout | CombatManager (telemetry) | `rpcLogTimeout()` in `fairness_telemetry.ts` | `fairness_timeouts` storage (custom collection) | `/rpc/armored_archer/log_timeout` |
+| Log Ranking Delta | CombatManager (telemetry) | `rpcLogRankingDelta()` in `fairness_telemetry.ts` | `fairness_ranking_deltas` storage (custom collection) | `/rpc/armored_archer/log_ranking_delta` |
+| Get Fairness Summary | Admin Dashboard *(admin-only)* | `rpcGetFairnessSummary()` in `fairness_telemetry.ts` | `fairness_*` storage (custom collections, read) | `/rpc/armored_archer/get_fairness_summary` |
+| Log Encounter Pacing | PacingManager (telemetry) | `rpcLogEncounterPacing()` in `encounter_pacing.ts` | `pacing_state` storage (custom collection) | `/rpc/armored_archer/log_encounter_pacing` |
+| Get Pacing Report | PacingManager | `rpcGetPacingReport()` in `encounter_pacing.ts` | `pacing_state` storage (custom collection, read) | `/rpc/armored_archer/get_pacing_report` |
+| Record Drop | MatchmakerManager (telemetry) | `rpcRecordDrop()` in `balance_analytics.ts` | `player_stats` storage (read-only aggregation) | `/rpc/armored_archer/record_drop` |
+| Record Stage Attempt | CampaignManager (telemetry) | `rpcRecordStageAttempt()` in `balance_analytics.ts` | `player_stats` storage (read-only aggregation) | `/rpc/armored_archer/record_stage_attempt` |
+| Get Drop Statistics | Admin Dashboard *(admin-only)* | `rpcGetDropStatistics()` in `balance_analytics.ts` | `player_stats` storage (computed aggregation) | `/rpc/armored_archer/get_drop_statistics` |
+| Get Stage Completion Statistics | Admin Dashboard *(admin-only)* | `rpcGetStageCompletionStatistics()` in `balance_analytics.ts` | `player_stats` + `stage_completion` storage (computed aggregation) | `/rpc/armored_archer/get_stage_completion_statistics` |
+| Get Balance Insights | Admin Dashboard *(admin-only)* | `rpcGetBalanceInsights()` in `balance_analytics.ts` | `player_stats` + balance telemetry (computed) | `/rpc/armored_archer/get_balance_insights` |
+| Run Balance Session | Admin Dashboard *(admin-only)* | `rpcRunBalanceSession()` in `balance_session.ts` | `player_stats` + balance telemetry (computed) | `/rpc/armored_archer/run_balance_session` |
 
 **Storage Schema:**
 - `pvp_matches` collection: `{ match_id, creator_id, opponent_id, creator_rank, opponent_rank, match_type, is_punch_up, status, created_at, updated_at, creator_turn_data, opponent_turn_data, winner, expires_at, last_turn_timestamp }`
@@ -135,6 +159,15 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Get Season Rewards | SeasonManager | `rpcGetSeasonRewards()` in `season_system.ts` | `leaderboard` (Nakama built-in) | `/rpc/armored_archer/get_season_rewards` |
 | Claim Season Rewards | SeasonManager | `rpcClaimSeasonRewards()` in `season_system.ts` | `season_rewards_claimed` storage (custom collection) + wallet (Nakama) | `/rpc/armored_archer/claim_season_rewards` |
 | End Season | SeasonManager | `rpcEndSeason()` in `season_system.ts` | `seasons` storage (custom collection) + `leaderboard` (Nakama) | `/rpc/armored_archer/end_season` |
+| Get Season History | SeasonManager | `rpcGetSeasonHistory()` in `season_leaderboard.ts` | `seasons` storage (custom collection) + `leaderboard` (Nakama) | `/rpc/armored_archer/get_season_history` |
+| Get Player Cosmetics | SeasonManager | `rpcGetPlayerCosmetics()` in `season_system.ts` — season titles/auras earned via leaderboard rank (separate from IAP cosmetic skins in `get_owned_cosmetics`/`equip_cosmetic`); client uses `season_cosmetics` field | `player_cosmetics` storage (custom collection) | `/rpc/armored_archer/get_player_cosmetics` |
+| Get Prestige Progress | SeasonManager | `rpcGetPrestigeProgress()` in `season_system.ts` — multi-season prestige tier aggregation | `player_prestige` storage (custom collection) | `/rpc/armored_archer/get_prestige_progress` |
+| Get Projected Next Season Elo | SeasonManager | `rpcGetProjectedNextSeasonElo()` in `season_system.ts` — server-declared projection (see `complete_match` settlement, ADR-0002) | `player_stats` storage + season leaderboard | `/rpc/armored_archer/get_projected_next_season_elo` |
+| Get Season Telemetry | Admin Dashboard *(admin-only)* | `rpcGetSeasonTelemetry()` in `season_telemetry.ts` | `season_telemetry_season_summaries` storage (custom collection) | `/rpc/armored_archer/get_season_telemetry` |
+| Get Rank Inflation | Admin Dashboard *(admin-only)* | `rpcGetRankInflation()` in `season_telemetry.ts` | `season_telemetry_rating_snapshots` storage (custom collection) | `/rpc/armored_archer/get_rank_inflation` |
+| Get Reward Concentration | Admin Dashboard *(admin-only)* | `rpcGetRewardConcentration()` in `season_telemetry.ts` | `season_telemetry_reward_claims` storage (custom collection) | `/rpc/armored_archer/get_reward_concentration` |
+| Get Progression Velocity | Admin Dashboard *(admin-only)* | `rpcGetProgressionVelocity()` in `season_telemetry.ts` | `season_telemetry_rank_changes` + `season_telemetry_season_summaries` storage | `/rpc/armored_archer/get_progression_velocity` |
+| Capture Rating Snapshot | Admin Dashboard *(admin-only)* | `rpcCaptureRatingSnapshot()` in `season_telemetry.ts` | `season_telemetry_rating_snapshots` storage (custom collection) | `/rpc/armored_archer/capture_rating_snapshot` |
 
 **Storage Schema:**
 - `seasons` collection: `{ season_id, season_number, start_time, end_time, status, duration_weeks }`
@@ -159,6 +192,16 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Check Subscriptions | StoreManager (admin) | `rpcCheckSubscriptions()` in `store.ts` | Wallet (Nakama built-in) + `subscriptions` storage (custom collection) | `/rpc/armored_archer/check_subscriptions` |
 | App Launch Check | StoreManager | `rpcAppLaunchCheck()` in `store.ts` | Wallet (Nakama built-in) + Redis cache | `/rpc/armored_archer/app_launch_check` |
 | RevenueCat Webhook | External (RevenueCat) | `rpcRevenueCatWebhook()` in `store.ts` | Wallet (Nakama built-in) + `purchases` storage (custom collection) | `/rpc/armored_archer/revenuecat_webhook` |
+| Purchase Cosmetic | GemManager | `rpcPurchaseCosmetic()` in `store.ts` — validates item exists in `COSMETIC_CATALOG`, rejects already-owned, debits gems via `player_currency` ledger (#860) | `player_currency` (single-ledger write) + `player_cosmetics_owned` storage (custom collections) | `/rpc/armored_archer/purchase_cosmetic` |
+| Get Cosmetic Catalog | unknown (server-side catalog endpoint) | `rpcGetCosmeticCatalog()` in `store.ts` — returns the in-memory `COSMETIC_CATALOG`; no production client caller yet | None (stateless, in-memory catalog) | `/rpc/armored_archer/get_cosmetic_catalog` |
+| Get Owned Cosmetics | GemManager | `rpcGetOwnedCosmetics()` in `store.ts` — cross-device sync (restores purchase history on new device) | `player_cosmetics_owned` storage (custom collection, read) | `/rpc/armored_archer/get_owned_cosmetics` |
+| Get Equipped Cosmetics | GemManager | `rpcGetEquippedCosmetics()` in `store.ts` — returns current cosmetic loadout per slot | `player_cosmetics_equipped` storage (custom collection, read) | `/rpc/armored_archer/get_equipped_cosmetics` |
+| Equip Cosmetic | GemManager | `rpcEquipCosmetic()` in `store.ts` — validates ownership + slot compatibility before writing | `player_cosmetics_equipped` storage (custom collection) | `/rpc/armored_archer/equip_cosmetic` |
+| Unequip Cosmetic | GemManager | `rpcUnequipCosmetic()` in `store.ts` | `player_cosmetics_equipped` storage (custom collection) | `/rpc/armored_archer/unequip_cosmetic` |
+| Save Cosmetic Loadout | GemManager | `rpcSaveCosmeticLoadout()` in `store.ts` — batch write of full loadout (cross-device restore path) | `player_cosmetics_equipped` storage (custom collection) | `/rpc/armored_archer/save_cosmetic_loadout` |
+| Purchase Bundle | GemManager | `rpcPurchaseBundle()` in `store.ts` — validates all bundle items in `COSMETIC_CATALOG`, enforces one-time purchase via `player_bundles_owned`, debits gems via `player_currency` ledger | `player_currency` + `player_cosmetics_owned` + `player_bundles_owned` storage | `/rpc/armored_archer/purchase_bundle` |
+| Get Bundle Catalog | GemManager | `rpcGetBundleCatalog()` in `store.ts` — returns `BUNDLE_DEFINITIONS` with per-player `is_owned` flag | `player_bundles_owned` storage (custom collection, read) | `/rpc/armored_archer/get_bundle_catalog` |
+| Restore Purchases | StoreManager (constant defined; client integration pending) | `rpcRestorePurchases()` in `store.ts` — queries RevenueCat REST API for subscriber/non-subscription history, marks receipts, awards gems. Client constant `RPC_RESTORE_PURCHASES` is defined in `StoreManager.gd:19` but the `restore_purchases()` flow currently uses the local RevenueCat SDK and not yet the server RPC; flagged for follow-up. | `player_currency` + `purchase_receipts` storage (custom collections) | `/rpc/armored_archer/restore_purchases` |
 
 **Storage Schema:**
 - Wallet (Nakama): Built-in wallet system with currencies: `{ coins, gems }`
@@ -194,6 +237,33 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 - Requires Firebase Cloud Messaging (FCM) configuration
 - Device tokens support both iOS and Android platforms
 - Quiet hours feature respects user timezone
+
+---
+
+## Analytics, Surveys & Audit
+
+| Feature | Client Caller | Server Handler | Storage Ownership | Deployment Path |
+|----------|---------------|----------------|-------------------|------------------|
+| Track Event | unknown (server-side ingest + planned `AnalyticsManager.track_event_to_backend`) | `rpcTrackEvent()` in `analytics.ts` — append-only event log; MonitoringManager buffers `client_error` events for retry, but no Godot caller invokes the server RPC yet. | Analytics collection (custom) | `/rpc/armored_archer/track_event` |
+| Track Revenue | unknown (server-side ingest) | `rpcTrackRevenue()` in `analytics.ts` — IAP revenue event log paired with `track_event` | Analytics collection (custom) | `/rpc/armored_archer/track_revenue` |
+| Get Analytics Summary | Admin Dashboard *(admin-only)* | `rpcGetAnalyticsSummary()` in `analytics.ts` — aggregated event + revenue counts | Analytics collection (custom, read) | `/rpc/armored_archer/get_analytics_summary` |
+| Get Circuit Breaker States | Admin Dashboard *(admin-only)* | `rpcGetCircuitBreakerStates()` in `analytics.ts` — live state of every wrapped RPC's circuit breaker | None (in-process state) | `/rpc/armored_archer/get_circuit_breaker_states` |
+| Submit Survey | SurveyManager | `rpcSubmitSurvey()` in `survey.ts` — post-match / post-purchase survey responses | `survey_responses` storage (custom collection) | `/rpc/armored_archer/submit_survey` |
+| Get Survey Status | SurveyManager (constant exists; client invocation pending) | `rpcGetSurveyStatus()` in `survey.ts` — cooldown / eligibility check before prompting next survey | `survey_responses` storage (read) | `/rpc/armored_archer/get_survey_status` |
+| Query Audit Logs | Admin Dashboard *(admin-only)* | `rpcQueryAuditLogs()` in `audit.ts` — paginated audit trail query (admin-gated, #1075) | `audit_logs` storage (custom collection) | `/rpc/armored_archer/query_audit_logs` |
+| Get Funnel Conversion | Admin Dashboard *(admin-only)* | `rpcGetFunnelConversion()` in `funnel_analytics.ts` — stage-by-stage funnel conversion rate | `funnel_analytics` storage (custom collection) | `/rpc/armored_archer/get_funnel_conversion` |
+| Get Player Funnel State | PlayerStatsManager (planned) | `rpcGetPlayerFunnelState()` in `funnel_analytics.ts` — returns where the player is in the onboarding funnel | `funnel_analytics` storage (custom collection, read) | `/rpc/armored_archer/get_player_funnel_state` |
+
+**Storage Schema:**
+- `analytics_events` collection: `{ event_id, user_id, event_name, properties, timestamp, session_id }`
+- `analytics_revenue` collection: `{ event_id, user_id, product_id, amount, currency, platform, timestamp }`
+- `survey_responses` collection: `{ user_id, survey_type, responses, submitted_at }`
+- `funnel_analytics` collection: `{ user_id, stage, entered_at, exited_at, conversion_path }`
+
+**Deployment Notes:**
+- All `track_*` endpoints are append-only and intended to tolerate burst load; the server-side client should batch when possible.
+- Survey cooldown is enforced server-side via `get_survey_status`; clients should not bypass it locally.
+- `query_audit_logs` is the only audit-trail reader; admin-gated via the shared `withAdminGuard` wrapper (#1075).
 
 ---
 
@@ -351,7 +421,7 @@ All gameplay RPCs integrate with the anti-cheat system:
 
 **For each new RPC:**
 1. Add RPC registration to `backend/src/index.ts` (main module loader)
-2. Define Zod schema in `backend/src/modules/validation.ts`
+2. Define a valibot schema in `backend/src/modules/validation.ts` (or a colocated module-level validation helper)
 3. Add RPC handler function to appropriate module
 4. Register RPC with `registerRpc()` or `registerRpcWithMetrics()`
 5. Update this RPC_MAP.md
@@ -373,13 +443,15 @@ All RPCs are instrumented with:
 ### Adding a New RPC
 
 1. **Define the interface** in the appropriate backend module
-2. **Implement validation** using Zod schemas
+2. **Implement validation** using valibot schemas (canonical library — see `backend/src/modules/validation.ts`)
 3. **Write the handler** with anti-cheat protection
 4. **Register the RPC** in the module initializer
 5. **Add storage logic** (PostgreSQL table or Nakama storage)
-6. **Update this document** with the RPC mapping
+6. **Update this document** with the RPC mapping (client caller, server handler, storage ownership, deployment path)
 7. **Write tests** (unit + integration)
 8. **Deploy to staging** and validate
+
+> **Maintenance note (issue #1072):** When adding or removing an RPC, update this file in the same PR. CI will fail with a registered-vs-documented diff in a follow-up issue.
 
 ### Deprecating an RPC
 
@@ -487,9 +559,60 @@ For PostgreSQL table changes:
 | `armored_archer/sync_difficulty` | dynamic_difficulty | `rpcSyncDifficulty()` | PvE |
 | `armored_archer/track_match_outcome` | dynamic_difficulty | `rpcTrackMatchOutcome()` | PvE |
 | `armored_archer/get_player_performance` | dynamic_difficulty | `rpcGetPlayerPerformance()` | PvE |
+| `armored_archer/get_match_history` | matchmaker | `rpcGetMatchHistory()` | PvP |
+| `armored_archer/get_match_details` | matchmaker | `rpcGetMatchDetails()` | PvP (legacy/test) |
+| `armored_archer/log_match_data` | matchmaking_analytics | `rpcLogMatchData()` | Telemetry |
+| `armored_archer/log_abandonment` | matchmaking_analytics | `rpcLogAbandonment()` | Telemetry |
+| `armored_archer/log_weapon_result` | matchmaking_analytics | `rpcLogWeaponResult()` | Telemetry |
+| `armored_archer/log_queue_time` | matchmaking_analytics | `rpcLogQueueTime()` | Telemetry |
+| `armored_archer/get_match_quality_metrics` | matchmaking_analytics | `rpcGetMatchQualityMetrics()` | Analytics *(admin-only)* |
+| `armored_archer/get_weapon_stats` | matchmaking_analytics | `rpcGetWeaponStats()` | Analytics *(admin-only)* |
+| `armored_archer/detect_balance_issues` | matchmaking_analytics | `rpcDetectBalanceIssues()` | Analytics *(admin-only)* |
+| `armored_archer/export_analytics_report` | matchmaking_analytics | `rpcExportAnalyticsReport()` | Analytics *(admin-only)* |
+| `armored_archer/log_hit_resolution` | fairness_telemetry | `rpcLogHitResolution()` | Telemetry |
+| `armored_archer/log_disconnect` | fairness_telemetry | `rpcLogDisconnect()` | Telemetry |
+| `armored_archer/log_timeout` | fairness_telemetry | `rpcLogTimeout()` | Telemetry |
+| `armored_archer/log_ranking_delta` | fairness_telemetry | `rpcLogRankingDelta()` | Telemetry |
+| `armored_archer/get_fairness_summary` | fairness_telemetry | `rpcGetFairnessSummary()` | Analytics *(admin-only)* |
+| `armored_archer/log_encounter_pacing` | encounter_pacing | `rpcLogEncounterPacing()` | Telemetry |
+| `armored_archer/get_pacing_report` | encounter_pacing | `rpcGetPacingReport()` | Telemetry |
+| `armored_archer/record_drop` | balance_analytics | `rpcRecordDrop()` | Telemetry |
+| `armored_archer/record_stage_attempt` | balance_analytics | `rpcRecordStageAttempt()` | Telemetry |
+| `armored_archer/get_drop_statistics` | balance_analytics | `rpcGetDropStatistics()` | Analytics *(admin-only)* |
+| `armored_archer/get_stage_completion_statistics` | balance_analytics | `rpcGetStageCompletionStatistics()` | Analytics *(admin-only)* |
+| `armored_archer/get_balance_insights` | balance_analytics | `rpcGetBalanceInsights()` | Analytics *(admin-only)* |
+| `armored_archer/run_balance_session` | balance_session | `rpcRunBalanceSession()` | Analytics *(admin-only)* |
 | `armored_archer/stage_complete` | gear_system (+ `stage_progression` persistence) | `rpcStageComplete()` | PvE |
 | `armored_archer/get_completed_stages` | stage_tracking | `rpcGetCompletedStages()` | PvE |
 | `armored_archer/get_campaign_progress` | stage_tracking | `rpcGetCampaignProgress()` | PvE |
+| `armored_archer/get_season_history` | season_leaderboard | `rpcGetSeasonHistory()` | Seasons |
+| `armored_archer/get_player_cosmetics` | season_system | `rpcGetPlayerCosmetics()` | Seasons |
+| `armored_archer/get_prestige_progress` | season_system | `rpcGetPrestigeProgress()` | Seasons |
+| `armored_archer/get_projected_next_season_elo` | season_system | `rpcGetProjectedNextSeasonElo()` | Seasons |
+| `armored_archer/get_season_telemetry` | season_telemetry | `rpcGetSeasonTelemetry()` | Seasons *(admin-only)* |
+| `armored_archer/get_rank_inflation` | season_telemetry | `rpcGetRankInflation()` | Seasons *(admin-only)* |
+| `armored_archer/get_reward_concentration` | season_telemetry | `rpcGetRewardConcentration()` | Seasons *(admin-only)* |
+| `armored_archer/get_progression_velocity` | season_telemetry | `rpcGetProgressionVelocity()` | Seasons *(admin-only)* |
+| `armored_archer/capture_rating_snapshot` | season_telemetry | `rpcCaptureRatingSnapshot()` | Seasons *(admin-only)* |
+| `armored_archer/purchase_cosmetic` | store | `rpcPurchaseCosmetic()` | Store (Cosmetics) |
+| `armored_archer/get_cosmetic_catalog` | store | `rpcGetCosmeticCatalog()` | Store (Cosmetics, server-only) |
+| `armored_archer/get_owned_cosmetics` | store | `rpcGetOwnedCosmetics()` | Store (Cosmetics) |
+| `armored_archer/get_equipped_cosmetics` | store | `rpcGetEquippedCosmetics()` | Store (Cosmetics) |
+| `armored_archer/equip_cosmetic` | store | `rpcEquipCosmetic()` | Store (Cosmetics) |
+| `armored_archer/unequip_cosmetic` | store | `rpcUnequipCosmetic()` | Store (Cosmetics) |
+| `armored_archer/save_cosmetic_loadout` | store | `rpcSaveCosmeticLoadout()` | Store (Cosmetics) |
+| `armored_archer/purchase_bundle` | store | `rpcPurchaseBundle()` | Store (Bundles) |
+| `armored_archer/get_bundle_catalog` | store | `rpcGetBundleCatalog()` | Store (Bundles) |
+| `armored_archer/restore_purchases` | store | `rpcRestorePurchases()` | Store (client integration pending) |
+| `armored_archer/track_event` | analytics | `rpcTrackEvent()` | Analytics |
+| `armored_archer/track_revenue` | analytics | `rpcTrackRevenue()` | Analytics |
+| `armored_archer/get_analytics_summary` | analytics | `rpcGetAnalyticsSummary()` | Analytics *(admin-only)* |
+| `armored_archer/get_circuit_breaker_states` | analytics | `rpcGetCircuitBreakerStates()` | Analytics *(admin-only)* |
+| `armored_archer/submit_survey` | survey | `rpcSubmitSurvey()` | Analytics |
+| `armored_archer/get_survey_status` | survey | `rpcGetSurveyStatus()` | Analytics (client invocation pending) |
+| `armored_archer/query_audit_logs` | audit | `rpcQueryAuditLogs()` | Analytics *(admin-only)* |
+| `armored_archer/get_funnel_conversion` | funnel_analytics | `rpcGetFunnelConversion()` | Analytics *(admin-only)* |
+| `armored_archer/get_player_funnel_state` | funnel_analytics | `rpcGetPlayerFunnelState()` | Analytics |
 
 ---
 
@@ -500,5 +623,6 @@ For PostgreSQL table changes:
 
 **Change Log:**
 | Version | Date | Changes | Author |
-|---------|------|----------|---------|
+|---------|------|----------|--------|
 | 1.0 | 2026-04-15 | Initial comprehensive RPC map creation | Claude (AI-assisted) |
+| 1.1 | 2026-08-18 | Documented all 135 registered RPCs (was 86 of ~135); added Analytics & Telemetry section (events, revenue, surveys, audit, funnel); added cosmetics, bundles, restore, season cosmetics/prestige, telemetry, encounter pacing, matchmaking analytics, fairness, balance, match history/details, query_audit_logs sections/rows; corrected stale `Zod` instructions to `valibot` (canonical per AGENTS.md and `validation.ts`); added maintenance note for follow-up registered-vs-documented CI diff check (issue #1072) | Claude (AI-assisted) |
