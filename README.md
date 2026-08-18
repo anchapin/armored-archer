@@ -430,20 +430,40 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our development wo
 
 ## 🗺️ Roadmap
 
-### MVP v1.0.0 Scope (Frozen)
+### Current Status (v4.0.0 — Gameplay Refinement)
 
-The MVP scope has been frozen around four core features. See [`.planning/MVP-SCOPE.md`](.planning/MVP-SCOPE.md) for complete details.
+The project is mid-**v4.0.0 Gameplay Refinement**. Milestones v2.0.0 → v3.4.0 are shipped; see [`.planning/ROADMAP.md`](.planning/ROADMAP.md) for the full milestone history and active phase plans.
 
-| Feature | Description | Status |
-|---------|-------------|--------|
-| PvE Progression | Auto-shooter combat with stage-based campaign | In Progress |
-| Async PvP | Turn-based asynchronous matches against other players | Planned |
-| Seasonal Rank | Leaderboards with seasonal reset and rewards | Planned |
-| Cosmetic Monetization | Non-pay-to-win cosmetic items only | Planned |
+| MVP Feature | Status | Evidence |
+|-------------|--------|----------|
+| PvE Progression | ✅ Shipped | v3.4.0 Tactical Gameplay & PvE Campaign (Phases 1–5) |
+| Async PvP | ✅ Shipped (hybrid model: async matchmaking + live short-session combat) | [ADR-0003](docs/adr/0003-hybrid-duel-model.md), [ADR-0002](docs/adr/0002-server-declared-match-settlement.md), [ADR-0004](docs/adr/0004-decommission-legacy-duel-rpcs.md) |
+| Seasonal Rank | ✅ Shipped | v4.0.0 Phase 4 — PvP Balance & Ranking |
+| Cosmetic Monetization | ✅ Shipped (RevenueCat; non-pay-to-win, transmog model) | [ADR-0001](docs/adr/0001-prd-living-promises-governance.md), [`docs/armored-archer_prd.md`](docs/armored-archer_prd.md) |
 
-**Out of Scope for MVP:** Subscriptions, push notifications, guilds/clans, real-time PvP, trading, player reporting, analytics dashboard. See [MVP-SCOPE.md](.planning/MVP-SCOPE.md#what-mvp-excludes-out-of-scope) for details.
+**Out of scope (still deferred):** Subscriptions, push notifications, guilds/clans, real-time PvP, trading, player reporting, analytics dashboard — see the [archived MVP scope](docs/mvp/MVP-SCOPE.md) for the original rationale.
+
+For the **frozen v1.0.0 MVP scope** this README was first written against (every feature now shipped), see [`docs/mvp/MVP-SCOPE.md`](docs/mvp/MVP-SCOPE.md).
+
+<details>
+<summary>Deprecated MVP v1.0.0 scope table (frozen 2026-04-15, superseded)</summary>
+
+The MVP scope was frozen around four core features on 2026-04-15 (Sprint 0, issue #675). Every feature listed below has since shipped.
+
+| Feature | Description | Frozen status | Actual status |
+|---------|-------------|---------------|---------------|
+| PvE Progression | Auto-shooter combat with stage-based campaign | In Progress | **Shipped** (v3.4.0) |
+| Async PvP | Turn-based asynchronous matches against other players | Planned | **Shipped** as hybrid model ([ADR-0003](docs/adr/0003-hybrid-duel-model.md)) |
+| Seasonal Rank | Leaderboards with seasonal reset and rewards | Planned | **Shipped** (v4.0.0 Phase 4) |
+| Cosmetic Monetization | Non-pay-to-win cosmetic items only | Planned | **Shipped** (RevenueCat) |
+
+**Out of Scope for MVP:** Subscriptions, push notifications, guilds/clans, real-time PvP, trading, player reporting, analytics dashboard. See the full original document at [`.planning/MVP-SCOPE.md`](.planning/MVP-SCOPE.md).
+
+</details>
 
 ### Development Phases
+
+The original 5-phase bootstrap plan below is preserved as historical reference. Current milestone planning lives in [`.planning/ROADMAP.md`](.planning/ROADMAP.md).
 
 | Phase | Timeline | Focus Area | Key Deliverables |
 |-------|----------|------------|------------------|
@@ -453,9 +473,9 @@ The MVP scope has been frozen around four core features. See [`.planning/MVP-SCO
 | 4 | Weeks 10-13 | UI, IAP, & Turn-Based PvP | Modular sprite system, cosmetic shop UI, RevenueCat integration, Nakama matchmaker, and turn-based RPCs. |
 | 5 | Weeks 14-16 | Polish & App Store Submission | Safe-area UI adjustments, analytics (Crashlytics), TestFlight (iOS) / Play Console (Android) beta distribution. |
 
-### Current Sprint
+### Active Work
 
-**Sprint 1: Vertical Slice Foundation** - Implementing the end-to-end flow from account creation → PvE stage completion → loot drop → equipment equip. See [`.planning/VERTICAL_SLICE_STORIES.md`](.planning/VERTICAL_SLICE_STORIES.md) for details.
+For the current milestone phases and in-flight work, see [`.planning/ROADMAP.md`](.planning/ROADMAP.md#v400-gameplay-refinement) (v4.0.0 Gameplay Refinement) and the open issues on the [issue tracker](https://github.com/anchapin/armored-archer/issues).
 
 ---
 
