@@ -68,6 +68,7 @@ import {
   registerRpcPurchaseBundle,
   registerRpcGetBundleCatalog,
   validatedReceipts,
+  clearWebhookEventLedgersForTests,
   RefundReason,
 } from '../store';
 import { Runtime } from '../../types/nakama';
@@ -95,6 +96,9 @@ describe('store', () => {
 
     // Clear in-memory receipt cache to avoid false positive duplicate detection
     validatedReceipts.clear();
+
+    // Clear in-memory webhook event ledger (issue #1067) for the same reason
+    clearWebhookEventLedgersForTests();
 
     // Reset cache mock to default behavior (cache miss)
     mockCache.get.mockReturnValue(undefined);
@@ -333,10 +337,15 @@ describe('store', () => {
   describe('rpcRevenueCatWebhook', () => {
     const webhookSecret = 'test_webhook_secret';
 
-    const createWebhookPayload = (eventType: string, productId: string, appUserId: string) => {
+    const createWebhookPayload = (
+      eventType: string,
+      productId: string,
+      appUserId: string,
+      eventId: string = 'evt_test_123'
+    ) => {
       return JSON.stringify({
         event: {
-          id: 'evt_test_123',
+          id: eventId,
           type: eventType,
           product_id: productId,
           app_user_id: appUserId,
@@ -404,12 +413,11 @@ describe('store', () => {
       expect(parsed.error).toContain('Invalid signature');
     });
 
-    it('should return error for missing webhook secret', async () => {
-      // When webhook secret is not configured but there's a signature,
-      // we should still be able to process (current behavior skips verification)
-      // This test verifies that the webhook can still process when no secret is configured
+    it('should fail closed when webhook secret is missing (issue #1067)', async () => {
       const originalSecret = require('../../config').config.revenuecat.webhookSecret;
       require('../../config').config.revenuecat.webhookSecret = '';
+      const originalEnvSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
+      delete process.env.REVENUECAT_WEBHOOK_SECRET;
 
       const payload = createWebhookPayload(
         'initial_purchase',
@@ -424,12 +432,18 @@ describe('store', () => {
       const result = await rpcRevenueCatWebhook(ctx, mockLogger, mockNk, payload);
 
       require('../../config').config.revenuecat.webhookSecret = originalSecret;
+      if (originalEnvSecret !== undefined) {
+        process.env.REVENUECAT_WEBHOOK_SECRET = originalEnvSecret;
+      }
 
-      // When webhook secret is not configured, the request should still be processed
-      // (verification is skipped for development)
       const parsed = JSON.parse(result);
-      // Either success or failure is acceptable - the key is it doesn't crash
-      expect(parsed.success !== undefined || parsed.error !== undefined).toBe(true);
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBe('Webhook not configured');
+      // Fail-closed means nothing was granted: no player_currency writes
+      const currencyWrites = mockNk.storageWrite.mock.calls.filter((call: any[]) =>
+        call[0].some((w: any) => w.collection === 'player_currency')
+      );
+      expect(currencyWrites).toHaveLength(0);
     });
 
     it('should return error for unknown event type', async () => {
@@ -466,7 +480,8 @@ describe('store', () => {
       const payload = createWebhookPayload(
         'initial_purchase',
         'com.armoredarcher.gems.small',
-        'test-user-123'
+        'test-user-123',
+        'evt_test_initial'
       );
       const { createHmac } = require('crypto');
       const hmac = createHmac('sha256', webhookSecret);
@@ -495,7 +510,8 @@ describe('store', () => {
       const payload = createWebhookPayload(
         'renewal',
         'com.armoredarcher.gems.small',
-        'test-user-123'
+        'test-user-123',
+        'evt_test_renewal'
       );
       const { createHmac } = require('crypto');
       const hmac = createHmac('sha256', webhookSecret);
@@ -555,13 +571,21 @@ describe('store', () => {
   // =====================================================================
 
   describe('processRefund', () => {
-    it('should reject duplicate refund', async () => {
+    it('should reject duplicate refund via durable storage markers even without Redis (issue #1067)', async () => {
       const nk = createMockNakama();
       const logger = createMockLogger();
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'test-user-123',
+          userId: 'test-user-123',
+          value: JSON.stringify(
+            createMockCurrency({ user_id: 'test-user-123', gems: 500, coins: 0 })
+          ),
+        },
+      ]);
 
-      // Note: isRefundAlreadyProcessed relies on Redis for duplicate detection.
-      // Without Redis, duplicate detection is skipped and both refunds succeed.
-      // This test verifies the refund path works when Redis is unavailable.
+      // First call processes the refund and writes a durable marker
       const result1 = await processRefund(
         nk,
         'test-user-123',
@@ -571,8 +595,10 @@ describe('store', () => {
         logger
       );
       expect(result1.success).toBe(true);
+      expect(result1.new_balance).toBe(400);
 
-      // Second call with same transaction ID - without Redis, duplicate is not detected
+      // Second call with the same transaction ID must be deduplicated by
+      // the durable storage marker — not silently re-applied.
       const result2 = await processRefund(
         nk,
         'test-user-123',
@@ -581,8 +607,14 @@ describe('store', () => {
         RefundReason.CUSTOMER_SUPPORT,
         logger
       );
-      // Without Redis, duplicate detection is skipped - both calls succeed
-      expect(result2.success).toBe(true);
+      expect(result2.success).toBe(false);
+      expect(result2.message).toBe('Refund already processed');
+
+      // The balance was deducted exactly once
+      const finalCurrency = JSON.parse(
+        testStorage.get('player_currency:test-user-123') as string
+      );
+      expect(finalCurrency.gems).toBe(400);
     });
 
     it('should reject zero refund amount', async () => {
@@ -703,6 +735,17 @@ describe('store', () => {
       mockCache.get.mockReturnValue(cachedCurrency);
 
       const nk = createMockNakama();
+      // Mirror the cached balance in storage: applyCurrencyDelta applies
+      // deltas against the authoritative record (issue #1067), so the
+      // ledger must agree with the cache for the deduction to land.
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'cached-user',
+          userId: 'cached-user',
+          value: JSON.stringify(cachedCurrency),
+        },
+      ]);
       const logger = createMockLogger();
 
       const result = await processRefund(
@@ -858,7 +901,7 @@ describe('store', () => {
   });
 
   describe('wouldExceedMaxBalance (via rpcRevenueCatWebhook)', () => {
-    it('should reject purchase that would exceed max gem balance', async () => {
+    it('should queue the paid remainder when purchase would exceed max gem balance (issue #1067)', async () => {
       const webhookSecret = 'test_webhook_secret';
       const originalSecret = require('../../config').config.revenuecat.webhookSecret;
       require('../../config').config.revenuecat.webhookSecret = webhookSecret;
@@ -882,6 +925,7 @@ describe('store', () => {
 
       const payload = JSON.stringify({
         event: {
+          id: 'evt_whale_cap',
           type: 'INITIAL_PURCHASE',
           app_user_id: 'whale-user',
           product_id: 'com.armoredarcher.gems.small', // 100 gems
@@ -902,8 +946,20 @@ describe('store', () => {
       require('../../config').config.revenuecat.webhookSecret = originalSecret;
 
       const parsed = JSON.parse(result);
-      expect(parsed.success).toBe(false);
-      expect(parsed.message).toMatch(/exceed.*maximum|max balance/i);
+      // The player already paid — the award no longer fails; it caps and
+      // queues the remainder durably (issue #1067).
+      expect(parsed.success).toBe(true);
+      expect(parsed.new_balance).toBe(10_000_000);
+      expect(parsed.gems_awarded).toBe(50);
+      expect(parsed.gems_queued).toBe(50);
+
+      // The queued remainder is recorded durably
+      const pendingRecord = testStorage.get('revenuecat_pending_awards:whale-user');
+      expect(pendingRecord).toBeDefined();
+      const pending = JSON.parse(pendingRecord as string);
+      expect(pending.awards).toHaveLength(1);
+      expect(pending.awards[0].gems_remaining).toBe(50);
+      expect(pending.awards[0].event_id).toBe('evt_whale_cap');
     });
 
     it('should allow purchase when balance is well below max', async () => {
@@ -929,6 +985,7 @@ describe('store', () => {
 
       const payload = JSON.stringify({
         event: {
+          id: 'evt_normal_balance',
           type: 'INITIAL_PURCHASE',
           app_user_id: 'normal-user',
           product_id: 'com.armoredarcher.gems.small',
@@ -1632,12 +1689,15 @@ describe('store', () => {
       expect(parsed.error).toBe('Invalid payload');
     });
 
-    it('should return error for webhook with no secret configured and empty signature', async () => {
+    it('should fail closed for webhook with no secret configured and empty signature (issue #1067)', async () => {
       const originalSecret = require('../../config').config.revenuecat.webhookSecret;
       require('../../config').config.revenuecat.webhookSecret = '';
+      const originalEnvSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
+      delete process.env.REVENUECAT_WEBHOOK_SECRET;
 
       const payload = JSON.stringify({
         event: {
+          id: 'evt_no_secret_invalid',
           type: 'INITIAL_PURCHASE',
           app_user_id: 'test-user',
           product_id: 'com.armoredarcher.gems.small',
@@ -1651,10 +1711,15 @@ describe('store', () => {
 
       const result = await rpcRevenueCatWebhook(ctx, mockLogger, mockNk, payload);
       require('../../config').config.revenuecat.webhookSecret = originalSecret;
+      if (originalEnvSecret !== undefined) {
+        process.env.REVENUECAT_WEBHOOK_SECRET = originalEnvSecret;
+      }
 
       const parsed = JSON.parse(result);
-      // Without webhook secret, signature verification is skipped, so it should process
-      expect(parsed.success).toBe(true);
+      // Fail-closed (issue #1067): with no secret configured nothing is
+      // processed — verification cannot be skipped.
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBe('Webhook not configured');
     });
   });
 
@@ -3848,20 +3913,30 @@ describe('store', () => {
   });
 
   describe('processRefund branches', () => {
+    // Collection-aware storage stub: serves ONLY the player_currency
+    // record. Refund dedup markers (refund_markers) and other collections
+    // read by the hardened refund path (issue #1067) must return empty —
+    // a collection-agnostic stub would surface phantom dedup markers.
+    const stubCurrencyOnlyRead = (userId: string, gems: number) => {
+      mockNk.storageRead = jest.fn((objects: { collection: string; key: string }[]) =>
+        objects
+          .filter((obj) => obj.collection === 'player_currency' && obj.key === userId)
+          .map(() => ({
+            collection: 'player_currency',
+            key: userId,
+            userId: userId,
+            value: JSON.stringify({ user_id: userId, gems: gems, coins: 0 }),
+            version: '1',
+            permissionRead: 1,
+            permissionWrite: 1,
+            createTime: Date.now(),
+            updateTime: Date.now(),
+          }))
+      );
+    };
+
     it('should process refund successfully', async () => {
-      mockNk.storageRead = jest.fn(() => [
-        {
-          collection: 'player_currency',
-          key: 'refund-user',
-          userId: 'refund-user',
-          value: JSON.stringify({ user_id: 'refund-user', gems: 500, coins: 0 }),
-          version: '1',
-          permissionRead: 1,
-          permissionWrite: 1,
-          createTime: Date.now(),
-          updateTime: Date.now(),
-        },
-      ]);
+      stubCurrencyOnlyRead('refund-user', 500);
 
       const result = await processRefund(
         mockNk,
@@ -3877,19 +3952,7 @@ describe('store', () => {
     });
 
     it('should process refund with different RefundReason values', async () => {
-      mockNk.storageRead = jest.fn(() => [
-        {
-          collection: 'player_currency',
-          key: 'reason-test-user',
-          userId: 'reason-test-user',
-          value: JSON.stringify({ user_id: 'reason-test-user', gems: 500, coins: 0 }),
-          version: '1',
-          permissionRead: 1,
-          permissionWrite: 1,
-          createTime: Date.now(),
-          updateTime: Date.now(),
-        },
-      ]);
+      stubCurrencyOnlyRead('reason-test-user', 500);
 
       const result = await processRefund(
         mockNk,
@@ -3905,19 +3968,7 @@ describe('store', () => {
     });
 
     it('should process refund with DUPLICATE reason', async () => {
-      mockNk.storageRead = jest.fn(() => [
-        {
-          collection: 'player_currency',
-          key: 'dup-reason-user',
-          userId: 'dup-reason-user',
-          value: JSON.stringify({ user_id: 'dup-reason-user', gems: 300, coins: 0 }),
-          version: '1',
-          permissionRead: 1,
-          permissionWrite: 1,
-          createTime: Date.now(),
-          updateTime: Date.now(),
-        },
-      ]);
+      stubCurrencyOnlyRead('dup-reason-user', 300);
 
       const result = await processRefund(
         mockNk,
@@ -3933,19 +3984,7 @@ describe('store', () => {
     });
 
     it('should process refund with OTHER reason', async () => {
-      mockNk.storageRead = jest.fn(() => [
-        {
-          collection: 'player_currency',
-          key: 'other-reason-user',
-          userId: 'other-reason-user',
-          value: JSON.stringify({ user_id: 'other-reason-user', gems: 200, coins: 0 }),
-          version: '1',
-          permissionRead: 1,
-          permissionWrite: 1,
-          createTime: Date.now(),
-          updateTime: Date.now(),
-        },
-      ]);
+      stubCurrencyOnlyRead('other-reason-user', 200);
 
       const result = await processRefund(
         mockNk,
@@ -3961,19 +4000,7 @@ describe('store', () => {
     });
 
     it('should not deduct gems below zero', async () => {
-      mockNk.storageRead = jest.fn(() => [
-        {
-          collection: 'player_currency',
-          key: 'low-balance-user',
-          userId: 'low-balance-user',
-          value: JSON.stringify({ user_id: 'low-balance-user', gems: 50, coins: 0 }),
-          version: '1',
-          permissionRead: 1,
-          permissionWrite: 1,
-          createTime: Date.now(),
-          updateTime: Date.now(),
-        },
-      ]);
+      stubCurrencyOnlyRead('low-balance-user', 50);
 
       const result = await processRefund(
         mockNk,
@@ -4303,14 +4330,18 @@ describe('store', () => {
 
   describe('getPlayerCurrencyWithCache parse failure branch', () => {
     it('should use default currency when storage value is empty string', async () => {
-      mockNk.storageRead = jest.fn(() => [
-        {
-          collection: 'player_currency',
-          key: 'parse-fail-user',
-          userId: 'parse-fail-user',
-          value: '',
-        },
-      ]);
+      // Collection-aware: only player_currency reads see the malformed
+      // (empty-string) record; refund markers read empty.
+      mockNk.storageRead = jest.fn((objects: { collection: string }[]) =>
+        objects
+          .filter((obj) => obj.collection === 'player_currency')
+          .map(() => ({
+            collection: 'player_currency',
+            key: 'parse-fail-user',
+            userId: 'parse-fail-user',
+            value: '',
+          }))
+      );
       mockCache.get.mockReturnValue(undefined);
 
       const result = await processRefund(
@@ -4683,6 +4714,7 @@ describe('store', () => {
       const nk = createMockNakama();
 
       const payload = JSON.stringify({
+        event_id: 'evt_unknown_product',
         event_type: 'INITIAL_PURCHASE',
         app_user_id: 'unknown-prod-user-2',
         product_id: 'com.armoredarcher.unknown.product',
@@ -5481,32 +5513,38 @@ describe('store', () => {
     }
 
     describe('webhook audit logging', () => {
+      const webhookSecret = 'test_webhook_secret';
+
+      /** Signed webhook call with the secret configured (issue #1067 fail-closed). */
+      const callSignedWebhook = async (payloadObj: Record<string, unknown>) => {
+        const originalSecret = require('../../config').config.revenuecat.webhookSecret;
+        require('../../config').config.revenuecat.webhookSecret = webhookSecret;
+        const payload = JSON.stringify(payloadObj);
+        const { createHmac } = require('crypto');
+        const signature = createHmac('sha256', webhookSecret).update(payload).digest('hex');
+        const ctx = createMockContext({
+          userId: 'test-user',
+          variables: { 'x-revenuecat-signature': signature },
+        });
+        try {
+          return await rpcRevenueCatWebhook(ctx, mockLogger, mockNk, payload);
+        } finally {
+          require('../../config').config.revenuecat.webhookSecret = originalSecret;
+        }
+      };
+
       it('logs audit for successful webhook purchase', async () => {
         testStorage.set(
           'player_currency:test-user',
           JSON.stringify({ user_id: 'test-user', gems: 0, coins: 0 })
         );
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            status: 'active',
-            valid: true,
-            subscriber: {
-              entitlements: {
-                'com.armoredarcher.gems.small': { product_id: 'com.armoredarcher.gems.small' },
-              },
-            },
-          }),
-          text: async () => '',
-        });
 
-        const payload = JSON.stringify({
+        await callSignedWebhook({
+          event_id: 'evt_audit_purchase',
           event_type: 'initial_purchase',
           app_user_id: 'test-user',
           product_id: 'com.armoredarcher.gems.small',
         });
-
-        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
 
         const audits = getAuditLogs(mockNk);
         const purchaseAudits = audits.filter(
@@ -5517,23 +5555,25 @@ describe('store', () => {
       });
 
       it('logs audit for invalid webhook signature', async () => {
-        process.env.REVENUECAT_WEBHOOK_SECRET = 'test-secret';
-        mockCtx = createMockContext({ variables: { 'x-revenuecat-signature': 'wrong-signature' } });
+        const originalSecret = require('../../config').config.revenuecat.webhookSecret;
+        require('../../config').config.revenuecat.webhookSecret = webhookSecret;
 
         const payload = JSON.stringify({ event_type: 'test', app_user_id: 'test-user' });
-        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
+        const ctx = createMockContext({
+          userId: 'test-user',
+          variables: { 'x-revenuecat-signature': 'wrong-signature' },
+        });
+        await rpcRevenueCatWebhook(ctx, mockLogger, mockNk, payload);
+        require('../../config').config.revenuecat.webhookSecret = originalSecret;
 
         const audits = getAuditLogs(mockNk);
         const sigAudits = audits.filter((a) => a.action === 'webhook_invalid_signature');
         expect(sigAudits).toHaveLength(1);
         expect(sigAudits[0].result).toBe('failure');
-
-        delete process.env.REVENUECAT_WEBHOOK_SECRET;
       });
 
       it('logs audit for missing app_user_id in webhook', async () => {
-        const payload = JSON.stringify({ event_type: 'initial_purchase' });
-        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
+        await callSignedWebhook({ event_type: 'initial_purchase' });
 
         const audits = getAuditLogs(mockNk);
         const missingUserAudits = audits.filter((a) => a.action === 'webhook_missing_user');
@@ -5543,13 +5583,12 @@ describe('store', () => {
 
       it('logs audit for billing issue event', async () => {
         testStorage.set('player_subscription:test-user', JSON.stringify({ active: true }));
-        const payload = JSON.stringify({
+
+        await callSignedWebhook({
           event_type: 'billing_issue',
           app_user_id: 'test-user',
           product_id: 'premium_sub',
         });
-
-        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
 
         const audits = getAuditLogs(mockNk);
         const billingAudits = audits.filter((a) => a.action === 'billing_issue');
@@ -5558,14 +5597,13 @@ describe('store', () => {
 
       it('logs audit for subscription cancelled event', async () => {
         testStorage.set('player_subscription:test-user', JSON.stringify({ active: true }));
-        const payload = JSON.stringify({
+
+        await callSignedWebhook({
           event_type: 'cancellation',
           app_user_id: 'test-user',
           product_id: 'premium_sub',
           reason: 'user_cancelled',
         });
-
-        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
 
         const audits = getAuditLogs(mockNk);
         const cancelAudits = audits.filter((a) => a.action === 'subscription_cancelled');
@@ -5573,13 +5611,11 @@ describe('store', () => {
       });
 
       it('logs audit for subscription expired event', async () => {
-        const payload = JSON.stringify({
+        await callSignedWebhook({
           event_type: 'expiration',
           app_user_id: 'test-user',
           product_id: 'premium_sub',
         });
-
-        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
 
         const audits = getAuditLogs(mockNk);
         const expiredAudits = audits.filter((a) => a.action === 'subscription_expired');
@@ -5588,14 +5624,12 @@ describe('store', () => {
       });
 
       it('logs audit for product change event', async () => {
-        const payload = JSON.stringify({
+        await callSignedWebhook({
           event_type: 'product_change',
           app_user_id: 'test-user',
           product_id: 'premium_sub',
           transferred_from: 'old-user',
         });
-
-        await rpcRevenueCatWebhook(mockCtx, mockLogger, mockNk, payload);
 
         const audits = getAuditLogs(mockNk);
         const changeAudits = audits.filter((a) => a.action === 'product_change');
