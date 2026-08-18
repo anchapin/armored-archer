@@ -59,6 +59,13 @@ jest.mock('../validation', () => ({
   ),
 }));
 
+// Mock the audit module so progressive_rollout can call logAudit without
+// pulling in the real audit/admin_auth module graph (which would create a
+// circular import during test bootstrap).
+jest.mock('../audit', () => ({
+  logAudit: jest.fn(),
+}));
+
 const createPhaseConfig = (overrides = {}) => ({
   phase: 'canary' as const,
   percentage: 5,
@@ -572,7 +579,7 @@ describe('Progressive Rollout', () => {
       const handler = registeredHandlers.get('armored_archer/rollout_check')!;
       const payload = JSON.stringify({
         feature_name: 'rpc_check',
-        user_id: 'test_user',
+        user_id: 'rollout-test-user',
       });
 
       const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
@@ -586,7 +593,7 @@ describe('Progressive Rollout', () => {
       const handler = registeredHandlers.get('armored_archer/rollout_check')!;
       const payload = JSON.stringify({
         feature_name: 'rpc_chk_dis',
-        user_id: 'test_user',
+        user_id: 'rollout-test-user',
       });
 
       const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
@@ -598,13 +605,107 @@ describe('Progressive Rollout', () => {
       const handler = registeredHandlers.get('armored_archer/rollout_check')!;
       const payload = JSON.stringify({
         feature_name: 'does_not_exist_rpc',
-        user_id: 'test_user',
+        user_id: 'rollout-test-user',
       });
 
       const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
       expect(result.success).toBe(true);
       expect(result.enabled).toBe(false);
       expect(result.rollout_phase).toBe('disabled');
+    });
+
+    // Regression tests for issue #1156: rollout_check previously accepted an
+    // arbitrary user_id and returned that user's feature-flag state to any
+    // authenticated session. The handler now binds the lookup to the session
+    // user (ctx.userId) and rejects cross-user probes.
+    it('rpcCheckFeatureFlag defaults to ctx.userId when user_id is omitted (#1156)', async () => {
+      createFeatureFlag('default_user_flag', 'Default user flag', testPhases);
+      updateFeatureFlag('default_user_flag', {
+        rolloutPhase: 'full',
+        rolloutPercentage: 100,
+      });
+      const handler = registeredHandlers.get('armored_archer/rollout_check')!;
+      const payload = JSON.stringify({
+        feature_name: 'default_user_flag',
+      });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+      expect(result.enabled).toBe(true);
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+    });
+
+    it('rpcCheckFeatureFlag accepts user_id that matches ctx.userId (#1156)', async () => {
+      createFeatureFlag('self_user_flag', 'Self user flag', testPhases);
+      updateFeatureFlag('self_user_flag', {
+        rolloutPhase: 'full',
+        rolloutPercentage: 100,
+      });
+      const handler = registeredHandlers.get('armored_archer/rollout_check')!;
+      const payload = JSON.stringify({
+        feature_name: 'self_user_flag',
+        user_id: 'rollout-test-user',
+      });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(true);
+      expect(result.enabled).toBe(true);
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+    });
+
+    it('rpcCheckFeatureFlag rejects cross-user probe with a generic Forbidden response (#1156)', async () => {
+      // Mark a flag as fully rolled out for the victim. With the pre-fix
+      // handler, a session for `rollout-test-user` could pass
+      // `user_id: 'victim-user'` and learn the rollout_phase +
+      // rollout_percentage for that other user.
+      createFeatureFlag('probe_target_flag', 'Probe target', testPhases);
+      updateFeatureFlag('probe_target_flag', {
+        rolloutPhase: 'canary',
+        rolloutPercentage: 5,
+        canaryUserIds: ['victim-user'],
+      });
+      const handler = registeredHandlers.get('armored_archer/rollout_check')!;
+      const payload = JSON.stringify({
+        feature_name: 'probe_target_flag',
+        user_id: 'victim-user',
+      });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+
+      // The probe must be rejected with a generic message that does not leak
+      // any information about the victim's flag state.
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Forbidden');
+      expect(result.error_code).toBe('FORBIDDEN');
+      expect(result.enabled).toBeUndefined();
+      expect(result.rollout_phase).toBeUndefined();
+      expect(result.rollout_percentage).toBeUndefined();
+
+      // The attempt must be audit-logged for security monitoring.
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('rollout_check rejected')
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('rollout-test-user')
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('victim-user')
+      );
+    });
+
+    it('rpcCheckFeatureFlag rejects cross-user probe when flag does not exist (#1156)', async () => {
+      // Even for an unknown feature, the rejection must fire before any flag
+      // lookup so the response cannot be used to confirm feature existence.
+      const handler = registeredHandlers.get('armored_archer/rollout_check')!;
+      const payload = JSON.stringify({
+        feature_name: 'never_existed',
+        user_id: 'victim-user',
+      });
+
+      const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
+      expect(result.success).toBe(false);
+      expect(result.error_code).toBe('FORBIDDEN');
+      expect(mockLogger.warn).toHaveBeenCalled();
     });
 
     it('rpcAdvancePhase advances a flag phase via RPC', async () => {
