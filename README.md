@@ -327,6 +327,7 @@ If you see `archive/tar: write too long` errors when running the full workflow, 
 | `backend-lint` | ESLint for TypeScript backend |
 | `backend-typecheck` | TypeScript type checking |
 | `backend-test` | Jest tests with coverage (requires services) |
+| `backend-integration-test` | Nakama + Postgres integration tests; services on PostgreSQL:5438, Nakama:7352/7353; **prerequisite** `cd backend && npm run build:full` (assert mounts `backend/data/modules` into the Nakama container at `/nakama/data/modules:ro`) |
 | `backend-complexity` | Cyclomatic complexity analysis |
 | `n-plus-one-detection` | Detect N+1 query patterns |
 | `backend-dead-flags` | Detect unused feature flags |

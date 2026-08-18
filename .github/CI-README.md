@@ -71,6 +71,13 @@ These jobs automatically start PostgreSQL and Nakama services:
 # Backend tests (includes PostgreSQL + Nakama)
 act -j backend-test --job-timeout=30m
 
+# Backend integration tests (includes PostgreSQL + Nakama + game bundle)
+# PREREQUISITE: cd backend && npm run build:full
+# Services run on PostgreSQL:5438, Nakama:7352/7353 (host port overrides so
+# they don't clash with the dev stack at :5432/:7350). The bundle is mounted
+# read-only into the container, mirroring the hosted runner.
+act -j backend-integration-test --job-timeout=30m
+
 # Schema validation (includes PostgreSQL)
 act -j schema-validation
 
@@ -182,6 +189,7 @@ The workflows include several features for act compatibility:
 
 Different jobs use different ports to avoid conflicts:
 - `backend-test`: PostgreSQL on 5432, Nakama on 7350
+- `backend-integration-test`: PostgreSQL on 5438, Nakama on 7352 (API) / 7353 (console); also mounts `./backend/data/modules` into the Nakama container at `/nakama/data/modules:ro` (the compiled game bundle — built via `cd backend && npm run build:full` before the job runs)
 - `schema-validation`: PostgreSQL on 5433
 - `sonarcloud`: PostgreSQL on 5434, Nakama on 7351
 
