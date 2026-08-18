@@ -742,6 +742,13 @@ var _rpc_request_active: bool = false
 var _refreshing_session: bool = false
 # Outcome of the most recent coalesced refresh, read by coalesced waiters.
 var _last_refresh_succeeded: bool = false
+# Issue #1151: waiter watchdog. Mirrors the leader's MAX_AUTH_DURATION_SEC
+# deadline so a stalled leader cannot freeze the main thread forever. The
+# frame-count cap is a backstop against wallclock drift (e.g. system clock
+# changes during a long session). Tests override these to a smaller value
+# for fast turnaround; production keeps the default deadlines.
+var _refresh_watchdog_ms: int = int(NetworkConsts.MAX_AUTH_DURATION_SEC * 1000.0)
+var _refresh_watchdog_max_frames: int = int(NetworkConsts.MAX_AUTH_DURATION_SEC * 60.0)
 
 func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Dictionary:
 	# Issue #1079: thin public wrapper. The not-authenticated early return must
@@ -897,8 +904,32 @@ func _recover_session_after_auth_error(token_used: String) -> bool:
 		# Token already rotated by a concurrent recovery — replay against it.
 		return true
 	if _refreshing_session:
-		while _refreshing_session:
+		# Issue #1151: the leader's refresh is bounded by MAX_AUTH_DURATION_SEC,
+		# but this waiter's loop had no upper bound. If the leader stalls (scene
+		# tree paused, reentrant refresh, leader error path that never clears
+		# _refreshing_session), the waiter would spin forever on the main thread,
+		# freezing UI and input. Mirror the leader's deadline and add a frame-count
+		# cap so the waiter always surfaces a refresh_failed to its caller instead
+		# of hanging the game.
+		var start_ms: int = Time.get_ticks_msec()
+		var deadline_ms: int = start_ms + _refresh_watchdog_ms
+		var max_frames: int = _refresh_watchdog_max_frames
+		var frames_waited: int = 0
+		while _refreshing_session and frames_waited < max_frames:
+			if Time.get_ticks_msec() >= deadline_ms:
+				break
 			await get_tree().process_frame
+			frames_waited += 1
+		if _refreshing_session:
+			# Watchdog fired: leader is still in-flight, but we have to surface
+			# the original 401 to our caller instead of hanging. Do NOT touch
+			# _refreshing_session — the leader owns it. The leader may still
+			# complete and unblock subsequent RPCs.
+			push_warning(
+				"NetworkManager._recover_session_after_auth_error: leader refresh stalled past MAX_AUTH_DURATION_SEC=%.0fs (waiter waited %d frames / %d ms); bailing out to surface 401 to caller"
+				% [NetworkConsts.MAX_AUTH_DURATION_SEC, frames_waited, Time.get_ticks_msec() - start_ms]
+			)
+			return false
 		return _last_refresh_succeeded and not session_token.is_empty()
 	_refreshing_session = true
 	var refreshed: bool = await _run_refresh_and_await_result()
