@@ -287,7 +287,7 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Progressive Rollout - Rollback | Admin Dashboard (admin-only) | `rpcRollbackFeature()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_rollback` |
 | Progressive Rollout - Health Check | Admin Dashboard (admin-only) | `rpcRolloutHealth()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_health` |
 | Progressive Rollout - Metrics | Admin Dashboard (admin-only) | `rpcGetRolloutMetrics()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_metrics` |
-| Progressive Rollout - Record Metrics | Client | `rpcRecordMetrics()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_record_metrics` |
+| Progressive Rollout - Record Metrics | Client | `rpcRecordMetrics()` in `progressive_rollout.ts` — **delta-only validation (issue #1149):** only `feature_name`, `_delta` increments (capped at 50/100/5/5000 per call), and a 32-char `^[a-z0-9_-]+$` `client_platform` label are accepted; totals, error_rate, p99_latency_ms, user counts, and undeclared feature names are rejected with `FORBIDDEN` and audit-logged as `metric_poisoning_attempt` so a single session can never fabricate the volume needed to trip `checkRollbackCriteria` or explode Prometheus label cardinality | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_record_metrics` |
 | Progressive Rollout - Prometheus Metrics | Admin Dashboard (admin-only) | `rpcPrometheusMetrics()` in `progressive_rollout.ts` | Metrics store (Prometheus) | `/rpc/armored_archer/rollout_metrics_prometheus` |
 
 **Storage Schema:**
@@ -299,7 +299,9 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 **Admin Authorization (issue #1075):**
 - Every RPC in this section marked *(admin-only)* — plus the season admin tools, `admin_query_matches`, and the QA replay endpoints — is wrapped server-side by the shared admin guard (`backend/src/modules/admin_auth.ts`).
 - Authorized callers are configured via the `ADMIN_USER_IDS` environment variable (comma-separated Nakama user ids; see `backend/.env.example`). Unset/empty rejects every caller (fail-closed), and rejections are audit-logged as `admin_rpc_access_denied`.
-- `rollout_check` and `rollout_record_metrics` remain player-callable by design (client feature-gating and rollout telemetry). `rollout_check` is **hard-scoped to the session user** (issue #1156): a payload `user_id` must equal `ctx.userId` or be omitted — cross-user probes are rejected with `FORBIDDEN` and audit-logged against the caller. Operators needing the full flag inventory (including canary cohorts) must use the admin-only `rollout_list_flags` RPC.
+- `rollout_check` and `rollout_record_metrics` remain player-callable by design (client feature-gating and rollout telemetry). Both are scoped server-side:
+  - `rollout_check` is **hard-scoped to the session user** (issue #1156): a payload `user_id` must equal `ctx.userId` or be omitted — cross-user probes are rejected with `FORBIDDEN` and audit-logged against the caller. Operators needing the full flag inventory (including canary cohorts) must use the admin-only `rollout_list_flags` RPC.
+  - `rollout_record_metrics` is **delta-only** (issue #1149): only `feature_name`, bounded `*_delta` increments, and an allowlisted `client_platform` label are accepted — totals, `error_rate`, `p99_latency_ms`, and unknown feature names are rejected with `FORBIDDEN` and audit-logged as `metric_poisoning_attempt`, so a single authenticated session can never fabricate the volume needed to flip `checkRollbackCriteria` or drive Prometheus high-cardinality label explosions.
 
 ### Client-Side Synchronous Storage Cache (no RPC)
 
@@ -540,7 +542,7 @@ For PostgreSQL table changes:
 | `armored_archer/rollout_rollback` | progressive_rollout | `rpcRollbackFeature()` | Infrastructure *(admin-only)* |
 | `armored_archer/rollout_health` | progressive_rollout | `rpcRolloutHealth()` | Infrastructure *(admin-only)* |
 | `armored_archer/rollout_metrics` | progressive_rollout | `rpcGetRolloutMetrics()` | Infrastructure *(admin-only)* |
-| `armored_archer/rollout_record_metrics` | progressive_rollout | `rpcRecordMetrics()` | Infrastructure (player-callable) |
+| `armored_archer/rollout_record_metrics` | progressive_rollout | `rpcRecordMetrics()` — delta-only, capped per call, rejects unknown feature names (issue #1149) | Infrastructure (player-callable) |
 | `armored_archer/rollout_metrics_prometheus` | progressive_rollout | `rpcPrometheusMetrics()` | Infrastructure *(admin-only)* |
 | `armored_archer/admin_get_season_state` | season_admin | `rpcAdminGetSeasonState()` | Seasons *(admin-only)* |
 | `armored_archer/admin_get_player_season` | season_admin | `rpcAdminGetPlayerSeason()` | Seasons *(admin-only)* |

@@ -476,16 +476,22 @@ export const ValibotSchemas = {
     feature_name: pipe(string(), minLength(1), maxLength(100)),
   }),
 
+  // rollout_record_metrics (issue #1149): every numeric field a player can
+  // submit is treated as a "delta to add since the last call" rather than
+  // an authoritative aggregate — clients cannot set totals, only nudge
+  // them. Hard caps make the increments safe to fold into the in-memory
+  // `rolloutMetrics` map without allowing a single caller to fabricate
+  // health_check_fails, error_rate, or user counts past the rollback
+  // thresholds that checkRollbackCriteria() compares against. Strings
+  // (feature_name, error_type, client_platform) are length-and-shape
+  // bounded so high-cardinality label values cannot blow up Prometheus.
   rollout_record_metrics: object({
     feature_name: pipe(string(), minLength(1), maxLength(100)),
-    total_users: optional(pipe(number(), integer(), minValue(0))),
-    active_users: optional(pipe(number(), integer(), minValue(0))),
-    error_count: optional(pipe(number(), integer(), minValue(0))),
-    error_rate: optional(pipe(number(), minValue(0))),
-    avg_latency_ms: optional(pipe(number(), minValue(0))),
-    p99_latency_ms: optional(pipe(number(), minValue(0))),
-    health_check_passes: optional(pipe(number(), integer(), minValue(0))),
-    health_check_fails: optional(pipe(number(), integer(), minValue(0))),
+    error_count_delta: optional(pipe(number(), integer(), minValue(0), maxValue(50))),
+    health_check_passes_delta: optional(pipe(number(), integer(), minValue(0), maxValue(100))),
+    health_check_fails_delta: optional(pipe(number(), integer(), minValue(0), maxValue(5))),
+    avg_latency_ms_delta: optional(pipe(number(), minValue(0), maxValue(5000))),
+    client_platform: optional(pipe(string(), regex(/^[a-z0-9_-]{1,32}$/u), maxLength(32))),
   }),
 
   // Privacy compliance schemas
