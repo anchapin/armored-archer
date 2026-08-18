@@ -38,9 +38,16 @@ static func get_coverage_data() -> Dictionary:
 
 func _get_coverage_data_internal() -> Dictionary:
 	var coverage_data = {}
+	# Union of executed and mapped scripts so zero-coverage files report 0.0%
+	# instead of silently vanishing from the exported coverage data (#1020).
+	var script_paths = {}
 	for script_path in _executed_lines:
+		script_paths[script_path] = true
+	for script_path in _script_line_map:
+		script_paths[script_path] = true
+	for script_path in script_paths:
 		var executable_lines = _script_line_map.get(script_path, [])
-		var executed_lines = _executed_lines[script_path]
+		var executed_lines = _executed_lines.get(script_path, [])
 		var covered_count = executed_lines.size()
 		var total_count = executable_lines.size()
 		var percentage = (float(covered_count) / float(total_count) * 100.0) if total_count > 0 else 0.0
