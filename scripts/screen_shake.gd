@@ -22,6 +22,9 @@ func _ready() -> void:
 
 func _get_camera() -> Node:
 	"""Find the active camera in the scene."""
+	# get_tree() errors on out-of-tree nodes, so guard before calling it
+	if not is_inside_tree():
+		return _camera
 	var tree := get_tree()
 	if tree:
 		var current_scene := tree.current_scene
@@ -59,16 +62,17 @@ func _get_noise(time: float) -> float:
 
 func start_shake(intensity: float = 10.0, duration: float = 0.3, frequency: float = 30.0) -> void:
 	"""Start a screen shake with the given parameters."""
+	# Store config first so parameters persist even when no camera is available
+	shake_intensity = intensity
+	shake_duration = duration
+	shake_frequency = frequency
+
 	if _camera == null:
 		_get_camera()
 
 	if _camera == null:
 		push_warning("ScreenShake: No camera found")
 		return
-
-	shake_intensity = intensity
-	shake_duration = duration
-	shake_frequency = frequency
 
 	_is_shaking = true
 	_shake_time = 0.0
@@ -113,5 +117,5 @@ func shake_impact() -> void:
 
 func on_player_hit(damage: int) -> void:
 	"""Called when player takes damage - triggers appropriate shake."""
-	var intensity := clamp(damage / 10.0, 5.0, 20.0)
-	shake_medium()
+	var intensity: float = clampf(damage / 10.0, 5.0, 20.0)
+	start_shake(intensity, 0.25, 30.0)
