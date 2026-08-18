@@ -94,7 +94,9 @@ function parseAndValidate(raw: string | undefined): ResolvedAllowlist {
     .filter((id) => id.length > 0);
 
   if (entries.length === 0) {
-    winstonLogger.info('Admin allowlist is empty (ADMIN_USER_IDS unset or blank); all admin RPCs will reject every caller (fail-closed)');
+    winstonLogger.info(
+      'Admin allowlist is empty (ADMIN_USER_IDS unset or blank); all admin RPCs will reject every caller (fail-closed)'
+    );
     return { ids: new Set(), count: 0, fingerprints: [] };
   }
 
@@ -108,9 +110,12 @@ function parseAndValidate(raw: string | undefined): ResolvedAllowlist {
     }
     const lower = id.toLowerCase();
     if (normalized.has(lower)) {
-      winstonLogger.warn('Admin allowlist contains duplicate entry (after case normalization); ignoring duplicate', {
-        duplicate_id: lower,
-      });
+      winstonLogger.warn(
+        'Admin allowlist contains duplicate entry (after case normalization); ignoring duplicate',
+        {
+          duplicate_id: lower,
+        }
+      );
       continue;
     }
     normalized.add(lower);

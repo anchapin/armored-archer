@@ -343,9 +343,12 @@ describe('getAdminUserIds hardening (#1155)', () => {
     expect(() => getAdminUserIds()).toThrow(/malformed entry/);
   });
 
-  it('rejects an entry containing a comma at first parse', () => {
+  it('rejects an entry containing an invalid character at first parse', () => {
     setAdminUserIds(undefined);
-    process.env.ADMIN_USER_IDS = `${ADMIN_ID},bad,entry,with,comma,inside`;
+    // A comma cannot appear inside an entry (it is the list separator and
+    // parseAndValidate splits on it), so exercise the malformed-entry throw
+    // with a character outside VALID_USER_ID instead.
+    process.env.ADMIN_USER_IDS = `${ADMIN_ID},bad$entry`;
     resetAdminAllowlistCache();
     expect(() => getAdminUserIds()).toThrow(/malformed entry/);
   });
