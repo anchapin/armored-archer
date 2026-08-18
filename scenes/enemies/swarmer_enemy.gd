@@ -42,6 +42,12 @@ signal group_buff_deactivated()
 @onready var detection_area: Area2D = $DetectionArea
 
 func _ready() -> void:
+	# Set base stats for goblin rusher (before super so current_health seeds from max_health)
+	max_health = 25
+	move_speed = _normal_speed
+	damage = 8
+	xp_reward = 15
+
 	super._ready()
 
 	# Setup detection area for player
@@ -56,12 +62,6 @@ func _ready() -> void:
 		add_child(detection_area)
 		detection_area.collision_layer = 0
 		detection_area.collision_mask = 1  # Player layer
-
-	# Set base stats for goblin rusher
-	max_health = 25
-	max_speed = _normal_speed
-	damage = 8
-	xp_reward = 15
 
 	# Emit spawn signal
 	swarmer_spawned.emit()
@@ -102,7 +102,7 @@ func check_nearby_swarmers() -> int:
 func apply_group_buff() -> void:
 	if not _group_buff_active:
 		_group_buff_active = true
-		max_speed = _normal_speed * group_buff_speed_multiplier
+		move_speed = _normal_speed * group_buff_speed_multiplier
 		group_buff_activated.emit()
 
 	# Visual indicator
@@ -113,7 +113,7 @@ func apply_group_buff() -> void:
 func remove_group_buff() -> void:
 	if _group_buff_active:
 		_group_buff_active = false
-		max_speed = _normal_speed
+		move_speed = _normal_speed
 		group_buff_deactivated.emit()
 
 	# Remove visual indicator
@@ -138,7 +138,7 @@ func move_to_side() -> void:
 
 	# Randomly choose left or right flank
 	var direction = perpendicular if randf() > 0.5 else -perpendicular
-	velocity = direction * max_speed
+	velocity = direction * move_speed
 	move_and_slide()
 
 ## Retreat when health is low
@@ -189,8 +189,8 @@ func _execute_rush_attack(delta: float) -> void:
 
 ## Handle rush impact
 func _on_rush_impact() -> void:
-	if _player_reference and _player_reference.has_method("takedamage"):
-		_player_reference.takedamage(damage)
+	if _player_reference and _player_reference.has_method("take_damage"):
+		_player_reference.take_damage(damage)
 
 	_is_rushing = false
 	_attack_cooldown = 0.8
@@ -212,7 +212,7 @@ func _execute_group_behavior(delta: float) -> void:
 ##   delta: Time delta
 func _wander(delta: float) -> void:
 	var wander_dir = Vector2(sin(_circle_angle), cos(_circle_angle))
-	velocity = wander_dir * max_speed * 0.3
+	velocity = wander_dir * move_speed * 0.3
 	_circle_angle += delta * 0.5
 	move_and_slide()
 
@@ -236,7 +236,7 @@ func _retreat_when_hurt() -> void:
 		return
 
 	var retreat_dir = (global_position - _player_reference.global_position).normalized()
-	velocity = retreat_dir * max_speed * 1.2
+	velocity = retreat_dir * move_speed * 1.2
 	move_and_slide()
 
 	# End retreat if healed or safe distance
@@ -246,9 +246,9 @@ func _retreat_when_hurt() -> void:
 	if health_ratio > _retreat_when_hurt_threshold or distance > 300.0:
 		_is_retreating = false
 
-## Override takedamage to trigger retreat
-func takedamage(amount: int) -> void:
-	super.takedamage(amount)
+## Override take_damage to trigger retreat
+func take_damage(amount: int) -> void:
+	super.take_damage(amount)
 
 	if not is_dead and current_health > 0:
 		var health_ratio = float(current_health) / float(max_health)
@@ -257,5 +257,5 @@ func takedamage(amount: int) -> void:
 
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):
-		if body.has_method("takedamage"):
-			body.takedamage(damage)
+		if body.has_method("take_damage"):
+			body.take_damage(damage)
