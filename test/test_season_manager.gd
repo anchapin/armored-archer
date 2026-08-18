@@ -201,7 +201,7 @@ func test_is_rewards_claimed() -> void:
 	else:
 		_fail("test_is_rewards_claimed_false", "Should be false initially")
 
-	sm.rewards_claimed = true
+	sm._rewards_claimed = true
 
 	if sm.is_rewards_claimed():
 		_pass("test_is_rewards_claimed_true")
