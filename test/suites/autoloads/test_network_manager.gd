@@ -3,8 +3,19 @@ extends GutTest
 var NetworkManagerClass = load("res://autoloads/NetworkManager.gd")
 var _network
 var _mock_http: Node  # Mock HTTPRequest for network isolation
+var _session_file_path: String = NetworkManagerClass.SESSION_FILE
+
+func _remove_persisted_session() -> void:
+	# Issue #969: a session file persisted by an earlier test or a previous
+	# run is restored by NetworkManager._ready(), polluting initial state.
+	if FileAccess.file_exists(_session_file_path):
+		DirAccess.remove_absolute(_session_file_path)
 
 func before_each():
+	# Start every test from a clean disk state so _ready()'s
+	# _load_session_from_file() cannot restore a stale token (issue #969).
+	_remove_persisted_session()
+
 	# Create fresh NetworkManager instance for each test (ISO-04 pattern)
 	_network = NetworkManagerClass.new()
 	add_child_autofree(_network)
@@ -22,6 +33,11 @@ func before_each():
 	_network.http_request = _mock_http
 
 func after_each():
+	# Remove any session file this suite's tests wrote (e.g.
+	# test_session_file_operations) so it cannot leak into later suites
+	# or subsequent runs (issue #969).
+	_remove_persisted_session()
+
 	# Cleanup is handled by add_child_autofree, but clear references
 	_network = null
 	_mock_http = null
