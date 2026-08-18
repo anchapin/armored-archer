@@ -77,7 +77,14 @@ run_lint() {
     log_info "Running GDScript linting..."
     
     if command -v gdlint &> /dev/null; then
-        gdlint autoloads/*.gd scenes/**/*.gd scripts/*.gd test/*.gd 2>&1 || {
+        # globstar: without it bash treats ** as *, so nested files
+        # (scenes/ui/components/*.gd, test/suites/**) were never linted (#990).
+        # nullglob: unmatched patterns vanish instead of passing literals.
+        # Subshell keeps these options from affecting other phases' globs.
+        (
+            shopt -s globstar nullglob
+            exec gdlint autoloads/*.gd scenes/**/*.gd scripts/*.gd test/**/*.gd
+        ) 2>&1 || {
             log_error "GDScript linting failed"
             return 1
         }

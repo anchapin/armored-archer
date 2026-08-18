@@ -58,7 +58,8 @@ godot4 --headless --quit --import
 godot4 --headless --script test/run_all_tests.gd
 
 # Lint directly (pip install gdtoolkit)
-gdlint autoloads/*.gd scenes/**/*.gd scripts/*.gd test/*.gd
+shopt -s globstar nullglob
+gdlint autoloads/*.gd scenes/**/*.gd scripts/*.gd test/**/*.gd
 
 # Wrapper (use when GitHub Actions / act is unavailable)
 ./scripts/local-godot-tests.sh            # lint + syntax + tests (default = --all)
