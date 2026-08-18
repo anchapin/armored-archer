@@ -491,9 +491,14 @@ export function applyCurrencyDelta(
         log.warn('Currency write conflict for %s via %s, retrying: %s', userId, source, error);
         continue;
       }
-      // Let the conflict propagate: award callers (match settlement,
-      // season distribution) abort before stamping their idempotency
-      // markers, so a retry of the whole operation re-applies safely.
+      // Let the conflict propagate. Match settlement stamps its settled_at
+      // idempotency marker BEFORE applying awards (issue #1078), so a
+      // propagated conflict is caught by the settlement's degraded-
+      // settlement handler: the match stays marked settled and the failure
+      // is audited rather than retried — a re-settlement attempt can never
+      // re-apply currency. Season distribution callers still abort before
+      // stamping their own markers, where a whole-operation retry remains
+      // safe.
       throw error;
     }
 
