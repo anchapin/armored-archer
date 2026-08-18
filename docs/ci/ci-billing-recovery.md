@@ -216,7 +216,7 @@ Docs-only PRs (no production code touched) are exempt from the `act` step; they 
 - **Do not disable required status checks in branch protection.** This was the central failure mode that allowed unverified PRs to merge during the August 2026 outage. Keep the gates in place even when they're all red — they will turn green automatically once billing is restored.
 - **Do not bypass via `gh pr merge --admin`** unless you have read §6.1 and the PR body carries the attestation.
 - **Do not delete or skip workflows.** Removing the `.github/workflows/*.yml` files will not bring CI back, and will leave the repo without coverage when billing is restored.
-- **Do not rotate org secrets or rotate the billing-payment method's stored credentials** without coordinating with the on-call admin — there is no way to recover them from code or docs.
+- **Do not rotate org secrets or rotate the billing-payment method's stored credentials** without coordinating with the on-call admin — there is no way to recover them from code or docs. When rotation is warranted, follow the canonical procedure in `docs/SECRETS_ROTATION.md`.
 
 ---
 
