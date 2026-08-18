@@ -12,10 +12,10 @@ When every hosted Actions job fails with *"recent account payments have failed o
 
 ```text
 /                          # Godot 4.6 client project (res://)
-├── autoloads/             # 50+ singleton managers, registered in project.godot
+├── autoloads/             # 53 singleton managers (100+ files with .uid), registered in project.godot
 │   └── const.gd           # Shared constants (use for anything needed in 3+ files)
-├── scenes/                # .tscn organized by feature (player/, enemies/, ui/, pvp/)
-├── scripts/               # Shared GDScript + root-level dev tooling (shell/python)
+├── scenes/                # .tscn organized by feature (player/, enemies/, ui/, pvp/, effects/)
+├── scripts/               # 80+ root-level files: shared GDScript + dev tooling (shell/python/ts)
 ├── assets/                # Sprites, sounds, music
 ├── addons/                # gut (testing), analytics_manager, genesis_bridge, godot_mcp
 ├── test/                  # test/*.gd = legacy custom runner (used by CI)
@@ -24,6 +24,8 @@ When every hosted Actions job fails with *"recent account payments have failed o
 ├── data/                  # Tooling state (flaky-test history, coverage history) — NOT SQL migrations
 ├── docs/                  # Deep dives: PRD, ADRs (docs/adr/), runbooks, per-feature docs
 ├── script_templates/      # Custom Godot script templates
+├── pyproject.toml         # Python tooling deps (ruff, pyinstrument); root requirements.txt has gdlint/gdtoolkit
+├── .actrc                 # act config (pin slim runner image, headless Godot env)
 └── project.godot          # Main scene: scenes/ui/login_screen.tscn; features: 4.6, Mobile
 
 /backend/                  # Nakama 3.21 server (strict TypeScript)
