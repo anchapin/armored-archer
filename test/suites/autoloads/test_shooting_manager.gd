@@ -2,10 +2,24 @@ extends GutTest
 
 var ShootingManagerClass = load("res://autoloads/ShootingManager.gd")
 
+const SETTINGS_FILE_NAME: String = "shooting_settings.json"
+
+# ShootingManager persists its mode to user:// and restores it in _ready(),
+# so a prior test run leaks state into every new instance. Wipe the file so
+# each test starts from the compiled-in default (AUTO — this is an auto-shooter).
 func before_each():
 	super.before_each()
-	var sm = ShootingManagerClass.new()
-	add_child_autofree(sm)
+	_remove_persisted_settings()
+
+func after_all():
+	_remove_persisted_settings()
+
+func _remove_persisted_settings() -> void:
+	var dir := DirAccess.open("user://")
+	if dir and dir.file_exists(SETTINGS_FILE_NAME):
+		var err := dir.remove(SETTINGS_FILE_NAME)
+		if err != OK:
+			push_warning("Failed to remove persisted shooting settings: %s" % err)
 
 func test_shooting_manager_initializes():
 	var sm = ShootingManagerClass.new()
@@ -27,23 +41,23 @@ func test_get_shooting_mode():
 	var sm = ShootingManagerClass.new()
 	add_child_autofree(sm)
 	var mode = sm.get_shooting_mode()
-	assert_eq(mode, sm.ShootingMode.MANUAL, "Default mode should be MANUAL")
+	assert_eq(mode, sm.ShootingMode.AUTO, "Default mode should be AUTO (auto-shooter)")
 
 func test_set_shooting_mode():
 	var sm = ShootingManagerClass.new()
 	add_child_autofree(sm)
-	sm.set_shooting_mode(sm.ShootingMode.AUTO)
+	sm.set_shooting_mode(sm.ShootingMode.MANUAL)
 	var mode = sm.get_shooting_mode()
-	assert_eq(mode, sm.ShootingMode.AUTO, "Mode should be AUTO after setting")
+	assert_eq(mode, sm.ShootingMode.MANUAL, "Mode should be MANUAL after setting")
 
 func test_toggle_shooting_mode():
 	var sm = ShootingManagerClass.new()
 	add_child_autofree(sm)
-	assert_eq(sm.get_shooting_mode(), sm.ShootingMode.MANUAL)
+	assert_eq(sm.get_shooting_mode(), sm.ShootingMode.AUTO, "Fresh instance should start in AUTO")
 	sm.toggle_shooting_mode()
-	assert_eq(sm.get_shooting_mode(), sm.ShootingMode.AUTO)
+	assert_eq(sm.get_shooting_mode(), sm.ShootingMode.MANUAL, "Toggle from AUTO should switch to MANUAL")
 	sm.toggle_shooting_mode()
-	assert_eq(sm.get_shooting_mode(), sm.ShootingMode.MANUAL)
+	assert_eq(sm.get_shooting_mode(), sm.ShootingMode.AUTO, "Toggle from MANUAL should switch back to AUTO")
 
 func test_get_max_ammo():
 	var sm = ShootingManagerClass.new()
@@ -54,6 +68,8 @@ func test_get_max_ammo():
 func test_add_ammo():
 	var sm = ShootingManagerClass.new()
 	add_child_autofree(sm)
+	# Ammo starts at MAX, so drain first to observe an increase (no public setter).
+	sm._current_ammo = 10
 	var initial = sm.get_ammo()
 	sm.add_ammo(10)
 	assert_true(sm.get_ammo() > initial, "Ammo should increase after add")
@@ -67,6 +83,8 @@ func test_add_ammo_caps_at_max():
 func test_reload():
 	var sm = ShootingManagerClass.new()
 	add_child_autofree(sm)
+	# reload() early-returns on a full quiver, so drain first (no public setter).
+	sm._current_ammo = 10
 	sm.reload()
 	assert_true(sm.is_reloading(), "Should be reloading after reload()")
 
