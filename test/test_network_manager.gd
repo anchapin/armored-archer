@@ -35,6 +35,9 @@ func run_tests() -> void:
 	await test_auth_recovery_skips_refresh_when_token_rotated()
 	await test_auth_recovery_coalesces_concurrent_401s()
 	await test_auth_recovery_fails_closed_without_http()
+	await test_auth_recovery_waiter_bounds_stalled_leader_with_timeout()
+	await test_auth_recovery_waiter_does_not_freeze_main_thread()
+	await test_auth_recovery_waiter_unblocks_when_leader_completes()
 	await test_get_auth_headers_partial()
 	await test_detect_environment_development()
 	await test_log_config_warning()
@@ -685,5 +688,124 @@ func test_auth_recovery_fails_closed_without_http() -> void:
 		_pass("test_auth_recovery_fails_closed")
 	else:
 		_fail("test_auth_recovery_fails_closed", "Recovery should fail closed without transport")
+
+	nm.queue_free()
+
+# --- Issue #1151: bounded waiter watchdog so a stalled leader cannot
+# deadlock the Godot main thread. The waiter must (a) eventually return
+# false when the leader never clears _refreshing_session, (b) return
+# within the wallclock deadline, and (c) not block the main thread while
+# the (simulated) stalled leader is in-flight. ---
+
+func test_auth_recovery_waiter_bounds_stalled_leader_with_timeout() -> void:
+	OS.set_environment("E2E_TEST", "1")  # quiesce background startup auth
+	var nm = _create_network_manager()
+	OS.set_environment("E2E_TEST", "0")
+	nm.session_token = "stale_shared_token"
+	nm._refreshing_session = true
+	nm._last_refresh_succeeded = false
+	# Small deadline so the test finishes within the 600-frame runner budget.
+	nm._refresh_watchdog_ms = 400
+	nm._refresh_watchdog_max_frames = 60
+
+	var start_ms: int = Time.get_ticks_msec()
+	var recovered: bool = await nm._recover_session_after_auth_error("stale_shared_token")
+	var elapsed_ms: int = Time.get_ticks_msec() - start_ms
+
+	# The waiter must bail with refresh_failed (returns false) so the caller
+	# surfaces the original 401 instead of hanging. The leader's flag is left
+	# alone — the leader owns it; if it eventually finishes, future RPCs still
+	# see the fresh outcome.
+	if not recovered:
+		_pass("test_auth_recovery_waiter_returns_false_on_stalled_leader")
+	else:
+		_fail("test_auth_recovery_waiter_returns_false_on_stalled_leader", "Waiter returned true against a stalled leader")
+
+	# The waiter must honor the watchdog deadline rather than spin forever.
+	# Allow generous slack (the frame loop ticks at ~60fps) but firmly cap
+	# the wallclock so a regression that loses the bound fails fast.
+	if elapsed_ms < nm._refresh_watchdog_ms + 600:
+		_pass("test_auth_recovery_waiter_resolves_within_watchdog")
+	else:
+		_fail("test_auth_recovery_waiter_resolves_within_watchdog", "Waiter took %d ms (watchdog %d ms + 600 ms slack)" % [elapsed_ms, nm._refresh_watchdog_ms])
+
+	nm.queue_free()
+
+func test_auth_recovery_waiter_does_not_freeze_main_thread() -> void:
+	OS.set_environment("E2E_TEST", "1")  # quiesce background startup auth
+	var nm = _create_network_manager()
+	OS.set_environment("E2E_TEST", "0")
+	nm.session_token = "stale_shared_token"
+	nm._refreshing_session = true
+	nm._last_refresh_succeeded = false
+	# Watchdog shorter than the test wait so the waiter exits before the
+	# outer loop exits; we want to assert frames keep ticking while the
+	# waiter is inside its bounded loop.
+	nm._refresh_watchdog_ms = 300
+	nm._refresh_watchdog_max_frames = 60
+
+	var frames_before: int = Engine.get_frames_drawn()
+	var waiter_outcome: Array = []
+	var waiter: Callable = func():
+		var recovered: bool = await nm._recover_session_after_auth_error("stale_shared_token")
+		waiter_outcome.append(recovered)
+	waiter.call()
+
+	# Yield for ~250 ms (well under the 300 ms watchdog) so the waiter is
+	# still inside its bounded loop when we sample the frame counter.
+	await get_tree().create_timer(0.25).timeout
+	var frames_mid: int = Engine.get_frames_drawn()
+
+	# Let the waiter's watchdog complete.
+	await get_tree().create_timer(0.4).timeout
+	var recovered: bool = bool(waiter_outcome[0]) if waiter_outcome.size() > 0 else true
+
+	# While the (simulated) stalled leader holds _refreshing_session, the
+	# main thread must keep ticking frames. The waiter must also bail with
+	# refresh_failed so the caller surfaces the original 401.
+	if frames_mid > frames_before:
+		_pass("test_auth_recovery_waiter_main_thread_keeps_ticking")
+	else:
+		_fail("test_auth_recovery_waiter_main_thread_keeps_ticking", "Main thread froze: frames_before=%d frames_mid=%d" % [frames_before, frames_mid])
+
+	if not recovered:
+		_pass("test_auth_recovery_waiter_bails_on_stalled_leader_after_watchdog")
+	else:
+		_fail("test_auth_recovery_waiter_bails_on_stalled_leader_after_watchdog", "Waiter returned true after watchdog elapsed")
+
+	nm.queue_free()
+
+func test_auth_recovery_waiter_unblocks_when_leader_completes() -> void:
+	OS.set_environment("E2E_TEST", "1")  # quiesce background startup auth
+	var nm = _create_network_manager()
+	OS.set_environment("E2E_TEST", "0")
+	nm.session_token = "stale_shared_token"
+	nm._refreshing_session = true
+	nm._last_refresh_succeeded = false
+	# Long watchdog so the wait succeeds only because the leader completes,
+	# not because the watchdog fires. (The test still completes well within
+	# the 600-frame runner budget because the leader completes in 50 ms.)
+	nm._refresh_watchdog_ms = 5000
+	nm._refresh_watchdog_max_frames = 600
+
+	var waiter_outcome: Array = []
+	var waiter: Callable = func():
+		var recovered: bool = await nm._recover_session_after_auth_error("stale_shared_token")
+		waiter_outcome.append(recovered)
+	waiter.call()
+
+	# Hold the leader in-flight for ~50 ms before completing it.
+	await get_tree().create_timer(0.05).timeout
+	nm.session_token = "coalesced_fresh_token"
+	nm._last_refresh_succeeded = true
+	nm._refreshing_session = false
+
+	# Wait for the waiter to observe the leader's completion.
+	await get_tree().create_timer(0.2).timeout
+
+	if waiter_outcome.size() == 1 and waiter_outcome[0] == true:
+		_pass("test_auth_recovery_waiter_unblocks_on_leader_success")
+	else:
+		_fail("test_auth_recovery_waiter_unblocks_on_leader_success", "Waiter did not propagate leader success: outcomes=%s" % str(waiter_outcome))
 
 	nm.queue_free()
