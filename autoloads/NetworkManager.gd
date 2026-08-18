@@ -835,6 +835,114 @@ func _log_rpc_latency(rpc_name: String, latency_ms: int) -> void:
 	if analytics and analytics.has_method("log_rpc_latency"):
 		analytics.log_rpc_latency(rpc_name, latency_ms)
 
+# ==================== SYNCHRONOUS STORAGE CACHE ====================
+# Issue #1022: several autoloads (PlayerRatingManager, MatchTransitionManager,
+# SeasonManager, MatchResultsManager) and scenes/ui/pvp/match_results.gd call
+# get_storage_sync(), which previously did not exist — every call was a latent
+# runtime crash. Nakama storage I/O is asynchronous HTTP, so a truly
+# synchronous network read is impossible; per the issue's guidance this is a
+# client-side last-known-value cache persisted to user://. It is a crash-safe
+# fallback only — server-authoritative state still flows through the domain
+# RPCs documented in RPC_MAP.md, never through this cache.
+
+const STORAGE_CACHE_FILE: String = "user://network_storage_cache.json"
+
+var _storage_cache: Dictionary = {}
+var _storage_cache_loaded: bool = false
+var _storage_handle: SyncStorageHandle = null
+# Instance-level path override so tests can redirect disk persistence.
+var storage_cache_path: String = STORAGE_CACHE_FILE
+
+## Returns a synchronous, cache-backed key-value storage handle.
+##
+## The handle exposes get()/put()/erase()/has() over the local storage cache
+## and never blocks on the network. Reads of missing keys yield null, which
+## every caller already treats as "use defaults". Never returns null itself.
+func get_storage_sync() -> SyncStorageHandle:
+	if _storage_handle == null:
+		_storage_handle = SyncStorageHandle.new(self)
+	return _storage_handle
+
+## Loads the storage cache from disk once; missing or corrupt files fall back
+## to an empty cache so callers see their own defaults.
+func _ensure_storage_cache_loaded() -> void:
+	if _storage_cache_loaded:
+		return
+	_storage_cache_loaded = true
+	if not FileAccess.file_exists(storage_cache_path):
+		return
+	var file: FileAccess = FileAccess.open(storage_cache_path, FileAccess.READ)
+	if file == null:
+		push_warning("NetworkManager: could not open storage cache (error %d)" % FileAccess.get_open_error())
+		return
+	var json: JSON = JSON.new()
+	if json.parse(file.get_as_text()) == OK and json.data is Dictionary:
+		_storage_cache = json.data
+	else:
+		push_warning("NetworkManager: storage cache unreadable; starting empty")
+
+## Persists the storage cache to disk; failures are logged, never fatal.
+func _save_storage_cache() -> void:
+	var file: FileAccess = FileAccess.open(storage_cache_path, FileAccess.WRITE)
+	if file == null:
+		push_warning("NetworkManager: could not write storage cache (error %d)" % FileAccess.get_open_error())
+		return
+	file.store_string(JSON.stringify(_storage_cache))
+
+## Applies a cache write and persists it.
+func _storage_put(key: String, value: Variant) -> void:
+	_ensure_storage_cache_loaded()
+	_storage_cache[key] = value
+	_save_storage_cache()
+
+## Reads a cached value, lazily loading the cache from disk first.
+func _storage_get(key: String, default_value: Variant = null) -> Variant:
+	_ensure_storage_cache_loaded()
+	return _storage_cache.get(key, default_value)
+
+## Returns true when `key` exists in the cache.
+func _storage_has(key: String) -> bool:
+	_ensure_storage_cache_loaded()
+	return _storage_cache.has(key)
+
+## Applies a cache erase (if present) and persists it.
+func _storage_erase(key: String) -> void:
+	_ensure_storage_cache_loaded()
+	if _storage_cache.erase(key):
+		_save_storage_cache()
+
+## Synchronous key-value handle over NetworkManager's local storage cache.
+##
+## Duck-typed by callers via has_method() guards, so the method set is fixed:
+## put/erase/has. Reads go through plain `storage.get(key)` calls, which
+## resolve via the native Object.get() into the _get() virtual below —
+## overriding get() directly is forbidden by Godot. All operations are local;
+## no RPCs are issued.
+class SyncStorageHandle:
+	extends RefCounted
+
+	var _owner: Node
+
+	func _init(owner: Node) -> void:
+		_owner = owner
+
+	## Serves `storage.get(key)` for any key that is not a real property:
+	## returns the cached value, or null when absent.
+	func _get(key: StringName) -> Variant:
+		return _owner._storage_get(String(key))
+
+	## Caches `value` under `key` and persists the cache locally.
+	func put(key: String, value: Variant) -> void:
+		_owner._storage_put(key, value)
+
+	## Removes `key` from the cache (no-op when absent) and persists.
+	func erase(key: String) -> void:
+		_owner._storage_erase(key)
+
+	## Returns true when `key` exists in the cache.
+	func has(key: String) -> bool:
+		return _owner._storage_has(key)
+
 # ==================== RECONNECTION HANDLING ====================
 
 ## Initiates a reconnection attempt with exponential backoff

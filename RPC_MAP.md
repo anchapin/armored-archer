@@ -227,6 +227,19 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 - `feature_flags` collection: `{ flag_id, name, description, phase, enabled_percentage, targeting, created_at }`
 - `query_performance` collection: `{ query_id, execution_time_ms, n_plus_one_detected, timestamp }`
 
+### Client-Side Synchronous Storage Cache (no RPC)
+
+`NetworkManager.get_storage_sync()` (issue #1022) is a **client-only** synchronous key-value facade (`get`/`put`/`erase`/`has`) backed by a last-known-value cache persisted to `user://network_storage_cache.json`. It issues **no RPC** — Nakama storage I/O is asynchronous HTTP, so a synchronous server read is impossible, and no generic key-value storage RPC exists server-side.
+
+| Aspect | Detail |
+|--------|--------|
+| Callers | PlayerRatingManager, MatchTransitionManager, SeasonManager, MatchResultsManager, `scenes/ui/pvp/match_results.gd` |
+| Server handler | None (client-side only) |
+| Storage ownership | Local file `user://network_storage_cache.json` per player device |
+| Server truth | Unaffected — server-authoritative state flows exclusively through the domain RPCs above via `NetworkManager.send_rpc()` |
+
+Reads of missing keys return `null`, which every caller already treats as "apply defaults" (e.g. `DEFAULT_RATING`, current-time last-active). The cache is a crash-safe fallback for these legacy local-storage paths, never an input to gameplay decisions.
+
 ---
 
 ## RPC Dependencies
