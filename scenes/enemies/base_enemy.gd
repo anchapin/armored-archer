@@ -255,7 +255,10 @@ func archetype_death_event() -> String:
 	# get_global_name() requires the script be class_name-registered. Fall back
 	# to the file basename for scripts that only declare `extends BaseEnemy`.
 	if class_id == "":
-		var path: String = script.resource_path if script.has_method("resource_path") else ""
+		# resource_path is a property, not a method — has_method() is always
+		# false for it, so read it directly (issue #989). It is only empty for
+		# in-memory scripts, which have no archetype mapping anyway.
+		var path: String = script.resource_path
 		if path != "":
 			class_id = path.get_file().get_basename()
 	match class_id:

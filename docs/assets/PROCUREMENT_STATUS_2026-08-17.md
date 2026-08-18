@@ -3,7 +3,7 @@
 **Owner:** audio-team (human procurement required for binary assets)
 **AI scaffold:** MiniMax-M3 (this pass)
 **Updated:** 2026-08-17
-**Related:** issue #956, `docs/assets/ASSET_PROSING_PLAN_2026.md`, `assets/audio/SOURCES.md`
+**Related:** issue #956, issue #989, `docs/assets/ASSET_PROSING_PLAN_2026.md`, `assets/audio/SOURCES.md`
 
 > **Scope note.** Per the procurement plan, AI agents cannot:
 > 1. Verify a CC0 license offline (only the original distribution page can do that).
@@ -146,3 +146,27 @@ Once the human owner lands binaries:
 
 When all rows are filled and the gates pass, issue #956 can be closed by
 re-running this pass (the `Last AI pass` column will read `_pass-N+1_`).
+
+## 7. Addendum — issue #989 test failures (2026-08-17)
+
+Issue #989 tracked 2 persistent Godot test failures attributed to missing
+audio binaries. Root-cause analysis showed neither requires procurement to
+resolve, so **no placeholder audio was generated** (per the CC0 hybrid
+policy, synthetic placeholders would muddy provenance for zero benefit):
+
+1. `[FAIL] test_archetype_helper_goblin` — not an asset failure. The test
+   asserts the *event-name* wiring in `base_enemy.gd:archetype_death_event()`,
+   which returned `""` because `script.has_method("resource_path")` is always
+   false (`resource_path` is a property, not a method). Fixed by reading
+   `script.resource_path` directly. This also restores per-archetype death
+   SFX routing at runtime for `class_name`-less enemy scripts.
+2. The unattributed second `Failed: 1` was cold-`.godot`-cache class
+   resolution (GearData / CosmeticSkinData / GearSynergy suites), not audio.
+   Running `godot4 --headless --quit --import` before the suite resolves it;
+   with a warm cache the full suite is green.
+
+The `[AudioManager] Music asset missing (procurement pending)` warnings for
+`menu_loop.ogg` / `combat_loop.ogg` are **by design** — the #914 tests
+verify path wiring (which passes) while file presence stays a procurement
+signal. Option 1 of issue #989 (procure the real binaries via §5.1/§5.3)
+remains open with the audio-team.
