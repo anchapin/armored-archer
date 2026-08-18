@@ -1,8 +1,39 @@
 extends GutTest
 
+# Tests for the CampaignManager autoload.
+#
+# The suite hand-rolls its NetworkManager stub instead of using
+# `double(Node)`: GUT cannot stub script-level methods (send_rpc,
+# send_rpc_async) on a double of a bare native class, so the doubled
+# mock crashed before_each and left the real NetworkManager autoload
+# bound, which pushed errors in RPC-calling tests (issue #965, same
+# MOCK-05 anti-pattern as issues #972/#977). The stub classes below
+# implement exactly the NetworkManager/AnalyticsManager surface
+# CampaignManager touches.
+
+# --- Test Doubles ---
+
+## Minimal NetworkManager double. `send_rpc` returns `rpc_response`
+## synchronously, so CampaignManager's `await` resumes immediately.
+class StubNetworkManager extends Node:
+	var rpc_response: Dictionary = {"success": true}
+
+	func send_rpc(_rpc_id: String, _payload: String, _timeout: float = 30.0) -> Dictionary:
+		return rpc_response
+
+	func send_rpc_async(_rpc_id: String, _payload: String, _timeout: float = 10.0) -> void:
+		pass
+
+## Analytics stub with no log_* methods, so has_method() returns false
+## and CampaignManager skips its analytics hooks.
+class StubAnalyticsManager extends Node:
+	pass
+
+# --- Fixtures ---
+
 var _campaign_manager = null
-var _mock_network = null
-var _mock_analytics = null
+var _mock_network: StubNetworkManager = null
+var _mock_analytics: StubAnalyticsManager = null
 var _save_file_path = "user://campaign_progress.json"
 
 func before_each():
@@ -14,23 +45,24 @@ func before_each():
 	_campaign_manager = CampaignManager.new()
 	add_child_autofree(_campaign_manager)
 
-	_mock_network = double(Node).new()
+	_mock_network = StubNetworkManager.new()
 	_mock_network.name = "NetworkManager"
 	add_child_autofree(_mock_network)
-	stub(_mock_network, "has_method").to_return(true)
-	stub(_mock_network, "send_rpc").to_return({"success": true})
-	stub(_mock_network, "send_rpc_async").to_return()
 	_campaign_manager.set("network_manager", _mock_network)
 
-	_mock_analytics = double(Node).new()
+	_mock_analytics = StubAnalyticsManager.new()
 	_mock_analytics.name = "AnalyticsManager"
 	add_child_autofree(_mock_analytics)
-	stub(_mock_analytics, "has_method").to_return(false)
 	_campaign_manager.set("analytics", _mock_analytics)
 
 func test_initialization():
 	assert_true(_campaign_manager != null)
-	assert_eq(_campaign_manager.unlocked_stages.size(), 0)
+	# _ready() deliberately seeds stage "1_1" for fresh installs so the
+	# first stage is playable with no save file (autoloads/CampaignManager.gd
+	# _ready(): "If no saved progress, initialize with first stage and
+	# chapter unlocked" — see issue #965).
+	assert_eq(_campaign_manager.unlocked_stages.size(), 1)
+	assert_true("1_1" in _campaign_manager.unlocked_stages)
 	assert_eq(_campaign_manager.completed_stages.size(), 0)
 	assert_eq(_campaign_manager.bosses_defeated.size(), 0)
 	assert_eq(_campaign_manager.unlocked_modifier_pools.size(), 0)
@@ -45,8 +77,11 @@ func test_get_stage_data_not_found():
 	var stage = _campaign_manager.get_stage_data("nonexistent")
 	assert_true(stage.is_empty())
 
-func test_is_stage_unlocked_empty():
-	assert_false(_campaign_manager.is_stage_unlocked("1_1"))
+func test_is_stage_unlocked_fresh_state():
+	# Fresh installs only have the seeded "1_1" unlocked (issue #965);
+	# every other stage stays locked until progression unlocks it.
+	assert_true(_campaign_manager.is_stage_unlocked("1_1"))
+	assert_false(_campaign_manager.is_stage_unlocked("2_1"))
 
 func test_is_stage_completed_empty():
 	assert_false(_campaign_manager.is_stage_completed("1_1"))
