@@ -8,6 +8,7 @@
 ##   PerformanceProfiler.get_device_tier() - Get device tier (flagship, mid_range, budget)
 ##   PerformanceProfiler.is_budget_device() - Check if running on budget device
 ##   PerformanceProfiler.get_performance_targets() - Get FPS targets for current device
+##   PerformanceProfiler.export_snapshot_json() - Snapshot as JSON (benchmark gate / telemetry)
 ##
 extends Node
 
@@ -400,6 +401,24 @@ func get_memory_leak_status() -> Dictionary:
 		"required_samples": MEMORY_LEAK_SAMPLE_COUNT,
 		"reason": reason
 	}
+
+## Reset frame-time statistics (FPS history, current FPS, frame-time history)
+## Call this to start a clean measurement window, e.g. after a warm-up phase in
+## the headless benchmark harness (issue #1073) or on scene transitions
+func reset_frame_statistics() -> void:
+	_fps_history.clear()
+	_frame_time_history.clear()
+	_current_fps = 0.0
+	_average_frame_time = 0.0
+
+## Export the profiling snapshot as a JSON string (issue #1073)
+## Used by the headless benchmark harness and device telemetry capture to
+## write measurements that the backend benchmark gate consumes
+func export_snapshot_json(pretty: bool = false) -> String:
+	var snapshot: Dictionary = get_profiling_snapshot()
+	if pretty:
+		return JSON.stringify(snapshot, "  ")
+	return JSON.stringify(snapshot)
 
 ## Reset memory leak detection state
 ## Call this when transitioning between scenes to start fresh tracking
