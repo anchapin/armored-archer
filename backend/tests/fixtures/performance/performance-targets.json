@@ -1,0 +1,45 @@
+{
+  "_comment": "Canonical machine-readable performance thresholds (single source of truth, issue #1073). Consumed by backend/tests/integration/low_end_device_performance.test.ts (jest benchmark gate). docs/PERFORMANCE.md mirrors these values for humans - the gate enforces sync of the Budget row. Do not duplicate these numbers as test-local constants.",
+  "schemaVersion": 1,
+  "deviceTiers": {
+    "flagship": {
+      "targetFps": 60,
+      "minFps": 45,
+      "maxParticles": 100,
+      "shadowQuality": 2,
+      "memoryThresholdMb": 1024
+    },
+    "midRange": {
+      "targetFps": 45,
+      "minFps": 30,
+      "maxParticles": 75,
+      "shadowQuality": 1,
+      "memoryThresholdMb": 512
+    },
+    "budget": {
+      "targetFps": 30,
+      "minFps": 24,
+      "maxParticles": 50,
+      "shadowQuality": 0,
+      "memoryThresholdMb": 256
+    }
+  },
+  "budgetDevice": {
+    "maxMemoryMb": 256,
+    "maxFrameTimeMs": 33.33,
+    "maxNetworkLatencyMs": 500
+  },
+  "memoryLeakDetection": {
+    "growthThresholdMb": 50,
+    "growthRateThresholdMbPerMin": 10,
+    "requiredSamples": 60
+  },
+  "headlessBenchmark": {
+    "source": "headless_godot",
+    "minFrames": 600,
+    "minMeasuredSeconds": 8,
+    "minAverageFps": 24,
+    "maxAvgFrameTimeMs": 33.33,
+    "maxPeakMemoryMb": 256
+  }
+}

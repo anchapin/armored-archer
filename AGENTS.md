@@ -151,7 +151,7 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 - **Integration tests** only match `backend/tests/integration/**` (`jest.integration.config.js`). Run `npm run test:integration` with the stack up (`make services-start`).
 - **Schema tests** (`npm run test:schema`) match only `tests/integration/schema.test.ts` and need PostgreSQL but not a running Nakama server (issue #893) — the cheapest post-migration verification.
 - **Property-based tests** (`npm run test:property`) use `jest.property.config.js` with roots = `tests/unit/` — outside the default roots (issue #1031).
-- **Benchmark gate** (`npm run test:benchmark`) uses `jest.benchmark.config.js` and matches only `tests/integration/low_end_device_performance.test.ts`; it needs no services (issue #1031).
+- **Benchmark gate** (`npm run test:benchmark`) uses `jest.benchmark.config.js` and matches only `tests/integration/low_end_device_performance.test.ts`; it needs no services (issue #1031) but **requires a real-measurement snapshot** from a headless Godot run (issue #1073): `./scripts/run-headless-performance-benchmark.sh` first (the workflow generates it automatically; without it the gate fails by design). Thresholds live in `backend/tests/fixtures/performance/performance-targets.json` (canonical; `docs/PERFORMANCE.md` mirrors it).
 - CI enforces ~80% coverage thresholds (`jest.config.js` + coverage gates in `test.yml`).
 - Git hooks (husky, `backend/.husky/`): pre-commit runs lint-staged on staged TS; pre-push runs the full backend suite. Skip deliberately with `git commit --no-verify`.
 - Flaky detection: `npm run test:flaky`. Smoke: `make smoke-test-quick`.

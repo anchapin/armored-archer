@@ -1,0 +1,30 @@
+{
+  "_comment": "EXAMPLE fixture only (issue #1073). Used exclusively to unit-test the snapshot-evaluation logic in low_end_device_performance.test.ts. The benchmark gate itself NEVER reads this file - it requires a snapshot really measured by a headless Godot run (scripts/run-headless-performance-benchmark.sh writes it to generated/headless_benchmark.snapshot.json). Device telemetry captures may be dropped into generated/ using this same schema.",
+  "schemaVersion": 1,
+  "source": "headless_godot",
+  "generatedAt": 1710000000,
+  "godotVersion": "4.6.stable.official.example",
+  "platform": "Linux",
+  "displayServer": "headless",
+  "scenePath": "res://scenes/main.tscn",
+  "framesRun": 600,
+  "warmupFrames": 120,
+  "measuredWallSeconds": 10.0,
+  "engineMaxFps": 0,
+  "benchmarkSceneNodeCount": 42,
+  "profiler": {
+    "timestamp": 1710000000,
+    "current_fps": 480.0,
+    "average_fps": 470.5,
+    "frame_time_ms": 2.08,
+    "avg_frame_time_ms": 2.13,
+    "memory_current_mb": 96.5,
+    "memory_startup_mb": 88.0,
+    "memory_peak_mb": 102.25,
+    "device_tier": "Flagship",
+    "target_fps": 60,
+    "memory_leak_detected": false,
+    "memory_growth_mb": 8.5,
+    "memory_growth_rate_mb_per_min": 51.0
+  }
+}

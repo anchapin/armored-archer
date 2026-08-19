@@ -8,6 +8,8 @@ This document outlines the performance targets, profiling methodology, and budge
 
 - **GitHub Issue**: #133 - [QAQC] HIGH: Profile Performance & Optimize for Budget Devices
 - **Problem**: No documented performance targets or budget device testing. No memory leak checks.
+- **GitHub Issue**: #1073 - Make low-end benchmark gate measure real client performance
+- **Canonical thresholds**: `backend/tests/fixtures/performance/performance-targets.json` is the single machine-readable source of truth consumed by the CI benchmark gate; the tables in this document are the human-readable mirror and must stay in sync (the gate enforces the Budget-tier row).
 
 ---
 
@@ -170,6 +172,54 @@ PerformanceProfiler.log_profiling_snapshot("After 5 PvP Matches")
 
 ---
 
+## CI Benchmark Gate (Real Measurement)
+
+The "Benchmark Regression" workflow (`benchmark-regression.yml`) gates PRs on
+**real client performance**, not simulated values (issue #1073):
+
+1. A headless Godot 4.6 run boots the actual gameplay scene
+   (`scenes/main.tscn`: player, enemy spawner, arrows, object pooling) via
+   `test/benchmark/headless_benchmark.gd`.
+2. After a short warm-up, the harness resets `PerformanceProfiler` statistics
+   (`reset_frame_statistics()` / `reset_memory_leak_detection()`), uncaps
+   `Engine.max_fps` (headless runs otherwise inherit the budget tier's 30 FPS
+   cap, which hides real frame cost behind throttle sleep), and measures a
+   clean window (≥ 600 frames and ≥ 10 s by default).
+3. It exports a JSON snapshot — real FPS, real frame times, real static
+   memory — to
+   `backend/tests/fixtures/performance/generated/headless_benchmark.snapshot.json`
+   (gitignored; regenerated every run).
+4. `cd backend && npm run test:benchmark` validates the snapshot against the
+   shared thresholds in `performance-targets.json`. **If the snapshot is
+   missing the gate fails** — it can no longer pass vacuously on synthetic
+   numbers.
+
+### Running Locally
+
+```bash
+./scripts/run-headless-performance-benchmark.sh   # requires godot4 (or GODOT_BINARY=...)
+cd backend && npm run test:benchmark
+```
+
+### Snapshot Schema
+
+| Field | Description |
+|-------|-------------|
+| `schemaVersion` | Always `1` |
+| `source` | `headless_godot` (provenance the gate requires) |
+| `godotVersion` / `platform` / `displayServer` | Engine/runtime the measurement came from |
+| `scenePath` | The measured scene — the gate requires `res://scenes/main.tscn` |
+| `framesRun` / `measuredWallSeconds` | Size of the measurement window |
+| `engineMaxFps` | `0` (uncapped) — the gate rejects throttled runs, which measure the cap interval instead of real frame cost |
+| `benchmarkSceneNodeCount` | Nodes alive in the benchmark scene at teardown |
+| `profiler` | Verbatim `PerformanceProfiler.get_profiling_snapshot()` output |
+
+Device telemetry captures from real phones may be dropped into
+`backend/tests/fixtures/performance/generated/` using the same schema;
+override the gate's input path with `PERF_BENCHMARK_SNAPSHOT`.
+
+---
+
 ## Performance Monitoring in Production
 
 ### Analytics Events
@@ -219,6 +269,6 @@ Memory Growth > 50 MB AND Growth Rate > 10 MB/min → LEAK DETECTED
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: 2024*
-*Issue: #133*
+*Document Version: 1.1*
+*Last Updated: 2026*
+*Issues: #133, #1073*

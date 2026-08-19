@@ -10,11 +10,17 @@ on:
 # scripts/benchmark-tests.sh against the abandoned (and deleted) Go backend,
 # compared with benchstat against backend/tests/benchmarks/baseline.txt, and
 # pushed baseline updates from this workflow (hence the old contents: write).
-# The TypeScript replacement gate is the self-contained performance-threshold
-# suite backend/tests/integration/low_end_device_performance.test.ts, which
-# needs no services. The Go baseline files (baseline.txt, compare.sh, new.txt)
-# no longer exist; stack-dependent perf smoke tests remain covered by the
-# integration job in ci.yml.
+# The Go baseline files (baseline.txt, compare.sh, new.txt) no longer exist;
+# stack-dependent perf smoke tests remain covered by the integration job in
+# ci.yml.
+#
+# Issue #1073: the gate now measures REAL client performance. A headless
+# Godot 4.6 run of the actual gameplay scene (scenes/main.tscn) exports a
+# PerformanceProfiler snapshot via scripts/run-headless-performance-benchmark.sh,
+# and backend/tests/integration/low_end_device_performance.test.ts validates
+# that snapshot against the shared thresholds in
+# backend/tests/fixtures/performance/performance-targets.json. No services
+# required; the gate fails if the snapshot is missing.
 permissions:
   contents: read
 
@@ -38,7 +44,37 @@ jobs:
         working-directory: backend
         run: npm ci
 
-      - name: Run benchmark suite
+      - name: Skip headless benchmark for act (OOM issue)
+        if: env.ACT == 'true'
+        run: |
+          echo "⚠️  Skipping headless Godot benchmark for act (ACT environment detected)"
+          echo "❌ Godot runs cause OOM in Docker containers with act"
+          echo "::warning::Benchmark gate skipped for act - run './scripts/run-headless-performance-benchmark.sh && cd backend && npm run test:benchmark' locally instead"
+
+      - name: Setup Godot
+        if: env.ACT != 'true'
+        run: |
+          # Download Godot headless binary directly (same pin as test.yml)
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
+          unzip -q godot.zip
+          chmod +x Godot_v4.6-stable_linux.x86_64
+          mv Godot_v4.6-stable_linux.x86_64 godot4
+
+      - name: Import Godot Assets
+        if: env.ACT != 'true'
+        run: |
+          # Import assets before running the benchmark so the class cache and
+          # imported resources exist (issue #991)
+          echo "Importing Godot assets..."
+          ./godot4 --headless --quit --import 2>&1 | head -50 || true
+          echo "Asset import completed"
+
+      - name: Run headless client benchmark (real measurement)
+        if: env.ACT != 'true'
+        run: GODOT_BINARY=./godot4 ./scripts/run-headless-performance-benchmark.sh
+
+      - name: Run benchmark suite (gate on the real snapshot)
+        if: env.ACT != 'true'
         env:
           SLOW_TEST_THRESHOLD: 100
         working-directory: backend
@@ -49,6 +85,16 @@ jobs:
         run: |
           echo "## Benchmark Regression Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Performance threshold suite passed (low_end_device_performance)" >> $GITHUB_STEP_SUMMARY
+          if [ -f backend/tests/fixtures/performance/generated/headless_benchmark.snapshot.json ]; then
+            echo "✅ Performance gate passed on a REAL headless client measurement (issue #1073)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            jq -r '"scene: \(.scenePath)\ngodot: \(.godotVersion) (\(.displayServer))\nframes measured: \(.framesRun) over \(.measuredWallSeconds)s\navg fps: \(.profiler.average_fps)\navg frame time: \(.profiler.avg_frame_time_ms)ms\npeak static memory: \(.profiler.memory_peak_mb)MB"' \
+              backend/tests/fixtures/performance/generated/headless_benchmark.snapshot.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "Thresholds: backend/tests/fixtures/performance/performance-targets.json (canonical, mirrored in docs/PERFORMANCE.md)." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ No benchmark snapshot generated (act or failed harness) - gate did not evaluate a real measurement." >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Baseline: Go benchstat baseline retired with the Go backend (issue #1031)." >> $GITHUB_STEP_SUMMARY
