@@ -5,7 +5,8 @@
     "lint-staged",
     "webpack*",
     "ts-loader",
-    "@babel/cli"
+    "@babel/cli",
+    "tslib"
   ],
   "skipMissing": ["@jest/globals"]
 }

@@ -744,7 +744,7 @@ func test_auth_recovery_waiter_does_not_freeze_main_thread() -> void:
 	nm._refresh_watchdog_ms = 300
 	nm._refresh_watchdog_max_frames = 60
 
-	var frames_before: int = Engine.get_frames_drawn()
+	var frames_before: int = Engine.get_process_frames()
 	var waiter_outcome: Array = []
 	var waiter: Callable = func():
 		var recovered: bool = await nm._recover_session_after_auth_error("stale_shared_token")
@@ -754,7 +754,7 @@ func test_auth_recovery_waiter_does_not_freeze_main_thread() -> void:
 	# Yield for ~250 ms (well under the 300 ms watchdog) so the waiter is
 	# still inside its bounded loop when we sample the frame counter.
 	await get_tree().create_timer(0.25).timeout
-	var frames_mid: int = Engine.get_frames_drawn()
+	var frames_mid: int = Engine.get_process_frames()
 
 	# Let the waiter's watchdog complete.
 	await get_tree().create_timer(0.4).timeout
