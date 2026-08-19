@@ -410,13 +410,54 @@ function wouldExceedMaxBalance(currentBalance: number, amountToAdd: number): boo
  * Process a refund and deduct gems from player balance.
  * Called from RevenueCat webhook or admin API.
  *
+ * Three-outcome contract (issue #1131 — prevents processRefund double-deduct
+ * when the durable dedup marker write fails):
+ *
+ *   1. apply-failed (or dedup-marker-precondition failed):
+ *        applyCurrencyDelta throws, or the prior `checkRefundProcessed`
+ *        returned 'processed' / 'unavailable'. The function returns
+ *        `{ success: false, ... }` (or throws, in the apply-throw case).
+ *        No state was mutated, so RevenueCat retry is safe.
+ *
+ *   2. durable-applied:
+ *        applyCurrencyDelta lands AND markRefundAsProcessed returns true.
+ *        Returns `{ success: true, ... }`.
+ *
+ *   3. apply-landed-but-marker-failed:
+ *        applyCurrencyDelta lands (state is mutated), but the durable
+ *        dedup marker write failed. Returning success:true here would
+ *        let RevenueCat retry and re-apply the deduction on the next
+ *        attempt (because no marker would be seen by `checkRefundProcessed`)
+ *        — a true double-deduct. We instead throw so Nakama returns a
+ *        5xx-equivalent RPC error and RevenueCat retries:
+ *
+ *          - storage recovered: the next call sees no marker (still
+ *            missing), applyCurrencyDelta re-runs, and the post-apply
+ *            marker write succeeds. This is the documented "residual
+ *            over-deduct on retry" — bounded by applyCurrencyDelta's
+ *            `Math.max(0, gems)` floor for refunds that drive the
+ *            player to zero, and in general flagged via this error
+ *            for ops reconciliation.
+ *          - storage still down: applyCurrencyDelta OCC-rejects on the
+ *            retry; the throw propagates and RevenueCat backs off per
+ *            its retry policy. The audit log carries
+ *            `process_refund / failure / pending_reconciliation` so
+ *            ops can investigate.
+ *
+ * The throw changes the prior behavior (which silently returned
+ * success:true and logged "manual reconciliation required"), preventing
+ * the silent double-deduct path. The accompanying audit row is recorded
+ * with status='failure' under the same `process_refund` action so
+ * existing dashboards/alerts pick it up unchanged.
+ *
  * @param nk - Nakama server interface
  * @param userId - ID of the player to refund
  * @param refundAmount - Number of gems to deduct
  * @param refundTransactionId - Unique refund identifier
  * @param reason - Reason for the refund
  * @param logger - Nakama logger instance
- * @returns Result object with success status and message
+ * @returns Result object with success status and message, or throws on
+ *   apply-landed-but-marker-failed (issue #1131).
  */
 export async function processRefund(
   nk: Runtime.Nakama,
@@ -490,12 +531,41 @@ export async function processRefund(
     logger
   );
   if (!marked) {
-    // The deduction already landed; rejecting now would make RevenueCat
-    // retry and double-deduct. Report success and flag for reconciliation.
+    // ISSUE #1131: apply-landed-but-marker-failed. The deduction already
+    // landed, but the durable dedup marker is missing. Previously the
+    // code logged and RETURNED success:true, leaving RevenueCat free to
+    // retry the same event — the next call would see no marker, re-call
+    // applyCurrencyDelta, and double-deduct. We now throw instead so
+    // the RPC returns a 5xx-equivalent and RevenueCat retries against
+    // a recovered storage layer. See the JSDoc above for the full
+    // three-outcome contract (this is outcome #3).
     logger.error(
-      'Refund deduction applied but durable marker write FAILED for user %s, transaction %s — manual reconciliation required',
+      'processRefund: apply-landed-but-marker-failed for user %s, transaction %s — throwing to force RevenueCat retry (manual reconciliation may be required)',
       userId,
       refundTransactionId
+    );
+    // Record a failure audit row so existing dashboards/alerts (which
+    // key on `process_refund / failure`) see the regression signal —
+    // status was 'success' in the prior, swallowed-failure code path.
+    const refundError = 'Marker write failed; refund deduction applied; manual reconciliation may be required';
+    logAudit(
+      nk,
+      userId,
+      null,
+      'process_refund',
+      'refund_markers',
+      {
+        refund_amount: refundAmount,
+        actual_deducted: deduction,
+        new_balance: newBalance,
+        reason: reason,
+        refund_transaction_id: refundTransactionId,
+      },
+      'failure',
+      refundError
+    );
+    throw new Error(
+      `processRefund: durable marker write failed (user=${userId}, transaction=${refundTransactionId})`
     );
   }
 

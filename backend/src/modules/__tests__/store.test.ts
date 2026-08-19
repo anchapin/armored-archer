@@ -723,6 +723,132 @@ describe('store', () => {
       expect(result.message).toBe('Partial refund applied');
       expect(result.new_balance).toBe(0);
     });
+
+    // Regression for issue #1131: when the durable dedup marker write
+    // fails AFTER applyCurrencyDelta has already landed, processRefund
+    // MUST NOT return success:true. Previously it silently swallowed
+    // the false return from markRefundAsProcessed and returned
+    // success:true, leaving RevenueCat free to retry the same event_id
+    // — the retry would see no marker and re-apply, producing a true
+    // double-deduct. The accepted contract is documented in the
+    // processRefund JSDoc; this test pins outcome #3.
+    it('should throw (not return success:true) when the durable dedup marker write fails AFTER applyCurrencyDelta (issue #1131)', async () => {
+      // Partial storage outage: player_currency writes succeed (so the
+      // apply lands and the deduction is visible) but refund_markers
+      // writes throw (so the dedup marker is absent).
+      const nk = createMockNakama();
+      const userId = 'tw1131-user';
+      const originalStorageWrite = nk.storageWrite;
+      nk.storageWrite = jest.fn((objects: any[]) => {
+        const objs = Array.isArray(objects) ? objects : [objects];
+        if (objs.some((o) => o.collection === 'refund_markers')) {
+          throw new Error('simulated marker storage outage');
+        }
+        return (originalStorageWrite as any)(objects);
+      });
+
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: userId,
+          userId,
+          value: JSON.stringify(
+            createMockCurrency({ user_id: userId, gems: 500, coins: 0 })
+          ),
+        },
+      ]);
+
+      const logger = createMockLogger();
+
+      // The call must reject rather than resolve success:true.
+      await expect(
+        processRefund(
+          nk,
+          userId,
+          100,
+          'refund-tx-1131',
+          RefundReason.CUSTOMER_SUPPORT,
+          logger
+        )
+      ).rejects.toThrow(/durable marker write failed/);
+
+      // Sanity-check: applyCurrencyDelta DID land (this is the
+      // apply-landed-but-marker-failed scenario, not an apply failure).
+      // Balance went 500 → 400 in the seeded currency record.
+      const currencyAfter = JSON.parse(
+        testStorage.get(`player_currency:${userId}`) as string
+      );
+      expect(currencyAfter.gems).toBe(400);
+
+      // And the durable marker is genuinely missing — proving the
+      // robustness condition: the throw is what stops RevenueCat from
+      // being told "success" on the next retry.
+      expect(testStorage.get('refund_markers:refund_refund-tx-1131')).toBeUndefined();
+    });
+  });
+
+  // Same regression at the rpcRevenueCatWebhook boundary — the issue's
+  // acceptance criterion is phrased as "the webhook does NOT return
+  // success:true", so we exercise the public-facing RPC here as well.
+  describe('rpcRevenueCatWebhook refund under marker-write failure (issue #1131)', () => {
+    it('must NOT return success:true when the marker write fails after applyCurrencyDelta', async () => {
+      const nk = createMockNakama();
+      const userId = 'tw1131-webhook-user';
+      nk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: userId,
+          userId,
+          value: JSON.stringify(
+            createMockCurrency({ user_id: userId, gems: 500, coins: 0 })
+          ),
+        },
+      ]);
+      const originalStorageWrite = nk.storageWrite;
+      nk.storageWrite = jest.fn((objects: any[]) => {
+        const objs = Array.isArray(objects) ? objects : [objects];
+        if (objs.some((o) => o.collection === 'refund_markers')) {
+          throw new Error('simulated marker storage outage');
+        }
+        return (originalStorageWrite as any)(objects);
+      });
+
+      // Activate the webhook secret the production code reads at runtime.
+      const webhookSecret = 'test_webhook_secret';
+      const configModule = require('../../config');
+      configModule.config.revenuecat.webhookSecret = webhookSecret;
+
+      const { createHmac } = require('crypto');
+      const payload = JSON.stringify({
+        event_id: 'evt-1131',
+        event_type: 'REFUND',
+        app_user_id: userId,
+        product_id: 'com.armoredarcher.gems.small', // 100 gems
+        transaction_id: 'refund-tx-1131-webhook',
+      });
+      const signature = createHmac('sha256', webhookSecret)
+        .update(payload)
+        .digest('hex');
+
+      const ctx = {
+        userId: 'attacker-client-session',
+        username: 'attacker',
+        ipAddress: '127.0.0.1',
+        env: {},
+        variables: { 'x-revenuecat-signature': signature } as Record<string, string>,
+      } as unknown as Runtime.Context;
+
+      try {
+        // The webhook RPC must reject (a throw here propagates as a
+        // 5xx-equivalent RPC error to RevenueCat) rather than resolve
+        // with success:true.
+        await expect(
+          rpcRevenueCatWebhook(ctx, createMockLogger(), nk, payload)
+        ).rejects.toThrow(/durable marker write failed/);
+      } finally {
+        configModule.config.revenuecat.webhookSecret = '';
+      }
+    });
   });
 
   describe('getPlayerCurrencyWithCache (via processRefund)', () => {
