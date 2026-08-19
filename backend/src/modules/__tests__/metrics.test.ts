@@ -87,6 +87,20 @@ jest.mock('../deployment_observability', () => ({
   }),
 }));
 
+jest.mock('../health_monitor', () => ({
+  getHealthRegistry: jest.fn().mockReturnValue({
+    metrics: jest.fn().mockResolvedValue('mock health metrics'),
+    contentType: 'text/plain',
+  }),
+}));
+
+jest.mock('../progressive_rollout', () => ({
+  getRolloutRegistry: jest.fn().mockReturnValue({
+    metrics: jest.fn().mockResolvedValue('mock rollout metrics'),
+    contentType: 'text/plain',
+  }),
+}));
+
 jest.mock('../n_plus_one_detection', () => ({
   initializeNPlusOneDetectionWithMetrics: jest.fn(),
   getNPlusOneReport: jest.fn().mockReturnValue({}),
@@ -295,6 +309,84 @@ describe('metrics', () => {
         'armored_archer/n_plus_one_report',
         expect.any(Function)
       );
+    });
+  });
+
+  // ==========================================
+  // Prometheus scrape endpoints (issue #1074)
+  // ==========================================
+
+  describe('registerRpcMetrics prometheus scrape endpoints', () => {
+    const scrapeRpcIds = [
+      'armored_archer/prometheus_metrics',
+      'armored_archer/prometheus_deployment',
+      'armored_archer/prometheus_health',
+      'armored_archer/prometheus_rollout',
+    ];
+
+    function captureScrapeHandlers(): Record<string, Function> {
+      const capturedHandlers: Record<string, Function> = {};
+      const mockInitializer = {
+        registerRpc: jest.fn((id: string, handler: Function) => {
+          capturedHandlers[id] = handler;
+        }),
+      };
+      registerRpcMetrics(mockInitializer as any);
+      return capturedHandlers;
+    }
+
+    it('registers the four scrape RPC endpoints', () => {
+      const mockInitializer = { registerRpc: jest.fn() };
+      registerRpcMetrics(mockInitializer as any);
+      for (const id of scrapeRpcIds) {
+        expect(mockInitializer.registerRpc).toHaveBeenCalledWith(id, expect.any(Function));
+      }
+    });
+
+    it('exposes each registry as raw Prometheus text for user-less http-key scrapes', async () => {
+      const capturedHandlers = captureScrapeHandlers();
+
+      // Prometheus scrapes arrive as GET with an empty body, authenticated by
+      // Nakama's runtime HTTP key rather than a user session — ctx carries no
+      // userId and there is no payload to validate.
+      const cases: Array<[string, string]> = [
+        ['armored_archer/prometheus_metrics', 'mock base metrics'],
+        ['armored_archer/prometheus_deployment', 'mock deployment metrics'],
+        ['armored_archer/prometheus_health', 'mock health metrics'],
+        ['armored_archer/prometheus_rollout', 'mock rollout metrics'],
+      ];
+
+      for (const [id, expectedText] of cases) {
+        const handler = capturedHandlers[id];
+        expect(handler).toBeDefined();
+        const ctx = { userId: '' } as any;
+        const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() } as any;
+        const result = await handler(ctx, logger, {} as any, '');
+        expect(result).toBe(expectedText);
+      }
+    });
+
+    it('does not wrap scrape endpoints in the admin guard', async () => {
+      // Regression guard for issue #1074: withAdminGuard is fail-closed for
+      // user-less calls, so an admin-guarded scrape handler would reject
+      // every Prometheus request — exactly the failure that kept the
+      // armored_archer_* scrape targets DOWN.
+      const previousAdminIds = process.env.ADMIN_USER_IDS;
+      delete process.env.ADMIN_USER_IDS;
+      resetAdminAllowlistCache();
+
+      try {
+        const capturedHandlers = captureScrapeHandlers();
+        const handler = capturedHandlers['armored_archer/prometheus_metrics'];
+        const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() } as any;
+        const result = await handler({ userId: '' } as any, logger, {} as any, '');
+        expect(result).toBe('mock base metrics');
+      } finally {
+        if (previousAdminIds !== undefined) {
+          process.env.ADMIN_USER_IDS = previousAdminIds;
+        }
+        resetAdminAllowlistCache();
+      }
     });
   });
 
