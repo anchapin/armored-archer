@@ -40,9 +40,14 @@ module.exports = {
   //   }]
   // ],
   // Coverage thresholds - adjusted to actual coverage
+  // Policy (issue #1071): every sub-80% per-file exception must either be
+  // raised to the global gate (80/80/80/80) or carry a tracked ramp plan
+  // (open issue reference + target date). Modules below the gate with
+  // ratcheted thresholds are annotated with their tracking issue; raise
+  // each to the gate and delete its ramp comment when the issue lands.
   coverageThreshold: {
     global: {
-      branches: 79,
+      branches: 80,
       functions: 80,
       lines: 80,
       statements: 80
@@ -54,23 +59,29 @@ module.exports = {
       lines: 80,
       statements: 80
     },
+    // Raised to the global gate in issue #1071 (actual coverage on
+    // 2026-08-18: 92/84/96/92 — stmts/branch/funcs/lines).
     './src/modules/rpg_system.ts': {
-      branches: 25,
-      functions: 25,
-      lines: 40,
-      statements: 40
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
+    // Raised to the global gate in issue #1071 (actual 91/82/94/91).
     './src/modules/matchmaker.ts': {
-      branches: 55,
-      functions: 70,
-      lines: 60,
-      statements: 60
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
+    // Ramp plan #1177: branches/functions ratcheted to just below actual
+    // (79.2/76.4); statements/lines at the gate. Target: 80/80/80/80 by
+    // 2026-10-15.
     './src/modules/gear_system.ts': {
-      branches: 74,
-      functions: 73,
-      lines: 78,
-      statements: 79
+      branches: 78,
+      functions: 75,
+      lines: 80,
+      statements: 80
     },
     // Analytics module
     './src/modules/analytics.ts': {
@@ -79,7 +90,7 @@ module.exports = {
       lines: 80,
       statements: 80
     },
-    // Config module - 73% functions is the maximum achievable because
+// Config module - 73% functions is the maximum achievable because
     // 3 TypeScript interface definitions (lines 137, 151, 252) create phantom
     // function entries in Istanbul/babel coverage instrumentation. All real
     // executable functions (11 total) are covered at 100%.
@@ -89,21 +100,22 @@ module.exports = {
     // environments — the REVENUECAT/SESSION_ENCRYPTION env branches are only
     // exercised when those env vars are set, and the worktree variance drops
     // statements/lines by ~8 points vs main (act: 79.61/79.41).
+    //
+    // Ramp plan: ramp these thresholds back up to 80/80/80 (matching the rest
+    // of the global gate) once #1177 lands — the umbrella issue tracking the
+    // missing config/index.ts tests for the env-conditional branches.
     './src/config/index.ts': {
       branches: 66,
       functions: 73,
       lines: 78,
       statements: 78
     },
-    // Stage tracking - actual coverage is ~67% statements, ~64% branches, ~66% lines
-    // Functions are covered at 80% (helper functions like deriveNextStageId,
-    // isBetterCompletion, etc. are covered via RPC tests)
-    // Thresholds set slightly below actual to account for test variance
+    // Raised to the global gate in issue #1071 (actual 96/85/100/96).
     './src/modules/stage_tracking.ts': {
-      branches: 63,
+      branches: 80,
       functions: 80,
-      lines: 66,
-      statements: 66
+      lines: 80,
+      statements: 80
     },
     // Notifications
     './src/modules/notifications.ts': {
@@ -138,14 +150,16 @@ module.exports = {
       lines: 80,
       statements: 80
     },
-    // Season system
+    // Season system - raised to the global gate in issue #1071
+    // (actual 99/83/100/99).
     './src/modules/season_system.ts': {
-      branches: 77,
+      branches: 80,
       functions: 80,
       lines: 80,
       statements: 80
     },
-    // Store
+    // Store - Ramp plan #1177: branches ratcheted to 78 (actual 78.2);
+    // everything else at the gate. Target: 80/80/80/80 by 2026-10-31.
     './src/modules/store.ts': {
       branches: 78,
       functions: 80,
@@ -166,25 +180,41 @@ module.exports = {
       lines: 80,
       statements: 80
     },
-    // Files with lower coverage - realistic thresholds based on actual coverage
+    // Files with lower coverage - grandfathered exceptions (issue #1071):
+    // each remaining sub-80 exception carries a tracked ramp plan.
+    //
+    // Season leaderboard - raised to the global gate in issue #1071.
+    // Core ranking logic (applyDailyDecay, getTopPlayers, getPlayerRank,
+    // recordSeasonCompletion) is exercised by
+    // __tests__/season_leaderboard_core.test.ts; RPC surface by
+    // __tests__/season_leaderboard_rpc.test.ts.
     './src/modules/season_leaderboard.ts': {
-      branches: 7,
-      functions: 12,
-      lines: 24,
-      statements: 23
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
+    // Ramp plan #1177: branches/functions ratcheted to just below actual
+    // (76.6/80.6); statements/lines at the gate. Target: 80/80/80/80 by
+    // 2026-10-15.
     './src/modules/dynamic_difficulty.ts': {
-      branches: 45,
-      functions: 55,
-      lines: 60,
-      statements: 59
+      branches: 74,
+      functions: 76,
+      lines: 80,
+      statements: 80
     },
+    // Ramp plan #1177: all metrics ~58-64 (actual 59.8/58.3/64.3/58.9).
+    // Target: 80/80/80/80 by 2026-09-30.
     './src/modules/encounter_pacing.ts': {
       branches: 58,
       functions: 64,
       lines: 58,
       statements: 59
     },
+    // Ramp plan #1176 (combat-critical, sub-50): PvP weapon balance sits at
+    // ~46-47% actual coverage. This is the sharpest v4 risk called out in
+    // issue #1071; thresholds are ratcheted to actual until the dedicated
+    // coverage work lands. Target: 80/80/80/80 by 2026-09-15.
     './src/modules/weapon_balance.ts': {
       branches: 46,
       functions: 46,
