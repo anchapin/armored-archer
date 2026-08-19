@@ -12,7 +12,7 @@ When every hosted Actions job fails with *"recent account payments have failed o
 
 ```text
 /                          # Godot 4.6 client project (res://)
-├── autoloads/             # 55 autoload singletons (.gd + Godot-generated .uid), registered in project.godot
+├── autoloads/             # 55 singletons registered in project.godot [autoload] (52 here + 3 elsewhere: EnemySpawner→scenes/, GutCoverageTracker→addons/gut/, AnalyticsManager→addons/analytics_manager/); `const.gd` lives here but is NOT an autoload
 │   └── const.gd           # Shared constants (use for anything needed in 3+ files)
 ├── scenes/                # .tscn organized by feature (player/, enemies/, ui/, pvp/, effects/)
 ├── scripts/               # 80+ root-level files: shared GDScript + dev tooling (shell/python/ts)
@@ -89,8 +89,8 @@ npm install                 # package-lock.json is tracked — keep it in sync
 cp .env.example .env        # required; start.sh refuses to run without it
 
 npm run dev                 # ts-node-dev auto-reload on src/index.ts
-npm run build               # tsc only
-npm run build:full          # tsc + webpack Nakama bundle + bundle validation
+npm run build               # tsc only (output → backend/build/)
+npm run build:full          # build + bundle:nakama (webpack + transpile-bundle.js) + bundle:validate — emits backend/data/modules/ (gitignored)
 npm run lint                # eslint (src/)
 npm run typecheck           # tsc --noEmit
 ```
@@ -147,7 +147,7 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 - Flaky detection: `python3 scripts/detect_godot_flaky_tests.py` (history in repo-root `data/godot-flaky-test-history.json`).
 
 ### Backend (Jest)
-- **Unit tests** are colocated at `src/**/__tests__/*.test.ts` and `scripts/__tests__/*.test.ts`; the default `jest.config.js` roots are `src/` + `scripts/`, so tooling tests also run under `npm test` (issues #994, #1029). Single file: `npm test -- <path-or-pattern>`.
+- **Unit tests** are colocated at `src/**/__tests__/*.test.ts` and `scripts/__tests__/*.test.ts`; the default `jest.config.js` roots are `src/` + `scripts/`, so tooling tests also run under `npm test` (issues #994, #1029). Single file: `npm test -- <path-or-pattern>` (e.g. `npm test -- login`).
 - **Integration tests** only match `backend/tests/integration/**` (`jest.integration.config.js`). Run `npm run test:integration` with the stack up (`make services-start`).
 - **Schema tests** (`npm run test:schema`) match only `tests/integration/schema.test.ts` and need PostgreSQL but not a running Nakama server (issue #893) — the cheapest post-migration verification.
 - **Property-based tests** (`npm run test:property`) use `jest.property.config.js` with roots = `tests/unit/` — outside the default roots (issue #1031).
