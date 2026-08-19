@@ -12,7 +12,7 @@ When every hosted Actions job fails with *"recent account payments have failed o
 
 ```text
 /                          # Godot 4.6 client project (res://)
-├── autoloads/             # 53 singleton managers (100+ files with .uid), registered in project.godot
+├── autoloads/             # 55 autoload singletons (.gd + Godot-generated .uid), registered in project.godot
 │   └── const.gd           # Shared constants (use for anything needed in 3+ files)
 ├── scenes/                # .tscn organized by feature (player/, enemies/, ui/, pvp/, effects/)
 ├── scripts/               # 80+ root-level files: shared GDScript + dev tooling (shell/python/ts)
@@ -81,7 +81,7 @@ Gotchas:
 
 ### Backend (TypeScript / Nakama)
 
-Requires Node 18+ (CI pins Node 20) and Docker. Bootstrap from repo root: `make setup` (installs npm + Godot dependencies).
+Requires Node 20 (CI pin) and Docker. Bootstrap from repo root: `make setup` (backend npm deps + git hooks).
 
 ```bash
 cd backend
@@ -107,7 +107,7 @@ make services-assert-cold-start      # assert all-green (suitable for CI / act)
 ```
 
 Stack: `armored_archer_server` (Nakama 3.21 — API :7350, console http://localhost:7351, credentials from `backend/.env`), `armored_archer_db` (PostgreSQL 14), plus redis and a full observability stack (prometheus, grafana, loki, tempo, otel-collector, promtail, alertmanager, node-exporter).
-Local DB default: `postgres://postgres:localdbpassword@localhost:5432/nakama`.
+Local Postgres is published on host port **5433** (compose maps `5433:5432` — 5432 on the host is *not* this stack); the DSN is built from `POSTGRES_*` in `backend/.env` (defaults: user `postgres`, db `nakama`, compose fallback password `changeme`).
 Compose source of truth: `backend/docker-compose.yml` — there is intentionally **no root `docker-compose.yml`** (removed in issue #1033; a root copy made `./data/modules` resolve to a stale/unbuilt path). Run compose from `backend/` or via the `make services-*` targets; `act` services use `.github/docker-compose.yml` via `make ci-services-*`.
 
 ### Database (PostgreSQL)
@@ -161,18 +161,19 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 - Auth: Firebase. IAP: RevenueCat. Client talks to Nakama via `@heroiclabs/nakama-js`; the `NetworkManager` autoload owns the session/RPC calls.
 - Transmog: base gear carries all stats (gameplay-earned); cosmetic skins are visual-only (IAP). The client combines base + skin for rendering.
 - A Go backend migration was abandoned — ignore the deprecated Go targets in the Makefile.
-- PvP/combat decisions are recorded as ADRs in `docs/adr/` (server-declared match settlement, hybrid duel model, decommissioned legacy duel RPCs) — read them before changing duel or settlement flow.
+- Ratified decisions are ADRs in `docs/adr/`: PRD governance (0001), server-declared match settlement (0002), hybrid duel model (0003), legacy duel-RPC decommission (0004), combat authority boundary (0005), admin-gate allowlist policy (0006) — read the relevant one before touching duel, settlement, combat-authority, or admin-gate code.
 - The Nakama bundle has a size budget enforced by `make bundle-size-check` (config: `backend/bundle-size-limits.json`).
 
 ## Commit & PR Guidelines
 
 - Commit message format: conventional commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, ...) — release notes are generated from them (`make release-notes`).
-- Branches: `fix/issue-<number>`, `feat/<description>`, `refactor/<description>`.
-- PR gate: backend lint + typecheck + tests green; docs updated when behavior changes.
+- A local `commit-msg` hook (installed by `make setup`; issue #1157) enforces: conventional subject, `[AI-assisted]` prefix + `AI Model:`/`Task:` trailers on AI-made commits, subject ≤ 100 chars, body wrapped at 72. Pre-check a message file with `make commit-check MSG=<file>`; emergency escape hatch: `[skip-ai-check]` in the body.
+- Branches: `fix/issue-<number>`, `feat/<description>`, `refactor/<description>`; PRs target `main` (never `develop`); push with `--force-with-lease`, never bare `--force`.
+- PR gate: backend lint + typecheck + tests green; docs updated when behavior changes. First-contribution walkthrough: `CONTRIBUTING.md` (defers to this file).
 
 ## AI Agent-Assisted Development
 
-- Commits containing AI-generated changes need the `[AI-assisted]` prefix plus model and task in the body, e.g. `[AI-assisted] feat: ...` / `- AI Model: ...` / `- Task: ...`; document AI-assisted scope in the PR description.
+- Commits containing AI-generated changes need the `[AI-assisted]` prefix plus `AI Model:` and `Task:` trailers in the body, e.g. `[AI-assisted] feat: ...` / `- AI Model: ...` / `- Task: ...` — enforced by the commit-msg hook. Document AI-assisted scope in the PR description.
 - Human review is mandatory for AI-assisted changes. Hard rules: no secrets/credentials in code, input validation on all user data, and **database migrations plus security-critical code always require human supervision**.
 - `backend/.env` (and any `backend/.env.*`) must never be committed — `make tracked-ignored-check` (issue #1032) fails CI on tracked-but-ignored files.
 - Review checklist: `AI_CODE_REVIEW.md`. Workflow and tooling: `AI_INTEGRATION.md`, `GODOGEN_SETUP.md`, `FOLEY_AI_SETUP.md`. Companion guide: `CLAUDE.md` (autoload map, design system, tooling notes). Repo skills: `.agents/skills/godot-backend`, `.agents/skills/godot-development` (plus `godot-task`/`godogen` in `.claude/skills/`).
