@@ -1,5 +1,16 @@
 # Prometheus configuration for Armored Archer
 # Scrape configurations for collecting metrics
+#
+# App metrics live inside the Nakama TS runtime (prom-client registries) and
+# are exposed through dedicated /v2/rpc/armored_archer/prometheus_* scrape
+# RPCs (issue #1074). Every armored_archer_* job below passes:
+#   - http_key: must match the Nakama runtime HTTP key (`runtime.http_key`,
+#     default "defaulthttpkey"). Override it on the nakama service via the
+#     NAKAMA_RUNTIME__HTTP_KEY environment variable and update it here in
+#     lockstep. Unlike the server key, the runtime HTTP key does NOT ship
+#     inside client binaries, so players cannot scrape these endpoints.
+#   - unwrap: makes Nakama return the raw Prometheus text exposition
+#     (text/plain) instead of the JSON RPC envelope Prometheus cannot parse.
 
 global:
   scrape_interval: 15s
@@ -27,10 +38,19 @@ scrape_configs:
     static_configs:
       - targets: ['node_exporter:9100']
 
-  # Nakama server metrics - expose via RPC endpoint
+  # Nakama server availability and runtime metrics.
+  #
+  # OSS Nakama 3.21 has no native Prometheus endpoint on the API port —
+  # /metrics on :7350 is a 404. The JS runtime exposes its prom-client
+  # registries through the armored_archer/prometheus_* RPCs instead, so this
+  # job (and the up{job="nakama"} alert in alerts.yml) tracks Nakama
+  # availability through the app-metrics exposition.
   - job_name: 'nakama'
-    metrics_path: '/metrics'
+    metrics_path: '/v2/rpc/armored_archer/prometheus_metrics'
     scrape_interval: 30s
+    params:
+      unwrap: ['']
+      http_key: ['defaulthttpkey']
     static_configs:
       - targets: ['nakama:7350']
         labels:
@@ -44,44 +64,54 @@ scrape_configs:
         labels:
           service: 'database'
 
-  # Custom application metrics from Nakama RPC endpoint
+  # Custom application metrics from the Nakama runtime (armored_archer_*
+  # counters/histograms plus prom-client default process metrics)
   - job_name: 'armored_archer_metrics'
-    metrics_path: '/api/nakama/rpc/armored_archer/metrics'
+    metrics_path: '/v2/rpc/armored_archer/prometheus_metrics'
     scrape_interval: 30s
+    params:
+      unwrap: ['']
+      http_key: ['defaulthttpkey']
     static_configs:
       - targets: ['nakama:7350']
         labels:
           service: 'armored-archer-backend'
           component: 'application'
-    # Basic auth for metrics endpoint (configure in production)
-    # basic_auth:
-    #   username: metrics_user
-    #   password: metrics_password
 
-  # Deployment metrics
+  # Deployment metrics (deployment_observability registry)
   - job_name: 'armored_archer_deployment'
-    metrics_path: '/api/nakama/rpc/armored_archer/deployment_metrics'
+    metrics_path: '/v2/rpc/armored_archer/prometheus_deployment'
     scrape_interval: 60s
+    params:
+      unwrap: ['']
+      http_key: ['defaulthttpkey']
     static_configs:
       - targets: ['nakama:7350']
         labels:
           service: 'armored-archer-backend'
           component: 'deployment'
 
-  # Health metrics
+  # Health metrics (health_monitor registry — gauges are refreshed every 60s
+  # by initializeHealthMonitoring)
   - job_name: 'armored_archer_health'
-    metrics_path: '/api/nakama/rpc/armored_archer/health'
+    metrics_path: '/v2/rpc/armored_archer/prometheus_health'
     scrape_interval: 30s
+    params:
+      unwrap: ['']
+      http_key: ['defaulthttpkey']
     static_configs:
       - targets: ['nakama:7350']
         labels:
           service: 'armored-archer-backend'
           component: 'health'
 
-  # Progressive rollout metrics
+  # Progressive rollout metrics (progressive_rollout registry)
   - job_name: 'armored_archer_rollout'
-    metrics_path: '/api/nakama/rpc/armored_archer/rollout_prometheus_metrics'
+    metrics_path: '/v2/rpc/armored_archer/prometheus_rollout'
     scrape_interval: 30s
+    params:
+      unwrap: ['']
+      http_key: ['defaulthttpkey']
     static_configs:
       - targets: ['nakama:7350']
         labels:

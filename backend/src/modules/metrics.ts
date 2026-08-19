@@ -5,6 +5,8 @@ import * as rateLimiter from '../utils/rateLimiter';
 import { withAdminGuard } from './admin_auth';
 import { getDeploymentRegistry } from './deployment_observability';
 import { initializeNPlusOneDetectionWithMetrics, getNPlusOneReport } from './n_plus_one_detection';
+import { getHealthRegistry } from './health_monitor';
+import { getRolloutRegistry } from './progressive_rollout';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { recordRpcLatency, recordRpcError } from './rpc_latency_tracker';
 
@@ -355,8 +357,8 @@ rateLimiter.setMetricsCallbacks(recordRateLimitViolation, updateActiveUsersCount
 
 // Operational telemetry endpoints — full Prometheus/deployment dumps must
 // not be harvestable by players. The guard wraps the handler itself (not the
-// registration call site in index.ts) so it survives the upcoming metrics
-// exposure rework (issue #1074).
+// registration call site in index.ts) so it survives the metrics exposure
+// rework (issue #1074).
 export function registerRpcMetrics(initializer: Runtime.Initializer): void {
   initializer.registerRpc(
     'armored_archer/metrics',
@@ -366,6 +368,14 @@ export function registerRpcMetrics(initializer: Runtime.Initializer): void {
     'armored_archer/n_plus_one_report',
     withAdminGuard('armored_archer/n_plus_one_report', rpcGetNPlusOneReport)
   );
+
+  // Prometheus scrape exposition (issue #1074) — see the "Prometheus Scrape
+  // Endpoints" section below for why these are intentionally NOT wrapped in
+  // withAdminGuard.
+  initializer.registerRpc('armored_archer/prometheus_metrics', rpcScrapeAppMetrics);
+  initializer.registerRpc('armored_archer/prometheus_deployment', rpcScrapeDeploymentMetrics);
+  initializer.registerRpc('armored_archer/prometheus_health', rpcScrapeHealthMetrics);
+  initializer.registerRpc('armored_archer/prometheus_rollout', rpcScrapeRolloutMetrics);
 }
 
 // RPC handler for N+1 detection report
@@ -403,6 +413,66 @@ async function rpcGetMetrics(
 
   // Combine both metrics (deployment metrics have different metric names to avoid conflicts)
   return baseMetrics + '\n# Deployment metrics\n' + deploymentMetrics;
+}
+
+// ==========================================
+// Prometheus Scrape Endpoints (issue #1074)
+// ==========================================
+
+// The admin-guarded RPCs above cannot serve Prometheus scrapes:
+//   1. Prometheus holds no user session token, and the admin allowlist is
+//      fail-closed for user-less calls (http-key invocations carry no
+//      userId), so every scrape would be rejected.
+//   2. Nakama wraps RPC results in a JSON envelope ({"payload": "..."})
+//      that Prometheus cannot parse as exposition format.
+//
+// backend/prometheus.yml therefore scrapes the `armored_archer/prometheus_*`
+// RPCs with `?unwrap&http_key=<runtime http key>` query parameters:
+//   - Nakama authenticates server-to-server /v2/rpc calls with the runtime
+//     HTTP key (`runtime.http_key`, default "defaulthttpkey"). Unlike the
+//     server key, it does NOT ship inside client binaries, so players cannot
+//     harvest these dumps — the same stance the admin guard enforces.
+//   - With `unwrap`, Nakama returns the handler string verbatim with a
+//     text/plain content type — i.e. valid Prometheus text exposition.
+//
+// Scrape requests arrive as HTTP GET with an empty body, so the handlers
+// consume no input (nothing to validate) and only read aggregate, non-PII
+// telemetry from their in-process registries.
+
+async function rpcScrapeAppMetrics(
+  _ctx: Runtime.Context,
+  _logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  _payload: string
+): Promise<string> {
+  return register.metrics();
+}
+
+async function rpcScrapeDeploymentMetrics(
+  _ctx: Runtime.Context,
+  _logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  _payload: string
+): Promise<string> {
+  return getDeploymentRegistry().metrics();
+}
+
+async function rpcScrapeHealthMetrics(
+  _ctx: Runtime.Context,
+  _logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  _payload: string
+): Promise<string> {
+  return getHealthRegistry().metrics();
+}
+
+async function rpcScrapeRolloutMetrics(
+  _ctx: Runtime.Context,
+  _logger: Runtime.Logger,
+  _nk: Runtime.Nakama,
+  _payload: string
+): Promise<string> {
+  return getRolloutRegistry().metrics();
 }
 
 export type RpcHandler = (

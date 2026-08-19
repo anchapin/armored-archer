@@ -256,7 +256,7 @@ Each phase can define rollback criteria:
 
 ### Monitoring
 
-Prometheus metrics are exposed at `/api/nakama/rpc/armored_archer/rollout_prometheus_metrics`:
+Prometheus scrapes rollout metrics at `/v2/rpc/armored_archer/prometheus_rollout` (job `armored_archer_rollout` in `backend/prometheus.yml`, authenticated with the Nakama runtime HTTP key via `?unwrap&http_key=...` so the raw text exposition is returned):
 
 - `armored_archer_rollout_phase`: Current rollout phase (0=disabled, 1=canary, 2=gradual, 3=full)
 - `armored_archer_rollout_percentage`: Current rollout percentage

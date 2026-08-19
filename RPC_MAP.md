@@ -289,6 +289,10 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Progressive Rollout - Metrics | Admin Dashboard (admin-only) | `rpcGetRolloutMetrics()` in `progressive_rollout.ts` | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_metrics` |
 | Progressive Rollout - Record Metrics | Client | `rpcRecordMetrics()` in `progressive_rollout.ts` — **delta-only validation (issue #1149):** only `feature_name`, `_delta` increments (capped at 50/100/5/5000 per call), and a 32-char `^[a-z0-9_-]+$` `client_platform` label are accepted; totals, error_rate, p99_latency_ms, user counts, and undeclared feature names are rejected with `FORBIDDEN` and audit-logged as `metric_poisoning_attempt` so a single session can never fabricate the volume needed to trip `checkRollbackCriteria` or explode Prometheus label cardinality | `feature_flags` storage (custom collection) | `/rpc/armored_archer/rollout_record_metrics` |
 | Progressive Rollout - Prometheus Metrics | Admin Dashboard (admin-only) | `rpcPrometheusMetrics()` in `progressive_rollout.ts` | Metrics store (Prometheus) | `/rpc/armored_archer/rollout_metrics_prometheus` |
+| Prometheus App Metrics Scrape | Prometheus (server-to-server, runtime HTTP key + `?unwrap`) | `rpcScrapeAppMetrics()` in `metrics.ts` | Metrics store (Prometheus) | `/rpc/armored_archer/prometheus_metrics` |
+| Prometheus Deployment Scrape | Prometheus (server-to-server, runtime HTTP key + `?unwrap`) | `rpcScrapeDeploymentMetrics()` in `metrics.ts` | Metrics store (Prometheus) | `/rpc/armored_archer/prometheus_deployment` |
+| Prometheus Health Scrape | Prometheus (server-to-server, runtime HTTP key + `?unwrap`) | `rpcScrapeHealthMetrics()` in `metrics.ts` | Metrics store (Prometheus) | `/rpc/armored_archer/prometheus_health` |
+| Prometheus Rollout Scrape | Prometheus (server-to-server, runtime HTTP key + `?unwrap`) | `rpcScrapeRolloutMetrics()` in `metrics.ts` | Metrics store (Prometheus) | `/rpc/armored_archer/prometheus_rollout` |
 
 **Storage Schema:**
 - `error_insights` collection: `{ insight_id, error_type, count, first_seen, last_seen, stack_trace, dismissed }`
@@ -544,6 +548,10 @@ For PostgreSQL table changes:
 | `armored_archer/rollout_metrics` | progressive_rollout | `rpcGetRolloutMetrics()` | Infrastructure *(admin-only)* |
 | `armored_archer/rollout_record_metrics` | progressive_rollout | `rpcRecordMetrics()` — delta-only, capped per call, rejects unknown feature names (issue #1149) | Infrastructure (player-callable) |
 | `armored_archer/rollout_metrics_prometheus` | progressive_rollout | `rpcPrometheusMetrics()` | Infrastructure *(admin-only)* |
+| `armored_archer/prometheus_metrics` | metrics | `rpcScrapeAppMetrics()` | Infrastructure (Prometheus scrape, runtime HTTP key) |
+| `armored_archer/prometheus_deployment` | metrics | `rpcScrapeDeploymentMetrics()` | Infrastructure (Prometheus scrape, runtime HTTP key) |
+| `armored_archer/prometheus_health` | metrics | `rpcScrapeHealthMetrics()` | Infrastructure (Prometheus scrape, runtime HTTP key) |
+| `armored_archer/prometheus_rollout` | metrics | `rpcScrapeRolloutMetrics()` | Infrastructure (Prometheus scrape, runtime HTTP key) |
 | `armored_archer/admin_get_season_state` | season_admin | `rpcAdminGetSeasonState()` | Seasons *(admin-only)* |
 | `armored_archer/admin_get_player_season` | season_admin | `rpcAdminGetPlayerSeason()` | Seasons *(admin-only)* |
 | `armored_archer/admin_validate_season` | season_admin | `rpcAdminValidateSeason()` | Seasons *(admin-only)* |
