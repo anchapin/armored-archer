@@ -8,7 +8,7 @@
 ##
 ## Related Issue: https://github.com/anchapin/armored-archer/issues/700
 
-extends GUT_TEST
+extends GutTest
 
 ## Test path for save file
 const SAVE_FILE_PATH = "user://campaign_progress.json"
