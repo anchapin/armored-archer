@@ -167,7 +167,7 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 ## Commit & PR Guidelines
 
 - Commit message format: conventional commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, ...) — release notes are generated from them (`make release-notes`).
-- A local `commit-msg` hook (installed by `make setup`; issue #1157) enforces: conventional subject, `[AI-assisted]` prefix + `AI Model:`/`Task:` trailers on AI-made commits, subject ≤ 100 chars, body wrapped at 72. Pre-check a message file with `make commit-check MSG=<file>`; emergency escape hatch: `[skip-ai-check]` in the body.
+- A local `commit-msg` hook (installed by `make setup`; issue #1157) enforces: conventional subject, `[AI-assisted]` prefix + `AI Model:`/`Task:` trailers on AI-made commits, subject ≤ 100 chars, body wrapped at 72. Pre-check a message file with `make commit-check MSG=<file>`; emergency escape hatch: `[skip-ai-check]` in the body. CI re-enforces the trailer contract on every PR via the `ai-trailer-check` workflow (`scripts/ci-check-ai-trailers.sh` walks `origin/base..HEAD` through the same validator; issue #1173).
 - Branches: `fix/issue-<number>`, `feat/<description>`, `refactor/<description>`; PRs target `main` (never `develop`); push with `--force-with-lease`, never bare `--force`.
 - PR gate: backend lint + typecheck + tests green; docs updated when behavior changes. First-contribution walkthrough: `CONTRIBUTING.md` (defers to this file).
 

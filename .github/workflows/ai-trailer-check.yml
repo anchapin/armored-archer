@@ -1,0 +1,59 @@
+name: AI Trailer Check
+
+# Issue #1173: CI-side enforcement of the [AI-assisted] trailer contract
+# from issue #1157. The local commit-msg hook (scripts/commit-msg-check-
+# ai-trailer.sh, wired via `make hooks-install`) only runs for developers
+# who installed it — web-UI commits and contributors who skipped `make
+# setup` bypass it entirely. This gate validates every commit in the PR
+# range through the SAME validator (no duplicated rules) via
+# scripts/ci-check-ai-trailers.sh, so fork and branch PRs are covered.
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ai-trailer-check:
+    name: Validate [AI-assisted] commit trailers
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Check out the PR head (not the merge ref) so the walked log
+          # contains exactly the PR's own commits. Empty on
+          # workflow_dispatch, where checkout falls back to the default ref.
+          ref: ${{ github.event.pull_request.head.sha }}
+          # Full history: the gate walks origin/<base>..HEAD and must
+          # resolve the base ref even for fork PRs.
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.ref || 'main' }}"
+          git fetch origin "${BASE_REF}"
+
+      - name: Validate [AI-assisted] trailers on PR commits
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.ref || 'main' }}"
+          ./scripts/ci-check-ai-trailers.sh "origin/${BASE_REF}"
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## AI Trailer Check"
+            echo ""
+            echo "Validated every commit in the PR range against the \`[AI-assisted]\`"
+            echo "trailer contract using the same validator as the local commit-msg"
+            echo "hook (\`scripts/ci-check-ai-trailers.sh\` →"
+            echo "\`scripts/commit-msg-check-ai-trailer.sh\`)."
+            echo ""
+            echo "See \`docs/CONTRIBUTING_AI.md\` for the format and the"
+            echo "\`[skip-ai-check]\` escape hatch (issues #1157 / #1173)."
+          } >> "$GITHUB_STEP_SUMMARY"
