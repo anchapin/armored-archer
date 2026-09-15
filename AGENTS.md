@@ -160,7 +160,6 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 
 - Auth: Firebase. IAP: RevenueCat. Client talks to Nakama via `@heroiclabs/nakama-js`; the `NetworkManager` autoload owns the session/RPC calls.
 - Transmog: base gear carries all stats (gameplay-earned); cosmetic skins are visual-only (IAP). The client combines base + skin for rendering.
-- A Go backend migration was abandoned — ignore the deprecated Go targets in the Makefile.
 - Ratified decisions are ADRs in `docs/adr/`: PRD governance (0001), server-declared match settlement (0002), hybrid duel model (0003), legacy duel-RPC decommission (0004), combat authority boundary (0005), admin-gate allowlist policy (0006) — read the relevant one before touching duel, settlement, combat-authority, or admin-gate code.
 - The Nakama bundle has a size budget enforced by `make bundle-size-check` (config: `backend/bundle-size-limits.json`).
 
@@ -177,8 +176,7 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 - Never commit cross-repo work-handoff files (`.continue-*`, `*-handoff.md`, `pause-work*`, `wip-*.md` — e.g. a `.continue-here.md` pause-work note written for a *different* repository landed on main once, issue #1186). They are session residue, not project content: `.gitignore` blocks them, the `pre-commit` hook (`scripts/pre-commit-check-handoff-files.sh`) rejects staged additions, and CI's `make tracked-ignored-check` re-checks the landed tree. Keep pause-work handoffs outside the repo entirely.
 - Human review is mandatory for AI-assisted changes. Hard rules: no secrets/credentials in code, input validation on all user data, and **database migrations plus security-critical code always require human supervision**.
 - `backend/.env` (and any `backend/.env.*`) must never be committed — `make tracked-ignored-check` (issue #1032) fails CI on tracked-but-ignored files.
-- Review checklist: `AI_CODE_REVIEW.md`. Workflow and tooling: `AI_INTEGRATION.md`, `GODOGEN_SETUP.md`, `FOLEY_AI_SETUP.md`. Companion guide: `CLAUDE.md` (autoload map, design system, tooling notes). Repo skills: `.agents/skills/godot-backend`, `.agents/skills/godot-development` (plus `godot-task`/`godogen` in `.claude/skills/`).
-- **Skill caveat:** `.agents/skills/godot-backend/SKILL.md` is stale — it claims a Go backend (`go run main.go`, port 7349, `NAKAMA_PORT` defaults). The real backend is **TypeScript** (Node 18+, npm scripts in `backend/package.json`, Nakama API on **:7350**, console on :7351). Trust this AGENTS.md over that skill file.
+- Review checklist: `AI_CODE_REVIEW.md`. Workflow and tooling: `AI_INTEGRATION.md`, `GODOGEN_SETUP.md`, `FOLEY_AI_SETUP.md`. Companion guide: `CLAUDE.md` (autoload map, design system, tooling notes). Repo skills: `.agents/skills/godot-development` (plus `godot-task`/`godogen` in `.claude/skills/`).
 
 ## Maintenance Automation
 
