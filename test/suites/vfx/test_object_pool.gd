@@ -10,9 +10,10 @@ extends GutTest
 
 # --- Fixtures ---
 
-# Elemental particle pools added in issue #1090. They share identical
-# acquire/release semantics in ObjectPool.gd (get_<type>_effect /
-# return_<type>_effect over GPUParticles2D) and differ only in size.
+# Elemental particle pools added in issue #1090, plus the charge pool added
+# in issue #1136. They share identical acquire/release semantics in
+# ObjectPool.gd (get_<type>_effect / return_<type>_effect over
+# GPUParticles2D) and differ only in size.
 # `base` = pool-size constant, `floor` = prewarm minimum, `stats` = key
 # reported by get_statistics().
 const ELEMENTAL_POOLS: Dictionary = {
@@ -21,6 +22,7 @@ const ELEMENTAL_POOLS: Dictionary = {
 	"fire": {"base": 6, "floor": 2, "stats": "fire_effects"},
 	"ice": {"base": 6, "floor": 2, "stats": "ice_effects"},
 	"lightning": {"base": 6, "floor": 2, "stats": "lightning_effects"},
+	"charge": {"base": 6, "floor": 2, "stats": "charge_effects"},
 }
 const POPUP_BASE_SIZE: int = 12
 const POPUP_FLOOR: int = 3
@@ -80,7 +82,7 @@ func test_statistics_expose_all_vfx_pool_types() -> void:
 	var stats: Dictionary = pool.get_statistics()
 	var expected_keys: Array = [
 		"crit_effects", "miss_effects", "fire_effects", "ice_effects",
-		"lightning_effects", "damage_popups", "arrow_trails",
+		"lightning_effects", "charge_effects", "damage_popups", "arrow_trails",
 	]
 	for key in expected_keys:
 		assert_has(stats, key, "get_statistics() must report the '%s' pool" % key)
@@ -248,6 +250,32 @@ func test_statistics_report_reuse_rate_after_round_trips() -> void:
 	assert_gt(
 		fire_stats.reuse_rate, 0.0,
 		"fire reuse_rate must be > 0 after round-trips"
+	)
+
+
+# --- Charge effect coverage (issue #1136) ---
+
+
+# Issue #1136 acceptance: get_statistics() must report a charge_effects
+# reuse_rate on a synthetic stress test of acquire/return round-trips.
+func test_charge_effect_statistics_report_reuse_rate_under_stress() -> void:
+	var pool: Node = _make_pool()
+	for _i in range(5):
+		var effect: GPUParticles2D = pool.get_charge_effect()
+		pool.return_charge_effect(effect)
+	var charge_stats: Dictionary = \
+		(pool.get_statistics() as Dictionary).charge_effects
+	assert_eq(
+		charge_stats.created, 0,
+		"charge stress loop must only serve prewarmed instances (created == 0)"
+	)
+	assert_gte(
+		charge_stats.reused, 5,
+		"five charge round-trips must count as reuses"
+	)
+	assert_gt(
+		charge_stats.reuse_rate, 0.0,
+		"charge reuse_rate must be > 0 after the stress loop"
 	)
 
 

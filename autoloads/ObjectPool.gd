@@ -8,6 +8,7 @@
 ##   ObjectPool.get_hit_effect() - Get a hit effect from pool or create new
 ##   ObjectPool.get_death_effect() - Get a death effect from pool or create new
 ##   ObjectPool.get_crit_effect() / get_miss_effect / get_fire_effect / get_ice_effect / get_lightning_effect
+##   ObjectPool.get_charge_effect() - Get a charge/power-up loop particle (issue #1136)
 ##   ObjectPool.get_damage_popup() - Get a floating damage label
 ##   ObjectPool.get_arrow_trail() - Get an arrow trail particle
 ##   ObjectPool.return_*(node) - Return matching pool
@@ -24,6 +25,7 @@ const MISS_EFFECT_POOL_SIZE: int = 6
 const FIRE_EFFECT_POOL_SIZE: int = 6
 const ICE_EFFECT_POOL_SIZE: int = 6
 const LIGHTNING_EFFECT_POOL_SIZE: int = 6
+const CHARGE_EFFECT_POOL_SIZE: int = 6
 const DAMAGE_POPUP_POOL_SIZE: int = 12
 const ARROW_TRAIL_POOL_SIZE: int = 16
 
@@ -37,6 +39,7 @@ var _miss_effect_scene: PackedScene
 var _fire_effect_scene: PackedScene
 var _ice_effect_scene: PackedScene
 var _lightning_effect_scene: PackedScene
+var _charge_effect_scene: PackedScene
 var _damage_popup_scene: PackedScene
 var _arrow_trail_scene: PackedScene
 
@@ -50,6 +53,7 @@ var _miss_effect_pool: Array[Node] = []
 var _fire_effect_pool: Array[Node] = []
 var _ice_effect_pool: Array[Node] = []
 var _lightning_effect_pool: Array[Node] = []
+var _charge_effect_pool: Array[Node] = []
 var _damage_popup_pool: Array[Node] = []
 var _arrow_trail_pool: Array[Node] = []
 
@@ -63,6 +67,7 @@ var _active_miss_effects: Array[Node] = []
 var _active_fire_effects: Array[Node] = []
 var _active_ice_effects: Array[Node] = []
 var _active_lightning_effects: Array[Node] = []
+var _active_charge_effects: Array[Node] = []
 var _active_damage_popups: Array[Node] = []
 var _active_arrow_trails: Array[Node] = []
 
@@ -85,6 +90,8 @@ var _ice_effects_created: int = 0
 var _ice_effects_reused: int = 0
 var _lightning_effects_created: int = 0
 var _lightning_effects_reused: int = 0
+var _charge_effects_created: int = 0
+var _charge_effects_reused: int = 0
 var _damage_popups_created: int = 0
 var _damage_popups_reused: int = 0
 var _arrow_trails_created: int = 0
@@ -106,6 +113,7 @@ func _initialize_pools() -> void:
 	_fire_effect_scene = load("res://assets/particles/fire_effect.tscn") as PackedScene
 	_ice_effect_scene = load("res://assets/particles/ice_effect.tscn") as PackedScene
 	_lightning_effect_scene = load("res://assets/particles/lightning_effect.tscn") as PackedScene
+	_charge_effect_scene = load("res://assets/particles/charge_effect.tscn") as PackedScene
 	_damage_popup_scene = load("res://scenes/damage_popup.tscn") as PackedScene
 	_arrow_trail_scene = load("res://assets/particles/arrow_trail.tscn") as PackedScene
 
@@ -125,6 +133,7 @@ func _initialize_pools() -> void:
 	var adjusted_fire_pool = int(FIRE_EFFECT_POOL_SIZE * pool_size_multiplier)
 	var adjusted_ice_pool = int(ICE_EFFECT_POOL_SIZE * pool_size_multiplier)
 	var adjusted_lightning_pool = int(LIGHTNING_EFFECT_POOL_SIZE * pool_size_multiplier)
+	var adjusted_charge_pool = int(CHARGE_EFFECT_POOL_SIZE * pool_size_multiplier)
 	var adjusted_popup_pool = int(DAMAGE_POPUP_POOL_SIZE * pool_size_multiplier)
 	var adjusted_trail_pool = int(ARROW_TRAIL_POOL_SIZE * pool_size_multiplier)
 
@@ -166,6 +175,7 @@ func _initialize_pools() -> void:
 	_prewarm_particle_pool(_fire_effect_pool, _fire_effect_scene, max(adjusted_fire_pool, 2))
 	_prewarm_particle_pool(_ice_effect_pool, _ice_effect_scene, max(adjusted_ice_pool, 2))
 	_prewarm_particle_pool(_lightning_effect_pool, _lightning_effect_scene, max(adjusted_lightning_pool, 2))
+	_prewarm_particle_pool(_charge_effect_pool, _charge_effect_scene, max(adjusted_charge_pool, 2))
 
 	# Damage popups are labels that float & fade; prewarm and stash as children
 	if _damage_popup_scene != null:
@@ -477,6 +487,23 @@ func get_lightning_effect() -> GPUParticles2D:
 func return_lightning_effect(effect: Node) -> void:
 	_return_particle_to(effect, _lightning_effect_pool, _active_lightning_effects)
 
+## Get a charge/power-up particle effect from the pool (issue #1136: route
+## the looping charge_effect.tscn paths through prewarm + device-tier budget).
+func get_charge_effect() -> GPUParticles2D:
+	var counters_created: Array = [_charge_effects_created]
+	var counters_reused: Array = [_charge_effects_reused]
+	var effect := _get_particle_from(
+		_charge_effect_pool, _active_charge_effects, _charge_effect_scene,
+		0, 0, counters_created, counters_reused
+	)
+	_charge_effects_created = counters_created[0]
+	_charge_effects_reused = counters_reused[0]
+	return effect
+
+## Return a charge/power-up effect to the pool.
+func return_charge_effect(effect: Node) -> void:
+	_return_particle_to(effect, _charge_effect_pool, _active_charge_effects)
+
 # --- Damage Popup Pool (issue #1090: route damage popups through pool) ---
 
 ## Get a damage-popup Label from the pool, or create a new one if pool is empty.
@@ -616,6 +643,13 @@ func get_statistics() -> Dictionary:
 			"reused": _lightning_effects_reused,
 			"reuse_rate": _get_reuse_rate(_lightning_effects_created, _lightning_effects_reused)
 		},
+		"charge_effects": {
+			"active": _active_charge_effects.size(),
+			"available": _charge_effect_pool.size(),
+			"created": _charge_effects_created,
+			"reused": _charge_effects_reused,
+			"reuse_rate": _get_reuse_rate(_charge_effects_created, _charge_effects_reused)
+		},
 		"damage_popups": {
 			"active": _active_damage_popups.size(),
 			"available": _damage_popup_pool.size(),
@@ -659,6 +693,8 @@ func log_statistics() -> void:
 		[stats.ice_effects.active, stats.ice_effects.available, stats.ice_effects.created, stats.ice_effects.reused, stats.ice_effects.reuse_rate])
 	push_warning("[ObjectPool] LightningEffects: %d active, %d available, %d created, %d reused (%.1f%% reuse rate)" %
 		[stats.lightning_effects.active, stats.lightning_effects.available, stats.lightning_effects.created, stats.lightning_effects.reused, stats.lightning_effects.reuse_rate])
+	push_warning("[ObjectPool] ChargeEffects: %d active, %d available, %d created, %d reused (%.1f%% reuse rate)" %
+		[stats.charge_effects.active, stats.charge_effects.available, stats.charge_effects.created, stats.charge_effects.reused, stats.charge_effects.reuse_rate])
 	push_warning("[ObjectPool] DamagePopups: %d active, %d available, %d created, %d reused (%.1f%% reuse rate)" %
 		[stats.damage_popups.active, stats.damage_popups.available, stats.damage_popups.created, stats.damage_popups.reused, stats.damage_popups.reuse_rate])
 	push_warning("[ObjectPool] ArrowTrails: %d active, %d available, %d created, %d reused (%.1f%% reuse rate)" %
@@ -731,6 +767,13 @@ func cleanup_invalid_instances() -> void:
 		if is_instance_valid(effect):
 			valid_lightning_effects.append(effect)
 	_active_lightning_effects = valid_lightning_effects
+
+	# Clean up charge effects
+	var valid_charge_effects: Array[Node] = []
+	for effect in _active_charge_effects:
+		if is_instance_valid(effect):
+			valid_charge_effects.append(effect)
+	_active_charge_effects = valid_charge_effects
 
 	# Clean up damage popups
 	var valid_popups: Array[Node] = []
@@ -815,6 +858,13 @@ func cleanup_all() -> void:
 			effect.queue_free()
 	_lightning_effect_pool.clear()
 	_active_lightning_effects.clear()
+
+	# Clean up all charge effects
+	for effect in _charge_effect_pool:
+		if is_instance_valid(effect):
+			effect.queue_free()
+	_charge_effect_pool.clear()
+	_active_charge_effects.clear()
 
 	# Clean up all damage popups
 	for popup in _damage_popup_pool:
@@ -934,6 +984,19 @@ func prepare_for_scene_change() -> void:
 			_lightning_effect_pool.append(effect)
 	_active_lightning_effects.clear()
 
+	# Return all active charge effects to pool. Charge particles loop while
+	# attached, so also stop emission (mirrors the arrow-trail block).
+	for effect in _active_charge_effects:
+		if is_instance_valid(effect):
+			_disconnect_node_signals(effect)
+			effect.set_process(false)
+			effect.emitting = false
+			effect.visible = false
+			if effect.has_method("reset_pooled_state"):
+				effect.reset_pooled_state()
+			_charge_effect_pool.append(effect)
+	_active_charge_effects.clear()
+
 	# Return all active damage popups to pool
 	for popup in _active_damage_popups:
 		if is_instance_valid(popup):
@@ -985,5 +1048,6 @@ func _exit_tree() -> void:
 	_fire_effect_scene = null
 	_ice_effect_scene = null
 	_lightning_effect_scene = null
+	_charge_effect_scene = null
 	_damage_popup_scene = null
 	_arrow_trail_scene = null
