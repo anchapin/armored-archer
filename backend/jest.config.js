@@ -95,20 +95,22 @@ module.exports = {
     // function entries in Istanbul/babel coverage instrumentation. All real
     // executable functions (11 total) are covered at 100%.
     //
-    // Branches (66), statements (78), and lines (78) thresholds are set below
-    // actual measured coverage to handle variance between local and act CI
+    // Branches (66) and functions (73) thresholds are set below actual
+    // measured coverage to handle variance between local and act CI
     // environments — the REVENUECAT/SESSION_ENCRYPTION env branches are only
-    // exercised when those env vars are set, and the worktree variance drops
-    // statements/lines by ~8 points vs main (act: 79.61/79.41).
+    // exercised when those env vars are set, and interfaces create phantom
+    // function entries (see above).
     //
-    // Ramp plan: ramp these thresholds back up to 80/80/80 (matching the rest
-    // of the global gate) once #1177 lands — the umbrella issue tracking the
-    // missing config/index.ts tests for the env-conditional branches.
+    // Ramp plan #1177 (step 2026-09-15): statements/lines ratcheted from 78
+    // up to 79 to lock current actual coverage (79.61/79.41 measured with
+    // REVENUECAT/SESSION_ENCRYPTION unset — the act-CI floor). The full
+    // 80/80/80 gate lands by 2026-10-31 via #1177 once the #1171
+    // config-missing env-branch tests are restored.
     './src/config/index.ts': {
       branches: 66,
       functions: 73,
-      lines: 78,
-      statements: 78
+      lines: 79,
+      statements: 79
     },
     // Raised to the global gate in issue #1071 (actual 96/85/100/96).
     './src/modules/stage_tracking.ts': {
