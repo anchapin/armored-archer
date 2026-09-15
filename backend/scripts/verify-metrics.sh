@@ -42,6 +42,9 @@ ENVIRONMENT="development"
 TIMEOUT=10
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
 NAKAMA_URL="${NAKAMA_URL:-http://localhost:7350}"
+# Runtime HTTP key — must match runtime.http.key and the http_key params in
+# backend/prometheus.yml (default "defaulthttpkey")
+NAKAMA_HTTP_KEY="${NAKAMA_HTTP_KEY:-defaulthttpkey}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -271,18 +274,20 @@ check_metrics_endpoint() {
         log_warning "Nakama metrics endpoint not accessible at $NAKAMA_URL/metrics"
     fi
     
-    # Check custom RPC metrics endpoints
+    # Check custom RPC metrics endpoints. These are the app-metric scrape
+    # RPCs registered in backend/src/modules/metrics.ts and scraped by
+    # backend/prometheus.yml (issue #1074): each requires ?unwrap plus the
+    # runtime HTTP key, exactly like the Prometheus scrape params.
     local rpc_endpoints=(
-        "/api/nakama/rpc/armored_archer/metrics"
-        "/api/nakama/rpc/armored_archer/rpc_metrics"
-        "/api/nakama/rpc/armored_archer/business_metrics"
-        "/api/nakama/rpc/armored_archer/system_metrics"
-        "/api/nakama/rpc/armored_archer/health"
+        "/v2/rpc/armored_archer/prometheus_metrics"
+        "/v2/rpc/armored_archer/prometheus_deployment"
+        "/v2/rpc/armored_archer/prometheus_health"
+        "/v2/rpc/armored_archer/prometheus_rollout"
     )
     
     for endpoint in "${rpc_endpoints[@]}"; do
         log_verbose "Checking endpoint: $endpoint"
-        if curl -s --connect-timeout "$TIMEOUT" "${NAKAMA_URL}${endpoint}" > /dev/null 2>&1; then
+        if curl -sf --connect-timeout "$TIMEOUT" "${NAKAMA_URL}${endpoint}?unwrap=&http_key=${NAKAMA_HTTP_KEY}" > /dev/null 2>&1; then
             log_success "Endpoint accessible: $endpoint"
         else
             log_warning "Endpoint not accessible: $endpoint"
