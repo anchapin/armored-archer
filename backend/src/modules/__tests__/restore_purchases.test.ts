@@ -32,6 +32,29 @@ const mockCtx = {
   env: {},
 };
 
+/**
+ * Force the RevenueCat "not configured" state for a test (issue #1171).
+ * The RPCs read process.env.REVENUECAT_SECRET_KEY with a fallback to the
+ * module-load config snapshot, so both must be cleared to make the
+ * not-configured branch deterministic regardless of host environment.
+ * Returns a restore function; call it in a finally block.
+ */
+function forceRevenueCatUnconfigured(): () => void {
+  const configModule = require('../../config');
+  const savedEnvKey = process.env.REVENUECAT_SECRET_KEY;
+  const savedSnapshotKey = configModule.config.revenuecat.secretKey;
+  delete process.env.REVENUECAT_SECRET_KEY;
+  configModule.config.revenuecat.secretKey = '';
+  return () => {
+    if (savedEnvKey === undefined) {
+      delete process.env.REVENUECAT_SECRET_KEY;
+    } else {
+      process.env.REVENUECAT_SECRET_KEY = savedEnvKey;
+    }
+    configModule.config.revenuecat.secretKey = savedSnapshotKey;
+  };
+}
+
 describe('rpcRestorePurchases', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -237,20 +260,24 @@ describe('rpcRestorePurchases', () => {
 
   describe('Error Handling', () => {
     it('should return error when RevenueCat API key not configured', async () => {
-      delete process.env.REVENUECAT_SECRET_KEY;
+      const restoreRevenueCatConfig = forceRevenueCatUnconfigured();
 
-      const nk = createTestNakama();
+      try {
+        const nk = createTestNakama();
 
-      const result = await rpcRestorePurchases(
-        mockCtx as any,
-        createMockLogger(),
-        nk,
-        JSON.stringify({ platform: 'ios' })
-      );
+        const result = await rpcRestorePurchases(
+          mockCtx as any,
+          createMockLogger(),
+          nk,
+          JSON.stringify({ platform: 'ios' })
+        );
 
-      const parsed = JSON.parse(result);
-      expect(parsed.success).toBe(false);
-      expect(parsed.error).toBe('Purchase restore not configured');
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(false);
+        expect(parsed.error).toBe('Purchase restore not configured');
+      } finally {
+        restoreRevenueCatConfig();
+      }
     });
 
     it('should handle RevenueCat API errors gracefully', async () => {

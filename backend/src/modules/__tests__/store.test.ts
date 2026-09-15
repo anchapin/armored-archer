@@ -76,6 +76,29 @@ import { Runtime } from '../../types/nakama';
 // Mock RevenueCat API key for tests
 const originalEnv = process.env;
 
+/**
+ * Force the RevenueCat "not configured" state for a test (issue #1171).
+ * getRevenueCatApiKey() reads process.env.REVENUECAT_SECRET_KEY with a
+ * fallback to the module-load config snapshot, so both must be cleared to
+ * make the skip branch deterministic regardless of host environment.
+ * Returns a restore function; call it in a finally block.
+ */
+function forceRevenueCatUnconfigured(): () => void {
+  const configModule = require('../../config');
+  const savedEnvKey = process.env.REVENUECAT_SECRET_KEY;
+  const savedSnapshotKey = configModule.config.revenuecat.secretKey;
+  delete process.env.REVENUECAT_SECRET_KEY;
+  configModule.config.revenuecat.secretKey = '';
+  return () => {
+    if (savedEnvKey === undefined) {
+      delete process.env.REVENUECAT_SECRET_KEY;
+    } else {
+      process.env.REVENUECAT_SECRET_KEY = savedEnvKey;
+    }
+    configModule.config.revenuecat.secretKey = savedSnapshotKey;
+  };
+}
+
 describe('store', () => {
   let mockLogger: Runtime.Logger;
   let mockCtx: Runtime.Context;
@@ -2030,17 +2053,18 @@ describe('store', () => {
     });
 
     it('should skip refund check when API key is not configured', async () => {
-      const originalKey = process.env.REVENUECAT_SECRET_KEY;
-      delete process.env.REVENUECAT_SECRET_KEY;
+      const restoreRevenueCatConfig = forceRevenueCatUnconfigured();
 
-      const ctx = createMockContext({ userId: 'test-user' });
-      const result = await rpcCheckRefunds(ctx, mockLogger, mockNk, '{}');
-      const parsed = JSON.parse(result);
+      try {
+        const ctx = createMockContext({ userId: 'test-user' });
+        const result = await rpcCheckRefunds(ctx, mockLogger, mockNk, '{}');
+        const parsed = JSON.parse(result);
 
-      process.env.REVENUECAT_SECRET_KEY = originalKey;
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.refunds_found).toBe(0);
+        expect(parsed.success).toBe(true);
+        expect(parsed.refunds_found).toBe(0);
+      } finally {
+        restoreRevenueCatConfig();
+      }
     });
 
     it('should handle successful refund check with no refunds', async () => {
@@ -2137,17 +2161,18 @@ describe('store', () => {
     });
 
     it('should skip subscription check when API key is not configured', async () => {
-      const originalKey = process.env.REVENUECAT_SECRET_KEY;
-      delete process.env.REVENUECAT_SECRET_KEY;
+      const restoreRevenueCatConfig = forceRevenueCatUnconfigured();
 
-      const ctx = createMockContext({ userId: 'test-user' });
-      const result = await rpcCheckSubscriptions(ctx, mockLogger, mockNk, '{}');
-      const parsed = JSON.parse(result);
+      try {
+        const ctx = createMockContext({ userId: 'test-user' });
+        const result = await rpcCheckSubscriptions(ctx, mockLogger, mockNk, '{}');
+        const parsed = JSON.parse(result);
 
-      process.env.REVENUECAT_SECRET_KEY = originalKey;
-
-      expect(parsed.success).toBe(true);
-      expect(parsed.active_subscriptions).toEqual([]);
+        expect(parsed.success).toBe(true);
+        expect(parsed.active_subscriptions).toEqual([]);
+      } finally {
+        restoreRevenueCatConfig();
+      }
     });
 
     it('should handle successful subscription check with no subscriptions', async () => {
@@ -2288,21 +2313,22 @@ describe('store', () => {
 
   describe('rpcValidatePurchase - RevenueCat validation failures', () => {
     it('should return error when RevenueCat API key is not configured', async () => {
-      const originalKey = process.env.REVENUECAT_SECRET_KEY;
-      delete process.env.REVENUECAT_SECRET_KEY;
+      const restoreRevenueCatConfig = forceRevenueCatUnconfigured();
 
-      const payload = JSON.stringify({
-        product_id: 'com.armoredarcher.gems.small',
-        platform: 'ios',
-        transaction_receipt: 'receipt-no-api-key',
-      });
+      try {
+        const payload = JSON.stringify({
+          product_id: 'com.armoredarcher.gems.small',
+          platform: 'ios',
+          transaction_receipt: 'receipt-no-api-key',
+        });
 
-      const result = await rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
-      const parsed = JSON.parse(result);
+        const result = await rpcValidatePurchase(mockCtx, mockLogger, mockNk, payload);
+        const parsed = JSON.parse(result);
 
-      process.env.REVENUECAT_SECRET_KEY = originalKey;
-
-      expect(parsed.error_code).toBe('VALIDATION_FAILED');
+        expect(parsed.error_code).toBe('VALIDATION_FAILED');
+      } finally {
+        restoreRevenueCatConfig();
+      }
     });
 
     it('should return error when RevenueCat rejects receipt', async () => {
@@ -3586,21 +3612,22 @@ describe('store', () => {
     });
 
     it('should skip refund check when RevenueCat API key not configured', async () => {
-      const savedKey = process.env.REVENUECAT_SECRET_KEY;
-      delete process.env.REVENUECAT_SECRET_KEY;
+      const restoreRevenueCatConfig = forceRevenueCatUnconfigured();
 
-      const result = await rpcCheckRefunds(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({ app_user_id: 'test-user' })
-      );
+      try {
+        const result = await rpcCheckRefunds(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ app_user_id: 'test-user' })
+        );
 
-      process.env.REVENUECAT_SECRET_KEY = savedKey;
-
-      const parsed = JSON.parse(result);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Refund check not configured');
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(true);
+        expect(parsed.message).toBe('Refund check not configured');
+      } finally {
+        restoreRevenueCatConfig();
+      }
     });
 
     it('should handle RevenueCat API error in refund check', async () => {
@@ -3651,22 +3678,22 @@ describe('store', () => {
     });
 
     it('should skip subscription check when RevenueCat API key not configured', async () => {
-      const savedKey = process.env.REVENUECAT_SECRET_KEY;
-      const savedSecret = process.env.REVENUECAT_SECRET_KEY;
-      delete process.env.REVENUECAT_SECRET_KEY;
+      const restoreRevenueCatConfig = forceRevenueCatUnconfigured();
 
-      const result = await rpcCheckSubscriptions(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({ app_user_id: 'test-user' })
-      );
+      try {
+        const result = await rpcCheckSubscriptions(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ app_user_id: 'test-user' })
+        );
 
-      process.env.REVENUECAT_SECRET_KEY = savedSecret;
-
-      const parsed = JSON.parse(result);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Subscription check not configured');
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(true);
+        expect(parsed.message).toBe('Subscription check not configured');
+      } finally {
+        restoreRevenueCatConfig();
+      }
     });
 
     it('should handle RevenueCat API error in subscription check', async () => {
