@@ -187,13 +187,6 @@ backend-test:
 	@echo "$(BLUE)Running TypeScript backend tests...$(RESET)"
 	cd $(BACKEND_DIR) && npm test
 
-# DEPRECATED: Go backend commands - Go migration was abandoned
-# See backend/.deprecated/ for Go backend artifacts
-# backend-test-go: $(info $(YELLOW)Go backend is deprecated - use TypeScript$(RESET))
-# backend-build-go: $(info $(YELLOW)Go backend is deprecated - use TypeScript$(RESET))
-# backend-lint-go: $(info $(YELLOW)Go backend is deprecated - use TypeScript$(RESET))
-# backend-fmt-go: $(info $(YELLOW)Go backend is deprecated - use TypeScript$(RESET))
-
 backend-build:
 	@echo "$(BLUE)Building TypeScript backend...$(RESET)"
 	cd $(BACKEND_DIR) && npm run build
