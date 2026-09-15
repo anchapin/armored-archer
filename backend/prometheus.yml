@@ -57,7 +57,8 @@ scrape_configs:
           service: 'nakama'
           component: 'game-server'
 
-  # PostgreSQL database metrics (if postgres_exporter is added)
+  # PostgreSQL database metrics from the postgres-exporter service
+  # (backend/docker-compose.yml, issue #1183)
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres-exporter:9187']
