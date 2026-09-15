@@ -170,7 +170,7 @@ test_high_error_rate() {
     log_info "Generating $TEST_ERROR_COUNT errors..."
     
     for i in $(seq 1 $TEST_ERROR_COUNT); do
-        curl -s -X POST "${NAKAMA_URL}/api/nakama/rpc/armored_archer/test_error" \
+        curl -s -X POST "${NAKAMA_URL}/v2/rpc/armored_archer/test_error" \
             -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
             -d '{"count": 1}' > /dev/null &
@@ -201,7 +201,7 @@ test_high_latency() {
     # Start background process to generate latency
     (
         for i in $(seq 1 100); do
-            curl -s -X POST "${NAKAMA_URL}/api/nakama/rpc/armored_archer/test_latency" \
+            curl -s -X POST "${NAKAMA_URL}/v2/rpc/armored_archer/test_latency" \
                 -H "Authorization: Bearer $TOKEN" \
                 -H "Content-Type: application/json" \
                 -d "{\"delay_ms\": $TEST_LATENCY_MS}" > /dev/null &
@@ -297,7 +297,7 @@ test_high_memory_usage() {
     log_info "Allocating ${TEST_MEMORY_MB}MB memory..."
     
     # Start memory allocation
-    curl -s -X POST "${NAKAMA_URL}/api/nakama/rpc/armored_archer/test_memory" \
+    curl -s -X POST "${NAKAMA_URL}/v2/rpc/armored_archer/test_memory" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{\"mb\": $TEST_MEMORY_MB}" > /dev/null &
@@ -336,7 +336,7 @@ test_database_connection_pool() {
     # Start many concurrent connections
     (
         for i in $(seq 1 50); do
-            curl -s -X POST "${NAKAMA_URL}/api/nakama/rpc/armored_archer/test_db_connection" \
+            curl -s -X POST "${NAKAMA_URL}/v2/rpc/armored_archer/test_db_connection" \
                 -H "Authorization: Bearer $TOKEN" \
                 -H "Content-Type: application/json" \
                 -d '{}' > /dev/null &
