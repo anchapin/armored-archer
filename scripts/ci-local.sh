@@ -64,8 +64,14 @@ VERBOSE=false
 # native local-godot-tests.sh suites can exhaust host RAM and OOM-kill jobs
 # (act reports exitcode '137' with no error output). Before each act job we
 # warn/wait while available memory is below this threshold (MB).
+# Default raised 60 -> 120 in issue #1142: the act matrix now includes
+# backend-integration-test, whose postgres + act + tsc combination was never
+# validated on the OOM path (#992/#993/#1028).
 ACT_MIN_FREE_MB="${ACT_MIN_FREE_MB:-2048}"
-ACT_MEM_WAIT_SECS="${ACT_MEM_WAIT_SECS:-60}"
+ACT_MEM_WAIT_SECS="${ACT_MEM_WAIT_SECS:-120}"
+# REQUIRES_SERVICES act jobs (they boot postgres/nakama service containers
+# on top of the node job container) wait even longer for memory to recover.
+ACT_SERVICE_MEM_WAIT_SECS="${ACT_SERVICE_MEM_WAIT_SECS:-300}"
 
 # Act invocation lock (issue #992): sourced from a shared helper so the
 # legacy run-ci-locally.sh / act-cleanup.sh wrappers serialize on the same
@@ -98,6 +104,33 @@ ACT_JOBS=(
     # check_services exits 0 on an empty compose project, and never migrated),
     # so tests hit ECONNREFUSED 127.0.0.1:5432 against a schema-less DB.
     "schema-validation"
+    # backend-integration-test also runs via act (issue #1142): the ci.yml job
+    # boots its OWN service containers on unique host ports (postgres 5438,
+    # nakama 7352/7353 — distinct from every other job and the dev stack, see
+    # .actrc), builds the Nakama bundle in-job (`npm run build:full`) and
+    # mounts backend/data/modules into the nakama container, installs psql
+    # under act, and skips the hosted-only reporter/artifact/cache steps via
+    # env.ACT guards — so it needs nothing from this script's compose stacks.
+    # It is additionally listed in REQUIRES_SERVICES below (service-container
+    # memory guard + lean-compose refusal).
+    "backend-integration-test"
+)
+
+# Act jobs whose workflow boots docker service containers (postgres and/or
+# nakama) alongside the job container (issue #1142). This is a hint list that
+# mirrors the ACT_JOBS / SERVICE_JOBS split and drives two behaviors in
+# run_act_job:
+#   - the host memory guard waits ACT_SERVICE_MEM_WAIT_SECS (default 300)
+#     instead of ACT_MEM_WAIT_SECS — these jobs stack a database + the
+#     node/tsc job container, a combination never validated on the OOM path
+#     (issues #992/#993/#1028);
+#   - the script refuses to run them while ONLY the lean compose
+#     (.github/docker-compose-ci-fast.yml, project ci-fast) is up: the lean
+#     nakama lacks the game-bundle mount (the PR #1129 gap), so a leftover
+#     fast stack invites testing the wrong server and doubles the
+#     postgres/nakama container load under `make ci` (--fast).
+REQUIRES_SERVICES=(
+    "backend-integration-test"
 )
 
 SERVICE_JOBS=(
@@ -121,6 +154,7 @@ FAST_JOBS=(
 SLOW_JOBS=(
     "backend-test"
     "schema-validation"
+    "backend-integration-test"
     "sonarcloud"
     "security-audit"
 )
@@ -242,9 +276,12 @@ available_mem_mb() {
     fi
 }
 
-# Warn and wait (up to ACT_MEM_WAIT_SECS) for host memory to recover before
-# an act job launches. Advisory only — never blocks the CI run indefinitely.
+# Warn and wait (up to the given timeout, defaulting to ACT_MEM_WAIT_SECS)
+# for host memory to recover before an act job launches. Advisory only —
+# never blocks the CI run indefinitely. REQUIRES_SERVICES jobs pass the
+# longer ACT_SERVICE_MEM_WAIT_SECS timeout (issue #1142).
 wait_for_memory() {
+    local timeout_secs="${1:-${ACT_MEM_WAIT_SECS}}"
     local avail
     avail="$(available_mem_mb || true)"
     [[ "${avail}" =~ ^[0-9]+$ ]] || return 0
@@ -252,7 +289,7 @@ wait_for_memory() {
 
     log_warning "Low host memory: ${avail}MB available (< ${ACT_MIN_FREE_MB}MB) — concurrent local-godot-tests.sh run? (issue #993)"
     local waited=0
-    while [ "${waited}" -lt "${ACT_MEM_WAIT_SECS}" ]; do
+    while [ "${waited}" -lt "${timeout_secs}" ]; do
         sleep 5
         waited=$((waited + 5))
         avail="$(available_mem_mb || true)"
@@ -262,7 +299,33 @@ wait_for_memory() {
             return 0
         fi
     done
-    log_warning "Proceeding with ${avail}MB free — the act job may be OOM-killed (exitcode '137')"
+    log_warning "Proceeding with ${avail}MB free after waiting ${timeout_secs}s — the act job may be OOM-killed (exitcode '137')"
+}
+
+# --- REQUIRES_SERVICES guard (issue #1142) ---
+
+# True when the given act job boots service containers (REQUIRES_SERVICES).
+job_requires_services() {
+    [[ " ${REQUIRES_SERVICES[*]} " =~ " $1 " ]]
+}
+
+# Refuse REQUIRES_SERVICES act jobs while ONLY the lean compose is up
+# (issue #1142). Returns 0 when the run may proceed, 1 after refusing.
+guard_requires_services_job() {
+    local job="$1"
+    job_requires_services "${job}" || return 0
+
+    local lean_ids="" regular_ids=""
+    lean_ids="$(docker compose -f "${FAST_COMPOSE}" -p ci-fast ps -q --status running 2>/dev/null || true)"
+    regular_ids="$(docker compose -f "${REGULAR_COMPOSE}" -p ci-armored-archer ps -q --status running 2>/dev/null || true)"
+
+    if [ -n "${lean_ids}" ] && [ -z "${regular_ids}" ]; then
+        log_error "${job} cannot run while only the lean compose (ci-fast) is up (issue #1142)"
+        log_error "The lean nakama (.github/docker-compose-ci-fast.yml) has no game-bundle mount (PR #1129 gap) and doubles the postgres/nakama container load."
+        log_error "Stop it first: ./scripts/ci-local.sh --fast --clean   (or: docker compose -f .github/docker-compose-ci-fast.yml -p ci-fast down)"
+        return 1
+    fi
+    return 0
 }
 
 # --- Act invocation lock (issue #992) ---
@@ -278,9 +341,24 @@ run_act_job() {
 
     cd "${PROJECT_ROOT}"
 
+    # Lean-compose refusal (issue #1142): REQUIRES_SERVICES act jobs refuse
+    # to run while only the lean ci-fast compose is up (no game-bundle
+    # mount — the PR #1129 gap — plus a doubled container load).
+    if ! guard_requires_services_job "${job}"; then
+        JOB_STATUS[$job]="fail"
+        JOB_TIME[$job]=$(log_timing $job_start)
+        log_error "${job} refused (lean compose up)"
+        return 1
+    fi
+
     # Host memory guard (issue #993): warn/wait while free memory is low so
     # concurrent native Godot suites don't OOM-kill this container job.
-    wait_for_memory
+    # Service-container jobs wait longer (ACT_SERVICE_MEM_WAIT_SECS, #1142).
+    if job_requires_services "${job}"; then
+        wait_for_memory "${ACT_SERVICE_MEM_WAIT_SECS}"
+    else
+        wait_for_memory
+    fi
 
     # Use .actrc-local if it exists
     local act_opts="-W .github/workflows/ci.yml"
@@ -534,7 +612,7 @@ Usage:
   ./scripts/ci-local.sh --clear-cache   Clear act action cache (fixes git clone errors)
   ./scripts/ci-local.sh --status         Show service status
 
-Act-compatible jobs (no services required):
+Act jobs (self-contained under act; service-container jobs listed separately):
 EOF
 
     printf "\n  ${BLUE}Fast Jobs (run first for quick feedback):${NC}\n"
@@ -544,9 +622,14 @@ EOF
 
     printf "\n  ${BLUE}Other Act Jobs:${NC}\n"
     for job in "${ACT_JOBS[@]}"; do
-        if [[ ! " ${FAST_JOBS[@]} " =~ " $job " ]]; then
+        if [[ ! " ${FAST_JOBS[@]} " =~ " $job " ]] && ! job_requires_services "${job}"; then
             printf "    ${YELLOW}%s${NC}\n" "${job}"
         fi
+    done
+
+    printf "\n  ${BLUE}Act Jobs with service containers (postgres/nakama; refused while the lean ci-fast compose is up):${NC}\n"
+    for job in "${REQUIRES_SERVICES[@]}"; do
+        printf "    ${YELLOW}%s${NC}\n" "${job}"
     done
 
     printf "\n  ${BLUE}Service Jobs (need PostgreSQL/Nakama):${NC}\n"

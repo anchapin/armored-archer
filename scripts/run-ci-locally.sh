@@ -41,6 +41,10 @@ JOBS=(
     "backend-dead-flags"
     "backend-test"
     "schema-validation"
+    # Issue #1142: parity with scripts/ci-local.sh ACT_JOBS — the ci.yml job
+    # boots its own postgres (5438) + nakama (7352/7353) service containers
+    # and builds/mounts the Nakama bundle in-job, so it is act-safe here too.
+    "backend-integration-test"
 )
 
 # Track results
