@@ -1,4 +1,4 @@
-import { Counter, Gauge } from 'prom-client';
+import { Counter, Gauge, Histogram } from 'prom-client';
 import {
   registerRpcMetrics,
   getMetricsRegistry,
@@ -32,6 +32,11 @@ import {
   setCacheHitRatio,
   incrementAdminRpcAccessDenied,
   setAdminAllowlistSize,
+  recordWebhookEvent,
+  recordWebhookProcessingTime,
+  setWebhookPendingAwards,
+  incrementWebhookRedisError,
+  setWebhookConfigured,
 } from '../metrics';
 import { resetAdminAllowlistCache } from '../admin_auth';
 
@@ -44,6 +49,10 @@ const registeredCounterConfigs = ((Counter as unknown as jest.Mock).mock.calls ?
 );
 const registeredGaugeConfigs = ((Gauge as unknown as jest.Mock).mock.calls ?? []).map(
   (call: unknown[]) => call[0] as { name: string }
+);
+
+const registeredHistogramConfigs = ((Histogram as unknown as jest.Mock).mock.calls ?? []).map(
+  (call: unknown[]) => call[0] as { name: string; labelNames?: readonly string[] }
 );
 
 function counterConfigs(): Array<{ name: string; labelNames?: readonly string[] }> {
@@ -1235,6 +1244,67 @@ describe('metrics', () => {
     it('exposes increment/set helpers that the admin guard can wire as sinks', () => {
       expect(() => incrementAdminRpcAccessDenied('armored_archer/x', 'caller_id_missing')).not.toThrow();
       expect(() => setAdminAllowlistSize(0)).not.toThrow();
+    });
+  });
+
+  // =================== Webhook ledger metrics (issue #1140) ===================
+
+  describe('webhook ledger metrics', () => {
+    // Same approach as the admin-guard section above: prom-client is mocked
+    // file-wide, so assert the registration vocabulary captured at module
+    // load; real counter/gauge behavior is covered by
+    // revenuecat_webhook.test.ts, which exercises the ledger code paths
+    // against the live registry.
+    it('registers armored_archer_webhook_events_total with event_type and outcome labels', () => {
+      expect(counterConfigs()).toContainEqual(
+        expect.objectContaining({
+          name: 'armored_archer_webhook_events_total',
+          labelNames: ['event_type', 'outcome'],
+        })
+      );
+    });
+
+    it('registers armored_archer_webhook_redis_errors_total with an operation label', () => {
+      expect(counterConfigs()).toContainEqual(
+        expect.objectContaining({
+          name: 'armored_archer_webhook_redis_errors_total',
+          labelNames: ['operation'],
+        })
+      );
+    });
+
+    it('registers armored_archer_webhook_processing_seconds with an event_type label', () => {
+      expect(registeredHistogramConfigs).toContainEqual(
+        expect.objectContaining({
+          name: 'armored_archer_webhook_processing_seconds',
+          labelNames: ['event_type'],
+        })
+      );
+    });
+
+    it('registers armored_archer_webhook_pending_awards with a user_id label', () => {
+      expect(gaugeConfigs()).toContainEqual(
+        expect.objectContaining({
+          name: 'armored_archer_webhook_pending_awards',
+          labelNames: ['user_id'],
+        })
+      );
+    });
+
+    it('registers armored_archer_webhook_configured (no labels)', () => {
+      expect(gaugeConfigs()).toContainEqual(
+        expect.objectContaining({
+          name: 'armored_archer_webhook_configured',
+        })
+      );
+    });
+
+    it('exposes record/set helpers the webhook ledger can call without throwing', () => {
+      expect(() => recordWebhookEvent('initial_purchase', 'processed')).not.toThrow();
+      expect(() => recordWebhookProcessingTime('initial_purchase', 0.01)).not.toThrow();
+      expect(() => setWebhookPendingAwards('user-1', 2)).not.toThrow();
+      expect(() => incrementWebhookRedisError('dedup_lookup')).not.toThrow();
+      expect(() => setWebhookConfigured(true)).not.toThrow();
     });
   });
 });

@@ -98,6 +98,18 @@ Emitted by the admin gate ([ADR-0006](../docs/adr/0006-admin-gate-allowlist-poli
 | `armored_archer_admin_rpc_access_denied_total` | Counter | Admin RPC rejections by the `withAdminGuard` allowlist gate; labels `rpc_id`, `reason` (`caller_not_in_admin_allowlist` / `caller_id_missing`) |
 | `armored_archer_admin_allowlist_size` | Gauge | Entries in the `ADMIN_USER_IDS` allowlist; 0 = fail-closed (every admin RPC rejects every caller). Set on startup and on every allowlist (re)resolution |
 
+### Webhook Ledger Metrics (issue #1140)
+
+Emitted by the RevenueCat webhook RPC and its durable event ledger (issue #1067); alert runbook: [PaymentProcessingFailures](../docs/runbooks/PaymentProcessingFailures.md). Grafana: *Business Metrics* dashboard, "RevenueCat Webhooks" row.
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `armored_archer_webhook_events_total` | Counter | Webhook events through the durable ledger; labels `event_type`, `outcome` (`processed` / `unhandled` / `failed` / `duplicate` / `rejected_not_configured` / `rejected_invalid_signature` / `rejected_invalid_payload` / `rejected_missing_user` / `rejected_missing_event_id`) |
+| `armored_archer_webhook_processing_seconds` | Histogram | Seconds to fully apply a webhook event (handler start through outcome recording) by `event_type`; duplicate replays are not timed |
+| `armored_archer_webhook_pending_awards` | Gauge | Queued cap-overflow paid awards per `user_id` in the `revenuecat_pending_awards` ledger; 0 once fully drained |
+| `armored_archer_webhook_redis_errors_total` | Counter | Redis failures on the dedup fast path; label `operation` (`dedup_lookup` / `outcome_record`) |
+| `armored_archer_webhook_configured` | Gauge | 1 = `REVENUECAT_WEBHOOK_SECRET` set; 0 = RPC fail-closed (liveness probe for `WebhookNotConfigured`, set at startup and per call) |
+
 ## Metrics Implementation
 
 ### Source Files

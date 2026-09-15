@@ -788,3 +788,113 @@ export function incrementAdminRpcAccessDenied(rpcId: string, reason: string): vo
 export function setAdminAllowlistSize(count: number): void {
   adminAllowlistSize.set(count);
 }
+
+// ==========================================
+// Webhook Ledger Metrics (issue #1140)
+// ==========================================
+// Observability surface for the RevenueCat webhook RPC and its durable
+// event ledger (issue #1067). Declarations and helpers live together at
+// the end of this file on purpose: runbooks pin line-number citations to
+// metrics.ts (see scripts/audit-runbook-citations.sh), so appending here
+// keeps every pre-existing citation stable.
+
+const webhookEventsTotal = new Counter({
+  name: 'armored_archer_webhook_events_total',
+  help:
+    'RevenueCat webhook events through the durable ledger (issue #1067), ' +
+    'by event_type and outcome (processed / unhandled / failed / duplicate / ' +
+    'rejected_not_configured / rejected_invalid_signature / ' +
+    'rejected_invalid_payload / rejected_missing_user / rejected_missing_event_id)',
+  labelNames: ['event_type', 'outcome'] as const,
+  registers: [register],
+});
+
+const webhookProcessingSeconds = new Histogram({
+  name: 'armored_archer_webhook_processing_seconds',
+  help:
+    'Seconds spent applying a RevenueCat webhook event (handler start ' +
+    'through outcome recording) by event_type; duplicate replays return ' +
+    'the recorded outcome and are not timed',
+  labelNames: ['event_type'] as const,
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
+  registers: [register],
+});
+
+const webhookPendingAwards = new Gauge({
+  name: 'armored_archer_webhook_pending_awards',
+  help:
+    'Queued cap-overflow paid awards per user in the ' +
+    'revenuecat_pending_awards ledger (issue #1067); set on every queue ' +
+    'write, 0 once the queue is fully drained',
+  labelNames: ['user_id'] as const,
+  registers: [register],
+});
+
+const webhookRedisErrorsTotal = new Counter({
+  name: 'armored_archer_webhook_redis_errors_total',
+  help:
+    'Redis failures on the webhook ledger dedup fast path by operation ' +
+    '(dedup_lookup / outcome_record); each error degrades dedup to the ' +
+    'slower durable-storage path (correctness is preserved)',
+  labelNames: ['operation'] as const,
+  registers: [register],
+});
+
+const webhookConfigured = new Gauge({
+  name: 'armored_archer_webhook_configured',
+  help:
+    '1 when REVENUECAT_WEBHOOK_SECRET is configured, 0 when the webhook ' +
+    'RPC is fail-closed and rejecting every event (liveness probe for the ' +
+    'WebhookNotConfigured alert; set at RPC registration and per webhook call)',
+  registers: [register],
+});
+
+/**
+ * Increments the webhook event counter for the durable ledger (issue #1140).
+ *
+ * @param eventType - Normalized RevenueCat event type ('unknown' pre-parse)
+ * @param outcome - Terminal outcome of the event (see counter help)
+ */
+export function recordWebhookEvent(eventType: string, outcome: string): void {
+  webhookEventsTotal.inc({ event_type: eventType, outcome });
+}
+
+/**
+ * Observes the processing time of a fully-applied webhook event.
+ *
+ * @param eventType - Normalized RevenueCat event type
+ * @param seconds - Wall-clock seconds from handler start to outcome recording
+ */
+export function recordWebhookProcessingTime(eventType: string, seconds: number): void {
+  webhookProcessingSeconds.observe({ event_type: eventType }, seconds);
+}
+
+/**
+ * Sets the queued-award gauge for a user after a pending-award queue write.
+ *
+ * @param userId - Player whose pending-award queue was persisted
+ * @param count - Award entries remaining in the queue after the write
+ */
+export function setWebhookPendingAwards(userId: string, count: number): void {
+  webhookPendingAwards.set({ user_id: userId }, count);
+}
+
+/**
+ * Increments the Redis-failure counter on the webhook dedup fast path.
+ *
+ * @param operation - 'dedup_lookup' | 'outcome_record'
+ */
+export function incrementWebhookRedisError(operation: string): void {
+  webhookRedisErrorsTotal.inc({ operation });
+}
+
+/**
+ * Sets the webhook-configured liveness gauge (1 = secret present, 0 =
+ * fail-closed). Set at RPC registration (startup probe) and on every
+ * webhook call so WebhookNotConfigured tracks live configuration.
+ *
+ * @param configured - Whether REVENUECAT_WEBHOOK_SECRET is set
+ */
+export function setWebhookConfigured(configured: boolean): void {
+  webhookConfigured.set(configured ? 1 : 0);
+}
