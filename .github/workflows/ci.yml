@@ -863,6 +863,13 @@ jobs:
     name: Backend Integration Tests (Nakama + Postgres)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Issue #1144: the signal steps below post a PR comment (issues API) and
+    # create a check run (dorny/test-reporter). Scoped to this job only; the
+    # workflow-wide default stays `contents: read`.
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
     services:
       postgres:
         image: postgres:14-alpine
@@ -911,6 +918,22 @@ jobs:
       - name: Install dependencies
         working-directory: ./backend
         run: npm ci
+
+      # Rolling 30-day flake history (issue #1144). restore-keys prefix-match
+      # picks up the most recent prior run's file; the summary step below
+      # appends this run's per-test pass/fail and prunes entries older than
+      # 30 days; the save step stores it under a fresh immutable key. Skipped
+      # under act (hosted cache API), where the seeded {}
+      # data/backend-flaky-test-history.json from the checkout is used instead.
+      - name: Restore flaky-test history
+        if: env.ACT != 'true'
+        uses: actions/cache/restore@v4
+        continue-on-error: true
+        with:
+          path: data/backend-flaky-test-history.json
+          key: backend-flaky-test-history-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            backend-flaky-test-history-
 
       # Builds the Nakama game bundle into backend/data/modules/, which the
       # `nakama` service container mounts as a volume (see services.nakama
@@ -971,8 +994,17 @@ jobs:
             PGPASSWORD=changeme psql -h localhost -p 5438 -U postgres -d nakama -f "$migration" || true
           done
 
+      # Jest's own exit code is deliberately NOT the job gate (issue #1144):
+      # continue-on-error lets the jest-junit reporter finish writing
+      # backend/test-results/junit.xml so every downstream signal step has
+      # data even on red runs. The authoritative status check is the
+      # "Summarize integration results" step below, which parses the junit
+      # XML and fails the job on any failure — the gate therefore consumes
+      # the junit results, not the unconstrained jest exit code.
       - name: Run integration tests
+        id: integration-tests
         working-directory: ./backend
+        continue-on-error: true
         env:
           NAKAMA_HOST: localhost
           NAKAMA_PORT: '7352'
@@ -984,6 +1016,105 @@ jobs:
           TEST_DB_NAME: nakama
           CI: 'true'
         run: npm run test:integration
+
+      # Pass-rate + flake signal surface and the job's status gate (issue
+      # #1144). Parses the junit XML, computes pass/fail/skip counts and
+      # pass-rate, appends per-test results to the 30-day flake history,
+      # writes $GITHUB_STEP_SUMMARY + backend/test-results/*.md for the PR
+      # comment step, and exits non-zero on any junit failure (exit 2 when
+      # the junit is missing — a crashed run can never look green).
+      - name: Summarize integration results (pass-rate, flakes, gate)
+        id: integration-summary
+        if: always()
+        working-directory: ./backend
+        run: npx ts-node scripts/integration-test-summary.ts --junit=test-results/junit.xml --ci-mode
+
+      # Inline PR annotations from the same junit (issue #1144). Annotation
+      # only — gating is owned by the summary step above so there is exactly
+      # one authority for the status check.
+      - name: Annotate PR with test results (dorny/test-reporter)
+        if: always() && env.ACT != 'true'
+        uses: dorny/test-reporter@v1
+        continue-on-error: true
+        with:
+          name: Backend Integration Tests (Nakama + Postgres)
+          path: backend/test-results/junit.xml
+          reporter: jest-junit
+          list-tests: failed
+          fail-on-error: 'false'
+
+      - name: Skip PR annotations (act detected)
+        if: always() && env.ACT == 'true'
+        run: echo "Skipping dorny/test-reporter in act environment"
+
+      # Upsert the summary comment on the PR (issue #1144): pass/fail/skip
+      # counts, pass-rate, top-5 failing test ids, 30-day flake signal. The
+      # hidden marker makes the comment idempotent — re-runs update in place
+      # instead of stacking new comments.
+      - name: Post PR comment with integration test summary
+        if: always() && github.event_name == 'pull_request' && env.ACT != 'true' && steps.integration-summary.outputs.pr_comment_written == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- backend-integration-test-summary -->';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              marker,
+              `**Backend Integration Tests** — [run #${context.runNumber}](${runUrl})`,
+              '',
+              fs.readFileSync('backend/test-results/integration-pr-comment.md', 'utf8'),
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.info(`Updated summary comment ${existing.html_url}`);
+            } else {
+              const { data: created } = await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+              core.info(`Created summary comment ${created.html_url}`);
+            }
+
+      # Persist the updated 30-day flake history (issue #1144). Saved only
+      # when the summary step succeeded so a missing-junit run cannot
+      # overwrite history with an empty file.
+      - name: Save flaky-test history
+        if: always() && env.ACT != 'true' && steps.integration-summary.conclusion == 'success'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: data/backend-flaky-test-history.json
+          key: backend-flaky-test-history-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # Machine-readable signal surface (issue #1144): the junit XML plus the
+      # rendered summaries, kept 90 days so trend analysis can join across
+      # weekly runs. Distinct from the short-lived raw output below.
+      - name: Upload integration junit results
+        if: always() && env.ACT != 'true'
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: integration-test-junit
+          path: |
+            backend/test-results/junit.xml
+            backend/test-results/integration-summary.md
+            backend/test-results/integration-pr-comment.md
+          retention-days: 90
+          if-no-files-found: ignore
 
       - name: Upload integration test results
         if: always() && env.ACT != 'true'
