@@ -7,6 +7,13 @@ class_name CoverageExporter
 
 func export_coverage_json(coverage_data: Dictionary, output_path: String) -> int:
 	"""Export coverage data to JSON file."""
+	# Coverage outputs are untracked runtime artifacts (#1063) — the target
+	# directory does not exist on fresh clones, so create it before writing.
+	var dir_path := output_path.get_base_dir()
+	if not DirAccess.dir_exists_absolute(dir_path):
+		var dir_error := DirAccess.make_dir_recursive_absolute(dir_path)
+		if dir_error != OK:
+			return ERR_FILE_CANT_WRITE
 	var file = FileAccess.open(output_path, FileAccess.WRITE)
 	if file == null:
 		return ERR_FILE_CANT_WRITE

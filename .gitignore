@@ -52,6 +52,14 @@ agents-md-validation-report.json
 # GUT JUnit output (regenerated on every test run; issue #996 pattern)
 test/results/*.xml
 
+# Coverage tooling runtime outputs (issue #1063): html/json reports, the
+# post-run verification summary, and parser fixtures rewritten per GUT run
+# by test/suites/autoloads/test_coverage_tracker.gd — regenerable, never tracked.
+test/coverage/html/
+test/coverage/json/
+test/coverage/verification-summary.md
+test/coverage/test_parse_*
+
 # Compiled Nakama bundle at repo root (runtime mount target only; built by
 # cold-start.sh / start.sh when missing — mirrors backend/data/modules, #996)
 data/modules/
