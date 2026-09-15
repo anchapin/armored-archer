@@ -17,7 +17,12 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 
 jest.mock('../../config', () => ({
+  // Spread the real config (issue #1139 made the test's module graph pull in
+  // metrics.ts, whose init chain reads config fields beyond the two this
+  // suite historically overrode) then keep the original overrides.
+  ...jest.requireActual('../../config'),
   config: {
+    ...jest.requireActual('../../config').config,
     metrics: { namespace: 'test' },
     rateLimit: { enabled: false },
   },
@@ -59,6 +64,16 @@ jest.mock('../validation', () => ({
   ),
 }));
 
+// Issue #1139: mock only the stage-telemetry recorders (spread requireActual
+// so the rest of metrics.ts stays real for any transitive importers), the
+// same factory pattern matchmaker.test.ts uses for recordSettlementOutcome.
+jest.mock('../metrics', () => ({
+  ...jest.requireActual('../metrics'),
+  recordStageCompleteOutcome: jest.fn(),
+  recordStageClaim: jest.fn(),
+  observeStageClaimSeconds: jest.fn(),
+}));
+
 import {
   createMockLogger,
   createMockContext,
@@ -67,6 +82,11 @@ import {
 } from '../../__mocks__/nakama';
 import { Runtime } from '../../types/nakama';
 import { rpcStageComplete } from '../gear_system';
+import {
+  recordStageClaim,
+  recordStageCompleteOutcome,
+  observeStageClaimSeconds,
+} from '../metrics';
 import { resetRateLimiting } from '../rate_limit';
 
 describe('stage_progression — consolidated stage_complete RPC (issue #1069)', () => {
@@ -344,5 +364,95 @@ describe('stage_progression — consolidated stage_complete RPC (issue #1069)', 
       expect(second.success).toBe(true);
       expect(second.message).toBe('No improvement over previous completion');
     });
+  });
+});
+
+describe('stage_progression — stage-completion telemetry (issue #1139)', () => {
+  let mockLogger: Runtime.Logger;
+  let mockCtx: Runtime.Context;
+  let mockNk: Runtime.Nakama;
+
+  const basePayload = (overrides?: Record<string, unknown>): string =>
+    JSON.stringify({
+      stage_id: '1_1',
+      boss_defeated: false,
+      difficulty: 'easy',
+      ...overrides,
+    });
+
+  beforeEach(() => {
+    mockLogger = createMockLogger();
+    mockCtx = createMockContext({ userId: 'test-user' });
+    mockNk = createMockNakama();
+    jest.clearAllMocks();
+    testStorage.clear();
+    resetRateLimiting();
+  });
+
+  it('records success outcome, a fresh claim, and claim-segment timing on first completion', () => {
+    const result = JSON.parse(rpcStageComplete(mockCtx, mockLogger, mockNk, basePayload()));
+    expect(result.success).toBe(true);
+
+    expect(recordStageCompleteOutcome).toHaveBeenCalledWith('success');
+    expect(recordStageClaim).toHaveBeenCalledWith('fresh');
+    expect(observeStageClaimSeconds).toHaveBeenCalledTimes(1);
+    expect((observeStageClaimSeconds as jest.Mock).mock.calls[0][0]).toBeGreaterThanOrEqual(0);
+  });
+
+  it('records duplicate outcome and replay_rejected claim when the cooldown marker exists', () => {
+    // Seed a fresh claim marker (claimed_at = now) directly in the mock storage
+    testStorage.set(
+      'stage_completion_claims:test-user:1_1',
+      JSON.stringify({ claimed_at: Date.now(), stage_id: '1_1' })
+    );
+
+    const result = JSON.parse(rpcStageComplete(mockCtx, mockLogger, mockNk, basePayload()));
+    expect(result.success).toBe(false);
+    expect(result.error_code).toBe('DUPLICATE_COMPLETION');
+
+    expect(recordStageClaim).toHaveBeenCalledWith('replay_rejected');
+    expect(recordStageCompleteOutcome).toHaveBeenCalledWith('duplicate');
+    expect(recordStageCompleteOutcome).not.toHaveBeenCalledWith('success');
+  });
+
+  it('records clamped outcome when an out-of-range claim is silently bounded', () => {
+    // Validation is mocked permissively, so the handler's defense-in-depth
+    // clamp is what bounds these — the clamp changing a value is the signal.
+    const result = JSON.parse(
+      rpcStageComplete(mockCtx, mockLogger, mockNk, basePayload({ stars_earned: 99 }))
+    );
+    expect(result.success).toBe(true);
+    expect(result.stars_earned).toBe(3);
+
+    expect(recordStageCompleteOutcome).toHaveBeenCalledWith('clamped');
+    expect(recordStageCompleteOutcome).not.toHaveBeenCalledWith('success');
+  });
+
+  it('records validation_failed outcome on an unparseable payload', () => {
+    // The permissive validation mock still rejects non-JSON payloads.
+    const result = JSON.parse(rpcStageComplete(mockCtx, mockLogger, mockNk, 'not-json{'));
+    expect(result.success).toBe(false);
+
+    expect(recordStageCompleteOutcome).toHaveBeenCalledWith('validation_failed');
+    expect(recordStageClaim).not.toHaveBeenCalled();
+  });
+
+  it('records cooldown_active when an expired prior claim is overwritten with a version', () => {
+    // Claim older than the cooldown window: the check returns the existing
+    // claimVersion instead of an error, so the completion proceeds through a
+    // versioned overwrite — distinguishable from a fresh claim (#1139).
+    testStorage.set(
+      'stage_completion_claims:test-user:1_1',
+      JSON.stringify({
+        claimed_at: Date.now() - 10 * 60 * 1000, // 10 minutes ago > 5-minute cooldown
+        stage_id: '1_1',
+      })
+    );
+
+    const result = JSON.parse(rpcStageComplete(mockCtx, mockLogger, mockNk, basePayload()));
+    expect(result.success).toBe(true);
+
+    expect(recordStageClaim).toHaveBeenCalledWith('cooldown_active');
+    expect(recordStageCompleteOutcome).toHaveBeenCalledWith('success');
   });
 });

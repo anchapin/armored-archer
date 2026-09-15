@@ -40,6 +40,7 @@ same time and add a row below.
 | [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `WebhookSignatureFailureSpike` | Warning | Webhook signature rejections >1/min — rotated secret or forgery (issue #1140) |
 | [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `WebhookRedisDegraded` | Warning | Redis errors on the webhook dedup fast path >1/min (issue #1140) |
 | [SettlementDegraded.md](./SettlementDegraded.md) | `SettlementDegradedSpike` | Warning | Partially-applied settlements >0.5/min for 5m — manual reconciliation needed (issue #1143) |
+| [StageCompletionDuplicates.md](./StageCompletionDuplicates.md) | `StageCompletionDuplicateSpike` | Warning | Stage-complete replays rejected >1/min for 5m — stuck client retry loop or scripted replay (issue #1139) |
 
 ### Info Alerts
 

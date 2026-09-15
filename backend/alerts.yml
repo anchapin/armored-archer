@@ -387,3 +387,23 @@ groups:
           summary: "PvP settlement claim failures — matches cannot settle"
           description: "The versioned settled-marker storage write is failing (>0/min for 1m): no rewards, XP, or Elo are applied at all, though client retries remain safe. The claim is the FIRST settlement mutation, so check PostgreSQL/Nakama storage health. Inhibited while GameServerDown is firing."
           runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/SettlementDegraded.md"
+
+  # ============================================
+  # Stage-progression telemetry (issue #1139).
+  # replay_rejected -> StageCompletionDuplicateSpike.
+  # ============================================
+  - name: armored_archer_stage_progression
+    interval: 30s
+    rules:
+      # Stage Completion Duplicate Spike
+      - alert: StageCompletionDuplicateSpike
+        expr: sum(rate(armored_archer_stage_completion_claims_total{result="replay_rejected"}[5m])) > 1 / 60
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          component: pve
+        annotations:
+          summary: "Stage-completion replays are spiking (possible replay attack or stuck client)"
+          description: "More than 1 stage_complete request/min is being rejected as DUPLICATE_COMPLETION for 5 minutes (claim-first dedup marker, issue #1069). A stuck retry loop or a scripted replay attack both present this way — distinguish via the audit trail per the runbook. Correlate armored_archer_stage_complete_total{outcome=\"clamped\"} for out-of-range claim storms."
+          runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/StageCompletionDuplicates.md"
