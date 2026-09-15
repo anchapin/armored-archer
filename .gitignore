@@ -74,6 +74,14 @@ backend/docker-compose.override.yml
 # Agent session results (transient)
 .agents/results/
 
+# Agent/human work-handoff files (cross-repo or session-only; issue #1186).
+# Keep in sync with scripts/pre-commit-check-handoff-files.sh DENY_PATTERN.
+.continue-*
+*.continue-here*
+*-handoff.md
+pause-work*
+wip-*.md
+
 .gitnexus
 
 # Generated performance benchmark snapshots (issue #1073) - real

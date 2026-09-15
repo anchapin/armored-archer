@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit — thin wrapper installed by `make hooks-install` that
+# delegates to scripts/pre-commit-check-handoff-files.sh. Kept as a dedicated
+# file so any editor or git tooling that needs to invoke the hook can do so
+# directly without resolving $(dirname ...) at call time.
+
+set -euo pipefail
+
+# git invokes pre-commit with no arguments.
+exec "$(git rev-parse --show-toplevel)/scripts/pre-commit-check-handoff-files.sh"
