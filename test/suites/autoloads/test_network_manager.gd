@@ -467,3 +467,56 @@ func test_validate_required_config():
 
 	# Test should pass (validation doesn't throw, just logs)
 	assert_true(true, "Config validation should complete without crashing")
+
+# ==================== ISSUE #1147: AUTH-BLOCKED REFRESH ABORT TESTS ====================
+
+func test_refresh_wait_aborts_within_250ms_of_auth_blocked():
+	# Issue #1147 regression: _run_refresh_and_await_result must listen to
+	# auth_blocked and short-circuit with false as soon as the gate fires,
+	# instead of spinning until the MAX_AUTH_DURATION_SEC deadline while the
+	# UI already shows the auth_blocked error panel.
+	# Deterministic setup: an empty refresh_token makes _refresh_session()
+	# fall back to authenticate_device(), and the suite's offline flag keeps
+	# that synchronous (session_created(false) only) — session_refreshed
+	# never fires, so the wait loop is purely signal-driven.
+	_network.refresh_token = ""
+	# Shrink the leader deadline so a regression (early-exit lost) resolves
+	# at ~1s instead of the full MAX_AUTH_DURATION_SEC.
+	_network._refresh_watchdog_ms = 1000
+	_network._refresh_watchdog_max_frames = 120
+
+	var stages: Array = []
+	var on_stage: Callable = func(stage: String):
+		stages.append(stage)
+	_network.auth_recovery_stage.connect(on_stage)
+
+	var outcome: Array = []
+	var waiter: Callable = func():
+		var refreshed: bool = await _network._run_refresh_and_await_result()
+		outcome.append(refreshed)
+		outcome.append(Time.get_ticks_msec())
+	waiter.call()
+
+	# Spin the wait for ~100ms with no signal, then fire the gate.
+	await get_tree().create_timer(0.1).timeout
+	var gate_fired_at_ms: int = Time.get_ticks_msec()
+	_network._emit_auth_blocked("gate fired (issue #1147 test)", "guidance")
+
+	# Bound the waiter's runtime; a regression resolves at the 1s deadline,
+	# still well under this frame cap.
+	var frames: int = 0
+	while outcome.size() < 2 and frames < 600:
+		await get_tree().process_frame
+		frames += 1
+
+	assert_eq(outcome.size() >= 2, true, "Refresh wait must resolve after auth_blocked fires")
+	if outcome.size() < 2:
+		return
+	assert_false(outcome[0], "Refresh wait must return false when auth_blocked fires")
+	var return_delay_ms: int = int(outcome[1]) - gate_fired_at_ms
+	assert_true(return_delay_ms <= 250,
+		"Refresh wait must return within 250ms of auth_blocked, took %d ms" % return_delay_ms)
+	assert_has(stages, "refresh_started", "Recovery must announce its start stage")
+	assert_has(stages, "blocked", "Recovery must announce the blocked stage")
+	assert_eq(_network._last_auth_blocked_reason, "gate fired (issue #1147 test)",
+		"Gate reason must be recorded for the in-flight RPC caller")
