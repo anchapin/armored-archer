@@ -51,9 +51,9 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Counter Source
 
 ```bash
-# updateActiveUsersCount in metrics.ts:482 feeds the gauge
-grep -n "updateActiveUsersCount\|active_users\|armored_archer_active_users" \
-  backend/src/modules/metrics.ts backend/src/modules/progressive_rollout.ts | head -15
+# updateActiveUsersCount in metrics.ts:552 feeds the gauge
+grep -n "updateActiveUsersCount\|armored_archer_rate_limit_active_users" \
+  backend/src/modules/metrics.ts | head -15
 
 # Recent changes to the gauge update path
 git log --oneline -10 -- backend/src/modules/metrics.ts backend/src/modules/progressive_rollout.ts
@@ -64,7 +64,7 @@ git log --oneline -10 -- backend/src/modules/metrics.ts backend/src/modules/prog
 ```bash
 # Login success rate (broken login → active_users drop even though players are trying)
 curl -s 'http://prometheus:9090/api/v1/query' \
-  -G --data-urlencode 'query=rate(armored_archer_login_attempts_total{status="success"}[5m])' \
+  -G --data-urlencode 'query=rate(armored_archer_player_login_attempts_total{status="success"}[5m])' \
   | jq '.data.result[0].value[1]'
 
 # Failed login rate (credential stuffing → active_users spike)
@@ -103,7 +103,7 @@ docker exec postgres psql -U postgres -c \
 
 ```bash
 # Auth / login failures will appear in lockstep with a drop
-grep -n "SuspiciousLoginActivity\|recordLoginAttempt" backend/src/modules/metrics.ts | head -5
+grep -n "recordLoginAttempt\|playerLoginAttempts" backend/src/modules/metrics.ts | head -5
 
 # Open player-support tickets — login issues reported by users
 gh issue list --repo anchapin/armored-archer \
@@ -123,14 +123,14 @@ gh issue list --repo anchapin/armored-archer \
   --label "live-ops" --state all --limit 10
 
 # Season / push notification batch
-grep -n "notification_scheduler\|sendBatch" backend/src/modules/notification_scheduler.ts | head -10
+grep -n "scheduleNextDailyReward\|notifyUsersAboutEvent\|startNotificationScheduler" backend/src/modules/notification_scheduler.ts | head -10
 ```
 
 ### Step 4: Database / Telemetry Health
 
 ```bash
 # Confirm the gauge is being updated by a healthy process
-curl -s http://nakama:7350/metrics | grep armored_archer_active_users | head -5
+curl -s http://nakama:7350/metrics | grep armored_archer_rate_limit_active_users | head -5
 
 # Check for telemetry backfill or duplicates
 docker exec postgres psql -U postgres -c \
@@ -148,7 +148,7 @@ docker exec postgres psql -U postgres -c \
 
 ```bash
 # Confirm via analytics
-grep -n "active_users\|analytics" backend/src/modules/analytics.ts | head -10
+grep -n "analytics\|telemetry" backend/src/modules/analytics.ts | head -10
 
 # Scale horizontally to keep latency low
 docker-compose up -d --scale nakama=3
@@ -172,7 +172,7 @@ cat docs/runbooks/SuspiciousLoginActivity.md
 ```bash
 # Confirm login success rate has fallen
 curl -s 'http://prometheus:9090/api/v1/query' \
-  -G --data-urlencode 'query=rate(armored_archer_login_attempts_total{status="success"}[5m])' \
+  -G --data-urlencode 'query=rate(armored_archer_player_login_attempts_total{status="success"}[5m])' \
   | jq '.data.result[0].value[1]'
 
 # Check for a recent deploy to auth.ts / admin_auth.ts
@@ -223,7 +223,7 @@ curl -s 'http://prometheus:9090/api/v1/query' \
 
 # 2. Independent signals also normalised
 curl -s 'http://prometheus:9090/api/v1/query' \
-  -G --data-urlencode 'query=rate(armored_archer_login_attempts_total{status="success"}[5m])' \
+  -G --data-urlencode 'query=rate(armored_archer_player_login_attempts_total{status="success"}[5m])' \
   | jq '.data.result[0].value[1]'
 
 # 3. Alert cleared

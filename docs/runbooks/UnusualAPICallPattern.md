@@ -45,11 +45,11 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Counter Source
 
 ```bash
-# The canonical RPC counter is defined in metrics.ts:26 (armored_archer_rpc_requests_total)
-grep -n "armored_archer_rpc_requests_total\|recordRpc\|rpcRequest" backend/src/modules/metrics.ts backend/src/modules/rpc_latency_tracker.ts | head -20
+# The canonical RPC counter is defined in metrics.ts:27 (armored_archer_rpc_calls_total)
+grep -n "armored_archer_rpc_calls_total\|recordRpcLatency" backend/src/modules/metrics.ts backend/src/modules/rpc_latency_tracker.ts | head -20
 
 # Coverage — confirm all RPCs flow through the tracker
-grep -rn "rpcLatencyTracker\|recordRpc" backend/src/ | grep -v __tests__ | head -10
+grep -rn "initializeRpcLatencyTracker\|recordRpcLatency" backend/src/ | grep -v __tests__ | head -10
 ```
 
 ### 3. Compare Against Active Users
@@ -100,7 +100,7 @@ docker logs nakama --tail 1000 | grep -oE 'client_ip=[0-9.]+' | sort | uniq -c |
 ```bash
 # rate_limit violations are the signal that the limiter is engaging
 curl -s http://nakama:7350/metrics | grep -iE "rate_limit|429"
-grep -n "rate_limit_violations\|rate_limit_exceeded" backend/src/modules/rate_limit.ts | head -10
+grep -n "rate_limit_exceeded" backend/src/modules/rate_limit.ts | head -10
 ```
 
 ### Step 4: Cross-Reference With Other Alerts
@@ -171,7 +171,7 @@ docker logs nginx --tail 10000 2>/dev/null | \
 
 ```bash
 # Match replay (match_replay.ts) can hammer read endpoints during fairness checks
-grep -n "rpc\|invoke" backend/src/modules/match_replay.ts | head -10
+grep -n "rpcGetMatchReplay\|rpcListMatchReplays" backend/src/modules/match_replay.ts | head -10
 
 # Pause if it correlates with the spike
 docker exec postgres psql -U postgres -c \

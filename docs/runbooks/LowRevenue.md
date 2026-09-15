@@ -48,11 +48,11 @@ curl -s 'http://prometheus:9090/api/v1/query_range' \
 ### 2. Inspect the Revenue Pipeline
 
 ```bash
-# Counter definition is in metrics.ts:147 (armored_archer_purchase_revenue_total)
+# Counter definition is in metrics.ts:149 (armored_archer_purchase_revenue_total)
 grep -n "revenue\|purchase" backend/src/modules/metrics.ts | head -10
 
 # Update calls — confirm the metric is actually being incremented
-grep -n "purchase_revenue\|recordPurchase" backend/src/modules/metrics.ts backend/src/modules/store.ts | head -20
+grep -n "recordPurchase\|recordRevenue\|purchase_revenue" backend/src/modules/metrics.ts backend/src/modules/analytics.ts | head -20
 ```
 
 ### 3. Check Correlated Signals
@@ -109,8 +109,8 @@ open http://grafana:3000/d/armored-archer-analytics
 curl -s -H "Authorization: Bearer $REVENUECAT_SECRET_KEY" \
   https://api.revenuecat.com/v1/products | jq '.products | length'
 
-# Compare against the configured product map
-grep -n "PRODUCT_MAP\|productId" backend/src/modules/store.ts | head -20
+# Compare against the configured product catalogs (GEM_BUNDLES / COSMETIC_CATALOG)
+grep -n "GEM_BUNDLES\|COSMETIC_CATALOG\|product_id" backend/src/modules/store.ts | head -20
 ```
 
 ### Step 4: Marketing / Season Context
@@ -139,11 +139,11 @@ cat docs/runbooks/PaymentProcessingFailures.md
 
 ```bash
 # Confirm recordPurchase is being called for completed purchases
-grep -n "recordPurchase" backend/src/modules/store.ts | head -20
+grep -n "recordPurchase" backend/src/modules/analytics.ts backend/src/modules/metrics.ts | head -20
 
 # If a recent refactor removed the call, restore it
-git log --all --oneline -S "recordPurchase" -- backend/src/modules/store.ts | head -10
-git diff HEAD~5 -- backend/src/modules/store.ts | grep -E "recordPurchase"
+git log --all --oneline -S "recordPurchase" -- backend/src/modules/analytics.ts backend/src/modules/metrics.ts | head -10
+git diff HEAD~5 -- backend/src/modules/analytics.ts backend/src/modules/metrics.ts | grep -E "recordPurchase"
 ```
 
 ### Scenario 3: No Active Campaign / Season

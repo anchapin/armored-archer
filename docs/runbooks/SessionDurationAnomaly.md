@@ -52,7 +52,7 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Signal Source
 
 ```bash
-# Session observation lives in metrics.ts:502
+# Session observation lives in metrics.ts:572 (recordSessionDuration)
 grep -n "recordSessionDuration\|playerSessionDuration\|armored_archer_player_session_duration_seconds" \
   backend/src/modules/metrics.ts | head -10
 
@@ -65,7 +65,7 @@ curl -s 'http://prometheus:9090/api/v1/rules' | jq '.data.groups[].rules[] | sel
 
 ```bash
 # Crash spike (mobile)
-grep -n "crash\|crash_report" backend/src/modules/error_insight_pipeline.ts | head -10
+grep -n "crash\|collectError" backend/src/modules/error_insight_pipeline.ts | head -10
 
 # RPC error rate
 curl -s 'http://prometheus:9090/api/v1/query' \
@@ -116,8 +116,8 @@ gh issue list --repo anchapin/armored-archer \
 ### Step 3: Crash and Disconnect Pipelines
 
 ```bash
-# Mobile crash rate from the error-insight pipeline
-grep -n "crash_rate\|mobile_crash" backend/src/modules/error_insight_pipeline.ts | head -10
+# Mobile crash signals from the error-insight pipeline
+grep -n "collectError\|getErrorStore" backend/src/modules/error_insight_pipeline.ts | head -10
 
 # Player-support tickets about disconnects
 gh issue list --repo anchapin/armored-archer \
@@ -145,7 +145,7 @@ docker exec postgres psql -U postgres -c \
 
 ```bash
 # 1. Triage via crash reports
-grep -n "crashReport\|crash_alert" backend/src/modules/error_insight_pipeline.ts | head -10
+grep -n "crash\|registerErrorInsightRpcs" backend/src/modules/error_insight_pipeline.ts | head -10
 cat docs/CRASH_ALERT_THRESHOLDS.md | head -60
 
 # 2. Coordinate a hotfix release
@@ -180,8 +180,9 @@ docker exec postgres psql -U postgres -c \
   "SELECT count(*) FROM session_terminations
    WHERE created_at > now() - interval '1 hour' AND reason='client_disconnect';"
 
-# 2. If clients aren't terminating sessions, push a fix to the heartbeat
-grep -n "session_heartbeat\|heartbeat_interval" backend/src/modules/metrics.ts backend/src/modules/progressive_rollout.ts | head -10
+# 2. If clients aren't terminating sessions, fix how session close is observed server-side
+# (there is no server-side heartbeat — sessions are recorded via recordSessionDuration)
+grep -n "recordSessionDuration\|playerSessionDuration" backend/src/modules/metrics.ts | head -10
 ```
 
 ### Scenario 4: Real Engagement Spike (Spike)
