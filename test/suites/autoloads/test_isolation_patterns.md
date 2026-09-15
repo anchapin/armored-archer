@@ -1,8 +1,19 @@
 # Autoload Test Isolation Patterns
 
-> Last updated: 2026-03-21
+> Last updated: 2026-09-15
 >
 > This document documents established patterns for testing Godot autoloads with GUT framework.
+
+> **GUT 9.6 WARNING — native-engine-class doubles are broken.**
+> `double(SomeNativeClass)` (e.g. `double(Node)`, `double(HTTPRequest)`)
+> produces an instance with **null doubling metadata**: `stub(...)` never
+> intercepts, `assert_called` records nothing, and dispatch reaches the
+> real parent method (issues #1026 / #1062). The string form
+> `double("HTTPRequest")` errors outright. Never double a native engine
+> class. Hand-roll a GDScript stub class (`class StubX extends Node` with
+> real methods) or install a plain engine instance as a passive probe —
+> see MOCK-04 and MOCK-05 below. Script doubles
+> (`double(load("res://path/to/script.gd"))`) still work fine.
 
 ## Overview
 
@@ -182,51 +193,88 @@ func test_public_behavior():
 	var result = _manager.public_method(10)  # Tests contract
 ```
 
+### Don't: double() Native Engine Classes (GUT 9.6)
+
+```gdscript
+# BAD - native-class double: stubs/assert_called silently never fire
+var _mock = double(Node).new()
+stub(_mock, "send_rpc").to_return({"success": true})  # configures nothing
+
+# GOOD - hand-rolled stub class with real methods
+class StubNetworkManager extends Node:
+	var rpc_response: Dictionary = {"success": true}
+
+	func send_rpc(_rpc_id: String, _payload: String) -> Dictionary:
+		return rpc_response
+```
+
+GUT 9.6 doubles of native engine classes (`Node`, `HTTPRequest`, ...)
+carry null doubling metadata: nothing is recorded, nothing is
+intercepted, and calls reach the real parent method. Script doubles
+(`double(load("res://some_script.gd"))`) still work. See issue #1062
+and the warning at the top of this document.
+
 ## NetworkManager-Specific Patterns
 
 NetworkManager has special considerations due to HTTPRequest and RPC functionality.
 
-### MOCK-04: HTTPRequest Mocking
+### MOCK-04: HTTPRequest Transport Probe
 
-**What:** Mock HTTPRequest to prevent real network calls during tests.
+**What:** Install a plain HTTPRequest as a passive transport probe instead of doubling it.
 
-**Example:**
+> **Never use `double(HTTPRequest)` in GUT 9.6:** the double carries null
+> doubling metadata — `stub(...).to_return(OK)` and `.to_call(...)` never
+> fire, `assert_called` records zero calls, and `request()` dispatches for
+> real (issue #1026). The string form `double("HTTPRequest")` errors
+> outright ("Doubling using the path to a script or scene is no longer
+> supported"). This probe pattern is what `test_network_manager.gd`
+> settled on.
+
+**Example** (condensed from `test/suites/autoloads/test_network_manager.gd`):
 ```gdscript
 extends GutTest
 
-var _network: NetworkManager
-var _mock_http: Node
+var NetworkManagerClass = load("res://autoloads/NetworkManager.gd")
+var _network
+var _mock_http: HTTPRequest  # Passive transport probe (real HTTPRequest, localhost-only)
 
 func before_each():
-	_network = NetworkManager.new()
+	# Flag offline BEFORE entering the tree so _ready()'s auto-connect
+	# short-circuits without issuing its health-gate probe.
+	_network = NetworkManagerClass.new()
+	_network.is_offline = true
 	add_child_autofree(_network)
 
-	# Create mock HTTPRequest using GUT's double() functionality
-	_mock_http = double(HTTPRequest).new()
-	_mock_http.request_completed = Signal()
+	# Plain HTTPRequest probe — a GUT double of this native class can
+	# neither record nor intercept anything (issue #1026).
+	_mock_http = HTTPRequest.new()
 	add_child_autofree(_mock_http)
-
-	# Stub HTTPRequest.request() to return OK and prevent actual network calls
-	stub(_mock_http, "request").to_return(OK)
 
 	# Replace the http_request node in NetworkManager
 	_network.http_request = _mock_http
 
-func test_rpc_without_real_network():
-	# Test RPC behavior without actual network calls
-	_network.is_connected = true
+func test_rpc_dispatches_through_probe():
 	_network.session_token = "test_token"
+	_network.is_connected = true
 
-	var result = await _network.send_rpc("test_rpc", "{}")
-	# Verify mock received the call (check internal state)
+	_network.send_rpc_async("test_rpc", "{}")
+
+	# A dispatched request moves the fresh probe out of
+	# STATUS_DISCONNECTED synchronously — no interception needed.
+	assert_ne(_mock_http.get_http_client_status(), HTTPClient.STATUS_DISCONNECTED,
+		"RPC must dispatch through the installed transport")
 ```
 
-**Why:** Real network calls are slow, flaky, and can fail during tests.
+**Why:** GUT 9.6 cannot intercept native-class methods at all; a real
+HTTPRequest instance exposes observable state
+(`get_http_client_status()`) so dispatch can be asserted without broken
+stubs. All requests target 127.0.0.1 (dev base_url), so no external
+traffic occurs.
 
 **Key benefits:**
-- Tests run instantly (no network latency)
-- Deterministic behavior (no network flakiness)
-- No external dependencies required
+- Genuinely verifies dispatch (state probe, not a never-firing stub)
+- No false confidence from stub()/assert_called on a native double
+- Deterministic as long as the probe is a fresh instance per test
 
 ### SIG-02: Async Signal Waiting with wait_for_signal()
 
@@ -331,37 +379,55 @@ CombatManager has special considerations for damage calculations and RPC depende
 
 **What:** Mock NetworkManager in CombatManager tests to prevent RPC calls.
 
+> Hand-rolled stub class, NOT `double(Node)` — GUT 9.6 native-class
+> doubles never record or intercept, so `stub(...)` silently configures
+> nothing (issue #1062). This matches the migrated
+> `test_combat_manager.gd` / `test_combat_manager_coverage.gd`.
+
 **Example:**
 ```gdscript
 extends GutTest
 
-var _combat: CombatManager
-var _mock_network: Node
+## Minimal NetworkManager stub. `send_rpc` returns `rpc_response`
+## synchronously, so CombatManager's `await` resumes immediately.
+class StubNetworkManager extends Node:
+	var is_connected: bool = true
+	var rpc_response: Dictionary = {"success": true, "result": {}}
+
+	func send_rpc(_rpc_id: String, _payload: String, _timeout: float = 30.0) -> Dictionary:
+		return rpc_response
+
+var CombatManagerClass = load("res://autoloads/CombatManager.gd")
+var _combat
+var _mock_network: StubNetworkManager
 
 func before_each():
 	# Create fresh CombatManager instance for each test (ISO-04 pattern)
-	_combat = CombatManager.new()
+	_combat = CombatManagerClass.new()
 	add_child_autofree(_combat)
 
-	# Create mock NetworkManager using GUT's double() functionality
-	_mock_network = double(Node).new()
+	# Create stub NetworkManager for RPC isolation
+	_mock_network = StubNetworkManager.new()
 	_mock_network.name = "NetworkManager"
 	add_child_autofree(_mock_network)
 
-	# Stub NetworkManager methods that CombatManager uses
-	stub(_mock_network, "is_connected").to_return(true)
-	stub(_mock_network, "send_rpc").to_return({"success": true, "result": {}})
-
-	# Inject mock by setting the @onready property directly
+	# Inject stub by setting the @onready property directly
 	_combat.set("network_manager", _mock_network)
+
+	# Per-test RPC responses are configured by assigning the stub's
+	# fields (these actually take effect, unlike double(Node) stubs):
+	# _mock_network.rpc_response = {"success": false, "error": "boom"}
 ```
 
-**Why:** CombatManager depends on NetworkManager for RPC calls; mocking isolates combat logic.
+**Why:** CombatManager depends on NetworkManager for RPC calls; a stub
+class with real methods isolates combat logic AND its return values are
+actually honored — unlike `double(Node)` stubs, which silently configure
+nothing and let calls reach a bare Node.
 
 **Key benefits:**
 - Tests combat calculations independently
 - No network latency or failures
-- Predictable test behavior
+- Stub responses are real, so assertions on RPC paths can fail (and pass)
 
 ### CALC-01: Deterministic Random Testing
 
@@ -377,11 +443,9 @@ func before_each():
 	_combat = CombatManager.new()
 	add_child_autofree(_combat)
 
-	# Create mock NetworkManager for isolation
-	var _mock_network = double(Node).new()
+	# Stub NetworkManager for isolation (StubNetworkManager from MOCK-05)
+	var _mock_network = StubNetworkManager.new()
 	_mock_network.name = "NetworkManager"
-	stub(_mock_network, "is_connected").to_return(true)
-	stub(_mock_network, "send_rpc").to_return({"success": true, "result": {}})
 	_combat.set("network_manager", _mock_network)
 	add_child_autofree(_mock_network)
 
@@ -428,34 +492,51 @@ GameManager has special considerations for game state and analytics integration.
 
 **What:** Mock AnalyticsManager to prevent real analytics calls.
 
+> Hand-rolled no-op stub class, NOT `double(Node)` — GUT 9.6
+> native-class doubles never intercept, so the old
+> `stub(...).to_call_super()` lines silently configured nothing
+> (issue #1062).
+
 **Example:**
 ```gdscript
 extends GutTest
 
+## Minimal AnalyticsManager stub whose log_* methods are no-ops, so
+## GameManager's guarded analytics calls (analytics.has_method(...))
+## resolve to real methods that do nothing during tests.
+class StubAnalyticsManager extends Node:
+	func log_custom_event(_event_name: String, _parameters: Dictionary) -> void:
+		pass
+
+	func log_pve_stage_started(_stage_id: String, _stage_name: String, _difficulty: String = "normal", _chapter: int = 1) -> void:
+		pass
+
+	func log_pve_stage_completed(_stage_id: String, _stage_name: String, _time_taken_seconds: float, _stars_earned: int, _difficulty: String = "normal", _chapter: int = 1) -> void:
+		pass
+
+	func log_pve_stage_failed(_stage_id: String, _stage_name: String, _time_taken_seconds: float, _failure_reason: String, _difficulty: String = "normal") -> void:
+		pass
+
 var _game: GameManager
-var _mock_analytics: Node
+var _mock_analytics: StubAnalyticsManager
 
 func before_each():
 	# Create fresh GameManager instance for each test (ISO-04 pattern)
 	_game = GameManager.new()
 	add_child_autofree(_game)
 
-	# Create mock AnalyticsManager using GUT's double() functionality
-	_mock_analytics = double(Node).new()
+	# Create stub AnalyticsManager to block real analytics calls
+	_mock_analytics = StubAnalyticsManager.new()
 	_mock_analytics.name = "AnalyticsManager"
 	add_child_autofree(_mock_analytics)
 
-	# Stub AnalyticsManager methods that GameManager uses
-	stub(_mock_analytics, "log_custom_event").to_call_super()
-	stub(_mock_analytics, "log_pve_stage_started").to_call_super()
-	stub(_mock_analytics, "log_pve_stage_completed").to_call_super()
-	stub(_mock_analytics, "log_pve_stage_failed").to_call_super()
-
-	# Inject mock by setting the @onready property directly
+	# Inject stub by setting the @onready property directly
 	_game.set("analytics", _mock_analytics)
 ```
 
-**Why:** Analytics calls can be slow and may fail; mocking isolates game logic.
+**Why:** Analytics calls can be slow and may fail; a no-op stub class
+isolates game logic and its methods actually exist, so `has_method()`
+guards in production take the intended branch.
 
 **Key benefits:**
 - Tests game flow without analytics overhead
@@ -471,16 +552,16 @@ func before_each():
 extends GutTest
 
 var _game: GameManager
-var _mock_analytics: Node
+var _mock_analytics: StubAnalyticsManager
 
 func before_each():
 	_game = GameManager.new()
 	add_child_autofree(_game)
 
-	_mock_analytics = double(Node).new()
+	# StubAnalyticsManager from ANALYTICS-01 — a real no-op class, since
+	# GUT 9.6 native-class doubles never intercept (issue #1062)
+	_mock_analytics = StubAnalyticsManager.new()
 	_mock_analytics.name = "AnalyticsManager"
-	stub(_mock_analytics, "log_custom_event").to_call_super()
-	stub(_mock_analytics, "log_pve_stage_started").to_call_super()
 	_game.set("analytics", _mock_analytics)
 	add_child_autofree(_mock_analytics)
 

@@ -3,21 +3,43 @@ extends GutTest
 ## @deprecated: InventoryManager is deprecated. Tests skipped — migrate to GearManager.
 ## Slot mapping: 0→"helm", 1→"armor", 2→"bow", 3→"arrow", 4→"amulet"
 
+# The suite hand-rolls its NetworkManager stub instead of using
+# `double(Node)`: GUT 9.6 doubles of native engine classes carry null
+# doubling metadata and never record or intercept calls, so the old
+# stub(_mock_network, ...) lines silently configured nothing (issue
+# #1062). The stub class below implements exactly the NetworkManager
+# surface InventoryManager touches.
+
+# --- Test Doubles ---
+
+## Minimal NetworkManager stub. `send_rpc` returns `rpc_response`
+## synchronously, so InventoryManager's `await` resumes immediately.
+class StubNetworkManager extends Node:
+	var session_valid: bool = true
+	var rpc_response: Dictionary = {"success": true}
+
+	func is_session_valid() -> bool:
+		return session_valid
+
+	func send_rpc(_rpc_id: String, _payload: String, _timeout: float = 30.0) -> Dictionary:
+		return rpc_response
+
+# --- Fixtures ---
+
 var InventoryManagerClass = load("res://autoloads/InventoryManager.gd")
 var _inv
-var _mock_network: Node
+var _mock_network: StubNetworkManager
 
 func before_each():
 	pending("InventoryManager is deprecated — use GearManager")
 	_inv = InventoryManagerClass.new()
 	add_child_autofree(_inv)
 
-	_mock_network = double(Node).new()
+	# Hand-rolled stub class — GUT 9.6 native-class doubles never
+	# intercept, issue #1062
+	_mock_network = StubNetworkManager.new()
 	_mock_network.name = "NetworkManager"
 	add_child_autofree(_mock_network)
-
-	stub(_mock_network, "is_session_valid").to_return(true)
-	stub(_mock_network, "send_rpc").to_return({"success": true})
 
 	_inv.set("NetworkManager", _mock_network)
 
@@ -36,7 +58,7 @@ func test_load_gear_already_loading():
 	assert_false(result, "Should return false when already loading")
 
 func test_load_gear_not_authenticated():
-	stub(_mock_network, "is_session_valid").to_return(false)
+	_mock_network.session_valid = false
 	var result = await _inv.load_gear()
 	assert_false(result, "Should return false when not authenticated")
 
@@ -48,7 +70,7 @@ func test_load_gear_success():
 		},
 		"equipped": ["gear_1", "", "", "", ""]
 	}
-	stub(_mock_network, "send_rpc").to_return(mock_response)
+	_mock_network.rpc_response = mock_response
 
 	var result = await _inv.load_gear()
 	assert_true(result, "Should return true on success")
@@ -56,7 +78,7 @@ func test_load_gear_success():
 	assert_eq(_inv.equipped_gear[0], "gear_1", "First slot should be equipped")
 
 func test_load_gear_error():
-	stub(_mock_network, "send_rpc").to_return({"error": "Network error"})
+	_mock_network.rpc_response = {"error": "Network error"}
 	var result = await _inv.load_gear()
 	assert_false(result, "Should return false on error")
 
@@ -68,7 +90,7 @@ func test_equip_gear_success():
 	_inv._loaded = true
 	_inv.inventory = {"gear_1": {"name": "Iron Helm", "stats": {"attack": 5}}}
 
-	stub(_mock_network, "send_rpc").to_return({"success": true})
+	_mock_network.rpc_response = {"success": true}
 
 	var result = await _inv.equip_gear("gear_1", 0)
 	assert_true(result, "Should return true on success")
@@ -89,7 +111,7 @@ func test_unequip_gear_success():
 	_inv._loaded = true
 	_inv.equipped_gear = ["gear_1", "", "", "", ""]
 
-	stub(_mock_network, "send_rpc").to_return({"success": true})
+	_mock_network.rpc_response = {"success": true}
 
 	var result = await _inv.unequip_gear(0)
 	assert_true(result, "Should return true on success")
