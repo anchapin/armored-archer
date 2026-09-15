@@ -340,6 +340,17 @@ WHERE creator_id = $1 OR opponent_id = $1;
 
 ---
 
+### 6. Composite Performance Indexes (migration 016)
+
+Added in `016_add_composite_performance_indexes.sql` (issue #1146) for the `gear_db.ts` queries introduced by #1069, which filter by `user_id` and sort by a timestamp. The pre-existing single-column `user_id` indexes forced a sort after the scan; these composite indexes satisfy filter + ordering from a single index scan.
+
+**Indexes:**
+- `idx_inventory_items_user_id_created_at` ON `inventory_items(user_id, created_at DESC)` — serves `getPlayerGearFromDB` (`WHERE user_id = $1 ORDER BY created_at DESC`)
+- `idx_boss_defeats_user_id_first_defeated_at` ON `boss_defeats(user_id, first_defeated_at ASC)` — serves `getDefeatedBossesFromDB` (`WHERE user_id = $1 ORDER BY first_defeated_at ASC`)
+- `idx_unlocked_modifier_pools_user_id_unlocked_at` ON `unlocked_modifier_pools(user_id, unlocked_at ASC)` — serves `getUnlockedModifierPoolsFromDB` (`WHERE user_id = $1 ORDER BY unlocked_at ASC`)
+
+---
+
 ## Migration Files
 
 | File | Description |
@@ -349,6 +360,7 @@ WHERE creator_id = $1 OR opponent_id = $1;
 | `003_create_inventory.sql` | Creates inventory table for player gear ownership |
 | `004_create_loadout.sql` | Creates loadout table with 5 equipment slots |
 | `014_create_match_results.sql` | Creates match_results table for PvP match history |
+| `016_add_composite_performance_indexes.sql` | Adds composite (user_id, timestamp) indexes on inventory_items, boss_defeats, unlocked_modifier_pools |
 
 ## Running Migrations
 
@@ -424,6 +436,7 @@ The database schema is versioned using migration files. Each migration has an in
 | 3 | `003_create_inventory.sql` | Creates inventory table | 2024-02-28 |
 | 4 | `004_create_loadout.sql` | Creates loadout table | 2024-02-28 |
 | 14 | `014_create_match_results.sql` | Creates match_results table for PvP match history | 2026-04-15 |
+| 16 | `016_add_composite_performance_indexes.sql` | Adds composite (user_id, timestamp) performance indexes | 2026-09-15 |
 
 ### CI/CD Schema Validation
 
