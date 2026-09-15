@@ -930,3 +930,72 @@ export function incrementWebhookRedisError(operation: string): void {
 export function setWebhookConfigured(configured: boolean): void {
   webhookConfigured.set(configured ? 1 : 0);
 }
+
+// ==========================================
+// Stage-Progression Telemetry (issue #1139)
+// ==========================================
+
+const stageCompleteTotal = new Counter({
+  name: 'armored_archer_stage_complete_total',
+  help:
+    'Terminal outcomes of the consolidated stage_complete RPC (#1069): ' +
+    "success | duplicate (rejected by the claim-first dedup marker) | " +
+    'clamped (out-of-range stars/score were silently bounded — cheat signal, ' +
+    'processing continued with safe values) | validation_failed',
+  labelNames: ['outcome'] as const,
+  registers: [register],
+});
+
+const stageClaimSeconds = new Histogram({
+  name: 'armored_archer_stage_completion_claim_seconds',
+  help:
+    'Wall-clock seconds of the claim segment of the stage_complete RPC: ' +
+    'the dedup check (storage read) through the versioned claim write. ' +
+    'Observed on both the fresh and the duplicate-rejected path (issue #1139).',
+  registers: [register],
+});
+
+const stageClaimsTotal = new Counter({
+  name: 'armored_archer_stage_completion_claims_total',
+  help:
+    'Claim-marker outcomes for the stage_complete RPC (#1069/#1139): ' +
+    'fresh (no prior claim) | replay_rejected (prior claim inside the ' +
+    'cooldown window — request rejected as DUPLICATE_COMPLETION) | ' +
+    'cooldown_active (prior claim existed at/after cooldown expiry, so the ' +
+    'completion proceeded through a versioned claim overwrite)',
+  labelNames: ['result'] as const,
+  registers: [register],
+});
+
+/** Terminal outcomes for {@link recordStageCompleteOutcome} (issue #1139). */
+export type StageCompleteOutcome = 'success' | 'duplicate' | 'clamped' | 'validation_failed';
+
+/** Claim-marker results for {@link recordStageClaim} (issue #1139). */
+export type StageClaimResult = 'fresh' | 'replay_rejected' | 'cooldown_active';
+
+/**
+ * Records the terminal outcome of a stage_complete RPC invocation.
+ *
+ * @param outcome - 'success' | 'duplicate' | 'clamped' | 'validation_failed'
+ */
+export function recordStageCompleteOutcome(outcome: StageCompleteOutcome): void {
+  stageCompleteTotal.inc({ outcome });
+}
+
+/**
+ * Records the claim-marker outcome of a stage_complete RPC invocation.
+ *
+ * @param result - 'fresh' | 'replay_rejected' | 'cooldown_active'
+ */
+export function recordStageClaim(result: StageClaimResult): void {
+  stageClaimsTotal.inc({ result });
+}
+
+/**
+ * Observes the claim-segment duration of a stage_complete RPC invocation.
+ *
+ * @param seconds - Wall-clock seconds from dedup-check start to claim resolution
+ */
+export function observeStageClaimSeconds(seconds: number): void {
+  stageClaimSeconds.observe(seconds);
+}

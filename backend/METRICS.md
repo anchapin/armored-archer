@@ -117,6 +117,9 @@ PromQL view of the `complete_match` settlement audit channels (ADR-0002 server-d
 | Metric Name | Type | Description |
 |-------------|------|-------------|
 | `armored_archer_settlement_outcomes_total` | Counter | PvP settlements by terminal outcome; label `result` (`success` — all effects applied / draw settled cleanly; `degraded` — post-claim effects threw, match stays settled, partial grants need reconciliation, audit channel `settlement_degraded`; `claim_failed` — versioned settled-marker write failed, nothing applied, retry-safe, audit channel `settlement_claim_failed`; `persist_failed` — draw-settlement persist threw, nothing applied, error propagates). Idempotent replays and lost claim races emit nothing |
+| `armored_archer_stage_complete_total` | Counter | Terminal outcomes of the consolidated `stage_complete` RPC (issue #1139); label `outcome` (`success` / `duplicate` — rejected by the claim-first dedup marker / `clamped` — out-of-range stars/score silently bounded, cheat signal / `validation_failed`) |
+| `armored_archer_stage_completion_claims_total` | Counter | Claim-marker outcomes of `stage_complete` (issue #1139); label `result` (`fresh` — no prior claim / `replay_rejected` — prior claim inside the 5-minute cooldown, request rejected as `DUPLICATE_COMPLETION` / `cooldown_active` — prior claim at/after cooldown expiry, completion proceeded through a versioned claim overwrite) |
+| `armored_archer_stage_completion_claim_seconds` | Histogram | Wall-clock seconds of the claim segment (dedup storage read → versioned claim write); observed on both fresh and replay-rejected paths (issue #1139) |
 
 ## Metrics Implementation
 

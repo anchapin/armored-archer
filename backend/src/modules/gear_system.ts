@@ -8,6 +8,7 @@ import * as path from 'path';
 import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
+import { createTracedRpcHandler } from '../utils/tracing';
 import { logAudit } from './audit';
 import { recordStageAttempt, recordDrop } from './balance_analytics';
 import {
@@ -23,6 +24,7 @@ import {
   unlockModifierPoolInDB,
   getUnlockedModifierPoolsFromDB,
 } from './gear_db';
+import { observeStageClaimSeconds, recordStageClaim, recordStageCompleteOutcome } from './metrics';
 import { checkRateLimit } from './rate_limit';
 import {
   applyStageCompletion,
@@ -1724,7 +1726,52 @@ export function calculateDropRate(difficulty: string, bossDefeated: boolean): nu
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcStageComplete(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/stage_complete', rpcStageComplete);
+  // Issue #1139: wrap the handler with an OTLP server span (rpc.stage_complete)
+  // so the consolidated stage-completion flow is visible in traces.
+  initializer.registerRpc(
+    'armored_archer/stage_complete',
+    createTracedRpcHandler<Runtime.Context, Runtime.Nakama>(
+      'stage_complete',
+      (ctx, logger, nk, payload) => rpcStageComplete(ctx, logger as Runtime.Logger, nk, payload)
+    )
+  );
+}
+
+/**
+ * Runs the claim-first dedup segment of stage_complete and records its
+ * telemetry (issue #1139): claim-segment timing, the claim outcome
+ * (fresh / replay_rejected / cooldown_active), and the duplicate terminal
+ * outcome on rejection.
+ *
+ * @returns The error response string when the request must be rejected as a
+ *          replay, or null when the claim was written and processing continues
+ */
+function claimStageCompletionOrReject(
+  nk: Runtime.Nakama,
+  userId: string,
+  stageId: string,
+  logger: Runtime.Logger
+): string | null {
+  const claimStartedAtMs = Date.now();
+  const dedupResult = checkStageCompletionClaim(nk, userId, stageId, logger);
+  if (dedupResult.error) {
+    observeStageClaimSeconds((Date.now() - claimStartedAtMs) / 1000);
+    recordStageClaim('replay_rejected');
+    recordStageCompleteOutcome('duplicate');
+    return dedupResult.error;
+  }
+
+  // Issue #1069 claim-first atomicity: write the versioned dedup marker
+  // BEFORE granting loot/XP/stars. If any later write fails, the claim
+  // persists and a retry is rejected as a duplicate for the cooldown
+  // window, so rewards can never be double-granted.
+  writeStageCompletionClaim(nk, userId, stageId, dedupResult.claimVersion);
+  observeStageClaimSeconds((Date.now() - claimStartedAtMs) / 1000);
+  // claimVersion is only defined when a prior claim object existed (i.e. the
+  // cooldown had expired and this completion proceeded through a versioned
+  // claim overwrite) — distinguish that from a genuinely fresh claim (#1139).
+  recordStageClaim(dedupResult.claimVersion ? 'cooldown_active' : 'fresh');
+  return null;
 }
 
 /**
@@ -1860,6 +1907,7 @@ export function rpcStageComplete(
   // Validate payload
   const validation = validatePayload(ZodSchemas.stage_complete, payload, 'stage_complete');
   if (!validation.success) {
+    recordStageCompleteOutcome('validation_failed');
     return handleValidationFailure(nk, ctx, validation.error);
   }
 
@@ -1882,93 +1930,14 @@ export function rpcStageComplete(
     });
   }
 
-  // Dedup check: prevent replay of same stage completion within cooldown window
-  const dedupResult = checkStageCompletionClaim(nk, ctx.userId, request.stage_id, logger);
-  if (dedupResult.error) {
-    return dedupResult.error;
+  // Dedup check + claim-first marker, with #1139 telemetry.
+  const claimError = claimStageCompletionOrReject(nk, ctx.userId, request.stage_id, logger);
+  if (claimError) {
+    return claimError;
   }
 
-  // Issue #1069 claim-first atomicity: write the versioned dedup marker
-  // BEFORE granting loot/XP/stars. If any later write fails, the claim
-  // persists and a retry is rejected as a duplicate for the cooldown
-  // window, so rewards can never be double-granted.
-  writeStageCompletionClaim(nk, ctx.userId, request.stage_id, dedupResult.claimVersion);
-
   try {
-    // Issue #1068/#1069: clamp client-declared stars/score before anything
-    // is persisted or echoed (defaults match the completion convention
-    // used by balance analytics: full completion = 3 stars, score unset).
-    const { safeStars, safeScore } = clampCompletionClaims(
-      request.stars_earned ?? 3,
-      request.score ?? 0
-    );
-    const stagePrefix = request.stage_prefix ?? request.stage_id.split('_')[0];
-
-    // Persist the best-of completion record (stars/score capability
-    // absorbed from the decommissioned complete_stage RPC; versioned write)
-    const completionResult = applyStageCompletion(
-      nk,
-      ctx.userId,
-      request.stage_id,
-      stagePrefix,
-      safeStars,
-      safeScore,
-      logger
-    );
-
-    // Handle case where replay didn't improve: no loot re-roll, no XP
-    if (completionResult.noImprovement) {
-      return JSON.stringify({
-        success: true,
-        stage_id: request.stage_id,
-        stars_earned: completionResult.existingCompletion!.stars_earned,
-        score: completionResult.existingCompletion!.score,
-        is_new_completion: false,
-        previous_best: completionResult.previousBest,
-        message: 'No improvement over previous completion',
-        loot: { dropped: false, gear: null },
-        drop_rate: 0,
-        xp_gained: 0,
-        gear_dropped: null,
-        unlocked_modifier_pools: getUnlockedModifierPoolsFromDB(nk, ctx.userId),
-      });
-    }
-
-    // Process stage completion (boss defeats, modifier unlocks, loot via DB)
-    const result = processStageCompletion(nk, ctx, logger, request);
-
-    // Audit the stage completion
-    logAudit(
-      nk,
-      ctx.userId,
-      ctx.ipAddress ?? null,
-      'stage_complete',
-      'stage_progression',
-      buildAuditData(request, result),
-      'success'
-    );
-
-    // Calculate XP gained for stage completion (verify boss defeat claim server-side)
-    const verifiedBossDefeated = verifyBossDefeat(request, nk, ctx.userId, result, logger);
-    const xpGained = calculateStageXPGain(verifiedBossDefeated, request.difficulty);
-
-    return JSON.stringify({
-      success: true,
-      stage_id: request.stage_id,
-      loot: result.lootResult,
-      drop_rate: result.dropRate,
-      unlocked_modifier_pools: result.inventory.unlocked_modifier_pools,
-      boss_defeat_count: result.bossDefeatResult?.defeat_count,
-      newly_unlocked_modifiers: result.allUnlockedModifiers,
-      // Client expects these fields at top level for contract compatibility
-      xp_gained: xpGained,
-      gear_dropped: result.lootResult.gear,
-      // Completion-record echo (absorbed from complete_stage, issue #1069)
-      stars_earned: safeStars,
-      score: safeScore,
-      is_new_completion: completionResult.isNewCompletion,
-      previous_best: completionResult.previousBest,
-    });
+    return applyCompletionAndRespond(nk, ctx, logger, request);
   } catch (error) {
     // The claim marker written above persists, so a retry of this request is
     // rejected as DUPLICATE_COMPLETION for the cooldown window — no
@@ -1992,6 +1961,103 @@ export function rpcStageComplete(
       error_code: 'INTERNAL_ERROR',
     });
   }
+}
+
+/**
+ * Applies the completion records and builds the success response for a
+ * stage_complete RPC whose claim marker was already written.
+ *
+ * Extracted from rpcStageComplete (issue #1139) to keep that handler within
+ * the complexity budget; records the terminal outcome telemetry
+ * (success / clamped) on both success paths.
+ */
+function applyCompletionAndRespond(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest
+): string {
+  // Issue #1068/#1069: clamp client-declared stars/score before anything
+  // is persisted or echoed (defaults match the completion convention
+  // used by balance analytics: full completion = 3 stars, score unset).
+  const { safeStars, safeScore } = clampCompletionClaims(
+    request.stars_earned ?? 3,
+    request.score ?? 0
+  );
+  // Issue #1139: a clamp that actually changed a value is an out-of-range
+  // client claim (cheat signal) — record it as the terminal outcome
+  // instead of plain success so a clamp storm is visible in PromQL.
+  const clamped = safeStars !== (request.stars_earned ?? 3) || safeScore !== (request.score ?? 0);
+  const outcome = clamped ? 'clamped' : 'success';
+  const stagePrefix = request.stage_prefix ?? request.stage_id.split('_')[0];
+
+  // Persist the best-of completion record (stars/score capability
+  // absorbed from the decommissioned complete_stage RPC; versioned write)
+  const completionResult = applyStageCompletion(
+    nk,
+    ctx.userId,
+    request.stage_id,
+    stagePrefix,
+    safeStars,
+    safeScore,
+    logger
+  );
+
+  // Handle case where replay didn't improve: no loot re-roll, no XP
+  if (completionResult.noImprovement) {
+    recordStageCompleteOutcome(outcome);
+    return JSON.stringify({
+      success: true,
+      stage_id: request.stage_id,
+      stars_earned: completionResult.existingCompletion!.stars_earned,
+      score: completionResult.existingCompletion!.score,
+      is_new_completion: false,
+      previous_best: completionResult.previousBest,
+      message: 'No improvement over previous completion',
+      loot: { dropped: false, gear: null },
+      drop_rate: 0,
+      xp_gained: 0,
+      gear_dropped: null,
+      unlocked_modifier_pools: getUnlockedModifierPoolsFromDB(nk, ctx.userId),
+    });
+  }
+
+  // Process stage completion (boss defeats, modifier unlocks, loot via DB)
+  const result = processStageCompletion(nk, ctx, logger, request);
+
+  // Audit the stage completion
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'stage_complete',
+    'stage_progression',
+    buildAuditData(request, result),
+    'success'
+  );
+
+  // Calculate XP gained for stage completion (verify boss defeat claim server-side)
+  const verifiedBossDefeated = verifyBossDefeat(request, nk, ctx.userId, result, logger);
+  const xpGained = calculateStageXPGain(verifiedBossDefeated, request.difficulty);
+
+  recordStageCompleteOutcome(outcome);
+  return JSON.stringify({
+    success: true,
+    stage_id: request.stage_id,
+    loot: result.lootResult,
+    drop_rate: result.dropRate,
+    unlocked_modifier_pools: result.inventory.unlocked_modifier_pools,
+    boss_defeat_count: result.bossDefeatResult?.defeat_count,
+    newly_unlocked_modifiers: result.allUnlockedModifiers,
+    // Client expects these fields at top level for contract compatibility
+    xp_gained: xpGained,
+    gear_dropped: result.lootResult.gear,
+    // Completion-record echo (absorbed from complete_stage, issue #1069)
+    stars_earned: safeStars,
+    score: safeScore,
+    is_new_completion: completionResult.isNewCompletion,
+    previous_best: completionResult.previousBest,
+  });
 }
 
 /**
