@@ -344,3 +344,40 @@ groups:
           summary: "Redis errors on the webhook dedup fast path"
           description: "More than 1 Redis failure per minute for 5 minutes on the webhook event ledger (dedup lookup / outcome recording). Idempotency stays correct via durable storage, but every event pays extra storage round-trips — check Redis health."
           runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/PaymentProcessingFailures.md"
+
+  # ============================================
+  # PVP SETTLEMENT (issue #1143)
+  # PromQL view for the complete_match settlement audit channels
+  # (ADR-0002 server-declared settlement, issue #1078 exactly-once pipeline):
+  # settlement_degraded -> SettlementDegradedSpike,
+  # settlement_claim_failed -> SettlementClaimFailed.
+  # Both alerts route to the settlement runbook.
+  # ============================================
+  - name: armored_archer_settlement
+    interval: 30s
+    rules:
+      # Settlement Degraded Spike
+      - alert: SettlementDegradedSpike
+        expr: sum(rate(armored_archer_settlement_outcomes_total{result="degraded"}[5m])) > 0.5 / 60
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          component: pvp
+        annotations:
+          summary: "Partially-applied PvP settlements are spiking"
+          description: "More than 0.5 settlements/min degraded after the settled-marker claim for 5 minutes — post-claim effects (Elo/XP/currency) may be partially applied while the match stays settled, so shortfalls need manual reconciliation per the runbook. Inverse of the idempotency guarantee in issue #1078."
+          runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/SettlementDegraded.md"
+
+      # Settlement Claim Failed
+      - alert: SettlementClaimFailed
+        expr: sum(rate(armored_archer_settlement_outcomes_total{result="claim_failed"}[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+          component: pvp
+        annotations:
+          summary: "PvP settlement claim failures — matches cannot settle"
+          description: "The versioned settled-marker storage write is failing (>0/min for 1m): no rewards, XP, or Elo are applied at all, though client retries remain safe. The claim is the FIRST settlement mutation, so check PostgreSQL/Nakama storage health. Inhibited while GameServerDown is firing."
+          runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/SettlementDegraded.md"

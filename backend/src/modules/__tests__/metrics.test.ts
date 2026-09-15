@@ -37,6 +37,7 @@ import {
   setWebhookPendingAwards,
   incrementWebhookRedisError,
   setWebhookConfigured,
+  recordSettlementOutcome,
 } from '../metrics';
 import { resetAdminAllowlistCache } from '../admin_auth';
 
@@ -1305,6 +1306,30 @@ describe('metrics', () => {
       expect(() => setWebhookPendingAwards('user-1', 2)).not.toThrow();
       expect(() => incrementWebhookRedisError('dedup_lookup')).not.toThrow();
       expect(() => setWebhookConfigured(true)).not.toThrow();
+    });
+  });
+
+  // =================== Settlement outcome metrics (issue #1143) ===================
+
+  describe('settlement outcome metrics', () => {
+    // prom-client is mocked file-wide, so counter values are not observable
+    // here — the emission behavior is covered by matchmaker.test.ts, which
+    // imports the real metrics module. Here we assert the registration
+    // vocabulary captured at module load, before beforeEach clears the mocks.
+    it('registers armored_archer_settlement_outcomes_total with a result label', () => {
+      expect(counterConfigs()).toContainEqual(
+        expect.objectContaining({
+          name: 'armored_archer_settlement_outcomes_total',
+          labelNames: ['result'],
+        })
+      );
+    });
+
+    it('exposes recordSettlementOutcome accepting the full result vocabulary', () => {
+      expect(() => recordSettlementOutcome('success')).not.toThrow();
+      expect(() => recordSettlementOutcome('degraded')).not.toThrow();
+      expect(() => recordSettlementOutcome('claim_failed')).not.toThrow();
+      expect(() => recordSettlementOutcome('persist_failed')).not.toThrow();
     });
   });
 });

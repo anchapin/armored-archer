@@ -135,6 +135,19 @@ const matchPlayersCount = new Histogram({
 });
 
 // ==========================================
+// PvP Settlement Outcome Metrics (issue #1143)
+// ==========================================
+
+const settlementOutcomesTotal = new Counter({
+  name: 'armored_archer_settlement_outcomes_total',
+  help:
+    'Total PvP match settlements by outcome (ADR-0002 server-declared settlement; ' +
+    'issue #1078 exactly-once claim-then-apply pipeline)',
+  labelNames: ['result'] as const,
+  registers: [register],
+});
+
+// ==========================================
 // Economy/Store Metrics
 // ==========================================
 
@@ -610,6 +623,25 @@ export function incrementMatchCreated(matchType: string): void {
 
 export function incrementMatchCompleted(matchType: string, result: string): void {
   matchesCompletedTotal.inc({ match_type: matchType, result });
+}
+
+/**
+ * Settlement outcome values for `recordSettlementOutcome` (issue #1143), the
+ * PromQL view of the `complete_match` audit channels (ADR-0002):
+ * - `success` — every effect applied (or a terminal draw settled cleanly)
+ * - `degraded` — post-claim effects threw; the match stays settled and
+ *   partially-applied grants need manual reconciliation (audit channel
+ *   `settlement_degraded`)
+ * - `claim_failed` — the versioned settled-marker write failed; nothing was
+ *   applied and a client retry is safe (audit channel
+ *   `settlement_claim_failed`)
+ * - `persist_failed` — the unconditional draw-settlement persist threw;
+ *   nothing was applied and the error propagates to the caller
+ */
+export type SettlementOutcomeResult = 'success' | 'degraded' | 'claim_failed' | 'persist_failed';
+
+export function recordSettlementOutcome(result: SettlementOutcomeResult): void {
+  settlementOutcomesTotal.inc({ result });
 }
 
 export function setMatchQueueSize(matchType: string, size: number): void {

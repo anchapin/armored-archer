@@ -19,6 +19,7 @@ same time and add a row below.
 | [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `WebhookNotConfigured` | Critical | Webhook RPC fail-closed — secret unset, all purchases rejected (issue #1140) |
 | [SuspiciousLoginActivity.md](./SuspiciousLoginActivity.md) | `SuspiciousLoginActivity` | Critical | Failed-login rate >10/min (possible brute force) |
 | [AdminAccessDeniedSpike.md](./AdminAccessDeniedSpike.md) | `AdminAllowlistEmpty` | Critical | Admin allowlist empty — every admin RPC rejects every caller |
+| [SettlementDegraded.md](./SettlementDegraded.md) | `SettlementClaimFailed` | Critical | Settlement claim failures — matches cannot settle, retries safe (issue #1143) |
 
 ### Warning Alerts
 
@@ -38,6 +39,7 @@ same time and add a row below.
 | [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `WebhookLagHigh` | Warning | Webhook p95 processing latency >2s for 5m (issue #1140) |
 | [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `WebhookSignatureFailureSpike` | Warning | Webhook signature rejections >1/min — rotated secret or forgery (issue #1140) |
 | [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `WebhookRedisDegraded` | Warning | Redis errors on the webhook dedup fast path >1/min (issue #1140) |
+| [SettlementDegraded.md](./SettlementDegraded.md) | `SettlementDegradedSpike` | Warning | Partially-applied settlements >0.5/min for 5m — manual reconciliation needed (issue #1143) |
 
 ### Info Alerts
 
