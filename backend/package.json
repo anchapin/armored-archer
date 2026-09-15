@@ -50,6 +50,8 @@
     "tech-debt:github:create": "ts-node scripts/tech-debt-github.ts --create-issues",
     "tech-debt:github:dry": "ts-node scripts/tech-debt-github.ts --dry-run",
     "scan:pii": "ts-node --transpile-only ./scripts/scan-pii.ts",
+    "check:admin-coverage": "ts-node --transpile-only scripts/check-admin-guard-coverage.ts",
+    "check:admin-coverage:json": "ts-node --transpile-only scripts/check-admin-guard-coverage.ts --json-output",
     "test:privacy": "jest src/modules/__tests__/privacy_compliance.test.ts",
     "test:property": "jest -c jest.property.config.js property_based",
     "validate:agents-md": "ts-node scripts/validate-agents-md.ts",
