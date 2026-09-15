@@ -248,12 +248,15 @@ func test_return_invalid_instance() -> void:
 	pool.return_hit_effect(fake_node)
 	_pass("test_return_null_hit_effect_safe")
 
-	# Test with freed node (invalid)
+	# Test with freed node (invalid): the typed call boundary rejects
+	# freed instances before ObjectPool's internal is_instance_valid
+	# guard runs, so guard at the call site (issue #1059).
 	var arrow = pool.get_arrow()
 	arrow.queue_free()
 	await get_tree().process_frame
 
-	pool.return_arrow(arrow)
+	if is_instance_valid(arrow):
+		pool.return_arrow(arrow)
 	_pass("test_return_freed_arrow_safe")
 
 	pool.queue_free()

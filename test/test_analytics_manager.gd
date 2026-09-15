@@ -331,7 +331,7 @@ func test_log_purchase_failed() -> void:
 		_fail(test_name, "AnalyticsManager not available")
 		return
 
-	analytics.log_purchase_failed("com.armoredarcher.gems.small", "declined")
+	analytics.log_purchase_failed("com.armoredarcher.gems.small", "Small Gems", "declined")
 	_pass(test_name)
 
 func test_log_gem_purchased() -> void:

@@ -78,7 +78,7 @@ func equip_base_gear(slot: String, gear_id: String) -> bool:
 	if analytics and analytics.has_method("log_gear_equipped"):
 		analytics.log_gear_equipped(
 			gear_id,
-			gear_data.get("name", gear_id),
+			gear_data.gear_name if gear_data.gear_name != "" else gear_id,
 			slot
 		)
 
@@ -110,7 +110,7 @@ func equip_skin(slot: String, skin_id: String) -> bool:
 	if analytics and analytics.has_method("log_transmog_applied"):
 		analytics.log_transmog_applied(
 			skin_id,
-			skin_data.get("name", skin_id),
+			skin_data.skin_name if skin_data.skin_name != "" else skin_id,
 			slot
 		)
 
