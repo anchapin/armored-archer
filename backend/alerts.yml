@@ -1,5 +1,11 @@
 # Prometheus Alerting Rules for Armored Archer
 # Critical alerts for game server monitoring
+#
+# Canonical alert-rule file (issue #1112): this is the ONLY copy — the former
+# divergent backend/config/alert_rules.yml was deleted. Loaded by
+# backend/prometheus.yml (rule_files) via the compose mount
+# ./alerts.yml:/etc/prometheus/alerts.yml (backend/docker-compose.yml).
+# docs/runbooks/README.md mirrors this file's alerts 1:1 — update both together.
 
 groups:
   - name: armoured_archer_critical

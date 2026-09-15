@@ -20,7 +20,7 @@
 **Duration**: 1 minute
 **Impact**: The versioned settled-marker write is failing, so matches cannot settle at all — no rewards, XP, or Elo are applied. Nothing was mutated (the claim is the FIRST settlement mutation), client retries are safe, and players see `SETTLEMENT_CLAIM_FAILED`. Usually PostgreSQL unavailability or a storage-version storm; this alert is inhibited while `GameServerDown` is firing.
 
-Both alerts live in the settlement group of the alert rules — `SettlementDegradedSpike` at alerts.yml:360 and `SettlementClaimFailed` at alerts.yml:373 — and route to the backend warning/critical receivers (Slack `#armored-archer-warnings` / `#armored-archer-critical`). The `SettlementClaimFailed` alert is suppressed by the `GameServerDown` inhibit rule (alertmanager.yml:229) — if the server is down, the page for that is `GameServerDown`, not this one.
+Both alerts live in the settlement group of the alert rules — `SettlementDegradedSpike` at alerts.yml:366 and `SettlementClaimFailed` at alerts.yml:379 — and route to the backend warning/critical receivers (Slack `#armored-archer-warnings` / `#armored-archer-critical`). The `SettlementClaimFailed` alert is suppressed by the `GameServerDown` inhibit rule (alertmanager.yml:234) — if the server is down, the page for that is `GameServerDown`, not this one.
 
 ---
 

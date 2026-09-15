@@ -126,15 +126,13 @@ EOF
 check_prometheus_config() {
     log_info "Checking Prometheus configuration..."
     
-    local config_file="$BACKEND_DIR/config/prometheus.yml"
-    local alt_config_file="$BACKEND_DIR/prometheus.yml"
+    # Canonical mounted config (issue #1112) — the former divergent
+    # backend/config/prometheus.yml copy was deleted.
+    local config_file="$BACKEND_DIR/prometheus.yml"
     
     if [ -f "$config_file" ]; then
         log_verbose "Found config at: $config_file"
         CONFIG_FILE="$config_file"
-    elif [ -f "$alt_config_file" ]; then
-        log_verbose "Found config at: $alt_config_file"
-        CONFIG_FILE="$alt_config_file"
     else
         log_error "Prometheus configuration file not found"
         return 1

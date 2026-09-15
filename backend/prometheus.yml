@@ -11,6 +11,12 @@
 #     inside client binaries, so players cannot scrape these endpoints.
 #   - unwrap: makes Nakama return the raw Prometheus text exposition
 #     (text/plain) instead of the JSON RPC envelope Prometheus cannot parse.
+#
+# Canonical Prometheus config (issue #1112): this is the ONLY copy — the
+# former divergent backend/config/prometheus.yml was deleted. Mounted by
+# backend/docker-compose.yml as ./prometheus.yml:/etc/prometheus/prometheus.yml;
+# alert rules load from ./alerts.yml (rule_files below). A CI guard
+# (make obs-config-check) fails if duplicated/unmounted copies reappear.
 
 global:
   scrape_interval: 15s

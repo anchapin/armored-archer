@@ -11,7 +11,7 @@ YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
 RED := $(shell tput setaf 1 2>/dev/null || echo "")
 RESET := $(shell tput sgr0 2>/dev/null || echo "")
 
-.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new check-game-schema backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-restart-destructive services-cold-start services-assert-cold-start services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci tracked-ignored-check tracked-ignored-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-preflight ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report commit-check hooks-install hooks-uninstall
+.PHONY: help setup backend-install backend-start backend-stop backend-dev backend-test backend-build backend-lint backend-check backend-migrate backend-migrate-new check-game-schema backend-db-schema clean release-notes test-flaky-backend test-flaky-godot test-flaky-report build-perf-track rollback services-start services-stop services-restart services-restart-destructive services-cold-start services-assert-cold-start services-status services-health services-logs services-validate services-clean tech-debt-check tech-debt-check-ci tech-debt-sync tech-debt-sync-dry tech-debt-github tech-debt-github-create bundle-size-check agents-md-check agents-md-check-ci tracked-ignored-check tracked-ignored-check-ci obs-config-check obs-config-check-ci dead-code-check dead-code-check-ci duplicate-code-check duplicate-code-check-ci ci-services-preflight ci-services-start ci-services-stop ci-services-status ci-services-restart ci ci-parallel ci-persist ci-clean ci-status serve-burndown smoke-test smoke-test-backend smoke-test-client smoke-test-quick smoke-test-verbose smoke-test-ci smoke-test-report commit-check hooks-install hooks-uninstall
 
 # Default target
 all: help
@@ -118,6 +118,9 @@ help:
 	@echo "$(GREEN)Tracked-but-ignored Files Guard (issue #1032)$(RESET)"
 	@echo "  make tracked-ignored-check     Fail if any tracked file matches .gitignore"
 	@echo "  make tracked-ignored-check-ci Same, CI mode (exit 1 on violation)"
+	@echo ""
+	@echo "$(GREEN)Observability Config Guard (issue #1112)$(RESET)"
+	@echo "  make obs-config-check          Fail if duplicated/unmounted observability configs reappear"
 	@echo ""
 	@echo "$(GREEN)Notes$(RESET)"
 	@echo "  - Godot: Open project in Godot 4.x Editor and press F5 to run"
@@ -521,6 +524,15 @@ tracked-ignored-check:
 tracked-ignored-check-ci:
 	@echo "$(BLUE)Checking for tracked-but-ignored files (CI mode)...$(RESET)"
 	cd $(BACKEND_DIR) && npm run validate:tracked-ignored:ci
+
+## Observability config consolidation guard (issue #1112)
+obs-config-check:
+	@echo "$(BLUE)Checking observability config consolidation...$(RESET)"
+	bash scripts/check-observability-configs.sh
+
+obs-config-check-ci:
+	@echo "$(BLUE)Checking observability config consolidation (CI mode)...$(RESET)"
+	bash scripts/check-observability-configs.sh
 
 ## CI Services (for local act testing)
 # These services match the CI environment exactly (different ports than dev).
