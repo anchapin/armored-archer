@@ -10,19 +10,38 @@ const CoverageTracker = preload("res://addons/gut/coverage/coverage_tracker.gd")
 # on it fails with Nil errors. Load the script and instantiate that instead.
 var CombatManagerClass = load("res://autoloads/CombatManager.gd")
 var _combat
-var _mock_network: Node
+var _mock_network: StubNetworkManager
+
+# The suite hand-rolls its NetworkManager stub instead of using
+# `double(Node)`: GUT 9.6 doubles of native engine classes carry null
+# doubling metadata and never record or intercept calls, so the old
+# stub(_mock_network, ...) lines silently configured nothing (issue
+# #1062). The stub class below implements exactly the NetworkManager
+# surface CombatManager touches.
+
+# --- Test Doubles ---
+
+## Minimal NetworkManager stub. `send_rpc` returns `rpc_response`
+## synchronously, so CombatManager's `await` resumes immediately.
+class StubNetworkManager extends Node:
+	var is_connected: bool = true
+	var rpc_response: Dictionary = {"success": true, "result": {}}
+
+	func send_rpc(_rpc_id: String, _payload: String, _timeout: float = 30.0) -> Dictionary:
+		return rpc_response
+
+# --- Fixtures ---
 
 func before_each():
 	# Create fresh CombatManager instance for each test (ISO-04 pattern)
 	_combat = CombatManagerClass.new()
 	add_child_autofree(_combat)
 
-	# Create mock NetworkManager for RPC isolation
-	_mock_network = double(Node).new()
+	# Create stub NetworkManager for RPC isolation (hand-rolled class —
+	# GUT 9.6 native-class doubles never intercept, issue #1062)
+	_mock_network = StubNetworkManager.new()
 	_mock_network.name = "NetworkManager"
 	add_child_autofree(_mock_network)
-	stub(_mock_network, "is_connected").to_return(true)
-	stub(_mock_network, "send_rpc").to_return({"success": true, "result": {}})
 	_combat.set("network_manager", _mock_network)
 
 func test_basic_damage_calculation_tracks_coverage():
