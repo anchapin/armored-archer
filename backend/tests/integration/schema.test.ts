@@ -349,6 +349,46 @@ describe('Database Schema Migration Tests', () => {
     });
   });
 
+  describe('Composite Performance Indexes (migration 016)', () => {
+    it('should have composite index on inventory_items(user_id, created_at DESC)', async () => {
+      const result = await pool.query(`
+        SELECT indexdef
+        FROM pg_indexes
+        WHERE tablename = 'inventory_items'
+          AND indexname = 'idx_inventory_items_user_id_created_at'
+      `);
+
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].indexdef).toContain('(user_id, created_at DESC)');
+    });
+
+    it('should have composite index on boss_defeats(user_id, first_defeated_at ASC)', async () => {
+      const result = await pool.query(`
+        SELECT indexdef
+        FROM pg_indexes
+        WHERE tablename = 'boss_defeats'
+          AND indexname = 'idx_boss_defeats_user_id_first_defeated_at'
+      `);
+
+      expect(result.rows).toHaveLength(1);
+      // Postgres omits ASC in indexdef because it is the default sort order
+      expect(result.rows[0].indexdef).toContain('(user_id, first_defeated_at)');
+    });
+
+    it('should have composite index on unlocked_modifier_pools(user_id, unlocked_at ASC)', async () => {
+      const result = await pool.query(`
+        SELECT indexdef
+        FROM pg_indexes
+        WHERE tablename = 'unlocked_modifier_pools'
+          AND indexname = 'idx_unlocked_modifier_pools_user_id_unlocked_at'
+      `);
+
+      expect(result.rows).toHaveLength(1);
+      // Postgres omits ASC in indexdef because it is the default sort order
+      expect(result.rows[0].indexdef).toContain('(user_id, unlocked_at)');
+    });
+  });
+
   describe('Migration Functions and Triggers', () => {
     it('should have update_updated_at_column function', async () => {
       const result = await pool.query(`
