@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Check README exists
         run: |
           if [ ! -f "README.md" ] && [ ! -f "readme.md" ]; then
@@ -177,3 +177,12 @@ jobs:
               fi
             fi
           fi
+
+  docs-citation-freshness:
+    name: Docs Citation Freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Audit runbook citations against current backend source
+        run: bash scripts/audit-runbook-citations.sh
