@@ -129,9 +129,11 @@ func die() -> void:
 	# Trigger death animation through CombatJuiceManager
 	var combat_juice = get_node_or_null("/root/CombatJuiceManager")
 	if combat_juice and combat_juice.has_method("trigger_combat_juice"):
-		# Pass enemy_node and particle_count params
+		# Pass the typed EffectType enum — a String never matches the
+		# router's enum arms, which silently skipped death juice on every
+		# enemy death (issue #1056).
 		combat_juice.trigger_combat_juice(
-			"DEATH_ANIMATION",
+			CombatJuiceManager.EffectType.DEATH_ANIMATION,
 			{"enemy_node": self, "particle_count": 5}
 		)
 	else:
