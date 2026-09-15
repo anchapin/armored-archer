@@ -2,7 +2,7 @@ import { Counter, Histogram, Registry, collectDefaultMetrics, Gauge } from 'prom
 import { config } from '../config';
 import { Runtime } from '../types/nakama';
 import * as rateLimiter from '../utils/rateLimiter';
-import { withAdminGuard } from './admin_auth';
+import { withAdminGuard, setAdminGuardMetricsCallbacks } from './admin_auth';
 import { getDeploymentRegistry } from './deployment_observability';
 import { initializeNPlusOneDetectionWithMetrics, getNPlusOneReport } from './n_plus_one_detection';
 import { getHealthRegistry } from './health_monitor';
@@ -352,8 +352,35 @@ const cacheHitRatio = new Gauge({
   registers: [register],
 });
 
+// ==========================================
+// Admin Guard Metrics (issue #1141, ADR-0006)
+// ==========================================
+
+const adminRpcAccessDeniedTotal = new Counter({
+  name: 'armored_archer_admin_rpc_access_denied_total',
+  help:
+    'Total admin RPC calls rejected by the withAdminGuard allowlist gate, ' +
+    'by rpc_id and reason (caller_not_in_admin_allowlist / caller_id_missing)',
+  labelNames: ['rpc_id', 'reason'] as const,
+  registers: [register],
+});
+
+const adminAllowlistSize = new Gauge({
+  name: 'armored_archer_admin_allowlist_size',
+  help:
+    'Number of entries in the ADMIN_USER_IDS allowlist; 0 means every admin ' +
+    'RPC rejects every caller (fail-closed per ADR-0006)',
+  registers: [register],
+});
+
 // Register rate limiter callbacks
 rateLimiter.setMetricsCallbacks(recordRateLimitViolation, updateActiveUsersCount);
+
+// Register admin-guard metric sinks (issue #1141). The guard module cannot
+// import this one directly — metrics.ts already imports admin_auth for
+// withAdminGuard — so, like the rate limiter above, the sinks are injected
+// from this side to close the loop without an import cycle.
+setAdminGuardMetricsCallbacks(incrementAdminRpcAccessDenied, setAdminAllowlistSize);
 
 // Operational telemetry endpoints — full Prometheus/deployment dumps must
 // not be harvestable by players. The guard wraps the handler itself (not the
@@ -734,4 +761,30 @@ export function incrementPunchUpWatchFlag(reason: string): void {
 
 export function setSeasonActivePlayers(seasonId: string, count: number): void {
   seasonActivePlayersGauge.set({ season_id: seasonId }, count);
+}
+
+// ==========================================
+// Admin Guard Metric Functions (issue #1141)
+// ==========================================
+
+/**
+ * Increments the admin-guard rejection counter (wired into the guard via
+ * `setAdminGuardMetricsCallbacks`; see ADR-0006).
+ *
+ * @param rpcId - Full RPC id that was rejected (e.g. 'armored_archer/metrics')
+ * @param reason - 'caller_not_in_admin_allowlist' | 'caller_id_missing'
+ */
+export function incrementAdminRpcAccessDenied(rpcId: string, reason: string): void {
+  adminRpcAccessDeniedTotal.inc({ rpc_id: rpcId, reason });
+}
+
+/**
+ * Sets the admin allowlist size gauge. Emitted every time the allowlist is
+ * (re)resolved, so `AdminAllowlistEmpty` can distinguish "configured empty"
+ * (0) from "not yet resolved" (series absent).
+ *
+ * @param count - Number of entries in the resolved allowlist
+ */
+export function setAdminAllowlistSize(count: number): void {
+  adminAllowlistSize.set(count);
 }

@@ -1,3 +1,4 @@
+import { Counter, Gauge } from 'prom-client';
 import {
   registerRpcMetrics,
   getMetricsRegistry,
@@ -29,8 +30,29 @@ import {
   recordAnalyticsEvent,
   recordDatabaseQueryDuration,
   setCacheHitRatio,
+  incrementAdminRpcAccessDenied,
+  setAdminAllowlistSize,
 } from '../metrics';
 import { resetAdminAllowlistCache } from '../admin_auth';
+
+// ---- Admin-guard metric registration capture (issue #1141) ----
+// Snapshot the Counter/Gauge constructor configs metrics.ts passed at module
+// load. Taken at file scope — before any beforeEach's jest.clearAllMocks()
+// wipes the constructor call log — so registration vocabulary stays assertable.
+const registeredCounterConfigs = ((Counter as unknown as jest.Mock).mock.calls ?? []).map(
+  (call: unknown[]) => call[0] as { name: string; labelNames?: readonly string[] }
+);
+const registeredGaugeConfigs = ((Gauge as unknown as jest.Mock).mock.calls ?? []).map(
+  (call: unknown[]) => call[0] as { name: string }
+);
+
+function counterConfigs(): Array<{ name: string; labelNames?: readonly string[] }> {
+  return registeredCounterConfigs;
+}
+
+function gaugeConfigs(): Array<{ name: string }> {
+  return registeredGaugeConfigs;
+}
 
 // ---- Mocks ----
 
@@ -1182,6 +1204,37 @@ describe('metrics', () => {
       expect(outcomes[1].status).toBe('rejected');
       expect(outcomes[2].status).toBe('fulfilled');
       expect(outcomes[3].status).toBe('rejected');
+    });
+  });
+
+  // =================== Admin guard metrics (issue #1141) ===================
+
+  describe('admin guard metrics', () => {
+    // prom-client is mocked file-wide, so counter/gauge values are not
+    // observable here — the real-registry behavior (increment on rejection,
+    // gauge on allowlist resolution) is covered by admin_auth.test.ts, which
+    // imports the real prom-client. Here we assert the registration
+    // vocabulary captured at module load, before beforeEach clears the mocks.
+    it('registers armored_archer_admin_rpc_access_denied_total with rpc_id and reason labels', () => {
+      expect(counterConfigs()).toContainEqual(
+        expect.objectContaining({
+          name: 'armored_archer_admin_rpc_access_denied_total',
+          labelNames: ['rpc_id', 'reason'],
+        })
+      );
+    });
+
+    it('registers armored_archer_admin_allowlist_size (no labels)', () => {
+      expect(gaugeConfigs()).toContainEqual(
+        expect.objectContaining({
+          name: 'armored_archer_admin_allowlist_size',
+        })
+      );
+    });
+
+    it('exposes increment/set helpers that the admin guard can wire as sinks', () => {
+      expect(() => incrementAdminRpcAccessDenied('armored_archer/x', 'caller_id_missing')).not.toThrow();
+      expect(() => setAdminAllowlistSize(0)).not.toThrow();
     });
   });
 });

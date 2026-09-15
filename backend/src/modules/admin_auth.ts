@@ -35,7 +35,14 @@
  *
  * Every rejection is recorded in the caller's own audit trail via
  * `logAudit` (which never throws) and logged through both the runtime
- * logger and the winston application logger.
+ * logger and the winston application logger. Since issue #1141 every
+ * rejection also increments the `armored_archer_admin_rpc_access_denied_total`
+ * counter and every allowlist (re)resolution sets the
+ * `armored_archer_admin_allowlist_size` gauge — both via sinks injected by
+ * `metrics.ts` through `setAdminGuardMetricsCallbacks()` (this module cannot
+ * import metrics.ts directly without an import cycle). Like `logAudit`, the
+ * metric sinks swallow their own failures so a broken metrics registry can
+ * never turn into an availability or gate-bypass issue.
  */
 
 import { createHash } from 'crypto';
@@ -71,6 +78,72 @@ interface ResolvedAllowlist {
 }
 
 let cachedAllowlist: ResolvedAllowlist | null = null;
+
+// ---- Metric sinks (issue #1141) ----
+// Wired by metrics.ts via setAdminGuardMetricsCallbacks() at module load.
+// Kept optional + failure-swallowing so a missing or broken metrics
+// registry can never affect the gate's authorization decision.
+
+/**
+ * Why a guard call was rejected. Also the `reason` label value on the
+ * `armored_archer_admin_rpc_access_denied_total` counter and in the audit
+ * entry details, so metrics, logs, and the audit trail share one vocabulary.
+ */
+export type AdminAccessDeniedReason = 'caller_not_in_admin_allowlist' | 'caller_id_missing';
+
+/** Sink shape for the access-denied counter increment. */
+type AccessDeniedMetricSink = (rpcId: string, reason: AdminAccessDeniedReason) => void;
+
+/** Sink shape for the allowlist-size gauge update. */
+type AllowlistSizeMetricSink = (count: number) => void;
+
+let accessDeniedMetricSink: AccessDeniedMetricSink | null = null;
+let allowlistSizeMetricSink: AllowlistSizeMetricSink | null = null;
+
+/**
+ * Inject the metric sinks used by the guard (issue #1141). Called once by
+ * metrics.ts at module load — the same dependency-injection pattern the
+ * rate limiter uses — because a direct metrics.ts import from here would
+ * create an import cycle (metrics.ts imports withAdminGuard).
+ */
+export function setAdminGuardMetricsCallbacks(
+  onAccessDenied: AccessDeniedMetricSink,
+  onAllowlistResolved: AllowlistSizeMetricSink
+): void {
+  accessDeniedMetricSink = onAccessDenied;
+  allowlistSizeMetricSink = onAllowlistResolved;
+}
+
+/** Increment the rejection counter; never throws (mirrors logAudit). */
+function emitAccessDeniedMetric(rpcId: string, reason: AdminAccessDeniedReason): void {
+  if (accessDeniedMetricSink === null) {
+    return;
+  }
+  try {
+    accessDeniedMetricSink(rpcId, reason);
+  } catch (err) {
+    winstonLogger.warn('Failed to emit admin access-denied metric', {
+      rpc_id: rpcId,
+      reason,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/** Update the allowlist-size gauge; never throws (mirrors logAudit). */
+function emitAllowlistSizeMetric(count: number): void {
+  if (allowlistSizeMetricSink === null) {
+    return;
+  }
+  try {
+    allowlistSizeMetricSink(count);
+  } catch (err) {
+    winstonLogger.warn('Failed to emit admin allowlist-size metric', {
+      count,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
 
 /**
  * Validate, normalize, and fingerprint the ADMIN_USER_IDS env var.
@@ -149,6 +222,7 @@ function parseAndValidate(raw: string | undefined): ResolvedAllowlist {
 export function getAdminUserIds(): ReadonlySet<string> {
   if (cachedAllowlist === null) {
     cachedAllowlist = parseAndValidate(process.env.ADMIN_USER_IDS);
+    emitAllowlistSizeMetric(cachedAllowlist.count);
   }
   return cachedAllowlist.ids;
 }
@@ -180,6 +254,7 @@ export function resetAdminAllowlistCache(): void {
 export function reloadAdminAllowlist(): number {
   const next = parseAndValidate(process.env.ADMIN_USER_IDS);
   cachedAllowlist = next;
+  emitAllowlistSizeMetric(next.count);
   return next.count;
 }
 
@@ -201,10 +276,16 @@ export function isAdminUser(userId: string | undefined | null): boolean {
  *
  * Rejections return a generic `{ success: false, error: 'Not authorized' }`
  * payload — no internals are leaked to the caller — after writing an
- * `admin_rpc_access_denied` audit entry against the calling user.
+ * `admin_rpc_access_denied` audit entry against the calling user and
+ * incrementing the `armored_archer_admin_rpc_access_denied_total` counter
+ * (issue #1141). A call with no userId (server-key invocation) is rejected
+ * with reason `caller_id_missing`; a userId that is merely not allowlisted
+ * is rejected with reason `caller_not_in_admin_allowlist`. The same reason
+ * string is recorded in the audit entry details so metrics and the audit
+ * trail stay joinable.
  *
  * @param rpcId - Full RPC id (e.g. 'armored_archer/rollout_create_flag'),
- *                used in audit records and logs.
+ *                used in audit records, logs, and metric labels.
  * @param handler - The privileged RPC handler to wrap.
  * @returns The guarded handler to pass to `initializer.registerRpc`.
  */
@@ -220,6 +301,9 @@ export function withAdminGuard(rpcId: string, handler: AdminGatedRpcHandler): Ad
     }
 
     const callerId = ctx.userId || 'unknown';
+    const reason: AdminAccessDeniedReason = ctx.userId
+      ? 'caller_not_in_admin_allowlist'
+      : 'caller_id_missing';
 
     // Security-monitoring trail entry. logAudit swallows its own failures,
     // so a broken audit sink can never turn into an availability issue.
@@ -229,14 +313,24 @@ export function withAdminGuard(rpcId: string, handler: AdminGatedRpcHandler): Ad
       ctx.ipAddress ?? null,
       'admin_rpc_access_denied',
       rpcId,
-      { rpc_id: rpcId, reason: 'caller_not_in_admin_allowlist' },
+      { rpc_id: rpcId, reason },
       'failure',
       'caller is not an allowlisted admin'
     );
 
-    logger.warn('Admin RPC %s rejected: caller %s is not an allowlisted admin', rpcId, callerId);
+    // Prometheus counter (issue #1141) — fail-closed observability with the
+    // same swallow-failure guarantee as the audit sink above.
+    emitAccessDeniedMetric(rpcId, reason);
+
+    logger.warn(
+      'Admin RPC %s rejected (%s): caller %s is not an allowlisted admin',
+      rpcId,
+      reason,
+      callerId
+    );
     winstonLogger.warn('Admin RPC rejected: caller is not an allowlisted admin', {
       rpc_id: rpcId,
+      reason,
       user_id: callerId,
       ip_address: ctx.ipAddress ?? null,
     });
