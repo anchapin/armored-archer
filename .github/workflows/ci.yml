@@ -838,6 +838,22 @@ jobs:
         working-directory: ./backend
         run: npm run validate:tracked-ignored:ci
 
+  # Issue #1112: the alerting/prometheus configs once lived in two divergent
+  # copies (backend/prometheus.yml vs backend/config/prometheus.yml, etc.);
+  # compose only mounted the root copies, so the backend/config/ set was dead
+  # config that claimed to be authoritative and drifted. The dead copies were
+  # deleted — this guard fails if they reappear, if any backend/config/*.yml
+  # is unmounted by backend/docker-compose.yml, or if a compose yml mount
+  # dangles. Pure file/paths check: no build or services required.
+  observability-config-check:
+    name: Observability Config Consolidation Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail on duplicated or unmounted observability configs
+        run: bash scripts/check-observability-configs.sh
+
   # Issue #1070: gate PRs with the 17 real-stack integration suites under
   # backend/tests/integration/ (combat_system, matchmaker, authentication,
   # gear_system, season_system, store, network_resilience, error_handling,

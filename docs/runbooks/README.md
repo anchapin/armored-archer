@@ -191,8 +191,8 @@ Track these metrics to improve alerting:
 ## 🔗 Related Resources
 
 - [Alert Configuration Guide](../../.planning/phases/02-monitoring/02-03-alerts.md)
-- [Alertmanager Config](../../backend/config/alertmanager.yml)
-- [Alert Rules](../../backend/config/alert_rules.yml)
+- [Alertmanager Config](../../backend/alertmanager.yml)
+- [Alert Rules](../../backend/alerts.yml)
 - [Testing Script](../../backend/scripts/test-alerts.sh)
 - [Metrics Verification Script](../../backend/scripts/verify-metrics.sh)
 

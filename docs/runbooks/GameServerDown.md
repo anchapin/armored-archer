@@ -190,7 +190,7 @@ curl -f http://localhost:7350/health
 docker exec nakama cat /nakama/config/default.yaml
 
 # 2. Check for recent config changes
-git log --oneline -5 -- backend/config/
+git log --oneline -5 -- backend/prometheus.yml backend/alerts.yml backend/alertmanager.yml backend/config/
 
 # 3. Rollback if recent change caused issue
 git revert HEAD

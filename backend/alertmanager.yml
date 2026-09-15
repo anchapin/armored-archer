@@ -1,5 +1,10 @@
 # Alertmanager Configuration for Armored Archer
 # Routing and notification channel configuration
+#
+# Canonical alertmanager config (issue #1112): this is the ONLY copy — the
+# former divergent backend/config/alertmanager.yml was deleted. Mounted by
+# backend/docker-compose.yml as
+# ./alertmanager.yml:/etc/alertmanager/alertmanager.yml.
 
 global:
   # Resolve timeout for alerts

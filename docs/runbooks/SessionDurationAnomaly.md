@@ -56,7 +56,7 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 grep -n "recordSessionDuration\|playerSessionDuration\|armored_archer_player_session_duration_seconds" \
   backend/src/modules/metrics.ts | head -10
 
-# The recording rule reduces it to avg_session_duration in alerts.yml:274
+# The recording rule reduces it to avg_session_duration in alerts.yml:280
 # Confirm the recording rule is loaded
 curl -s 'http://prometheus:9090/api/v1/rules' | jq '.data.groups[].rules[] | select(.name | test("session"))'
 ```
