@@ -3,8 +3,9 @@
 # Alternative to GitHub Actions when act CLI is unavailable
 #
 # Usage:
-#   ./scripts/local-godot-tests.sh           # Run all tests
+#   ./scripts/local-godot-tests.sh           # Run all tests (incl. GUT)
 #   ./scripts/local-godot-tests.sh --lint    # Run linting only
+#   ./scripts/local-godot-tests.sh --gut     # Run GUT suite only (test/suites)
 #   ./scripts/local-godot-tests.sh --quick   # Run quick validation
 #   ./scripts/local-godot-tests.sh --help    # Show help
 
@@ -21,6 +22,10 @@ NC='\033[0m' # No Color
 GODOT_BINARY="${GODOT_BINARY:-godot4}"
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TEST_DIR="$PROJECT_ROOT/test"
+GUT_ADDON="$PROJECT_ROOT/addons/gut/gut_cmdln.gd"
+GUT_RESULTS_XML="$PROJECT_ROOT/test/results/gut-results.xml"
+GUT_BASELINE="$PROJECT_ROOT/data/gut-baseline.json"
+GUT_TIMEOUT="${GUT_TIMEOUT:-600}"
 
 # Helper functions
 log_info() {
@@ -145,6 +150,50 @@ run_tests() {
     return 0
 }
 
+# Run the GUT suite (test/suites/) through gut_cmdln with .gutconfig.json,
+# then apply the failure-baseline ratchet gate (issue #1082). GUT exits
+# non-zero on any failing test; the suite carries a pre-existing failure
+# baseline triaged in issue #894, so the gate — not the exit code — decides
+# pass/fail: CI/local fails only on NEW failures vs data/gut-baseline.json.
+run_gut_tests() {
+    log_info "Running GUT suite (test/suites) via gut_cmdln..."
+
+    if ! check_godot; then
+        log_warning "Cannot run GUT without Godot"
+        return 1
+    fi
+
+    if [ ! -f "$GUT_ADDON" ]; then
+        log_error "GUT addon not found: $GUT_ADDON"
+        return 1
+    fi
+
+    if [ ! -f "$GUT_BASELINE" ]; then
+        log_error "GUT baseline not found: $GUT_BASELINE"
+        return 1
+    fi
+
+    mkdir -p "$PROJECT_ROOT/test/results"
+
+    # The pipeline's exit status is tee's; GUT's own exit code is irrelevant
+    # here because the baseline gate below is the pass/fail authority.
+    timeout "$GUT_TIMEOUT" "$GODOT_BINARY" --headless -s addons/gut/gut_cmdln.gd -gexit 2>&1 | tee /tmp/gut_test_output.txt || {
+        log_error "GUT run failed or timed out (timeout: ${GUT_TIMEOUT}s)"
+        return 1
+    }
+
+    if ! python3 "$PROJECT_ROOT/scripts/gut_baseline_gate.py" \
+        --log /tmp/gut_test_output.txt \
+        --xml "$GUT_RESULTS_XML" \
+        --baseline "$GUT_BASELINE"; then
+        log_error "GUT baseline gate failed — new failures vs $GUT_BASELINE (see table above)"
+        return 1
+    fi
+
+    log_success "GUT suite passed baseline gate"
+    return 0
+}
+
 run_quick_validation() {
     log_info "Running quick validation..."
     
@@ -194,12 +243,14 @@ show_help() {
     echo "  --lint       Run GDScript linting only"
     echo "  --syntax     Run syntax validation only"
     echo "  --quick      Run quick validation (no Godot required)"
-    echo "  --tests      Run full test suite"
+    echo "  --tests      Run the legacy test suite (test/run_all_tests.gd)"
+    echo "  --gut        Run the GUT suite (test/suites via gut_cmdln)"
     echo "  --all        Run all checks (default)"
     echo "  --help       Show this help message"
     echo ""
     echo "Environment Variables:"
     echo "  GODOT_BINARY  Path to Godot binary (default: godot4)"
+    echo "  GUT_TIMEOUT   GUT suite timeout in seconds (default: 600)"
     echo ""
     echo "Examples:"
     echo "  $0                    # Run all checks"
@@ -213,9 +264,10 @@ main() {
     local run_lint_flag=false
     local run_syntax_flag=false
     local run_tests_flag=false
+    local run_gut_flag=false
     local run_quick_flag=false
     local run_all_flag=true
-    
+
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -231,6 +283,11 @@ main() {
                 ;;
             --tests)
                 run_tests_flag=true
+                run_all_flag=false
+                shift
+                ;;
+            --gut)
+                run_gut_flag=true
                 run_all_flag=false
                 shift
                 ;;
@@ -267,15 +324,17 @@ main() {
         run_lint_flag=true
         run_syntax_flag=true
         run_tests_flag=true
+        run_gut_flag=true
     fi
 
     # Self-heal fresh worktrees before headless Godot runs (issue #991).
     # If the import fails, skip Godot-dependent checks so phantom failures
     # from a missing .godot/ cache are not reported as test regressions.
-    if [ "$run_syntax_flag" = true ] || [ "$run_tests_flag" = true ]; then
+    if [ "$run_syntax_flag" = true ] || [ "$run_tests_flag" = true ] || [ "$run_gut_flag" = true ]; then
         if ! ensure_import; then
             run_syntax_flag=false
             run_tests_flag=false
+            run_gut_flag=false
             exit_code=1
         fi
     fi
@@ -299,8 +358,14 @@ main() {
     fi
     
     if [ "$run_tests_flag" = true ]; then
-        echo "=== Test Suite ==="
+        echo "=== Test Suite (legacy runner) ==="
         run_tests || exit_code=1
+        echo ""
+    fi
+
+    if [ "$run_gut_flag" = true ]; then
+        echo "=== GUT Suite (test/suites) ==="
+        run_gut_tests || exit_code=1
         echo ""
     fi
     

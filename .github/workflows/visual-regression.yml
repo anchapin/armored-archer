@@ -25,11 +25,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Godot
-        uses: notifiarr/godot-action@v0.2.2
-        with:
-          version: '4.6'
-          # Use headless mode for CI
-          headless: true
+        run: |
+          # Same acquisition pattern as test.yml / coverage.yml (issue #1082):
+          # download the 4.6 headless binary into the workspace as godot4.
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
+          unzip -q godot.zip
+          chmod +x Godot_v4.6-stable_linux.x86_64
+          mv Godot_v4.6-stable_linux.x86_64 godot4
+
+      - name: Import Godot assets
+        run: |
+          # One-time import for fresh checkouts (issue #991).
+          ./godot4 --headless --quit --import 2>&1 | head -50 || true
 
       - name: Install ImageMagick
         run: |
@@ -46,9 +53,19 @@ jobs:
           mkdir -p test/screenshots/baseline
           mkdir -p user://test/screenshots/current
 
-      - name: Run visual regression tests
+      - name: Run visual regression tests (GUT)
         run: |
-          godot4 --headless --script res://test/suites/visual/test_visual_regression.gd
+          # Run the visual suites through GUT so the JUnit XML the gate
+          # below consumes is actually produced (issue #1082). GUT exits
+          # non-zero on failures; the parse step decides pass/fail.
+          mkdir -p test/results
+          set +e
+          ./godot4 --headless -s addons/gut/gut_cmdln.gd \
+            -gdir=res://test/suites/visual \
+            -ginclude_subdirs \
+            -gjunit_xml_file=res://test/results/gut-results.xml \
+            -gexit 2>&1 | tee gut-visual-run.log
+          set -e
         continue-on-error: true
 
       - name: Upload current screenshots
@@ -163,14 +180,30 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Godot
-        uses: notifiarr/godot-action@v0.2.2
-        with:
-          version: '4.6'
-          headless: true
-
-      - name: Run theme consistency tests
         run: |
-          godot4 --headless --script res://test/suites/visual/test_theme_consistency.gd
+          # Same acquisition pattern as test.yml / coverage.yml (issue #1082).
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
+          unzip -q godot.zip
+          chmod +x Godot_v4.6-stable_linux.x86_64
+          mv Godot_v4.6-stable_linux.x86_64 godot4
+
+      - name: Import Godot assets
+        run: |
+          # One-time import for fresh checkouts (issue #991).
+          ./godot4 --headless --quit --import 2>&1 | head -50 || true
+
+      - name: Run theme consistency tests (GUT)
+        run: |
+          # Run the theme suite through GUT so the JUnit XML the contrast
+          # gate below consumes is actually produced (issue #1082).
+          mkdir -p test/results
+          set +e
+          ./godot4 --headless -s addons/gut/gut_cmdln.gd \
+            -gdir=res://test/suites/visual \
+            -gselect=test_theme_consistency.gd \
+            -gjunit_xml_file=res://test/results/gut-results.xml \
+            -gexit 2>&1 | tee gut-theme-run.log
+          set -e
 
       - name: Upload theme consistency results
         uses: actions/upload-artifact@v4

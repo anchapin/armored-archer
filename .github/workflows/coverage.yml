@@ -118,11 +118,52 @@ jobs:
           chmod +x Godot_v4.6-stable_linux.x86_64
           mv Godot_v4.6-stable_linux.x86_64 godot4
 
-      - name: Run GUT tests with JUnit output
+      - name: Import Godot assets
+        if: env.ACT != 'true'
+        run: |
+          # One-time import: registers class_names and imports resources so
+          # headless runs on fresh checkouts don't produce phantom failures
+          # (issue #991).
+          echo "Importing Godot assets..."
+          ./godot4 --headless --quit --import 2>&1 | head -50 || true
+          ls -la .godot/imported/ | head -10 || echo "Import directory created"
+
+      - name: Run legacy Godot test runner (test/run_all_tests.gd)
         if: env.ACT != 'true'
         run: |
           mkdir -p test/results
           ./godot4 --headless --script test/run_all_tests.gd
+
+      - name: Run GUT suites (test/suites) via gut_cmdln
+        if: env.ACT != 'true'
+        run: |
+          mkdir -p test/results
+          # GUT loads res://.gutconfig.json (dirs=test/suites, include_subdirs,
+          # JUnit output to test/results/gut-results.xml) — issue #1082.
+          # GUT exits non-zero when any test fails; the baseline gate step
+          # below decides pass/fail so the pre-existing failure baseline
+          # (issue #894 triage) does not instantly red CI. That gate fails
+          # hard when the XML is missing, so a crashed run cannot pass.
+          set +e
+          ./godot4 --headless -s addons/gut/gut_cmdln.gd -gexit 2>&1 | tee gut-run.log
+          set -e
+
+      - name: GUT pass-rate summary and baseline gate
+        if: env.ACT != 'true'
+        run: |
+          python3 scripts/gut_baseline_gate.py \
+            --log gut-run.log \
+            --xml test/results/gut-results.xml \
+            --baseline data/gut-baseline.json
+
+      - name: Upload GUT JUnit results
+        if: env.ACT != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gut-junit-results
+          path: test/results/gut-results.xml
+          retention-days: 30
+          if-no-files-found: error
 
       - name: Generate HTML coverage report
         if: env.ACT != 'true'

@@ -41,7 +41,7 @@ When every hosted Actions job fails with *"recent account payments have failed o
 ```
 
 - `*.uid` files next to `.gd`/`.tscn` are Godot-generated — never hand-edit.
-- Two Godot test systems coexist: the custom runner (`test/run_all_tests.gd`, what CI uses) and GUT (`test/suites/`). New suites go in `test/suites/`.
+- Two Godot test systems coexist and both run in CI: the custom runner (`test/run_all_tests.gd`) and GUT (`test/suites/`, run via `addons/gut/gut_cmdln.gd` with `.gutconfig.json` in `coverage.yml` and `./scripts/local-godot-tests.sh --gut`). New suites go in `test/suites/`. The GUT suite carries a pre-existing failure baseline (issue #894); CI gates on *no new failures* vs `data/gut-baseline.json` (`scripts/gut_baseline_gate.py`) — ratchet the baseline down as suites are fixed, never raise it.
 - `RPC_MAP.md` is the authoritative per-RPC reference (client caller, server handler, storage ownership) — update it whenever RPCs change.
 - `CONTEXT.md` holds the ratified domain vocabulary; use its terms verbatim and respect the `_Avoid_` anti-terms (e.g. Dynamic Difficulty ≠ `difficulty_scaling.ts`).
 - SQL migrations live only in `backend/data/` — the former root `migrations/` partial copy was deleted in issue #1034; never recreate it.
@@ -65,18 +65,19 @@ godot4 --headless --script test/run_all_tests.gd
 gdlint .
 
 # Wrapper (use when GitHub Actions / act is unavailable)
-./scripts/local-godot-tests.sh            # lint + syntax + tests (default = --all)
+./scripts/local-godot-tests.sh            # lint + syntax + tests + GUT (default = --all)
 ./scripts/local-godot-tests.sh --all      # explicit: run everything
 ./scripts/local-godot-tests.sh --quick    # no Godot binary required
 ./scripts/local-godot-tests.sh --lint     # gdlint only
 ./scripts/local-godot-tests.sh --syntax
 ./scripts/local-godot-tests.sh --tests
+./scripts/local-godot-tests.sh --gut      # GUT suite only (test/suites)
 ./scripts/local-godot-tests.sh --help     # full flag list
 ```
 
 Gotchas:
 - The test runner's **exit code is unreliable** (non-zero on resource leaks, not failures). Check output for `Failed: N`.
-- No single-test filter: `run_all_tests.gd` hardcodes its file list and ignores CLI args — trim it temporarily to run a subset (the `-dselect=` examples in `test/suites/MIGRATION_GUIDE.md` are **not implemented**).
+- No single-test filter for the legacy runner: `run_all_tests.gd` hardcodes its file list and ignores CLI args — trim it temporarily to run a subset. For scoping, use GUT instead (`-gdir=... -gselect=<filename substring>`; see `test/suites/MIGRATION_GUIDE.md`).
 - `act` (local GitHub Actions) **skips** Godot tests — they OOM in containers. Use `local-godot-tests.sh` instead.
 
 ### Backend (TypeScript / Nakama)
