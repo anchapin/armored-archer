@@ -89,6 +89,15 @@ const metricsLogger: MetricsLogger = createMetricsLogger({
 | `armored_archer_items_purchased_total` | Counter | Items purchased |
 | `armored_archer_gold_balance` | Gauge | Current gold balance |
 
+### Security Metrics (issue #1141)
+
+Emitted by the admin gate ([ADR-0006](../docs/adr/0006-admin-gate-allowlist-policy.md)).
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `armored_archer_admin_rpc_access_denied_total` | Counter | Admin RPC rejections by the `withAdminGuard` allowlist gate; labels `rpc_id`, `reason` (`caller_not_in_admin_allowlist` / `caller_id_missing`) |
+| `armored_archer_admin_allowlist_size` | Gauge | Entries in the `ADMIN_USER_IDS` allowlist; 0 = fail-closed (every admin RPC rejects every caller). Set on startup and on every allowlist (re)resolution |
+
 ## Metrics Implementation
 
 ### Source Files

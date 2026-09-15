@@ -58,6 +58,7 @@ import {
   registerRpcGetMatchDetails,
   registerRpcAdminQueryMatches,
 } from './modules/matchmaker';
+import { getAdminUserIds } from './modules/admin_auth';
 import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
 import {
   registerRpcJoinPool,
@@ -236,6 +237,13 @@ const InitModule: InitModule = function (
   initializeErrorInsightsPipeline(loggerParam);
   initializeProgressiveRollout(loggerParam);
   initializeNotifications();
+
+  // Force-resolve the admin allowlist at startup (issue #1141): a malformed
+  // ADMIN_USER_IDS entry fails fast here per ADR-0006, and the
+  // armored_archer_admin_allowlist_size gauge exists from boot so the
+  // AdminAllowlistEmpty alert can distinguish "configured empty" (0) from
+  // "not yet resolved" (series absent).
+  getAdminUserIds();
 
   if (config.rateLimit.enabled) {
     logSystemEvent('info', 'Rate limiting enabled', {

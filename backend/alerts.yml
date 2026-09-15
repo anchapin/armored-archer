@@ -236,6 +236,32 @@ groups:
           summary: "Unusual anti-cheat violation spike"
           description: "High rate of anti-cheat violations detected ({{ $value }}/min). Review for new exploit."
 
+      # Admin Guard Rejection Spike (issue #1141)
+      - alert: AdminAccessDeniedSpike
+        expr: sum by (rpc_id) (rate(armored_archer_admin_rpc_access_denied_total[5m])) > 5 / 60
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+          component: admin-gate
+        annotations:
+          summary: "Spike in admin RPC access denials"
+          description: "More than 5 admin-guard rejections per minute for 5 minutes on {{ $labels.rpc_id }}. Possible unauthorized admin-RPC probing or a broken ADMIN_USER_IDS deploy."
+          runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/AdminAccessDeniedSpike.md"
+
+      # Admin Allowlist Empty (issue #1141)
+      - alert: AdminAllowlistEmpty
+        expr: armored_archer_admin_allowlist_size == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+          component: admin-gate
+        annotations:
+          summary: "Admin allowlist is empty — every admin RPC rejects every caller"
+          description: "armored_archer_admin_allowlist_size is 0: ADMIN_USER_IDS is unset or blank, so the admin gate is fail-closed (ADR-0006). Set ADMIN_USER_IDS and restart; operators cannot use admin tooling until then."
+          runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/AdminAccessDeniedSpike.md"
+
 # Recording Rules - Pre-computed metrics for faster queries
   - name: armored_archer_recording
     interval: 60s

@@ -17,6 +17,7 @@ same time and add a row below.
 | [DatabaseDown.md](./DatabaseDown.md) | `DatabaseDown` | Critical | PostgreSQL unavailable |
 | [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `PaymentProcessingFailures` | Critical | IAP / RevenueCat failures detected |
 | [SuspiciousLoginActivity.md](./SuspiciousLoginActivity.md) | `SuspiciousLoginActivity` | Critical | Failed-login rate >10/min (possible brute force) |
+| [AdminAccessDeniedSpike.md](./AdminAccessDeniedSpike.md) | `AdminAllowlistEmpty` | Critical | Admin allowlist empty — every admin RPC rejects every caller |
 
 ### Warning Alerts
 
@@ -28,6 +29,7 @@ same time and add a row below.
 | [HighCPUUsage.md](./HighCPUUsage.md) | `HighCPUUsage` | Warning | CPU usage >80% for 5 minutes |
 | [DatabaseConnectionPoolExhausted.md](./DatabaseConnectionPoolExhausted.md) | `DatabaseConnectionPoolExhausted` | Warning | DB connection pool >90% |
 | [AntiCheatViolationSpike.md](./AntiCheatViolationSpike.md) | `AntiCheatViolationSpike` | Warning | Anti-cheat violations >5/min (possible new exploit) |
+| [AdminAccessDeniedSpike.md](./AdminAccessDeniedSpike.md) | `AdminAccessDeniedSpike` | Warning | Admin-guard rejections >5/min for 5m (probing or broken allowlist) |
 | [UnusualAPICallPattern.md](./UnusualAPICallPattern.md) | `UnusualAPICallPattern` | Warning | RPC request rate >1000/min (possible bots / DDoS) |
 | [MatchmakingQueueBuilding.md](./MatchmakingQueueBuilding.md) | `MatchmakingQueueBuilding` | Warning | Matchmaking queue >100 for 5 minutes |
 | [ActiveUsersAnomaly.md](./ActiveUsersAnomaly.md) | `ActiveUsersAnomaly` | Warning | Active users >50% drift vs 1h ago |

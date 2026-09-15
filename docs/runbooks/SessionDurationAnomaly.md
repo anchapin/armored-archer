@@ -52,11 +52,11 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Signal Source
 
 ```bash
-# Session observation lives in metrics.ts:572 (recordSessionDuration)
+# Session observation lives in metrics.ts:599 (recordSessionDuration)
 grep -n "recordSessionDuration\|playerSessionDuration\|armored_archer_player_session_duration_seconds" \
   backend/src/modules/metrics.ts | head -10
 
-# The recording rule reduces it to avg_session_duration in alerts.yml:248
+# The recording rule reduces it to avg_session_duration in alerts.yml:274
 # Confirm the recording rule is loaded
 curl -s 'http://prometheus:9090/api/v1/rules' | jq '.data.groups[].rules[] | select(.name | test("session"))'
 ```

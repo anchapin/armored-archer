@@ -18,6 +18,7 @@ import {
   withAdminGuard,
   resetAdminAllowlistCache,
   reloadAdminAllowlist,
+  setAdminGuardMetricsCallbacks,
 } from '../admin_auth';
 import {
   registerRpcAdminGetSeasonState,
@@ -26,7 +27,12 @@ import {
   registerRpcAdminTriggerSeasonEvent,
 } from '../season_admin';
 import { registerProgressiveRollout } from '../progressive_rollout';
-import { registerRpcMetrics } from '../metrics';
+import {
+  registerRpcMetrics,
+  getMetricsRegistry,
+  incrementAdminRpcAccessDenied,
+  setAdminAllowlistSize,
+} from '../metrics';
 import { registerRpcAdminQueryMatches } from '../matchmaker';
 import {
   registerRpcGetMatchReplay,
@@ -188,6 +194,13 @@ function createMockContext(userId: string): Runtime.Context {
     sessionExpiry: Date.now() + 3600000,
     ipAddress: '203.0.113.10',
   } as Runtime.Context;
+}
+
+/** Context with NO userId — the shape a server-key (http-key-less) call has. */
+function createMockContextNoUser(): Runtime.Context {
+  const ctx = createMockContext('ignored');
+  (ctx as { userId?: string }).userId = undefined;
+  return ctx;
 }
 
 function createMockNakama(): Runtime.Nakama {
@@ -477,6 +490,146 @@ describe('withAdminGuard', () => {
     expect(result.success).toBe(false);
     expect(result.error).toBe('Not authorized');
     expect(inner).not.toHaveBeenCalled();
+  });
+});
+
+// =================== Rejection metrics (issue #1141) ===================
+
+/**
+ * Samples for a named metric from the shared registry (prom-client v15:
+ * getMetricsAsJSON is async). Returns [] when the metric has no series yet.
+ */
+async function metricSamples(
+  name: string
+): Promise<Array<{ labels: Record<string, string>; value: number }>> {
+  const metrics = (await getMetricsRegistry().getMetricsAsJSON()) as Array<{
+    name: string;
+    values?: Array<{ labels: Record<string, string>; value: number }>;
+  }>;
+  const metric = metrics.find((m) => m.name === name);
+  return metric?.values ?? [];
+}
+
+/** Sum of all labeled samples of the rejection counter. */
+async function deniedTotal(rpcId?: string, reason?: string): Promise<number> {
+  const samples = await metricSamples('armored_archer_admin_rpc_access_denied_total');
+  return samples
+    .filter(
+      (s) =>
+        (rpcId === undefined || s.labels.rpc_id === rpcId) &&
+        (reason === undefined || s.labels.reason === reason)
+    )
+    .reduce((sum, s) => sum + s.value, 0);
+}
+
+/** Current value of the allowlist-size gauge (no labels; NaN if never set). */
+async function allowlistSize(): Promise<number> {
+  const samples = await metricSamples('armored_archer_admin_allowlist_size');
+  return samples.length > 0 ? samples[0].value : Number.NaN;
+}
+
+describe('admin guard rejection metrics (issue #1141)', () => {
+  let mockNk: Runtime.Nakama;
+  let mockLogger: Runtime.Logger;
+
+  beforeEach(() => {
+    mockNk = createMockNakama();
+    mockLogger = createMockLogger();
+    setAdminUserIds(undefined);
+  });
+
+  it('increments the counter with reason=caller_not_in_admin_allowlist on rejection', async () => {
+    setAdminUserIds(ADMIN_ID); // allowlist exists, but the caller is not on it
+    const before = await deniedTotal('armored_archer/test_rpc', 'caller_not_in_admin_allowlist');
+
+    const guarded = withAdminGuard('armored_archer/test_rpc', jest.fn());
+    await guarded(createMockContext(PLAYER_ID), mockLogger, mockNk, '{}');
+
+    const after = await deniedTotal('armored_archer/test_rpc', 'caller_not_in_admin_allowlist');
+    expect(after - before).toBe(1);
+  });
+
+  it('increments the counter with reason=caller_id_missing for userId-less (server-key) calls', async () => {
+    setAdminUserIds(ADMIN_ID);
+    const before = await deniedTotal('armored_archer/test_rpc', 'caller_id_missing');
+
+    const guarded = withAdminGuard('armored_archer/test_rpc', jest.fn());
+    const result = JSON.parse(
+      (await guarded(createMockContextNoUser(), mockLogger, mockNk, '{}')) as string
+    );
+
+    expect(result.success).toBe(false);
+    const after = await deniedTotal('armored_archer/test_rpc', 'caller_id_missing');
+    expect(after - before).toBe(1);
+  });
+
+  it('records the same reason in the audit entry details as in the counter label', async () => {
+    setAdminUserIds(ADMIN_ID);
+    const guarded = withAdminGuard('armored_archer/test_rpc', jest.fn());
+    await guarded(createMockContextNoUser(), mockLogger, mockNk, '{}');
+
+    const writes = (mockNk.storageWrite as jest.Mock).mock.calls.flatMap(
+      (call: unknown[]) => (call[0] as Array<{ collection: string; value: string }>) ?? []
+    );
+    const entry = writes
+      .filter((w) => w.collection === 'audit_logs')
+      .map((w) => JSON.parse(w.value))
+      .find((e: { action: string }) => e.action === 'admin_rpc_access_denied');
+    expect(entry.details.reason).toBe('caller_id_missing');
+  });
+
+  it('does not increment the counter for an allowlisted admin', async () => {
+    setAdminUserIds(ADMIN_ID);
+    const beforeAll = await deniedTotal();
+
+    const inner = jest.fn(() => JSON.stringify({ success: true }));
+    const guarded = withAdminGuard('armored_archer/test_rpc', inner);
+    await guarded(createMockContext(ADMIN_ID), mockLogger, mockNk, '{}');
+
+    expect(await deniedTotal()).toBe(beforeAll);
+  });
+
+  it('still rejects (and does not throw) when the metric sink itself fails', async () => {
+    // Rewire the sink to a throwing function — the guard must swallow it,
+    // exactly like a broken audit sink (fail-closed, never an availability issue).
+    setAdminGuardMetricsCallbacks(
+      () => {
+        throw new Error('registry unavailable');
+      },
+      () => {
+        throw new Error('registry unavailable');
+      }
+    );
+    try {
+      const inner = jest.fn();
+      const guarded = withAdminGuard('armored_archer/test_rpc', inner);
+
+      const result = JSON.parse(
+        (await guarded(createMockContext(PLAYER_ID), mockLogger, mockNk, '{}')) as string
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Not authorized');
+      expect(inner).not.toHaveBeenCalled();
+    } finally {
+      // Restore the real sink wiring done by metrics.ts at import time.
+      setAdminGuardMetricsCallbacks(
+        incrementAdminRpcAccessDenied,
+        setAdminAllowlistSize
+      );
+    }
+  });
+
+  it('sets the allowlist-size gauge when the allowlist resolves, including 0', async () => {
+    setAdminUserIds(ADMIN_ID);
+    const guarded = withAdminGuard('armored_archer/test_rpc', jest.fn());
+    await guarded(createMockContext(ADMIN_ID), mockLogger, mockNk, '{}'); // forces resolution
+    expect(await allowlistSize()).toBe(1);
+
+    setAdminUserIds(undefined);
+    const guardedReject = withAdminGuard('armored_archer/test_rpc', jest.fn());
+    await guardedReject(createMockContext(ADMIN_ID), mockLogger, mockNk, '{}'); // re-resolves as empty
+    expect(await allowlistSize()).toBe(0);
   });
 });
 
