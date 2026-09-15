@@ -110,6 +110,14 @@ Emitted by the RevenueCat webhook RPC and its durable event ledger (issue #1067)
 | `armored_archer_webhook_redis_errors_total` | Counter | Redis failures on the dedup fast path; label `operation` (`dedup_lookup` / `outcome_record`) |
 | `armored_archer_webhook_configured` | Gauge | 1 = `REVENUECAT_WEBHOOK_SECRET` set; 0 = RPC fail-closed (liveness probe for `WebhookNotConfigured`, set at startup and per call) |
 
+### PvP Settlement Outcome Metrics (issue #1143)
+
+PromQL view of the `complete_match` settlement audit channels (ADR-0002 server-declared settlement, issue #1078 exactly-once claim-then-apply pipeline); alert runbook: [SettlementDegraded](../docs/runbooks/SettlementDegraded.md). Grafana: *Overview* dashboard, "PvP Settlement" row.
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `armored_archer_settlement_outcomes_total` | Counter | PvP settlements by terminal outcome; label `result` (`success` — all effects applied / draw settled cleanly; `degraded` — post-claim effects threw, match stays settled, partial grants need reconciliation, audit channel `settlement_degraded`; `claim_failed` — versioned settled-marker write failed, nothing applied, retry-safe, audit channel `settlement_claim_failed`; `persist_failed` — draw-settlement persist threw, nothing applied, error propagates). Idempotent replays and lost claim races emit nothing |
+
 ## Metrics Implementation
 
 ### Source Files

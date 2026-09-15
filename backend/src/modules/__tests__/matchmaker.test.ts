@@ -60,6 +60,16 @@ import {
   applyRankDecay,
 } from '../season_system';
 import { logAudit } from '../audit';
+import { recordSettlementOutcome } from '../metrics';
+
+// Keep the real metrics module but intercept the settlement-outcome counter
+// (issue #1143). A jest.mock factory (not jest.spyOn on the exports object)
+// is required: matchmaker's compiled import binds through its own
+// __importStar copy, so only the module-registry entry is shared.
+jest.mock('../metrics', () => ({
+  ...jest.requireActual('../metrics'),
+  recordSettlementOutcome: jest.fn(),
+}));
 
 describe('matchmaker', () => {
   let mockLogger: any;
@@ -857,6 +867,9 @@ describe('matchmaker', () => {
       expect(parsed.loser.user_id).toBe('opponent-user');
       expect(parsed.end_reason).toBe('health_zero');
       expect(mockNk.storageWrite).toHaveBeenCalled();
+
+      // Fully-applied settlement increments the success outcome (issue #1143).
+      expect(recordSettlementOutcome).toHaveBeenCalledWith('success');
     });
 
     it('should settle server truth when client-asserted winner disagrees with state', () => {
@@ -1152,6 +1165,9 @@ describe('matchmaker', () => {
           'failure',
           'settlement_claim_failed'
         );
+
+        // The claim failure also increments its counter outcome (issue #1143).
+        expect(recordSettlementOutcome).toHaveBeenCalledWith('claim_failed');
       });
 
       it('stays settled-but-degraded and audits when reward application throws after the claim', () => {
@@ -1208,6 +1224,9 @@ describe('matchmaker', () => {
           'failure',
           'settlement_degraded'
         );
+
+        // The degradation also increments its counter outcome (issue #1143).
+        expect(recordSettlementOutcome).toHaveBeenCalledWith('degraded');
       });
     });
 
@@ -1478,6 +1497,33 @@ describe('matchmaker', () => {
       expect(parsed.is_draw).toBe(true);
       expect(parsed.end_reason).toBe('draw');
       expect(applyEloUpdates).not.toHaveBeenCalled();
+
+      // A cleanly settled draw counts as a successful settlement (issue #1143).
+      expect(recordSettlementOutcome).toHaveBeenCalledWith('success');
+    });
+
+    it('records persist_failed and rethrows when the draw persist throws', () => {
+      const match = createActiveMatch({
+        current_turn: 10,
+        max_turns: 10,
+        creator_health: 50,
+        opponent_health: 50,
+      });
+      installStatefulStorage(match);
+      mockNk.storageWrite = jest.fn(() => {
+        throw new Error('storage backend unavailable');
+      });
+
+      const payload = JSON.stringify({ match_id: match.match_id });
+
+      // The persist failure propagates to the caller (nothing was applied).
+      expect(() => rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload)).toThrow(
+        'storage backend unavailable'
+      );
+
+      // ...but the failure mode is still counted for the PromQL view (#1143).
+      expect(recordSettlementOutcome).toHaveBeenCalledWith('persist_failed');
+      expect(recordSettlementOutcome).not.toHaveBeenCalledWith('claim_failed');
     });
 
     it('should settle a max-turns winner by remaining health', () => {

@@ -52,7 +52,7 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Signal Source
 
 ```bash
-# Session observation lives in metrics.ts:599 (recordSessionDuration)
+# Session observation lives in metrics.ts:612 (recordSessionDuration)
 grep -n "recordSessionDuration\|playerSessionDuration\|armored_archer_player_session_duration_seconds" \
   backend/src/modules/metrics.ts | head -10
 

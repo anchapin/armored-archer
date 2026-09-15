@@ -21,7 +21,11 @@ import {
   type RankingDeltaEvent,
   type PunchUpLossEvent,
 } from './fairness_telemetry';
-import { incrementPunchUpLoss, incrementPunchUpWatchFlag } from './metrics';
+import {
+  incrementPunchUpLoss,
+  incrementPunchUpWatchFlag,
+  recordSettlementOutcome,
+} from './metrics';
 import { recordPunchUpLossAndEvaluate } from './punchup_watch';
 import {
   checkRateLimit,
@@ -1553,14 +1557,21 @@ function settleDrawMatch(
   match.settled_at = now;
   match.end_reason = 'draw';
 
-  nk.storageWrite([
-    {
-      collection: 'pvp_matches',
-      key: match.match_id,
-      userId: match.creator_id,
-      value: JSON.stringify(match),
-    },
-  ]);
+  try {
+    nk.storageWrite([
+      {
+        collection: 'pvp_matches',
+        key: match.match_id,
+        userId: match.creator_id,
+        value: JSON.stringify(match),
+      },
+    ]);
+  } catch (persistError) {
+    // PromQL view of the draw persist failure (issue #1143). Nothing was
+    // applied; the error still propagates so the caller sees the failure.
+    recordSettlementOutcome('persist_failed');
+    throw persistError;
+  }
 
   logAudit(
     nk,
@@ -1573,6 +1584,8 @@ function settleDrawMatch(
   );
 
   logger.info('Match settled as draw: %s', match.match_id);
+
+  recordSettlementOutcome('success');
 
   return JSON.stringify({
     success: true,
@@ -2059,6 +2072,8 @@ function claimSettlementMarker(
       'failure',
       'settlement_claim_failed'
     );
+    // PromQL view of the settlement_claim_failed channel (issue #1143).
+    recordSettlementOutcome('claim_failed');
     return {
       status: 'failed',
       response: JSON.stringify({
@@ -2317,6 +2332,9 @@ function applySettlementOutcome(
     );
   }
 
+  // PromQL view of the settlement success path (issue #1143).
+  recordSettlementOutcome('success');
+
   return JSON.stringify({
     success: true,
     match: match,
@@ -2435,6 +2453,8 @@ function processMatchResult(
       'failure',
       'settlement_degraded'
     );
+    // PromQL view of the settlement_degraded channel (issue #1143).
+    recordSettlementOutcome('degraded');
     return JSON.stringify({
       success: true,
       degraded: true,

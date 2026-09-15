@@ -392,7 +392,7 @@ inhibit_rules:
   - source_match:
       alertname: 'GameServerDown'
     target_match_re:
-      alertname: 'HighLatency|HighMemoryUsage|HighCPUUsage|DatabaseConnectionPoolExhausted'
+      alertname: 'HighLatency|HighMemoryUsage|HighCPUUsage|DatabaseConnectionPoolExhausted|SettlementClaimFailed'
     equal: ['environment', 'service']
 
   # Suppress database connection alerts when database is down

@@ -26,8 +26,8 @@ Both alerts live in the security group of the alert rules (alerts.yml:240 and al
 
 ## 🔗 Signal Chain (where the numbers come from)
 
-1. The gate wrapper (`withAdminGuard`) rejects the call and computes the rejection reason: admin_auth.ts:292
-2. The reason label distinguishes a merely-non-allowlisted caller from one with no user id at all (`AdminAccessDeniedReason`): admin_auth.ts:304
+1. The gate wrapper (`withAdminGuard`) rejects the call and computes the rejection reason: admin_auth.ts:297
+2. The reason label distinguishes a merely-non-allowlisted caller from one with no user id at all (`AdminAccessDeniedReason`): admin_auth.ts:309
 3. The rejection counter is incremented through the injected metric sink: admin_auth.ts:323
 4. The counter and gauge are declared on the shared Prometheus registry: metrics.ts:360 and metrics.ts:369
 5. The sinks are wired from the metrics module at load time (dependency injection, no import cycle): metrics.ts:383
