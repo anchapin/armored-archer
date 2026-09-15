@@ -6,7 +6,9 @@ extends GutTest
 ## fire/ice/lightning spawns, damage popups, and arrow trails through the
 ## ObjectPool autoload, and that CombatJuiceManager.trigger_combat_juice()
 ## dispatches its typed EffectType enum (String→EffectType fix, issue
-## #1056) to the pooled popup path.
+## #1056) to the pooled popup path. Issue #1136 adds coverage for the
+## charge_effect paths (play_charge_effect and the power-up pickup/attach
+## VFX) routed through the charge pool.
 ##
 ## Uses the registered /root/VFXManager and /root/ObjectPool autoloads on
 ## purpose: the routing under test resolves the pool via /root lookups, so
@@ -174,6 +176,133 @@ func test_spawn_arrow_trail_routes_through_pool() -> void:
 	)
 	# The return path does not reparent; keep the shared autoload consistent.
 	trail.reparent(_pool)
+
+
+# --- Charge effect routing (issue #1136) ---
+
+
+# play_charge_effect() must acquire its looping particle from the charge
+# pool and attach it to the requested parent; the caller releases it via
+# ObjectPool.return_charge_effect() (mirrors the arrow-trail contract).
+func test_play_charge_effect_routes_through_pool() -> void:
+	if not _require_autoloads():
+		return
+	var parent: Node2D = Node2D.new()
+	add_child_autofree(parent)
+	var before: int = _acquires("charge")
+	_vfx.play_charge_effect(Vector2(15.0, 15.0), parent)
+	assert_eq(
+		_acquires("charge") - before, 1,
+		"play_charge_effect() must acquire exactly one particle from the pool"
+	)
+	var effect: GPUParticles2D = (_pool._active_charge_effects as Array).back()
+	assert_eq(
+		effect.get_parent(), parent,
+		"charge particle must be attached to the requested parent"
+	)
+	assert_true(
+		effect.emitting, "charge particle must be emitting while attached"
+	)
+
+	# Caller-driven release contract: return puts it back in the pool.
+	_pool.return_charge_effect(effect)
+	assert_true(
+		(_pool._charge_effect_pool as Array).has(effect),
+		"charge particle must return to its pool on release"
+	)
+	# The direct return path does not reparent; keep the shared autoload
+	# consistent.
+	effect.reparent(_pool)
+
+
+# spawn_power_up_pickup_vfx() must acquire its burst from the charge pool,
+# parent it into the current scene, and auto-return it via the burst tween
+# instead of queue_free'ing it (issue #1136).
+func test_power_up_pickup_vfx_routes_through_pool_and_auto_returns() -> void:
+	if not _require_autoloads():
+		return
+	var before: int = _acquires("charge")
+	_vfx.spawn_power_up_pickup_vfx(Vector2(50.0, 50.0), "speed")
+	assert_eq(
+		_acquires("charge") - before, 1,
+		"spawn_power_up_pickup_vfx() must acquire one particle from the pool"
+	)
+	var effect: GPUParticles2D = (_pool._active_charge_effects as Array).back()
+	assert_eq(
+		effect.get_parent(), _stage,
+		"pickup burst must be parented into the current scene"
+	)
+	assert_true(effect.emitting, "pickup burst must be emitting after spawn")
+	assert_eq(
+		effect.modulate, Color(0.3, 1.0, 0.5, 0.7),
+		"pickup burst must use the power-up type color"
+	)
+
+	# Burst tween (0.3s scale + 0.5s fade) must return it to the pool.
+	await wait_seconds(1.0)
+	assert_true(
+		is_instance_valid(effect),
+		"pickup burst must never be queue_free'd (issue #1136)"
+	)
+	assert_true(
+		(_pool._charge_effect_pool as Array).has(effect),
+		"pickup burst must auto-return to the pool when the burst tween ends"
+	)
+	assert_eq(
+		effect.get_parent(), _pool,
+		"returned charge particle must be reparented under ObjectPool"
+	)
+	assert_eq(
+		effect.modulate, Color(1, 1, 1, 1),
+		"return must restore the authored modulate for the next acquire"
+	)
+	assert_eq(
+		effect.scale, Vector2.ONE,
+		"return must restore the authored scale for the next acquire"
+	)
+
+
+# attach/detach_power_up_vfx() must round-trip the looping particle through
+# the charge pool instead of instantiate()/queue_free (issue #1136).
+func test_power_up_attach_detach_round_trip_through_pool() -> void:
+	if not _require_autoloads():
+		return
+	var target: Node2D = Node2D.new()
+	add_child_autofree(target)
+	var before: int = _acquires("charge")
+	_vfx.attach_power_up_vfx(target, "damage")
+	assert_eq(
+		_acquires("charge") - before, 1,
+		"attach_power_up_vfx() must acquire one particle from the pool"
+	)
+	var effect: GPUParticles2D = \
+		target.get_node_or_null("PowerUpVFX") as GPUParticles2D
+	assert_not_null(effect, "attached particle must be named PowerUpVFX")
+	assert_true(effect.emitting, "attached particle must be emitting")
+	assert_false(effect.one_shot, "attached particle must loop")
+	assert_true(
+		(_pool._active_charge_effects as Array).has(effect),
+		"attached particle must be tracked as active"
+	)
+
+	_vfx.detach_power_up_vfx(target)
+	await wait_seconds(0.5)
+	assert_true(
+		is_instance_valid(effect),
+		"detached particle must never be queue_free'd (issue #1136)"
+	)
+	assert_true(
+		(_pool._charge_effect_pool as Array).has(effect),
+		"detach fade must return the particle to the pool"
+	)
+	assert_eq(
+		effect.get_parent(), _pool,
+		"detached particle must be reparented under ObjectPool"
+	)
+	assert_eq(
+		effect.modulate, Color(1, 1, 1, 1),
+		"return must restore the authored modulate for the next acquire"
+	)
 
 
 # --- CombatJuiceManager routing ---

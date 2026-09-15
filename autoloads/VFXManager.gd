@@ -111,11 +111,26 @@ func play_lightning_effect(global_position: Vector2) -> void:
 
 func play_charge_effect(global_position: Vector2, parent: Node) -> void:
 	"""Play charging effect - attached to a parent node for continuous effects.
-	Charge effects are long-lived so they aren't pooled (they follow the parent)."""
-	if _charge_effect:
-		var effect: GPUParticles2D = _charge_effect.instantiate()
+
+	Issue #1136: charge effects now come from ObjectPool (prewarm and
+	device-tier budgeting apply). The effect loops while parented; the caller
+	is responsible for releasing it via ObjectPool.return_charge_effect()
+	when the charge ends (mirrors the arrow-trail contract).
+	"""
+	if not parent:
+		push_warning("VFXManager: Charge effect parent not provided")
+		return
+	if not _charge_effect:
+		return
+
+	var effect: GPUParticles2D = ObjectPool.get_charge_effect()
+	# Prewarmed charge particles are parented under ObjectPool; reparent into
+	# the requested parent (mirrors the pooled arrow-trail pattern).
+	if effect.get_parent() == null:
 		parent.add_child(effect)
-		effect.global_position = global_position
+	else:
+		effect.reparent(parent)
+	effect.global_position = global_position
 
 
 func play_death_effect(global_position: Vector2) -> void:
@@ -149,8 +164,9 @@ func spawn_arrow_trail(parent: Node) -> GPUParticles2D:
 
 ## Acquire the matching particle from ObjectPool and auto-release it back
 ## when the GPUParticles2D `finished` signal fires (one-shot effects end here).
-## Charge effects are handled separately (play_charge_effect) since they loop
-## while attached to a parent.
+## Charge effects use get_charge_effect() directly (issue #1136) since they
+## loop while attached to a parent — see play_charge_effect,
+## spawn_power_up_pickup_vfx, and attach_power_up_vfx.
 func _spawn_pooled_particle(effect_type: String, global_position: Vector2) -> void:
 	var current_scene := get_tree().current_scene
 	if current_scene == null:
@@ -434,23 +450,42 @@ func _exit_tree() -> void:
 ##   position: Vector2 where to spawn the effect
 ##   power_up_type: String ("speed", "damage", "invincibility", "health")
 func spawn_power_up_pickup_vfx(position: Vector2, power_up_type: String = "speed") -> void:
-	"""Spawn a one-time particle effect when power-up is collected."""
+	"""Spawn a one-time particle effect when power-up is collected.
+
+	Issue #1136: the burst particle comes from ObjectPool.get_charge_effect()
+	and auto-returns to the pool when the burst tween finishes (previously a
+	fresh instantiate() + queue_free per pickup). The charge scene loops, so
+	`finished` never fires; the tween is the deterministic return path
+	(mirrors the damage-popup safety-net tween).
+	"""
 	if not _charge_effect:
 		return
 
-	var effect: GPUParticles2D = _charge_effect.instantiate()
-	get_tree().current_scene.add_child(effect)
+	var pool := get_node_or_null("/root/ObjectPool")
+	var current_scene := get_tree().current_scene
+	if pool == null or current_scene == null:
+		push_warning("VFXManager: ObjectPool/current scene missing; pickup VFX skipped")
+		return
+
+	var effect: GPUParticles2D = pool.get_charge_effect()
+	if effect == null:
+		push_warning("VFXManager: ObjectPool returned null charge effect")
+		return
+
+	if effect.get_parent() == null:
+		current_scene.add_child(effect)
+	elif effect.get_parent() != current_scene:
+		effect.reparent(current_scene)
+
 	effect.global_position = position
 	effect.emitting = true
 	effect.modulate = _get_power_up_vfx_color(power_up_type)
 
-	# Auto-cleanup
-	effect.finished.connect(effect.queue_free)
-
-	# Add initial burst scale
+	# Add initial burst scale, fade out, then return the particle to the pool.
 	var tween = _make_tween()
 	tween.tween_property(effect, "scale", Vector2(1.5, 1.5), 0.3).set_trans(Tween.TRANS_BACK)
 	tween.tween_property(effect, "modulate:a", 0.0, 0.5)
+	tween.tween_callback(func() -> void: _return_charge_effect(effect))
 
 ## Attach a looping power-up VFX to a target node
 ##
@@ -458,20 +493,40 @@ func spawn_power_up_pickup_vfx(position: Vector2, power_up_type: String = "speed
 ##   target: Node to attach effect to
 ##   power_up_type: String ("speed", "damage", "invincibility", "health")
 func attach_power_up_vfx(target: Node, power_up_type: String = "speed") -> void:
-	"""Attach a looping particle effect to a node for active power-up."""
+	"""Attach a looping particle effect to a node for active power-up.
+
+	Issue #1136: the looping particle comes from ObjectPool and is released
+	back to the pool by detach_power_up_vfx() (previously a fresh
+	instantiate() per activation with queue_free on detach).
+	"""
 	if not target or not _charge_effect:
 		return
 
-	# Create effect as child of target
-	var effect: GPUParticles2D = _charge_effect.instantiate()
-	target.add_child(effect)
+	var pool := get_node_or_null("/root/ObjectPool")
+	if pool == null:
+		push_warning("VFXManager: ObjectPool autoload missing; power-up VFX skipped")
+		return
+
+	var effect: GPUParticles2D = pool.get_charge_effect()
+	if effect == null:
+		push_warning("VFXManager: ObjectPool returned null charge effect")
+		return
+
+	# Prewarmed charge particles are parented under ObjectPool; reparent into
+	# the target (mirrors the pooled arrow-trail pattern).
+	if effect.get_parent() == null:
+		target.add_child(effect)
+	else:
+		effect.reparent(target)
 	effect.name = "PowerUpVFX"
 	effect.emitting = true
 	effect.modulate = _get_power_up_vfx_color(power_up_type)
 	effect.one_shot = false
 
-	# Add subtle pulsing animation
+	# Add subtle pulsing animation; tracked via meta so the pool return can
+	# kill it (the tween is tree-bound, not node-bound).
 	var tween = _make_tween()
+	effect.set_meta("vfx_pulse_tween", tween)
 	tween.set_loops()
 	tween.tween_property(effect, "scale", Vector2(1.2, 1.2), 0.5).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(effect, "scale", Vector2(0.8, 0.8), 0.5).set_trans(Tween.TRANS_SINE)
@@ -482,15 +537,54 @@ func attach_power_up_vfx(target: Node, power_up_type: String = "speed") -> void:
 ##   target: Node the effect is attached to
 ##   power_up_type: String type of power-up (unused but kept for consistency)
 func detach_power_up_vfx(target: Node, power_up_type: String = "speed") -> void:
-	"""Remove looping power-up VFX from a target node."""
+	"""Remove looping power-up VFX from a target node, returning it to the pool."""
 	if not target:
 		return
 
-	var effect = target.get_node_or_null("PowerUpVFX")
+	var effect: GPUParticles2D = target.get_node_or_null("PowerUpVFX") as GPUParticles2D
 	if effect:
+		# Kill any prior fade tween so a repeated detach can't double-return.
+		if effect.has_meta("vfx_fade_tween"):
+			var prior: Tween = effect.get_meta("vfx_fade_tween")
+			if prior != null and prior.is_valid():
+				prior.kill()
 		var tween = _make_tween()
+		effect.set_meta("vfx_fade_tween", tween)
 		tween.tween_property(effect, "modulate:a", 0.0, 0.3)
-		tween.tween_callback(effect.queue_free)
+		tween.tween_callback(func() -> void: _return_charge_effect(effect))
+
+
+## Return a charge effect to its ObjectPool (issue #1136), restoring the
+## authored visual state (per-use tweens mutate modulate/scale) so the next
+## acquire starts from a clean slate.
+func _return_charge_effect(effect: GPUParticles2D) -> void:
+	if not is_instance_valid(effect):
+		return
+	var pool := get_node_or_null("/root/ObjectPool")
+	if pool == null:
+		return
+	# Idempotency: a second return for an already-pooled particle is a no-op.
+	if effect.get_parent() == pool:
+		return
+
+	# Stop the looping pulse tween so the pooled particle stops animating.
+	if effect.has_meta("vfx_pulse_tween"):
+		var pulse: Tween = effect.get_meta("vfx_pulse_tween")
+		if pulse != null and pulse.is_valid():
+			pulse.kill()
+
+	# Restore authored state for the next acquire (tweened per use).
+	effect.modulate = Color(1, 1, 1, 1)
+	effect.scale = Vector2.ONE
+
+	# Reparent back under ObjectPool (no-op if already there).
+	if effect.get_parent() != pool:
+		if effect.get_parent() != null:
+			effect.reparent(pool)
+		else:
+			pool.add_child(effect)
+
+	ObjectPool.return_charge_effect(effect)
 
 ## Get VFX color for power-up type
 func _get_power_up_vfx_color(power_up_type: String) -> Color:
