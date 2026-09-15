@@ -43,11 +43,13 @@ func before_all() -> void:
 # --- Helpers ---
 
 # Create a fresh ObjectPool instance (ISO-04 fresh-instance isolation).
-# _ready() -> _initialize_pools() runs synchronously on add_child, so the
-# pools are prewarmed as soon as this returns.
+# Issue #1110 moved pool construction out of _ready() into prewarm_pools()
+# (wired from GameManager.start_game()), so prewarm explicitly here — the
+# pools are then filled as soon as this returns, as before.
 func _make_pool() -> Node:
 	var pool: Node = _object_pool_script.new()
 	add_child_autofree(pool)
+	pool.prewarm_pools()
 	return pool
 
 
