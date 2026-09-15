@@ -54,7 +54,7 @@ If the hook blocks you unexpectedly, read its error: the script it invokes is `s
 
 When hosted CI is unavailable (billing outage — see [docs/ci/ci-billing-recovery.md](docs/ci/ci-billing-recovery.md)) and you're running the [`act`](https://nektosact.com/) matrix locally:
 
-- **Run `make ci` and `./scripts/local-godot-tests.sh` sequentially, never in parallel.** Concurrent act + headless-Godot suites OOM-kill `backend-typecheck` (exitcode `137`, zero compiler output). Tune via `ACT_MIN_FREE_MB` (default 2048) and `ACT_MEM_WAIT_SECS` (default 60) — see [`scripts/ci-local.sh`](scripts/ci-local.sh).
+- **Run `make ci` and `./scripts/local-godot-tests.sh` sequentially, never in parallel.** Concurrent act + headless-Godot suites OOM-kill `backend-typecheck` (exitcode `137`, zero compiler output). Tune via `ACT_MIN_FREE_MB` (default 2048) and `ACT_MEM_WAIT_SECS` (default 120) — see [`scripts/ci-local.sh`](scripts/ci-local.sh).
 - **All `act` invocations route through `scripts/lib/act-lock.sh`** (`ci-local.sh`, `run-ci-locally.sh`, `act-cleanup.sh`) to serialize `~/.cache/act` git-clone work. Don't invoke `act` outside the wrappers (issues #992/#1028).
 - **Never disable required status checks.** Re-rerun the failing job in isolation before debugging.
 

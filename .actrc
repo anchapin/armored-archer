@@ -27,7 +27,8 @@
 #   do NOT resolve.
 # - Every DB-dependent CI job now publishes a UNIQUE host port — ci.yml
 #   backend-test 5432, sonarcloud 5434, coverage-threshold.yml 5435,
-#   test.yml backend-tests 5436, ci.yml schema-validation 5437 — none of which
+#   test.yml backend-tests 5436, ci.yml schema-validation 5437, ci.yml
+#   backend-integration-test 5438 (plus nakama 7352/7353) — none of which
 #   collide with the local dev stack (postgres 5433, nakama 7349-7351), so
 #   different jobs can run in parallel act processes.
 # - The SAME job still cannot run in two act processes at once: act derives
@@ -50,7 +51,9 @@
 #   exitcode '137' with no error output. Run the act matrix and native Godot
 #   suites sequentially, never concurrently.
 # - scripts/ci-local.sh warns/waits before each act job when available memory
-#   is low (ACT_MIN_FREE_MB, default 2048; ACT_MEM_WAIT_SECS, default 60).
+#   is low (ACT_MIN_FREE_MB, default 2048; ACT_MEM_WAIT_SECS, default 120 —
+#   raised from 60 in issue #1142; service-container jobs wait
+#   ACT_SERVICE_MEM_WAIT_SECS, default 300).
 #
 # For optimized local CI (sequential/parallel job orchestration):
 #   - make ci (sequential)
