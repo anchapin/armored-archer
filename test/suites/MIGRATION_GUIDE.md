@@ -209,16 +209,41 @@ func test_gain_xp_increases_level():
 
 ## Running Migrated Tests
 
+GUT is wired into CI (`coverage.yml`) and the local wrapper (issue #1082):
+
 ```bash
-# Run all tests
-godot4 --headless --script res://test/run_all_tests.gd
+# One-time on fresh checkouts/worktrees: register class_names (issue #991)
+godot4 --headless --quit --import
 
-# Run specific suite
-godot4 --headless --script res://test/run_all_tests.gd -dselect=suites/player
+# Full GUT suite — loads res://.gutconfig.json (dirs=test/suites,
+# include_subdirs, JUnit output to test/results/gut-results.xml)
+godot4 --headless -s addons/gut/gut_cmdln.gd -gexit
 
-# Run specific test
-godot4 --headless --script res://test/run_all_tests.gd -dselect=suites/player -dunit_test=test_player_stats_manager
+# Via the local wrapper (also included in --all)
+./scripts/local-godot-tests.sh --gut
+
+# Scope to one directory (e.g. the visual suites)
+godot4 --headless -s addons/gut/gut_cmdln.gd \
+  -gdir=res://test/suites/visual -ginclude_subdirs -gexit
+
+# Select a single suite by filename substring
+godot4 --headless -s addons/gut/gut_cmdln.gd \
+  -gdir=res://test/suites/visual -gselect=test_theme_consistency.gd -gexit
 ```
+
+CI gates the suite on the failure baseline in `data/gut-baseline.json`
+(`scripts/gut_baseline_gate.py`): the run fails only on NEW failures, so the
+pre-existing baseline (issue #894 triage) doesn't block every PR. Ratchet the
+baseline down as suites are fixed.
+
+The legacy runner remains available for the suites not yet migrated:
+
+```bash
+godot4 --headless --script res://test/run_all_tests.gd
+```
+
+It has no single-test filter — `run_all_tests.gd` hardcodes its file list and
+ignores CLI args; trim it temporarily to run a subset.
 
 ## Next Steps
 

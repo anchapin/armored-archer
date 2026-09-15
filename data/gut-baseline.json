@@ -1,0 +1,10 @@
+{
+  "recorded": "2026-09-15",
+  "godot": "4.6.1.stable.official.14d19694e",
+  "source": "issue #1082 wiring (baseline measured with: godot4 --headless -s addons/gut/gut_cmdln.gd -gexit)",
+  "tests": 538,
+  "passing": 449,
+  "failing": 49,
+  "risky_pending": 54,
+  "note": "Ratchet ceiling for the GUT CI gate (scripts/gut_baseline_gate.py). The GUT suite carries pre-existing failures triaged in issue #894; CI fails only on NEW failures. Ratchet failing DOWN as per-suite fix PRs land — never raise it without team sign-off. Counts are the 'Tests/Passing Tests/Failing Tests/Risky-Pending' summary lines from the GUT log; recorded against a dev machine with the local Nakama stack up, so first live CI run may need a one-time recount (docs/testing/GUT_TRIAGE_2026-08-17.md has the reproduction commands)."
+}
