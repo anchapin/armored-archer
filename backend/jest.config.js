@@ -213,15 +213,13 @@ module.exports = {
       lines: 58,
       statements: 59
     },
-    // Ramp plan #1176 (combat-critical, sub-50): PvP weapon balance sits at
-    // ~46-47% actual coverage. This is the sharpest v4 risk called out in
-    // issue #1071; thresholds are ratcheted to actual until the dedicated
-    // coverage work lands. Target: 80/80/80/80 by 2026-09-15.
+    // #1071 follow-up resolved: the #1176 coverage ramp landed and this
+    // module now sits at the standard 80% gate.
     './src/modules/weapon_balance.ts': {
-      branches: 46,
-      functions: 46,
-      lines: 47,
-      statements: 47
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     },
   },
   transform: {
