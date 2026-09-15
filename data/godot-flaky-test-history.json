@@ -1,1 +1,28 @@
-{}
+{
+  "test_modular_character_sprite.gd (suite-level, order-dependent)": {
+    "test_name": "test_modular_character_sprite.gd (suite-level, order-dependent)",
+    "runs": 3,
+    "failures": 1,
+    "failure_rate": 0.3333333333333333,
+    "history": [
+      {
+        "timestamp": "2026-08-18T00:00:00Z",
+        "success": true,
+        "duration_ms": 0,
+        "error": null
+      },
+      {
+        "timestamp": "2026-08-18T00:00:00Z",
+        "success": false,
+        "duration_ms": 0,
+        "error": "Failed: 3 — order-dependent flake observed during #1023/PR #1051 triple verification (issue #1064); suite coupled to live GearManager/GearRegistry autoload state via GearSlot._ready()"
+      },
+      {
+        "timestamp": "2026-08-18T00:00:00Z",
+        "success": true,
+        "duration_ms": 0,
+        "error": null
+      }
+    ]
+  }
+}
