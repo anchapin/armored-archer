@@ -11,6 +11,7 @@
  */
 import { createHmac } from 'crypto';
 import { rpcRevenueCatWebhook, processRefund, RefundReason, clearWebhookEventLedgersForTests } from '../store';
+import { getMetricsRegistry } from '../metrics';
 import { createMockLogger, createMockNakama } from '../../__mocks__/nakama';
 import { Runtime } from '../../types/nakama';
 import { getRedisClient } from '../../utils/redis';
@@ -833,6 +834,256 @@ describe('rpcRevenueCatWebhook', () => {
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
       expect(parsed.message).toBe('Event UNKNOWN_EVENT noted but not processed');
+    });
+  });
+
+  // =================== Webhook ledger observability (issue #1140) ===================
+  //
+  // Unlike metrics.test.ts (prom-client mocked), this file exercises the
+  // ledger code paths against the REAL shared registry that store.ts now
+  // imports, so counter/gauge/histogram emissions are asserted directly.
+  // Registry state persists across tests, so every assertion is a
+  // before/after delta — the same approach as admin_auth.test.ts (issue #1141).
+  describe('Webhook ledger observability (issue #1140)', () => {
+    type Sample = { labels: Record<string, string>; value: number };
+
+    /** Samples a metric from the shared prom-client registry (v15: async). */
+    async function metricSamples(name: string): Promise<Sample[]> {
+      const metrics = (await getMetricsRegistry().getMetricsAsJSON()) as Array<{
+        name: string;
+        values?: Sample[];
+      }>;
+      const metric = metrics.find((m) => m.name === name);
+      return metric?.values ?? [];
+    }
+
+    /** Summed event counter for one event_type/outcome pair. */
+    async function eventTotal(eventType: string, outcome: string): Promise<number> {
+      const samples = await metricSamples('armored_archer_webhook_events_total');
+      return samples
+        .filter(
+          (s) => s.labels.event_type === eventType && s.labels.outcome === outcome
+        )
+        .reduce((sum, s) => sum + s.value, 0);
+    }
+
+    /** Summed Redis-error counter for one operation. */
+    async function redisErrors(operation: string): Promise<number> {
+      const samples = await metricSamples('armored_archer_webhook_redis_errors_total');
+      return samples
+        .filter((s) => s.labels.operation === operation)
+        .reduce((sum, s) => sum + s.value, 0);
+    }
+
+    /** Total observations of the processing-time histogram for one event_type (+Inf bucket). */
+    async function processingObservations(eventType: string): Promise<number> {
+      const samples = await metricSamples('armored_archer_webhook_processing_seconds');
+      return samples
+        .filter((s) => s.labels.event_type === eventType && s.labels.le === '+Inf')
+        .reduce((sum, s) => sum + s.value, 0);
+    }
+
+    /** Current value of the pending-awards gauge for one user (NaN if never set). */
+    async function pendingAwards(userId: string): Promise<number> {
+      const samples = await metricSamples('armored_archer_webhook_pending_awards');
+      const match = samples.find((s) => s.labels.user_id === userId);
+      return match ? match.value : Number.NaN;
+    }
+
+    /** Current value of the configured liveness gauge. */
+    async function configuredGauge(): Promise<number> {
+      const samples = await metricSamples('armored_archer_webhook_configured');
+      return samples.length > 0 ? samples[0].value : Number.NaN;
+    }
+
+    it('counts a forged-signature rejection as event_type=unknown outcome=rejected_invalid_signature', async () => {
+      const { storageRead, storageWrite } = createStatefulStorage();
+      const nk = createTestNakama({ storageRead, storageWrite });
+      const before = await eventTotal('unknown', 'rejected_invalid_signature');
+
+      const payload = buildPayload({
+        event_id: 'evt-metric-forged',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'metric-forged-user',
+        product_id: 'com.armoredarcher.gems.small',
+        transaction_id: 'tx-metric-forged',
+      });
+      await rpcRevenueCatWebhook(
+        { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload, 'wrong') } } as any,
+        createMockLogger(),
+        nk,
+        payload
+      );
+
+      expect(await eventTotal('unknown', 'rejected_invalid_signature')).toBe(before + 1);
+    });
+
+    it('flips armored_archer_webhook_configured to 0 and counts rejected_not_configured when the secret is unset', async () => {
+      const { storageRead, storageWrite } = createStatefulStorage();
+      const nk = createTestNakama({ storageRead, storageWrite });
+      const before = await eventTotal('unknown', 'rejected_not_configured');
+
+      configModule.config.revenuecat.webhookSecret = '';
+      try {
+        const payload = buildPayload({
+          event_id: 'evt-metric-unconfigured',
+          event_type: 'INITIAL_PURCHASE',
+          app_user_id: 'metric-unconfigured-user',
+          product_id: 'com.armoredarcher.gems.small',
+        });
+        const result = await rpcRevenueCatWebhook(
+          { ...mockCtx, variables: {} } as any,
+          createMockLogger(),
+          nk,
+          payload
+        );
+
+        expect(JSON.parse(result).error).toBe('Webhook not configured');
+        expect(await eventTotal('unknown', 'rejected_not_configured')).toBe(before + 1);
+        expect(await configuredGauge()).toBe(0);
+      } finally {
+        configModule.config.revenuecat.webhookSecret = WEBHOOK_SECRET;
+      }
+      // A later configured call restores the liveness gauge to 1.
+      const payload2 = buildPayload({
+        event_id: 'evt-metric-configured-again',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'metric-unconfigured-user',
+        product_id: 'com.armoredarcher.gems.small',
+      });
+      await rpcRevenueCatWebhook(
+        { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload2) } } as any,
+        createMockLogger(),
+        nk,
+        payload2
+      );
+      expect(await configuredGauge()).toBe(1);
+    });
+
+    it('counts a fully-applied initial_purchase as processed and observes processing time', async () => {
+      const { storageRead, storageWrite, seedCurrency } = createStatefulStorage();
+      const nk = createTestNakama({ storageRead, storageWrite });
+      seedCurrency('metric-purchase-user', 0);
+      const beforeEvents = await eventTotal('initial_purchase', 'processed');
+      const beforeObs = await processingObservations('initial_purchase');
+
+      const payload = buildPayload({
+        event_id: 'evt-metric-processed',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'metric-purchase-user',
+        product_id: 'com.armoredarcher.gems.small',
+        transaction_id: 'tx-metric-processed',
+      });
+      const result = await rpcRevenueCatWebhook(
+        { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload) } } as any,
+        createMockLogger(),
+        nk,
+        payload
+      );
+
+      expect(JSON.parse(result).success).toBe(true);
+      expect(await eventTotal('initial_purchase', 'processed')).toBe(beforeEvents + 1);
+      expect(await processingObservations('initial_purchase')).toBeGreaterThan(beforeObs);
+    });
+
+    it('counts a ledger replay as outcome=duplicate', async () => {
+      const { storageRead, storageWrite, seedCurrency } = createStatefulStorage();
+      const nk = createTestNakama({ storageRead, storageWrite });
+      seedCurrency('metric-dup-user', 0);
+
+      const payload = buildPayload({
+        event_id: 'evt-metric-duplicate',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'metric-dup-user',
+        product_id: 'com.armoredarcher.gems.small',
+        transaction_id: 'tx-metric-duplicate',
+      });
+      const ctx = { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload) } } as any;
+      await rpcRevenueCatWebhook(ctx, createMockLogger(), nk, payload);
+
+      const before = await eventTotal('initial_purchase', 'duplicate');
+      await rpcRevenueCatWebhook(ctx, createMockLogger(), nk, payload);
+      expect(await eventTotal('initial_purchase', 'duplicate')).toBe(before + 1);
+    });
+
+    it('counts an unhandled event type as outcome=unhandled', async () => {
+      const { storageRead, storageWrite } = createStatefulStorage();
+      const nk = createTestNakama({ storageRead, storageWrite });
+      const before = await eventTotal('unknown_event', 'unhandled');
+
+      const payload = buildPayload({
+        event_id: 'evt-metric-unhandled',
+        event_type: 'UNKNOWN_EVENT',
+        app_user_id: 'metric-unhandled-user',
+        product_id: 'some-product',
+        transaction_id: 'tx-metric-unhandled',
+      });
+      await rpcRevenueCatWebhook(
+        { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload) } } as any,
+        createMockLogger(),
+        nk,
+        payload
+      );
+
+      expect(await eventTotal('unknown_event', 'unhandled')).toBe(before + 1);
+    });
+
+    it('increments armored_archer_webhook_redis_errors_total when the Redis dedup fast path fails', async () => {
+      const { storageRead, storageWrite, seedCurrency } = createStatefulStorage();
+      const nk = createTestNakama({ storageRead, storageWrite });
+      seedCurrency('metric-redis-user', 0);
+      const failingRedis = {
+        exists: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
+        get: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
+        set: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
+        setex: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
+      };
+      mockGetRedisClient.mockReturnValue(failingRedis);
+
+      const beforeLookup = await redisErrors('dedup_lookup');
+      const beforeRecord = await redisErrors('outcome_record');
+
+      const payload = buildPayload({
+        event_id: 'evt-metric-redis',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'metric-redis-user',
+        product_id: 'com.armoredarcher.gems.small',
+        transaction_id: 'tx-metric-redis',
+      });
+      const result = await rpcRevenueCatWebhook(
+        { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload) } } as any,
+        createMockLogger(),
+        nk,
+        payload
+      );
+
+      expect(JSON.parse(result).success).toBe(true);
+      expect(await redisErrors('dedup_lookup')).toBeGreaterThan(beforeLookup);
+      expect(await redisErrors('outcome_record')).toBeGreaterThan(beforeRecord);
+    });
+
+    it('sets armored_archer_webhook_pending_awards when a purchase queues at the cap', async () => {
+      const { storageRead, storageWrite, seedCurrency } = createStatefulStorage();
+      const nk = createTestNakama({ storageRead, storageWrite });
+      // 9,999,950 + 100 exceeds the 10M cap: 50 applied, 50 queued.
+      seedCurrency('metric-whale-user', 9_999_950);
+
+      const payload = buildPayload({
+        event_id: 'evt-metric-whale',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'metric-whale-user',
+        product_id: 'com.armoredarcher.gems.small',
+        transaction_id: 'tx-metric-whale',
+      });
+      const result = await rpcRevenueCatWebhook(
+        { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload) } } as any,
+        createMockLogger(),
+        nk,
+        payload
+      );
+
+      expect(JSON.parse(result).gems_queued).toBe(50);
+      expect(await pendingAwards('metric-whale-user')).toBe(1);
     });
   });
 });

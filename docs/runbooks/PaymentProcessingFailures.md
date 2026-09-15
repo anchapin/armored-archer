@@ -2,7 +2,12 @@
 
 **Alert Name**: `PaymentProcessingFailures`
 **Severity**: Critical
-**Last Updated**: 2026-08-18
+**Last Updated**: 2026-09-15
+
+> **Companion alerts (issue #1140)**: this runbook also serves the webhook-ledger
+> alerts `WebhookNotConfigured` (critical), `WebhookLagHigh` (warning),
+> `WebhookSignatureFailureSpike` (warning), and `WebhookRedisDegraded` (warning) —
+> see the `armored_archer_webhook_ledger` group in `backend/alerts.yml`.
 
 ---
 
@@ -42,7 +47,43 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
   jq '.[] | select(.labels.alertname=="PaymentProcessingFailures")'
 ```
 
-### 2. Inspect the Store Module
+### 2. Query the Webhook Ledger (PromQL first — issue #1140)
+
+```bash
+# Webhook events by event_type x outcome — rejections, duplicates and failures at a glance
+curl -s 'http://prometheus:9090/api/v1/query' \
+  -G --data-urlencode 'query=sum by (event_type, outcome) (rate(armored_archer_webhook_events_total[5m]))' \
+  | jq '.data.result[] | {type: .metric.event_type, outcome: .metric.outcome, rate: .value[1]}'
+
+# p95 webhook processing latency (WebhookLagHigh fires above 2s)
+curl -s 'http://prometheus:9090/api/v1/query' \
+  -G --data-urlencode 'query=histogram_quantile(0.95, sum by (le) (rate(armored_archer_webhook_processing_seconds_bucket[5m])))' \
+  | jq '.data.result[]'
+
+# Redis degradation on the dedup fast path (WebhookRedisDegraded)
+curl -s 'http://prometheus:9090/api/v1/query' \
+  -G --data-urlencode 'query=sum by (operation) (rate(armored_archer_webhook_redis_errors_total[5m]))' \
+  | jq '.data.result[]'
+
+# Queue depth of cap-overflow paid awards, per affected player
+curl -s 'http://prometheus:9090/api/v1/query' \
+  -G --data-urlencode 'query=armored_archer_webhook_pending_awards' \
+  | jq '.data.result[] | {user: .metric.user_id, queued: .value[1]}'
+
+# Fail-closed liveness probe (WebhookNotConfigured fires on 0)
+curl -s 'http://prometheus:9090/api/v1/query' \
+  -G --data-urlencode 'query=armored_archer_webhook_configured' \
+  | jq '.data.result[]'
+```
+
+Outcome vocabulary on `armored_archer_webhook_events_total`: `processed`,
+`unhandled` (event noted, e.g. `test`), `failed` (handler returned an error),
+`duplicate` (ledger replay), and the fail-closed rejections
+`rejected_not_configured`, `rejected_invalid_signature`,
+`rejected_invalid_payload`, `rejected_missing_user`,
+`rejected_missing_event_id`.
+
+### 3. Inspect the Store Module
 
 ```bash
 # Signal origin: validatePurchaseWithRevenueCat / rpcRevenueCatWebhook
@@ -53,7 +94,10 @@ grep -n "validatePurchaseWithRevenueCat\|rpcRevenueCatWebhook\|billing_issue" \
 git log --oneline -10 -- backend/src/modules/store.ts
 ```
 
-### 3. Check the RevenueCat Webhook Pipeline
+### 4. Check the RevenueCat Webhook Pipeline
+
+Query the ledger metrics above first (PromQL is the primary surface since
+issue #1140); the SQL below is the fallback when Prometheus itself is down.
 
 ```bash
 # Pending webhook events (durable ledger) — backlog means we are losing or delaying events
@@ -139,8 +183,8 @@ gh issue create --repo anchapin/armored-archer \
   --body "Triggered by PaymentProcessingFailures. Status page: <link>"
 
 # 3. Disable the strict fail-closed fallback if it is harming UX
-# backend/src/modules/store.ts:2380 — validatePurchaseWithRevenueCat is wrapped in withCircuitBreaker
-# (its fail-closed fallback sits at store.ts:2471); temporarily
+# backend/src/modules/store.ts:2387 — validatePurchaseWithRevenueCat is wrapped in withCircuitBreaker
+# (its fail-closed fallback sits at store.ts:2480); temporarily
 # return success on an open circuit *only* for one-off IAPs you have manually validated.
 # (Default is to fail closed. Flip only after product sign-off.)
 ```
@@ -189,9 +233,14 @@ docker exec postgres psql -U postgres -c \
 
 ```bash
 # Duplicate webhook deliveries are expected; check that recordWebhookOutcome is being
-# called from rpcRevenueCatWebhook (see backend/src/modules/store.ts:4022; the duplicate
-# read-back via getRecordedWebhookOutcome sits at store.ts:4178).
+# called from rpcRevenueCatWebhook (see backend/src/modules/store.ts:4040; the duplicate
+# read-back via getRecordedWebhookOutcome sits at store.ts:4203).
+# PromQL first (issue #1140): the duplicate outcome rate on the ledger counter
+curl -s 'http://prometheus:9090/api/v1/query' \
+  -G --data-urlencode 'query=sum by (event_type) (rate(armored_archer_webhook_events_total{outcome="duplicate"}[1h]))' \
+  | jq '.data.result[]'
 # If this is the only error category, no action needed.
+# SQL fallback when Prometheus is unavailable:
 docker exec postgres psql -U postgres -c \
   "SELECT count(*) FROM revenuecat_webhook_events WHERE outcome='duplicate' AND created_at > now() - interval '1 hour';"
 ```

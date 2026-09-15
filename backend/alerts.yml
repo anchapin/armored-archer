@@ -284,3 +284,63 @@ groups:
       # Request rate per second
       - record: armored_archer_request_rate
         expr: rate(armored_archer_rpc_requests_total[1m])
+
+  # ============================================
+  # WEBHOOK LEDGER (issue #1140)
+  # Observability surface for the RevenueCat webhook RPC and its durable
+  # event ledger (issue #1067). All alerts route to the payments runbook.
+  # ============================================
+  - name: armored_archer_webhook_ledger
+    interval: 30s
+    rules:
+      # Webhook Not Configured (liveness probe at startup)
+      - alert: WebhookNotConfigured
+        expr: armored_archer_webhook_configured == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+          component: payments
+        annotations:
+          summary: "RevenueCat webhook RPC is fail-closed — REVENUECAT_WEBHOOK_SECRET is not configured"
+          description: "armored_archer_webhook_configured is 0: the webhook RPC (issue #1067 fail-closed) rejects every event, so all IAP purchases silently fail to award gems. Set REVENUECAT_WEBHOOK_SECRET and restart Nakama."
+          runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/PaymentProcessingFailures.md"
+
+      # Webhook Lag High
+      - alert: WebhookLagHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(armored_archer_webhook_processing_seconds_bucket[5m]))) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          component: payments
+        annotations:
+          summary: "RevenueCat webhook processing latency is high"
+          description: "p95 webhook processing latency has been above 2s for 5 minutes — purchase awards and pending-award drains are slow. Current: {{ $value | printf \"%.2f\" }}s."
+          runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/PaymentProcessingFailures.md"
+
+      # Webhook Signature Failure Spike
+      - alert: WebhookSignatureFailureSpike
+        expr: sum(rate(armored_archer_webhook_events_total{outcome="rejected_invalid_signature"}[5m])) > 1 / 60
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+          component: payments
+        annotations:
+          summary: "Spike in RevenueCat webhook signature rejections"
+          description: "More than 1 webhook per minute rejected for an invalid HMAC signature over 5 minutes — the webhook secret rotated out of sync, or someone is forging RevenueCat callbacks."
+          runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/PaymentProcessingFailures.md"
+
+      # Webhook Redis Degraded
+      - alert: WebhookRedisDegraded
+        expr: sum(rate(armored_archer_webhook_redis_errors_total[5m])) > 1 / 60
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          component: payments
+        annotations:
+          summary: "Redis errors on the webhook dedup fast path"
+          description: "More than 1 Redis failure per minute for 5 minutes on the webhook event ledger (dedup lookup / outcome recording). Idempotency stays correct via durable storage, but every event pays extra storage round-trips — check Redis health."
+          runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/PaymentProcessingFailures.md"

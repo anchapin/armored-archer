@@ -16,6 +16,7 @@ same time and add a row below.
 | [HighErrorRate.md](./HighErrorRate.md) | `HighErrorRate` | Critical | Error rate >5% for 5 minutes |
 | [DatabaseDown.md](./DatabaseDown.md) | `DatabaseDown` | Critical | PostgreSQL unavailable |
 | [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `PaymentProcessingFailures` | Critical | IAP / RevenueCat failures detected |
+| [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `WebhookNotConfigured` | Critical | Webhook RPC fail-closed — secret unset, all purchases rejected (issue #1140) |
 | [SuspiciousLoginActivity.md](./SuspiciousLoginActivity.md) | `SuspiciousLoginActivity` | Critical | Failed-login rate >10/min (possible brute force) |
 | [AdminAccessDeniedSpike.md](./AdminAccessDeniedSpike.md) | `AdminAllowlistEmpty` | Critical | Admin allowlist empty — every admin RPC rejects every caller |
 
@@ -34,6 +35,9 @@ same time and add a row below.
 | [MatchmakingQueueBuilding.md](./MatchmakingQueueBuilding.md) | `MatchmakingQueueBuilding` | Warning | Matchmaking queue >100 for 5 minutes |
 | [ActiveUsersAnomaly.md](./ActiveUsersAnomaly.md) | `ActiveUsersAnomaly` | Warning | Active users >50% drift vs 1h ago |
 | [SessionDurationAnomaly.md](./SessionDurationAnomaly.md) | `SessionDurationAnomaly` | Warning | Avg session duration >30% drift vs 24h ago |
+| [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `WebhookLagHigh` | Warning | Webhook p95 processing latency >2s for 5m (issue #1140) |
+| [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `WebhookSignatureFailureSpike` | Warning | Webhook signature rejections >1/min — rotated secret or forgery (issue #1140) |
+| [PaymentProcessingFailures.md](./PaymentProcessingFailures.md) | `WebhookRedisDegraded` | Warning | Redis errors on the webhook dedup fast path >1/min (issue #1140) |
 
 ### Info Alerts
 

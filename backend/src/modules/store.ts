@@ -23,6 +23,13 @@ import {
   MAX_GEM_BALANCE,
   PlayerCurrency,
 } from './currency';
+import {
+  recordWebhookEvent,
+  recordWebhookProcessingTime,
+  setWebhookPendingAwards,
+  incrementWebhookRedisError,
+  setWebhookConfigured,
+} from './metrics';
 
 // The player_currency storage record is the single currency ledger
 // (issue #860). The Nakama wallet is no longer written by this module; all
@@ -3416,6 +3423,7 @@ async function getRecordedWebhookOutcome(
       if (cached) return cached;
     } catch (e) {
       logger.error('Redis error in webhook event dedup lookup: %s', e);
+      incrementWebhookRedisError('dedup_lookup');
     }
   }
 
@@ -3502,6 +3510,7 @@ async function recordWebhookOutcome(
       );
     } catch (e) {
       logger.error('Redis error recording webhook event outcome: %s', e);
+      incrementWebhookRedisError('outcome_record');
     }
   }
 
@@ -3570,6 +3579,9 @@ function writePendingWebhookAwards(
         permissionWrite: 0, // No public write
       },
     ]);
+    // Queue-depth gauge (issue #1140): set only on a successful write so
+    // the gauge never claims a persistence that failed; 0 once drained.
+    setWebhookPendingAwards(userId, awards.length);
     return true;
   } catch (e) {
     logger.error('Storage write error persisting pending webhook awards: %s', e);
@@ -4018,6 +4030,12 @@ async function handleProductChange(
  *   by RevenueCat event id (transaction id fallback) via the durable
  *   webhook event ledger; replays return the recorded outcome without
  *   re-applying.
+ *
+ * Observability (issue #1140): every terminal path increments
+ * `armored_archer_webhook_events_total{event_type,outcome}`, fully-applied
+ * events observe `armored_archer_webhook_processing_seconds`, and Redis
+ * failures on the dedup fast path increment
+ * `armored_archer_webhook_redis_errors_total` (in the ledger helpers).
  */
 export async function rpcRevenueCatWebhook(
   ctx: Runtime.Context,
@@ -4031,6 +4049,7 @@ export async function rpcRevenueCatWebhook(
   // verify the sender, so the event is rejected — nothing is granted or
   // deducted. An unverifiable webhook must never be processed.
   const webhookSecret = getRevenueCatWebhookSecret();
+  setWebhookConfigured(Boolean(webhookSecret));
   if (!webhookSecret) {
     logger.error(
       '[SECURITY] REVENUECAT_WEBHOOK_SECRET is not configured — rejecting RevenueCat webhook (fail-closed)'
@@ -4045,6 +4064,7 @@ export async function rpcRevenueCatWebhook(
       'failure',
       'Webhook secret not configured'
     );
+    recordWebhookEvent('unknown', 'rejected_not_configured');
     return JSON.stringify({
       success: false,
       error: 'Webhook not configured',
@@ -4065,6 +4085,7 @@ export async function rpcRevenueCatWebhook(
       'failure',
       'Invalid webhook signature'
     );
+    recordWebhookEvent('unknown', 'rejected_invalid_signature');
     return JSON.stringify({
       success: false,
       error: 'Invalid signature',
@@ -4077,6 +4098,7 @@ export async function rpcRevenueCatWebhook(
     webhookData = JSON.parse(payload) as Record<string, unknown>;
   } catch (e) {
     logger.error('Failed to parse webhook payload: %s', e);
+    recordWebhookEvent('unknown', 'rejected_invalid_payload');
     return JSON.stringify({
       success: false,
       error: 'Invalid payload',
@@ -4086,6 +4108,7 @@ export async function rpcRevenueCatWebhook(
   // Validate payload is not empty
   if (!payload || payload.trim() === '') {
     logger.error('Empty webhook payload received');
+    recordWebhookEvent('unknown', 'rejected_invalid_payload');
     return JSON.stringify({
       success: false,
       error: 'Invalid payload',
@@ -4133,6 +4156,7 @@ export async function rpcRevenueCatWebhook(
       'failure',
       'Missing app_user_id'
     );
+    recordWebhookEvent(normalizedEventType || 'unknown', 'rejected_missing_user');
     return JSON.stringify({ success: false, error: 'Missing app_user_id' });
   }
 
@@ -4171,6 +4195,7 @@ export async function rpcRevenueCatWebhook(
       'failure',
       'Missing event identifier'
     );
+    recordWebhookEvent(normalizedEventType, 'rejected_missing_event_id');
     return JSON.stringify({ success: false, error: 'Missing event identifier' });
   }
 
@@ -4182,6 +4207,7 @@ export async function rpcRevenueCatWebhook(
         eventId,
         normalizedEventType
       );
+      recordWebhookEvent(normalizedEventType, 'duplicate');
       return recorded;
     }
   }
@@ -4195,6 +4221,9 @@ export async function rpcRevenueCatWebhook(
     gems_queued?: number;
     new_balance?: number;
   };
+
+  const webhookProcessingStartMs = Date.now();
+  let unhandledEventType = false;
 
   switch (normalizedEventType) {
     case 'initial_purchase':
@@ -4260,6 +4289,7 @@ export async function rpcRevenueCatWebhook(
     }
     default:
       logger.info('Webhook: Received unhandled event type: %s', eventType);
+      unhandledEventType = true;
       result = {
         success: true,
         message: `Event ${eventType} noted but not processed`,
@@ -4275,10 +4305,27 @@ export async function rpcRevenueCatWebhook(
     await recordWebhookOutcome(nk, eventId, appUserId, result, logger);
   }
 
+  // Ledger observability (issue #1140): one event_type × outcome sample
+  // per fully-processed event plus the processing-time observation
+  // (duplicate replays returned early above and are not timed).
+  recordWebhookEvent(
+    normalizedEventType || 'unknown',
+    result.success ? (unhandledEventType ? 'unhandled' : 'processed') : 'failed'
+  );
+  recordWebhookProcessingTime(
+    normalizedEventType || 'unknown',
+    (Date.now() - webhookProcessingStartMs) / 1000
+  );
+
   return JSON.stringify(result);
 }
 
 export function registerRpcRevenueCatWebhook(initializer: Runtime.Initializer): void {
+  // Startup liveness probe (issue #1140): publish whether the webhook RPC
+  // is configured so the WebhookNotConfigured alert can fire from boot,
+  // without waiting for the first (rejected) event to arrive.
+  setWebhookConfigured(Boolean(getRevenueCatWebhookSecret()));
+
   // Startup validation (issue #1067): a missing webhook secret puts the
   // RPC in fail-closed mode — surface it loudly at boot so operators fix
   // the configuration instead of silently dropping RevenueCat events.
