@@ -24,6 +24,8 @@ func run_tests() -> void:
 	print("Failed: %d" % _tests_failed)
 	queue_free()
 
+# GearData extends Resource (RefCounted): instances release themselves —
+# never call free() on them (issue #1059).
 func _create_gear_data() -> Resource:
 	return load("res://scenes/player/gear/gear_data.gd").new()
 
@@ -44,7 +46,6 @@ func test_default_values() -> void:
 		_pass("test_default_values")
 	else:
 		_fail("test_default_values", "Default values should be empty strings and 'common' rarity")
-	gd.free()
 
 func test_set_gear_id() -> void:
 	var gd = _create_gear_data()
@@ -53,7 +54,6 @@ func test_set_gear_id() -> void:
 		_pass("test_set_gear_id")
 	else:
 		_fail("test_set_gear_id", "gear_id should be settable")
-	gd.free()
 
 func test_set_gear_name() -> void:
 	var gd = _create_gear_data()
@@ -62,7 +62,6 @@ func test_set_gear_name() -> void:
 		_pass("test_set_gear_name")
 	else:
 		_fail("test_set_gear_name", "gear_name should be settable")
-	gd.free()
 
 func test_set_slot_type() -> void:
 	var gd = _create_gear_data()
@@ -72,7 +71,6 @@ func test_set_slot_type() -> void:
 		_pass("test_set_slot_type")
 	else:
 		_fail("test_set_slot_type", "slot_type should be settable")
-	gd.free()
 
 func test_set_rarity() -> void:
 	var gd = _create_gear_data()
@@ -81,7 +79,6 @@ func test_set_rarity() -> void:
 		_pass("test_set_rarity")
 	else:
 		_fail("test_set_rarity", "rarity should be settable to 'legendary'")
-	gd.free()
 
 func test_default_stats() -> void:
 	var gd = _create_gear_data()
@@ -93,7 +90,6 @@ func test_default_stats() -> void:
 			_fail("test_default_stats", "Default stats should all be 0")
 	else:
 		_fail("test_default_stats", "Default stats should have attack, defense, speed, health keys")
-	gd.free()
 
 func test_custom_stats() -> void:
 	var gd = _create_gear_data()
@@ -102,7 +98,6 @@ func test_custom_stats() -> void:
 		_pass("test_custom_stats")
 	else:
 		_fail("test_custom_stats", "Stats should be settable with custom values")
-	gd.free()
 
 func test_resource_type() -> void:
 	var gd = _create_gear_data()
@@ -110,4 +105,3 @@ func test_resource_type() -> void:
 		_pass("test_resource_type")
 	else:
 		_fail("test_resource_type", "GearData should extend Resource")
-	gd.free()

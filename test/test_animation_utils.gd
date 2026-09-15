@@ -152,7 +152,10 @@ func test_pulse() -> void:
 	else:
 		_fail("test_pulse_returns_tween", "Should return a tween")
 
-	if tween != null and tween.get_loop_count() == -1:
+	# set_loops() with no argument makes the tween loop indefinitely.
+	# Godot 4 exposes no loop-count getter (get_loop_count was Godot 3.5
+	# SceneTreeTween API), so assert the tween is live instead (#1059).
+	if tween != null and tween.is_running():
 		_pass("test_pulse_sets_loops")
 	else:
 		_fail("test_pulse_sets_loops", "Tween should loop indefinitely")
@@ -338,7 +341,8 @@ func test_pulse_custom_params() -> void:
 
 	var tween = AnimationUtils.pulse(node, 0.2, 4.0)
 
-	if tween != null and tween.get_loop_count() == -1:
+	# Infinite loops (see test_pulse): assert the tween is live.
+	if tween != null and tween.is_running():
 		_pass("test_pulse_custom_params")
 	else:
 		_fail("test_pulse_custom_params", "Should work with custom params and loop")

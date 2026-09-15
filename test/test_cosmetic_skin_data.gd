@@ -24,6 +24,8 @@ func run_tests() -> void:
 	print("Failed: %d" % _tests_failed)
 	queue_free()
 
+# CosmeticSkinData extends Resource (RefCounted): instances release
+# themselves — never call free() on them (issue #1059).
 func _create_skin_data() -> Resource:
 	return load("res://scenes/player/gear/cosmetic_skin_data.gd").new()
 
@@ -44,7 +46,6 @@ func test_default_values() -> void:
 		_pass("test_default_values")
 	else:
 		_fail("test_default_values", "Default values should be empty/zero/false")
-	skin.free()
 
 func test_set_skin_id() -> void:
 	var skin = _create_skin_data()
@@ -53,7 +54,6 @@ func test_set_skin_id() -> void:
 		_pass("test_set_skin_id")
 	else:
 		_fail("test_set_skin_id", "skin_id should be settable")
-	skin.free()
 
 func test_set_skin_name() -> void:
 	var skin = _create_skin_data()
@@ -62,7 +62,6 @@ func test_set_skin_name() -> void:
 		_pass("test_set_skin_name")
 	else:
 		_fail("test_set_skin_name", "skin_name should be settable")
-	skin.free()
 
 func test_set_slot_type() -> void:
 	var skin = _create_skin_data()
@@ -71,7 +70,6 @@ func test_set_slot_type() -> void:
 		_pass("test_set_slot_type")
 	else:
 		_fail("test_set_slot_type", "slot_type should be settable")
-	skin.free()
 
 func test_set_base_gear_required() -> void:
 	var skin = _create_skin_data()
@@ -80,7 +78,6 @@ func test_set_base_gear_required() -> void:
 		_pass("test_set_base_gear_required")
 	else:
 		_fail("test_set_base_gear_required", "base_gear_required should be settable")
-	skin.free()
 
 func test_set_price() -> void:
 	var skin = _create_skin_data()
@@ -89,7 +86,6 @@ func test_set_price() -> void:
 		_pass("test_set_price")
 	else:
 		_fail("test_set_price", "price should be settable")
-	skin.free()
 
 func test_set_is_premium() -> void:
 	var skin = _create_skin_data()
@@ -98,7 +94,6 @@ func test_set_is_premium() -> void:
 		_pass("test_set_is_premium")
 	else:
 		_fail("test_set_is_premium", "is_premium should be settable")
-	skin.free()
 
 func test_resource_type() -> void:
 	var skin = _create_skin_data()
@@ -106,4 +101,3 @@ func test_resource_type() -> void:
 		_pass("test_resource_type")
 	else:
 		_fail("test_resource_type", "CosmeticSkinData should extend Resource")
-	skin.free()

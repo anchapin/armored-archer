@@ -106,6 +106,21 @@ func calculate_effective_stat(base_stat: float, synergy_bonus: float, gear_type:
 
 	return max(0.0, effective)
 
+## Normalizes gear "stats" payloads into the Dictionary form this
+## calculator consumes. Accepts {stat_name: value} Dictionaries directly
+## and coerces Array-of-{name, value} entries from server inventory
+## payloads (issue #1059).
+static func _coerce_stats_dictionary(raw_stats: Variant) -> Dictionary:
+	if raw_stats is Dictionary:
+		return raw_stats
+	if raw_stats is Array:
+		var coerced: Dictionary = {}
+		for entry in raw_stats:
+			if entry is Dictionary and entry.has("name"):
+				coerced[str(entry.name)] = entry.get("value", 0)
+		return coerced
+	return {}
+
 ## Calculates overall gear power rating.
 ##
 ## Parameters:
@@ -119,8 +134,10 @@ func get_gear_power_rating(gear_data: Dictionary) -> float:
 	var rarity: String = gear_data.get("rarity", "common")
 	var rarity_mult: float = RARITY_MULTIPLIERS.get(rarity, 1.0)
 
-	# Add weighted stat contributions
-	var stats: Dictionary = gear_data.get("stats", {})
+	# Add weighted stat contributions. "stats" arrives as a Dictionary of
+	# {stat_name: value} from local gear data, or as an Array of
+	# {name, value} entries from server inventory payloads.
+	var stats: Dictionary = _coerce_stats_dictionary(gear_data.get("stats", {}))
 	for stat_name in stats.keys():
 		var stat_value: float = float(stats[stat_name])
 		var weight: float = STAT_WEIGHTS.get(stat_name, 1.0)
