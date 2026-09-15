@@ -40,9 +40,9 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Signal Source
 
 ```bash
-# Active users counter is updated via updateActiveUsersCount in metrics.ts:482
+# Active users counter is updated via updateActiveUsersCount in metrics.ts:552
 # The client_version label is attached by the client telemetry layer
-grep -n "updateActiveUsersCount\|active_users" backend/src/modules/metrics.ts backend/src/modules/progressive_rollout.ts | head -10
+grep -n "updateActiveUsersCount\|active_users" backend/src/modules/metrics.ts | head -10
 
 # Client-side emission lives in /scenes and /scripts — usually via an analytics autoload
 ls autoloads/ | grep -iE "analytics|telemetry|version"
@@ -84,8 +84,8 @@ docker exec postgres psql -U postgres -c \
 ### Step 2: Check Rollout / Force-Update Flags
 
 ```bash
-# Progressive rollout config
-grep -n "minimumSupportedVersion\|forceUpdate\|client_version" backend/src/modules/progressive_rollout.ts | head -10
+# Progressive rollout config — version-gated canary flags (no minimumSupportedVersion exists)
+grep -n "canaryVersionMin\|canaryVersionMax\|game_version" backend/src/modules/progressive_rollout.ts | head -10
 
 # Recent frontend changes
 git log --oneline -10 -- scenes/ scripts/
@@ -106,10 +106,10 @@ gh issue list --repo anchapin/armored-archer \
 ### Scenario 1: Force Update Was Not Shipped
 
 ```bash
-# Update progressive_rollout.ts with the new minimumSupportedVersion
-grep -n "minimumSupportedVersion\|MIN_VERSION" backend/src/modules/progressive_rollout.ts | head -10
+# Update progressive_rollout.ts with the new canary version gate
+grep -n "canaryVersionMin\|canaryVersionMax" backend/src/modules/progressive_rollout.ts | head -10
 git checkout -b fix/min-supported-version
-# bump the constant; add a test in __tests__/progressive_rollout.test.ts
+# adjust canaryVersionMin / canaryVersionMax; add a test in __tests__/progressive_rollout.test.ts
 docker-compose build nakama && docker-compose up -d nakama
 ```
 
@@ -163,7 +163,7 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 
 ## 📊 Post-Incident Actions
 
-1. **Bump** `minimumSupportedVersion` in `backend/src/modules/progressive_rollout.ts`.
+1. **Adjust** `canaryVersionMin`/`canaryVersionMax` in `backend/src/modules/progressive_rollout.ts` (there is no server-side `minimumSupportedVersion` — version gating is canary-phase only).
 2. **Coordinate** with the frontend team to push a hotfix build if a security-sensitive fix is gated by an upgrade.
 3. **Update** [`docs/DEPLOYMENT.md`](../DEPLOYMENT.md) and [`docs/APP_SUBMISSION_CHECKLIST.md`](../APP_SUBMISSION_CHECKLIST.md) with the rollout timeline.
 4. **Add a regression test** for the client-version guard in `backend/src/modules/__tests__/progressive_rollout.test.ts`.

@@ -12,7 +12,7 @@
 **Duration**: 1 minute
 **Impact**: PostgreSQL is unreachable from Prometheus. Every gameplay path that persists or reads player/inventory/match state fails. All game operations are affected.
 
-> **Note (open issue #1074):** the canonical metric name referenced by the alert expression is `up{job="postgres"}`. In our registry the equivalent gauge is `armored_archer_health_db_connections_percent` defined in [`backend/src/modules/health_monitor.ts:45`](../../backend/src/modules/health_monitor.ts). Until the Prometheus job mapping is reconciled, treat this alert as "all DB-touching requests are failing" rather than relying on the scrape target alone.
+> **Note (open issue #1074):** the canonical metric name referenced by the alert expression is `up{job="postgres"}`. In our registry the equivalent gauge is `armored_archer_health_db_connections_percent` defined in [`backend/src/modules/health_monitor.ts:46`](../../backend/src/modules/health_monitor.ts). Until the Prometheus job mapping is reconciled, treat this alert as "all DB-touching requests are failing" rather than relying on the scrape target alone.
 
 ---
 

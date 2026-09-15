@@ -150,8 +150,8 @@ docker-compose build nakama && docker-compose up -d nakama
 docker exec postgres psql -U postgres -c \
   "SELECT count(*) FROM matchmaking_pool;"
 
-# See matchmaker.ts for pool_size and skill-band knobs before changing
-grep -n "pool_size\|skill_band" backend/src/modules/matchmaker.ts | head -20
+# See matchmaker.ts for rank and punch-up knobs before changing
+grep -n "calculateRank\|isPunchUpMatch\|PunchUp" backend/src/modules/matchmaker.ts | head -20
 ```
 
 ### Scenario 4: CPU Quota Throttling

@@ -47,11 +47,12 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Matchmaker Source
 
 ```bash
-# Queue instrumentation lives in health_monitor.ts:69 and metrics.ts:112
-grep -n "matchmaking_queue\|matchQueueSize\|setMatchQueueSize" backend/src/modules/health_monitor.ts backend/src/modules/metrics.ts | head -10
+# Queue instrumentation lives in health_monitor.ts:70 (armored_archer_health_match_queue_size)
+# and metrics.ts:115 (armored_archer_match_queue_size)
+grep -n "healthCheckMatchQueue\|matchQueueSize\|setMatchQueueSize" backend/src/modules/health_monitor.ts backend/src/modules/metrics.ts | head -10
 
-# Matchmaker module — look for pool size, skill bands, and any recent tweaks
-grep -n "skill_band\|pool_size\|MATCHMAKING" backend/src/modules/matchmaker.ts | head -20
+# Matchmaker module — look for rank, punch-up matching, and any recent tweaks
+grep -n "calculateRank\|isPunchUpMatch\|MATCHMAKING_ANALYTICS_TARGETS" backend/src/modules/matchmaker.ts backend/src/modules/matchmaking_analytics.ts | head -20
 git log --oneline -10 -- backend/src/modules/matchmaker.ts
 ```
 
@@ -117,7 +118,7 @@ docker exec postgres psql -U postgres -c \
 
 ```bash
 # Confirm the duel / combat pipeline is not regressed
-grep -n "rpcDuel\|combat_action\|combat_system" backend/src/modules/combat_system.ts | head -10
+grep -n "rpcSubmitCombatAction\|combat_action" backend/src/modules/combat_system.ts | head -10
 
 # Server error rate on PvP RPCs
 curl -s 'http://prometheus:9090/api/v1/query' \

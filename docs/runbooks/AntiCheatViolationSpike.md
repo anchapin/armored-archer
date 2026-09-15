@@ -43,7 +43,7 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 
 ```bash
 # Signal origin: recordViolation() in anti_cheat_audit.ts
-grep -n "recordViolation\|violation_type\|VIOLATION_TYPES" backend/src/modules/anti_cheat_audit.ts | head -30
+grep -n "recordViolation\|ViolationType\|AntiCheatViolation" backend/src/modules/anti_cheat_audit.ts | head -30
 
 # Look for newly added violation types or thresholds
 git log --oneline -10 -- backend/src/modules/anti_cheat.ts backend/src/modules/anti_cheat_audit.ts
@@ -172,7 +172,7 @@ docker exec postgres psql -U postgres -c \
 
 ```bash
 # match_replay.ts re-simulates matches for fairness — known to spike violations
-grep -n "recordViolation\|simulate" backend/src/modules/match_replay.ts | head -20
+grep -n "rpcGetMatchReplay\|rpcReconstructMatchState" backend/src/modules/match_replay.ts | head -20
 
 # If violations correlate with fairness-telemetry workloads, pause the replay worker
 docker exec postgres psql -U postgres -c \

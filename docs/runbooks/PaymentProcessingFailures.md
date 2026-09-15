@@ -45,8 +45,8 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Store Module
 
 ```bash
-# Signal origin: validateWithRevenueCat / rpcRevenueCatWebhook
-grep -n "validatePurchaseWithRevenueCat\|rpcRevenueCatWebhook\|billing_issue\|payment_failed" \
+# Signal origin: validatePurchaseWithRevenueCat / rpcRevenueCatWebhook
+grep -n "validatePurchaseWithRevenueCat\|rpcRevenueCatWebhook\|billing_issue" \
   backend/src/modules/store.ts | head -30
 
 # Recent store changes
@@ -139,8 +139,9 @@ gh issue create --repo anchapin/armored-archer \
   --body "Triggered by PaymentProcessingFailures. Status page: <link>"
 
 # 3. Disable the strict fail-closed fallback if it is harming UX
-# backend/src/modules/store.ts:2471 — temporarily set validateWithRevenueCat
-# to return success on circuit_open *only* for one-off IAPs you have manually validated.
+# backend/src/modules/store.ts:2380 — validatePurchaseWithRevenueCat is wrapped in withCircuitBreaker
+# (its fail-closed fallback sits at store.ts:2471); temporarily
+# return success on an open circuit *only* for one-off IAPs you have manually validated.
 # (Default is to fail closed. Flip only after product sign-off.)
 ```
 
@@ -161,8 +162,8 @@ docker logs nakama --tail 100 | grep -i "webhook secret" | tail -5
 ### Scenario 3: Catalog / Product ID Mismatch
 
 ```bash
-# 1. Diff catalog vs the values in our store.ts mapping
-grep -n "PRODUCT_MAP\|productId" backend/src/modules/store.ts | head -20
+# 1. Diff catalog vs the values in our store.ts catalogs (GEM_BUNDLES / COSMETIC_CATALOG)
+grep -n "GEM_BUNDLES\|COSMETIC_CATALOG\|product_id" backend/src/modules/store.ts | head -20
 
 # 2. Pull the current RevenueCat offerings
 curl -s -H "Authorization: Bearer $REVENUECAT_SECRET_KEY" \
@@ -187,8 +188,9 @@ docker exec postgres psql -U postgres -c \
 ### Scenario 5: Duplicate / Idempotency Noise
 
 ```bash
-# Duplicate webhook deliveries are expected; check that recordOutcome is being
-# called from rpcRevenueCatWebhook (see backend/src/modules/store.ts:4181).
+# Duplicate webhook deliveries are expected; check that recordWebhookOutcome is being
+# called from rpcRevenueCatWebhook (see backend/src/modules/store.ts:4022; the duplicate
+# read-back via getRecordedWebhookOutcome sits at store.ts:4178).
 # If this is the only error category, no action needed.
 docker exec postgres psql -U postgres -c \
   "SELECT count(*) FROM revenuecat_webhook_events WHERE outcome='duplicate' AND created_at > now() - interval '1 hour';"
