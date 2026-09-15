@@ -6,6 +6,9 @@ const TrackerHelper = preload("res://test/suites/autoloads/tracker_helper.gd")
 # TDD GREEN phase - these tests should pass after implementation
 
 func before_each():
+	# Coverage fixtures/outputs are untracked runtime artifacts (#1063) — the
+	# directory does not exist on fresh clones, so recreate it before tests write.
+	DirAccess.make_dir_recursive_absolute("res://test/coverage")
 	# Clear singleton instance for fresh test state
 	TrackerHelper._clear_instance()
 
