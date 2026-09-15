@@ -64,6 +64,10 @@ signal connection_lost(reason: String)
 # guidance (e.g. "run: make services-start") is gated to non-production environments;
 # production players get player-safe text instead.
 signal auth_blocked(reason: String, guidance: String)
+# Issue #1147: emitted as mid-session auth recovery advances through its
+# stages (AUTH_RECOVERY_STAGE_*) so the UI can swap its spinner text while
+# the coalesced refresh (or its device-auth fallback) is in flight.
+signal auth_recovery_stage(stage: String)
 
 # --- Constants ---
 const SESSION_FILE: String = "user://session_data.json"
@@ -72,6 +76,15 @@ const SESSION_FILE: String = "user://session_data.json"
 # Dev-runbook strings ("make services-start", "press Retry") never reach players.
 const AUTH_GUIDANCE_PLAYER_SESSION_EXPIRED: String = "Session expired. Please sign in again."
 const AUTH_GUIDANCE_PLAYER_CONNECTION_PROBLEM: String = "Connection problem. Please try again."
+
+# Issue #1147: auth_recovery_stage messages. The recovery wait emits
+# "refresh_started" when it kicks off _refresh_session(), then exactly one of
+# "refreshed" (fresh token stored), "blocked" (auth_blocked gate fired), or
+# "failed" (refresh reported failure / deadline passed without either signal).
+const AUTH_RECOVERY_STAGE_REFRESH_STARTED: String = "refresh_started"
+const AUTH_RECOVERY_STAGE_REFRESHED: String = "refreshed"
+const AUTH_RECOVERY_STAGE_BLOCKED: String = "blocked"
+const AUTH_RECOVERY_STAGE_FAILED: String = "failed"
 
 # --- Reconnection Configuration ---
 const MAX_RETRY_ATTEMPTS: int = 3
@@ -742,11 +755,17 @@ var _rpc_request_active: bool = false
 var _refreshing_session: bool = false
 # Outcome of the most recent coalesced refresh, read by coalesced waiters.
 var _last_refresh_succeeded: bool = false
-# Issue #1151: waiter watchdog. Mirrors the leader's MAX_AUTH_DURATION_SEC
-# deadline so a stalled leader cannot freeze the main thread forever. The
-# frame-count cap is a backstop against wallclock drift (e.g. system clock
-# changes during a long session). Tests override these to a smaller value
-# for fast turnaround; production keeps the default deadlines.
+# Issue #1147: reason carried from the most recent auth_blocked emission that
+# aborted a coalesced refresh; read by _send_rpc_with_recovery so the
+# in-flight RPC surfaces the gate's reason instead of the stale 401 body.
+# Empty when the last recovery cycle was not gated.
+var _last_auth_blocked_reason: String = ""
+# Issue #1151: waiter watchdog. Bounds BOTH the leader's refresh wait
+# (_run_refresh_and_await_result) and each coalesced waiter by the
+# MAX_AUTH_DURATION_SEC deadline so a stalled leader cannot freeze the main
+# thread forever. The frame-count cap is a backstop against wallclock drift
+# (e.g. system clock changes during a long session). Tests override these to
+# a smaller value for fast turnaround; production keeps the default deadlines.
 var _refresh_watchdog_ms: int = int(NetworkConsts.MAX_AUTH_DURATION_SEC * 1000.0)
 var _refresh_watchdog_max_frames: int = int(NetworkConsts.MAX_AUTH_DURATION_SEC * 60.0)
 
@@ -886,6 +905,15 @@ func _send_rpc_with_recovery(rpc_id: String, payload: String, timeout: float, is
 			# Single replay with the refreshed token; is_replay prevents loops.
 			return await _send_rpc_with_recovery(rpc_id, payload, timeout, true)
 		# Refresh failed — fall through and surface the original auth error.
+		# Issue #1147: unless the auth_blocked gate aborted the recovery, in
+		# which case its reason replaces the stale 401 body so the in-flight
+		# caller renders one coherent auth error instead of competing with
+		# the auth_blocked UI panel.
+		if not _last_auth_blocked_reason.is_empty():
+			response_data = {
+				"error": "Authentication blocked: %s" % _last_auth_blocked_reason,
+				"is_auth_error": true
+			}
 
 	# Log RPC latency for analytics
 	var latency_ms: int = Time.get_ticks_msec() - start_time
@@ -932,15 +960,25 @@ func _recover_session_after_auth_error(token_used: String) -> bool:
 			return false
 		return _last_refresh_succeeded and not session_token.is_empty()
 	_refreshing_session = true
+	# Issue #1147: clear any gate reason left over from an earlier recovery
+	# cycle so _send_rpc_with_recovery only surfaces a reason that belongs
+	# to this cycle's refresh.
+	_last_auth_blocked_reason = ""
 	var refreshed: bool = await _run_refresh_and_await_result()
 	_last_refresh_succeeded = refreshed
 	_refreshing_session = false
 	return refreshed
 
 ## Issue #1079: triggers the existing _refresh_session() machinery once and
-## waits (bounded by MAX_AUTH_DURATION_SEC) for its session_refreshed signal.
-## Returns true only when a fresh token was stored. On failure or timeout the
-## caller surfaces the original RPC error — no retry loop.
+## waits (bounded by the _refresh_watchdog_ms deadline, which mirrors
+## MAX_AUTH_DURATION_SEC) for its session_refreshed signal. Returns true only
+## when a fresh token was stored. On failure or timeout the caller surfaces
+## the original RPC error — no retry loop.
+## Issue #1147: auth_blocked is terminal for the refresh's device-auth
+## fallback — session_refreshed will never arrive after the gate fires — so
+## the wait listens to auth_blocked and short-circuits with false immediately
+## instead of spinning until the deadline. The gate's reason is recorded in
+## _last_auth_blocked_reason for the in-flight RPC caller.
 func _run_refresh_and_await_result() -> bool:
 	if http_request == null:
 		return false
@@ -948,15 +986,40 @@ func _run_refresh_and_await_result() -> bool:
 	var on_refreshed: Callable = func(success: bool, _error_message: String):
 		if outcome.is_empty():
 			outcome.append(success)
+	var on_blocked: Callable = func(reason: String, _guidance: String):
+		if outcome.is_empty():
+			outcome.append(false)
+			_last_auth_blocked_reason = reason
 	session_refreshed.connect(on_refreshed, CONNECT_ONE_SHOT)
+	auth_blocked.connect(on_blocked, CONNECT_ONE_SHOT)
+	auth_recovery_stage.emit(AUTH_RECOVERY_STAGE_REFRESH_STARTED)
 	_refresh_session()
-	var deadline_ms: int = Time.get_ticks_msec() + int(NetworkConsts.MAX_AUTH_DURATION_SEC * 1000.0)
+	var deadline_ms: int = Time.get_ticks_msec() + _refresh_watchdog_ms
 	while outcome.is_empty():
 		await get_tree().process_frame
 		if Time.get_ticks_msec() >= deadline_ms:
-			if session_refreshed.is_connected(on_refreshed):
-				session_refreshed.disconnect(on_refreshed)
-			return false
+			break
+	# Neither signal fired before the deadline — drop the one-shot listeners
+	# so they cannot linger on the singleton and fire for an unrelated later
+	# auth cycle.
+	if session_refreshed.is_connected(on_refreshed):
+		session_refreshed.disconnect(on_refreshed)
+	if auth_blocked.is_connected(on_blocked):
+		auth_blocked.disconnect(on_blocked)
+	if outcome.is_empty():
+		push_warning(
+			"NetworkManager._run_refresh_and_await_result: refresh wait hit the %d ms deadline without session_refreshed or auth_blocked"
+			% _refresh_watchdog_ms
+		)
+		auth_recovery_stage.emit(AUTH_RECOVERY_STAGE_FAILED)
+		return false
+	if not bool(outcome[0]):
+		if not _last_auth_blocked_reason.is_empty():
+			auth_recovery_stage.emit(AUTH_RECOVERY_STAGE_BLOCKED)
+		else:
+			auth_recovery_stage.emit(AUTH_RECOVERY_STAGE_FAILED)
+		return false
+	auth_recovery_stage.emit(AUTH_RECOVERY_STAGE_REFRESHED)
 	return bool(outcome[0]) and not session_token.is_empty()
 
 ## Sends an RPC request without waiting for response (fire-and-forget).
