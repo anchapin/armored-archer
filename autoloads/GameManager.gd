@@ -159,6 +159,13 @@ func heal_player(amount: int) -> void:
 # --- Game Flow ---
 func start_game() -> void:
 	"""Starts a new game session, resetting health and state."""
+	# Issue #1110: construct the ObjectPool's combat pools behind the stage
+	# load (the campaign-map fade covers this scene entering) instead of
+	# synchronously at engine boot. Idempotent, so re-entries are free.
+	var object_pool: Node = get_node_or_null("/root/ObjectPool")
+	if object_pool and object_pool.has_method("prewarm_pools"):
+		object_pool.prewarm_pools()
+
 	player_current_health = player_max_health
 	is_game_active = true
 	game_start_time = Time.get_unix_time_from_system()

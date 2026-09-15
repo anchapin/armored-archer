@@ -12,6 +12,9 @@
 ##   ObjectPool.get_damage_popup() - Get a floating damage label
 ##   ObjectPool.get_arrow_trail() - Get an arrow trail particle
 ##   ObjectPool.return_*(node) - Return matching pool
+##   ObjectPool.prewarm_pools() - Construct all pools (issue #1110: wired into
+##     GameManager.start_game() behind the stage load; also runs lazily on
+##     first acquire if a caller beats the prewarm)
 ##
 extends Node
 
@@ -97,8 +100,21 @@ var _damage_popups_reused: int = 0
 var _arrow_trails_created: int = 0
 var _arrow_trails_reused: int = 0
 
+# Issue #1110: pools are no longer constructed synchronously in _ready()
+# (that cost belongs behind the stage load, not engine boot). prewarm_pools()
+# constructs them; getters lazily fall back if prewarm never ran.
+var _pools_initialized: bool = false
+
+# Autoload node names from project.godot — used to tell the outgoing current
+# scene apart from always-loaded root children (issue #1110).
+var _autoload_node_names: Array[StringName] = []
+
 func _ready() -> void:
-	_initialize_pools()
+	# Issue #1110: do NOT call _initialize_pools() here — pool construction
+	# moved off the boot path. Prewarm happens behind the stage load via
+	# GameManager.start_game() -> prewarm_pools(), or lazily on first acquire.
+	_cache_autoload_names()
+	get_tree().root.child_exiting_tree.connect(_on_root_child_exiting_tree)
 
 func _initialize_pools() -> void:
 	# Preload scenes. Use load() rather than preload() so a malformed scene
@@ -200,6 +216,14 @@ func _initialize_pools() -> void:
 	else:
 		push_warning("[ObjectPool] Arrow trail scene missing; pool skipped")
 
+	_pools_initialized = true
+
+## Lazily construct pools on first acquire if prewarm_pools() never ran
+## (e.g. PvP flow or a fresh test instance). Cheap boolean check.
+func _ensure_pools_initialized() -> void:
+	if not _pools_initialized:
+		_initialize_pools()
+
 ## Internal: instantiate a number of GPUParticles2D from a PackedScene and add
 ## them to a typed pool array. Mirrors the existing hit/death prewarm loop.
 func _prewarm_particle_pool(target_pool: Array[Node], scene: PackedScene, count: int) -> void:
@@ -216,6 +240,7 @@ func _prewarm_particle_pool(target_pool: Array[Node], scene: PackedScene, count:
 
 ## Get an arrow from the pool, or create a new one if pool is empty
 func get_arrow() -> Node:
+	_ensure_pools_initialized()
 	var arrow: Node
 
 	if _arrow_pool.size() > 0:
@@ -253,6 +278,7 @@ func return_arrow(arrow: Node) -> void:
 
 ## Get an enemy from the pool, or create a new one if pool is empty
 func get_enemy() -> Node:
+	_ensure_pools_initialized()
 	var enemy: Node
 
 	if _enemy_pool.size() > 0:
@@ -296,6 +322,7 @@ func return_enemy(enemy: Node) -> void:
 
 ## Get a hit effect from the pool, or create a new one if pool is empty
 func get_hit_effect() -> Node:
+	_ensure_pools_initialized()
 	var effect: Node
 
 	if _hit_effect_pool.size() > 0:
@@ -331,6 +358,7 @@ func return_hit_effect(effect: Node) -> void:
 
 ## Get a death effect from the pool, or create a new one if pool is empty
 func get_death_effect() -> Node:
+	_ensure_pools_initialized()
 	var effect: Node
 
 	if _death_effect_pool.size() > 0:
@@ -376,6 +404,7 @@ func _get_particle_from(
 		created_ref: Array, # [0] = ref to int (mutated in place)
 		reused_ref: Array   # [0] = ref to int (mutated in place)
 ) -> GPUParticles2D:
+	_ensure_pools_initialized()
 	var effect: GPUParticles2D
 	if available.size() > 0:
 		effect = available.pop_back()
@@ -514,6 +543,7 @@ func return_charge_effect(effect: Node) -> void:
 ##   * calling return_damage_popup() once the popup's lifetime expires
 ##     (e.g. via a tween callback) so it can be reused.
 func get_damage_popup() -> Label:
+	_ensure_pools_initialized()
 	var popup: Label
 	if _damage_popup_pool.size() > 0:
 		popup = _damage_popup_pool.pop_back()
@@ -546,6 +576,7 @@ func return_damage_popup(popup: Node) -> void:
 ## arrow (or any moving node) and should call return_arrow_trail() when the
 ## arrow returns to the pool / is freed.
 func get_arrow_trail() -> GPUParticles2D:
+	_ensure_pools_initialized()
 	var trail: GPUParticles2D
 	if _arrow_trail_pool.size() > 0:
 		trail = _arrow_trail_pool.pop_back()
@@ -789,10 +820,52 @@ func cleanup_invalid_instances() -> void:
 			valid_trails.append(trail)
 	_active_arrow_trails = valid_trails
 
-## Pre-warm pools (call during loading screen)
-func warm_pools() -> void:
-	# Additional warming if needed
-	pass
+## Pre-warm pools — construct the full pool set behind the stage-load /
+## loading screen (issue #1110: wired from GameManager.start_game(), which
+## scenes/main.gd calls as the combat scene enters, covered by the
+## campaign-map fade). Idempotent: a second call never double-fills.
+func prewarm_pools() -> void:
+	if _pools_initialized:
+		return
+	_initialize_pools()
+
+# --- Scene-transition integration (issue #1110) ---
+
+## Cache autoload node names from project.godot so root-child exits can be
+## classified as "always-loaded autoload" vs "outgoing current scene".
+func _cache_autoload_names() -> void:
+	if not ProjectSettings.has_setting("autoload"):
+		return
+	for autoload_key in ProjectSettings.get_setting("autoload").keys():
+		_autoload_node_names.append(StringName(String(autoload_key)))
+
+func _is_autoload_node(node: Node) -> bool:
+	return _autoload_node_names.has(node.name)
+
+## Flush active pooled objects when the outgoing current scene exits the
+## tree, so enemies/arrows/VFX never keep simulating across menus or PvP
+## (issue #1110). Wired once to root's child_exiting_tree signal, which
+## covers every change_scene_to_file/packed call site.
+##
+## Discriminators (verified against Godot 4.6 change_scene behavior):
+##   * the engine nulls SceneTree.current_scene *before* the outgoing scene
+##     exits, while a root-parented gameplay node freed mid-combat (e.g. a
+##     boss from GameManager.spawn_boss) exits while current_scene is set;
+##   * the outgoing scene is a .tscn instantiation (scene_file_path set),
+##     unlike plain runtime nodes and script-only autoloads.
+func _on_root_child_exiting_tree(node: Node) -> void:
+	if node == self or not is_inside_tree():
+		return
+	var tree: SceneTree = get_tree()
+	if tree == null or tree.current_scene != null:
+		return
+	if node.get_parent() != tree.root:
+		return
+	if node.scene_file_path.is_empty():
+		return
+	if _is_autoload_node(node):
+		return
+	prepare_for_scene_change()
 
 ## Clean up all pooled objects - call when game exits or needs full reset
 func cleanup_all() -> void:
