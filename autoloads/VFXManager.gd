@@ -136,7 +136,12 @@ func spawn_arrow_trail(parent: Node) -> GPUParticles2D:
 		return null
 
 	var trail: GPUParticles2D = ObjectPool.get_arrow_trail()
-	parent.add_child(trail)
+	# Prewarmed trails are still parented under ObjectPool; reparent into the
+	# requested parent (mirrors the pooled-particle pattern above).
+	if trail.get_parent() == null:
+		parent.add_child(trail)
+	else:
+		trail.reparent(parent)
 	return trail
 
 

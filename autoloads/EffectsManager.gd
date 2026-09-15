@@ -57,7 +57,7 @@ func trigger_slow_motion(duration: float = CRIT_DURATION, time_scale: float = CR
 
 	# Return to normal time after duration
 	_time_scale_tween = create_tween()
-	_time_scale_tween.set_delay(duration)
+	_time_scale_tween.tween_interval(duration)
 	_time_scale_tween.tween_callback(_restore_normal_time)
 
 
