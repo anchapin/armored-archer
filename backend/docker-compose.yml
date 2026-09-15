@@ -115,6 +115,30 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
 
+  # PostgreSQL metrics exporter backing the Prometheus `postgres` scrape job
+  # (backend/prometheus.yml, target postgres-exporter:9187 — issue #1183).
+  # DATA_SOURCE_NAME is assembled at compose-config time from the same
+  # POSTGRES_* variables that configure the postgres container, so the
+  # exporter always points at the same credentials as the stack itself.
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: armored_archer_postgres_exporter
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-nakama}?sslmode=disable
+    ports:
+      - "9187:9187"
+    networks:
+      - backend-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider --quiet http://localhost:9187/metrics || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   loki:
     image: grafana/loki:2.9.3
     container_name: armored_archer_loki
