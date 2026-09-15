@@ -307,11 +307,11 @@ describe('player_rpc', () => {
 
     it('should allow an allowlisted admin to query another user\'s reports (#1150, #1075)', () => {
       const previousAdminIds = process.env.ADMIN_USER_IDS;
-      process.env.ADMIN_USER_IDS = 'admin-user';
+      process.env.ADMIN_USER_IDS = '00000000-0000-4000-8000-000000000005';
       // isAdminUser caches the parsed allowlist (issue #1155), so the cache
       // must be reset after mutating ADMIN_USER_IDS for the guard to see it.
       resetAdminAllowlistCache();
-      const adminCtx = createMockContext({ userId: 'admin-user' });
+      const adminCtx = createMockContext({ userId: '00000000-0000-4000-8000-000000000005' });
 
       getReportsForUser.mockReturnValue([
         { reportId: 'r-victim', reporterId: 'victim-user', reason: 'win_trading' },

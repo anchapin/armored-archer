@@ -14,9 +14,11 @@
  * re-parsing was a TOCTOU surface (a hot-reload, test fixture, or stray
  * `process.env.ADMIN_USER_IDS = …` mutation could flip the gate between
  * requests without any operator action). The parser also rejects malformed
- * entries (whitespace, commas, oversized strings, non-canonical characters)
+ * entries (anything that is not a strict UUID v4 — wrong version or variant
+ * nibble, missing dashes, truncation, oversized strings, stray punctuation)
  * and normalizes case to lowercase so an admin allowlist entry written as
- * `ABC-123` matches a `ctx.userId` of `abc-123` — a case mismatch previously
+ * `00000000-0000-4000-8000-00000000000A` matches a `ctx.userId` of
+ * `00000000-0000-4000-8000-00000000000a` — a case mismatch previously
  * bricked the deployment silently.
  *
  * Fail-closed semantics: an unset, blank, or empty `ADMIN_USER_IDS` rejects
@@ -59,16 +61,16 @@ export type AdminGatedRpcHandler = (
 ) => string | Promise<string>;
 
 /**
- * Canonical Nakama user-id format used for admin allowlist validation.
- *
- * Accepts both the server-generated 32-hex-char form (e.g. Nakama's own
- * internal IDs) and the conventional UUID form with dashes. Whitespace,
- * commas, and other punctuation are rejected to catch operator typos
- * (issue #1155). The maximum length is generous — Nakama's longest canonical
- * user id is 40 chars with dashes — but capped to prevent a runaway env var
- * from inflating the parse.
+ * Canonical Nakama user-id format used for admin allowlist validation:
+ * strict UUID v4 (RFC 4122) — 8-4-4-4-12 lowercase-hex groups with the
+ * version nibble fixed at 4 and the variant nibble restricted to 8/9/a/b.
+ * The `i` flag also accepts uppercase-hex entries; parsing normalizes them
+ * to lowercase. Anything else — other UUID versions (v1/v5), the dashless
+ * 32-hex form, truncated ids, embedded punctuation, or over-long strings —
+ * is rejected to catch operator typos (issue #1075 hardening; tightened to
+ * strict v4 in #1172 per ADR-0006).
  */
-const VALID_USER_ID = /^[a-zA-Z0-9-]{1,128}$/;
+const VALID_USER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /** Internal shape of the cached allowlist. Frozen so callers cannot mutate it. */
 interface ResolvedAllowlist {
@@ -150,11 +152,14 @@ function emitAllowlistSizeMetric(count: number): void {
  *
  * Parsing rules:
  *  - Split on comma, trim each entry, drop empty segments.
- *  - Reject any entry that contains whitespace, a comma, or any character
- *    outside `[a-zA-Z0-9-]` (operator typos). When the env var is unset or
- *    blank the resolved set is empty — which is the fail-closed default.
- *  - Normalize to lowercase so that `ctx.userId=ABC-123` matches an env
- *    entry of `abc-123`.
+ *  - Reject any entry that is not a strict UUID v4 (RFC 4122): wrong
+ *    version/variant nibble, missing dashes, truncation, embedded
+ *    whitespace or punctuation, or an over-long string (operator typos).
+ *    When the env var is unset or blank the resolved set is empty — which
+ *    is the fail-closed default.
+ *  - Normalize to lowercase so that `ctx.userId=00000000-0000-4000-8000-
+ *    00000000000A` matches an env entry of `00000000-0000-4000-8000-
+ *    00000000000a`.
  *  - SHA-256 prefix is logged per id for rotation auditability.
  *
  * @throws if any entry is malformed; the process is expected to crash
@@ -178,7 +183,7 @@ function parseAndValidate(raw: string | undefined): ResolvedAllowlist {
   for (const id of entries) {
     if (!VALID_USER_ID.test(id)) {
       throw new Error(
-        `ADMIN_USER_IDS contains malformed entry ${JSON.stringify(id)}: must match ${VALID_USER_ID} (alphanumeric + dash, 1-128 chars). Fix the env var and restart.`
+        `ADMIN_USER_IDS contains malformed entry ${JSON.stringify(id)}: must match ${VALID_USER_ID} (strict UUID v4 per RFC 4122 — version nibble 4, variant nibble 8/9/a/b). Fix the env var and restart.`
       );
     }
     const lower = id.toLowerCase();

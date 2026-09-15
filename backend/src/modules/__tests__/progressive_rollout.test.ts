@@ -107,7 +107,7 @@ describe('Progressive Rollout', () => {
 
   beforeEach(() => {
     mockLogger = createMockLogger();
-    mockCtx = createMockContext({ userId: 'rollout-test-user' });
+    mockCtx = createMockContext({ userId: '00000000-0000-4000-8000-000000000009' });
     mockNk = createMockNakama();
     jest.clearAllMocks();
   });
@@ -489,7 +489,7 @@ describe('Progressive Rollout', () => {
     const previousAdminIds = process.env.ADMIN_USER_IDS;
 
     beforeEach(() => {
-      process.env.ADMIN_USER_IDS = 'rollout-test-user';
+      process.env.ADMIN_USER_IDS = '00000000-0000-4000-8000-000000000009';
       resetAdminAllowlistCache();
       registeredHandlers = new Map();
       const mockInitializer = {
@@ -581,7 +581,7 @@ describe('Progressive Rollout', () => {
       const handler = registeredHandlers.get('armored_archer/rollout_check')!;
       const payload = JSON.stringify({
         feature_name: 'rpc_check',
-        user_id: 'rollout-test-user',
+        user_id: '00000000-0000-4000-8000-000000000009',
       });
 
       const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
@@ -595,7 +595,7 @@ describe('Progressive Rollout', () => {
       const handler = registeredHandlers.get('armored_archer/rollout_check')!;
       const payload = JSON.stringify({
         feature_name: 'rpc_chk_dis',
-        user_id: 'rollout-test-user',
+        user_id: '00000000-0000-4000-8000-000000000009',
       });
 
       const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
@@ -607,7 +607,7 @@ describe('Progressive Rollout', () => {
       const handler = registeredHandlers.get('armored_archer/rollout_check')!;
       const payload = JSON.stringify({
         feature_name: 'does_not_exist_rpc',
-        user_id: 'rollout-test-user',
+        user_id: '00000000-0000-4000-8000-000000000009',
       });
 
       const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
@@ -646,7 +646,7 @@ describe('Progressive Rollout', () => {
       const handler = registeredHandlers.get('armored_archer/rollout_check')!;
       const payload = JSON.stringify({
         feature_name: 'self_user_flag',
-        user_id: 'rollout-test-user',
+        user_id: '00000000-0000-4000-8000-000000000009',
       });
 
       const result = JSON.parse(await handler(mockCtx, mockLogger, mockNk, payload));
@@ -657,7 +657,7 @@ describe('Progressive Rollout', () => {
 
     it('rpcCheckFeatureFlag rejects cross-user probe with a generic Forbidden response (#1156)', async () => {
       // Mark a flag as fully rolled out for the victim. With the pre-fix
-      // handler, a session for `rollout-test-user` could pass
+      // handler, a session for `00000000-0000-4000-8000-000000000009` could pass
       // `user_id: 'victim-user'` and learn the rollout_phase +
       // rollout_percentage for that other user.
       createFeatureFlag('probe_target_flag', 'Probe target', testPhases);
@@ -688,7 +688,7 @@ describe('Progressive Rollout', () => {
         expect.stringContaining('rollout_check rejected')
       );
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('rollout-test-user')
+        expect.stringContaining('00000000-0000-4000-8000-000000000009')
       );
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('victim-user')
@@ -899,7 +899,7 @@ describe('Progressive Rollout', () => {
       expect(result.reason).toBe('delta_above_cap');
       expect(logAudit).toHaveBeenCalledWith(
         mockNk,
-        'rollout-test-user',
+        '00000000-0000-4000-8000-000000000009',
         mockCtx.ipAddress ?? null,
         'rollout_record_metrics',
         'rollout_metrics',
@@ -980,7 +980,7 @@ describe('Progressive Rollout', () => {
       expect(result.reason).toBe('delta_above_cap');
       expect(logAudit).toHaveBeenCalledWith(
         mockNk,
-        'rollout-test-user',
+        '00000000-0000-4000-8000-000000000009',
         mockCtx.ipAddress ?? null,
         'rollout_record_metrics',
         'rollout_metrics',

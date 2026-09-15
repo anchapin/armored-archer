@@ -184,7 +184,7 @@ curl -s 'http://prometheus:9090/api/v1/query' \
 
 ```bash
 # 1. Restore the intended allowlist in backend/.env (or the deploy env source)
-#    ADMIN_USER_IDS=<comma-separated-canonical-user-ids>
+#    ADMIN_USER_IDS=<comma-separated strict UUID v4 user ids>
 
 # 2. Restart so the parse-once cache re-resolves (fail-fast: the server will
 #    crash on a malformed entry rather than run with a broken gate)

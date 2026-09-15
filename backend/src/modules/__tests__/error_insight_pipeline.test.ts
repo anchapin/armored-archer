@@ -37,11 +37,13 @@ jest.mock('../../config/logger', () => ({
 describe('error_insight_pipeline', () => {
   // The error-insights RPCs are registered behind the shared admin gate
   // (issue #1075), so handler-level tests must allowlist their caller ctxs
-  // ('test-user' in RPC endpoints, 'test' in the branch suites).
+  // (…000006 in RPC endpoints, …000007 in the branch suites — strict UUID
+  // v4 per issue #1172).
   const previousAdminIds = process.env.ADMIN_USER_IDS;
 
   beforeAll(() => {
-    process.env.ADMIN_USER_IDS = 'test-user,test';
+    process.env.ADMIN_USER_IDS =
+      '00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007';
     resetAdminAllowlistCache();
   });
 
@@ -514,7 +516,7 @@ describe('error_insight_pipeline', () => {
   });
 
   describe('RPC endpoints', () => {
-    const mockCtx = { userId: 'test-user' };
+    const mockCtx = { userId: '00000000-0000-4000-8000-000000000006' };
     const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
     const mockNk = {};
 
@@ -1809,7 +1811,7 @@ describe('error_insight_pipeline', () => {
           endTime: now.toISOString(),
         });
         const result = await summaryHandler(
-          { userId: 'test' },
+          { userId: '00000000-0000-4000-8000-000000000007' },
           { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
           {},
           payload
@@ -1830,7 +1832,7 @@ describe('error_insight_pipeline', () => {
 
       if (summaryHandler) {
         const result = await summaryHandler(
-          { userId: 'test' },
+          { userId: '00000000-0000-4000-8000-000000000007' },
           { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
           {},
           ''
@@ -1851,7 +1853,7 @@ describe('error_insight_pipeline', () => {
 
       if (summaryHandler) {
         const result = await summaryHandler(
-          { userId: 'test' },
+          { userId: '00000000-0000-4000-8000-000000000007' },
           { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
           {},
           'not valid json{{}'
@@ -1877,7 +1879,7 @@ describe('error_insight_pipeline', () => {
       if (dashboardHandler) {
         // Pass a payload that might fail validation
         const result = await dashboardHandler(
-          { userId: 'test' },
+          { userId: '00000000-0000-4000-8000-000000000007' },
           { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
           {},
           'invalid-payload'
