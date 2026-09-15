@@ -17,7 +17,8 @@ The convention is enforced locally by
 which is wired to git's `commit-msg` hook via
 [`.githooks/commit-msg`](../.githooks/commit-msg). Run `make hooks-install`
 once per clone to activate it (or simply run `make setup`, which now does
-this automatically).
+this automatically). It is also enforced in CI on every pull request — see
+[CI Enforcement](#ci-enforcement) below.
 
 ## Format
 
@@ -77,9 +78,30 @@ The trailer check is bypassed for that commit. Do not use this for routine
 AI-assisted commits — the trailers belong to the project history, not to
 the contributor's workflow.
 
-`--no-verify` is **not** a substitute. The hosted pre-receive check (when
-CI is reachable) re-applies this validation; bypassing the local hook does
-not bypass the gate.
+`--no-verify` is **not** a substitute. The CI gate (below) re-applies this
+validation on every pull request; bypassing the local hook does not bypass
+the gate.
+
+## CI Enforcement
+
+Local hooks only cover developers who ran `make hooks-install`; commits made
+through the GitHub web UI or by contributors who skipped `make setup` never
+pass through the hook. Issue #1173 closed that gap: the
+[`ai-trailer-check`](../.github/workflows/ai-trailer-check.yml) workflow runs
+on every pull_request (fork and branch PRs alike) and walks all commits in
+the PR range through
+[`scripts/ci-check-ai-trailers.sh`](../scripts/ci-check-ai-trailers.sh),
+which pipes each commit message into the same
+`commit-msg-check-ai-trailer.sh` validator the local hook uses — identical
+rules, zero duplication. The gate fails the check (and therefore the PR)
+when any commit whose subject starts with `[AI-assisted]` lacks the
+`- AI Model:` / `- Task:` trailers.
+
+To reproduce the CI check locally against a branch:
+
+```bash
+./scripts/ci-check-ai-trailers.sh origin/main HEAD
+```
 
 ## Validating Locally
 
@@ -100,4 +122,6 @@ stderr explains exactly which trailer(s) are missing or malformed.
 - `scripts/commit-msg-check-ai-trailer.sh` — the hook implementation.
 - `.githooks/commit-msg` — the git hook wrapper installed by
   `make hooks-install` / `make setup`.
+- `.github/workflows/ai-trailer-check.yml` + `scripts/ci-check-ai-trailers.sh`
+  — the CI-side gate over PR commit ranges (issue #1173).
 - Issue #1157 — the original ticket that introduced this check.

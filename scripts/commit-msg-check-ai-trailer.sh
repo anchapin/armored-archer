@@ -53,7 +53,14 @@ SCRIPT_NAME="commit-msg-check-ai-trailer"
 DOCS_REF="AGENTS.md:173 and docs/CONTRIBUTING_AI.md"
 
 # Read the full message; tolerate CRLF by stripping carriage returns.
-MSG=$(tr -d '\r' < "${MSG_FILE}")
+# "-" means stdin: a plain `< "${MSG_FILE}"` would try to open a file
+# literally named "-" (issue #1173 — this mode is what the CI range-walker
+# scripts/ci-check-ai-trailers.sh pipes commit messages through).
+if [[ "${MSG_FILE}" == "-" ]]; then
+  MSG=$(tr -d '\r')
+else
+  MSG=$(tr -d '\r' < "${MSG_FILE}")
+fi
 
 # First non-empty line is the subject (handle leading comments / blank lines).
 SUBJECT=$(printf '%s\n' "${MSG}" | awk '

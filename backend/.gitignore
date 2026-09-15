@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 build/
 # Compiled Nakama runtime bundle (webpack/tsc output from `npm run build:full`).
 # Untracked since issue #996 — regenerate locally; never commit build output.
