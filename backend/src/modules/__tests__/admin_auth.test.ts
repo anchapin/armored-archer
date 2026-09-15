@@ -8,7 +8,8 @@
  * 3. passes through allowlisted admins for a representative set of RPCs
  *    (season_admin end_season, rollout_create_flag, rpcGetMetrics,
  *    admin_query_matches),
- * 4. never treats userId-less (server-key style) calls as admin.
+ * 4. never treats userId-less (server-key style) calls as admin,
+ * 5. only accepts strict UUID v4 allowlist entries (issue #1172).
  */
 
 import { Runtime } from '../../types/nakama';
@@ -149,8 +150,16 @@ jest.mock('../anti_cheat', () => ({
 // NOTE: '../audit' stays REAL so the guard's logAudit integration
 // (nk.storageWrite into the audit_logs collection) is exercised.
 
-const ADMIN_ID = 'admin-user-1';
-const PLAYER_ID = 'player-7';
+// Deterministic UUID v4 fixtures (issue #1172): version nibble 4, variant
+// nibble 8 — never real admin ids.
+const ADMIN_ID = '00000000-0000-4000-8000-000000000001';
+const SECOND_ADMIN_ID = '00000000-0000-4000-8000-000000000002';
+const THIRD_ADMIN_ID = '00000000-0000-4000-8000-000000000003';
+const FOURTH_ADMIN_ID = '00000000-0000-4000-8000-000000000004';
+// Valid-v4-shaped but not allowlisted — a realistic ordinary player id.
+const PLAYER_ID = '99999999-9999-4999-8999-999999999999';
+// Carries hex letters a-f so case normalization is exercised end-to-end.
+const CASEFUL_ADMIN_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 
 /** Every privileged RPC id gated by the shared admin guard (issue #1075). */
 const GATED_RPC_IDS = [
@@ -311,10 +320,10 @@ describe('getAdminUserIds / isAdminUser', () => {
   });
 
   it('parses comma-separated ids with whitespace and empty segments tolerated', () => {
-    setAdminUserIds(` ${ADMIN_ID} ,, other-admin `);
-    expect(getAdminUserIds()).toEqual(new Set([ADMIN_ID, 'other-admin']));
+    setAdminUserIds(` ${ADMIN_ID} ,, ${SECOND_ADMIN_ID} `);
+    expect(getAdminUserIds()).toEqual(new Set([ADMIN_ID, SECOND_ADMIN_ID]));
     expect(isAdminUser(ADMIN_ID)).toBe(true);
-    expect(isAdminUser('other-admin')).toBe(true);
+    expect(isAdminUser(SECOND_ADMIN_ID)).toBe(true);
     expect(isAdminUser(PLAYER_ID)).toBe(false);
   });
 
@@ -339,13 +348,13 @@ describe('getAdminUserIds hardening (#1155)', () => {
 
     // Even if a hot-reload or stray console mutates the env, the cache holds
     // the value from the first parse (until an explicit reset).
-    process.env.ADMIN_USER_IDS = 'a-different-admin';
+    process.env.ADMIN_USER_IDS = THIRD_ADMIN_ID;
     expect(getAdminUserIds().has(ADMIN_ID)).toBe(true);
-    expect(getAdminUserIds().has('a-different-admin')).toBe(false);
+    expect(getAdminUserIds().has(THIRD_ADMIN_ID)).toBe(false);
 
     // Reset clears the cache; the next call re-parses.
     resetAdminAllowlistCache();
-    expect(getAdminUserIds().has('a-different-admin')).toBe(true);
+    expect(getAdminUserIds().has(THIRD_ADMIN_ID)).toBe(true);
     expect(getAdminUserIds().has(ADMIN_ID)).toBe(false);
   });
 
@@ -366,43 +375,48 @@ describe('getAdminUserIds hardening (#1155)', () => {
     expect(() => getAdminUserIds()).toThrow(/malformed entry/);
   });
 
-  it('rejects an entry that exceeds the 128-char length cap', () => {
+  it('rejects an over-long entry (129 chars) at first parse', () => {
     setAdminUserIds(undefined);
     process.env.ADMIN_USER_IDS = 'a'.repeat(129);
     resetAdminAllowlistCache();
     expect(() => getAdminUserIds()).toThrow(/malformed entry/);
   });
 
-  it('normalizes case so admin-user-1 matches ADMIN-USER-1', () => {
-    setAdminUserIds('ADMIN-USER-1');
-    expect(getAdminUserIds().has('admin-user-1')).toBe(true);
-    expect(isAdminUser('admin-user-1')).toBe(true);
-    expect(isAdminUser('ADMIN-USER-1')).toBe(true);
+  it('normalizes case so lowercase hex matches uppercase hex', () => {
+    setAdminUserIds(CASEFUL_ADMIN_ID.toUpperCase());
+    expect(getAdminUserIds().has(CASEFUL_ADMIN_ID)).toBe(true);
+    expect(isAdminUser(CASEFUL_ADMIN_ID)).toBe(true);
+    expect(isAdminUser(CASEFUL_ADMIN_ID.toUpperCase())).toBe(true);
   });
 
   it('isAdminUser lowercases the caller so runtime ids match the env allowlist', () => {
-    setAdminUserIds('Admin-User-1');
-    expect(isAdminUser('admin-user-1')).toBe(true);
-    expect(isAdminUser('ADMIN-USER-1')).toBe(true);
+    setAdminUserIds(CASEFUL_ADMIN_ID);
+    expect(isAdminUser(CASEFUL_ADMIN_ID)).toBe(true);
+    expect(isAdminUser(CASEFUL_ADMIN_ID.toUpperCase())).toBe(true);
   });
 
   it('deduplicates entries that differ only in case', () => {
-    setAdminUserIds('admin-user-1,ADMIN-USER-1,Admin-User-1');
+    setAdminUserIds(
+      `${CASEFUL_ADMIN_ID},${CASEFUL_ADMIN_ID.toUpperCase()},${CASEFUL_ADMIN_ID
+        .split('')
+        .map((c) => (c >= 'a' && c <= 'f' ? c.toUpperCase() : c))
+        .join('')}`
+    );
     expect(getAdminUserIds().size).toBe(1);
-    expect(getAdminUserIds().has('admin-user-1')).toBe(true);
+    expect(getAdminUserIds().has(CASEFUL_ADMIN_ID)).toBe(true);
   });
 
   it('reloadAdminAllowlist re-reads the env and returns the new count', () => {
     setAdminUserIds(ADMIN_ID);
     expect(getAdminUserIds().size).toBe(1);
 
-    process.env.ADMIN_USER_IDS = `${ADMIN_ID},other-admin`;
+    process.env.ADMIN_USER_IDS = `${ADMIN_ID},${SECOND_ADMIN_ID}`;
     expect(getAdminUserIds().size).toBe(1); // cache still holds the old set
 
     const newCount = reloadAdminAllowlist();
     expect(newCount).toBe(2);
     expect(getAdminUserIds().size).toBe(2);
-    expect(getAdminUserIds().has('other-admin')).toBe(true);
+    expect(getAdminUserIds().has(SECOND_ADMIN_ID)).toBe(true);
   });
 
   it('reloadAdminAllowlist leaves the cache intact when the env is malformed', () => {
@@ -413,6 +427,55 @@ describe('getAdminUserIds hardening (#1155)', () => {
     expect(() => reloadAdminAllowlist()).toThrow(/malformed entry/);
     expect(getAdminUserIds().size).toBe(1); // failure does not break the gate
     expect(getAdminUserIds().has(ADMIN_ID)).toBe(true);
+  });
+});
+
+// =================== Strict UUID v4 enforcement (issue #1172) ===================
+
+describe('getAdminUserIds strict UUID v4 validation (#1172)', () => {
+  afterEach(() => {
+    setAdminUserIds(undefined);
+  });
+
+  it('accepts a valid lowercase-hex UUID v4', () => {
+    setAdminUserIds(ADMIN_ID);
+    expect(getAdminUserIds()).toEqual(new Set([ADMIN_ID]));
+    expect(isAdminUser(ADMIN_ID)).toBe(true);
+  });
+
+  it('accepts a valid uppercase-hex UUID v4 (normalized to lowercase)', () => {
+    setAdminUserIds(CASEFUL_ADMIN_ID.toUpperCase());
+    expect(getAdminUserIds()).toEqual(new Set([CASEFUL_ADMIN_ID]));
+  });
+
+  it('rejects the legacy permissive form (e.g. admin-user-1)', () => {
+    setAdminUserIds('admin-user-1');
+    expect(() => getAdminUserIds()).toThrow(/malformed entry/);
+  });
+
+  it('rejects a UUID v1 (version nibble 1)', () => {
+    setAdminUserIds('00000000-0000-1000-8000-000000000000');
+    expect(() => getAdminUserIds()).toThrow(/malformed entry/);
+  });
+
+  it('rejects a UUID v5 (version nibble 5)', () => {
+    setAdminUserIds('00000000-0000-5000-8000-000000000000');
+    expect(() => getAdminUserIds()).toThrow(/malformed entry/);
+  });
+
+  it('rejects a v4-shaped id with a non-RFC-4122 variant nibble (c)', () => {
+    setAdminUserIds('00000000-0000-4000-c000-000000000000');
+    expect(() => getAdminUserIds()).toThrow(/malformed entry/);
+  });
+
+  it('rejects a truncated UUID (11-char final group)', () => {
+    setAdminUserIds('00000000-0000-4000-8000-00000000000');
+    expect(() => getAdminUserIds()).toThrow(/malformed entry/);
+  });
+
+  it('rejects the dashless 32-hex form', () => {
+    setAdminUserIds('00000000400040008000000000000001');
+    expect(() => getAdminUserIds()).toThrow(/malformed entry/);
   });
 });
 
@@ -798,7 +861,7 @@ describe('admin gate: allowlisted admin reaches the real handler', () => {
 
   it('a caller that is allowlisted for one id is still rejected when removed from the list', async () => {
     const handler = handlers.get('armored_archer/rollout_create_flag')!;
-    setAdminUserIds('somebody-else');
+    setAdminUserIds(FOURTH_ADMIN_ID);
 
     const result = JSON.parse(
       (await handler(createMockContext(ADMIN_ID), mockLogger, mockNk, '{}')) as string

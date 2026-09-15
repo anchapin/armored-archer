@@ -1,8 +1,8 @@
 # ADR-0006: Admin-gate allowlist policy
 
-**Status:** Accepted
-**Date:** 2026-08-18
-**Issue:** #1153 (filing), #1075 (guard), #1155 (hardening), #1077 (audit trail)
+**Status:** Accepted (amended 2026-09-15 by issue #1172: canonical id format tightened from the permissive `[a-zA-Z0-9-]{1,128}` to strict UUID v4)
+**Date:** 2026-08-18 (original), 2026-09-15 (amendment)
+**Issue:** #1153 (filing), #1075 (guard), #1155 (hardening), #1077 (audit trail), #1172 (strict UUID v4)
 **Supersedes:** none
 **Related ADRs:** [ADR-0005](./0005-combat-authority-boundary.md) (no functional overlap; cross-referenced because both are server-authority contracts)
 **Cross-references:** `backend/src/modules/admin_auth.ts`; `RPC_MAP.md` §"Admin Authorization"; `backend/.env.example`; AGENTS.md §"Testing Guidelines" (fail-closed); `docs/SECRETS_MANAGEMENT.md`, `docs/SECRETS_ROTATION.md`
@@ -24,13 +24,13 @@ Admin authorization in Armored Archer is a **fail-closed, env-driven, parse-once
 
 ### Policy
 
-1. **Allowlist source of truth:** the `ADMIN_USER_IDS` environment variable. The variable holds a comma-separated list of canonical Nakama user ids (e.g. `abc-123-…,def-456-…`). The full list is **never** logged; the count and a SHA-256 prefix of each id are logged once at first parse for rotation auditability.
+1. **Allowlist source of truth:** the `ADMIN_USER_IDS` environment variable. The variable holds a comma-separated list of canonical Nakama user ids in strict UUID v4 form (e.g. `00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002`). The full list is **never** logged; the count and a SHA-256 prefix of each id are logged once at first parse for rotation auditability.
 
-2. **Canonical user-id format:** `[a-zA-Z0-9-]{1,128}`. This covers both Nakama's 32-hex-char server-generated form and the conventional UUID-with-dashes form. Whitespace, embedded commas, and any other punctuation are rejected.
+2. **Canonical user-id format:** strict UUID v4 (RFC 4122) — `/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i`. The version nibble must be `4` and the variant nibble must be `8`, `9`, `a`, or `b`; uppercase hex is accepted and normalized to lowercase. Anything else — other UUID versions, the dashless 32-hex form, whitespace, embedded punctuation, or over-long strings — is rejected. (Amendment #1172: the original ratification allowed the permissive `[a-zA-Z0-9-]{1,128}`, which silently accepted typo'd admin ids; the hardening spec from #1075 called for strict v4.)
 
 3. **Parse-once semantics:** the allowlist is resolved on the first call to `getAdminUserIds()` and frozen. Subsequent calls return the same frozen `ReadonlySet<string>` until the cache is explicitly invalidated. This is the TOCTOU fix from #1155 — a stray `process.env.ADMIN_USER_IDS = …` mutation between requests cannot flip the gate.
 
-4. **Case normalization:** every entry is lowercased before being added to the set, and every lookup normalizes `ctx.userId` to lowercase. `ABC-123` in the env matches `abc-123` from `ctx.userId`.
+4. **Case normalization:** every entry is lowercased before being added to the set, and every lookup normalizes `ctx.userId` to lowercase. `00000000-0000-4000-8000-00000000000A` in the env matches `00000000-0000-4000-8000-00000000000a` from `ctx.userId`.
 
 5. **Fail-fast on malformed entries:** any entry that fails the canonical-format regex causes `parseAndValidate()` to throw. The process is expected to crash on startup rather than run with a silently-broken gate. The error message identifies the offending entry by its raw value.
 
@@ -68,7 +68,7 @@ Fail-closed means: an unset, blank, or misconfigured allowlist rejects every cal
 - The TOCTOU surface is closed by parse-once + frozen Set; this is test-covered (`backend/src/modules/__tests__/admin_auth.test.ts`).
 - Case normalization removes the silent-brick class of deploy errors.
 - The audit trail — `admin_rpc_access_denied` against the caller — is the canonical source of truth for "who tried to call admin RPCs and was rejected", per #1077.
-- `RPC_MAP.md` §"Admin Authorization" and `backend/.env.example` (line 287, `ADMIN_USER_IDS=`) cross-reference this ADR as the single canonical contract.
+- `RPC_MAP.md` §"Admin Authorization" and `backend/.env.example` (`ADMIN_USER_IDS=`, with a commented UUID v4 example) cross-reference this ADR as the single canonical contract.
 
 ### Negative / costs
 

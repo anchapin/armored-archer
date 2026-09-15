@@ -163,7 +163,7 @@ jest.mock('prom-client', () => ({
 // ---- Helpers ----
 
 function makeRpcArgs() {
-  const ctx = { userId: 'user-123' } as any;
+  const ctx = { userId: '00000000-0000-4000-8000-00000000000a' } as any;
   const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() } as any;
   const nk = {} as any;
   return { ctx, logger, nk };
@@ -422,7 +422,7 @@ describe('metrics', () => {
     const previousAdminIds = process.env.ADMIN_USER_IDS;
 
     beforeEach(() => {
-      process.env.ADMIN_USER_IDS = 'user-123,specific-user-42,admin-1,admin-2';
+      process.env.ADMIN_USER_IDS = '00000000-0000-4000-8000-00000000000a,00000000-0000-4000-8000-00000000000b,00000000-0000-4000-8000-00000000000c,00000000-0000-4000-8000-00000000000d';
       resetAdminAllowlistCache();
     });
 
@@ -449,7 +449,7 @@ describe('metrics', () => {
 
       const result = await handler(ctx, logger, nk, '{}');
 
-      expect(logger.info).toHaveBeenCalledWith('Metrics endpoint called by user: %s', 'user-123');
+      expect(logger.info).toHaveBeenCalledWith('Metrics endpoint called by user: %s', '00000000-0000-4000-8000-00000000000a');
       expect(typeof result).toBe('string');
       expect(result).toContain('mock base metrics');
       expect(result).toContain('Deployment metrics');
@@ -491,7 +491,7 @@ describe('metrics', () => {
       registerRpcMetrics(mockInitializer as any);
 
       const handler = capturedHandlers['armored_archer/metrics'];
-      const ctx = { userId: 'specific-user-42' } as any;
+      const ctx = { userId: '00000000-0000-4000-8000-00000000000b' } as any;
       const logger = { info: jest.fn() } as any;
       const nk = {} as any;
 
@@ -499,7 +499,7 @@ describe('metrics', () => {
 
       expect(logger.info).toHaveBeenCalledWith(
         'Metrics endpoint called by user: %s',
-        'specific-user-42'
+        '00000000-0000-4000-8000-00000000000b'
       );
     });
   });
@@ -513,7 +513,7 @@ describe('metrics', () => {
     const previousAdminIds = process.env.ADMIN_USER_IDS;
 
     beforeEach(() => {
-      process.env.ADMIN_USER_IDS = 'user-123,specific-user-42,admin-1,admin-2';
+      process.env.ADMIN_USER_IDS = '00000000-0000-4000-8000-00000000000a,00000000-0000-4000-8000-00000000000b,00000000-0000-4000-8000-00000000000c,00000000-0000-4000-8000-00000000000d';
       resetAdminAllowlistCache();
     });
 
@@ -542,13 +542,13 @@ describe('metrics', () => {
       const handler = capturedHandlers['armored_archer/n_plus_one_report'];
       expect(handler).toBeDefined();
 
-      const ctx = { userId: 'admin-1' } as any;
+      const ctx = { userId: '00000000-0000-4000-8000-00000000000c' } as any;
       const logger = { info: jest.fn() } as any;
       const nk = {} as any;
 
       const result = await handler(ctx, logger, nk, '');
 
-      expect(logger.info).toHaveBeenCalledWith('N+1 report endpoint called by user: %s', 'admin-1');
+      expect(logger.info).toHaveBeenCalledWith('N+1 report endpoint called by user: %s', '00000000-0000-4000-8000-00000000000c');
       const parsed = JSON.parse(result);
       expect(parsed).toEqual(mockReport);
     });
@@ -566,7 +566,7 @@ describe('metrics', () => {
       registerRpcMetrics(mockInitializer as any);
 
       const handler = capturedHandlers['armored_archer/n_plus_one_report'];
-      const ctx = { userId: 'admin-2' } as any;
+      const ctx = { userId: '00000000-0000-4000-8000-00000000000d' } as any;
       const logger = { info: jest.fn() } as any;
       const nk = {} as any;
 
