@@ -782,21 +782,86 @@ func send_rpc(rpc_id: String, payload: String, timeout: float = 30.0) -> Diction
 ## concurrent RPCs via _refreshing_session) and replays the original request
 ## exactly once; `is_replay` marks that replay so a second auth error surfaces
 ## the error instead of looping.
+## Issue #1138: _rpc_busy is held for the ENTIRE cycle — original send,
+## coalesced recovery refresh, and replay — and released exactly once at the
+## single post-cycle exit (_finish_rpc_cycle). The pre-#1138 code released
+## _rpc_busy BEFORE the refresh, so every caller queued on the busy lock
+## immediately fired with the still-stale token, 401'd, and piled its own
+## recovery + replay onto the storm (N+1 amplification: 2M+ round-trips from
+## M concurrent RPCs against an already-failing Nakama). Queued callers now
+## wait until the leader's cycle settles, then send with the already-rotated
+## token — the rotated-token fast path and _last_refresh_succeeded inside
+## _recover_session_after_auth_error already cover anyone whose request still
+## 401s — so a 401 storm costs 1 refresh plus at most 1 replay per
+## (rpc_id, payload) tuple.
 func _send_rpc_with_recovery(rpc_id: String, payload: String, timeout: float, is_replay: bool) -> Dictionary:
 	if not is_session_valid():
 		return {"error": "Not authenticated", "is_auth_error": false}
 
-	# Wait for any in-flight request to complete
+	# Issue #1138: wait for any in-flight cycle (request OR recovery OR
+	# replay) to settle — not just the request — before taking the lock.
 	while _rpc_busy:
 		await get_tree().process_frame
 
 	_rpc_busy = true
+	var start_time: int = Time.get_ticks_msec()
 
+	var attempt: Dictionary = await _perform_rpc_attempt(rpc_id, payload, timeout)
+
+	if attempt.failed:
+		# Transport-level failure (dispatch error / timeout / malformed
+		# result): no recovery, no replay. This is the only early exit
+		# after acquisition, so the lock is still released exactly once.
+		_rpc_busy = false
+		return attempt.response
+
+	if attempt.is_auth_error and not is_replay:
+		# Issue #1138: _rpc_busy stays HELD across recovery + replay so
+		# queued callers cannot race in with the still-stale token.
+		if await _recover_session_after_auth_error(attempt.token_used):
+			# Single replay with the refreshed token; is_replay semantics
+			# prevent a second recovery if the replay itself 401s.
+			var replay: Dictionary = await _perform_rpc_attempt(rpc_id, payload, timeout)
+			return _finish_rpc_cycle(rpc_id, start_time, replay.response)
+		# Refresh failed — fall through and surface the original auth error.
+		# Issue #1147: unless the auth_blocked gate aborted the recovery, in
+		# which case its reason replaces the stale 401 body so the in-flight
+		# caller renders one coherent auth error instead of competing with
+		# the auth_blocked UI panel.
+		if not _last_auth_blocked_reason.is_empty():
+			attempt.response = {
+				"error": "Authentication blocked: %s" % _last_auth_blocked_reason,
+				"is_auth_error": true
+			}
+
+	return _finish_rpc_cycle(rpc_id, start_time, attempt.response)
+
+## Issue #1138: single post-cycle exit for _send_rpc_with_recovery. Logs the
+## cycle's latency and releases the busy lock exactly once per acquisition —
+## callers must NOT clear _rpc_busy anywhere else.
+func _finish_rpc_cycle(rpc_id: String, start_time_ms: int, response_data: Dictionary) -> Dictionary:
+	# Log RPC latency for analytics (covers the whole cycle: original +
+	# recovery + replay when a replay happened).
+	_log_rpc_latency(rpc_id, Time.get_ticks_msec() - start_time_ms)
+	_rpc_busy = false
+	return response_data
+
+## Issue #1138: performs ONE HTTP attempt against the RPC endpoint (formerly
+## the body of _send_rpc_with_recovery). Owns the per-attempt request id,
+## timeout timer, and _rpc_request_active routing flag, but NOT the _rpc_busy
+## lock — the caller holds that across original + recovery + replay so
+## replays do not re-queue behind other callers.
+## Returns a Dictionary with:
+##   response:      the response_data Dictionary send_rpc returns
+##   is_auth_error: true when the attempt got a 401/403
+##   token_used:    the session token the attempt was signed with
+##   failed:        true for transport-level failures (dispatch error,
+##                  timeout, malformed result) that must not trigger recovery
+func _perform_rpc_attempt(rpc_id: String, payload: String, timeout: float) -> Dictionary:
 	# Increment RPC request ID
 	_rpc_request_id += 1
 	var this_rpc_id: int = _rpc_request_id
 
-	var start_time: int = Time.get_ticks_msec()
 	var url: String = "%s/v2/rpc/%s" % [base_url, rpc_id]
 	# Issue #1079: remember the token this request is signed with so recovery
 	# can tell whether a concurrent refresh already rotated it.
@@ -844,8 +909,12 @@ func _send_rpc_with_recovery(rpc_id: String, payload: String, timeout: float, is
 	if error_code != OK:
 		_rpc_request_active = false
 		timer.queue_free()
-		_rpc_busy = false
-		return {"error": "Failed to send RPC request"}
+		return {
+			"response": {"error": "Failed to send RPC request"},
+			"is_auth_error": false,
+			"token_used": token_used,
+			"failed": true
+		}
 
 	# Wait for response with timeout protection
 	while not response_received and not timed_out:
@@ -856,8 +925,12 @@ func _send_rpc_with_recovery(rpc_id: String, payload: String, timeout: float, is
 
 	# Check if request timed out
 	if timed_out:
-		_rpc_busy = false
-		return {"error": "Request timed out after %.1f seconds" % timeout}
+		return {
+			"response": {"error": "Request timed out after %.1f seconds" % timeout},
+			"is_auth_error": false,
+			"token_used": token_used,
+			"failed": true
+		}
 
 	# Process the successful response
 	var response_data: Dictionary = {}
@@ -867,13 +940,16 @@ func _send_rpc_with_recovery(rpc_id: String, payload: String, timeout: float, is
 	# Validate that request_result has enough elements (should have 5: result, code, headers, body, rpc_id)
 	if result.size() < 4:
 		push_error("Request result incomplete: got %d elements, expected 5. Response received: %s" % [result.size(), response_received])
-		_rpc_busy = false
-		return {"error": "Invalid response: request_result is incomplete", "is_auth_error": false}
+		return {
+			"response": {"error": "Invalid response: request_result is incomplete", "is_auth_error": false},
+			"is_auth_error": false,
+			"token_used": token_used,
+			"failed": true
+		}
 
 	var rpc_id_completed: int = -1
 	if result.size() >= 5:
 		rpc_id_completed = result[4]
-
 
 	if result[1] >= 200 and result[1] < 300:
 		var json: JSON = JSON.new()
@@ -897,30 +973,12 @@ func _send_rpc_with_recovery(rpc_id: String, payload: String, timeout: float, is
 		else:
 			response_data = {"error": "HTTP error: %d" % result[1], "is_auth_error": is_auth_error}
 
-	# Issue #1079: on an auth error, attempt ONE coalesced session refresh and
-	# replay the original request exactly once before surfacing the error.
-	if is_auth_error and not is_replay:
-		_rpc_busy = false
-		if await _recover_session_after_auth_error(token_used):
-			# Single replay with the refreshed token; is_replay prevents loops.
-			return await _send_rpc_with_recovery(rpc_id, payload, timeout, true)
-		# Refresh failed — fall through and surface the original auth error.
-		# Issue #1147: unless the auth_blocked gate aborted the recovery, in
-		# which case its reason replaces the stale 401 body so the in-flight
-		# caller renders one coherent auth error instead of competing with
-		# the auth_blocked UI panel.
-		if not _last_auth_blocked_reason.is_empty():
-			response_data = {
-				"error": "Authentication blocked: %s" % _last_auth_blocked_reason,
-				"is_auth_error": true
-			}
-
-	# Log RPC latency for analytics
-	var latency_ms: int = Time.get_ticks_msec() - start_time
-	_log_rpc_latency(rpc_id, latency_ms)
-
-	_rpc_busy = false
-	return response_data
+	return {
+		"response": response_data,
+		"is_auth_error": is_auth_error,
+		"token_used": token_used,
+		"failed": false
+	}
 
 ## Issue #1079: recovers the session after an RPC auth error. Concurrent 401s
 ## coalesce into a single refresh via the _refreshing_session guard; if a
