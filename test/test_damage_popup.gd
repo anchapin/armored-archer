@@ -59,7 +59,10 @@ func test_initial_state() -> void:
 func test_colors_defined() -> void:
 	var dp = await _create_damage_popup()
 
-	if dp.COLOR_NORMAL == Color(1.0, 1.0, 1.0, 1.0) and dp.COLOR_CRIT == Color(1.0, 0.3, 0.1, 1.0) and dp.COLOR_MISS == Color(0.6, 0.6, 0.6, 0.8) and dp.COLOR_HEAL == Color(0.3, 1.0, 0.4, 1.0):
+	# COLOR_CRIT is the golden crit tint introduced by the visual-polish pass
+	# (d727aac2, 2026-04-29: value + font size + golden outline together);
+	# the old red-orange (1.0, 0.3, 0.1) predated that redesign (issue #1234).
+	if dp.COLOR_NORMAL == Color(1.0, 1.0, 1.0, 1.0) and dp.COLOR_CRIT == Color(1.0, 0.6, 0.2, 1.0) and dp.COLOR_MISS == Color(0.6, 0.6, 0.6, 0.8) and dp.COLOR_HEAL == Color(0.3, 1.0, 0.4, 1.0):
 		_pass("test_colors_defined")
 	else:
 		_fail("test_colors_defined", "All color constants should be defined")
