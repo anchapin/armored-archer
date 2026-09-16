@@ -158,7 +158,7 @@ func test_aim_direction_update() -> void:
 	)
 
 	char.aim_direction = Vector2.UP
-	char._update_aim_direction()
+	char._update_aim_direction(0.016)
 
 	if char.aim_direction == Vector2.UP:
 		_pass("test_aim_direction_set")
