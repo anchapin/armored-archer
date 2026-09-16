@@ -523,17 +523,29 @@ export type RpcHandler = (
 ) => string | Promise<string>;
 
 export function wrapRpcWithMetrics(rpcName: string, handler: RpcHandler): RpcHandler {
-  return async function (
+  // SYNC on purpose: Nakama 3.21's goja runtime has no promise-job
+  // scheduler, so an async handler returns a pending Promise that Nakama
+  // rejects ('Runtime function returned invalid data'). The wrap adds no
+  // awaits — keep the registered handler synchronous (issue #1135).
+  return function (
     ctx: Runtime.Context,
     logger: Runtime.Logger,
     nk: Runtime.Nakama,
     payload: string
-  ): Promise<string> {
+  ): string {
     const startTime = Date.now();
     const endTimer = rpcDurationSeconds.startTimer({ rpc: rpcName });
 
     try {
-      const result = await handler(ctx, logger, nk, payload);
+      const result = handler(ctx, logger, nk, payload);
+      if (typeof result !== 'string') {
+        // Nakama's goja runtime cannot resolve Promises (no job scheduler);
+        // a non-string here would surface as an opaque 500 downstream.
+        throw new Error(
+          `RPC ${rpcName} returned a non-string result; async handlers are ` +
+            'unsupported by the Nakama JS runtime (issue #1135)'
+        );
+      }
       rpcCallsTotal.inc({ rpc: rpcName, status: 'success' });
       recordRpcLatency(rpcName, Date.now() - startTime);
       return result;

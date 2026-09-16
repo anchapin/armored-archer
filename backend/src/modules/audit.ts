@@ -1,6 +1,7 @@
 import { Counter } from 'prom-client';
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { isAdminUser } from './admin_auth';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -106,7 +107,7 @@ export function logAudit(
         collection: 'audit_logs',
         key: `audit_${Date.now()}_${userId}_${Math.random().toString(36).substring(7)}`,
         userId,
-        value: JSON.stringify(auditEntry),
+        value: toStorageValue(auditEntry),
       },
     ]);
     return true;
@@ -242,7 +243,7 @@ function filterAuditEntries(
 
   for (const obj of storageObjects) {
     try {
-      const entry = JSON.parse(obj.value) as AuditLogDetails;
+      const entry = JSON.parse(getStorageRawValue(obj.value) ?? '') as AuditLogDetails;
 
       if (action && entry.action !== action) continue;
       if (result && entry.result !== result) continue;

@@ -13,6 +13,7 @@
  */
 
 import { performance } from 'perf_hooks';
+import { Pool } from 'pg';
 import { testHelper, TestAccount } from './helpers';
 
 // Performance thresholds
@@ -37,6 +38,49 @@ interface PerformanceMetrics {
   p99Ms: number;
   requestsPerSecond: number;
 }
+
+/**
+ * Stage-completion RTT budget (issue #1135).
+ *
+ * `stage_complete` performs 12-15 sequential storage/DB round trips per call
+ * (claim check+write, completion read+versioned write, boss defeat read+write,
+ * N+1 modifier-pool unlocks, 3-query inventory fetch, gear insert, boss-defeat
+ * verification, analytics writes). This gate locks the end-to-end p99 budget
+ * at 100ms against a realistically-large player profile:
+ *
+ * - 200 inventory items (gear SELECT must stay fast as inventories grow)
+ * - 50 unlocked modifier pools (pool read-back + unlock checks)
+ * - 20 defeated bosses (defeat-list verification read)
+ *
+ * Measurement notes:
+ * - The anti-abuse rate limiter allows 5 stage_complete calls per user per 60s
+ *   (rate_limit.ts) with a 5-minute penalty, so the burst is fanned out over
+ *   identically-seeded accounts (5 calls each) — a single-account burst would
+ *   measure the RATE_LIMITED rejection path, not the completion flow.
+ * - Each call uses a unique stage_id: the claim-first dedup marker (#1069)
+ *   rejects replays of the same stage for 5 minutes.
+ */
+const STAGE_COMPLETE_BUDGET = {
+  p99Ms: 100,
+  seededInventoryItems: 200,
+  seededModifierPools: 50,
+  seededBosses: 20,
+  warmupCalls: 5,
+  measuredCalls: 50,
+  /** stage_complete rate limit (rate_limit.ts): 5 requests / 60s per user. */
+  callsPerAccount: 5,
+};
+
+// Direct-DB seeding config, same TEST_DB_* convention as schema.test.ts.
+// Defaults target the local compose stack (PostgreSQL published on 5433);
+// CI overrides via env vars.
+const STAGE_PERF_DB = {
+  host: process.env.TEST_DB_HOST || 'localhost',
+  port: parseInt(process.env.TEST_DB_PORT || '5433', 10),
+  user: process.env.TEST_DB_USER || 'postgres',
+  password: process.env.TEST_DB_PASSWORD || 'changeme',
+  database: process.env.TEST_DB_NAME || 'nakama',
+};
 
 describe('Performance Smoke Tests', () => {
   let player: TestAccount;
@@ -460,5 +504,161 @@ describe('Performance Smoke Tests', () => {
       expect(overallAvg).toBeLessThan(PERFORMANCE_THRESHOLDS.averageResponseTimeMs);
       expect(overallP95).toBeLessThan(PERFORMANCE_THRESHOLDS.p95ResponseTimeMs);
     }, 60000);
+  });
+
+  describe('Stage Completion RTT Budget (issue #1135)', () => {
+    let dbPool: Pool;
+    let seededAccounts: TestAccount[] = [];
+    let stageIdCounter = 0;
+
+    beforeAll(async () => {
+      dbPool = new Pool(STAGE_PERF_DB);
+
+      // 1 warmup account + enough accounts for the measured burst at 5
+      // stage_complete calls per account (rate-limit ceiling).
+      const totalAccounts =
+        1 + Math.ceil(STAGE_COMPLETE_BUDGET.measuredCalls / STAGE_COMPLETE_BUDGET.callsPerAccount);
+
+      for (let i = 0; i < totalAccounts; i++) {
+        const account = await testHelper.createTestAccount('perf_stage');
+        await seedPlayerProfile(dbPool, account.userId);
+        seededAccounts.push(account);
+      }
+    }, 240000);
+
+    afterAll(async () => {
+      // Remove seeded DB rows (storage collections are cleaned by the shared
+      // testHelper cleanup; the game tables are not).
+      if (dbPool) {
+        try {
+          const userIds = seededAccounts.map((a) => a.userId);
+          if (userIds.length > 0) {
+            await dbPool.query('DELETE FROM inventory_items WHERE user_id = ANY($1::uuid[])', [
+              userIds,
+            ]);
+            await dbPool.query(
+              'DELETE FROM unlocked_modifier_pools WHERE user_id = ANY($1::text[])',
+              [userIds]
+            );
+            await dbPool.query('DELETE FROM boss_defeats WHERE user_id = ANY($1::text[])', [
+              userIds,
+            ]);
+          }
+        } catch (error) {
+          console.warn('stage-complete perf seed cleanup failed:', error);
+        }
+        await dbPool.end();
+      }
+    });
+
+    /**
+     * Seeds the issue-#1135 player profile directly in PostgreSQL:
+     * 200 inventory items + 50 unlocked modifier pools + 20 defeated bosses.
+     */
+    async function seedPlayerProfile(pool: Pool, userId: string): Promise<void> {
+      await pool.query(
+        `INSERT INTO inventory_items (user_id, gear_type, name, rarity, level, stats, modifiers)
+         SELECT $1::uuid,
+                (ARRAY['helm','armor','bow','arrow','amulet']::gear_type[])[1 + g % 5],
+                'Perf Seed ' || g,
+                (ARRAY['common','rare','epic','legendary']::gear_rarity[])[1 + g % 4],
+                1 + (g % 10),
+                '[{"name":"attack","base_value":5,"value":5}]'::jsonb,
+                '[]'::jsonb
+         FROM generate_series(0, $2 - 1) AS g`,
+        [userId, STAGE_COMPLETE_BUDGET.seededInventoryItems]
+      );
+
+      await pool.query(
+        `INSERT INTO unlocked_modifier_pools (user_id, modifier_id, unlock_reason)
+         SELECT $1, 'perf_pool_' || g, 'perf_seed'
+         FROM generate_series(0, $2 - 1) AS g`,
+        [userId, STAGE_COMPLETE_BUDGET.seededModifierPools]
+      );
+
+      await pool.query(
+        `INSERT INTO boss_defeats (user_id, boss_id, defeat_count)
+         SELECT $1, 'perf_boss_' || g, 1 + (g % 5)
+         FROM generate_series(0, $2 - 1) AS g`,
+        [userId, STAGE_COMPLETE_BUDGET.seededBosses]
+      );
+    }
+
+    /**
+     * One full stage_complete flow: unique stage_id (claim cooldown), boss
+     * defeat + enemy modifiers + loot roll so every storage/DB round trip in
+     * the chain is exercised.
+     */
+    async function callStageComplete(
+      account: TestAccount
+    ): Promise<{ duration: number; body: any }> {
+      stageIdCounter += 1;
+      const start = performance.now();
+      const response = await account.client.rpc(account.session, 'armored_archer/stage_complete', {
+        stage_id: `perf_stage_${stageIdCounter}`,
+        boss_defeated: true,
+        boss_id: 'boss_king',
+        enemy_type: 'dragon',
+        difficulty: 'hard',
+        stars_earned: 3,
+        score: 500,
+      });
+      const duration = performance.now() - start;
+      // Nakama wraps RPC results as {"payload": "<json-string>"}; the JS
+      // client unwraps it — but some transports surface it as an object.
+      const rawPayload = response.payload as unknown;
+      const body =
+        typeof rawPayload === 'string'
+          ? JSON.parse(rawPayload)
+          : ((rawPayload as any) ?? {});
+      return { duration, body };
+    }
+
+    test('rpcStageComplete p99 should stay under 100ms with a large player profile', async () => {
+      const { warmupAccount, measuredAccounts } = partitionAccounts(seededAccounts);
+
+      // Warmup (JIT, connection pools, statement caches) — not measured.
+      for (let i = 0; i < STAGE_COMPLETE_BUDGET.warmupCalls; i++) {
+        const { body } = await callStageComplete(warmupAccount);
+        expect(body.success).toBe(true);
+      }
+
+      // Measured burst, round-robined so no account exceeds its 5/60s budget.
+      const durations: number[] = [];
+      for (let i = 0; i < STAGE_COMPLETE_BUDGET.measuredCalls; i++) {
+        const account = measuredAccounts[Math.floor(i / STAGE_COMPLETE_BUDGET.callsPerAccount)];
+        const { duration, body } = await callStageComplete(account);
+        // A fast RATE_LIMITED / DUPLICATE_COMPLETION response would silently
+        // flatter the p99 — require the full flow to have run.
+        expect(body.success).toBe(true);
+        expect(body.is_new_completion).toBe(true);
+        durations.push(duration);
+      }
+
+      const p50 = percentile(durations, 50);
+      const p95 = percentile(durations, 95);
+      const p99 = percentile(durations, 99);
+      const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+
+      console.log(
+        `stage_complete (${STAGE_COMPLETE_BUDGET.seededInventoryItems} items / ` +
+          `${STAGE_COMPLETE_BUDGET.seededModifierPools} pools / ` +
+          `${STAGE_COMPLETE_BUDGET.seededBosses} bosses, n=${durations.length}): ` +
+          `avg=${avg.toFixed(2)}ms, p50=${p50.toFixed(2)}ms, ` +
+          `p95=${p95.toFixed(2)}ms, p99=${p99.toFixed(2)}ms`
+      );
+
+      expect(durations.length).toBe(STAGE_COMPLETE_BUDGET.measuredCalls);
+      expect(p99).toBeLessThan(STAGE_COMPLETE_BUDGET.p99Ms);
+    }, 180000);
+
+    /** First account warms up; the rest absorb the measured burst. */
+    function partitionAccounts(accounts: TestAccount[]): {
+      warmupAccount: TestAccount;
+      measuredAccounts: TestAccount[];
+    } {
+      const [warmupAccount, ...measuredAccounts] = accounts;
+      return { warmupAccount, measuredAccounts };
+    }
   });
 });

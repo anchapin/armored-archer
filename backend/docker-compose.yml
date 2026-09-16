@@ -435,6 +435,7 @@ services:
     container_name: armored_archer_server
     # DSN is assembled at runtime from the same POSTGRES_* variables that
     # configure the postgres container (single source of truth — no more
+<<<<<<< HEAD
     # hardcoded credentials drifting away from backend/.env).
     #
     # Issue #1096: the entrypoint script below is the LOUDEST and EARLIEST
@@ -449,10 +450,18 @@ services:
     # reports the failure with the named container `armored_archer_server`
     # visible — i.e. louder than silently starting against a public
     # password (the previous behaviour).
+=======
+    # hardcoded credentials drifting away from backend/.env). The server key
+    # is passed explicitly via --socket.server_key: the nakama binary does NOT
+    # read NAKAMA_SERVER_KEY from the environment (verified: without the flag
+    # the binary always runs with the compiled-in 'defaultkey', so API auth
+    # with the configured key 401s — issue #1135).
+>>>>>>> cb3548ac ([AI-assisted] perf: resolve #1135 — gate rpcStageComplete p99 <100ms + fix Nakama JS storage contract)
     entrypoint:
       - "/bin/sh"
       - "-ecx"
       - >
+<<<<<<< HEAD
         case "$POSTGRES_PASSWORD" in
           __SET_VIA_DOTENV__)
             echo "[SECURITY][issue-1096] POSTGRES_PASSWORD is still the __SET_VIA_DOTENV__ placeholder." 1>&2;
@@ -468,7 +477,11 @@ services:
             exit 78;;
         esac &&
         /nakama/nakama migrate up --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD}@postgres:5432/$${POSTGRES_DB:-nakama}" &&
-        exec /nakama/nakama --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD}@postgres:5432/$${POSTGRES_DB:-nakama}"
+        exec /nakama/nakama --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD}@postgres:5432/$${POSTGRES_DB:-nakama}" --socket.server_key "$${NAKAMA_SERVER_KEY:-defaultkey}" --runtime.js_read_only_globals=false
+=======
+        /nakama/nakama migrate up --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD:-changeme}@postgres:5432/$${POSTGRES_DB:-nakama}" &&
+        exec /nakama/nakama --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD:-changeme}@postgres:5432/$${POSTGRES_DB:-nakama}" --socket.server_key "$${NAKAMA_SERVER_KEY:-defaultkey}" --runtime.js_read_only_globals=false
+>>>>>>> cb3548ac ([AI-assisted] perf: resolve #1135 — gate rpcStageComplete p99 <100ms + fix Nakama JS storage contract)
     restart: always
     environment:
       # Issue #1096: replace guessable defaults (`defaultkey`, `changeme`)

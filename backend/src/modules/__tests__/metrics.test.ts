@@ -227,14 +227,17 @@ describe('metrics', () => {
       expect(handler).toHaveBeenCalledWith(ctx, logger, nk, '{}');
     });
 
-    it('supports async handlers', async () => {
+    it('rejects async handlers with a clear error (issue #1135)', () => {
+      // Nakama 3.21's goja runtime cannot resolve Promise returns (no job
+      // scheduler); the wrapper fails fast instead of surfacing an opaque
+      // 500 to clients (issue #1135).
       const handler = jest.fn().mockResolvedValue('async_result');
       const wrapped = wrapRpcWithMetrics('async_rpc', handler);
       const { ctx, logger, nk } = makeRpcArgs();
 
-      const result = await wrapped(ctx, logger, nk, '{}');
-
-      expect(result).toBe('async_result');
+      expect(() => wrapped(ctx, logger, nk, '{}')).toThrow(
+        /async handlers are unsupported by the Nakama JS runtime/
+      );
     });
 
     it('increments success counter on success', async () => {
@@ -256,30 +259,36 @@ describe('metrics', () => {
     });
 
     it('increments error counter on failure and re-throws', async () => {
-      const handler = jest.fn().mockRejectedValue(new Error('boom'));
+      const handler = jest.fn().mockImplementation(() => {
+        throw new Error('boom');
+      });
       const wrapped = wrapRpcWithMetrics('fail_rpc', handler);
       const { ctx, logger, nk } = makeRpcArgs();
 
-      await expect(wrapped(ctx, logger, nk, '{}')).rejects.toThrow('boom');
+      expect(() => wrapped(ctx, logger, nk, '{}')).toThrow('boom');
 
       // Handler was called, confirming error path executed
       expect(handler).toHaveBeenCalledTimes(1);
     });
 
     it('records "unknown" error type for non-Error throws', async () => {
-      const handler = jest.fn().mockRejectedValue('string error');
+      const handler = jest.fn().mockImplementation(() => {
+        throw 'string error';
+      });
       const wrapped = wrapRpcWithMetrics('non_error_rpc', handler);
       const { ctx, logger, nk } = makeRpcArgs();
 
-      await expect(wrapped(ctx, logger, nk, '{}')).rejects.toBe('string error');
+      expect(() => wrapped(ctx, logger, nk, '{}')).toThrow('string error');
     });
 
     it('records "TypeError" for TypeError throws', async () => {
-      const handler = jest.fn().mockRejectedValue(new TypeError('type error'));
+      const handler = jest.fn().mockImplementation(() => {
+        throw new TypeError('type error');
+      });
       const wrapped = wrapRpcWithMetrics('type_error_rpc', handler);
       const { ctx, logger, nk } = makeRpcArgs();
 
-      await expect(wrapped(ctx, logger, nk, '{}')).rejects.toThrow('type error');
+      expect(() => wrapped(ctx, logger, nk, '{}')).toThrow('type error');
     });
 
     it('calls startTimer and invokes the returned end function', async () => {
@@ -294,11 +303,13 @@ describe('metrics', () => {
     });
 
     it('stops timer even when handler throws', async () => {
-      const handler = jest.fn().mockRejectedValue(new Error('fail'));
+      const handler = jest.fn().mockImplementation(() => {
+        throw new Error('fail');
+      });
       const wrapped = wrapRpcWithMetrics('timer_fail_rpc', handler);
       const { ctx, logger, nk } = makeRpcArgs();
 
-      await expect(wrapped(ctx, logger, nk, '{}')).rejects.toThrow('fail');
+      expect(() => wrapped(ctx, logger, nk, '{}')).toThrow('fail');
 
       expect(capturedEndTimer).toBeDefined();
       expect(capturedEndTimer).toHaveBeenCalled();
@@ -1174,41 +1185,45 @@ describe('metrics', () => {
       expect(true).toBe(true);
     });
 
-    it('wrapRpcWithMetrics handles concurrent calls correctly', async () => {
-      const handler = jest
-        .fn()
-        .mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve('ok'), 1)));
+    it('wrapRpcWithMetrics handles concurrent calls correctly', () => {
+      const handler = jest.fn().mockImplementation(() => 'ok');
       const wrapped = wrapRpcWithMetrics('concurrent_rpc', handler);
       const { ctx, logger, nk } = makeRpcArgs();
 
-      const results = await Promise.all([
+      const results = [
         wrapped(ctx, logger, nk, '{}'),
         wrapped(ctx, logger, nk, '{}'),
         wrapped(ctx, logger, nk, '{}'),
-      ]);
+      ];
 
       expect(results).toEqual(['ok', 'ok', 'ok']);
       expect(handler).toHaveBeenCalledTimes(3);
     });
 
-    it('wrapRpcWithMetrics handles concurrent errors correctly', async () => {
+    it('wrapRpcWithMetrics handles concurrent errors correctly', () => {
       let callCount = 0;
       const handler = jest.fn().mockImplementation(() => {
         callCount++;
         if (callCount % 2 === 0) {
-          return Promise.reject(new Error(`error_${callCount}`));
+          throw new Error(`error_${callCount}`);
         }
-        return Promise.resolve('ok');
+        return 'ok';
       });
       const wrapped = wrapRpcWithMetrics('mixed_rpc', handler);
       const { ctx, logger, nk } = makeRpcArgs();
 
-      const outcomes = await Promise.allSettled([
-        wrapped(ctx, logger, nk, '{}'),
-        wrapped(ctx, logger, nk, '{}'),
-        wrapped(ctx, logger, nk, '{}'),
-        wrapped(ctx, logger, nk, '{}'),
-      ]);
+      const outcomes = [
+        () => wrapped(ctx, logger, nk, '{}'),
+        () => wrapped(ctx, logger, nk, '{}'),
+        () => wrapped(ctx, logger, nk, '{}'),
+        () => wrapped(ctx, logger, nk, '{}'),
+      ].map((call) => {
+        try {
+          return { status: 'fulfilled', value: call() };
+        } catch (reason) {
+          return { status: 'rejected', reason };
+        }
+      });
 
       expect(outcomes[0].status).toBe('fulfilled');
       expect(outcomes[1].status).toBe('rejected');

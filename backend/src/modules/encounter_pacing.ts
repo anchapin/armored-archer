@@ -6,6 +6,7 @@
 import { number, string, pipe, minValue, maxValue } from 'valibot';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, createValidationErrorResponse } from './validation';
@@ -242,7 +243,7 @@ export function rpcLogEncounterPacing(
       collection: 'pacing_state',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(state),
+      value: toStorageValue(state),
     },
   ]);
 
@@ -469,7 +470,12 @@ function loadPacingState(
     return { success: false };
   }
 
-  const parseResult = safeParse<PacingState>(value, null, logger, 'pacing_state');
+  const parseResult = safeParse<PacingState>(
+    getStorageRawValue(value) ?? '',
+    null,
+    logger,
+    'pacing_state'
+  );
   if (!parseResult.success || !parseResult.data) {
     return { success: false };
   }
@@ -608,7 +614,7 @@ export function trackPacingState(
       collection: 'pacing_state',
       key: userId,
       userId: userId,
-      value: JSON.stringify(state),
+      value: toStorageValue(state),
     },
   ]);
 }
@@ -737,7 +743,7 @@ export function resetPacingState(ctx: TestContext, userId: string): void {
       collection: 'pacing_state',
       key: userId,
       userId: userId,
-      value: JSON.stringify(defaultState),
+      value: toStorageValue(defaultState),
     },
   ]);
 }

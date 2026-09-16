@@ -5,6 +5,7 @@
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import { validatePayload, ZodSchemas } from './validation';
 
@@ -274,7 +275,7 @@ export async function applyBalanceAdjustment(
         collection: 'weapon_balance_adjustments',
         key: adjustment.adjustment_id,
         userId: userId,
-        value: JSON.stringify(adjustment),
+        value: toStorageValue(adjustment),
         permissionRead: 2, // Public read (for clients to fetch)
         permissionWrite: 0, // No public write
       },
@@ -330,7 +331,10 @@ async function checkAdminAuthorization(nk: Runtime.Nakama, userId: string): Prom
 
     if (objects.length > 0) {
       const data = objects[0].value;
-      const metadata = JSON.parse(data) as Record<string, unknown>;
+      const metadata = (typeof data === 'string' ? JSON.parse(data) : data) as Record<
+        string,
+        unknown
+      >;
       return metadata.is_admin === true;
     }
 
@@ -375,7 +379,7 @@ export async function trackWeaponUsage(
     };
 
     if (objects.length > 0) {
-      stats = JSON.parse(objects[0].value) as WeaponUsageStats;
+      stats = JSON.parse(getStorageRawValue(objects[0].value) ?? '') as WeaponUsageStats;
     }
 
     // Update statistics
@@ -397,7 +401,7 @@ export async function trackWeaponUsage(
         collection: 'weapon_usage_stats',
         key: statsKey,
         userId: '00000000-0000-0000-0000-000000000000',
-        value: JSON.stringify(stats),
+        value: toStorageValue(stats),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -427,7 +431,7 @@ export async function getBalanceAdjustments(nk: Runtime.Nakama): Promise<Record<
     const adjustments: Record<string, number> = {};
 
     for (const obj of objects) {
-      const adjustment = JSON.parse(obj.value) as BalanceAdjustment;
+      const adjustment = JSON.parse(getStorageRawValue(obj.value) ?? '') as BalanceAdjustment;
       // Use the most recent adjustment for each weapon
       if (!adjustments[adjustment.weapon_id] || obj.createTime > 0) {
         adjustments[adjustment.weapon_id] = adjustment.multiplier;
@@ -496,7 +500,7 @@ export async function getWeaponStats(
     ]);
 
     if (objects.length > 0) {
-      return JSON.parse(objects[0].value) as WeaponUsageStats;
+      return JSON.parse(getStorageRawValue(objects[0].value) ?? '') as WeaponUsageStats;
     }
 
     return null;

@@ -44,6 +44,7 @@ import { logger as fallbackLogger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { safeParse } from '../utils/safeParse';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import {
   recordCurrencySpent,
@@ -138,7 +139,7 @@ function readCurrencyRecord(
   }
 
   const parseResult = safeParse<PlayerCurrency>(
-    objects[0].value,
+    getStorageRawValue(objects[0].value) ?? '',
     null,
     logger,
     'currency:player_currency'
@@ -366,7 +367,7 @@ function writeCurrencyRecord(
       collection: PLAYER_CURRENCY_COLLECTION,
       key: userId,
       userId: userId,
-      value: JSON.stringify(currency),
+      value: toStorageValue(currency),
       version: version,
     },
   ]);

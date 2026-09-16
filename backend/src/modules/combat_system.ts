@@ -22,7 +22,9 @@ import {
   logDisconnect,
   type HitResolutionEvent,
   type TimeoutEvent,
+<<<<<<< HEAD
 } from './fairness_telemetry';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { getPlayerInventory, getEquippedGearModifierBonuses, PlayerInventory } from './gear_system';
 import { PvPMatch } from './matchmaker';
 import { recordCombatAction, recordDamageDealt } from './metrics';
@@ -30,27 +32,11 @@ import { profileFunction } from './profiling';
 import { getCurrentSeason, getLeaderboardEntry } from './season_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
-// Re-export the canonical combat/damage-math constants so existing callers
-// importing from `./combat_system` keep working without code changes. The
-// constants themselves are owned by `./combat_constants` — see ADR-0007 for
-// the contract and ADR-0005 for the broader combat-authority boundary.
 export * from './combat_constants';
 
-// Issue #1107: when persistMatchResult fails (DB outage, no winner
-// determined, schema mismatch) the three settlement paths used to swallow
-// the {success:false} and emit match_completed notifications anyway, telling
-// players the match was saved when the match_results row never landed.
-// Surface a single error_code envelope at all three call sites and audit the
-// drop so ops can correlate with the DB error stream.
 const PERSIST_FAILED_CODE = 'PERSIST_FAILED';
 const PERSIST_FAILED_MESSAGE = 'Match settlement could not be saved';
 
-/**
- * Handle turn-timeout auto-forfeit. The auto-forfeit path also calls
- * `persistMatchResult` to record the match in `match_results`; if that
- * fails the caller MUST surface PERSIST_FAILED instead of claiming the
- * match was forfeited, and we MUST NOT broadcast `match_completed`.
- */
 type HandleTurnTimeoutResult =
   | { status: 'switch-turn' }
   | { status: 'forfeited'; winner: string }
@@ -227,7 +213,7 @@ function validateMatchForCombat(
   }
 
   const matchResult = safeParse<Record<string, unknown>>(
-    matchObjects[0].value,
+    getStorageRawValue(matchObjects[0].value) ?? '',
     null,
     logger,
     'validateMatch:match'
@@ -325,7 +311,7 @@ async function handleTurnTimeout(
 
     if (matchObjects.length > 0) {
       const matchResult = safeParse<PvPMatch>(
-        matchObjects[0].value,
+    getStorageRawValue(matchObjects[0].value) ?? '',
         null,
         logger,
         'handleTimeoutForfeit:match'
@@ -685,7 +671,7 @@ export async function rpcGetMatchState(
   nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
-  return profileFunction<string>('combat.get_match_state', () => {
+  return profileFunction<string>('combat.get_match_state', (): string => {
     logger.info('Get match state called for user: %s', ctx.userId);
 
     const validation = validatePayload(ZodSchemas.get_match_state, payload, 'get_match_state');
@@ -709,7 +695,7 @@ export async function rpcGetMatchState(
       });
     }
 
-    return stateObjects[0].value;
+    return getStorageRawValue(stateObjects[0].value) ?? '';
   });
 }
 
@@ -742,7 +728,7 @@ function getOrCreateMatchState(
       // Fall through to create new state
     } else {
       const stateResult = safeParse<MatchState>(
-        stateObjects[0].value,
+    getStorageRawValue(stateObjects[0].value) ?? '',
         null,
         logger,
         'getOrCreateMatchState'
@@ -1003,7 +989,8 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logg
       },
     };
   } else {
-    const statsResult = safeParse<PlayerStats>(objects[0].value, null, logger, 'getPlayerStats');
+    const statsResult = safeParse<PlayerStats>(
+    getStorageRawValue(objects[0].value) ?? '', null, logger, 'getPlayerStats');
     if (!statsResult.success || !statsResult.data) {
       logger.warn('Failed to parse player stats for user %s, using defaults', userId);
       baseStats = {
@@ -1049,7 +1036,7 @@ function saveMatchState(nk: Runtime.Nakama, matchState: MatchState): void {
       collection: 'pvp_match_states',
       key: matchState.match_id,
       userId: matchState.creator_id,
-      value: JSON.stringify(matchState),
+      value: toStorageValue(matchState),
     },
   ]);
 }
@@ -1082,7 +1069,7 @@ function updateMatchStatus(
       collection: 'pvp_matches',
       key: match.match_id,
       userId: match.creator_id,
-      value: JSON.stringify(match),
+      value: toStorageValue(match),
     },
   ]);
 }
@@ -1337,7 +1324,7 @@ export async function rpcPlayerDisconnect(
       }
 
       const matchResult = safeParse<PvPMatch>(
-        matchObjects[0].value,
+    getStorageRawValue(matchObjects[0].value) ?? '',
         null,
         logger,
         'rpcForfeitMatch:match'
@@ -1374,7 +1361,7 @@ export async function rpcPlayerDisconnect(
       }
 
       const stateResult = safeParse<MatchState>(
-        stateObjects[0].value,
+    getStorageRawValue(stateObjects[0].value) ?? '',
         null,
         logger,
         'rpcForfeitMatch:matchState'

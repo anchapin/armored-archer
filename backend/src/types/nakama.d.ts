@@ -71,7 +71,9 @@ declare namespace Runtime {
     collection: string;
     key: string;
     userId: string;
-    value: string;
+    // Nakama's goja storageWrite requires a plain object (it JSON-marshals
+    // internally); a raw string panics at runtime (issue #1135).
+    value: Record<string, unknown> | string;
     version: string;
     permissionRead: number;
     permissionWrite: number;
@@ -94,7 +96,9 @@ declare namespace Runtime {
     collection: string;
     key: string;
     userId: string;
-    value: string;
+    // Nakama's goja storageWrite requires a plain object (it JSON-marshals
+    // internally); a raw string panics at runtime (issue #1135).
+    value: Record<string, unknown> | string;
     version?: string;
     permissionRead?: number;
     permissionWrite?: number;

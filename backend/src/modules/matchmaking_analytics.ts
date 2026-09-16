@@ -5,6 +5,7 @@
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { toStorageValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas } from './validation';
@@ -311,7 +312,7 @@ export async function detectBalanceIssues(nk: Runtime.Nakama): Promise<BalanceIs
           collection: COLLECTION_BALANCE_ISSUES,
           key: `issues_${Date.now()}`,
           userId: '00000000-0000-0000-0000-000000000000',
-          value: JSON.stringify({ issues, timestamp: Date.now() }),
+          value: toStorageValue({ issues, timestamp: Date.now() }),
           permissionRead: 2,
           permissionWrite: 0,
         },
@@ -441,7 +442,7 @@ export async function logMatchData(
         collection: COLLECTION_MATCH_DATA,
         key: request.match_id,
         userId: '00000000-0000-0000-0000-000000000000',
-        value: JSON.stringify(request),
+        value: toStorageValue(request),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -498,7 +499,7 @@ export async function logAbandonment(
           collection: COLLECTION_MATCH_DATA,
           key: request.match_id,
           userId: '00000000-0000-0000-0000-000000000000',
-          value: JSON.stringify(matchData),
+          value: toStorageValue(matchData),
           permissionRead: 2,
           permissionWrite: 0,
         },
@@ -579,7 +580,7 @@ export async function logWeaponResult(
         collection: COLLECTION_WEAPON_STATS,
         key: statsKey,
         userId: '00000000-0000-0000-0000-000000000000',
-        value: JSON.stringify(stats),
+        value: toStorageValue(stats),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -607,7 +608,7 @@ export async function logQueueTime(
         collection: COLLECTION_QUEUE_TIMES,
         key: queueId,
         userId: '00000000-0000-0000-0000-000000000000',
-        value: JSON.stringify(request),
+        value: toStorageValue(request),
         permissionRead: 2,
         permissionWrite: 0,
       },

@@ -7,6 +7,7 @@ import { enum as enumType } from 'valibot';
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
+import { getStorageRawValue, toStorageValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import {
@@ -325,7 +326,7 @@ export function rpcSyncDifficulty(
       collection: 'difficulty_state',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(state),
+      value: toStorageValue(state),
     },
   ]);
 
@@ -585,7 +586,7 @@ export function applyTrackedOutcome(
       collection: 'difficulty_state',
       key: userId,
       userId: userId,
-      value: JSON.stringify(state),
+      value: toStorageValue(state),
     },
   ]);
 
@@ -594,7 +595,7 @@ export function applyTrackedOutcome(
       collection: 'match_history',
       key: userId,
       userId: userId,
-      value: JSON.stringify(history),
+      value: toStorageValue(history),
     },
   ]);
 
@@ -753,7 +754,12 @@ function loadDifficultyState(
     return { success: false };
   }
 
-  const parseResult = safeParse<DifficultyState>(value, null, logger, 'difficulty_state');
+  const parseResult = safeParse<DifficultyState>(
+    getStorageRawValue(value) ?? '',
+    null,
+    logger,
+    'difficulty_state'
+  );
   if (!parseResult.success || !parseResult.data) {
     return { success: false };
   }
@@ -794,7 +800,12 @@ function loadMatchHistory(
     debug: (_message: string, ..._args: unknown[]) => {},
   };
 
-  const parseResult = safeParse<MatchEntry[]>(value, null, dummyLogger, 'match_history');
+  const parseResult = safeParse<MatchEntry[]>(
+    getStorageRawValue(value) ?? '',
+    null,
+    dummyLogger,
+    'match_history'
+  );
   if (!parseResult.success || !parseResult.data) {
     return { success: true, data: [] };
   }
@@ -1067,7 +1078,7 @@ export function setDifficultyModifier(ctx: TestContext, userId: string, modifier
       collection: 'difficulty_state',
       key: userId,
       userId: userId,
-      value: JSON.stringify(state),
+      value: toStorageValue(state),
     },
   ]);
 }
@@ -1118,7 +1129,7 @@ export function resetDifficulty(ctx: TestContext, userId: string): void {
       collection: 'difficulty_state',
       key: userId,
       userId: userId,
-      value: JSON.stringify(defaultState),
+      value: toStorageValue(defaultState),
     },
   ]);
 
@@ -1128,7 +1139,7 @@ export function resetDifficulty(ctx: TestContext, userId: string): void {
       collection: 'match_history',
       key: userId,
       userId: userId,
-      value: JSON.stringify([]),
+      value: toStorageValue([]),
     },
   ]);
 }

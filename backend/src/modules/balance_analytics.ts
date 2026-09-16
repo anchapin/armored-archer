@@ -6,6 +6,7 @@
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { toStorageValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
@@ -247,7 +248,7 @@ export async function recordDrop(
       {
         collection: DROPS_COLLECTION,
         key: dropRecord.id,
-        value: JSON.stringify(dropRecord),
+        value: toStorageValue(dropRecord),
         userId: record.userId,
       },
     ]);
@@ -300,7 +301,7 @@ export async function recordStageAttempt(
       {
         collection: STAGE_ATTEMPTS_COLLECTION,
         key: attemptRecord.id,
-        value: JSON.stringify(attemptRecord),
+        value: toStorageValue(attemptRecord),
         userId: record.userId,
       },
     ]);
