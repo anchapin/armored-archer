@@ -31,7 +31,7 @@ Both alerts live in the settlement group of the alert rules — `SettlementDegra
 3. …and increments the `claim_failed` outcome counter through `recordSettlementOutcome`: matchmaker.ts:2076
 4. The claim winner applies all effects in `applySettlementOutcome`: matchmaker.ts:2115
 5. A fully-applied settlement increments the `success` outcome: matchmaker.ts:2336
-6. If any post-claim effect throws, the wrapper in `processMatchResult` keeps the match settled: matchmaker.ts:2400
+6. If any post-claim effect throws, the wrapper in `processMatchResult` keeps the match settled: matchmaker.ts:2416
 7. …audits the `settlement_degraded` channel: matchmaker.ts:2470
 8. …and increments the `degraded` outcome counter: matchmaker.ts:2473
 9. Terminal draws settle through a separate unconditional persist in `settleDrawMatch`: matchmaker.ts:1559
