@@ -26,7 +26,8 @@ import {
   logDisconnect,
   type HitResolutionEvent,
   type TimeoutEvent,
-} from './fairness_telemetry';
+} from './fairness_telemetry';import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+
 
 // Maximum consecutive turn timeouts before auto-forfeit.
 // Turn timers are the single timeout authority (ADR-0003): the 5-minute turn
@@ -199,7 +200,7 @@ function validateMatchForCombat(
   }
 
   const matchResult = safeParse<Record<string, unknown>>(
-    matchObjects[0].value,
+    getStorageRawValue(matchObjects[0].value) ?? '',
     null,
     logger,
     'validateMatch:match'
@@ -297,7 +298,7 @@ async function handleTurnTimeout(
 
     if (matchObjects.length > 0) {
       const matchResult = safeParse<PvPMatch>(
-        matchObjects[0].value,
+    getStorageRawValue(matchObjects[0].value) ?? '',
         null,
         logger,
         'handleTimeoutForfeit:match'
@@ -581,7 +582,7 @@ export async function rpcGetMatchState(
   nk: Runtime.Nakama,
   payload: string
 ): Promise<string> {
-  return profileFunction<string>('combat.get_match_state', () => {
+  return profileFunction<string>('combat.get_match_state', (): string => {
     logger.info('Get match state called for user: %s', ctx.userId);
 
     const validation = validatePayload(ZodSchemas.get_match_state, payload, 'get_match_state');
@@ -605,7 +606,7 @@ export async function rpcGetMatchState(
       });
     }
 
-    return stateObjects[0].value;
+    return getStorageRawValue(stateObjects[0].value) ?? '';
   });
 }
 
@@ -638,7 +639,7 @@ function getOrCreateMatchState(
       // Fall through to create new state
     } else {
       const stateResult = safeParse<MatchState>(
-        stateObjects[0].value,
+    getStorageRawValue(stateObjects[0].value) ?? '',
         null,
         logger,
         'getOrCreateMatchState'
@@ -889,7 +890,8 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logg
       },
     };
   } else {
-    const statsResult = safeParse<PlayerStats>(objects[0].value, null, logger, 'getPlayerStats');
+    const statsResult = safeParse<PlayerStats>(
+    getStorageRawValue(objects[0].value) ?? '', null, logger, 'getPlayerStats');
     if (!statsResult.success || !statsResult.data) {
       logger.warn('Failed to parse player stats for user %s, using defaults', userId);
       baseStats = {
@@ -935,7 +937,7 @@ function saveMatchState(nk: Runtime.Nakama, matchState: MatchState): void {
       collection: 'pvp_match_states',
       key: matchState.match_id,
       userId: matchState.creator_id,
-      value: JSON.stringify(matchState),
+      value: toStorageValue(matchState),
     },
   ]);
 }
@@ -968,7 +970,7 @@ function updateMatchStatus(
       collection: 'pvp_matches',
       key: match.match_id,
       userId: match.creator_id,
-      value: JSON.stringify(match),
+      value: toStorageValue(match),
     },
   ]);
 }
@@ -1223,7 +1225,7 @@ export async function rpcPlayerDisconnect(
       }
 
       const matchResult = safeParse<PvPMatch>(
-        matchObjects[0].value,
+    getStorageRawValue(matchObjects[0].value) ?? '',
         null,
         logger,
         'rpcForfeitMatch:match'
@@ -1260,7 +1262,7 @@ export async function rpcPlayerDisconnect(
       }
 
       const stateResult = safeParse<MatchState>(
-        stateObjects[0].value,
+    getStorageRawValue(stateObjects[0].value) ?? '',
         null,
         logger,
         'rpcForfeitMatch:matchState'

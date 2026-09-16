@@ -12,6 +12,7 @@
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import {
   registerRpcWithMetrics,
@@ -154,7 +155,7 @@ export async function logRankChange(nk: Runtime.Nakama, event: RankChangeEvent):
         collection: COLLECTION_RANK_CHANGES,
         key: event.event_id,
         userId: SYSTEM_USER_ID,
-        value: JSON.stringify(event),
+        value: toStorageValue(event),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -182,7 +183,7 @@ export async function logRewardClaim(nk: Runtime.Nakama, event: RewardClaimEvent
         collection: COLLECTION_REWARD_CLAIMS,
         key: event.event_id,
         userId: SYSTEM_USER_ID,
-        value: JSON.stringify(event),
+        value: toStorageValue(event),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -277,7 +278,7 @@ export async function captureRatingSnapshot(
         collection: COLLECTION_RATING_SNAPSHOTS,
         key: snapshot.snapshot_id,
         userId: SYSTEM_USER_ID,
-        value: JSON.stringify(snapshot),
+        value: toStorageValue(snapshot),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -313,7 +314,10 @@ async function readStorageCollection<T extends { timestamp: number }>(
   try {
     const objects = await nk.storageRead([{ collection, key: '*', userId: SYSTEM_USER_ID }]);
     return objects
-      .map((obj: { value: string }) => JSON.parse(obj.value) as T)
+      .map(
+        (obj: { value: string | Record<string, unknown> }) =>
+          JSON.parse(getStorageRawValue(obj.value) ?? '') as T
+      )
       .filter((item: T) => item.timestamp >= startTime && item.timestamp <= endTime);
   } catch {
     return [];
@@ -585,7 +589,7 @@ export async function recordSeasonEndSnapshot(
         collection: COLLECTION_SEASON_SUMMARIES,
         key: `summary_${seasonId}`,
         userId: SYSTEM_USER_ID,
-        value: JSON.stringify(summary),
+        value: toStorageValue(summary),
         permissionRead: 2,
         permissionWrite: 0,
       },

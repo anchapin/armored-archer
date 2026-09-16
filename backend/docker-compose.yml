@@ -249,13 +249,17 @@ services:
     container_name: armored_archer_server
     # DSN is assembled at runtime from the same POSTGRES_* variables that
     # configure the postgres container (single source of truth — no more
-    # hardcoded credentials drifting away from backend/.env).
+    # hardcoded credentials drifting away from backend/.env). The server key
+    # is passed explicitly via --socket.server_key: the nakama binary does NOT
+    # read NAKAMA_SERVER_KEY from the environment (verified: without the flag
+    # the binary always runs with the compiled-in 'defaultkey', so API auth
+    # with the configured key 401s — issue #1135).
     entrypoint:
       - "/bin/sh"
       - "-ecx"
       - >
         /nakama/nakama migrate up --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD:-changeme}@postgres:5432/$${POSTGRES_DB:-nakama}" &&
-        exec /nakama/nakama --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD:-changeme}@postgres:5432/$${POSTGRES_DB:-nakama}"
+        exec /nakama/nakama --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD:-changeme}@postgres:5432/$${POSTGRES_DB:-nakama}" --socket.server_key "$${NAKAMA_SERVER_KEY:-defaultkey}" --runtime.js_read_only_globals=false
     restart: always
     environment:
       - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-defaultkey}

@@ -8,6 +8,7 @@ import * as path from 'path';
 import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { createTracedRpcHandler } from '../utils/tracing';
 import { logAudit } from './audit';
 import { recordStageAttempt, recordDrop } from './balance_analytics';
@@ -822,7 +823,12 @@ export function rpcGenerateGear(
   } else {
     const value = inventoryObjects[0].value;
     if (value) {
-      const parseResult = safeParse<PlayerInventory>(value, null, logger, 'storage_data');
+      const parseResult = safeParse<PlayerInventory>(
+        getStorageRawValue(value) ?? '',
+        null,
+        logger,
+        'storage_data'
+      );
       if (!parseResult.success || !parseResult.data) {
         logger.error('Failed to parse data');
         logAudit(
@@ -856,7 +862,7 @@ export function rpcGenerateGear(
       collection: 'player_inventory',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(inventory),
+      value: toStorageValue(inventory),
     },
   ]);
 

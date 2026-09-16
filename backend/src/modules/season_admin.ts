@@ -33,6 +33,7 @@
  */
 
 import { Runtime } from '../types/nakama';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { withAdminGuard } from './admin_auth';
 import { logAudit } from './audit';
 import { applyCurrencyDelta, type CurrencyDelta } from './currency';
@@ -170,7 +171,7 @@ export function validateOrphanedRewards(
 
     for (const obj of rewards) {
       if (!obj.key.startsWith(seasonId)) continue;
-      const data = JSON.parse(obj.value);
+      const data = JSON.parse(getStorageRawValue(obj.value) ?? '');
       const playerId = data.user_id;
       if (!leaderboardOwnerIds.has(playerId)) {
         result.issues_found++;
@@ -381,7 +382,7 @@ export function validateRewardDistribution(
               collection: 'season_rewards_claimed',
               key: `${seasonId}_${record.ownerId}`,
               userId: record.ownerId,
-              value: JSON.stringify({
+              value: toStorageValue({
                 season_id: seasonId,
                 user_id: record.ownerId,
                 claimed_at: Date.now(),
@@ -448,7 +449,7 @@ export function triggerEndSeason(
         collection: 'season_rewards_claimed',
         key: `${currentSeason.season_id}_${record.ownerId}`,
         userId: record.ownerId,
-        value: JSON.stringify({
+        value: toStorageValue({
           season_id: currentSeason.season_id,
           user_id: record.ownerId,
           claimed_at: Date.now(),
@@ -485,7 +486,7 @@ export function triggerEndSeason(
       collection: 'seasons',
       key: nextSeason.season_id,
       userId: ctx.userId,
-      value: JSON.stringify(nextSeason),
+      value: toStorageValue(nextSeason),
     },
   ]);
 
@@ -496,7 +497,7 @@ export function triggerEndSeason(
       collection: 'seasons',
       key: oldSeason.season_id,
       userId: ctx.userId,
-      value: JSON.stringify(oldSeason),
+      value: toStorageValue(oldSeason),
     },
   ]);
 
@@ -625,7 +626,7 @@ export function triggerFixMissingRewards(
               collection: 'season_rewards_claimed',
               key: `${seasonId}_${record.ownerId}`,
               userId: record.ownerId,
-              value: JSON.stringify({
+              value: toStorageValue({
                 season_id: seasonId,
                 user_id: record.ownerId,
                 claimed_at: Date.now(),
@@ -793,7 +794,7 @@ function readPlayerRewards(
       },
     ]);
     if (storage.length > 0 && storage[0].value) {
-      const data = JSON.parse(storage[0].value);
+      const data = JSON.parse(getStorageRawValue(storage[0].value) ?? '');
       return {
         claimed: true,
         claimed_at: data.claimed_at || null,
@@ -814,7 +815,7 @@ function readPlayerActivity(
   try {
     const storage = nk.storageRead([{ collection: 'player_activity', key: userId, userId }]);
     if (storage.length > 0 && storage[0].value) {
-      const data = JSON.parse(storage[0].value);
+      const data = JSON.parse(getStorageRawValue(storage[0].value) ?? '');
       const lastMatchTime = data.last_match_time || 0;
       const daysInactive = lastMatchTime
         ? Math.floor((Date.now() - lastMatchTime) / (24 * 60 * 60 * 1000))

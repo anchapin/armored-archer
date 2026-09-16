@@ -41,6 +41,16 @@ const es6Patterns = [
   { pattern: /[a-zA-Z_$]\s*=>\s*\{/, name: 'arrow function (single param)', strict: true },
   // Template literals with actual interpolation (not in strings)
   { pattern: /`[^`]*\$\{[^}]+\}[^`]*`/, name: 'template literal', strict: false },
+  // ES2020 BigInt literals (e.g. ioredis 6 RESP decoder). Babel cannot
+  // downlevel them and Nakama 3.21's goja parser rejects them at load time
+  // ("Unexpected token ILLEGAL") — they must be rewritten to BigInt("…")
+  // calls by scripts/transpile-bundle.js before validation runs. The
+  // boundary guards keep identifier tails (i18n, …n) from matching.
+  {
+    pattern: /(?:^|[^A-Za-z0-9_$])[0-9]+n(?:[^A-Za-z0-9_$]|$)/,
+    name: 'BigInt literal',
+    strict: true,
+  },
 ];
 
 /**

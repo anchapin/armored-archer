@@ -5,6 +5,7 @@
 
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
@@ -92,7 +93,12 @@ function getPool(nk: Runtime.Nakama, mode: '1v1' | '2v2'): MatchmakingPool {
     return { players: [], last_match_time: Date.now() };
   }
 
-  const result = safeParse<MatchmakingPool>(objects[0].value, null, undefined, 'getPool');
+  const result = safeParse<MatchmakingPool>(
+    getStorageRawValue(objects[0].value) ?? '',
+    null,
+    undefined,
+    'getPool'
+  );
   if (result.success && result.data) {
     return result.data;
   }
@@ -110,7 +116,7 @@ function savePool(nk: Runtime.Nakama, pool: MatchmakingPool, mode: '1v1' | '2v2'
       collection: 'matchmaking',
       key: poolKey,
       userId: 'system',
-      value: JSON.stringify(pool),
+      value: toStorageValue(pool),
     },
   ]);
 }

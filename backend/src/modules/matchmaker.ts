@@ -6,6 +6,7 @@
 import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { withAdminGuard } from './admin_auth';
 import {
   isPlayerFlagged,
@@ -278,7 +279,7 @@ export function rpcListMatches(
   }
 
   const playerStatsResult = safeParse<PlayerStats>(
-    objects[0].value,
+    getStorageRawValue(objects[0].value) ?? '',
     null,
     logger,
     'rpcListMatches:playerStats'
@@ -294,7 +295,12 @@ export function rpcListMatches(
   const filteredMatches: PvPMatch[] = [];
 
   for (const object of matches) {
-    const matchResult = safeParse<PvPMatch>(object.value, null, logger, 'rpcListMatches:match');
+    const matchResult = safeParse<PvPMatch>(
+      getStorageRawValue(object.value) ?? '',
+      null,
+      logger,
+      'rpcListMatches:match'
+    );
     if (!matchResult.success || !matchResult.data) {
       logger.warn('Skipping corrupted match record for user: %s', ctx.userId);
       continue;
@@ -434,7 +440,7 @@ export function rpcCreateMatch(
   }
 
   const playerStatsResult = safeParse<PlayerStats>(
-    objects[0].value,
+    getStorageRawValue(objects[0].value) ?? '',
     null,
     logger,
     'rpcCreateMatch:playerStats'
@@ -461,7 +467,7 @@ export function rpcCreateMatch(
     }
 
     const targetPlayerStatsResult = safeParse<PlayerStats>(
-      targetStats[0].value,
+      getStorageRawValue(targetStats[0].value) ?? '',
       null,
       logger,
       'rpcCreateMatch:targetStats'
@@ -527,7 +533,7 @@ export function rpcCreateMatch(
         collection: 'pvp_matches',
         key: match.match_id,
         userId: ctx.userId,
-        value: JSON.stringify(match),
+        value: toStorageValue(match),
       },
     ]);
 
@@ -588,7 +594,7 @@ export function rpcCreateMatch(
         collection: 'pvp_matches',
         key: match.match_id,
         userId: ctx.userId,
-        value: JSON.stringify(match),
+        value: toStorageValue(match),
       },
     ]);
 
@@ -715,7 +721,12 @@ export function rpcAcceptMatch(
     });
   }
 
-  const matchResult = safeParse<PvPMatch>(objects[0].value, null, logger, 'rpcAcceptMatch:match');
+  const matchResult = safeParse<PvPMatch>(
+    getStorageRawValue(objects[0].value) ?? '',
+    null,
+    logger,
+    'rpcAcceptMatch:match'
+  );
   if (!matchResult.success || !matchResult.data) {
     return JSON.stringify({ error: 'Failed to parse match data' });
   }
@@ -748,7 +759,7 @@ export function rpcAcceptMatch(
   }
 
   const playerStatsResult = safeParse<PlayerStats>(
-    playerObjects[0].value,
+    getStorageRawValue(playerObjects[0].value) ?? '',
     null,
     logger,
     'rpcAcceptMatch:playerStats'
@@ -784,7 +795,7 @@ export function rpcAcceptMatch(
       collection: 'pvp_matches',
       key: match.match_id,
       userId: match.creator_id,
-      value: JSON.stringify(match),
+      value: toStorageValue(match),
     },
   ]);
 
@@ -1340,7 +1351,7 @@ function readCombatMatchState(
   }
 
   const stateResult = safeParse<CombatStateSnapshot>(
-    objects[0].value,
+    getStorageRawValue(objects[0].value) ?? '',
     null,
     logger,
     'rpcCompleteMatch:combatState'
@@ -1563,7 +1574,7 @@ function settleDrawMatch(
         collection: 'pvp_matches',
         key: match.match_id,
         userId: match.creator_id,
-        value: JSON.stringify(match),
+        value: toStorageValue(match),
       },
     ]);
   } catch (persistError) {
@@ -1625,7 +1636,12 @@ function getAndValidateMatch(
     return { error: 'Match not found' };
   }
 
-  const matchResult = safeParse<PvPMatch>(objects[0].value, null, logger, 'rpcForfeitMatch:match');
+  const matchResult = safeParse<PvPMatch>(
+    getStorageRawValue(objects[0].value) ?? '',
+    null,
+    logger,
+    'rpcForfeitMatch:match'
+  );
   if (!matchResult.success || !matchResult.data) {
     return { error: 'Failed to parse match data' };
   }
@@ -1766,7 +1782,7 @@ function verifyMatchNotSettled(
   ]);
   if (freshMatchObjects.length > 0) {
     const freshMatchResult = safeParse<PvPMatch>(
-      freshMatchObjects[0].value,
+      getStorageRawValue(freshMatchObjects[0].value) ?? '',
       null,
       logger,
       'processMatchResult:freshMatch'
@@ -2032,7 +2048,7 @@ function claimSettlementMarker(
         collection: 'pvp_matches',
         key: match.match_id,
         userId: match.creator_id,
-        value: JSON.stringify(match),
+        value: toStorageValue(match),
         version: matchVersion,
       },
     ]);
@@ -2043,7 +2059,7 @@ function claimSettlementMarker(
     ]);
     if (freshMatchObjects.length > 0) {
       const freshMatchResult = safeParse<PvPMatch>(
-        freshMatchObjects[0].value,
+        getStorageRawValue(freshMatchObjects[0].value) ?? '',
         null,
         logger,
         'claimSettlementMarker:freshMatch'
@@ -2655,7 +2671,7 @@ function updatePlayerXP(nk: Runtime.Nakama, userId: string, xpGained: number): v
   }
 
   const playerStatsResult = safeParse<PlayerStats>(
-    objects[0].value,
+    getStorageRawValue(objects[0].value) ?? '',
     'updatePlayerXP',
     undefined,
     'updatePlayerXP'
@@ -2679,7 +2695,7 @@ function updatePlayerXP(nk: Runtime.Nakama, userId: string, xpGained: number): v
       collection: 'player_stats',
       key: userId,
       userId: userId,
-      value: JSON.stringify(playerStats),
+      value: toStorageValue(playerStats),
       version: objects[0].version,
     },
   ]);

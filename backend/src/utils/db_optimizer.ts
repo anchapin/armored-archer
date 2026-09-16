@@ -1,4 +1,5 @@
 import { Runtime } from '../types/nakama';
+import { getStorageRawValue } from '../utils/storage-helpers';
 import { getCacheManager } from './cache';
 import { safeParse } from './safeParse';
 
@@ -50,7 +51,12 @@ export function batchGetPlayerStats(
 
     for (const obj of objects) {
       if (obj.value) {
-        const parseResult = safeParse<PlayerStats>(obj.value, null, logger, 'player_stats');
+        const parseResult = safeParse<PlayerStats>(
+          getStorageRawValue(obj.value) ?? '',
+          null,
+          logger,
+          'player_stats'
+        );
         if (parseResult.success && parseResult.data) {
           const stats = parseResult.data;
           result.set(obj.userId, stats);
@@ -102,7 +108,12 @@ export function getPlayerStatsWithCache(
   ]);
 
   if (objects.length > 0 && objects[0].value) {
-    const parseResult = safeParse<PlayerStats>(objects[0].value, null, logger, 'player_stats');
+    const parseResult = safeParse<PlayerStats>(
+      getStorageRawValue(objects[0].value) ?? '',
+      null,
+      logger,
+      'player_stats'
+    );
     if (parseResult.success && parseResult.data) {
       const stats = parseResult.data;
       cacheManager.set('player_stats', userId, stats);
