@@ -156,6 +156,16 @@ function readCurrencyRecord(
 }
 
 /**
+ * A normalized ledger read bundled with the storage version observed when
+ * it was read — everything an external read-modify-write caller needs to
+ * write the record back conditionally (issue #1137).
+ */
+export interface NormalizedCurrencyRead {
+  currency: PlayerCurrency;
+  version: string | undefined;
+}
+
+/**
  * Reads a normalized ledger record for read-modify-write callers outside
  * this module (e.g. the store purchase path), which must not bypass the
  * #866 dual-read migration when they write the record back.
@@ -169,7 +179,7 @@ export function readNormalizedCurrencyRecord(
   nk: Runtime.Nakama,
   userId: string,
   logger: Runtime.Logger
-): { currency: PlayerCurrency; version: string | undefined } {
+): NormalizedCurrencyRead {
   const read = readCurrencyRecord(nk, userId, logger);
   return { currency: read.currency, version: read.version };
 }
@@ -437,6 +447,11 @@ export function invalidateCurrencyCache(userId: string, logger?: Runtime.Logger)
  * @param delta - Change to apply (gems and/or coins)
  * @param source - Audit identifier for the calling path (e.g. 'match_rewards')
  * @param logger - Optional logger; falls back to the winston logger
+ * @param preloadedRead - Optional normalized read the caller already holds
+ *   (issue #1137): seeds the first RMW attempt so the ledger is not read
+ *   again. The write stays conditional on that read's version, and a
+ *   conflict still retries against a fresh read, so preloading never
+ *   changes the concurrency semantics — it only removes a redundant RTT.
  * @returns The updated currency record
  */
 export function applyCurrencyDelta(
@@ -444,7 +459,8 @@ export function applyCurrencyDelta(
   userId: string,
   delta: CurrencyDelta,
   source: string,
-  logger?: Runtime.Logger
+  logger?: Runtime.Logger,
+  preloadedRead?: NormalizedCurrencyRead
 ): PlayerCurrency {
   const log = logger ?? fallbackLogger;
   const gemsDelta = Math.trunc(delta.gems ?? 0);
@@ -458,7 +474,8 @@ export function applyCurrencyDelta(
   invalidateCurrencyCache(userId, log);
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    const read = readCurrencyRecord(nk, userId, log);
+    const read: NormalizedCurrencyRead =
+      attempt === 0 && preloadedRead ? preloadedRead : readCurrencyRecord(nk, userId, log);
     const current = read.currency;
 
     let newGems = current.gems + gemsDelta;
