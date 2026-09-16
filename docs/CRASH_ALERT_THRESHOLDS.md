@@ -1,192 +1,97 @@
-# Firebase Crashlytics Alert Thresholds
+# Client Crash Alert Thresholds
 
-This document defines alert thresholds for Firebase Crashlytics crash reporting to ensure production stability monitoring.
+This document defines the crash thresholds for client stability monitoring and describes how crash alerting actually works in this repo.
 
-## Overview
+**Status (truthed per issue #1105):** client crash alerting is **Firebase-Crashlytics-console-only**. Nothing in this repo exports client crash metrics to the self-hosted Prometheus/Grafana/Loki stack, and no `crashlytics_*` Prometheus alerts exist. The thresholds below are policy thresholds to enforce **in the Firebase console**, not Prometheus alert rules.
 
-Crash alerts are integrated with the existing Prometheus/Alertmanager infrastructure to provide:
-- Real-time crash monitoring
-- Proactive stability notifications
-- Crash trend analysis
-- On-call escalation for critical issues
+## How Client Crashes Actually Flow Today
 
-## Crash Alert Thresholds
+The client crash path is best-effort and depends on the platform and Firebase availability (`addons/analytics_manager/analytics_manager.gd`):
 
-### Critical Alerts (Immediate Action Required)
+1. **Hard crash** — Godot emits `NOTIFICATION_CRASH`; `AnalyticsManager._capture_crash_dump()` builds a crash context (session id, breadcrumbs, memory, platform, versions) and `print()`s it locally. It is forwarded to Firebase Crashlytics **only when all of the following hold**:
+   - the platform is Android or iOS,
+   - `is_crashlytics_enabled` is `true`, and
+   - the `GodotFirebase` engine singleton is present (i.e. a Firebase configuration is built into the app; see `AnalyticsManager._log_android_crashlytics_error`).
 
-| Alert | Metric | Threshold | For | Description |
-|-------|--------|-----------|-----|-------------|
-| HighCrashRate | crashlytics_crash_rate | > 1% | 5m | Crash rate exceeds 1% of sessions |
-| FatalCrashes | crashlytics_fatal_crashes | > 0 | 1m | Any fatal crashes detected |
-| CrashSpike | crashlytics_crash_count | > 10/min | 2m | Sudden spike in crash volume |
+   On desktop/web builds, or in mobile builds without a Firebase config, the crash dump is **local `print()` output only** — there is no crash telemetry at all.
 
-### Warning Alerts (Attention Required)
+2. **Non-fatal errors** — `AnalyticsManager.record_custom_error()` (which also emits the `crash_reported` signal) is picked up by `MonitoringManager` (autoloads/MonitoringManager.gd), which forwards a `client_error` analytics event to the backend via `track_event_to_backend`. These land as analytics events, **not** as Prometheus crash metrics, and they do not fire any alert rules.
 
-| Alert | Metric | Threshold | For | Description |
-|-------|--------|-----------|-----|-------------|
-| ElevatedCrashRate | crashlytics_crash_rate | > 0.5% | 10m | Elevated crash rate detected |
-| ANRCrashes | crashlytics_anr_count | > 5/min | 5m | App Not Responding crashes |
-| NativeCrashes | crashlytics_native_crashes | > 2/min | 5m | Native code crashes |
-| CrashAffectedUsers | crashlytics_affected_users | > 100 | 10m | Crashes affecting many users |
+3. **Backend/self-hosted stack** — the Prometheus/Grafana/Loki stack (see `docs/DEPLOYMENT_OBSERVABILITY.md`) monitors **server-side** health only (`backend/alerts.yml` contains error-rate, latency, and infrastructure alerts — no crash rules). Prometheus does not scrape Firebase, and no such scrape job exists in `backend/prometheus.yml`.
 
-### Info Alerts (Awareness)
+## Crash Thresholds (Enforce in the Firebase Console)
 
-| Alert | Metric | Threshold | For | Description |
-|-------|--------|-----------|-----|-------------|
-| NewCrashSignature | crashlytics_new_issues | > 0 | 30m | New crash signature detected |
-| RegressionDetected | crashlytics_regression | > 0 | 1h | Crash regression from previous version |
+These are the repo's stability policy thresholds (they back RC-H6 in `docs/RELEASE_CANDIDATE_CHECKLIST.md` and the LC-S1/LC-S2 launch criteria in `docs/LAUNCH_PATH_DECISION.md`). Enforce them via Firebase Crashlytics console alerting and periodic console review — they are **not** wired to Alertmanager.
 
-## Firebase Console Configuration
+| Threshold | Policy | How to enforce |
+|-----------|--------|----------------|
+| Crash rate | > 1% of sessions = critical | Crashlytics trend/velocity alerts + console review of the crash-free sessions widget |
+| Fatal crashes | Any fatal crash = critical | Crashlytics new-issue/velocity email alerts; triage every fatal in the console |
+| Crash-free users/sessions | ≥ 99% | Crashlytics dashboard (Firebase Console → Crashlytics) |
+| ANR rate (Android) | < 0.5% | Android vitals in the Crashlytics / Play consoles |
 
-### 1. Enable Crashlytics in Firebase Console
+### Console setup steps
 
-1. Go to Firebase Console → Project → Crashlytics
-2. Click "Enable Crashlytics"
-3. Wait for first crash report to appear
+1. **Enable Crashlytics** — Firebase Console → Project → Crashlytics → "Enable Crashlytics" (requires a Firebase config in the build; see `docs/FIREBASE_SETUP.md`).
+2. **Enable alert notifications** — Crashlytics → Alerts: turn on email notifications for new issues, velocity alerts, and trend alerts. Configure recipients under Project Settings → Notifications.
+3. **No Prometheus configuration is needed or possible** — there is no `crashlytics_*` exporter; any doc claiming one was fabricated and has been removed.
 
-### 2. Configure Alert Thresholds
+Note: Firebase velocity/trend alerts are managed by Firebase and are not user-configurable PromQL rules. If a threshold must gate a release (RC-H6), verify the crash-free rate in the console during the review window rather than relying on an alert push.
 
-In Firebase Console:
-1. Navigate to Crashlytics → Settings
-2. Configure velocity alerts:
-   - **Critical**: Alert when crash rate > 1% in 5 minutes
-   - **Warning**: Alert when crash rate > 0.5% in 10 minutes
-
-### 3. Set Up Notifications
-
-1. **In-App Notifications**: Enable in Firebase Console
-2. **Email Alerts**: Configure in Project Settings → Notifications
-3. **Slack Integration**: Use Firebase Cloud Functions (see below)
-
-## Cloud Functions Integration (Optional)
-
-For advanced alerting, deploy Firebase Cloud Functions:
-
-```typescript
-// functions/src/crashlytics.ts
-import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
-
-admin.initializeApp();
-
-// Alert on new fatal crash
-export const onFatalCrash = functions.crashlytics
-  .issue()
-  .onNewIssuePublished((issue) => {
-    // Send notification
-    console.log('New fatal crash:', issue.getTitle());
-    
-    // Integrate with existing alerting
-    // This could trigger PagerDuty, Slack, etc.
-  });
-```
-
-## Client-Side Breadcrumb Configuration
-
-The AnalyticsManager captures breadcrumbs for debugging. Configure breadcrumb retention:
-
-```gdscript
-# In AnalyticsManager
-const MAX_BREADCRUMBS := 100  # Maximum breadcrumbs to retain
-const BREADCRUMB_TYPES := [
-    "session_start",
-    "session_end", 
-    "tutorial_started",
-    "tutorial_completed",
-    "tutorial_failed",
-    "pve_stage_started",
-    "pve_stage_completed",
-    "pve_stage_failed",
-    "pvp_match_started",
-    "pvp_match_completed",
-    "pvp_match_abandoned",
-    "store_opened",
-    "purchase_completed",
-    "level_up",
-    "network_error",
-    "crashlytics_initialized"
-]
-```
-
-## Integration with Backend Alerting
-
-The crash data flows to the backend via:
-
-1. **Direct Firebase Integration**: Crashes reported directly to Firebase
-2. **Analytics Events**: AnalyticsManager sends events to backend via RPC
-3. **Prometheus Metrics**: Backend scrapes Firebase for crash metrics (via Firebase APIs)
-
-### Prometheus Metrics
-
-```yaml
-# prometheus.yml - Add Firebase scrape config
-- job_name: firebase-crashlytics
-  firebase_params:
-    project_id: armored-archer
-  metrics_path: /v1/projects/{project}/metrics
-  scrape_interval: 5m
-```
-
-## Alert Response Workflow
+## Alert Response Workflow (Console-Based)
 
 ```
-1. Crash Detected (Firebase)
+1. Crash reported to Crashlytics (mobile builds with Firebase config only)
        │
        ▼
-2. Velocity Alert Triggered
+2. Velocity / trend alert email from Firebase (if enabled in console)
        │
        ▼
-3. Firebase Console Notification
+3. Engineer triages in Firebase Console → Crashlytics
        │
        ▼
-4. Backend Alert (Prometheus)
+4. Create GitHub issue / hotfix
        │
        ▼
-5. PagerDuty/Slack Alert
-       │
-       ▼
-6. On-Call Engineer Acknowledges
-       │
-       ▼
-7. Investigate in Firebase Console
-       │
-       ▼
-8. Create Issue / Fix
-       │
-       ▼
-9. Verify Fix Deployed
-       │
-       ▼
-10. Mark Alert Resolved
+5. Verify fix in next release's Crashlytics dashboard
 ```
 
-## Key Crash Metrics to Monitor
+If no Firebase config is present in a build, step 1 never happens — crashes are only visible in local `print()` output, so release testing on such builds must rely on manual reproduction and platform crash logs (e.g. logcat / Xcode organizer).
 
-| Metric | Description | Target |
-|--------|-------------|--------|
-| Crash-free users | Percentage of users without crashes | > 99% |
-| Crash-free sessions | Percentage of sessions without crashes | > 99% |
-| Fatal crash rate | Percentage of crashes that are fatal | < 0.1% |
-| ANR rate | App Not Responding frequency | < 0.5% |
-| Time to resolve | Average time from crash to fix | < 24h |
+## Client-Side Breadcrumb Context
+
+`AnalyticsManager.add_breadcrumb(label, metadata)` records breadcrumbs that `_capture_crash_dump()` attaches to crash reports, and `record_custom_error()` includes the last 10 breadcrumbs (`_get_breadcrumb_summary()`) in non-fatal error reports. Breadcrumb labels in use include `session_start`, `pve_stage_started/completed/failed`, `pvp_match_started/completed/abandoned`, `store_opened`, `purchase_completed`, `network_error`, and `crashlytics_initialized`.
+
+## Optional: Cloud Functions Push Integration (Not Deployed)
+
+The only way to route Crashlytics alerts into Slack/PagerDuty today would be a Firebase Cloud Function on `crashlytics.issue().onNewIssuePublished` (see [Firebase docs](https://firebase.google.com/docs/crashlytics)). **No Cloud Functions are deployed for this project** — this is a potential future enhancement, not an existing integration.
 
 ## Testing Crash Reporting
 
-Use the AnalyticsManager test crash function:
-
 ```gdscript
-# Trigger test crash (for testing only!)
+# Trigger a test crash report (does not hard-crash the app)
 AnalyticsManager.test_crash()
 ```
 
-Verify the crash appears in:
-1. Firebase Console → Crashlytics
-2. Backend analytics events (if wired)
-3. Any configured alerts
+Verify:
+1. On mobile builds with a Firebase config: the report appears in Firebase Console → Crashlytics.
+2. Everywhere: local console output (`Analytics: Recorded custom error: Test crash from AnalyticsManager`).
+3. The non-fatal path also reaches the backend as a `client_error` analytics event (via `MonitoringManager.report_error`).
+
+## Future Work: Backend Crash Metrics
+
+The recommended end-state (tracked as a follow-up to issue #1105, not yet implemented) is a real client→backend crash pipeline:
+
+- A client crash/health RPC so clients report crash reports and near-crash context to the Nakama server,
+- server-side `armored_archer_client_crash_*` Prometheus metrics (crash rate, fatal count, affected users) exported by `backend/src`,
+- alert rules in `backend/alerts.yml` matching the thresholds above (> 1% crash rate, any fatal), firing through the existing Alertmanager setup.
+
+That would make the thresholds machine-enforced and visible in Grafana alongside server-side health, instead of depending on the Firebase console. It is a cross-cutting client+backend+observability feature and needs its own issue — deliberately out of scope for the documentation fix that produced this document's current wording.
 
 ## Related Documentation
 
-- [FIREBASE_SETUP.md](../FIREBASE_SETUP.md) - Firebase setup guide
-- [ALERTING.md](./ALERTING.md) - Backend alerting infrastructure
-- [ANALYTICS_DASHBOARD.md](../docs/ANALYTICS_DASHBOARD.md) - Analytics visualization
+- [FIREBASE_SETUP.md](./FIREBASE_SETUP.md) — Firebase/Crashlytics client setup guide
+- [DEPLOYMENT_OBSERVABILITY.md](./DEPLOYMENT_OBSERVABILITY.md) — the self-hosted Prometheus/Grafana/Loki stack (server-side only)
+- [ANALYTICS_DASHBOARD.md](./ANALYTICS_DASHBOARD.md) — analytics events and dashboards
+- [RELEASE_CANDIDATE_CHECKLIST.md](./RELEASE_CANDIDATE_CHECKLIST.md) — RC-H6 crash-free rate gate
 - [Firebase Crashlytics Docs](https://firebase.google.com/docs/crashlytics)
