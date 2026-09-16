@@ -3,6 +3,9 @@ extends GutTest
 var NetworkManagerClass = load("res://autoloads/NetworkManager.gd")
 var _network
 var _mock_http: HTTPRequest  # Passive transport probe (real HTTPRequest, localhost-only)
+# Issue #1108: send_rpc/send_rpc_async dispatch on the dedicated RPC node, so
+# the suite installs a second probe for it (same #1026 pattern as _mock_http).
+var _mock_rpc_http: HTTPRequest
 
 ## The old GUT double(HTTPRequest) transport is gone: GUT 9.6 doubles of
 ## native engine classes carry null doubling metadata, so neither
@@ -48,6 +51,12 @@ func before_each():
 	# Replace the http_request node in NetworkManager
 	_network.http_request = _mock_http
 
+	# Issue #1108: same transport-probe swap for the dedicated RPC node that
+	# send_rpc/send_rpc_async dispatch through.
+	_mock_rpc_http = HTTPRequest.new()
+	add_child_autofree(_mock_rpc_http)
+	_network._rpc_http_request = _mock_rpc_http
+
 func after_each():
 	# Remove any session file this suite's tests wrote (e.g.
 	# test_session_file_operations) so it cannot leak into later suites
@@ -59,10 +68,12 @@ func after_each():
 	# the before_each swap actually takes effect, issue #1026).
 	if is_instance_valid(_network):
 		_network.http_request = null
+		_network._rpc_http_request = null
 
 	# Cleanup is handled by add_child_autofree, but clear references
 	_network = null
 	_mock_http = null
+	_mock_rpc_http = null
 
 # ==================== SESSION MANAGEMENT TESTS ====================
 
@@ -297,12 +308,14 @@ func test_send_rpc_async_fire_and_forget():
 
 	# Verify it doesn't throw or crash (fire-and-forget pattern)
 	assert_true(true, "Async RPC should complete without blocking")
-	# The fire-and-forget dispatch must go through the installed transport
-	# probe (issue #1026: previously hit the busy real HTTPRequest left by
-	# _ready()'s health-gate probe and failed on ERR_BUSY). A dispatched
-	# request moves the fresh probe out of STATUS_DISCONNECTED synchronously.
-	assert_ne(_mock_http.get_http_client_status(), HTTPClient.STATUS_DISCONNECTED,
-		"Fire-and-forget RPC must dispatch through the installed transport")
+	# The fire-and-forget dispatch must go through the installed RPC
+	# transport probe (issue #1026: previously hit the busy real HTTPRequest
+	# left by _ready()'s health-gate probe and failed on ERR_BUSY; issue
+	# #1108: dispatch now goes through the dedicated _rpc_http_request
+	# node). A dispatched request moves the fresh probe out of
+	# STATUS_DISCONNECTED synchronously.
+	assert_ne(_mock_rpc_http.get_http_client_status(), HTTPClient.STATUS_DISCONNECTED,
+		"Fire-and-forget RPC must dispatch through the installed RPC transport")
 
 func test_reconnection_attempts():
 	# Test attempt_reconnection() retry logic
