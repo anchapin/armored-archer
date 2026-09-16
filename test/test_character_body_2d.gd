@@ -30,6 +30,13 @@ func _create_character() -> CharacterBody2DScript:
 	char.set_script(script)
 	char.name = "TestCharacter"
 	add_child(char)
+	# Test isolation (issue #1234): under the full runner scene the
+	# ShootingManager autoload auto-aims the first "Player"-group node at
+	# enemies left over from earlier suites (CI stack: _physics_process ->
+	# handle_auto_shoot -> _process_auto_shoot -> set_virtual_aim_direction),
+	# which rewrites the aim state asserted below. Drop the group before the
+	# first physics tick so initial aim state is observed undisturbed.
+	char.remove_from_group("Player")
 	await get_tree().process_frame
 	return char
 
