@@ -65,7 +65,7 @@ func _report_benchmark(name: String, value: float, threshold: float, passed: boo
 
 ## Benchmark: FPS Tracking Accuracy
 func benchmark_fps_tracking_accuracy() -> void:
-	var profiler = _create_profiler()
+	var profiler = await _create_profiler()
 
 	# Simulate FPS values
 	var test_fps_values = [30.0, 45.0, 60.0, 25.0, 50.0, 35.0]
@@ -92,7 +92,7 @@ func benchmark_fps_tracking_accuracy() -> void:
 
 ## Benchmark: Frame Time Calculation
 func benchmark_frame_time_calculation() -> void:
-	var profiler = _create_profiler()
+	var profiler = await _create_profiler()
 
 	# Test frame time at 60 FPS
 	profiler._current_fps = 60.0
@@ -130,7 +130,7 @@ func benchmark_frame_time_calculation() -> void:
 
 ## Benchmark: FPS History Management
 func benchmark_fps_history_management() -> void:
-	var profiler = _create_profiler()
+	var profiler = await _create_profiler()
 
 	# Test that FPS history is properly limited
 	var max_samples = profiler._fps_sample_count
@@ -153,7 +153,7 @@ func benchmark_fps_history_management() -> void:
 
 ## Benchmark: Memory Leak Detection Threshold
 func benchmark_memory_leak_detection_threshold() -> void:
-	var profiler = _create_profiler()
+	var profiler = await _create_profiler()
 
 	# Set up memory leak detection parameters
 	profiler._startup_memory_mb = 100.0
@@ -184,7 +184,7 @@ func benchmark_memory_leak_detection_threshold() -> void:
 
 ## Benchmark: Memory Growth Rate Calculation
 func benchmark_memory_growth_rate_calculation() -> void:
-	var profiler = _create_profiler()
+	var profiler = await _create_profiler()
 
 	profiler._startup_memory_mb = 100.0
 	profiler._session_start_time = 0
@@ -214,7 +214,7 @@ func benchmark_memory_growth_rate_calculation() -> void:
 
 ## Benchmark: Device Tier Performance Settings
 func benchmark_device_tier_performance_settings() -> void:
-	var profiler = _create_profiler()
+	var profiler = await _create_profiler()
 
 	# Test budget tier settings
 	profiler._device_tier = profiler.DeviceTier.BUDGET
@@ -277,7 +277,7 @@ func benchmark_device_tier_performance_settings() -> void:
 
 ## Benchmark: Snapshot Generation
 func benchmark_snapshot_generation() -> void:
-	var profiler = _create_profiler()
+	var profiler = await _create_profiler()
 
 	# Generate snapshot
 	var snapshot = profiler.get_profiling_snapshot()
@@ -304,7 +304,7 @@ func benchmark_snapshot_generation() -> void:
 
 ## Benchmark: FPS Warning Threshold
 func benchmark_fps_warning_threshold() -> void:
-	var profiler = _create_profiler()
+	var profiler = await _create_profiler()
 
 	# Set target FPS to 30 (budget)
 	profiler._target_fps = 30
@@ -333,7 +333,7 @@ func benchmark_fps_warning_threshold() -> void:
 
 ## Benchmark: Memory Warning Threshold
 func benchmark_memory_warning_threshold() -> void:
-	var profiler = _create_profiler()
+	var profiler = await _create_profiler()
 
 	# Set device tier to budget (256 MB threshold)
 	profiler._device_tier = profiler.DeviceTier.BUDGET

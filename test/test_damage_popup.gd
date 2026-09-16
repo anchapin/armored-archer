@@ -47,7 +47,7 @@ func _fail(test_name: String, message: String) -> void:
 	print("[FAIL] " + test_name + ": " + message)
 
 func test_initial_state() -> void:
-	var dp = _create_damage_popup()
+	var dp = await _create_damage_popup()
 
 	if dp.float_speed == 80.0 and dp.lifetime == 1.0 and dp.fade_start == 0.6:
 		_pass("test_initial_state")
@@ -57,7 +57,7 @@ func test_initial_state() -> void:
 	dp.queue_free()
 
 func test_colors_defined() -> void:
-	var dp = _create_damage_popup()
+	var dp = await _create_damage_popup()
 
 	if dp.COLOR_NORMAL == Color(1.0, 1.0, 1.0, 1.0) and dp.COLOR_CRIT == Color(1.0, 0.3, 0.1, 1.0) and dp.COLOR_MISS == Color(0.6, 0.6, 0.6, 0.8) and dp.COLOR_HEAL == Color(0.3, 1.0, 0.4, 1.0):
 		_pass("test_colors_defined")
@@ -67,7 +67,7 @@ func test_colors_defined() -> void:
 	dp.queue_free()
 
 func test_setup_damage_normal() -> void:
-	var dp = _create_damage_popup()
+	var dp = await _create_damage_popup()
 	dp.setup_damage(150)
 
 	if dp.text == "150" and dp.modulate == dp.COLOR_NORMAL:
@@ -78,7 +78,7 @@ func test_setup_damage_normal() -> void:
 	dp.queue_free()
 
 func test_setup_damage_crit() -> void:
-	var dp = _create_damage_popup()
+	var dp = await _create_damage_popup()
 	dp.setup_damage(150, true, false, false)
 
 	if dp.text == "150!" and dp.modulate == dp.COLOR_CRIT:
@@ -89,7 +89,7 @@ func test_setup_damage_crit() -> void:
 	dp.queue_free()
 
 func test_setup_miss() -> void:
-	var dp = _create_damage_popup()
+	var dp = await _create_damage_popup()
 	dp.setup_damage(0, false, true, false)
 
 	if dp.text == "MISS" and dp.modulate == dp.COLOR_MISS:
@@ -100,7 +100,7 @@ func test_setup_miss() -> void:
 	dp.queue_free()
 
 func test_setup_heal() -> void:
-	var dp = _create_damage_popup()
+	var dp = await _create_damage_popup()
 	dp.setup_damage(50, false, false, true)
 
 	if dp.text == "+50" and dp.modulate == dp.COLOR_HEAL:
