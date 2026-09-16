@@ -48,7 +48,18 @@ var is_offline: bool = false
 var _is_refreshing: bool = false  # Track if current request is a refresh
 
 # --- HTTP Requests ---
+# Issue #1108: one dedicated HTTPRequest node per concern so completions
+# cannot leak across boundaries. `http_request` is the AUTH/SESSION-LIFECYCLE
+# node and the ONLY node wired to the persistent _on_http_request_completed
+# handler, so auth/refresh responses (and only those) drive session signals.
+# `_rpc_http_request` carries send_rpc/send_rpc_async traffic (serialized by
+# _rpc_busy + the async queue) and `_probe_http_request` carries /v2/health
+# probes; neither is connected to the session handler, so an RPC 2xx without
+# a token key or a probe's empty 200 body can never emit session_created(false)
+# (the cold-start "Connection Failed" flash while auth is still in progress).
 var http_request: HTTPRequest
+var _rpc_http_request: HTTPRequest
+var _probe_http_request: HTTPRequest
 var base_url: String
 var _request_counter: int = 0  # Track individual requests
 var _current_request_id: int = 0  # Track current request for debugging
@@ -236,14 +247,17 @@ func _ready() -> void:
 	_log_environment_info()
 	base_url = "http://%s:%d" % [server_url, server_port]
 
-	http_request = HTTPRequest.new()
+	# Issue #1108: dedicated HTTPRequest nodes for auth/session, RPC, and
+	# health-probe traffic (see the `--- HTTP Requests ---` section comment).
+	http_request = _make_http_request_node()
 	add_child(http_request)
+	_rpc_http_request = _make_http_request_node()
+	add_child(_rpc_http_request)
+	_probe_http_request = _make_http_request_node()
+	add_child(_probe_http_request)
 
-	# Configure HTTPRequest for Godot 4.6
-	http_request.timeout = 30
-	http_request.use_threads = true  # Required for async requests
-	http_request.max_redirects = 0   # Don't follow redirects automatically
-
+	# Only the auth/session node feeds the persistent session handler; RPC and
+	# probe completions are consumed by their own one-shot handlers.
 	var _err = http_request.request_completed.connect(_on_http_request_completed)
 
 	_load_session_from_file()
@@ -259,6 +273,16 @@ func _ready() -> void:
 		username = ""
 
 	_try_auto_connect()
+
+## Issue #1108: builds one of the dedicated HTTPRequest nodes (auth, RPC,
+## probe) with the shared transport configuration.
+func _make_http_request_node() -> HTTPRequest:
+	var node: HTTPRequest = HTTPRequest.new()
+	# Configure HTTPRequest for Godot 4.6
+	node.timeout = 30
+	node.use_threads = true  # Required for async requests
+	node.max_redirects = 0   # Don't follow redirects automatically
+	return node
 
 # --- Device ID Management ---
 func _generate_device_id() -> void:
@@ -344,8 +368,12 @@ func authenticate_device() -> void:
 
 ## Runs a synchronous-feeling /v2/health probe. Resolves true if Nakama answered
 ## 200 within HEALTH_CHECK_TIMEOUT_SEC, false otherwise. Never throws.
+## Issue #1108: probes fire on the dedicated _probe_http_request node, so the
+## empty 200 body of a healthy probe never reaches _on_http_request_completed
+## (which parsed it as a failed auth response and emitted
+## session_created(false, 'Failed to parse server response') during cold start).
 func _probe_health() -> bool:
-	if http_request == null:
+	if _probe_http_request == null:
 		return false
 	var url: String = "%s%s" % [base_url, NetworkConsts.HEALTH_GATE_PATH]
 	var timer: Timer = Timer.new()
@@ -357,15 +385,15 @@ func _probe_health() -> bool:
 	var _t1 = timer.timeout.connect(func():
 		if not done:
 			done = true
-			if http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
-				http_request.cancel_request()
+			if _probe_http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+				_probe_http_request.cancel_request()
 	, CONNECT_ONE_SHOT)
-	var _t2 = http_request.request_completed.connect(func(_r: int, code: int, _h: PackedStringArray, _b: PackedByteArray):
+	var _t2 = _probe_http_request.request_completed.connect(func(_r: int, code: int, _h: PackedStringArray, _b: PackedByteArray):
 		if not done:
 			done = true
 			result = [code]
 	, CONNECT_ONE_SHOT)
-	var err: Error = http_request.request(url, PackedStringArray(), HTTPClient.METHOD_GET, "")
+	var err: Error = _probe_http_request.request(url, PackedStringArray(), HTTPClient.METHOD_GET, "")
 	if err != OK:
 		timer.queue_free()
 		return false
@@ -744,12 +772,23 @@ func is_staging() -> bool:
 # Track RPC request ID separately from auth request ID
 var _rpc_request_id: int = 0
 var _pending_rpc_callbacks: Dictionary = {}  # Map request_id to callback info
-var _rpc_busy: bool = false  # Serialize requests to single HTTPRequest node
+var _rpc_busy: bool = false  # Serialize requests to single RPC HTTPRequest node
+# --- Issue #1108: async RPC queue ---
+# send_rpc_async used to fire directly on the shared HTTPRequest node; when a
+# tracked send_rpc cycle was in flight the dispatch returned ERR_BUSY and the
+# payload was silently dropped (PacingManager / DynamicDifficultyManager sync
+# telemetry). Busy-time payloads are now queued and drained once the dedicated
+# RPC node frees up — zero dropped payloads under concurrency.
+var _async_rpc_queue: Array[Dictionary] = []
+var _async_rpc_in_flight: bool = false
+var _async_rpc_draining: bool = false
 
 # --- Issue #1079: Mid-Session Auth Recovery (401/403 refresh + replay) ---
-# True while the shared HTTPRequest node is servicing an RPC (send_rpc or
-# send_rpc_async) rather than an auth request, so _on_http_request_completed
-# can route 401/403s to recovery instead of the startup auth-error UI path.
+# Defense-in-depth routing flag: true while the RPC node is servicing an RPC
+# (send_rpc or send_rpc_async). Since issue #1108 the dedicated-node split
+# already keeps RPC completions away from _on_http_request_completed; the flag
+# is retained so the handler's 401/403 routing (and the tests that drive it
+# directly) still behave identically if the paths ever share a node again.
 var _rpc_request_active: bool = false
 # Re-entrancy guard: concurrent RPC auth errors coalesce into ONE refresh.
 var _refreshing_session: bool = false
@@ -800,7 +839,10 @@ func _send_rpc_with_recovery(rpc_id: String, payload: String, timeout: float, is
 
 	# Issue #1138: wait for any in-flight cycle (request OR recovery OR
 	# replay) to settle — not just the request — before taking the lock.
-	while _rpc_busy:
+	# Issue #1108: also wait out any fire-and-forget dispatch currently
+	# occupying the dedicated RPC node, so the tracked attempt cannot
+	# collide with it (HTTPRequest serves one request at a time).
+	while _rpc_busy or _async_rpc_in_flight:
 		await get_tree().process_frame
 
 	_rpc_busy = true
@@ -858,6 +900,16 @@ func _finish_rpc_cycle(rpc_id: String, start_time_ms: int, response_data: Dictio
 ##   failed:        true for transport-level failures (dispatch error,
 ##                  timeout, malformed result) that must not trigger recovery
 func _perform_rpc_attempt(rpc_id: String, payload: String, timeout: float) -> Dictionary:
+	if _rpc_http_request == null:
+		# No transport (e.g. E2E/test boots skip node creation): fail closed
+		# as a transport error — no recovery, no replay.
+		return {
+			"response": {"error": "RPC transport unavailable"},
+			"is_auth_error": false,
+			"token_used": session_token,
+			"failed": true
+		}
+
 	# Increment RPC request ID
 	_rpc_request_id += 1
 	var this_rpc_id: int = _rpc_request_id
@@ -887,7 +939,7 @@ func _perform_rpc_attempt(rpc_id: String, payload: String, timeout: float) -> Di
 
 	var on_timeout: Callable = func():
 		timed_out = true
-		http_request.cancel_request()
+		_rpc_http_request.cancel_request()
 
 	var on_request_completed: Callable = func(_result: int, _response_code: int, _headers: PackedStringArray, body: PackedByteArray):
 		request_result = [_result, _response_code, _headers, body, this_rpc_id]
@@ -896,15 +948,15 @@ func _perform_rpc_attempt(rpc_id: String, payload: String, timeout: float) -> Di
 			timer.stop()
 
 	var _err1 = timer.timeout.connect(on_timeout, CONNECT_ONE_SHOT)
-	var _err2 = http_request.request_completed.connect(on_request_completed, CONNECT_ONE_SHOT)
+	var _err2 = _rpc_http_request.request_completed.connect(on_request_completed, CONNECT_ONE_SHOT)
 
 	timer.start()
 
-	# Issue #1079: mark the shared node as servicing an RPC until this
-	# coroutine finishes processing, so the persistent completion handler does
-	# not misroute a 401/403 into the startup auth-error UI path.
+	# Issue #1079: mark the RPC path as active until this coroutine finishes
+	# processing, so a 401/403 cannot be misrouted into the startup
+	# auth-error UI path (see the _rpc_request_active note above).
 	_rpc_request_active = true
-	var error_code: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_body)
+	var error_code: Error = _rpc_http_request.request(url, headers, HTTPClient.METHOD_POST, json_body)
 
 	if error_code != OK:
 		_rpc_request_active = false
@@ -1082,11 +1134,31 @@ func _run_refresh_and_await_result() -> bool:
 
 ## Sends an RPC request without waiting for response (fire-and-forget).
 ## Used for notifications like stage completion where we don't need the result.
+## Issue #1108: payloads fired while the dedicated RPC node is busy (a tracked
+## send_rpc cycle or another async dispatch) are QUEUED and drained once the
+## node frees up — previously the dispatch returned ERR_BUSY and silently
+## dropped the payload (PacingManager / DynamicDifficultyManager telemetry).
 func send_rpc_async(rpc_id: String, payload: String, _timeout: float = 10.0) -> void:
 	if not is_session_valid():
 		push_warning("Cannot send RPC: not authenticated")
 		return
 
+	if _rpc_http_request == null:
+		push_warning("Cannot send async RPC: no RPC transport available")
+		return
+
+	# Queue behind the busy gate instead of racing the in-flight request.
+	if _rpc_busy or _async_rpc_in_flight:
+		_async_rpc_queue.append({"rpc_id": rpc_id, "payload": payload})
+		_drain_async_rpc_queue()
+		return
+	_fire_async_rpc(rpc_id, payload)
+
+## Issue #1108: dispatches ONE fire-and-forget RPC on the dedicated RPC node.
+## The node separation routes the completion away from the session lifecycle
+## handler; fire-and-forget requests never replay — the next tracked send_rpc
+## runs the refresh + replay (issue #1079) if the token went stale.
+func _fire_async_rpc(rpc_id: String, payload: String) -> void:
 	var url: String = "%s/v2/rpc/%s" % [base_url, rpc_id]
 	var headers: PackedStringArray = get_auth_headers()
 	var _err = headers.append("Content-Type: application/json")
@@ -1095,20 +1167,35 @@ func send_rpc_async(rpc_id: String, payload: String, _timeout: float = 10.0) -> 
 	var body: Dictionary = {"payload": payload}
 	var json_body: String = JSON.stringify(body)
 
-	# Fire request without waiting - we don't care about the response
-	# Issue #1079: mark the completion as an RPC response so a 401/403 is not
-	# misrouted into the startup auth-error UI path. Fire-and-forget requests
-	# never replay; the next tracked send_rpc runs the refresh + replay.
-	_rpc_request_active = true
+	_async_rpc_in_flight = true
 	var on_completed: Callable = func(_result: int, _response_code: int, _headers: PackedStringArray, _body: PackedByteArray):
-		_rpc_request_active = false
-	var _err2 = http_request.request_completed.connect(on_completed, CONNECT_ONE_SHOT)
-	var error_code: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, json_body)
+		_async_rpc_in_flight = false
+	var _err2 = _rpc_http_request.request_completed.connect(on_completed, CONNECT_ONE_SHOT)
+	var error_code: Error = _rpc_http_request.request(url, headers, HTTPClient.METHOD_POST, json_body)
 	if error_code != OK:
-		_rpc_request_active = false
-		if http_request.request_completed.is_connected(on_completed):
-			http_request.request_completed.disconnect(on_completed)
+		_async_rpc_in_flight = false
+		if _rpc_http_request.request_completed.is_connected(on_completed):
+			_rpc_http_request.request_completed.disconnect(on_completed)
 		push_warning("Failed to send async RPC: %s" % rpc_id)
+
+## Issue #1108: drains queued fire-and-forget payloads one at a time once the
+## dedicated RPC node is free. Runs as an independent coroutine; the
+## _async_rpc_draining guard keeps at most one drain loop alive at a time.
+func _drain_async_rpc_queue() -> void:
+	if _async_rpc_draining:
+		return
+	_async_rpc_draining = true
+	while not _async_rpc_queue.is_empty():
+		# Queue behind the busy gate: a tracked send_rpc cycle (including its
+		# #1138 recovery + replay envelope) owns the node until
+		# _finish_rpc_cycle releases _rpc_busy.
+		while _rpc_busy or _async_rpc_in_flight:
+			await get_tree().process_frame
+		if _async_rpc_queue.is_empty():
+			break
+		var next: Dictionary = _async_rpc_queue.pop_front()
+		_fire_async_rpc(next["rpc_id"], next["payload"])
+	_async_rpc_draining = false
 
 func _log_rpc_latency(rpc_name: String, latency_ms: int) -> void:
 	# Use AnalyticsManager if available
@@ -1319,10 +1406,16 @@ func set_offline_mode(offline: bool) -> void:
 
 # --- Cleanup ---
 func _exit_tree() -> void:
-	# Clean up HTTP request node
+	# Clean up HTTP request nodes (issue #1108: one per concern)
 	if http_request != null:
 		http_request.queue_free()
 		http_request = null
+	if _rpc_http_request != null:
+		_rpc_http_request.queue_free()
+		_rpc_http_request = null
+	if _probe_http_request != null:
+		_probe_http_request.queue_free()
+		_probe_http_request = null
 
 	# Clean up reconnection timer
 	if _reconnect_timer != null:
