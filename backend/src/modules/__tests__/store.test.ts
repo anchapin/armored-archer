@@ -69,6 +69,7 @@ import {
   registerRpcGetBundleCatalog,
   validatedReceipts,
   clearWebhookEventLedgersForTests,
+  drainPendingWebhookAwards,
   RefundReason,
 } from '../store';
 import { Runtime } from '../../types/nakama';
@@ -1031,6 +1032,140 @@ describe('store', () => {
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(true);
       expect(parsed.new_balance).toBe(600);
+    });
+  });
+
+  describe('drainPendingWebhookAwards (issue #1137)', () => {
+    const DRAIN_USER = 'drain-user';
+
+    /** Seed the authoritative ledger record for DRAIN_USER. */
+    const seedLedger = (gems: number): void => {
+      testStorage.set(
+        'player_currency:' + DRAIN_USER,
+        JSON.stringify({ user_id: DRAIN_USER, gems, coins: 0, wallet_bridged: true })
+      );
+    };
+
+    /** Seed the durable pending-award queue for DRAIN_USER. */
+    const seedQueue = (gemsRemaining: number[]): void => {
+      testStorage.set(
+        'revenuecat_pending_awards:' + DRAIN_USER,
+        JSON.stringify({
+          awards: gemsRemaining.map((gems, i) => ({
+            event_id: `evt_drain_${i}`,
+            product_id: 'com.armoredarcher.gems.small',
+            gems_remaining: gems,
+            queued_at: Date.now(),
+          })),
+        })
+      );
+    };
+
+    /** Read back the persisted queue (empty array when absent). */
+    const readQueueGems = (): number[] => {
+      const raw = testStorage.get('revenuecat_pending_awards:' + DRAIN_USER);
+      if (raw === undefined) {
+        return [];
+      }
+      return (JSON.parse(raw).awards ?? []).map((a: { gems_remaining: number }) => a.gems_remaining);
+    };
+
+    /** Read back the persisted ledger gem balance. */
+    const readLedgerGems = (): number =>
+      JSON.parse(testStorage.get('player_currency:' + DRAIN_USER) as string).gems;
+
+    /**
+     * Count storage round-trips against the currency ledger — the
+     * read-modify-write the O(K) regression targeted (issue #1137). The
+     * queue's own fixed read/write touch a different collection and are
+     * excluded; the cache is cold in these tests, so every counted call
+     * is a real storage RTT.
+     */
+    const ledgerStorageRtts = (nk: Runtime.Nakama): number => {
+      const reads = nk.storageRead.mock.calls.filter((call: any[]) =>
+        call[0].some((r: any) => r.collection === 'player_currency')
+      ).length;
+      const writes = nk.storageWrite.mock.calls.filter((call: any[]) =>
+        call[0].some((w: any) => w.collection === 'player_currency')
+      ).length;
+      return reads + writes;
+    };
+
+    it('drains K=20 queued awards with at most 2 currency-ledger storage RTTs', () => {
+      const nk = createMockNakama();
+      // Whale near the cap: 10M - 9,999,000 = 1,000 gems of headroom.
+      seedLedger(9_999_000);
+      // K=20 queued awards of 100 gems each (2,000 total > headroom).
+      seedQueue(Array.from({ length: 20 }, () => 100));
+
+      const applied = drainPendingWebhookAwards(nk, DRAIN_USER, mockLogger);
+
+      // Only the headroom fits; the rest stays queued (FIFO).
+      expect(applied).toBe(1_000);
+      expect(readLedgerGems()).toBe(10_000_000);
+      expect(readQueueGems()).toHaveLength(10);
+      expect(readQueueGems()[0]).toBe(100);
+      // Regression gate (issue #1137): the pre-fix drain issued a
+      // read-modify-write per queued award (~2K + 1 = 41 RTTs for K=20).
+      // The fix must keep the ledger traffic constant: one read + one
+      // aggregated write.
+      expect(ledgerStorageRtts(nk)).toBeLessThanOrEqual(2);
+    });
+
+    it('keeps the FIFO boundary award partial when headroom runs out mid-award', () => {
+      const nk = createMockNakama();
+      // 100 gems of headroom against a 250-gem award then a 100-gem award.
+      seedLedger(9_999_900);
+      seedQueue([250, 100]);
+
+      const applied = drainPendingWebhookAwards(nk, DRAIN_USER, mockLogger);
+
+      expect(applied).toBe(100);
+      expect(readLedgerGems()).toBe(10_000_000);
+      // First award keeps its un-appliable remainder; the second is untouched.
+      expect(readQueueGems()).toEqual([150, 100]);
+      expect(ledgerStorageRtts(nk)).toBeLessThanOrEqual(2);
+    });
+
+    it('drains the entire queue when headroom covers every award', () => {
+      const nk = createMockNakama();
+      seedLedger(500_000);
+      seedQueue(Array.from({ length: 20 }, () => 100));
+
+      const applied = drainPendingWebhookAwards(nk, DRAIN_USER, mockLogger);
+
+      expect(applied).toBe(2_000);
+      expect(readLedgerGems()).toBe(502_000);
+      expect(readQueueGems()).toEqual([]);
+      expect(ledgerStorageRtts(nk)).toBeLessThanOrEqual(2);
+    });
+
+    it('applies nothing when the balance is saturated and leaves the queue untouched', () => {
+      const nk = createMockNakama();
+      seedLedger(10_000_000);
+      seedQueue([100, 100, 100]);
+
+      const applied = drainPendingWebhookAwards(nk, DRAIN_USER, mockLogger);
+
+      expect(applied).toBe(0);
+      expect(readLedgerGems()).toBe(10_000_000);
+      expect(readQueueGems()).toEqual([100, 100, 100]);
+      // Only the single top-of-drain read happens — no write at all.
+      expect(ledgerStorageRtts(nk)).toBeLessThanOrEqual(2);
+    });
+
+    it('drops malformed zero/negative queue entries while draining', () => {
+      const nk = createMockNakama();
+      seedLedger(500_000);
+      seedQueue([0, 100, -50, 200]);
+
+      const applied = drainPendingWebhookAwards(nk, DRAIN_USER, mockLogger);
+
+      expect(applied).toBe(300);
+      expect(readLedgerGems()).toBe(500_300);
+      // Reached malformed entries are dropped defensively; the queue empties.
+      expect(readQueueGems()).toEqual([]);
+      expect(ledgerStorageRtts(nk)).toBeLessThanOrEqual(2);
     });
   });
 

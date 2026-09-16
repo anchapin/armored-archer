@@ -3611,12 +3611,25 @@ function queuePendingWebhookAward(
  * Called from the webhook award path so a player whose balance dropped
  * below the cap receives queued gems on their next webhook-driven event.
  *
+ * Issue #1137: the ledger is read exactly once and every queued award is
+ * folded into a single aggregated delta — the FIFO cap progression is
+ * recomputed in memory against that one read, which preserves the exact
+ * serial semantics of the former per-iteration loop (partial boundary
+ * award, malformed-entry dropping, saturation stop) while cutting the
+ * cost from ~2K + 1 storage RTTs for K queued awards to a constant two
+ * (one ledger read + one conditional ledger write). The aggregated delta
+ * still flows through the authoritative applyCurrencyDelta ledger write,
+ * seeded with the read so no second read happens; its OCC retry and
+ * MAX_GEM_BALANCE clamp keep the write safe under concurrency.
+ *
+ * Exported for direct unit testing of the RTT bound (issue #1137).
+ *
  * @param nk - Nakama server interface
  * @param userId - ID of the player
  * @param logger - Nakama logger instance
  * @returns Total queued gems applied during this drain
  */
-function drainPendingWebhookAwards(
+export function drainPendingWebhookAwards(
   nk: Runtime.Nakama,
   userId: string,
   logger: Runtime.Logger
@@ -3626,14 +3639,17 @@ function drainPendingWebhookAwards(
     return 0;
   }
 
+  // Read the ledger once (issue #1137): the normalized record plus its
+  // storage version seeds the single conditional write below.
+  const ledgerRead = readNormalizedCurrencyRecord(nk, userId, logger);
+
+  // Fold the FIFO cap progression in memory against that single read:
+  // each award consumes headroom exactly as the former per-iteration
+  // applyCurrencyDelta loop did, minus the per-award storage RMWs.
   const remaining = [...awards];
+  let headroom = MAX_GEM_BALANCE - ledgerRead.currency.gems;
   let totalApplied = 0;
-  while (remaining.length > 0) {
-    const current = getPlayerCurrencyWithCache(nk, userId, logger);
-    const headroom = MAX_GEM_BALANCE - current.gems;
-    if (headroom <= 0) {
-      break;
-    }
+  while (remaining.length > 0 && headroom > 0) {
     const next = remaining[0];
     if (next.gems_remaining <= 0) {
       // Defensive: drop malformed empty entries.
@@ -3641,14 +3657,8 @@ function drainPendingWebhookAwards(
       continue;
     }
     const apply = Math.min(next.gems_remaining, headroom);
-    const updated = applyCurrencyDelta(
-      nk,
-      userId,
-      { gems: apply },
-      'revenuecat_webhook_queued',
-      logger
-    );
     totalApplied += apply;
+    headroom -= apply;
     next.gems_remaining -= apply;
     if (next.gems_remaining <= 0) {
       remaining.shift();
@@ -3656,6 +3666,17 @@ function drainPendingWebhookAwards(
       // Balance saturated again; the rest stays queued.
       break;
     }
+  }
+
+  if (totalApplied > 0) {
+    applyCurrencyDelta(
+      nk,
+      userId,
+      { gems: totalApplied },
+      'revenuecat_webhook_queued',
+      logger,
+      ledgerRead
+    );
   }
 
   if (totalApplied > 0 || remaining.length !== awards.length) {
