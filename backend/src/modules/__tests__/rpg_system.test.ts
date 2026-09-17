@@ -325,7 +325,7 @@ describe('rpg_system', () => {
       );
       expect(auditWrites.length).toBeGreaterThan(0);
 
-      const auditEntry = JSON.parse(auditWrites[0][0][0].value);
+      const auditEntry = (typeof auditWrites[0][0][0].value === 'string' ? JSON.parse(auditWrites[0][0][0].value) : auditWrites[0][0][0].value);
       expect(auditEntry.action).toBe('gain_xp');
       expect(auditEntry.result).toBe('failure');
     });
@@ -395,9 +395,11 @@ describe('rpg_system', () => {
         call[0].some((obj: any) => obj.collection === 'player_stats')
       );
       expect(statsWrites.length).toBeGreaterThan(0);
-      const storedStats = JSON.parse(
-        statsWrites[0][0].find((obj: any) => obj.collection === 'player_stats').value
-      );
+      const storedStatsRaw = statsWrites[0][0].find(
+        (obj: any) => obj.collection === 'player_stats'
+      ).value;
+      const storedStats =
+        typeof storedStatsRaw === 'string' ? JSON.parse(storedStatsRaw) : storedStatsRaw;
       expect(storedStats.xp).toBe(375); // 100 existing + 275 capped grant
     });
 
@@ -467,7 +469,7 @@ describe('rpg_system', () => {
         call[0].some((obj: any) => obj.collection === 'audit_logs')
       );
       expect(auditWrites.length).toBeGreaterThan(0);
-      const auditEntry = JSON.parse(auditWrites[0][0][0].value);
+      const auditEntry = (typeof auditWrites[0][0][0].value === 'string' ? JSON.parse(auditWrites[0][0][0].value) : auditWrites[0][0][0].value);
       expect(auditEntry.action).toBe('gain_xp');
       expect(auditEntry.details.xp_amount).toBe(10000);
       expect(auditEntry.details.xp_granted).toBe(275);

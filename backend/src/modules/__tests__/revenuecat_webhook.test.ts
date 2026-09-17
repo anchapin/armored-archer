@@ -101,7 +101,7 @@ const createStatefulStorage = () => {
   };
   const readCurrency = (userId: string): { gems: number; coins: number } | undefined => {
     const record = records.get(`player_currency:${userId}`);
-    return record ? (JSON.parse(record.value) as { gems: number; coins: number }) : undefined;
+    return record ? ((typeof record.value === 'string' ? (typeof record.value === 'string' ? (typeof record.value === 'string' ? JSON.parse(record.value) : record.value) : record.value) : record.value) as { gems: number; coins: number }) : undefined;
   };
   return { records, storageRead, storageWrite, seedCurrency, setCurrency, readCurrency };
 };

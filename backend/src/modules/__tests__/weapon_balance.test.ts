@@ -528,7 +528,7 @@ describe('weapon_balance', () => {
       expect(adjustmentWrite[0].userId).toBe('admin-1');
       expect(adjustmentWrite[0].permissionRead).toBe(2);
       expect(adjustmentWrite[0].permissionWrite).toBe(0);
-      expect(JSON.parse(adjustmentWrite[0].value)).toEqual(adjustment);
+      expect((typeof adjustmentWrite[0].value === 'string' ? (typeof adjustmentWrite[0].value === 'string' ? (typeof adjustmentWrite[0].value === 'string' ? JSON.parse(adjustmentWrite[0].value) : adjustmentWrite[0].value) : adjustmentWrite[0].value) : adjustmentWrite[0].value)).toEqual(adjustment);
 
       const auditWrite = (nk.storageWrite as jest.Mock).mock.calls[1][0];
       expect(auditWrite[0].collection).toBe('audit_logs');
@@ -559,7 +559,7 @@ describe('weapon_balance', () => {
       expect(write.key).toBe('weapon_stats_bow_short_2');
       expect(write.userId).toBe('00000000-0000-0000-0000-000000000000');
 
-      const stats = JSON.parse(write.value) as WeaponUsageStats;
+      const stats = (typeof write.value === 'string' ? (typeof write.value === 'string' ? (typeof write.value === 'string' ? JSON.parse(write.value) : write.value) : write.value) : write.value) as WeaponUsageStats;
       expect(stats.weapon_id).toBe('bow_short_2');
       expect(stats.matches_played).toBe(1);
       expect(stats.wins).toBe(1);
@@ -585,7 +585,7 @@ describe('weapon_balance', () => {
       await trackWeaponUsage(nk, 'bow_short_2', 'loss', 30);
 
       const write = (nk.storageWrite as jest.Mock).mock.calls[0][0][0];
-      const stats = JSON.parse(write.value) as WeaponUsageStats;
+      const stats = (typeof write.value === 'string' ? (typeof write.value === 'string' ? (typeof write.value === 'string' ? JSON.parse(write.value) : write.value) : write.value) : write.value) as WeaponUsageStats;
       expect(stats.matches_played).toBe(2);
       expect(stats.wins).toBe(1);
       expect(stats.losses).toBe(1);

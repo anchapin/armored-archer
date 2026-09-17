@@ -39,7 +39,7 @@ describe('logAudit', () => {
     expect(callArg.collection).toBe('audit_logs');
     expect(callArg.userId).toBe('user123');
     expect(callArg.key).toMatch(/^audit_/);
-    const value = typeof callArg.value === 'string' ? JSON.parse(callArg.value) : callArg.value;
+    const value = typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? JSON.parse(callArg.value) : callArg.value) : callArg.value) : callArg.value) : callArg.value;
     expect(value.action).toBe('gain_xp');
     expect(value.resource).toBe('stats');
     expect(value.result).toBe('success');
@@ -59,7 +59,7 @@ describe('logAudit', () => {
     );
 
     const callArg = mockStorageWrite.mock.calls[0][0][0];
-    const value = typeof callArg.value === 'string' ? JSON.parse(callArg.value) : callArg.value;
+    const value = typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? JSON.parse(callArg.value) : callArg.value) : callArg.value) : callArg.value) : callArg.value;
     expect(value.result).toBe('failure');
     expect(value.error).toBe('Not found');
   });
@@ -91,7 +91,7 @@ describe('logAudit', () => {
     const after = Date.now();
 
     const callArg = mockStorageWrite.mock.calls[0][0][0];
-    const value = typeof callArg.value === 'string' ? JSON.parse(callArg.value) : callArg.value;
+    const value = typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? JSON.parse(callArg.value) : callArg.value) : callArg.value) : callArg.value) : callArg.value;
     expect(value.timestamp).toBeGreaterThanOrEqual(before);
     expect(value.timestamp).toBeLessThanOrEqual(after);
   });
@@ -171,7 +171,7 @@ describe('rpcQueryAuditLogs', () => {
     const callArg = mockStorageWrite.mock.calls[0][0][0];
     expect(callArg.collection).toBe('audit_logs');
     expect(callArg.userId).toBe(callerId);
-    const value = typeof callArg.value === 'string' ? JSON.parse(callArg.value) : callArg.value;
+    const value = typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? JSON.parse(callArg.value) : callArg.value) : callArg.value) : callArg.value) : callArg.value;
     expect(value.user_id).toBe(callerId);
     expect(value.action).toBe('query_audit_logs');
     expect(value.result).toBe('failure');

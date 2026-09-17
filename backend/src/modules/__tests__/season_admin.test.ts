@@ -558,7 +558,7 @@ describe('validateRewardDistribution', () => {
       (call: any[]) => call[0][0].collection === 'player_currency'
     );
     expect(currencyWrites).toHaveLength(1);
-    const ledgerRecord = JSON.parse(currencyWrites[0][0][0].value);
+    const ledgerRecord = (typeof currencyWrites[0][0][0].value === 'string' ? (typeof currencyWrites[0][0][0].value === 'string' ? JSON.parse(currencyWrites[0][0][0].value) : currencyWrites[0][0][0].value) : currencyWrites[0][0][0].value);
     expect(ledgerRecord.user_id).toBe('p1');
     expect(ledgerRecord.gems).toBe(200);
     expect(ledgerRecord.coins).toBe(5000);

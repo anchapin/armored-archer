@@ -825,7 +825,10 @@ describe('matchmaker', () => {
       );
       mockNk.storageWrite = jest.fn((writes: any[]) => {
         writes.forEach((w) => {
-          stored[`${w.collection}:${w.key}`] = w.value;
+          // Normalize: production storageWrite accepts objects (issue #1135);
+          // keep the string-backed map contract for the assertions below.
+          stored[`${w.collection}:${w.key}`] =
+            typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
         });
         return writes.map((w) => ({ key: w.key, version: '2' }));
       });
@@ -1079,7 +1082,8 @@ describe('matchmaker', () => {
               serveStaleMatch = false; // a concurrent settler won this object
               throw new Error('Storage write rejected - version check failed.');
             }
-            stored[key] = w.value;
+            stored[key] =
+              typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
             versions[key] = String(Number(versions[key] || 0) + 1);
           });
           return writes.map((w) => ({ key: w.key, version: '1' }));
@@ -1132,7 +1136,8 @@ describe('matchmaker', () => {
             throw new Error('storage backend unavailable');
           }
           writes.forEach((w) => {
-            stored[`${w.collection}:${w.key}`] = w.value;
+            stored[`${w.collection}:${w.key}`] =
+              typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
           });
           return writes.map((w) => ({ key: w.key, version: '2' }));
         });
@@ -1180,7 +1185,8 @@ describe('matchmaker', () => {
             throw new Error('ledger write failed');
           }
           writes.forEach((w) => {
-            stored[`${w.collection}:${w.key}`] = w.value;
+            stored[`${w.collection}:${w.key}`] =
+              typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
           });
           return writes.map((w) => ({ key: w.key, version: '2' }));
         });
@@ -1275,7 +1281,7 @@ describe('matchmaker', () => {
           .flat()
           .find((w: any) => w.collection === 'fairness_punch_up_losses');
         expect(telemetryWrite).toBeTruthy();
-        const event = JSON.parse(telemetryWrite.value);
+        const event = (typeof telemetryWrite.value === 'string' ? (typeof telemetryWrite.value === 'string' ? (typeof telemetryWrite.value === 'string' ? JSON.parse(telemetryWrite.value) : telemetryWrite.value) : telemetryWrite.value) : telemetryWrite.value);
         expect(event.match_id).toBe(match.match_id);
         expect(event.loser_id).toBe('test-user-123');
         expect(event.winner_id).toBe('opponent-user');

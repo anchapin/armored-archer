@@ -279,12 +279,15 @@ describe('storage-helpers', () => {
 
       writePlayerStats(nk as any, 'user1', stats);
 
+      // Post #1135 storage contract: writes pass an object directly (goja
+      // marshals to JSON). The legacy JSON.stringify expectation pre-dates
+      // the goja storage-value contract (issue #1135).
       expect(nk.storageWrite).toHaveBeenCalledWith([
         {
           collection: 'player_stats',
           key: 'user1',
           userId: 'user1',
-          value: JSON.stringify(stats),
+          value: stats,
         },
       ]);
     });
