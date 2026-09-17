@@ -31,7 +31,9 @@
       "icon": "dashboard",
       "includeVars": true,
       "keepTime": true,
-      "tags": ["armored-archer"],
+      "tags": [
+        "armored-archer"
+      ],
       "targetBlank": false,
       "title": "Other Dashboards",
       "tooltip": "View other Armored Archer dashboards",
@@ -107,7 +109,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -173,7 +177,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -231,7 +237,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -297,7 +305,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -394,7 +404,11 @@
       "id": 5,
       "options": {
         "legend": {
-          "calcs": ["mean", "max", "min"],
+          "calcs": [
+            "mean",
+            "max",
+            "min"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -500,7 +514,10 @@
       "id": 6,
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": [
+            "mean",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -582,7 +599,9 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -648,7 +667,9 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -715,7 +736,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -773,7 +796,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -812,7 +837,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Server-declared settlement outcomes (issue #1143) by result label: success / degraded / claim_failed / persist_failed. Stacked 5m rate — the degraded and claim_failed bands are the settlement_degraded / settlement_claim_failed audit channels.",
+      "description": "Server-declared settlement outcomes (issue #1143) by result label: success / degraded / claim_failed / persist_failed. Stacked 5m rate \u2014 the degraded and claim_failed bands are the settlement_degraded / settlement_claim_failed audit channels.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -917,7 +942,10 @@
       "id": 11,
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": [
+            "mean",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -946,7 +974,11 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["armored-archer", "overview", "alpha"],
+  "tags": [
+    "armored-archer",
+    "overview",
+    "alpha"
+  ],
   "templating": {
     "list": [
       {

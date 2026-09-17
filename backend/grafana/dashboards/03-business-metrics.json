@@ -31,7 +31,9 @@
       "icon": "dashboard",
       "includeVars": true,
       "keepTime": true,
-      "tags": ["armored-archer"],
+      "tags": [
+        "armored-archer"
+      ],
       "targetBlank": false,
       "title": "Other Dashboards",
       "tooltip": "View other Armored Archer dashboards",
@@ -91,7 +93,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -104,13 +108,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "armored_archer_player_registrations_total",
-          "legendFormat": "Total Registrations",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         }
       ],
-      "title": "Total Player Registrations",
-      "type": "stat"
+      "title": "[DISABLED \u2014 planned: armored_archer_player_registrations_total] Total Player Registrations",
+      "type": "stat",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_player_registrations_total\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "datasource": {
@@ -149,7 +154,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -162,13 +169,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(armored_archer_player_registrations_total[24h])",
-          "legendFormat": "Registrations (24h)",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         }
       ],
-      "title": "Registrations (Last 24h)",
-      "type": "stat"
+      "title": "[DISABLED \u2014 planned: armored_archer_player_registrations_total] Registrations (Last 24h)",
+      "type": "stat",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_player_registrations_total\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "datasource": {
@@ -233,7 +241,11 @@
       "id": 3,
       "options": {
         "legend": {
-          "calcs": ["mean", "sum", "max"],
+          "calcs": [
+            "mean",
+            "sum",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -250,13 +262,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(armored_archer_player_registrations_total[1h])",
-          "legendFormat": "New Registrations per Hour",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         }
       ],
-      "title": "Registration Rate (per hour)",
-      "type": "timeseries"
+      "title": "[DISABLED \u2014 planned: armored_archer_player_registrations_total] Registration Rate (per hour)",
+      "type": "timeseries",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_player_registrations_total\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "collapsed": false,
@@ -334,7 +347,10 @@
       "id": 4,
       "options": {
         "legend": {
-          "calcs": ["sum", "mean"],
+          "calcs": [
+            "sum",
+            "mean"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -431,7 +447,10 @@
       "id": 5,
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": [
+            "mean",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -448,8 +467,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "armored_archer_match_queue_size",
-          "legendFormat": "Queue Size - {{match_type}}",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         },
         {
@@ -457,13 +476,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "armored_archer_matches_active",
-          "legendFormat": "Active Matches - {{match_type}}",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "B"
         }
       ],
-      "title": "Match Queue & Active Matches",
-      "type": "timeseries"
+      "title": "[DISABLED \u2014 planned: armored_archer_matches_active] Match Queue & Active Matches",
+      "type": "timeseries",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_matches_active\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "collapsed": false,
@@ -515,7 +535,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -528,13 +550,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(armored_archer_gear_generated_total[24h])",
-          "legendFormat": "Gear Generated (24h)",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         }
       ],
-      "title": "Gear Generated (24h)",
-      "type": "stat"
+      "title": "[DISABLED \u2014 planned: armored_archer_gear_generated_total] Gear Generated (24h)",
+      "type": "stat",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_gear_generated_total\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "datasource": {
@@ -599,7 +622,9 @@
       "id": 7,
       "options": {
         "legend": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -616,13 +641,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(armored_archer_gear_generated_total[1h])",
-          "legendFormat": "{{gear_type}} - {{rarity}}",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         }
       ],
-      "title": "Gear Generation by Type & Rarity (1h rate)",
-      "type": "timeseries"
+      "title": "[DISABLED \u2014 planned: armored_archer_gear_generated_total] Gear Generation by Type & Rarity (1h rate)",
+      "type": "timeseries",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_gear_generated_total\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "collapsed": false,
@@ -674,7 +700,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -732,7 +760,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -816,7 +846,9 @@
       "id": 10,
       "options": {
         "legend": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -913,7 +945,9 @@
       "id": 11,
       "options": {
         "legend": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -988,7 +1022,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -1001,13 +1037,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "armored_archer_season_current_id",
-          "legendFormat": "Current Season",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         }
       ],
-      "title": "Current Season ID",
-      "type": "stat"
+      "title": "[DISABLED \u2014 planned: armored_archer_season_current_id] Current Season ID",
+      "type": "stat",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_season_current_id\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "datasource": {
@@ -1046,7 +1083,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -1130,7 +1169,9 @@
       "id": 14,
       "options": {
         "legend": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -1147,13 +1188,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(armored_archer_season_progression_events_total[1h])",
-          "legendFormat": "{{event_type}}",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         }
       ],
-      "title": "Season Progression Events (1h rate)",
-      "type": "timeseries"
+      "title": "[DISABLED \u2014 planned: armored_archer_season_progression_events_total] Season Progression Events (1h rate)",
+      "type": "timeseries",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_season_progression_events_total\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "collapsed": false,
@@ -1231,7 +1273,10 @@
       "id": 15,
       "options": {
         "legend": {
-          "calcs": ["sum", "mean"],
+          "calcs": [
+            "sum",
+            "mean"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -1248,13 +1293,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(armored_archer_leaderboard_queries_total[1h])",
-          "legendFormat": "Leaderboard Queries - {{leaderboard_type}}",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         }
       ],
-      "title": "Leaderboard Queries (1h rate)",
-      "type": "timeseries"
+      "title": "[DISABLED \u2014 planned: armored_archer_leaderboard_queries_total] Leaderboard Queries (1h rate)",
+      "type": "timeseries",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_leaderboard_queries_total\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "datasource": {
@@ -1319,7 +1365,9 @@
       "id": 16,
       "options": {
         "legend": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -1336,13 +1384,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(armored_archer_leaderboard_submissions_total[1h])",
-          "legendFormat": "Score Submissions - {{leaderboard_type}}",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         }
       ],
-      "title": "Leaderboard Score Submissions (1h rate)",
-      "type": "timeseries"
+      "title": "[DISABLED \u2014 planned: armored_archer_leaderboard_submissions_total] Leaderboard Score Submissions (1h rate)",
+      "type": "timeseries",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_leaderboard_submissions_total\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "collapsed": false,
@@ -1420,7 +1469,10 @@
       "id": 17,
       "options": {
         "legend": {
-          "calcs": ["sum", "mean"],
+          "calcs": [
+            "sum",
+            "mean"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -1507,7 +1559,10 @@
       "id": 18,
       "options": {
         "legend": {
-          "calcs": ["sum", "mean"],
+          "calcs": [
+            "sum",
+            "mean"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -1535,7 +1590,11 @@
   "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["armored-archer", "business", "alpha"],
+  "tags": [
+    "armored-archer",
+    "business",
+    "alpha"
+  ],
   "templating": {
     "list": [
       {
@@ -1645,7 +1704,17 @@
     "to": "now"
   },
   "timepicker": {
-    "refresh_intervals": ["10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
   },
   "timezone": "browser",
   "title": "Armored Archer - Business Metrics",
