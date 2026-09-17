@@ -29,7 +29,14 @@ check_var() {
             echo -e "${YELLOW}⚠ Optional variable not set: $var_name${NC}"
         fi
     else
-        if [[ "$var_value" == *"default"* ]] || [[ "$var_value" == *"changeme"* ]]; then
+        # Issue #1096: __SET_VIA_DOTENV__ is the docker-compose default that
+        # fails loudly at nakama container startup; refuse it here too so
+        # operators find out at the script-entry layer (cheaper, faster, no
+        # container churn).
+        if [ "$var_value" = "__SET_VIA_DOTENV__" ]; then
+            echo -e "${RED}✗ $var_name is still the __SET_VIA_DOTENV__ placeholder (issue #1096)${NC}"
+            VALIDATION_FAILED=true
+        elif [[ "$var_value" == *"default"* ]] || [[ "$var_value" == *"changeme"* ]]; then
             echo -e "${YELLOW}⚠ Variable set with default value (change in production): $var_name${NC}"
         else
             echo -e "${GREEN}✓ $var_name${NC}"

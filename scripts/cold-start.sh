@@ -166,9 +166,32 @@ else
     warn ".env not found — copying from .env.example"
     cp .env.example .env
     ok ".env created from .env.example"
-    warn "PLACEHOLDER CREDENTIALS IN PLACE — replace POSTGRES_PASSWORD / NAKAMA_SERVER_KEY"
-    warn "before any non-local use. Until then, this stack has the compose default"
-    warn "password ('changeme') baked into the postgres data volume — fine for local dev only."
+    warn ".env exists with example-template placeholder values (your_*_here) — fill in"
+    warn "POSTGRES_PASSWORD, NAKAMA_SERVER_KEY, and HMAC_SECRET before 'docker compose up'."
+    warn "Issue #1096: leaving them blank triggers a fail-fast in the nakama entrypoint"
+    warn "(see backend/docker-compose.yml 'security guards')."
+fi
+
+# Issue #1096: refuse to boot the stack if a credential is still the
+# `__SET_VIA_DOTENV__` sentinel — the docker-compose default swaps the old
+# guessable placeholder ('changeme', 'defaultkey') for this sentinel so an
+# operator who forgets to override gets a fail-fast in the nakama entrypoint.
+# Mirroring that check here catches the mistake at the entry-script layer
+# before `docker compose up` even starts (cheaper, earlier, and lists every
+# bad var at once instead of one at a time inside a crash-looping container).
+sentinel_vars=$(grep -E '^[[:space:]]*[^#[:space:]]+[[:space:]]*=[[:space:]]*__SET_VIA_DOTENV__[[:space:]]*$' .env 2>/dev/null || true)
+if [ -n "$sentinel_vars" ]; then
+    err "BACKEND/.ENV STILL CONTAINS __SET_VIA_DOTENV__ PLACEHOLDERS (issue #1096)"
+    echo "$sentinel_vars" | sed 's/^/    /'
+    echo ""
+    echo "  These are docker-compose.yml's fail-fast markers. Replace each"
+    echo "  placeholder above with a real value, e.g.:"
+    echo "    POSTGRES_PASSWORD=\$(openssl rand -hex 16)"
+    echo "    NAKAMA_SERVER_KEY=\$(openssl rand -hex 24)"
+    echo "    HMAC_SECRET=\$(openssl rand -hex 32)"
+    echo ""
+    echo "  Then re-run this script."
+    exit 1
 fi
 
 # --- 3. Compiled Nakama bundle (issue #996) ---------------------------------

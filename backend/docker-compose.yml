@@ -8,7 +8,15 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-nakama}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      # Issue #1096: refuse guessable defaults like "changeme". If the
+      # operator never set POSTGRES_PASSWORD via .env, compose resolves the
+      # interpolation to the explicit sentinel `__SET_VIA_DOTENV__`. The
+      # loudest fail-fast is at the `nakama` container's entrypoint guard
+      # (see below); the postgres password itself is allowed here so the
+      # container can boot and repopulate the volume, but the operator
+      # then sees the nakama container refuse to start with a clear
+      # "[SECURITY] credential still set to placeholder" error.
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-__SET_VIA_DOTENV__}
     volumes:
       - data:/var/lib/postgresql/data
     expose:
@@ -69,7 +77,11 @@ services:
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      # Issue #1096: refuse guessable defaults like "admin". Same sentinel
+      # as the postgres and nakama credentials — operators who forget to
+      # override GRAFANA_ADMIN_PASSWORD will see the container refuse to
+      # start when it reads this sentinel as its initial admin password.
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-__SET_VIA_DOTENV__}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana
@@ -125,7 +137,12 @@ services:
     container_name: armored_archer_postgres_exporter
     restart: unless-stopped
     environment:
-      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-nakama}?sslmode=disable
+      # Issue #1096: same `__SET_VIA_DOTENV__` sentinel so the exporter's
+      # DSN points at an unbootable credential and its healthcheck (`wget`
+      # against the metrics endpoint) fails — making the failure visible in
+      # `docker compose ps` even when the operator never reads the nakama
+      # logs.
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-__SET_VIA_DOTENV__}@postgres:5432/${POSTGRES_DB:-nakama}?sslmode=disable
     ports:
       - "9187:9187"
     networks:
@@ -250,18 +267,48 @@ services:
     # DSN is assembled at runtime from the same POSTGRES_* variables that
     # configure the postgres container (single source of truth — no more
     # hardcoded credentials drifting away from backend/.env).
+    #
+    # Issue #1096: the entrypoint script below is the LOUDEST and EARLIEST
+    # fail-fast for an operator who forgot to override POSTGRES_PASSWORD or
+    # NAKAMA_SERVER_KEY. The placeholder sentinel `__SET_VIA_DOTENV__`
+    # arrives via the same env-var interpolation that was already here
+    # (`${POSTGRES_PASSWORD:-changeme}` etc.); we just swapped the
+    # guessable default for the sentinel and added two `case` guards that
+    # exit non-zero before `migrate up` is even attempted. The container
+    # then `Exit 1`s, the dependent `depends_on: service_healthy` chain
+    # never satisfies for postgres-exporter, and `docker compose ps`
+    # reports the failure with the named container `armored_archer_server`
+    # visible — i.e. louder than silently starting against a public
+    # password (the previous behaviour).
     entrypoint:
       - "/bin/sh"
       - "-ecx"
       - >
-        /nakama/nakama migrate up --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD:-changeme}@postgres:5432/$${POSTGRES_DB:-nakama}" &&
-        exec /nakama/nakama --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD:-changeme}@postgres:5432/$${POSTGRES_DB:-nakama}"
+        case "$POSTGRES_PASSWORD" in
+          __SET_VIA_DOTENV__)
+            echo "[SECURITY][issue-1096] POSTGRES_PASSWORD is still the __SET_VIA_DOTENV__ placeholder." 1>&2;
+            echo "                                  Set POSTGRES_PASSWORD in backend/.env (copy from backend/.env.example) and restart." 1>&2;
+            echo "                                  Refusing to boot Nakama against a placeholder password." 1>&2;
+            exit 78;;
+        esac &&
+        case "$NAKAMA_SERVER_KEY" in
+          __SET_VIA_DOTENV__|defaultkey|"")
+            echo "[SECURITY][issue-1096] NAKAMA_SERVER_KEY is the __SET_VIA_DOTENV__ placeholder (or the public 'defaultkey')." 1>&2;
+            echo "                                  Set NAKAMA_SERVER_KEY in backend/.env and restart." 1>&2;
+            echo "                                  Refusing to boot Nakama with a publicly-known server key." 1>&2;
+            exit 78;;
+        esac &&
+        /nakama/nakama migrate up --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD}@postgres:5432/$${POSTGRES_DB:-nakama}" &&
+        exec /nakama/nakama --database.address "postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD}@postgres:5432/$${POSTGRES_DB:-nakama}"
     restart: always
     environment:
-      - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-defaultkey}
+      # Issue #1096: replace guessable defaults (`defaultkey`, `changeme`)
+      # with the `__SET_VIA_DOTENV__` sentinel. The entrypoint guard above
+      # refuses to start the container when this sentinel is still present.
+      - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-__SET_VIA_DOTENV__}
       - NAKAMA_SERVER_PORT=${NAKAMA_SERVER_PORT:-7350}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-__SET_VIA_DOTENV__}
       - POSTGRES_DB=${POSTGRES_DB:-nakama}
     depends_on:
       postgres:

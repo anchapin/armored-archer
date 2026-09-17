@@ -47,11 +47,46 @@ The `.env.example` files serve as templates showing all available configuration 
 - **Root `.env.example`**: Client-side configuration
 - **`backend/.env.example`**: Full backend configuration with all options
 
-**Important**: Never put actual secrets in `.env.example` files. Use placeholder values like:
+**Important**: Never put actual secrets in `.env.example` files. Use placeholder values following the conventions below.
+
+**Pattern 1 — operator-facing template (preferred for `.env.example` files):**
+
+The human-readable `your_<name>_here` / `<change_me_...>` style makes each line
+**obviously** a placeholder rather than a working secret — no operator mistakes
+`your_postgres_password_here` for a real password, and `grep your_ backend/.env`
+lists every line that still needs attention.
+
 ```
 NAKAMA_SERVER_KEY=your_nakama_server_key_here
-POSTGRES_PASSWORD=changeme
+POSTGRES_PASSWORD=your_postgres_password_here
+HMAC_SECRET=<change_me_generate_with_openssl_rand_hex_32>
 ```
+
+**Pattern 2 — docker-compose sentinel (only inside `docker-compose.yml`):**
+
+For compose-level interpolation defaults, use the explicit sentinel
+`__SET_VIA_DOTENV__`. This is *louder* than the old `changeme` / `defaultkey`
+defaults (which silently booted a server with a publicly-known password if an
+operator forgot to override them):
+
+```yaml
+# backend/docker-compose.yml
+environment:
+  - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-__SET_VIA_DOTENV__}
+  - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-__SET_VIA_DOTENV__}
+```
+
+When the operator forgets to set `POSTGRES_PASSWORD` (or any other credential)
+in `.env`, docker compose resolves the interpolation to the literal
+`__SET_VIA_DOTENV__` sentinel. The nakama container's entrypoint script
+(`backend/docker-compose.yml`) recognises that sentinel and exits with code
+**78 (EX_CONFIG)** before `migrate up` runs, surfacing a loud
+`[SECURITY][issue-1096]` error in `docker compose logs`. The postgres-exporter
+and grafana containers stay up but their healthchecks fail. The whole stack
+is visibly broken until the operator copies `.env.example` → `.env` and fills
+in real values.
+
+Reference: issue #1096.
 
 ### Creating Your Local Environment
 
