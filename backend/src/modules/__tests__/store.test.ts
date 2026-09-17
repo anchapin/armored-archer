@@ -747,6 +747,348 @@ describe('store', () => {
       expect(result.message).toBe('Partial refund applied');
       expect(result.new_balance).toBe(0);
     });
+
+    // Issue #1131: when the durable dedup marker write fails after the
+    // currency deduction has already landed, processRefund must NOT report
+    // success. The previous behavior logged the swallowed failure but still
+    // returned success:true, which let a duplicate webhook pass the dedup
+    // check on retry and double-credit the user. The compensating flow now
+    // rolls back the deduction, emits a process_refund_persistence_failed
+    // audit record, and surfaces error_code PERSISTENCE_FAILED so the
+    // webhook caller can retry safely.
+    describe('processRefund: dedup-marker failure path (issue #1131)', () => {
+      /**
+       * Override the storageWrite jest mock so writes targeting the
+       * `refund_markers` collection always fail, while every other
+       * collection (currency ledger, audit logs) continues to flow through
+       * the default mock — exactly the failure shape the production code
+       * guards against. Returns the restore function AND the failing mock
+       * so callers can inspect its call history before restore swaps the
+       * storageWrite reference back to the original (which never saw the
+       * failure-path calls).
+       */
+      const forceMarkerWriteFailure = (
+        nk: Runtime.Nakama
+      ): { restore: () => void; failingMock: jest.Mock } => {
+        const original = nk.storageWrite;
+        const mocked = jest.fn(
+          (
+            objects: {
+              collection: string;
+              key: string;
+              userId?: string;
+              value: string;
+              version?: string;
+              permissionRead?: number;
+              permissionWrite?: number;
+            }[]
+          ) => {
+            for (const obj of objects) {
+              if (obj.collection === 'refund_markers') {
+                throw new Error('simulated marker write failure (issue #1131 test)');
+              }
+            }
+            const origImpl = (original as jest.Mock).getMockImplementation();
+            if (origImpl) {
+              return origImpl(objects);
+            }
+          }
+        );
+        nk.storageWrite = mocked as unknown as Runtime.Nakama['storageWrite'];
+        return {
+          restore: () => {
+            nk.storageWrite = original;
+          },
+          failingMock: mocked,
+        };
+      };
+
+      const getAuditLogs = (nk: Runtime.Nakama): Array<Record<string, unknown>> => {
+        const writeCalls = (nk.storageWrite as jest.Mock).mock.calls;
+        return writeCalls
+          .flatMap((call: any) => call[0] as any[])
+          .filter((obj: any) => obj.collection === 'audit_logs')
+          .map((obj: any) => JSON.parse(obj.value));
+      };
+
+      const getAuditLogsFrom = (mock: jest.Mock): Array<Record<string, unknown>> =>
+        mock.mock.calls
+          .flatMap((call: any) => call[0] as any[])
+          .filter((obj: any) => obj.collection === 'audit_logs')
+          .map((obj: any) => JSON.parse(obj.value));
+
+      it('rolls back the deduction and returns PERSISTENCE_FAILED when the marker write fails', async () => {
+        const nk = createMockNakama();
+        const logger = createMockLogger();
+        nk.storageWrite([
+          {
+            collection: 'player_currency',
+            key: 'rollback-user',
+            userId: 'rollback-user',
+            value: JSON.stringify(
+              createMockCurrency({ user_id: 'rollback-user', gems: 500, coins: 0 })
+            ),
+          },
+        ]);
+
+        const { restore, failingMock } = forceMarkerWriteFailure(nk);
+        let result;
+        try {
+          result = await processRefund(
+            nk,
+            'rollback-user',
+            200,
+            'refund-tx-1131-rollback',
+            RefundReason.CHARGEBACK,
+            logger
+          );
+        } finally {
+          restore();
+        }
+
+        // 1. Caller is told the refund did NOT succeed — no false-positive
+        //    success that would let RevenueCat skip its own retry.
+        expect(result.success).toBe(false);
+        expect(result.error_code).toBe('PERSISTENCE_FAILED');
+        expect(result.message).toMatch(/safe to retry/i);
+
+        // 2. The deduction was compensated — balance unchanged from start.
+        const finalCurrency = JSON.parse(
+          testStorage.get('player_currency:rollback-user') as string
+        );
+        expect(finalCurrency.gems).toBe(500);
+
+        // 3. process_refund_persistence_failed audit record exists with the
+        //    expected shape. Read from failingMock BEFORE restore swaps
+        //    storageWrite back to the original — the original never saw
+        //    the calls made through the failing wrapper.
+        const audits = getAuditLogsFrom(failingMock);
+        const failureAudits = audits.filter(
+          (a) => a.action === 'process_refund_persistence_failed'
+        );
+        expect(failureAudits).toHaveLength(1);
+        expect(failureAudits[0].result).toBe('failure');
+        expect(failureAudits[0].details.refund_transaction_id).toBe(
+          'refund-tx-1131-rollback'
+        );
+        expect(failureAudits[0].details.refund_amount).toBe(200);
+        expect(failureAudits[0].details.actual_deducted).toBe(200);
+        expect(failureAudits[0].details.reason).toBe(RefundReason.CHARGEBACK);
+        expect(failureAudits[0].error).toMatch(/rolled back/i);
+      });
+
+      it('does NOT double-credit the user across two webhooks with the same event_id when the first marker write fails', async () => {
+        // Reproduces the exact production scenario from issue #1131: a
+        // webhook arrives, the currency deduction lands, then the marker
+        // write fails; without the fix the user is double-deducted on the
+        // retry. With the fix, the first attempt surfaces failure (no
+        // durable marker), and the second attempt — which is what
+        // RevenueCat retries as — succeeds end-to-end exactly once.
+        const nk = createMockNakama();
+        const logger = createMockLogger();
+        nk.storageWrite([
+          {
+            collection: 'player_currency',
+            key: 'dup-user',
+            userId: 'dup-user',
+            value: JSON.stringify(
+              createMockCurrency({ user_id: 'dup-user', gems: 500, coins: 0 })
+            ),
+          },
+        ]);
+
+        const txId = 'refund-tx-1131-dup';
+
+        // First webhook: marker write fails — caller is told it failed.
+        const { restore: restoreFail, failingMock: failingFirst } =
+          forceMarkerWriteFailure(nk);
+        let firstResult;
+        try {
+          firstResult = await processRefund(
+            nk,
+            'dup-user',
+            100,
+            txId,
+            RefundReason.CUSTOMER_SUPPORT,
+            logger
+          );
+        } finally {
+          restoreFail();
+        }
+        expect(firstResult.success).toBe(false);
+        expect(firstResult.error_code).toBe('PERSISTENCE_FAILED');
+
+        // Capture the failure-path audit before restore — the second
+        // processRefund call will be made against the restored (original)
+        // storageWrite, so we MUST read failingFirst's call list now.
+        const firstAudits = getAuditLogsFrom(failingFirst);
+        expect(
+          firstAudits.filter((a) => a.action === 'process_refund_persistence_failed').length
+        ).toBe(1);
+
+        // Balance must be unchanged after the failed first attempt.
+        const afterFirst = JSON.parse(testStorage.get('player_currency:dup-user') as string);
+        expect(afterFirst.gems).toBe(500);
+
+        // Second webhook: same event_id, marker write now succeeds — the
+        // refund lands exactly once and the marker is durable so a third
+        // attempt would be deduplicated.
+        const secondResult = await processRefund(
+          nk,
+          'dup-user',
+          100,
+          txId,
+          RefundReason.CUSTOMER_SUPPORT,
+          logger
+        );
+        expect(secondResult.success).toBe(true);
+        expect(secondResult.new_balance).toBe(400);
+
+        // Final balance: exactly one deduction — NOT zero (no compensation
+        // leak), NOT 300 (no double-credit).
+        const finalCurrency = JSON.parse(testStorage.get('player_currency:dup-user') as string);
+        expect(finalCurrency.gems).toBe(400);
+
+        // The dedup marker is now in storage and will reject a third try.
+        const marker = testStorage.get(`refund_markers:refund_${txId}` as string);
+        expect(marker).toBeDefined();
+        const parsedMarker = JSON.parse(marker as string);
+        expect(parsedMarker.refund_transaction_id).toBe(txId);
+
+        // A third attempt with the same event_id must be rejected as
+        // already-processed.
+        const thirdResult = await processRefund(
+          nk,
+          'dup-user',
+          100,
+          txId,
+          RefundReason.CUSTOMER_SUPPORT,
+          logger
+        );
+        expect(thirdResult.success).toBe(false);
+        expect(thirdResult.message).toBe('Refund already processed');
+
+        // And the balance still hasn't moved — defense-in-depth against
+        // any future regression.
+        const afterThird = JSON.parse(testStorage.get('player_currency:dup-user') as string);
+        expect(afterThird.gems).toBe(400);
+
+        // After restore() the second+third calls went through the
+        // original storageWrite — read its audit history from there.
+        const originalAudits = getAuditLogs(nk);
+        // Exactly one successful process_refund audit (from the second
+        // attempt) — the third attempt was rejected at dedup before any
+        // process_refund audit was emitted.
+        expect(originalAudits.filter((a) => a.action === 'process_refund').length).toBe(1);
+      });
+
+      it('recovers from a transient marker-write failure on retry (no rollback needed)', async () => {
+        // A transient OCC conflict should NOT surface PERSISTENCE_FAILED —
+        // the bounded retry inside markRefundAsProcessed absorbs it. This
+        // test pins that contract so a future regression that re-raises the
+        // conflict (e.g. removing the retry loop) is caught.
+        const nk = createMockNakama();
+        const logger = createMockLogger();
+        nk.storageWrite([
+          {
+            collection: 'player_currency',
+            key: 'transient-user',
+            userId: 'transient-user',
+            value: JSON.stringify(
+              createMockCurrency({ user_id: 'transient-user', gems: 500, coins: 0 })
+            ),
+          },
+        ]);
+
+        const txId = 'refund-tx-1131-transient';
+        const original = nk.storageWrite;
+        const transient = jest.fn(
+          (
+            objects: {
+              collection: string;
+              key: string;
+              userId?: string;
+              value: string;
+              version?: string;
+              permissionRead?: number;
+              permissionWrite?: number;
+            }[]
+          ) => {
+            // Throw on the FIRST attempt for refund_markers, succeed on the
+            // second (simulating an OCC conflict that resolves on re-read).
+            const callsForThisMarker = (transient.mock.calls as any[]).filter((c) =>
+              (c[0] as any[]).some(
+                (o: any) => o.collection === 'refund_markers'
+              )
+            ).length;
+            for (const obj of objects) {
+              if (obj.collection === 'refund_markers' && callsForThisMarker === 1) {
+                throw new Error('transient OCC conflict');
+              }
+            }
+            const origImpl = (original as jest.Mock).getMockImplementation();
+            if (origImpl) {
+              return origImpl(objects);
+            }
+          }
+        );
+        nk.storageWrite = transient as unknown as Runtime.Nakama['storageWrite'];
+
+        try {
+          const result = await processRefund(
+            nk,
+            'transient-user',
+            100,
+            txId,
+            RefundReason.FRAUD,
+            logger
+          );
+
+          expect(result.success).toBe(true);
+          expect(result.new_balance).toBe(400);
+          // No process_refund_persistence_failed audit — the retry absorbed it.
+          // Read from `transient` (the active storageWrite) before restore.
+          const audits = getAuditLogsFrom(transient);
+          expect(
+            audits.filter((a) => a.action === 'process_refund_persistence_failed').length
+          ).toBe(0);
+          expect(audits.filter((a) => a.action === 'process_refund').length).toBe(1);
+        } finally {
+          nk.storageWrite = original;
+        }
+      });
+
+      it('skips the compensating rollback when the original deduction was zero (insufficient balance)', async () => {
+        // Edge case: when the player has no gems, deduction=0 and
+        // applyCurrencyDelta is a no-op. The marker write failure path
+        // must not crash trying to roll back a non-existent delta.
+        const nk = createMockNakama();
+        const logger = createMockLogger();
+        // No pre-populated currency — defaults to 0 gems.
+        const { restore, failingMock } = forceMarkerWriteFailure(nk);
+        let result;
+        try {
+          result = await processRefund(
+            nk,
+            'empty-user',
+            100,
+            'refund-tx-1131-empty',
+            RefundReason.OTHER,
+            logger
+          );
+        } finally {
+          restore();
+        }
+
+        expect(result.success).toBe(false);
+        expect(result.error_code).toBe('PERSISTENCE_FAILED');
+
+        const audits = getAuditLogsFrom(failingMock);
+        expect(
+          audits.filter((a) => a.action === 'process_refund_persistence_failed').length
+        ).toBe(1);
+      });
+    });
   });
 
   describe('getPlayerCurrencyWithCache (via processRefund)', () => {
