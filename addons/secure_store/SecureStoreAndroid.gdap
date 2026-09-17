@@ -1,0 +1,10 @@
+[config]
+
+name="SecureStoreAndroid"
+binary_type="local"
+binary="SecureStoreAndroid.jar"
+
+[dependencies]
+
+local=[]
+remote=["androidx.security:security-crypto:1.1.0-alpha06"]

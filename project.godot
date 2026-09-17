@@ -25,6 +25,7 @@ audio/bus_layout_path="res://default_bus_layout.tres"
 
 [autoload]
 
+SecureStore="*res://autoloads/SecureStore.gd"
 NetworkManager="*res://autoloads/NetworkManager.gd"
 GameManager="*res://autoloads/GameManager.gd"
 AutoAimManager="*res://autoloads/AutoAimManager.gd"

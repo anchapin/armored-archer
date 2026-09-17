@@ -22,6 +22,13 @@ func _remove_persisted_session() -> void:
 	# run is restored by NetworkManager._ready(), polluting initial state.
 	if FileAccess.file_exists(_session_file_path):
 		DirAccess.remove_absolute(_session_file_path)
+	# Issue #1095: session/refresh tokens now live in the SecureStore
+	# encrypted blob, not in the plaintext SESSION_FILE. Wipe the blob too
+	# so a previous run's encrypted session cannot pollute the next test's
+	# "fresh NetworkManager starts empty" invariant.
+	var secure_store: Node = get_node_or_null("/root/SecureStore")
+	if secure_store != null and secure_store.has_method("has_session_blob") and secure_store.has_session_blob():
+		secure_store.call("erase_session_blob")
 
 func before_each():
 	# Start every test from a clean disk state so _ready()'s

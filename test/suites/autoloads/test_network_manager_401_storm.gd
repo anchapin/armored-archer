@@ -83,6 +83,12 @@ func _remove_persisted_session() -> void:
 	# restored by NetworkManager._ready(), polluting initial state.
 	if FileAccess.file_exists(_session_file_path):
 		DirAccess.remove_absolute(_session_file_path)
+	# Issue #1095: wipe the SecureStore encrypted blob too — it is the
+	# new at-rest location for session/refresh tokens after the
+	# plaintext-to-encrypted migration.
+	var secure_store: Node = get_node_or_null("/root/SecureStore")
+	if secure_store != null and secure_store.has_method("has_session_blob") and secure_store.has_session_blob():
+		secure_store.call("erase_session_blob")
 
 func before_each() -> void:
 	_remove_persisted_session()
