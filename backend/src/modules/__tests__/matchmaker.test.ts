@@ -48,7 +48,10 @@ jest.mock('../season_system', () => ({
 
 // Mock audit module
 jest.mock('../audit', () => ({
-  logAudit: jest.fn(),
+  // Issue #1133: logAudit now returns boolean. Mock defaults to true so the
+  // happy-path responses preserve their original shape; tests that need to
+  // exercise the persist-failure branch override with mockReturnValue(false).
+  logAudit: jest.fn().mockReturnValue(true),
 }));
 
 import { isPlayerFlagged, getFlagReason, recordMatchResult } from '../anti_cheat';
@@ -844,7 +847,10 @@ describe('matchmaker', () => {
       (getLeaderboardEntry as jest.Mock).mockReturnValue(null);
       (applyEloUpdates as jest.Mock).mockReturnValue({ winnerNewElo: 1210, loserNewElo: 1140 });
       (recordPlayerActivity as jest.Mock).mockImplementation();
-      (logAudit as jest.Mock).mockImplementation();
+      // Issue #1133: logAudit now returns a boolean (true = persisted,
+      // false = dropped). The default for happy-path tests is "persisted";
+      // tests that exercise the persist-failure branch override per-call.
+      (logAudit as jest.Mock).mockImplementation(() => true);
       (recordMatchResult as jest.Mock).mockImplementation();
     });
 
@@ -1199,6 +1205,11 @@ describe('matchmaker', () => {
         expect(result.degraded).toBe(true);
         expect(result.settled_at).toBeGreaterThan(0);
 
+        // Issue #1133: logAudit is mocked to return true by default, so the
+        // reconciliation signal landed and the response omits audit_persisted
+        // (backward-compat with the issue #1078 contract: absent = persisted).
+        expect(result.audit_persisted).toBeUndefined();
+
         // The claim landed: the match stays settled in storage.
         const settledMatch = JSON.parse(stored[`pvp_matches:${match.match_id}`]);
         expect(settledMatch.settled_at).toBeGreaterThan(0);
@@ -1226,6 +1237,55 @@ describe('matchmaker', () => {
         );
 
         // The degradation also increments its counter outcome (issue #1143).
+        expect(recordSettlementOutcome).toHaveBeenCalledWith('degraded');
+      });
+
+      // Issue #1133: when the audit-write itself fails on the
+      // settlement_degraded path, the half-applied grant sits in storage
+      // without a durable reconciliation record. The RPC must surface that
+      // so the client/dashboard can tell the audit was dropped, not just
+      // the settlement was degraded.
+      it('surfaces audit_persisted:false when logAudit itself fails on the degraded path', () => {
+        const match = createActiveMatch({ opponent_health: 0 });
+        installStatefulStorage(match);
+        mockNk.storageWrite = jest.fn((writes: any[]) => {
+          // Force the post-claim effects to throw (so we land in the
+          // degraded catch), and force the settlement_degraded logAudit to
+          // also fail.
+          if (writes.some((w) => w.collection === 'player_currency' && w.key === 'opponent-user')) {
+            throw new Error('ledger write failed');
+          }
+          if (writes.some((w) => w.collection === 'audit_logs')) {
+            throw new Error('audit collection write failed');
+          }
+          return writes.map((w) => ({ key: w.key, version: '2' }));
+        });
+        // Only the settlement_degraded logAudit call should return false;
+        // other audit calls (e.g. settlement_claim_failed) on this path
+        // are not exercised, so the default true is fine.
+        (logAudit as jest.Mock).mockImplementation((..._args: unknown[]) => {
+          // Return false specifically for the settlement_degraded channel —
+          // signature: (nk, userId, ip, action, resource, details, result, error)
+          if (_args[3] === 'complete_match' && _args[7] === 'settlement_degraded') {
+            return false;
+          }
+          return true;
+        });
+
+        const payload = JSON.stringify({
+          match_id: match.match_id,
+          winner_id: 'test-user-123',
+          loser_id: 'opponent-user',
+        });
+
+        const result = JSON.parse(rpcCompleteMatch(mockCtx, mockLogger, mockNk, payload));
+
+        // Still degraded (settlement itself is partial), but now we
+        // additionally know the reconciliation signal was dropped.
+        expect(result.success).toBe(true);
+        expect(result.degraded).toBe(true);
+        expect(result.audit_persisted).toBe(false);
+        // Counter still fires — ops can alert on the drop.
         expect(recordSettlementOutcome).toHaveBeenCalledWith('degraded');
       });
     });
@@ -1366,7 +1426,9 @@ describe('matchmaker', () => {
           (getLeaderboardEntry as jest.Mock).mockReturnValue(null);
           (applyEloUpdates as jest.Mock).mockReturnValue({ winnerNewElo: 1210, loserNewElo: 1140 });
           (recordPlayerActivity as jest.Mock).mockImplementation();
-          (logAudit as jest.Mock).mockImplementation();
+          // Issue #1133: logAudit now returns a boolean (see settlement
+          // exactly-once ordering beforeEach); default to true for happy path.
+          (logAudit as jest.Mock).mockImplementation(() => true);
           (recordMatchResult as jest.Mock).mockImplementation();
 
           const match = createPunchUpMatch({
