@@ -321,58 +321,83 @@ async function markRefundAsProcessed(
   outcome: Record<string, unknown>,
   logger?: Runtime.Logger
 ): Promise<boolean> {
-  // 1. Durable storage marker (authoritative). Read the current record
-  // first so the write carries the observed version (OCC); a missing
-  // record yields an unversioned create.
-  try {
-    let version: string | undefined;
-    const existing = nk.storageRead([
-      {
-        collection: REFUND_MARKER_COLLECTION,
-        key: `refund_${refundTransactionId}`,
-        userId: userId,
-      },
-    ]);
-    if (existing.length > 0) {
-      version = existing[0].version;
-    }
-
-    nk.storageWrite([
-      {
-        collection: REFUND_MARKER_COLLECTION,
-        key: `refund_${refundTransactionId}`,
-        userId: userId,
-        value: JSON.stringify({
-          refund_transaction_id: refundTransactionId,
-          user_id: userId,
-          processed_at: Date.now(),
-          outcome: outcome,
-        }),
-        version: version,
-        permissionRead: 0, // No public read
-        permissionWrite: 0, // No public write
-      },
-    ]);
-  } catch (e) {
-    if (logger) logger.error('Storage write error in markRefundAsProcessed: %s', e);
-    return false;
-  }
-
-  // 2. Redis cache marker with TTL (issue #1067 — no unbounded keys)
-  const redis = getRedisClient(logger);
-  if (redis) {
+  // Bounded retry budget for transient OCC conflicts on the durable marker
+  // (issue #1131). Two attempts with a short backoff matches
+  // applyCurrencyDelta's own retry shape; if a concurrent write bumped the
+  // marker between our read and our write, the second attempt re-reads and
+  // re-writes with the fresh version. Persistent failures (returns false
+  // here) surface as PERSISTENCE_FAILED upstream so the webhook caller can
+  // retry the entire refund safely.
+  const MAX_ATTEMPTS = 2;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      await redis.setex(
-        `refund:${userId}:${refundTransactionId}`,
-        REFUND_MARKER_TTL_SECONDS,
-        '1'
-      );
+      // 1. Durable storage marker (authoritative). Read the current record
+      // first so the write carries the observed version (OCC); a missing
+      // record yields an unversioned create.
+      let version: string | undefined;
+      const existing = nk.storageRead([
+        {
+          collection: REFUND_MARKER_COLLECTION,
+          key: `refund_${refundTransactionId}`,
+          userId: userId,
+        },
+      ]);
+      if (existing.length > 0) {
+        version = existing[0].version;
+      }
+
+      nk.storageWrite([
+        {
+          collection: REFUND_MARKER_COLLECTION,
+          key: `refund_${refundTransactionId}`,
+          userId: userId,
+          value: JSON.stringify({
+            refund_transaction_id: refundTransactionId,
+            user_id: userId,
+            processed_at: Date.now(),
+            outcome: outcome,
+          }),
+          version: version,
+          permissionRead: 0, // No public read
+          permissionWrite: 0, // No public write
+        },
+      ]);
+
+      // Durable write succeeded — fall through to best-effort Redis marker
+      // (issue #1067 — no unbounded keys).
+      const redis = getRedisClient(logger);
+      if (redis) {
+        try {
+          await redis.setex(
+            `refund:${userId}:${refundTransactionId}`,
+            REFUND_MARKER_TTL_SECONDS,
+            '1'
+          );
+        } catch (e) {
+          if (logger) logger.error('Redis error in markRefundAsProcessed: %s', e);
+        }
+      }
+      return true;
     } catch (e) {
-      if (logger) logger.error('Redis error in markRefundAsProcessed: %s', e);
+      if (attempt < MAX_ATTEMPTS) {
+        if (logger) {
+          logger.warn(
+            'Refund marker write conflict for %s/%s on attempt %d, retrying: %s',
+            userId,
+            refundTransactionId,
+            attempt,
+            e
+          );
+        }
+        // Tiny backoff so a hot OCC conflict doesn't busy-loop storage.
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        continue;
+      }
+      if (logger) logger.error('Storage write error in markRefundAsProcessed: %s', e);
+      return false;
     }
   }
-
-  return true;
+  return false;
 }
 
 /**
@@ -432,7 +457,7 @@ export async function processRefund(
   refundTransactionId: string,
   reason: RefundReason,
   logger: Runtime.Logger
-): Promise<{ success: boolean; message: string; new_balance?: number }> {
+): Promise<{ success: boolean; message: string; new_balance?: number; error_code?: string }> {
   // A refund without an identifier cannot be deduplicated — refuse it
   // rather than allow a repeatable deduction (issue #1067).
   if (!refundTransactionId) {
@@ -484,26 +509,98 @@ export async function processRefund(
   }
 
   // Durable dedup marker first, Redis cache second (best-effort).
-  const marked = await markRefundAsProcessed(
-    nk,
-    userId,
-    refundTransactionId,
-    {
-      refund_amount: refundAmount,
-      actual_deducted: deduction,
-      new_balance: newBalance,
-      reason: reason,
-    },
-    logger
-  );
-  if (!marked) {
-    // The deduction already landed; rejecting now would make RevenueCat
-    // retry and double-deduct. Report success and flag for reconciliation.
+  //
+  // Issue #1131: a previous revision swallowed the marker's `false` return
+  // and reported success:true. That left the webhook caller (RevenueCat)
+  // thinking the refund was durable while the marker was missing — the
+  // next webhook for the same event_id passed the dedup check and the user
+  // was deducted a second time. The compensating flow below keeps the
+  // idempotency contract atomic from the webhook caller's perspective:
+  // either BOTH the currency delta and the marker land, or NEITHER does.
+  let marked: boolean;
+  try {
+    marked = await markRefundAsProcessed(
+      nk,
+      userId,
+      refundTransactionId,
+      {
+        refund_amount: refundAmount,
+        actual_deducted: deduction,
+        new_balance: newBalance,
+        reason: reason,
+      },
+      logger
+    );
+  } catch (e) {
+    // markRefundAsProcessed is engineered to swallow storage errors and
+    // return false, but anything that escapes (e.g. an unexpected throw
+    // from a downstream helper) is treated as the same failure mode.
     logger.error(
-      'Refund deduction applied but durable marker write FAILED for user %s, transaction %s — manual reconciliation required',
+      'markRefundAsProcessed threw for user %s, transaction %s: %s',
+      userId,
+      refundTransactionId,
+      e
+    );
+    marked = false;
+  }
+
+  if (!marked) {
+    // Compensate the deduction so the user's balance reflects "nothing
+    // happened yet". Going through the authoritative ledger keeps the
+    // rollback itself OCC-safe and audit-trailed — applyCurrencyDelta
+    // emits its own currency_delta audit record with source
+    // 'refund_rollback' (issue #1067).
+    //
+    // If the rollback itself fails, we still surface PERSISTENCE_FAILED —
+    // there is no safe way to "undo an undo" from inside this function,
+    // and silently claiming success would re-introduce the original bug.
+    // Operators reconcile the inconsistency from the audit trail.
+    if (deduction > 0) {
+      try {
+        applyCurrencyDelta(
+          nk,
+          userId,
+          { gems: deduction },
+          'refund_rollback',
+          logger
+        );
+      } catch (rollbackErr) {
+        logger.error(
+          'CRITICAL: refund rollback failed for user %s, transaction %s after marker-write failure — manual reconciliation required: %s',
+          userId,
+          refundTransactionId,
+          rollbackErr
+        );
+      }
+    }
+
+    logAudit(
+      nk,
+      userId,
+      null,
+      'process_refund_persistence_failed',
+      'refund_markers',
+      {
+        refund_transaction_id: refundTransactionId,
+        refund_amount: refundAmount,
+        actual_deducted: deduction,
+        reason: reason,
+      },
+      'failure',
+      'Durable dedup marker write failed after retry; deduction rolled back'
+    );
+
+    logger.error(
+      'Refund deduction rolled back for user %s, transaction %s — durable marker write failed, returning PERSISTENCE_FAILED',
       userId,
       refundTransactionId
     );
+
+    return {
+      success: false,
+      message: 'Refund persistence failed; safe to retry',
+      error_code: 'PERSISTENCE_FAILED',
+    };
   }
 
   // Log the refund for audit
