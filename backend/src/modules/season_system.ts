@@ -115,6 +115,136 @@ export interface RankChange {
 const SEASON_DURATION_WEEKS = 4;
 const SEASON_DURATION_MS = SEASON_DURATION_WEEKS * 7 * 24 * 60 * 60 * 1000;
 
+// --- Issue #1132: rpcEndSeason atomicity ---
+// Sentinel persisted on the `seasons` collection while reward distribution is
+// in flight. On retry we read it back to resume from `next_index` so a
+// mid-loop failure never leaves the season half-ended (some players credited,
+// others not). The token also tags per-player `season_rewards_claimed` writes
+// so a re-run cannot double-credit someone already processed.
+const SEASON_ENDING_STATUS = 'ending';
+const SEASON_ENDED_STATUS = 'ended';
+const PARTIAL_SEASON_FAILED_ERROR_CODE = 'PARTIAL_SEASON_FAILED';
+
+/**
+ * Per-player distribution progress for an in-flight season end (issue #1132).
+ * Persisted on the `seasons` collection under `end_distribution`.
+ *
+ * @property generation_token - Identifies the current end-season run; tags
+ *   per-player markers so a resumed run cannot credit a player already
+ *   finished in the same run
+ * @property players - Snapshot of the leaderboard owner IDs captured at the
+ *   start of the run (so a resume uses the original ordering, not a fresh
+ *   leaderboard read that may have changed between attempts)
+ * @property next_index - 0-based index of the next player to process
+ * @property started_at - Wall-clock timestamp the run began
+ * @property completed_at - Set once every player has been credited; the
+ *   sentinel itself transitions to status='ended' at the same point
+ */
+interface SeasonEndDistribution {
+  generation_token: string;
+  players: string[];
+  next_index: number;
+  started_at: number;
+  completed_at?: number;
+}
+
+/**
+ * Generates a generation token for a single end-season run. Mirrors the
+ * existing `Math.random()`-based id pattern used by `matchmaker.ts` so we
+ * avoid pulling Node-only `crypto.randomUUID` into the Nakama bundle.
+ */
+function generateSeasonEndToken(): string {
+  return `seend_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
+ * Reads the persisted season sentinel from the `seasons` collection. Returns
+ * the parsed `end_distribution` and the surrounding season info if both are
+ * present, otherwise null (the season has never been through `rpcEndSeason`).
+ */
+function readSeasonEndSentinel(
+  nk: Runtime.Nakama,
+  seasonId: string
+): { season: SeasonInfo; distribution: SeasonEndDistribution } | null {
+  try {
+    const stored = nk.storageRead([
+      {
+        collection: 'seasons',
+        key: seasonId,
+        userId: '',
+      },
+    ]);
+    if (stored.length === 0 || !stored[0].value) {
+      return null;
+    }
+    const parsed = JSON.parse(stored[0].value) as SeasonInfo & {
+      end_distribution?: SeasonEndDistribution;
+    };
+    if (!parsed.end_distribution) {
+      return null;
+    }
+    return { season: parsed, distribution: parsed.end_distribution };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persists a `seasons` storage record with the given distribution state. The
+ * sentinel is written BEFORE the first per-player credit so an observer can
+ * always tell that a season-end run is in flight (status='ending') and only
+ * ever flips to status='ended' after every player has been credited.
+ */
+function writeSeasonEndSentinel(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  season: SeasonInfo,
+  distribution: SeasonEndDistribution
+): void {
+  nk.storageWrite([
+    {
+      collection: 'seasons',
+      key: season.season_id,
+      userId: ctx.userId,
+      value: JSON.stringify({
+        ...season,
+        status: SEASON_ENDING_STATUS,
+        end_distribution: distribution,
+      }),
+    },
+  ]);
+}
+
+/**
+ * Reads the per-player completion marker for the current generation. When the
+ * marker carries a matching generation_token the player has already been
+ * credited in this run and must be skipped on resume.
+ */
+function readPlayerCompletionMarker(
+  nk: Runtime.Nakama,
+  seasonId: string,
+  ownerId: string
+): { token?: string; completed: boolean } {
+  try {
+    const stored = nk.storageRead([
+      {
+        collection: 'season_rewards_claimed',
+        key: `${seasonId}_${ownerId}`,
+        userId: ownerId,
+      },
+    ]);
+    if (stored.length === 0 || !stored[0].value) {
+      return { completed: false };
+    }
+    const parsed = JSON.parse(stored[0].value) as {
+      generation_token?: string;
+    };
+    return { token: parsed.generation_token, completed: !!parsed.generation_token };
+  } catch {
+    return { completed: false };
+  }
+}
+
 // --- Prestige Tier Definitions ---
 export type PrestigeTierName = 'bronze' | 'silver' | 'gold' | 'diamond';
 
@@ -941,48 +1071,167 @@ export function rpcEndSeason(
     cursor = batch.length >= BATCH_SIZE ? String(batch[batch.length - 1]?.rank || '') : '';
   } while (cursor !== '');
 
+  // Issue #1132: atomicity via sentinel + per-player completion marker.
+  //
+  // Pre-flight: if the previous run crashed mid-loop the seasons storage
+  // already carries status='ending' + end_distribution. Reuse the original
+  // generation token, the captured player list, and the resume index so we
+  // never double-credit a player the previous run already finished. If no
+  // sentinel exists we are starting a fresh run.
+  let generationToken: string;
+  let playerOwnerIds: string[];
+  let resumeFromIndex: number;
+
+  const existingSentinel = readSeasonEndSentinel(nk, currentSeason.season_id);
+
+  if (existingSentinel) {
+    generationToken = existingSentinel.distribution.generation_token;
+    playerOwnerIds = existingSentinel.distribution.players;
+    resumeFromIndex = existingSentinel.distribution.next_index;
+    logger.info(
+      'rpcEndSeason resuming in-flight distribution: token=%s, next_index=%d, total=%d',
+      generationToken,
+      resumeFromIndex,
+      playerOwnerIds.length
+    );
+  } else {
+    generationToken = generateSeasonEndToken();
+    playerOwnerIds = allRecords.map((r) => r.ownerId);
+    resumeFromIndex = 0;
+
+    // Persist the sentinel BEFORE the first per-player credit so an observer
+    // can always tell the run is in flight and so a retry resumes the same
+    // generation token. status='ending' until every player has been credited
+    // and the season has flipped to 'ended' at the very end.
+    try {
+      writeSeasonEndSentinel(nk, ctx, currentSeason, {
+        generation_token: generationToken,
+        players: playerOwnerIds,
+        next_index: 0,
+        started_at: Date.now(),
+      });
+    } catch (error) {
+      logger.warn('rpcEndSeason: failed to persist opening sentinel, continuing in memory: %s', error);
+    }
+  }
+
   // Auto-distribute rewards and seed players into new season
-  for (const record of allRecords) {
+  for (let i = resumeFromIndex; i < allRecords.length; i++) {
+    const record = allRecords[i];
     const playerRank = record.rank;
-    const rewards = calculateRewards(playerRank, currentSeason.season_number);
 
-    // Auto-grant currency rewards via the unified currency ledger (#860)
-    const rewardDelta: CurrencyDelta = {};
-    if (rewards.coins) rewardDelta.coins = rewards.coins;
-    if (rewards.gems) rewardDelta.gems = rewards.gems;
-    applyCurrencyDelta(nk, record.ownerId, rewardDelta, 'season_end_distribution', logger);
-
-    // Auto-grant cosmetic rewards (titles, auras)
-    if (rewards.cosmetics) {
-      addPlayerCosmetic(nk, record.ownerId, rewards.cosmetics.title, rewards.cosmetics.aura);
+    // Skip players the previous run already finished. The per-player marker
+    // is the existing season_rewards_claimed storage write tagged with the
+    // current generation token — a matched token means "I am already done in
+    // THIS run, do not credit me again".
+    const marker = readPlayerCompletionMarker(nk, currentSeason.season_id, record.ownerId);
+    if (marker.completed && marker.token === generationToken) {
+      continue;
     }
 
-    // Mark rewards as auto-distributed
-    nk.storageWrite([
-      {
-        collection: 'season_rewards_claimed',
-        key: `${currentSeason.season_id}_${record.ownerId}`,
-        userId: record.ownerId,
-        value: JSON.stringify({
-          season_id: currentSeason.season_id,
-          user_id: record.ownerId,
-          claimed_at: Date.now(),
-          rank: playerRank,
-          rewards: rewards,
-          auto_distributed: true,
-        }),
-      },
-    ]);
+    const rewards = calculateRewards(playerRank, currentSeason.season_number);
 
-    // Update prestige record and grant prestige cosmetics
-    const { new_tiers } = updatePlayerPrestigeRecord(
-      nk,
-      record.ownerId,
-      currentSeason.season_id,
-      playerRank
-    );
-    if (new_tiers.length > 0) {
-      grantPrestigeRewards(nk, record.ownerId, new_tiers);
+    try {
+      // Auto-grant currency rewards via the unified currency ledger (#860)
+      const rewardDelta: CurrencyDelta = {};
+      if (rewards.coins) rewardDelta.coins = rewards.coins;
+      if (rewards.gems) rewardDelta.gems = rewards.gems;
+      applyCurrencyDelta(nk, record.ownerId, rewardDelta, 'season_end_distribution', logger);
+
+      // Auto-grant cosmetic rewards (titles, auras)
+      if (rewards.cosmetics) {
+        addPlayerCosmetic(nk, record.ownerId, rewards.cosmetics.title, rewards.cosmetics.aura);
+      }
+
+      // Per-player completion marker (issue #1132). Tagging the existing
+      // season_rewards_claimed write with the current generation token turns
+      // it into the resume key the pre-flight check looks at above. A
+      // crash between credit and this write is at-least-once: a retry
+      // re-credits the same player. There is no portable way to dedupe
+      // applyCurrencyDelta without touching currency.ts, which is out of
+      // scope for this fix.
+      nk.storageWrite([
+        {
+          collection: 'season_rewards_claimed',
+          key: `${currentSeason.season_id}_${record.ownerId}`,
+          userId: record.ownerId,
+          value: JSON.stringify({
+            season_id: currentSeason.season_id,
+            user_id: record.ownerId,
+            claimed_at: Date.now(),
+            rank: playerRank,
+            rewards: rewards,
+            auto_distributed: true,
+            generation_token: generationToken,
+          }),
+        },
+      ]);
+
+      // Update prestige record and grant prestige cosmetics
+      const { new_tiers } = updatePlayerPrestigeRecord(
+        nk,
+        record.ownerId,
+        currentSeason.season_id,
+        playerRank
+      );
+      if (new_tiers.length > 0) {
+        grantPrestigeRewards(nk, record.ownerId, new_tiers);
+      }
+    } catch (error) {
+      // Mid-loop failure (issue #1132): persist the checkpoint so the next
+      // call resumes from this index, then return a partial-failure
+      // envelope. We intentionally do NOT swallow the error here — the
+      // caller (admin tooling / matchmaker scheduler) sees the failure
+      // and decides whether to retry. The sentinel's status stays at
+      // 'ending' so a fresh process / RPC re-entry picks up exactly here.
+      logger.error(
+        'rpcEndSeason: mid-loop failure at player index %d (owner=%s): %s',
+        i,
+        record.ownerId,
+        error
+      );
+      try {
+        writeSeasonEndSentinel(nk, ctx, currentSeason, {
+          generation_token: generationToken,
+          players: playerOwnerIds,
+          next_index: i,
+          started_at: Date.now(),
+        });
+      } catch (sentinelError) {
+        logger.error(
+          'rpcEndSeason: failed to persist checkpoint after mid-loop failure: %s',
+          sentinelError
+        );
+      }
+      return JSON.stringify({
+        success: false,
+        error_code: PARTIAL_SEASON_FAILED_ERROR_CODE,
+        error: error instanceof Error ? error.message : String(error),
+        generation_token: generationToken,
+        resumed: resumeFromIndex > 0,
+        processed: i,
+        total: allRecords.length,
+        season_id: currentSeason.season_id,
+      });
+    }
+
+    // Best-effort per-iteration checkpoint. A failure here is non-fatal:
+    // the resume path still has the in-flight sentinel + the per-player
+    // completion marker to fall back on, so worst case we re-process a
+    // handful of finished players (at-least-once, never data loss).
+    try {
+      writeSeasonEndSentinel(nk, ctx, currentSeason, {
+        generation_token: generationToken,
+        players: playerOwnerIds,
+        next_index: i + 1,
+        started_at: Date.now(),
+      });
+    } catch (checkpointError) {
+      logger.warn(
+        'rpcEndSeason: failed to persist per-player checkpoint at index %d: %s',
+        i,
+        checkpointError
+      );
     }
   }
 
@@ -1010,9 +1259,12 @@ export function rpcEndSeason(
     },
   ]);
 
-  // Update current season status
+  // Update current season status to ended. The sentinel's end_distribution
+  // is cleared here so the next rpcEndSeason call (next season rollover)
+  // starts a fresh generation token rather than re-using the just-completed
+  // one.
   const oldSeason = currentSeason;
-  oldSeason.status = 'ended';
+  oldSeason.status = SEASON_ENDED_STATUS;
 
   nk.storageWrite([
     {
@@ -1060,6 +1312,8 @@ export function rpcEndSeason(
     old_season: oldSeason,
     new_season: nextSeason,
     players_processed: allRecords.length,
+    generation_token: generationToken,
+    resumed: resumeFromIndex > 0,
   });
 }
 

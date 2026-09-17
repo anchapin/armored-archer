@@ -1,4 +1,4 @@
-import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
+import { createMockLogger, createMockContext, createMockNakama, testStorage } from '../../__mocks__/nakama';
 
 import {
   rpcGetSeasonInfo,
@@ -24,6 +24,7 @@ import {
   rpcGetProjectedNextSeasonElo,
   registerRpcGetPrestigeProgress,
   registerRpcGetProjectedNextSeasonElo,
+  getCurrentSeason,
   SeasonInfo,
 } from '../season_system';
 import { Runtime } from '../../types/nakama';
@@ -1420,6 +1421,297 @@ describe('season_system', () => {
         'armored_archer/get_projected_next_season_elo',
         expect.any(Function)
       );
+    });
+  });
+
+  describe('rpcEndSeason atomicity (issue #1132)', () => {
+    // Helper that wires up an end-season test environment with five players,
+    // ranks 1..5. Returns the player list and a counting storageWrite spy
+    // we can read after the call to assert "exactly one credit per player".
+    const buildPlayers = () => [
+      createMockLeaderboardRecord({ ownerId: 'player-1', rank: 1, score: 2500 }),
+      createMockLeaderboardRecord({ ownerId: 'player-2', rank: 2, score: 2300 }),
+      createMockLeaderboardRecord({ ownerId: 'player-3', rank: 3, score: 2100 }),
+      createMockLeaderboardRecord({ ownerId: 'player-4', rank: 4, score: 1900 }),
+      createMockLeaderboardRecord({ ownerId: 'player-5', rank: 5, score: 1700 }),
+    ];
+
+    /**
+     * Installs a stateful storageWrite spy that records every write keyed by
+     * `<collection>:<key>` AND simulates a persistent write error on EVERY
+     * call to `player_currency:<playerId>` (the atomicity boundary: applying
+     * a currency delta is the first write that hits a Nakama table per
+     * player, so a failure here represents the mid-loop DB error the issue
+     * describes). The error must persist across the RMW retry inside
+     * `applyCurrencyDelta` — a one-shot throw would let the retry succeed
+     * and the loop would carry on, defeating the test.
+     */
+    const installCrashOnKthCurrency = (failOnPlayerId: string) => {
+      const counts: Record<string, number> = {};
+      mockNk.storageWrite = jest.fn((writes: any[]) => {
+        if (
+          writes.some(
+            (w) => w.collection === 'player_currency' && w.userId === failOnPlayerId
+          )
+        ) {
+          throw new Error('simulated db error on player_currency write');
+        }
+        for (const w of writes) {
+          const key = `${w.collection}:${w.key}`;
+          counts[key] = (counts[key] || 0) + 1;
+          // Mirror the default mock behavior so storageRead can see the
+          // writes the test wants to assert against later.
+          testStorage.set(key, w.value);
+        }
+        return [];
+      });
+      return counts;
+    };
+
+    beforeEach(() => {
+      testStorage.clear();
+    });
+
+    it('records status="ending" and end_distribution BEFORE the first per-player credit', () => {
+      const players = buildPlayers();
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.walletUpdate = jest.fn();
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const writes: Array<{ collection: string; key: string; value: string }> = [];
+      mockNk.storageWrite = jest.fn((objs: any[]) => {
+        for (const obj of objs) {
+          writes.push(obj);
+          testStorage.set(`${obj.collection}:${obj.key}`, obj.value);
+        }
+        return [];
+      });
+
+      const payload = JSON.stringify({});
+      rpcEndSeason(mockCtx, mockLogger, mockNk, payload);
+
+      // The sentinel write for the ENDING season is the first seasons-write,
+      // and it must precede any season_rewards_claimed write. Without this
+      // ordering a crash between the loop start and the first credit would
+      // leave a season that looks "active" to observers.
+      const sentinelWrite = writes.find(
+        (w) => w.collection === 'seasons' && /end_distribution/.test(w.value)
+      );
+      expect(sentinelWrite).toBeDefined();
+      const sentinel = JSON.parse(sentinelWrite!.value);
+      expect(sentinel.status).toBe('ending');
+      expect(sentinel.end_distribution).toBeDefined();
+      expect(sentinel.end_distribution.generation_token).toBeDefined();
+      expect(sentinel.end_distribution.players).toEqual([
+        'player-1',
+        'player-2',
+        'player-3',
+        'player-4',
+        'player-5',
+      ]);
+
+      const firstPlayerWrite = writes.find(
+        (w) => w.collection === 'season_rewards_claimed' && w.key.includes('player-1')
+      );
+      expect(firstPlayerWrite).toBeDefined();
+      expect(writes.indexOf(sentinelWrite!)).toBeLessThan(writes.indexOf(firstPlayerWrite!));
+    });
+
+    it('returns success:false with error_code PARTIAL_SEASON_FAILED on mid-loop failure', () => {
+      const players = buildPlayers();
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.walletUpdate = jest.fn();
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      installCrashOnKthCurrency('player-3');
+
+      const payload = JSON.stringify({});
+      const result = rpcEndSeason(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('PARTIAL_SEASON_FAILED');
+      expect(parsed.processed).toBe(2);
+      expect(parsed.total).toBe(5);
+      expect(parsed.season_id).toBeDefined();
+      expect(parsed.generation_token).toBeDefined();
+
+      // Sentinel must persist the failure checkpoint so a retry resumes
+      // from exactly the index that crashed (issue #1132 acceptance).
+      const sentinelRaw = testStorage.get(`seasons:${parsed.season_id}`);
+      expect(sentinelRaw).toBeDefined();
+      const sentinel = JSON.parse(sentinelRaw!);
+      expect(sentinel.status).toBe('ending');
+      expect(sentinel.end_distribution.generation_token).toBe(parsed.generation_token);
+      expect(sentinel.end_distribution.next_index).toBe(2);
+    });
+
+    it('credits each player at most once: retry resumes from checkpoint, no double-credit', () => {
+      const players = buildPlayers();
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.walletUpdate = jest.fn();
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      // First call: throws on player-3's currency write.
+      installCrashOnKthCurrency('player-3');
+      const firstResult = JSON.parse(
+        rpcEndSeason(mockCtx, mockLogger, mockNk, JSON.stringify({}))
+      );
+      expect(firstResult.success).toBe(false);
+      expect(firstResult.error_code).toBe('PARTIAL_SEASON_FAILED');
+      const generationToken = firstResult.generation_token;
+
+      // Replace storageWrite with a clean counter for the retry — the
+      // failing-throw wrapper is consumed, so a clean spy ensures every
+      // subsequent write is observable. Same-instance counter is also
+      // used to confirm the SECOND call only emits per-player writes for
+      // players the first call hadn't yet finished.
+      const retryCounts: Record<string, number> = {};
+      mockNk.storageWrite = jest.fn((objs: any[]) => {
+        for (const w of objs) {
+          const key = `${w.collection}:${w.key}`;
+          retryCounts[key] = (retryCounts[key] || 0) + 1;
+          testStorage.set(key, w.value);
+        }
+        return [];
+      });
+
+      const seasonId = getCurrentSeason().season_id;
+      const secondResult = JSON.parse(
+        rpcEndSeason(mockCtx, mockLogger, mockNk, JSON.stringify({}))
+      );
+
+      expect(secondResult.success).toBe(true);
+      expect(secondResult.resumed).toBe(true);
+      expect(secondResult.generation_token).toBe(generationToken);
+      expect(secondResult.players_processed).toBe(5);
+
+      // The retry path processed only the unprocessed players (3..5).
+      // Players 1..2 must NOT appear in the retry's write count.
+      for (const p of ['player-1', 'player-2']) {
+        expect(retryCounts[`season_rewards_claimed:${seasonId}_${p}`]).toBeUndefined();
+      }
+      for (const p of ['player-3', 'player-4', 'player-5']) {
+        expect(retryCounts[`season_rewards_claimed:${seasonId}_${p}`]).toBe(1);
+      }
+
+      // Final testStorage has exactly one season_rewards_claimed entry per
+      // player across BOTH calls combined — no double-credit anywhere.
+      for (const p of ['player-1', 'player-2', 'player-3', 'player-4', 'player-5']) {
+        const stored = testStorage.get(`season_rewards_claimed:${seasonId}_${p}`);
+        expect(stored).toBeDefined();
+        const parsed = JSON.parse(stored!);
+        expect(parsed.generation_token).toBe(generationToken);
+      }
+
+      // Sentinel ends up status='ended' once every player has been credited.
+      const finalSentinel = JSON.parse(testStorage.get(`seasons:${seasonId}`)!);
+      expect(finalSentinel.status).toBe('ended');
+    });
+
+    it('per-player completion marker prevents re-credit when sentinel resume-index lags', () => {
+      // Force a scenario where the sentinel checkpoint is stale (next_index
+      // says 0 but a per-player marker from this run already exists). The
+      // per-player marker is the secondary defense; even with a buggy
+      // checkpoint the player must not be re-credited.
+      const players = buildPlayers();
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.walletUpdate = jest.fn();
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const currentSeason = getCurrentSeason();
+      const generationToken = 'seend_test_token';
+
+      // Pre-seed the sentinel as if a previous crash left it at next_index=0
+      // and a per-player marker for player-1 carrying the SAME token the
+      // upcoming run will use (so the marker is the only thing keeping
+      // player-1 from being double-credited).
+      testStorage.set(
+        `seasons:${currentSeason.season_id}`,
+        JSON.stringify({
+          season_id: currentSeason.season_id,
+          season_number: currentSeason.season_number,
+          start_time: 0,
+          end_time: 0,
+          status: 'ending',
+          duration_weeks: 4,
+          end_distribution: {
+            generation_token: generationToken,
+            players: players.map((p) => p.ownerId),
+            next_index: 0,
+            started_at: 0,
+          },
+        })
+      );
+      testStorage.set(
+        `season_rewards_claimed:${currentSeason.season_id}_player-1`,
+        JSON.stringify({
+          season_id: currentSeason.season_id,
+          user_id: 'player-1',
+          claimed_at: 0,
+          rank: 1,
+          rewards: { rank_tier: 'legendary', coins: 8500, gems: 600 },
+          auto_distributed: true,
+          generation_token: generationToken,
+        })
+      );
+
+      const counts: Record<string, number> = {};
+      mockNk.storageWrite = jest.fn((objs: any[]) => {
+        for (const w of objs) {
+          const key = `${w.collection}:${w.key}`;
+          counts[key] = (counts[key] || 0) + 1;
+          testStorage.set(key, w.value);
+        }
+        return [];
+      });
+
+      const result = JSON.parse(
+        rpcEndSeason(mockCtx, mockLogger, mockNk, JSON.stringify({}))
+      );
+
+      expect(result.success).toBe(true);
+      // player-1 must NOT have been re-credited — its marker carried the
+      // same generation token so the per-player check skipped it.
+      expect(counts[`season_rewards_claimed:${currentSeason.season_id}_player-1`]).toBeUndefined();
+      // Players 2..5 were processed exactly once.
+      for (const p of ['player-2', 'player-3', 'player-4', 'player-5']) {
+        expect(counts[`season_rewards_claimed:${currentSeason.season_id}_${p}`]).toBe(1);
+      }
+    });
+
+    it('starts a fresh run when no sentinel exists (control case)', () => {
+      // Sanity check: with no prior sentinel and no mid-loop crash, behavior
+      // matches the pre-fix happy path. The generation_token is included in
+      // the response for telemetry correlation.
+      const players = buildPlayers();
+      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.walletUpdate = jest.fn();
+      mockNk.leaderboardRecordWrite = jest.fn();
+
+      const counts: Record<string, number> = {};
+      mockNk.storageWrite = jest.fn((objs: any[]) => {
+        for (const w of objs) {
+          const key = `${w.collection}:${w.key}`;
+          counts[key] = (counts[key] || 0) + 1;
+          testStorage.set(key, w.value);
+        }
+        return [];
+      });
+
+      const resultStr = rpcEndSeason(mockCtx, mockLogger, mockNk, JSON.stringify({}));
+      expect(resultStr).toBeDefined();
+      const result = JSON.parse(resultStr!);
+
+      expect(result.success).toBe(true);
+      expect(result.resumed).toBe(false);
+      expect(result.players_processed).toBe(5);
+      expect(typeof result.generation_token).toBe('string');
+      // Sentinel ends up status='ended' with no end_distribution lingering.
+      const seasonId = getCurrentSeason().season_id;
+      const sentinel = JSON.parse(testStorage.get(`seasons:${seasonId}`)!);
+      expect(sentinel.status).toBe('ended');
+      expect(sentinel.end_distribution).toBeUndefined();
     });
   });
 });
