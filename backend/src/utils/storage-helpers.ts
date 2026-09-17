@@ -157,12 +157,14 @@ export function batchStorageWrite(nk: Runtime.Nakama, writes: StorageWriteOption
     return;
   }
 
+  // Post-#1135: goja storageWrite accepts plain objects/strings and
+  // JSON-marshals internally. Pass values through unchanged.
   nk.storageWrite(
     writes.map((w) => ({
       collection: w.collection,
       key: w.key,
       userId: w.userId,
-      value: typeof w.value === 'string' ? w.value : JSON.stringify(w.value),
+      value: w.value,
     }))
   );
 }
