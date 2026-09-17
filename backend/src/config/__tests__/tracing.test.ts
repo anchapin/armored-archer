@@ -519,4 +519,196 @@ describe('Tracing Configuration', () => {
       expect(isTracingEnabled()).toBe(false);
     });
   });
+
+  describe('OTLP defaults (issue #1104)', () => {
+    // Helper: load the real config module inside an isolated module registry
+    // with the supplied env vars set. Lets us test the env-var -> config
+    // wiring without polluting the rest of the suite (the existing mock for
+    // '../../config' stays in force because we import config via require()
+    // inside the isolated scope, not at the top of the file).
+    function loadConfigWithEnv(env: Record<string, string | undefined>): {
+      default: { tracing: { enabled: boolean; exporter: string; otlpEndpoint?: string } };
+    } {
+      const saved: Record<string, string | undefined> = {};
+      for (const key of Object.keys(env)) {
+        saved[key] = process.env[key];
+        if (env[key] === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = env[key];
+        }
+      }
+      let loaded: { default: { tracing: { enabled: boolean; exporter: string; otlpEndpoint?: string } } };
+      try {
+        jest.isolateModules(() => {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports, global-require
+          loaded = require('../index');
+        });
+      } finally {
+        for (const key of Object.keys(saved)) {
+          if (saved[key] === undefined) {
+            delete process.env[key];
+          } else {
+            process.env[key] = saved[key];
+          }
+        }
+      }
+      return loaded!;
+    }
+
+    it('defaults the exporter to "otlp" when TRACING_EXPORTER is unset', () => {
+      const { default: cfg } = loadConfigWithEnv({
+        TRACING_EXPORTER: undefined,
+        OTEL_TRACES_EXPORTER: undefined,
+        NODE_ENV: 'development',
+      });
+      expect(cfg.tracing.exporter).toBe('otlp');
+    });
+
+    it('defaults the otlpEndpoint to http://otel-collector:4318 when OTLP env vars are unset', () => {
+      const { default: cfg } = loadConfigWithEnv({
+        OTEL_EXPORTER_OTLP_ENDPOINT: undefined,
+        OTLP_ENDPOINT: undefined,
+        NODE_ENV: 'development',
+      });
+      expect(cfg.tracing.otlpEndpoint).toBe('http://otel-collector:4318');
+    });
+
+    it('honors OTEL_EXPORTER_OTLP_ENDPOINT as the OTel-spec override', () => {
+      const { default: cfg } = loadConfigWithEnv({
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'http://otel.example.com:4318',
+        OTLP_ENDPOINT: 'http://legacy.example.com:4318',
+        NODE_ENV: 'development',
+      });
+      expect(cfg.tracing.otlpEndpoint).toBe('http://otel.example.com:4318');
+    });
+
+    it('falls back to OTLP_ENDPOINT when OTEL_EXPORTER_OTLP_ENDPOINT is unset', () => {
+      const { default: cfg } = loadConfigWithEnv({
+        OTEL_EXPORTER_OTLP_ENDPOINT: undefined,
+        OTLP_ENDPOINT: 'http://legacy.example.com:4318',
+        NODE_ENV: 'development',
+      });
+      expect(cfg.tracing.otlpEndpoint).toBe('http://legacy.example.com:4318');
+    });
+
+    it('enables tracing by default in development', () => {
+      const { default: cfg } = loadConfigWithEnv({
+        TRACING_ENABLED: undefined,
+        OTEL_SDK_DISABLED: undefined,
+        NODE_ENV: 'development',
+      });
+      expect(cfg.tracing.enabled).toBe(true);
+    });
+
+    it('keeps tracing off by default in production (opt-in)', () => {
+      const { default: cfg } = loadConfigWithEnv({
+        TRACING_ENABLED: undefined,
+        OTEL_SDK_DISABLED: undefined,
+        NODE_ENV: 'production',
+      });
+      expect(cfg.tracing.enabled).toBe(false);
+    });
+
+    it('TRACING_ENABLED=true enables tracing in production', () => {
+      const { default: cfg } = loadConfigWithEnv({
+        TRACING_ENABLED: 'true',
+        OTEL_SDK_DISABLED: undefined,
+        NODE_ENV: 'production',
+      });
+      expect(cfg.tracing.enabled).toBe(true);
+    });
+
+    it('TRACING_ENABLED=false disables tracing in development', () => {
+      const { default: cfg } = loadConfigWithEnv({
+        TRACING_ENABLED: 'false',
+        OTEL_SDK_DISABLED: undefined,
+        NODE_ENV: 'development',
+      });
+      expect(cfg.tracing.enabled).toBe(false);
+    });
+
+    it('OTEL_SDK_DISABLED=true disables tracing even when TRACING_ENABLED=true', () => {
+      const { default: cfg } = loadConfigWithEnv({
+        TRACING_ENABLED: 'true',
+        OTEL_SDK_DISABLED: 'true',
+        NODE_ENV: 'development',
+      });
+      expect(cfg.tracing.enabled).toBe(false);
+    });
+  });
+
+  describe('initializeTracing OTEL opt-out (issue #1104)', () => {
+    // The tracing module under test is already mocked in this file's top
+    // scope. We just need to flip the env var and verify the override log
+    // fires + the OTLP exporter is NOT instantiated when the opt-out path
+    // triggers.
+    const originalOtelExporter = process.env.OTEL_TRACES_EXPORTER;
+
+    afterEach(() => {
+      if (originalOtelExporter === undefined) {
+        delete process.env.OTEL_TRACES_EXPORTER;
+      } else {
+        process.env.OTEL_TRACES_EXPORTER = originalOtelExporter;
+      }
+    });
+
+    it('overrides the configured exporter to "none" when OTEL_TRACES_EXPORTER=none', () => {
+      const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
+      const { logger } = require('../logger');
+      const cfg = getMockConfig();
+      const originalExporter = cfg.tracing.exporter;
+      cfg.tracing.exporter = 'otlp';
+      process.env.OTEL_TRACES_EXPORTER = 'none';
+
+      shutdownTracing();
+      initializeTracing();
+
+      expect(logger.info).toHaveBeenCalledWith(
+        '[Tracing] OTEL_TRACES_EXPORTER=none — exporter overridden to none at runtime'
+      );
+      expect(OTLPTraceExporter).not.toHaveBeenCalled();
+
+      cfg.tracing.exporter = originalExporter;
+      delete process.env.OTEL_TRACES_EXPORTER;
+    });
+
+    it('does not log an override when OTEL_TRACES_EXPORTER is not set', () => {
+      const { logger } = require('../logger');
+      const cfg = getMockConfig();
+      delete process.env.OTEL_TRACES_EXPORTER;
+
+      shutdownTracing();
+      initializeTracing();
+
+      const calls = (logger.info as jest.Mock).mock.calls.map((c: unknown[]) => c[0]);
+      const overrideMessages = calls.filter(
+        (msg) => typeof msg === 'string' && msg.includes('OTEL_TRACES_EXPORTER=none')
+      );
+      expect(overrideMessages).toHaveLength(0);
+    });
+
+    it('is a no-op when OTEL_TRACES_EXPORTER=none but exporter was already "none"', () => {
+      const { logger } = require('../logger');
+      const cfg = getMockConfig();
+      const originalExporter = cfg.tracing.exporter;
+      cfg.tracing.exporter = 'none';
+      process.env.OTEL_TRACES_EXPORTER = 'none';
+
+      shutdownTracing();
+      initializeTracing();
+
+      // The override log only fires when we actually flip the value, so an
+      // already-'none' exporter with OTEL_TRACES_EXPORTER=none should NOT
+      // emit the override log.
+      const calls = (logger.info as jest.Mock).mock.calls.map((c: unknown[]) => c[0]);
+      const overrideMessages = calls.filter(
+        (msg) => typeof msg === 'string' && msg.includes('exporter overridden to none')
+      );
+      expect(overrideMessages).toHaveLength(0);
+
+      cfg.tracing.exporter = originalExporter;
+      delete process.env.OTEL_TRACES_EXPORTER;
+    });
+  });
 });

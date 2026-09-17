@@ -238,6 +238,17 @@ export function initializeTracing(): void {
     return;
   }
 
+  // OTEL spec opt-out: setting OTEL_TRACES_EXPORTER=none disables the trace
+  // exporter at runtime. Operators can flip tracing off without redeploying.
+  // Honored even when TRACING_ENABLED=true so the spec variable is the
+  // authoritative "no exporter" signal (issue #1104).
+  if (process.env.OTEL_TRACES_EXPORTER === 'none' && tracingConfig.exporter !== 'none') {
+    logger.info(
+      '[Tracing] OTEL_TRACES_EXPORTER=none — exporter overridden to none at runtime'
+    );
+    tracingConfig.exporter = 'none';
+  }
+
   try {
     // Create resource with service information
     const resource = resourceFromAttributes({
