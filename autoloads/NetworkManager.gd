@@ -685,6 +685,13 @@ func _log_network_error(error_type: String, endpoint: String, status_code: int) 
 		analytics.log_network_error(error_type, endpoint, status_code)
 
 # --- Session Storage ---
+## Issue #1095: session/refresh tokens are no longer written to a
+## plaintext file under user://. They are encrypted through the
+## SecureStore autoload (Android Keystore + EncryptedSharedPreferences on
+## device; AES-256-CBC + HMAC-SHA256 envelope on desktop). The legacy
+## plaintext SESSION_FILE path is retained as a one-time migration
+## fallback: if a stale session_data.json is found on disk we consume it,
+## then delete it so no plaintext copy survives.
 func _save_session_to_file() -> void:
 	var session_data: Dictionary = {
 		"session_token": session_token,
@@ -694,39 +701,97 @@ func _save_session_to_file() -> void:
 		"device_id": device_id
 	}
 
-	var file: FileAccess = FileAccess.open(SESSION_FILE, FileAccess.WRITE)
-	if file:
-		var json: JSON = JSON.new()
-		var _err = file.store_string(JSON.stringify(session_data))
-		file.close()
+	var json_string: String = JSON.stringify(session_data)
+	var plaintext: PackedByteArray = json_string.to_utf8_buffer()
+	var secure_store: Node = get_node_or_null("/root/SecureStore")
+	if secure_store == null:
+		push_error("NetworkManager: SecureStore autoload missing; session NOT persisted")
+		return
+	var _err: Error = secure_store.call("save_session_blob", plaintext)
+	if _err != OK:
+		push_error("NetworkManager: SecureStore.save_session_blob failed (error %d)" % _err)
 
 func _load_session_from_file() -> void:
-	if not FileAccess.file_exists(SESSION_FILE):
+	_migrate_legacy_plaintext_session()
+	var secure_store: Node = get_node_or_null("/root/SecureStore")
+	if secure_store == null:
+		push_error("NetworkManager: SecureStore autoload missing; cannot restore session")
+		return
+	var plaintext: PackedByteArray = secure_store.call("load_session_blob")
+	if plaintext.is_empty():
+		return
+	var json_string: String = plaintext.get_string_from_utf8()
+	var json: JSON = JSON.new()
+	if json.parse(json_string) != OK:
+		push_warning("NetworkManager: stored session blob is corrupt; ignoring")
+		return
+	var session_data: Dictionary = json.data
+	if not (session_data is Dictionary):
+		push_warning("NetworkManager: stored session blob is not a dictionary; ignoring")
 		return
 
+	if "session_token" in session_data:
+		session_token = session_data["session_token"]
+
+	if "refresh_token" in session_data:
+		refresh_token = session_data["refresh_token"]
+
+	if "user_id" in session_data:
+		user_id = session_data["user_id"]
+
+	if "username" in session_data:
+		username = session_data["username"]
+
+	if "device_id" in session_data:
+		device_id = session_data["device_id"]
+
+## Issue #1095 migration helper: if a plaintext user://session_data.json
+## exists from a pre-fix build, ingest it once into SecureStore and delete
+## the plaintext file so no recoverable copy remains on disk. Idempotent.
+func _migrate_legacy_plaintext_session() -> void:
+	if not FileAccess.file_exists(SESSION_FILE):
+		return
 	var file: FileAccess = FileAccess.open(SESSION_FILE, FileAccess.READ)
-	if file:
-		var json_string: String = file.get_as_text()
-		file.close()
+	if file == null:
+		return
+	var json_string: String = file.get_as_text()
+	file.close()
 
-		var json: JSON = JSON.new()
-		if json.parse(json_string) == OK:
-			var session_data: Dictionary = json.data
+	var json: JSON = JSON.new()
+	if json.parse(json_string) != OK:
+		# Unparseable plaintext is suspicious — delete it regardless so it
+		# cannot linger as a stale token for someone who fixes the format
+		# later. Fail closed.
+		DirAccess.remove_absolute(SESSION_FILE)
+		push_warning("NetworkManager: legacy plaintext session was unparseable; removed")
+		return
+	var session_data: Dictionary = json.data
+	if not (session_data is Dictionary) or session_data.is_empty():
+		DirAccess.remove_absolute(SESSION_FILE)
+		return
 
-			if "session_token" in session_data:
-				session_token = session_data["session_token"]
-
-			if "refresh_token" in session_data:
-				refresh_token = session_data["refresh_token"]
-
-			if "user_id" in session_data:
-				user_id = session_data["user_id"]
-
-			if "username" in session_data:
-				username = session_data["username"]
-
-			if "device_id" in session_data:
-				device_id = session_data["device_id"]
+	# Promote the legacy fields into the SecureStore blob using the same
+	# JSON envelope as the live code path, then wipe the plaintext file.
+	if "session_token" in session_data:
+		session_token = session_data["session_token"]
+	if "refresh_token" in session_data:
+		refresh_token = session_data["refresh_token"]
+	if "user_id" in session_data:
+		user_id = session_data["user_id"]
+	if "username" in session_data:
+		username = session_data["username"]
+	if "device_id" in session_data:
+		device_id = session_data["device_id"]
+	_save_session_to_file()
+	# Sanity-wipe the plaintext file even if SecureStore declined the
+	# write — a failed re-write should not leave plaintext tokens behind.
+	if FileAccess.file_exists(SESSION_FILE):
+		var rm_err: Error = DirAccess.remove_absolute(SESSION_FILE)
+		if rm_err != OK:
+			push_warning(
+				"NetworkManager: legacy plaintext session could not be removed (error %d); manual cleanup required"
+				% rm_err
+			)
 
 # --- Public API ---
 func logout() -> void:
@@ -736,10 +801,20 @@ func logout() -> void:
 	username = ""
 	is_connected = false
 
-	var file: FileAccess = FileAccess.open(SESSION_FILE, FileAccess.WRITE)
-	if file:
-		var _err = file.store_string("{}")
-		file.close()
+	# Issue #1095: clear the encrypted blob (Android Keystore / desktop
+	# envelope) instead of writing a placeholder JSON file.
+	var secure_store: Node = get_node_or_null("/root/SecureStore")
+	if secure_store != null:
+		var _err: Error = secure_store.call("erase_session_blob")
+		if _err != OK:
+			push_warning("NetworkManager: SecureStore.erase_session_blob failed (error %d)" % _err)
+	# Defense in depth: if a legacy plaintext file still exists on disk
+	# (e.g. the migration never ran), delete it now so logout cannot
+	# leave a recoverable plaintext copy behind.
+	if FileAccess.file_exists(SESSION_FILE):
+		var rm_err: Error = DirAccess.remove_absolute(SESSION_FILE)
+		if rm_err != OK:
+			push_warning("NetworkManager: legacy plaintext session could not be removed on logout (error %d)" % rm_err)
 
 	session_created.emit(false, "Logged out")
 
