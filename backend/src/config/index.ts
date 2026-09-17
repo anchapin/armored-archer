@@ -390,6 +390,56 @@ function parseDatabaseAddress(address: string): DatabaseConfig {
 
 const dbAddress = process.env.DATABASE_ADDRESS || process.env.NAKAMA_DATABASE_ADDRESS || '';
 
+/**
+ * Build the tracing config block.
+ *
+ * Defaults (issue #1104):
+ * - `enabled` is ON in non-production environments and OFF in production —
+ *   production stays opt-in so we don't slow prod with default sampling.
+ * - `exporter` defaults to `otlp` (was `zipkin`).
+ * - `otlpEndpoint` defaults to `http://otel-collector:4318` — the
+ *   `otel-collector` service declared in backend/docker-compose.yml that
+ *   forwards traces to Tempo via the `otlphttp/tempo` pipeline.
+ *
+ * OTEL-spec env vars honored:
+ * - `OTEL_SDK_DISABLED=true` disables tracing entirely (overrides everything).
+ * - `OTEL_EXPORTER_OTLP_ENDPOINT` overrides `otlpEndpoint` (spec-compliant).
+ *
+ * Legacy env vars (kept for back-compat):
+ * - `TRACING_ENABLED=true|false` overrides the env-aware default.
+ * - `TRACING_EXPORTER=otlp|zipkin|none` selects the exporter.
+ * - `OTLP_ENDPOINT` falls back when `OTEL_EXPORTER_OTLP_ENDPOINT` is unset.
+ */
+const tracingConfig: TracingConfig = (() => {
+  const otelSdkDisabled = process.env.OTEL_SDK_DISABLED === 'true';
+  const envIsProduction = (process.env.NODE_ENV || 'development') === 'production';
+  const defaultEnabled = !envIsProduction && !otelSdkDisabled;
+  const enabled = otelSdkDisabled
+    ? false
+    : process.env.TRACING_ENABLED === 'true'
+      ? true
+      : process.env.TRACING_ENABLED === 'false'
+        ? false
+        : defaultEnabled;
+  const otlpEndpoint =
+    process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
+    process.env.OTLP_ENDPOINT ||
+    'http://otel-collector:4318';
+  return {
+    enabled,
+    serviceName: process.env.TRACING_SERVICE_NAME || 'armored-archer-backend',
+    serviceVersion: process.env.TRACING_SERVICE_VERSION || '0.1.0',
+    exporter: (process.env.TRACING_EXPORTER || 'otlp') as 'zipkin' | 'otlp' | 'none',
+    sampleRate: parseFloat(process.env.TRACING_SAMPLE_RATE || '1.0'),
+    zipkinEndpoint: process.env.ZIPKIN_ENDPOINT,
+    otlpEndpoint,
+    autoInstrumentations: process.env.TRACING_AUTO_INSTRUMENTATIONS !== 'false',
+    instrumentations: process.env.TRACING_INSTRUMENTATIONS
+      ? process.env.TRACING_INSTRUMENTATIONS.split(',').map((i) => i.trim())
+      : ['http', 'express', 'pg'],
+  };
+})();
+
 const config: AppConfig = {
   environment: (process.env.NODE_ENV || 'development') as AppConfig['environment'],
 
@@ -554,19 +604,7 @@ const config: AppConfig = {
     },
   },
 
-  tracing: {
-    enabled: process.env.TRACING_ENABLED === 'true',
-    serviceName: process.env.TRACING_SERVICE_NAME || 'armored-archer-backend',
-    serviceVersion: process.env.TRACING_SERVICE_VERSION || '0.1.0',
-    exporter: (process.env.TRACING_EXPORTER || 'zipkin') as 'zipkin' | 'otlp' | 'none',
-    sampleRate: parseFloat(process.env.TRACING_SAMPLE_RATE || '1.0'),
-    zipkinEndpoint: process.env.ZIPKIN_ENDPOINT,
-    otlpEndpoint: process.env.OTLP_ENDPOINT,
-    autoInstrumentations: process.env.TRACING_AUTO_INSTRUMENTATIONS !== 'false',
-    instrumentations: process.env.TRACING_INSTRUMENTATIONS
-      ? process.env.TRACING_INSTRUMENTATIONS.split(',').map((i) => i.trim())
-      : ['http', 'express', 'pg'],
-  },
+  tracing: tracingConfig,
 
   alerting: {
     enabled: process.env.ALERTING_ENABLED === 'true',
