@@ -5,6 +5,7 @@
  */
 
 import { Runtime } from '../types/nakama';
+import { toStorageValue } from '../utils/storage-helpers';
 
 export interface AntiCheatViolation {
   userId: string;
@@ -152,7 +153,7 @@ export function recordViolation(
           collection: 'anti_cheat_violations',
           key: storageKey,
           userId,
-          value: JSON.stringify(violation),
+          value: toStorageValue(violation),
         },
       ]);
     } catch (err) {

@@ -5671,7 +5671,9 @@ describe('store', () => {
       return writeCalls
         .flatMap((call: any) => call[0] as any[])
         .filter((obj: any) => obj.collection === 'audit_logs')
-        .map((obj: any) => JSON.parse(obj.value));
+        .map((obj: any) =>
+          typeof obj.value === 'string' ? (typeof obj.value === 'string' ? (typeof obj.value === 'string' ? (typeof obj.value === 'string' ? JSON.parse(obj.value) : obj.value) : obj.value) : obj.value) : obj.value
+        );
     }
 
     describe('webhook audit logging', () => {

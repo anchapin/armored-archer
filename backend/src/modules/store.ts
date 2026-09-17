@@ -29,7 +29,8 @@ import {
   setWebhookPendingAwards,
   incrementWebhookRedisError,
   setWebhookConfigured,
-} from './metrics';
+} from './metrics';import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+
 
 // The player_currency storage record is the single currency ledger
 // (issue #860). The Nakama wallet is no longer written by this module; all
@@ -202,7 +203,7 @@ async function markReceiptAsUsed(
         collection: 'validated_receipts',
         key: `receipt_${receiptHash}`,
         userId: userId,
-        value: JSON.stringify({ validated_at: Date.now(), receipt_hash: receiptHash }),
+        value: toStorageValue({ validated_at: Date.now(), receipt_hash: receiptHash }),
         permissionRead: 0, // No public read
         permissionWrite: 0, // No public write
       },
@@ -342,7 +343,7 @@ async function markRefundAsProcessed(
         collection: REFUND_MARKER_COLLECTION,
         key: `refund_${refundTransactionId}`,
         userId: userId,
-        value: JSON.stringify({
+        value: toStorageValue({
           refund_transaction_id: refundTransactionId,
           user_id: userId,
           processed_at: Date.now(),
@@ -1161,7 +1162,7 @@ async function awardGems(
       collection: 'player_currency',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(playerCurrency),
+      value: toStorageValue(playerCurrency),
       version: currencyVersion,
     },
   ]);
@@ -1360,7 +1361,7 @@ export function rpcSpendGems(
       collection: 'player_currency',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(playerCurrency),
+      value: toStorageValue(playerCurrency),
     },
   ]);
 
@@ -1459,7 +1460,7 @@ export function rpcPurchaseCosmetic(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-      ownedResult[0].value,
+    getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -1520,7 +1521,7 @@ export function rpcPurchaseCosmetic(
       collection: 'player_currency',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(playerCurrency),
+      value: toStorageValue(playerCurrency),
     },
   ]);
   invalidateCurrencyCache(ctx.userId, logger);
@@ -1532,7 +1533,7 @@ export function rpcPurchaseCosmetic(
       collection: 'player_cosmetics_owned',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify({ items: ownedItems }),
+      value: toStorageValue({ items: ownedItems }),
     },
   ]);
 
@@ -1623,7 +1624,7 @@ export function rpcGetOwnedCosmetics(
   let items: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-      ownedResult[0].value,
+    getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -1740,7 +1741,7 @@ export function rpcEquipCosmetic(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-      ownedResult[0].value,
+    getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -1868,7 +1869,7 @@ export function rpcSaveCosmeticLoadout(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-      ownedResult[0].value,
+    getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -2013,7 +2014,7 @@ export function rpcPurchaseBundle(
     let ownedBundles: string[] = [];
     if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
       const parsed = safeParse<{ bundles: string[] }>(
-        bundleOwnedResult[0].value,
+    getStorageRawValue(bundleOwnedResult[0].value) ?? '',
         null,
         logger,
         'player_bundles_owned'
@@ -2072,7 +2073,7 @@ export function rpcPurchaseBundle(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-      ownedResult[0].value,
+    getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -2135,7 +2136,7 @@ export function rpcPurchaseBundle(
       collection: 'player_currency',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(playerCurrency),
+      value: toStorageValue(playerCurrency),
     },
   ]);
   invalidateCurrencyCache(ctx.userId, logger);
@@ -2149,7 +2150,7 @@ export function rpcPurchaseBundle(
       collection: 'player_cosmetics_owned',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify({ items: ownedItems }),
+      value: toStorageValue({ items: ownedItems }),
     },
   ]);
 
@@ -2161,7 +2162,7 @@ export function rpcPurchaseBundle(
     let ownedBundles: string[] = [];
     if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
       const parsed = safeParse<{ bundles: string[] }>(
-        bundleOwnedResult[0].value,
+    getStorageRawValue(bundleOwnedResult[0].value) ?? '',
         null,
         logger,
         'player_bundles_owned'
@@ -2176,7 +2177,7 @@ export function rpcPurchaseBundle(
         collection: 'player_bundles_owned',
         key: ctx.userId,
         userId: ctx.userId,
-        value: JSON.stringify({ bundles: ownedBundles }),
+        value: toStorageValue({ bundles: ownedBundles }),
       },
     ]);
   }
@@ -2239,7 +2240,7 @@ export function rpcGetBundleCatalog(
   let ownedBundles: string[] = [];
   if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
     const parsed = safeParse<{ bundles: string[] }>(
-      bundleOwnedResult[0].value,
+    getStorageRawValue(bundleOwnedResult[0].value) ?? '',
       null,
       logger,
       'player_bundles_owned'
@@ -2277,7 +2278,7 @@ function _readEquippedCosmetics(
   if (result.length === 0 || !result[0].value) return defaults;
 
   const parsed = safeParse<Record<string, string>>(
-    result[0].value,
+    getStorageRawValue(result[0].value) ?? '',
     null,
     logger,
     'player_cosmetics_equipped'
@@ -2298,7 +2299,7 @@ function _writeEquippedCosmetics(
       collection: 'player_cosmetics_equipped',
       key: userId,
       userId: userId,
-      value: JSON.stringify(equipped),
+      value: toStorageValue(equipped),
       permissionRead: 0,
       permissionWrite: 0,
     },
@@ -2677,7 +2678,7 @@ export async function rpcProcessPendingPurchases(
         collection: 'player_currency',
         key: ctx.userId,
         userId: ctx.userId,
-        value: JSON.stringify(playerCurrency),
+        value: toStorageValue(playerCurrency),
       },
     ]);
 
@@ -3180,7 +3181,7 @@ export async function rpcRestorePurchases(
                   collection: 'player_currency',
                   key: ctx.userId,
                   userId: ctx.userId,
-                  value: JSON.stringify(playerCurrency),
+                  value: toStorageValue(playerCurrency),
                 },
               ]);
 
@@ -3245,7 +3246,7 @@ export async function rpcRestorePurchases(
                 collection: 'player_currency',
                 key: ctx.userId,
                 userId: ctx.userId,
-                value: JSON.stringify(playerCurrency),
+                value: toStorageValue(playerCurrency),
               },
             ]);
 
@@ -3444,7 +3445,7 @@ async function getRecordedWebhookOutcome(
     ]);
     if (objects.length > 0) {
       const record = safeParsePayload<{ outcome?: string }>(
-        objects[0].value,
+        getStorageRawValue(objects[0].value) ?? '',
         logger,
         'webhook_event_ledger'
       );
@@ -3543,7 +3544,7 @@ function readPendingWebhookAwards(
       return { awards: [], version: undefined };
     }
     const parsed = safeParsePayload<{ awards?: PendingWebhookAward[] }>(
-      objects[0].value,
+      getStorageRawValue(objects[0].value) ?? '',
       logger,
       'webhook_pending_awards'
     );
@@ -3573,7 +3574,7 @@ function writePendingWebhookAwards(
         collection: WEBHOOK_PENDING_COLLECTION,
         key: userId,
         userId: userId,
-        value: JSON.stringify({ awards: awards }),
+        value: toStorageValue({ awards: awards }),
         version: version,
         permissionRead: 0, // No public read
         permissionWrite: 0, // No public write
@@ -3876,7 +3877,7 @@ function handleSubscriptionCancelled(
       {
         collection: 'player_subscription',
         key: subscriptionKey,
-        value: JSON.stringify(subscription),
+        value: toStorageValue(subscription),
         userId: userId,
       },
     ]);
@@ -3961,7 +3962,7 @@ function handleBillingIssue(
       {
         collection: 'player_subscription',
         key: subscriptionKey,
-        value: JSON.stringify(subscription),
+        value: toStorageValue(subscription),
         userId: userId,
       },
     ]);

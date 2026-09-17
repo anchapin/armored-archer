@@ -714,7 +714,7 @@ describe('season_system', () => {
       addPlayerCosmetic(mockNk, 'user-123', 'Existing Title');
 
       const writeCall = mockNk.storageWrite.mock.calls[0][0][0];
-      const writtenData = JSON.parse(writeCall.value);
+      const writtenData = (typeof writeCall.value === 'string' ? (typeof writeCall.value === 'string' ? (typeof writeCall.value === 'string' ? JSON.parse(writeCall.value) : writeCall.value) : writeCall.value) : writeCall.value);
       expect(writtenData.titles).toEqual(['Existing Title']); // Not added twice
     });
   });
@@ -927,7 +927,10 @@ describe('season_system', () => {
       expect(awardedPlayers).toContain('player-1');
       expect(awardedPlayers).toContain('player-2');
       for (const call of currencyWrites) {
-        const record = JSON.parse(call[0][0].value);
+        const record =
+          typeof call[0][0].value === 'string'
+            ? (typeof call[0][0].value === 'string' ? JSON.parse(call[0][0].value) : call[0][0].value)
+            : call[0][0].value;
         expect(record.gems).toBeGreaterThanOrEqual(0);
         expect(record.coins).toBeGreaterThanOrEqual(0);
       }
@@ -1075,7 +1078,7 @@ describe('season_system', () => {
         (call: any[]) => call[0][0].collection === 'player_currency'
       );
       expect(currencyWrites).toHaveLength(1);
-      const ledgerRecord = JSON.parse(currencyWrites[0][0][0].value);
+      const ledgerRecord = (typeof currencyWrites[0][0][0].value === 'string' ? (typeof currencyWrites[0][0][0].value === 'string' ? JSON.parse(currencyWrites[0][0][0].value) : currencyWrites[0][0][0].value) : currencyWrites[0][0][0].value);
       expect(ledgerRecord.user_id).toBe('test-user');
       expect(ledgerRecord.gems).toBeGreaterThan(0);
       expect(ledgerRecord.coins).toBeGreaterThan(0);

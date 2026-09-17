@@ -269,7 +269,7 @@ function deniedAuditEntries(
   );
   return writes
     .filter((write) => write.collection === 'audit_logs')
-    .map((write) => JSON.parse(write.value))
+    .map((write) => (typeof write.value === 'string' ? (typeof write.value === 'string' ? (typeof write.value === 'string' ? JSON.parse(write.value) : write.value) : write.value) : write.value))
     .filter(
       (entry) => entry.action === 'admin_rpc_access_denied' && entry.resource === rpcId
     );
@@ -636,7 +636,7 @@ describe('admin guard rejection metrics (issue #1141)', () => {
     );
     const entry = writes
       .filter((w) => w.collection === 'audit_logs')
-      .map((w) => JSON.parse(w.value))
+      .map((w) => (typeof w.value === 'string' ? (typeof w.value === 'string' ? (typeof w.value === 'string' ? JSON.parse(w.value) : w.value) : w.value) : w.value))
       .find((e: { action: string }) => e.action === 'admin_rpc_access_denied');
     expect(entry.details.reason).toBe('caller_id_missing');
   });

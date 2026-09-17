@@ -143,7 +143,7 @@ describe('survey', () => {
       expect(parsed.success).toBe(true);
 
       const writeCall = mockNk.storageWrite.mock.calls[0][0][0];
-      const stored = JSON.parse(writeCall.value);
+      const stored = (typeof writeCall.value === 'string' ? (typeof writeCall.value === 'string' ? (typeof writeCall.value === 'string' ? JSON.parse(writeCall.value) : writeCall.value) : writeCall.value) : writeCall.value);
       expect(stored.survey_data.free_text).toBe('Great match, loved the balance!');
     });
   });

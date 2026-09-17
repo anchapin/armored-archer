@@ -236,7 +236,13 @@ describe('stage_progression — consolidated stage_complete RPC (issue #1069)', 
 
       // Nothing persisted may carry the inflated values
       const allWrites = (mockNk.storageWrite as jest.Mock).mock.calls
-        .map((calls: any[]) => calls[0].map((obj: any) => obj.value ?? '').join('\n'))
+        .map((calls: any[]) =>
+          calls[0]
+            .map((obj: any) =>
+              typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value ?? '')
+            )
+            .join('\n')
+        )
         .join('\n');
       expect(allWrites).not.toContain('"stars_earned":7');
       expect(allWrites).not.toContain('"score":99999999');
@@ -254,7 +260,10 @@ describe('stage_progression — consolidated stage_complete RPC (issue #1069)', 
       expect(result.previous_best).toBeUndefined();
 
       const completionWrite = writesToCollection('stage_completion')[0][0] as any[];
-      const record = JSON.parse(completionWrite[0].value).completions['1_1'];
+      const completionValue = completionWrite[0].value;
+      const record = (
+        typeof completionValue === 'string' ? JSON.parse(completionValue) : completionValue
+      ).completions['1_1'];
       expect(record.stars_earned).toBe(3);
       expect(record.score).toBe(0);
       expect(record.stage_prefix).toBe('1'); // derived from stage_id chapter part

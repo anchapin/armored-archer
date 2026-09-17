@@ -6,6 +6,7 @@
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import {
   registerRpcWithMetrics,
   setFunnelPlayers,
@@ -77,7 +78,7 @@ function readPlayerState(nk: Runtime.Nakama, userId: string): PlayerFunnelState 
   try {
     const objects = nk.storageRead([{ collection: COLLECTION, key: KEY_PLAYER_STATE, userId }]);
     if (objects.length > 0) {
-      return JSON.parse(objects[0].value) as PlayerFunnelState;
+      return JSON.parse(getStorageRawValue(objects[0].value) ?? '') as PlayerFunnelState;
     }
   } catch (err) {
     logger.error('Failed to read player funnel state for %s: %s', userId, err);
@@ -92,7 +93,7 @@ function writePlayerState(nk: Runtime.Nakama, userId: string, state: PlayerFunne
         collection: COLLECTION,
         key: KEY_PLAYER_STATE,
         userId,
-        value: JSON.stringify(state),
+        value: toStorageValue(state),
       },
     ]);
   } catch (err) {
@@ -106,7 +107,7 @@ function readGlobalCounts(nk: Runtime.Nakama): FunnelCounts {
       { collection: COLLECTION, key: KEY_GLOBAL_COUNTS, userId: SYSTEM_USER_ID },
     ]);
     if (objects.length > 0) {
-      return JSON.parse(objects[0].value) as FunnelCounts;
+      return JSON.parse(getStorageRawValue(objects[0].value) ?? '') as FunnelCounts;
     }
   } catch (err) {
     logger.error('Failed to read global funnel counts: %s', err);
@@ -121,7 +122,7 @@ function writeGlobalCounts(nk: Runtime.Nakama, counts: FunnelCounts): void {
         collection: COLLECTION,
         key: KEY_GLOBAL_COUNTS,
         userId: SYSTEM_USER_ID,
-        value: JSON.stringify(counts),
+        value: toStorageValue(counts),
       },
     ]);
   } catch (err) {

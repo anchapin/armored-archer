@@ -5,7 +5,7 @@
 
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
-import { readAndParseStorage } from '../utils/storage-helpers';
+import { readAndParseStorage, toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { calculateRank } from './matchmaker';
 import { SeasonInfo } from './season_system';
 import { validatePayload, createValidationErrorResponse, ZodSchemas } from './validation';
@@ -316,7 +316,7 @@ export async function recordSeasonCompletion(
       collection: STORAGE_KEY_SEASON_ARCHIVE,
       key: STORAGE_KEY_SEASON_ARCHIVE,
       userId: '00000000-0000-0000-0000-000000000000',
-      value: JSON.stringify(archiveData),
+      value: toStorageValue(archiveData),
     },
   ]);
 
@@ -443,7 +443,7 @@ export function getDecayConfig(nk: Runtime.Nakama): RatingDecayConfig {
       },
     ]);
     if (storage.length > 0 && storage[0].value) {
-      return JSON.parse(storage[0].value);
+      return JSON.parse(getStorageRawValue(storage[0].value) ?? '');
     }
   } catch {
     // Silently return defaults if storage read fails
@@ -468,7 +468,7 @@ export function setDecayConfig(
       collection: STORAGE_KEY_DECAY_CONFIG,
       key: STORAGE_KEY_DECAY_CONFIG,
       userId: '00000000-0000-0000-0000-000000000000',
-      value: JSON.stringify(config),
+      value: toStorageValue(config),
     },
   ]);
 
@@ -493,7 +493,10 @@ export async function getPlayerLastActive(nk: Runtime.Nakama, playerId: string):
     ]);
 
     if (storage.length > 0 && storage[0].value) {
-      const data = JSON.parse(storage[0].value) as Record<string, unknown>;
+      const data = JSON.parse(getStorageRawValue(storage[0].value) ?? '') as Record<
+        string,
+        unknown
+      >;
       return (data.last_active as number) || (data.last_match_time as number) || 0;
     }
   } catch {
@@ -515,7 +518,7 @@ export function updatePlayerLastActive(nk: Runtime.Nakama, playerId: string): vo
       collection: STORAGE_KEY_PLAYER_LAST_ACTIVE,
       key: playerId,
       userId: playerId,
-      value: JSON.stringify({ last_active: Date.now() }),
+      value: toStorageValue({ last_active: Date.now() }),
     },
   ]);
 }
@@ -536,7 +539,7 @@ export async function getSeasonArchive(nk: Runtime.Nakama): Promise<Record<strin
       },
     ]);
     if (storage.length > 0 && storage[0].value) {
-      return JSON.parse(storage[0].value);
+      return JSON.parse(getStorageRawValue(storage[0].value) ?? '');
     }
   } catch {
     // Silently return empty object if storage read fails
@@ -564,7 +567,10 @@ async function getPlayerUsername(nk: Runtime.Nakama, playerId: string): Promise<
     ]);
 
     if (storage.length > 0 && storage[0].value) {
-      const data = JSON.parse(storage[0].value) as Record<string, unknown>;
+      const data = JSON.parse(getStorageRawValue(storage[0].value) ?? '') as Record<
+        string,
+        unknown
+      >;
       return (data.username as string) || (data.display_name as string) || 'Unknown';
     }
   } catch {

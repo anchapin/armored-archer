@@ -51,7 +51,7 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Counter Source
 
 ```bash
-# updateActiveUsersCount in metrics.ts:592 feeds the gauge
+# updateActiveUsersCount in metrics.ts:390 feeds the gauge
 grep -n "updateActiveUsersCount\|armored_archer_rate_limit_active_users" \
   backend/src/modules/metrics.ts | head -15
 
