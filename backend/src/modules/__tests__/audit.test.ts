@@ -1,4 +1,4 @@
-import { logAudit, rpcQueryAuditLogs } from '../audit';
+import { logAudit, rpcQueryAuditLogs, recordAuditLogPersistFailure } from '../audit';
 
 // Mock config and logger
 jest.mock('../../config', () => ({
@@ -20,6 +20,19 @@ jest.mock('../../config/logger', () => ({
     debug: jest.fn(),
   },
 }));
+
+// Issue #1133: audit.ts declares its own persist-failure Counter locally
+// (intentionally — see the comment in audit.ts — adding it to metrics.ts
+// would close the audit ↔ admin_auth ↔ metrics import cycle). Mock
+// prom-client so the Counter is observable without booting a real registry.
+jest.mock('prom-client', () => {
+  const inc = jest.fn();
+  return {
+    Counter: jest.fn().mockImplementation(() => ({ inc })),
+    // Expose the shared `inc` so tests can assert on it.
+    __mockCounterInc: inc,
+  };
+});
 
 describe('logAudit', () => {
   let mockNk: any;
@@ -67,6 +80,9 @@ describe('logAudit', () => {
   it('handles storageWrite failure gracefully', () => {
     // Import the logger after mocks are set up
     const { logger } = require('../../config/logger');
+    // Capture the mocked Counter `inc` so we can assert the side-channel
+    // (issue #1133) increments without booting a real Prometheus registry.
+    const { __mockCounterInc: inc } = require('prom-client') as { __mockCounterInc: jest.Mock };
 
     mockNk.storageWrite = jest.fn(() => {
       throw new Error('DB error');
@@ -74,6 +90,27 @@ describe('logAudit', () => {
 
     expect(() => logAudit(mockNk, 'user', null, 'test', 'res', {}, 'success')).not.toThrow();
     expect(logger.error).toHaveBeenCalledWith('Failed to write audit log:', expect.any(Error));
+    // Issue #1133: the failure must surface (boolean=false) AND increment the
+    // side-channel counter so non-critical callers that ignore the return
+    // value still leave a paper trail.
+    expect(logAudit(mockNk, 'user', null, 'test', 'res', {}, 'success')).toBe(false);
+    expect(inc).toHaveBeenCalled();
+  });
+
+  it('returns true on successful persist (issue #1133)', () => {
+    expect(logAudit(mockNk, 'user', null, 'test', 'res', {}, 'success')).toBe(true);
+  });
+
+  it('does not increment the persist-failure counter on success', () => {
+    const { __mockCounterInc: inc } = require('prom-client') as { __mockCounterInc: jest.Mock };
+    inc.mockClear();
+    expect(logAudit(mockNk, 'user', null, 'test', 'res', {}, 'success')).toBe(true);
+    expect(inc).not.toHaveBeenCalled();
+  });
+
+  it('exposes recordAuditLogPersistFailure for callers that need to mark a drop explicitly', () => {
+    // Smoke-test the public API so future refactors don't silently break it.
+    expect(() => recordAuditLogPersistFailure()).not.toThrow();
   });
 
   it('generates unique keys for each log entry', () => {

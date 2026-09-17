@@ -2438,7 +2438,14 @@ function processMatchResult(
       match.match_id,
       error
     );
-    logAudit(
+    // Issue #1133: this logAudit is the ONLY durable reconciliation signal
+    // for a half-applied settlement. We must know whether it actually landed
+    // so the reconciliation dashboard / client can distinguish "audit was
+    // recorded" from "audit was silently dropped while the half-applied
+    // grant sits in storage". `audit_persisted` is absent when true (so the
+    // happy-path response shape stays identical to issue #1078's contract)
+    // and present-and-false when the write threw.
+    const auditPersisted = logAudit(
       nk,
       ctx.userId,
       ctx.ipAddress ?? null,
@@ -2462,6 +2469,7 @@ function processMatchResult(
       winner: request.winner_id,
       end_reason: match.end_reason,
       settled_at: match.settled_at,
+      ...(auditPersisted ? {} : { audit_persisted: false }),
     });
   }
 }
