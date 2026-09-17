@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="13" failures="0" errors="0" time="4.293">
+  <testsuite name="Performance Smoke Tests" errors="0" failures="0" skipped="12" timestamp="2026-09-17T20:53:57" time="4.055" tests="13">
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Response Time Tests get_player_rank should meet response time targets" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Response Time Tests get_player_stats should meet response time targets" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Response Time Tests get_inventory should meet response time targets" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Response Time Tests get_currency should meet response time targets" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Response Time Tests get_season_info should meet response time targets" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Response Time Tests list_matches should meet response time targets" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Concurrent User Tests should handle 10 concurrent users" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Concurrent User Tests should handle concurrent different endpoints" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Sustained Load Tests should maintain performance under sustained load" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Performance Regression Detection should detect response time anomalies" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Memory and Resource Tests should not show memory growth under load" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Performance Summary should generate performance report" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="tests/integration/performance_smoke.test.ts" name="Performance Smoke Tests &gt; Stage Completion RTT Budget (issue #1135) rpcStageComplete p99 should stay under 100ms with a large player profile" time="1.521">
+    </testcase>
+  </testsuite>
+</testsuites>

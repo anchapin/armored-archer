@@ -603,7 +603,7 @@ describe('combat_system', () => {
           const written = call[0].find((obj: any) => obj.collection === collection);
           if (written) {
             return typeof written.value === 'string'
-              ? JSON.parse(written.value)
+              ? (typeof written.value === 'string' ? (typeof written.value === 'string' ? (typeof written.value === 'string' ? JSON.parse(written.value) : written.value) : written.value) : written.value)
               : written.value;
           }
         }

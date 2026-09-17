@@ -237,12 +237,18 @@ export function toStorageValue(value: unknown): Record<string, unknown> {
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         return parsed as Record<string, unknown>;
       }
+      // Stringified array/number/bool — wrap in an envelope so goja's
+      // String/Array marshal path produces a non-undefined top-level value.
+      return { value: parsed };
     } catch {
       // fall through
     }
     return { value };
   }
-  if (value && typeof value === 'object' && !Array.isArray(value)) {
+  if (value && typeof value === 'object') {
+    // Objects AND arrays are valid JSON values (goja's storageWrite accepts
+    // both). Pass arrays through unwrapped; an unwrapped object passed
+    // through becomes the top-level record.
     return value as Record<string, unknown>;
   }
   return { value: value as unknown };

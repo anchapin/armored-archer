@@ -6015,7 +6015,7 @@ describe('store', () => {
         .flatMap((call: any) => call[0] as any[])
         .filter((obj: any) => obj.collection === 'audit_logs')
         .map((obj: any) =>
-          typeof obj.value === 'string' ? JSON.parse(obj.value) : obj.value
+          typeof obj.value === 'string' ? (typeof obj.value === 'string' ? (typeof obj.value === 'string' ? (typeof obj.value === 'string' ? JSON.parse(obj.value) : obj.value) : obj.value) : obj.value) : obj.value
         );
     }
 
