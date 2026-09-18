@@ -15,6 +15,7 @@ import {
   applyDailyDecay,
   getPlayerRank,
   getTopPlayers,
+  getPlayersLastActiveBatch,
   getSeasonHistory,
   recordSeasonCompletion,
 } from '../season_leaderboard';
@@ -578,6 +579,119 @@ describe('season_leaderboard_core', () => {
 
       expect(rankings[0].days_inactive).toBeGreaterThanOrEqual(19000); // since epoch
       expect(rankings[0].decayed_rating).toBeGreaterThanOrEqual(1000); // decayed to floor-ish
+    });
+  });
+
+  // ============================================
+  // N+1 batched-storageRead regression guard (issue #1089)
+  //
+  // The leaderboard page is a hot path: rendering N entries previously
+  // triggered N round-trips to the `player_last_active` collection
+  // (one `getPlayerLastActive` call per row). Each test below wraps the
+  // mock's `storageRead` in a spy and asserts that, regardless of how many
+  // players the caller asked about, exactly one batched read targets the
+  // `player_last_active` collection. A future refactor that re-introduces
+  // the per-player fan-out will flip the assertion below.
+  // ============================================
+  describe('issue #1089 — batched player_last_active storageRead', () => {
+    /** Number of `storageRead` calls in this test that targeted the
+     *  `player_last_active` collection (the only collection that was
+     *  fanning out before the fix). */
+    const countLastActiveReads = (
+      spy: jest.SpyInstance
+    ): { calls: number; largestBatch: number } => {
+      let calls = 0;
+      let largestBatch = 0;
+      for (const call of spy.mock.calls) {
+        const queries = call[0] as { collection: string }[];
+        const batchSize = queries.filter((q) => q.collection === 'player_last_active').length;
+        if (batchSize > 0) {
+          calls += 1;
+          if (batchSize > largestBatch) largestBatch = batchSize;
+        }
+      }
+      return { calls, largestBatch };
+    };
+
+    it('getTopPlayers issues exactly one player_last_active storageRead for 100+ players', async () => {
+      // Seed 120 players — well past the page-100 fan-out pain point.
+      const playerCount = 120;
+      records = Array.from({ length: playerCount }, (_, i) =>
+        makeRecord(`player-${i}`, 2000 - i, {}, i + 1)
+      );
+      records.forEach((_, i) => setPlayerActive(`player-${i}`, i % 30));
+
+      const storageSpy = jest.spyOn(mockNk, 'storageRead');
+
+      const rankings = await getTopPlayers(mockNk, SEASON_ID, null, 500);
+
+      expect(rankings).toHaveLength(playerCount);
+      const { calls, largestBatch } = countLastActiveReads(storageSpy);
+      expect(calls).toBe(1);
+      expect(largestBatch).toBe(playerCount);
+      storageSpy.mockRestore();
+    });
+
+    it('applyDailyDecay issues exactly one player_last_active storageRead across the leaderboard', async () => {
+      const playerCount = 150;
+      records = Array.from({ length: playerCount }, (_, i) =>
+        makeRecord(`decay-${i}`, 2000, {}, i + 1)
+      );
+      records.forEach((_, i) => setPlayerActive(`decay-${i}`, 15));
+
+      const storageSpy = jest.spyOn(mockNk, 'storageRead');
+
+      await applyDailyDecay(mockNk, SEASON_ID, mockLogger);
+
+      const { calls, largestBatch } = countLastActiveReads(storageSpy);
+      expect(calls).toBe(1);
+      expect(largestBatch).toBe(playerCount);
+      storageSpy.mockRestore();
+    });
+
+    it('getPlayerRank issues exactly one player_last_active storageRead against the full comparison set', async () => {
+      // Bigger comparison set so the N+1 pattern would generate
+      // many storageRead calls.
+      const competitorCount = 200;
+      records = Array.from({ length: competitorCount }, (_, i) =>
+        makeRecord(`rival-${i}`, 1900 - i, {}, i + 1)
+      );
+      records.push(makeRecord('subject', 1800, {}, competitorCount + 1));
+      records.forEach((_, i) => setPlayerActive(`rival-${i}`, 0));
+      setPlayerActive('subject', 0);
+
+      const storageSpy = jest.spyOn(mockNk, 'storageRead');
+
+      const result = await getPlayerRank(mockNk, SEASON_ID, 'subject');
+
+      expect(result).not.toBeNull();
+      const { calls, largestBatch } = countLastActiveReads(storageSpy);
+      // The batch must be a single call covering every ownerId the rank
+      // computation consults (target + every competitor) — exactly one
+      // player_last_active read, regardless of comparison-set size.
+      expect(calls).toBe(1);
+      expect(largestBatch).toBe(competitorCount + 1);
+      storageSpy.mockRestore();
+    });
+
+    it('getPlayersLastActiveBatch collapses N inputs into one storageRead', async () => {
+      const playerCount = 250;
+      const ids = Array.from({ length: playerCount }, (_, i) => `batch-${i}`);
+      ids.forEach((id) => setPlayerActive(id, 0));
+
+      const storageSpy = jest.spyOn(mockNk, 'storageRead');
+
+      const result = await getPlayersLastActiveBatch(mockNk, ids);
+
+      const { calls, largestBatch } = countLastActiveReads(storageSpy);
+      expect(calls).toBe(1);
+      expect(largestBatch).toBe(playerCount);
+
+      // And the helper still returns a usable map (every requested id
+      // is present, regardless of whether the storage row existed).
+      expect(result.size).toBe(playerCount);
+      expect(result.get('batch-0')).toBeGreaterThan(0);
+      storageSpy.mockRestore();
     });
   });
 });
