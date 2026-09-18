@@ -45,6 +45,10 @@ jest.mock('../../config/logger', () => ({
   },
 }));
 
+// Pull the mocked logger so we can spy on the catch-block logging that
+// issue #1106 requires us to preserve.
+import { logger as mockModuleLogger } from '../../config/logger';
+
 describe('notifications_rpc', () => {
   let registeredRpcs: string[] = [];
   let capturedHandlers: Map<string, Function> = new Map();
@@ -703,6 +707,192 @@ describe('notifications_rpc', () => {
 
       const parsed = JSON.parse(result);
       expect(parsed.success).toBe(false);
+    });
+  });
+
+  // Issue #1106: every catch block must return a stable error_code + generic
+  // safe message; the full internal error must be logged via logger.error
+  // (never leaked via String(error) into the response body).
+  describe('safe error responses (issue #1106)', () => {
+    // Synthetic "internal" failures: SQL fragment, TypeError details, and a
+    // connection string — none of these may reach the client.
+    const SECRET_FRAGMENT = 'SECRET_SQL_FRAGMENT_DO_NOT_LEAK';
+    const SECRET_TYPE_ERROR = 'TypeError: cannot read property "dsn" of undefined';
+    const SECRET_DSN = 'postgres://user:hunter2@db.example.com:5432/nakama';
+
+    // Each row targets one RPC, the dependency it stubs, the payload that
+    // exercises the happy-path validation, and the expected stable error_code.
+    const cases: Array<{
+      rpc: string;
+      dep:
+        | 'registerDeviceToken'
+        | 'removeDeviceToken'
+        | 'getNotificationPreferences'
+        | 'updateNotificationPreferences'
+        | 'scheduleNotification'
+        | 'cancelScheduledNotification';
+      payload: string;
+      errorCode: string;
+    }> = [
+      {
+        rpc: 'armored_archer_register_device_token',
+        dep: 'registerDeviceToken',
+        payload: JSON.stringify({ deviceToken: 'tok', platform: 'ios' }),
+        errorCode: 'NOTIFICATION_PERSISTENCE_FAILED',
+      },
+      {
+        rpc: 'armored_archer_remove_device_token',
+        dep: 'removeDeviceToken',
+        payload: JSON.stringify({ deviceToken: 'tok' }),
+        errorCode: 'NOTIFICATION_PERSISTENCE_FAILED',
+      },
+      {
+        rpc: 'armored_archer_get_notification_preferences',
+        dep: 'getNotificationPreferences',
+        payload: '{}',
+        errorCode: 'NOTIFICATION_PERSISTENCE_FAILED',
+      },
+      {
+        rpc: 'armored_archer_update_notification_preferences',
+        dep: 'updateNotificationPreferences',
+        payload: JSON.stringify({ dailyRewardsEnabled: false }),
+        errorCode: 'NOTIFICATION_PERSISTENCE_FAILED',
+      },
+      {
+        rpc: 'armored_archer_schedule_notification',
+        dep: 'scheduleNotification',
+        payload: JSON.stringify({ type: 'daily_reward', scheduledFor: '2024-06-15T10:00:00Z' }),
+        errorCode: 'NOTIFICATION_DISPATCH_FAILED',
+      },
+      {
+        rpc: 'armored_archer_cancel_notification',
+        dep: 'cancelScheduledNotification',
+        payload: JSON.stringify({ notificationId: 'notif-1' }),
+        errorCode: 'NOTIFICATION_DISPATCH_FAILED',
+      },
+    ];
+
+    test.each(cases)(
+      '$rpc -> returns stable error_code and does not leak internal error',
+      async ({ rpc, dep, payload, errorCode }) => {
+        const thrown = new Error(
+          `${SECRET_TYPE_ERROR} ... SELECT * FROM users WHERE dsn='${SECRET_DSN}' ... ${SECRET_FRAGMENT}`
+        );
+        // Resolve the mocked module-fn by its real export name.
+        const fn = jest.requireMock('../notifications')[dep] as jest.Mock;
+        fn.mockRejectedValueOnce(thrown);
+
+        const mockInitializer = createMockInitializer();
+        registerNotificationEndpoints(mockInitializer);
+        const handler = getHandler(rpc);
+
+        const rpcLogger = { error: jest.fn(), info: jest.fn(), warn: jest.fn(), debug: jest.fn() };
+        const result = await handler({ userId: 'user-123' }, rpcLogger, {}, payload);
+
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(false);
+        expect(parsed.error_code).toBe(errorCode);
+        expect(parsed.rpc_name).toBe(rpc);
+        expect(parsed.error).toBe('Internal error; see server logs');
+
+        const serialized = JSON.stringify(parsed);
+        expect(serialized).not.toContain(SECRET_FRAGMENT);
+        expect(serialized).not.toContain(SECRET_DSN);
+        expect(serialized).not.toContain('TypeError');
+        expect(serialized).not.toContain('SELECT * FROM users');
+
+        // Server-side log must contain the full error so ops can still trace it.
+        expect(rpcLogger.error).toHaveBeenCalledTimes(1);
+        const [format, ctxArg] = rpcLogger.error.mock.calls[0];
+        expect(format).toContain(rpc);
+        expect(format).toContain('failed');
+        expect(ctxArg).toBeDefined();
+        expect(ctxArg.error).toBe(thrown);
+      }
+    );
+
+    test('armored_archer_get_notification_status (dbQuery throw) is also safe', async () => {
+      const thrown = new Error(
+        `connection failed: ${SECRET_DSN} — ${SECRET_FRAGMENT}`
+      );
+      const mockInitializer = createMockInitializer();
+      registerNotificationEndpoints(mockInitializer);
+      const handler = getHandler('armored_archer_get_notification_status');
+
+      const mockNk = {
+        dbQuery: jest.fn().mockRejectedValue(thrown),
+      };
+      const rpcLogger = { error: jest.fn(), info: jest.fn(), warn: jest.fn(), debug: jest.fn() };
+
+      const result = await handler({ userId: 'user-123' }, rpcLogger, mockNk, '{}');
+
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('NOTIFICATION_DISPATCH_FAILED');
+      expect(parsed.rpc_name).toBe('armored_archer_get_notification_status');
+      expect(parsed.error).toBe('Internal error; see server logs');
+
+      const serialized = JSON.stringify(parsed);
+      expect(serialized).not.toContain(SECRET_DSN);
+      expect(serialized).not.toContain(SECRET_FRAGMENT);
+      expect(serialized).not.toContain('connection failed');
+
+      expect(rpcLogger.error).toHaveBeenCalledTimes(1);
+      const [, ctxArg] = rpcLogger.error.mock.calls[0];
+      expect(ctxArg.error).toBe(thrown);
+    });
+
+    test('JSON.parse error path is also safe (no String(SyntaxError) bleed)', async () => {
+      // SyntaxError is a built-in thrown value with a default toString() of
+      // "Unexpected token ..." that previously leaked via String(error).
+      const mockInitializer = createMockInitializer();
+      registerNotificationEndpoints(mockInitializer);
+      const handler = getHandler('armored_archer_register_device_token');
+
+      const rpcLogger = { error: jest.fn(), info: jest.fn(), warn: jest.fn(), debug: jest.fn() };
+      const result = await handler(
+        { userId: 'user-123' },
+        rpcLogger,
+        {},
+        '<<not-json-at-all>>' // also includes "<" chars to stress the safe path
+      );
+
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(false);
+      expect(parsed.error_code).toBe('NOTIFICATION_PERSISTENCE_FAILED');
+      expect(parsed.rpc_name).toBe('armored_archer_register_device_token');
+      expect(parsed.error).toBe('Internal error; see server logs');
+
+      // The SyntaxError.toString() includes "Unexpected token" — must not appear.
+      const serialized = JSON.stringify(parsed);
+      expect(serialized).not.toContain('Unexpected token');
+      expect(serialized).not.toContain('not-json-at-all');
+
+      // Server-side log still got the actual SyntaxError so ops can see it.
+      expect(rpcLogger.error).toHaveBeenCalledTimes(1);
+      const [, ctxArg] = rpcLogger.error.mock.calls[0];
+      expect(ctxArg.error).toBeInstanceOf(SyntaxError);
+    });
+
+    test('module-level logger still receives safeErrorResponse calls (sanity)', () => {
+      // Defensive: the file-local helper logs through the handler-scoped
+      // logger parameter, but make sure we didn't accidentally route through
+      // the module-level logger in a way that would double-log.
+      (mockModuleLogger as unknown as { error: jest.Mock }).error.mockClear();
+      mockGetNotificationPreferences.mockRejectedValueOnce(new Error('boom'));
+      const mockInitializer = createMockInitializer();
+      registerNotificationEndpoints(mockInitializer);
+      const handler = getHandler('armored_archer_get_notification_preferences');
+      return handler(
+        { userId: 'user-123' },
+        { error: jest.fn(), info: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+        {},
+        '{}'
+      ).then(() => {
+        // safeErrorResponse uses the handler-scoped logger, so the module
+        // logger should NOT have been called from inside the catch block.
+        expect((mockModuleLogger as unknown as { error: jest.Mock }).error).not.toHaveBeenCalled();
+      });
     });
   });
 });
