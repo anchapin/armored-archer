@@ -2293,4 +2293,278 @@ describe('combat_system', () => {
       expect(afterMiss - beforeMiss).toBe(1);
     });
   });
+
+  // Issue #1107: persistMatchResult failure must be surfaced at all three
+  // settlement call sites instead of being silently swallowed and reported
+  // as a successful match save. These three tests inject a dbQuery failure
+  // that mimics the production persist failure (DB outage, schema mismatch,
+  // quota) and assert (a) the RPC envelope carries PERSIST_FAILED,
+  // (b) no match_completed notification is sent, and (c) an audit_logs
+  // entry is recorded for ops correlation.
+  describe('persist failure surfaces PERSIST_FAILED (issue #1107)', () => {
+    const MATCH_RESULTS_INSERT = 'INSERT INTO match_results';
+
+    const buildActiveMatchState = (overrides?: Partial<MatchState>): MatchState => ({
+      match_id: 'match-123',
+      turn: 1,
+      current_turn_user_id: 'creator-user',
+      creator_id: 'creator-user',
+      opponent_id: 'opponent-user',
+      creator_health: 100,
+      opponent_health: 1, // one hit KO for the health_zero test
+      creator_stats: {
+        level: 5,
+        xp: 0,
+        stats: { attack: 100, defense: 15, dodge: 10, crit_rate: 10 },
+      },
+      opponent_stats: {
+        level: 5,
+        xp: 0,
+        stats: { attack: 20, defense: 1, dodge: 0, crit_rate: 10 },
+      },
+      status: 'active',
+      log: [],
+      last_turn_timestamp: Date.now(),
+      turn_timeout_ms: 30 * 60 * 1000,
+      consecutive_timeouts: 0,
+      ...overrides,
+    });
+
+    const wireStorage = (match: PvPMatch, matchState: MatchState): void => {
+      const mockStorage = new Map<string, string>();
+      mockStorage.set(`pvp_matches:match-123`, JSON.stringify(match));
+      mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
+
+      mockNk.storageRead = jest.fn((objects: any[]) =>
+        objects
+          .map((obj) => {
+            const val =
+              mockStorage.get(`${obj.collection}:${obj.key}`) ??
+              mockStorage.get(obj.key);
+            if (!val) return null;
+            return { collection: obj.collection, key: obj.key, value: val };
+          })
+          .filter(Boolean)
+      );
+      mockNk.storageWrite = jest.fn((objects: any[]) => {
+        objects.forEach((obj) => {
+          mockStorage.set(`${obj.collection}:${obj.key}`, obj.value);
+        });
+      });
+    };
+
+    const failMatchResultsInsert = (
+      beforeStorage: Map<string, string>
+    ): jest.Mock => {
+      // Capture the snapshot of storage so the mock can detect new writes
+      // (used to assert audit_logs was written). dbQuery throws on the
+      // match_results INSERT specifically — all other queries fall through
+      // to the default jest.fn() (which is what the real mock would have
+      // returned, an empty array).
+      const writtenKeysBefore = new Set(beforeStorage.keys());
+      const dbQuery = jest.fn((query: string) => {
+        if (query.includes(MATCH_RESULTS_INSERT)) {
+          throw new Error('simulated DB outage: connection refused');
+        }
+        return [];
+      });
+      mockNk.dbQuery = dbQuery as unknown as typeof mockNk.dbQuery;
+      return dbQuery;
+    };
+
+    const findAuditWrite = (
+      actionName: string,
+      collection = 'audit_logs'
+    ): Record<string, any> | undefined => {
+      const calls = (mockNk.storageWrite as jest.Mock).mock.calls as any[][];
+      for (const call of calls) {
+        const written = call[0].find((obj: any) => obj.collection === collection);
+        if (!written) continue;
+        const value =
+          typeof written.value === 'string' ? JSON.parse(written.value) : written.value;
+        if (value?.action === actionName) return value;
+      }
+      return undefined;
+    };
+
+    it('rpcSubmitCombatAction health_zero path surfaces PERSIST_FAILED and audits the drop', async () => {
+      const match = createMockMatch({ status: 'active' });
+      const matchState = buildActiveMatchState();
+      wireStorage(match, matchState);
+
+      // Snapshot storage keys written by the wire helper so the audit
+      // detection only flags NEW writes from logAudit.
+      const beforeStorage = new Map<string, string>();
+      for (const [k, v] of (mockNk.storageRead as jest.Mock).mock.calls
+        .flat()
+        .filter(Boolean)
+        .map((r: any) => [`${r.collection}:${r.key}`, r.value])) {
+        beforeStorage.set(k, v);
+      }
+
+      const dbQuery = failMatchResultsInsert(beforeStorage);
+      mockNk.notificationSend = jest.fn();
+
+      const result = await rpcSubmitCombatAction(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({
+          match_id: 'match-123',
+          action_type: 'shoot',
+          angle: 1.5,
+          power: 1.0,
+        })
+      );
+      const parsed = JSON.parse(result);
+
+      // Envelope carries PERSIST_FAILED — the player must know the match
+      // settlement did not land so they can retry rather than trusting a
+      // silent success.
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBe('Match settlement could not be saved');
+      expect(parsed.error_code).toBe('PERSIST_FAILED');
+
+      // The persist call was attempted (and threw) — dbQuery was reached.
+      const matchResultsCalls = dbQuery.mock.calls.filter((c) =>
+        (c[0] as string).includes(MATCH_RESULTS_INSERT)
+      );
+      expect(matchResultsCalls.length).toBeGreaterThan(0);
+
+      // No match_completed notification was sent — players would otherwise
+      // be told the match was permanently saved when the row never landed.
+      const notificationCalls = (mockNk.notificationSend as jest.Mock).mock
+        .calls as any[][];
+      const matchCompleted = notificationCalls.find((c) =>
+        (c[1] as any)?.subtopic?.includes('match_completed')
+      );
+      expect(matchCompleted).toBeUndefined();
+
+      // Audit log was written so ops can correlate the DB error stream
+      // with the dropped settlement (issue #1107 #1133).
+      const audit = findAuditWrite('persist_match_result_failed');
+      expect(audit).toBeDefined();
+      expect(audit.action).toBe('persist_match_result_failed');
+      expect(audit.resource).toBe('match_results');
+      expect(audit.result).toBe('failure');
+      expect(audit.details.match_id).toBe('match-123');
+      expect(audit.details.end_reason).toBe('health_zero');
+    });
+
+    it('handleTurnTimeout auto-forfeit path surfaces PERSIST_FAILED and audits the drop', async () => {
+      // Trigger the auto-forfeit branch: consecutive_timeouts=1 means the
+      // next turn timer expiry pushes us over MAX_CONSECUTIVE_TIMEOUTS (2),
+      // which is the only branch that calls persistMatchResult.
+      const match = createMockMatch({ status: 'active' });
+      const matchState = buildActiveMatchState({
+        last_turn_timestamp: Date.now() - 31 * 60 * 1000,
+        consecutive_timeouts: 1,
+      });
+      wireStorage(match, matchState);
+
+      const beforeStorage = new Map<string, string>();
+      for (const [k, v] of (mockNk.storageRead as jest.Mock).mock.calls
+        .flat()
+        .filter(Boolean)
+        .map((r: any) => [`${r.collection}:${r.key}`, r.value])) {
+        beforeStorage.set(k, v);
+      }
+
+      const dbQuery = failMatchResultsInsert(beforeStorage);
+      mockNk.notificationSend = jest.fn();
+
+      const result = await rpcSubmitCombatAction(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({
+          match_id: 'match-123',
+          action_type: 'shoot',
+          angle: 1.5,
+        })
+      );
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBe('Match settlement could not be saved');
+      expect(parsed.error_code).toBe('PERSIST_FAILED');
+
+      // Forbid the old happy-path shape: we must NOT tell the client the
+      // match was forfeited when the DB row never landed.
+      expect(parsed.forfeit).toBeUndefined();
+      expect(parsed.winner).toBeUndefined();
+
+      const matchResultsCalls = dbQuery.mock.calls.filter((c) =>
+        (c[0] as string).includes(MATCH_RESULTS_INSERT)
+      );
+      expect(matchResultsCalls.length).toBeGreaterThan(0);
+
+      const notificationCalls = (mockNk.notificationSend as jest.Mock).mock
+        .calls as any[][];
+      const matchCompleted = notificationCalls.find((c) =>
+        (c[1] as any)?.subtopic?.includes('match_completed')
+      );
+      expect(matchCompleted).toBeUndefined();
+
+      const audit = findAuditWrite('persist_match_result_failed');
+      expect(audit).toBeDefined();
+      expect(audit.action).toBe('persist_match_result_failed');
+      expect(audit.details.end_reason).toBe('timeout');
+    });
+
+    it('rpcPlayerDisconnect surfaces PERSIST_FAILED and audits the drop', async () => {
+      const match = createMockMatch({ status: 'active' });
+      const matchState = buildActiveMatchState({
+        // Restore health so the health_zero path doesn't fire — we want
+        // the disconnect-only settlement path.
+        opponent_health: 50,
+      });
+      wireStorage(match, matchState);
+
+      const beforeStorage = new Map<string, string>();
+      for (const [k, v] of (mockNk.storageRead as jest.Mock).mock.calls
+        .flat()
+        .filter(Boolean)
+        .map((r: any) => [`${r.collection}:${r.key}`, r.value])) {
+        beforeStorage.set(k, v);
+      }
+
+      const dbQuery = failMatchResultsInsert(beforeStorage);
+      mockNk.notificationSend = jest.fn();
+
+      const result = await rpcPlayerDisconnect(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({ match_id: 'match-123', reason: 'disconnect' })
+      );
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(false);
+      expect(parsed.error).toBe('Match settlement could not be saved');
+      expect(parsed.error_code).toBe('PERSIST_FAILED');
+
+      // Forbid the old happy-path shape.
+      expect(parsed.forfeit).toBeUndefined();
+      expect(parsed.winner).toBeUndefined();
+
+      const matchResultsCalls = dbQuery.mock.calls.filter((c) =>
+        (c[0] as string).includes(MATCH_RESULTS_INSERT)
+      );
+      expect(matchResultsCalls.length).toBeGreaterThan(0);
+
+      const notificationCalls = (mockNk.notificationSend as jest.Mock).mock
+        .calls as any[][];
+      const matchCompleted = notificationCalls.find((c) =>
+        (c[1] as any)?.subtopic?.includes('match_completed')
+      );
+      expect(matchCompleted).toBeUndefined();
+
+      const audit = findAuditWrite('persist_match_result_failed');
+      expect(audit).toBeDefined();
+      expect(audit.action).toBe('persist_match_result_failed');
+      expect(audit.details.end_reason).toBe('disconnect');
+      expect(audit.details.forfeiting_user_id).toBe('creator-user');
+    });
+  });
 });
