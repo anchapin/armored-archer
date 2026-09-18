@@ -13,6 +13,17 @@ The project implements alerting using Prometheus Alertmanager to monitor the gam
 - [x] Configure notification channels
 - [x] Set up on-call rotation or escalation policies
 
+## Planned / Disabled Rules (issue #1092)
+
+Some rules in `backend/alerts.yml` reference metrics that the backend **does not yet emit**. They are marked with the convention documented at the top of that file:
+
+- The rule body carries `disabled: true` (Prometheus 3.0+ honours it natively; current `prom/prometheus:v2.47` ignores the field, so each disabled rule also has a safe `expr: vector(0) > 1` fallback).
+- Preceding YAML comments list `__planned__: <metric_name>`, `__issue__: #1093`, and a `__restore__:` hint so the original PromQL is preserved for the day the metric ships.
+
+This keeps the runbook link, summary, and intended threshold intact while the metric is missing — silent dashboards + stale thresholds was the failure mode #1092 set out to fix. The umbrella tracking issue is **#1093** (planned metrics expansion). See the inline comments in `backend/alerts.yml` for per-rule rationale.
+
+Rows in the tables below marked **[DISABLED — planned #1093]** belong to this category and will not fire until #1093 lands.
+
 ## Architecture
 
 ```
@@ -52,31 +63,31 @@ Defines the on-call rotation schedule, escalation procedures, and response SLAs.
 |-------|--------|------------|-----|-------------|
 | GameServerDown | `up{job="nakama"}` | == 0 | 1m | Nakama server unavailable |
 | DatabaseDown | `up{job="postgres"}` | == 0 | 1m | PostgreSQL unavailable |
-| HighErrorRate | error_rate | > 5% | 2m | API error rate too high |
-| DatabaseConnectionPoolExhausted | connections_active/connections_max | > 90% | 2m | DB pool nearly full |
-| PaymentProcessingFailures | payment_failures_rate | > 0 | 1m | Payment failures detected |
-| SuspiciousLoginActivity | failed_logins_rate | > 10/min | 2m | Possible brute force attack |
+| HighErrorRate | `armored_archer_rpc_errors_total / armored_archer_rpc_calls_total` | > 5% | 2m | API error rate too high |
+| DatabaseConnectionPoolExhausted | `nakama_database_connections_active / nakama_database_connections_max` | > 90% | 2m | DB pool nearly full |
+| **PaymentProcessingFailures** [DISABLED — planned #1093] | `armored_archer_payment_failures_total` (planned) | > 0 | 1m | Payment failures detected |
+| **SuspiciousLoginActivity** [DISABLED — planned #1093] | `armored_archer_failed_logins_total` (planned) | > 10/min | 2m | Possible brute force attack |
 
 ### Warning Alerts (Attention Required)
 
 | Alert | Metric | Threshold | For | Description |
 |-------|--------|------------|-----|-------------|
-| HighLatency | p95_latency | > 2s | 3m | API latency too high |
-| HighMemoryUsage | memory_usage | > 85% | 5m | Server memory pressure |
-| HighCPUUsage | cpu_usage | > 80% | 5m | Server CPU pressure |
-| DiskSpaceLow | disk_available | < 15% | 5m | Low disk space |
-| ActiveUsersAnomaly | user_deviation | > 50% | 10m | Unusual user pattern |
-| MatchmakingQueueBuilding | queue_size | > 100 | 5m | Players waiting too long |
-| SessionDurationAnomaly | session_deviation | > 30% | 30m | Unusual session pattern |
-| UnusualAPICallPattern | request_rate | > 1000/min | 5m | Possible bot activity |
-| AntiCheatViolationSpike | violations_rate | > 5/min | 2m | New exploit detected |
+| HighLatency | p95 of `armored_archer_rpc_duration_seconds_bucket` | > 2s | 3m | API latency too high |
+| HighMemoryUsage | `node_memory_*` | > 85% | 5m | Server memory pressure |
+| HighCPUUsage | `node_cpu_seconds_total` | > 80% | 5m | Server CPU pressure |
+| DiskSpaceLow | `node_filesystem_*` | < 15% | 5m | Low disk space |
+| **ActiveUsersAnomaly** [DISABLED — planned #1093] | `armored_archer_active_users` (planned) | > 50% deviation | 10m | Unusual user pattern |
+| MatchmakingQueueBuilding | `armored_archer_match_queue_size` | > 100 | 5m | Players waiting too long |
+| SessionDurationAnomaly | `armored_archer_avg_session_duration` (recording rule) | > 30% deviation | 30m | Unusual session pattern |
+| UnusualAPICallPattern | `armored_archer_rpc_calls_total` | > 1000/min | 5m | Possible bot activity |
+| **AntiCheatViolationSpike** [DISABLED — planned #1093] | `armored_archer_anticheat_violations_total` (planned) | > 5/min | 2m | New exploit detected |
 
-### Info Alerts (Awareness)
+### Info Alerts (For Awareness)
 
 | Alert | Metric | Threshold | For | Description |
 |-------|--------|------------|-----|-------------|
-| LowRevenue | revenue_rate_24h | < $1/hr | 1h | Revenue below threshold |
-| ClientVersionMismatch | version_count | > 1 | 10m | Multiple client versions |
+| **LowRevenue** [DISABLED — planned #1093] | `armored_archer_revenue_cents_total` (planned) | < $1/hr | 1h | Revenue below threshold |
+| **ClientVersionMismatch** [DISABLED — planned #1093] | `armored_archer_active_users` (planned) | > 1 version | 10m | Multiple client versions |
 
 ## Notification Channels
 

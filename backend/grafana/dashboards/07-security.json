@@ -697,13 +697,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(armored_archer_failed_logins_total[5m]))",
-          "legendFormat": "failed logins",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         }
       ],
-      "title": "Failed Logins (5m rate)",
-      "type": "timeseries"
+      "title": "[DISABLED \u2014 planned: armored_archer_failed_logins_total] Failed Logins (5m rate)",
+      "type": "timeseries",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_failed_logins_total\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "datasource": {
@@ -789,13 +790,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (violation_type) (rate(armored_archer_anticheat_violations_total[5m]))",
-          "legendFormat": "{{violation_type}}",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         }
       ],
-      "title": "Anti-Cheat Violations (5m rate)",
-      "type": "timeseries"
+      "title": "[DISABLED \u2014 planned: armored_archer_anticheat_violations_total] Anti-Cheat Violations (5m rate)",
+      "type": "timeseries",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_anticheat_violations_total\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     }
   ]
 }

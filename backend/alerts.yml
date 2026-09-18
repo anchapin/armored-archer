@@ -6,6 +6,39 @@
 # backend/prometheus.yml (rule_files) via the compose mount
 # ./alerts.yml:/etc/prometheus/alerts.yml (backend/docker-compose.yml).
 # docs/runbooks/README.md mirrors this file's alerts 1:1 — update both together.
+#
+# ---------------------------------------------------------------------------
+# Planned-metric rule convention (issue #1092)
+# ---------------------------------------------------------------------------
+# Some rules in this file reference metrics that are NOT yet emitted by the
+# backend. Those rules are kept here so the intent + runbook link survive the
+# gap, but they are NEUTERED until the metric lands:
+#
+#   disabled: true   # Prometheus 3.0+ (issue #1092 tracking) honours this and
+#                    # skips the rule.  We are currently on prom/prometheus:v2.47
+#                    # (see backend/docker-compose.yml) which silently ignores
+#                    # `disabled`, so each planned rule ALSO ships a no-op expr
+#                    # (vector(0) > 1) so it never fires on Prometheus 2.47.
+#
+# Convention for a planned rule:
+#
+#   # __planned__: armored_archer_<metric_name> — short reason
+#   # __issue__:    #1093 (umbrella for planned metrics expansion)
+#   # __restore__:  Set disabled: false and replace expr with the documented
+#   #               original PromQL when #1093 ships the metric.
+#   - alert: SomeName
+#     disabled: true
+#     expr: vector(0) > 1
+#     for: 1m
+#     labels:
+#       ...
+#     annotations:
+#       summary: "[PLANNED] ..."
+#
+# Active rules — those whose every referenced metric is emitted by backend/src
+# or backend/metrics at HEAD — use the same YAML shape with disabled omitted
+# and the real expr.  Audit last run: see the per-rule rationale comments.
+# ---------------------------------------------------------------------------
 
 groups:
   - name: armoured_archer_critical
@@ -16,6 +49,8 @@ groups:
       # ============================================
 
       # Game Server Down
+      # Active: tracks the `up{job="nakama"}` gauge Prometheus exports for
+      # the nakama scrape job defined in backend/prometheus.yml.
       - alert: GameServerDown
         expr: up{job="nakama"} == 0
         for: 1m
@@ -29,6 +64,8 @@ groups:
           runbook_url: "https://github.com/heroiclabs/nakama#troubleshooting"
 
       # Database Down
+      # Active: tracks the `up{job="postgres"}` gauge for the postgres-exporter
+      # scrape job (backend/docker-compose.yml, issue #1183).
       - alert: DatabaseDown
         expr: up{job="postgres"} == 0
         for: 1m
@@ -42,8 +79,12 @@ groups:
           runbook_url: "https://www.postgresql.org/docs/current/static/app-pg-isready.html"
 
       # High Error Rate
+      # Active: armored_archer_rpc_errors_total is emitted (Counter, see
+      # backend/src/modules/metrics.ts). The denominator was renamed from
+      # armored_archer_rpc_requests_total -> armored_archer_rpc_calls_total
+      # (see backend/METRICS.md); the alert tracks call volume.
       - alert: HighErrorRate
-        expr: rate(armored_archer_rpc_errors_total[5m]) / rate(armored_archer_rpc_requests_total[5m]) > 0.05
+        expr: rate(armored_archer_rpc_errors_total[5m]) / rate(armored_archer_rpc_calls_total[5m]) > 0.05
         for: 2m
         labels:
           severity: critical
@@ -54,6 +95,8 @@ groups:
           description: "Error rate is above 5% for the past 5 minutes. Current: {{ $value | printf \"%.2f\" }}%"
 
       # Database Connection Pool Exhausted
+      # Active: nakama_database_connections_{active,max} are exported by the
+      # OSS Nakama 3.21 internal Prometheus registry.
       - alert: DatabaseConnectionPoolExhausted
         expr: nakama_database_connections_active / nakama_database_connections_max > 0.9
         for: 2m
@@ -66,16 +109,21 @@ groups:
           description: "Database connection usage is above 90%. Current: {{ $value | printf \"%.1f\" }}%"
 
       # Payment Processing Failure
+      # __planned__: armored_archer_payment_failures_total — payment failure counter
+      # __issue__:    #1093 (umbrella for planned metrics expansion)
+      # __restore__:  Set disabled: false and replace expr with:
+      #                  rate(armored_archer_payment_failures_total[5m]) > 0
       - alert: PaymentProcessingFailures
-        expr: rate(armored_archer_payment_failures_total[5m]) > 0
+        disabled: true
+        expr: vector(0) > 1
         for: 1m
         labels:
           severity: critical
           team: backend
           component: payments
         annotations:
-          summary: "Payment processing failures detected"
-          description: "Payment failures occurring. This directly impacts revenue. Check payment gateway status."
+          summary: "[PLANNED] Payment processing failures detected"
+          description: "Payment failures occurring. This directly impacts revenue. Check payment gateway status. (Awaiting armored_archer_payment_failures_total — see #1093.)"
 
   - name: armored_archer_warning
     interval: 30s
@@ -85,8 +133,12 @@ groups:
       # ============================================
 
       # High Latency
+      # Active: histogram renamed from
+      # armored_archer_rpc_request_duration_seconds -> armored_archer_rpc_duration_seconds
+      # (prom-client auto-exposes _bucket/_sum/_count for histograms, so the
+      # bucket series is armored_archer_rpc_duration_seconds_bucket).
       - alert: HighLatency
-        expr: histogram_quantile(0.95, rate(armored_archer_rpc_request_duration_seconds_bucket[5m])) > 2
+        expr: histogram_quantile(0.95, rate(armored_archer_rpc_duration_seconds_bucket[5m])) > 2
         for: 3m
         labels:
           severity: warning
@@ -97,6 +149,7 @@ groups:
           description: "95th percentile latency is above 2 seconds. Current: {{ $value | printf \"%.2f\" }}s"
 
       # High Memory Usage
+      # Active: node_exporter standard metrics (see backend/docker-compose.yml).
       - alert: HighMemoryUsage
         expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
         for: 5m
@@ -109,6 +162,7 @@ groups:
           description: "Memory usage is above 85%. Current: {{ $value | printf \"%.1f\" }}%"
 
       # High CPU Usage
+      # Active: node_exporter standard metrics.
       - alert: HighCPUUsage
         expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
         for: 5m
@@ -121,6 +175,7 @@ groups:
           description: "CPU usage is above 80%. Current: {{ $value | printf \"%.1f\" }}%"
 
       # Disk Space Low
+      # Active: node_exporter standard metrics.
       - alert: DiskSpaceLow
         expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.15
         for: 5m
@@ -133,20 +188,29 @@ groups:
           description: "Available disk space is below 15%. Current: {{ $value | printf \"%.1f\" }}%"
 
       # Active Users Spike/Drop
+      # __planned__: armored_archer_active_users — current DAU/CCU gauge
+      # __planned__: armored_archer_active_users_offset_1h — derived recording
+      #               rule (below) for the 1h-ago comparison.
+      # __issue__:    #1093 (umbrella for planned metrics expansion)
+      # __restore__:  Set disabled: false and replace expr with the
+      #               original PromQL once armored_archer_active_users exists.
       - alert: ActiveUsersAnomaly
-        expr: abs(armored_archer_active_users - armored_archer_active_users_offset_1h) / armored_archer_active_users_offset_1h > 0.5
+        disabled: true
+        expr: vector(0) > 1
         for: 10m
         labels:
           severity: warning
           team: backend
           component: analytics
         annotations:
-          summary: "Unusual active users pattern"
-          description: "Active users deviation is above 50% from 1 hour ago. Possible login issues or bot attack."
+          summary: "[PLANNED] Unusual active users pattern"
+          description: "Active users deviation is above 50% from 1 hour ago. Possible login issues or bot attack. (Awaiting armored_archer_active_users — see #1093.)"
 
       # Matchmaking Queue Building
+      # Active: metric renamed from armored_archer_matchmaking_queue_size to
+      # armored_archer_match_queue_size (see backend/src/modules/metrics.ts).
       - alert: MatchmakingQueueBuilding
-        expr: armored_archer_matchmaking_queue_size > 100
+        expr: armored_archer_match_queue_size > 100
         for: 5m
         labels:
           severity: warning
@@ -157,6 +221,10 @@ groups:
           description: "There are {{ $value }} players waiting in matchmaking queue for more than 5 minutes."
 
       # Session Duration Anomaly
+      # Active: depends on the recording rules `armored_archer_avg_session_duration`
+      # and `armored_archer_avg_session_duration_offset_24h` defined later in this
+      # file, both of which were updated to reference
+      # armored_archer_player_session_duration_seconds (the emitted histogram).
       - alert: SessionDurationAnomaly
         expr: abs(armored_archer_avg_session_duration - armored_archer_avg_session_duration_offset_24h) / armored_archer_avg_session_duration_offset_24h > 0.3
         for: 30m
@@ -176,28 +244,40 @@ groups:
       # ============================================
 
       # Low Revenue
+      # __planned__: armored_archer_revenue_cents_total — cumulative revenue
+      #               counter labelled by product/sku.
+      # __issue__:    #1093 (umbrella for planned metrics expansion)
+      # __restore__:  Set disabled: false and replace expr with:
+      #                  rate(armored_archer_revenue_cents_total[24h]) < 100
       - alert: LowRevenue
-        expr: rate(armored_archer_revenue_cents_total[24h]) < 100
+        disabled: true
+        expr: vector(0) > 1
         for: 1h
         labels:
           severity: info
           team: product
           component: analytics
         annotations:
-          summary: "Revenue below expected threshold"
-          description: "24-hour revenue rate is below $1/hour. Check for payment issues or player engagement."
+          summary: "[PLANNED] Revenue below expected threshold"
+          description: "24-hour revenue rate is below $1/hour. Check for payment issues or player engagement. (Awaiting armored_archer_revenue_cents_total — see #1093.)"
 
       # Version Mismatch Warning
+      # __planned__: armored_archer_active_users — labelled by client_version
+      #               for this rule's count by (client_version) aggregation.
+      # __issue__:    #1093 (umbrella for planned metrics expansion)
+      # __restore__:  Set disabled: false and replace expr with:
+      #                  count by (client_version) (armored_archer_active_users) > 10
       - alert: ClientVersionMismatch
-        expr: count by (client_version) (armored_archer_active_users) > 10
+        disabled: true
+        expr: vector(0) > 1
         for: 10m
         labels:
           severity: info
           team: frontend
           component: client
         annotations:
-          summary: "Multiple client versions in use"
-          description: "Version {{ $labels.client_version }} has {{ $value }} active users. Consider forcing updates."
+          summary: "[PLANNED] Multiple client versions in use"
+          description: "Version {{ $labels.client_version }} has {{ $value }} active users. Consider forcing updates. (Awaiting armored_archer_active_users — see #1093.)"
 
   - name: armored_archer_security
     interval: 30s
@@ -207,20 +287,28 @@ groups:
       # ============================================
 
       # Suspicious Login Activity
+      # __planned__: armored_archer_failed_logins_total — failed-login counter
+      #               labelled by reason (bad_password / unknown_user / …).
+      # __issue__:    #1093 (umbrella for planned metrics expansion)
+      # __restore__:  Set disabled: false and replace expr with:
+      #                  rate(armored_archer_failed_logins_total[5m]) > 10
       - alert: SuspiciousLoginActivity
-        expr: rate(armored_archer_failed_logins_total[5m]) > 10
+        disabled: true
+        expr: vector(0) > 1
         for: 2m
         labels:
           severity: critical
           team: security
           component: authentication
         annotations:
-          summary: "Suspicious login activity detected"
-          description: "More than 10 failed login attempts per minute. Possible brute force attack."
+          summary: "[PLANNED] Suspicious login activity detected"
+          description: "More than 10 failed login attempts per minute. Possible brute force attack. (Awaiting armored_archer_failed_logins_total — see #1093.)"
 
       # Unusual API Call Pattern
+      # Active: RPC call-rate denominator renamed from
+      # armored_archer_rpc_requests_total -> armored_archer_rpc_calls_total.
       - alert: UnusualAPICallPattern
-        expr: rate(armored_archer_rpc_requests_total[1m]) > 1000
+        expr: rate(armored_archer_rpc_calls_total[1m]) > 1000
         for: 5m
         labels:
           severity: warning
@@ -231,18 +319,25 @@ groups:
           description: "API request rate is very high ({{ $value }} req/min). Possible bot activity or DDoS."
 
       # Anti-Cheat Violation Spike
+      # __planned__: armored_archer_anticheat_violations_total — violation
+      #               counter labelled by violation_type.
+      # __issue__:    #1093 (umbrella for planned metrics expansion)
+      # __restore__:  Set disabled: false and replace expr with:
+      #                  rate(armored_archer_anticheat_violations_total[5m]) > 5
       - alert: AntiCheatViolationSpike
-        expr: rate(armored_archer_anticheat_violations_total[5m]) > 5
+        disabled: true
+        expr: vector(0) > 1
         for: 2m
         labels:
           severity: warning
           team: security
           component: anti-cheat
         annotations:
-          summary: "Unusual anti-cheat violation spike"
-          description: "High rate of anti-cheat violations detected ({{ $value }}/min). Review for new exploit."
+          summary: "[PLANNED] Unusual anti-cheat violation spike"
+          description: "High rate of anti-cheat violations detected ({{ $value }}/min). Review for new exploit. (Awaiting armored_archer_anticheat_violations_total — see #1093.)"
 
       # Admin Guard Rejection Spike (issue #1141)
+      # Active: armored_archer_admin_rpc_access_denied_total is emitted.
       - alert: AdminAccessDeniedSpike
         expr: sum by (rpc_id) (rate(armored_archer_admin_rpc_access_denied_total[5m])) > 5 / 60
         for: 5m
@@ -256,6 +351,7 @@ groups:
           runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/AdminAccessDeniedSpike.md"
 
       # Admin Allowlist Empty (issue #1141)
+      # Active: armored_archer_admin_allowlist_size is emitted.
       - alert: AdminAllowlistEmpty
         expr: armored_archer_admin_allowlist_size == 0
         for: 1m
@@ -273,23 +369,36 @@ groups:
     interval: 60s
     rules:
       # Active users offset for anomaly detection
+      # __planned__: armored_archer_active_users — source gauge is missing.
+      # __issue__:    #1093 (umbrella for planned metrics expansion)
+      # __restore__:  Set disabled: false and replace expr with:
+      #                  armored_archer_active_users offset 1h
       - record: armored_archer_active_users_offset_1h
-        expr: armored_archer_active_users offset 1h
+        disabled: true
+        expr: vector(0)
 
       # Session duration offset for anomaly detection
+      # Active: histogram renamed from
+      # armored_archer_session_duration_seconds ->
+      # armored_archer_player_session_duration_seconds (see
+      # backend/src/modules/metrics.ts).
       - record: armored_archer_avg_session_duration
-        expr: avg(armored_archer_session_duration_seconds)
+        expr: avg(armored_archer_player_session_duration_seconds)
 
       - record: armored_archer_avg_session_duration_offset_24h
-        expr: avg(armored_archer_session_duration_seconds offset 24h)
+        expr: avg(armored_archer_player_session_duration_seconds offset 24h)
 
       # Error rate (5m rate)
+      # Active: RPC call-rate denominator renamed from
+      # armored_archer_rpc_requests_total -> armored_archer_rpc_calls_total.
       - record: armored_archer_error_rate_5m
-        expr: rate(armored_archer_rpc_errors_total[5m]) / rate(armored_archer_rpc_requests_total[5m])
+        expr: rate(armored_archer_rpc_errors_total[5m]) / rate(armored_archer_rpc_calls_total[5m])
 
       # Request rate per second
+      # Active: denominator renamed from
+      # armored_archer_rpc_requests_total -> armored_archer_rpc_calls_total.
       - record: armored_archer_request_rate
-        expr: rate(armored_archer_rpc_requests_total[1m])
+        expr: rate(armored_archer_rpc_calls_total[1m])
 
   # ============================================
   # WEBHOOK LEDGER (issue #1140)
@@ -300,6 +409,7 @@ groups:
     interval: 30s
     rules:
       # Webhook Not Configured (liveness probe at startup)
+      # Active: armored_archer_webhook_configured is emitted.
       - alert: WebhookNotConfigured
         expr: armored_archer_webhook_configured == 0
         for: 1m
@@ -313,6 +423,8 @@ groups:
           runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/PaymentProcessingFailures.md"
 
       # Webhook Lag High
+      # Active: armored_archer_webhook_processing_seconds is emitted as a
+      # Histogram, prom-client exposes _bucket/_sum/_count series.
       - alert: WebhookLagHigh
         expr: histogram_quantile(0.95, sum by (le) (rate(armored_archer_webhook_processing_seconds_bucket[5m]))) > 2
         for: 5m
@@ -326,6 +438,8 @@ groups:
           runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/PaymentProcessingFailures.md"
 
       # Webhook Signature Failure Spike
+      # Active: armored_archer_webhook_events_total is emitted with an
+      # `outcome` label (accepted | rejected_invalid_signature | …).
       - alert: WebhookSignatureFailureSpike
         expr: sum(rate(armored_archer_webhook_events_total{outcome="rejected_invalid_signature"}[5m])) > 1 / 60
         for: 5m
@@ -339,6 +453,7 @@ groups:
           runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/PaymentProcessingFailures.md"
 
       # Webhook Redis Degraded
+      # Active: armored_archer_webhook_redis_errors_total is emitted.
       - alert: WebhookRedisDegraded
         expr: sum(rate(armored_archer_webhook_redis_errors_total[5m])) > 1 / 60
         for: 5m
@@ -363,6 +478,8 @@ groups:
     interval: 30s
     rules:
       # Settlement Degraded Spike
+      # Active: armored_archer_settlement_outcomes_total is emitted with a
+      # `result` label (degraded | claim_failed | …).
       - alert: SettlementDegradedSpike
         expr: sum(rate(armored_archer_settlement_outcomes_total{result="degraded"}[5m])) > 0.5 / 60
         for: 5m
@@ -376,6 +493,7 @@ groups:
           runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/SettlementDegraded.md"
 
       # Settlement Claim Failed
+      # Active: armored_archer_settlement_outcomes_total is emitted.
       - alert: SettlementClaimFailed
         expr: sum(rate(armored_archer_settlement_outcomes_total{result="claim_failed"}[5m])) > 0
         for: 1m
@@ -396,6 +514,8 @@ groups:
     interval: 30s
     rules:
       # Stage Completion Duplicate Spike
+      # Active: armored_archer_stage_completion_claims_total is emitted with
+      # a `result` label (replay_rejected | …).
       - alert: StageCompletionDuplicateSpike
         expr: sum(rate(armored_archer_stage_completion_claims_total{result="replay_rejected"}[5m])) > 1 / 60
         for: 5m

@@ -578,13 +578,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(armored_archer_cache_hits_total[5m]) / (rate(armored_archer_cache_hits_total[5m]) + rate(armored_archer_cache_misses_total[5m])) * 100",
-          "legendFormat": "Cache Hit Rate",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         }
       ],
-      "title": "Cache Hit Rate",
-      "type": "gauge"
+      "title": "[DISABLED \u2014 planned: armored_archer_cache_hits_total] Cache Hit Rate",
+      "type": "gauge",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_cache_hits_total, armored_archer_cache_misses_total\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "datasource": {
@@ -669,8 +670,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(armored_archer_cache_hits_total[5m])",
-          "legendFormat": "Cache Hits",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "A"
         },
         {
@@ -678,13 +679,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(armored_archer_cache_misses_total[5m])",
-          "legendFormat": "Cache Misses",
+          "expr": "vector(0)",
+          "legendFormat": "[DISABLED \u2014 awaiting armored_archer_X]",
           "refId": "B"
         }
       ],
-      "title": "Cache Operations (5m rate)",
-      "type": "timeseries"
+      "title": "[DISABLED \u2014 planned: armored_archer_cache_hits_total] Cache Operations (5m rate)",
+      "type": "timeseries",
+      "description": "DISABLED \u2014 references metrics that are planned but not yet emitted.\nPlanned metric(s): armored_archer_cache_hits_total, armored_archer_cache_misses_total\nTracking issue: #1093 (umbrella for planned metrics expansion).\nWhen #1093 lands, restore the original PromQL in `targets[].expr` and remove this description.\nUntil then, the query is `vector(0)` so the panel renders zero without producing false alerts."
     },
     {
       "collapsed": false,
