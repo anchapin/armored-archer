@@ -91,11 +91,18 @@ export async function applyDailyDecay(
   const decayConfig = getDecayConfig(nk);
   const leaderboardRecords = nk.leaderboardRecordList(seasonId, [], 1000, '', 0);
 
+  // Batch last-active lookups for every record up-front so the decay sweep
+  // costs ONE storageRead regardless of leaderboard size (issue #1089).
+  const lastActiveMap = await getPlayersLastActiveBatch(
+    nk,
+    leaderboardRecords.map((r) => r.ownerId)
+  );
+
   let affectedCount = 0;
   let totalLoss = 0;
 
   for (const record of leaderboardRecords) {
-    const lastActiveData = await getPlayerLastActive(nk, record.ownerId);
+    const lastActiveData = lastActiveMap.get(record.ownerId) ?? 0;
     const daysInactive = getDaysInactive(lastActiveData);
 
     if (daysInactive < decayConfig.inactive_days_threshold) {
@@ -152,13 +159,20 @@ export async function getTopPlayers(
   const records = nk.leaderboardRecordList(seasonId, [], limit, '', 0);
   const decayConfig = getDecayConfig(nk);
 
+  // Batch last-active lookups for every record up-front; one storageRead
+  // for the page instead of one per row (issue #1089).
+  const lastActiveMap = await getPlayersLastActiveBatch(
+    nk,
+    records.map((r) => r.ownerId)
+  );
+
   const rankings: SeasonRanking[] = [];
 
   for (let i = 0; i < records.length; i++) {
     const record = records[i];
     const metadata = record.metadata ? JSON.parse(record.metadata) : {};
 
-    const lastActiveData = await getPlayerLastActive(nk, record.ownerId);
+    const lastActiveData = lastActiveMap.get(record.ownerId) ?? 0;
     const daysInactive = getDaysInactive(lastActiveData);
 
     const decayAmount = calculateDecayAmount(record.score, daysInactive, decayConfig);
@@ -218,10 +232,21 @@ export async function getPlayerRank(
 
   const record = records[0];
   const metadata = record.metadata ? JSON.parse(record.metadata) : {};
-
-  const lastActiveData = await getPlayerLastActive(nk, record.ownerId);
-  const daysInactive = getDaysInactive(lastActiveData);
   const decayConfig = getDecayConfig(nk);
+
+  // Need to recalculate rank based on decayed ratings
+  const allRecords = nk.leaderboardRecordList(seasonId, [], 1000, '', 0);
+
+  // Collect every ownerId we need a last-active timestamp for (target + the
+  // other players we'll compare against) and batch the lookup — one
+  // storageRead instead of one per record (issue #1089).
+  const lastActiveMap = await getPlayersLastActiveBatch(
+    nk,
+    collectOwnerIdsForRank(record.ownerId, playerId, allRecords)
+  );
+
+  const lastActiveData = lastActiveMap.get(record.ownerId) ?? 0;
+  const daysInactive = getDaysInactive(lastActiveData);
 
   const decayAmount = calculateDecayAmount(record.score, daysInactive, decayConfig);
   const decayedRating = Math.max(record.score - decayAmount, decayConfig.minimum_rating);
@@ -242,8 +267,6 @@ export async function getPlayerRank(
     rank: record.rank,
   };
 
-  // Need to recalculate rank based on decayed ratings
-  const allRecords = nk.leaderboardRecordList(seasonId, [], 1000, '', 0);
   let playersAbove = 0;
 
   for (const otherRecord of allRecords) {
@@ -251,7 +274,7 @@ export async function getPlayerRank(
       continue;
     }
 
-    const otherLastActive = await getPlayerLastActive(nk, otherRecord.ownerId);
+    const otherLastActive = lastActiveMap.get(otherRecord.ownerId) ?? 0;
     const otherDaysInactive = getDaysInactive(otherLastActive);
     const otherDecayAmount = calculateDecayAmount(
       otherRecord.score,
@@ -476,6 +499,36 @@ export function setDecayConfig(
 }
 
 /**
+ * Build the list of ownerIds whose `player_last_active` timestamp is needed
+ * to compute a player's rank via decayed-rating comparison.
+ *
+ * Always includes the target player plus every other competitor (deduped,
+ * preserving first-seen order). Extracted from `getPlayerRank` so the rank
+ * function stays under the complexity ceiling after the issue #1089 batch
+ * refactor turned the per-record lookup into a single batched call.
+ *
+ * @param targetOwnerId - The player whose rank we're computing
+ * @param targetPlayerId - The same player identified by `playerId` (used to exclude self-comparisons)
+ * @param allRecords - Every leaderboard record (including the target's)
+ * @returns Ordered, deduplicated owner IDs to pass to `getPlayersLastActiveBatch`
+ */
+function collectOwnerIdsForRank(
+  targetOwnerId: string,
+  targetPlayerId: string,
+  allRecords: { ownerId: string }[]
+): string[] {
+  const lastActiveIds: string[] = [targetOwnerId];
+  const seen = new Set<string>([targetOwnerId]);
+  for (const other of allRecords) {
+    if (other.ownerId !== targetPlayerId && !seen.has(other.ownerId)) {
+      seen.add(other.ownerId);
+      lastActiveIds.push(other.ownerId);
+    }
+  }
+  return lastActiveIds;
+}
+
+/**
  * Get player's last activity timestamp
  *
  * @param nk - Nakama server interface
@@ -501,6 +554,86 @@ export async function getPlayerLastActive(nk: Runtime.Nakama, playerId: string):
   }
 
   return 0;
+}
+
+/**
+ * Batch-read last-activity timestamps for many players in a single
+ * `nk.storageRead` call.
+ *
+ * Replaces the per-player `getPlayerLastActive` fan-out that the leaderboard
+ * page, daily decay sweep, and per-player rank lookup were previously doing
+ * (issue #1089). With this helper, rendering a 100-row leaderboard costs one
+ * round-trip to the `player_last_active` collection instead of 100.
+ *
+ * The returned map always contains every requested ID (missing entries and
+ * parse failures default to `0`), so callers can read without null checks.
+ *
+ * @param nk - Nakama server interface
+ * @param playerIds - Player IDs to fetch (duplicates are collapsed; order is preserved)
+ * @returns Map of player ID -> last-active timestamp in ms (0 if unknown)
+ */
+export async function getPlayersLastActiveBatch(
+  nk: Runtime.Nakama,
+  playerIds: string[]
+): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  if (playerIds.length === 0) {
+    return result;
+  }
+
+  // Dedupe while preserving first-seen order so callers that index by
+  // position still get a stable, predictable shape.
+  const uniqueIds: string[] = [];
+  const seen = new Set<string>();
+  for (const id of playerIds) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      uniqueIds.push(id);
+    }
+  }
+
+  try {
+    const storage = nk.storageRead(
+      uniqueIds.map((id) => ({
+        collection: STORAGE_KEY_PLAYER_LAST_ACTIVE,
+        key: id,
+        userId: id,
+      }))
+    );
+
+    for (const entry of storage) {
+      if (!entry.value) {
+        result.set(entry.key, 0);
+        continue;
+      }
+      let ts = 0;
+      try {
+        const data = JSON.parse(entry.value) as Record<string, unknown>;
+        const lastActive = data.last_active;
+        const lastMatchTime = data.last_match_time;
+        if (typeof lastActive === 'number') {
+          ts = lastActive;
+        } else if (typeof lastMatchTime === 'number') {
+          ts = lastMatchTime;
+        }
+      } catch {
+        // Leave ts at 0 for malformed entries.
+      }
+      result.set(entry.key, ts);
+    }
+  } catch {
+    // Silently fall through; missing/unparseable entries default to 0.
+  }
+
+  // Guarantee every requested id has a key in the map so callers can index
+  // without branching on presence.
+  for (const id of uniqueIds) {
+    if (!result.has(id)) {
+      result.set(id, 0);
+    }
+  }
+
+  return result;
 }
 
 /**
