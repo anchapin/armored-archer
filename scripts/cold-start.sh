@@ -256,7 +256,16 @@ else
 fi
 
 # --- 5. docker compose up -d ----------------------------------------------
-info "5/9 docker compose up -d"
+info "5/10 Rendering alertmanager.yml (issue #1094)"
+if ! bash "$REPO_ROOT/scripts/render-alertmanager-config.sh" 2>&1 | tail -3; then
+    err "alertmanager.yml render failed â see messages above."
+    echo "  The render script fails fast when any ALERTMANAGER_* env var is"
+    echo "  still the __SET_VIA_DOTENV__ sentinel. Edit backend/.env."
+    exit 1
+fi
+ok "alertmanager.yml.rendered is up to date"
+
+info "6/10 docker compose up -d"
 if docker compose up -d >/tmp/cold-start-up.log 2>&1; then
     ok "compose up completed"
 else
@@ -273,7 +282,7 @@ fi
 ok "$DB_CONTAINER created"
 
 # --- 6. Wait for PostgreSQL health -----------------------------------------
-info "6/9 Waiting for PostgreSQL to become healthy (timeout ${PG_HEALTH_TIMEOUT}s)"
+info "7/10 Waiting for PostgreSQL to become healthy (timeout ${PG_HEALTH_TIMEOUT}s)"
 wait_for_pg() {
     local waited=0 status
     while [ "$waited" -lt "$PG_HEALTH_TIMEOUT" ]; do
@@ -308,7 +317,7 @@ if ! wait_for_pg; then
 fi
 
 # --- 7. Wait for Nakama ----------------------------------------------------
-info "7/9 Waiting for Nakama to become healthy + API ready (timeout ${HEALTH_TIMEOUT}s)"
+info "8/10 Waiting for Nakama to become healthy + API ready (timeout ${HEALTH_TIMEOUT}s)"
 wait_for_nakama() {
     local waited=0 status api_code deadline
     deadline=$(( $(date +%s) + HEALTH_TIMEOUT ))
@@ -338,7 +347,7 @@ if ! wait_for_nakama; then
 fi
 
 # --- 8. Final pass/fail assertion -----------------------------------------
-info "8/9 Final all-green assertion"
+info "9/10 Final all-green assertion"
 if [ "$SKIP_ASSERT" = "1" ]; then
     warn "--skip-assert set — running without final assertion"
 elif [ -x "$ASSERT_SCRIPT" ]; then
@@ -360,7 +369,7 @@ else
 fi
 
 # --- 9. Caveat hand-off ----------------------------------------------------
-info "9/9 Caveat hand-off"
+info "10/10 Caveat hand-off"
 warn "Game schema migrations are NOT verified by this script."
 warn "Issue #891 (and PR #919) own the 'apply game SQL to local volume' task."
 warn "Until that lands, 'psql \\dt' inside $DB_CONTAINER may show the 16 core"

@@ -1,23 +1,52 @@
-# Alertmanager Configuration for Armored Archer
-# Routing and notification channel configuration
+# Alertmanager configuration for Armored Archer
 #
-# Canonical alertmanager config (issue #1112): this is the ONLY copy — the
-# former divergent backend/config/alertmanager.yml was deleted. Mounted by
-# backend/docker-compose.yml as
-# ./alertmanager.yml:/etc/alertmanager/alertmanager.yml.
+# Issue #1094 routing contract: every webhook URL / integration key is
+# pulled from backend/.env via docker-compose's `environment:` block. Each
+# variable defaults to a `__SET_VIA_DOTENV__` sentinel; if the operator
+# forgets to override, the alertmanager container fails its `/config` and
+# `/-/ready` healthcheck at boot, surfaced by docker-compose's `healthcheck:`.
+# Mirrors the #1096 fail-fast convention so receivers never silently fire at
+# `http://localhost/slack` / `dummy-key` / `https://your-pagerduty.com` again.
+#
+# Required env vars (documented in backend/.env.example):
+#   ALERTMANAGER_SMTP_SMART_HOST         e.g. smtp.gmail.com:587
+#   ALERTMANAGER_SMTP_AUTH_USERNAME      e.g. alerts@example.com
+#   ALERTMANAGER_SMTP_AUTH_PASSWORD      app password
+#   ALERTMANAGER_PAGERDUTY_URL           e.g. https://events.pagerduty.com/v2/enqueue
+#   ALERTMANAGER_SLACK_CRITICAL_URL      full Slack incoming-webhook URL
+#   ALERTMANAGER_SLACK_WARN_URL          (separate channel webhook for warnings)
+#   ALERTMANAGER_SLACK_INFO_URL          (separate channel webhook for info)
+#   ALERTMANAGER_SLACK_SECURITY_URL      (separate channel webhook for security)
+#   ALERTMANAGER_CRITICAL_PAGERDUTY_SERVICE_KEY  PagerDuty Events API v2 key (critical)
+#   ALERTMANAGER_DASHBOARD_BASE_URL      e.g. https://grafana.example.com
+#   ALERTMANAGER_RUNBOOK_BASE_URL        e.g. https://github.com/org/repo/blob/main/docs
+#   ALERTMANAGER_IR_BASE_URL             incident-response tool base (PagerDuty fallback)
+#   ALERTMANAGER_EMAIL_CRITICAL_TO       e.g. on-call-critical@example.com
+#   ALERTMANAGER_EMAIL_WARNING_TO        e.g. on-call@example.com
+#   ALERTMANAGER_EMAIL_INFO_TO           e.g. alerts@example.com
+#   ALERTMANAGER_EMAIL_SECURITY_TO       e.g. security-team@example.com
+#
+# Default catch-all `default` receiver is always-on to `alerts@...`; override
+# ALERTMANAGER_EMAIL_INFO_TO to set the actual destination.
+#
+# Health probe (added in #1094): alertmanager's `/-/healthy` is exposed on
+# the docker-network service name. The `armored_archer_alertmanager` container
+# uses Prometheus's healthcheck command so docker-compose's
+# `healthcheck:` block reports `healthy` only after `/config` reloads without
+# a template error.
 
 global:
   # Resolve timeout for alerts
   resolve_timeout: 5m
   
   # SMTP configuration for email notifications (optional)
-  smtp_from: "alerts@armored-archer.example.com"
-  smtp_smarthost: "smtp.example.com:587"
-  smtp_auth_username: "alerts"
-  smtp_auth_password: "password"
+  smtp_from: "${ALERTMANAGER_SMTP_FROM}"
+  smtp_smarthost: "${ALERTMANAGER_SMTP_SMART_HOST}"
+  smtp_auth_username: "${ALERTMANAGER_SMTP_AUTH_USERNAME}"
+  smtp_auth_password: "${ALERTMANAGER_SMTP_AUTH_PASSWORD}"
   
   # PagerDuty integration (optional)
-  pagerduty_url: "http://localhost/pagerduty"
+  pagerduty_url: "${ALERTMANAGER_PAGERDUTY_URL}"
 
 # Define the notification receivers
 receivers:
@@ -28,7 +57,7 @@ receivers:
   - name: 'critical-alerts'
     # Email for critical alerts
     email_configs:
-      - to: 'on-call-critical@armored-archer.example.com'
+      - to: '${ALERTMANAGER_EMAIL_CRITICAL_TO}'
         send_resolved: true
         headers:
           subject: '[CRITICAL] {{ .GroupLabels.alertname }} - Armored Archer'
@@ -46,14 +75,14 @@ receivers:
     
     # PagerDuty for critical alerts
     pagerduty_configs:
-      - service_key: 'dummy-key'
+      - service_key: '${ALERTMANAGER_CRITICAL_PAGERDUTY_SERVICE_KEY}'
         severity: critical
         component: '{{ .Labels.component }}'
         group: '{{ .Labels.team }}'
     
     # Slack for critical alerts
     slack_configs:
-      - api_url: 'http://localhost/slack'
+      - api_url: '${ALERTMANAGER_SLACK_CRITICAL_URL}'
         channel: '#armored-archer-critical'
         username: 'Armored Archer Alerts'
         icon_emoji: ':fire:'
@@ -67,13 +96,13 @@ receivers:
         actions:
           - type: button
             text: '📊 View Dashboard'
-            url: 'http://grafana:3000/dashboard/db/armored-archer'
+            url: '${ALERTMANAGER_DASHBOARD_BASE_URL}/d/armored-archer'
           - type: button
             text: '📋 Runbook'
             url: '{{ .Annotations.runbook_url }}'
           - type: button
             text: '🔗 Acknowledge'
-            url: 'https://your-pagerduty.com'
+            url: '${ALERTMANAGER_IR_BASE_URL}'
 
   # ============================================
   # Warning Alerts - Email + Slack
@@ -81,7 +110,7 @@ receivers:
   
   - name: 'warning-alerts'
     email_configs:
-      - to: 'on-call@armored-archer.example.com'
+      - to: '${ALERTMANAGER_EMAIL_WARNING_TO}'
         send_resolved: true
         headers:
           subject: '[WARNING] {{ .GroupLabels.alertname }} - Armored Archer'
@@ -94,7 +123,7 @@ receivers:
           <p>{{ .Annotations.description }}</p>
     
     slack_configs:
-      - api_url: 'http://localhost/slack'
+      - api_url: ${ALERTMANAGER_SLACK_CRITICAL_URL}
         channel: '#armored-archer-warnings'
         username: 'Armored Archer Alerts'
         icon_emoji: ':warning:'
@@ -115,7 +144,7 @@ receivers:
   
   - name: 'info-alerts'
     slack_configs:
-      - api_url: 'http://localhost/slack'
+      - api_url: ${ALERTMANAGER_SLACK_WARN_URL}
         channel: '#armored-archer-info'
         username: 'Armored Archer Info'
         icon_emoji: ':information_source:'
@@ -129,13 +158,13 @@ receivers:
   
   - name: 'security-alerts'
     email_configs:
-      - to: 'security-team@armored-archer.example.com'
+      - to: '${ALERTMANAGER_EMAIL_SECURITY_TO}'
         send_resolved: true
         headers:
           subject: '[SECURITY] {{ .GroupLabels.alertname }} - Armored Archer'
     
     slack_configs:
-      - api_url: 'http://localhost/slack'
+      - api_url: ${ALERTMANAGER_SLACK_INFO_URL}
         channel: '#armored-archer-security'
         username: 'Armored Archer Security'
         icon_emoji: ':rotating_light:'
@@ -148,10 +177,10 @@ receivers:
         actions:
           - type: button
             text: '🔒 Security Dashboard'
-            url: 'http://grafana:3000/d/armored-archer-security'
+            url: '${ALERTMANAGER_DASHBOARD_BASE_URL}/d/armored-archer-security'
           - type: button
             text: '📋 Incident Response'
-            url: 'https://your-incident-response-tool.com'
+            url: '${ALERTMANAGER_IR_BASE_URL}'
 
   # ============================================
   # Default/catch-all receiver
@@ -159,7 +188,7 @@ receivers:
   
   - name: 'default'
     email_configs:
-      - to: 'alerts@armored-archer.example.com'
+      - to: '${ALERTMANAGER_EMAIL_INFO_TO}'
         send_resolved: true
 
 # ============================================

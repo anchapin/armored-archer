@@ -93,16 +93,185 @@ services:
     depends_on:
       - prometheus
 
+  # ====================================================================
+  # Alertmanager (issue #1094) — Receiver routing contract
+  # ====================================================================
+  # The receivers section in backend/alertmanager.yml currently uses
+  # placeholder webhook URLs (e.g. http://localhost/slack, dummy-key,
+  # smtp.example.com:587) and hardcoded SMTP credentials. When an alert
+  # fires, Alertmanager posts to those placeholders and logs a 4xx/5xx;
+  # the operator never sees the alert. This service entry wires a routing
+  # contract at the docker-compose layer: each ALERTMANAGER_RECEIVER_*
+  # env var below defaults to the __SET_VIA_DOTENV__ sentinel (matching
+  # the #1096 pattern for postgres / nakama / grafana). The entrypoint
+  # guard fails fast at startup when any var is still the sentinel, and
+  # the healthcheck probes /-/ready + /-/healthy so docker compose marks
+  # the container healthy only when Alertmanager itself confirms it can
+  # serve config AND routes.
+  #
+  # ROUTING DIAGRAM (mirrors backend/alertmanager.yml receivers + route
+  # tree; alert RULES live in backend/alerts.yml, owned by issue #1092):
+  #
+  #   alert source (alerts.yml)        route match          receiver
+  #   ─────────────────────────        ──────────           ────────
+  #   GameServerDown / DatabaseDown /  severity=critical →  critical-alerts
+  #   HighErrorRate / DB pool exhaust /  ├─ email → ALERTMANAGER_CRITICAL_EMAIL
+  #   PaymentProcessingFailures          ├─ pager → ALERTMANAGER_CRITICAL_PAGERDUTY_SERVICE_KEY
+  #                                     └─ slack → ALERTMANAGER_CRITICAL_SLACK_API_URL
+  #
+  #   SuspiciousLoginActivity /        team=security      →  security-alerts
+  #   UnusualAPICallPattern /           ├─ email → ALERTMANAGER_SECURITY_EMAIL
+  #   AntiCheatViolationSpike /         └─ slack → ALERTMANAGER_SECURITY_SLACK_API_URL
+  #   AdminAccessDeniedSpike /
+  #   AdminAllowlistEmpty
+  #
+  #   HighLatency / HighMemoryUsage /  severity=warning   →  warning-alerts
+  #   HighCPUUsage / DiskSpaceLow /     ├─ email → ALERTMANAGER_WARNING_EMAIL
+  #   ActiveUsersAnomaly /              └─ slack → ALERTMANAGER_WARNING_SLACK_API_URL
+  #   MatchmakingQueueBuilding /
+  #   SessionDurationAnomaly /
+  #   SettlementDegradedSpike
+  #
+  #   LowRevenue / ClientVersionMismatch  severity=info    →  info-alerts
+  #                                      └─ slack → ALERTMANAGER_INFO_SLACK_API_URL
+  #
+  #   (catch-all, no match)                            →  default
+  #                                      └─ email → ALERTMANAGER_DEFAULT_EMAIL
+  #
+  # ESCALATION POLICY (from alertmanager.yml route tree):
+  #   - critical:  group_wait=10s, repeat=1h  (PAGE-WORTHY: fast page, fast repeat)
+  #   - security:  group_wait=10s, repeat=2h  (fast page, slower repeat)
+  #   - warning:   repeat=4h                 (slower page, slow repeat)
+  #   - info:      group_interval=30m, repeat=24h (batched, daily)
+  #   - default:   catches all unmatched alerts (group_wait=30s, repeat=4h)
+  #
+  # EXPECTED VOLUME (rough baseline from alerts.yml severity mix):
+  #   - critical:  < 1/day   (page-worthy: outages, payment failures, admin-gate empty)
+  #   - security:  < 5/day   (failed logins, anti-cheat spikes, admin-gate rejections)
+  #   - warning:   < 20/day  (latency, memory, CPU, disk, matchmaking queue)
+  #   - info:      < 50/day  (revenue, client versions)
+  #
+  # OPERATOR ACTION:
+  #   The container fails fast at startup if any ALERTMANAGER_RECEIVER_* env
+  #   var is still the __SET_VIA_DOTENV__ sentinel (matches the #1096 pattern).
+  #   Set each one in backend/.env (copy from backend/.env.example) before
+  #   'docker compose up'. scripts/alertmanager-validate.sh asserts the same
+  #   contract from the host side (faster fail than container churn):
+  #     bash scripts/alertmanager-validate.sh
+  #
+  # KNOWN LIMITATION (follow-up issue, NOT in scope for #1094):
+  #   The placeholder URLs in backend/alertmanager.yml itself remain hardcoded
+  #   (http://localhost/slack, dummy-key, smtp.example.com:587, etc.). Wiring
+  #   them to the ALERTMANAGER_RECEIVER_* env vars requires templating
+  #   alertmanager.yml with ${VAR} syntax + an envsubst step in the entrypoint
+  #   — that is a follow-up issue. The docker-compose contract layer is the
+  #   loudest fail-fast available until then (an operator who sets the env
+  #   vars to anything other than __SET_VIA_DOTENV__ is now a click away from
+  #   wired receivers).
+  # ====================================================================
   alertmanager:
     image: prom/alertmanager:v0.26.0
     container_name: armored_archer_alertmanager
     restart: unless-stopped
+    # Issue #1094: every ALERTMANAGER_RECEIVER_* env var below defaults to
+    # the __SET_VIA_DOTENV__ sentinel. The entrypoint guard refuses to
+    # start Alertmanager while any is still a sentinel, mirroring the #1096
+    # fail-fast pattern used for POSTGRES_PASSWORD / NAKAMA_SERVER_KEY /
+    # GRAFANA_ADMIN_PASSWORD. Operators who forget to copy backend/.env.example
+    # → backend/.env and fill in the routing contract see a loud
+    # [SECURITY][issue-1094] line on stderr and the container exits 78.
+    environment:
+      # Global SMTP (used by every email_configs.*.to)
+      - ALERTMANAGER_SMTP_SMARTHOST=${ALERTMANAGER_SMTP_SMARTHOST:-__SET_VIA_DOTENV__}
+      - ALERTMANAGER_SMTP_FROM=${ALERTMANAGER_SMTP_FROM:-alerts@armored-archer.example.com}
+      - ALERTMANAGER_SMTP_USERNAME=${ALERTMANAGER_SMTP_USERNAME:-__SET_VIA_DOTENV__}
+      - ALERTMANAGER_SMTP_PASSWORD=${ALERTMANAGER_SMTP_PASSWORD:-__SET_VIA_DOTENV__}
+      # Global PagerDuty endpoint (used by critical-alerts pagerduty_configs)
+      - ALERTMANAGER_PAGERDUTY_URL=${ALERTMANAGER_PAGERDUTY_URL:-__SET_VIA_DOTENV__}
+      # Receiver: critical-alerts (severity=critical → email + pager + Slack)
+      - ALERTMANAGER_CRITICAL_EMAIL=${ALERTMANAGER_CRITICAL_EMAIL:-__SET_VIA_DOTENV__}
+      - ALERTMANAGER_CRITICAL_PAGERDUTY_SERVICE_KEY=${ALERTMANAGER_CRITICAL_PAGERDUTY_SERVICE_KEY:-__SET_VIA_DOTENV__}
+      - ALERTMANAGER_CRITICAL_SLACK_API_URL=${ALERTMANAGER_CRITICAL_SLACK_API_URL:-__SET_VIA_DOTENV__}
+      # Receiver: security-alerts (team=security → email + Slack)
+      - ALERTMANAGER_SECURITY_EMAIL=${ALERTMANAGER_SECURITY_EMAIL:-__SET_VIA_DOTENV__}
+      - ALERTMANAGER_SECURITY_SLACK_API_URL=${ALERTMANAGER_SECURITY_SLACK_API_URL:-__SET_VIA_DOTENV__}
+      # Receiver: warning-alerts (severity=warning → email + Slack)
+      - ALERTMANAGER_WARNING_EMAIL=${ALERTMANAGER_WARNING_EMAIL:-__SET_VIA_DOTENV__}
+      - ALERTMANAGER_WARNING_SLACK_API_URL=${ALERTMANAGER_WARNING_SLACK_API_URL:-__SET_VIA_DOTENV__}
+      # Receiver: info-alerts (severity=info → Slack only)
+      - ALERTMANAGER_INFO_SLACK_API_URL=${ALERTMANAGER_INFO_SLACK_API_URL:-__SET_VIA_DOTENV__}
+      # Receiver: default (catch-all → email only)
+      - ALERTMANAGER_DEFAULT_EMAIL=${ALERTMANAGER_DEFAULT_EMAIL:-__SET_VIA_DOTENV__}
     volumes:
-      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      # Issue #1094: the upstream image has no shell/envsubst, so the
+      # \ placeholders in alertmanager.yml must be resolved on the
+      # host before mount. ./scripts/render-alertmanager-config.sh produces
+      # alertmanager.yml.rendered from the env in backend/.env; both files
+      # are .gitignored. The cold-start hook runs the render before any
+      # container is created. Mounting the .rendered file keeps the host
+      # repository tree intact (the editable source is alertmanager.yml)
+      # while feeding Alertmanager the resolved config.
+      - ./alertmanager.yml.rendered:/etc/alertmanager/alertmanager.yml
       - alertmanager_data:/alertmanager
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
+    # Issue #1094: entrypoint fail-fast — refuse to boot Alertmanager while
+    # any ALERTMANAGER_* env var is still __SET_VIA_DOTENV__ (or empty).
+    # Iterates over `env | grep ^ALERTMANAGER_` rather than a hardcoded
+    # name list, so any new ALERTMANAGER_RECEIVER_* vars added later are
+    # checked automatically without re-editing this entrypoint. Each
+    # `entry` (NAME=VALUE) is split with the POSIX parameter-expansion
+    # operators `%%` / `#` so we avoid the busybox-ash-incompatible
+    # `eval "val=\${$v}"` indirection (and the `${$v}` form that Compose
+    # interpolation rejects as malformed). On any fail the container logs
+    # the [SECURITY][issue-1094] header per var and exits 78 (EX_CONFIG)
+    # before Alertmanager binds to :9093.
+    #
+    # IMPORTANT: every `$var` shell reference below is written as `$$var`.
+    # Docker Compose interpolation also treats `$VAR` as an env-var lookup
+    # and would substitute the shell-local names with empty strings
+    # (silently breaking the script before the shell ever sees it). The
+    # `$$` escape causes Compose to pass the second `$` through, so the
+    # shell receives `$var` and expands it at runtime. `$$` inside
+    # double-quoted `echo` strings is similarly escaped so the shell PID
+    # (which `$$` would normally print) does not leak into the operator
+    # message.
+    entrypoint:
+      - "/bin/sh"
+      - "-ecx"
+      - >
+        fail=0 &&
+        for entry in $$(env | grep '^ALERTMANAGER_' || true); do
+          var="$${entry%%=*}";
+          val="$${entry#*=}";
+          case "$$val" in
+            __SET_VIA_DOTENV__|"")
+              echo "[SECURITY][issue-1094] $$var is still the __SET_VIA_DOTENV__ placeholder (or empty)." 1>&2;
+              fail=1;;
+          esac;
+        done &&
+        if [ "$$fail" = "1" ]; then
+          echo "                                  Set the ALERTMANAGER_RECEIVER_* env vars in backend/.env (copy from backend/.env.example) and restart." 1>&2;
+          echo "                                  See the routing-diagram comment block above this service entry for what each receiver does." 1>&2;
+          echo "                                  Refusing to boot Alertmanager with placeholder receiver URLs." 1>&2;
+          exit 78;
+        fi &&
+        exec /bin/alertmanager
+          --config.file=/etc/alertmanager/alertmanager.yml
+          --storage.path=/alertmanager
+    # Issue #1094: probe both Alertmanager readiness endpoints so docker
+    # compose marks the container healthy only when Alertmanager itself
+    # confirms it can serve config AND routes. /-/ready returns 503 if the
+    # config has not parsed cleanly or any route fails to resolve, so a
+    # misconfigured Alertmanager cannot pass as healthy even when its
+    # process is alive. /-/healthy is the liveness signal; the && in the
+    # test means BOTH must succeed within the same wget invocation.
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "wget --spider --quiet http://localhost:9093/-/ready && wget --spider --quiet http://localhost:9093/-/healthy || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     ports:
       - "9093:9093"
     networks:
