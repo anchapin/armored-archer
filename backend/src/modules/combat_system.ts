@@ -7,6 +7,7 @@ import { Span } from '@opentelemetry/api';
 import { logger } from '../config/logger';
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
+import { safeParse } from '../utils/safeParse';
 import { traceAsync, setTracingAttribute } from '../utils/tracing';
 import {
   verifyRequestSignature,
@@ -14,12 +15,7 @@ import {
   detectTimingAttack,
   RequestSignature,
 } from './anti_cheat';
-import { PvPMatch } from './matchmaker';
-import { profileFunction } from './profiling';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
-import { getPlayerInventory, getEquippedGearModifierBonuses, PlayerInventory } from './gear_system';
-import { safeParse } from '../utils/safeParse';
-import { getCurrentSeason, getLeaderboardEntry } from './season_system';
+import { logAudit } from './audit';
 import {
   logHitResolution,
   logTimeout,
@@ -27,13 +23,38 @@ import {
   type HitResolutionEvent,
   type TimeoutEvent,
 } from './fairness_telemetry';
+import { getPlayerInventory, getEquippedGearModifierBonuses, PlayerInventory } from './gear_system';
+import { PvPMatch } from './matchmaker';
 import { recordCombatAction, recordDamageDealt } from './metrics';
+import { profileFunction } from './profiling';
+import { getCurrentSeason, getLeaderboardEntry } from './season_system';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 // Re-export the canonical combat/damage-math constants so existing callers
 // importing from `./combat_system` keep working without code changes. The
 // constants themselves are owned by `./combat_constants` — see ADR-0007 for
 // the contract and ADR-0005 for the broader combat-authority boundary.
 export * from './combat_constants';
+
+// Issue #1107: when persistMatchResult fails (DB outage, no winner
+// determined, schema mismatch) the three settlement paths used to swallow
+// the {success:false} and emit match_completed notifications anyway, telling
+// players the match was saved when the match_results row never landed.
+// Surface a single error_code envelope at all three call sites and audit the
+// drop so ops can correlate with the DB error stream.
+const PERSIST_FAILED_CODE = 'PERSIST_FAILED';
+const PERSIST_FAILED_MESSAGE = 'Match settlement could not be saved';
+
+/**
+ * Handle turn-timeout auto-forfeit. The auto-forfeit path also calls
+ * `persistMatchResult` to record the match in `match_results`; if that
+ * fails the caller MUST surface PERSIST_FAILED instead of claiming the
+ * match was forfeited, and we MUST NOT broadcast `match_completed`.
+ */
+type HandleTurnTimeoutResult =
+  | { status: 'switch-turn' }
+  | { status: 'forfeited'; winner: string }
+  | { status: 'persist-failed'; error_code: typeof PERSIST_FAILED_CODE };
 
 // Maximum consecutive turn timeouts before auto-forfeit.
 // Turn timers are the single timeout authority (ADR-0003): the 5-minute turn
@@ -247,7 +268,7 @@ async function handleTurnTimeout(
   nk: Runtime.Nakama,
   matchState: MatchState,
   logger: Runtime.Logger
-): Promise<boolean> {
+): Promise<HandleTurnTimeoutResult> {
   const timedOutUserId = matchState.current_turn_user_id;
   const opponentId =
     timedOutUserId === matchState.creator_id ? matchState.opponent_id : matchState.creator_id;
@@ -329,8 +350,39 @@ async function handleTurnTimeout(
 
         updateMatchStatus(nk, matchResult.data, winnerId, 'timeout');
 
-        // Persist match result to database
-        await persistMatchResult(nk, matchResult.data, matchState, 'timeout');
+        // Persist match result to database (issue #1107: honor success=false).
+        // If the DB write fails we MUST NOT broadcast match_completed — the
+        // match_results row never landed, so the players would otherwise
+        // believe the match was permanently recorded when it was not.
+        const persistResult = await persistMatchResult(nk, matchResult.data, matchState, 'timeout');
+        if (!persistResult.success) {
+          logger.error(
+            'persistMatchResult failed in handleTurnTimeout auto-forfeit (issue #1107)',
+            {
+              matchId: matchState.match_id,
+              endReason: 'timeout',
+              winnerId,
+              loserId,
+              error: persistResult.error,
+            }
+          );
+          logAudit(
+            nk,
+            matchState.creator_id,
+            null, // no Runtime.Context available at this layer
+            'persist_match_result_failed',
+            'match_results',
+            {
+              match_id: matchState.match_id,
+              end_reason: 'timeout',
+              winner_id: winnerId,
+              loser_id: loserId,
+            },
+            'failure',
+            persistResult.error
+          );
+          return { status: 'persist-failed', error_code: PERSIST_FAILED_CODE };
+        }
       }
     }
 
@@ -340,7 +392,7 @@ async function handleTurnTimeout(
     // Notify both players of match completion
     notifyMatchStateUpdate(nk, matchState, undefined, 'match_completed');
 
-    return true;
+    return { status: 'forfeited', winner: winnerId };
   }
 
   // Switch to opponent's turn
@@ -365,7 +417,7 @@ async function handleTurnTimeout(
   // Non-blocking: log to telemetry
   void logTimeout(nk, timeoutEvent);
 
-  return false;
+  return { status: 'switch-turn' };
 }
 
 /**
@@ -438,6 +490,9 @@ function validateAntiCheat(
   return null;
 }
 
+/**
+ *
+ */
 export async function rpcSubmitCombatAction(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -481,14 +536,25 @@ export async function rpcSubmitCombatAction(
 
       // Handle turn timeout
       if (isTurnTimedOut(matchState)) {
-        const wasForfeited = await handleTurnTimeout(nk, matchState, logger);
+        const timeoutResult = await handleTurnTimeout(nk, matchState, logger);
         span.setAttribute('combat.turn_timeout', true);
 
-        if (wasForfeited) {
+        if (timeoutResult.status === 'persist-failed') {
+          // Issue #1107: persistMatchResult failed — do NOT claim the match
+          // was forfeited; surface the audit-tagged error to the client and
+          // let them retry rather than silently accepting an unsaved result.
+          return JSON.stringify({
+            success: false,
+            error: PERSIST_FAILED_MESSAGE,
+            error_code: timeoutResult.error_code,
+          });
+        }
+
+        if (timeoutResult.status === 'forfeited') {
           return JSON.stringify({
             error: 'Match forfeited due to consecutive timeouts',
             forfeit: true,
-            winner: matchState.winner,
+            winner: timeoutResult.winner,
           });
         }
 
@@ -529,8 +595,39 @@ export async function rpcSubmitCombatAction(
       if (result.winner) {
         updateMatchStatus(nk, match, result.winner, 'health_zero');
 
-        // Persist match result to database
-        await persistMatchResult(nk, match, matchState, 'health_zero');
+        // Persist match result to database (issue #1107: honor success=false).
+        // A failed persist means the match_results row never landed; we must
+        // NOT broadcast match_completed (players would otherwise believe the
+        // match was permanently saved) and must surface PERSIST_FAILED so the
+        // client knows the settlement needs follow-up.
+        const persistResult = await persistMatchResult(nk, match, matchState, 'health_zero');
+        if (!persistResult.success) {
+          logger.error('persistMatchResult failed on health_zero settlement (issue #1107)', {
+            matchId: match.match_id,
+            winner: result.winner,
+            endReason: 'health_zero',
+            error: persistResult.error,
+          });
+          logAudit(
+            nk,
+            ctx.userId,
+            ctx.ipAddress ?? null,
+            'persist_match_result_failed',
+            'match_results',
+            {
+              match_id: match.match_id,
+              end_reason: 'health_zero',
+              winner: result.winner,
+            },
+            'failure',
+            persistResult.error
+          );
+          return JSON.stringify({
+            success: false,
+            error: PERSIST_FAILED_MESSAGE,
+            error_code: PERSIST_FAILED_CODE,
+          });
+        }
 
         // Notify both players that match is complete
         notifyMatchStateUpdate(nk, matchState, result, 'match_completed');
@@ -1314,13 +1411,46 @@ export async function rpcPlayerDisconnect(
       // Update match status (end reason mirrors persistMatchResult's mapping)
       updateMatchStatus(nk, match, winnerId, reason === 'timeout' ? 'timeout' : 'disconnect');
 
-      // Persist match result to database
-      await persistMatchResult(
+      // Persist match result to database (issue #1107: honor success=false).
+      // Same contract as the health-zero path: a failed persist means
+      // match_results row never landed; broadcast no match_completed and
+      // surface PERSIST_FAILED so the forfeiting player can be informed.
+      const persistResult = await persistMatchResult(
         nk,
         match,
         matchState,
         reason === 'timeout' ? 'timeout' : 'disconnect'
       );
+      if (!persistResult.success) {
+        const endReason = reason === 'timeout' ? 'timeout' : 'disconnect';
+        logger.error('persistMatchResult failed in rpcPlayerDisconnect (issue #1107)', {
+          matchId: match.match_id,
+          forfeitingUserId: ctx.userId,
+          winnerId,
+          endReason,
+          error: persistResult.error,
+        });
+        logAudit(
+          nk,
+          ctx.userId,
+          ctx.ipAddress ?? null,
+          'persist_match_result_failed',
+          'match_results',
+          {
+            match_id: match.match_id,
+            end_reason: endReason,
+            winner_id: winnerId,
+            forfeiting_user_id: ctx.userId,
+          },
+          'failure',
+          persistResult.error
+        );
+        return JSON.stringify({
+          success: false,
+          error: PERSIST_FAILED_MESSAGE,
+          error_code: PERSIST_FAILED_CODE,
+        });
+      }
 
       // Log disconnect event for fairness telemetry (if not a timeout)
       if (reason !== 'timeout') {
