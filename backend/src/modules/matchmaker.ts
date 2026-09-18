@@ -27,6 +27,7 @@ import {
   recordSettlementOutcome,
 } from './metrics';
 import { recordPunchUpLossAndEvaluate } from './punchup_watch';
+import { calculateRank } from './rank';
 import {
   checkRateLimit,
   checkMatchCooldown,
@@ -812,28 +813,10 @@ export function rpcAcceptMatch(
   });
 }
 
-/**
- * Calculates a player's rank based on level and stats.
- *
- * This is the Power Rating derivation (build strength). It is recomputed
- * from player_stats on every use — matchmaking, punch-up eligibility,
- * and the consolidated get_player_rank RPC in season_leaderboard (which
- * exposes it as the explicit `power_rating` response field, issue #871).
- * It is never persisted and never decays (issue #865).
- *
- * @param playerStats - Player statistics data
- * @returns Calculated player rank
- */
-export function calculateRank(playerStats: PlayerStats): number {
-  const baseRank = playerStats.level * 10;
-  const statsTotal =
-    playerStats.stats.attack +
-    playerStats.stats.defense +
-    playerStats.stats.dodge +
-    playerStats.stats.crit_rate;
-
-  return Math.floor(baseRank + statsTotal / 4);
-}
+// calculateRank now lives in ./rank (issue #1086 cycle break). Re-exported
+// here so existing downstream consumers that import from './matchmaker'
+// keep working without test changes; new code should import from './rank'.
+export { calculateRank } from './rank';
 
 /**
  * Punch-up eligibility result.

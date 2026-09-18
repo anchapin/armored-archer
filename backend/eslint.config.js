@@ -117,4 +117,32 @@ module.exports = [
       'import/no-cycle': 'off',
     },
   },
+
+  // Module-boundary enforcement (issue #1086).
+  //
+  // The matchmaker → season_system → season_leaderboard → matchmaker
+  // 3-node import cycle was broken by extracting `calculateRank` into
+  // ./rank and pointing season_leaderboard at it. `import/no-cycle`
+  // is currently disabled due to an eslint-plugin-import-x resolver
+  // incompatibility (see line 80), so this `no-restricted-imports`
+  // rule is the durable guardrail that prevents the cycle from
+  // being re-introduced: season_leaderboard must not reach back into
+  // matchmaker. New pure helpers should land in ./rank instead.
+  {
+    files: ['src/modules/season_leaderboard.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: './matchmaker',
+              message:
+                "Importing from './matchmaker' closes the matchmaker ↔ season_leaderboard ↔ season_system import cycle (issue #1086). Pure rank helpers belong in './rank'.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
