@@ -5769,6 +5769,241 @@ describe('store', () => {
     });
   });
 
+  // ============================================================
+  // TRANSMOG INVARIANT — cosmetics grant zero combat stats
+  // (issue #1098, ratified in #905, codified in CONTEXT.md as
+  // "Cosmetic Skin: A visual-only override applied over Base Gear;
+  // carries no stats or modifiers").
+  //
+  // Today there is no separate applyCosmeticToMatch function — the
+  // transmog system is storage-only (rpcEquipCosmetic writes to
+  // player_cosmetics_equipped, never to player_stats). This block
+  // enforces the invariant from two angles so a future regression
+  // that *does* wire a skin to stats would ship silently:
+  //
+  //   (a) catalog-level: every entry in COSMETIC_CATALOG has zero
+  //       stat-bearing fields (any plausible alias is checked).
+  //   (b) RPC-level: equip / save-loadout / purchase paths leave the
+  //       player_stats storage collection byte-identical to its
+  //       pre-call value. The four combat stats from
+  //       player_stats.stats JSONB (attack_power / defense /
+  //       dodge_chance / crit_rate) are explicitly re-asserted
+  //       decoded so a regression surfaces as a useful diff.
+  // ============================================================
+
+  describe('Transmog invariant: cosmetics grant zero combat stats (issue #1098)', () => {
+    // The four combat stats stored in player_stats.stats JSONB
+    // (per backend/data/001_create_player_stats.sql).
+    const COMBAT_STAT_KEYS = [
+      'attack_power',
+      'defense',
+      'dodge_chance',
+      'crit_rate',
+    ];
+
+    // Any plausible stat-bearing field name. Used to catch a regression
+    // that adds a stat field under a different alias (e.g. 'damage',
+    // 'crit_chance', 'attack_speed', 'multiplier', 'modifiers').
+    // This list is intentionally broader than the four canonical stats —
+    // a regression can only escape it by inventing a new stat field name,
+    // which would itself be a ratification-worthy change.
+    const ANY_STAT_FIELD_NAMES = [
+      // Canonical (per backend/data/001_create_player_stats.sql + the
+      // existing player_stats JSON schema).
+      'attack',
+      'attack_power',
+      'attack_speed',
+      'defense',
+      'defense_power',
+      'dodge',
+      'dodge_chance',
+      'crit',
+      'crit_rate',
+      'crit_chance',
+      'damage',
+      'damage_bonus',
+      'health',
+      'hp',
+      'max_hp',
+      'speed',
+      // Aggregate / collection fields (the temptation is to bundle
+      // computed stats inside the cosmetic record).
+      'stats',
+      'base_stats',
+      'combat_stats',
+      'modifiers',
+      'stat_multiplier',
+      'multiplier',
+      // Suffix-pattern bait (e.g. `attack_bonus`, `crit_chance`) — easy to
+      // add accidentally without realizing it's a stat. The check has to
+      // catch these too, not just the canonical names.
+      'attack_bonus',
+      'defense_bonus',
+      'crit_bonus',
+      'health_bonus',
+      'attack_modifier',
+      'defense_modifier',
+      'speed_modifier',
+      // Cosmetic-only fields are fine: 'appearance', 'aura', 'trail',
+      // 'skin', 'color'. These are intentionally NOT in the list.
+    ];
+
+    const PLAYER_STATS_STORAGE_KEY = 'player_stats:test-user';
+    const OWNED_STORAGE_KEY = 'player_cosmetics_owned:test-user';
+    const EQUIPPED_STORAGE_KEY = 'player_cosmetics_equipped:test-user';
+
+    /** Seed a canonical player_stats record with non-zero combat stats. */
+    function seedPlayerStats(): { stats: Record<string, number> } {
+      const value = {
+        user_id: 'test-user',
+        level: 12,
+        experience: 1234,
+        ability_points: 7,
+        stats: {
+          attack_power: 25,
+          defense: 15,
+          dodge_chance: 10,
+          crit_rate: 5,
+        },
+      };
+      testStorage.set(PLAYER_STATS_STORAGE_KEY, JSON.stringify(value));
+      return value;
+    }
+
+    /** Reset cosmetic ownership and equipped state to a known empty form. */
+    function resetCosmeticState(): void {
+      testStorage.set(OWNED_STORAGE_KEY, JSON.stringify({ items: [] }));
+      testStorage.set(
+        EQUIPPED_STORAGE_KEY,
+        JSON.stringify({ helm: '', armor: '', bow: '', arrow: '', amulet: '' })
+      );
+    }
+
+    it('every catalog entry has zero stat-bearing fields (catalog-level invariant)', () => {
+      // Sanity guard: catalog must be non-empty. A future refactor that
+      // accidentally empties COSMETIC_CATALOG should still surface here
+      // rather than pass as a silent no-op for-loop.
+      expect(Object.keys(COSMETIC_CATALOG).length).toBeGreaterThan(0);
+
+      for (const [itemId, item] of Object.entries(COSMETIC_CATALOG)) {
+        // Negative check: none of the plausible stat field names exist.
+        for (const field of ANY_STAT_FIELD_NAMES) {
+          expect((item as Record<string, unknown>)[field]).toBeUndefined();
+        }
+        // Copy/paste guard: the catalog key matches the item_id field,
+        // catching a body-shared-by-two-keys bug.
+        expect(item.item_id).toBe(itemId);
+      }
+    });
+
+    it('equipping every catalog cosmetic leaves player_stats byte-identical (RPC invariant)', () => {
+      const baseStats = seedPlayerStats();
+
+      for (const [skinId, item] of Object.entries(COSMETIC_CATALOG)) {
+        // Grant ownership of only the cosmetic under test and reset
+        // equipped state so each iteration is independent.
+        testStorage.set(OWNED_STORAGE_KEY, JSON.stringify({ items: [skinId] }));
+        testStorage.set(
+          EQUIPPED_STORAGE_KEY,
+          JSON.stringify({ helm: '', armor: '', bow: '', arrow: '', amulet: '' })
+        );
+
+        const before = testStorage.get(PLAYER_STATS_STORAGE_KEY);
+
+        const result = rpcEquipCosmetic(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ slot: item.slot, skin_id: skinId })
+        );
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(true);
+
+        const after = testStorage.get(PLAYER_STATS_STORAGE_KEY);
+        // Byte-identity: the combat stats record must be untouched.
+        expect(after).toBe(before);
+        // Decoded invariant: the four combat stats are unchanged. This
+        // surfaces a useful diff if a regression mutates only one stat.
+        const decoded = JSON.parse(after as string) as {
+          stats: Record<string, number>;
+        };
+        for (const stat of COMBAT_STAT_KEYS) {
+          expect(decoded.stats[stat]).toBe(baseStats.stats[stat]);
+        }
+      }
+    });
+
+    it('saving a full 5-slot loadout of representative cosmetics leaves player_stats byte-identical', () => {
+      // Pre-own every cosmetic so save_cosmetic_loadout passes its
+      // ownership check across all slots.
+      const allSkinIds = Object.keys(COSMETIC_CATALOG);
+      testStorage.set(OWNED_STORAGE_KEY, JSON.stringify({ items: allSkinIds }));
+
+      // Pick one representative cosmetic per slot. If multiple cosmetics
+      // share a slot, the first iteration order wins — this exercises
+      // every slot through at least one path.
+      const slotToSkin: Record<string, string> = {};
+      for (const [skinId, item] of Object.entries(COSMETIC_CATALOG)) {
+        if (!slotToSkin[item.slot]) slotToSkin[item.slot] = skinId;
+      }
+      const equipped = {
+        helm: slotToSkin.helm ?? '',
+        armor: slotToSkin.armor ?? '',
+        bow: slotToSkin.bow ?? '',
+        arrow: slotToSkin.arrow ?? '',
+        amulet: slotToSkin.amulet ?? '',
+      };
+
+      seedPlayerStats();
+      const before = testStorage.get(PLAYER_STATS_STORAGE_KEY);
+
+      const result = rpcSaveCosmeticLoadout(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({ equipped })
+      );
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(true);
+
+      const after = testStorage.get(PLAYER_STATS_STORAGE_KEY);
+      expect(after).toBe(before);
+
+      const decoded = JSON.parse(after as string) as {
+        stats: Record<string, number>;
+      };
+      for (const stat of COMBAT_STAT_KEYS) {
+        expect(decoded.stats[stat]).toBeGreaterThan(0);
+      }
+    });
+
+    it('purchasing every catalog cosmetic leaves player_stats byte-identical (purchase invariant)', () => {
+      for (const skinId of Object.keys(COSMETIC_CATALOG)) {
+        // Give the player enough gems for any single cosmetic purchase
+        // (max catalog price is 1500 gems) and a clean state for each run.
+        testStorage.set(
+          'player_currency:test-user',
+          JSON.stringify({ user_id: 'test-user', gems: 10000, coins: 0 })
+        );
+        resetCosmeticState();
+        seedPlayerStats();
+        const before = testStorage.get(PLAYER_STATS_STORAGE_KEY);
+
+        const result = rpcPurchaseCosmetic(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ item_id: skinId })
+        );
+        const parsed = JSON.parse(result);
+        expect(parsed.success).toBe(true);
+
+        const after = testStorage.get(PLAYER_STATS_STORAGE_KEY);
+        expect(after).toBe(before);
+      }
+    });
+  });
+
   describe('Bundle Definitions', () => {
     it('should have the starter founders bundle defined', () => {
       expect(BUNDLE_DEFINITIONS.bundle_starter_founders).toBeDefined();
