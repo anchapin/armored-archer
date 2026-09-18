@@ -13,6 +13,30 @@ import {
 } from './notifications';
 
 /**
+ * Issue #1106: Stop leaking raw internal error strings to the client.
+ *
+ * Logs the full error server-side (ops needs the trace), but only returns a
+ * stable `error_code` + generic `error` to the caller. NEVER include
+ * `String(error)` or any internal detail in the response body — that's how
+ * SQL fragments, TypeError messages, and connection strings escape the
+ * server boundary.
+ */
+function safeErrorResponse(
+  rpcName: string,
+  error: unknown,
+  logger: Runtime.Logger,
+  errorCode: string
+): string {
+  logger.error(`RPC ${rpcName} failed`, { error });
+  return JSON.stringify({
+    success: false,
+    error: 'Internal error; see server logs',
+    error_code: errorCode,
+    rpc_name: rpcName,
+  });
+}
+
+/**
  * Register RPC: Register device token for push notifications
  * Payload: { "deviceToken": string, "platform": "android" | "ios", "appVersion"?: string }
  */
@@ -42,8 +66,12 @@ export function registerRpcRegisterDeviceToken(initializer: InitModule): void {
 
         return JSON.stringify(result);
       } catch (error) {
-        logger.error('Failed to register device token', { error: String(error) });
-        return JSON.stringify({ success: false, error: String(error) });
+        return safeErrorResponse(
+          'armored_archer_register_device_token',
+          error,
+          logger,
+          'NOTIFICATION_PERSISTENCE_FAILED'
+        );
       }
     }
   );
@@ -67,8 +95,12 @@ export function registerRpcRemoveDeviceToken(initializer: InitModule): void {
         const result = await removeDeviceToken(nk, deviceToken);
         return JSON.stringify(result);
       } catch (error) {
-        logger.error('Failed to remove device token', { error: String(error) });
-        return JSON.stringify({ success: false, error: String(error) });
+        return safeErrorResponse(
+          'armored_archer_remove_device_token',
+          error,
+          logger,
+          'NOTIFICATION_PERSISTENCE_FAILED'
+        );
       }
     }
   );
@@ -108,8 +140,12 @@ export function registerRpcGetNotificationPreferences(initializer: InitModule): 
           },
         });
       } catch (error) {
-        logger.error('Failed to get notification preferences', { error: String(error) });
-        return JSON.stringify({ success: false, error: String(error) });
+        return safeErrorResponse(
+          'armored_archer_get_notification_preferences',
+          error,
+          logger,
+          'NOTIFICATION_PERSISTENCE_FAILED'
+        );
       }
     }
   );
@@ -148,8 +184,12 @@ export function registerRpcUpdateNotificationPreferences(initializer: InitModule
         const result = await updateNotificationPreferences(nk, ctx.userId!, preferences);
         return JSON.stringify(result);
       } catch (error) {
-        logger.error('Failed to update notification preferences', { error: String(error) });
-        return JSON.stringify({ success: false, error: String(error) });
+        return safeErrorResponse(
+          'armored_archer_update_notification_preferences',
+          error,
+          logger,
+          'NOTIFICATION_PERSISTENCE_FAILED'
+        );
       }
     }
   );
@@ -192,8 +232,12 @@ export function registerRpcScheduleNotification(initializer: InitModule): void {
 
         return JSON.stringify(result);
       } catch (error) {
-        logger.error('Failed to schedule notification', { error: String(error) });
-        return JSON.stringify({ success: false, error: String(error) });
+        return safeErrorResponse(
+          'armored_archer_schedule_notification',
+          error,
+          logger,
+          'NOTIFICATION_DISPATCH_FAILED'
+        );
       }
     }
   );
@@ -217,8 +261,12 @@ export function registerRpcCancelNotification(initializer: InitModule): void {
         const result = await cancelScheduledNotification(nk, notificationId);
         return JSON.stringify(result);
       } catch (error) {
-        logger.error('Failed to cancel notification', { error: String(error) });
-        return JSON.stringify({ success: false, error: String(error) });
+        return safeErrorResponse(
+          'armored_archer_cancel_notification',
+          error,
+          logger,
+          'NOTIFICATION_DISPATCH_FAILED'
+        );
       }
     }
   );
@@ -245,8 +293,12 @@ export function registerRpcGetNotificationStatus(initializer: InitModule): void 
           registeredDevices: deviceTokens[0]?.count || 0,
         });
       } catch (error) {
-        logger.error('Failed to get notification status', { error: String(error) });
-        return JSON.stringify({ success: false, error: String(error) });
+        return safeErrorResponse(
+          'armored_archer_get_notification_status',
+          error,
+          logger,
+          'NOTIFICATION_DISPATCH_FAILED'
+        );
       }
     }
   );
