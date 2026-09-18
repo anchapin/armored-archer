@@ -29,6 +29,12 @@ import {
 } from './fairness_telemetry';
 import { recordCombatAction, recordDamageDealt } from './metrics';
 
+// Re-export the canonical combat/damage-math constants so existing callers
+// importing from `./combat_system` keep working without code changes. The
+// constants themselves are owned by `./combat_constants` — see ADR-0007 for
+// the contract and ADR-0005 for the broader combat-authority boundary.
+export * from './combat_constants';
+
 // Maximum consecutive turn timeouts before auto-forfeit.
 // Turn timers are the single timeout authority (ADR-0003): the 5-minute turn
 // timer doubles as the mobile reconnect grace, so 2 consecutive timeouts
