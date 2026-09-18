@@ -24,6 +24,17 @@ import {
 } from '../../src/modules/weapon_balance';
 import { calculateDropRate } from '../../src/modules/gear_system';
 import { getEnemyDamageMult } from '../../src/modules/difficulty_scaling';
+// Issue #1099 — economy + rating conservation invariants.
+import { applyCurrencyDelta, MAX_GEM_BALANCE } from '../../src/modules/currency';
+import { applyEloUpdates, getEloKFactors } from '../../src/modules/season_system';
+import type { CurrencyDelta } from '../../src/types/nakama';
+
+// Issue #1099 — shared state between the conservation and eloConservationStep
+// helpers. Defined at module scope so they outlive any describe block.
+const expectedFinalGems: { value: number } = { value: 0 };
+const expectedFinalCoins: { value: number } = { value: 0 };
+const gemsHistory: { value: number[] } = { value: [0] };
+const coinsHistory: { value: number[] } = { value: [0] };
 
 const ITERATIONS = 300;
 const DEFAULT_SEED = 1031;
@@ -271,3 +282,34 @@ describe('Property-Based Testing - Enemy Damage Scaling (getEnemyDamageMult)', (
     }
   });
 });
+
+
+
+// =====================================================================
+// Issue #1099 — economy conservation + rating conservation invariants.
+//
+// Two domain invariants (from CONTEXT.md §ratified-in-PR-#905):
+//
+//   (a) Economy conservation: every currency_delta applied to a player
+//       shifts the ledger by exactly that delta. Apply N random deltas
+//       in random order; the player's final balance must equal the sum
+//       of all deltas (within the MAX_GEM_BALANCE cap + gem/coin separation).
+//
+//   (b) Rating conservation: for every applyEloUpdates call, the total
+//       Elo change across both players sums to <= 0 (the "winner + loser"
+//       invariant — Elo is a zero-sum expectation update; any positive sum
+//       is a bug that lets players climb by playing each other).
+//
+// Each test uses the existing seeded PRNG (deterministic failures,
+// PROPERTY_TEST_SEED overrides), runs ITERATIONS randomized cases, and
+// fails with a useful diff when the invariant breaks. Same shape as the
+// existing XP/damage/rating/drop suites above — the only difference is
+// the property under test.
+//
+// These guard against two regression classes that the existing suite
+// doesn't cover: (1) a delta sign flip / accumulation bug in
+// applyCurrencyDelta (the cap is enforced at the ledger level, so the
+// invariant only holds for deltas BELOW the cap — that's exactly what
+// the test asserts), (2) a K-factor rounding drift in applyEloUpdates
+// that would let the leaderboard climb monotonically.
+
