@@ -27,6 +27,7 @@ import {
   type HitResolutionEvent,
   type TimeoutEvent,
 } from './fairness_telemetry';
+import { recordCombatAction, recordDamageDealt } from './metrics';
 
 // Maximum consecutive turn timeouts before auto-forfeit.
 // Turn timers are the single timeout authority (ADR-0003): the 5-minute turn
@@ -730,6 +731,12 @@ function processCombatAction(
         matchState.creator_health = Math.max(0, matchState.creator_health - finalDamage);
       }
 
+      // Issue #1093: feed the existing combat-damage histogram and combat-action
+      // counter so the dashboards (issue #1092) stop reporting zeros for events
+      // that already happen.
+      recordCombatAction('shoot', isCrit ? 'crit' : 'hit');
+      recordDamageDealt('opponent', finalDamage);
+
       const logEntry: CombatLogEntry = {
         turn: matchState.turn,
         attacker_id: userId,
@@ -774,6 +781,10 @@ function processCombatAction(
         matchState.winner = matchState.creator_id;
       }
     } else {
+      // Issue #1093: count misses too (issue #1092 dashboards split actions
+      // by result; without this the "miss" label series stays absent).
+      recordCombatAction('shoot', 'miss');
+
       const logEntry: CombatLogEntry = {
         turn: matchState.turn,
         attacker_id: userId,

@@ -12,7 +12,7 @@ import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { logAudit } from './audit';
 import { applyCurrencyDelta, getCurrency } from './currency';
 import { getMaxStageXPGain } from './gear_system';
-import { registerRpcWithMetrics } from './metrics';
+import { incrementPlayerLevelUp, registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { getLevelForXp } from './xp_manager';
 
@@ -340,6 +340,11 @@ export function rpcGainXP(
   if (newLevel > oldLevel) {
     const levelsGained = newLevel - oldLevel;
     playerStats.ability_points += levelsGained;
+    // Issue #1093: feed the level-up counter (one bump per level gained so
+    // the rate matches the underlying event).
+    for (let i = 0; i < levelsGained; i++) {
+      incrementPlayerLevelUp();
+    }
     logger.info(
       'User %s leveled up from %d to %d, gained %d ability points',
       ctx.userId,

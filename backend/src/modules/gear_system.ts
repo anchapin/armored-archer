@@ -24,7 +24,13 @@ import {
   unlockModifierPoolInDB,
   getUnlockedModifierPoolsFromDB,
 } from './gear_db';
-import { observeStageClaimSeconds, recordStageClaim, recordStageCompleteOutcome } from './metrics';
+import {
+  observeStageClaimSeconds,
+  recordStageClaim,
+  recordStageCompleteOutcome,
+  recordPveStageCompleted,
+  incrementGearUnlock,
+} from './metrics';
 import { checkRateLimit } from './rate_limit';
 import {
   applyStageCompletion,
@@ -2025,6 +2031,11 @@ function applyCompletionAndRespond(
   // Process stage completion (boss defeats, modifier unlocks, loot via DB)
   const result = processStageCompletion(nk, ctx, logger, request);
 
+  // Issue #1093: pve_stages_completed_total stayed at 0 on the dashboard; record
+  // the just-finished stage (clamped stars). The noImprovement path above is
+  // intentionally not instrumented because it is a replay, not a new stage.
+  recordPveStageCompleted(request.difficulty, safeStars);
+
   // Audit the stage completion
   logAudit(
     nk,
@@ -2149,6 +2160,9 @@ function processStageCompletion(
 
   // Record drop if gear was dropped for balance analytics (non-blocking)
   if (lootResult.dropped && lootResult.gear) {
+    // Issue #1093: gear_unlocks_total stayed at 0; record the drop here so
+    // dashboards reflect rarity distribution from real loot rolls.
+    incrementGearUnlock(lootResult.gear.rarity);
     recordDrop(nk, {
       userId: ctx.userId,
       timestamp: Date.now(),
@@ -2237,6 +2251,9 @@ function generateLootResult(
     // Update gear ID with the database-generated ID
     gear.id = insertResult.item_id;
     inventory.gear.push(gear);
+    // Issue #1093: feed the gear-unlock counter (per-rarity) so the loot
+    // distribution dashboard reflects what the table is actually producing.
+    incrementGearUnlock(gear.rarity);
     logger.info(
       'Loot dropped and persisted for user %s: %s (%s) [DB ID: %s]',
       userId,

@@ -4,6 +4,7 @@
  * Provides functions to insert, query, and update gear data in PostgreSQL.
  */
 
+import { recordDatabaseQueryDuration } from './metrics';
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { GearItem } from './gear_system';
@@ -629,4 +630,23 @@ export function isModifierPoolUnlocked(
     logger.error('Failed to check if modifier pool is unlocked', { error: String(error) });
     return false;
   }
+}
+
+/**
+ * Issue #1093: thin DB-query wrapper that records the duration histogram.
+ * nk.dbQuery is fire-and-forget for many callers (it returns a Promise that
+ * the caller may or may not await). We measure synchronously around the
+ * call so the recorded duration reflects dispatch + first-promise-resolution
+ * (which the dashboards care about for DB latency analysis).
+ */
+function timedDbQuery<T = unknown>(
+  nk: Runtime.Nakama,
+  query: string,
+  params: unknown[] = []
+): Promise<T> {
+  const startMs = Date.now();
+  return (nk.dbQuery(query, params) as unknown as Promise<T>).then((result) => {
+    recordDatabaseQueryDuration('gear_db', (Date.now() - startMs) / 1000);
+    return result;
+  });
 }

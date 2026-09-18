@@ -29,6 +29,8 @@ import {
   setWebhookPendingAwards,
   incrementWebhookRedisError,
   setWebhookConfigured,
+  recordPurchase,
+  recordRevenue,
 } from './metrics';
 
 // The player_currency storage record is the single currency ledger
@@ -1310,6 +1312,9 @@ export async function rpcValidatePurchase(
   // Step 2: Check for duplicates and platform
   const securityError = await validatePurchaseSecurity(ctx, logger, nk, request);
   if (securityError) {
+    // Issue #1093: record the failed purchase so the failure label is
+    // populated (and dashboards show real fraud/duplicate activity).
+    recordPurchase(request.product_id, false);
     return JSON.stringify({
       error: securityError,
       error_code: securityError.includes('Duplicate') ? 'DUPLICATE_RECEIPT' : 'INVALID_PLATFORM',
@@ -1319,6 +1324,7 @@ export async function rpcValidatePurchase(
   // Step 3: Validate with RevenueCat
   const rcValidation = await validatePurchaseWithRevenueCat(ctx, logger, nk, request);
   if (!rcValidation.valid) {
+    recordPurchase(request.product_id, false);
     return JSON.stringify({ error: rcValidation.error, error_code: rcValidation.errorCode });
   }
   const gemBundle = rcValidation.gemBundle;
@@ -1326,12 +1332,21 @@ export async function rpcValidatePurchase(
   // Step 4: Check purchase limits
   const limitsError = validatePurchaseLimits(ctx, logger, nk, request, gemBundle);
   if (limitsError) {
+    recordPurchase(request.product_id, false);
     return JSON.stringify({ error: limitsError, error_code: 'EXCESSIVE_AMOUNT' });
   }
 
   // Step 5: Award gems
   try {
     const result = await awardGems(ctx, logger, nk, request, gemBundle);
+    // Issue #1093: count the successful purchase + record its revenue in
+    // cents so the existing economy dashboards (issue #1092) reflect real IAP
+    // traffic instead of staying at zero.
+    recordPurchase(request.product_id, true);
+    const bundleDef = GEM_BUNDLES[request.product_id];
+    if (bundleDef) {
+      recordRevenue(Math.round(bundleDef.price_usd * 100), 'USD', request.product_id);
+    }
     return JSON.stringify({
       gems_awarded: result.gems_awarded,
       new_balance: result.new_balance,
@@ -1340,6 +1355,9 @@ export async function rpcValidatePurchase(
     });
   } catch (e) {
     if (e instanceof Error && e.message === 'EXCEEDS_MAX_BALANCE') {
+      // Issue #1093: distinguish a validation-flow failure from a thrown bug
+      // by recording it as a failed purchase (no revenue recorded).
+      recordPurchase(request.product_id, false);
       return JSON.stringify({
         error: 'Purchase would exceed maximum gem balance',
         error_code: 'EXCEEDS_MAX_BALANCE',
