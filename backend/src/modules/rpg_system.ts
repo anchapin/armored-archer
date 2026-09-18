@@ -16,6 +16,12 @@ import { incrementPlayerLevelUp, registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { getLevelForXp } from './xp_manager';
 
+// Re-export the canonical combat/damage-math constants so existing callers
+// importing from `./rpg_system` keep working without code changes. The
+// constants themselves are owned by `./combat_constants` — see ADR-0007 for
+// the contract and ADR-0005 for the broader combat-authority boundary.
+export * from './combat_constants';
+
 /**
  * Helper function to save player stats to storage and invalidate cache.
  */
