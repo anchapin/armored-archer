@@ -45,6 +45,11 @@ import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
 import { safeParse } from '../utils/safeParse';
 import { logAudit } from './audit';
+import {
+  recordCurrencySpent,
+  recordCurrencyEarned,
+  recordDatabaseQueryDuration,
+} from './metrics';
 
 /**
  * Storage collection holding the authoritative currency record.
@@ -114,6 +119,11 @@ function readCurrencyRecord(
   userId: string,
   logger: Runtime.Logger
 ): RawCurrencyRead {
+  // Issue #1093: this is the canonical currency-ledger storage read —
+  // wrapping it (and writeCurrencyRecord below) makes the existing
+  // db_query_duration_seconds histogram reflect real read traffic instead
+  // of staying absent.
+  const readStart = Date.now();
   const objects = nk.storageRead([
     {
       collection: PLAYER_CURRENCY_COLLECTION,
@@ -121,6 +131,7 @@ function readCurrencyRecord(
       userId: userId,
     },
   ]);
+  recordDatabaseQueryDuration('currency_select', (Date.now() - readStart) / 1000);
 
   if (objects.length === 0 || !objects[0].value) {
     return { currency: defaultCurrency(userId), version: undefined, hadLegacyGold: false };
@@ -347,6 +358,9 @@ function writeCurrencyRecord(
   currency: PlayerCurrency,
   version: string | undefined
 ): void {
+  // Issue #1093: time the ledger write so the db_query_duration_seconds
+  // histogram picks up currency_update traffic too.
+  const writeStart = Date.now();
   nk.storageWrite([
     {
       collection: PLAYER_CURRENCY_COLLECTION,
@@ -356,6 +370,7 @@ function writeCurrencyRecord(
       version: version,
     },
   ]);
+  recordDatabaseQueryDuration('currency_update', (Date.now() - writeStart) / 1000);
 }
 
 /**
@@ -521,6 +536,21 @@ export function applyCurrencyDelta(
 
     invalidateCurrencyCache(userId, log);
     getCacheManager(log).set(PLAYER_CURRENCY_COLLECTION, userId, updated);
+
+    // Issue #1093: feed the existing economy counters so dashboards reflect
+    // real earn/spend traffic (issue #1092 reported zeros for these labels).
+    // `source` is the audit identifier the caller already supplies, so label
+    // cardinality stays bounded to known earn/spend paths.
+    if (gemsDelta > 0) {
+      recordCurrencyEarned('gems', source, gemsDelta);
+    } else if (gemsDelta < 0) {
+      recordCurrencySpent('gems', source, -gemsDelta);
+    }
+    if (coinsDelta > 0) {
+      recordCurrencyEarned('coins', source, coinsDelta);
+    } else if (coinsDelta < 0) {
+      recordCurrencySpent('coins', source, -coinsDelta);
+    }
 
     logAudit(
       nk,

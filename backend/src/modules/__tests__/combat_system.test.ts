@@ -11,6 +11,7 @@ import {
   CombatAction,
 } from '../combat_system';
 import { Runtime } from '../../types/nakama';
+import { getMetricsRegistry } from '../metrics';
 
 // Mock anti_cheat to avoid timing attacks and signature issues in tests
 jest.mock('../anti_cheat', () => {
@@ -2128,6 +2129,168 @@ describe('combat_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.error_code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  // ==========================================
+  // Issue #1093 — combat metric recorders
+  // ==========================================
+  //
+  // processCombatAction is internal — exercise it end-to-end via
+  // rpcSubmitCombatAction and read the existing prom-client registry to assert
+  // the recordCombatAction / recordDamageDealt hooks fire.
+
+  type MetricSample = { labels: Record<string, string>; value: number; metricName?: string };
+
+  type RegisteredMetric = {
+    name: string;
+    type: string;
+    values?: MetricSample[];
+  };
+
+  async function allMetrics(): Promise<RegisteredMetric[]> {
+    return (await getMetricsRegistry().getMetricsAsJSON()) as RegisteredMetric[];
+  }
+
+  async function counterTotal(
+    name: string,
+    labels?: Record<string, string>
+  ): Promise<number> {
+    const metrics = await allMetrics();
+    const metric = metrics.find((m) => m.name === name);
+    if (!metric) return 0;
+    const samples = metric.values ?? [];
+    return samples
+      .filter((s) =>
+        labels
+          ? Object.entries(labels).every(([k, v]) => s.labels[k] === v)
+          : true
+      )
+      .reduce((sum, s) => sum + s.value, 0);
+  }
+
+  async function histogramObservationCount(
+    histogramName: string,
+    labels?: Record<string, string>
+  ): Promise<number> {
+    const metrics = await allMetrics();
+    // For a histogram, prom-client emits multiple per-label entries whose
+    // `metricName` is `<histogram>_count`. Match by that inner name.
+    const samples = metrics.flatMap((m) => m.values ?? []);
+    return samples
+      .filter(
+        (s) =>
+          s.metricName === `${histogramName}_count` &&
+          (labels
+            ? Object.entries(labels).every(([k, v]) => s.labels[k] === v)
+            : true)
+      )
+      .reduce((sum, s) => sum + s.value, 0);
+  }
+
+  describe('combat metric recorders (issue #1093)', () => {
+    function setupMatchAndState() {
+      const match = createMockMatch({ status: 'active' });
+      const matchState: MatchState = {
+        match_id: 'match-123',
+        turn: 1,
+        current_turn_user_id: 'creator-user',
+        creator_id: 'creator-user',
+        opponent_id: 'opponent-user',
+        creator_health: 100,
+        opponent_health: 100,
+        creator_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        opponent_stats: {
+          level: 5,
+          xp: 0,
+          stats: { attack: 20, defense: 15, dodge: 10, crit_rate: 10 },
+        },
+        status: 'active',
+        log: [],
+        last_turn_timestamp: Date.now(),
+        turn_timeout_ms: 30 * 60 * 1000,
+        consecutive_timeouts: 0,
+      };
+      const mockStorage = new Map();
+      mockStorage.set(`pvp_matches:match-123`, JSON.stringify(match));
+      mockStorage.set(`pvp_match_states:match-123`, JSON.stringify(matchState));
+
+      mockNk.storageRead = jest.fn((objects: any[]) =>
+        objects
+          .map((obj) => {
+            const val =
+              mockStorage.get(`${obj.collection}:${obj.key}`) ?? mockStorage.get(obj.key);
+            if (!val) return null;
+            return { collection: obj.collection, key: obj.key, value: val };
+          })
+          .filter(Boolean)
+      );
+      mockNk.storageWrite = jest.fn((objects: any[]) => {
+        objects.forEach((obj) => {
+          mockStorage.set(`${obj.collection}:${obj.key}`, obj.value);
+        });
+      });
+    }
+
+    it('increments combat_actions_total{shoot,hit} and combat_damage_dealt{opponent} on a hit', async () => {
+      jest.spyOn(Math, 'random').mockReturnValue(0.5); // dodge=10% so 0.5 lands a hit
+      setupMatchAndState();
+
+      const beforeActions = await counterTotal('armored_archer_combat_actions_total', {
+        action_type: 'shoot',
+        result: 'hit',
+      });
+      const beforeDamage = await histogramObservationCount(
+        'armored_archer_combat_damage_dealt',
+        { target_type: 'opponent' }
+      );
+
+      await rpcSubmitCombatAction(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({ match_id: 'match-123', action_type: 'shoot', angle: 1.5, power: 0.5 })
+      );
+
+      const afterActions = await counterTotal('armored_archer_combat_actions_total', {
+        action_type: 'shoot',
+        result: 'hit',
+      });
+      const afterDamage = await histogramObservationCount(
+        'armored_archer_combat_damage_dealt',
+        { target_type: 'opponent' }
+      );
+
+      expect(afterActions - beforeActions).toBe(1);
+      expect(afterDamage - beforeDamage).toBe(1);
+    });
+
+    it('increments combat_actions_total{shoot,miss} on a miss', async () => {
+      jest.spyOn(Math, 'random').mockReturnValue(0.99); // > 90% hit chance so it misses
+      setupMatchAndState();
+
+      const beforeMiss = await counterTotal('armored_archer_combat_actions_total', {
+        action_type: 'shoot',
+        result: 'miss',
+      });
+
+      await rpcSubmitCombatAction(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({ match_id: 'match-123', action_type: 'shoot', angle: 1.5, power: 0.5 })
+      );
+
+      const afterMiss = await counterTotal('armored_archer_combat_actions_total', {
+        action_type: 'shoot',
+        result: 'miss',
+      });
+
+      expect(afterMiss - beforeMiss).toBe(1);
     });
   });
 });

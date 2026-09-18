@@ -3,6 +3,8 @@
  * This module extracts common patterns for cache management.
  */
 
+import { setCacheHitRatio } from '../modules/metrics';
+
 /**
  * Cache operation types for logging
  */
@@ -125,6 +127,14 @@ export function getCacheEntry<T>(
   } else {
     metrics.misses++;
     logCacheOperation('miss', cacheName, key);
+  }
+  // Issue #1093: feed the cache_hit_ratio gauge so dashboards stop
+  // reporting 0 for events that already happen. (setCacheHitRatio is a
+  // gauge so each call replaces the prior value; no client aggregation
+  // concern.)
+  const total = metrics.hits + metrics.misses;
+  if (total > 0) {
+    setCacheHitRatio(cacheName, metrics.hits / total);
   }
 
   return value;

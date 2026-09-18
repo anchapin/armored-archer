@@ -35,6 +35,7 @@ import {
 } from '../currency';
 import { rpcGetCurrency, rpcSpendGems } from '../store';
 import { Runtime } from '../../types/nakama';
+import { getMetricsRegistry } from '../metrics';
 
 describe('currency ledger (issue #860)', () => {
   let mockLogger: Runtime.Logger;
@@ -459,6 +460,135 @@ describe('currency ledger (issue #860)', () => {
       rpcSpendGems(mockCtx, mockLogger, mockNk, JSON.stringify({ amount: 10 }));
 
       expect(mockNk.walletUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  // ==========================================
+  // Issue #1093 — currency + DB metric recorders
+  // ==========================================
+
+  type MetricSample = { labels: Record<string, string>; value: number };
+  type RegisteredMetric = { name: string; type: string; values?: MetricSample[] };
+
+  async function counterTotal(
+    name: string,
+    labels?: Record<string, string>
+  ): Promise<number> {
+    const metrics = (await getMetricsRegistry().getMetricsAsJSON()) as RegisteredMetric[];
+    const metric = metrics.find((m) => m.name === name);
+    if (!metric) return 0;
+    return (metric.values ?? [])
+      .filter((s) =>
+        labels ? Object.entries(labels).every(([k, v]) => s.labels[k] === v) : true
+      )
+      .reduce((sum, s) => sum + s.value, 0);
+  }
+
+  async function histogramObservationCount(
+    histogramName: string,
+    labels?: Record<string, string>
+  ): Promise<number> {
+    const metrics = (await getMetricsRegistry().getMetricsAsJSON()) as RegisteredMetric[];
+    return metrics
+      .flatMap((m) => m.values ?? [])
+      .filter(
+        (s) =>
+          (s as MetricSample & { metricName?: string }).metricName ===
+            `${histogramName}_count` &&
+          (labels ? Object.entries(labels).every(([k, v]) => s.labels[k] === v) : true)
+      )
+      .reduce((sum, s) => sum + s.value, 0);
+  }
+
+  describe('currency + DB metric recorders (issue #1093)', () => {
+    it('records earned gems under the source label', async () => {
+      writeLedger({ user_id: 'metric-user', gems: 0, coins: 0 });
+      const before = await counterTotal('armored_archer_currency_earned_total', {
+        currency_type: 'gems',
+        source: 'match_rewards',
+      });
+
+      applyCurrencyDelta(
+        mockNk,
+        'metric-user',
+        { gems: 25 },
+        'match_rewards',
+        mockLogger
+      );
+
+      const after = await counterTotal('armored_archer_currency_earned_total', {
+        currency_type: 'gems',
+        source: 'match_rewards',
+      });
+      expect(after - before).toBe(25);
+    });
+
+    it('records spent coins under the reason label (debited source flows through the same hook)', async () => {
+      writeLedger({ user_id: 'metric-user-2', gems: 0, coins: 100 });
+      const beforeSpent = await counterTotal('armored_archer_currency_spent_total', {
+        currency_type: 'coins',
+        reason: 'respec_stats',
+      });
+
+      applyCurrencyDelta(
+        mockNk,
+        'metric-user-2',
+        { coins: -40 },
+        'respec_stats',
+        mockLogger
+      );
+
+      const afterSpent = await counterTotal('armored_archer_currency_spent_total', {
+        currency_type: 'coins',
+        reason: 'respec_stats',
+      });
+      expect(afterSpent - beforeSpent).toBe(40);
+    });
+
+    it('does NOT record currency metrics when the delta is a no-op', async () => {
+      const beforeEarn = await counterTotal('armored_archer_currency_earned_total', {
+        currency_type: 'gems',
+        source: 'match_rewards',
+      });
+
+      applyCurrencyDelta(mockNk, 'noop-user', {}, 'match_rewards', mockLogger);
+
+      const afterEarn = await counterTotal('armored_archer_currency_earned_total', {
+        currency_type: 'gems',
+        source: 'match_rewards',
+      });
+      expect(afterEarn - beforeEarn).toBe(0);
+    });
+
+    it('times the ledger storage read in db_query_duration_seconds', async () => {
+      writeLedger({ user_id: 'db-user', gems: 7, coins: 11 });
+      const beforeReads = await histogramObservationCount(
+        'armored_archer_db_query_duration_seconds',
+        { query_type: 'currency_select' }
+      );
+
+      getCurrency(mockNk, 'db-user', mockLogger);
+
+      const afterReads = await histogramObservationCount(
+        'armored_archer_db_query_duration_seconds',
+        { query_type: 'currency_select' }
+      );
+      expect(afterReads - beforeReads).toBe(1);
+    });
+
+    it('times the ledger storage write in db_query_duration_seconds', async () => {
+      const beforeWrites = await histogramObservationCount(
+        'armored_archer_db_query_duration_seconds',
+        { query_type: 'currency_update' }
+      );
+
+      applyCurrencyDelta(mockNk, 'write-user', { gems: 5 }, 'match_rewards', mockLogger);
+
+      const afterWrites = await histogramObservationCount(
+        'armored_archer_db_query_duration_seconds',
+        { query_type: 'currency_update' }
+      );
+      expect(afterWrites - beforeWrites).toBe(1);
     });
   });
 });

@@ -73,6 +73,7 @@ import {
   RefundReason,
 } from '../store';
 import { Runtime } from '../../types/nakama';
+import { getMetricsRegistry } from '../metrics';
 
 // Mock RevenueCat API key for tests
 const originalEnv = process.env;
@@ -6140,6 +6141,126 @@ describe('store', () => {
         expect(changeAudits).toHaveLength(1);
         expect(changeAudits[0].details.transferred_from).toBe('old-user');
       });
+    });
+  });
+
+  // ==========================================
+  // Issue #1093 — purchase metric recorders
+  // ==========================================
+
+  type MetricSample = { labels: Record<string, string>; value: number };
+  type RegisteredMetric = { name: string; type: string; values?: MetricSample[] };
+
+  async function counterTotal(
+    name: string,
+    labels?: Record<string, string>
+  ): Promise<number> {
+    const metrics = (await getMetricsRegistry().getMetricsAsJSON()) as RegisteredMetric[];
+    const metric = metrics.find((m) => m.name === name);
+    if (!metric) return 0;
+    return (metric.values ?? [])
+      .filter((s) =>
+        labels ? Object.entries(labels).every(([k, v]) => s.labels[k] === v) : true
+      )
+      .reduce((sum, s) => sum + s.value, 0);
+  }
+
+  describe('purchase metric recorders (issue #1093)', () => {
+    it('records purchases_total{status=success} + purchase_revenue_total only on a successful IAP award', async () => {
+      // Mirror the existing happy-path mock setup (revenuecat fetch + a
+      // seeded currency record) so the validator reaches the award branch.
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: 'active',
+          subscriber: {
+            non_subscriptions: {
+              'com.armoredarcher.gems.small': [
+                { product_id: 'com.armoredarcher.gems.small' },
+              ],
+            },
+          },
+        }),
+      });
+      const currency = createMockCurrency();
+      mockNk.storageWrite([
+        {
+          collection: 'player_currency',
+          key: 'test-user',
+          userId: 'test-user',
+          value: JSON.stringify(currency),
+        },
+      ]);
+
+      const productId = 'com.armoredarcher.gems.small';
+      const beforeSuccess = await counterTotal('armored_archer_purchases_total', {
+        product_type: productId,
+        status: 'success',
+      });
+      const beforeRevenue = await counterTotal('armored_archer_purchase_revenue_total', {
+        currency: 'USD',
+        product_type: productId,
+      });
+
+      const result = await rpcValidatePurchase(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({
+          product_id: productId,
+          platform: 'ios',
+          transaction_receipt: 'issue1093_metric_receipt_a',
+        })
+      );
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(true);
+
+      const afterSuccess = await counterTotal('armored_archer_purchases_total', {
+        product_type: productId,
+        status: 'success',
+      });
+      const afterRevenue = await counterTotal('armored_archer_purchase_revenue_total', {
+        currency: 'USD',
+        product_type: productId,
+      });
+      expect(afterSuccess - beforeSuccess).toBe(1);
+      // GEM_BUNDLES['com.armoredarcher.gems.small'].price_usd === 0.99 → 99 cents
+      expect(afterRevenue - beforeRevenue).toBe(99);
+    });
+
+    it('records purchases_total{status=failure} when the receipt fails RevenueCat validation', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: 'unknown', // RevenueCat returns this when it doesn't recognize the receipt
+        }),
+      });
+      const productId = 'com.armoredarcher.gems.small';
+      const beforeFailure = await counterTotal('armored_archer_purchases_total', {
+        product_type: productId,
+        status: 'failure',
+      });
+
+      const result = await rpcValidatePurchase(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({
+          product_id: productId,
+          platform: 'ios',
+          transaction_receipt: 'issue1093_metric_receipt_bad',
+        })
+      );
+      const parsed = JSON.parse(result);
+      // Document that this branch returns a failed-validation envelope so
+      // readers can tell why the metric moved (it isn't the success branch).
+      expect(parsed.success).toBeUndefined();
+
+      const afterFailure = await counterTotal('armored_archer_purchases_total', {
+        product_type: productId,
+        status: 'failure',
+      });
+      expect(afterFailure - beforeFailure).toBe(1);
     });
   });
 });
