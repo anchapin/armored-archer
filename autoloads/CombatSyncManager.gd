@@ -14,6 +14,7 @@ signal opponent_moved(move_data: Dictionary)
 signal health_changed(player_health: int, opponent_health: int)
 signal combat_ended(winner: String)
 signal combat_started(match_id: String)
+signal offline_state_changed(is_offline: bool)  # Issue #1081: circuit breaker surfaced state
 
 # --- Properties ---
 var player_health: int = 100
@@ -27,6 +28,12 @@ var current_opponent_id: String = ""
 var is_combat_active: bool = false
 var _polling_timer: Timer = null
 var _poll_interval: float = 0.5  # 500ms polling interval
+
+# Issue #1081: poll-failure circuit breaker
+var _poll_failures: int = 0
+var _circuit_broken: bool = false
+var _is_offline: bool = false
+const POLL_FAILURE_CIRCUIT_BREAK_LIMIT: int = 5  # Stop polling after 5 consecutive failures
 
 # --- Initialization ---
 func _ready() -> void:
@@ -42,6 +49,9 @@ func start_combat(match_id: String) -> void:
 	opponent_health = 100
 	combat_log.clear()
 	is_my_turn = true
+	_poll_failures = 0
+	_circuit_broken = false
+	_is_offline = false
 
 	combat_started.emit(match_id)
 
@@ -126,6 +136,9 @@ func _on_poll_tick() -> void:
 	if not is_combat_active or current_match_id.is_empty():
 		return
 
+	if _circuit_broken:
+		return
+
 	# Poll for opponent moves
 	var rpc_payload: String = JSON.stringify({
 		"match_id": current_match_id
@@ -135,8 +148,16 @@ func _on_poll_tick() -> void:
 		var response = await NetworkManager.send_rpc("armored_archer/get_match_state", rpc_payload)
 
 		if response.has("error"):
-			push_warning("[CombatSyncManager] Poll error: %s" % response.error)
+			_poll_failures += 1
+			if _poll_failures >= POLL_FAILURE_CIRCUIT_BREAK_LIMIT:
+				_circuit_broken = true
+				_is_offline = true
+				offline_state_changed.emit(true)
+				push_warning("[CombatSyncManager] Poll circuit breaker tripped after %d failures — stopping poll loop" % _poll_failures)
+			else:
+				push_warning("[CombatSyncManager] Poll error: %s (failure %d/%d)" % [response.error, _poll_failures, POLL_FAILURE_CIRCUIT_BREAK_LIMIT])
 		elif response.has("move_data") and not response.move_data.is_empty():
+			_poll_failures = 0
 			update_opponent_state(response.move_data)
 
 ## Stops combat and cleanup
@@ -149,6 +170,12 @@ func end_combat(winner: String) -> void:
 		_polling_timer.queue_free()
 		_polling_timer = null
 
+	# Reset circuit breaker state
+	_poll_failures = 0
+	_circuit_broken = false
+	_is_offline = false
+	offline_state_changed.emit(false)
+
 	# Record end state
 	combat_log.append({
 		"type": "combat_end",
@@ -159,6 +186,30 @@ func end_combat(winner: String) -> void:
 	})
 
 	combat_ended.emit(winner)
+
+## Issue #1081: called by UI or NetworkManager when connectivity is restored
+## during an active duel to resync match state and restart polling.
+func resync_combat_state() -> void:
+	if not is_combat_active or current_match_id.is_empty():
+		return
+	if _is_offline:
+		_is_offline = false
+		_circuit_broken = false
+		_poll_failures = 0
+		offline_state_changed.emit(false)
+	_do_immediate_poll()
+
+func _do_immediate_poll() -> void:
+	if not is_combat_active or current_match_id.is_empty() or _circuit_broken:
+		return
+	var rpc_payload: String = JSON.stringify({"match_id": current_match_id})
+	if has_node("/root/NetworkManager"):
+		var response = await NetworkManager.send_rpc("armored_archer/get_match_state", rpc_payload)
+		if response.has("error"):
+			push_warning("[CombatSyncManager] Resync poll error: %s" % response.error)
+		elif response.has("move_data") and not response.move_data.is_empty():
+			_poll_failures = 0
+			update_opponent_state(response.move_data)
 
 # --- Damage Application ---
 
