@@ -101,6 +101,8 @@ const AUTH_RECOVERY_STAGE_FAILED: String = "failed"
 const MAX_RETRY_ATTEMPTS: int = 3
 const RETRY_DELAY_SECONDS: float = 2.0
 const RECONNECT_ON_FOCUS: bool = true
+const EXPONENTIAL_BACKOFF_BASE: float = 1.0
+const EXPONENTIAL_BACKOFF_MAX: float = 16.0
 
 # --- Issue #908: bounded auth timeout + health-gate state ---
 # overall bound for the auth sequence (incl. retries) — kept under 15s acceptance limit
@@ -273,6 +275,51 @@ func _ready() -> void:
 		username = ""
 
 	_try_auto_connect()
+
+## Issue #1081: react to app resume (reconnect) and app pause (player_disconnect during active duel).
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_RESUMED:
+			if RECONNECT_ON_FOCUS and is_offline and not _is_reconnecting:
+				_attempt_focused_reconnection()
+		NOTIFICATION_APPLICATION_PAUSED:
+			_maybe_send_player_disconnect()
+
+## Issue #1081: bounded reconnection on foreground with exponential backoff.
+func _attempt_focused_reconnection() -> void:
+	if _retry_attempts >= MAX_RETRY_ATTEMPTS:
+		return
+	_is_reconnecting = true
+	_retry_attempts += 1
+	reconnection_attempted.emit(true, _retry_attempts)
+	var delay: float = min(EXPONENTIAL_BACKOFF_BASE * pow(2.0, _retry_attempts - 1), EXPONENTIAL_BACKOFF_MAX)
+	var timer: Timer = Timer.new()
+	timer.wait_time = delay
+	timer.one_shot = true
+	add_child(timer)
+	var _err = timer.timeout.connect(_on_focused_reconnect_timeout)
+	timer.start()
+
+func _on_focused_reconnect_timeout() -> void:
+	_is_reconnecting = false
+	if is_session_valid():
+		_refresh_session()
+	else:
+		authenticate_device()
+
+## Issue #1081: sends player_disconnect RPC on app pause during active duel.
+func _maybe_send_player_disconnect() -> void:
+	var csm = get_node_or_null("/root/CombatSyncManager")
+	if csm == null:
+		return
+	var combat_active: bool = csm.get("is_combat_active")
+	if not combat_active:
+		return
+	var match_id: String = str(csm.get("current_match_id"))
+	if match_id.is_empty() or match_id == "null":
+		return
+	var payload: String = JSON.stringify({"match_id": match_id})
+	send_rpc_async("armored_archer/player_disconnect", payload)
 
 ## Issue #1108: builds one of the dedicated HTTPRequest nodes (auth, RPC,
 ## probe) with the shared transport configuration.
@@ -1458,6 +1505,11 @@ func handle_reconnection() -> void:
 	# Refresh session after reconnection
 	if not refresh_token.is_empty():
 		_refresh_session()
+
+	# Issue #1081: resync CombatSyncManager state on reconnection
+	var csm = get_node_or_null("/root/CombatSyncManager")
+	if csm != null and csm.has_method("resync_combat_state"):
+		csm.resync_combat_state()
 
 ## Checks if we are currently in a reconnection attempt
 func is_reconnecting() -> bool:
