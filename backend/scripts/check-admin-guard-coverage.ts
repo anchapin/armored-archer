@@ -69,6 +69,7 @@ const PRIVILEGED_EXACT_IDS: ReadonlySet<string> = new Set([
   'armored_archer/flag_match_for_qa',
   'armored_archer/add_debug_notes',
   'armored_archer/reconstruct_match_state',
+  'armored_archer/end_season', // issue #1119 — admin-gated; was player-callable
 ]);
 
 /**

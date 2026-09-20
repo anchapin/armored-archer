@@ -72,7 +72,8 @@ describe('isPrivilegedRpcId (ADR-0006 privileged id set)', () => {
     expect(isPrivilegedRpcId('armored_archer/rollout_record_metrics')).toBe(false);
     expect(isPrivilegedRpcId('armored_archer/prometheus_metrics')).toBe(false);
     expect(isPrivilegedRpcId('armored_archer/get_queue_status')).toBe(false);
-    expect(isPrivilegedRpcId('armored_archer/end_season')).toBe(false);
+    // end_season was player-callable until issue #1119; now admin-gated
+    expect(isPrivilegedRpcId('armored_archer/end_season')).toBe(true);
   });
 });
 
