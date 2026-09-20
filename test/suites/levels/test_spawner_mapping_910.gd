@@ -4,7 +4,7 @@ extends GutTest
 ## Asserts the explicit enemy_scene_map, archetype map, and boss map
 ## cover every Ch1 archetype from data/campaigns.json.
 
-const ENEMY_SPAWNER_PATH := "res://scenes/enemies/enemy_spawner.gd"
+const ENEMY_SPAWNER_PATH := "res://autoloads/EnemySpawner.gd"
 const CAMPAIGNS_PATH := "res://data/campaigns.json"
 
 func before_all() -> void:

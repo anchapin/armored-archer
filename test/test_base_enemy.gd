@@ -3,7 +3,7 @@ extends Node
 # Tests for the BaseEnemy class (post-#910 spawner consolidation).
 #
 # Spawning authority moved from `autoloads/EnemyFactory.gd` (deleted) to
-# `scenes/enemies/enemy_spawner.gd` (autoload). Enemy lifecycle — including
+# `autoloads/EnemySpawner.gd` (autoload). Enemy lifecycle — including
 # the stage-stats override, the ObjectPool integration, and the
 # `reset_for_spawn` re-registration — is now driven by the spawner.
 #
