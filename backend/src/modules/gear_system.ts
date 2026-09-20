@@ -1596,6 +1596,7 @@ export interface StageCompleteRequest {
 export interface LootResult {
   dropped: boolean;
   gear: GearItem | null;
+  error?: string;
 }
 
 /**
@@ -2231,6 +2232,8 @@ function buildAuditData(
   };
 }
 
+const MAX_INSERT_ATTEMPTS = 3;
+
 /**
  * Generate loot result for stage completion and persist to database
  *
@@ -2250,30 +2253,53 @@ function generateLootResult(
 ): LootResult {
   const gear = generateGearItem(stageId, inventory.unlocked_modifier_pools, logger);
 
-  // Persist gear to database
-  const insertResult = insertGearItem(nk, userId, gear);
-
-  if (insertResult.success && insertResult.item_id) {
-    // Update gear ID with the database-generated ID
-    gear.id = insertResult.item_id;
-    inventory.gear.push(gear);
-    // Issue #1093: feed the gear-unlock counter (per-rarity) so the loot
-    // distribution dashboard reflects what the table is actually producing.
-    incrementGearUnlock(gear.rarity);
-    logger.info(
-      'Loot dropped and persisted for user %s: %s (%s) [DB ID: %s]',
-      userId,
-      gear.name,
-      gear.rarity,
-      insertResult.item_id
+  // Persist gear to database with retry
+  let insertResult: ReturnType<typeof insertGearItem>;
+  let lastError = '';
+  for (let attempt = 1; attempt <= MAX_INSERT_ATTEMPTS; attempt++) {
+    insertResult = insertGearItem(nk, userId, gear);
+    if (insertResult.success && insertResult.item_id) {
+      gear.id = insertResult.item_id;
+      inventory.gear.push(gear);
+      // Issue #1093: feed the gear-unlock counter (per-rarity) so the loot
+      // distribution dashboard reflects what the table is actually producing.
+      incrementGearUnlock(gear.rarity);
+      logger.info(
+        'Loot dropped and persisted for user %s: %s (%s) [DB ID: %s] (attempt %d)',
+        userId,
+        gear.name,
+        gear.rarity,
+        insertResult.item_id,
+        attempt
+      );
+      return { dropped: true, gear };
+    }
+    lastError = insertResult.error ?? 'Unknown error';
+    logger.warn(
+      'Failed to persist gear to database (attempt %d/%d): %s',
+      attempt,
+      MAX_INSERT_ATTEMPTS,
+      lastError
     );
-    return { dropped: true, gear };
-  } else {
-    logger.error('Failed to persist gear to database: %s', insertResult.error);
-    // Still return the gear even if persistence failed (data is lost but client receives it)
-    inventory.gear.push(gear);
-    return { dropped: true, gear };
   }
+
+  // All retries exhausted — log server-side audit and return dropped:false
+  logger.error(
+    'Failed to persist gear to database after %d attempts: %s',
+    MAX_INSERT_ATTEMPTS,
+    lastError
+  );
+  logAudit(
+    nk,
+    userId,
+    null,
+    'stage_complete',
+    'loot_persistence',
+    { stage_id: stageId, gear_name: gear.name, gear_rarity: gear.rarity },
+    'failure',
+    `PERSISTENCE_FAILED: ${lastError}`
+  );
+  return { dropped: false, gear: null, error: 'PERSISTENCE_FAILED' };
 }
 
 /**

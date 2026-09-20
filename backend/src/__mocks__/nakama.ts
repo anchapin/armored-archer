@@ -291,6 +291,10 @@ export const createMockNakama = (): Runtime.Nakama => {
       }
       return [];
     }
+    if (query.includes('inventory_items') && query.includes('INSERT')) {
+      // Return a mock item_id for INSERT queries
+      return [{ item_id: `mock-gear-${Date.now()}` }];
+    }
     if (query.includes('inventory_items')) {
       return [];
     }
