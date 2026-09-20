@@ -859,7 +859,7 @@ describe('season_leaderboard_rpc', () => {
       const archive = await recordSeasonCompletion(mockNk, TEST_SEASON_ID, mockLogger);
 
       const writeCall = mockNk.storageWrite.mock.calls[0][0][0];
-      const writtenData = JSON.parse(writeCall.value);
+      const writtenData = (typeof writeCall.value === 'string' ? (typeof writeCall.value === 'string' ? (typeof writeCall.value === 'string' ? JSON.parse(writeCall.value) : writeCall.value) : writeCall.value) : writeCall.value);
 
       expect(writtenData['season_0']).toBeDefined();
       expect(writtenData[TEST_SEASON_ID]).toBeDefined();

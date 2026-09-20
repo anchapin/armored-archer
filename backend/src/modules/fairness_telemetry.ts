@@ -9,6 +9,7 @@
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { toStorageValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
@@ -254,7 +255,7 @@ export async function logHitResolution(
         collection: COLLECTION_HIT_RESOLUTION,
         key: event.event_id,
         userId: '00000000-0000-0000-0000-000000000000', // System user
-        value: JSON.stringify(event),
+        value: toStorageValue(event),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -300,7 +301,7 @@ export async function logDisconnect(nk: Runtime.Nakama, event: DisconnectEvent):
         collection: COLLECTION_DISCONNECTS,
         key: event.event_id,
         userId: '00000000-0000-0000-0000-000000000000',
-        value: JSON.stringify(event),
+        value: toStorageValue(event),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -346,7 +347,7 @@ export async function logTimeout(nk: Runtime.Nakama, event: TimeoutEvent): Promi
         collection: COLLECTION_TIMEOUTS,
         key: event.event_id,
         userId: '00000000-0000-0000-0000-000000000000',
-        value: JSON.stringify(event),
+        value: toStorageValue(event),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -392,7 +393,7 @@ export async function logRankingDelta(nk: Runtime.Nakama, event: RankingDeltaEve
         collection: COLLECTION_RANKING_DELTAS,
         key: event.event_id,
         userId: '00000000-0000-0000-0000-000000000000',
-        value: JSON.stringify(event),
+        value: toStorageValue(event),
         permissionRead: 2,
         permissionWrite: 0,
       },
@@ -442,7 +443,7 @@ export async function logPunchUpLoss(nk: Runtime.Nakama, event: PunchUpLossEvent
         collection: COLLECTION_PUNCH_UP_LOSSES,
         key: event.event_id,
         userId: '00000000-0000-0000-0000-000000000000',
-        value: JSON.stringify(event),
+        value: toStorageValue(event),
         permissionRead: 2,
         permissionWrite: 0,
       },

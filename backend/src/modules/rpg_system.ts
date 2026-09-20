@@ -9,6 +9,7 @@ import { getCacheManager } from '../utils/cache';
 import { invalidatePlayerStatsCache } from '../utils/db_optimizer';
 import { getPlayerStatsWithCache } from '../utils/player-data-helpers';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import { applyCurrencyDelta, getCurrency } from './currency';
 import { getMaxStageXPGain } from './gear_system';
@@ -37,7 +38,7 @@ function savePlayerStats(
       collection: 'player_stats',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(playerStats),
+      value: toStorageValue(playerStats),
     },
   ]);
 
@@ -305,7 +306,12 @@ export function rpcGainXP(
   } else {
     const value = objects[0].value;
     if (value) {
-      const parseResult = safeParse<PlayerStats>(value, null, logger, 'storage_data');
+      const parseResult = safeParse<PlayerStats>(
+        getStorageRawValue(value) ?? '',
+        null,
+        logger,
+        'storage_data'
+      );
       if (!parseResult.success || !parseResult.data) {
         logger.error('Failed to parse data');
         logAudit(
@@ -454,7 +460,7 @@ export function rpcAllocateStats(
   }
 
   const parseResult = safeParse<PlayerStats>(
-    objects[0].value ?? '{}',
+    getStorageRawValue(objects[0].value) ?? '{}',
     null,
     logger,
     'player_stats'
@@ -848,7 +854,7 @@ export function rpcSaveBuild(
       collection: 'player_builds',
       key: `${ctx.userId}_slot_${request.build_slot}`,
       userId: ctx.userId,
-      value: JSON.stringify(buildData),
+      value: toStorageValue(buildData),
     },
   ]);
 
@@ -913,7 +919,12 @@ export function rpcLoadBuild(
     });
   }
 
-  const parseResult = safeParse<BuildData>(value, null, logger, 'build_data');
+  const parseResult = safeParse<BuildData>(
+    getStorageRawValue(value) ?? '',
+    null,
+    logger,
+    'build_data'
+  );
   if (!parseResult.success || !parseResult.data) {
     return JSON.stringify({
       error: 'Failed to parse build data',
@@ -979,7 +990,12 @@ export function rpcGetBuilds(
     const match = key.match(/slot_(\d+)$/);
     if (match) {
       const slot = parseInt(match[1], 10);
-      const parseResult = safeParse<BuildData>(obj.value || '{}', null, logger, 'build_data');
+      const parseResult = safeParse<BuildData>(
+        getStorageRawValue(obj.value) ?? '{}',
+        null,
+        logger,
+        'build_data'
+      );
       if (parseResult.success && parseResult.data) {
         builds[slot] = parseResult.data;
       }
@@ -1096,7 +1112,12 @@ function loadPlayerStats(
     return { success: false, error: 'Player stats data is empty' };
   }
 
-  const parseResult = safeParse<PlayerStats>(value, null, undefined as any, 'player_stats');
+  const parseResult = safeParse<PlayerStats>(
+    getStorageRawValue(value) ?? '',
+    null,
+    undefined as any,
+    'player_stats'
+  );
   if (!parseResult.success || !parseResult.data) {
     return { success: false, error: 'Failed to parse player stats' };
   }
@@ -1142,7 +1163,12 @@ function loadRespecData(
     };
   }
 
-  const parseResult = safeParse<RespecData>(value, null, undefined as any, 'respec_data');
+  const parseResult = safeParse<RespecData>(
+    getStorageRawValue(value) ?? '',
+    null,
+    undefined as any,
+    'respec_data'
+  );
   if (!parseResult.success || !parseResult.data) {
     return {
       success: true,
@@ -1166,7 +1192,7 @@ function saveRespecData(nk: Runtime.Nakama, userId: string, respecData: RespecDa
       collection: 'respec_data',
       key: userId,
       userId: userId,
-      value: JSON.stringify(respecData),
+      value: toStorageValue(respecData),
     },
   ]);
 }

@@ -63,7 +63,12 @@ describe('DynamicDifficulty', () => {
 
     const mockStorageWrite = jest.fn((objects: any) => {
       objects.forEach((obj: any) => {
-        storage.set(`${obj.collection}:${obj.key}`, obj.value);
+        // Normalize: storageWrite values may be objects post-#1135; keep the
+        // string-backed map for read parity with Nakama's JSON storage.
+        storage.set(
+          `${obj.collection}:${obj.key}`,
+          typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value)
+        );
       });
       return Promise.resolve(undefined);
     });
@@ -857,11 +862,13 @@ describe('DynamicDifficulty', () => {
     it('should save difficulty state to storage', () => {
       setDifficultyModifier(mockCtx, testUserId, 0.1);
 
+      // storageWrite is called with a SINGLE array argument; assert against
+      // that array (post-#1135 value is an object, not a JSON string).
       expect(mockCtx.storageWrite).toHaveBeenCalledWith([
         expect.objectContaining({
           collection: 'difficulty_state',
           key: testUserId,
-          value: expect.stringContaining('current_modifier'),
+          value: expect.objectContaining({ current_modifier: 0.1 }),
         }),
       ]);
     });

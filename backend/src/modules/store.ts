@@ -29,9 +29,11 @@ import {
   setWebhookPendingAwards,
   incrementWebhookRedisError,
   setWebhookConfigured,
+<<<<<<< HEAD
   recordPurchase,
   recordRevenue,
 } from './metrics';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers'; ([AI-assisted] perf: resolve #1135 — gate rpcStageComplete p99 <100ms + fix Nakama JS storage contract)
 
 // The player_currency storage record is the single currency ledger
 // (issue #860). The Nakama wallet is no longer written by this module; all
@@ -204,7 +206,7 @@ async function markReceiptAsUsed(
         collection: 'validated_receipts',
         key: `receipt_${receiptHash}`,
         userId: userId,
-        value: JSON.stringify({ validated_at: Date.now(), receipt_hash: receiptHash }),
+        value: toStorageValue({ validated_at: Date.now(), receipt_hash: receiptHash }),
         permissionRead: 0, // No public read
         permissionWrite: 0, // No public write
       },
@@ -323,19 +325,9 @@ async function markRefundAsProcessed(
   outcome: Record<string, unknown>,
   logger?: Runtime.Logger
 ): Promise<boolean> {
-  // Bounded retry budget for transient OCC conflicts on the durable marker
-  // (issue #1131). Two attempts with a short backoff matches
-  // applyCurrencyDelta's own retry shape; if a concurrent write bumped the
-  // marker between our read and our write, the second attempt re-reads and
-  // re-writes with the fresh version. Persistent failures (returns false
-  // here) surface as PERSISTENCE_FAILED upstream so the webhook caller can
-  // retry the entire refund safely.
   const MAX_ATTEMPTS = 2;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      // 1. Durable storage marker (authoritative). Read the current record
-      // first so the write carries the observed version (OCC); a missing
-      // record yields an unversioned create.
       let version: string | undefined;
       const existing = nk.storageRead([
         {
@@ -353,20 +345,18 @@ async function markRefundAsProcessed(
           collection: REFUND_MARKER_COLLECTION,
           key: `refund_${refundTransactionId}`,
           userId: userId,
-          value: JSON.stringify({
+          value: toStorageValue({
             refund_transaction_id: refundTransactionId,
             user_id: userId,
             processed_at: Date.now(),
             outcome: outcome,
           }),
           version: version,
-          permissionRead: 0, // No public read
-          permissionWrite: 0, // No public write
+          permissionRead: 0,
+          permissionWrite: 0,
         },
       ]);
 
-      // Durable write succeeded — fall through to best-effort Redis marker
-      // (issue #1067 — no unbounded keys).
       const redis = getRedisClient(logger);
       if (redis) {
         try {
@@ -391,7 +381,6 @@ async function markRefundAsProcessed(
             e
           );
         }
-        // Tiny backoff so a hot OCC conflict doesn't busy-loop storage.
         await new Promise((resolve) => setTimeout(resolve, 25));
         continue;
       }
@@ -1260,7 +1249,7 @@ async function awardGems(
       collection: 'player_currency',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(playerCurrency),
+      value: toStorageValue(playerCurrency),
       version: currencyVersion,
     },
   ]);
@@ -1475,7 +1464,7 @@ export function rpcSpendGems(
       collection: 'player_currency',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(playerCurrency),
+      value: toStorageValue(playerCurrency),
     },
   ]);
 
@@ -1574,7 +1563,7 @@ export function rpcPurchaseCosmetic(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-      ownedResult[0].value,
+    getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -1635,7 +1624,7 @@ export function rpcPurchaseCosmetic(
       collection: 'player_currency',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(playerCurrency),
+      value: toStorageValue(playerCurrency),
     },
   ]);
   invalidateCurrencyCache(ctx.userId, logger);
@@ -1647,7 +1636,7 @@ export function rpcPurchaseCosmetic(
       collection: 'player_cosmetics_owned',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify({ items: ownedItems }),
+      value: toStorageValue({ items: ownedItems }),
     },
   ]);
 
@@ -1738,7 +1727,7 @@ export function rpcGetOwnedCosmetics(
   let items: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-      ownedResult[0].value,
+    getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -1855,7 +1844,7 @@ export function rpcEquipCosmetic(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-      ownedResult[0].value,
+    getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -1983,7 +1972,7 @@ export function rpcSaveCosmeticLoadout(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-      ownedResult[0].value,
+    getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -2128,7 +2117,7 @@ export function rpcPurchaseBundle(
     let ownedBundles: string[] = [];
     if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
       const parsed = safeParse<{ bundles: string[] }>(
-        bundleOwnedResult[0].value,
+    getStorageRawValue(bundleOwnedResult[0].value) ?? '',
         null,
         logger,
         'player_bundles_owned'
@@ -2187,7 +2176,7 @@ export function rpcPurchaseBundle(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-      ownedResult[0].value,
+    getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -2250,7 +2239,7 @@ export function rpcPurchaseBundle(
       collection: 'player_currency',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify(playerCurrency),
+      value: toStorageValue(playerCurrency),
     },
   ]);
   invalidateCurrencyCache(ctx.userId, logger);
@@ -2264,7 +2253,7 @@ export function rpcPurchaseBundle(
       collection: 'player_cosmetics_owned',
       key: ctx.userId,
       userId: ctx.userId,
-      value: JSON.stringify({ items: ownedItems }),
+      value: toStorageValue({ items: ownedItems }),
     },
   ]);
 
@@ -2276,7 +2265,7 @@ export function rpcPurchaseBundle(
     let ownedBundles: string[] = [];
     if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
       const parsed = safeParse<{ bundles: string[] }>(
-        bundleOwnedResult[0].value,
+    getStorageRawValue(bundleOwnedResult[0].value) ?? '',
         null,
         logger,
         'player_bundles_owned'
@@ -2291,7 +2280,7 @@ export function rpcPurchaseBundle(
         collection: 'player_bundles_owned',
         key: ctx.userId,
         userId: ctx.userId,
-        value: JSON.stringify({ bundles: ownedBundles }),
+        value: toStorageValue({ bundles: ownedBundles }),
       },
     ]);
   }
@@ -2354,7 +2343,7 @@ export function rpcGetBundleCatalog(
   let ownedBundles: string[] = [];
   if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
     const parsed = safeParse<{ bundles: string[] }>(
-      bundleOwnedResult[0].value,
+    getStorageRawValue(bundleOwnedResult[0].value) ?? '',
       null,
       logger,
       'player_bundles_owned'
@@ -2392,7 +2381,7 @@ function _readEquippedCosmetics(
   if (result.length === 0 || !result[0].value) return defaults;
 
   const parsed = safeParse<Record<string, string>>(
-    result[0].value,
+    getStorageRawValue(result[0].value) ?? '',
     null,
     logger,
     'player_cosmetics_equipped'
@@ -2413,7 +2402,7 @@ function _writeEquippedCosmetics(
       collection: 'player_cosmetics_equipped',
       key: userId,
       userId: userId,
-      value: JSON.stringify(equipped),
+      value: toStorageValue(equipped),
       permissionRead: 0,
       permissionWrite: 0,
     },
@@ -2792,7 +2781,7 @@ export async function rpcProcessPendingPurchases(
         collection: 'player_currency',
         key: ctx.userId,
         userId: ctx.userId,
-        value: JSON.stringify(playerCurrency),
+        value: toStorageValue(playerCurrency),
       },
     ]);
 
@@ -3295,7 +3284,7 @@ export async function rpcRestorePurchases(
                   collection: 'player_currency',
                   key: ctx.userId,
                   userId: ctx.userId,
-                  value: JSON.stringify(playerCurrency),
+                  value: toStorageValue(playerCurrency),
                 },
               ]);
 
@@ -3360,7 +3349,7 @@ export async function rpcRestorePurchases(
                 collection: 'player_currency',
                 key: ctx.userId,
                 userId: ctx.userId,
-                value: JSON.stringify(playerCurrency),
+                value: toStorageValue(playerCurrency),
               },
             ]);
 
@@ -3559,7 +3548,7 @@ async function getRecordedWebhookOutcome(
     ]);
     if (objects.length > 0) {
       const record = safeParsePayload<{ outcome?: string }>(
-        objects[0].value,
+        getStorageRawValue(objects[0].value) ?? '',
         logger,
         'webhook_event_ledger'
       );
@@ -3658,7 +3647,7 @@ function readPendingWebhookAwards(
       return { awards: [], version: undefined };
     }
     const parsed = safeParsePayload<{ awards?: PendingWebhookAward[] }>(
-      objects[0].value,
+      getStorageRawValue(objects[0].value) ?? '',
       logger,
       'webhook_pending_awards'
     );
@@ -3688,7 +3677,7 @@ function writePendingWebhookAwards(
         collection: WEBHOOK_PENDING_COLLECTION,
         key: userId,
         userId: userId,
-        value: JSON.stringify({ awards: awards }),
+        value: toStorageValue({ awards: awards }),
         version: version,
         permissionRead: 0, // No public read
         permissionWrite: 0, // No public write
@@ -3991,7 +3980,7 @@ function handleSubscriptionCancelled(
       {
         collection: 'player_subscription',
         key: subscriptionKey,
-        value: JSON.stringify(subscription),
+        value: toStorageValue(subscription),
         userId: userId,
       },
     ]);
@@ -4076,7 +4065,7 @@ function handleBillingIssue(
       {
         collection: 'player_subscription',
         key: subscriptionKey,
-        value: JSON.stringify(subscription),
+        value: toStorageValue(subscription),
         userId: userId,
       },
     ]);

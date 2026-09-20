@@ -239,9 +239,13 @@ describe('storage-helpers', () => {
       ]);
 
       expect(nk.storageWrite).toHaveBeenCalledTimes(1);
+      // Post-#1135 storageWrite contract: object values pass through
+      // directly; only string inputs (e.g. pre-stringified JSON payloads)
+      // remain strings, because goja JSON-marshals the request payload for
+      // either form.
       expect(nk.storageWrite).toHaveBeenCalledWith([
         { collection: 'col1', key: 'key1', userId: 'user1', value: '{"a":1}' },
-        { collection: 'col2', key: 'key2', userId: 'user1', value: '{"b":2}' },
+        { collection: 'col2', key: 'key2', userId: 'user1', value: { b: 2 } },
       ]);
     });
   });
@@ -279,12 +283,15 @@ describe('storage-helpers', () => {
 
       writePlayerStats(nk as any, 'user1', stats);
 
+      // Post #1135 storage contract: writes pass an object directly (goja
+      // marshals to JSON). The legacy JSON.stringify expectation pre-dates
+      // the goja storage-value contract (issue #1135).
       expect(nk.storageWrite).toHaveBeenCalledWith([
         {
           collection: 'player_stats',
           key: 'user1',
           userId: 'user1',
-          value: JSON.stringify(stats),
+          value: stats,
         },
       ]);
     });

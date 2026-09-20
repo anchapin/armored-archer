@@ -16,6 +16,7 @@
  */
 
 import { Runtime } from '../types/nakama';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { MAX_STAGE_SCORE } from './validation';
 
 /**
@@ -113,7 +114,7 @@ export function checkStageCompletionClaim(
   logger: Runtime.Logger
 ): { error?: string; claimVersion?: string } {
   const claimKey = `${userId}:${stageId}`;
-  let existingClaims: { value?: string; version?: string; collection?: string }[] = [];
+  let existingClaims: Runtime.StorageObject[] = [];
   try {
     existingClaims = nk.storageRead([
       { collection: STAGE_COMPLETION_CLAIM_COLLECTION, key: claimKey, userId },
@@ -123,7 +124,7 @@ export function checkStageCompletionClaim(
   }
   if (existingClaims.length > 0 && existingClaims[0].value) {
     try {
-      const claim = JSON.parse(existingClaims[0].value);
+      const claim = JSON.parse(getStorageRawValue(existingClaims[0].value) ?? '');
       if (claim && claim.claimed_at) {
         const timeSinceClaim = Date.now() - claim.claimed_at;
         if (timeSinceClaim < STAGE_COMPLETION_CLAIM_COOLDOWN_MS) {
@@ -175,7 +176,7 @@ export function writeStageCompletionClaim(
       collection: STAGE_COMPLETION_CLAIM_COLLECTION,
       key: `${userId}:${stageId}`,
       userId,
-      value: JSON.stringify({ claimed_at: Date.now(), stage_id: stageId }),
+      value: toStorageValue({ claimed_at: Date.now(), stage_id: stageId }),
       version: claimVersion,
     },
   ]);
@@ -211,7 +212,9 @@ export function readStageCompletionStorage(
   if (storageObjects.length > 0 && storageObjects[0].value) {
     version = storageObjects[0].version;
     try {
-      const parsed = JSON.parse(storageObjects[0].value) as StageCompletionStorage;
+      const parsed = JSON.parse(
+        getStorageRawValue(storageObjects[0].value) ?? ''
+      ) as StageCompletionStorage;
       // Shape guard: a value that is not a completions map (corrupt or
       // foreign payload) must not crash the completion path — start fresh.
       if (parsed && typeof parsed === 'object' && parsed.completions) {
@@ -391,7 +394,7 @@ export function applyStageCompletion(
       collection: STAGE_COMPLETION_COLLECTION,
       key: userId,
       userId,
-      value: JSON.stringify(storageData),
+      value: toStorageValue(storageData),
       version,
     },
   ]);

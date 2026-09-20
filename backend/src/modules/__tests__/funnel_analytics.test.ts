@@ -80,7 +80,7 @@ function createMockNk(storedPlayerState: any = null, storedGlobalCounts: any = n
     }),
     storageWrite: jest.fn((writes: any[]) => {
       for (const write of writes) {
-        const data = JSON.parse(write.value);
+        const data = (typeof write.value === 'string' ? (typeof write.value === 'string' ? (typeof write.value === 'string' ? JSON.parse(write.value) : write.value) : write.value) : write.value);
         if (write.key === 'player_funnel_state') {
           stateStore[`player:${write.userId}`] = data;
         } else if (write.key === 'global_funnel_counts') {
@@ -113,7 +113,7 @@ describe('Funnel Analytics Module', () => {
       expect(playerWrite.collection).toBe('funnel_analytics');
       expect(playerWrite.key).toBe('player_funnel_state');
 
-      const state = JSON.parse(playerWrite.value);
+      const state = (typeof playerWrite.value === 'string' ? (typeof playerWrite.value === 'string' ? (typeof playerWrite.value === 'string' ? JSON.parse(playerWrite.value) : playerWrite.value) : playerWrite.value) : playerWrite.value);
       expect(state.install_timestamp).not.toBeNull();
       expect(state.first_pve_timestamp).toBeNull();
     });
@@ -140,7 +140,7 @@ describe('Funnel Analytics Module', () => {
       processFunnelEvent(mockNk, mockLogger, 'user_123', 'pve_stage_completed');
 
       const playerWrite = mockNk.storageWrite.mock.calls[0][0][0];
-      const state = JSON.parse(playerWrite.value);
+      const state = (typeof playerWrite.value === 'string' ? (typeof playerWrite.value === 'string' ? (typeof playerWrite.value === 'string' ? JSON.parse(playerWrite.value) : playerWrite.value) : playerWrite.value) : playerWrite.value);
       expect(state.first_pve_timestamp).not.toBeNull();
     });
 
@@ -166,7 +166,7 @@ describe('Funnel Analytics Module', () => {
       processFunnelEvent(mockNk, mockLogger, 'user_123', 'pvp_match_completed');
 
       const playerWrite = mockNk.storageWrite.mock.calls[0][0][0];
-      const state = JSON.parse(playerWrite.value);
+      const state = (typeof playerWrite.value === 'string' ? (typeof playerWrite.value === 'string' ? (typeof playerWrite.value === 'string' ? JSON.parse(playerWrite.value) : playerWrite.value) : playerWrite.value) : playerWrite.value);
       expect(state.first_pvp_timestamp).not.toBeNull();
     });
 
@@ -192,7 +192,7 @@ describe('Funnel Analytics Module', () => {
       processFunnelEvent(mockNk, mockLogger, 'user_123', 'purchase_completed');
 
       const playerWrite = mockNk.storageWrite.mock.calls[0][0][0];
-      const state = JSON.parse(playerWrite.value);
+      const state = (typeof playerWrite.value === 'string' ? (typeof playerWrite.value === 'string' ? (typeof playerWrite.value === 'string' ? JSON.parse(playerWrite.value) : playerWrite.value) : playerWrite.value) : playerWrite.value);
       expect(state.first_purchase_timestamp).not.toBeNull();
     });
 
@@ -229,7 +229,7 @@ describe('Funnel Analytics Module', () => {
       processFunnelEvent(mockNk, mockLogger, 'user_123', 'first_session');
 
       const globalWrite = mockNk.storageWrite.mock.calls[1][0][0];
-      const counts = JSON.parse(globalWrite.value);
+      const counts = (typeof globalWrite.value === 'string' ? (typeof globalWrite.value === 'string' ? (typeof globalWrite.value === 'string' ? JSON.parse(globalWrite.value) : globalWrite.value) : globalWrite.value) : globalWrite.value);
       expect(counts.install).toBe(1);
     });
 

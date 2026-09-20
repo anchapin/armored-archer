@@ -62,7 +62,7 @@ export function writePlayerStats(
       collection: STORAGE_COLLECTIONS.PLAYER_STATS,
       key: userId,
       userId: userId,
-      value: JSON.stringify(stats),
+      value: stats,
     },
   ]);
 }
@@ -85,7 +85,7 @@ export function getStorageValue(objects: Runtime.StorageObject[]): string | null
   if (!obj || !obj.value) {
     return null;
   }
-  return obj.value;
+  return typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
 }
 
 /**
@@ -157,12 +157,14 @@ export function batchStorageWrite(nk: Runtime.Nakama, writes: StorageWriteOption
     return;
   }
 
+  // Post-#1135: goja storageWrite accepts plain objects/strings and
+  // JSON-marshals internally. Pass values through unchanged.
   nk.storageWrite(
     writes.map((w) => ({
       collection: w.collection,
       key: w.key,
       userId: w.userId,
-      value: typeof w.value === 'string' ? w.value : JSON.stringify(w.value),
+      value: w.value,
     }))
   );
 }
@@ -192,7 +194,9 @@ export function readAndParseStorage<T>(
     return { data: null, error: `${collection} not found` };
   }
 
-  const result = safeParse<T>(objects[0].value, null, logger, context);
+  const raw =
+    typeof objects[0].value === 'string' ? objects[0].value : JSON.stringify(objects[0].value);
+  const result = safeParse<T>(raw, null, logger, context);
   if (!result.success || !result.data) {
     return { data: null, error: `Failed to parse ${collection}` };
   }
@@ -202,9 +206,9 @@ export function readAndParseStorage<T>(
 
 /**
  * Write a typed object to Nakama storage.
- * Replaces the common pattern of nk.storageWrite([{ collection, key, userId, value: JSON.stringify(data) }]).
+ * Replaces the common pattern of nk.storageWrite([{ collection, key, userId, value: toStorageValue(data) }]).
  */
-export function writeStorageObject<T>(
+export function writeStorageObject<T extends Record<string, unknown>>(
   nk: Runtime.Nakama,
   collection: string,
   key: string,
@@ -216,7 +220,61 @@ export function writeStorageObject<T>(
       collection,
       key,
       userId,
-      value: JSON.stringify(data),
+      value: toStorageValue(data),
     },
   ]);
 }
+
+/**
+ * Normalize a storage-write `value` to the plain object Nakama's JS
+ * storageWrite requires (it JSON-marshals internally; a raw string panics
+ * with "expects 'value' value to be an object" — issue #1135).
+ * Call sites that already hold a pre-stringified payload pass the JSON
+ * string here; it is parsed back to the original object.
+ */
+export function toStorageValue(value: unknown): Record<string, unknown> {
+  if (typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+      // Stringified array/number/bool — wrap in an envelope so goja's
+      // String/Array marshal path produces a non-undefined top-level value.
+      return { value: parsed };
+    } catch {
+      // fall through
+    }
+    return { value };
+  }
+  if (value && typeof value === 'object') {
+    // Objects AND arrays are valid JSON values (goja's storageWrite accepts
+    // both). Pass arrays through unwrapped; an unwrapped object passed
+    // through becomes the top-level record.
+    return value as Record<string, unknown>;
+  }
+  return { value: value as unknown };
+}
+
+/**
+ * Extract the raw JSON string from a storage object's `value` (which may be
+ * a pre-parsed object depending on the runtime path — issue #1135).
+ */
+export function getStorageRawValue(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Alias of getStorageRawValue for inline use at call sites (issue #1135).
+ */
+export const asStorageJson = getStorageRawValue;

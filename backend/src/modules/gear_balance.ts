@@ -5,6 +5,7 @@
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import { GearItem } from './gear_system';
 
@@ -202,7 +203,7 @@ export async function trackGearUsage(
 
     if (objects.length > 0) {
       try {
-        usageData = JSON.parse(objects[0].value);
+        usageData = JSON.parse(getStorageRawValue(objects[0].value) ?? '');
       } catch {
         // Invalid data, start fresh
       }
@@ -221,7 +222,7 @@ export async function trackGearUsage(
       {
         collection: 'gear_balance',
         key: storageKey,
-        value: JSON.stringify(usageData),
+        value: toStorageValue(usageData),
         userId,
       },
     ]);
@@ -262,7 +263,7 @@ export async function getGearUsageStats(
     for (const obj of objects) {
       const gearId = obj.key.split(':')[2];
       try {
-        const usageData = JSON.parse(obj.value);
+        const usageData = JSON.parse(getStorageRawValue(obj.value) ?? '');
         stats[gearId] = usageData;
       } catch {
         // Skip invalid entries
@@ -305,7 +306,7 @@ export async function recordBalanceAdjustment(
       {
         collection: 'gear_balance_history',
         key: storageKey,
-        value: JSON.stringify(adjustmentData),
+        value: toStorageValue(adjustmentData),
         userId: '00000000-0000-0000-0000-000000000000',
       },
     ]);

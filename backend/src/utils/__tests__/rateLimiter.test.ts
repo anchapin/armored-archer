@@ -215,7 +215,11 @@ describe('createRateLimitedRpcHandler', () => {
     expect(result).toBe('{"ok":true}');
   });
 
-  test('should handle async handlers', async () => {
+  test('should reject async handlers with a clear error (issue #1135)', () => {
+    // Nakama 3.21's goja runtime has no promise-job scheduler: a handler
+    // returning a Promise surfaces to clients as an opaque 500
+    // ('Runtime function returned invalid data'). The wrapper now fails
+    // fast with an actionable error instead (issue #1135).
     setEndpointRateLimit('async-rpc', { maxRequests: 5, windowMs: 60000 });
 
     const handler = async () => {
@@ -228,7 +232,8 @@ describe('createRateLimitedRpcHandler', () => {
     const mockLogger = {} as any;
     const mockNk = {} as any;
 
-    const result = await wrapped(mockCtx, mockLogger, mockNk, '{}');
-    expect(result).toBe('{"async":true}');
+    expect(() => wrapped(mockCtx, mockLogger, mockNk, '{}')).toThrow(
+      /async handlers are unsupported by the Nakama JS runtime/
+    );
   });
 });

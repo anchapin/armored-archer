@@ -8,6 +8,7 @@ import { validatePayload, ZodSchemas, createValidationErrorResponse } from './va
 import { applyCurrencyDelta, type CurrencyDelta } from './currency';
 import { recordSeasonCompletion } from './season_leaderboard';
 import { logRewardClaim, recordSeasonEndSnapshot } from './season_telemetry';
+import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 
 /**
  * Season rewards data structure.
@@ -370,7 +371,7 @@ export function getPlayerPrestigeRecord(
       },
     ]);
     if (storage.length > 0 && storage[0].value) {
-      return JSON.parse(storage[0].value) as PlayerPrestigeRecord;
+      return JSON.parse(getStorageRawValue(storage[0].value) ?? "") as PlayerPrestigeRecord;
     }
   } catch {
     // Return default if storage read fails
@@ -426,7 +427,7 @@ export function updatePlayerPrestigeRecord(
       collection: 'player_prestige',
       key: playerId,
       userId: playerId,
-      value: JSON.stringify(record),
+      value: toStorageValue(record),
     },
   ]);
 
@@ -835,7 +836,7 @@ export function getPlayerCosmetics(
     ]);
 
     if (storage.length > 0 && storage[0].value) {
-      const data = JSON.parse(storage[0].value) as {
+      const data = JSON.parse(getStorageRawValue(storage[0].value) ?? "") as {
         titles?: string[];
         auras?: string[];
       };
@@ -884,7 +885,7 @@ export function addPlayerCosmetic(
       collection: 'player_cosmetics',
       key: userId,
       userId: userId,
-      value: JSON.stringify(updatedCosmetics),
+      value: toStorageValue(updatedCosmetics),
     },
   ]);
 }
@@ -967,7 +968,7 @@ export function rpcClaimSeasonRewards(
       collection: 'season_rewards_claimed',
       key: `${currentSeason.season_id}_${ctx.userId}`,
       userId: ctx.userId,
-      value: JSON.stringify({
+      value: toStorageValue({
         season_id: currentSeason.season_id,
         user_id: ctx.userId,
         claimed_at: Date.now(),
@@ -1130,6 +1131,22 @@ export function rpcEndSeason(
     }
 
     const rewards = calculateRewards(playerRank, currentSeason.season_number);
+    // Mark rewards as auto-distributed
+    nk.storageWrite([
+      {
+        collection: 'season_rewards_claimed',
+        key: `${currentSeason.season_id}_${record.ownerId}`,
+        userId: record.ownerId,
+        value: toStorageValue({
+          season_id: currentSeason.season_id,
+          user_id: record.ownerId,
+          claimed_at: Date.now(),
+          rank: playerRank,
+          rewards: rewards,
+          auto_distributed: true,
+        }),
+      },
+    ]);
 
     try {
       // Auto-grant currency rewards via the unified currency ledger (#860)
@@ -1255,7 +1272,7 @@ export function rpcEndSeason(
       collection: 'seasons',
       key: nextSeason.season_id,
       userId: ctx.userId,
-      value: JSON.stringify(nextSeason),
+      value: toStorageValue(nextSeason),
     },
   ]);
 
@@ -1271,7 +1288,7 @@ export function rpcEndSeason(
       collection: 'seasons',
       key: oldSeason.season_id,
       userId: ctx.userId,
-      value: JSON.stringify(oldSeason),
+      value: toStorageValue(oldSeason),
     },
   ]);
 
@@ -1433,7 +1450,7 @@ export function recordPlayerActivity(nk: Runtime.Nakama, userId: string): void {
       collection: 'player_activity',
       key: userId,
       userId: userId,
-      value: JSON.stringify({ last_match_time: now }),
+      value: toStorageValue({ last_match_time: now }),
     },
   ]);
 }
@@ -1456,7 +1473,7 @@ function getLastMatchTime(nk: Runtime.Nakama, userId: string): number {
     ]);
 
     if (records.length > 0 && records[0].value) {
-      const data = JSON.parse(records[0].value);
+      const data = JSON.parse(getStorageRawValue(records[0].value) ?? "");
       return data.last_match_time || 0;
     }
   } catch (e) {

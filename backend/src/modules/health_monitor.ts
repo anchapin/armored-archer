@@ -17,6 +17,7 @@ import { Runtime } from '../types/nakama';
 import { triggerHealthAlert, triggerMetricAlert } from './alerting';
 import { logger } from '../config/logger';
 import { getAverageResponseTimeMs, getErrorRate as getRpcErrorRate } from './rpc_latency_tracker';
+import { getStorageRawValue } from '../utils/storage-helpers';
 
 // Create a dedicated registry for health metrics
 const healthRegistry = new Registry();
@@ -155,7 +156,7 @@ function getDbConnectionUsage(): number {
       { collection: 'system_health', key: 'db_connections', userId: '' },
     ]);
     if (result.length > 0) {
-      const data = JSON.parse(result[0].value);
+      const data = JSON.parse(getStorageRawValue(result[0].value) ?? "");
       if (data.active && data.max) {
         return Math.round((data.active / data.max) * 100 * 100) / 100;
       }
@@ -199,7 +200,7 @@ function getMatchQueueSize(): number {
     let total = 0;
     for (const obj of objects) {
       try {
-        const data = JSON.parse(obj.value);
+        const data = JSON.parse(getStorageRawValue(obj.value) ?? "");
         if (Array.isArray(data.players)) {
           total += data.players.length;
         }

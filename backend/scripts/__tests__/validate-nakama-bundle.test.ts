@@ -167,8 +167,9 @@ describe('validate-nakama-bundle', () => {
       const fixtureA = readFileSync(FIXTURE_TRAPS_ONLY_PATH, 'utf8');
       const harness = loadValidator(fixtureA);
 
-      // Every registered pattern must be explicitly reported clean.
-      expect(harness.es6Patterns.length).toBe(8);
+      // Every registered pattern must be explicitly reported clean
+      // (BigInt literal pattern added in #1135; see scripts/validate-nakama-bundle.js).
+      expect(harness.es6Patterns.length).toBe(9);
       for (const { name } of harness.es6Patterns) {
         expect(harness.stdout.some((l) => l.includes(`${name}: No occurrences`))).toBe(true);
       }
@@ -227,6 +228,7 @@ describe('validate-nakama-bundle', () => {
         'arrow function',
         'arrow function (single param)',
         'template literal',
+        'BigInt literal',
       ]);
     });
   });

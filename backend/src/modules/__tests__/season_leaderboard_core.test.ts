@@ -468,7 +468,7 @@ describe('season_leaderboard_core', () => {
         key: 'season_archive',
         userId: '00000000-0000-0000-0000-000000000000',
       });
-      const persisted = JSON.parse(storageWrites[0].value);
+      const persisted = (typeof storageWrites[0].value === 'string' ? (typeof storageWrites[0].value === 'string' ? (typeof storageWrites[0].value === 'string' ? JSON.parse(storageWrites[0].value) : storageWrites[0].value) : storageWrites[0].value) : storageWrites[0].value);
       expect(persisted[SEASON_ID]).toMatchObject({ season_number: 42, total_players: 0 });
       expect(mockLogger.info).toHaveBeenCalledWith('Season archived', expect.any(Object));
     });
@@ -490,7 +490,7 @@ describe('season_leaderboard_core', () => {
         winner_rating: 2100,
         total_players: 3,
       });
-      const persisted = JSON.parse(storageWrites[0].value);
+      const persisted = (typeof storageWrites[0].value === 'string' ? (typeof storageWrites[0].value === 'string' ? (typeof storageWrites[0].value === 'string' ? JSON.parse(storageWrites[0].value) : storageWrites[0].value) : storageWrites[0].value) : storageWrites[0].value);
       expect(persisted[SEASON_ID].winner_name).toBe('Bowmaster');
     });
 
@@ -512,7 +512,7 @@ describe('season_leaderboard_core', () => {
 
       await recordSeasonCompletion(mockNk, SEASON_ID, mockLogger);
 
-      const persisted = JSON.parse(storageWrites[0].value);
+      const persisted = (typeof storageWrites[0].value === 'string' ? (typeof storageWrites[0].value === 'string' ? (typeof storageWrites[0].value === 'string' ? JSON.parse(storageWrites[0].value) : storageWrites[0].value) : storageWrites[0].value) : storageWrites[0].value);
       expect(Object.keys(persisted).sort()).toEqual(['season_41', SEASON_ID]);
     });
   });
