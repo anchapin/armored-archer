@@ -137,6 +137,11 @@ export function getCacheEntry<T>(
     setCacheHitRatio(cacheName, metrics.hits / total);
   }
 
+  const total = metrics.hits + metrics.misses;
+  if (total > 0) {
+    setCacheHitRatio(cacheName, metrics.hits / total);
+  }
+
   return value;
 }
 

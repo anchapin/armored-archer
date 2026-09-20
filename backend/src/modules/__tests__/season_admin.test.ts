@@ -56,6 +56,7 @@ jest.mock('../season_telemetry', () => ({
 jest.mock('../metrics', () => ({
   incrementSeasonRankChanges: jest.fn(),
   recordSeasonRankChangeDelta: jest.fn(),
+  setCacheHitRatio: jest.fn(),
 }));
 
 const mockSeasonSystem = jest.requireMock('../season_system');

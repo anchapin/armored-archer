@@ -17,6 +17,7 @@ jest.mock('../anti_cheat', () => ({
 
 jest.mock('../metrics', () => ({
   registerRpcWithMetrics: jest.fn(),
+  setCacheHitRatio: jest.fn(),
 }));
 
 // Mock the audit module so player_rpc can call logAudit without pulling in
