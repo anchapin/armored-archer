@@ -60,8 +60,12 @@ jobs:
           echo "$TEST_OUTPUT"
 
           # Check for test failures in output
-          # Sum all failure counts from all test suites
-          FAILED_COUNT=$(echo "$TEST_OUTPUT" | grep -oP '(?<=Failed: )\d+' | awk '{sum+=$1} END {print sum}' || echo "0")
+          # Filter out Godot's resource-leak ERROR messages (not actual test failures)
+          # before extracting failure counts. Godot prints ERROR lines like:
+          #   ERROR: 1 RID allocations... were leaked at exit.
+          #   ERROR: 4 resources still in use at exit.
+          # These are infrastructure/shutdown issues, not test failures (per AGENTS.md).
+          FAILED_COUNT=$(echo "$TEST_OUTPUT" | grep -v "^ERROR" | grep -oP '(?<=Failed: )\d+' | awk '{sum+=$1} END {print sum}' || echo "0")
           echo "Test failure count: $FAILED_COUNT"
 
           if [ "$FAILED_COUNT" -gt "0" ]; then
