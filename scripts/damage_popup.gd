@@ -125,6 +125,9 @@ static func create_damage_popup(
 ) -> Label:
 	"""Factory method to create and configure a damage popup."""
 	var popup := Label.new()
+	# Attach the script before configuring so setup_damage() resolves on the
+	# instance (mirrors how the pooled scene root and test builders do it).
+	popup.set_script(load("res://scripts/damage_popup.gd"))
 	popup.position = global_pos
 	popup.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	popup.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

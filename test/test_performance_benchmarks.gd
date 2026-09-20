@@ -67,8 +67,10 @@ func _report_benchmark(name: String, value: float, threshold: float, passed: boo
 func benchmark_fps_tracking_accuracy() -> void:
 	var profiler = await _create_profiler()
 
-	# Simulate FPS values
-	var test_fps_values = [30.0, 45.0, 60.0, 25.0, 50.0, 35.0]
+	# Simulate FPS values (typed so .duplicate() stays Array[float] —
+	# assigning an untyped Array to the profiler's typed _fps_history
+	# errors at runtime and aborts the benchmark; issue #1234)
+	var test_fps_values: Array[float] = [30.0, 45.0, 60.0, 25.0, 50.0, 35.0]
 	var expected_avg = 40.83  # (30+45+60+25+50+35)/6
 
 	# Set FPS directly through internal method simulation
@@ -132,16 +134,19 @@ func benchmark_frame_time_calculation() -> void:
 func benchmark_fps_history_management() -> void:
 	var profiler = await _create_profiler()
 
-	# Test that FPS history is properly limited
+	# Test that FPS history is properly limited. The cap is enforced by the
+	# production tracking path (_update_fps_tracking pops the oldest sample
+	# once size exceeds _fps_sample_count), not by the array itself, so drive
+	# that path instead of appending raw (issue #1234).
 	var max_samples = profiler._fps_sample_count
 
 	# Add more samples than the limit
 	for i in range(max_samples + 20):
-		profiler._fps_history.append(float(i))
+		profiler._update_fps_tracking(float(i))
 
-	# Check history is limited
+	# Check history is limited and kept the most recent samples
 	var history_size = profiler._fps_history.size()
-	var passed = history_size <= max_samples
+	var passed = history_size <= max_samples and profiler._fps_history.back() == float(max_samples + 19)
 	_report_benchmark("FPS History Size Limit", float(history_size), float(max_samples), passed)
 
 	if passed:
@@ -186,20 +191,28 @@ func benchmark_memory_leak_detection_threshold() -> void:
 func benchmark_memory_growth_rate_calculation() -> void:
 	var profiler = await _create_profiler()
 
-	profiler._startup_memory_mb = 100.0
-	profiler._session_start_time = 0
+	# get_memory_leak_status() derives growth from LIVE engine memory versus
+	# _startup_memory_mb, and only computes a rate when _session_start_time > 0
+	# (window = last sample time - session start). Anchor startup to live usage
+	# minus 30 MB so growth is deterministic, and pin the session start to the
+	# first sample so the window is exactly 295 s (issue #1234).
+	var base_time = 1000000000  # Unix timestamp in seconds
+	var live_memory: float = profiler._get_memory_usage_mb()
+	profiler._startup_memory_mb = live_memory - 30.0  # simulate 30 MB of growth
+	profiler._session_start_time = base_time
 	profiler._memory_sample_times.clear()
 	profiler._memory_samples.clear()
 
-	# Simulate 5 minutes of sampling (60 samples, 5 seconds apart = 300 seconds = 5 min)
-	var base_time = 1000000000  # Unix timestamp in seconds
+	# Simulate 5 minutes of sampling (60 samples, 5 seconds apart = 295-second
+	# first-to-last window measured from session start)
 	for i in range(60):
 		profiler._memory_sample_times.append(base_time + (i * 5))  # 5 seconds apart
-		profiler._memory_samples.append(100.0 + (i * 0.5))  # 0.5 MB per sample = 30 MB over 5 min = 6 MB/min
+		profiler._memory_samples.append(100.0 + (i * 0.5))  # sample shape only
 
 	var status = profiler.get_memory_leak_status()
 	var growth_rate = status.get("growth_rate_mb_per_min", 0.0)
-	var expected_rate = 6.0  # 30 MB / 5 min
+	# 30 MB over 295 s = 30 / (295 / 60) ~= 6.10 MB/min
+	var expected_rate = 30.0 / (295.0 / 60.0)
 
 	var difference = abs(growth_rate - expected_rate)
 	var passed = difference < 1.0  # Allow 1 MB/min tolerance
