@@ -35,7 +35,7 @@ func run_tests() -> void:
 	print("Failed: %d" % _tests_failed)
 	queue_free()
 
-const ENEMY_SPAWNER_SCRIPT = preload("res://scenes/enemies/enemy_spawner.gd")
+const ENEMY_SPAWNER_SCRIPT = preload("res://autoloads/EnemySpawner.gd")
 
 func _create_spawner() -> Node2D:
 	var spawner = Node2D.new()

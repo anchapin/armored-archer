@@ -28,6 +28,7 @@ Technical debt is categorized into:
 | TD-004 | Architecture | Error Insight Pipeline optimization | The error_insight_pipeline module needs performance review | Low | Open | 2024-03-09 | 4 hours |
 | TD-005 | Code Quality | Console logging usage | Multiple files use console.log/warn/error instead of proper logger | Low | Resolved | 2024-03-09 | 1 hour | Verified 2026-04-01: production code uses proper logger; console usage only in test files and docstring comments |
 | TD-006 | Type Safety | Using `any` type | Multiple files use `any` type reducing type safety | Low | Resolved | 2024-03-09 | 4 hours | Verified 2026-04-01: zero `any` in production code; 94 occurrences only in `__tests__/` files (standard mock practice) |
+| TD-007 | Architecture | Autoload sprawl — 56 singletons | Project.godot registers 56 autoloads including GUT-only tooling (GutCoverageTracker, UIAutomation) and combat spread across ~12 singletons. Target: <40 autoloads via consolidation. See issue #1088. | High | In Progress | 2026-09-20 | 16 hours |
 
 ### Resolved / No Longer Applicable
 
