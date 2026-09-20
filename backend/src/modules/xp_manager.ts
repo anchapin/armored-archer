@@ -3,31 +3,47 @@
  * @fileoverview Manages XP curve calculations and level progression.
  */
 
-import { z } from 'zod';
+import {
+  object,
+  number,
+  boolean,
+  pipe,
+  integer,
+  minValue,
+  maxValue,
+  enum as enumType,
+  safeParse,
+} from 'valibot';
 
 /**
  * XP request schema
  */
-const XpGainSchema = z.object({
-  xp_amount: z.number().min(1),
-  source: z.enum(['pve', 'pvp']),
-  level: z.number().min(1).max(50),
+const XpGainSchema = object({
+  xp_amount: pipe(number(), integer(), minValue(1)),
+  source: enumType(['pve', 'pvp'] as any),
+  level: pipe(number(), integer(), minValue(1), maxValue(50)),
 });
 
-export type XpGainRequest = z.infer<typeof XpGainSchema>;
+export type XpGainRequest = { xp_amount: number; source: 'pve' | 'pvp'; level: number };
 
 /**
  * XP response schema
  */
-export const XpResponseSchema = z.object({
-  success: z.boolean(),
-  xp_gained: z.number(),
-  total_xp: z.number(),
-  current_level: z.number(),
-  levels_gained: z.number(),
+export const XpResponseSchema = object({
+  success: boolean(),
+  xp_gained: number(),
+  total_xp: number(),
+  current_level: number(),
+  levels_gained: number(),
 });
 
-export type XpResponse = z.infer<typeof XpResponseSchema>;
+export type XpResponse = {
+  success: boolean;
+  xp_gained: number;
+  total_xp: number;
+  current_level: number;
+  levels_gained: number;
+};
 
 /**
  * Level curve type
@@ -216,12 +232,15 @@ export function validateXpGain(request: unknown): {
   valid: boolean;
   error?: string;
 } {
-  const result = XpGainSchema.safeParse(request);
+  const result = safeParse(XpGainSchema, request);
 
   if (!result.success) {
+    const errorMessages = result.issues
+      .map((issue) => `${issue.path?.map((p) => p.key).join('.') || 'root'}: ${issue.message}`)
+      .join(', ');
     return {
       valid: false,
-      error: result.error.message,
+      error: errorMessages,
     };
   }
 
