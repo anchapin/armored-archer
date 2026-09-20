@@ -77,8 +77,8 @@ Thresholds below are repo-documented (RC checklist hard blockers and `docs/CRASH
 
 | ID | Criterion | Threshold (source) | Current Status | Data Source |
 |----|-----------|--------------------|----------------|-------------|
-| LC-S1 | Crash rate | < 1% of sessions (RC-H5; Crashlytics `HighCrashRate` > 1% alert) | **Pending live data** | Firebase Crashlytics → Prometheus `crashlytics_crash_rate` |
-| LC-S2 | Fatal crashes | 0 (Crashlytics `FatalCrashes > 0` alert) | **Pending live data** | Crashlytics |
+| LC-S1 | Crash rate | < 1% of sessions (RC-H6; policy threshold enforced in the Firebase console per `docs/CRASH_ALERT_THRESHOLDS.md`) | **Pending live data** | Firebase Crashlytics console (crash-free sessions) — mobile builds with a Firebase config only |
+| LC-S2 | Fatal crashes | 0 fatal crashes (console triage per `docs/CRASH_ALERT_THRESHOLDS.md`) | **Pending live data** | Firebase Crashlytics console |
 | LC-S3 | RPC error rate under load | < 0.5% across all endpoints (RC-H3) | **Pending live data** | Prometheus/Grafana RPC metrics |
 | LC-S4 | P95 RPC latency | < 80 ms under normal load (RC-H4) | **Pending live data** | Prometheus/Grafana |
 | LC-S5 | Login success rate | ≥ 99% (addresses the historical login blocker in `MVP_GAP_ANALYSIS.md`) | **Pending live data** | `network_error` events vs. `session_start` |
@@ -94,7 +94,7 @@ Thresholds below are repo-documented (RC checklist hard blockers and `docs/CRASH
 2. The Sprint 8 funnel (install → first PvE completion → first PvP duel → first purchase) — built from `app_opened`, `campaign_started`, `pve_stage_completed`, `pvp_lobby_entered`, `pvp_match_started`, `store_viewed`, `purchase_completed`.
 3. Economy reports — revenue over time, ARPPU, purchase conversion funnel, Gem ledger balance.
 4. Pacing/drop-rate per stage — `pve_stage_started` vs. `pve_stage_completed`/`pve_stage_failed` by chapter/stage.
-5. Stability — Crashlytics dashboards (crash rate, fatal count, top crashes) cross-referenced with Prometheus `crashlytics_*` metrics.
+5. Stability — Firebase Crashlytics console dashboards (crash rate, fatal count, top crashes). Client crashes do **not** flow to the self-hosted Prometheus stack (see `docs/CRASH_ALERT_THRESHOLDS.md`).
 6. Trust signals — GitHub Issues filtered to `severity:critical`/`severity:high` trust labels; RevenueCat webhook failure log; support escalation log (Discord `#beta-escalations`).
 7. PvP health — win/loss distribution by Ladder Rating delta, punch-up win rate, match-abandon rate (`pvp_match_abandoned`).
 

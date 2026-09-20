@@ -69,7 +69,7 @@ Every gate must be **GREEN** before a build is declared RC. A single red gate = 
 | D1 | Full local stack healthy | `make services-start` then `make services-health` (Nakama, PostgreSQL, Redis, Prometheus, Grafana, Loki, Alertmanager) | DevOps Lead | Pending |
 | D2 | Prometheus metrics scraped | `/metrics` endpoint scraped; `armored_archer_*` series present | DevOps Lead | Done |
 | D3 | Grafana dashboards loaded | API latency / error rate / player count + Progressive Rollout panel (`backend/grafana/provisioning/dashboards/`) | DevOps Lead | Done |
-| D4 | Alert rules active | Error-rate + latency + crash-threshold alerts fire to Alertmanager (`docs/CRASH_ALERT_THRESHOLDS.md`) | DevOps Lead | Done |
+| D4 | Alert rules active | Error-rate + latency + infra alert rules fire to Alertmanager (`backend/alerts.yml`); client crash thresholds are monitored via the Firebase Crashlytics console only (`docs/CRASH_ALERT_THRESHOLDS.md`) | DevOps Lead | Done |
 | D5 | Structured logs flowing to Loki | Loki receives winston structured logs from the server | DevOps Lead | Done |
 | D6 | Runbooks in place | `docs/runbooks/` (GameServerDown, HighErrorRate, HighLatency, HighMemoryUsage, DiskSpaceLow, DatabaseConnectionPoolExhausted) reviewed by on-call | DevOps Lead | Pending |
 | D7 | Rollback rehearsed | Blue/green traffic switch + DB restore completes within 5 minutes in staging (per `DEPLOYMENT.md` Rollback Procedure) | DevOps Lead | Pending |
@@ -283,7 +283,7 @@ Full store procedures: `docs/APP_SUBMISSION_CHECKLIST.md`, `docs/APP_STORE_IOS.m
 | 6.7 | Progressive rollout configured | Rollout phases + rollback criteria defined per feature flag | Done | Section 5 |
 | 6.8 | Post-launch monitoring plan | 48-hour monitoring window defined | Done | |
 | 6.9 | Analytics funnel tracking | Install→PvE→PvP→purchase conversion tracked | Done | Sprint 8 analytics |
-| 6.10 | Crash alert thresholds configured | Crash rate alerts operational | Done | `docs/CRASH_ALERT_THRESHOLDS.md` |
+| 6.10 | Crash alert thresholds configured | Crash thresholds documented and enforced via Firebase Crashlytics console alerting (Firebase-console-only; see `docs/CRASH_ALERT_THRESHOLDS.md`) | Done | `docs/CRASH_ALERT_THRESHOLDS.md` |
 
 ### Category 7: Documentation & Communication
 
