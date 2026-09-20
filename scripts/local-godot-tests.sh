@@ -26,6 +26,10 @@ GUT_ADDON="$PROJECT_ROOT/addons/gut/gut_cmdln.gd"
 GUT_RESULTS_XML="$PROJECT_ROOT/test/results/gut-results.xml"
 GUT_BASELINE="$PROJECT_ROOT/data/gut-baseline.json"
 GUT_TIMEOUT="${GUT_TIMEOUT:-600}"
+GUT_COVERAGE_PRE_RUN="res://addons/gut/coverage/coverage_pre_run.gd"
+GUT_COVERAGE_POST_RUN="res://addons/gut/coverage/coverage_post_run.gd"
+GUT_COVERAGE_JSON="$PROJECT_ROOT/test/coverage/json/coverage.json"
+GUT_COVERAGE_THRESHOLDS="$PROJECT_ROOT/data/coverage-thresholds.json"
 
 # Helper functions
 log_info() {
@@ -194,6 +198,90 @@ run_gut_tests() {
     return 0
 }
 
+# Issue #1097: run the GUT suite with the Phase-13 coverage plugin wired
+# in (addons/gut/coverage/coverage_pre_run.gd and coverage_post_run.gd), so
+# CoverageTracker.track_execution() calls in the suite write a real
+# coverage.json to test/coverage/json/coverage.json. Then enforce the
+# tracked-autoload line-coverage gate (scripts/gut_coverage_gate.py) instead
+# of the heuristic (test_count / func_count) gate that used to live in
+# test.yml's godot-coverage-gate job.
+#
+# The gate's threshold defaults to data/coverage-thresholds.json
+# (godot_line_coverage_threshold) and falls back to the 40% safety floor
+# from the issue text. COVERAGE_THRESHOLD overrides both.
+run_coverage_tests() {
+    log_info "Running GUT suite with real coverage instrumentation (issue #1097)..."
+
+    if ! check_godot; then
+        log_warning "Cannot run coverage without Godot"
+        return 1
+    fi
+
+    if [ ! -f "$GUT_ADDON" ]; then
+        log_error "GUT addon not found: $GUT_ADDON"
+        return 1
+    fi
+
+    if [ ! -f "$GUT_BASELINE" ]; then
+        log_error "GUT baseline not found: $GUT_BASELINE"
+        return 1
+    fi
+
+    # Defensive: the hooks must exist. If a contributor deletes them this
+    # fails loudly instead of silently no-opping (the bug the issue fixes).
+    local pre_run_abs="$PROJECT_ROOT/addons/gut/coverage/coverage_pre_run.gd"
+    local post_run_abs="$PROJECT_ROOT/addons/gut/coverage/coverage_post_run.gd"
+    if [ ! -f "$pre_run_abs" ] || [ ! -f "$post_run_abs" ]; then
+        log_error "Phase-13 coverage hooks missing — cannot enable coverage"
+        log_error "  expected: $pre_run_abs"
+        log_error "  expected: $post_run_abs"
+        return 1
+    fi
+
+    mkdir -p "$PROJECT_ROOT/test/results"
+    # Truncate any stale coverage.json so the gate sees only this run.
+    rm -f "$GUT_COVERAGE_JSON"
+
+    # GUT exits non-zero when tests fail; the baseline gate (issue #1082)
+    # decides pass/fail independently, so we still pipe through it before
+    # the coverage gate. The coverage hooks fire as part of the GUT run
+    # regardless of pass/fail, so coverage.json is written even when the
+    # suite is red — that lets the coverage gate report what is/isn't
+    # covered on the way to fixing the suite.
+    timeout "$GUT_TIMEOUT" "$GODOT_BINARY" --headless \
+        -s addons/gut/gut_cmdln.gd \
+        -gexit \
+        -gpre_run_script="$GUT_COVERAGE_PRE_RUN" \
+        -gpost_run_script="$GUT_COVERAGE_POST_RUN" \
+        2>&1 | tee /tmp/gut_test_output.txt || {
+        log_warning "GUT run exited non-zero (suite may have failures — issue #1082 baseline gate decides)"
+    }
+
+    # Baseline gate (pre-existing failures OK, new failures not).
+    if ! python3 "$PROJECT_ROOT/scripts/gut_baseline_gate.py" \
+        --log /tmp/gut_test_output.txt \
+        --xml "$GUT_RESULTS_XML" \
+        --baseline "$GUT_BASELINE"; then
+        log_error "GUT baseline gate failed — new failures vs $GUT_BASELINE (see table above)"
+        return 1
+    fi
+
+    # Coverage gate — real instrumentation, not the func-count heuristic.
+    local gate_args=(--input "$GUT_COVERAGE_JSON")
+    if [ -n "${COVERAGE_THRESHOLD:-}" ]; then
+        gate_args+=(--threshold "$COVERAGE_THRESHOLD")
+    fi
+    if ! python3 "$PROJECT_ROOT/scripts/gut_coverage_gate.py" "${gate_args[@]}"; then
+        log_error "GUT coverage gate failed (issue #1097) — see gut_coverage_gate.py output above"
+        log_error "  Coverage JSON: $GUT_COVERAGE_JSON"
+        log_error "  Threshold source: $GUT_COVERAGE_THRESHOLDS (or COVERAGE_THRESHOLD env)"
+        return 1
+    fi
+
+    log_success "GUT suite passed baseline gate + real-instrumentation coverage gate"
+    return 0
+}
+
 run_quick_validation() {
     log_info "Running quick validation..."
     
@@ -245,17 +333,27 @@ show_help() {
     echo "  --quick      Run quick validation (no Godot required)"
     echo "  --tests      Run the legacy test suite (test/run_all_tests.gd)"
     echo "  --gut        Run the GUT suite (test/suites via gut_cmdln)"
+    echo "  --coverage   Run the GUT suite with the Phase-13 coverage plugin wired"
+    echo "               (-gpre_run_script/-gpost_run_script) and enforce the"
+    echo "               real-instrumentation coverage gate (issue #1097)"
     echo "  --all        Run all checks (default)"
     echo "  --help       Show this help message"
     echo ""
     echo "Environment Variables:"
-    echo "  GODOT_BINARY  Path to Godot binary (default: godot4)"
-    echo "  GUT_TIMEOUT   GUT suite timeout in seconds (default: 600)"
+    echo "  GODOT_BINARY        Path to Godot binary (default: godot4)"
+    echo "  GUT_TIMEOUT         GUT suite timeout in seconds (default: 600)"
+    echo "  COVERAGE_THRESHOLD  Override the GUT coverage floor (%) for --coverage"
+    echo "                      (default: read from data/coverage-thresholds.json"
+    echo "                      key godot_line_coverage_threshold; fallback 40%"
+    echo "                      per issue #1097)"
     echo ""
     echo "Examples:"
-    echo "  $0                    # Run all checks"
-    echo "  $0 --quick            # Quick validation"
-    echo "  $0 --lint --syntax    # Run linting and syntax check"
+    echo "  $0                       # Run all checks"
+    echo "  $0 --quick               # Quick validation"
+    echo "  $0 --lint --syntax       # Run linting and syntax check"
+    echo "  $0 --coverage            # Run GUT with real coverage instrumentation"
+    echo "  COVERAGE_THRESHOLD=25 $0 --coverage  # Local override while expanding"
+    echo "                           #   instrumentation"
     echo ""
 }
 

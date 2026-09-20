@@ -88,64 +88,38 @@ jobs:
           echo "PlayerStatsManager tests: $(grep -c 'func test_' test/test_player_stats_manager.gd)"
 
   godot-coverage-gate:
-    name: Coverage Gate (80% Target)
+    name: Coverage Gate (Tracked Autoload Coverage, issue #1097)
     runs-on: ubuntu-latest
     needs: godot-tests
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Calculate test coverage
-        id: coverage
-        run: |
-          # Calculate test coverage for critical systems
-          # This is a simplified coverage calculation based on function coverage
-          
-          echo "=== Coverage Analysis for Critical Systems ==="
-          
-          # Count test functions for each manager
-          NETWORK_TESTS=$(grep -c 'func test_' test/test_network_manager.gd 2>/dev/null || echo "0")
-          COMBAT_TESTS=$(grep -c 'func test_' test/test_combat_manager.gd 2>/dev/null || echo "0")
-          PLAYER_STATS_TESTS=$(grep -c 'func test_' test/test_player_stats_manager.gd 2>/dev/null || echo "0")
-          
-          echo "NetworkManager tests: $NETWORK_TESTS"
-          echo "CombatManager tests: $COMBAT_TESTS"
-          echo "PlayerStatsManager tests: $PLAYER_STATS_TESTS"
-          
-          # Calculate total test count for critical systems
-          TOTAL_CRITICAL_TESTS=$((NETWORK_TESTS + COMBAT_TESTS + PLAYER_STATS_TESTS))
-          echo "Total critical system tests: $TOTAL_CRITICAL_TESTS"
-          
-          # Estimate coverage based on number of test functions vs. source code functions
-          # This is a rough estimate - actual line coverage would require instrumentation
-          NETWORK_SOURCE_FUNCTIONS=$(grep -c 'func ' autoloads/NetworkManager.gd 2>/dev/null || echo "0")
-          COMBAT_SOURCE_FUNCTIONS=$(grep -c 'func ' autoloads/CombatManager.gd 2>/dev/null || echo "0")
-          PLAYER_STATS_SOURCE_FUNCTIONS=$(grep -c 'func ' autoloads/PlayerStatsManager.gd 2>/dev/null || echo "0")
-          
-          TOTAL_SOURCE_FUNCTIONS=$((NETWORK_SOURCE_FUNCTIONS + COMBAT_SOURCE_FUNCTIONS + PLAYER_STATS_SOURCE_FUNCTIONS))
-          echo "Total source functions in critical systems: $TOTAL_SOURCE_FUNCTIONS"
-          
-          # Calculate estimated function coverage
-          if [ "$TOTAL_SOURCE_FUNCTIONS" -gt "0" ]; then
-            COVERAGE_PERCENT=$((TOTAL_CRITICAL_TESTS * 100 / TOTAL_SOURCE_FUNCTIONS))
-            echo "Estimated function coverage: $COVERAGE_PERCENT%"
-            echo "coverage=$COVERAGE_PERCENT" >> $GITHUB_OUTPUT
-          else
-            echo "coverage=100" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Fail if coverage below 80%
-        run: |
-          COVERAGE=${{ steps.coverage.outputs.coverage }}
-          echo "Current coverage: $COVERAGE%"
-          
-          if [ "$COVERAGE" -lt 80 ]; then
-            echo "❌ Coverage $COVERAGE% is below 80% target!"
-            exit 1
-          else
-            echo "✅ Coverage $COVERAGE% meets 80% target"
-          fi
+      - uses: actions/checkout@v4
 
+      - name: Setup Godot
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
+          unzip -q godot.zip
+          chmod +x Godot_v4.6-stable_linux.x86_64
+          mv Godot_v4.6-stable_linux.x86_64 godot4
+
+      - name: Run GUT with real coverage instrumentation (issue #1097)
+        run: |
+          # Phase-13 coverage plugin: coverage_pre_run.gd instruments the
+          # tracked autoloads via CoverageTracker.track_execution() calls in
+          # the suite; coverage_post_run.gd writes coverage.json.
+          # scripts/local-godot-tests.sh --coverage wires both hooks and the
+          # baseline gate (issue #1082) in one invocation.
+          chmod +x ./scripts/local-godot-tests.sh
+          ./scripts/local-godot-tests.sh --coverage
+
+      - name: Coverage gate against data/coverage-thresholds.json
+        run: |
+          # Issue #1097: replaces the prior heuristic gate (test_count / func_count
+          # ratio on three hand-picked autoloads) with a real threshold check
+          # on tracked-autoload line coverage from coverage.json. Threshold
+          # defaults to data/coverage-thresholds.json (godot_line_coverage_threshold);
+          # COVERAGE_THRESHOLD overrides both.
+          THRESHOLD="${COVERAGE_THRESHOLD:-40}"
+          python3 scripts/gut_coverage_gate.py             --input test/coverage/json/coverage.json             --thresholds-file data/coverage-thresholds.json             --threshold "${COVERAGE_THRESHOLD:-40}"
   backend-tests:
     name: Backend Tests with Coverage Gate
     runs-on: ubuntu-latest
