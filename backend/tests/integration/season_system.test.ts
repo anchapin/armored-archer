@@ -78,6 +78,13 @@ describe('Season System Integration Tests', () => {
     return response.payload;
   }
 
+  // Helper to call RPC as admin
+  async function rpcCallAsAdmin(rpcId: string, payload: any): Promise<any> {
+    const { client, session } = await testHelper.getAdminClient();
+    const response = await client.rpc(session, rpcId, payload);
+    return response.payload;
+  }
+
   // Helper to setup player stats
   async function setupPlayerStats(account: TestAccount, stats: any): Promise<void> {
     await testHelper.writeStorageObject('player_stats', account.userId, account.userId, stats);
@@ -451,8 +458,16 @@ describe('Season System Integration Tests', () => {
   });
 
   describe('rpcEndSeason', () => {
-    test('should end current season and start new one', async () => {
+    // issue #1119: end_season is admin-gated — player sessions must be rejected
+    test('rejects a non-admin player session', async () => {
       const result = await rpcCall(playerA, 'armored_archer/end_season', {});
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Not authorized');
+    });
+
+    test('should end current season and start new one (admin)', async () => {
+      const result = await rpcCallAsAdmin('armored_archer/end_season', {});
 
       expect(result.success).toBe(true);
       expect(result.old_season).toBeDefined();
@@ -462,7 +477,7 @@ describe('Season System Integration Tests', () => {
       expect(result.new_season.season_number).toBe(result.old_season.season_number + 1);
     });
 
-    test('should create new leaderboard for new season', async () => {
+    test('should create new leaderboard for new season (admin)', async () => {
       const admin = await testHelper.getAdminClient();
       const oldSeason = getCurrentSeasonInfo();
 
@@ -476,7 +491,7 @@ describe('Season System Integration Tests', () => {
         {}
       );
 
-      const result = await rpcCall(playerA, 'armored_archer/end_season', {});
+      const result = await rpcCallAsAdmin('armored_archer/end_season', {});
       const newSeason = result.new_season;
 
       // Check that old season leaderboard still exists
@@ -488,11 +503,11 @@ describe('Season System Integration Tests', () => {
       expect(newRecords.length).toBe(0);
     });
 
-    test('should increment season number', async () => {
-      const result1 = await rpcCall(playerA, 'armored_archer/end_season', {});
+    test('should increment season number (admin)', async () => {
+      const result1 = await rpcCallAsAdmin('armored_archer/end_season', {});
       const season1Num = result1.old_season.season_number;
 
-      const result2 = await rpcCall(playerA, 'armored_archer/end_season', {});
+      const result2 = await rpcCallAsAdmin('armored_archer/end_season', {});
       const season2Num = result2.old_season.season_number;
 
       expect(season2Num).toBe(season1Num + 1);

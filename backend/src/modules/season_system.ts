@@ -9,6 +9,7 @@ import { applyCurrencyDelta, type CurrencyDelta } from './currency';
 import { recordSeasonCompletion } from './season_leaderboard';
 import { logRewardClaim, recordSeasonEndSnapshot } from './season_telemetry';
 import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import { withAdminGuard } from './admin_auth';
 
 /**
  * Season rewards data structure.
@@ -1024,7 +1025,7 @@ export function rpcClaimSeasonRewards(
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcEndSeason(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/end_season', rpcEndSeason);
+  initializer.registerRpc('armored_archer/end_season', withAdminGuard('armored_archer/end_season', rpcEndSeason));
 }
 
 /**
