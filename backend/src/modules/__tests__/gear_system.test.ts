@@ -1056,6 +1056,57 @@ describe('gear_system', () => {
       // fire_arrow should be newly unlocked from boss_fire
       expect(parsed.newly_unlocked_modifiers).toContain('fire_arrow');
     });
+
+    it('should return dropped:false when database insert throws (issue #1080)', async () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.1);
+
+      // Make dbQuery throw on all attempts to simulate persistent DB failure
+      mockNk.dbQuery = jest.fn().mockImplementation(() => {
+        throw new Error('DB connection failed');
+      });
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'medium',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.loot.dropped).toBe(false);
+      expect(parsed.loot.gear).toBeNull();
+      expect(parsed.loot.error).toBe('PERSISTENCE_FAILED');
+    });
+
+    it('should retry insert and succeed on second attempt', async () => {
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      jest.spyOn(Math, 'random').mockReturnValue(0.1);
+
+      // First call throws synchronously, second succeeds
+      let callCount = 0;
+      mockNk.dbQuery = jest.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          throw new Error('DB connection failed');
+        }
+        return [{ item_id: 'gear-123' }];
+      });
+
+      const payload = JSON.stringify({
+        stage_id: 'stage_1',
+        boss_defeated: false,
+        difficulty: 'medium',
+      });
+      const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.loot.dropped).toBe(true);
+      expect(parsed.loot.gear).toBeDefined();
+      expect(parsed.loot.gear.id).toBe('gear-123');
+    });
   });
 
   describe('rpcStageComplete with enemy_type', () => {
