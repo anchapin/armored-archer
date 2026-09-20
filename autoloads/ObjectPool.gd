@@ -46,9 +46,20 @@ var _charge_effect_scene: PackedScene
 var _damage_popup_scene: PackedScene
 var _arrow_trail_scene: PackedScene
 
+# Default enemy scene used when get_enemy() is called without a scene arg
+const _DEFAULT_ENEMY_SCENE_PATH: String = "res://scenes/enemies/melee_enemy.tscn"
+
+# --- Per-type enemy pools (issue #1091) ---
+# Dictionary keyed by scene.resource_path -> Dictionary with:
+#   available: Array[Node]   — idle instances
+#   active: Array[Node]     — in-use instances
+#   created: int            — total instantiated
+#   reused: int              — times reused from available
+#   max_active: int          — peak concurrent active count
+var _enemy_pools: Dictionary = {}
+
 # Object pools - Array of available (inactive) objects
 var _arrow_pool: Array[Node] = []
-var _enemy_pool: Array[Node] = []
 var _hit_effect_pool: Array[Node] = []
 var _death_effect_pool: Array[Node] = []
 var _crit_effect_pool: Array[Node] = []
@@ -62,7 +73,6 @@ var _arrow_trail_pool: Array[Node] = []
 
 # Active objects tracking (for debugging/memory management)
 var _active_arrows: Array[Node] = []
-var _active_enemies: Array[Node] = []
 var _active_hit_effects: Array[Node] = []
 var _active_death_effects: Array[Node] = []
 var _active_crit_effects: Array[Node] = []
@@ -162,15 +172,8 @@ func _initialize_pools() -> void:
 		_arrow_pool.append(arrow)
 		add_child(arrow)
 
-	for i in range(max(adjusted_enemy_pool, 3)):
-		var enemy = _enemy_scene.instantiate()
-		enemy.set_process(false)
-		enemy.set_physics_process(false)
-		enemy.visible = false
-		_enemy_pool.append(enemy)
-		# CRITICAL: Don't add to scene yet - enemies added to scene during initialization
-		# will exist and be hittable but not tracked by spawner.
-		# They will be added to scene when actually spawned via get_enemy()
+	# Prewarm the default melee enemy sub-pool (issue #1091)
+	_prewarm_enemy_pool(_DEFAULT_ENEMY_SCENE_PATH, _enemy_scene, max(adjusted_enemy_pool, 3))
 
 	for i in range(max(adjusted_hit_pool, 3)):
 		var effect = _hit_effect_scene.instantiate()
@@ -274,35 +277,77 @@ func return_arrow(arrow: Node) -> void:
 	_arrow_pool.append(arrow)
 	_active_arrows.erase(arrow)
 
-# --- Enemy Pool ---
+# --- Enemy Pool (issue #1091: per-type sub-pools) ---
 
-## Get an enemy from the pool, or create a new one if pool is empty
-func get_enemy() -> Node:
+## Lazily ensure a sub-pool exists for the given scene.
+func _get_or_create_enemy_pool(scene_path: String, scene: PackedScene) -> Dictionary:
+	if not _enemy_pools.has(scene_path):
+		_enemy_pools[scene_path] = {
+			"available": [],
+			"active": [],
+			"created": 0,
+			"reused": 0,
+			"max_active": 0,
+			"scene": scene,
+		}
+	return _enemy_pools[scene_path]
+
+## Pre-warm an enemy sub-pool (issue #1091).
+## Enemies are instantiated but NOT added to scene — added on get_enemy().
+func _prewarm_enemy_pool(scene_path: String, scene: PackedScene, count: int) -> void:
+	if scene == null or count <= 0:
+		return
+	var pool_data: Dictionary = _get_or_create_enemy_pool(scene_path, scene)
+	for i in range(count):
+		var enemy = scene.instantiate()
+		enemy.set_process(false)
+		enemy.set_physics_process(false)
+		enemy.visible = false
+		enemy.set_meta("_pool_scene_key", scene_path)
+		pool_data["available"].append(enemy)
+		add_child(enemy)
+
+## Get an enemy from the pool for the given scene, or create a new one.
+## scene defaults to melee_enemy for backwards compatibility.
+func get_enemy(scene: PackedScene = null) -> Node:
 	_ensure_pools_initialized()
+
+	var scene_path: String
+	var scene_to_use: PackedScene
+
+	if scene != null:
+		scene_path = scene.resource_path
+		scene_to_use = scene
+	else:
+		scene_path = _DEFAULT_ENEMY_SCENE_PATH
+		scene_to_use = _enemy_scene
+
+	var pool_data: Dictionary = _get_or_create_enemy_pool(scene_path, scene_to_use)
 	var enemy: Node
 
-	if _enemy_pool.size() > 0:
-		enemy = _enemy_pool.pop_back()
-		_enemies_reused += 1
+	if pool_data["available"].size() > 0:
+		enemy = pool_data["available"].pop_back()
+		pool_data["reused"] += 1
 	else:
-		enemy = _enemy_scene.instantiate()
-		_enemies_created += 1
+		enemy = scene_to_use.instantiate()
+		pool_data["created"] += 1
+		enemy.set_meta("_pool_scene_key", scene_path)
 		add_child(enemy)
 
 	enemy.set_process(true)
 	enemy.set_physics_process(true)
 	enemy.visible = true
-	
-	# CRITICAL: Add to scene if not parented (enemies without parents can't be hittable)
-	# This handles both first-time pool use and re-parenting from scene
+
 	if enemy.get_parent() == null:
 		add_child(enemy)
-	
-	_active_enemies.append(enemy)
+
+	pool_data["active"].append(enemy)
+	pool_data["max_active"] = maxi(pool_data["max_active"], pool_data["active"].size())
 
 	return enemy
 
-## Return an enemy to the pool
+## Return an enemy to its correct per-type sub-pool (issue #1091).
+## The scene key was stored as metadata on the node at get_enemy() time.
 func return_enemy(enemy: Node) -> void:
 	if not is_instance_valid(enemy):
 		return
@@ -311,12 +356,19 @@ func return_enemy(enemy: Node) -> void:
 	enemy.set_physics_process(false)
 	enemy.visible = false
 
-	# Reset enemy state if it has a reset method
 	if enemy.has_method("reset_pooled_state"):
 		enemy.reset_pooled_state()
 
-	_enemy_pool.append(enemy)
-	_active_enemies.erase(enemy)
+	var scene_key: Variant = enemy.get_meta("_pool_scene_key")
+	var pool_path: String
+	if scene_key != null and _enemy_pools.has(str(scene_key)):
+		pool_path = str(scene_key)
+	else:
+		pool_path = _DEFAULT_ENEMY_SCENE_PATH
+
+	var pool_data: Dictionary = _enemy_pools.get(pool_path, {})
+	pool_data["available"].append(enemy)
+	pool_data["active"].erase(enemy)
 
 # --- Hit Effect Pool ---
 
@@ -618,13 +670,7 @@ func get_statistics() -> Dictionary:
 			"reused": _arrows_reused,
 			"reuse_rate": _get_reuse_rate(_arrows_created, _arrows_reused)
 		},
-		"enemies": {
-			"active": _active_enemies.size(),
-			"available": _enemy_pool.size(),
-			"created": _enemies_created,
-			"reused": _enemies_reused,
-			"reuse_rate": _get_reuse_rate(_enemies_created, _enemies_reused)
-		},
+		"enemies": _get_enemy_stats(),
 		"hit_effects": {
 			"active": _active_hit_effects.size(),
 			"available": _hit_effect_pool.size(),
@@ -697,6 +743,42 @@ func get_statistics() -> Dictionary:
 		}
 	}
 
+func _get_enemy_stats() -> Dictionary:
+	var total_active: int = 0
+	var total_available: int = 0
+	var total_created: int = 0
+	var total_reused: int = 0
+	var by_type: Dictionary = {}
+
+	for scene_path in _enemy_pools:
+		var pd: Dictionary = _enemy_pools[scene_path]
+		var active_count: int = pd["active"].size()
+		var avail_count: int = pd["available"].size()
+		var created_count: int = pd["created"]
+		var reused_count: int = pd["reused"]
+		total_active += active_count
+		total_available += avail_count
+		total_created += created_count
+		total_reused += reused_count
+		var scene_name: String = scene_path.get_file().replace(".tscn", "")
+		by_type[scene_name] = {
+			"active": active_count,
+			"available": avail_count,
+			"created": created_count,
+			"reused": reused_count,
+			"max_active": pd["max_active"],
+			"reuse_rate": _get_reuse_rate(created_count, reused_count),
+		}
+
+	return {
+		"active": total_active,
+		"available": total_available,
+		"created": total_created,
+		"reused": total_reused,
+		"reuse_rate": _get_reuse_rate(total_created, total_reused),
+		"by_type": by_type,
+	}
+
 func _get_reuse_rate(created: int, reused: int) -> float:
 	var total = created + reused
 	if total == 0:
@@ -743,12 +825,14 @@ func cleanup_invalid_instances() -> void:
 			valid_arrows.append(arrow)
 	_active_arrows = valid_arrows
 
-	# Clean up enemies
-	var valid_enemies: Array[Node] = []
-	for enemy in _active_enemies:
-		if is_instance_valid(enemy):
-			valid_enemies.append(enemy)
-	_active_enemies = valid_enemies
+	# Clean up enemies across all per-type sub-pools (issue #1091)
+	for scene_path in _enemy_pools:
+		var pool_data: Dictionary = _enemy_pools[scene_path]
+		var valid_active: Array[Node] = []
+		for enemy in pool_data["active"]:
+			if is_instance_valid(enemy):
+				valid_active.append(enemy)
+		pool_data["active"] = valid_active
 
 	# Clean up hit effects
 	var valid_effects: Array[Node] = []
@@ -876,12 +960,16 @@ func cleanup_all() -> void:
 	_arrow_pool.clear()
 	_active_arrows.clear()
 
-	# Clean up all enemies
-	for enemy in _enemy_pool:
-		if is_instance_valid(enemy):
-			enemy.queue_free()
-	_enemy_pool.clear()
-	_active_enemies.clear()
+	# Clean up all enemy sub-pools (issue #1091)
+	for scene_path in _enemy_pools:
+		var pool_data: Dictionary = _enemy_pools[scene_path]
+		for enemy in pool_data["available"]:
+			if is_instance_valid(enemy):
+				enemy.queue_free()
+		for enemy in pool_data["active"]:
+			if is_instance_valid(enemy):
+				enemy.queue_free()
+	_enemy_pools.clear()
 
 	# Clean up all hit effects
 	for effect in _hit_effect_pool:
@@ -968,17 +1056,20 @@ func prepare_for_scene_change() -> void:
 			_arrow_pool.append(arrow)
 	_active_arrows.clear()
 
-	# Return all active enemies to pool
-	for enemy in _active_enemies:
-		if is_instance_valid(enemy):
-			_disconnect_node_signals(enemy)
-			enemy.set_process(false)
-			enemy.set_physics_process(false)
-			enemy.visible = false
-			if enemy.has_method("reset_pooled_state"):
-				enemy.reset_pooled_state()
-			_enemy_pool.append(enemy)
-	_active_enemies.clear()
+	# Return all active enemies to their per-type pools (issue #1091)
+	for scene_path in _enemy_pools:
+		var pool_data: Dictionary = _enemy_pools[scene_path]
+		var to_return: Array[Node] = pool_data["active"].duplicate()
+		for enemy in to_return:
+			if is_instance_valid(enemy):
+				_disconnect_node_signals(enemy)
+				enemy.set_process(false)
+				enemy.set_physics_process(false)
+				enemy.visible = false
+				if enemy.has_method("reset_pooled_state"):
+					enemy.reset_pooled_state()
+				pool_data["available"].append(enemy)
+		pool_data["active"].clear()
 
 	# Return all active hit effects to pool
 	for effect in _active_hit_effects:

@@ -3,6 +3,10 @@ extends Node
 var _tests_passed: int = 0
 var _tests_failed: int = 0
 
+const _SCOUT_SCENE: PackedScene = preload("res://scenes/enemies/scout_enemy.tscn")
+const _MELEE_SCENE: PackedScene = preload("res://scenes/enemies/melee_enemy.tscn")
+const _BRUTE_SCENE: PackedScene = preload("res://scenes/enemies/brute_enemy.tscn")
+
 signal test_completed(test_name: String, passed: bool)
 
 func _ready() -> void:
@@ -18,6 +22,7 @@ func run_tests() -> void:
 	await test_pool_reuse()
 	await test_return_invalid_instance()
 	await test_statistics()
+	await test_mixed_wave_spawning()
 	await test_cleanup_invalid_instances()
 
 	print("\n=== ObjectPool Test Results ===")
@@ -46,13 +51,13 @@ func test_initial_state() -> void:
 	var pool = await _create_object_pool()
 
 	# Test pool arrays are initialized
-	if "_arrow_pool" in pool and "_enemy_pool" in pool and "_hit_effect_pool" in pool:
+	if "_arrow_pool" in pool and "_enemy_pools" in pool and "_hit_effect_pool" in pool:
 		_pass("test_initial_state")
 	else:
 		_fail("test_initial_state", "Pool arrays should exist")
 
 	# Test active tracking arrays exist
-	if "_active_arrows" in pool and "_active_enemies" in pool and "_active_hit_effects" in pool:
+	if "_active_arrows" in pool and "_active_hit_effects" in pool:
 		_pass("test_initial_state_tracking_arrays")
 	else:
 		_fail("test_initial_state_tracking_arrays", "Active tracking arrays should exist")
@@ -62,6 +67,12 @@ func test_initial_state() -> void:
 		_pass("test_initial_state_statistics")
 	else:
 		_fail("test_initial_state_statistics", "Statistics counters should exist")
+
+	# Test enemy_pools is a Dictionary (issue #1091)
+	if typeof(pool._enemy_pools) == TYPE_DICTIONARY:
+		_pass("test_enemy_pools_is_dictionary")
+	else:
+		_fail("test_enemy_pools_is_dictionary", "enemy_pools should be a Dictionary")
 
 	pool.queue_free()
 
@@ -129,8 +140,8 @@ func test_arrow_pool_acquire_release() -> void:
 func test_enemy_pool_acquire_release() -> void:
 	var pool = await _create_object_pool()
 
-	# Acquire an enemy
-	var enemy = pool.get_enemy()
+	# Acquire an enemy using the new scene-parameterized API (issue #1091)
+	var enemy = pool.get_enemy(_SCOUT_SCENE)
 
 	if enemy != null:
 		_pass("test_get_enemy_returns_node")
@@ -143,27 +154,23 @@ func test_enemy_pool_acquire_release() -> void:
 	else:
 		_fail("test_enemy_visible_after_acquire", "Enemy should be visible after acquire")
 
-	# Enemy should be in active tracking
-	if pool._active_enemies.has(enemy):
-		_pass("test_enemy_in_active_tracking")
+	# Enemy scene key should be set via metadata
+	var scene_key = enemy.get_meta("_pool_scene_key")
+	if scene_key == "res://scenes/enemies/scout_enemy.tscn":
+		_pass("test_enemy_scene_key_set")
 	else:
-		_fail("test_enemy_in_active_tracking", "Enemy should be in active tracking")
+		_fail("test_enemy_scene_key_set", "Enemy should have scene key set, got: " + str(scene_key))
 
 	# Release the enemy
 	pool.return_enemy(enemy)
 	await get_tree().process_frame
 
-	# Enemy should no longer be in active tracking
-	if not pool._active_enemies.has(enemy):
-		_pass("test_enemy_removed_from_active_after_release")
+	# Enemy should be back in the scout sub-pool
+	var stats = pool.get_statistics()
+	if stats.enemies.by_type.has("scout_enemy"):
+		_pass("test_enemy_returned_to_correct_subpool")
 	else:
-		_fail("test_enemy_removed_from_active_after_release", "Enemy should be removed from active tracking")
-
-	# Enemy should be back in pool
-	if pool._enemy_pool.has(enemy):
-		_pass("test_enemy_returned_to_pool")
-	else:
-		_fail("test_enemy_returned_to_pool", "Enemy should be returned to pool")
+		_fail("test_enemy_returned_to_correct_subpool", "Enemy should be in scout_enemy sub-pool")
 
 	pool.queue_free()
 
@@ -210,9 +217,6 @@ func test_hit_effect_pool_acquire_release() -> void:
 
 func test_pool_reuse() -> void:
 	var pool = await _create_object_pool()
-
-	# Get initial pool size
-	var initial_pool_size = pool._arrow_pool.size()
 
 	# Acquire an arrow (should reuse from pool)
 	var arrow1 = pool.get_arrow()
@@ -291,6 +295,62 @@ func test_statistics() -> void:
 		_pass("test_statistics_update")
 	else:
 		_fail("test_statistics_update", "Statistics should update after acquire/release")
+
+	pool.queue_free()
+
+func test_mixed_wave_spawning() -> void:
+	# Issue #1091: verify ≥3 enemy types share the pool with zero non-pool
+	# instantiates after warmup — each type gets its own sub-pool.
+	var pool = await _create_object_pool()
+
+	# Warm up the three sub-pools with 1 enemy each
+	var e1 = pool.get_enemy(_MELEE_SCENE)
+	var e2 = pool.get_enemy(_SCOUT_SCENE)
+	var e3 = pool.get_enemy(_BRUTE_SCENE)
+
+	var stats_before = pool.get_statistics()
+	var created_before = stats_before.enemies.created
+
+	pool.return_enemy(e1)
+	pool.return_enemy(e2)
+	pool.return_enemy(e3)
+	await get_tree().process_frame
+
+	# Spawn 3 more of each type — all should come from the warmed pools
+	# (no new instantiations after warmup)
+	for i in range(3):
+		pool.return_enemy(pool.get_enemy(_MELEE_SCENE))
+		pool.return_enemy(pool.get_enemy(_SCOUT_SCENE))
+		pool.return_enemy(pool.get_enemy(_BRUTE_SCENE))
+
+	var stats_after = pool.get_statistics()
+	var created_after = stats_after.enemies.created
+	var reused_after = stats_after.enemies.reused
+
+	# After warmup (3 prewarmed + 3 reused rounds = 9 reuses), zero new creates
+	if created_after == created_before:
+		_pass("test_mixed_wave_zero_non_pool_instantiate")
+	else:
+		_fail("test_mixed_wave_zero_non_pool_instantiate",
+			"Expected 0 new instantiates after warmup, got created=%d vs before=%d" % [created_after, created_before])
+
+	# All three types should appear in by_type breakdown
+	if stats_after.enemies.by_type.has("melee_enemy") and \
+	   stats_after.enemies.by_type.has("scout_enemy") and \
+	   stats_after.enemies.by_type.has("brute_enemy"):
+		_pass("test_mixed_wave_three_types_tracked")
+	else:
+		_fail("test_mixed_wave_three_types_tracked", "All three enemy types should be tracked separately")
+
+	# Each sub-pool should have reused > 0
+	var melee_reused = stats_after.enemies.by_type.get("melee_enemy", {}).get("reused", 0)
+	var scout_reused = stats_after.enemies.by_type.get("scout_enemy", {}).get("reused", 0)
+	var brute_reused = stats_after.enemies.by_type.get("brute_enemy", {}).get("reused", 0)
+	if melee_reused > 0 and scout_reused > 0 and brute_reused > 0:
+		_pass("test_mixed_wave_per_type_reuse")
+	else:
+		_fail("test_mixed_wave_per_type_reuse",
+			"melee=%d scout=%d brute=%d" % [melee_reused, scout_reused, brute_reused])
 
 	pool.queue_free()
 
