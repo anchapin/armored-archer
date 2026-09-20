@@ -208,18 +208,17 @@ func spawn_enemy() -> void:
 	var spawn_position: Vector2 = get_random_spawn_position()
 
 	# Use object pool for enemy instantiation (performance optimization)
+	# Deterministic scene selection via enemy_scene_map (issue #910, #1091)
+	var mapped_scene: PackedScene = _resolve_current_stage_scene()
+	if not mapped_scene:
+		mapped_scene = SCOUT_ENEMY_SCENE
+		push_warning("EnemySpawner: no scene resolved for current stage, defaulting to scout_enemy")
+
 	var enemy_instance: Node
 	var object_pool = get_node_or_null("/root/ObjectPool")
 	if object_pool and object_pool.has_method("get_enemy"):
-		enemy_instance = object_pool.get_enemy()
+		enemy_instance = object_pool.get_enemy(mapped_scene)
 	else:
-		# Deterministic scene selection via enemy_scene_map (issue #910).
-		# Falls back to scout_enemy if no stage context is set — the
-		# random-scene fallback that previously corrupted Ch1 is removed.
-		var mapped_scene: PackedScene = _resolve_current_stage_scene()
-		if not mapped_scene:
-			mapped_scene = SCOUT_ENEMY_SCENE
-			push_warning("EnemySpawner: no scene resolved for current stage, defaulting to scout_enemy")
 		enemy_instance = mapped_scene.instantiate()
 
 
